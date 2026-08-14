@@ -14,6 +14,7 @@
   "educationPricingConfirm.description": "Der Bildungsrabatt gilt nur für den jährlichen Professional-Plan. Wenn Sie Ihren aktuellen Plan behalten, ist der Rabatt nicht enthalten.",
   "educationPricingConfirm.title": "Ihr ausgewählter Plan unterstützt den Bildungsrabatt nicht",
   "emailLabel": "Ihre aktuelle E-Mail",
+  "form.schoolName.noResults": "Keine passende Schule gefunden. Sie können den offiziellen Namen trotzdem eingeben.",
   "form.schoolName.placeholder": "Geben Sie den offiziellen, unabgekürzten Namen Ihrer Schule ein.",
   "form.schoolName.title": "Ihr Schulname",
   "form.schoolRole.option.administrator": "Schuladministrator",

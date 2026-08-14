@@ -14,6 +14,7 @@
   "educationPricingConfirm.description": "De onderwijskorting is alleen van toepassing op het jaarlijkse Professional-abonnement. Als u uw huidige abonnement behoudt, is de korting niet inbegrepen.",
   "educationPricingConfirm.title": "Uw geselecteerde abonnement ondersteunt de onderwijskorting niet",
   "emailLabel": "Your current email",
+  "form.schoolName.noResults": "Geen overeenkomende school gevonden. U kunt de officiële schoolnaam nog steeds invoeren.",
   "form.schoolName.placeholder": "Enter the official, unabbreviated name of your school",
   "form.schoolName.title": "Your School Name",
   "form.schoolRole.option.administrator": "School Administrator",

@@ -65,9 +65,8 @@ class TestGetRagPipeline:
         assert result is pipeline
         get_pipeline_by_id.assert_called_once_with("pipeline-1", "tenant-1", session=session_factory.return_value)
 
-    def test_load_rag_pipeline_uses_provided_session(self, mocker: MockerFixture):
+    def test_load_rag_pipeline_uses_provided_session(self, mocker: MockerFixture, sqlite_session: Session):
         pipeline = Pipeline(tenant_id="tenant-id", name="Test Pipeline")
-        session = Mock(spec=Session)
 
         mocker.patch(
             "controllers.console.datasets.wraps.current_account_with_tenant",
@@ -78,10 +77,10 @@ class TestGetRagPipeline:
             return_value=pipeline,
         )
 
-        result = load_rag_pipeline(session, "pipeline-1")
+        result = load_rag_pipeline(sqlite_session, "pipeline-1")
 
         assert result is pipeline
-        get_pipeline_by_id.assert_called_once_with("pipeline-1", "tenant-1", session=session)
+        get_pipeline_by_id.assert_called_once_with("pipeline-1", "tenant-1", session=sqlite_session)
 
     def test_pipeline_id_removed_from_kwargs(self, mocker: MockerFixture):
         pipeline = Pipeline(tenant_id="tenant-id", name="Test Pipeline")

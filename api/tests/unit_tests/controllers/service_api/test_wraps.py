@@ -23,7 +23,7 @@ from controllers.service_api.wraps import (
     validate_app_token,
     validate_dataset_token,
 )
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from models import Account, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole
 from models.dataset import Dataset, RateLimitLog
@@ -348,7 +348,7 @@ class TestCloudEditionBillingResourceCheck:
         # Act
         with (
             app.test_request_context("/", method="GET"),
-            patch("controllers.service_api.wraps.dify_config.BILLING_ENABLED", True),
+            patch("controllers.service_api.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         ):
             result = add_segment()
 
@@ -378,7 +378,7 @@ class TestCloudEditionBillingResourceCheck:
 
         with (
             app.test_request_context("/", method="GET"),
-            patch("controllers.service_api.wraps.dify_config.BILLING_ENABLED", True),
+            patch("controllers.service_api.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             pytest.raises(ServiceUnavailable) as exc_info,
         ):
             upload_document()
@@ -408,7 +408,7 @@ class TestCloudEditionBillingResourceCheck:
 
         with (
             app.test_request_context("/", method="GET"),
-            patch("controllers.service_api.wraps.dify_config.BILLING_ENABLED", True),
+            patch("controllers.service_api.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         ):
             result = upload_document()
 

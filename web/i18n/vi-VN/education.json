@@ -14,6 +14,7 @@
   "educationPricingConfirm.description": "Giảm giá giáo dục chỉ áp dụng cho gói Professional hằng năm. Nếu giữ gói hiện tại, giảm giá sẽ không được áp dụng.",
   "educationPricingConfirm.title": "Gói bạn chọn không hỗ trợ giảm giá giáo dục",
   "emailLabel": "Email hiện tại của bạn",
+  "form.schoolName.noResults": "Không tìm thấy trường phù hợp. Bạn vẫn có thể nhập tên chính thức của trường.",
   "form.schoolName.placeholder": "Nhập tên chính thức, không viết tắt của trường bạn",
   "form.schoolName.title": "Tên Trường Của Bạn",
   "form.schoolRole.option.administrator": "Quản trị viên trường học",

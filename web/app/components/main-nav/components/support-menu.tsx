@@ -10,10 +10,10 @@ import {
 } from '@/app/components/header/account-dropdown/menu-item-content'
 import { mailToSupport } from '@/app/components/header/utils/util'
 import { SUPPORT_EMAIL_ADDRESS, ZENDESK_WIDGET_KEY } from '@/config'
-import { userProfileAtom } from '@/context/account-state'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { langGeniusVersionInfoAtom } from '@/context/version-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
 export default function SupportMenu() {
@@ -23,7 +23,10 @@ export default function SupportMenu() {
     select: ({ deployment_edition }) => deployment_edition,
   })
   const { enableBilling, plan } = useProviderContext()
-  const userProfile = useAtomValue(userProfileAtom)
+  const { data: userProfileEmail } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.email,
+  })
   const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
   const { setShowPricingModal } = useModalContext()
   const hasDedicatedChannel = plan.type !== Plan.sandbox || Boolean(SUPPORT_EMAIL_ADDRESS.trim())
@@ -79,7 +82,7 @@ export default function SupportMenu() {
         <DropdownMenuLinkItem
           className="mx-0 h-8 gap-1 px-3 py-1"
           href={mailToSupport(
-            userProfile.email,
+            userProfileEmail,
             plan.type,
             langGeniusVersionInfo?.current_version,
             SUPPORT_EMAIL_ADDRESS,

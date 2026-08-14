@@ -24,7 +24,7 @@ from pytest_mock import MockerFixture
 
 import services.app_generate_service as ags_module
 from core.app.entities.app_invoke_entities import InvokeFrom
-from enums.quota_type import QuotaType
+from enums import DeploymentEdition, QuotaType
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowIdFormatError, WorkflowNotFoundError
@@ -217,7 +217,7 @@ class TestGenerate:
 
     @pytest.fixture(autouse=True)
     def _common(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(ags_module.dify_config, "BILLING_ENABLED", False)
+        monkeypatch.setattr(ags_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
         mocker.patch("services.app_generate_service.RateLimit", _DummyRateLimit)
         # Prevent AppExecutionParams.new from touching real models via isinstance
         mocker.patch(
@@ -486,8 +486,8 @@ class TestGenerateBilling:
             _noop_rate_limit_context,
         )
 
-    def test_billing_enabled_consumes_quota(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(ags_module.dify_config, "BILLING_ENABLED", True)
+    def test_cloud_edition_consumes_quota(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(ags_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
         quota_charge = MagicMock()
         reserve_mock = mocker.patch(
             "services.app_generate_service.QuotaService.reserve",
@@ -519,7 +519,7 @@ class TestGenerateBilling:
         from services.errors.app import QuotaExceededError
         from services.errors.llm import InvokeRateLimitError
 
-        monkeypatch.setattr(ags_module.dify_config, "BILLING_ENABLED", True)
+        monkeypatch.setattr(ags_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
         mocker.patch(
             "services.app_generate_service.QuotaService.reserve",
             side_effect=QuotaExceededError(feature="workflow", tenant_id="t", required=1),
@@ -536,7 +536,7 @@ class TestGenerateBilling:
             )
 
     def test_exception_refunds_quota_and_exits_rate_limit(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(ags_module.dify_config, "BILLING_ENABLED", True)
+        monkeypatch.setattr(ags_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
         quota_charge = MagicMock()
         mocker.patch(
             "services.app_generate_service.QuotaService.reserve",
@@ -566,7 +566,7 @@ class TestGenerateBilling:
         self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch
     ):
         """For non-streaming (blocking) calls, rate_limit.exit should be called in finally."""
-        monkeypatch.setattr(ags_module.dify_config, "BILLING_ENABLED", False)
+        monkeypatch.setattr(ags_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
 
         exit_calls: list[str] = []
 
@@ -596,7 +596,7 @@ class TestGenerateBilling:
         assert exit_calls == ["dummy-request-id"]
 
     def test_blocking_failure_exits_rate_limit_once(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(ags_module.dify_config, "BILLING_ENABLED", True)
+        monkeypatch.setattr(ags_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
         quota_charge = MagicMock()
         mocker.patch(
             "services.app_generate_service.QuotaService.reserve",
@@ -628,7 +628,7 @@ class TestGenerateBilling:
         assert exit_calls == ["dummy-request-id"]
 
     def test_streaming_failure_exits_rate_limit_once(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(ags_module.dify_config, "BILLING_ENABLED", True)
+        monkeypatch.setattr(ags_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
         quota_charge = MagicMock()
         mocker.patch(
             "services.app_generate_service.QuotaService.reserve",

@@ -26,7 +26,6 @@ export type ConsoleStateFixture = {
   deploymentEdition?: 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD'
   brandingEnabled?: boolean
   langGeniusVersionInfo?: Partial<LangGeniusVersionInfo>
-  refreshUserProfile?: () => void
   refreshCurrentWorkspace?: () => void
 }
 
@@ -63,9 +62,6 @@ const userProfileAtom = atom(defaultUserProfile)
 const userProfileIdAtom = atom((get) => get(userProfileAtom).id)
 const userProfileEmailAtom = atom((get) => get(userProfileAtom).email)
 const accountProfileMetaAtom = atom({ currentVersion: null, currentEnv: null })
-const refreshUserProfileCallbackAtom = atom({ callback: () => {} })
-const refreshUserProfileAtom = atom(null, (get) => get(refreshUserProfileCallbackAtom).callback())
-
 const currentWorkspaceAtom = atom<GetWorkspacesCurrentSummaryResponse>(defaultCurrentWorkspace)
 const currentWorkspaceIdAtom = atom((get) => get(currentWorkspaceAtom).id)
 const isCurrentWorkspaceManagerAtom = atom(false)
@@ -134,7 +130,6 @@ export const seedRegisteredConsoleStateFixture = (store: JotaiStore) => {
     ...defaultLangGeniusVersionInfo,
     ...state.langGeniusVersionInfo,
   })
-  store.set(refreshUserProfileCallbackAtom, { callback: state.refreshUserProfile ?? (() => {}) })
   store.set(refreshCurrentWorkspaceCallbackAtom, {
     callback: state.refreshCurrentWorkspace ?? (() => {}),
   })
@@ -147,7 +142,6 @@ export const createAccountStateModuleMock = (getState: ConsoleStateFixtureResolv
     const state = getState()
     return {
       userProfile: state.userProfile,
-      refreshUserProfile: state.refreshUserProfile,
     }
   })
   return {
@@ -155,7 +149,6 @@ export const createAccountStateModuleMock = (getState: ConsoleStateFixtureResolv
     userProfileIdAtom,
     userProfileEmailAtom,
     accountProfileMetaAtom,
-    refreshUserProfileAtom,
   }
 }
 

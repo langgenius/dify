@@ -1,9 +1,11 @@
 import type { Edge, Node } from '../types'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { useStoreApi } from 'reactflow'
 import { WorkflowContextProvider } from '../context'
 import { useDatasetsDetailStore } from '../datasets-detail-store/store'
 import WorkflowWithDefaultContext from '../index'
+import { useStore } from '../store'
 import { BlockEnum } from '../types'
 import { useWorkflowHistoryStore } from '../workflow-history-store'
 
@@ -37,15 +39,32 @@ const edges: Edge[] = [
 
 const ContextConsumer = () => {
   const { store } = useWorkflowHistoryStore()
+  const historyNodeCount = useStore((state) => state.workflowHistory.nodes.length)
   const datasetCount = useDatasetsDetailStore((state) => Object.keys(state.datasetsDetail).length)
   const reactFlowStore = useStoreApi()
+  const advanceWorkflowHistory = () => {
+    const currentHistory = store.getState()
+    store.setState({
+      ...currentHistory,
+      nodes: [
+        ...currentHistory.nodes,
+        {
+          ...nodes[0]!,
+          id: 'node-next',
+        },
+      ],
+    })
+  }
 
   return (
-    <div>
-      {`history:${store.getState().nodes.length}`}
-      {` datasets:${datasetCount}`}
-      {` reactflow:${String(!!reactFlowStore)}`}
-    </div>
+    <>
+      <div>
+        {`history:${historyNodeCount}`}
+        {` datasets:${datasetCount}`}
+        {` reactflow:${String(!!reactFlowStore)}`}
+      </div>
+      <button onClick={advanceWorkflowHistory}>Advance workflow history</button>
+    </>
   )
 }
 
@@ -60,5 +79,20 @@ describe('WorkflowWithDefaultContext', () => {
     )
 
     expect(screen.getByText('history:1 datasets:0 reactflow:true')).toBeInTheDocument()
+  })
+
+  it('keeps its children mounted when workflow history advances after initialization', async () => {
+    const user = userEvent.setup()
+    render(
+      <WorkflowContextProvider>
+        <WorkflowWithDefaultContext nodes={nodes} edges={edges}>
+          <ContextConsumer />
+        </WorkflowWithDefaultContext>
+      </WorkflowContextProvider>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Advance workflow history' }))
+
+    expect(screen.getByText('history:2 datasets:0 reactflow:true')).toBeInTheDocument()
   })
 })

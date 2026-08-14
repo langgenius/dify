@@ -11,7 +11,7 @@ import {
 } from '@langgenius/dify-ui/select'
 import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
-import { useCallback, useRef } from 'react'
+import { useCallback, useLayoutEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { useHooksStore } from '@/app/components/workflow/hooks-store/store'
@@ -111,7 +111,9 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
   )
   const modelSelectionKeyRef = useRef(modelSelectionKey)
   const modelSelectionRequestGenerationRef = useRef(0)
-  modelSelectionKeyRef.current = modelSelectionKey
+  useLayoutEffect(() => {
+    modelSelectionKeyRef.current = modelSelectionKey
+  }, [modelSelectionKey])
 
   const handleModelChange = useCallback(
     (model: { provider: string; modelId: string; mode?: string }) => {

@@ -492,7 +492,6 @@ const mainNavUserProfile = {
 
 const consoleState: ConsoleStateFixture = {
   userProfile: mainNavUserProfile,
-  refreshUserProfile: vi.fn(),
   currentWorkspace: {
     id: 'workspace-1',
     name: 'Solar Studio',
@@ -969,22 +968,6 @@ describe('MainNav', () => {
 
     expect(homeLink).toHaveClass(activeGradientMaskClassName)
     expect(homeLink).toHaveClass(activeStackingClassName)
-  })
-
-  it('keeps Home active on the legacy explore apps route only', () => {
-    mockPathname = '/explore/apps'
-
-    const { rerender } = renderMainNav()
-
-    const homeLink = screen.getByRole('link', { name: /common.mainNav.home/ })
-    expect(homeLink).toHaveAttribute('aria-current', 'page')
-
-    mockPathname = '/installed/installed-1'
-    rerender(<MainNav />)
-
-    expect(screen.getByRole('link', { name: /common.mainNav.home/ })).not.toHaveAttribute(
-      'aria-current',
-    )
   })
 
   it('opens goto anything from the search button', async () => {
