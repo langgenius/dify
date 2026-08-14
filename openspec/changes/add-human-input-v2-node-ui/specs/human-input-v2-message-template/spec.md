@@ -17,7 +17,12 @@ Message Template MUST 按 Figma node `25170:22597` 在 overlay 中编辑 `messag
 #### Scenario: 确认有效 draft
 
 - **WHEN** subject 与 body 通过前端校验且用户确认
-- **THEN** 前端 MUST 一次性写回完整 `message_template`，并关闭 overlay
+- **THEN** 前端 MUST 一次性只写回完整 `message_template`，保持 `recipients_spec` 与其他 node fields 不变，并关闭 overlay
+
+#### Scenario: Compatibility node 确认 template 修改
+
+- **WHEN** 当前 node 的 `recipients_spec` 包含 `all_workspace_contacts` 或 migration-preserved overlap，且用户确认有效 template draft
+- **THEN** 前端 MUST 保留整个 recipient array、variant、顺序与值不变
 
 ### Requirement: 取消或关闭 Message Template 不得提交草稿
 
@@ -79,7 +84,7 @@ subject、body 的 required、空白、字符限制和设计错误状态 MUST �
 #### Scenario: 复制粘贴 v2 节点
 
 - **WHEN** 用户复制并粘贴包含 template variable 的 v2 节点
-- **THEN** 前端 MUST 使用 workflow copy/paste mapping 重写适用引用，并保持 subject/body 其他内容不变
+- **THEN** 前端 MUST 使用 workflow copy/paste mapping 重写适用 template 引用，并保持 subject/body 其他内容以及全部 recipient variants 与顺序不变
 
 ### Requirement: Message Template 必须支持 read-only、本地化与可访问操作
 

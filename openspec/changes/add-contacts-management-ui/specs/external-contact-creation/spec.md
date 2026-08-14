@@ -33,9 +33,9 @@
 - **WHEN** display name 与 Email 均通过前端校验
 - **THEN** 前端 MUST 构造 typed create command 并调用 mock repository
 
-### Requirement: Mock repository 必须按 lower-case 完整 Email 返回身份冲突
+### Requirement: Mock repository 必须按 lower-case 完整 Email 保证 External contact 唯一性
 
-mock repository MUST 使用整条 Email lower-case 后完全相等的规则比较当前 workspace Contacts 与 mock 可添加 Platform-contact identity，并 MUST 返回可区分的 typed result。
+mock repository MUST 使用整条 Email lower-case 后完全相等的规则比较当前 workspace Contacts。`External contact` 的 normalized Email MAY 与当前 `workspace contact` 或 `Platform contact` 重叠；只有同一 workspace 内另一个 `External contact` 使用相同 normalized Email 时，repository MUST 返回可区分的 typed conflict result。
 
 #### Scenario: Email 与 External contact 重复
 
@@ -45,12 +45,12 @@ mock repository MUST 使用整条 Email lower-case 后完全相等的规则比�
 #### Scenario: Email 命中 workspace contact
 
 - **WHEN** normalized Email 命中当前 workspace contact
-- **THEN** repository MUST 返回 `matches_workspace_contact`，前端 MUST 说明该对象已经是内部 Contact
+- **THEN** repository MUST 允许创建新的 mock External contact，并 MUST 将其保留为独立的 External contact
 
 #### Scenario: Email 命中 Platform contact
 
 - **WHEN** normalized Email 命中当前 Contacts 或可添加数据中的 Platform contact
-- **THEN** repository MUST 返回 `matches_platform_contact`，前端 MUST 引导按 Platform contact 处理，MUST NOT 创建 External contact
+- **THEN** repository MUST 允许创建新的 mock External contact，并 MUST 将其保留为独立的 External contact
 
 #### Scenario: Email 未命中任何现有身份
 
@@ -120,8 +120,8 @@ mock repository MUST 使用整条 Email lower-case 后完全相等的规则比�
 
 #### Scenario: Mock scenario 切换结果
 
-- **WHEN** 测试选择 success、duplicate、workspace-match、platform-match 或 failure scenario
-- **THEN** repository MUST 确定性返回对应 typed result
+- **WHEN** 测试选择 success、duplicate-external、workspace-overlap、platform-overlap 或 failure scenario
+- **THEN** repository MUST 确定性返回对应 typed result，且 workspace-overlap 与 platform-overlap MUST 返回成功创建结果
 
 #### Scenario: 未来接入后端
 

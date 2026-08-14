@@ -71,7 +71,7 @@ Contact 上位概念保持如下：
 | `DELETE` | `/console/api/workspaces/current/human-input/contacts/<uuid:contact_id>/im-override` | 清除 workspace-scoped Contact IM override 并恢复全局绑定。 |
 | `PUT` | `/console/api/workspaces/current/human-input/contacts/<uuid:contact_id>/im-bindings` | 将一个已同步 IM identity 绑定到 Contact。 |
 | `DELETE` | `/console/api/workspaces/current/human-input/contacts/<uuid:contact_id>/im-bindings` | 删除 Contact 的指定 IM binding。 |
-| `POST` | `/console/api/workspaces/current/human-input/node-data-migration` | 批量、无副作用地将 Human Input v1 node data 转换为 v2；整批 all-or-error，`whole_workspace: true` 仅允许物化为迁移时 workspace member / Contact snapshot 的静态 recipient 列表。 |
+| `POST` | `/console/api/workspaces/current/human-input/node-data-migration` | 批量、无副作用地将 Human Input v1 node data 转换为 v2；整批 all-or-error，`whole_workspace: true` MUST 转换为恰好一个显式 `all_workspace_contacts` recipient marker，MUST NOT 展开为迁移时 workspace member / Contact snapshot 的静态 recipient 列表。 |
 | `GET` | `/console/api/workspaces/current/human-input/email-provider` | 读取 Email provider 配置及 credential configured 状态，不返回 secret 或 masked secret。 |
 | `PUT` | `/console/api/workspaces/current/human-input/email-provider` | 创建或更新 Email provider 配置，并支持显式 preserve existing secret。 |
 

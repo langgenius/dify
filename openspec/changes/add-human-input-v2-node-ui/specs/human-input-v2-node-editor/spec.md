@@ -54,8 +54,8 @@
 
 #### Scenario: 编辑无关字段
 
-- **WHEN** 用户只修改 v2 节点的 timeout
-- **THEN** 前端 MUST 保留原 `recipients_spec`、`message_template`、`debug_mode` 和未知但未被编辑的兼容数据
+- **WHEN** 用户只修改 v2 节点的 timeout、message template 或其他与 recipient 无关的字段
+- **THEN** 前端 MUST 保留原 `recipients_spec` 的 variant、字段、数组顺序与 migration compatibility overlaps，并 MUST 保留其他未编辑的兼容数据
 
 #### Scenario: 检查 recipient wire key
 
@@ -85,6 +85,63 @@ Human Input v2 node card MUST 根据 `recipients_spec` 和 Contact option resolu
 
 - **WHEN** recipient 缺少 required field、Email 无效或 selector 无效
 - **THEN** node card MUST 展示 Figma 对应的异常状态，MUST NOT 静默删除该配置
+
+### Requirement: Node editor 必须完整承接 migration-only all-workspace recipient lifecycle
+
+`all_workspace_contacts` MUST 按 recipient schema 定义作为合法的 migration-only variant 进入 node editor。Node editor MUST recognize、render、validate、save、copy 与 paste 该 variant，但当前 manual authoring controls MUST NOT 创建它。Editor presentation MUST NOT 为显示 summary 而展开或固化当前 workspace Contact 列表。
+
+#### Scenario: 打开包含 all-workspace recipient 的 migrated node
+
+- **WHEN** editor loads a v2 node whose `recipients_spec` contains `{ "type": "all_workspace_contacts" }`
+- **THEN** editor MUST render a stable localized compatibility summary and MUST preserve the exact variant through validation and save without materializing current workspace Contacts
+
+#### Scenario: 复制粘贴包含 all-workspace recipient 的 node
+
+- **WHEN** 用户复制并粘贴一个包含 `all_workspace_contacts` 的 imported v2 node
+- **THEN** pasted node MUST preserve that recipient variant and its relative array position unchanged
+
+#### Scenario: ordinary authoring 不创建 migration-only variant
+
+- **WHEN** 用户创建新 v2 node 或通过当前 recipient controls 编辑 ordinary v2 node
+- **THEN** editor MUST NOT synthesize or expose `all_workspace_contacts` as a manual add option
+
+### Requirement: Node editor 必须无损 round-trip imported migration overlaps
+
+Imported migration output MAY contain `all_workspace_contacts` together with a specific Contact already covered by runtime expansion or with a same-email `External contact`. Node editor MUST preserve these source specifications as compatibility state and MUST NOT delete, merge, reorder, or normalize an imported item unless the user explicitly replaces or deletes that item. Editing one recipient MUST preserve every other item and its relative order.
+
+#### Scenario: all-workspace marker overlaps an explicit workspace Contact
+
+- **WHEN** imported node data contains `all_workspace_contacts` and one explicit workspace Contact covered by that set
+- **THEN** editor MUST preserve both recipient specifications through load, render, validation, save, copy, and paste
+
+#### Scenario: all-workspace marker overlaps a same-email External Contact
+
+- **WHEN** imported node data contains `all_workspace_contacts` and one `External contact` whose normalized email matches a workspace member email
+- **THEN** editor MUST preserve both recipient specifications and MUST NOT drop either item as a duplicate
+
+#### Scenario: unrelated edit preserves compatibility structure
+
+- **WHEN** 用户修改 timeout、message template 或其他与 recipient 无关的字段
+- **THEN** editor MUST leave the complete imported `recipients_spec` structurally equivalent, including every variant, field, value and array position
+
+### Requirement: Contact-derived node-editor labels 必须使用 Platform Contact terminology
+
+Node-editor recipient picker、node summary 与 imported-recipient summary 在 current workspace context 中描述 non-member internal Contact type 时 MUST 使用 `Platform Contact`。`Organization` MAY describe an ownership or search boundary, but MUST NOT replace the `Platform Contact` type label.
+
+#### Scenario: Picker 显示 Platform Contact
+
+- **WHEN** one Contact option resolves as a current-workspace `Platform contact`
+- **THEN** picker option and recipient summary MUST use the localized `Platform Contact` type label
+
+#### Scenario: Imported recipient resolves as Platform Contact
+
+- **WHEN** an imported `contact_id` resolves to a current-workspace `Platform contact`
+- **THEN** node and panel summaries MUST use `Platform Contact` and MUST NOT use `Organization` as its Contact type label
+
+#### Scenario: Organization 仍用于 ownership boundary
+
+- **WHEN** editor copy explains organization-scoped search or ownership
+- **THEN** it MAY use `Organization` for that boundary while keeping the Contact type label distinct
 
 ### Requirement: Human Input v2 panel 必须组合 v2 与共享配置能力
 

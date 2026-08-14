@@ -30,7 +30,7 @@
 - **THEN** 系统 MUST 拒绝将 current initiator 作为审批主体，并 MUST 使节点直接报错
 
 ### Requirement: Web 与 IM 审批必须按审批主体选择鉴权链路
-Public web form definition MAY 直接基于有效 `form_token` 读取，读取完整 form definition MUST NOT 要求先提供 `IdentityProof`，也 MUST NOT 因此授予 submit authority。系统 MUST 在提交阶段按审批主体类型决定鉴权链路：以 Dify 登录身份承载的 `organization contact` 子类，即 `workspace contact` 与 `Platform contact`，MUST 使用 Dify 登录；不具备 Dify 登录身份的 `External contact`、one-time Email 和未命中 Contact 的 dynamic Email MUST 使用 Email OTP；IM 卡片内审批 MUST 通过 IM identity 映射到当前有效 Contact 后再校验 allowed approver。
+Public web form definition MAY 直接基于有效 `form_token` 读取，读取完整 form definition MUST NOT 要求先提供 `IdentityProof`，也 MUST NOT 因此授予 submit authority。系统 MUST 在提交阶段按审批主体类型决定鉴权链路：以 Dify 登录身份承载的 `organization contact` 子类，即 `workspace contact` 与 `Platform contact`，MUST 使用 Dify 登录；不具备 Dify 登录身份的 `External contact`、one-time Email 和 Dynamic Email MUST 使用 Email OTP；IM 卡片内审批 MUST 通过 IM identity 映射到当前有效 Contact 后再校验 allowed approver。
 
 #### Scenario: Form token 可以读取完整 form definition
 - **WHEN** a caller opens the standalone approval page with a valid `form_token` while the task remains readable
@@ -48,9 +48,9 @@ Public web form definition MAY 直接基于有效 `form_token` 读取，读取�
 - **WHEN** an external contact submits an OTP code together with the approval form in one request
 - **THEN** 系统 MUST 允许在同一请求中完成 OTP 验证与表单提交，并 MUST 继续执行完整的 task 状态与 allowed approver 校验
 
-#### Scenario: Dynamic Email 命中 Contact 后沿用 Contact 鉴权
-- **WHEN** a dynamic email value is upgraded to a Contact recipient
-- **THEN** 系统 MUST 使用该 Contact 对应的鉴权方式，而 MUST NOT 继续按 anonymous email recipient 处理
+#### Scenario: Dynamic Email 即使命中 Contact 也保持 Email OTP 鉴权
+- **WHEN** a Dynamic Email approver grant later shares a normalized email with a current Contact
+- **THEN** 系统 MUST 继续要求 Email OTP，而 MUST NOT 接受 Dify session 作为替代提交凭证
 
 #### Scenario: IM 卡片内审批校验当前 IM identity
 - **WHEN** an approver submits from an IM card

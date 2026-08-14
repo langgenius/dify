@@ -32,12 +32,12 @@ HITL 节点中的静态通知对象 MUST 支持两类配置：从当前 workspac
 - **WHEN** an external contact was deleted from the workspace Contact list
 - **THEN** 系统 MUST 禁止新的 HITL 节点继续选择该联系人，但 MAY 在历史配置或历史 task 中保留快照引用
 
-### Requirement: Dynamic Email 解析必须先校验、再匹配 Contact、最后决定 recipient 形态
-系统 MUST 先校验 Dynamic Email 是否为合法 string email，再按 normalized email 匹配现有 Contact。命中 Contact 时 MUST 升级为 Contact recipient，并生成以 `contact_id` 为 canonical subject 的 `ApproverGrant`；未命中时 MUST 作为 one-time Email recipient，并生成 task-scoped EmailAddress `ApproverGrant`；非法或不支持类型 MUST 记录失败原因。
+### Requirement: Dynamic Email 解析必须先校验，并始终保持 EmailAddress 语义
+系统 MUST 先校验 Dynamic Email 是否为合法 string email。只要值合法，系统 MUST 将其解析为 task-scoped EmailAddress recipient，并生成 task-scoped EmailAddress `ApproverGrant`；系统 MUST NOT 因 normalized email 恰好命中当前 Contact 而把该 recipient 升级为 Contact-backed approver。非法或不支持类型 MUST 记录失败原因。
 
 #### Scenario: Dynamic Email 命中已有 Contact
 - **WHEN** a dynamic email value is a valid normalized email and matches an existing Contact
-- **THEN** 系统 MUST 将该对象解析为 Contact recipient，生成 Contact-backed `ApproverGrant`，并 MUST 按该 Contact 的可通知渠道发送通知
+- **THEN** 系统 MUST 仍将该对象解析为 EmailAddress recipient，并生成 EmailAddress-backed `ApproverGrant`
 
 #### Scenario: Dynamic Email 未命中 Contact
 - **WHEN** a dynamic email value is a valid normalized email and matches no Contact
@@ -51,8 +51,8 @@ HITL 节点中的静态通知对象 MUST 支持两类配置：从当前 workspac
 - **WHEN** a dynamic email value is not a string and no other valid recipient exists
 - **THEN** 系统 MUST 记录 `unsupported_type`，并 MUST 使节点以 `No valid recipients found` 失败
 
-### Requirement: Recipient canonicalization 必须以 Contact 为中心
-系统 MUST 以 Contact 为中心进行 recipient canonicalization 与去重。同一个人从 static recipient、dynamic Email、current initiator 或多渠道命中时，MUST 只生成一个 `ApproverGrant`，但 MUST 保留多来源命中和多渠道投递记录。对于命中 Contact 的对象，canonical subject MUST 是 `contact_id`；对于未命中 Contact 的 one-time Email，canonical subject MUST 是 task-scoped EmailAddress identity。
+### Requirement: Recipient canonicalization 必须以 canonical subject 为中心
+系统 MUST 以 canonical subject 为中心进行 recipient canonicalization 与去重。同一个 Contact-backed approver 从 static recipient、current initiator 或多渠道命中时，MUST 只生成一个 `ApproverGrant`，但 MUST 保留多来源命中和多渠道投递记录。Contact-backed对象的 canonical subject MUST 是 `contact_id`；one-time Email 与 Dynamic Email 的 canonical subject MUST 是 task-scoped EmailAddress identity。共享同一 normalized email 的 Contact-backed 与 EmailAddress-backed recipient MUST 保持为两个不同 approver。
 
 #### Scenario: Static recipient 与 current initiator 命中同一人
 - **WHEN** the same person is selected as a static recipient and also qualifies as current initiator
@@ -61,6 +61,10 @@ HITL 节点中的静态通知对象 MUST 支持两类配置：从当前 workspac
 #### Scenario: 同一 normalized email 被重复命中
 - **WHEN** the same normalized email appears multiple times during recipient resolution
 - **THEN** 系统 MUST 只保留一个 canonical ApproverGrant；若该 email 未命中 Contact，则该 grant subject MUST 是 task-scoped EmailAddress，并 MUST 记录 `duplicated_email`
+
+#### Scenario: Contact recipient 与 EmailAddress recipient 共享同一 normalized email
+- **WHEN** one Contact-backed recipient and one EmailAddress-backed recipient share the same normalized email
+- **THEN** 系统 MUST 保留两个不同的 `ApproverGrant`，因为它们的 canonical subject 不同
 
 ### Requirement: 默认通知策略必须遵循双渠道并行与 Email 必发规则
 对于同时具备 IM binding 和 Email 的 recipient，系统 MUST 并行创建 IM 与 Email delivery attempt。对于没有 IM binding 但有 Email 的 recipient，系统 MUST 发送 Email。系统 MUST NOT 因 IM 成功、IM 失败或 provider 能力差异而关闭 Email。IM control-plane 只负责解析当前是否存在有效 IM binding；是否走 Email、是否双发以及无 IM binding 时的通知行为 MUST 由 recipient resolution 与 delivery policy 决定，而不是由 IM binding resolution 决定。

@@ -1,8 +1,14 @@
 ## ADDED Requirements
 
-### Requirement: Recipient 配置必须严格支持四种 DSL discriminator
+### Requirement: Recipient schema 必须支持五种 DSL discriminator，并限制 migration-only authoring
 
-前端 MUST 将 `recipients_spec` 建模为 ordered discriminated union，并 MUST 支持 `contact`、`dynamic_email`、`onetime_email` 与 `initiator` 四种类型。每种类型 MUST 只写入 entity 定义的字段。
+前端 MUST 将 `recipients_spec` 建模为 ordered discriminated union，并 MUST 支持 `contact`、`dynamic_email`、`onetime_email`、`initiator` 与 `all_workspace_contacts` 五种类型。`all_workspace_contacts` 的完整 wire representation MUST 为：
+
+```json
+{ "type": "all_workspace_contacts" }
+```
+
+每种类型 MUST 只写入其定义的字段。`all_workspace_contacts` 是合法的 migration-only compatibility variant；当前 manual authoring controls MUST NOT 提供新增该类型的入口。
 
 #### Scenario: 添加 Contact recipient
 
@@ -23,6 +29,16 @@
 
 - **WHEN** 用户选择当前发起人
 - **THEN** 前端 MUST 添加 `{ type: 'initiator' }`，MUST NOT 写入额外 identity 字段
+
+#### Scenario: 导入 all-workspace recipient
+
+- **WHEN** imported v2 DSL contains `{ "type": "all_workspace_contacts" }`
+- **THEN** 前端 MUST 将其解析为受支持的 recipient variant，MUST NOT 将其归类为 unknown 或 malformed data
+
+#### Scenario: 手动新增 recipient
+
+- **WHEN** 用户通过当前 recipient type controls 新增 recipient
+- **THEN** controls MUST 只提供 Contact、Dynamic Email、one-time Email 与 initiator，MUST NOT 提供 `all_workspace_contacts`
 
 ### Requirement: Recipient input 必须遵循 Figma 的类型选择与草稿交互
 
@@ -67,14 +83,29 @@ Recipient 配置区 MUST 按 Figma node `25094:31750` 展示已配置项，并 M
 - **WHEN** imported DSL 中某个 recipient 缺少 required field
 - **THEN** 配置区 MUST 保留并标记该项可修复，MUST NOT 在首次渲染时删除它
 
+#### Scenario: imported migration-only recipient 完整
+
+- **WHEN** imported DSL 中某项是完整的 `{ "type": "all_workspace_contacts" }`
+- **THEN** 配置区 MUST 将其显示为有效的只读 compatibility item，MUST NOT 因当前 controls 无法新增该类型而显示字段错误
+
 ### Requirement: 前端必须阻止新增重复 recipient
 
-前端 MUST 使用类型对应的 canonical key 检查重复：Contact 使用 `contact_id`，Dynamic Email 使用完整 selector path，one-time Email 使用 trim 后 lower-case 的完整 Email，initiator 在整个列表中最多一个。已导入的重复项 MUST 显示错误而不是被自动合并。
+前端 MUST 使用类型对应的 canonical key 检查人工新增的精确重复：Contact 使用 `contact_id`，Dynamic Email 使用完整 selector path，one-time Email 使用 trim 后 lower-case 的完整 Email，initiator 在整个列表中最多一个。人工新增或编辑 Contact 时，前端还 MUST 对 provider 返回的非空 `email` 执行 trim 和整串 lower-case normalization，并阻止两个不同 Contact recipients 共享同一 normalized email。该 same-email guard 只约束 active manual selection；已导入的 migration compatibility overlap MUST 被保留，MUST NOT 被自动合并或改写。
 
 #### Scenario: 重复选择 Contact
 
 - **WHEN** `recipients_spec` 已含相同 `contact_id` 且用户再次选择该 Contact
 - **THEN** 前端 MUST 阻止新增并展示重复提示
+
+#### Scenario: 人工选择不同 ID 的 same-email Contact
+
+- **WHEN** `recipients_spec` 已含一个 Contact，且用户尝试新增另一个具有不同 `contact_id` 但相同 normalized `email` 的 Contact
+- **THEN** 前端 MUST 阻止新增，并 MUST 说明一个节点不能人工选择多个 same-email Contacts
+
+#### Scenario: 编辑 Contact 形成 same-email 冲突
+
+- **WHEN** 用户编辑一个 Contact selection 后会使两个 active Contact recipients 具有相同 normalized `email`
+- **THEN** 前端 MUST 拒绝提交该编辑或保持明确的 uncommitted error state，MUST NOT 静默保存冲突组合
 
 #### Scenario: Email 大小写不同但值相同
 
@@ -91,14 +122,19 @@ Recipient 配置区 MUST 按 Figma node `25094:31750` 展示已配置项，并 M
 - **WHEN** imported `recipients_spec` 包含重复 canonical key
 - **THEN** 前端 MUST 保留原数组用于 round-trip，并 MUST 在 validation 与相关列表项展示可修复错误
 
+#### Scenario: DSL 已含 migration-preserved overlap
+
+- **WHEN** imported `recipients_spec` contains `all_workspace_contacts` together with an explicit Contact covered by that set or a same-email `External contact`
+- **THEN** 前端 MUST 保留原数组和顺序，且 MUST NOT 把该兼容组合当作人工选择产生的 duplicate error
+
 ### Requirement: Contact recipient 必须通过 typed provider 搜索并批量回显
 
-Contact picker 与 node summary MUST 只通过一个窄的 typed option-provider boundary 搜索 Contact 或按 id 解析 label。已存 ID 的回显 MUST 以 `{ contact_ids }` 调用一次批量查询边界。当前 provider MUST 使用确定性 mock 数据；真实网络 adapter 留待后端契约与 client 可用后替换，组件接口不得因此改变。
+Contact picker 与 node summary MUST 只通过一个窄的 typed option-provider boundary 搜索 Contact 或按 id 解析 label。已存 ID 的回显 MUST 以 `{ contact_ids }` 调用一次批量查询边界。每个 Contact option MUST 包含 nullable `email`，供 option presentation 和 active manual same-email validation 使用；recipient DSL MUST continue to persist only `contact_id` as Contact identity。当前 provider MUST 使用确定性 mock 数据；真实网络 adapter 留待授权 contract 与 client 可用后替换，组件接口不得因此改变。
 
 #### Scenario: 搜索 Contact
 
 - **WHEN** 用户在 Contact recipient input 输入查询词
-- **THEN** picker MUST 通过当前 typed provider 返回匹配的 options，并按 Figma 展示 loading、empty 与 result 状态
+- **THEN** picker MUST 通过当前 typed provider 返回包含 nullable `email` 的匹配 options，并按 Figma 展示 loading、empty 与 result 状态
 
 #### Scenario: 批量解析已存 Contact
 

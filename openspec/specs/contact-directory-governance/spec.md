@@ -18,15 +18,15 @@
 - **THEN** 系统 MUST 将该对象作为 `organization contact` 下的 `Platform contact` 加入当前 workspace Contact，而不是 `External contact`
 
 ### Requirement: External contact 准入规则
-系统 MUST 仅允许不属于当前 `Organization` 的对象成为 `External contact`。任何已属于当前 `Organization` 的成员，无论其最终落成 `workspace contact` 还是 `Platform contact`，都 MUST 视为 `organization contact` 而不是 `External contact`。系统 MUST 要求 external contact 提供合法 Email，并 MUST 使用整条 email lower-case 后完全相等的规则做重复判断。
+系统 MUST 仅允许不属于当前 `Organization` 的对象成为 `External contact`。任何已属于当前 `Organization` 的成员，无论其最终落成 `workspace contact` 还是 `Platform contact`，都 MUST 视为 `organization contact` 而不是 `External contact`。系统 MUST 要求 external contact 提供合法 Email，并 MUST 使用整条 email lower-case 后完全相等的规则做重复判断。`External contact` 的 normalized email MAY 与 `workspace contact` 或 `Platform contact` 重叠，但同一 workspace 内两个 `External contact` MUST NOT 共享同一 normalized email。
 
-#### Scenario: 创建合法 external contact
-- **WHEN** a workspace admin submits a non-Dify email that is unique within the workspace
+#### Scenario: 创建与内部 Contact 同邮箱的合法 external contact
+- **WHEN** a workspace admin submits a valid email that is unique among `External contact` records in the workspace, even if the same normalized email is already used by a current internal Contact
 - **THEN** 系统 MUST 允许创建 `External contact`，并要求后续仅通过 Email 触达该联系人
 
-#### Scenario: Email 命中内部联系人时拒绝创建 external contact
-- **WHEN** a workspace admin submits an email that matches any existing `organization contact` in the current Organization scope
-- **THEN** 系统 MUST 拒绝创建 `External contact`，并 MUST 提示该对象应按平台内联系人处理
+#### Scenario: Duplicate External Contact in one workspace is rejected
+- **WHEN** a workspace admin submits an email whose normalized form already belongs to another `External contact` in the same workspace
+- **THEN** 系统 MUST 拒绝创建 `External contact`
 
 ### Requirement: Contact 生命周期随成员状态变化
 系统 MUST 在 workspace 成员状态变化后更新该成员在 Contact 中的可选性。workspace-scoped resolution MUST 产出 `WORKSPACE`、`PLATFORM`、`EXTERNAL` 或 `ABSENT`；前三类允许由当前 Contact API 返回，`ABSENT` 不得出现在列表中，按 `contact_id` 读取时 MUST 返回 `404 Not Found`。历史 workflow 配置、历史 task 与 audit MUST 保留冻结 snapshot 用于历史展示与审计，MUST NOT 通过当前 Contact API 回查；新配置选择资格和 pending task 提交资格 MUST 以当前成员状态为准。
@@ -88,6 +88,10 @@
 #### Scenario: Reset override 恢复 Organization binding
 - **WHEN** a workspace admin removes or resets a Contact's workspace override
 - **THEN** 系统 MUST 在该 workspace 后续运行时恢复使用 Organization binding
+
+#### Scenario: 同一 IM identity 可在不同 scope 复用
+- **WHEN** the same IM identity appears in one Organization binding and one or more workspace overrides for different Contacts
+- **THEN** 系统 MUST 将其视为 scope-aware resolution state，而 MUST NOT 仅因 identity reuse 就判定为全局唯一性冲突
 
 #### Scenario: IM sync 未命中时进入 unmatched list
 - **WHEN** IM sync cannot match a member by IM platform user ID and also cannot match that member to any `organization contact` by email
@@ -154,4 +158,4 @@
 
 #### Scenario: Add contact 菜单分离 Platform 与 External 路径
 - **WHEN** a workspace admin adds a new contact from the Contact management page
-- **THEN** 系统 MUST 将 `Platform contact` 添加路径与 `External contact` 添加路径分离；Platform candidate 搜索仍 MUST 限制在当前 Organization ownership boundary 内，系统并 MUST 在进入 external contact 创建前继续执行内部联系人命中校验
+- **THEN** 系统 MUST 将 `Platform contact` 添加路径与 `External contact` 添加路径分离；Platform candidate 搜索仍 MUST 限制在当前 Organization ownership boundary 内

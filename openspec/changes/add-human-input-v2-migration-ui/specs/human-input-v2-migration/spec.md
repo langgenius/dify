@@ -64,7 +64,13 @@ Each replacement MUST retain its node ID, position, dimensions, selection-indepe
 
 ### Requirement: Active legacy delivery recipients shall map deterministically
 
-The batch migration result MUST translate supported active legacy delivery semantics into ordered v2 recipients. Enabled WebApp MUST map to one initiator; valid external emails MUST map to one-time email recipients; member and whole-workspace recipients MUST resolve inside the final backend conversion. Recipients MUST be deduplicated by canonical identity while preserving first occurrence. The executor MUST NOT fetch member/contact snapshots or reimplement these rules; the current local resolver is isolated inside the temporary mock adapter only.
+The batch migration result MUST translate supported active legacy delivery semantics into ordered v2 recipients. Enabled WebApp MUST map to one initiator; valid external emails MUST map to one-time email recipients; member recipients MUST resolve inside the final backend conversion. Enabled `whole_workspace: true` MUST map to exactly one symbolic recipient:
+
+```json
+{ "type": "all_workspace_contacts" }
+```
+
+The migration adapter MUST NOT replace that marker with a migration-time snapshot of per-member recipients. Exact duplicate values emitted from the same legacy source MAY collapse to their first occurrence, but migration MUST preserve cross-source compatibility overlaps described below. The executor MUST NOT fetch member/contact snapshots or reimplement these rules; the current local resolver is isolated inside the temporary mock adapter only.
 
 #### Scenario: WebApp maps to initiator
 
@@ -81,15 +87,44 @@ The batch migration result MUST translate supported active legacy delivery seman
 - **WHEN** an enabled email recipient references a workspace `user_id`
 - **THEN** the migration API MUST use a matching contact when available, otherwise MUST use the member's verified current email as an `onetime_email`, and MUST reject the batch if neither can be resolved
 
-#### Scenario: Whole workspace expands from one stable snapshot
+#### Scenario: Whole workspace maps to an explicit marker
 
 - **WHEN** enabled email configuration sets `whole_workspace: true`
-- **THEN** the migration API MUST expand current workspace members/contacts in stable order, apply the same fallback and deduplication rules, and return the complete conversion in the same batch response
+- **THEN** the migration API MUST emit exactly one `{ "type": "all_workspace_contacts" }` recipient for that source and MUST NOT expand current workspace members or Contacts during migration
+
+#### Scenario: Whole workspace is combined with initiator
+
+- **WHEN** one legacy node contains both enabled WebApp and enabled whole-workspace email delivery
+- **THEN** migration MUST preserve one `{ "type": "initiator" }` recipient and one `{ "type": "all_workspace_contacts" }` recipient in delivery-method order
+
+#### Scenario: Whole workspace is the only recipient path
+
+- **WHEN** one legacy node relies only on enabled `whole_workspace: true`
+- **THEN** migration MUST succeed with one `{ "type": "all_workspace_contacts" }` recipient and MUST NOT require a per-member snapshot
 
 #### Scenario: Multiple supported delivery methods preserve recipient order
 
 - **WHEN** an eligible node has both enabled WebApp and enabled Email methods
-- **THEN** recipient output MUST follow delivery-method order and email-recipient order while remaining deduplicated
+- **THEN** recipient output MUST follow delivery-method order and email-recipient order while preserving any migration compatibility overlap required by the source semantics
+
+### Requirement: Migrated recipient overlaps shall remain compatibility data
+
+Migration output MAY contain recipient specifications that overlap after runtime expansion but represent distinct legacy sources. The migration adapter MUST preserve those specifications and MUST NOT fail, merge, or normalize them solely because current manual authoring would not create the same combination.
+
+#### Scenario: Whole-workspace marker overlaps an explicit workspace Contact
+
+- **WHEN** migration emits `all_workspace_contacts` and also preserves one explicit workspace Contact covered by that set
+- **THEN** migration MUST retain both recipient specifications in their source order
+
+#### Scenario: Whole-workspace marker overlaps a same-email External Contact
+
+- **WHEN** migration emits `all_workspace_contacts` and also preserves one `External contact` whose normalized email matches a workspace member email
+- **THEN** migration MUST retain both recipient specifications and MUST NOT treat them as one duplicate identity
+
+#### Scenario: Migrated overlap is passed to the editor
+
+- **WHEN** a successful migration response contains one preserved overlap
+- **THEN** the frontend MUST apply that response as valid v2 DSL and MUST NOT reject it as malformed migration output
 
 ### Requirement: Email template and debug configuration shall map without reinterpretation
 

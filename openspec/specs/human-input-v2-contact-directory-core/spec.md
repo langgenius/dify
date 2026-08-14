@@ -45,15 +45,19 @@ The directory MUST resolve `WORKSPACE`, `PLATFORM`, `EXTERNAL` or `ABSENT` from 
 - **THEN** resolution MUST return `EXTERNAL` and MUST reject use from another workspace
 
 ### Requirement: Contact lifecycle MUST enforce directory admission rules
-Contact admission and mutation MUST enforce normalized Email collision, organization ownership, Account availability and lifecycle-source rules while keeping membership lookup and persistence I/O outside the entity.
+Contact admission and mutation MUST enforce workspace-local External Contact uniqueness, organization ownership, Account availability and lifecycle-source rules while keeping membership lookup and persistence I/O outside the entity. External Contact normalized email collisions MUST be rejected only against another External Contact in the same workspace. A normalized email overlap between an External Contact and an internal Contact MUST remain allowed and MUST NOT by itself force promotion, merge, downgrade, or rejection.
 
-#### Scenario: External Email collides with an internal Contact
-- **WHEN** an External Contact uses a normalized Email already owned by an internal Contact in the same directory scope
+#### Scenario: External Contact shares email with an internal Contact
+- **WHEN** an External Contact uses a normalized email already used by a current internal Contact in the same workspace or Organization scope
+- **THEN** admission MUST allow the External Contact to exist independently and MUST NOT reinterpret it as an internal Contact
+
+#### Scenario: Duplicate External Contacts in one workspace are rejected
+- **WHEN** an External Contact uses a normalized email already owned by another External Contact in the same workspace
 - **THEN** admission MUST return a stable conflicting-identity rejection
 
-#### Scenario: Organization Email collides with an External Contact
-- **WHEN** an EE Organization Contact uses a normalized Email already owned by an External Contact in any workspace of the deployment Organization
-- **THEN** the Organization write MUST return the same stable conflicting-identity rejection
+#### Scenario: Organization Contact overlaps an existing External Contact
+- **WHEN** an EE Organization Contact uses a normalized email already owned by an External Contact in one workspace of the same deployment Organization
+- **THEN** the Organization write MUST succeed and MUST preserve the two identities as separate Contacts
 
 #### Scenario: External Contact is deleted and recreated
 - **WHEN** an External Contact is hard deleted and later recreated with the same normalized Email
@@ -75,15 +79,19 @@ Recipient and authorization consumers MUST receive one tenant-scoped immutable s
 - **THEN** it MUST be allowed to use a dedicated application projection without reconstructing a full aggregate
 
 ### Requirement: Contact persistence MUST own directory transaction invariants
-Contact persistence ports MUST be organized around snapshot load and lifecycle mutations rather than table-shaped CRUD. The adapter MUST own locking, mapping, rollback and uniqueness conflict translation.
+Contact persistence ports MUST be organized around snapshot load and lifecycle mutations rather than table-shaped CRUD. The adapter MUST own locking, mapping, rollback and uniqueness conflict translation. Organization-backed admission and workspace-owned External Contact admission MUST serialize only the invariants that remain exclusive after the corrected rules; same-email internal/external coexistence MUST NOT be translated into a conflict.
 
 #### Scenario: EE Organization Contact is written
 - **WHEN** a Contact with `tenant_id IS NULL` is created or changes a unique identity value
-- **THEN** the adapter MUST lock the deployment `DifySetup` row before conflict detection and mutation
+- **THEN** the adapter MUST lock the deployment `DifySetup` row before mutation and MUST enforce only Organization-scoped invariants that still apply
 
-#### Scenario: Organization and External Email admissions race
-- **WHEN** a deployment `DifySetup` owner exists and EE Organization and workspace External admissions concurrently claim the same normalized Email
-- **THEN** they MUST share one serialization boundary so exactly one commits and the other returns a stable conflicting-identity rejection
+#### Scenario: Organization and External same-email admissions race
+- **WHEN** a deployment `DifySetup` owner exists and an EE Organization admission and a workspace External admission concurrently claim the same normalized email for different identity sources
+- **THEN** the adapter MUST allow both writes to commit if their remaining owner predicates are valid and MUST NOT translate the overlap into a conflicting-identity rejection
+
+#### Scenario: External duplicate admissions race in one workspace
+- **WHEN** two workspace External admissions concurrently claim the same normalized email in the same workspace
+- **THEN** exactly one admission MUST commit and the other MUST return a stable conflicting-identity rejection
 
 #### Scenario: SaaS External Contact is admitted without a deployment owner
 - **WHEN** no deployment `DifySetup` owner exists and a workspace admits an External Contact
