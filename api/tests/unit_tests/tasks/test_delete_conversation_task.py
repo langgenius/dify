@@ -248,9 +248,7 @@ def test_cleanup_removes_owned_resources_and_preserves_drive_files(sqlite_sessio
     preserved_drive_file = sqlite_session.get(ToolFile, drive_file_id)
     assert preserved_drive_file is not None
     assert preserved_drive_file.conversation_id is None
-    preserved_drive_entry = sqlite_session.scalar(
-        select(AgentDriveFile).where(AgentDriveFile.file_id == drive_file_id)
-    )
+    preserved_drive_entry = sqlite_session.scalar(select(AgentDriveFile).where(AgentDriveFile.file_id == drive_file_id))
     assert preserved_drive_entry is not None
     assert preserved_drive_entry.value_owned_by_drive is True
     assert sqlite_session.get(ToolFile, other_file_id) is not None
