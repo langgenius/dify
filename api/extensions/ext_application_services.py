@@ -51,7 +51,6 @@ from services.file_service import FileService
 from services.init_validation_service import InitValidationService
 from services.recommended_app_query_compat import LegacyRecommendedAppCatalogGateway
 from services.recommended_app_query_service import RecommendedAppQueryService
-from services.recommended_app_service import RecommendedAppService
 from services.schema_definition_service import SchemaDefinitionService
 from services.setup_adapters import RedisSetupLock, RegisterServiceAccountProvisioner
 from services.setup_service import SetupService
@@ -124,6 +123,7 @@ def build_application_services(
     data_source_api_key_auth_bindings = SQLAlchemyDataSourceApiKeyAuthBindingRepository(session_factory=database_client)
     app_definition_repository = AppDefinitionQueryRepository(session_factory=database_client)
     feature_gateway = FeatureServiceGateway()
+    trial_app_enabled = FeatureService.is_trial_app_enabled()
     return ApplicationServices(
         accounts=AccountServices(
             profile=AccountProfileService(accounts=SQLAlchemyAccountRepository(database_client)),
@@ -186,7 +186,7 @@ def build_application_services(
         recommended_app_queries=RecommendedAppQueryService(
             catalog=LegacyRecommendedAppCatalogGateway(session_factory=database_client),
             trial_apps=TrialAppQueryRepository(session_factory=database_client),
-            is_trial_enabled=RecommendedAppService.is_trial_app_enabled,
+            trial_enabled=trial_app_enabled,
         ),
         trial_app_usage=TrialAppUsageRepository(session_factory=database_client),
         workspace_queries=WorkspaceQueryService(

@@ -24,6 +24,12 @@ class LegacyRecommendedAppCatalogGateway(RecommendedAppCatalogGateway):
         self._session_factory = session_factory
 
     @override
+    def is_recommended(self, app_id: str) -> bool:
+        retrieval = self._configured_retrieval()
+        with self._session_factory() as session:
+            return retrieval.get_recommend_app_detail(app_id, session=session) is not None
+
+    @override
     def list_recommended(self, language: str) -> RecommendedAppCatalogPage:
         retrieval = self._configured_retrieval()
         with self._session_factory() as session:
