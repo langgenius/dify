@@ -1,10 +1,10 @@
-import type { SelfHostedPlan } from '@/app/components/billing/type'
+import type { SelfHostedPlanOption } from '../types'
 import * as React from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import Item from './item'
 
 type ListProps = {
-  plan: SelfHostedPlan
+  plan: SelfHostedPlanOption
 }
 
 const List = ({ plan }: ListProps) => {

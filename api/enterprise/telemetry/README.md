@@ -32,7 +32,7 @@ The Enterprise OTEL exporter is configured via environment variables.
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `ENTERPRISE_ENABLED` | Master switch for all enterprise features. | `false` |
+| `DEPLOYMENT_EDITION` | Product edition; enterprise telemetry is only available in `ENTERPRISE`. | `COMMUNITY` |
 | `ENTERPRISE_TELEMETRY_ENABLED` | Master switch for enterprise telemetry. | `false` |
 | `ENTERPRISE_OTLP_ENDPOINT` | OTLP collector endpoint (e.g., `http://otel-collector:4318`). | - |
 | `ENTERPRISE_OTLP_HEADERS` | Custom headers for OTLP requests (e.g., `x-scope-orgid=tenant1`). | - |

@@ -1,17 +1,16 @@
 import type { ActionMenuProps } from './index'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plan } from '@/app/components/billing/type'
 import { useStore } from '@/app/components/workflow/store'
 import { useProviderContext } from '@/context/provider-context'
 import { VersionHistoryContextMenuOptions } from '../../../types'
 
 const useActionMenu = (props: ActionMenuProps) => {
-  const { isNamedVersion, canImportExportDSL } = props
+  const { workflowId, isNamedVersion, canImportExportDSL } = props
   const { t } = useTranslation()
   const pipelineId = useStore((s) => s.pipelineId)
   const { plan, enableBilling } = useProviderContext()
-  const shouldShowUpgrade = enableBilling && plan.type === Plan.sandbox
+  const shouldShowUpgrade = enableBilling && plan.type === 'sandbox'
 
   const deleteOperation = {
     key: VersionHistoryContextMenuOptions.delete,
@@ -47,9 +46,10 @@ const useActionMenu = (props: ActionMenuProps) => {
       {
         key: VersionHistoryContextMenuOptions.copyId,
         name: t(($) => $['versionHistory.copyId'], { ns: 'workflow' }),
+        description: workflowId,
       },
     ]
-  }, [canImportExportDSL, isNamedVersion, pipelineId, shouldShowUpgrade, shouldShowUpgrade, t])
+  }, [canImportExportDSL, isNamedVersion, pipelineId, shouldShowUpgrade, t, workflowId])
 
   return {
     deleteOperation,

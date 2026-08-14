@@ -1,6 +1,13 @@
 'use client'
 import type { ActivePluginType } from './constants'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  RiArchive2Line,
+  RiBrain2Line,
+  RiDatabase2Line,
+  RiHammerLine,
+  RiPuzzle2Line,
+} from '@remixicon/react'
 import { useSetAtom } from 'jotai'
 import { Fragment } from 'react'
 import { useTranslation } from '#i18n'
@@ -13,8 +20,7 @@ type PluginTypeSwitchProps = {
   className?: string
   variant?: 'default' | 'hero' | 'home'
 }
-
-function PluginTypeSwitch({ className, variant = 'default' }: PluginTypeSwitchProps) {
+const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchProps) => {
   const { t } = useTranslation()
   const [activePluginType, handleActivePluginTypeChange] = useActivePluginType()
   const setSearchMode = useSetAtom(searchModeAtom)
@@ -37,19 +43,19 @@ function PluginTypeSwitch({ className, variant = 'default' }: PluginTypeSwitchPr
     {
       value: PLUGIN_TYPE_SEARCH_MAP.model,
       text: t(($) => $['category.models'], { ns: 'plugin' }),
-      icon: <span aria-hidden className={cn('i-ri-brain-2-line', iconClassName)} />,
+      icon: <RiBrain2Line className={iconClassName} />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.tool,
       text: t(($) => $['category.tools'], { ns: 'plugin' }),
-      icon: <span aria-hidden className={cn('i-ri-hammer-line', iconClassName)} />,
+      icon: <RiHammerLine className={iconClassName} />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.datasource,
       text: t(($) => $[isHome ? 'categorySingle.datasource' : 'category.datasources'], {
         ns: 'plugin',
       }),
-      icon: <span aria-hidden className={cn('i-ri-database-2-line', iconClassName)} />,
+      icon: <RiDatabase2Line className={iconClassName} />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.agent,
@@ -71,12 +77,12 @@ function PluginTypeSwitch({ className, variant = 'default' }: PluginTypeSwitchPr
     {
       value: PLUGIN_TYPE_SEARCH_MAP.extension,
       text: t(($) => $['category.extensions'], { ns: 'plugin' }),
-      icon: <span aria-hidden className={cn('i-ri-puzzle-2-line', iconClassName)} />,
+      icon: <RiPuzzle2Line className={iconClassName} />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.bundle,
       text: t(($) => $['category.bundles'], { ns: 'plugin' }),
-      icon: <span aria-hidden className={cn('i-ri-archive-2-line', iconClassName)} />,
+      icon: <RiArchive2Line className={iconClassName} />,
     },
   ]
 
@@ -102,7 +108,7 @@ function PluginTypeSwitch({ className, variant = 'default' }: PluginTypeSwitchPr
               type="button"
               aria-pressed={isActive}
               className={cn(
-                'flex h-8 cursor-pointer items-center rounded-lg border border-transparent px-2.5 system-md-medium whitespace-nowrap outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+                'flex h-8 cursor-pointer appearance-none items-center rounded-lg border border-transparent px-2.5 system-md-medium whitespace-nowrap outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
                 isHero
                   ? 'text-text-primary-on-surface'
                   : isHome

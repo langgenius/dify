@@ -143,7 +143,6 @@ describe('MarketplaceSearchAutocomplete', () => {
     })
     const user = userEvent.setup()
     const onValueChange = vi.fn()
-    const onSuggestionSelect = vi.fn()
 
     const ControlledSearch = () => {
       const [value, setValue] = useState('')
@@ -151,7 +150,6 @@ describe('MarketplaceSearchAutocomplete', () => {
       return (
         <MarketplaceSearchAutocomplete
           locale="en-US"
-          onSuggestionSelect={onSuggestionSelect}
           onValueChange={(nextValue) => {
             onValueChange(nextValue)
             setValue(nextValue)
@@ -171,14 +169,5 @@ describe('MarketplaceSearchAutocomplete', () => {
     expect(screen.getByText('Search the web from your workflow.')).toBeInTheDocument()
     expect(onValueChange).toHaveBeenLastCalledWith('google')
     expect(mockTemplateSearch).not.toHaveBeenCalled()
-
-    await user.click(screen.getByText('Google Search'))
-    expect(onSuggestionSelect).toHaveBeenCalledWith(
-      expect.objectContaining({
-        kind: 'plugin',
-        plugin: expect.objectContaining({ org: 'langgenius', name: 'google-search' }),
-      }),
-    )
-    expect(onValueChange).toHaveBeenLastCalledWith('')
   })
 })

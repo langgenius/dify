@@ -86,10 +86,6 @@ export default function MarketplaceDetailDialogFrame({
           aria-label={t(($) => $['operation.close'], { ns: 'common' })}
           className="top-5 right-5 size-8 rounded-lg"
         />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-linear-to-t from-background-default to-transparent"
-        />
       </DialogContent>
     </Dialog>
   )

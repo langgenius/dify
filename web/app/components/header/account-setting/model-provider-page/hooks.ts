@@ -9,7 +9,6 @@ import type {
   Model,
   ModelModalModeEnum,
   ModelProvider,
-  ModelTypeEnum,
 } from './declarations'
 import type { ModelModalType } from '@/context/modal-context'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -21,12 +20,11 @@ import {
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { useLocale } from '@/context/i18n'
 import { useModalContextSelector } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
 import { consoleQuery } from '@/service/client'
 import { fetchDefaultModal, fetchModelList } from '@/service/common'
 import { commonQueryKeys, modelProviderDetailsQueryOptions } from '@/service/use-common'
 import { useExpandModelProviderList } from './atoms'
-import { CustomConfigurationStatusEnum, ModelStatusEnum } from './declarations'
+import { CustomConfigurationStatusEnum, ModelStatusEnum, ModelTypeEnum } from './declarations'
 
 type UseDefaultModelAndModelList = (
   defaultModel: DefaultModelResponse | undefined,
@@ -83,7 +81,13 @@ type UseModelListOptions = {
 
 export const useModelList = (type: ModelTypeEnum, { enabled = true }: UseModelListOptions = {}) => {
   const { data, refetch, isPending } = useQuery({
-    queryKey: commonQueryKeys.modelList(type),
+    queryKey: consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+      input: {
+        params: {
+          model_type: type,
+        },
+      },
+    }),
     queryFn: () => fetchModelList(`/workspaces/current/models/model-types/${type}`),
     enabled,
   })
@@ -108,9 +112,20 @@ export const useDefaultModel = (type: ModelTypeEnum) => {
   }
 }
 
-export const getCurrentProviderAndModel = (modelList: Model[], defaultModel?: DefaultModel) => {
+type ModelFromProvider<TProvider> = TProvider extends { models: Array<infer TModel> }
+  ? TModel
+  : never
+
+export const getCurrentProviderAndModel = <
+  TProvider extends { models: Array<{ model: string }>; provider: string },
+>(
+  modelList: TProvider[],
+  defaultModel?: DefaultModel,
+) => {
   const currentProvider = modelList.find((provider) => provider.provider === defaultModel?.provider)
-  const currentModel = currentProvider?.models.find((model) => model.model === defaultModel?.model)
+  const currentModel = currentProvider?.models.find(
+    (model) => model.model === defaultModel?.model,
+  ) as ModelFromProvider<TProvider> | undefined
 
   return {
     currentProvider,
@@ -123,7 +138,7 @@ export { getCurrentProviderAndModel as useCurrentProviderAndModel }
 export const useTextGenerationCurrentProviderAndModelAndModelList = (
   defaultModel?: DefaultModel,
 ) => {
-  const { textGenerationModelList } = useProviderContext()
+  const { data: textGenerationModelList } = useModelList(ModelTypeEnum.textGeneration)
   const activeTextGenerationModelList = textGenerationModelList.filter(
     (model) => model.status === ModelStatusEnum.active,
   )
@@ -170,7 +185,15 @@ export const useUpdateModelList = () => {
 
   const updateModelList = useCallback(
     (type: ModelTypeEnum | ModelType) => {
-      queryClient.invalidateQueries({ queryKey: commonQueryKeys.modelList(type) })
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+          input: {
+            params: {
+              model_type: type,
+            },
+          },
+        }),
+      })
     },
     [queryClient],
   )

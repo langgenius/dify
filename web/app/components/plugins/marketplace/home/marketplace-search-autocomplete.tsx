@@ -24,17 +24,12 @@ import { marketplaceQuery } from '@/service/client'
 
 export type MarketplaceSearchScope = 'all' | 'plugins' | 'templates'
 
-export type MarketplaceSearchSelection =
-  | { kind: 'plugin'; plugin: MarketplacePlugin }
-  | { kind: 'template'; template: MarketplaceTemplate }
-
 type MarketplaceSuggestion = {
   description: string
   id: string
   kind: 'plugin' | 'template'
   label: string
   meta: string
-  selection: MarketplaceSearchSelection
 }
 
 type MarketplaceSearchAutocompleteProps = {
@@ -42,7 +37,6 @@ type MarketplaceSearchAutocompleteProps = {
   inputName?: string
   locale: string
   onValueChange: (value: string) => void
-  onSuggestionSelect?: (selection: MarketplaceSearchSelection) => void
   placeholder: string
   scope: MarketplaceSearchScope
   value: string
@@ -62,7 +56,6 @@ const toTemplateSuggestion = (template: MarketplaceTemplate): MarketplaceSuggest
   kind: 'template',
   label: template.template_name,
   meta: template.publisher_handle || template.publisher_unique_handle || '',
-  selection: { kind: 'template', template },
 })
 
 const toPluginSuggestion = (plugin: MarketplacePlugin, locale: string): MarketplaceSuggestion => ({
@@ -71,7 +64,6 @@ const toPluginSuggestion = (plugin: MarketplacePlugin, locale: string): Marketpl
   kind: 'plugin',
   label: getPluginText(plugin.label, locale) || plugin.name,
   meta: plugin.org,
-  selection: { kind: 'plugin', plugin },
 })
 
 export function MarketplaceSearchAutocomplete({
@@ -79,7 +71,6 @@ export function MarketplaceSearchAutocomplete({
   inputName,
   locale,
   onValueChange,
-  onSuggestionSelect,
   placeholder,
   scope,
   value,
@@ -197,22 +188,7 @@ export function MarketplaceSearchAutocomplete({
         )}
         <AutocompleteList<MarketplaceSuggestion>>
           {(item) => (
-            <AutocompleteItem
-              key={item.id}
-              value={item}
-              className="items-start py-2"
-              onClick={
-                onSuggestionSelect
-                  ? () => {
-                      onSuggestionSelect(item.selection)
-                      queueMicrotask(() => {
-                        onValueChange('')
-                        setIsOpen(false)
-                      })
-                    }
-                  : undefined
-              }
-            >
+            <AutocompleteItem key={item.id} value={item} className="items-start py-2">
               <span
                 aria-hidden
                 className={cn(

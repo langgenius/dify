@@ -84,23 +84,8 @@ describe('TemplateCard', () => {
       }),
     )
     expect(mockPush).toHaveBeenCalledWith('/apps?template-id=template%2Fone')
-    expect(screen.getByRole('link', { name: 'dify' })).toHaveAttribute(
-      'href',
-      '/marketplace/creator/dify?publisher_type=individual',
-    )
+    expect(screen.getByText('dify')).toBeInTheDocument()
     expect(screen.getByText('1.2k')).toBeInTheDocument()
     expect(screen.getByLabelText('Verified by a Dify partner')).toBeInTheDocument()
-  })
-
-  it('links the publisher to the internal creator profile without opening detail', () => {
-    render(
-      <ThemeProvider forcedTheme="dark">
-        <TemplateCard partnerText="Verified by a Dify partner" template={template} />
-      </ThemeProvider>,
-    )
-
-    const publisher = screen.getByRole('link', { name: 'dify' })
-    expect(publisher).toHaveAttribute('href', '/marketplace/creator/dify?publisher_type=individual')
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })

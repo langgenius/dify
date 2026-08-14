@@ -347,7 +347,11 @@ class Dataset(Base):
     def get_doc_form(self, *, session: Session) -> str | None:
         if self.chunk_structure:
             return self.chunk_structure
-        return session.scalar(select(Document.doc_form).where(Document.dataset_id == self.id).limit(1))
+        return session.scalar(
+            select(Document.doc_form)
+            .where(Document.dataset_id == self.id, Document.tenant_id == self.tenant_id)
+            .limit(1)
+        )
 
     @property
     def retrieval_model_dict(self):
@@ -736,7 +740,11 @@ class Document(Base):
                 select(DatasetMetadata)
                 .join(DatasetMetadataBinding, DatasetMetadataBinding.metadata_id == DatasetMetadata.id)
                 .where(
-                    DatasetMetadataBinding.dataset_id == self.dataset_id, DatasetMetadataBinding.document_id == self.id
+                    DatasetMetadata.tenant_id == self.tenant_id,
+                    DatasetMetadata.dataset_id == self.dataset_id,
+                    DatasetMetadataBinding.tenant_id == self.tenant_id,
+                    DatasetMetadataBinding.dataset_id == self.dataset_id,
+                    DatasetMetadataBinding.document_id == self.id,
                 )
             ).all()
             metadata_list: list[DocMetadataDetailItem] = []
@@ -1740,7 +1748,9 @@ class Pipeline(TypeBase):
     )
 
     def retrieve_dataset(self, session: Session | scoped_session):
-        return session.scalar(select(Dataset).where(Dataset.pipeline_id == self.id))
+        return session.scalar(
+            select(Dataset).where(Dataset.pipeline_id == self.id, Dataset.tenant_id == self.tenant_id)
+        )
 
 
 class DocumentPipelineExecutionLog(TypeBase):

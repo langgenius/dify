@@ -18,50 +18,11 @@ const EMBEDDABLE_PATH_SEGMENTS = [
   '/workflow',
 ]
 const NON_EMBEDDABLE_PATH_SEGMENTS = ['/device']
-const FRAME_ANCESTORS_NONE = "frame-ancestors 'none';"
+const FRAME_ANCESTORS_NONE = "'none'"
+const LEGACY_EDUCATION_ACTION = 'getEducationVerify'
 
 const matchesPathSegment = (pathname: string, segments: string[]) =>
   segments.some((segment) => pathname === segment || pathname.startsWith(`${segment}/`))
-
-type MarketplaceOAuthFrameConfig = {
-  marketplaceClientId: string
-  marketplaceUrlPrefix: string
-}
-
-const marketplaceOAuthFrameConfig: MarketplaceOAuthFrameConfig = {
-  marketplaceClientId: env.NEXT_PUBLIC_MARKETPLACE_OAUTH_CLIENT_ID || '',
-  marketplaceUrlPrefix: env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX || '',
-}
-
-const getHTTPOrigin = (urlPrefix: string) => {
-  try {
-    const url = new URL(urlPrefix)
-    return url.protocol === 'http:' || url.protocol === 'https:' ? url.origin : ''
-  }
-  catch {
-    return ''
-  }
-}
-
-const MARKETPLACE_FRAME_ORIGIN = getHTTPOrigin(
-  marketplaceOAuthFrameConfig.marketplaceUrlPrefix,
-)
-
-export const getMarketplaceOAuthFrameOrigin = (
-  url: Pick<URL, 'pathname' | 'searchParams'>,
-  frameConfig = marketplaceOAuthFrameConfig,
-) => {
-  if (
-    url.pathname !== '/account/oauth/authorize' ||
-    url.searchParams.get('flow') !== 'marketplace' ||
-    !frameConfig.marketplaceClientId ||
-    url.searchParams.get('client_id') !== frameConfig.marketplaceClientId ||
-    !frameConfig.marketplaceUrlPrefix
-  )
-    return ''
-
-  return getHTTPOrigin(frameConfig.marketplaceUrlPrefix)
-}
 
 export const canEmbedPath = (pathname: string) =>
   matchesPathSegment(pathname, EMBEDDABLE_PATH_SEGMENTS)
@@ -75,17 +36,7 @@ const appendFrameAncestors = (response: NextResponse, frameOrigin: string) => {
   )
 }
 
-const wrapResponseWithFrameOptions = (
-  response: NextResponse,
-  pathname: string,
-  marketplaceFrameOrigin: string,
-) => {
-  if (marketplaceFrameOrigin) {
-    response.headers.delete('X-Frame-Options')
-    appendFrameAncestors(response, marketplaceFrameOrigin)
-    return response
-  }
-
+const wrapResponseWithFrameProtection = (response: NextResponse, pathname: string) => {
   // Published app routes are intentionally embeddable; all other routes default to clickjacking protection.
   const preventEmbedding =
     matchesPathSegment(pathname, NON_EMBEDDABLE_PATH_SEGMENTS) ||
@@ -93,20 +44,26 @@ const wrapResponseWithFrameOptions = (
 
   if (preventEmbedding) {
     response.headers.set('X-Frame-Options', 'DENY')
-    const contentSecurityPolicy = response.headers.get('Content-Security-Policy')
-    response.headers.set(
-      'Content-Security-Policy',
-      contentSecurityPolicy
-        ? `${contentSecurityPolicy} ${FRAME_ANCESTORS_NONE}`
-        : FRAME_ANCESTORS_NONE,
-    )
+    appendFrameAncestors(response, FRAME_ANCESTORS_NONE)
   }
 
   return response
 }
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl
-  const marketplaceFrameOrigin = getMarketplaceOAuthFrameOrigin(request.nextUrl)
+
+  // TODO(2026-11-11): Remove after external education CTAs and active campaign links use the canonical route.
+  if (pathname === '/' && request.nextUrl.searchParams.get('action') === LEGACY_EDUCATION_ACTION) {
+    const destination = request.nextUrl.clone()
+    destination.pathname = '/education/verify'
+    destination.searchParams.delete('action')
+
+    return wrapResponseWithFrameProtection(
+      NextResponse.redirect(destination, { status: 308 }),
+      pathname,
+    )
+  }
+
   const requestHeaders = new Headers(request.headers)
   requestHeaders.set(CURRENT_PATHNAME_HEADER, pathname)
   requestHeaders.set(CURRENT_SEARCH_HEADER, search)
@@ -119,10 +76,13 @@ export function proxy(request: NextRequest) {
         headers: requestHeaders,
       },
     })
-    return wrapResponseWithFrameOptions(response, pathname, marketplaceFrameOrigin)
+    return wrapResponseWithFrameProtection(response, pathname)
   }
 
-  const whiteList = `${env.NEXT_PUBLIC_CSP_WHITELIST} ${NECESSARY_DOMAIN}`
+  const turnstileOrigin = env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+    ? ' https://challenges.cloudflare.com'
+    : ''
+  const whiteList = `${env.NEXT_PUBLIC_CSP_WHITELIST} ${NECESSARY_DOMAIN}${turnstileOrigin}`
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
   const csp = `'nonce-${nonce}'`
 
@@ -135,13 +95,12 @@ export function proxy(request: NextRequest) {
     style-src 'self' 'unsafe-inline' ${scheme_source} ${whiteList};
     worker-src 'self' ${scheme_source} ${csp} ${whiteList};
     media-src 'self' ${scheme_source} ${csp} ${whiteList};
-    frame-src 'self' ${scheme_source} ${whiteList} ${MARKETPLACE_FRAME_ORIGIN};
+    frame-src 'self' ${scheme_source} ${whiteList};
     img-src * data: blob:;
     font-src 'self';
     object-src 'none';
     base-uri 'self';
     form-action 'self';
-    ${marketplaceFrameOrigin ? `frame-ancestors ${marketplaceFrameOrigin};` : ''}
     upgrade-insecure-requests;
 `
   // Replace newline characters and spaces
@@ -159,7 +118,7 @@ export function proxy(request: NextRequest) {
 
   response.headers.set('Content-Security-Policy', contentSecurityPolicyHeaderValue)
 
-  return wrapResponseWithFrameOptions(response, pathname, marketplaceFrameOrigin)
+  return wrapResponseWithFrameProtection(response, pathname)
 }
 
 export const config = {

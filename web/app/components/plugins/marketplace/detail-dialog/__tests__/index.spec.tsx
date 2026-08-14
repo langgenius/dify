@@ -60,6 +60,7 @@ describe('MarketplaceDetailDialog', () => {
       'src',
       'about:blank?plugin=dify/plugin-a&installed=true&language=en-US&source=http://localhost:3000&theme=system&view=modal',
     )
+    expect(document.querySelector('.bg-linear-to-t')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
     expect(onOpenChange).toHaveBeenCalledWith(false)

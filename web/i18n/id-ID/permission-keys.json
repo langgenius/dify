@@ -4,6 +4,7 @@
   "app.access_config": "Konfigurasikan izin akses aplikasi",
   "app.acl.access_config": "Konfigurasikan izin akses aplikasi",
   "app.acl.delete": "Hapus aplikasi",
+  "app.acl.deploy": "Deploy aplikasi",
   "app.acl.edit": "Edit dan orkestrasikan aplikasi",
   "app.acl.import_export_dsl": "Impor / ekspor DSL",
   "app.acl.log_and_annotation": "Akses log dan anotasi",

@@ -22,10 +22,6 @@ export type MarketplaceCollection = {
   search_params?: SearchParamsFromCollection
 }
 
-export type MarketplaceTimestamp = string | number
-export type MarketplaceCreatorStatus = 'pending' | 'active' | 'inactive' | 'deleted'
-export type MarketplaceOrganizationStatus = 'active' | 'inactive' | 'deleted'
-
 export type PluginsSearchParams = {
   query: string
   page?: number
@@ -66,47 +62,6 @@ export type MarketplaceTemplate = {
   deps_plugins?: string[]
   preferred_languages?: string[]
   badges?: string[]
-  created_at?: MarketplaceTimestamp
-  updated_at?: MarketplaceTimestamp
-}
-
-export type MarketplaceCreator = {
-  id?: string
-  email?: string
-  name?: string
-  display_name?: string
-  unique_handle: string
-  display_email?: string
-  description?: string
-  avatar?: string
-  background_image?: string
-  social_links?: string[]
-  badges?: string[]
-  verified?: boolean
-  status?: MarketplaceCreatorStatus
-  public?: boolean
-  plugin_count?: number
-  template_count?: number
-  created_at?: string
-  updated_at?: string
-}
-
-export type MarketplaceOrganization = {
-  id?: string
-  email?: string
-  name?: string
-  display_name?: string
-  unique_handle?: string
-  display_email?: string
-  description?: string
-  avatar?: string
-  background_image?: string
-  social_links?: string[]
-  badges?: string[]
-  verified?: boolean
-  status?: MarketplaceOrganizationStatus
-  created_at?: string
-  updated_at?: string
 }
 
 export type MarketplaceTemplateCollection = {
@@ -169,9 +124,6 @@ export type MarketplacePlugin = {
     authorized_category: 'langgenius' | 'partner' | 'community'
   }
   from: MarketplacePluginDependencySource
-  created_at?: MarketplaceTimestamp
-  updated_at?: MarketplaceTimestamp
-  version_updated_at?: MarketplaceTimestamp | null
 }
 
 export type PluginInfoFromMarketPlace = {
@@ -239,40 +191,6 @@ export type TemplateSearchResponse = {
 }
 
 export type DownloadPluginResponse = Blob
-
-export type CreatorDetailResponse = {
-  code?: number
-  data?: {
-    creator?: MarketplaceCreator
-  }
-  msg?: string
-}
-
-export type OrganizationDetailResponse = {
-  code?: number
-  data?: {
-    organization?: MarketplaceOrganization
-  }
-  msg?: string
-}
-
-export type PublisherPluginsResponse = {
-  code?: number
-  data?: {
-    plugins?: MarketplacePlugin[]
-    total?: number
-  }
-  msg?: string
-}
-
-export type PublisherTemplatesResponse = {
-  code?: number
-  data?: {
-    templates?: MarketplaceTemplate[]
-    total?: number
-  }
-  msg?: string
-}
 
 const bannerListContract = base
   .route({
@@ -412,70 +330,6 @@ const downloadPluginContract = base
   )
   .output(type<DownloadPluginResponse>())
 
-const creatorDetailContract = base
-  .route({
-    path: '/creators/{uniqueHandle}',
-    method: 'GET',
-  })
-  .input(
-    type<{
-      params: {
-        uniqueHandle: string
-      }
-    }>(),
-  )
-  .output(type<CreatorDetailResponse>())
-
-const organizationDetailContract = base
-  .route({
-    path: '/organizations/{id}',
-    method: 'GET',
-  })
-  .input(
-    type<{
-      params: {
-        id: string
-      }
-    }>(),
-  )
-  .output(type<OrganizationDetailResponse>())
-
-const publisherPluginsContract = base
-  .route({
-    path: '/plugins/publisher/{uniqueHandle}',
-    method: 'GET',
-  })
-  .input(
-    type<{
-      params: {
-        uniqueHandle: string
-      }
-      query: {
-        page: number
-        page_size: number
-      }
-    }>(),
-  )
-  .output(type<PublisherPluginsResponse>())
-
-const publisherTemplatesContract = base
-  .route({
-    path: '/templates/publisher/{uniqueHandle}',
-    method: 'GET',
-  })
-  .input(
-    type<{
-      params: {
-        uniqueHandle: string
-      }
-      query: {
-        page: number
-        page_size: number
-      }
-    }>(),
-  )
-  .output(type<PublisherTemplatesResponse>())
-
 export const marketplaceRouterContract = {
   banners: {
     list: bannerListContract,
@@ -488,10 +342,6 @@ export const marketplaceRouterContract = {
   templateDetail: templateDetailContract,
   templateSearch: templateSearchContract,
   downloadPlugin: downloadPluginContract,
-  creatorDetail: creatorDetailContract,
-  organizationDetail: organizationDetailContract,
-  publisherPlugins: publisherPluginsContract,
-  publisherTemplates: publisherTemplatesContract,
 }
 
 export type MarketPlaceInputs = InferContractRouterInputs<typeof marketplaceRouterContract>

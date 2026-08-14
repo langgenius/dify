@@ -1,4 +1,5 @@
-import type { Plan, UsagePlanInfo } from '@/app/components/billing/type'
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import type { UsagePlanInfo } from '@/app/components/billing/type'
 import type { ProviderContextState } from '@/context/provider-context'
 import { merge } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
@@ -21,17 +22,8 @@ export const baseProviderContextValue: ProviderContextState = {
   onPlanInfoChanged: noop,
   enableReplaceWebAppLogo: false,
   modelLoadBalancingEnabled: false,
-  datasetOperatorEnabled: false,
   enableEducationPlan: false,
-  isEducationWorkspace: false,
   webappCopyrightEnabled: false,
-  licenseLimit: {
-    workspace_members: {
-      size: 0,
-      limit: 0,
-    },
-  },
-  refreshLicenseLimit: noop,
   isAllowTransferWorkspace: false,
   isAllowPublishAsCustomKnowledgePipelineTemplate: false,
   humanInputEmailDeliveryEnabled: false,
@@ -46,11 +38,10 @@ export const createMockProviderContextValue = (
     ...merged,
     refreshModelProviders: merged.refreshModelProviders ?? noop,
     onPlanInfoChanged: merged.onPlanInfoChanged ?? noop,
-    refreshLicenseLimit: merged.refreshLicenseLimit ?? noop,
   }
 }
 
-export const createMockPlan = (plan: Plan): ProviderContextState =>
+export const createMockPlan = (plan: CloudPlan): ProviderContextState =>
   createMockProviderContextValue({
     plan: merge({}, defaultPlan, {
       type: plan,

@@ -3,7 +3,7 @@
   "actionMsg.deleteConfirmTitle": "Usunąć ten tajny klucz?",
   "actionMsg.ok": "OK",
   "apiKey": "Klucz API",
-  "apiKeyModal.apiSecretKey": "Tajny klucz API",
+  "apiKeyModal.apiSecretKey": "Klucz API",
   "apiKeyModal.apiSecretKeyTips": "Aby zapobiec nadużyciom API, chron swój klucz API. Unikaj używania go jako zwykłego tekstu w kodzie front-end. :)",
   "apiKeyModal.createNewSecretKey": "Utwórz nowy tajny klucz",
   "apiKeyModal.created": "UTWORZONY",

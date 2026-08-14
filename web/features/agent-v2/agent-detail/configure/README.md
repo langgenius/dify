@@ -17,7 +17,6 @@ Owns the Agent V2 configure runtime used by the Agent App configure page and wor
 ## External Modules
 
 - app/components/base/chat
-- app/components/base/action-button
 - app/components/base/app-icon
 - app/components/base/features
 - app/components/base/file-uploader

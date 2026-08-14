@@ -38,7 +38,7 @@ const MarketplaceHome = ({
 }: MarketplaceHomeProps) => {
   return (
     <HomeStickyStateProvider>
-      <div className="flex min-h-full w-full flex-col bg-background-default">
+      <div className="flex min-h-full w-full shrink-0 flex-col bg-background-default">
         <HomeHeader
           actions={actions}
           catalogLabels={catalogLabels}

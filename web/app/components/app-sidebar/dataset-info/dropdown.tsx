@@ -14,15 +14,16 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { checkIsUsedInApp, deleteDataset } from '@/service/datasets'
@@ -31,7 +32,6 @@ import { useInvalid } from '@/service/use-base'
 import { useExportPipelineDSL } from '@/service/use-pipeline'
 import { downloadBlob } from '@/utils/download'
 import { getDatasetACLCapabilities } from '@/utils/permission'
-import ActionButton from '../../base/action-button'
 import RenameDatasetModal from '../../datasets/rename-modal'
 import Menu from './menu'
 
@@ -69,7 +69,10 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
 
   const dataset = useDatasetDetailContextWithSelector((state) => state.dataset) as DataSet
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isRbacEnabled = systemFeatures.rbac_enabled
@@ -171,15 +174,15 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
         render={
-          <ActionButton
+          <IconButton
             aria-label={t(($) => $['operation.more'], { ns: 'common' })}
-            size={expand ? 'l' : 'm'}
+            size={expand ? 'lg' : 'md'}
             className={cn('data-popup-open:bg-state-base-hover', triggerClassName)}
-          />
+          >
+            <span aria-hidden className="i-ri-more-fill size-4" />
+          </IconButton>
         }
-      >
-        <span aria-hidden className="i-ri-more-fill size-4" />
-      </DropdownMenuTrigger>
+      />
       <DropdownMenuContent
         placement={expand ? 'bottom-end' : 'right-start'}
         sideOffset={4}

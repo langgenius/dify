@@ -1,24 +1,30 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { canEmbedPath, getMarketplaceOAuthFrameOrigin, proxy } from '@/proxy'
+import { canEmbedPath, proxy } from '@/proxy'
 
 const mockEnv = vi.hoisted(() => ({
   NEXT_PUBLIC_ALLOW_EMBED: false,
   NEXT_PUBLIC_CSP_WHITELIST: 'https://example.com',
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY: '',
 }))
 
 vi.mock('@/env', () => ({
   env: mockEnv,
 }))
 
-const createRequest = (url: string) =>
-  ({
+const createRequest = (url: string) => {
+  const nextUrl = new URL(url) as URL & { clone: () => URL }
+  nextUrl.clone = () => new URL(nextUrl)
+
+  return {
     headers: new Headers(),
-    nextUrl: new URL(url),
-  }) as Parameters<typeof proxy>[0]
+    nextUrl,
+  } as Parameters<typeof proxy>[0]
+}
 
 describe('proxy frame options', () => {
   afterEach(() => {
     mockEnv.NEXT_PUBLIC_ALLOW_EMBED = false
+    mockEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY = ''
     vi.unstubAllEnvs()
   })
 
@@ -62,6 +68,17 @@ describe('proxy frame options', () => {
     expect(contentSecurityPolicy).not.toContain('frame-ancestors')
   })
 
+  it('should allow Cloudflare Turnstile resources when its site key is configured', () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    mockEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY = 'site-key-for-tests'
+
+    const response = proxy(createRequest('https://cloud.dify.ai/signin'))
+
+    expect(response.headers.get('content-security-policy')).toContain(
+      'https://challenges.cloudflare.com',
+    )
+  })
+
   it('should protect device routes when global embedding is enabled', () => {
     mockEnv.NEXT_PUBLIC_ALLOW_EMBED = true
     const response = proxy(createRequest('https://cloud.dify.ai/device/code'))
@@ -70,37 +87,37 @@ describe('proxy frame options', () => {
     expect(response.headers.get('content-security-policy')).toContain("frame-ancestors 'none'")
   })
 
-  it('allows only the configured Marketplace OAuth flow to be framed by Marketplace', () => {
-    const url = new URL(
-      'https://cloud.dify.ai/account/oauth/authorize?client_id=marketplace-client&flow=marketplace',
+  it('should deny framing for the Marketplace OAuth authorize route', () => {
+    const response = proxy(
+      createRequest(
+        'https://cloud.dify.ai/account/oauth/authorize?client_id=marketplace-client&flow=marketplace',
+      ),
     )
 
-    expect(
-      getMarketplaceOAuthFrameOrigin(url, {
-        marketplaceClientId: 'marketplace-client',
-        marketplaceUrlPrefix: 'https://marketplace.dify.ai',
-      }),
-    ).toBe('https://marketplace.dify.ai')
+    expect(response.headers.get('x-frame-options')).toBe('DENY')
+    expect(response.headers.get('content-security-policy')).toContain("frame-ancestors 'none'")
+  })
+})
 
-    url.searchParams.set('client_id', 'another-client')
-    expect(
-      getMarketplaceOAuthFrameOrigin(url, {
-        marketplaceClientId: 'marketplace-client',
-        marketplaceUrlPrefix: 'https://marketplace.dify.ai',
-      }),
-    ).toBe('')
+describe('proxy education entry normalization', () => {
+  it('redirects the legacy education action without leaking it into the canonical URL', () => {
+    const response = proxy(
+      createRequest('https://cloud.dify.ai/?action=getEducationVerify&utm_source=education-site'),
+    )
+
+    expect(response.status).toBe(308)
+    expect(response.headers.get('location')).toBe(
+      'https://cloud.dify.ai/education/verify?utm_source=education-site',
+    )
   })
 
-  it('allows only HTTP(S) Marketplace origins', () => {
-    const url = new URL(
-      'https://cloud.dify.ai/account/oauth/authorize?client_id=marketplace-client&flow=marketplace',
+  it('does not redirect unrelated actions or paths', () => {
+    const unrelatedAction = proxy(createRequest('https://cloud.dify.ai/?action=showSettings'))
+    const unrelatedPath = proxy(
+      createRequest('https://cloud.dify.ai/apps?action=getEducationVerify'),
     )
 
-    expect(
-      getMarketplaceOAuthFrameOrigin(url, {
-        marketplaceClientId: 'marketplace-client',
-        marketplaceUrlPrefix: 'javascript:alert(1)',
-      }),
-    ).toBe('')
+    expect(unrelatedAction.status).toBe(200)
+    expect(unrelatedPath.status).toBe(200)
   })
 })

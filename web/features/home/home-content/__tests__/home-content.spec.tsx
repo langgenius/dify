@@ -224,6 +224,13 @@ vi.mock('@/service/client', () => ({
     systemFeatures: () => Promise.resolve({}),
   },
   consoleQuery: {
+    account: {
+      profile: {
+        get: {
+          queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
+        },
+      },
+    },
     systemFeatures: {
       get: {
         queryKey: () => ['console', 'systemFeatures'],
@@ -364,10 +371,6 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState)
@@ -551,6 +554,7 @@ const renderHomeContent = ({
 }: RenderOptions = {}) => {
   mockAppCreatePermission(hasEditPermission)
   const { wrapper: ConsoleQueryWrapper, queryClient } = createConsoleQueryWrapper({
+    accountProfile: mockConsoleState.userProfile,
     systemFeatures: {
       deployment_edition: options.deploymentEdition ?? 'COMMUNITY',
       enable_explore_banner: options.enableExploreBanner ?? false,

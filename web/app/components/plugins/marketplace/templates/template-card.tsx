@@ -7,7 +7,6 @@ import { useCallback } from 'react'
 import AppIcon from '@/app/components/base/app-icon'
 import Partner from '@/app/components/plugins/base/badges/partner'
 import { MARKETPLACE_API_PREFIX } from '@/config'
-import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { formatNumberAbbreviated } from '@/utils/format'
 import { getIconFromMarketPlace } from '@/utils/get-icon'
@@ -24,11 +23,8 @@ const MAX_VISIBLE_PLUGIN_DEPENDENCIES = 7
 export default function TemplateCard({ template, className, partnerText }: TemplateCardProps) {
   const router = useRouter()
   const [isDetailOpen, { setTrue: showDetail, setFalse: hideDetail }] = useBoolean(false)
-  const publisher = template.publisher_handle || template.publisher_unique_handle || ''
-  const publisherType = template.publisher_type === 'organization' ? 'organization' : 'individual'
-  const publisherHref = publisher
-    ? `/marketplace/creator/${encodeURIComponent(publisher)}?publisher_type=${publisherType}`
-    : undefined
+  const publisher =
+    template.publisher_handle || template.publisher_unique_handle || template.creator_email || ''
   const visiblePlugins = template.deps_plugins?.slice(0, MAX_VISIBLE_PLUGIN_DEPENDENCIES) ?? []
   const remainingPluginCount = Math.max(
     0,
@@ -76,14 +72,7 @@ export default function TemplateCard({ template, className, partnerText }: Templ
               )}
             </div>
             <div className="flex items-center gap-2 system-xs-regular text-text-tertiary">
-              {publisherHref && (
-                <Link
-                  href={publisherHref}
-                  className="relative z-[1] truncate rounded-sm outline-hidden hover:text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                >
-                  {publisher}
-                </Link>
-              )}
+              {publisher && <span className="truncate">{publisher}</span>}
               {publisher && <span>·</span>}
               <span>{formatNumberAbbreviated(template.usage_count)}</span>
             </div>

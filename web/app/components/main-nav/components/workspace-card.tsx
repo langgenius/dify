@@ -11,7 +11,6 @@ import { useQueryState } from 'nuqs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
-import { Plan } from '@/app/components/billing/type'
 import {
   settingsQueryParamName,
   settingsQueryParser,
@@ -34,12 +33,6 @@ const workspaceMenuTriggerHeight = 36
 const workspaceMenuAlignOffset = -28
 const workspaceCardSkeletonClassName =
   'animate-pulse rounded bg-text-quaternary opacity-20 motion-reduce:animate-none'
-const workspacePlans = new Set<string>(Object.values(Plan))
-
-function isWorkspacePlan(plan: string | null | undefined): plan is Plan {
-  return !!plan && workspacePlans.has(plan)
-}
-
 function WorkspaceCardSkeleton({
   showCloudBilling,
   showPlanAction,
@@ -288,11 +281,11 @@ export function WorkspaceCard() {
     )
   }
 
-  const workspacePlan = isWorkspacePlan(currentWorkspace.plan) ? currentWorkspace.plan : null
-  const hasBillingPlan = typeof currentWorkspace.plan === 'string'
+  const workspacePlan = currentWorkspace.plan
+  const hasBillingPlan = workspacePlan !== null
   const showCloudBilling = isCloudEdition && hasBillingPlan
-  const showPlanAction = showCloudBilling && workspacePlan !== null
-  const isFreePlan = workspacePlan === Plan.sandbox
+  const showPlanAction = showCloudBilling
+  const isFreePlan = workspacePlan === 'sandbox'
   const planActionLabel = t(
     ($) => $[isFreePlan ? 'upgradeBtn.encourageShort' : 'upgradeBtn.plain'],
     { ns: 'billing' },

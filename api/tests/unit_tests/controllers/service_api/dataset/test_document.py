@@ -20,10 +20,11 @@ import json
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.common.errors import FileTooLargeError as FileTooLargeHTTPError
@@ -44,8 +45,9 @@ from controllers.service_api.dataset.document import (
 )
 from controllers.service_api.dataset.error import ArchivedDocumentImmutableError
 from core.rag.index_processor.constant.index_type import IndexStructureType
-from models.dataset import Dataset, Document
-from models.enums import DataSourceType, DocumentCreatedFrom, DocumentDocType, IndexingStatus
+from models.dataset import Dataset, Document, DocumentSegment
+from models.enums import DataSourceType, DocumentCreatedFrom, DocumentDocType, IndexingStatus, SegmentStatus
+from services.dataset_ref_service import DatasetRef
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import ProcessRule, RetrievalModel
 from services.errors.file import FileTooLargeError as FileTooLargeServiceError
@@ -174,6 +176,26 @@ def _expected_document_response(document: Document) -> dict[str, object]:
         "summary_index_status": document.summary_index_status,
         "need_summary": document.need_summary,
     }
+
+
+def _persist_segments(session: Session, document: Document, count: int = 5) -> None:
+    session.add_all(
+        [
+            DocumentSegment(
+                tenant_id=document.tenant_id,
+                dataset_id=document.dataset_id,
+                document_id=document.id,
+                position=index,
+                content=f"segment {index}",
+                word_count=20,
+                tokens=5,
+                created_by=document.created_by,
+                status=SegmentStatus.COMPLETED,
+            )
+            for index in range(1, count + 1)
+        ]
+    )
+    session.flush()
 
 
 class TestDocumentTextCreatePayload:
@@ -370,10 +392,10 @@ class TestDocumentService:
         assert result.indexing_status == "completed"
 
     @patch.object(DocumentService, "delete_document")
-    def test_delete_document_called(self, mock_delete):
+    def test_delete_document_called(self, mock_delete, sqlite_session: Session):
         """Test delete_document is called with document."""
         document = make_serializable_document()
-        session = Mock()
+        session = sqlite_session
         DocumentService.delete_document(document=document, session=session)
         mock_delete.assert_called_once_with(document=document, session=session)
 
@@ -550,24 +572,28 @@ class TestDocumentDisplayStatusLogic:
 class TestDocumentServiceBatchMethods:
     """Test DocumentService batch operations."""
 
-    def test_get_documents_by_ids(self):
+    def test_get_documents_by_ids(self, sqlite_session: Session):
         """Test batch retrieval of documents by IDs."""
         dataset_id = str(uuid.uuid4())
         doc_ids = [str(uuid.uuid4()), str(uuid.uuid4())]
 
-        session = Mock()
-        mock_result = Mock()
-        mock_result.all.return_value = [Mock(id=doc_ids[0]), Mock(id=doc_ids[1])]
-        session.scalars.return_value = mock_result
+        session = sqlite_session
+        session.add_all(
+            [
+                make_serializable_document(id=document_id, tenant_id="tenant-id", dataset_id=dataset_id)
+                for document_id in doc_ids
+            ]
+        )
+        session.flush()
 
-        documents = DocumentService.get_documents_by_ids(dataset_id, doc_ids, session)
+        documents = DocumentService.get_documents_by_ids(DatasetRef("tenant-id", dataset_id), doc_ids, session)
 
         assert len(documents) == 2
-        session.scalars.assert_called_once()
+        assert {document.id for document in documents} == set(doc_ids)
 
-    def test_get_documents_by_ids_empty(self):
+    def test_get_documents_by_ids_empty(self, sqlite_session: Session):
         """Test batch retrieval with empty list returns empty."""
-        assert DocumentService.get_documents_by_ids("ds_id", [], Mock()) == []
+        assert DocumentService.get_documents_by_ids(DatasetRef("tenant-id", "ds_id"), [], sqlite_session) == []
 
 
 class TestDocumentServiceFileOperations:
@@ -575,7 +601,7 @@ class TestDocumentServiceFileOperations:
 
     @patch("services.dataset_service.file_helpers.get_signed_file_url")
     @patch("services.dataset_service.DocumentService._get_upload_file_for_upload_file_document")
-    def test_get_document_download_url(self, mock_get_file, mock_signed_url):
+    def test_get_document_download_url(self, mock_get_file, mock_signed_url, sqlite_session: Session):
         """Test generation of download URL."""
         mock_doc = Mock()
         mock_file = Mock()
@@ -583,7 +609,7 @@ class TestDocumentServiceFileOperations:
         mock_get_file.return_value = mock_file
         mock_signed_url.return_value = "https://example.com/download"
 
-        session = Mock()
+        session = sqlite_session
         url = DocumentService.get_document_download_url(mock_doc, session)
 
         assert url == "https://example.com/download"
@@ -597,7 +623,7 @@ class TestDocumentServiceSaveValidation:
     @patch("services.dataset_service.DatasetService.check_doc_form")
     @patch("services.dataset_service.FeatureService.get_features")
     @patch("services.dataset_service.current_user")
-    def test_save_document_validates_doc_form(self, mock_user, mock_features, mock_check_form):
+    def test_save_document_validates_doc_form(self, mock_user, mock_features, mock_check_form, sqlite_session: Session):
         """Test that doc_form is validated during save."""
         mock_user.current_tenant_id = "tenant_id"
         dataset = Mock()
@@ -610,7 +636,7 @@ class TestDocumentServiceSaveValidation:
             pass
 
         mock_check_form.side_effect = TestStopError()
-        session = Mock()
+        session = sqlite_session
 
         # Skip actual logic by mocking dependent calls or raising error to stop early
         with pytest.raises(TestStopError):
@@ -663,6 +689,7 @@ class TestDocumentApiGet:
         app: Flask,
         mock_tenant: str,
         mock_doc_detail: Document,
+        sqlite_session: Session,
     ) -> None:
         """Test successful document retrieval with metadata='all'."""
         # Arrange
@@ -670,9 +697,10 @@ class TestDocumentApiGet:
         mock_dataset = make_dataset(id=dataset_id, tenant_id=mock_tenant, summary_index_setting=None)
 
         mock_doc_svc.get_document.return_value = mock_doc_detail
+        mock_dataset_svc.get_dataset_for_tenant.return_value = mock_dataset
         mock_dataset_svc.get_process_rules.return_value = {"mode": "automatic", "rules": {}}
-        session = MagicMock()
-        session.scalar.side_effect = [5, 0]
+        session = sqlite_session
+        _persist_segments(session, mock_doc_detail)
 
         # Act
         with app.test_request_context(
@@ -726,15 +754,16 @@ class TestDocumentApiGet:
         assert response["summary_index_status"] is None
 
     @patch("controllers.service_api.dataset.document.DocumentService")
-    def test_get_document_not_found(self, mock_doc_svc: Mock, app: Flask, mock_tenant: str) -> None:
+    def test_get_document_not_found(
+        self, mock_doc_svc: Mock, app: Flask, mock_tenant: str, sqlite_session: Session
+    ) -> None:
         """Test 404 when document is not found."""
         # Arrange
         dataset_id = str(uuid.uuid4())
         mock_dataset = make_dataset(id=dataset_id, tenant_id=mock_tenant)
 
         mock_doc_svc.get_document.return_value = None
-        session = MagicMock()
-        session.scalar.return_value = mock_dataset
+        session = sqlite_session
 
         # Act & Assert
         with app.test_request_context(
@@ -754,7 +783,12 @@ class TestDocumentApiGet:
 
     @patch("controllers.service_api.dataset.document.DocumentService")
     def test_get_document_forbidden_wrong_tenant(
-        self, mock_doc_svc: Mock, app: Flask, mock_tenant: str, mock_doc_detail: Document
+        self,
+        mock_doc_svc: Mock,
+        app: Flask,
+        mock_tenant: str,
+        mock_doc_detail: Document,
+        sqlite_session: Session,
     ) -> None:
         """Test 403 when document tenant doesn't match request tenant."""
         # Arrange
@@ -763,8 +797,9 @@ class TestDocumentApiGet:
 
         mock_doc_detail.tenant_id = "different-tenant-id"
         mock_doc_svc.get_document.return_value = mock_doc_detail
-        session = MagicMock()
-        session.scalar.return_value = mock_dataset
+        session = sqlite_session
+        session.add(mock_dataset)
+        session.flush()
 
         # Act & Assert
         with app.test_request_context(
@@ -784,7 +819,12 @@ class TestDocumentApiGet:
 
     @patch("controllers.service_api.dataset.document.DocumentService")
     def test_get_document_metadata_only(
-        self, mock_doc_svc: Mock, app: Flask, mock_tenant: str, mock_doc_detail: Document
+        self,
+        mock_doc_svc: Mock,
+        app: Flask,
+        mock_tenant: str,
+        mock_doc_detail: Document,
+        sqlite_session: Session,
     ) -> None:
         """Test document retrieval with metadata='only'."""
         # Arrange
@@ -792,8 +832,9 @@ class TestDocumentApiGet:
         mock_dataset = make_dataset(id=dataset_id, tenant_id=mock_tenant, summary_index_setting=None)
 
         mock_doc_svc.get_document.return_value = mock_doc_detail
-        session = MagicMock()
-        session.scalar.return_value = mock_dataset
+        session = sqlite_session
+        session.add(mock_dataset)
+        session.flush()
 
         # Act
         with app.test_request_context(
@@ -827,6 +868,7 @@ class TestDocumentApiGet:
         app: Flask,
         mock_tenant: str,
         mock_doc_detail: Document,
+        sqlite_session: Session,
     ) -> None:
         """Test document retrieval with metadata='without'."""
         # Arrange
@@ -834,9 +876,10 @@ class TestDocumentApiGet:
         mock_dataset = make_dataset(id=dataset_id, tenant_id=mock_tenant, summary_index_setting=None)
 
         mock_doc_svc.get_document.return_value = mock_doc_detail
+        mock_dataset_svc.get_dataset_for_tenant.return_value = mock_dataset
         mock_dataset_svc.get_process_rules.return_value = {"mode": "automatic", "rules": {}}
-        session = MagicMock()
-        session.scalar.side_effect = [5, 0]
+        session = sqlite_session
+        _persist_segments(session, mock_doc_detail)
 
         # Act
         with app.test_request_context(
@@ -895,7 +938,12 @@ class TestDocumentApiGet:
 
     @patch("controllers.service_api.dataset.document.DocumentService")
     def test_get_document_invalid_metadata_value(
-        self, mock_doc_svc: Mock, app: Flask, mock_tenant: str, mock_doc_detail: Document
+        self,
+        mock_doc_svc: Mock,
+        app: Flask,
+        mock_tenant: str,
+        mock_doc_detail: Document,
+        sqlite_session: Session,
     ) -> None:
         """Test error when metadata parameter has invalid value."""
         # Arrange
@@ -903,8 +951,9 @@ class TestDocumentApiGet:
         mock_dataset = make_dataset(id=dataset_id, tenant_id=mock_tenant, summary_index_setting=None)
 
         mock_doc_svc.get_document.return_value = mock_doc_detail
-        session = MagicMock()
-        session.scalar.return_value = mock_dataset
+        session = sqlite_session
+        session.add(mock_dataset)
+        session.flush()
 
         # Act & Assert
         with app.test_request_context(
@@ -1464,6 +1513,7 @@ class TestDocumentUpdateByTextApiPost:
         app: Flask,
         mock_tenant,
         mock_dataset,
+        sqlite_session: Session,
     ):
         """Test successful document update by text."""
         _setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant)
@@ -1799,6 +1849,7 @@ class TestDocumentUpdateByFileApiPatch:
         app: Flask,
         mock_tenant,
         mock_dataset,
+        sqlite_session: Session,
     ):
         """Test legacy POST aliases still dispatch while marked deprecated."""
         _setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant)
@@ -1808,8 +1859,7 @@ class TestDocumentUpdateByFileApiPatch:
         )
 
         doc_id = str(uuid.uuid4())
-        session = MagicMock()
-        session.scalar.return_value = 0
+        session = sqlite_session
         with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/{doc_id}/{route_name}",
             method="POST",

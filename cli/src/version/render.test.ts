@@ -136,7 +136,7 @@ describe('renderVersionText', () => {
         endpoint: 'https://cloud.dify.ai',
         reachable: true,
         version: '99.0.0',
-        edition: 'SELF_HOSTED',
+        edition: 'COMMUNITY',
       },
       compat: {
         minDify: '1.6.0',
@@ -185,7 +185,7 @@ describe('renderVersionText', () => {
           endpoint: 'https://cloud.dify.ai',
           reachable: true,
           version: '99.0.0',
-          edition: 'SELF_HOSTED',
+          edition: 'COMMUNITY',
         },
         compat: {
           minDify: '1.6.0',

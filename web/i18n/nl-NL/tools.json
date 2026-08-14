@@ -162,7 +162,7 @@
   "mcp.server.modal.parametersPlaceholder": "Parameter purpose and constraints",
   "mcp.server.modal.parametersTip": "Add descriptions for each parameter to help the LLM understand their purpose and constraints.",
   "mcp.server.publishTip": "App not published. Please publish the app first.",
-  "mcp.server.reGen": "Do you want to regenerator server URL?",
+  "mcp.server.reGen": "Wilt u de server-URL opnieuw genereren? De huidige URL stopt onmiddellijk met werken.",
   "mcp.server.title": "MCP Server",
   "mcp.server.url": "Server URL",
   "mcp.toolItem.noDescription": "No description",
