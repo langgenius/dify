@@ -509,6 +509,88 @@ class TestBaseAppGeneratorExtras:
         assert prepared["file_list"] == ["file-1", "file-2"]
         assert prepared["json"] == {"key": "value"}
 
+    def test_prepare_user_inputs_grants_access_to_default_file_ids(self, monkeypatch: pytest.MonkeyPatch):
+        """Form-default files are uploaded by the studio account; the EndUser
+        WebApp run must be granted access to them before the ownership filter
+        strips them out. Regression for #40411.
+        """
+        from core.app.file_access import FileAccessScope
+        from core.app.file_access.scope import _current_file_access_scope
+
+        user_id = "end-user-id"
+        tenant_id = "tenant-id"
+        scope = FileAccessScope(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            user_from=__import__("core.app.entities.app_invoke_entities", fromlist=["UserFrom"]).UserFrom.END_USER,
+            invoke_from=__import__("core.app.entities.app_invoke_entities", fromlist=["InvokeFrom"]).InvokeFrom.WEB_APP,
+        )
+        token = _current_file_access_scope.set(scope)
+        try:
+            base_app_generator = BaseAppGenerator()
+
+            variables = [
+                VariableEntity(
+                    variable="file",
+                    label="file",
+                    type=VariableEntityType.FILE,
+                    required=False,
+                    allowed_file_types=[],
+                    allowed_file_extensions=[],
+                    allowed_file_upload_methods=[],
+                ),
+                VariableEntity(
+                    variable="file_list",
+                    label="file_list",
+                    type=VariableEntityType.FILE_LIST,
+                    required=False,
+                    allowed_file_types=[],
+                    allowed_file_extensions=[],
+                    allowed_file_upload_methods=[],
+                ),
+                VariableEntity(
+                    variable="text",
+                    label="text",
+                    type=VariableEntityType.TEXT_INPUT,
+                    required=False,
+                ),
+            ]
+
+            monkeypatch.setattr(
+                "core.app.apps.base_app_generator.file_factory.build_from_mapping",
+                lambda mapping, tenant_id, config, strict_type_validation=False, access_controller=None: "file-object",
+            )
+            monkeypatch.setattr(
+                "core.app.apps.base_app_generator.file_factory.build_from_mappings",
+                lambda mappings, tenant_id, config, access_controller=None: ["file-1", "file-2"],
+            )
+
+            user_inputs = {
+                "file": {"transfer_method": "local_file", "upload_file_id": "11111111-1111-1111-1111-111111111111"},
+                "file_list": [
+                    {"transfer_method": "local_file", "upload_file_id": "22222222-2222-2222-2222-222222222222"},
+                    {"transfer_method": "local_file", "upload_file_id": "33333333-3333-3333-3333-333333333333"},
+                ],
+                "text": "hello",
+            }
+
+            base_app_generator._prepare_user_inputs(
+                user_inputs=user_inputs,
+                variables=variables,
+                tenant_id=tenant_id,
+            )
+
+            granted = _current_file_access_scope.get().granted_upload_file_ids
+            assert granted == frozenset(
+                {
+                    "11111111-1111-1111-1111-111111111111",
+                    "22222222-2222-2222-2222-222222222222",
+                    "33333333-3333-3333-3333-333333333333",
+                }
+            )
+        finally:
+            _current_file_access_scope.reset(token)
+
     def test_prepare_user_inputs_rejects_invalid_dict_inputs(self):
         base_app_generator = BaseAppGenerator()
         variables = [
