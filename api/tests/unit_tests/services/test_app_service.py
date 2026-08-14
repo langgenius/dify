@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import event
+from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
 from enums import DeploymentEdition
@@ -124,6 +124,36 @@ class TestCreateAppTransactionBoundary:
 
         assert phase_events == ["commit", "signal", "commit", "external"]
         assert sqlite_session.get(App, app.id) is app
+
+    def test_duplicate_agent_name_rolls_back_and_raises_conflict(self, sqlite_session: Session) -> None:
+        account = _persist_account(sqlite_session)
+        tenant_id = account.current_tenant_id or ""
+        existing_agent = Agent(
+            tenant_id=tenant_id,
+            name="Existing Agent",
+            description="existing",
+            role="",
+            scope=AgentScope.ROSTER,
+            source=AgentSource.ROSTER,
+            status=AgentStatus.ACTIVE,
+        )
+        sqlite_session.add(existing_agent)
+        sqlite_session.commit()
+        rollback_events: list[str] = []
+        event.listen(sqlite_session, "after_rollback", lambda _session: rollback_events.append("rollback"))
+
+        with pytest.raises(AgentNameConflictError):
+            AppService().create_app(
+                tenant_id,
+                CreateAppParams(name="Existing Agent", mode=AppMode.AGENT.value),
+                account,
+                session=sqlite_session,
+            )
+
+        assert rollback_events == ["rollback"]
+        assert sqlite_session.scalars(select(App).where(App.tenant_id == tenant_id)).all() == []
+        assert sqlite_session.scalars(select(AppModelConfig)).all() == []
+        assert sqlite_session.get(Agent, existing_agent.id) is existing_agent
 
     def test_falls_back_when_default_model_schema_is_unavailable(self, sqlite_session: Session) -> None:
         account = _persist_account(sqlite_session)
