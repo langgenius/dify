@@ -4,6 +4,7 @@ from typing import Any, NotRequired, TypedDict, cast
 
 import httpx
 
+from core.helper import ssrf_proxy
 from extensions.ext_storage import storage
 
 # Bounded connect/read timeout so a slow or hanging Firecrawl endpoint cannot
@@ -180,7 +181,7 @@ class FirecrawlApp:
     def _post_request(self, url, data, headers, retries=3, backoff_factor=0.5) -> httpx.Response:
         response: httpx.Response | None = None
         for attempt in range(retries):
-            response = httpx.post(url, headers=headers, json=data, timeout=_REQUEST_TIMEOUT)
+            response = ssrf_proxy.post(url, headers=headers, json=data, timeout=_REQUEST_TIMEOUT)
             if response.status_code == 502:
                 time.sleep(backoff_factor * (2**attempt))
             else:
@@ -191,7 +192,7 @@ class FirecrawlApp:
     def _get_request(self, url, headers, retries=3, backoff_factor=0.5) -> httpx.Response:
         response: httpx.Response | None = None
         for attempt in range(retries):
-            response = httpx.get(url, headers=headers, timeout=_REQUEST_TIMEOUT)
+            response = ssrf_proxy.get(url, headers=headers, timeout=_REQUEST_TIMEOUT)
             if response.status_code == 502:
                 time.sleep(backoff_factor * (2**attempt))
             else:
