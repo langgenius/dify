@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from typing import Protocol, cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -14,6 +15,10 @@ from tasks.new_agent_beta_task import (
     register_new_agent_beta_publish_after_commit,
     schedule_new_agent_beta_ensure,
 )
+
+
+class _TaskWithQueue(Protocol):
+    queue: str
 
 
 def _configure_cloud_publish(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -141,7 +146,9 @@ def test_task_calls_billing_with_revision_id(monkeypatch: pytest.MonkeyPatch) ->
 
 
 def test_task_is_redelivered_when_worker_is_lost() -> None:
-    assert ensure_new_agent_beta_participation_task.queue == NEW_AGENT_BETA_QUEUE
+    task = cast(_TaskWithQueue, ensure_new_agent_beta_participation_task)
+
+    assert task.queue == NEW_AGENT_BETA_QUEUE
     assert ensure_new_agent_beta_participation_task.acks_late is True
     assert ensure_new_agent_beta_participation_task.reject_on_worker_lost is True
     assert ensure_new_agent_beta_participation_task.max_retries == 8
