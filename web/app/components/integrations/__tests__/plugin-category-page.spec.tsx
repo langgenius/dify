@@ -126,9 +126,9 @@ describe('PluginCategoryPage', () => {
 
   it.each([
     [PluginCategoryEnum.tool, true],
-    [PluginCategoryEnum.trigger, true],
-    [PluginCategoryEnum.agent, true],
-    [PluginCategoryEnum.extension, true],
+    [PluginCategoryEnum.trigger, false],
+    [PluginCategoryEnum.agent, false],
+    [PluginCategoryEnum.extension, false],
   ])('sets drop install availability for %s', (category, enabled) => {
     render(<PluginCategoryPage category={category} />)
 
