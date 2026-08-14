@@ -1,10 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import ModelParameterModal from '../index'
 
-const mocks = vi.hoisted(() => ({
-  setSettingsDestination: vi.fn(),
-}))
-
 let parameterRules: Array<Record<string, unknown>> | undefined = [
   {
     name: 'temperature',
@@ -44,14 +40,6 @@ let activeTextGenerationModelList: Array<Record<string, unknown>> = [
     ],
   },
 ]
-
-vi.mock('nuqs', () => ({
-  parseAsStringLiteral: () => ({
-    withDefault: () => ({}),
-    withOptions: () => ({}),
-  }),
-  useQueryState: () => [null, mocks.setSettingsDestination],
-}))
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
@@ -104,40 +92,35 @@ vi.mock('../parameter-item', () => ({
   ),
 }))
 
-vi.mock('../../model-selector', () => ({
-  default: ({
-    defaultModel,
-    modelList,
-    onConfigureEmptyState,
+vi.mock('../../model-selector', () => {
+  const ModelSelector = ({
     onHide,
-    onSelect,
+    onValueChange,
   }: {
-    defaultModel?: { provider: string; model: string }
-    modelList?: Array<{
-      provider: string
-      models: Array<{ model: string }>
-    }>
-    onConfigureEmptyState?: () => void
     onHide?: () => void
-    onSelect: (value: { provider: string; model: string }) => void
+    onValueChange: (value: { provider: string; model: string; plugin_id?: string }) => void
   }) => (
-    <div
-      data-testid="model-selector"
-      data-default-provider={defaultModel?.provider ?? ''}
-      data-default-model={defaultModel?.model ?? ''}
-      data-provider-count={modelList?.length ?? 0}
-    >
-      <button onClick={() => onSelect({ provider: 'openai', model: 'gpt-4.1' })}>
+    <div data-testid="model-selector">
+      <button
+        onClick={() =>
+          onValueChange({
+            provider: 'openai',
+            model: 'gpt-4.1',
+            plugin_id: 'langgenius/openai',
+          })
+        }
+      >
         Select GPT-4.1
       </button>
-      <button onClick={() => onSelect({ provider: 'custom-provider', model: 'custom-model' })}>
-        Select custom model
-      </button>
-      <button onClick={onConfigureEmptyState}>configure-empty-model</button>
-      <button onClick={onHide}>hide</button>
+      {onHide && <button onClick={onHide}>hide</button>}
     </div>
-  ),
-}))
+  )
+
+  return {
+    ModelSelector,
+    SplitModelSelector: ModelSelector,
+  }
+})
 
 vi.mock('../presets-parameter', () => ({
   default: ({
@@ -248,6 +231,7 @@ describe('ModelParameterModal', () => {
     expect(defaultProps.setModel).toHaveBeenCalledWith({
       modelId: 'gpt-4.1',
       provider: 'openai',
+      plugin_id: 'langgenius/openai',
       mode: 'chat',
       features: ['vision', 'tool-call'],
     })
@@ -265,12 +249,19 @@ describe('ModelParameterModal', () => {
     expect(screen.getByRole('button', { name: /modelProvider\.modelSettings/i })).toBeDisabled()
   })
 
-  it('opens provider settings from the model selector empty state', () => {
-    render(<ModelParameterModal {...defaultProps} provider="" modelId="" />)
+  it('should disable model settings for an incompatible model without disabling selection', () => {
+    render(<ModelParameterModal {...defaultProps} modelPredicate={() => false} />)
 
-    fireEvent.click(screen.getByText('configure-empty-model'))
+    expect(screen.getByTestId('model-selector')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /modelProvider\.modelSettings/i })).toBeDisabled()
+  })
 
-    expect(mocks.setSettingsDestination).toHaveBeenCalledWith('provider')
+  it('should disable model settings when the selected model is inactive', () => {
+    currentModel = { ...currentModel!, status: 'disabled' }
+    render(<ModelParameterModal {...defaultProps} />)
+
+    expect(screen.getByTestId('model-selector')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /modelProvider\.modelSettings/i })).toBeDisabled()
   })
 
   it('should call onCompletionParamsChange when parameter changes and switch actions happen', () => {
@@ -329,52 +320,9 @@ describe('ModelParameterModal', () => {
     expect(defaultProps.setModel).toHaveBeenCalledWith({
       modelId: 'gpt-4.1',
       provider: 'openai',
+      plugin_id: 'langgenius/openai',
       mode: 'chat',
       features: ['vision', 'tool-call'],
-    })
-  })
-
-  it('uses the provided modelList to resolve selected model metadata', () => {
-    currentProvider = undefined
-    currentModel = undefined
-    activeTextGenerationModelList = []
-
-    render(
-      <ModelParameterModal
-        {...defaultProps}
-        provider="custom-provider"
-        modelId="custom-model"
-        modelList={
-          [
-            {
-              provider: 'custom-provider',
-              label: { en_US: 'Custom Provider' },
-              models: [
-                {
-                  model: 'custom-model',
-                  label: { en_US: 'Custom Model' },
-                  model_properties: { mode: 'completion' },
-                  features: ['tool-call'],
-                },
-              ],
-            },
-          ] as never
-        }
-      />,
-    )
-
-    const selector = screen.getByTestId('model-selector')
-    expect(selector).toHaveAttribute('data-default-provider', 'custom-provider')
-    expect(selector).toHaveAttribute('data-default-model', 'custom-model')
-    expect(selector).toHaveAttribute('data-provider-count', '1')
-
-    fireEvent.click(screen.getByText('Select custom model'))
-
-    expect(defaultProps.setModel).toHaveBeenCalledWith({
-      provider: 'custom-provider',
-      modelId: 'custom-model',
-      mode: 'completion',
-      features: ['tool-call'],
     })
   })
 
@@ -438,23 +386,22 @@ describe('ModelParameterModal', () => {
     expect(paramEl).toHaveAttribute('data-has-available-nodes', 'true')
   })
 
-  it('should support custom triggers, workflow mode, and missing default model values', async () => {
+  it('should support a custom trigger element and missing default model values', async () => {
     render(
       <ModelParameterModal
         {...defaultProps}
         provider=""
         modelId=""
         isInWorkflow
-        renderTrigger={({ open }) => <span>{open ? 'Custom Open' : 'Custom Closed'}</span>}
+        trigger={<button type="button">Custom Trigger</button>}
       />,
     )
 
-    const trigger = screen.getByText('Custom Closed').closest('button')
+    const trigger = screen.getByText('Custom Trigger').closest('button')
     expect(trigger).not.toHaveAttribute('data-popup-open')
 
-    fireEvent.click(screen.getByText('Custom Closed'))
+    fireEvent.click(screen.getByText('Custom Trigger'))
 
-    expect(screen.getByText('Custom Open')).toBeInTheDocument()
     expect(trigger).toHaveAttribute('data-popup-open', '')
     expect(screen.getByTestId('model-selector')).toBeInTheDocument()
 
@@ -490,13 +437,12 @@ describe('ModelParameterModal', () => {
     render(
       <ModelParameterModal
         {...defaultProps}
-        renderTrigger={({ open }) => <span>{open ? 'Popup Open' : 'Popup Closed'}</span>}
+        trigger={<button type="button">Custom Trigger</button>}
       />,
     )
 
-    fireEvent.click(screen.getByText('Popup Closed'))
+    fireEvent.click(screen.getByText('Custom Trigger'))
 
-    expect(screen.getByText('Popup Open')).toBeInTheDocument()
     expect(screen.getByTestId('model-selector')).toBeInTheDocument()
   })
 })

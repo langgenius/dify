@@ -20,7 +20,7 @@ import PermissionSelector from '@/app/components/datasets/settings/permission-se
 import { checkShowMultiModalTip } from '@/app/components/datasets/settings/utils'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import {
   settingsQueryParamName,
   settingsQueryParser,
@@ -305,12 +305,12 @@ const SettingsModal: FC<SettingsModalProps> = ({
             <div className="w-full">
               <div className="h-8 w-full rounded-lg bg-components-input-bg-normal opacity-60">
                 <ModelSelector
-                  readonly
-                  defaultModel={{
+                  disabled
+                  value={{
                     provider: localeCurrentDataset.embedding_model_provider,
                     model: localeCurrentDataset.embedding_model,
                   }}
-                  modelList={embeddingModelList}
+                  models={embeddingModelList}
                 />
               </div>
               <div className="mt-2 w-full text-xs/6 text-text-tertiary">

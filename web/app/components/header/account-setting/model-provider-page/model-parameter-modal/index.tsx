@@ -1,54 +1,67 @@
-import type { FC, ReactNode } from 'react'
-import type { DefaultModel, FormValue, Model, ModelParameterRule } from '../declarations'
+import type { Placement } from '@langgenius/dify-ui/popover'
+import type { ComponentPropsWithRef, FC, ReactElement } from 'react'
+import type { FormValue, ModelParameterRule } from '../declarations'
+import type {
+  ModelSelectorModelPredicate,
+  ModelSelectorProvider,
+  ModelSelectorValue,
+} from '../model-selector/types'
 import type { ParameterValue } from './parameter-item'
-import type { TriggerProps } from './types'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { useQueryState } from 'nuqs'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 import Loading from '@/app/components/base/loading'
-import {
-  settingsQueryParamName,
-  settingsQueryParser,
-} from '@/app/components/header/account-setting/query-params'
 import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE } from '@/config'
 import { useModelParameterRules } from '@/service/use-common'
+import { ModelStatusEnum } from '../declarations'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '../hooks'
-import ModelSelector from '../model-selector'
+import { ModelSelector, SplitModelSelector } from '../model-selector'
+import { ModelSettingsTrigger } from './model-settings-trigger'
 import ParameterItem from './parameter-item'
 import PresetsParameter from './presets-parameter'
 import { getSupportedPresetConfig } from './presets-parameter-utils'
 
 export type ModelParameterModalProps = {
+  trigger?: ReactElement<ComponentPropsWithRef<'button'>>
   popupClassName?: string
+  modelSelectorPopupClassName?: string
+  placement?: Placement
   isAdvancedMode: boolean
   modelId: string
   provider: string
-  setModel: (model: {
-    modelId: string
-    provider: string
-    mode?: string
-    features?: string[]
-  }) => void
+  setModel: (
+    model: Omit<ModelSelectorValue, 'model'> & {
+      modelId: ModelSelectorValue['model']
+      mode?: string
+      features?: string[]
+    },
+  ) => void
   completionParams: FormValue
   onCompletionParamsChange: (newParams: FormValue) => void
   hideDebugWithMultipleModel?: boolean
   debugWithMultipleModel?: boolean
   onDebugWithMultipleModelChange?: () => void
-  renderTrigger?: (v: TriggerProps) => ReactNode
   readonly?: boolean
   modelSelectorReadonly?: boolean
   isInWorkflow?: boolean
   scope?: string
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
-  modelList?: Model[]
+  modelList?: ModelSelectorProvider[]
+  showModelMeta?: boolean
+  modelPredicate?: ModelSelectorModelPredicate
+  modelSuggestionPredicate?: ModelSelectorModelPredicate
 }
 
 const ModelParameterModal: FC<ModelParameterModalProps> = ({
+  trigger,
   popupClassName,
+  modelSelectorPopupClassName,
+  placement,
   isAdvancedMode,
   modelId,
   provider,
@@ -58,13 +71,15 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   hideDebugWithMultipleModel,
   debugWithMultipleModel,
   onDebugWithMultipleModelChange,
-  renderTrigger,
   readonly,
   modelSelectorReadonly,
   isInWorkflow,
   nodesOutputVars,
   availableNodes,
   modelList,
+  showModelMeta,
+  modelPredicate,
+  modelSuggestionPredicate,
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -73,10 +88,6 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   const { currentProvider, currentModel, activeTextGenerationModelList } =
     useTextGenerationCurrentProviderAndModelAndModelList({ provider, model: modelId })
   const selectableModelList = modelList ?? activeTextGenerationModelList
-  const [settingsDestination, setSettingsDestination] = useQueryState(
-    settingsQueryParamName,
-    settingsQueryParser,
-  )
 
   const parameterRules: ModelParameterRule[] = useMemo(() => {
     return parameterRulesData?.data || []
@@ -92,19 +103,16 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
     })
   }
 
-  const handleChangeModel = ({ provider, model }: DefaultModel) => {
+  const handleChangeModel = ({ provider, model, plugin_id }: ModelSelectorValue) => {
     const targetProvider = selectableModelList.find((modelItem) => modelItem.provider === provider)
     const targetModelItem = targetProvider?.models.find((modelItem) => modelItem.model === model)
     setModel({
       modelId: model,
       provider,
+      plugin_id,
       mode: targetModelItem?.model_properties.mode as string,
-      features: targetModelItem?.features || [],
+      features: [...(targetModelItem?.features ?? [])],
     })
-  }
-
-  const handleConfigureEmptyState = () => {
-    if (settingsDestination !== 'provider') void setSettingsDestination('provider')
   }
 
   const handleSwitch = (key: string, value: boolean, assignValue: ParameterValue) => {
@@ -130,67 +138,45 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   }
 
   const hasSelectedModel = !!provider && !!modelId
+  const canConfigureModelSettings =
+    !readonly &&
+    hasSelectedModel &&
+    !!currentProvider &&
+    !!currentModel &&
+    currentModel.status === ModelStatusEnum.active &&
+    (modelPredicate?.(currentProvider, currentModel) ?? true)
 
   return (
     <Popover
       open={open}
       onOpenChange={(newOpen) => {
-        if (readonly) return
+        if (readonly && newOpen) return
         setOpen(newOpen)
       }}
     >
-      {renderTrigger ? (
-        <PopoverTrigger
-          render={(props, state) => (
-            <button
-              {...props}
-              type="button"
-              className={cn(
-                'block w-full border-none bg-transparent p-0 text-left text-inherit [font:inherit]',
-                props.className,
-              )}
-            >
-              {renderTrigger({
-                open: state.open,
-                currentProvider,
-                currentModel,
-                providerName: provider,
-                modelId,
-              })}
-            </button>
-          )}
-        />
+      {trigger ? (
+        <PopoverTrigger render={trigger} />
       ) : (
-        <div className="flex h-8 min-w-74 items-center gap-px overflow-hidden rounded-lg">
-          <div className="min-w-0 flex-1">
-            <ModelSelector
-              defaultModel={provider || modelId ? { provider, model: modelId } : undefined}
-              modelList={selectableModelList}
-              readonly={readonly || modelSelectorReadonly}
-              triggerClassName={cn(
-                'h-8! w-full rounded-r-none!',
-                isInWorkflow &&
-                  'border border-workflow-block-parma-bg bg-workflow-block-parma-bg hover:bg-workflow-block-parma-bg',
-              )}
-              onConfigureEmptyState={handleConfigureEmptyState}
-              onSelect={handleChangeModel}
-            />
-          </div>
-          <PopoverTrigger
-            aria-label={t(($) => $['modelProvider.modelSettings'], { ns: 'common' })}
-            disabled={readonly || !hasSelectedModel}
-            className={cn(
-              'flex size-8 shrink-0 items-center justify-center rounded-l-none rounded-r-lg border-0 bg-components-button-tertiary-bg p-0 text-text-tertiary outline-hidden hover:bg-components-button-tertiary-bg-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled',
-              isInWorkflow &&
-                'border border-workflow-block-parma-bg bg-workflow-block-parma-bg hover:bg-workflow-block-parma-bg',
-            )}
-          >
-            <span aria-hidden className="i-ri-equalizer-2-line size-4" />
-          </PopoverTrigger>
+        <div className="isolate flex h-8 min-w-74 items-center gap-px rounded-lg">
+          <SplitModelSelector
+            value={hasSelectedModel ? { provider, model: modelId } : undefined}
+            models={selectableModelList}
+            popupClassName={modelSelectorPopupClassName}
+            disabled={readonly || modelSelectorReadonly}
+            showModelMeta={showModelMeta}
+            surface={isInWorkflow ? 'workflow' : 'default'}
+            modelPredicate={modelPredicate}
+            modelSuggestionPredicate={modelSuggestionPredicate}
+            onValueChange={handleChangeModel}
+          />
+          <ModelSettingsTrigger
+            disabled={!canConfigureModelSettings}
+            surface={isInWorkflow ? 'workflow' : 'default'}
+          />
         </div>
       )}
       <PopoverContent
-        placement={isInWorkflow ? 'left' : renderTrigger ? 'bottom-end' : 'left-start'}
+        placement={placement ?? (isInWorkflow ? 'left' : trigger ? 'bottom-end' : 'left-start')}
         sideOffset={4}
         popupClassName={cn(popupClassName, 'w-100 rounded-2xl')}
       >
@@ -198,18 +184,27 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
           <div className="pr-8 pl-1 system-xl-semibold text-text-primary">
             {t(($) => $['modelProvider.modelSettings'], { ns: 'common' })}
           </div>
-          <PopoverClose className="absolute top-2.5 right-2.5 flex items-center justify-center rounded-lg p-1.5 hover:bg-state-base-hover">
-            <span className="i-ri-close-line size-4 text-text-tertiary" />
-          </PopoverClose>
+          <PopoverClose
+            render={
+              <IconButton
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                className="absolute top-2.5 right-2.5"
+                size="lg"
+                variant="default"
+              >
+                <span aria-hidden className="i-ri-close-line size-4" />
+              </IconButton>
+            }
+          />
         </div>
         <div className="max-h-105 overflow-y-auto">
-          {renderTrigger && (
+          {trigger && (
             <div className="px-4 pt-2 pb-4">
               <ModelSelector
-                defaultModel={hasSelectedModel ? { provider, model: modelId } : undefined}
-                modelList={selectableModelList}
-                readonly={modelSelectorReadonly}
-                onSelect={handleChangeModel}
+                value={hasSelectedModel ? { provider, model: modelId } : undefined}
+                models={selectableModelList}
+                disabled={modelSelectorReadonly}
+                onValueChange={handleChangeModel}
                 onHide={() => setOpen(false)}
               />
             </div>
@@ -218,7 +213,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
             <div
               className={cn(
                 'flex flex-col gap-2 px-4 pt-3 pb-4',
-                renderTrigger && 'border-t border-divider-subtle',
+                trigger && 'border-t border-divider-subtle',
               )}
             >
               <div className="flex items-center gap-1">
@@ -265,16 +260,13 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
         {!hideDebugWithMultipleModel && (
           <button
             type="button"
-            className="flex h-12.5 w-full cursor-pointer items-center justify-between rounded-b-xl border-t border-t-divider-subtle bg-transparent px-4 text-left system-sm-regular text-text-accent"
+            className="flex h-12.5 cursor-pointer items-center justify-between rounded-b-xl border-t border-t-divider-subtle px-4 system-sm-regular text-text-accent"
             onClick={() => onDebugWithMultipleModelChange?.()}
           >
             {debugWithMultipleModel
               ? t(($) => $.debugAsSingleModel, { ns: 'appDebug' })
               : t(($) => $.debugAsMultipleModel, { ns: 'appDebug' })}
-            <span
-              aria-hidden="true"
-              className="i-custom-vender-line-arrows-arrow-narrow-left size-3 rotate-180"
-            />
+            <ArrowNarrowLeft aria-hidden className="size-3 rotate-180" />
           </button>
         )}
       </PopoverContent>

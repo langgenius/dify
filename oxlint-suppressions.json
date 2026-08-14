@@ -512,11 +512,6 @@
       "count": 5
     }
   },
-  "web/app/components/app/log/model-info.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/app/log/var-panel.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 2
@@ -579,11 +574,6 @@
       "count": 1
     },
     "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/base/action-button/index.tsx": {
-    "erasable-syntax-only/enums": {
       "count": 1
     }
   },
@@ -723,11 +713,6 @@
     },
     "jsx_a11y/no-static-element-interactions": {
       "count": 2
-    }
-  },
-  "web/app/components/base/chat/chat-with-history/sidebar/operation.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 1
     }
   },
   "web/app/components/base/chat/chat-with-history/sidebar/rename-modal.tsx": {
@@ -989,14 +974,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/file-uploader/file-uploader-in-chat-input/file-image-item.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/base/file-uploader/file-uploader-in-chat-input/file-item.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 1
@@ -1159,7 +1136,7 @@
   },
   "web/app/components/base/icons/src/public/knowledge/online-drive/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 3
+      "count": 2
     }
   },
   "web/app/components/base/icons/src/public/llm/index.ts": {
@@ -1194,7 +1171,7 @@
   },
   "web/app/components/base/icons/src/vender/line/arrows/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 5
+      "count": 4
     }
   },
   "web/app/components/base/icons/src/vender/line/communication/index.ts": {
@@ -1244,7 +1221,7 @@
   },
   "web/app/components/base/icons/src/vender/line/others/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 7
+      "count": 5
     }
   },
   "web/app/components/base/icons/src/vender/line/time/index.ts": {
@@ -2712,22 +2689,7 @@
       "count": 5
     }
   },
-  "web/app/components/header/account-setting/model-provider-page/model-parameter-modal/model-display.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/model-parameter-modal/status-indicators.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    },
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
+
   "web/app/components/header/account-setting/model-provider-page/provider-added-card/cooldown-timer.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 1
@@ -2931,11 +2893,6 @@
   "web/app/components/plugins/plugin-detail-panel/model-list.tsx": {
     "typescript/no-explicit-any": {
       "count": 1
-    }
-  },
-  "web/app/components/plugins/plugin-detail-panel/model-selector/index.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 3
     }
   },
   "web/app/components/plugins/plugin-detail-panel/model-selector/tts-params-panel.tsx": {
@@ -3490,13 +3447,13 @@
   },
   "web/app/components/workflow/comment/mention-input.tsx": {
     "jsx_a11y/click-events-have-key-events": {
-      "count": 3
+      "count": 1
     },
     "jsx_a11y/no-autofocus": {
       "count": 1
     },
     "jsx_a11y/no-static-element-interactions": {
-      "count": 3
+      "count": 1
     }
   },
   "web/app/components/workflow/context.tsx": {
@@ -4226,17 +4183,6 @@
     }
   },
   "web/app/components/workflow/nodes/human-input/components/timeout.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 2
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 2
-    },
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/human-input/components/user-action.tsx": {
     "no-restricted-imports": {
       "count": 1
     }
@@ -4446,11 +4392,6 @@
   "web/app/components/workflow/nodes/llm/components/json-schema-config-modal/json-importer.tsx": {
     "typescript/no-explicit-any": {
       "count": 3
-    }
-  },
-  "web/app/components/workflow/nodes/llm/components/json-schema-config-modal/json-schema-config.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
     }
   },
   "web/app/components/workflow/nodes/llm/components/json-schema-config-modal/json-schema-generator/assets/index.tsx": {

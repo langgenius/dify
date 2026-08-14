@@ -212,6 +212,7 @@
   "installModal.uploadingPackage": "Das Hochladen von {{packageName}}...",
   "installModal.viewDetails": "Details anzeigen",
   "installPlugin": "Plugin installieren",
+  "list.emptyInstallFromMarketplace": "Du kannst {{category}} über den <marketplace>Marketplace</marketplace> installieren.",
   "list.noAgentStrategyFound": "Keine Agenten-Strategie gefunden",
   "list.noExtensionFound": "Keine Erweiterung gefunden",
   "list.noInstalled": "Keine Plugins installiert",

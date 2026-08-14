@@ -44,12 +44,6 @@ vi.mock('@/utils/var', () => ({
   getMarketplaceUrl: (path: string) => `https://marketplace.example.com${path}`,
 }))
 
-vi.mock('@/app/components/base/action-button', () => ({
-  default: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-    <button {...props}>{children}</button>
-  ),
-}))
-
 vi.mock('@/app/components/base/badge', () => ({
   default: ({ text, children }: { text?: React.ReactNode; children?: React.ReactNode }) => (
     <div data-testid="badge">{text ?? children}</div>

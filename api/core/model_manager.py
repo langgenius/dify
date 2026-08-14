@@ -2,6 +2,7 @@ import logging
 from collections.abc import Callable, Generator, Iterable, Mapping, Sequence
 from copy import deepcopy
 from typing import IO, Any, Literal, Optional, ParamSpec, TypeVar, Union, cast, overload, override
+from uuid import UUID
 
 from configs import dify_config
 from core.entities import PluginCredentialType
@@ -445,7 +446,7 @@ class ModelInstance:
 class QuotaManagedModelInstance(ModelInstance):
     """A system-hosted model instance that owns quota settlement per invocation."""
 
-    def reserve_quota(self):
+    def reserve_quota(self, *, request_id: str | None = None):
         from core.app.llm.quota import reserve_model_quota_for_model
 
         return reserve_model_quota_for_model(
@@ -453,7 +454,24 @@ class QuotaManagedModelInstance(ModelInstance):
             provider=self.provider,
             model_type=self.model_type_instance.model_type,
             model=self.model_name,
+            request_id=request_id,
         )
+
+    @staticmethod
+    def _get_reservation_request_id(request_metadata: Mapping[str, object] | None) -> str | None:
+        request_id = request_metadata.get("invocation_id") if request_metadata else None
+        if not isinstance(request_id, str) or not request_id:
+            return None
+        try:
+            return str(UUID(request_id))
+        except ValueError:
+            return None
+
+    def _reserve_quota_for_request(self, request_metadata: Mapping[str, object] | None):
+        request_id = self._get_reservation_request_id(request_metadata)
+        if request_id is None:
+            return self.reserve_quota()
+        return self.reserve_quota(request_id=request_id)
 
     @staticmethod
     def release_quota_safely(reservation) -> None:
@@ -530,7 +548,7 @@ class QuotaManagedModelInstance(ModelInstance):
                 request_metadata=request_metadata,
             )
 
-        reservation = self.reserve_quota()
+        reservation = self._reserve_quota_for_request(request_metadata)
         try:
             response = super().invoke_llm(
                 prompt_messages=normalized_prompt_messages,
@@ -558,7 +576,7 @@ class QuotaManagedModelInstance(ModelInstance):
         callbacks: list[Callback] | None,
         request_metadata: Mapping[str, object] | None,
     ) -> Generator:
-        reservation = self.reserve_quota()
+        reservation = self._reserve_quota_for_request(request_metadata)
         usage: LLMUsage | None = None
         try:
             response = super().invoke_llm(

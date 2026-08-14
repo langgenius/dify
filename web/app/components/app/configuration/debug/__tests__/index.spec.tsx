@@ -156,23 +156,6 @@ vi.mock('@/app/components/app/text-generate/item', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/action-button', () => ({
-  default: ({
-    children,
-    state,
-    ...props
-  }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
-    state?: string
-  }) => (
-    <button type="button" data-testid="action-button" data-state={state} {...props}>
-      {children}
-    </button>
-  ),
-  ActionButtonState: {
-    Active: 'active',
-  },
-}))
-
 vi.mock('@/app/components/base/agent-log-modal', () => ({
   default: ({ onCancel }: { onCancel: () => void }) => (
     <div data-testid="agent-log-modal">
