@@ -36,7 +36,6 @@ def _build_minimal_workflow_entry(
     monkeypatch.setattr(workflow_entry, "GraphEngine", MagicMock(return_value=graph_engine))
     monkeypatch.setattr(workflow_entry, "GraphEngineConfig", MagicMock(return_value=sentinel.graph_engine_config))
     monkeypatch.setattr(workflow_entry, "InMemoryChannel", MagicMock(return_value=sentinel.command_channel))
-    monkeypatch.setattr(workflow_entry, "LLMQuotaLayer", MagicMock(return_value=sentinel.llm_quota_layer))
 
     return workflow_entry.WorkflowEntry(
         tenant_id="tenant-id",
@@ -78,7 +77,6 @@ class TestWorkflowEntryInit:
         graph_runtime_state = SimpleNamespace(_execution_context=None)
         debug_layer = sentinel.debug_layer
         execution_limits_layer = sentinel.execution_limits_layer
-        llm_quota_layer = sentinel.llm_quota_layer
         observability_layer = sentinel.observability_layer
 
         with (
@@ -95,7 +93,6 @@ class TestWorkflowEntryInit:
                 "ExecutionLimitsLayer",
                 return_value=execution_limits_layer,
             ) as execution_limits_layer_cls,
-            patch.object(workflow_entry, "LLMQuotaLayer", return_value=llm_quota_layer) as llm_quota_layer_cls,
             patch.object(workflow_entry, "ObservabilityLayer", return_value=observability_layer),
         ):
             entry = workflow_entry.WorkflowEntry(
@@ -133,11 +130,9 @@ class TestWorkflowEntryInit:
             max_steps=workflow_entry.dify_config.WORKFLOW_MAX_EXECUTION_STEPS,
             max_time=workflow_entry.dify_config.WORKFLOW_MAX_EXECUTION_TIME,
         )
-        llm_quota_layer_cls.assert_called_once_with(tenant_id="tenant-id")
         assert graph_engine.layer.call_args_list == [
             ((debug_layer,), {}),
             ((execution_limits_layer,), {}),
-            ((llm_quota_layer,), {}),
             ((observability_layer,), {}),
         ]
 
