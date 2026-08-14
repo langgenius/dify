@@ -38,7 +38,7 @@
   "agentDetail.access.workflow.table.nodes": "Nút",
   "agentDetail.access.workflow.table.version": "Phiên bản",
   "agentDetail.access.workflow.title": "Truy cập quy trình làm việc",
-  "agentDetail.configure.advancedSettings.description": "Dành cho người dùng nâng cao. Biến môi trường, sandbox và bộ nhớ.",
+  "agentDetail.configure.advancedSettings.description": "Dành cho người dùng nâng cao, chẳng hạn như biến môi trường.",
   "agentDetail.configure.advancedSettings.envEditor.add": "Thêm biến môi trường",
   "agentDetail.configure.advancedSettings.envEditor.deleteVariable": "Xóa {{key}}",
   "agentDetail.configure.advancedSettings.envEditor.hideValue": "Ẩn giá trị của {{key}}",

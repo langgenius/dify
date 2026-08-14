@@ -1,6 +1,6 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { Plan } from '@/app/components/billing/type'
 import { createConsoleQueryClient, seedSystemFeatures } from '@/test/console/query-data'
 import { renderWorkflowComponent } from '../../../../__tests__/workflow-test-env'
 import { VersionHistoryContextMenuOptions } from '../../../../types'
@@ -19,7 +19,7 @@ vi.mock('@/config', async (importOriginal) => {
   }
 })
 
-let mockPlanType = Plan.professional
+let mockPlanType: CloudPlan = 'professional'
 let mockEnableBilling = true
 
 vi.mock('@/context/provider-context', () => ({
@@ -32,7 +32,7 @@ vi.mock('@/context/provider-context', () => ({
 describe('ActionMenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPlanType = Plan.professional
+    mockPlanType = 'professional'
     mockEnableBilling = true
   })
 
@@ -74,7 +74,7 @@ describe('ActionMenu', () => {
   it('shows upgrade buttons beside restore and export for sandbox users', async () => {
     const user = userEvent.setup()
     const handleClickActionMenuItem = vi.fn()
-    mockPlanType = Plan.sandbox
+    mockPlanType = 'sandbox'
 
     renderActionMenu(
       <ActionMenu

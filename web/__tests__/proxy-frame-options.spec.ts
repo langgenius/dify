@@ -86,6 +86,17 @@ describe('proxy frame options', () => {
     expect(response.headers.get('x-frame-options')).toBe('DENY')
     expect(response.headers.get('content-security-policy')).toContain("frame-ancestors 'none'")
   })
+
+  it('should deny framing for the Marketplace OAuth authorize route', () => {
+    const response = proxy(
+      createRequest(
+        'https://cloud.dify.ai/account/oauth/authorize?client_id=marketplace-client&flow=marketplace',
+      ),
+    )
+
+    expect(response.headers.get('x-frame-options')).toBe('DENY')
+    expect(response.headers.get('content-security-policy')).toContain("frame-ancestors 'none'")
+  })
 })
 
 describe('proxy education entry normalization', () => {

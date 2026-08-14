@@ -38,7 +38,7 @@
   "agentDetail.access.workflow.table.nodes": "Nodes",
   "agentDetail.access.workflow.table.version": "Version",
   "agentDetail.access.workflow.title": "Workflow access",
-  "agentDetail.configure.advancedSettings.description": "For power users. Env vars, sandbox & memory.",
+  "agentDetail.configure.advancedSettings.description": "For power users, such as environment variables.",
   "agentDetail.configure.advancedSettings.envEditor.add": "Add environment variable",
   "agentDetail.configure.advancedSettings.envEditor.deleteVariable": "Delete {{key}}",
   "agentDetail.configure.advancedSettings.envEditor.hideValue": "Hide {{key}} value",

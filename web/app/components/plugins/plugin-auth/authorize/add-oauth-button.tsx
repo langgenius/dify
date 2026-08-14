@@ -3,9 +3,9 @@ import type { PluginPayload } from '../types'
 import type { FormSchema } from '@/app/components/base/form/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
@@ -100,7 +100,7 @@ const AddOAuthButton = ({
               {redirect_uri && (
                 <div className="flex w-full py-0.5 system-sm-medium">
                   <div className="w-0 grow wrap-break-word break-all">{redirect_uri}</div>
-                  <ActionButton
+                  <IconButton
                     aria-label={t(($) => $['operation.copy'], { ns: 'common' })}
                     className="shrink-0"
                     onClick={() => {
@@ -108,7 +108,7 @@ const AddOAuthButton = ({
                     }}
                   >
                     <span aria-hidden className="i-ri-clipboard-line size-4" />
-                  </ActionButton>
+                  </IconButton>
                 </div>
               )}
             </div>

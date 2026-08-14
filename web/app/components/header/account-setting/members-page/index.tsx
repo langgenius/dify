@@ -10,7 +10,6 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
 import { NUM_INFINITE } from '@/app/components/billing/config'
-import { Plan } from '@/app/components/billing/type'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { useLocale } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -50,8 +49,7 @@ const MembersPage = () => {
   >(null)
   const accounts = data?.accounts || []
   const { plan, enableBilling, isAllowTransferWorkspace } = useProviderContext()
-  const isNotUnlimitedMemberPlan =
-    enableBilling && plan.type !== Plan.team && plan.type !== Plan.enterprise
+  const isNotUnlimitedMemberPlan = enableBilling && plan.type !== 'team'
   const isMemberFull =
     enableBilling && isNotUnlimitedMemberPlan && accounts.length >= plan.total.teamMembers
   const [editWorkspaceModalVisible, setEditWorkspaceModalVisible] = useState(false)

@@ -3,7 +3,7 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { Fragment, useEffect, useRef } from 'react'
 import { setUserId, setUserProperties } from '@/app/components/base/amplitude'
@@ -12,10 +12,11 @@ import { useAmplitudeInitialized } from '@/app/components/base/amplitude/use-amp
 import { useAnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
 import { ZENDESK_FIELD_IDS } from '@/config'
-import { langGeniusVersionInfoAtom } from '@/context/version-state'
+import { getLangGeniusVersionInfo } from '@/context/app-context-normalizers'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { deploymentEditionAtom } from '@/features/system-features/state'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { consoleQuery } from '@/service/client'
 
 type AmplitudeProperties = Record<string, string | number | boolean>
 
@@ -108,13 +109,37 @@ function syncZendeskField({
 }
 
 function ZendeskConversationSync() {
-  const { data: userProfile } = useSuspenseQuery({
+  const { data: accountProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
-    select: (data) => data.profile,
+    select: (data) => ({
+      email: data.profile.email,
+      meta: data.meta,
+    }),
+  })
+  const { data: systemFeatures } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: (data) => ({
+      brandingEnabled: data.branding.enabled,
+      deploymentEdition: data.deployment_edition,
+    }),
   })
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
-  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
-  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: versionData } = useQuery(
+    consoleQuery.version.get.queryOptions({
+      input: accountProfile.meta.currentVersion
+        ? {
+            query: {
+              current_version: accountProfile.meta.currentVersion,
+            },
+          }
+        : skipToken,
+      enabled: !systemFeatures.brandingEnabled,
+    }),
+  )
+  const langGeniusVersionInfo = getLangGeniusVersionInfo({
+    meta: accountProfile.meta,
+    versionData,
+  })
   const syncStateRef = useRef<ZendeskSyncState>({})
 
   useEffect(() => {
@@ -122,7 +147,7 @@ function ZendeskConversationSync() {
 
     syncZendeskField({
       fieldId: ZENDESK_FIELD_IDS.ENVIRONMENT,
-      deploymentEdition,
+      deploymentEdition: systemFeatures.deploymentEdition,
       value: langGeniusVersionInfo.current_env.toLowerCase(),
       previousValue: syncStateRef.current.environment,
       setNextValue: (value) => {
@@ -131,7 +156,7 @@ function ZendeskConversationSync() {
     })
     syncZendeskField({
       fieldId: ZENDESK_FIELD_IDS.VERSION,
-      deploymentEdition,
+      deploymentEdition: systemFeatures.deploymentEdition,
       value: langGeniusVersionInfo.version,
       previousValue: syncStateRef.current.version,
       setNextValue: (value) => {
@@ -140,8 +165,8 @@ function ZendeskConversationSync() {
     })
     syncZendeskField({
       fieldId: ZENDESK_FIELD_IDS.EMAIL,
-      deploymentEdition,
-      value: userProfile.email,
+      deploymentEdition: systemFeatures.deploymentEdition,
+      value: accountProfile.email,
       previousValue: syncStateRef.current.email,
       setNextValue: (value) => {
         nextState.email = value
@@ -149,7 +174,7 @@ function ZendeskConversationSync() {
     })
     syncZendeskField({
       fieldId: ZENDESK_FIELD_IDS.WORKSPACE_ID,
-      deploymentEdition,
+      deploymentEdition: systemFeatures.deploymentEdition,
       value: currentWorkspace.id,
       previousValue: syncStateRef.current.workspaceId,
       setNextValue: (value) => {
@@ -158,7 +183,7 @@ function ZendeskConversationSync() {
     })
 
     syncStateRef.current = nextState
-  }, [currentWorkspace.id, deploymentEdition, langGeniusVersionInfo, userProfile.email])
+  }, [accountProfile.email, currentWorkspace.id, langGeniusVersionInfo, systemFeatures])
 
   return null
 }

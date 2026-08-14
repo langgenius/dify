@@ -16,7 +16,6 @@ import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useEducationDiscount } from '@/app/components/billing/hooks/use-education-discount'
-import { Plan } from '@/app/components/billing/type'
 import { useDocLink } from '@/context/i18n'
 import { currentWorkspaceAtom, isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
@@ -66,7 +65,7 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
   const appliedEducationCase = (() => {
     if (!isCurrentWorkspaceManager) return AppliedEducationCase.noPaymentPermission
 
-    if (plan === Plan.sandbox) return AppliedEducationCase.eligible
+    if (plan === 'sandbox') return AppliedEducationCase.eligible
 
     return AppliedEducationCase.activeSubscription
   })()

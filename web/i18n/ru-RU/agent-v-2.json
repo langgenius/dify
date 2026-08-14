@@ -38,7 +38,7 @@
   "agentDetail.access.workflow.table.nodes": "Узлы",
   "agentDetail.access.workflow.table.version": "Версия",
   "agentDetail.access.workflow.title": "Доступ к рабочему процессу",
-  "agentDetail.configure.advancedSettings.description": "Для опытных пользователей. Переменные окружения, песочница и память.",
+  "agentDetail.configure.advancedSettings.description": "Для опытных пользователей, например переменные окружения.",
   "agentDetail.configure.advancedSettings.envEditor.add": "Добавить переменную окружения",
   "agentDetail.configure.advancedSettings.envEditor.deleteVariable": "Удалить {{key}}",
   "agentDetail.configure.advancedSettings.envEditor.hideValue": "Скрыть значение {{key}}",

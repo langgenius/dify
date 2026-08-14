@@ -29,7 +29,7 @@ class TestFeatureService:
             # Setup default mock returns for BillingService
             mock_billing_service.get_info.return_value = {
                 "enabled": True,
-                "subscription": {"plan": "pro", "interval": "monthly", "education": True},
+                "subscription": {"plan": CloudPlan.PROFESSIONAL, "interval": "monthly", "education": True},
                 "members": {"size": 5, "limit": 10},
                 "apps": {"size": 3, "limit": 20},
                 "vector_space": {"size": 2, "limit": 10},
@@ -41,7 +41,10 @@ class TestFeatureService:
                 "knowledge_rate_limit": {"limit": 100},
             }
 
-            mock_billing_service.get_knowledge_rate_limit.return_value = {"limit": 100, "subscription_plan": "pro"}
+            mock_billing_service.get_knowledge_rate_limit.return_value = {
+                "limit": 100,
+                "subscription_plan": CloudPlan.PROFESSIONAL,
+            }
 
             # Setup default mock returns for EnterpriseService
             mock_enterprise_service.get_workspace_info.return_value = {
@@ -114,7 +117,7 @@ class TestFeatureService:
 
             # Verify billing features
             assert result.billing.enabled is True
-            assert result.billing.subscription.plan == "pro"
+            assert result.billing.subscription.plan == CloudPlan.PROFESSIONAL
             assert result.billing.subscription.interval == "monthly"
             assert result.education.activated is True
 
@@ -250,7 +253,7 @@ class TestFeatureService:
             # Verify rate limit configuration
             assert result.enabled is True
             assert result.limit == 100
-            assert result.subscription_plan == "pro"
+            assert result.subscription_plan == CloudPlan.PROFESSIONAL
 
             # Verify mock interactions
             mock_external_service_dependencies["billing_service"].get_knowledge_rate_limit.assert_called_once_with(
@@ -749,7 +752,7 @@ class TestFeatureService:
 
             mock_external_service_dependencies["billing_service"].get_info.return_value = {
                 "enabled": True,
-                "subscription": {"plan": "basic", "interval": "yearly"},
+                "subscription": {"plan": CloudPlan.PROFESSIONAL, "interval": "yearly"},
                 # Missing members, apps, vector_space, etc.
             }
 
@@ -762,7 +765,7 @@ class TestFeatureService:
 
         # Verify billing features
         assert result.billing.enabled is True
-        assert result.billing.subscription.plan == "basic"
+        assert result.billing.subscription.plan == CloudPlan.PROFESSIONAL
         assert result.billing.subscription.interval == "yearly"
 
         # Verify default values for missing billing info
@@ -779,7 +782,7 @@ class TestFeatureService:
         assert result.knowledge_rate_limit == 10
         assert result.docs_processing == "standard"
 
-        # Verify basic plan restrictions (non-sandbox plans have webapp copyright enabled)
+        # Verify paid plan behavior.
         assert result.webapp_copyright_enabled is True
         assert result.is_allow_transfer_workspace is True
 
@@ -810,7 +813,7 @@ class TestFeatureService:
 
             mock_external_service_dependencies["billing_service"].get_info.return_value = {
                 "enabled": True,
-                "subscription": {"plan": "pro", "interval": "monthly"},
+                "subscription": {"plan": CloudPlan.PROFESSIONAL, "interval": "monthly"},
                 "vector_space": {"size": 0, "limit": 0},
                 "apps": {"size": 5, "limit": 10},
             }
@@ -830,7 +833,7 @@ class TestFeatureService:
         assert result.apps.size == 5
         assert result.apps.limit == 10
 
-        # Verify pro plan features
+        # Verify paid plan behavior.
         assert result.webapp_copyright_enabled is True
         assert result.is_allow_transfer_workspace is True
 
@@ -927,7 +930,7 @@ class TestFeatureService:
 
             mock_external_service_dependencies["billing_service"].get_info.return_value = {
                 "enabled": True,
-                "subscription": {"plan": "basic", "interval": "yearly"},
+                "subscription": {"plan": CloudPlan.PROFESSIONAL, "interval": "yearly"},
                 "members": {"size": 10, "limit": 10},
                 "vector_space": {"size": 3, "limit": 5},
             }
@@ -947,7 +950,7 @@ class TestFeatureService:
         assert result.vector_space.size == 3
         assert result.vector_space.limit == 5
 
-        # Verify basic plan features (non-sandbox plans have webapp copyright enabled)
+        # Verify paid plan behavior.
         assert result.webapp_copyright_enabled is True
         assert result.is_allow_transfer_workspace is True
 
@@ -1247,7 +1250,7 @@ class TestFeatureService:
 
             mock_external_service_dependencies["billing_service"].get_info.return_value = {
                 "enabled": True,
-                "subscription": {"plan": "enterprise", "interval": "yearly"},
+                "subscription": {"plan": CloudPlan.TEAM, "interval": "yearly"},
                 "members": {"size": 0, "limit": 0},
                 "apps": {"size": 0, "limit": -1},
                 "vector_space": {"size": 0, "limit": 999999},
@@ -1274,7 +1277,7 @@ class TestFeatureService:
         assert result.annotation_quota_limit.size == 0
         assert result.annotation_quota_limit.limit == 1
 
-        # Verify enterprise plan features
+        # Verify paid plan behavior.
         assert result.webapp_copyright_enabled is True
         assert result.is_allow_transfer_workspace is True
 
@@ -1351,7 +1354,7 @@ class TestFeatureService:
         tenant_id = self._create_test_tenant_id()
         mock_external_service_dependencies["billing_service"].get_info.return_value = {
             "enabled": True,
-            "subscription": {"plan": "education", "interval": "semester", "education": True},
+            "subscription": {"plan": CloudPlan.PROFESSIONAL, "interval": "semester", "education": True},
             "members": {"size": 100, "limit": 200},
             "apps": {"size": 50, "limit": 100},
             "vector_space": {"size": 20, "limit": 50},
@@ -1374,7 +1377,7 @@ class TestFeatureService:
             assert result.education.enabled is True
             assert result.education.activated is True
 
-            # Verify education plan limits
+            # Verify education subscription limits.
             assert result.members.size == 100
             assert result.members.limit == 200
             assert result.apps.size == 50
@@ -1386,7 +1389,7 @@ class TestFeatureService:
             assert result.annotation_quota_limit.size == 200
             assert result.annotation_quota_limit.limit == 500
 
-            # Verify education plan features
+            # Verify paid plan behavior.
             assert result.webapp_copyright_enabled is True
             assert result.is_allow_transfer_workspace is True
 
@@ -1505,7 +1508,7 @@ class TestFeatureService:
 
             mock_external_service_dependencies["billing_service"].get_info.return_value = {
                 "enabled": True,
-                "subscription": {"plan": "premium", "interval": "monthly"},
+                "subscription": {"plan": CloudPlan.TEAM, "interval": "monthly"},
                 "docs_processing": "advanced",
                 "can_replace_logo": True,
                 "model_load_balancing_enabled": True,
@@ -1523,7 +1526,7 @@ class TestFeatureService:
         assert result.can_replace_logo is True
         assert result.model_load_balancing_enabled is True
 
-        # Verify premium plan features
+        # Verify paid plan behavior.
         assert result.webapp_copyright_enabled is True
         assert result.is_allow_transfer_workspace is True
 
@@ -1623,7 +1626,7 @@ class TestFeatureService:
 
             mock_external_service_dependencies["billing_service"].get_info.return_value = {
                 "enabled": True,
-                "subscription": {"plan": "enterprise", "interval": "yearly"},
+                "subscription": {"plan": CloudPlan.TEAM, "interval": "yearly"},
                 "annotation_quota_limit": {"size": 999, "limit": 1000},
                 "knowledge_rate_limit": {"limit": 500},
             }
@@ -1642,7 +1645,7 @@ class TestFeatureService:
         # Verify knowledge rate limit
         assert result.knowledge_rate_limit == 500
 
-        # Verify enterprise plan features
+        # Verify paid plan behavior.
         assert result.webapp_copyright_enabled is True
         assert result.is_allow_transfer_workspace is True
 
@@ -1684,7 +1687,7 @@ class TestFeatureService:
 
             mock_external_service_dependencies["billing_service"].get_info.return_value = {
                 "enabled": True,
-                "subscription": {"plan": "pro", "interval": "monthly"},
+                "subscription": {"plan": CloudPlan.PROFESSIONAL, "interval": "monthly"},
                 "documents_upload_quota": {
                     "size": 0,  # Edge case: zero current size
                     "limit": 0,  # Edge case: zero limit
@@ -1706,7 +1709,7 @@ class TestFeatureService:
         # Verify knowledge rate limit
         assert result.knowledge_rate_limit == 100
 
-        # Verify pro plan features
+        # Verify paid plan behavior.
         assert result.webapp_copyright_enabled is True
         assert result.is_allow_transfer_workspace is True
 
@@ -1800,7 +1803,7 @@ class TestFeatureService:
             mock_external_service_dependencies["billing_service"].get_info.return_value = {
                 "enabled": True,
                 "subscription": {
-                    "plan": "pro",
+                    "plan": CloudPlan.PROFESSIONAL,
                     "interval": "monthly",
                     "education": False,  # Education explicitly disabled
                 },
@@ -1820,7 +1823,7 @@ class TestFeatureService:
         # Verify knowledge rate limit
         assert result.knowledge_rate_limit == 100
 
-        # Verify pro plan features
+        # Verify paid plan behavior.
         assert result.webapp_copyright_enabled is True
         assert result.is_allow_transfer_workspace is True
 

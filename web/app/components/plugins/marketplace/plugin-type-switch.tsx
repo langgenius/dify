@@ -7,25 +7,25 @@ import {
   RiDatabase2Line,
   RiHammerLine,
   RiPuzzle2Line,
-  RiSpeakAiLine,
 } from '@remixicon/react'
 import { useSetAtom } from 'jotai'
 import { Fragment } from 'react'
 import { useTranslation } from '#i18n'
-import { Trigger as TriggerIcon } from '@/app/components/base/icons/src/vender/plugin'
 import PluginIcon from '@/app/components/base/icons/src/vender/plugin/Plugin'
 import { searchModeAtom, useActivePluginType } from './atoms'
 import { PLUGIN_CATEGORY_WITH_COLLECTIONS, PLUGIN_TYPE_SEARCH_MAP } from './constants'
+import styles from './plugin-type-switch.module.css'
 
 type PluginTypeSwitchProps = {
   className?: string
-  variant?: 'default' | 'hero'
+  variant?: 'default' | 'hero' | 'home'
 }
 const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchProps) => {
   const { t } = useTranslation()
   const [activePluginType, handleActivePluginTypeChange] = useActivePluginType()
   const setSearchMode = useSetAtom(searchModeAtom)
   const isHero = variant === 'hero'
+  const isHome = variant === 'home'
   const iconClassName = 'mr-1.5 size-4'
 
   const options: Array<{
@@ -38,7 +38,7 @@ const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchPr
       text: isHero
         ? t(($) => $['marketplace.allPlugins'], { ns: 'plugin' })
         : t(($) => $['category.all'], { ns: 'plugin' }),
-      icon: isHero ? <PluginIcon className={iconClassName} /> : null,
+      icon: isHero || isHome ? <PluginIcon className={iconClassName} /> : null,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.model,
@@ -52,18 +52,27 @@ const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchPr
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.datasource,
-      text: t(($) => $['category.datasources'], { ns: 'plugin' }),
+      text: t(($) => $[isHome ? 'categorySingle.datasource' : 'category.datasources'], {
+        ns: 'plugin',
+      }),
       icon: <RiDatabase2Line className={iconClassName} />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.agent,
-      text: t(($) => $['category.agents'], { ns: 'plugin' }),
-      icon: <RiSpeakAiLine className={iconClassName} />,
+      text: t(($) => $[isHome ? 'categorySingle.agent' : 'category.agents'], { ns: 'plugin' }),
+      icon: (
+        <span
+          aria-hidden
+          className={cn('i-custom-vender-integrations-agent-strategy', iconClassName)}
+        />
+      ),
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.trigger,
       text: t(($) => $['category.triggers'], { ns: 'plugin' }),
-      icon: <TriggerIcon className={iconClassName} />,
+      icon: (
+        <span aria-hidden className={cn('i-custom-vender-integrations-trigger', iconClassName)} />
+      ),
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.extension,
@@ -82,9 +91,13 @@ const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchPr
       className={cn(
         isHero
           ? 'flex shrink-0 items-center gap-1 overflow-x-auto'
-          : 'flex shrink-0 items-center justify-center space-x-2 bg-background-body py-3',
+          : isHome
+            ? 'flex w-full shrink-0 scrollbar-none items-center justify-start gap-1 overflow-x-auto'
+            : 'flex shrink-0 items-center justify-center space-x-2 bg-background-body py-3',
         className,
       )}
+      role="group"
+      aria-label={t(($) => $['marketplace.allPlugins'], { ns: 'plugin' })}
     >
       {options.map((option, index) => {
         const isActive = activePluginType === option.value
@@ -96,15 +109,21 @@ const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchPr
               aria-pressed={isActive}
               className={cn(
                 'flex h-8 cursor-pointer appearance-none items-center rounded-lg border border-transparent px-2.5 system-md-medium whitespace-nowrap outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-                isHero ? 'text-text-primary-on-surface' : 'text-text-tertiary',
+                isHero
+                  ? 'text-text-primary-on-surface'
+                  : isHome
+                    ? cn('min-w-12 shrink-0 justify-center text-text-tertiary', styles.homeItem)
+                    : 'text-text-tertiary',
                 !isActive &&
                   (isHero
                     ? 'hover:bg-white/20'
-                    : 'hover:bg-state-base-hover hover:text-text-secondary'),
+                    : !isHome && 'hover:bg-state-base-hover hover:text-text-secondary'),
                 isActive &&
                   (isHero
                     ? 'border-white/95 bg-components-main-nav-nav-button-bg-active text-saas-dify-blue-inverted shadow-md backdrop-blur-[5px]'
-                    : 'border-components-main-nav-nav-button-border bg-components-main-nav-nav-button-bg-active! text-components-main-nav-nav-button-text-active! shadow-xs'),
+                    : isHome
+                      ? styles.homeItemActive
+                      : 'border-components-main-nav-nav-button-border bg-components-main-nav-nav-button-bg-active! text-components-main-nav-nav-button-text-active! shadow-xs'),
               )}
               onClick={() => {
                 handleActivePluginTypeChange(option.value)

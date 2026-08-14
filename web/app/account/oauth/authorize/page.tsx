@@ -10,13 +10,15 @@ import {
   RiMailLine,
   RiTranslate2,
 } from '@remixicon/react'
-import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
+import { skipToken, useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { MARKETPLACE_OAUTH_CLIENT_ID } from '@/config'
 import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-profile/client'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { useLogout } from '@/service/use-common'
@@ -30,8 +32,16 @@ function buildReturnUrl(pathname: string, search: string) {
   }
 }
 
+function buildOAuthCallbackUrl(redirectUri: string, code: string, state: string | null) {
+  const url = new URL(redirectUri)
+  url.searchParams.set('code', code)
+  if (state) url.searchParams.set('state', state)
+  return url.toString()
+}
+
 export default function OAuthAuthorize() {
   const { t } = useTranslation()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   const SCOPE_INFO_MAP: Record<
     string,
@@ -62,10 +72,17 @@ export default function OAuthAuthorize() {
   const router = useRouter()
   const language = useLanguage()
   const searchParams = useSearchParams()
-  const client_id = decodeURIComponent(searchParams.get('client_id') || '')
-  const redirect_uri = decodeURIComponent(searchParams.get('redirect_uri') || '')
+  const clientId = searchParams.get('client_id') || ''
+  const redirectUri = searchParams.get('redirect_uri') || ''
   const state = searchParams.get('state')
-  const hasOAuthParams = Boolean(client_id && redirect_uri)
+  const hasOAuthParams = Boolean(clientId && redirectUri)
+  // These public URL/config values only select the Marketplace UX. They are not credentials.
+  const shouldAutoAuthorizeMarketplace =
+    hasOAuthParams &&
+    systemFeatures.deployment_edition === 'CLOUD' &&
+    searchParams.get('flow') === 'marketplace' &&
+    Boolean(MARKETPLACE_OAUTH_CLIENT_ID) &&
+    clientId === MARKETPLACE_OAUTH_CLIENT_ID
   // Probe user profile. 401 stays as `error` (legitimate "not logged in" state),
   // other errors throw to the nearest error.tsx; jumpTo same-pathname guard in
   // service/base.ts prevents a redirect loop here.
@@ -79,13 +96,18 @@ export default function OAuthAuthorize() {
   })
   const isLoggedIn = !!userProfileResp && !profileError
   const userProfile = userProfileResp?.profile
+  const shouldLoadOAuthApp = hasOAuthParams && (!shouldAutoAuthorizeMarketplace || isLoggedIn)
   const {
     data: authAppInfo,
     isLoading: isOAuthLoading,
-    isError,
+    isFetching: isOAuthFetching,
+    isError: isOAuthError,
+    refetch: refetchOAuthApp,
   } = useQuery(
     consoleQuery.oauth.provider.post.queryOptions({
-      input: hasOAuthParams ? { body: { client_id, redirect_uri } } : skipToken,
+      input: shouldLoadOAuthApp
+        ? { body: { client_id: clientId, redirect_uri: redirectUri } }
+        : skipToken,
       context: { silent: true },
     }),
   )
@@ -93,15 +115,17 @@ export default function OAuthAuthorize() {
     consoleQuery.oauth.provider.authorize.post.mutationOptions(),
   )
   const { mutateAsync: logout } = useLogout()
-  const hasNotifiedRef = useRef(false)
-  const localizedAppLabel = authAppInfo?.app_label[language]
-  const englishAppLabel = authAppInfo?.app_label.en_US
+  const marketplaceFlowStartedRef = useRef(false)
+  const [marketplaceAutoAuthorizationFailed, setMarketplaceAutoAuthorizationFailed] =
+    useState(false)
+  const localizedAppLabel =
+    authAppInfo?.app_label[language] ?? authAppInfo?.app_label[language.replace('_', '-')]
+  const englishAppLabel = authAppInfo?.app_label.en_US ?? authAppInfo?.app_label['en-US']
   const appLabel =
     (typeof localizedAppLabel === 'string' && localizedAppLabel) ||
     (typeof englishAppLabel === 'string' && englishAppLabel) ||
     t(($) => $.unknownApp, { ns: 'oauth' })
 
-  const isLoading = isOAuthLoading || isProfileLoading
   const onLoginSwitchClick = async () => {
     try {
       const returnUrl = buildReturnUrl('/account/oauth/authorize', `?${searchParams.toString()}`)
@@ -113,13 +137,10 @@ export default function OAuthAuthorize() {
   }
 
   const onAuthorize = async () => {
-    if (!client_id || !redirect_uri) return
+    if (!clientId || !redirectUri) return
     try {
-      const { code } = await authorize({ body: { client_id } })
-      const url = new URL(redirect_uri)
-      url.searchParams.set('code', code)
-      if (state) url.searchParams.set('state', state)
-      globalThis.location.href = url.toString()
+      const { code } = await authorize({ body: { client_id: clientId } })
+      globalThis.location.href = buildOAuthCallbackUrl(redirectUri, code, state)
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error)
       toast.error(`${t(($) => $['error.authorizeFailed'], { ns: 'oauth' })}: ${message}`)
@@ -127,19 +148,69 @@ export default function OAuthAuthorize() {
   }
 
   useEffect(() => {
-    const invalidParams = !client_id || !redirect_uri
-    if ((invalidParams || isError) && !hasNotifiedRef.current) {
-      hasNotifiedRef.current = true
-      toast.error(
-        invalidParams
-          ? t(($) => $['error.invalidParams'], { ns: 'oauth' })
-          : t(($) => $['error.authAppInfoFetchFailed'], { ns: 'oauth' }),
-        { timeout: 0 },
-      )
-    }
-  }, [client_id, redirect_uri, isError])
+    if (!shouldAutoAuthorizeMarketplace || marketplaceFlowStartedRef.current || isProfileLoading)
+      return
 
-  if (isLoading) {
+    if (!isLoggedIn) {
+      marketplaceFlowStartedRef.current = true
+      const returnUrl = buildReturnUrl('/account/oauth/authorize', `?${searchParams.toString()}`)
+      router.replace(`/signin?redirect_url=${encodeURIComponent(returnUrl)}`)
+      return
+    }
+
+    if (isOAuthLoading || isOAuthError || !authAppInfo) return
+
+    marketplaceFlowStartedRef.current = true
+    void authorize({ body: { client_id: clientId } })
+      .then(({ code }) => {
+        globalThis.location.href = buildOAuthCallbackUrl(redirectUri, code, state)
+      })
+      .catch((error: unknown) => {
+        setMarketplaceAutoAuthorizationFailed(true)
+        const message = error instanceof Error ? error.message : String(error)
+        toast.error(`${t(($) => $['error.authorizeFailed'], { ns: 'oauth' })}: ${message}`)
+      })
+  }, [
+    authAppInfo,
+    authorize,
+    clientId,
+    isLoggedIn,
+    isOAuthError,
+    isOAuthLoading,
+    isProfileLoading,
+    redirectUri,
+    router,
+    searchParams,
+    shouldAutoAuthorizeMarketplace,
+    state,
+    t,
+  ])
+
+  if (!hasOAuthParams || isOAuthError) {
+    return (
+      <div className="flex flex-col gap-4 bg-background-default-subtle text-text-secondary">
+        <div className="body-md-regular">
+          {t(($) => $[hasOAuthParams ? 'error.authAppInfoFetchFailed' : 'error.invalidParams'], {
+            ns: 'oauth',
+          })}
+        </div>
+        {isOAuthError && (
+          <Button
+            variant="secondary"
+            size="large"
+            onClick={() => void refetchOAuthApp()}
+            loading={isOAuthFetching}
+          >
+            {t(($) => $['operation.retry'], { ns: 'common' })}
+          </Button>
+        )}
+      </div>
+    )
+  }
+
+  const isMarketplaceAutoAuthorizing =
+    shouldAutoAuthorizeMarketplace && !marketplaceAutoAuthorizationFailed
+  if (isProfileLoading || isOAuthLoading || isMarketplaceAutoAuthorizing) {
     return (
       <div className="bg-background-default-subtle">
         <Loading type="app" />
@@ -195,18 +266,15 @@ export default function OAuthAuthorize() {
             .split(/\s+/)
             .filter(Boolean)
             .map((scope: string) => {
-              const Icon = SCOPE_INFO_MAP[scope]
+              const scopeInfo = SCOPE_INFO_MAP[scope]
+              const ScopeIcon = scopeInfo?.icon ?? RiAccountCircleLine
               return (
                 <div
                   key={scope}
                   className="flex items-center gap-2 body-sm-medium text-text-secondary"
                 >
-                  {Icon ? (
-                    <Icon.icon className="size-4" />
-                  ) : (
-                    <RiAccountCircleLine className="size-4" />
-                  )}
-                  {Icon!.label}
+                  <ScopeIcon className="size-4" />
+                  {scopeInfo?.label ?? scope}
                 </div>
               )
             })}
@@ -225,7 +293,7 @@ export default function OAuthAuthorize() {
               size="large"
               className="w-full"
               onClick={onAuthorize}
-              disabled={!client_id || !redirect_uri || isError || authorizing}
+              disabled={!clientId || !redirectUri || isOAuthError || authorizing}
               loading={authorizing}
             >
               {t(($) => $.continue, { ns: 'oauth' })}

@@ -7,7 +7,6 @@ import {
 import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { Plan } from '@/app/components/billing/type'
 import { useModalContext } from '@/context/modal-context'
 import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
 import { getDocDownloadUrl } from '@/service/common'
@@ -65,7 +64,7 @@ describe('Compliance', () => {
       ...baseProviderContextValue,
       plan: {
         ...baseProviderContextValue.plan,
-        type: Plan.sandbox,
+        type: 'sandbox',
       },
     })
     vi.mocked(useModalContext).mockReturnValue({
@@ -136,7 +135,7 @@ describe('Compliance', () => {
         ...baseProviderContextValue,
         plan: {
           ...baseProviderContextValue.plan,
-          type: Plan.team,
+          type: 'team',
         },
       })
 
@@ -157,7 +156,7 @@ describe('Compliance', () => {
         ...baseProviderContextValue,
         plan: {
           ...baseProviderContextValue.plan,
-          type: Plan.team,
+          type: 'team',
         },
       })
 
@@ -181,7 +180,7 @@ describe('Compliance', () => {
         ...baseProviderContextValue,
         plan: {
           ...baseProviderContextValue.plan,
-          type: Plan.team,
+          type: 'team',
         },
       })
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -216,7 +215,7 @@ describe('Compliance', () => {
         ...baseProviderContextValue,
         plan: {
           ...baseProviderContextValue.plan,
-          type: Plan.professional,
+          type: 'professional',
         },
       })
 
@@ -244,7 +243,7 @@ describe('Compliance', () => {
         ...baseProviderContextValue,
         plan: {
           ...baseProviderContextValue.plan,
-          type: Plan.team,
+          type: 'team',
         },
       })
 
@@ -284,7 +283,7 @@ describe('Compliance', () => {
         ...baseProviderContextValue,
         plan: {
           ...baseProviderContextValue.plan,
-          type: Plan.team,
+          type: 'team',
         },
       })
 
@@ -319,24 +318,5 @@ describe('Compliance', () => {
       // getDocDownloadUrl should still have only been called once
       expect(getDocDownloadUrl).toHaveBeenCalledTimes(1)
     }, 20000)
-
-    // canShowUpgradeTooltip=false: enterprise plan has empty tooltip text → no TooltipContent
-    it('should show upgrade badge with empty tooltip for enterprise plan', () => {
-      // Arrange
-      vi.mocked(useProviderContext).mockReturnValue({
-        ...baseProviderContextValue,
-        plan: {
-          ...baseProviderContextValue.plan,
-          type: Plan.enterprise,
-        },
-      })
-
-      // Act
-      openMenuAndRender()
-
-      // Assert - enterprise is not in any download list, so upgrade badges should appear
-      // The key branch: upgradeTooltip[Plan.enterprise] = '' → canShowUpgradeTooltip=false
-      expect(screen.getAllByText('billing.upgradeBtn.encourageShort').length).toBeGreaterThan(0)
-    })
   })
 })

@@ -19,7 +19,6 @@ import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import NotionIcon from '@/app/components/base/notion-icon'
 import PriorityLabel from '@/app/components/billing/priority-label'
-import { Plan } from '@/app/components/billing/type'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import DocumentFileIcon from '@/app/components/datasets/common/document-file-icon'
 import VectorSpaceAdmissionAlert from '@/app/components/datasets/common/vector-space-admission-alert'
@@ -120,8 +119,7 @@ const EmbeddingProcess = ({
       ),
     [indexingStatusBatchDetail],
   )
-  const showUpgrade =
-    enableBilling && (plan.type === Plan.sandbox || plan.type === Plan.professional)
+  const showUpgrade = enableBilling && (plan.type === 'sandbox' || plan.type === 'professional')
 
   const getSourceName = (id: string) => {
     const doc = documents.find((document) => document.id === id)
@@ -173,7 +171,7 @@ const EmbeddingProcess = ({
               planLimitMb={vectorSpaceAdmissionError.vector_space_limit_mb}
             />
           )}
-        {enableBilling && plan.type !== Plan.team && (
+        {enableBilling && plan.type !== 'team' && (
           <div className="flex h-13 items-center gap-x-2 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-2.5 pl-3 shadow-xs shadow-shadow-shadow-3">
             <div className="flex shrink-0 items-center justify-center rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-brand-blue-brand-500 shadow-md shadow-shadow-shadow-5">
               <RiAedFill className="size-4 text-text-primary-on-surface" />

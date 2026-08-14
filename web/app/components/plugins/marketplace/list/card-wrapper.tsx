@@ -2,17 +2,17 @@
 import type { Plugin } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { useBoolean } from 'ahooks'
-import { useTheme } from 'next-themes'
 import * as React from 'react'
 import { useMemo } from 'react'
-import { useLocale, useTranslation } from '#i18n'
+import { useTranslation } from '#i18n'
 import Card from '@/app/components/plugins/card'
 import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import { useTags } from '@/app/components/plugins/hooks'
 import { useOptionalPluginInstallPermission } from '@/app/components/plugins/install-plugin/hooks/use-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import Link from '@/next/link'
-import { getPluginDetailLinkInMarketplace, getPluginLinkInMarketplace } from '../utils'
+import MarketplaceDetailDialog from '../detail-dialog'
+import { getPluginDetailLinkInMarketplace } from '../utils'
 
 type CardWrapperProps = {
   plugin: Plugin
@@ -27,41 +27,34 @@ const CardWrapperComponent = ({
   linkToMarketplaceDetail = false,
 }: CardWrapperProps) => {
   const { t } = useTranslation()
-  const { theme } = useTheme()
   const [
     isShowInstallFromMarketplace,
     { setTrue: showInstallFromMarketplace, setFalse: hideInstallFromMarketplace },
   ] = useBoolean(false)
+  const [
+    isShowMarketplaceDetail,
+    { setTrue: showMarketplaceDetail, setFalse: hideMarketplaceDetail },
+  ] = useBoolean(false)
   const { canInstallPlugin } = useOptionalPluginInstallPermission()
-  const locale = useLocale()
   const { getTagLabel } = useTags()
-
-  // Memoize marketplace link params to prevent unnecessary re-renders
-  const marketplaceLinkParams = useMemo(
-    () => ({
-      language: locale,
-      theme,
-    }),
-    [locale, theme],
-  )
 
   // Memoize tag labels to prevent recreating array on every render
   const tagLabels = useMemo(
     () => plugin.tags.map((tag) => getTagLabel(tag.name)),
     [plugin.tags, getTagLabel],
   )
-  const handleOpenMarketplaceDetail = () => {
-    window.open(
-      getPluginLinkInMarketplace(plugin, marketplaceLinkParams),
-      '_blank',
-      'noopener,noreferrer',
-    )
+  const handleMarketplaceDetailOpenChange = (open: boolean) => {
+    if (open) showMarketplaceDetail()
+    else hideMarketplaceDetail()
   }
   const showInstallAction = !!showInstallButton && canInstallPlugin
 
   if (showInstallAction) {
     return (
-      <div className="group relative cursor-pointer rounded-xl">
+      <div
+        className="group relative cursor-pointer rounded-xl"
+        data-marketplace-card={plugin.plugin_id}
+      >
         <Card
           key={plugin.name}
           payload={plugin}
@@ -87,12 +80,18 @@ const CardWrapperComponent = ({
           </Button>
           <Button
             className="min-w-0 flex-1 shadow-xs backdrop-blur-[5px]"
-            onClick={handleOpenMarketplaceDetail}
+            onClick={showMarketplaceDetail}
           >
             {t(($) => $['detailPanel.operation.detail'], { ns: 'plugin' })}
-            <span aria-hidden className="i-ri-arrow-right-up-line size-4" />
           </Button>
         </div>
+        <MarketplaceDetailDialog
+          isInstalled={isInstalled}
+          open={isShowMarketplaceDetail}
+          plugin={plugin}
+          onInstall={showInstallFromMarketplace}
+          onOpenChange={handleMarketplaceDetailOpenChange}
+        />
         {isShowInstallFromMarketplace && (
           <InstallFromMarketplace
             manifest={plugin}
@@ -106,7 +105,7 @@ const CardWrapperComponent = ({
   }
 
   const card = (
-    <div className="group relative rounded-xl">
+    <div className="group relative rounded-xl" data-marketplace-card={plugin.plugin_id}>
       <Card
         key={plugin.name}
         payload={plugin}

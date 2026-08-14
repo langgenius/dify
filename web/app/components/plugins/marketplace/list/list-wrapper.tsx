@@ -1,4 +1,6 @@
 'use client'
+import type { ActivePluginType } from '../constants'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from '#i18n'
 import Loading from '@/app/components/base/loading'
 import SortDropdown from '../sort-dropdown'
@@ -6,10 +8,19 @@ import { useMarketplaceData } from '../state'
 import List from './index'
 
 type ListWrapperProps = {
+  activePluginType?: ActivePluginType
+  className?: string
+  deferOffscreenCollections?: boolean
   showInstallButton?: boolean
   linkToMarketplaceDetail?: boolean
 }
-const ListWrapper = ({ showInstallButton, linkToMarketplaceDetail }: ListWrapperProps) => {
+const ListWrapper = ({
+  activePluginType,
+  className,
+  deferOffscreenCollections,
+  showInstallButton,
+  linkToMarketplaceDetail,
+}: ListWrapperProps) => {
   const { t } = useTranslation()
 
   const {
@@ -20,7 +31,7 @@ const ListWrapper = ({ showInstallButton, linkToMarketplaceDetail }: ListWrapper
     isLoading,
     isFetchingNextPage,
     page,
-  } = useMarketplaceData()
+  } = useMarketplaceData(activePluginType)
 
   return (
     <div
@@ -28,7 +39,10 @@ const ListWrapper = ({ showInstallButton, linkToMarketplaceDetail }: ListWrapper
         scrollbarGutter: 'stable',
         paddingBottom: 'calc(0.5rem + var(--marketplace-header-collapse-offset, 0px))',
       }}
-      className="relative flex grow flex-col bg-background-default-subtle px-8 py-2"
+      className={cn(
+        'relative flex grow flex-col bg-background-default-subtle px-8 py-2',
+        className,
+      )}
     >
       <div className="flex w-full grow flex-col">
         {plugins && (
@@ -45,6 +59,7 @@ const ListWrapper = ({ showInstallButton, linkToMarketplaceDetail }: ListWrapper
             marketplaceCollections={marketplaceCollections || []}
             marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap || {}}
             plugins={plugins}
+            deferOffscreenCollections={deferOffscreenCollections}
             showInstallButton={showInstallButton}
             linkToMarketplaceDetail={linkToMarketplaceDetail}
           />

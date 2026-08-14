@@ -6,7 +6,6 @@ import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getImageUploadErrorMessage, imageUpload } from '@/app/components/base/image-uploader/utils'
-import { Plan } from '@/app/components/billing/type'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -29,7 +28,7 @@ const useWebAppBrand = () => {
   const updateCustomConfigMutation = useMutation(
     consoleQuery.workspaces.customConfig.post.mutationOptions(),
   )
-  const isSandbox = enableBilling && plan.type === Plan.sandbox
+  const isSandbox = enableBilling && plan.type === 'sandbox'
   const uploading = uploadProgress > 0 && uploadProgress < 100
   const webappLogo = customConfig?.replace_webapp_logo || ''
   const webappBrandRemoved = customConfig?.remove_webapp_brand ?? undefined

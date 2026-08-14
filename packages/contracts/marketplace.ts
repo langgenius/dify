@@ -53,9 +53,24 @@ export type MarketplaceTemplate = {
   icon: string
   icon_background: string
   icon_file_key: string
-  publisher_unique_handle: string
+  publisher_unique_handle?: string
+  publisher_handle?: string
+  publisher_type?: string
+  creator_email?: string
   usage_count: number
   categories: string[]
+  deps_plugins?: string[]
+  preferred_languages?: string[]
+  badges?: string[]
+}
+
+export type MarketplaceTemplateCollection = {
+  name: string
+  description: Record<string, string>
+  label: Record<string, string>
+  searchable?: boolean
+  search_params?: SearchParamsFromCollection
+  priority: number
 }
 
 export type MarketplacePluginCategory =
@@ -154,7 +169,43 @@ export type TemplateDetailResponse = {
   data: MarketplaceTemplate
 }
 
+export type TemplateCollectionsResponse = {
+  data?: {
+    collections?: MarketplaceTemplateCollection[]
+    total?: number
+  }
+}
+
+export type TemplateCollectionTemplatesResponse = {
+  data?: {
+    templates?: MarketplaceTemplate[]
+    total?: number
+  }
+}
+
+export type TemplateSearchResponse = {
+  data?: {
+    templates?: MarketplaceTemplate[]
+    total?: number
+  }
+}
+
 export type DownloadPluginResponse = Blob
+
+const bannerListContract = base
+  .route({
+    path: '/banners',
+    method: 'GET',
+  })
+  .input(
+    type<{
+      query: {
+        page: 'plugins'
+        language: string
+      }
+    }>(),
+  )
+  .output(type<unknown>())
 
 const collectionsContract = base
   .route({
@@ -212,6 +263,57 @@ const templateDetailContract = base
   )
   .output(type<TemplateDetailResponse>())
 
+const templateCollectionsContract = base
+  .route({
+    path: '/template-collections',
+    method: 'GET',
+  })
+  .input(
+    type<{
+      query?: {
+        page?: number
+        page_size?: number
+      }
+    }>(),
+  )
+  .output(type<TemplateCollectionsResponse>())
+
+const templateCollectionTemplatesContract = base
+  .route({
+    path: '/template-collections/{collectionName}/templates',
+    method: 'POST',
+  })
+  .input(
+    type<{
+      params: {
+        collectionName: string
+      }
+      body?: {
+        limit?: number
+      }
+    }>(),
+  )
+  .output(type<TemplateCollectionTemplatesResponse>())
+
+const templateSearchContract = base
+  .route({
+    path: '/templates/search/advanced',
+    method: 'POST',
+  })
+  .input(
+    type<{
+      body: {
+        page: number
+        page_size: number
+        query: string
+        sort_by: string
+        sort_order: string
+        categories?: string[]
+      }
+    }>(),
+  )
+  .output(type<TemplateSearchResponse>())
+
 const downloadPluginContract = base
   .route({
     path: '/plugins/{organization}/{pluginName}/{version}/download',
@@ -229,10 +331,16 @@ const downloadPluginContract = base
   .output(type<DownloadPluginResponse>())
 
 export const marketplaceRouterContract = {
+  banners: {
+    list: bannerListContract,
+  },
   collections: collectionsContract,
   collectionPlugins: collectionPluginsContract,
   searchAdvanced: searchAdvancedContract,
+  templateCollections: templateCollectionsContract,
+  templateCollectionTemplates: templateCollectionTemplatesContract,
   templateDetail: templateDetailContract,
+  templateSearch: templateSearchContract,
   downloadPlugin: downloadPluginContract,
 }
 
