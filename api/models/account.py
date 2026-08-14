@@ -183,7 +183,7 @@ class Account(UserMixin, TypeBase):
         return self.status
 
     @classmethod
-    def get_by_openid(cls, provider: str, open_id: str, *, session: Session):
+    def get_by_openid(cls, provider: str, open_id: str, *, session: Session) -> "Account | None":
         account_integrate = session.execute(
             select(AccountIntegrate).where(AccountIntegrate.provider == provider, AccountIntegrate.open_id == open_id)
         ).scalar_one_or_none()
