@@ -358,12 +358,12 @@ describe('KnowledgeOverviewPage', () => {
     const user = userEvent.setup()
     const { onUrlUpdate } = renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
-    const sevenDayTab = screen.getByRole('button', {
+    const sevenDayRadio = screen.getByRole('radio', {
       name: 'dataset.newKnowledge.overview.sevenDays',
     })
-    await user.click(sevenDayTab)
+    await user.click(sevenDayRadio)
 
-    expect(sevenDayTab).toHaveAttribute('aria-pressed', 'true')
+    expect(sevenDayRadio).toHaveAttribute('aria-checked', 'true')
     expect(queryOptionsMocks.stats).toHaveBeenLastCalledWith({
       input: {
         params: { control_space_id: 'space-1' },
@@ -391,8 +391,8 @@ describe('KnowledgeOverviewPage', () => {
     })
 
     expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.overview.thirtyDays' }),
-    ).toHaveAttribute('aria-pressed', 'true')
+      screen.getByRole('radio', { name: 'dataset.newKnowledge.overview.thirtyDays' }),
+    ).toHaveAttribute('aria-checked', 'true')
     expect(queryOptionsMocks.stats).toHaveBeenLastCalledWith({
       input: {
         params: { control_space_id: 'space-1' },
@@ -478,7 +478,7 @@ describe('KnowledgeOverviewPage', () => {
     const { rerender } = renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     expect(
-      screen.getByRole('group', { name: 'dataset.newKnowledge.overview.timeRange' }),
+      screen.getByRole('radiogroup', { name: 'dataset.newKnowledge.overview.timeRange' }),
     ).toBeInTheDocument()
     expect(
       screen.queryByRole('heading', { name: 'dataset.newKnowledge.overview.noSources' }),
@@ -492,7 +492,7 @@ describe('KnowledgeOverviewPage', () => {
     rerender(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
     expect(
-      screen.getByRole('group', { name: 'dataset.newKnowledge.overview.timeRange' }),
+      screen.getByRole('radiogroup', { name: 'dataset.newKnowledge.overview.timeRange' }),
     ).toBeInTheDocument()
     expect(
       screen.queryByRole('heading', { name: 'dataset.newKnowledge.overview.noSources' }),
@@ -506,7 +506,7 @@ describe('KnowledgeOverviewPage', () => {
       screen.getByRole('heading', { name: 'dataset.newKnowledge.overview.noSources' }),
     ).toBeInTheDocument()
     expect(
-      screen.queryByRole('group', { name: 'dataset.newKnowledge.overview.timeRange' }),
+      screen.queryByRole('radiogroup', { name: 'dataset.newKnowledge.overview.timeRange' }),
     ).not.toBeInTheDocument()
   })
 

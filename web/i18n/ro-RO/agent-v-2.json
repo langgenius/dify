@@ -38,7 +38,7 @@
   "agentDetail.access.workflow.table.nodes": "Noduri",
   "agentDetail.access.workflow.table.version": "Versiune",
   "agentDetail.access.workflow.title": "Acces prin workflow",
-  "agentDetail.configure.advancedSettings.description": "Pentru utilizatori avansați. Variabile de mediu, sandbox și memorie.",
+  "agentDetail.configure.advancedSettings.description": "Pentru utilizatori avansați, cum ar fi variabilele de mediu.",
   "agentDetail.configure.advancedSettings.envEditor.add": "Adaugă variabilă de mediu",
   "agentDetail.configure.advancedSettings.envEditor.deleteVariable": "Șterge {{key}}",
   "agentDetail.configure.advancedSettings.envEditor.hideValue": "Ascunde valoarea {{key}}",

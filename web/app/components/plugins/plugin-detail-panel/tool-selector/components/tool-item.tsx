@@ -1,6 +1,7 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
@@ -144,17 +145,17 @@ export function ToolItem({
           </span>
         )}
         {onDelete && (
-          <Button
+          <IconButton
             variant="ghost"
-            size="small"
+            size="md"
             aria-label={t(($) => $['operation.delete'], { ns: 'common' })}
-            className="size-6 min-h-0 p-0 text-text-tertiary hover:text-text-destructive"
+            className="text-text-tertiary hover:text-text-destructive"
             onClick={onDelete}
             onMouseEnter={() => setIsDeleting(true)}
             onMouseLeave={() => setIsDeleting(false)}
           >
             <span className="i-ri-delete-bin-line size-4" aria-hidden />
-          </Button>
+          </IconButton>
         )}
       </div>
       {!isError &&

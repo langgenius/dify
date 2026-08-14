@@ -273,11 +273,8 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
 
         {/* Auth Method Tabs */}
         <SegmentedControl<MCPAuthMethod>
-          value={[state.authMethod]}
-          onValueChange={(nextValue) => {
-            const nextAuthMethod = nextValue[0]
-            if (nextAuthMethod) actions.setAuthMethod(nextAuthMethod)
-          }}
+          value={state.authMethod}
+          onValueChange={actions.setAuthMethod}
           aria-label={t(($) => $['mcp.modal.authentication'], { ns: 'tools' })}
           className="w-full"
         >

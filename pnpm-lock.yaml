@@ -1603,6 +1603,12 @@ importers:
       '@vitejs/plugin-rsc':
         specifier: 'catalog:'
         version: 0.5.33(@voidzero-dev/vite-plus-core@0.2.8(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.8)(yaml@2.9.0))(react-dom@19.2.8(react@19.2.8))(react-server-dom-webpack@19.2.8(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8)
+      '@vitest/browser':
+        specifier: 'catalog:'
+        version: 4.1.10(@voidzero-dev/vite-plus-core@0.2.8(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.8)(yaml@2.9.0))(vitest@4.1.10)
+      '@vitest/browser-playwright':
+        specifier: 'catalog:'
+        version: 4.1.10(@voidzero-dev/vite-plus-core@0.2.8(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.8)(yaml@2.9.0))(playwright@1.62.1)(vitest@4.1.10)
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.10(@vitest/browser@4.1.10)(vitest@4.1.10)
@@ -1615,6 +1621,9 @@ importers:
       happy-dom:
         specifier: 'catalog:'
         version: 20.11.1
+      playwright:
+        specifier: 'catalog:'
+        version: 1.62.1
       postcss:
         specifier: 'catalog:'
         version: 8.5.25
@@ -1651,6 +1660,9 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 4.1.10(@types/node@25.9.5)(@vitest/browser-playwright@4.1.10)(@vitest/browser-preview@4.1.10)(@vitest/coverage-v8@4.1.10)(@voidzero-dev/vite-plus-core@0.2.8(@types/node@25.9.5)(@typescript/typescript6@6.0.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.8)(yaml@2.9.0))(happy-dom@20.11.1)
+      vitest-browser-react:
+        specifier: 'catalog:'
+        version: 2.2.0(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(vitest@4.1.10)
       vitest-canvas-mock:
         specifier: 'catalog:'
         version: 1.1.4(vitest@4.1.10)

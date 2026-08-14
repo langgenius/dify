@@ -4,6 +4,7 @@ import type { FC } from 'react'
 import type { DocumentDisplayStatus, FileItem, FullDocumentDetail } from '@/models/datasets'
 import type { SegmentImportStatus } from '@/types/dataset'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -42,7 +43,6 @@ import { DocumentContext } from './context'
 import { DocumentTitle } from './document-title'
 import Embedding from './embedding'
 import { SegmentAdd } from './segment-add'
-import style from './style.module.css'
 
 type DocumentDetailProps = {
   datasetId: string
@@ -262,6 +262,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   } ${t(($) => $['metadata.title'], { ns: 'datasetDocuments' })}`
 
   return (
+    // oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector contexts are not React 19 context components.
     <DocumentContext.Provider value={contextValue}>
       <div className="flex h-full flex-col bg-background-default">
         <div className="flex min-h-16 flex-wrap items-center justify-between border-b border-b-divider-subtle py-2.5 pr-4 pl-3">
@@ -324,12 +325,13 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               canDelete={datasetACLCapabilities.canDeleteFile}
               canViewSettings={canEditDocument}
             />
-            <button
-              type="button"
+            <IconButton
+              variant="secondary"
+              size="lg"
               aria-label={metadataToggleLabel}
-              aria-pressed={showMetadata}
+              aria-expanded={showMetadata}
               title={metadataToggleLabel}
-              className={style.layoutRightIcon}
+              className="ml-2"
               onClick={() => setShowMetadata(!showMetadata)}
             >
               {showMetadata ? (
@@ -343,7 +345,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
                   className="i-ri-layout-right-2-line size-4 text-components-button-secondary-text"
                 />
               )}
-            </button>
+            </IconButton>
           </div>
         </div>
         <div className="flex flex-1 flex-row" style={{ height: 'calc(100% - 4rem)' }}>

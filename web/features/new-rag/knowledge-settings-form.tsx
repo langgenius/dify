@@ -34,7 +34,7 @@ import { useTranslation } from 'react-i18next'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { KnowledgeModelReadinessNotice } from './components/knowledge-model-readiness-notice'
@@ -1107,11 +1107,11 @@ export function KnowledgeSettingsForm({
                 ariaInvalid={!reasoningModel}
                 ariaLabelledBy={REASONING_MODEL_LABEL_ID}
                 ariaRequired
-                defaultModel={reasoningModel}
-                modelList={reasoningModelList}
-                readonly={retrievalFieldsDisabled}
-                triggerClassName="w-full"
-                onSelect={(model) => {
+                value={reasoningModel}
+                models={reasoningModelList}
+                disabled={retrievalFieldsDisabled}
+                className="w-full"
+                onValueChange={(model) => {
                   const draft = beginSettingsDraft({ reasoningModel: model })
                   setReasoningModel(model)
                   void performSettingsSave(draft)
@@ -1142,11 +1142,11 @@ export function KnowledgeSettingsForm({
                 ariaInvalid={!embeddingModel}
                 ariaLabelledBy={EMBEDDING_MODEL_LABEL_ID}
                 ariaRequired
-                defaultModel={embeddingModel}
-                modelList={embeddingModelList}
-                readonly={fieldsDisabled || (!initialModelSetup && retrievalDirty)}
-                triggerClassName="w-full"
-                onSelect={(model) => {
+                value={embeddingModel}
+                models={embeddingModelList}
+                disabled={fieldsDisabled || (!initialModelSetup && retrievalDirty)}
+                className="w-full"
+                onValueChange={(model) => {
                   if ((space.technical_summary?.document_count ?? 0) > 0) {
                     setPendingEmbeddingModel(model)
                     setEmbeddingDialogOpen(true)
@@ -1188,11 +1188,11 @@ export function KnowledgeSettingsForm({
                 ariaInvalid={!rerankModel}
                 ariaLabelledBy={RERANK_MODEL_LABEL_ID}
                 ariaRequired
-                defaultModel={rerankModel}
-                modelList={rerankModelList}
-                readonly={retrievalFieldsDisabled}
-                triggerClassName="w-full"
-                onSelect={(model) => {
+                value={rerankModel}
+                models={rerankModelList}
+                disabled={retrievalFieldsDisabled}
+                className="w-full"
+                onValueChange={(model) => {
                   const draft = beginSettingsDraft({ rerankModel: model })
                   setRerankModel(model)
                   void performSettingsSave(draft)

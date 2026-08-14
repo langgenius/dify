@@ -1,10 +1,10 @@
 import type { Credential } from '../../declarations'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 
 type CredentialItemProps = {
@@ -88,15 +88,19 @@ const CredentialItem = ({
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <ActionButton
+                  <IconButton
+                    aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
                     disabled={disabled}
                     onClick={(e) => {
                       e.stopPropagation()
                       onEdit?.(credential)
                     }}
                   >
-                    <span className="i-ri-equalizer-2-line size-4 text-text-tertiary" />
-                  </ActionButton>
+                    <span
+                      aria-hidden="true"
+                      className="i-ri-equalizer-2-line size-4 text-text-tertiary"
+                    />
+                  </IconButton>
                 }
               />
               <TooltipContent>{t(($) => $['operation.edit'], { ns: 'common' })}</TooltipContent>
@@ -106,7 +110,8 @@ const CredentialItem = ({
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <ActionButton
+                  <IconButton
+                    aria-label={t(($) => $['operation.delete'], { ns: 'common' })}
                     className="hover:bg-transparent"
                     onClick={(e) => {
                       if (disabled || disableDeleteWhenSelected) return
@@ -115,13 +120,14 @@ const CredentialItem = ({
                     }}
                   >
                     <span
+                      aria-hidden="true"
                       className={cn(
                         'i-ri-delete-bin-line size-4 text-text-tertiary',
                         !disableDeleteWhenSelected && 'hover:text-text-destructive',
                         disableDeleteWhenSelected && 'opacity-50',
                       )}
                     />
-                  </ActionButton>
+                  </IconButton>
                 }
               />
               <TooltipContent>

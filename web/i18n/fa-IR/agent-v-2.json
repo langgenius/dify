@@ -38,7 +38,7 @@
   "agentDetail.access.workflow.table.nodes": "گره‌ها",
   "agentDetail.access.workflow.table.version": "نسخه",
   "agentDetail.access.workflow.title": "دسترسی گردش کار",
-  "agentDetail.configure.advancedSettings.description": "برای کاربران حرفه‌ای. متغیرهای محیطی، sandbox و حافظه.",
+  "agentDetail.configure.advancedSettings.description": "برای کاربران حرفه‌ای، مانند متغیرهای محیطی.",
   "agentDetail.configure.advancedSettings.envEditor.add": "افزودن متغیر محیطی",
   "agentDetail.configure.advancedSettings.envEditor.deleteVariable": "حذف {{key}}",
   "agentDetail.configure.advancedSettings.envEditor.hideValue": "پنهان کردن مقدار {{key}}",

@@ -10,6 +10,7 @@ import {
   AlertDialogContent,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useBoolean } from 'ahooks'
@@ -19,7 +20,6 @@ import { useTranslation } from 'react-i18next'
 import { useModalContext } from '@/context/modal-context'
 import { uninstallPlugin } from '@/service/plugins'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
-import ActionButton from '../../base/action-button'
 import { checkForUpdates, fetchReleases } from '../install-plugin/hooks'
 import PluginInfo from '../plugin-page/plugin-info'
 import { PluginSource } from '../types'
@@ -120,12 +120,12 @@ const Action: FC<Props> = ({
         <Tooltip>
           <TooltipTrigger
             render={
-              <ActionButton
+              <IconButton
                 aria-label={t(($) => $[`${i18nPrefix}.checkForUpdates`], { ns: 'plugin' })}
                 onClick={handleFetchNewVersion}
               >
                 <span aria-hidden className="i-ri-loop-left-line size-4 text-text-tertiary" />
-              </ActionButton>
+              </IconButton>
             }
           />
           <TooltipContent>
@@ -137,12 +137,12 @@ const Action: FC<Props> = ({
         <Tooltip>
           <TooltipTrigger
             render={
-              <ActionButton
+              <IconButton
                 aria-label={t(($) => $[`${i18nPrefix}.pluginInfo`], { ns: 'plugin' })}
                 onClick={showPluginInfo}
               >
                 <span aria-hidden className="i-ri-information-2-line size-4 text-text-tertiary" />
-              </ActionButton>
+              </IconButton>
             }
           />
           <TooltipContent>
@@ -154,13 +154,13 @@ const Action: FC<Props> = ({
         <Tooltip>
           <TooltipTrigger
             render={
-              <ActionButton
+              <IconButton
                 aria-label={t(($) => $[`${i18nPrefix}.delete`], { ns: 'plugin' })}
-                className="text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
+                tone="destructive"
                 onClick={showDeleteConfirm}
               >
                 <span aria-hidden className="i-ri-delete-bin-line size-4" />
-              </ActionButton>
+              </IconButton>
             }
           />
           <TooltipContent>{t(($) => $[`${i18nPrefix}.delete`], { ns: 'plugin' })}</TooltipContent>
