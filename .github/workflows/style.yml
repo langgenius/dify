@@ -174,6 +174,8 @@ jobs:
             vite.config.ts
             lint.config.ts
             eslint.config.mjs
+            knip.config.ts
+            scripts/check-web-production-unused-after-knip-fix.mjs
             oxlint-suppressions.json
             eslint-suppressions.json
             .vscode/**
@@ -210,6 +212,7 @@ jobs:
             **Dockerfile
             dev/**
             .editorconfig
+            .vite-hooks/**
 
       - name: Super-linter
         uses: super-linter/super-linter/slim@4ce20838b8ab83717e78138c5b3a1407148e0918 # v8.7.0
@@ -218,7 +221,6 @@ jobs:
           BASH_SEVERITY: warning
           DEFAULT_BRANCH: origin/main
           EDITORCONFIG_FILE_NAME: editorconfig-checker.json
-          FILTER_REGEX_INCLUDE: pnpm-lock.yaml
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IGNORE_GENERATED_FILES: true
           IGNORE_GITIGNORED_FILES: true
