@@ -24,7 +24,7 @@ from agenton.compositor import LayerProviderInput
 from dify_agent.protocol.schemas import CancelRunRequest, CancelRunResponse, CreateRunRequest
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
 from dify_agent.runtime.event_sink import RunEventSink, emit_run_cancelled, emit_run_failed
-from dify_agent.runtime.runner import AgentRunRunner
+from dify_agent.runtime.runner import DEFAULT_AGENT_RUN_TIMEOUT_SECONDS, AgentRunRunner
 from dify_agent.server.schemas import RunRecord
 
 logger = logging.getLogger(__name__)
@@ -75,6 +75,7 @@ class RunScheduler:
 
     store: RunStore
     shutdown_grace_seconds: float
+    run_timeout_seconds: float
     active_tasks: dict[str, asyncio.Task[None]]
     stopping: bool
     runner_factory: RunRunnerFactory | None
@@ -90,11 +91,13 @@ class RunScheduler:
         plugin_daemon_http_client: httpx.AsyncClient,
         dify_api_http_client: httpx.AsyncClient,
         shutdown_grace_seconds: float = 30,
+        run_timeout_seconds: float = DEFAULT_AGENT_RUN_TIMEOUT_SECONDS,
         layer_providers: tuple[LayerProviderInput, ...] | None = None,
         runner_factory: RunRunnerFactory | None = None,
     ) -> None:
         self.store = store
         self.shutdown_grace_seconds = shutdown_grace_seconds
+        self.run_timeout_seconds = run_timeout_seconds
         self.active_tasks = {}
         self.stopping = False
         self.plugin_daemon_http_client = plugin_daemon_http_client
@@ -224,6 +227,7 @@ class RunScheduler:
             dify_api_http_client=self.dify_api_http_client,
             layer_providers=self.layer_providers,
             is_cancelled=is_cancelled,
+            run_timeout_seconds=self.run_timeout_seconds,
         )
 
     def _discard_active_run(self, run_id: str) -> None:
