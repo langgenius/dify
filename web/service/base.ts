@@ -40,6 +40,7 @@ import {
 } from '@/config'
 import { asyncRunSafe } from '@/utils'
 import { isClient } from '@/utils/client'
+import { parsePluginErrorString } from '@/utils/error-parser'
 import { resolveLoginRedirectTarget } from '@/utils/login-redirect'
 import { basePath } from '@/utils/var'
 import { base, ContentType, getBaseOptions } from './fetch'
@@ -654,7 +655,7 @@ export const ssePost = async (
             void reportStreamResponseError(res, onError, onNotifyError)
           } else {
             res.json().then((data) => {
-              toast.error(data.message || 'Server Error')
+              toast.error(parsePluginErrorString(data.message || 'Server Error'))
             })
             onError?.('Server Error')
           }
@@ -820,7 +821,7 @@ export const sseGet = async (
             void reportStreamResponseError(res, onError, onNotifyError)
           } else {
             res.json().then((data) => {
-              toast.error(data.message || 'Server Error')
+              toast.error(parsePluginErrorString(data.message || 'Server Error'))
             })
             onError?.('Server Error')
           }

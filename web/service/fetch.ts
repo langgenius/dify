@@ -14,6 +14,7 @@ import {
   PUBLIC_API_PREFIX,
   WEB_APP_SHARE_CODE_HEADER_NAME,
 } from '@/config'
+import { parsePluginErrorString } from '@/utils/error-parser'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 import { getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
 
@@ -78,7 +79,7 @@ const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook 
       const shouldNotifyError = response.status !== 401 && errorData && !otherOptions.silent
 
       const errorMessage = errorData?.message || errorData?.error
-      if (shouldNotifyError && errorMessage) toast.error(errorMessage)
+      if (shouldNotifyError && errorMessage) toast.error(parsePluginErrorString(errorMessage))
 
       if (response.status === 403 && errorData?.code === 'already_setup')
         globalThis.location.href = `${globalThis.location.origin}/signin`
