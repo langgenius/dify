@@ -23,12 +23,14 @@ vi.mock('@/app/components/base/chat/chat', () => ({
     chatList,
     config,
     onFeedback,
+    showPromptLog,
   }: {
     chatList: IChatItem[]
     config?: { supportFeedback?: boolean }
     onFeedback?: OnFeedback
+    showPromptLog?: boolean
   }) => {
-    mocks.chatProps({ chatList, config, onFeedback })
+    mocks.chatProps({ chatList, config, onFeedback, showPromptLog })
     return (
       <button
         onClick={() => void onFeedback?.('message-1', { rating: 'like' }).catch(() => undefined)}
@@ -196,6 +198,15 @@ describe('AgentLogDetailPanel', () => {
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['agent-logs'] })
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['agent-log-messages'] })
     expect(mocks.toastSuccess).toHaveBeenCalled()
+  })
+
+  it('enables the prompt log action so the conversation detail log can be opened', async () => {
+    renderPanel(webappLog, webappMessages)
+
+    await screen.findByRole('button', { name: 'submit-feedback' })
+    expect(mocks.chatProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({ showPromptLog: true }),
+    )
   })
 
   it('reports operator feedback failures without refreshing log queries', async () => {
