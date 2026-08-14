@@ -22,11 +22,9 @@ vi.mock('@/app/education/user-info', () => ({
 }))
 
 function renderFlow({
-  applicationsPaused,
   allowRefresh = false,
   isEducationAccount = false,
 }: {
-  applicationsPaused: boolean
   allowRefresh?: boolean
   isEducationAccount?: boolean
 }) {
@@ -39,13 +37,7 @@ function renderFlow({
   })
   seedFeatures(queryClient, { education: { enabled: true } })
 
-  return render(
-    <EducationVerifyFlow
-      applicationsPaused={applicationsPaused}
-      requestVerification={mockRequestVerification}
-    />,
-    { wrapper },
-  )
+  return render(<EducationVerifyFlow requestVerification={mockRequestVerification} />, { wrapper })
 }
 
 describe('EducationVerifyFlow', () => {
@@ -54,17 +46,8 @@ describe('EducationVerifyFlow', () => {
     mockRequestVerification.mockResolvedValue({ token: 'education-token' })
   })
 
-  it('renders the pause state without requesting a verification token', () => {
-    renderFlow({ applicationsPaused: true })
-
-    expect(
-      screen.getByRole('heading', { name: 'education.educationDiscountPaused.title' }),
-    ).toBeInTheDocument()
-    expect(mockRequestVerification).not.toHaveBeenCalled()
-  })
-
-  it('shows an already verified account before the pause gate', () => {
-    renderFlow({ applicationsPaused: true, isEducationAccount: true })
+  it('shows an already verified account', () => {
+    renderFlow({ isEducationAccount: true })
 
     expect(
       screen.getByRole('heading', { name: 'education.applied.step1.description' }),
@@ -85,10 +68,7 @@ describe('EducationVerifyFlow', () => {
 
     render(
       <StrictMode>
-        <EducationVerifyFlow
-          applicationsPaused={false}
-          requestVerification={mockRequestVerification}
-        />
+        <EducationVerifyFlow requestVerification={mockRequestVerification} />
       </StrictMode>,
       { wrapper },
     )
@@ -102,7 +82,7 @@ describe('EducationVerifyFlow', () => {
   it('renders the rejection state when verification returns no token', async () => {
     mockRequestVerification.mockResolvedValue({ token: null })
 
-    renderFlow({ applicationsPaused: false })
+    renderFlow({})
 
     expect(
       await screen.findByRole('heading', { name: 'education.rejectTitle' }),

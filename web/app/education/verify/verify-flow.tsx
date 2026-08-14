@@ -13,7 +13,6 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import Link from '@/next/link'
 import { redirect, useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
-import { EDUCATION_APPLICATIONS_PAUSED } from '../constants'
 import { EducationPausedContent } from '../paused-content'
 import { EducationStatusCard } from '../status-card'
 import UserInfo from '../user-info'
@@ -56,14 +55,12 @@ async function requestEducationVerificationToken(
 }
 
 export default function EducationVerifyPage() {
-  return <EducationVerifyFlow applicationsPaused={EDUCATION_APPLICATIONS_PAUSED} />
+  return <EducationVerifyFlow />
 }
 
 export function EducationVerifyFlow({
-  applicationsPaused,
   requestVerification = requestEducationVerification,
 }: {
-  applicationsPaused: boolean
   requestVerification?: EducationVerificationRequest
 }) {
   const { t } = useTranslation()
@@ -114,8 +111,8 @@ export function EducationVerifyFlow({
     (!educationStatus.isEducationAccount || educationStatus.allowRefresh)
 
   useEffect(() => {
-    if (!applicationsPaused && canVerify) startVerification()
-  }, [applicationsPaused, canVerify, startVerification])
+    if (canVerify) startVerification()
+  }, [canVerify, startVerification])
 
   if (featuresQuery.isPending) return <EducationVerifyLoading />
 
@@ -134,7 +131,7 @@ export function EducationVerifyFlow({
 
   if (isAlreadyVerified) return <EducationVerifiedContent />
 
-  if (applicationsPaused || verificationError instanceof EducationVerificationPausedError)
+  if (verificationError instanceof EducationVerificationPausedError)
     return <EducationPausedContent />
 
   if (verificationError instanceof EducationVerificationRejectedError) {
