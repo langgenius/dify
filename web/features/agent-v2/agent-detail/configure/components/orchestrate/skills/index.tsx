@@ -36,7 +36,11 @@ import {
   removeAgentSkillAtom,
   upsertAgentSkillAtom,
 } from '@/features/agent-v2/agent-composer/store-modules/skills'
-import { getSkillErrorCode } from '@/features/skills/error'
+import {
+  getSkillErrorCode,
+  getSkillErrorDetailString,
+  normalizeSkillError,
+} from '@/features/skills/error'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
@@ -453,6 +457,7 @@ function WorkspaceAgentSkillItem({
 
 export function AgentSkills() {
   const { t } = useTranslation('agentV2')
+  const { t: tSkill } = useTranslation('skill')
   const { t: tCommon } = useTranslation('common')
   const skillsTip = t(($) => $['agentDetail.configure.skills.tip'])
   const skillsListId = 'agent-configure-skills-list'
@@ -516,12 +521,24 @@ export function AgentSkills() {
           },
         },
         {
-          onError: (error) => {
-            toast.error(
-              getSkillErrorCode(error) === 'too_many_agent_skills'
-                ? t(($) => $['agentDetail.configure.skills.workspaceSelector.limitReached'])
-                : t(($) => $['agentDetail.configure.skills.workspaceSelector.saveFailed']),
-            )
+          onError: async (error) => {
+            const normalizedError = await normalizeSkillError(error)
+            const errorCode = getSkillErrorCode(normalizedError)
+            if (errorCode === 'too_many_agent_skills') {
+              toast.error(
+                t(($) => $['agentDetail.configure.skills.workspaceSelector.limitReached']),
+              )
+              return
+            }
+            if (errorCode === 'skill_name_conflict') {
+              toast.error(
+                tSkill(($) => $['skillManagement.errors.nameConflict'], {
+                  name: getSkillErrorDetailString(normalizedError, 'name') ?? '',
+                }),
+              )
+              return
+            }
+            toast.error(t(($) => $['agentDetail.configure.skills.workspaceSelector.saveFailed']))
           },
           onSuccess: () => {
             invalidateAgentSkillBindings()

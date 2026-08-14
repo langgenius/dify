@@ -7,7 +7,14 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
-import { invalidateSkillDetail, runSkillFileMutation, setSkillDetailCache } from './shared'
+import {
+  getAsyncSkillErrorPayload,
+  getErrorCode,
+  getErrorDetailString,
+  invalidateSkillDetail,
+  runSkillFileMutation,
+  setSkillDetailCache,
+} from './shared'
 
 export function SkillDisplayNameEditor({
   detail,
@@ -95,9 +102,18 @@ export function SkillDisplayNameEditor({
       setDraftName(nextDisplayName)
       onEditingChange(false)
       toast.success(t(($) => $['skillManagement.detail.renameSkillSuccess']))
-    } catch {
+    } catch (error) {
       setDraftName(displayName)
-      toast.error(t(($) => $['skillManagement.detail.saveFailed']))
+      const errorPayload = await getAsyncSkillErrorPayload(error)
+      if (getErrorCode(errorPayload ?? error) === 'skill_name_conflict') {
+        toast.error(
+          t(($) => $['skillManagement.errors.nameConflict'], {
+            name: getErrorDetailString(errorPayload ?? error, 'name') ?? '',
+          }),
+        )
+      } else {
+        toast.error(t(($) => $['skillManagement.detail.saveFailed']))
+      }
     } finally {
       submittingRef.current = false
     }
