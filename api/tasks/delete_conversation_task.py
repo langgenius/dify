@@ -3,7 +3,7 @@ import time
 
 import click
 from celery import shared_task
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, select
 
 from configs import dify_config
 from core.db.session_factory import session_factory
@@ -50,7 +50,8 @@ def _cleanup_conversation_related_data(conversation_id: str) -> bool:
 
     The storage object is deleted before its ``ToolFile`` row so a failed attempt
     retains the durable ``file_key`` needed by the next retry. ToolFiles promoted
-    to Agent Drive are detached from the conversation and survive this lifecycle.
+    to Agent Drive are detached from the conversation, and their Drive references
+    take over lifecycle ownership.
     """
 
     with session_factory.create_session() as session:
@@ -58,18 +59,6 @@ def _cleanup_conversation_related_data(conversation_id: str) -> bool:
         if conversation is not None and not conversation.is_deleted:
             logger.warning("Skipped cleanup for active conversation %s", conversation_id)
             return False
-
-        drive_tool_file_ids = select(AgentDriveFile.file_id).where(
-            AgentDriveFile.file_kind == AgentDriveFileKind.TOOL_FILE
-        )
-        session.execute(
-            update(ToolFile)
-            .where(
-                ToolFile.conversation_id == conversation_id,
-                ToolFile.id.in_(drive_tool_file_ids),
-            )
-            .values(conversation_id=None)
-        )
 
         tool_files = list(
             session.scalars(
@@ -79,7 +68,25 @@ def _cleanup_conversation_related_data(conversation_id: str) -> bool:
                 .with_for_update()
             )
         )
+        tool_file_ids = [tool_file.id for tool_file in tool_files]
+        drive_files = list(
+            session.scalars(
+                select(AgentDriveFile)
+                .where(
+                    AgentDriveFile.file_kind == AgentDriveFileKind.TOOL_FILE,
+                    AgentDriveFile.file_id.in_(tool_file_ids),
+                )
+                .order_by(AgentDriveFile.id)
+                .with_for_update()
+            )
+        )
+        drive_tool_file_ids = {drive_file.file_id for drive_file in drive_files}
+        for drive_file in drive_files:
+            drive_file.value_owned_by_drive = True
         for tool_file in tool_files:
+            if tool_file.id in drive_tool_file_ids:
+                tool_file.conversation_id = None
+                continue
             _delete_storage_object(tool_file.file_key)
             session.delete(tool_file)
 
