@@ -6,90 +6,76 @@ from core.extension.api_based_extension_requestor import APIBasedExtensionReques
 from models.api_based_extension import APIBasedExtensionPoint
 
 
-def test_request_success(mocker: MockerFixture):
-    # Mock httpx.Client and its context manager
-    mock_client = mocker.MagicMock()
-    mock_client_instance = mock_client.__enter__.return_value
-    mocker.patch("httpx.Client", return_value=mock_client)
+class _Resp:
+    def __init__(self, status_code: int, *, json_value=None, text: str = ""):
+        self.status_code = status_code
+        self.text = text
+        self._json_value = json_value
 
-    mock_response = mocker.MagicMock()
-    mock_response.status_code = 200
-    mock_response.json.return_value = {"result": "success"}
-    mock_client_instance.request.return_value = mock_response
+    def json(self):
+        return self._json_value
+
+
+def test_request_success(mocker: MockerFixture):
+    mock_response = _Resp(200, json_value={"result": "success"})
+    mock_make_request = mocker.patch(
+        "core.extension.api_based_extension_requestor.make_request", return_value=mock_response
+    )
 
     requestor = APIBasedExtensionRequestor(api_endpoint="http://example.com", api_key="test_key")
     result = requestor.request(APIBasedExtensionPoint.PING, {"foo": "bar"})
 
     assert result == {"result": "success"}
-    mock_client_instance.request.assert_called_once_with(
+    mock_make_request.assert_called_once_with(
         method="POST",
         url="http://example.com",
         json={"point": APIBasedExtensionPoint.PING.value, "params": {"foo": "bar"}},
         headers={"Content-Type": "application/json", "Authorization": "Bearer test_key"},
+        timeout=requestor.timeout,
     )
 
 
-def test_request_with_ssrf_proxy(mocker: MockerFixture):
-    # Mock dify_config
-    mocker.patch("configs.dify_config.SSRF_PROXY_HTTP_URL", "http://proxy:8080")
-    mocker.patch("configs.dify_config.SSRF_PROXY_HTTPS_URL", "https://proxy:8081")
-
-    # Mock httpx.Client
-    mock_client = mocker.MagicMock()
-    mock_client_class = mocker.patch("httpx.Client", return_value=mock_client)
-    mock_client_instance = mock_client.__enter__.return_value
-
-    # Mock response
-    mock_response = mocker.MagicMock()
-    mock_response.status_code = 200
-    mock_response.json.return_value = {"result": "success"}
-    mock_client_instance.request.return_value = mock_response
-
-    # Mock HTTPTransport
-    mock_transport = mocker.patch("httpx.HTTPTransport")
+def test_request_does_not_construct_httpx_client(mocker: MockerFixture):
+    """Refactor: the requestor must go through ssrf_proxy.make_request, not
+    construct an httpx.Client directly (the latter bypassed SSRF protection on
+    deployments without the proxy mount)."""
+    mock_make_request = mocker.patch(
+        "core.extension.api_based_extension_requestor.make_request",
+        return_value=_Resp(200, json_value={"result": "success"}),
+    )
+    mock_client_class = mocker.patch("httpx.Client")
 
     requestor = APIBasedExtensionRequestor(api_endpoint="http://example.com", api_key="test_key")
     requestor.request(APIBasedExtensionPoint.PING, {})
 
-    # Verify httpx.Client was called with mounts
-    mock_client_class.assert_called_once()
-    kwargs = mock_client_class.call_args.kwargs
-    assert "mounts" in kwargs
-    assert "http://" in kwargs["mounts"]
-    assert "https://" in kwargs["mounts"]
-    assert mock_transport.call_count == 2
+    mock_make_request.assert_called_once()
+    mock_client_class.assert_not_called()
 
 
-def test_request_with_only_one_proxy_config(mocker: MockerFixture):
-    # Mock dify_config with only one proxy
-    mocker.patch("configs.dify_config.SSRF_PROXY_HTTP_URL", "http://proxy:8080")
-    mocker.patch("configs.dify_config.SSRF_PROXY_HTTPS_URL", None)
-
-    # Mock httpx.Client
-    mock_client = mocker.MagicMock()
-    mock_client_class = mocker.patch("httpx.Client", return_value=mock_client)
-    mock_client_instance = mock_client.__enter__.return_value
-
-    # Mock response
-    mock_response = mocker.MagicMock()
-    mock_response.status_code = 200
-    mock_response.json.return_value = {"result": "success"}
-    mock_client_instance.request.return_value = mock_response
+def test_request_does_not_read_ssrf_proxy_config(mocker: MockerFixture):
+    """Refactor: the conditional SSRF_PROXY_*_URL mounts are gone because
+    ssrf_proxy.make_request handles that policy internally. The requestor must
+    not touch dify_config.SSRF_PROXY_* at all."""
+    mock_make_request = mocker.patch(
+        "core.extension.api_based_extension_requestor.make_request",
+        return_value=_Resp(200, json_value={"result": "success"}),
+    )
+    mock_http_proxy = mocker.patch.object(
+        __import__("configs", fromlist=["dify_config"]).dify_config, "SSRF_PROXY_HTTP_URL", None
+    )
+    mock_https_proxy = mocker.patch.object(
+        __import__("configs", fromlist=["dify_config"]).dify_config, "SSRF_PROXY_HTTPS_URL", None
+    )
 
     requestor = APIBasedExtensionRequestor(api_endpoint="http://example.com", api_key="test_key")
     requestor.request(APIBasedExtensionPoint.PING, {})
 
-    # Verify httpx.Client was called with mounts=None (default)
-    mock_client_class.assert_called_once()
-    kwargs = mock_client_class.call_args.kwargs
-    assert kwargs.get("mounts") is None
+    mock_make_request.assert_called_once()
 
 
 def test_request_timeout(mocker: MockerFixture):
-    mock_client = mocker.MagicMock()
-    mock_client_instance = mock_client.__enter__.return_value
-    mocker.patch("httpx.Client", return_value=mock_client)
-    mock_client_instance.request.side_effect = httpx.TimeoutException("timeout")
+    mock_make_request = mocker.patch("core.extension.api_based_extension_requestor.make_request")
+    mock_make_request.side_effect = httpx.TimeoutException("timeout")
 
     requestor = APIBasedExtensionRequestor(api_endpoint="http://example.com", api_key="test_key")
     with pytest.raises(ValueError, match="request timeout"):
@@ -97,10 +83,8 @@ def test_request_timeout(mocker: MockerFixture):
 
 
 def test_request_connection_error(mocker: MockerFixture):
-    mock_client = mocker.MagicMock()
-    mock_client_instance = mock_client.__enter__.return_value
-    mocker.patch("httpx.Client", return_value=mock_client)
-    mock_client_instance.request.side_effect = httpx.RequestError("error")
+    mock_make_request = mocker.patch("core.extension.api_based_extension_requestor.make_request")
+    mock_make_request.side_effect = httpx.RequestError("error")
 
     requestor = APIBasedExtensionRequestor(api_endpoint="http://example.com", api_key="test_key")
     with pytest.raises(ValueError, match="request connection error"):
@@ -108,14 +92,10 @@ def test_request_connection_error(mocker: MockerFixture):
 
 
 def test_request_error_status_code(mocker: MockerFixture):
-    mock_client = mocker.MagicMock()
-    mock_client_instance = mock_client.__enter__.return_value
-    mocker.patch("httpx.Client", return_value=mock_client)
-
-    mock_response = mocker.MagicMock()
-    mock_response.status_code = 404
-    mock_response.text = "Not Found"
-    mock_client_instance.request.return_value = mock_response
+    mock_response = _Resp(404, text="Not Found")
+    mocker.patch(
+        "core.extension.api_based_extension_requestor.make_request", return_value=mock_response
+    )
 
     requestor = APIBasedExtensionRequestor(api_endpoint="http://example.com", api_key="test_key")
     with pytest.raises(ValueError, match="request error, status_code: 404, content: Not Found"):
@@ -123,14 +103,10 @@ def test_request_error_status_code(mocker: MockerFixture):
 
 
 def test_request_error_status_code_long_content(mocker: MockerFixture):
-    mock_client = mocker.MagicMock()
-    mock_client_instance = mock_client.__enter__.return_value
-    mocker.patch("httpx.Client", return_value=mock_client)
-
-    mock_response = mocker.MagicMock()
-    mock_response.status_code = 500
-    mock_response.text = "A" * 200  # Testing truncation of content
-    mock_client_instance.request.return_value = mock_response
+    mock_response = _Resp(500, text="A" * 200)
+    mocker.patch(
+        "core.extension.api_based_extension_requestor.make_request", return_value=mock_response
+    )
 
     requestor = APIBasedExtensionRequestor(api_endpoint="http://example.com", api_key="test_key")
     expected_content = "A" * 100

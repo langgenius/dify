@@ -2,7 +2,7 @@ from typing import Any, cast
 
 import httpx
 
-from configs import dify_config
+from core.helper.ssrf_proxy import make_request
 from models.api_based_extension import APIBasedExtensionPoint
 
 
@@ -24,23 +24,14 @@ class APIBasedExtensionRequestor:
         """
         headers = {"Content-Type": "application/json", "Authorization": f"Bearer {self.api_key}"}
 
-        url = self.api_endpoint
-
         try:
-            mounts: dict[str, httpx.BaseTransport] | None = None
-            if dify_config.SSRF_PROXY_HTTP_URL and dify_config.SSRF_PROXY_HTTPS_URL:
-                mounts = {
-                    "http://": httpx.HTTPTransport(proxy=dify_config.SSRF_PROXY_HTTP_URL),
-                    "https://": httpx.HTTPTransport(proxy=dify_config.SSRF_PROXY_HTTPS_URL),
-                }
-
-            with httpx.Client(mounts=mounts, timeout=self.timeout) as client:
-                response = client.request(
-                    method="POST",
-                    url=url,
-                    json={"point": point.value, "params": params},
-                    headers=headers,
-                )
+            response = make_request(
+                method="POST",
+                url=self.api_endpoint,
+                json={"point": point.value, "params": params},
+                headers=headers,
+                timeout=self.timeout,
+            )
         except httpx.TimeoutException:
             raise ValueError("request timeout")
         except httpx.RequestError:
