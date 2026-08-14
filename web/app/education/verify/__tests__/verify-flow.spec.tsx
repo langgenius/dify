@@ -90,4 +90,17 @@ describe('EducationVerifyFlow', () => {
     expect(screen.getByText('student@university.edu')).toBeInTheDocument()
     expect(mockReplace).not.toHaveBeenCalled()
   })
+
+  it('renders the generic error state when verification fails', async () => {
+    mockRequestVerification.mockRejectedValue(new Response(null, { status: 503 }))
+
+    renderFlow({})
+
+    expect(
+      await screen.findByRole('heading', { name: 'common.errorBoundary.title' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'common.errorBoundary.tryAgain' }),
+    ).toBeInTheDocument()
+  })
 })

@@ -13,12 +13,10 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import Link from '@/next/link'
 import { redirect, useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
-import { EducationPausedContent } from '../paused-content'
 import { EducationStatusCard } from '../status-card'
 import UserInfo from '../user-info'
 
 class EducationVerificationRejectedError extends Error {}
-class EducationVerificationPausedError extends Error {}
 
 type EducationVerificationRequest = () => Promise<{ token?: string | null }>
 
@@ -35,23 +33,10 @@ const requestEducationVerification: EducationVerificationRequest = () =>
 async function requestEducationVerificationToken(
   requestVerification: EducationVerificationRequest,
 ) {
-  try {
-    const response = await requestVerification()
-    if (!response.token) throw new EducationVerificationRejectedError()
+  const response = await requestVerification()
+  if (!response.token) throw new EducationVerificationRejectedError()
 
-    return response.token
-  } catch (error) {
-    if (error instanceof Response) {
-      const body = (await error
-        .clone()
-        .json()
-        .catch(() => null)) as { code?: unknown } | null
-      if (body?.code === 'education_discount_temporarily_paused')
-        throw new EducationVerificationPausedError()
-    }
-
-    throw error
-  }
+  return response.token
 }
 
 export default function EducationVerifyPage() {
@@ -130,9 +115,6 @@ export function EducationVerifyFlow({
     )
 
   if (isAlreadyVerified) return <EducationVerifiedContent />
-
-  if (verificationError instanceof EducationVerificationPausedError)
-    return <EducationPausedContent />
 
   if (verificationError instanceof EducationVerificationRejectedError) {
     return (
