@@ -1,5 +1,6 @@
 import json
 from datetime import UTC, datetime
+from typing import TypedDict, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -8,6 +9,14 @@ from models.account import Account
 from models.enums import CreatorUserRole
 from models.model import MessageAgentThought
 from services.agent_service import AgentService
+
+
+class _Iteration(TypedDict):
+    tool_calls: list[dict[str, object]]
+
+
+class _AgentLogs(TypedDict):
+    iterations: list[_Iteration]
 
 
 def _agent_thought(*, tool: str, tool_input: str, observation: str, tool_meta_str: str) -> MessageAgentThought:
@@ -27,7 +36,7 @@ def _agent_thought(*, tool: str, tool_input: str, observation: str, tool_meta_st
     return thought
 
 
-def _get_agent_logs(agent_thought: MessageAgentThought):
+def _get_agent_logs(agent_thought: MessageAgentThought) -> _AgentLogs:
     app_model = MagicMock(id="app-1", tenant_id="tenant-1")
     session = MagicMock()
     conversation = MagicMock(from_end_user_id=None, from_account_id="account-1")
@@ -41,7 +50,7 @@ def _get_agent_logs(agent_thought: MessageAgentThought):
         patch("services.agent_service.AgentConfigManager.convert", return_value=MagicMock(tools=[])),
         patch("services.agent_service.ToolManager.get_tool_icon", return_value="icon"),
     ):
-        return AgentService.get_agent_logs(app_model, "conversation-1", "message-1", session)
+        return cast(_AgentLogs, AgentService.get_agent_logs(app_model, "conversation-1", "message-1", session))
 
 
 @pytest.fixture
@@ -56,7 +65,7 @@ def legacy_repeated() -> MessageAgentThought:
     )
 
 
-def test_repeated_tool_renders_one_log_entry_per_call():
+def test_repeated_tool_renders_one_log_entry_per_call() -> None:
     thought = _agent_thought(
         tool="search;search",
         tool_input=json.dumps({"search": [{"q": "first"}, {"q": "second"}]}),
@@ -79,7 +88,7 @@ def test_repeated_tool_renders_one_log_entry_per_call():
     assert [call["time_cost"] for call in tool_calls] == [1, 2]
 
 
-def test_legacy_repeated_tool_renders_exactly_as_it_did(legacy_repeated: MessageAgentThought):
+def test_legacy_repeated_tool_renders_exactly_as_it_did(legacy_repeated: MessageAgentThought) -> None:
     tool_calls = _get_agent_logs(legacy_repeated)["iterations"][0]["tool_calls"]
 
     assert [call["tool_name"] for call in tool_calls] == ["search", "search"]
@@ -88,7 +97,7 @@ def test_legacy_repeated_tool_renders_exactly_as_it_did(legacy_repeated: Message
     assert [call["time_cost"] for call in tool_calls] == [2, 2]
 
 
-def test_single_call_renders_one_entry():
+def test_single_call_renders_one_entry() -> None:
     thought = _agent_thought(
         tool="search",
         tool_input=json.dumps({"search": {"q": "only"}}),
@@ -104,7 +113,7 @@ def test_single_call_renders_one_entry():
     assert tool_calls[0]["time_cost"] == 1
 
 
-def test_distinct_tools_render_their_own_payloads():
+def test_distinct_tools_render_their_own_payloads() -> None:
     thought = _agent_thought(
         tool="search;calculator",
         tool_input=json.dumps({"search": {"q": "a"}, "calculator": {"expr": "1+1"}}),
