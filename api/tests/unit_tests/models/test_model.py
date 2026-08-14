@@ -86,6 +86,50 @@ def test_image_preview_misspelled_not_replaced():
     assert out == original
 
 
+def test_bare_file_preview_url_replaced():
+    """
+    A file-preview URL that is not wrapped in markdown must still be re-signed.
+    """
+    upload_id = "bare-1"
+    url = f"http://api:5001/files/{upload_id}/file-preview?timestamp=111&nonce=222&sign=333"
+    msg = Message(answer=f"Download:\n{url}")
+
+    out = msg.re_sign_file_url_answer
+    assert f"https://signed.example/{upload_id}" in out
+    assert "http://api:5001" not in out
+
+
+def test_backticked_tool_file_url_replaced(monkeypatch: pytest.MonkeyPatch):
+    """
+    A tool file URL inside backticks must be re-signed, including the internal host.
+    """
+    model_module = importlib.import_module("models.model")
+    monkeypatch.setattr(
+        model_module,
+        "sign_tool_file",
+        lambda tool_file_id, extension: f"https://signed.example/tools/{tool_file_id}{extension}",
+    )
+
+    tool_file_id = "5c465079-d1ee-c17e-f8fd-000000000001"
+    url = f"http://api:5001/files/tools/{tool_file_id}.txt?timestamp=111&nonce=222&sign=333"
+    msg = Message(answer=f"Download:\n`{url}`")
+
+    out = msg.re_sign_file_url_answer
+    assert out == f"Download:\n`https://signed.example/tools/{tool_file_id}.txt`"
+
+
+def test_multiple_bare_urls_replaced_independently():
+    """
+    Two bare URLs in one answer must each be re-signed, not collapsed into one greedy match.
+    """
+    first = "/files/multi-a/file-preview?timestamp=1&nonce=2&sign=3"
+    second = "/files/multi-b/file-preview?timestamp=4&nonce=5&sign=6"
+    msg = Message(answer=f"first {first} then {second}")
+
+    out = msg.re_sign_file_url_answer
+    assert out == "first https://signed.example/multi-a then https://signed.example/multi-b"
+
+
 def _build_local_file_mapping(record_id: str, *, tenant_id: str | None = None) -> dict[str, object]:
     mapping: dict[str, object] = {
         "dify_model_identity": FILE_MODEL_IDENTITY,
