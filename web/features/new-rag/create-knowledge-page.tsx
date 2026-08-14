@@ -38,6 +38,7 @@ import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
@@ -88,6 +89,7 @@ async function uploadCreatedDocuments(knowledgeSpaceId: string, files: File[]) {
 export function CreateKnowledgePage() {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
+  useDocumentTitle(t(($) => $['newKnowledge.createTitle']))
   const router = useRouter()
   const searchParams = useSearchParams()
   const queryClient = useQueryClient()

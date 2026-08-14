@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.errors.error import QuotaExceededError
+from enums import DeploymentEdition
 from models import TenantCreditPool
 from models.enums import ProviderQuotaType
 from services.credit_pool_service import (
@@ -17,6 +18,7 @@ from services.credit_pool_service import (
     CREDIT_POOL_TENANT_LOCK_TIMEOUT_SECONDS,
     FEATURE_KEY_CREDIT_POOL,
     CreditPoolBalance,
+    CreditPoolReservationState,
     CreditPoolService,
 )
 
@@ -45,7 +47,7 @@ def _make_redis_lock() -> MagicMock:
 
 @pytest.fixture(autouse=True)
 def _disable_billing_quota_by_default() -> Generator[None, None, None]:
-    with patch("services.credit_pool_service.dify_config.BILLING_ENABLED", False):
+    with patch("services.credit_pool_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY):
         yield
 
 
@@ -247,7 +249,7 @@ def test_deduct_credits_capped_uses_tenant_redis_lock_before_db_deduction(sqlite
 def test_get_pool_uses_billing_quota_balance_when_enabled() -> None:
     tenant_id = "tenant-1"
     with (
-        patch("services.credit_pool_service.dify_config.BILLING_ENABLED", True),
+        patch("services.credit_pool_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         patch("services.billing_service.BillingService.quota_get_balance") as quota_get_balance,
     ):
         quota_get_balance.return_value = {
@@ -272,10 +274,94 @@ def test_get_pool_uses_billing_quota_balance_when_enabled() -> None:
     )
 
 
+def test_reserve_credits_commits_billing_reservation_once() -> None:
+    with (
+        patch.object(CreditPoolService, "_use_billing_quota", return_value=True),
+        patch("services.billing_service.BillingService.quota_reserve") as quota_reserve,
+        patch("services.billing_service.BillingService.quota_commit") as quota_commit,
+        patch("services.billing_service.BillingService.quota_release") as quota_release,
+    ):
+        quota_reserve.return_value = {"reservation_id": "reservation-1", "available": 7, "reserved": 3}
+
+        reservation = CreditPoolService.reserve_credits(
+            tenant_id="tenant-1",
+            credits_required=3,
+            pool_type=ProviderQuotaType.TRIAL,
+            request_id="request-1",
+            meta={"source": "test"},
+        )
+        reservation.commit()
+        reservation.commit()
+        reservation.release()
+
+    assert reservation.state == CreditPoolReservationState.COMMITTED
+    quota_reserve.assert_called_once_with(
+        tenant_id="tenant-1",
+        feature_key=FEATURE_KEY_CREDIT_POOL,
+        bucket="trial",
+        request_id="request-1",
+        amount=3,
+        meta={"source": "test"},
+    )
+    quota_commit.assert_called_once_with(
+        tenant_id="tenant-1",
+        feature_key=FEATURE_KEY_CREDIT_POOL,
+        bucket="trial",
+        reservation_id="reservation-1",
+        actual_amount=3,
+        meta={"source": "test", "request_id": "request-1"},
+    )
+    quota_release.assert_not_called()
+
+
+def test_reserve_credits_releases_billing_reservation() -> None:
+    with (
+        patch.object(CreditPoolService, "_use_billing_quota", return_value=True),
+        patch("services.billing_service.BillingService.quota_reserve") as quota_reserve,
+        patch("services.billing_service.BillingService.quota_release") as quota_release,
+    ):
+        quota_reserve.return_value = {"reservation_id": "reservation-1", "available": 7, "reserved": 3}
+
+        reservation = CreditPoolService.reserve_credits(
+            tenant_id="tenant-1",
+            credits_required=3,
+            request_id="request-1",
+        )
+        reservation.release()
+        reservation.release()
+
+    assert reservation.state == CreditPoolReservationState.RELEASED
+    quota_release.assert_called_once_with(
+        tenant_id="tenant-1",
+        feature_key=FEATURE_KEY_CREDIT_POOL,
+        bucket="trial",
+        reservation_id="reservation-1",
+    )
+
+
+def test_reserve_credits_database_fallback_restores_released_amount(sqlite_session: Session) -> None:
+    pool = _create_pool(sqlite_session, quota_limit=10, quota_used=2)
+    redis_lock = _make_redis_lock()
+
+    with patch("services.credit_pool_service.redis_client.lock", return_value=redis_lock):
+        reservation = CreditPoolService.reserve_credits(
+            tenant_id=pool.tenant_id,
+            credits_required=3,
+            request_id="request-1",
+            session_factory=lambda: sqlite_session,
+        )
+        assert _get_quota_used(session=sqlite_session, pool_id=pool.id) == 5
+
+        reservation.release()
+
+    assert reservation.state == CreditPoolReservationState.RELEASED
+    assert _get_quota_used(session=sqlite_session, pool_id=pool.id) == 2
+
+
 def test_check_and_deduct_credits_uses_billing_reserve_and_commit_when_enabled() -> None:
     tenant_id = "tenant-1"
     with (
-        patch("services.credit_pool_service.dify_config.BILLING_ENABLED", True),
+        patch("services.credit_pool_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         patch("services.billing_service.BillingService.quota_reserve") as quota_reserve,
         patch("services.billing_service.BillingService.quota_commit") as quota_commit,
         patch("services.billing_service.BillingService.quota_release") as quota_release,
@@ -308,9 +394,48 @@ def test_check_and_deduct_credits_uses_billing_reserve_and_commit_when_enabled()
     quota_release.assert_not_called()
 
 
+def test_check_and_deduct_credits_forwards_deterministic_billing_identity() -> None:
+    with (
+        patch("services.credit_pool_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
+        patch("services.billing_service.BillingService.quota_reserve") as quota_reserve,
+        patch("services.billing_service.BillingService.quota_commit") as quota_commit,
+    ):
+        quota_reserve.return_value = {"reservation_id": "reservation-1", "available": 7, "reserved": 3}
+
+        result = CreditPoolService.check_and_deduct_credits(
+            tenant_id="tenant-1",
+            credits_required=3,
+            pool_type="trial",
+            request_id="invocation-1",
+            metadata={"agent_run_id": "run-1"},
+        )
+
+    assert result == 3
+    expected_metadata = {
+        "source": "credit_pool.check_and_deduct",
+        "agent_run_id": "run-1",
+    }
+    quota_reserve.assert_called_once_with(
+        tenant_id="tenant-1",
+        feature_key=FEATURE_KEY_CREDIT_POOL,
+        bucket="trial",
+        request_id="invocation-1",
+        amount=3,
+        meta=expected_metadata,
+    )
+    quota_commit.assert_called_once_with(
+        tenant_id="tenant-1",
+        feature_key=FEATURE_KEY_CREDIT_POOL,
+        bucket="trial",
+        reservation_id="reservation-1",
+        actual_amount=3,
+        meta=expected_metadata,
+    )
+
+
 def test_check_and_deduct_credits_raises_when_billing_reserve_is_insufficient() -> None:
     with (
-        patch("services.credit_pool_service.dify_config.BILLING_ENABLED", True),
+        patch("services.credit_pool_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         patch("services.billing_service.BillingService.quota_reserve") as quota_reserve,
     ):
         quota_reserve.return_value = {"reservation_id": "", "available": 1, "reserved": 0}
@@ -321,7 +446,7 @@ def test_check_and_deduct_credits_raises_when_billing_reserve_is_insufficient() 
 
 def test_check_and_deduct_credits_releases_billing_reservation_when_commit_fails() -> None:
     with (
-        patch("services.credit_pool_service.dify_config.BILLING_ENABLED", True),
+        patch("services.credit_pool_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         patch("services.billing_service.BillingService.quota_reserve") as quota_reserve,
         patch("services.billing_service.BillingService.quota_commit", side_effect=RuntimeError("commit failed")),
         patch("services.billing_service.BillingService.quota_release") as quota_release,
@@ -343,7 +468,7 @@ def test_check_and_deduct_credits_logs_when_billing_release_fails(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     with (
-        patch("services.credit_pool_service.dify_config.BILLING_ENABLED", True),
+        patch("services.credit_pool_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         patch("services.billing_service.BillingService.quota_reserve") as quota_reserve,
         patch("services.billing_service.BillingService.quota_commit", side_effect=RuntimeError("commit failed")),
         patch(
@@ -369,7 +494,7 @@ def test_check_and_deduct_credits_logs_when_billing_release_fails(
 def test_deduct_credits_capped_uses_billing_consume_capped_when_enabled() -> None:
     tenant_id = "tenant-1"
     with (
-        patch("services.credit_pool_service.dify_config.BILLING_ENABLED", True),
+        patch("services.credit_pool_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         patch("services.billing_service.BillingService.quota_consume_capped") as quota_consume_capped,
     ):
         quota_consume_capped.return_value = {

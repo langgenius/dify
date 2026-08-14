@@ -1,4 +1,4 @@
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 import type { ExternalAPIItem } from '@/models/datasets'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -14,6 +14,10 @@ vi.mock('@/next/navigation', () => ({
     push: vi.fn(),
     refresh: vi.fn(),
   }),
+}))
+
+vi.mock('@/hooks/use-document-title', () => ({
+  default: vi.fn(),
 }))
 
 // Mock useDocLink hook

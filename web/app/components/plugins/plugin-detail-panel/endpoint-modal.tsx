@@ -12,11 +12,11 @@ import {
   DrawerPortal,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowRightUpLine, RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { ReadmeEntrance } from '../readme-panel/entrance'
@@ -104,9 +104,12 @@ const EndpointModal: FC<Props> = ({
                   <div className="system-xl-semibold text-text-primary">
                     {t(($) => $['detailPanel.endpointModalTitle'], { ns: 'plugin' })}
                   </div>
-                  <ActionButton onClick={onCancel}>
-                    <RiCloseLine className="size-4" />
-                  </ActionButton>
+                  <IconButton
+                    aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                    onClick={onCancel}
+                  >
+                    <RiCloseLine aria-hidden="true" className="size-4" />
+                  </IconButton>
                 </div>
                 <div className="mt-0.5 system-xs-regular text-text-tertiary">
                   {t(($) => $['detailPanel.endpointModalDesc'], { ns: 'plugin' })}

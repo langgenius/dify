@@ -3,9 +3,9 @@ import type { PluginPayload } from '../types'
 import type { FormSchema } from '@/app/components/base/form/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
@@ -18,7 +18,7 @@ import OAuthClientSettings from './oauth-client-settings'
 
 export type AddOAuthButtonProps = {
   pluginPayload: PluginPayload
-  buttonVariant?: ButtonProps['variant']
+  buttonVariant?: NonNullable<ButtonProps['variant']>
   buttonText?: string
   className?: string
   buttonLeftClassName?: string
@@ -100,7 +100,7 @@ const AddOAuthButton = ({
               {redirect_uri && (
                 <div className="flex w-full py-0.5 system-sm-medium">
                   <div className="w-0 grow wrap-break-word break-all">{redirect_uri}</div>
-                  <ActionButton
+                  <IconButton
                     aria-label={t(($) => $['operation.copy'], { ns: 'common' })}
                     className="shrink-0"
                     onClick={() => {
@@ -108,7 +108,7 @@ const AddOAuthButton = ({
                     }}
                   >
                     <span aria-hidden className="i-ri-clipboard-line size-4" />
-                  </ActionButton>
+                  </IconButton>
                 </div>
               )}
             </div>
@@ -218,11 +218,12 @@ const AddOAuthButton = ({
               dividerClassName,
             )}
           ></div>
-          <Button
+          <IconButton
             variant={buttonVariant}
             aria-label={t(($) => $['auth.oauthClientSettings'], { ns: 'plugin' })}
+            size="lg"
             className={cn(
-              'size-8 shrink-0 rounded-l-none p-0 hover:bg-components-button-primary-bg-hover',
+              'shrink-0 rounded-l-none hover:bg-components-button-primary-bg-hover',
               buttonRightClassName,
             )}
             disabled={disabled}
@@ -231,7 +232,7 @@ const AddOAuthButton = ({
             }}
           >
             <span className="i-ri-equalizer-2-line size-4" aria-hidden="true" />
-          </Button>
+          </IconButton>
         </div>
       )}
       {!renderTrigger && !isConfigured && (

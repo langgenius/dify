@@ -15,8 +15,10 @@ permissions:
   statuses: write
 
 concurrency:
-  group: main-ci-${{ github.event.pull_request.number || github.event.merge_group.head_sha || github.run_id }}
-  cancel-in-progress: true
+  # Pull request deduplication is owned by skip-duplicate-actions so pre_job can
+  # publish should_skip before required status finalizers run.
+  group: main-ci-${{ github.event.merge_group.head_sha || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'merge_group' }}
 
 jobs:
   pre_job:
@@ -394,10 +396,10 @@ jobs:
   style-check:
     name: Style Check
     needs: pre_job
-    if: needs.pre_job.outputs.should_skip != 'true'
     uses: ./.github/workflows/style.yml
     with:
       base-rev: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+      skip-checks: ${{ needs.pre_job.outputs.should_skip == 'true' }}
 
   vdb-tests-run:
     name: Run VDB Tests

@@ -1,4 +1,4 @@
-import type { Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { ModelSelectorProvider } from '@/app/components/header/account-setting/model-provider-page/model-selector/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type {
   EnvironmentVariable,
@@ -166,7 +166,7 @@ const useEnvPanelActions = ({
   updateEnvList: (envList: EnvironmentVariable[]) => void
   setEnvSecrets: (envSecrets: Record<string, string>) => void
   setControlPromptEditorRerenderKey: (controlPromptEditorRerenderKey: number) => void
-  activeTextGenerationModelList: Model[]
+  activeTextGenerationModelList: ModelSelectorProvider[]
 }) => {
   const emitVarsAndFeaturesUpdate = useCallback(
     async (syncWorkflowDraft = false) => {

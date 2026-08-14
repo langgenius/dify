@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
-from enums.quota_type import QuotaType
+from enums import QuotaType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import AppTriggerStatus, AppTriggerType
 from models.model import App
