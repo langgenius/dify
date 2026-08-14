@@ -11,7 +11,7 @@ describe('SVGBtn', () => {
     await user.click(screen.getByRole('button', { name: 'SVG', pressed: false }))
 
     expect(setIsSVG).toHaveBeenCalledOnce()
-    expect(setIsSVG.mock.calls[0]![0](false)).toBe(true)
+    expect(setIsSVG.mock.calls[0]![0]).toBe(true)
 
     rerender(<SVGBtn isSVG setIsSVG={setIsSVG} />)
 

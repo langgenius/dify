@@ -579,7 +579,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       const user = userEvent.setup()
       renderWorkspace()
 
-      const previewButton = await screen.findByRole('button', {
+      const previewButton = await screen.findByRole('radio', {
         name: 'agentV2.agentDetail.configure.rightPanel.preview',
       })
       expect(previewButton).toBeEnabled()
@@ -598,7 +598,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       expect(mocks.saveBuildDraft).not.toHaveBeenCalled()
 
       await user.click(
-        screen.getByRole('button', {
+        screen.getByRole('radio', {
           name: 'agentV2.agentDetail.configure.rightPanel.build',
         }),
       )
@@ -618,7 +618,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       })
 
       await user.click(
-        await screen.findByRole('button', {
+        await screen.findByRole('radio', {
           name: 'agentV2.agentDetail.configure.rightPanel.preview',
         }),
       )
@@ -650,7 +650,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent('preview:none')
 
       await user.click(
-        screen.getByRole('button', {
+        screen.getByRole('radio', {
           name: 'agentV2.agentDetail.configure.rightPanel.build',
         }),
       )
@@ -670,7 +670,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       )
 
       await user.click(
-        screen.getByRole('button', {
+        screen.getByRole('radio', {
           name: 'agentV2.agentDetail.configure.rightPanel.preview',
         }),
       )
@@ -721,7 +721,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       await waitFor(() => expect(mocks.saveBuildDraft).toHaveBeenCalledTimes(1))
 
       await user.click(
-        screen.getByRole('button', {
+        screen.getByRole('radio', {
           name: 'agentV2.agentDetail.configure.rightPanel.preview',
         }),
       )
@@ -763,7 +763,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       if (!completeBuildConversation) throw new Error('Expected a Build completion callback.')
 
       await user.click(
-        screen.getByRole('button', {
+        screen.getByRole('radio', {
           name: 'agentV2.agentDetail.configure.rightPanel.preview',
         }),
       )
@@ -775,7 +775,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       await screen.findByRole('region', { name: 'preview-chat' })
 
       await user.click(
-        screen.getByRole('button', {
+        screen.getByRole('radio', {
           name: 'agentV2.agentDetail.configure.rightPanel.build',
         }),
       )
@@ -809,7 +809,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       renderWorkspace()
 
       await user.click(
-        await screen.findByRole('button', {
+        await screen.findByRole('radio', {
           name: 'agentV2.agentDetail.configure.rightPanel.preview',
         }),
       )
@@ -832,7 +832,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       renderWorkspace({ deploymentEdition: 'COMMUNITY' })
 
       expect(
-        await screen.findByRole('button', {
+        await screen.findByRole('radio', {
           name: 'agentV2.agentDetail.configure.rightPanel.preview',
         }),
       ).toBeDisabled()

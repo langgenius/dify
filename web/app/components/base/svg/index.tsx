@@ -1,6 +1,7 @@
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Toggle } from '@langgenius/dify-ui/toggle'
 import * as React from 'react'
-import ActionButton from '../action-button'
 import s from './style.module.css'
 
 type ISVGBtnProps = {
@@ -10,15 +11,18 @@ type ISVGBtnProps = {
 
 const SVGBtn = ({ isSVG, setIsSVG }: ISVGBtnProps) => {
   return (
-    <ActionButton
-      aria-label="SVG"
-      aria-pressed={isSVG}
-      onClick={() => {
-        setIsSVG((prevIsSVG) => !prevIsSVG)
-      }}
-    >
-      <span aria-hidden="true" className={cn('block size-4', isSVG ? s.svgIconed : s.svgIcon)} />
-    </ActionButton>
+    <Toggle
+      pressed={isSVG}
+      onPressedChange={setIsSVG}
+      render={
+        <IconButton aria-label="SVG">
+          <span
+            aria-hidden="true"
+            className={cn('block size-4', isSVG ? s.svgIconed : s.svgIcon)}
+          />
+        </IconButton>
+      }
+    />
   )
 }
 

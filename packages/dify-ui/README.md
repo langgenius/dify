@@ -110,9 +110,9 @@ Every icon button must have an `aria-label` or `aria-labelledby`; a tooltip is o
 
 ## Segmented control contract
 
-`SegmentedControl` is Dify's design-system primitive for mode, filter, and view selection. It is built on Base UI `ToggleGroup` + `Toggle`, so use `Tabs` instead when the UI needs `tablist` / `tabpanel` semantics.
+`SegmentedControl` is Dify's required single-choice primitive for mode, filter, and view selection. It is built on Base UI `RadioGroup` + `Radio`, so `value`, `defaultValue`, and `onValueChange` use the caller's scalar domain value. Provide either `value` or `defaultValue`; an active item cannot be toggled off. Use `Tabs` instead when the UI needs `tablist` / `tabpanel` semantics.
 
-Its value contract follows Base UI: `value`, `defaultValue`, and `onValueChange` use arrays, and single-selection mode may report an empty array when the active item is toggled off.
+Keyboard interaction follows the radio-group model: `Tab` enters on the selected item, and an arrow key moves focus and immediately selects the next enabled item.
 
 ## Form contract
 
