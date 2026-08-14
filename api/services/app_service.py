@@ -624,17 +624,21 @@ class AppService:
             from services.agent.roster_service import AgentRosterService
 
             icon_type = AgentIconType(params.icon_type) if params.icon_type else None
-            AgentRosterService(session).create_backing_agent_for_app(
-                tenant_id=tenant_id,
-                account_id=account.id,
-                app_id=app.id,
-                name=params.name,
-                description=params.description or "",
-                role=params.agent_role,
-                icon_type=icon_type,
-                icon=params.icon,
-                icon_background=params.icon_background,
-            )
+            try:
+                AgentRosterService(session).create_backing_agent_for_app(
+                    tenant_id=tenant_id,
+                    account_id=account.id,
+                    app_id=app.id,
+                    name=params.name,
+                    description=params.description or "",
+                    role=params.agent_role,
+                    icon_type=icon_type,
+                    icon=params.icon,
+                    icon_background=params.icon_background,
+                )
+            except IntegrityError as exc:
+                session.rollback()
+                raise AgentNameConflictError() from exc
 
         session.flush()
 
