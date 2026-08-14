@@ -162,10 +162,15 @@ class TestPluginDiscovery:
         from requests import HTTPError
 
         # 404 from the category route, then a generic listing with three plugins
-        # — two Tool, one Model — across two pages.
-        p_tool_1 = mock_plugin_entity
-        p_tool_2 = mock_plugin_entity
-        p_model = mock_plugin_entity
+        # — two Tool, one Model — across two pages. The fixture has its
+        # category overridden to Extension by the validator (no `tool` field
+        # is set on the fixture), so we explicitly assign Tool / Model on the
+        # copied declarations to make the filter test deterministic.
+        p_tool_1 = mock_plugin_entity.model_copy(deep=True)
+        p_tool_2 = mock_plugin_entity.model_copy(deep=True)
+        p_model = mock_plugin_entity.model_copy(deep=True)
+        p_tool_1.declaration.category = PluginCategory.Tool
+        p_tool_2.declaration.category = PluginCategory.Tool
         p_model.declaration.category = PluginCategory.Model
 
         with patch.object(
