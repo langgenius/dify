@@ -530,7 +530,6 @@ class DifyNodeFactory(NodeFactory):
             return {
                 "binding_resolver": WorkflowAgentBindingResolver(),
                 "runtime_request_builder": WorkflowAgentRuntimeRequestBuilder(
-                    credentials_provider=self._llm_credentials_provider,
                     request_builder=AgentBackendRunRequestBuilder(),
                 ),
                 "agent_backend_client": create_agent_backend_run_client(

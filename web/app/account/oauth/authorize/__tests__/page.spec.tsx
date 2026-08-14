@@ -179,7 +179,6 @@ describe('OAuthAuthorize', () => {
       redirect_uri: 'https://api.marketplace.example.com/api/v1/auth/callback/dify',
       response_type: 'code',
       state: 'marketplace-state',
-      flow: 'marketplace',
     })
 
     renderPage()
@@ -199,7 +198,6 @@ describe('OAuthAuthorize', () => {
       redirect_uri: 'https://api.marketplace.example.com/api/v1/auth/callback/dify',
       response_type: 'code',
       state: 'marketplace-state',
-      flow: 'marketplace',
     })
 
     renderPage()
@@ -208,7 +206,8 @@ describe('OAuthAuthorize', () => {
     expect(findRequest('/oauth/provider/authorize')).toBeUndefined()
   })
 
-  it('keeps the normal confirmation flow without the Marketplace flow marker', async () => {
+  it('keeps the normal confirmation flow when the Marketplace client id is unset', async () => {
+    mocks.marketplaceOAuthClientId = ''
     mocks.searchParams = new URLSearchParams({
       client_id: 'marketplace-client',
       redirect_uri: 'https://api.marketplace.example.com/api/v1/auth/callback/dify',
@@ -228,7 +227,6 @@ describe('OAuthAuthorize', () => {
       redirect_uri: 'https://client.example.com/callback',
       response_type: 'code',
       state: 'state-1',
-      flow: 'marketplace',
     })
 
     renderPage()
@@ -237,14 +235,13 @@ describe('OAuthAuthorize', () => {
     expect(findRequest('/oauth/provider/authorize')).toBeUndefined()
   })
 
-  it('sends an anonymous top-level Marketplace flow through Dify signin with the full authorize URL', async () => {
+  it('sends an anonymous Marketplace client through Dify signin with the full authorize URL', async () => {
     mocks.profileLoggedIn = false
     mocks.searchParams = new URLSearchParams({
       client_id: 'marketplace-client',
       redirect_uri: 'https://api.marketplace.example.com/api/v1/auth/callback/dify',
       response_type: 'code',
       state: 'marketplace-state',
-      flow: 'marketplace',
     })
 
     renderPage()
@@ -252,7 +249,7 @@ describe('OAuthAuthorize', () => {
     await waitFor(() =>
       expect(mocks.replace).toHaveBeenCalledWith(
         `/signin?redirect_url=${encodeURIComponent(
-          'https://dify.test/account/oauth/authorize?client_id=marketplace-client&redirect_uri=https%3A%2F%2Fapi.marketplace.example.com%2Fapi%2Fv1%2Fauth%2Fcallback%2Fdify&response_type=code&state=marketplace-state&flow=marketplace',
+          'https://dify.test/account/oauth/authorize?client_id=marketplace-client&redirect_uri=https%3A%2F%2Fapi.marketplace.example.com%2Fapi%2Fv1%2Fauth%2Fcallback%2Fdify&response_type=code&state=marketplace-state',
         )}`,
       ),
     )
@@ -260,10 +257,9 @@ describe('OAuthAuthorize', () => {
     expect(findRequest('/oauth/provider/authorize')).toBeUndefined()
   })
 
-  it('does not auto-authorize a Marketplace flow with incomplete OAuth parameters', async () => {
+  it('does not auto-authorize a Marketplace client with incomplete OAuth parameters', async () => {
     mocks.searchParams = new URLSearchParams({
       client_id: 'marketplace-client',
-      flow: 'marketplace',
     })
 
     renderPage()
@@ -279,7 +275,6 @@ describe('OAuthAuthorize', () => {
       redirect_uri: 'https://api.marketplace.example.com/api/v1/auth/callback/dify',
       response_type: 'code',
       state: 'marketplace-state',
-      flow: 'marketplace',
     })
     let providerAttempts = 0
     mocks.request.mockImplementation(async (url: string) => {
@@ -316,7 +311,6 @@ describe('OAuthAuthorize', () => {
       redirect_uri: 'https://api.marketplace.example.com/api/v1/auth/callback/dify',
       response_type: 'code',
       state: 'marketplace-state',
-      flow: 'marketplace',
     })
     let authorizeAttempts = 0
     mocks.request.mockImplementation(async (url: string) => {

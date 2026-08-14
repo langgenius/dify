@@ -1,5 +1,4 @@
 import type { ReadonlyURLSearchParams } from '@/next/navigation'
-import { MARKETPLACE_URL_PREFIX } from '@/config'
 import { getClientLoginFallback, resolveLoginRedirectTarget } from '@/utils/login-redirect'
 
 const REDIRECT_URL_KEY = 'redirect_url'
@@ -10,7 +9,6 @@ const ALLOWED: Record<string, ReadonlySet<string>> = {
   '/device': new Set(['user_code', 'sso_verified']),
   '/account/oauth/authorize': new Set([
     'client_id',
-    'flow',
     'redirect_uri',
     'response_type',
     'scope',
@@ -87,7 +85,6 @@ export function resolvePostLoginRedirect(searchParams?: ReadonlyURLSearchParams)
   if (searchParams?.has(REDIRECT_URL_KEY)) {
     return (
       resolveLoginRedirectTarget(searchParams.get(REDIRECT_URL_KEY), {
-        allowedAbsoluteOrigins: MARKETPLACE_URL_PREFIX ? [MARKETPLACE_URL_PREFIX] : [],
         allowSameOriginAbsolute: true,
         currentOrigin,
       }) ?? fallback

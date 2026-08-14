@@ -70,7 +70,6 @@ export const contractLoaders = {
     import('./system-features/orpc.gen').then(({ systemFeatures }) => ({ systemFeatures })),
   tagBindings: () => import('./tag-bindings/orpc.gen').then(({ tagBindings }) => ({ tagBindings })),
   tags: () => import('./tags/orpc.gen').then(({ tags }) => ({ tags })),
-  test: () => import('./test/orpc.gen').then(({ test }) => ({ test })),
   trialApps: () => import('./trial-apps/orpc.gen').then(({ trialApps }) => ({ trialApps })),
   trialModels: () => import('./trial-models/orpc.gen').then(({ trialModels }) => ({ trialModels })),
   version: () => import('./version/orpc.gen').then(({ version }) => ({ version })),
