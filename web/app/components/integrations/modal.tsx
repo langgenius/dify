@@ -6,7 +6,7 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
 import { getMarketplaceUrl } from '@/utils/var'
-import IntegrationsPage from './page'
+import IntegrationsPage from './index'
 
 type IntegrationsSettingModalProps = {
   section: IntegrationSection

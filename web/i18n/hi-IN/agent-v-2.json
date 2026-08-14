@@ -425,6 +425,7 @@
   "roster.sort.lastModified": "अंतिम संशोधन",
   "roster.sort.optionsLabel": "क्रमबद्ध विकल्प",
   "roster.sort.recentlyCreated": "हाल ही में बनाए गए",
+  "roster.title": "एजेंट",
   "roster.updateSuccess": "एजेंट अपडेट हो गया।",
   "roster.usageStatus.draft": "ड्राफ्ट"
 }

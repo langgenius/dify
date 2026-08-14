@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useLocale } from '@/context/i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { useMailRegister } from '@/service/use-common'
+import { seedSystemFeatures } from '@/test/console/query-data'
 import { getBrowserTimezone } from '@/utils/timezone'
 import ChangePasswordForm from '../page'
 
@@ -68,6 +69,7 @@ const renderWithQueryClient = (ui: ReactElement) => {
       mutations: { retry: false },
     },
   })
+  seedSystemFeatures(queryClient)
   return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
 }
 

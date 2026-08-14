@@ -425,6 +425,7 @@
   "roster.sort.lastModified": "Son değiştirilme",
   "roster.sort.optionsLabel": "Sıralama seçenekleri",
   "roster.sort.recentlyCreated": "Yeni oluşturulanlar",
+  "roster.title": "Ajanlar",
   "roster.updateSuccess": "Ajan güncellendi.",
   "roster.usageStatus.draft": "Taslak"
 }

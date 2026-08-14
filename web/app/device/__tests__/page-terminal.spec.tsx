@@ -54,6 +54,7 @@ let MockDeviceFlowError: MockDeviceFlowErrorCtor
 
 beforeEach(async () => {
   vi.clearAllMocks()
+  document.title = ''
   mockSearchParams = {}
   // router.replace(pathname) in the real app drops the query string; mirror
   // that so useSearchParams reflects the cleared URL on the next render.
@@ -79,6 +80,7 @@ describe('error_expired terminal state', () => {
   it('shows "errorExpired.title" heading', async () => {
     await reachTerminal(new Error('expired'))
     await screen.findByText('deviceFlow.errorExpired.title')
+    expect(document.title).toBe('deviceFlow.errorExpired.title - Dify')
   })
 
   it('ghost button resets to code_entry', async () => {
@@ -170,5 +172,6 @@ describe('error_sso dedicated view', () => {
     render(<DevicePage />)
     expect(screen.getByRole('textbox')).toBeInTheDocument()
     expect(screen.queryByText(TITLE)).not.toBeInTheDocument()
+    expect(document.title).toBe('deviceFlow.codeEntry.title - Dify')
   })
 })
