@@ -9,6 +9,7 @@ import core.app.apps.completion.app_runner as module
 from core.app.apps.completion.app_runner import CompletionAppRunner
 from core.moderation.base import ModerationError
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
+from graphon.model_runtime.entities.model_entities import ModelType
 
 
 @pytest.fixture
@@ -30,6 +31,7 @@ def _build_app_config(dataset=None, external_tools=None, additional_features=Non
 
 def _build_generate_entity(app_config, file_upload_config=None):
     model_conf = MagicMock(
+        provider="provider",
         provider_model_bundle="bundle",
         model="model",
         parameters={"max_tokens": 10},
@@ -130,7 +132,9 @@ class TestCompletionAppRunner:
 
         model_instance = MagicMock()
         model_instance.invoke_llm.return_value = "invoke_result"
-        mocker.patch.object(module, "ModelInstance", return_value=model_instance)
+        model_manager = MagicMock()
+        model_manager.get_model_instance.return_value = model_instance
+        mocker.patch.object(module.ModelManager, "for_tenant", return_value=model_manager)
 
         with patched_create_session(return_value=app_record):
             runner.run(app_generate_entity, MagicMock(), MagicMock(id="msg", tenant_id="tenant"), MagicMock())
@@ -166,7 +170,9 @@ class TestCompletionAppRunner:
             return invoke_stream()
 
         model_instance.invoke_llm.side_effect = invoke_llm
-        mocker.patch.object(module, "ModelInstance", return_value=model_instance)
+        model_manager = MagicMock()
+        model_manager.get_model_instance.return_value = model_instance
+        mocker.patch.object(module.ModelManager, "for_tenant", return_value=model_manager)
 
         with patched_create_session(return_value=app_record):
             runner.run(app_generate_entity, queue_manager, MagicMock(id="msg"), session)
@@ -179,6 +185,48 @@ class TestCompletionAppRunner:
             message_id="msg",
             user_id="user",
             tenant_id="tenant",
+        )
+
+    @pytest.mark.parametrize("stream", [False, True])
+    def test_run_invokes_model_resolved_by_model_manager(
+        self,
+        runner,
+        mocker: MockerFixture,
+        stream: bool,
+    ):
+        app_record = MagicMock(id="app1", tenant_id="tenant")
+        app_config = _build_app_config()
+        app_generate_entity = _build_generate_entity(app_config)
+        app_generate_entity.stream = stream
+
+        runner.organize_prompt_messages = MagicMock(return_value=(["prompt"], ["stop"]))
+        runner.moderation_for_inputs = MagicMock(return_value=(None, app_generate_entity.inputs, "query"))
+        runner.check_hosting_moderation = MagicMock(return_value=False)
+        runner.recalc_llm_max_tokens = MagicMock()
+        runner._handle_invoke_result = MagicMock()
+
+        model_instance = MagicMock()
+        model_instance.invoke_llm.return_value = "invoke_result"
+        model_manager = MagicMock()
+        model_manager.get_model_instance.return_value = model_instance
+        model_manager_factory = mocker.patch.object(module.ModelManager, "for_tenant", return_value=model_manager)
+
+        with patched_create_session(return_value=app_record):
+            runner.run(app_generate_entity, MagicMock(), MagicMock(id="msg"), MagicMock())
+
+        model_manager_factory.assert_called_once_with(tenant_id="tenant")
+        model_manager.get_model_instance.assert_called_once_with(
+            tenant_id="tenant",
+            provider="provider",
+            model_type=ModelType.LLM,
+            model="model",
+        )
+        model_instance.invoke_llm.assert_called_once_with(
+            prompt_messages=["prompt"],
+            model_parameters={"max_tokens": 10},
+            stop=["stop"],
+            stream=stream,
+            request_metadata={"app_id": "app1"},
         )
 
     def test_run_uses_low_image_detail_default(self, runner, mocker: MockerFixture):
