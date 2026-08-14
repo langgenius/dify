@@ -14,7 +14,7 @@ import {
   MultimodalRetrievalGuidanceLearnMore,
 } from '@/app/components/datasets/common/multimodal-retrieval-guidance'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { useDocLink } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { ChunkingMode } from '@/models/datasets'
@@ -167,10 +167,10 @@ const IndexingSection = ({
               className="mb-2"
             />
             <ModelSelector
-              defaultModel={embeddingModel}
-              modelList={embeddingModelList}
-              onSelect={setEmbeddingModel}
-              readonly={readonly}
+              value={embeddingModel}
+              models={embeddingModelList}
+              onValueChange={setEmbeddingModel}
+              disabled={readonly}
             />
           </div>
         </div>
