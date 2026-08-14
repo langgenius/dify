@@ -132,7 +132,6 @@ class PluginInstaller(BasePluginClient):
                 has_more=end < len(filtered),
             )
 
-
     def upload_pkg(
         self,
         tenant_id: str,
