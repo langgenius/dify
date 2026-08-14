@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { fireEvent, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import DevicePage from '../page'
 

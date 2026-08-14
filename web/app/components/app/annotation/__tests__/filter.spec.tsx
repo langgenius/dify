@@ -1,6 +1,6 @@
 import type { AnnotationCountResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { UseQueryResult } from '@tanstack/react-query'
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 import type { QueryParam } from '../filter'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'

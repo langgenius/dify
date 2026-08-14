@@ -1,5 +1,5 @@
 import { useTempConfigDir } from '@test/fixtures/config-dir'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { getConfigurationStore } from '@/store/manager'
 import { runConfigView } from './run'
 

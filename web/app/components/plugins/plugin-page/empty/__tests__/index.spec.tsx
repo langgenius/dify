@@ -3,7 +3,7 @@ import type { ReactElement } from 'react'
 import type { FilterState } from '../../filter-management'
 import { zPluginInstallationScope } from '@dify/contracts/api/console/system-features/zod.gen'
 import { act, fireEvent, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 // ==================== Imports (after mocks) ====================
 import Empty from '../index'
