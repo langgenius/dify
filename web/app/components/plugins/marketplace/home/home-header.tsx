@@ -1,5 +1,5 @@
 import type { HomeCatalogTab, HomeCatalogTabLabels } from './home-catalog-tabs'
-import { Button } from '@langgenius/dify-ui/button'
+import { buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { MARKETPLACE_URL_PREFIX } from '@/config'
 import Link from '@/next/link'
@@ -42,14 +42,17 @@ const CreatorCenter = () => {
   const creatorCenterUrl = getCreatorCenterUrl(MARKETPLACE_URL_PREFIX)
 
   return (
-    <Link href={creatorCenterUrl} target="_blank" rel="noopener noreferrer">
-      <Button
-        variant="ghost"
-        className="flex items-center gap-1 px-3 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary [html[data-theme=dark]_&]:text-text-primary [html[data-theme=dark]_&]:hover:text-text-primary"
-      >
-        <span aria-hidden className="i-ri-user-star-line size-4" />
-        <span className="hidden system-sm-medium lg:inline">Creator Center</span>
-      </Button>
+    <Link
+      href={creatorCenterUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={cn(
+        buttonVariants({ variant: 'ghost' }),
+        'flex items-center gap-1 px-3 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary [html[data-theme=dark]_&]:text-text-primary [html[data-theme=dark]_&]:hover:text-text-primary',
+      )}
+    >
+      <span aria-hidden className="i-ri-user-star-line size-4" />
+      <span className="hidden system-sm-medium lg:inline">Creator Center</span>
     </Link>
   )
 }

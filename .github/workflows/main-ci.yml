@@ -108,6 +108,7 @@ jobs:
               - 'docker/docker-compose.middleware.yaml'
               - 'docker/envs/middleware.env.example'
               - '.github/workflows/web-e2e.yml'
+              - '.github/workflows/marketplace-performance-e2e.yml'
               - '.github/workflows/main-ci.yml'
               - '.github/actions/setup-web/**'
             vdb:
@@ -391,6 +392,66 @@ jobs:
           fi
 
           echo "Web full-stack E2E was not required, but the skip job finished with result: $SKIP_RESULT" >&2
+          exit 1
+
+  marketplace-performance-run:
+    name: Run Marketplace Performance E2E
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.e2e-changed == 'true'
+    uses: ./.github/workflows/marketplace-performance-e2e.yml
+    secrets: inherit
+
+  marketplace-performance-skip:
+    name: Skip Marketplace Performance E2E
+    needs:
+      - pre_job
+      - check-changes
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.e2e-changed != 'true'
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - name: Report skipped marketplace performance E2E
+        run: echo "No E2E-related changes detected; skipping marketplace performance E2E."
+
+  marketplace-performance:
+    name: Marketplace Performance E2E
+    if: ${{ always() }}
+    needs:
+      - pre_job
+      - check-changes
+      - marketplace-performance-run
+      - marketplace-performance-skip
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - name: Finalize Marketplace Performance E2E status
+        env:
+          SHOULD_SKIP_WORKFLOW: ${{ needs.pre_job.outputs.should_skip }}
+          TESTS_CHANGED: ${{ needs.check-changes.outputs.e2e-changed }}
+          RUN_RESULT: ${{ needs.marketplace-performance-run.result }}
+          SKIP_RESULT: ${{ needs.marketplace-performance-skip.result }}
+        run: |
+          if [[ "$SHOULD_SKIP_WORKFLOW" == 'true' ]]; then
+            echo "Marketplace performance E2E was skipped because this workflow run duplicated a successful or newer run."
+            exit 0
+          fi
+
+          if [[ "$TESTS_CHANGED" == 'true' ]]; then
+            if [[ "$RUN_RESULT" == 'success' ]]; then
+              echo "Marketplace performance E2E ran successfully."
+              exit 0
+            fi
+
+            echo "Marketplace performance E2E was required but finished with result: $RUN_RESULT" >&2
+            exit 1
+          fi
+
+          if [[ "$SKIP_RESULT" == 'success' ]]; then
+            echo "Marketplace performance E2E was skipped because no E2E-related files changed."
+            exit 0
+          fi
+
+          echo "Marketplace performance E2E was not required, but the skip job finished with result: $SKIP_RESULT" >&2
           exit 1
 
   style-check:

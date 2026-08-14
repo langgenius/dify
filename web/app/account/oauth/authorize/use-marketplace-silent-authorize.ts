@@ -1,8 +1,13 @@
 import { toast } from '@langgenius/dify-ui/toast'
+import { skipToken, useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MARKETPLACE_OAUTH_CLIENT_ID } from '@/config'
-import { useRouter } from '@/next/navigation'
+import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-profile/client'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useRouter, useSearchParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/client'
+import { buildOAuthCallbackUrl, buildReturnUrl } from './oauth-url'
 
 export function shouldSilentAuthorizeMarketplace({
   deploymentEdition,
@@ -18,56 +23,63 @@ export function shouldSilentAuthorizeMarketplace({
   )
 }
 
-export function buildReturnUrl(pathname: string, search: string) {
-  try {
-    return `${globalThis.location.origin}${pathname}${search}`
-  } catch {
-    return pathname + search
-  }
-}
-
-export function buildOAuthCallbackUrl(redirectUri: string, code: string, state: string | null) {
-  const url = new URL(redirectUri)
-  url.searchParams.set('code', code)
-  if (state) url.searchParams.set('state', state)
-  return url.toString()
-}
-
-type MarketplaceSilentAuthorizeOptions = {
-  authAppInfo: unknown
-  authorize: (input: { body: { client_id: string } }) => Promise<{ code: string }>
-  clientId: string
-  deploymentEdition: string | undefined
-  hasOAuthParams: boolean
-  isLoggedIn: boolean
-  isOAuthError: boolean
-  isOAuthLoading: boolean
-  isProfileLoading: boolean
-  redirectUri: string
-  searchParams: { toString: () => string }
-  state: string | null
-}
-
-export function useMarketplaceSilentAuthorize({
-  authAppInfo,
-  authorize,
-  clientId,
-  deploymentEdition,
-  hasOAuthParams,
-  isLoggedIn,
-  isOAuthError,
-  isOAuthLoading,
-  isProfileLoading,
-  redirectUri,
-  searchParams,
-  state,
-}: MarketplaceSilentAuthorizeOptions) {
+/**
+ * Silently completes the OAuth authorization for the first-party Marketplace
+ * client on Cloud: anonymous users are sent to sign-in with a return URL, and
+ * logged-in users are authorized without the consent screen.
+ *
+ * The hook reads the OAuth search params and fetches its own data. Every query
+ * matches the authorize page's query keys, so React Query dedupes the requests
+ * and both consumers share one cache entry.
+ */
+export function useMarketplaceSilentAuthorize() {
   const { t } = useTranslation()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const clientId = searchParams.get('client_id') || ''
+  const redirectUri = searchParams.get('redirect_uri') || ''
+  const state = searchParams.get('state')
+  const hasOAuthParams = Boolean(clientId && redirectUri)
+
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const {
+    data: userProfileResp,
+    isPending: isProfileLoading,
+    error: profileError,
+  } = useQuery({
+    ...userProfileQueryOptions(),
+    throwOnError: (err) => !isLegacyBase401(err),
+  })
+  const isLoggedIn = !!userProfileResp && !profileError
+
+  const shouldAutoAuthorize =
+    hasOAuthParams &&
+    shouldSilentAuthorizeMarketplace({
+      clientId,
+      deploymentEdition: systemFeatures.deployment_edition,
+    })
+  // Same gating as the authorize page so both observers produce an identical
+  // query input: skip the app info request while an anonymous user is about
+  // to be redirected to sign-in.
+  const shouldLoadOAuthApp = hasOAuthParams && (!shouldAutoAuthorize || isLoggedIn)
+  const {
+    data: authAppInfo,
+    isLoading: isOAuthLoading,
+    isError: isOAuthError,
+  } = useQuery(
+    consoleQuery.oauth.provider.post.queryOptions({
+      input: shouldLoadOAuthApp
+        ? { body: { client_id: clientId, redirect_uri: redirectUri } }
+        : skipToken,
+      context: { silent: true },
+    }),
+  )
+  const { mutateAsync: authorize } = useMutation(
+    consoleQuery.oauth.provider.authorize.post.mutationOptions(),
+  )
+
   const startedRef = useRef(false)
   const [autoAuthorizationFailed, setAutoAuthorizationFailed] = useState(false)
-  const shouldAutoAuthorize =
-    hasOAuthParams && shouldSilentAuthorizeMarketplace({ clientId, deploymentEdition })
 
   useEffect(() => {
     if (!shouldAutoAuthorize || startedRef.current || isProfileLoading) return
@@ -79,6 +91,11 @@ export function useMarketplaceSilentAuthorize({
       return
     }
 
+    // Safety invariant: silent authorization must stay behind the
+    // `/oauth/provider` request. A present `authAppInfo` means the backend
+    // has already validated this client_id/redirect_uri pair, so the silent
+    // redirect below never sends an authorization code to an unverified
+    // redirect_uri. Do not bypass this precondition.
     if (isOAuthLoading || isOAuthError || !authAppInfo) return
 
     startedRef.current = true

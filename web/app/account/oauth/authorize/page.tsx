@@ -20,9 +20,8 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { useLogout } from '@/service/use-common'
+import { buildOAuthCallbackUrl, buildReturnUrl } from './oauth-url'
 import {
-  buildOAuthCallbackUrl,
-  buildReturnUrl,
   shouldSilentAuthorizeMarketplace,
   useMarketplaceSilentAuthorize,
 } from './use-marketplace-silent-authorize'
@@ -102,20 +101,7 @@ export default function OAuthAuthorize() {
     consoleQuery.oauth.provider.authorize.post.mutationOptions(),
   )
   const { mutateAsync: logout } = useLogout()
-  const { isMarketplaceAutoAuthorizing } = useMarketplaceSilentAuthorize({
-    authAppInfo,
-    authorize,
-    clientId,
-    deploymentEdition: systemFeatures.deployment_edition,
-    hasOAuthParams,
-    isLoggedIn,
-    isOAuthError,
-    isOAuthLoading,
-    isProfileLoading,
-    redirectUri,
-    searchParams,
-    state,
-  })
+  const { isMarketplaceAutoAuthorizing } = useMarketplaceSilentAuthorize()
   const localizedAppLabel =
     authAppInfo?.app_label[language] ?? authAppInfo?.app_label[language.replace('_', '-')]
   const englishAppLabel = authAppInfo?.app_label.en_US ?? authAppInfo?.app_label['en-US']

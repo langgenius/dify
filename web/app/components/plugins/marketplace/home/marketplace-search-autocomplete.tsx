@@ -15,7 +15,7 @@ import {
   AutocompleteStatus,
 } from '@langgenius/dify-ui/autocomplete'
 import { cn } from '@langgenius/dify-ui/cn'
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -99,8 +99,9 @@ export function MarketplaceSearchAutocomplete({
       },
       retry: false,
     }),
+    // No placeholderData here: showing the previous term's suggestions would
+    // leave stale items keyboard-selectable while the new request is pending.
     enabled: hasQuery && searchesPlugins,
-    placeholderData: keepPreviousData,
     staleTime: 60_000,
   })
   const templateQuery = useQuery({
@@ -118,7 +119,6 @@ export function MarketplaceSearchAutocomplete({
       retry: false,
     }),
     enabled: hasQuery && searchesTemplates,
-    placeholderData: keepPreviousData,
     staleTime: 60_000,
   })
   const pluginSuggestions = searchesPlugins

@@ -170,4 +170,53 @@ describe('MarketplaceSearchAutocomplete', () => {
     expect(onValueChange).toHaveBeenLastCalledWith('google')
     expect(mockTemplateSearch).not.toHaveBeenCalled()
   })
+
+  it('does not offer the previous term suggestions while a new search is pending', async () => {
+    const googleResponse = {
+      data: {
+        plugins: [
+          {
+            type: 'plugin',
+            org: 'langgenius',
+            name: 'google-search',
+            label: { en_US: 'Google Search' },
+            brief: { en_US: 'Search the web from your workflow.' },
+            category: 'tool',
+          },
+        ],
+        total: 1,
+      },
+    }
+    mockPluginSearch.mockImplementation((input: { body: { query: string } }) => {
+      if (input.body.query === 'google') return Promise.resolve(googleResponse)
+      // Keep the follow-up term pending so stale suggestions would be visible
+      // if the query still returned placeholder data.
+      return new Promise(() => {})
+    })
+    const user = userEvent.setup()
+
+    const ControlledSearch = () => {
+      const [value, setValue] = useState('')
+
+      return (
+        <MarketplaceSearchAutocomplete
+          locale="en-US"
+          onValueChange={setValue}
+          placeholder="Search plugins"
+          scope="plugins"
+          value={value}
+        />
+      )
+    }
+
+    render(<ControlledSearch />, { wrapper: Wrapper })
+
+    await user.type(screen.getByRole('combobox'), 'google')
+    expect(await screen.findByText('Google Search')).toBeInTheDocument()
+
+    await user.type(screen.getByRole('combobox'), ' drive')
+
+    expect(screen.queryByText('Google Search')).not.toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Searching...')
+  })
 })

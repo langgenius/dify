@@ -229,6 +229,7 @@ const CollectionSection = ({
       ) : hasMultiplePages ? (
         <Carousel
           pages={carouselPages}
+          ariaLabel={collection.label[getLanguage(locale)]}
           className="mt-2"
           showNavigation
           showPagination
@@ -281,7 +282,7 @@ const ListWithCollection = ({
 
   return marketplaceCollections
     .filter((collection) => marketplaceCollectionPluginsMap[collection.name]?.length)
-    .map((collection) => (
+    .map((collection, index) => (
       <CollectionSection
         key={collection.name}
         collection={collection}
@@ -293,7 +294,11 @@ const ListWithCollection = ({
         cardRender={cardRender}
         onMoreClick={handleMoreClick}
         installedPluginIds={installedPluginIds}
-        deferMount={deferOffscreenCollections}
+        // The first collection is above-the-fold content: it must render its
+        // cards in the server-rendered HTML so a direct visit shows real
+        // content without waiting for client-side JS. Only collections below
+        // it defer to the IntersectionObserver.
+        deferMount={deferOffscreenCollections && index > 0}
       />
     ))
 }

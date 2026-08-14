@@ -3,7 +3,6 @@
 @source '../../app';
 @source '../../context';
 @source '../../hooks';
-@source '../../../../app';
 @source '../../../packages/dify-ui/src';
 @source '../../node_modules/streamdown/dist';
 @source '../../node_modules/@streamdown/math/dist';

@@ -53,6 +53,9 @@ describe('HomeHeader', () => {
     expect(creatorCenterLink.compareDocumentPosition(guideLink)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     )
+    // Each action must be a single interactive element, not a link-wrapped button.
+    expect(creatorCenterLink.querySelector('button')).toBeNull()
+    expect(guideLink.querySelector('button')).toBeNull()
   })
 
   it('links Creator Center to the staging Creators site in staging', () => {

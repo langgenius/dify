@@ -160,12 +160,18 @@ describe('HomeTrending', () => {
 
     render(<HomeTrending banners={banners} isMarketplacePlatform />)
 
+    const carousel = document.querySelector('[data-home-trending-carousel-root]')!
+    const liveTrack = carousel.querySelector('[aria-live]')!
+    expect(liveTrack).toHaveAttribute('aria-live', 'off')
+
     const pauseButton = screen.getByRole('button', {
       name: 'plugin.marketplace.home.trendingPause',
     })
 
     pauseButton.focus()
     await user.keyboard('{Enter}')
+
+    expect(liveTrack).toHaveAttribute('aria-live', 'polite')
 
     const playButton = screen.getByRole('button', {
       name: 'plugin.marketplace.home.trendingPlay',
@@ -304,6 +310,17 @@ describe('HomeTrending', () => {
     expect(play).toHaveBeenCalledTimes(playsBeforeFocus)
     fireEvent.focusOut(focusTarget, { relatedTarget: null })
     expect(play.mock.calls.length).toBeGreaterThan(playsBeforeFocus)
+
+    // Navigation controls sit inside the pause boundary, so focusing them
+    // also stops the rotation.
+    const playsBeforeControlFocus = play.mock.calls.length
+    const paginationButton = screen.getByRole('button', { name: 'Dify Updates' })
+    fireEvent.focusIn(paginationButton)
+    setIntersectionRatio(0)
+    setIntersectionRatio(0.25)
+    expect(play).toHaveBeenCalledTimes(playsBeforeControlFocus)
+    fireEvent.focusOut(paginationButton, { relatedTarget: null })
+    expect(play.mock.calls.length).toBeGreaterThan(playsBeforeControlFocus)
 
     const playsBeforeUserPause = play.mock.calls.length
     fireEvent.click(screen.getByRole('button', { name: 'plugin.marketplace.home.trendingPause' }))

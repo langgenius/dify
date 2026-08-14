@@ -32,8 +32,6 @@
 /* ---------- JS plugins ------------------------------------------------ */
 @plugin './plugins/icons.ts';
 @plugin './plugins/typography.ts';
-@source inline('i-ri-pause-large-fill');
-@source inline('i-ri-play-large-fill');
 
 /* ---------- Project-only theme tokens --------------------------------- */
 @theme {

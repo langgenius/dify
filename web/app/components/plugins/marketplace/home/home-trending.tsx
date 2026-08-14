@@ -337,6 +337,7 @@ function TrendingNavigation({
   pauseWhenOffscreen,
   onSelect,
   onNext,
+  onPausedChange,
 }: {
   banners: PluginBanner[]
   selectedIndex: number
@@ -344,6 +345,7 @@ function TrendingNavigation({
   pauseWhenOffscreen: boolean
   onSelect: (index: number) => void
   onNext: () => void
+  onPausedChange?: (paused: boolean) => void
 }) {
   const { t } = useTranslation('plugin')
   const progressRef = useRef<HTMLSpanElement>(null)
@@ -357,16 +359,22 @@ function TrendingNavigation({
   const paginationWidth =
     PAGINATION_ACTIVE_WIDTH + Math.max(0, banners.length - 1) * PAGINATION_STEP
 
-  const setPauseReason = useCallback((reason: AutoplayPauseReason, shouldPause: boolean) => {
-    if (shouldPause) pauseReasonsRef.current.add(reason)
-    else pauseReasonsRef.current.delete(reason)
+  const setPauseReason = useCallback(
+    (reason: AutoplayPauseReason, shouldPause: boolean) => {
+      if (shouldPause) pauseReasonsRef.current.add(reason)
+      else pauseReasonsRef.current.delete(reason)
 
-    const progressAnimation = progressAnimationRef.current
-    if (!progressAnimation) return
+      const isPaused = pauseReasonsRef.current.size > 0
+      onPausedChange?.(isPaused)
 
-    if (pauseReasonsRef.current.size > 0) progressAnimation.pause()
-    else progressAnimation.play()
-  }, [])
+      const progressAnimation = progressAnimationRef.current
+      if (!progressAnimation) return
+
+      if (isPaused) progressAnimation.pause()
+      else progressAnimation.play()
+    },
+    [onPausedChange],
+  )
 
   useEffect(() => {
     const progressElement = progressRef.current
@@ -574,6 +582,7 @@ function HomeTrending({
   const { t } = useTranslation('plugin')
   const carouselRootRef = useRef<HTMLDivElement>(null)
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const [isRotationPaused, setIsRotationPaused] = useState(false)
   const selectSlide = useCallback((index: number) => setSelectedIndex(index), [])
   const selectNextSlide = useCallback(
     () => setSelectedIndex((currentIndex) => (currentIndex + 1) % banners.length),
@@ -598,10 +607,14 @@ function HomeTrending({
         )}
       >
         <div
+          // The pause boundary covers the whole carousel region, so hovering
+          // or focusing the navigation controls also stops the rotation.
+          ref={carouselRootRef}
           role="region"
           aria-roledescription="carousel"
           aria-label={t(($) => $['marketplace.home.trendingTitle'])}
           className="relative h-[200px] w-full rounded-2xl"
+          data-home-trending-carousel-root
         >
           <TrendingNavigation
             banners={banners}
@@ -610,14 +623,13 @@ function HomeTrending({
             pauseWhenOffscreen={!isMarketplacePlatform}
             onSelect={selectSlide}
             onNext={selectNextSlide}
+            onPausedChange={setIsRotationPaused}
           />
-          <div
-            ref={carouselRootRef}
-            className="h-full overflow-hidden rounded-2xl"
-            data-home-trending-carousel-root
-          >
+          <div className="h-full overflow-hidden rounded-2xl">
             <div
-              aria-live="polite"
+              // Keep automatic rotation silent for screen readers; announce
+              // the current slide only once rotation is paused or user-driven.
+              aria-live={isRotationPaused ? 'polite' : 'off'}
               className={cn(styles.contentTrack, 'flex h-full')}
               style={{ transform: `translate3d(-${selectedIndex * 100}%, 0, 0)` }}
             >

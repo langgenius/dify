@@ -12,10 +12,18 @@ const BANNER_STALE_TIME = 1000 * 60 * 5
 
 export type EmbeddedMarketplaceProps = Omit<MarketplaceViewProps, 'banners'> & {
   initialBanners?: PluginBanner[]
+  /**
+   * Locale used to fetch `initialBanners` during server rendering. `initialBanners`
+   * is only applied while the client locale still matches it, so a client-side
+   * language change refetches banners instead of seeding the new locale's cache
+   * with banners from the previous language.
+   */
+  initialLocale?: string
 }
 
 export function EmbeddedMarketplace({
   initialBanners,
+  initialLocale,
   variant = 'default',
   ...props
 }: EmbeddedMarketplaceProps) {
@@ -31,7 +39,7 @@ export function EmbeddedMarketplace({
       queryKey: [...marketplaceQuery.banners.list.queryKey({ input }), locale],
       queryFn: () => fetchPluginBanners(locale),
       enabled: variant === 'home',
-      initialData: initialBanners,
+      initialData: locale === initialLocale ? initialBanners : undefined,
       staleTime: BANNER_STALE_TIME,
     }),
   )
