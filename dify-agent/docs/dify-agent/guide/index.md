@@ -35,6 +35,7 @@ also reads `.env` and `dify-agent/.env` when present.
 | `DIFY_AGENT_REDIS_PREFIX` | `dify-agent` | Prefix for Redis record and event keys. |
 | `DIFY_AGENT_SHUTDOWN_GRACE_SECONDS` | `30` | Seconds to wait for active local runs during graceful shutdown before cancellation. |
 | `DIFY_AGENT_RUN_RETENTION_SECONDS` | `259200` | Seconds to retain Redis run records and per-run event streams; defaults to 3 days. |
+| `DIFY_AGENT_API_TOKEN` | empty | Optional Bearer token required by private run, Execution Binding, Home Snapshot, and Binding file control-plane routes. Must match Dify API `AGENT_BACKEND_API_TOKEN`. |
 | `DIFY_AGENT_PLUGIN_DAEMON_URL` | `http://localhost:5002` | Base URL for the Dify plugin daemon. |
 | `DIFY_AGENT_PLUGIN_DAEMON_API_KEY` | empty | API key sent to the Dify plugin daemon. |
 | `DIFY_AGENT_INNER_API_URL` | `http://localhost:5001` | Dify API service root used when dify-agent calls `/inner/api/...` endpoints. |
@@ -73,6 +74,7 @@ DIFY_AGENT_REDIS_URL=redis://localhost:6379/0
 DIFY_AGENT_REDIS_PREFIX=dify-agent-dev
 DIFY_AGENT_SHUTDOWN_GRACE_SECONDS=30
 DIFY_AGENT_RUN_RETENTION_SECONDS=259200
+DIFY_AGENT_API_TOKEN=replace-with-agent-backend-token
 DIFY_AGENT_PLUGIN_DAEMON_URL=http://localhost:5002
 DIFY_AGENT_PLUGIN_DAEMON_API_KEY=replace-with-daemon-key
 DIFY_AGENT_INNER_API_URL=http://localhost:5001
@@ -374,4 +376,4 @@ The repository includes simple consumers that print observed output/events:
   consumes raw SSE frames for an existing run id.
 
 The create-run examples submit Dify plugin model layers, so they require Redis,
-the API server, plugin-daemon settings, and provider credentials.
+the Agent server, Dify API gateway settings, and a configured model provider in Dify.

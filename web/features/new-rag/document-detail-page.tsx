@@ -8,6 +8,7 @@ import { useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { datasetDefaultPermissionKeysAtom } from '@/context/permission-state'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { consoleQuery } from '@/service/client'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { DocumentDetailHeader } from './document-detail-header'
@@ -76,6 +77,14 @@ export function DocumentDetailPage({
     [documentId, knowledgeSpaceId],
   )
   const documentQuery = useQuery(documentQueryOptions)
+  const knowledgeSpaceQuery = useQuery(
+    consoleQuery.knowledgeFs.getKnowledgeSpacesById.queryOptions({
+      input: { params: { id: knowledgeSpaceId } },
+    }),
+  )
+  const documentTitle = documentQuery.data?.title ?? t(($) => $['newKnowledge.documents'])
+  const knowledgeSpaceTitle = knowledgeSpaceQuery.data?.name ?? t(($) => $.knowledge)
+  useDocumentTitle(`${documentTitle} · ${knowledgeSpaceTitle}`)
   const revisionsQueryOptions = useMemo(
     () =>
       consoleQuery.knowledgeFs.getKnowledgeSpacesByIdDocumentsByDocumentIdRevisions.infiniteOptions(

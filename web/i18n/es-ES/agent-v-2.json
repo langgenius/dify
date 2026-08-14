@@ -425,6 +425,7 @@
   "roster.sort.lastModified": "Última modificación",
   "roster.sort.optionsLabel": "Opciones de ordenación",
   "roster.sort.recentlyCreated": "Creados recientemente",
+  "roster.title": "Agentes",
   "roster.updateSuccess": "Agente actualizado.",
   "roster.usageStatus.draft": "Borrador"
 }

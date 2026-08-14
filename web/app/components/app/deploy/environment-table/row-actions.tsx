@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Fragment, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
@@ -136,14 +137,14 @@ export function EnvironmentRowActions({
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger
             render={
-              <Button
-                size="small"
+              <IconButton
+                size="md"
                 variant="secondary"
                 aria-label={`${row.environment.display_name} · ${t(($) => $['deployTab.moreActions'])}`}
-                className="w-6 shrink-0 px-0"
+                className="shrink-0"
               >
                 <span aria-hidden className="i-ri-more-fill size-4" />
-              </Button>
+              </IconButton>
             }
           />
           <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-50">

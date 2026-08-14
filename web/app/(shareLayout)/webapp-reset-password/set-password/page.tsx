@@ -8,6 +8,7 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import { validPassword } from '@/config'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { changeWebAppPasswordWithToken } from '@/service/common'
 
@@ -22,6 +23,11 @@ const ChangePasswordForm = () => {
   const [showSuccess, setShowSuccess] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  useDocumentTitle(
+    showSuccess
+      ? t(($) => $.passwordChangedTip, { ns: 'login' })
+      : t(($) => $.changePassword, { ns: 'login' }),
+  )
 
   const showErrorMessage = useCallback((message: string) => {
     toast.error(message)

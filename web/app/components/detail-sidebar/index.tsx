@@ -31,10 +31,8 @@ function SecondarySidebarHelpMenu({ triggerClassName }: { triggerClassName?: str
   return (
     <HelpMenu
       triggerIcon={secondarySidebarHelpTriggerIcon}
-      triggerClassName={cn(
-        'size-8 border-0 bg-transparent shadow-none hover:bg-state-base-hover hover:text-text-secondary',
-        triggerClassName,
-      )}
+      triggerSize="lg"
+      triggerClassName={triggerClassName}
     />
   )
 }

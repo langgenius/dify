@@ -49,6 +49,7 @@
   "join": "Beitreten",
   "joinTipEnd": "Team auf Dify beizutreten",
   "joinTipStart": "Lade dich ein, dem",
+  "joinWorkspace": "{{workspaceName}} beitreten",
   "license.link": "Open-Source-Lizenz",
   "license.tip": "Bevor du mit Dify Community Edition beginnst, lies die",
   "licenseExpired": "Lizenz abgelaufen",

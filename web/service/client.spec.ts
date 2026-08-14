@@ -4,7 +4,7 @@ import type { DocumentProcessingTaskEvent } from '@dify/contracts/knowledge-fs/t
 import type { MutationFunctionContext, QueryFunctionContext } from '@tanstack/react-query'
 import type { consoleQuery as ConsoleQuery } from './client'
 import { QueryClient } from '@tanstack/react-query'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { normalizeConsoleOpenAPIURL } from './console-openapi-url'
 
 const loadGetBaseURL = async (isClientValue: boolean) => {

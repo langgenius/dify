@@ -3,7 +3,7 @@ import type {
   AgentReferencingWorkflowResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { ComponentProps } from 'react'
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'

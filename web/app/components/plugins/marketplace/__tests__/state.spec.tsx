@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor } from '@testing-library/react'
 import { Provider as JotaiProvider } from 'jotai'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 
 vi.mock('@/config', () => ({

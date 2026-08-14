@@ -425,6 +425,7 @@
   "roster.sort.lastModified": "Ultima modificare",
   "roster.sort.optionsLabel": "Opțiuni de sortare",
   "roster.sort.recentlyCreated": "Create recent",
+  "roster.title": "Agenți",
   "roster.updateSuccess": "Agent actualizat.",
   "roster.usageStatus.draft": "Ciornă"
 }
