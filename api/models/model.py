@@ -1678,13 +1678,12 @@ class Message(Base):
         url_core = r"(?:https?:\/\/.+?)?\/files\/(tools\/)?[\w-]+.*?timestamp=[^)\s]*?&nonce=[^)\s]*?&sign=[^)\s]*?"
         patterns = [
             r"\[!?.*?\]\((" + url_core + r")\)",  # [text](url)
-            r"`(" + url_core + r")`",              # `url`
+            r"`(" + url_core + r")`",  # `url`
             r"(?:^|\s|\()(" + url_core + r")(?:[\s)\].,;]|$)",  # bare url
         ]
         urls: set[str] = set()
         for pattern in patterns:
-            for m in re.finditer(pattern, self.answer):
-                urls.add(m.group(1))
+            urls.update(m.group(1) for m in re.finditer(pattern, self.answer))
 
         if not urls:
             return self.answer
