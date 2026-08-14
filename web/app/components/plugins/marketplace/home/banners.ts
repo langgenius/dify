@@ -260,7 +260,7 @@ const parsePluginBanner = (value: unknown): PluginBanner | null => {
   }
 }
 
-export const normalizePluginBanners = (response: unknown): PluginBanner[] => {
+const normalizePluginBanners = (response: unknown): PluginBanner[] => {
   if (!isRecord(response) || !isRecord(response.data) || !Array.isArray(response.data.banners))
     return []
 
