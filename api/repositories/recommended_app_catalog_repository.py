@@ -79,8 +79,20 @@ class DatabaseRecommendedAppCatalogRepository(RecommendedAppCatalogQuery):
 
     @override
     def contains(self, app_id: str) -> bool:
-        # Preserve the legacy database membership check, including DSL export.
-        return self.get_detail(app_id) is not None
+        with self._session_factory() as session:
+            return (
+                session.scalar(
+                    select(RecommendedApp.app_id)
+                    .join(App, App.id == RecommendedApp.app_id)
+                    .where(
+                        RecommendedApp.app_id == app_id,
+                        RecommendedApp.is_listed.is_(True),
+                        App.is_public.is_(True),
+                    )
+                    .limit(1)
+                )
+                is not None
+            )
 
     @staticmethod
     def _list_rows(

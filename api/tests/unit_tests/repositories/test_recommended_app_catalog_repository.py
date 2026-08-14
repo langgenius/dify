@@ -152,7 +152,7 @@ def test_list_learn_dify_filters_flag_and_hides_page_categories(
     assert page.categories == ()
 
 
-def test_detail_and_membership_preserve_dsl_export(
+def test_membership_does_not_export_dsl(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     with sqlite_session_factory() as session:
@@ -175,7 +175,7 @@ def test_detail_and_membership_preserve_dsl_export(
         export_data="exported yaml",
     )
     assert is_in_catalog is True
-    assert export_dsl.call_count == 2
+    export_dsl.assert_called_once()
 
 
 def test_detail_rejects_unlisted_or_private_apps(sqlite_session_factory: sessionmaker[Session]) -> None:
@@ -189,6 +189,9 @@ def test_detail_rejects_unlisted_or_private_apps(sqlite_session_factory: session
     assert repository.get_detail(private_app.id) is None
     assert repository.get_detail(unlisted_app.id) is None
     assert repository.get_detail(missing_app_id) is None
+    assert repository.contains(private_app.id) is False
+    assert repository.contains(unlisted_app.id) is False
+    assert repository.contains(missing_app_id) is False
 
 
 def test_detail_does_not_require_site(sqlite_session_factory: sessionmaker[Session]) -> None:

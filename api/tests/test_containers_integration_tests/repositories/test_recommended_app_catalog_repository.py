@@ -83,7 +83,7 @@ def test_list_maps_postgres_models_with_owned_session(
     assert no_site_app.id not in {item.app_id for item in page.recommended_apps}
 
 
-def test_detail_and_membership_export_with_owned_session(
+def test_membership_does_not_export_dsl_with_owned_session(
     db_session_with_containers: Session,
 ) -> None:
     app = _add_catalog_app(db_session_with_containers, with_site=False)
@@ -110,4 +110,4 @@ def test_detail_and_membership_export_with_owned_session(
         export_data="exported_yaml",
     )
     assert is_in_catalog is True
-    assert mock_export_dsl.call_count == 2
+    mock_export_dsl.assert_called_once()
