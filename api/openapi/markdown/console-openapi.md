@@ -22158,23 +22158,35 @@ Query parameters for listing snippet published workflows.
 | paused | integer |  | Yes |
 | success | integer |  | Yes |
 
+#### StepByStepTourAction
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| StepByStepTourAction | string |  |  |
+
 #### StepByStepTourStatePatchPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| action | string, <br>**Available values:** "complete_task", "disable_current_workspace", "enable_current_workspace", "skip", "uncomplete_task" | State update action<br>*Enum:* `"complete_task"`, `"disable_current_workspace"`, `"enable_current_workspace"`, `"skip"`, `"uncomplete_task"` | Yes |
-| task_id | string | Task ID for task actions | No |
+| action | [StepByStepTourAction](#stepbysteptouraction) | State update action | Yes |
+| task_id | [StepByStepTourTaskId](#stepbysteptourtaskid) | Task ID for task actions | No |
 
 #### StepByStepTourStateResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| completed_task_ids | [ string, <br>**Available values:** "home", "integration", "knowledge", "studio" ] |  | No |
+| completed_task_ids | [ [StepByStepTourTaskId](#stepbysteptourtaskid) ] |  | No |
 | first_workspace_id | string |  | No |
 | manually_disabled_workspace_ids | [ string ] |  | No |
 | manually_enabled_workspace_ids | [ string ] |  | No |
 | skipped | boolean |  | No |
 | updated_at | string |  | No |
+
+#### StepByStepTourTaskId
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| StepByStepTourTaskId | string |  |  |
 
 #### Storage
 
