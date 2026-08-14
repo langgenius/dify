@@ -8,7 +8,7 @@ from services.auth.api_key_auth_base import ApiKeyAuthBase, AuthCredentials
 
 # Explicit bounded timeout for credential-validation requests so a slow or
 # hanging WaterCrawl endpoint cannot block the worker indefinitely.
-_CREDENTIAL_TIMEOUT = httpx.Timeout(10.0)
+_CREDENTIAL_TIMEOUT = httpx.Timeout(10.0, connect=3.0)
 
 
 class WatercrawlAuth(ApiKeyAuthBase):

@@ -77,7 +77,7 @@ class TestWatercrawlAuth:
         mock_get.assert_called_once_with(
             "https://app.watercrawl.dev/api/v1/core/crawl-requests/",
             headers={"Content-Type": "application/json", "X-API-KEY": "test_api_key_123"},
-            timeout=httpx.Timeout(10.0),
+            timeout=httpx.Timeout(10.0, connect=3.0),
         )
 
     @pytest.mark.parametrize(
@@ -217,3 +217,24 @@ class TestWatercrawlAuth:
 
         # Verify the timeout exception is raised with original message
         assert "timed out" in str(exc_info.value)
+
+    def test_credential_timeout_bounds_connect_phase(self):
+        """Credential-validation timeout should bound the connect phase to 3.0s."""
+        from services.auth.watercrawl.watercrawl import _CREDENTIAL_TIMEOUT
+
+        assert _CREDENTIAL_TIMEOUT.connect == 3.0
+        assert _CREDENTIAL_TIMEOUT.read == 10.0
+
+    @patch("services.auth.watercrawl.watercrawl.httpx.get", autospec=True)
+    def test_get_request_passes_credential_timeout_with_connect(self, mock_get):
+        """`_get_request` should forward the connect-bounded timeout to httpx.get."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_get.return_value = mock_response
+
+        credentials = {"auth_type": "x-api-key", "config": {"api_key": "test_api_key_123"}}
+        WatercrawlAuth(credentials).validate_credentials()
+
+        passed_timeout = mock_get.call_args.kwargs["timeout"]
+        assert passed_timeout.connect == 3.0
+        assert passed_timeout.read == 10.0

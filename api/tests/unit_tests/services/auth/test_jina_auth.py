@@ -185,3 +185,10 @@ class TestJinaAuth:
         with pytest.raises(ValueError) as exc_info:
             JinaAuth({"auth_type": "basic", "config": {"api_key": "super_secret_key_12345"}})
         assert "super_secret_key_12345" not in str(exc_info.value)
+
+    def test_pooled_http_client_bounds_connect_phase(self):
+        """Pooled Jina client should have a 3.0s connect timeout on its Timeout object."""
+        from services.auth.jina.jina import _http_client
+
+        assert _http_client.timeout.connect == 3.0
+        assert _http_client.timeout.read == 10.0
