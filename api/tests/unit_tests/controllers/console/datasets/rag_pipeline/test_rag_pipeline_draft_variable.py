@@ -60,9 +60,7 @@ def _workflow(pipeline: Pipeline, environment_variables=()) -> Workflow:
     )
 
 
-def _variable(
-    *, app_id: str = "p1", user_id: str = "account-1", file_value: bool = False
-) -> WorkflowDraftVariable:
+def _variable(*, app_id: str = "p1", user_id: str = "account-1", file_value: bool = False) -> WorkflowDraftVariable:
     if file_value:
         value = build_segment(
             File(
