@@ -10,18 +10,6 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { useTranslation } from 'react-i18next'
 
-type ModelSelectorPopupFrameProps = {
-  children: ReactNode
-}
-
-export function ModelSelectorPopupFrame({ children }: ModelSelectorPopupFrameProps) {
-  return (
-    <div className="flex max-h-[min(624px,var(--available-height,624px))] flex-col overflow-hidden rounded-xl bg-components-panel-bg">
-      {children}
-    </div>
-  )
-}
-
 type ModelSelectorSearchHeaderProps = {
   inputValue: string
   onInputValueChange: (value: string) => void
@@ -138,10 +126,10 @@ export function ModelProviderSettingsFooter({ onOpenSettings }: ModelProviderSet
     <div className="shrink-0 border-t border-divider-subtle p-1">
       <button
         type="button"
-        className="flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+        className="flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
         onClick={onOpenSettings}
       >
-        <span className="i-ri-equalizer-2-line size-4 shrink-0" />
+        <span aria-hidden className="i-ri-equalizer-2-line size-4 shrink-0" />
         <span className="system-xs-medium">
           {t(($) => $['modelProvider.selector.modelProviderSettings'], { ns: 'common' })}
         </span>

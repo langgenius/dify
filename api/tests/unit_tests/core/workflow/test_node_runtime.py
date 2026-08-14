@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
 from core.app.file_access import FileAccessScope, bind_file_access_scope, grant_retriever_segment_access
 from core.llm_generator.output_parser.errors import OutputParserError
+from core.model_manager import QuotaManagedModelInstance
 from core.plugin.impl.exc import PluginLLMPollingUnsupportedError
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import PluginModelRuntime
@@ -52,6 +53,7 @@ from models.base import TypeBase
 from models.dataset import SegmentAttachmentBinding
 from models.enums import CreatorUserRole
 from models.model import StorageType, UploadFile
+from models.tools import ToolFile
 from tests.workflow_test_utils import build_test_run_context
 
 
@@ -146,6 +148,12 @@ class _ModelInstanceStub:
         )
         self.get_llm_num_tokens = Mock(return_value=get_llm_num_tokens_result)
         self.invoke_llm = Mock(return_value=invoke_llm_result)
+
+
+class _QuotaManagedModelInstanceStub(_ModelInstanceStub, QuotaManagedModelInstance):
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.reserve_quota = Mock()
 
 
 def _build_run_context(*, invoke_from: InvokeFrom | str = InvokeFrom.DEBUGGER) -> dict[str, object]:
@@ -355,6 +363,146 @@ def test_dify_prepared_polling_llm_delegates_to_plugin_runtime() -> None:
         credentials={"api_key": "secret"},
         plugin_state={"task_id": "poll-1"},
     )
+
+
+def test_dify_prepared_polling_llm_commits_successful_reservation() -> None:
+    running_result = LLMPollingResult(
+        status=LLMPollingStatus.RUNNING,
+        plugin_state={"task_id": "poll-1"},
+    )
+    usage = node_runtime.LLMUsage.empty_usage().model_copy(update={"total_tokens": 5})
+    succeeded_result = LLMPollingResult(
+        status=LLMPollingStatus.SUCCEEDED,
+        result=node_runtime.LLMResult(
+            model="gpt-4o-mini",
+            prompt_messages=[],
+            message=AssistantPromptMessage(content="done"),
+            usage=usage,
+        ),
+    )
+    plugin_runtime = PluginModelRuntime(
+        tenant_id="tenant-id",
+        user_id="user-id",
+        client=Mock(spec=PluginModelClient),
+        plugin_service=PluginService,
+    )
+    plugin_runtime.start_llm_polling = Mock(return_value=running_result)  # type: ignore[method-assign]
+    plugin_runtime.check_llm_polling = Mock(return_value=succeeded_result)  # type: ignore[method-assign]
+    reservation = MagicMock()
+    model_instance = _QuotaManagedModelInstanceStub(
+        model_schema=_build_model_schema(features=[ModelFeature.POLLING]),
+        model_runtime=plugin_runtime,
+    )
+    model_instance.reserve_quota.return_value = reservation
+    prepared = DifyPreparedPollingLLM(model_instance)
+
+    prepared.start_llm_polling(
+        prompt_messages=[],
+        model_parameters={},
+        tools=None,
+        stop=None,
+        json_schema=None,
+    )
+    prepared.check_llm_polling(plugin_state={"task_id": "poll-1"})
+
+    reservation.commit.assert_called_once_with(usage)
+    reservation.release.assert_not_called()
+
+
+def test_dify_prepared_polling_llm_releases_previous_reservation_on_restart() -> None:
+    running_result = LLMPollingResult(
+        status=LLMPollingStatus.RUNNING,
+        plugin_state={"task_id": "poll-1"},
+    )
+    plugin_runtime = PluginModelRuntime(
+        tenant_id="tenant-id",
+        user_id="user-id",
+        client=Mock(spec=PluginModelClient),
+        plugin_service=PluginService,
+    )
+    plugin_runtime.start_llm_polling = Mock(return_value=running_result)  # type: ignore[method-assign]
+    first_reservation = MagicMock()
+    second_reservation = MagicMock()
+    model_instance = _QuotaManagedModelInstanceStub(
+        model_schema=_build_model_schema(features=[ModelFeature.POLLING]),
+        model_runtime=plugin_runtime,
+    )
+    model_instance.reserve_quota.side_effect = [first_reservation, second_reservation]
+    prepared = DifyPreparedPollingLLM(model_instance)
+
+    for _ in range(2):
+        prepared.start_llm_polling(
+            prompt_messages=[],
+            model_parameters={},
+            tools=None,
+            stop=None,
+            json_schema=None,
+        )
+
+    first_reservation.release.assert_called_once_with()
+    second_reservation.release.assert_not_called()
+    assert model_instance.reserve_quota.call_count == 2
+
+
+def test_dify_prepared_polling_llm_releases_reservation_when_finalized() -> None:
+    running_result = LLMPollingResult(
+        status=LLMPollingStatus.RUNNING,
+        plugin_state={"task_id": "poll-1"},
+    )
+    polling_runtime = SimpleNamespace(
+        start_llm_polling=Mock(return_value=running_result),
+        check_llm_polling=Mock(),
+    )
+    reservation = MagicMock()
+    model_instance = _QuotaManagedModelInstanceStub(
+        model_schema=_build_model_schema(features=[ModelFeature.POLLING]),
+        model_runtime=polling_runtime,
+    )
+    model_instance.reserve_quota.return_value = reservation
+    prepared = DifyPreparedPollingLLM(model_instance)
+
+    prepared.start_llm_polling(
+        prompt_messages=[],
+        model_parameters={},
+        tools=None,
+        stop=None,
+        json_schema=None,
+    )
+    prepared.finalize_llm_polling()
+    prepared.finalize_llm_polling()
+
+    reservation.release.assert_called_once_with()
+
+
+def test_dify_prepared_polling_llm_releases_reservation_when_check_fails() -> None:
+    running_result = LLMPollingResult(
+        status=LLMPollingStatus.RUNNING,
+        plugin_state={"task_id": "poll-1"},
+    )
+    polling_runtime = SimpleNamespace(
+        start_llm_polling=Mock(return_value=running_result),
+        check_llm_polling=Mock(side_effect=RuntimeError("polling failed")),
+    )
+    reservation = MagicMock()
+    model_instance = _QuotaManagedModelInstanceStub(
+        model_schema=_build_model_schema(features=[ModelFeature.POLLING]),
+        model_runtime=polling_runtime,
+    )
+    model_instance.reserve_quota.return_value = reservation
+    prepared = DifyPreparedPollingLLM(model_instance)
+
+    prepared.start_llm_polling(
+        prompt_messages=[],
+        model_parameters={},
+        tools=None,
+        stop=None,
+        json_schema=None,
+    )
+
+    with pytest.raises(RuntimeError, match="polling failed"):
+        prepared.check_llm_polling(plugin_state={"task_id": "poll-1"})
+
+    reservation.release.assert_called_once_with()
 
 
 def test_dify_prepared_polling_llm_raise_exception_when_polling_is_unsupported() -> None:
@@ -568,7 +716,17 @@ def test_dify_retriever_attachment_loader_skips_segment_rejected_by_checker(
 
 
 def test_dify_tool_file_manager_resolves_conversation_id_for_tool_files(monkeypatch: pytest.MonkeyPatch) -> None:
-    create_file_by_raw = MagicMock(return_value=SimpleNamespace(id="tool-file-id"))
+    tool_file = ToolFile(
+        user_id="user-id",
+        tenant_id="tenant-id",
+        conversation_id="conversation-id",
+        file_key="tools/tenant-id/tool-file-id.png",
+        mimetype="image/png",
+        name="diagram.png",
+        size=len(b"file-bytes"),
+    )
+    tool_file.id = "tool-file-id"
+    create_file_by_raw = MagicMock(return_value=tool_file)
     manager_instance = SimpleNamespace(create_file_by_raw=create_file_by_raw)
     monkeypatch.setattr(node_runtime, "ToolFileManager", MagicMock(return_value=manager_instance))
     conversation_id_getter = MagicMock(return_value="conversation-id")

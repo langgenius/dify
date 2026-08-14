@@ -1,6 +1,7 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -150,13 +151,12 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
             className="pr-10"
           />
           <div className="absolute inset-y-0 right-0 flex items-center">
-            <Button
-              type="button"
-              variant="ghost"
+            <IconButton
+              size="lg"
               aria-label={t(($) => $[showPassword ? 'hidePassword' : 'showPassword'], {
                 ns: 'login',
               })}
-              className="mr-1 size-8 p-0 text-text-tertiary hover:text-text-secondary"
+              className="mr-1"
               onClick={() => setShowPassword(!showPassword)}
             >
               {showPassword ? (
@@ -164,7 +164,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
               ) : (
                 <span className="i-ri-eye-line size-4" aria-hidden="true" />
               )}
-            </Button>
+            </IconButton>
           </div>
         </div>
       </Field>

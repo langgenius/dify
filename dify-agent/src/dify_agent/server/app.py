@@ -18,7 +18,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 import httpx
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 from redis.asyncio import Redis
 
 from dify_agent.agent_stub.shell_env import ShellAgentStubTokenFactory
@@ -133,16 +133,14 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     def get_scheduler() -> RunScheduler:
         return state["scheduler"]  # pyright: ignore[reportReturnType]
 
-    app.include_router(
-        create_runs_router(
-            get_store,
-            get_scheduler,
-            auth_dependency=create_bearer_token_dependency(resolved_settings.api_token),
-        )
+    control_plane_router = APIRouter(
+        dependencies=[create_bearer_token_dependency(resolved_settings.api_token)],
     )
-    app.include_router(create_execution_bindings_router(lambda: execution_binding_service))
-    app.include_router(create_home_snapshots_router(lambda: home_snapshot_service))
-    app.include_router(create_binding_files_router(lambda: binding_file_service))
+    control_plane_router.include_router(create_runs_router(get_store, get_scheduler))
+    control_plane_router.include_router(create_execution_bindings_router(lambda: execution_binding_service))
+    control_plane_router.include_router(create_home_snapshots_router(lambda: home_snapshot_service))
+    control_plane_router.include_router(create_binding_files_router(lambda: binding_file_service))
+    app.include_router(control_plane_router)
     app.include_router(
         create_agent_stub_router(
             token_codec=agent_stub_token_codec,

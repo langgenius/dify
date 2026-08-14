@@ -162,7 +162,7 @@
   "mcp.server.modal.parametersPlaceholder": "Objectif et contraintes du paramètre",
   "mcp.server.modal.parametersTip": "Ajoutez des descriptions pour chaque paramètre afin d'aider le LLM à comprendre leur objectif et leurs contraintes.",
   "mcp.server.publishTip": "Application non publiée. Merci de publier l'application en premier.",
-  "mcp.server.reGen": "Voulez-vous régénérer l'URL du serveur?",
+  "mcp.server.reGen": "Voulez-vous régénérer l'URL du serveur ? L'URL actuelle cessera immédiatement de fonctionner.",
   "mcp.server.title": "Serveur MCP",
   "mcp.server.url": "URL du Serveur",
   "mcp.toolItem.noDescription": "Aucune description",

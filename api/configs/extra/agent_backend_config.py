@@ -13,7 +13,7 @@ class AgentBackendConfig(BaseSettings):
     )
 
     AGENT_BACKEND_API_TOKEN: str | None = Field(
-        description="Bearer token for authenticating with the Agent backend /runs API.",
+        description="Bearer token for authenticating with the Agent backend control-plane API.",
         default=None,
     )
 

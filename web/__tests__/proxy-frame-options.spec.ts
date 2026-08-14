@@ -1,9 +1,10 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { canEmbedPath, proxy } from '@/proxy'
 
 const mockEnv = vi.hoisted(() => ({
   NEXT_PUBLIC_ALLOW_EMBED: false,
   NEXT_PUBLIC_CSP_WHITELIST: 'https://example.com',
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY: '',
 }))
 
 vi.mock('@/env', () => ({
@@ -23,6 +24,7 @@ const createRequest = (url: string) => {
 describe('proxy frame options', () => {
   afterEach(() => {
     mockEnv.NEXT_PUBLIC_ALLOW_EMBED = false
+    mockEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY = ''
     vi.unstubAllEnvs()
   })
 
@@ -64,6 +66,17 @@ describe('proxy frame options', () => {
     expect(response.headers.get('x-frame-options')).toBeNull()
     expect(contentSecurityPolicy).toContain("script-src 'self'")
     expect(contentSecurityPolicy).not.toContain('frame-ancestors')
+  })
+
+  it('should allow Cloudflare Turnstile resources when its site key is configured', () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    mockEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY = 'site-key-for-tests'
+
+    const response = proxy(createRequest('https://cloud.dify.ai/signin'))
+
+    expect(response.headers.get('content-security-policy')).toContain(
+      'https://challenges.cloudflare.com',
+    )
   })
 
   it('should protect device routes when global embedding is enabled', () => {

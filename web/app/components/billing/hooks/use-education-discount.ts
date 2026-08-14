@@ -4,8 +4,7 @@ import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
-import { fetchSubscriptionUrls } from '@/service/billing'
-import { Plan } from '../type'
+import { consoleClient } from '@/service/client'
 
 export const useEducationDiscount = () => {
   const { t } = useTranslation()
@@ -22,7 +21,9 @@ export const useEducationDiscount = () => {
 
     setIsEducationDiscountLoading(true)
     try {
-      const res = await fetchSubscriptionUrls(Plan.professional, 'year')
+      const res = await consoleClient.billing.subscription.get({
+        query: { plan: 'professional', interval: 'year' },
+      })
       window.location.href = res.url
     } finally {
       setIsEducationDiscountLoading(false)

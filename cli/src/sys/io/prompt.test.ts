@@ -1,5 +1,5 @@
 import { PassThrough } from 'node:stream'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { promptText } from './prompt'
 import { bufferStreams } from './streams'
 

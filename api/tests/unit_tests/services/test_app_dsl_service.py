@@ -15,6 +15,7 @@ from models.workflow import Workflow
 from services.app_dsl_service import AppDslService, PendingData
 from services.entities.dsl_entities import ImportStatus
 from services.errors.account import NoPermissionError
+from services.errors.app import WorkflowNotFoundError
 
 
 def test_extract_workflow_dependencies_uses_llm_environment_variable_provider(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -407,3 +408,20 @@ def test_import_app_reraises_permission_denial_instead_of_failed_result(
         )
 
     assert not unbound_session.in_transaction()
+
+
+def test_append_workflow_export_data_reports_missing_selected_workflow(monkeypatch: pytest.MonkeyPatch) -> None:
+    workflow_id = "11111111-1111-4111-8111-111111111111"
+    workflow_service = Mock()
+    workflow_service.get_draft_workflow.return_value = None
+    monkeypatch.setattr("services.app_dsl_service.WorkflowService", Mock(return_value=workflow_service))
+    app = cast(App, SimpleNamespace(id="app-1", tenant_id="tenant-1"))
+
+    with pytest.raises(WorkflowNotFoundError, match=f"Workflow version not found. Workflow ID: {workflow_id}"):
+        AppDslService._append_workflow_export_data(
+            export_data={},
+            app_model=app,
+            include_secret=False,
+            session=Mock(),
+            workflow_id=workflow_id,
+        )

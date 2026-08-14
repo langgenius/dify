@@ -1,4 +1,4 @@
-import type { AppPublisherPublishParams } from '@/app/components/app/app-publisher'
+import type { AppPublisherPublishParams } from '@/app/components/app/app-publisher/types'
 import type { EndNodeType } from '@/app/components/workflow/nodes/end/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { CommonEdgeType, Node } from '@/app/components/workflow/types'
@@ -12,7 +12,6 @@ import { useEdges } from 'reactflow'
 import { AppPublisher } from '@/app/components/app/app-publisher'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useFeatures } from '@/app/components/base/features/hooks'
-import { Plan } from '@/app/components/billing/type'
 // useWorkflowRunValidation,
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import {
@@ -118,7 +117,7 @@ const FeaturesTrigger = () => {
       if (nodeType === BlockEnum.Start || isTriggerNode(nodeType)) return count + 1
       return count
     }, 0)
-    return isFetchedPlan && plan.type === Plan.sandbox && entryCount > 2
+    return isFetchedPlan && plan.type === 'sandbox' && entryCount > 2
   }, [nodes, plan.type, isFetchedPlan])
 
   const hasHumanInputNode = useMemo(() => {

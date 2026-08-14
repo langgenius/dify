@@ -16,7 +16,6 @@ changes.
 from __future__ import annotations
 
 import inspect
-from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -28,6 +27,7 @@ from configs import dify_config
 from controllers.console.workspace import rbac as rbac_mod
 from controllers.console.workspace.rbac import _RolesListQuery
 from enums import DeploymentEdition
+from models import Account
 
 
 @pytest.fixture
@@ -42,17 +42,44 @@ def _enabled(enabled: bool):
     return patch("controllers.console.workspace.rbac.dify_config.DEPLOYMENT_EDITION", deployment_edition)
 
 
+def _account() -> Account:
+    account = Account(name="RBAC User", email="rbac@example.com")
+    account.id = "acct-1"
+    return account
+
+
 class TestCurrentIds:
     def test_rejects_missing_tenant(self):
         with patch("controllers.console.workspace.rbac.current_account_with_tenant") as mock_user:
-            mock_user.return_value = (SimpleNamespace(id="acct-1"), None)
+            mock_user.return_value = (_account(), None)
             with pytest.raises(NotFound):
                 rbac_mod._current_ids()
 
     def test_returns_tuple(self):
         with patch("controllers.console.workspace.rbac.current_account_with_tenant") as mock_user:
-            mock_user.return_value = (SimpleNamespace(id="acct-1"), "tenant-1")
+            mock_user.return_value = (_account(), "tenant-1")
             assert rbac_mod._current_ids() == ("tenant-1", "acct-1")
+
+
+class TestMyPermissions:
+    def test_returns_app_deploy_permission(self, app):
+        permissions = rbac_mod.svc.MyPermissionsResponse(
+            app=rbac_mod.svc.ResourcePermissionSnapshot(
+                default_permission_keys=["app.acl.deploy"],
+            )
+        )
+        with (
+            app.test_request_context("/workspaces/current/rbac/my-permissions"),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
+            patch(
+                "controllers.console.workspace.rbac.svc.RBACService.MyPermissions.get",
+                return_value=permissions,
+            ) as mock_get,
+        ):
+            response = inspect.unwrap(rbac_mod.RBACMyPermissionsApi.get)(rbac_mod.RBACMyPermissionsApi())
+
+        assert response["app"]["default_permission_keys"] == ["app.acl.deploy"]
+        mock_get.assert_called_once()
 
 
 class TestAccessMatrixAccountNames:
@@ -308,6 +335,46 @@ class TestResourceAccessScopeBindings:
 
         mock_sync_task.delay.assert_called_once_with("tenant-1", "acct-actor", "app-1")
 
+    def test_dataset_whitelist_all_schedules_member_policy_sync(self, app):
+        # Widening a dataset to the whole workspace only records the scope; without granting the
+        # default policy to the current members nobody actually gains access.
+        with (
+            app.test_request_context(
+                "/workspaces/current/rbac/datasets/dataset-1/whitelist",
+                method="PUT",
+                json={"scope": "all"},
+            ),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-actor")),
+            patch("controllers.console.workspace.rbac.dify_config.RBAC_ENABLED", True),
+            patch(
+                "controllers.console.workspace.rbac.svc.RBACService.DatasetAccess.replace_whitelist",
+                return_value=rbac_mod.svc.ResourceWhitelist(),
+            ),
+            patch("controllers.console.workspace.rbac.initialize_created_app_rbac_access_task") as mock_sync_task,
+        ):
+            inspect.unwrap(rbac_mod.RBACDatasetWhitelistApi.put)(rbac_mod.RBACDatasetWhitelistApi(), "dataset-1")
+
+        mock_sync_task.delay.assert_called_once_with("tenant-1", "acct-actor", dataset_id="dataset-1")
+
+    def test_dataset_whitelist_specific_does_not_schedule_member_policy_sync(self, app):
+        with (
+            app.test_request_context(
+                "/workspaces/current/rbac/datasets/dataset-1/whitelist",
+                method="PUT",
+                json={"scope": "specific"},
+            ),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-actor")),
+            patch("controllers.console.workspace.rbac.dify_config.RBAC_ENABLED", True),
+            patch(
+                "controllers.console.workspace.rbac.svc.RBACService.DatasetAccess.replace_whitelist",
+                return_value=rbac_mod.svc.ResourceWhitelist(),
+            ),
+            patch("controllers.console.workspace.rbac.initialize_created_app_rbac_access_task") as mock_sync_task,
+        ):
+            inspect.unwrap(rbac_mod.RBACDatasetWhitelistApi.put)(rbac_mod.RBACDatasetWhitelistApi(), "dataset-1")
+
+        mock_sync_task.delay.assert_not_called()
+
     def test_app_user_access_policy_assignment_forwards_ids(self, app):
         with (
             app.test_request_context(
@@ -492,7 +559,7 @@ class TestWorkspaceRbacGuards:
             patch("controllers.console.wraps.dify_config.RBAC_ENABLED", True),
             patch(
                 "controllers.common.wraps.current_account_with_tenant",
-                return_value=(SimpleNamespace(id="acct-1"), "tenant-1"),
+                return_value=(_account(), "tenant-1"),
             ),
             patch("controllers.common.wraps.RBACService.CheckAccess.check", return_value=False),
             patch("controllers.console.workspace.rbac.svc.RBACService.Roles.create") as mock_create,
@@ -513,7 +580,7 @@ class TestWorkspaceRbacGuards:
             patch("controllers.console.wraps.dify_config.RBAC_ENABLED", True),
             patch(
                 "controllers.common.wraps.current_account_with_tenant",
-                return_value=(SimpleNamespace(id="acct-1"), "tenant-1"),
+                return_value=(_account(), "tenant-1"),
             ),
             patch("controllers.common.wraps.RBACService.CheckAccess.check", return_value=False),
             patch("controllers.console.workspace.rbac.svc.RBACService.AccessPolicies.create") as mock_create,

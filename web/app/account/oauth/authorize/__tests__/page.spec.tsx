@@ -1,7 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { seedSystemFeatures } from '@/test/console/query-data'
 import OAuthAuthorize from '../page'
 
 const mocks = vi.hoisted(() => ({
@@ -39,6 +40,7 @@ function renderPage() {
       queries: { retry: false },
     },
   })
+  seedSystemFeatures(queryClient)
 
   return render(
     <QueryClientProvider client={queryClient}>
@@ -92,6 +94,7 @@ describe('OAuthAuthorize', () => {
     renderPage()
 
     expect((await screen.findAllByText('Test OAuth App')).length).toBeGreaterThan(0)
+    expect(document.title).toBe('oauth.connect Test OAuth App - Dify')
     const providerRequest = findRequest('/oauth/provider')
     const providerTransportRequest = providerRequest?.[2]?.request as Request
     await expect(providerTransportRequest.clone().json()).resolves.toEqual({

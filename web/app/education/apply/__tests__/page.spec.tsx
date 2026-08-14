@@ -2,13 +2,12 @@ import type { GetAccountProfileResponse } from '@dify/contracts/api/console/acco
 import { toast } from '@langgenius/dify-ui/toast'
 import { cleanup, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { Plan } from '@/app/components/billing/type'
 import EducationApplyPage from '@/app/education/apply/application-form'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 
 let mockConsoleState: Record<string, unknown> = {}
-const mockFetchSubscriptionUrls = vi.hoisted(() => vi.fn())
+const mockGetSubscription = vi.hoisted(() => vi.fn())
 const mockEducationAdd = vi.hoisted(() => vi.fn())
 const mockSwitchWorkspace = vi.hoisted(() => vi.fn())
 const mockWorkspaces = vi.hoisted(() => [
@@ -39,10 +38,6 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }))
 
-vi.mock('@/service/billing', () => ({
-  fetchSubscriptionUrls: (...args: unknown[]) => mockFetchSubscriptionUrls(...args),
-}))
-
 vi.mock('@/service/use-common', () => ({
   useLogout: () => ({ mutateAsync: vi.fn() }),
 }))
@@ -57,6 +52,7 @@ vi.mock('@/service/client', () => ({
       invoices: {
         get: vi.fn().mockResolvedValue({ url: 'https://billing.example.com' }),
       },
+      subscription: { get: mockGetSubscription },
     },
   },
   consoleQuery: {
@@ -136,7 +132,7 @@ const renderPage = (isEducationAccount = true) => {
     educationStatus: { is_student: isEducationAccount },
     workspacePermissionKeys: null,
   })
-  return render(<EducationApplyPage token="education-token" plan={Plan.sandbox} />, {
+  return render(<EducationApplyPage token="education-token" plan="sandbox" />, {
     wrapper,
   })
 }
@@ -146,7 +142,7 @@ describe('EducationApplyPage billing boundary', () => {
     vi.clearAllMocks()
     cleanup()
     vi.spyOn(toast, 'error').mockImplementation(() => 'toast-id')
-    mockFetchSubscriptionUrls.mockResolvedValue({ url: window.location.href })
+    mockGetSubscription.mockResolvedValue({ url: window.location.href })
     mockSwitchWorkspace.mockResolvedValue(undefined)
     vi.stubGlobal('location', {
       href: 'https://console.example.com/education/apply?token=education-token',
@@ -167,7 +163,9 @@ describe('EducationApplyPage billing boundary', () => {
     await user.click(screen.getByRole('button', { name: 'education.useEducationDiscount' }))
 
     await waitFor(() => {
-      expect(mockFetchSubscriptionUrls).toHaveBeenCalledWith(Plan.professional, 'year')
+      expect(mockGetSubscription).toHaveBeenCalledWith({
+        query: { plan: 'professional', interval: 'year' },
+      })
     })
   })
 
@@ -239,6 +237,7 @@ describe('EducationApplyPage billing boundary', () => {
       screen.getByRole('combobox', { name: 'education.form.schoolName.title' }),
       'DifyUniversity',
     )
+    await user.keyboard('{Escape}')
     expect(
       screen.getByRole('radiogroup', { name: 'education.form.schoolRole.title' }),
     ).toBeInTheDocument()

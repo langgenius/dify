@@ -777,7 +777,7 @@ export const lintConfig = {
           'error',
           {
             allowConstantExport: true,
-            allowExportNames: ['viewport'],
+            allowExportNames: ['generateMetadata', 'viewport'],
           },
         ],
       },
