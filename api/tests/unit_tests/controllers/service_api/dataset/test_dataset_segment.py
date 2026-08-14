@@ -100,9 +100,9 @@ def _child_chunk() -> ChildChunk:
         content="child chunk content",
         word_count=3,
         created_by="account-1",
+        type=SegmentType.CUSTOMIZED,
     )
     child_chunk.id = "child-1"
-    child_chunk.type = SegmentType.CUSTOMIZED
     child_chunk.created_at = naive_utc_now()
     child_chunk.updated_at = naive_utc_now()
     return child_chunk
@@ -358,34 +358,64 @@ class TestSegmentServiceMockedBehavior:
     @pytest.fixture
     def mock_dataset(self):
         """Create mock dataset."""
-        dataset = Mock(spec=Dataset)
-        dataset.id = str(uuid.uuid4())
-        dataset.tenant_id = str(uuid.uuid4())
+        dataset = Dataset(
+            id=str(uuid.uuid4()),
+            tenant_id=str(uuid.uuid4()),
+        )
         return dataset
 
     @pytest.fixture
     def mock_document(self):
         """Create mock document."""
-        document = Mock(spec=Document)
-        document.id = str(uuid.uuid4())
-        document.dataset_id = str(uuid.uuid4())
-        document.indexing_status = "completed"
-        document.enabled = True
+        document = Document(
+            id=str(uuid.uuid4()),
+            dataset_id=str(uuid.uuid4()),
+            indexing_status="completed",
+            enabled=True,
+        )
         return document
 
     @pytest.fixture
     def mock_segment(self):
         """Create mock segment."""
-        segment = Mock(spec=DocumentSegment)
+        segment = DocumentSegment(
+            tenant_id="tenant-id",
+            dataset_id="dataset-id",
+            document_id=str(uuid.uuid4()),
+            position=1,
+            content="Test content",
+            word_count=0,
+            tokens=0,
+            created_by="account-id",
+        )
         segment.id = str(uuid.uuid4())
-        segment.document_id = str(uuid.uuid4())
-        segment.content = "Test content"
         return segment
 
     @patch.object(SegmentService, "multi_create_segment")
     def test_create_segments_returns_list(self, mock_create, mock_dataset, mock_document):
         """Test segment creation returns list of segments."""
-        mock_segments = [Mock(spec=DocumentSegment), Mock(spec=DocumentSegment)]
+        mock_segments = [
+            DocumentSegment(
+                tenant_id="tenant-id",
+                dataset_id="dataset-id",
+                document_id="document-id",
+                position=1,
+                content="",
+                word_count=0,
+                tokens=0,
+                created_by="account-id",
+            ),
+            DocumentSegment(
+                tenant_id="tenant-id",
+                dataset_id="dataset-id",
+                document_id="document-id",
+                position=1,
+                content="",
+                word_count=0,
+                tokens=0,
+                created_by="account-id",
+            ),
+        ]
         mock_create.return_value = mock_segments
         session = Mock()
 
@@ -459,17 +489,33 @@ class TestChildChunkServiceMockedBehavior:
     @pytest.fixture
     def mock_segment(self):
         """Create mock segment."""
-        segment = Mock(spec=DocumentSegment)
+        segment = DocumentSegment(
+            tenant_id="tenant-id",
+            dataset_id="dataset-id",
+            document_id="document-id",
+            position=1,
+            content="",
+            word_count=0,
+            tokens=0,
+            created_by="account-id",
+        )
         segment.id = str(uuid.uuid4())
         return segment
 
     @pytest.fixture
     def mock_child_chunk(self):
         """Create mock child chunk."""
-        chunk = Mock(spec=ChildChunk)
+        chunk = ChildChunk(
+            tenant_id="tenant-id",
+            dataset_id="dataset-id",
+            document_id="document-id",
+            segment_id=str(uuid.uuid4()),
+            position=1,
+            content="Child chunk content",
+            word_count=0,
+            created_by="account-id",
+        )
         chunk.id = str(uuid.uuid4())
-        chunk.segment_id = str(uuid.uuid4())
-        chunk.content = "Child chunk content"
         return chunk
 
     @patch.object(SegmentService, "create_child_chunk")
@@ -480,8 +526,8 @@ class TestChildChunkServiceMockedBehavior:
         result = SegmentService.create_child_chunk(
             content="New chunk content",
             segment=mock_segment,
-            document=Mock(spec=Document),
-            dataset=Mock(spec=Dataset),
+            document=Document(),
+            dataset=Dataset(),
             session=Mock(),
         )
 
@@ -524,16 +570,33 @@ class TestChildChunkServiceMockedBehavior:
     @patch.object(SegmentService, "update_child_chunk")
     def test_update_child_chunk_returns_updated_chunk(self, mock_update, mock_child_chunk):
         """Test update_child_chunk returns updated chunk."""
-        updated_chunk = Mock(spec=ChildChunk)
-        updated_chunk.content = "Updated content"
+        updated_chunk = ChildChunk(
+            tenant_id="tenant-id",
+            dataset_id="dataset-id",
+            document_id="document-id",
+            segment_id="segment-id",
+            position=1,
+            content="Updated content",
+            word_count=0,
+            created_by="account-id",
+        )
         mock_update.return_value = updated_chunk
 
         result = SegmentService.update_child_chunk(
             content="Updated content",
             child_chunk=mock_child_chunk,
-            segment=Mock(spec=DocumentSegment),
-            document=Mock(spec=Document),
-            dataset=Mock(spec=Dataset),
+            segment=DocumentSegment(
+                tenant_id="tenant-id",
+                dataset_id="dataset-id",
+                document_id="document-id",
+                position=1,
+                content="",
+                word_count=0,
+                tokens=0,
+                created_by="account-id",
+            ),
+            document=Document(),
+            dataset=Dataset(),
             session=Mock(),
         )
 
@@ -545,26 +608,30 @@ class TestDocumentValidation:
 
     def test_document_indexing_status_completed_is_valid(self):
         """Test that completed indexing status is valid."""
-        document = Mock(spec=Document)
-        document.indexing_status = "completed"
+        document = Document(
+            indexing_status="completed",
+        )
         assert document.indexing_status == "completed"
 
     def test_document_indexing_status_indexing_is_invalid(self):
         """Test that indexing status is invalid for segment operations."""
-        document = Mock(spec=Document)
-        document.indexing_status = "indexing"
+        document = Document(
+            indexing_status="indexing",
+        )
         assert document.indexing_status != "completed"
 
     def test_document_enabled_true_is_valid(self):
         """Test that enabled=True is valid."""
-        document = Mock(spec=Document)
-        document.enabled = True
+        document = Document(
+            enabled=True,
+        )
         assert document.enabled
 
     def test_document_enabled_false_is_invalid(self):
         """Test that enabled=False is invalid for segment operations."""
-        document = Mock(spec=Document)
-        document.enabled = False
+        document = Document(
+            enabled=False,
+        )
         assert not document.enabled
 
 
@@ -573,10 +640,11 @@ class TestDatasetModels:
 
     def test_dataset_has_required_fields(self):
         """Test Dataset model has required fields."""
-        dataset = Mock(spec=Dataset)
-        dataset.id = str(uuid.uuid4())
-        dataset.tenant_id = str(uuid.uuid4())
-        dataset.indexing_technique = "economy"
+        dataset = Dataset(
+            id=str(uuid.uuid4()),
+            tenant_id=str(uuid.uuid4()),
+            indexing_technique="economy",
+        )
 
         assert dataset.id is not None
         assert dataset.tenant_id is not None
@@ -584,11 +652,17 @@ class TestDatasetModels:
 
     def test_document_segment_has_required_fields(self):
         """Test DocumentSegment model has required fields."""
-        segment = Mock(spec=DocumentSegment)
+        segment = DocumentSegment(
+            tenant_id="tenant-id",
+            dataset_id="dataset-id",
+            document_id=str(uuid.uuid4()),
+            position=1,
+            content="Test content",
+            word_count=0,
+            tokens=0,
+            created_by="account-id",
+        )
         segment.id = str(uuid.uuid4())
-        segment.document_id = str(uuid.uuid4())
-        segment.content = "Test content"
-        segment.position = 1
 
         assert segment.id is not None
         assert segment.document_id is not None
@@ -596,10 +670,17 @@ class TestDatasetModels:
 
     def test_child_chunk_has_required_fields(self):
         """Test ChildChunk model has required fields."""
-        chunk = Mock(spec=ChildChunk)
+        chunk = ChildChunk(
+            tenant_id="tenant-id",
+            dataset_id="dataset-id",
+            document_id="document-id",
+            segment_id=str(uuid.uuid4()),
+            position=1,
+            content="Chunk content",
+            word_count=0,
+            created_by="account-id",
+        )
         chunk.id = str(uuid.uuid4())
-        chunk.segment_id = str(uuid.uuid4())
-        chunk.content = "Chunk content"
 
         assert chunk.id is not None
         assert chunk.segment_id is not None
@@ -787,8 +868,9 @@ class TestSegmentIndexingRequirements:
     @pytest.mark.parametrize("technique", ["high_quality", "economy"])
     def test_indexing_technique_values(self, technique):
         """Test valid indexing technique values."""
-        dataset = Mock(spec=Dataset)
-        dataset.indexing_technique = technique
+        dataset = Dataset(
+            indexing_technique=technique,
+        )
         assert dataset.indexing_technique in ["high_quality", "economy"]
 
     @pytest.mark.parametrize(
@@ -803,8 +885,9 @@ class TestSegmentIndexingRequirements:
     )
     def test_valid_indexing_statuses(self, status):
         """Test valid document indexing statuses."""
-        document = Mock(spec=Document)
-        document.indexing_status = status
+        document = Document(
+            indexing_status=status,
+        )
         assert document.indexing_status in {
             IndexingStatus.WAITING,
             IndexingStatus.PARSING,
@@ -815,9 +898,10 @@ class TestSegmentIndexingRequirements:
 
     def test_completed_status_required_for_segments(self):
         """Test that completed status is required for segment operations."""
-        document = Mock(spec=Document)
-        document.indexing_status = "completed"
-        document.enabled = True
+        document = Document(
+            indexing_status="completed",
+            enabled=True,
+        )
 
         # Both conditions must be true
         assert document.indexing_status == "completed"

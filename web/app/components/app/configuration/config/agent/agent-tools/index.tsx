@@ -366,7 +366,7 @@ const AgentTools: FC = () => {
                       }}
                     >
                       {t(($) => $.notAuthorized, { ns: 'tools' })}
-                      <StatusDot className="ml-2" status="warning" />
+                      <StatusDot status="warning" />
                     </Button>
                   )}
                 </div>

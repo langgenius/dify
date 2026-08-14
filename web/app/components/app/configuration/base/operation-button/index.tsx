@@ -21,7 +21,7 @@ export function OperationButton({
       {...buttonProps}
       variant="ghost"
       size="small"
-      className={cn('h-7 gap-1 px-3 text-text-secondary', className)}
+      className={cn('h-7 px-3 text-text-secondary', className)}
     >
       <span
         aria-hidden

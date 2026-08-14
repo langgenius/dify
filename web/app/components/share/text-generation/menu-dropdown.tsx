@@ -10,14 +10,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import ThemeSwitcher from '@/app/components/base/theme-switcher'
 import { useWebAppStore } from '@/context/web-app-context'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useRouter } from '@/next/navigation'
+import { resolveWebAppAddress } from '@/service/webapp-address'
 import { webAppLogout } from '@/service/webapp-auth'
 import InfoModal from './info-modal'
 
@@ -33,9 +34,8 @@ const MenuDropdown: FC<Props> = ({ data, placement, hideLogout }) => {
   const pathname = usePathname()
   const { t } = useTranslation()
 
-  const shareCode = useWebAppStore((s) => s.shareCode)
   const handleLogout = async () => {
-    await webAppLogout(shareCode!)
+    await webAppLogout(resolveWebAppAddress())
     router.replace(`/webapp-signin?redirect_url=${pathname}`)
   }
 
@@ -51,11 +51,14 @@ const MenuDropdown: FC<Props> = ({ data, placement, hideLogout }) => {
       <DropdownMenu>
         <DropdownMenuTrigger
           render={
-            <ActionButton size="l" className="data-popup-open:bg-state-base-hover">
+            <IconButton
+              aria-label={t(($) => $['operation.more'], { ns: 'common' })}
+              size="lg"
+              className="data-popup-open:bg-state-base-hover"
+            >
               <span aria-hidden className="i-ri-equalizer-2-line h-4.5 w-4.5" />
-            </ActionButton>
+            </IconButton>
           }
-          aria-label={t(($) => $['operation.more'], { ns: 'common' })}
         />
         <DropdownMenuContent
           placement={placement || 'bottom-end'}

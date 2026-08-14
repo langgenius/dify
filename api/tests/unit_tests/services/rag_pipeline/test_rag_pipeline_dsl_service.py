@@ -11,7 +11,7 @@ import json
 from collections.abc import Generator
 from contextlib import contextmanager
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock, Mock, call
 
 import pytest
@@ -19,6 +19,7 @@ import yaml
 from sqlalchemy import Engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from graphon.enums import BuiltinNodeTypes
 from models import Account, Tenant
@@ -45,11 +46,11 @@ def service(sqlite_session: Session) -> RagPipelineDslService:
     return RagPipelineDslService(session=sqlite_session)
 
 
-def _account(*, tenant_id: str = "tenant-1") -> Account:
+def _account(*, tenant_id: str = "tenant-1", account_id: str = "account-1") -> Account:
     tenant = Tenant(name="Tenant")
     tenant.id = tenant_id
     account = Account(name="Account", email="account@example.com")
-    account.id = "account-1"
+    account.id = account_id
     account._current_tenant = tenant
     return account
 
@@ -234,6 +235,84 @@ def test_extract_dependencies_from_model_config_covers_models_rerankers_and_tool
     assert dependencies == ["model:openai", "model:cohere", "tool:google"]
     assert analyze_model.call_args_list == [call("openai"), call("cohere")]
     analyze_tool.assert_called_once_with("google")
+
+
+def test_extract_workflow_dependencies_uses_llm_environment_variable_provider(
+    monkeypatch: pytest.MonkeyPatch, service: RagPipelineDslService
+) -> None:
+    workflow = SimpleNamespace(
+        graph_dict={
+            "nodes": [
+                {
+                    "id": "llm-node",
+                    "data": {
+                        "type": "llm",
+                        "title": "LLM",
+                        "model": {"provider": "old-provider", "name": "old-model", "mode": "chat"},
+                        "model_selector": ["env", "shared_model"],
+                        "prompt_template": [{"role": "system", "text": "x"}],
+                        "context": {"enabled": False, "variable_selector": []},
+                        "vision": {"enabled": False},
+                    },
+                }
+            ]
+        },
+        environment_variables=[
+            LLMEnvironmentVariable(
+                name="shared_model",
+                value={"provider": "new-provider", "name": "new-model", "mode": "chat"},
+            )
+        ],
+    )
+    analyze_dependency = Mock(side_effect=lambda provider: provider)
+    monkeypatch.setattr(
+        module.DependenciesAnalysisService,
+        "analyze_model_provider_dependency",
+        analyze_dependency,
+    )
+
+    result = service._extract_dependencies_from_workflow(cast(Workflow, workflow))
+
+    assert result == ["new-provider"]
+    analyze_dependency.assert_called_once_with("new-provider")
+
+
+@pytest.mark.parametrize("model_selector", [[], ["env", "missing_model"]])
+def test_extract_workflow_dependencies_tolerates_unresolved_llm_environment_reference(
+    monkeypatch: pytest.MonkeyPatch,
+    service: RagPipelineDslService,
+    model_selector: list[str],
+) -> None:
+    workflow = SimpleNamespace(
+        graph_dict={
+            "nodes": [
+                {
+                    "id": "llm-node",
+                    "data": {
+                        "type": "llm",
+                        "title": "LLM",
+                        "model": {"provider": "old-provider", "name": "old-model", "mode": "chat"},
+                        "model_selector": model_selector,
+                        "prompt_template": [{"role": "system", "text": "x"}],
+                        "context": {"enabled": False, "variable_selector": []},
+                        "vision": {"enabled": False},
+                    },
+                }
+            ]
+        },
+        environment_variables=[],
+    )
+    analyze_dependency = Mock(side_effect=lambda provider: provider)
+    monkeypatch.setattr(
+        module.DependenciesAnalysisService,
+        "analyze_model_provider_dependency",
+        analyze_dependency,
+    )
+
+    result = service._extract_dependencies_from_workflow(cast(Workflow, workflow))
+
+    assert result == ["old-provider"]
+    analyze_dependency.assert_called_once_with("old-provider")
 
 
 def test_extract_dependencies_from_workflow_graph_covers_plugin_and_model_nodes(
@@ -548,6 +627,10 @@ def test_import_pending_version_stores_redis(monkeypatch: pytest.MonkeyPatch, se
         account=_account(), import_mode=ImportMode.YAML_CONTENT.value, yaml_content=_valid_dsl(version="1.0.0")
     )
     assert result.status == ImportStatus.PENDING
+    assert setex.call_args.args[0] == f"app_import_info:{result.id}"
+    pending = RagPipelinePendingData.model_validate_json(setex.call_args.args[2])
+    assert pending.tenant_id == "tenant-1"
+    assert pending.account_id == "account-1"
     setex.assert_called_once()
 
 
@@ -703,14 +786,26 @@ def test_confirm_import_updates_tenant_pipeline_and_dataset(
     dataset = _dataset(sqlite_session, pipeline)
     _workflow(sqlite_session, pipeline)
     pending = RagPipelinePendingData(
+        tenant_id="tenant-1",
+        account_id="account-1",
         import_mode=ImportMode.YAML_CONTENT.value,
         yaml_content=_valid_dsl(name="Confirmed"),
         pipeline_id=pipeline.id,
     )
-    monkeypatch.setattr(module.redis_client, "get", Mock(return_value=pending.model_dump_json()))
+    redis_key = "app_import_info:import-1"
+    monkeypatch.setattr(
+        module.redis_client,
+        "get",
+        Mock(side_effect=lambda key: pending.model_dump_json() if key == redis_key else None),
+    )
     delete = Mock()
     monkeypatch.setattr(module.redis_client, "delete", delete)
     monkeypatch.setattr(module.KnowledgeConfiguration, "model_validate", Mock(return_value=_knowledge_configuration()))
+    for foreign_account in (_account(tenant_id="tenant-2"), _account(account_id="account-2")):
+        assert service.confirm_import(import_id="import-1", account=foreign_account).status == ImportStatus.FAILED
+    delete.assert_not_called()
+    assert pipeline.name == "Pipeline"
+
     result = service.confirm_import(import_id="import-1", account=_account())
     assert result.status == ImportStatus.COMPLETED
     assert result.pipeline_id == pipeline.id
@@ -730,7 +825,7 @@ def test_confirm_import_updates_tenant_pipeline_and_dataset(
         assert observed_pipeline is not None
         assert observed_pipeline.name == "Confirmed"
 
-    delete.assert_called_once()
+    delete.assert_called_once_with(redis_key)
 
 
 def test_export_reads_real_dataset_and_workflow_and_filters_credentials(

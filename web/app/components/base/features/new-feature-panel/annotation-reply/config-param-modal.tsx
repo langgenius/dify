@@ -9,7 +9,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { ANNOTATION_DEFAULT } from '@/config'
 import { Item } from './config-param'
 import ScoreSlider from './score-slider'
@@ -115,14 +115,14 @@ const ConfigParamModal: FC<Props> = ({
           >
             <div className="pt-1">
               <ModelSelector
-                defaultModel={
+                value={
                   embeddingModel && {
                     provider: embeddingModel.providerName,
                     model: embeddingModel.modelName,
                   }
                 }
-                modelList={embeddingsModelList}
-                onSelect={(val) => {
+                models={embeddingsModelList}
+                onValueChange={(val) => {
                   setEmbeddingModel({
                     providerName: val.provider,
                     modelName: val.model,
@@ -136,7 +136,6 @@ const ConfigParamModal: FC<Props> = ({
         <div className="mt-6 flex justify-end gap-2">
           <Button onClick={onHide}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
           <Button variant="primary" onClick={handleSave} loading={isLoading}>
-            <div></div>
             <div>
               {t(($) => $[`initSetup.${isInit ? 'confirmBtn' : 'configConfirmBtn'}`], {
                 ns: 'appAnnotation',

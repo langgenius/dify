@@ -15,29 +15,18 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
-import {
-  RiDatabase2Line,
-  RiFileExcel2Line,
-  RiGitCommitLine,
-  RiNewspaperLine,
-  RiPresentationLine,
-  RiRoadMapLine,
-  RiTerminalBoxLine,
-  RiTranslate,
-  RiUser2Line,
-} from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
 import { useBoolean, useSessionStorageState } from 'ahooks'
 import * as React from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Generator } from '@/app/components/base/icons/src/vender/other'
+import { toast } from '@/app/components/app/configuration/toast'
 import Loading from '@/app/components/base/loading'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import { consoleQuery } from '@/service/client'
 import { generateBasicAppFirstTimeRule, generateRule } from '@/service/debug'
-import { useGenerateRuleTemplate } from '@/service/use-apps'
 import { useAutoGenModel } from '../auto-gen-model-storage'
 import IdeaOutput from './idea-output'
 import InstructionEditorInBasic from './instruction-editor'
@@ -63,18 +52,19 @@ type IGetAutomaticResProps = {
 }
 
 const TryLabel: FC<{
-  Icon: any
+  iconClassName: string
   text: string
   onClick: () => void
-}> = ({ Icon, text, onClick }) => {
+}> = ({ iconClassName, text, onClick }) => {
   return (
-    <div
+    <button
+      type="button"
       className="mt-2 mr-1 flex h-7 shrink-0 cursor-pointer items-center rounded-lg bg-components-button-secondary-bg px-2"
       onClick={onClick}
     >
-      <Icon className="size-4 text-text-tertiary"></Icon>
+      <span aria-hidden className={`${iconClassName} size-4 text-text-tertiary`} />
       <div className="ml-1 text-xs font-medium text-text-secondary">{text}</div>
-    </div>
+    </button>
   )
 }
 
@@ -91,60 +81,64 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
 }) => {
   const { t } = useTranslation()
   const [storedModel, setStoredModel] = useAutoGenModel()
-  const [model, setModel] = React.useState<Model>(
-    storedModel || {
-      name: '',
-      provider: '',
-      mode: mode as unknown as ModelModeType,
-      completion_params: {} as CompletionParams,
-    },
-  )
+  const [selectedModel, setSelectedModel] = React.useState<Model>()
   const { defaultModel } = useModelListAndDefaultModelAndCurrentProviderAndModel(
     ModelTypeEnum.textGeneration,
   )
+  const model = useMemo<Model>(() => {
+    if (selectedModel) return selectedModel
+    if (storedModel) return storedModel
+
+    return {
+      name: defaultModel?.model ?? '',
+      provider: defaultModel?.provider.provider ?? '',
+      mode: mode as unknown as ModelModeType,
+      completion_params: {} as CompletionParams,
+    }
+  }, [defaultModel, mode, selectedModel, storedModel])
   const tryList = [
     {
-      icon: RiTerminalBoxLine,
+      iconClassName: 'i-ri-terminal-box-line',
       key: 'pythonDebugger',
     },
     {
-      icon: RiTranslate,
+      iconClassName: 'i-ri-translate',
       key: 'translation',
     },
     {
-      icon: RiPresentationLine,
+      iconClassName: 'i-ri-presentation-line',
       key: 'meetingTakeaways',
     },
     {
-      icon: RiNewspaperLine,
+      iconClassName: 'i-ri-newspaper-line',
       key: 'writingsPolisher',
     },
     {
-      icon: RiUser2Line,
+      iconClassName: 'i-ri-user-2-line',
       key: 'professionalAnalyst',
     },
     {
-      icon: RiFileExcel2Line,
+      iconClassName: 'i-ri-file-excel-2-line',
       key: 'excelFormulaExpert',
     },
     {
-      icon: RiRoadMapLine,
+      iconClassName: 'i-ri-road-map-line',
       key: 'travelPlanning',
     },
     {
-      icon: RiDatabase2Line,
+      iconClassName: 'i-ri-database-2-line',
       key: 'SQLSorcerer',
     },
     {
-      icon: RiGitCommitLine,
+      iconClassName: 'i-ri-git-commit-line',
       key: 'GitGud',
     },
   ] as const
 
-  const [instructionFromSessionStorage, setInstruction] = useSessionStorageState<string>(
-    `improve-instruction-${flowId}${isBasicMode ? '' : `-${nodeId}${editorId ? `-${editorId}` : ''}`}`,
-  )
-  const instruction = instructionFromSessionStorage || ''
+  const [instructionFromSessionStorage, setInstructionFromSessionStorage] =
+    useSessionStorageState<string>(
+      `improve-instruction-${flowId}${isBasicMode ? '' : `-${nodeId}${editorId ? `-${editorId}` : ''}`}`,
+    )
   const [ideaOutput, setIdeaOutput] = useState<string>('')
 
   type TemplateKey = (typeof tryList)[number]['key']
@@ -156,19 +150,22 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
         const template = t(($) => $[`generate.template.${key}.instruction` as const], {
           ns: 'appDebug',
         })
-        setInstruction(template)
+        setInstructionFromSessionStorage(template)
         setEditorKey(`${flowId}-${Date.now()}`)
       }
     },
-    [t],
+    [flowId, setInstructionFromSessionStorage, t],
   )
 
-  const { data: instructionTemplate } = useGenerateRuleTemplate(GeneratorType.prompt, isBasicMode)
-  useEffect(() => {
-    if (!instruction && instructionTemplate) setInstruction(instructionTemplate.data)
-
-    setEditorKey(`${flowId}-${Date.now()}`)
-  }, [instructionTemplate])
+  const { data: instructionTemplate } = useQuery({
+    ...consoleQuery.instructionGenerate.template.post.queryOptions({
+      input: { body: { type: GeneratorType.prompt } },
+    }),
+    enabled: !isBasicMode,
+    retry: 0,
+  })
+  const instruction = instructionFromSessionStorage ?? instructionTemplate?.data ?? ''
+  const instructionEditorKey = `${editorKey}-${instructionTemplate ? 'template' : 'pending'}`
 
   const isValid = () => {
     if (instruction.trim() === '') {
@@ -190,20 +187,6 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     },
   )
 
-  useEffect(() => {
-    if (defaultModel) {
-      if (storedModel) {
-        setModel(storedModel)
-      } else {
-        setModel((prev) => ({
-          ...prev,
-          name: defaultModel.model,
-          provider: defaultModel.provider.provider,
-        }))
-      }
-    }
-  }, [defaultModel, storedModel])
-
   const renderLoading = (
     <div className="flex h-full w-0 grow flex-col items-center justify-center space-y-3">
       <Loading />
@@ -221,10 +204,10 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
         name: newValue.modelId,
         mode: newValue.mode as ModelModeType,
       }
-      setModel(newModel)
+      setSelectedModel(newModel)
       setStoredModel(newModel)
     },
-    [model, setModel, setStoredModel],
+    [model, setStoredModel],
   )
 
   const handleCompletionParamsChange = useCallback(
@@ -233,10 +216,10 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
         ...model,
         completion_params: newParams as CompletionParams,
       }
-      setModel(newModel)
+      setSelectedModel(newModel)
       setStoredModel(newModel)
     },
-    [model, setModel, setStoredModel],
+    [model, setStoredModel],
   )
 
   const onGenerate = async () => {
@@ -338,7 +321,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                   {tryList.map((item) => (
                     <TryLabel
                       key={item.key}
-                      Icon={item.icon}
+                      iconClassName={item.iconClassName}
                       text={t(($) => $[`generate.template.${item.key}.name`], { ns: 'appDebug' })}
                       onClick={handleChooseTemplate(item.key)}
                     />
@@ -355,10 +338,10 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                 </div>
                 {isBasicMode ? (
                   <InstructionEditorInBasic
-                    editorKey={editorKey}
+                    editorKey={instructionEditorKey}
                     generatorType={GeneratorType.prompt}
                     value={instruction}
-                    onChange={setInstruction}
+                    onChange={setInstructionFromSessionStorage}
                     availableVars={[]}
                     availableNodes={[]}
                     isShowCurrentBlock={!!currentPrompt}
@@ -366,10 +349,10 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                   />
                 ) : (
                   <InstructionEditorInWorkflow
-                    editorKey={editorKey}
+                    editorKey={instructionEditorKey}
                     generatorType={GeneratorType.prompt}
                     value={instruction}
-                    onChange={setInstruction}
+                    onChange={setInstructionFromSessionStorage}
                     nodeId={nodeId || ''}
                     isShowCurrentBlock={!!currentPrompt}
                   />
@@ -382,12 +365,12 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                   {t(($) => $[`${i18nPrefix}.dismiss`], { ns: 'appDebug' })}
                 </Button>
                 <Button
-                  className="flex space-x-1"
+                  className="flex"
                   variant="primary"
                   onClick={onGenerate}
                   disabled={isLoading}
                 >
-                  <Generator className="size-4" />
+                  <span aria-hidden className="i-custom-vender-other-generator size-4" />
                   <span className="text-xs font-semibold">
                     {t(($) => $['generate.generate'], { ns: 'appDebug' })}
                   </span>

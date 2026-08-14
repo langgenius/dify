@@ -1,6 +1,6 @@
 import type { Plugin, PluginDeclaration, UpdateFromGitHubPayload } from '../../../../types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum, TaskStatus } from '../../../../types'
 import Loaded from '../loaded'
 
@@ -482,6 +482,9 @@ describe('Loaded', () => {
       await waitFor(() => {
         expect(screen.getByText('plugin.installModal.installing')).toBeInTheDocument()
       })
+      expect(
+        screen.getByRole('button', { name: /plugin.installModal.installing/i }),
+      ).toHaveAttribute('aria-disabled', 'true')
 
       resolveInstall!({ all_installed: true, task_id: 'task-1' })
     })

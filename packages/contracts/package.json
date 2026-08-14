@@ -20,6 +20,10 @@
       "types": "./generated/enterprise/*.ts",
       "import": "./generated/enterprise/*.ts"
     },
+    "./enterprise-app-deploy/*": {
+      "types": "./generated/enterprise-app-deploy/*.ts",
+      "import": "./generated/enterprise-app-deploy/*.ts"
+    },
     "./knowledge-fs/*": {
       "types": "./generated/knowledge-fs/*.ts",
       "import": "./generated/knowledge-fs/*.ts"
@@ -28,6 +32,7 @@
   "scripts": {
     "gen-api-contract": "uv run --project ../../api ../../api/dev/generate_swagger_specs.py --output-dir openapi && uv run --project ../../api ../../api/dev/generate_fastopenapi_specs.py --output-dir openapi && node -e \"fs.rmSync('generated/api', { recursive: true, force: true })\" && openapi-ts -f openapi-ts.api.config.ts && vp fmt generated/api",
     "gen-enterprise-contract": "openapi-ts -f openapi-ts.enterprise.config.ts",
+    "gen-enterprise-app-deploy-contract": "openapi-ts -f openapi-ts.enterprise-app-deploy.config.ts",
     "gen-knowledge-fs-contract": "node scripts/generate-knowledge-fs-contract.mjs",
     "test": "vp test",
     "type-check": "tsc"
@@ -43,6 +48,7 @@
     "@typescript/native": "catalog:",
     "js-yaml": "catalog:",
     "typescript": "catalog:",
+    "vite": "catalog:",
     "vite-plus": "catalog:",
     "vitest": "catalog:"
   }

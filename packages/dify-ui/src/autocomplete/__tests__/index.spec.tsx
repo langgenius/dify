@@ -89,9 +89,6 @@ describe('Autocomplete wrappers', () => {
         .toHaveAttribute('autocomplete', 'off')
       await expect
         .element(screen.getByRole('combobox', { name: 'Search suggestions' }))
-        .toHaveAttribute('type', 'text')
-      await expect
-        .element(screen.getByRole('combobox', { name: 'Search suggestions' }))
         .toHaveAttribute('placeholder', 'Find a resource')
       await expect
         .element(screen.getByRole('combobox', { name: 'Search suggestions' }))
@@ -99,6 +96,18 @@ describe('Autocomplete wrappers', () => {
       await expect
         .element(screen.getByRole('combobox', { name: 'Search suggestions' }))
         .toHaveClass('custom-input')
+    })
+
+    it('should not inject input-only attributes into a custom textarea', async () => {
+      const screen = await renderAutocomplete({
+        children: (
+          <AutocompleteInputGroup>
+            <AutocompleteInput aria-label="Search suggestions" render={<textarea />} />
+          </AutocompleteInputGroup>
+        ),
+      })
+
+      await expect.element(screen.getByLabelText('Search suggestions')).not.toHaveAttribute('type')
     })
   })
 

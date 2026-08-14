@@ -14,6 +14,7 @@ from controllers.console.wraps import (
     RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
@@ -275,8 +276,8 @@ class DatasourceAuth(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.CREDENTIAL_CREATE, resource_required=False)
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, provider_id: str):
-        payload = DatasourceCredentialPayload.model_validate(console_ns.payload or {})
+    @model_validate(DatasourceCredentialPayload)
+    def post(self, req_data: DatasourceCredentialPayload, current_tenant_id: str, provider_id: str):
         datasource_provider_id = DatasourceProviderID(provider_id)
         datasource_provider_service = DatasourceProviderService()
 
@@ -284,8 +285,8 @@ class DatasourceAuth(Resource):
             datasource_provider_service.add_datasource_api_key_provider(
                 tenant_id=current_tenant_id,
                 provider_id=datasource_provider_id,
-                credentials=payload.credentials,
-                name=payload.name,
+                credentials=req_data.credentials,
+                name=req_data.name,
             )
         except CredentialsValidateFailedError as ex:
             raise ValueError(str(ex))
@@ -325,16 +326,16 @@ class DatasourceAuthDeleteApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, provider_id: str):
+    @model_validate(DatasourceCredentialDeletePayload)
+    def post(self, req_data: DatasourceCredentialDeletePayload, current_tenant_id: str, provider_id: str):
         datasource_provider_id = DatasourceProviderID(provider_id)
         plugin_id = datasource_provider_id.plugin_id
         provider_name = datasource_provider_id.provider_name
 
-        payload = DatasourceCredentialDeletePayload.model_validate(console_ns.payload or {})
         datasource_provider_service = DatasourceProviderService()
         datasource_provider_service.remove_datasource_credentials(
             tenant_id=current_tenant_id,
-            auth_id=payload.credential_id,
+            auth_id=req_data.credential_id,
             provider=provider_name,
             plugin_id=plugin_id,
             session=db.session(),
@@ -354,18 +355,18 @@ class DatasourceAuthUpdateApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, provider_id: str):
+    @model_validate(DatasourceCredentialUpdatePayload)
+    def post(self, req_data: DatasourceCredentialUpdatePayload, current_tenant_id: str, provider_id: str):
         datasource_provider_id = DatasourceProviderID(provider_id)
-        payload = DatasourceCredentialUpdatePayload.model_validate(console_ns.payload or {})
 
         datasource_provider_service = DatasourceProviderService()
         datasource_provider_service.update_datasource_credentials(
             tenant_id=current_tenant_id,
-            auth_id=payload.credential_id,
+            auth_id=req_data.credential_id,
             provider=datasource_provider_id.provider_name,
             plugin_id=datasource_provider_id.plugin_id,
-            credentials=payload.credentials or {},
-            name=payload.name,
+            credentials=req_data.credentials or {},
+            name=req_data.name,
         )
         return SimpleResultResponse(result="success").model_dump(mode="json"), 201
 
@@ -420,15 +421,15 @@ class DatasourceAuthOauthCustomClient(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, provider_id: str):
-        payload = DatasourceCustomClientPayload.model_validate(console_ns.payload or {})
+    @model_validate(DatasourceCustomClientPayload)
+    def post(self, req_data: DatasourceCustomClientPayload, current_tenant_id: str, provider_id: str):
         datasource_provider_id = DatasourceProviderID(provider_id)
         datasource_provider_service = DatasourceProviderService()
         datasource_provider_service.setup_oauth_custom_client_params(
             tenant_id=current_tenant_id,
             datasource_provider_id=datasource_provider_id,
-            client_params=payload.client_params or {},
-            enabled=payload.enable_oauth_custom_client or False,
+            client_params=req_data.client_params or {},
+            enabled=req_data.enable_oauth_custom_client or False,
         )
         return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
@@ -457,14 +458,14 @@ class DatasourceAuthDefaultApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, provider_id: str):
-        payload = DatasourceDefaultPayload.model_validate(console_ns.payload or {})
+    @model_validate(DatasourceDefaultPayload)
+    def post(self, req_data: DatasourceDefaultPayload, current_tenant_id: str, provider_id: str):
         datasource_provider_id = DatasourceProviderID(provider_id)
         datasource_provider_service = DatasourceProviderService()
         datasource_provider_service.set_default_datasource_provider(
             tenant_id=current_tenant_id,
             datasource_provider_id=datasource_provider_id,
-            credential_id=payload.id,
+            credential_id=req_data.id,
         )
         return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
@@ -479,14 +480,14 @@ class DatasourceUpdateProviderNameApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, provider_id: str):
-        payload = DatasourceUpdateNamePayload.model_validate(console_ns.payload or {})
+    @model_validate(DatasourceUpdateNamePayload)
+    def post(self, req_data: DatasourceUpdateNamePayload, current_tenant_id: str, provider_id: str):
         datasource_provider_id = DatasourceProviderID(provider_id)
         datasource_provider_service = DatasourceProviderService()
         datasource_provider_service.update_datasource_provider_name(
             tenant_id=current_tenant_id,
             datasource_provider_id=datasource_provider_id,
-            name=payload.name,
-            credential_id=payload.credential_id,
+            name=req_data.name,
+            credential_id=req_data.credential_id,
         )
         return SimpleResultResponse(result="success").model_dump(mode="json"), 200

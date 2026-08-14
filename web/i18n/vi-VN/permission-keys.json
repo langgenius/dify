@@ -4,6 +4,7 @@
   "app.access_config": "Cấu hình quyền truy cập ứng dụng",
   "app.acl.access_config": "Cấu hình quyền truy cập ứng dụng",
   "app.acl.delete": "Xóa ứng dụng",
+  "app.acl.deploy": "Triển khai ứng dụng",
   "app.acl.edit": "Chỉnh sửa và điều phối ứng dụng",
   "app.acl.import_export_dsl": "Nhập / xuất DSL",
   "app.acl.log_and_annotation": "Truy cập nhật ký và chú thích",

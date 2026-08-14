@@ -5,12 +5,12 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import * as React from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
-import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
@@ -32,12 +32,16 @@ type ContinueWorkItemProps = {
 export function ContinueWorkItem({ app }: ContinueWorkItemProps) {
   const { t } = useTranslation()
   const { formatTimeFromNow } = useFormatTimeFromNow()
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const appNameId = React.useId()
-  const appModeId = React.useId()
-  const appMetadataId = React.useId()
+  const appNameId = useId()
+  const appModeId = useId()
+  const appMetadataId = useId()
+  const [isPrefetchEnabled, setIsPrefetchEnabled] = useState(false)
   const isRbacEnabled = systemFeatures.rbac_enabled
   const updatedAt = app.updated_at * 1000
   const appModeLabel = t(($) => $[appModeLabelKeys[app.mode]], { ns: 'app' })
@@ -110,7 +114,6 @@ export function ContinueWorkItem({ app }: ContinueWorkItemProps) {
           type="button"
           aria-labelledby={`${appNameId} ${appModeId}`}
           aria-describedby={appMetadataId}
-          aria-disabled="true"
           className="absolute inset-0 z-10 cursor-not-allowed touch-manipulation appearance-none rounded-xl border-0 bg-transparent p-0 outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
           onClick={showPreviewOnlyAccessWarning}
         />
@@ -122,6 +125,9 @@ export function ContinueWorkItem({ app }: ContinueWorkItemProps) {
   return (
     <Link
       href={href}
+      prefetch={isPrefetchEnabled ? null : false}
+      onMouseEnter={() => setIsPrefetchEnabled(true)}
+      onFocus={() => setIsPrefetchEnabled(true)}
       aria-labelledby={`${appNameId} ${appModeId}`}
       aria-describedby={appMetadataId}
       className={cn(

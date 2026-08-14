@@ -1,16 +1,4 @@
-export enum Plan {
-  sandbox = 'sandbox',
-  professional = 'professional',
-  team = 'team',
-  enterprise = 'enterprise',
-}
-export enum Priority {
-  standard = 'standard',
-  priority = 'priority',
-  topPriority = 'top-priority',
-}
-
-export type BasicPlan = Plan.sandbox | Plan.professional | Plan.team
+type DocumentProcessingPriority = 'standard' | 'priority' | 'top-priority'
 
 export type PlanInfo = {
   level: number
@@ -24,92 +12,24 @@ export type PlanInfo = {
   documentsUploadQuota: number
   documentsRequestQuota: number
   apiRateLimit: number
-  documentProcessingPriority: Priority
+  documentProcessingPriority: DocumentProcessingPriority
   logHistory: number
   messageRequest: number
   triggerEvents: number
   annotatedResponse: number
 }
 
-export enum SelfHostedPlan {
-  community = 'community',
-  premium = 'premium',
-  enterprise = 'enterprise',
+export type UsagePlanInfo = {
+  buildApps: number
+  teamMembers: number
+  annotatedResponse: number
+  documentsUploadQuota: number
+  apiRateLimit: number
+  triggerEvents: number
+  vectorSpace: number
 }
-
-export type UsagePlanInfo = Pick<
-  PlanInfo,
-  | 'buildApps'
-  | 'teamMembers'
-  | 'annotatedResponse'
-  | 'documentsUploadQuota'
-  | 'apiRateLimit'
-  | 'triggerEvents'
-> & { vectorSpace: number }
 
 export type UsageResetInfo = {
   apiRateLimit?: number | null
   triggerEvents?: number | null
-}
-
-export type BillingQuota = {
-  usage: number
-  limit: number
-  reset_date?: number | null
-}
-
-export enum DocumentProcessingPriority {
-  standard = 'standard',
-  priority = 'priority',
-  topPriority = 'top-priority',
-}
-
-export type CurrentPlanInfoBackend = {
-  billing: {
-    enabled: boolean
-    subscription: {
-      plan: BasicPlan
-    }
-  }
-  members: {
-    size: number
-    limit: number // total. 0 means unlimited
-  }
-  apps: {
-    size: number
-    limit: number // total. 0 means unlimited
-  }
-  annotation_quota_limit: {
-    size: number
-    limit: number // total. 0 means unlimited
-  }
-  documents_upload_quota: {
-    size: number
-    limit: number // total. 0 means unlimited
-  }
-  api_rate_limit?: BillingQuota
-  trigger_event?: BillingQuota
-  docs_processing: DocumentProcessingPriority
-  can_replace_logo: boolean
-  model_load_balancing_enabled: boolean
-  dataset_operator_enabled: boolean
-  education: {
-    enabled: boolean
-    activated: boolean
-  }
-  webapp_copyright_enabled: boolean
-  workspace_members: {
-    enabled?: boolean
-    size: number
-    limit: number
-  }
-  is_allow_transfer_workspace: boolean
-  knowledge_pipeline: {
-    publish_enabled: boolean
-  }
-  human_input_email_delivery_enabled: boolean
-}
-
-export type SubscriptionUrlsBackend = {
-  url: string
 }

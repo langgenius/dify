@@ -638,18 +638,14 @@ function WorkflowGeneratorModal() {
                   // window where the user might want to bail (slow
                   // model, wrong instruction, etc.). Hidden when idle so
                   // the row stays focused on the primary action.
-                  <Button
-                    className="flex space-x-1"
-                    variant="secondary"
-                    onClick={onCancelGeneration}
-                  >
+                  <Button className="flex" variant="secondary" onClick={onCancelGeneration}>
                     <span className="text-xs font-semibold">
                       {t(($) => $['workflowGenerator.cancel'])}
                     </span>
                   </Button>
                 ) : (
                   <Button
-                    className="flex space-x-1"
+                    className="flex"
                     variant="primary"
                     onClick={onGenerate}
                     disabled={!model.name}

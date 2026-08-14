@@ -93,7 +93,7 @@ const FileUpload = ({ disabled, onChange }: Props) => {
                 onChange={onChange}
               >
                 <Button className="w-full" disabled={disabled}>
-                  <RiEqualizer2Line className="mr-1 size-4" />
+                  <RiEqualizer2Line className="size-4" />
                   {t(($) => $['operation.settings'], { ns: 'common' })}
                 </Button>
               </SettingModal>

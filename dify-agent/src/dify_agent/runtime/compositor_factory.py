@@ -43,8 +43,8 @@ from dify_agent.layers.ask_human.layer import DifyAskHumanLayer
 from dify_agent.layers.config.layer import DifyConfigLayer
 from dify_agent.layers.dify_core_tools.configs import DifyCoreToolsLayerConfig
 from dify_agent.layers.dify_core_tools.layer import DifyCoreToolsLayer
+from dify_agent.layers.dify_plugin.configs import DifyPluginLLMLayerConfig, DifyPluginToolsLayerConfig
 from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
-from dify_agent.layers.dify_plugin.configs import DifyPluginToolsLayerConfig
 from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer
 from dify_agent.layers.drive.layer import DifyDriveLayer
 from dify_agent.layers.execution_context.configs import DifyExecutionContextLayerConfig
@@ -97,7 +97,14 @@ def create_default_layer_providers(
                 agent_stub_token_factory=agent_stub_token_factory,
             ),
         ),
-        LayerProvider.from_layer_type(DifyPluginLLMLayer),
+        LayerProvider.from_factory(
+            layer_type=DifyPluginLLMLayer,
+            create=lambda config: DifyPluginLLMLayer.from_config_with_settings(
+                DifyPluginLLMLayerConfig.model_validate(config),
+                inner_api_url=inner_api_url,
+                inner_api_key=inner_api_key,
+            ),
+        ),
         LayerProvider.from_factory(
             layer_type=DifyPluginToolsLayer,
             create=lambda config: DifyPluginToolsLayer.from_config_with_settings(

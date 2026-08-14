@@ -5,7 +5,7 @@ Tests cover all public methods and error paths of the DatasetDocumentStore class
 which provides document storage and retrieval functionality for datasets in the RAG system.
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import func, select
@@ -19,12 +19,14 @@ TENANT_ID = "00000000-0000-0000-0000-000000000001"
 DATASET_ID = "00000000-0000-0000-0000-000000000002"
 DOCUMENT_ID = "00000000-0000-0000-0000-000000000003"
 USER_ID = "00000000-0000-0000-0000-000000000004"
+ATTACHMENT_ID = "00000000-0000-0000-0000-000000000005"
 
 
 def _dataset() -> Dataset:
-    dataset = MagicMock(spec=Dataset)
-    dataset.id = DATASET_ID
-    dataset.tenant_id = TENANT_ID
+    dataset = Dataset(
+        id=DATASET_ID,
+        tenant_id=TENANT_ID,
+    )
     return dataset
 
 
@@ -36,7 +38,25 @@ def _persist_segment(
     content: str = "Test content",
     tokens: int = 5,
 ) -> DocumentSegment:
-    segment = DocumentSegment(
+    segment = _segment(
+        index_node_id=index_node_id,
+        index_node_hash=index_node_hash,
+        content=content,
+        tokens=tokens,
+    )
+    session.add(segment)
+    session.flush()
+    return segment
+
+
+def _segment(
+    *,
+    index_node_id: str = "doc-1",
+    index_node_hash: str = "hash-1",
+    content: str = "Test content",
+    tokens: int = 5,
+) -> DocumentSegment:
+    return DocumentSegment(
         tenant_id=TENANT_ID,
         dataset_id=DATASET_ID,
         document_id=DOCUMENT_ID,
@@ -48,19 +68,25 @@ def _persist_segment(
         index_node_id=index_node_id,
         index_node_hash=index_node_hash,
     )
-    session.add(segment)
-    session.flush()
-    return segment
 
 
-class TestDatasetDocumentStoreInit:
+class _UsesSQLiteSession:
+    session: Session
+
+    @pytest.fixture(autouse=True)
+    def _inject_sqlite_session(self, sqlite_session: Session) -> None:
+        self.session = sqlite_session
+
+
+class TestDatasetDocumentStoreInit(_UsesSQLiteSession):
     """Tests for DatasetDocumentStore initialization."""
 
     def test_init_with_all_parameters(self):
         """Test initialization with dataset, user_id, and document_id."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
+        mock_dataset = Dataset(
+            id="test-dataset-id",
+        )
 
         store = DatasetDocumentStore(
             dataset=mock_dataset,
@@ -77,8 +103,9 @@ class TestDatasetDocumentStoreInit:
     def test_init_without_document_id(self):
         """Test initialization without document_id."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
+        mock_dataset = Dataset(
+            id="test-dataset-id",
+        )
 
         store = DatasetDocumentStore(
             dataset=mock_dataset,
@@ -89,14 +116,15 @@ class TestDatasetDocumentStoreInit:
         assert store.dataset_id == "test-dataset-id"
 
 
-class TestDatasetDocumentStoreSerialization:
+class TestDatasetDocumentStoreSerialization(_UsesSQLiteSession):
     """Tests for to_dict and from_dict methods."""
 
     def test_to_dict(self):
         """Test serialization to dictionary."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
+        mock_dataset = Dataset(
+            id="test-dataset-id",
+        )
 
         store = DatasetDocumentStore(
             dataset=mock_dataset,
@@ -111,11 +139,10 @@ class TestDatasetDocumentStoreSerialization:
         """Test deserialization from dictionary."""
 
         config_dict = {
-            "dataset": MagicMock(spec=["id"]),
+            "dataset": _dataset(),
             "user_id": "test-user",
             "document_id": "test-doc",
         }
-        config_dict["dataset"].id = "ds-123"
 
         store = DatasetDocumentStore.from_dict(config_dict)
 
@@ -123,27 +150,20 @@ class TestDatasetDocumentStoreSerialization:
         assert store._document_id == "test-doc"
 
 
-class TestDatasetDocumentStoreDocs:
+class TestDatasetDocumentStoreDocs(_UsesSQLiteSession):
     """Tests for the docs property."""
 
     def test_docs_returns_document_dict(self):
         """Test that docs property returns a dictionary of documents."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
+        mock_segment = _segment(index_node_id="node-1")
 
-        mock_segment = MagicMock(spec=DocumentSegment)
-        mock_segment.index_node_id = "node-1"
-        mock_segment.index_node_hash = "hash-1"
-        mock_segment.document_id = "doc-1"
-        mock_segment.dataset_id = "test-dataset-id"
-        mock_segment.content = "Test content"
-
-        mock_session = MagicMock()
-        mock_session.scalars.return_value.all.return_value = [mock_segment]
+        mock_session = self.session
+        mock_session.add(mock_segment)
+        mock_session.flush()
 
         store = DatasetDocumentStore(
-            dataset=mock_dataset,
+            dataset=_dataset(),
             user_id="test-user-id",
         )
 
@@ -155,11 +175,11 @@ class TestDatasetDocumentStoreDocs:
     def test_docs_empty_dataset(self):
         """Test docs property with no segments."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
+        mock_dataset = Dataset(
+            id="test-dataset-id",
+        )
 
-        mock_session = MagicMock()
-        mock_session.scalars.return_value.all.return_value = []
+        mock_session = self.session
 
         store = DatasetDocumentStore(
             dataset=mock_dataset,
@@ -171,12 +191,7 @@ class TestDatasetDocumentStoreDocs:
         assert result == {}
 
 
-@pytest.mark.parametrize(
-    "sqlite_session",
-    [(DocumentSegment, ChildChunk, SegmentAttachmentBinding)],
-    indirect=True,
-)
-class TestDatasetDocumentStoreAddDocuments:
+class TestDatasetDocumentStoreAddDocuments(_UsesSQLiteSession):
     """Tests for add_documents method."""
 
     def test_add_documents_new_document_with_token_count(self, sqlite_session: Session):
@@ -320,260 +335,147 @@ class TestDatasetDocumentStoreAddDocuments:
         assert sqlite_session.scalar(select(func.count()).select_from(DocumentSegment)) == 0
 
 
-class TestDatasetDocumentStoreExists:
+class TestDatasetDocumentStoreExists(_UsesSQLiteSession):
     """Tests for document_exists method."""
 
     def test_document_exists_returns_true(self):
         """Test document_exists returns True when segment exists."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
+        _persist_segment(self.session)
+        store = DatasetDocumentStore(dataset=_dataset(), user_id=USER_ID)
 
-        mock_segment = MagicMock()
-        mock_session = MagicMock()
-
-        with patch.object(DatasetDocumentStore, "get_document_segment", return_value=mock_segment):
-            store = DatasetDocumentStore(
-                dataset=mock_dataset,
-                user_id="test-user-id",
-            )
-
-            result = store.document_exists("doc-1", session=mock_session)
-
-            assert result is True
+        assert store.document_exists("doc-1", session=self.session) is True
 
     def test_document_exists_returns_false(self):
         """Test document_exists returns False when segment doesn't exist."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
-        mock_session = MagicMock()
+        store = DatasetDocumentStore(dataset=_dataset(), user_id=USER_ID)
 
-        with patch.object(DatasetDocumentStore, "get_document_segment", return_value=None):
-            store = DatasetDocumentStore(
-                dataset=mock_dataset,
-                user_id="test-user-id",
-            )
-
-            result = store.document_exists("doc-1", session=mock_session)
-
-            assert result is False
+        assert store.document_exists("doc-1", session=self.session) is False
 
 
-class TestDatasetDocumentStoreGetDocument:
+class TestDatasetDocumentStoreGetDocument(_UsesSQLiteSession):
     """Tests for get_document method."""
 
     def test_get_document_success(self):
         """Test getting a document successfully."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
+        _persist_segment(self.session, index_node_id="node-1")
+        store = DatasetDocumentStore(dataset=_dataset(), user_id=USER_ID)
 
-        mock_segment = MagicMock(spec=DocumentSegment)
-        mock_segment.index_node_id = "node-1"
-        mock_segment.index_node_hash = "hash-1"
-        mock_segment.document_id = "doc-1"
-        mock_segment.dataset_id = "test-dataset-id"
-        mock_segment.content = "Test content"
-        mock_session = MagicMock()
+        result = store.get_document("node-1", session=self.session, raise_error=False)
 
-        with patch.object(DatasetDocumentStore, "get_document_segment", return_value=mock_segment):
-            store = DatasetDocumentStore(
-                dataset=mock_dataset,
-                user_id="test-user-id",
-            )
-
-            result = store.get_document("node-1", session=mock_session, raise_error=False)
-
-            assert isinstance(result, Document)
-            assert result.page_content == "Test content"
+        assert isinstance(result, Document)
+        assert result.page_content == "Test content"
 
     def test_get_document_returns_none_when_not_found(self):
         """Test get_document returns None when not found and raise_error=False."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
-        mock_session = MagicMock()
+        store = DatasetDocumentStore(dataset=_dataset(), user_id=USER_ID)
 
-        with patch.object(DatasetDocumentStore, "get_document_segment", return_value=None):
-            store = DatasetDocumentStore(
-                dataset=mock_dataset,
-                user_id="test-user-id",
-            )
+        result = store.get_document("nonexistent", session=self.session, raise_error=False)
 
-            result = store.get_document("nonexistent", session=mock_session, raise_error=False)
-
-            assert result is None
+        assert result is None
 
     def test_get_document_raises_when_not_found(self):
         """Test get_document raises ValueError when not found and raise_error=True."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
-        mock_session = MagicMock()
+        store = DatasetDocumentStore(dataset=_dataset(), user_id=USER_ID)
 
-        with patch.object(DatasetDocumentStore, "get_document_segment", return_value=None):
-            store = DatasetDocumentStore(
-                dataset=mock_dataset,
-                user_id="test-user-id",
-            )
-
-            with pytest.raises(ValueError, match="not found"):
-                store.get_document("nonexistent", session=mock_session, raise_error=True)
+        with pytest.raises(ValueError, match="not found"):
+            store.get_document("nonexistent", session=self.session, raise_error=True)
 
 
-class TestDatasetDocumentStoreDeleteDocument:
+class TestDatasetDocumentStoreDeleteDocument(_UsesSQLiteSession):
     """Tests for delete_document method."""
 
     def test_delete_document_success(self):
         """Test deleting a document successfully."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
+        segment = _persist_segment(self.session)
+        store = DatasetDocumentStore(dataset=_dataset(), user_id=USER_ID)
 
-        mock_segment = MagicMock()
-        mock_session = MagicMock()
+        store.delete_document("doc-1", session=self.session)
 
-        with patch.object(DatasetDocumentStore, "get_document_segment", return_value=mock_segment):
-            store = DatasetDocumentStore(
-                dataset=mock_dataset,
-                user_id="test-user-id",
-            )
-
-            store.delete_document("doc-1", session=mock_session)
-
-            mock_session.delete.assert_called_with(mock_segment)
-            mock_session.flush.assert_called()
+        assert self.session.get(DocumentSegment, segment.id) is None
 
     def test_delete_document_returns_none_when_not_found(self):
         """Test delete_document returns None when not found and raise_error=False."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
-        mock_session = MagicMock()
+        store = DatasetDocumentStore(dataset=_dataset(), user_id=USER_ID)
 
-        with patch.object(DatasetDocumentStore, "get_document_segment", return_value=None):
-            store = DatasetDocumentStore(
-                dataset=mock_dataset,
-                user_id="test-user-id",
-            )
+        result = store.delete_document("nonexistent", session=self.session, raise_error=False)
 
-            result = store.delete_document("nonexistent", session=mock_session, raise_error=False)
-
-            assert result is None
+        assert result is None
 
     def test_delete_document_raises_when_not_found(self):
         """Test delete_document raises ValueError when not found and raise_error=True."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
-        mock_session = MagicMock()
+        store = DatasetDocumentStore(dataset=_dataset(), user_id=USER_ID)
 
-        with patch.object(DatasetDocumentStore, "get_document_segment", return_value=None):
-            store = DatasetDocumentStore(
-                dataset=mock_dataset,
-                user_id="test-user-id",
-            )
-
-            with pytest.raises(ValueError, match="not found"):
-                store.delete_document("nonexistent", session=mock_session, raise_error=True)
+        with pytest.raises(ValueError, match="not found"):
+            store.delete_document("nonexistent", session=self.session, raise_error=True)
 
 
-class TestDatasetDocumentStoreHashOperations:
+class TestDatasetDocumentStoreHashOperations(_UsesSQLiteSession):
     """Tests for set_document_hash and get_document_hash methods."""
 
     def test_set_document_hash_success(self):
         """Test setting document hash successfully."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
+        segment = _persist_segment(self.session, index_node_hash="old-hash")
+        store = DatasetDocumentStore(dataset=_dataset(), user_id=USER_ID)
 
-        mock_segment = MagicMock()
-        mock_segment.index_node_hash = "old-hash"
-        mock_session = MagicMock()
+        store.set_document_hash("doc-1", "new-hash", session=self.session)
+        self.session.expire_all()
 
-        with patch.object(DatasetDocumentStore, "get_document_segment", return_value=mock_segment):
-            store = DatasetDocumentStore(
-                dataset=mock_dataset,
-                user_id="test-user-id",
-            )
-
-            store.set_document_hash("doc-1", "new-hash", session=mock_session)
-
-            assert mock_segment.index_node_hash == "new-hash"
-            mock_session.flush.assert_called()
+        updated_segment = self.session.get(DocumentSegment, segment.id)
+        assert updated_segment is not None
+        assert updated_segment.index_node_hash == "new-hash"
 
     def test_set_document_hash_returns_none_when_not_found(self):
         """Test set_document_hash returns None when segment not found."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
-        mock_session = MagicMock()
+        store = DatasetDocumentStore(dataset=_dataset(), user_id=USER_ID)
 
-        with patch.object(DatasetDocumentStore, "get_document_segment", return_value=None):
-            store = DatasetDocumentStore(
-                dataset=mock_dataset,
-                user_id="test-user-id",
-            )
+        result = store.set_document_hash("nonexistent", "new-hash", session=self.session)
 
-            result = store.set_document_hash("nonexistent", "new-hash", session=mock_session)
-
-            assert result is None
+        assert result is None
 
     def test_get_document_hash_success(self):
         """Test getting document hash successfully."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
+        _persist_segment(self.session, index_node_hash="test-hash")
+        store = DatasetDocumentStore(dataset=_dataset(), user_id=USER_ID)
 
-        mock_segment = MagicMock()
-        mock_segment.index_node_hash = "test-hash"
-        mock_session = MagicMock()
+        result = store.get_document_hash("doc-1", session=self.session)
 
-        with patch.object(DatasetDocumentStore, "get_document_segment", return_value=mock_segment):
-            store = DatasetDocumentStore(
-                dataset=mock_dataset,
-                user_id="test-user-id",
-            )
-
-            result = store.get_document_hash("doc-1", session=mock_session)
-
-            assert result == "test-hash"
+        assert result == "test-hash"
 
     def test_get_document_hash_returns_none_when_not_found(self):
         """Test get_document_hash returns None when segment not found."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
-        mock_session = MagicMock()
+        store = DatasetDocumentStore(dataset=_dataset(), user_id=USER_ID)
 
-        with patch.object(DatasetDocumentStore, "get_document_segment", return_value=None):
-            store = DatasetDocumentStore(
-                dataset=mock_dataset,
-                user_id="test-user-id",
-            )
+        result = store.get_document_hash("nonexistent", session=self.session)
 
-            result = store.get_document_hash("nonexistent", session=mock_session)
-
-            assert result is None
+        assert result is None
 
 
-class TestDatasetDocumentStoreSegment:
+class TestDatasetDocumentStoreSegment(_UsesSQLiteSession):
     """Tests for get_document_segment method."""
 
     def test_get_document_segment_returns_segment(self):
         """Test getting a document segment."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
+        mock_segment = _segment()
 
-        mock_segment = MagicMock(spec=DocumentSegment)
-
-        mock_session = MagicMock()
-        mock_session.scalar.return_value = mock_segment
+        mock_session = self.session
+        mock_session.add(mock_segment)
+        mock_session.flush()
 
         store = DatasetDocumentStore(
-            dataset=mock_dataset,
+            dataset=_dataset(),
             user_id="test-user-id",
         )
 
@@ -584,14 +486,10 @@ class TestDatasetDocumentStoreSegment:
     def test_get_document_segment_returns_none(self):
         """Test getting a non-existent document segment."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
-
-        mock_session = MagicMock()
-        mock_session.scalar.return_value = None
+        mock_session = self.session
 
         store = DatasetDocumentStore(
-            dataset=mock_dataset,
+            dataset=_dataset(),
             user_id="test-user-id",
         )
 
@@ -600,98 +498,79 @@ class TestDatasetDocumentStoreSegment:
         assert result is None
 
 
-class TestDatasetDocumentStoreMultimodelBinding:
+class TestDatasetDocumentStoreMultimodelBinding(_UsesSQLiteSession):
     """Tests for add_multimodel_documents_binding method."""
 
     def test_add_multimodel_documents_binding_with_attachments(self):
         """Test adding multimodel document bindings."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
-        mock_dataset.tenant_id = "tenant-1"
+        attachment = AttachmentDocument(page_content="attachment", metadata={"doc_id": ATTACHMENT_ID})
 
-        mock_attachment = MagicMock(spec=AttachmentDocument)
-        mock_attachment.metadata = {"doc_id": "attachment-1"}
-
-        mock_session = MagicMock()
+        mock_session = self.session
 
         store = DatasetDocumentStore(
-            dataset=mock_dataset,
-            user_id="test-user-id",
-            document_id="test-doc-id",
+            dataset=_dataset(),
+            user_id=USER_ID,
+            document_id=DOCUMENT_ID,
         )
 
-        store.add_multimodel_documents_binding("seg-1", [mock_attachment], session=mock_session)
+        store.add_multimodel_documents_binding("seg-1", [attachment], session=mock_session)
+        mock_session.flush()
 
-        mock_session.add.assert_called()
+        binding = mock_session.scalar(select(SegmentAttachmentBinding))
+        assert binding is not None
+        assert binding.segment_id == "seg-1"
+        assert binding.attachment_id == ATTACHMENT_ID
 
     def test_add_multimodel_documents_binding_without_attachments(self):
         """Test adding bindings with None attachments."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
-        mock_dataset.tenant_id = "tenant-1"
-
-        mock_session = MagicMock()
+        mock_session = self.session
 
         store = DatasetDocumentStore(
-            dataset=mock_dataset,
-            user_id="test-user-id",
-            document_id="test-doc-id",
+            dataset=_dataset(),
+            user_id=USER_ID,
+            document_id=DOCUMENT_ID,
         )
 
         store.add_multimodel_documents_binding("seg-1", None, session=mock_session)
 
-        mock_session.add.assert_not_called()
+        assert mock_session.scalar(select(func.count()).select_from(SegmentAttachmentBinding)) == 0
 
     def test_add_multimodel_documents_binding_with_empty_list(self):
         """Test adding bindings with empty list."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
-        mock_dataset.tenant_id = "tenant-1"
-
-        mock_session = MagicMock()
+        mock_session = self.session
 
         store = DatasetDocumentStore(
-            dataset=mock_dataset,
-            user_id="test-user-id",
-            document_id="test-doc-id",
+            dataset=_dataset(),
+            user_id=USER_ID,
+            document_id=DOCUMENT_ID,
         )
 
         store.add_multimodel_documents_binding("seg-1", [], session=mock_session)
 
-        mock_session.add.assert_not_called()
+        assert mock_session.scalar(select(func.count()).select_from(SegmentAttachmentBinding)) == 0
 
     def test_add_multimodel_documents_binding_with_none_document_id(self):
         """Test that no bindings are added when document_id is None."""
 
-        mock_dataset = MagicMock(spec=Dataset)
-        mock_dataset.id = "test-dataset-id"
-        mock_dataset.tenant_id = "tenant-1"
+        attachment = AttachmentDocument(page_content="attachment", metadata={"doc_id": ATTACHMENT_ID})
 
-        mock_attachment = MagicMock(spec=AttachmentDocument)
-        mock_attachment.metadata = {"doc_id": "attachment-1"}
-
-        mock_session = MagicMock()
+        mock_session = self.session
 
         store = DatasetDocumentStore(
-            dataset=mock_dataset,
-            user_id="test-user-id",
+            dataset=_dataset(),
+            user_id=USER_ID,
             document_id=None,
         )
 
-        store.add_multimodel_documents_binding("seg-1", [mock_attachment], session=mock_session)
+        store.add_multimodel_documents_binding("seg-1", [attachment], session=mock_session)
 
-        mock_session.add.assert_not_called()
+        assert mock_session.scalar(select(func.count()).select_from(SegmentAttachmentBinding)) == 0
 
 
-@pytest.mark.parametrize(
-    "sqlite_session",
-    [(DocumentSegment, ChildChunk, SegmentAttachmentBinding)],
-    indirect=True,
-)
-class TestDatasetDocumentStoreAddDocumentsUpdateChild:
+class TestDatasetDocumentStoreAddDocumentsUpdateChild(_UsesSQLiteSession):
     """Tests for add_documents when updating existing documents with children."""
 
     def test_add_documents_update_existing_with_children(self, sqlite_session: Session):
@@ -739,12 +618,7 @@ class TestDatasetDocumentStoreAddDocumentsUpdateChild:
         assert children[0].index_node_id == "child-1"
 
 
-@pytest.mark.parametrize(
-    "sqlite_session",
-    [(DocumentSegment, ChildChunk, SegmentAttachmentBinding)],
-    indirect=True,
-)
-class TestDatasetDocumentStoreAddDocumentsUpdateAnswer:
+class TestDatasetDocumentStoreAddDocumentsUpdateAnswer(_UsesSQLiteSession):
     """Tests for add_documents when updating existing documents with answer metadata."""
 
     def test_add_documents_update_existing_with_answer(self, sqlite_session: Session):

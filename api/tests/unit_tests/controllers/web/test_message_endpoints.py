@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -20,20 +19,27 @@ from controllers.web.message import (
     MessageMoreLikeThisApi,
     MessageSuggestedQuestionApi,
 )
+from models.enums import EndUserType
+from models.model import App, AppMode, EndUser
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.message import MessageNotExistsError
 
 
-def _chat_app() -> SimpleNamespace:
-    return SimpleNamespace(id="app-1", mode="chat")
+def _chat_app() -> App:
+    return App(id="app-1", tenant_id="tenant-1", mode=AppMode.CHAT)
 
 
-def _completion_app() -> SimpleNamespace:
-    return SimpleNamespace(id="app-1", mode="completion")
+def _completion_app() -> App:
+    return App(id="app-1", tenant_id="tenant-1", mode=AppMode.COMPLETION)
 
 
-def _end_user() -> SimpleNamespace:
-    return SimpleNamespace(id="eu-1")
+def _end_user() -> EndUser:
+    return EndUser(
+        id="eu-1",
+        tenant_id="tenant-1",
+        type=EndUserType.BROWSER,
+        session_id="session-1",
+    )
 
 
 # ---------------------------------------------------------------------------

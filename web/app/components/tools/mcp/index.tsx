@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { useCanManageMCP } from '@/app/components/tools/hooks/use-tool-permissions'
 import ToolCardSkeletonGrid from '@/app/components/tools/provider/tool-card-skeleton'
-import { useAllToolProviders, useDeleteMCP, useUpdateMCP } from '@/service/use-tools'
+import { useAllMCPTools, useDeleteMCP, useUpdateMCP } from '@/service/use-tools'
 import { toolsContentInsetClassNames, toolsUnifiedContentFrameClassName } from '../content-inset'
 import NewMCPCard from './create-card'
 import MCPDetailPanel from './detail/provider-detail'
@@ -25,9 +25,12 @@ import MCPModal from './modal'
 import MCPCard from './provider-card'
 
 type Props = Readonly<{
+  providers?: ToolWithProvider[]
+  isLoading?: boolean
   searchText: string
   contentInset?: ToolsContentInset
   createdProviderId?: string
+  onRefresh?: () => Promise<unknown>
   onCreatedProviderHandled?: () => void
   showCreateCard?: boolean
 }>
@@ -36,26 +39,30 @@ type MCPModalConfirmPayload = Parameters<ComponentProps<typeof MCPModal>['onConf
 type MutationResult = {
   result?: string
 }
+const EMPTY_MCP_TOOLS: ToolWithProvider[] = []
 
 const MCPList = ({
+  providers,
+  isLoading: isLoadingProviders,
   searchText,
   contentInset = 'default',
   createdProviderId,
+  onRefresh,
   onCreatedProviderHandled,
   showCreateCard = true,
 }: Props) => {
   const { t } = useTranslation()
   const canManageMCP = useCanManageMCP()
-  const { data: list = [] as ToolWithProvider[], isLoading, refetch } = useAllToolProviders()
+  const fallbackMCPToolsQuery = useAllMCPTools(providers === undefined)
+  const list = providers ?? fallbackMCPToolsQuery.data ?? EMPTY_MCP_TOOLS
+  const isLoading = isLoadingProviders ?? fallbackMCPToolsQuery.isLoading
+  const refetch = onRefresh ?? fallbackMCPToolsQuery.refetch
   const [isTriggerAuthorize, setIsTriggerAuthorize] = useState<boolean>(false)
 
   const filteredList = useMemo(() => {
     return list.filter((collection) => {
       if (collection.type !== 'mcp') return false
-      if (searchText)
-        return Object.values(collection.name).some((value) =>
-          (value as string).toLowerCase().includes(searchText.toLowerCase()),
-        )
+      if (searchText) return collection.name.toLowerCase().includes(searchText.toLowerCase())
       return true
     }) as ToolWithProvider[]
   }, [list, searchText])

@@ -5,7 +5,7 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
 
 type ModelBarProps =
   | {
@@ -49,12 +49,12 @@ export const ModelBar: FC<ModelBarProps> = (props) => {
           render={
             <div className="relative" aria-label={tooltip}>
               <ModelSelector
-                modelList={[]}
-                triggerClassName="bg-workflow-block-parma-bg h-6! rounded-md!"
-                defaultModel={undefined}
+                models={[]}
+                value={undefined}
+                size="small"
+                surface="workflow"
                 showDeprecatedWarnIcon={false}
-                readonly
-                deprecatedClassName="opacity-50"
+                disabled
               />
               <StatusDot status="error" className="absolute -top-0.5 -right-0.5" />
             </div>
@@ -78,15 +78,15 @@ export const ModelBar: FC<ModelBarProps> = (props) => {
   const modelSelector = (
     <div className="relative" aria-label={showWarn ? modelNotInstalledTooltip : undefined}>
       <ModelSelector
-        modelList={modelList}
-        triggerClassName="bg-workflow-block-parma-bg h-6! rounded-md!"
-        defaultModel={{
+        models={modelList}
+        value={{
           provider: props.provider,
           model: props.model,
         }}
+        size="small"
+        surface="workflow"
         showDeprecatedWarnIcon={false}
-        readonly
-        deprecatedClassName="opacity-50"
+        disabled
       />
       {showWarn && <StatusDot status="error" className="absolute -top-0.5 -right-0.5" />}
     </div>

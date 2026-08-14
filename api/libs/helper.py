@@ -16,7 +16,7 @@ from zoneinfo import available_timezones
 
 from flask import Request, Response, stream_with_context
 from flask_restx import fields
-from pydantic import BaseModel, ConfigDict, TypeAdapter, with_config
+from pydantic import BaseModel, ConfigDict, TypeAdapter, WithJsonSchema, with_config
 from pydantic.functional_validators import AfterValidator
 from typing_extensions import TypedDict
 
@@ -284,7 +284,11 @@ def _strict_uuid(value: str | UUID) -> str:
         raise ValueError("must be a valid UUID") from exc
 
 
-UUIDStr = Annotated[str, AfterValidator(_strict_uuid)]
+UUIDStr = Annotated[
+    str,
+    AfterValidator(_strict_uuid),
+    WithJsonSchema({"format": "uuid", "type": "string"}),
+]
 
 
 def alphanumeric(value: str):

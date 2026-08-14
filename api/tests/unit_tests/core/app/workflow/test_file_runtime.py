@@ -141,8 +141,9 @@ def test_resolve_file_url_requires_extension_for_tool_files() -> None:
 def test_resolve_file_url_uses_tool_signatures_for_tool_and_datasource_files(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    sign_tool_file = MagicMock(return_value="https://signed.example.com/file")
-    monkeypatch.setattr(file_runtime, "sign_tool_file", sign_tool_file)
+    sign_tool_file_uri = MagicMock(return_value="/files/signed")
+    monkeypatch.setattr(file_runtime, "sign_tool_file_uri", sign_tool_file_uri)
+    monkeypatch.setattr(file_runtime.dify_config, "FILES_URL", "https://files.example.com")
     runtime = _build_runtime()
 
     tool_file = _build_file(
@@ -156,9 +157,35 @@ def test_resolve_file_url_uses_tool_signatures_for_tool_and_datasource_files(
         extension=".png",
     )
 
-    assert runtime.resolve_file_url(file=tool_file) == "https://signed.example.com/file"
-    assert runtime.resolve_file_url(file=datasource_file) == "https://signed.example.com/file"
-    assert sign_tool_file.call_count == 2
+    assert runtime.resolve_file_url(file=tool_file) == "https://files.example.com/files/signed"
+    assert runtime.resolve_file_url(file=datasource_file) == "https://files.example.com/files/signed"
+    assert sign_tool_file_uri.call_count == 2
+
+
+def test_resolve_file_uri_keeps_dify_owned_file_origin_free(monkeypatch: pytest.MonkeyPatch) -> None:
+    sign_tool_file_uri = MagicMock(return_value="/files/tools/tool-file-id.png?sign=1")
+    monkeypatch.setattr(file_runtime, "sign_tool_file_uri", sign_tool_file_uri)
+    runtime = _build_runtime()
+    file = _build_file(
+        transfer_method=FileTransferMethod.TOOL_FILE,
+        reference=build_file_reference(record_id="tool-file-id"),
+        extension=".png",
+    )
+
+    assert runtime.resolve_file_uri(file=file) == "/files/tools/tool-file-id.png?sign=1"
+
+
+def test_resolve_file_url_returns_relative_uri_when_files_url_is_empty(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(file_runtime, "sign_tool_file_uri", lambda **_: "/files/tools/tool-file-id.png?sign=1")
+    monkeypatch.setattr(file_runtime.dify_config, "FILES_URL", "")
+    runtime = _build_runtime()
+    file = _build_file(
+        transfer_method=FileTransferMethod.TOOL_FILE,
+        reference=build_file_reference(record_id="tool-file-id"),
+        extension=".png",
+    )
+
+    assert runtime.resolve_file_url(file=file, for_external=True) == "/files/tools/tool-file-id.png?sign=1"
 
 
 def test_resolve_upload_file_url_signs_internal_urls_and_supports_attachments(

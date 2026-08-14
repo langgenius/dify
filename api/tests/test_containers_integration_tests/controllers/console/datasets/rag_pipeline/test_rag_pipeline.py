@@ -36,7 +36,7 @@ def test_export_customized_pipeline_template_from_database(
     db_session_with_containers.expire_all()
 
     with flask_app_with_containers.test_request_context("/"):
-        response, status = method(api, template.id)
+        response, status = method(api, db_session_with_containers, template.tenant_id, template.id)
 
     assert status == 200
     assert response == {"data": "yaml-data"}

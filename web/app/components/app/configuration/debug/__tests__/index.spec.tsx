@@ -1,5 +1,6 @@
 import type { ComponentProps } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import ConfigContext from '@/context/debug-configuration'
@@ -50,7 +51,7 @@ const mockState = vi.hoisted(() => ({
   },
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/components/app/configuration/toast', () => ({
   toast: Object.assign(mockState.mockToastCall, {
     success: vi.fn((message: string, options?: Record<string, unknown>) =>
       mockState.mockToastCall({ type: 'success', message, ...options }),
@@ -153,25 +154,6 @@ vi.mock('@/app/components/app/text-generate/item', () => ({
       {content}
     </div>
   ),
-}))
-
-vi.mock('@/app/components/base/action-button', () => ({
-  default: ({
-    children,
-    onClick,
-    state,
-  }: {
-    children: React.ReactNode
-    onClick?: () => void
-    state?: string
-  }) => (
-    <button type="button" data-testid="action-button" data-state={state} onClick={onClick}>
-      {children}
-    </button>
-  ),
-  ActionButtonState: {
-    Active: 'active',
-  },
 }))
 
 vi.mock('@/app/components/base/agent-log-modal', () => ({
@@ -486,10 +468,10 @@ const renderDebug = (
   }
 
   render(
-    React.createElement(ConfigContext.Provider, {
-      value: createContextValue(options.contextValue),
-      children: <Debug {...props} />,
-    }),
+    // oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector contexts are not React 19 context components.
+    <ConfigContext.Provider value={createContextValue(options.contextValue)}>
+      <Debug {...props} />
+    </ConfigContext.Provider>,
   )
 
   return { onSetting, notify: mockState.mockToastCall, props }
@@ -581,7 +563,7 @@ describe('Debug', () => {
 
       expect(screen.getByTestId('debug-with-single-model'))!.toBeInTheDocument()
 
-      fireEvent.click(screen.getAllByTestId('action-button')[0]!)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.refresh' }))
       expect(mockState.mockHandleRestart).toHaveBeenCalledTimes(1)
     })
 
@@ -607,7 +589,14 @@ describe('Debug', () => {
       })
 
       expect(screen.getByTestId('chat-user-input'))!.toBeInTheDocument()
-      fireEvent.click(screen.getAllByTestId('action-button')[1]!)
+      const inputPanelButton = screen.getByRole('button', {
+        name: 'workflow.panel.userInputField',
+      })
+      expect(inputPanelButton).toHaveAttribute('aria-expanded', 'true')
+
+      fireEvent.click(inputPanelButton)
+
+      expect(inputPanelButton).toHaveAttribute('aria-expanded', 'false')
       expect(screen.queryByTestId('chat-user-input')).not.toBeInTheDocument()
     })
 
@@ -619,7 +608,7 @@ describe('Debug', () => {
         },
       })
 
-      fireEvent.click(screen.getAllByTestId('action-button')[0]!)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.refresh' }))
       expect(mockState.mockHandleRestart).toHaveBeenCalledTimes(1)
     })
 
@@ -631,7 +620,9 @@ describe('Debug', () => {
         },
       })
 
-      expect(screen.queryByTestId('action-button')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.refresh' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should show formatting confirmation and handle cancel', () => {
@@ -846,10 +837,8 @@ describe('Debug', () => {
       fireEvent.click(screen.getByTestId('panel-send'))
 
       await waitFor(() => expect(mockState.mockSendCompletionMessage).toHaveBeenCalledTimes(1))
-      const [, requestData] = (mockState.mockSendCompletionMessage.mock.calls[0] ?? []) as [
-        unknown,
-        any,
-      ]
+      const [, requestData, handlers] = (mockState.mockSendCompletionMessage.mock.calls[0] ??
+        []) as [unknown, unknown, { onNotifyError: (message: string) => void }]
       expect(requestData).toMatchObject({
         inputs: { question: 'hello' },
         model_config: {
@@ -863,6 +852,12 @@ describe('Debug', () => {
       expect(screen.getByTestId('text-generation'))!.toHaveTextContent('final answer')
       expect(screen.getByTestId('text-generation'))!.toHaveAttribute('data-message-id', 'msg-1')
       expect(screen.getByTestId('text-generation'))!.toHaveAttribute('data-tts', 'true')
+
+      handlers.onNotifyError('Base model not found')
+      expect(mockState.mockToastCall).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'Base model not found',
+      })
     })
 
     it('should notify when sending again while a response is in progress', async () => {
@@ -1072,7 +1067,9 @@ describe('Debug', () => {
       })
     })
 
-    it('should emit restart event when refresh is clicked in multiple-model mode', () => {
+    it('should emit restart event when refresh is clicked in multiple-model mode', async () => {
+      const user = userEvent.setup()
+
       renderDebug({
         props: {
           debugWithMultipleModel: true,
@@ -1082,7 +1079,7 @@ describe('Debug', () => {
         },
       })
 
-      fireEvent.click(screen.getAllByTestId('action-button')[0]!)
+      await user.click(screen.getByRole('button', { name: 'common.operation.refresh' }))
       expect(mockState.mockEventEmitterEmit).toHaveBeenCalledWith({
         type: APP_CHAT_WITH_MULTIPLE_MODEL_RESTART,
       })

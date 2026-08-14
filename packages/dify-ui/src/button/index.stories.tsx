@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import * as React from 'react'
 import { expect, fn } from 'storybook/test'
 import { Button, buttonVariants } from '.'
 
@@ -126,12 +125,19 @@ export const Destructive: Story = {
 export const WithIcon: Story = {
   args: {
     variant: 'primary',
-    children: (
-      <React.Fragment>
-        <span aria-hidden className="mr-1.5 i-ri-rocket-line size-4 shrink-0" />
-        Launch
-      </React.Fragment>
-    ),
+    size: 'medium',
+    children: 'Launch',
+  },
+  render: (args) => {
+    const iconSize =
+      args.size === 'small' ? 'size-3.5' : args.size === 'large' ? 'size-5' : 'size-4'
+
+    return (
+      <Button {...args}>
+        <span aria-hidden className={`i-ri-rocket-line shrink-0 ${iconSize}`} />
+        {args.children}
+      </Button>
+    )
   },
 }
 

@@ -18,7 +18,7 @@ import {
 } from '@/app/components/header/account-setting/query-params'
 import { useDocLink, useLocale } from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
-import { useCodeBasedExtensions, useModelProviders } from '@/service/use-common'
+import { useCodeBasedExtensions, useModelProviderDetails } from '@/service/use-common'
 import FormGeneration from './form-generation'
 import ModerationContent from './moderation-content'
 
@@ -59,7 +59,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCance
   const { t } = useTranslation()
   const docLink = useDocLink()
   const locale = useLocale()
-  const { data: modelProviders, isPending: isLoading } = useModelProviders()
+  const { data: modelProviders, isPending: isLoading } = useModelProviderDetails()
   const localeDataRef = useRef<ModerationConfig>(data)
   const [localeData, setLocaleData] = useState<ModerationConfig>(data)
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)

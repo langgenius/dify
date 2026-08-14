@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AppIconType } from '@/types/app'
+import { zSsoProtocol } from '@dify/contracts/api/console/system-features/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
@@ -26,9 +27,6 @@ import HeadersSection from './sections/headers-section'
 // therefore can back MCP per-user identity forwarding. SAML cannot — it has
 // no refresh model and no token endpoint, so the enterprise side returns the
 // disabled stub for it.
-const MCP_FORWARDING_CAPABLE_PROTOCOLS = ['oidc', 'oauth2'] as const
-type MCPForwardingCapableProtocol = (typeof MCP_FORWARDING_CAPABLE_PROTOCOLS)[number]
-
 type MCPModalConfirmPayload = {
   name: string
   server_url: string
@@ -73,10 +71,10 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
   // SAML has no refresh_token model, so the enterprise side can't mint
   // per-call MCP tokens. Only OIDC and OAuth2 can — gate the toggle on
   // both "SSO enforced" AND "protocol is refresh-capable".
-  const ssoProtocol =
-    systemFeatures.sso_enforced_for_signin_protocol as MCPForwardingCapableProtocol
+  const ssoProtocol = systemFeatures.sso_enforced_for_signin_protocol
   const isForwardIdentitySupported =
-    systemFeatures.sso_enforced_for_signin && MCP_FORWARDING_CAPABLE_PROTOCOLS.includes(ssoProtocol)
+    systemFeatures.sso_enforced_for_signin &&
+    (ssoProtocol === zSsoProtocol.enum.oidc || ssoProtocol === zSsoProtocol.enum.oauth2)
 
   const isHovering = useHover(appIconRef)
 
@@ -275,11 +273,8 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
 
         {/* Auth Method Tabs */}
         <SegmentedControl<MCPAuthMethod>
-          value={[state.authMethod]}
-          onValueChange={(nextValue) => {
-            const nextAuthMethod = nextValue[0]
-            if (nextAuthMethod) actions.setAuthMethod(nextAuthMethod)
-          }}
+          value={state.authMethod}
+          onValueChange={actions.setAuthMethod}
           aria-label={t(($) => $['mcp.modal.authentication'], { ns: 'tools' })}
           className="w-full"
         >

@@ -129,7 +129,7 @@ const AppInfo: FC<Props> = ({
           data-step-by-step-tour-target={createButtonStepByStepTourTarget}
           onClick={onCreate}
         >
-          <span className="mr-1 i-ri-add-line size-4 shrink-0" />
+          <span className="i-ri-add-line size-4 shrink-0" />
           <span className="truncate">
             {t(($) => $['tryApp.createFromSampleApp'], { ns: 'explore' })}
           </span>

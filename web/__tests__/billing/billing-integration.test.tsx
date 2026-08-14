@@ -13,17 +13,21 @@ import PlanComp from '@/app/components/billing/plan'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import PriorityLabel from '@/app/components/billing/priority-label'
 import TriggerEventsLimitModal from '@/app/components/billing/trigger-events-limit-modal'
-import { Plan } from '@/app/components/billing/type'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
 import { consoleQuery } from '@/service/client'
-import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
+import {
+  createConsoleQueryClient,
+  createConsoleQueryWrapper,
+  seedEducationStatus,
+} from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 
 let mockProviderCtx: Record<string, unknown> = {}
 let mockConsoleState: Record<string, unknown> = {}
+let mockEducationStatus = { is_student: false, allow_refresh: false, expire_at: null }
 
-const render = (ui: ReactElement, options: RenderOptions = {}) => {
+const render = (ui: ReactElement, options: RenderOptions = {}, vectorSpaceUsageUnknown = false) => {
   const queryClient = createConsoleQueryClient()
   const plan = mockProviderCtx.plan as {
     usage: { vectorSpace: number }
@@ -32,8 +36,15 @@ const render = (ui: ReactElement, options: RenderOptions = {}) => {
   queryClient.setQueryData(consoleQuery.features.vectorSpace.get.queryOptions().queryKey, {
     size: plan.usage.vectorSpace,
     limit: plan.total.vectorSpace,
+    usage_unknown: vectorSpaceUsageUnknown,
   })
+  queryClient.setQueryData(consoleQuery.billing.invoices.get.queryOptions().queryKey, {
+    url: 'https://billing.example.com',
+  })
+  seedEducationStatus(queryClient, mockEducationStatus)
   const { wrapper } = createConsoleQueryWrapper({
+    accountProfile: mockConsoleState.userProfile as { email?: string },
+    accountProfileMeta: { currentVersion: '1.0.0' },
     systemFeatures: { deployment_edition: 'CLOUD' },
     queryClient,
   })
@@ -46,19 +57,10 @@ vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => mockProviderCtx,
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/version-state', async () => {
-  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createVersionStateModuleMock(() => mockConsoleState)
-})
-
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowPricingModal: mockSetShowPricingModal,
@@ -70,40 +72,12 @@ vi.mock('@/context/i18n', () => ({
   useGetPricingPageLanguage: () => 'en',
 }))
 
-// ─── Service mocks ──────────────────────────────────────────────────────────
-const mockRefetch = vi.fn().mockResolvedValue({ data: 'https://billing.example.com' })
-vi.mock('@/service/use-billing', () => ({
-  useBillingUrl: () => ({
-    data: 'https://billing.example.com',
-    isFetching: false,
-    refetch: mockRefetch,
-  }),
-  useBindPartnerStackInfo: () => ({ mutateAsync: vi.fn() }),
-}))
-
-vi.mock('@/service/use-education', () => ({
-  useEducationVerify: () => ({
-    mutateAsync: vi.fn().mockResolvedValue({ token: 'test-token' }),
-    isPending: false,
-  }),
-}))
-
 // ─── Navigation mocks ───────────────────────────────────────────────────────
 const mockRouterPush = vi.fn()
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mockRouterPush }),
   usePathname: () => '/billing',
   useSearchParams: () => new URLSearchParams(),
-}))
-
-vi.mock('@/hooks/use-async-window-open', () => ({
-  useAsyncWindowOpen: () => vi.fn(),
-}))
-
-// ─── External component mocks ───────────────────────────────────────────────
-vi.mock('@/app/education-apply/verify-state-modal', () => ({
-  default: ({ isShow }: { isShow: boolean }) =>
-    isShow ? <div data-testid="verify-state-modal" /> : null,
 }))
 
 vi.mock('@/app/components/header/utils/util', () => ({
@@ -130,14 +104,19 @@ const createPlanData = (overrides: PlanOverrides = {}) => ({
 const setupProviderContext = (
   planOverrides: PlanOverrides = {},
   extra: Record<string, unknown> = {},
+  educationStatus: Partial<typeof mockEducationStatus> = {},
 ) => {
+  mockEducationStatus = {
+    is_student: false,
+    allow_refresh: false,
+    expire_at: null,
+    ...educationStatus,
+  }
   mockProviderCtx = {
     plan: createPlanData(planOverrides),
     enableBilling: true,
     isFetchedPlan: true,
     enableEducationPlan: false,
-    isEducationAccount: false,
-    allowRefreshEducationVerify: false,
     ...extra,
   }
 }
@@ -168,7 +147,7 @@ describe('Billing Page + Plan Integration', () => {
   describe('Rendering complete plan information', () => {
     it('should display all 7 usage metrics for sandbox plan', () => {
       setupProviderContext({
-        type: Plan.sandbox,
+        type: 'sandbox',
         usage: {
           buildApps: 3,
           teamMembers: 1,
@@ -206,7 +185,7 @@ describe('Billing Page + Plan Integration', () => {
 
     it('should expose each quota card and its value through stable semantics', () => {
       setupProviderContext({
-        type: Plan.sandbox,
+        type: 'sandbox',
         usage: { teamMembers: 3 },
         total: { teamMembers: 5 },
       })
@@ -222,9 +201,24 @@ describe('Billing Page + Plan Integration', () => {
       expect(quotaValue).toHaveTextContent(/3\s*\/\s*5/)
     })
 
+    it('should display unknown vector space usage as a placeholder', () => {
+      setupProviderContext({
+        type: 'sandbox',
+        usage: { vectorSpace: 0 },
+        total: { vectorSpace: 50 },
+      })
+
+      render(<PlanComp loc="test" />, {}, true)
+
+      const quotaCard = screen.getByRole('group', { name: /usagePage\.vectorSpace/i })
+      const quotaValue = within(quotaCard).getByTestId('billing-quota-value')
+      expect(quotaValue).toHaveTextContent('--')
+      expect(quotaValue).not.toHaveTextContent('< 50')
+    })
+
     it('should show "unlimited" for infinite quotas (professional API rate limit)', () => {
       setupProviderContext({
-        type: Plan.professional,
+        type: 'professional',
         total: { apiRateLimit: NUM_INFINITE },
       })
 
@@ -235,7 +229,7 @@ describe('Billing Page + Plan Integration', () => {
 
     it('should display reset days for trigger events when applicable', () => {
       setupProviderContext({
-        type: Plan.professional,
+        type: 'professional',
         total: { triggerEvents: 20000 },
         reset: { triggerEvents: 7 },
       })
@@ -250,7 +244,7 @@ describe('Billing Page + Plan Integration', () => {
   // Verify billing URL button visibility and behavior
   describe('Billing URL button', () => {
     it('should show billing button to managers without billing permission keys', () => {
-      setupProviderContext({ type: Plan.sandbox })
+      setupProviderContext({ type: 'sandbox' })
       setupConsoleState({
         isCurrentWorkspaceManager: true,
         workspacePermissionKeys: [],
@@ -263,7 +257,7 @@ describe('Billing Page + Plan Integration', () => {
     })
 
     it('should hide billing button from non-manager members', () => {
-      setupProviderContext({ type: Plan.sandbox })
+      setupProviderContext({ type: 'sandbox' })
       setupConsoleState({
         isCurrentWorkspaceManager: false,
       })
@@ -274,7 +268,7 @@ describe('Billing Page + Plan Integration', () => {
     })
 
     it('should show billing button when a manager has no billing permission keys', () => {
-      setupProviderContext({ type: Plan.sandbox })
+      setupProviderContext({ type: 'sandbox' })
       setupConsoleState({
         isCurrentWorkspaceManager: true,
         workspacePermissionKeys: [],
@@ -286,7 +280,7 @@ describe('Billing Page + Plan Integration', () => {
     })
 
     it('should hide billing button when billing is disabled', () => {
-      setupProviderContext({ type: Plan.sandbox }, { enableBilling: false })
+      setupProviderContext({ type: 'sandbox' }, { enableBilling: false })
 
       render(<Billing />)
 
@@ -306,7 +300,7 @@ describe('Plan Type Display Integration', () => {
   })
 
   it('should render sandbox plan with upgrade button (premium badge)', () => {
-    setupProviderContext({ type: Plan.sandbox })
+    setupProviderContext({ type: 'sandbox' })
 
     render(<PlanComp loc="test" />)
 
@@ -317,7 +311,7 @@ describe('Plan Type Display Integration', () => {
   })
 
   it('should render professional plan with plain upgrade button', () => {
-    setupProviderContext({ type: Plan.professional })
+    setupProviderContext({ type: 'professional' })
 
     render(<PlanComp loc="test" />)
 
@@ -327,7 +321,7 @@ describe('Plan Type Display Integration', () => {
   })
 
   it('should render team plan with plain-style upgrade button', () => {
-    setupProviderContext({ type: Plan.team })
+    setupProviderContext({ type: 'team' })
 
     render(<PlanComp loc="test" />)
 
@@ -336,23 +330,8 @@ describe('Plan Type Display Integration', () => {
     expect(screen.getByText(/upgradeBtn\.plain/i)).toBeInTheDocument()
   })
 
-  it('should not render upgrade button for enterprise plan', () => {
-    setupProviderContext({ type: Plan.enterprise })
-
-    render(<PlanComp loc="test" />)
-
-    expect(screen.queryByText(/upgradeBtn\.encourageShort/i)).not.toBeInTheDocument()
-    expect(screen.queryByText(/upgradeBtn\.plain/i)).not.toBeInTheDocument()
-  })
-
   it('should show education verify button when enableEducationPlan is true and not yet verified', () => {
-    setupProviderContext(
-      { type: Plan.sandbox },
-      {
-        enableEducationPlan: true,
-        isEducationAccount: false,
-      },
-    )
+    setupProviderContext({ type: 'sandbox' }, { enableEducationPlan: true })
 
     render(<PlanComp loc="test" />)
 
@@ -360,13 +339,7 @@ describe('Plan Type Display Integration', () => {
   })
 
   it('should show education discount to managers without billing permission keys', () => {
-    setupProviderContext(
-      { type: Plan.sandbox },
-      {
-        enableEducationPlan: true,
-        isEducationAccount: true,
-      },
-    )
+    setupProviderContext({ type: 'sandbox' }, { enableEducationPlan: true }, { is_student: true })
     setupConsoleState({ isCurrentWorkspaceManager: true, workspacePermissionKeys: [] })
 
     render(<PlanComp loc="test" />)
@@ -375,13 +348,7 @@ describe('Plan Type Display Integration', () => {
   })
 
   it('should hide education discount from non-manager members', () => {
-    setupProviderContext(
-      { type: Plan.sandbox },
-      {
-        enableEducationPlan: true,
-        isEducationAccount: true,
-      },
-    )
+    setupProviderContext({ type: 'sandbox' }, { enableEducationPlan: true }, { is_student: true })
     setupConsoleState({
       isCurrentWorkspaceManager: false,
       workspacePermissionKeys: ['billing.manage'],
@@ -402,7 +369,7 @@ describe('Upgrade Flow Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     setupConsoleState()
-    setupProviderContext({ type: Plan.sandbox })
+    setupProviderContext({ type: 'sandbox' })
   })
 
   // UpgradeBtn triggers pricing modal
@@ -528,7 +495,7 @@ describe('Upgrade Flow Integration', () => {
   describe('PlanComp upgrade button triggers pricing', () => {
     it('should open pricing modal when clicking upgrade in sandbox plan', async () => {
       const user = userEvent.setup()
-      setupProviderContext({ type: Plan.sandbox })
+      setupProviderContext({ type: 'sandbox' })
 
       render(<PlanComp loc="test-loc" />)
 
@@ -555,7 +522,7 @@ describe('Capacity Full Components Integration', () => {
   describe('AppsFull integration', () => {
     it('should display upgrade tip and upgrade button for sandbox plan at capacity', () => {
       setupProviderContext({
-        type: Plan.sandbox,
+        type: 'sandbox',
         usage: { buildApps: 5 },
         total: { buildApps: 5 },
       })
@@ -574,7 +541,7 @@ describe('Capacity Full Components Integration', () => {
 
     it('should display upgrade tip and upgrade button for professional plan', () => {
       setupProviderContext({
-        type: Plan.professional,
+        type: 'professional',
         usage: { buildApps: 48 },
         total: { buildApps: 50 },
       })
@@ -587,7 +554,7 @@ describe('Capacity Full Components Integration', () => {
 
     it('should display contact tip and contact button for team plan', () => {
       setupProviderContext({
-        type: Plan.team,
+        type: 'team',
         usage: { buildApps: 200 },
         total: { buildApps: 200 },
       })
@@ -604,7 +571,7 @@ describe('Capacity Full Components Integration', () => {
     it('should render progress bar with correct color based on usage percentage', () => {
       // 100% usage should show error color
       setupProviderContext({
-        type: Plan.sandbox,
+        type: 'sandbox',
         usage: { buildApps: 5 },
         total: { buildApps: 5 },
       })
@@ -619,7 +586,7 @@ describe('Capacity Full Components Integration', () => {
   describe('VectorSpaceFull integration', () => {
     it('should display full tip, upgrade button, and vector space usage info', () => {
       setupProviderContext({
-        type: Plan.sandbox,
+        type: 'sandbox',
         usage: { vectorSpace: 50 },
         total: { vectorSpace: 50 },
       })
@@ -640,7 +607,7 @@ describe('Capacity Full Components Integration', () => {
   describe('AnnotationFull integration', () => {
     it('should display annotation full tip, upgrade button, and usage info', () => {
       setupProviderContext({
-        type: Plan.sandbox,
+        type: 'sandbox',
         usage: { annotatedResponse: 10 },
         total: { annotatedResponse: 10 },
       })
@@ -660,7 +627,7 @@ describe('Capacity Full Components Integration', () => {
   describe('AnnotationFullModal integration', () => {
     it('should render modal with annotation info and upgrade button when show is true', () => {
       setupProviderContext({
-        type: Plan.sandbox,
+        type: 'sandbox',
         usage: { annotatedResponse: 10 },
         total: { annotatedResponse: 10 },
       })
@@ -674,7 +641,7 @@ describe('Capacity Full Components Integration', () => {
 
     it('should not render content when show is false', () => {
       setupProviderContext({
-        type: Plan.sandbox,
+        type: 'sandbox',
         usage: { annotatedResponse: 10 },
         total: { annotatedResponse: 10 },
       })
@@ -688,7 +655,7 @@ describe('Capacity Full Components Integration', () => {
   // TriggerEventsLimitModal renders PlanUpgradeModal with embedded UsageInfo
   describe('TriggerEventsLimitModal integration', () => {
     it('should display trigger limit title, usage info, and upgrade button', () => {
-      setupProviderContext({ type: Plan.professional })
+      setupProviderContext({ type: 'professional' })
 
       render(
         <TriggerEventsLimitModal
@@ -719,7 +686,7 @@ describe('Capacity Full Components Integration', () => {
       const user = userEvent.setup()
       const onClose = vi.fn()
       const onUpgrade = vi.fn()
-      setupProviderContext({ type: Plan.professional })
+      setupProviderContext({ type: 'professional' })
 
       render(
         <TriggerEventsLimitModal
@@ -751,7 +718,7 @@ describe('PriorityLabel Integration', () => {
   })
 
   it('should display "standard" priority for sandbox plan', () => {
-    setupProviderContext({ type: Plan.sandbox })
+    setupProviderContext({ type: 'sandbox' })
 
     render(<PriorityLabel />)
 
@@ -759,7 +726,7 @@ describe('PriorityLabel Integration', () => {
   })
 
   it('should display "priority" for professional plan with icon', () => {
-    setupProviderContext({ type: Plan.professional })
+    setupProviderContext({ type: 'professional' })
 
     const { container } = render(<PriorityLabel />)
 
@@ -769,20 +736,12 @@ describe('PriorityLabel Integration', () => {
   })
 
   it('should display "top-priority" for team plan with icon', () => {
-    setupProviderContext({ type: Plan.team })
+    setupProviderContext({ type: 'team' })
 
     const { container } = render(<PriorityLabel />)
 
     expect(screen.getByText(/plansCommon\.priority\.top-priority/i)).toBeInTheDocument()
     expect(container.querySelector('svg')).toBeInTheDocument()
-  })
-
-  it('should display "top-priority" for enterprise plan', () => {
-    setupProviderContext({ type: Plan.enterprise })
-
-    render(<PriorityLabel />)
-
-    expect(screen.getByText(/plansCommon\.priority\.top-priority/i)).toBeInTheDocument()
   })
 })
 
@@ -800,7 +759,7 @@ describe('Usage Display Edge Cases', () => {
   describe('VectorSpace storage mode in PlanComp', () => {
     it('should show "< 50" for sandbox plan with low vector space usage', () => {
       setupProviderContext({
-        type: Plan.sandbox,
+        type: 'sandbox',
         usage: { vectorSpace: 10 },
         total: { vectorSpace: 50 },
       })
@@ -813,7 +772,7 @@ describe('Usage Display Edge Cases', () => {
 
     it('should show indeterminate progress bar for usage below threshold', () => {
       setupProviderContext({
-        type: Plan.sandbox,
+        type: 'sandbox',
         usage: { vectorSpace: 10 },
         total: { vectorSpace: 50 },
       })
@@ -826,7 +785,7 @@ describe('Usage Display Edge Cases', () => {
 
     it('should show actual usage for pro plan above threshold', () => {
       setupProviderContext({
-        type: Plan.professional,
+        type: 'professional',
         usage: { vectorSpace: 1024 },
         total: { vectorSpace: 5120 },
       })
@@ -842,7 +801,7 @@ describe('Usage Display Edge Cases', () => {
   describe('Progress bar color reflects usage severity', () => {
     it('should show normal color for low usage percentage', () => {
       setupProviderContext({
-        type: Plan.sandbox,
+        type: 'sandbox',
         usage: { buildApps: 1 },
         total: { buildApps: 5 },
       })
@@ -860,7 +819,7 @@ describe('Usage Display Edge Cases', () => {
   describe('Reset days integration', () => {
     it('should not show reset for sandbox trigger events (no reset_date)', () => {
       setupProviderContext({
-        type: Plan.sandbox,
+        type: 'sandbox',
         total: { triggerEvents: 3000 },
         reset: { triggerEvents: null },
       })
@@ -876,7 +835,7 @@ describe('Usage Display Edge Cases', () => {
 
     it('should show reset for professional trigger events with reset date', () => {
       setupProviderContext({
-        type: Plan.professional,
+        type: 'professional',
         total: { triggerEvents: 20000 },
         reset: { triggerEvents: 14 },
       })
@@ -903,7 +862,7 @@ describe('Cross-Component Upgrade Flow', () => {
   it('should trigger pricing from AppsFull upgrade button', async () => {
     const user = userEvent.setup()
     setupProviderContext({
-      type: Plan.sandbox,
+      type: 'sandbox',
       usage: { buildApps: 5 },
       total: { buildApps: 5 },
     })
@@ -919,7 +878,7 @@ describe('Cross-Component Upgrade Flow', () => {
   it('should trigger pricing from VectorSpaceFull upgrade button', async () => {
     const user = userEvent.setup()
     setupProviderContext({
-      type: Plan.sandbox,
+      type: 'sandbox',
       usage: { vectorSpace: 50 },
       total: { vectorSpace: 50 },
     })
@@ -935,7 +894,7 @@ describe('Cross-Component Upgrade Flow', () => {
   it('should trigger pricing from AnnotationFull upgrade button', async () => {
     const user = userEvent.setup()
     setupProviderContext({
-      type: Plan.sandbox,
+      type: 'sandbox',
       usage: { annotatedResponse: 10 },
       total: { annotatedResponse: 10 },
     })
@@ -951,7 +910,7 @@ describe('Cross-Component Upgrade Flow', () => {
   it('should trigger pricing from TriggerEventsLimitModal through PlanUpgradeModal', async () => {
     const user = userEvent.setup()
     const onClose = vi.fn()
-    setupProviderContext({ type: Plan.professional })
+    setupProviderContext({ type: 'professional' })
 
     render(
       <TriggerEventsLimitModal
@@ -974,7 +933,7 @@ describe('Cross-Component Upgrade Flow', () => {
   it('should trigger pricing from AnnotationFullModal upgrade button', async () => {
     const user = userEvent.setup()
     setupProviderContext({
-      type: Plan.sandbox,
+      type: 'sandbox',
       usage: { annotatedResponse: 10 },
       total: { annotatedResponse: 10 },
     })

@@ -51,11 +51,12 @@ def test_multiple_retrieve_preserves_otel_context_in_dataset_thread(
 ) -> None:
     """Per-dataset retrieval spans must remain in the workflow node trace."""
     retrieval = DatasetRetrieval()
-    dataset = MagicMock(spec=Dataset)
-    dataset.id = str(uuid4())
-    dataset.indexing_technique = "high_quality"
-    dataset.embedding_model = "text-embedding-3-small"
-    dataset.embedding_model_provider = "openai"
+    dataset = Dataset(
+        id=str(uuid4()),
+        indexing_technique="high_quality",
+        embedding_model="text-embedding-3-small",
+        embedding_model_provider="openai",
+    )
     observed_trace_ids: list[int] = []
 
     def record_active_trace(**_kwargs: object) -> None:
@@ -120,3 +121,47 @@ def test_retriever_thread_exception_sets_error_span_and_is_collected(
     assert retrieval_span.status.status_code == StatusCode.ERROR
     assert cancel_event.is_set()
     assert thread_exceptions == [expected_error]
+
+
+def test_retriever_thread_exception_emits_skip_event_when_requested(
+    app,
+    memory_span_exporter,
+    tracer_provider_with_memory_exporter,
+) -> None:
+    retrieval = DatasetRetrieval()
+    cancel_event = threading.Event()
+    thread_exceptions: list[Exception] = []
+    expected_error = RuntimeError("retrieval failed")
+    dataset_id = str(uuid4())
+
+    with (
+        patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True),
+        patch("core.rag.retrieval.dataset_retrieval.session_factory.create_session"),
+        patch.object(retrieval, "_retriever", side_effect=expected_error),
+        get_tracer(__name__).start_as_current_span("dataset-retrieval-parent") as parent_span,
+    ):
+        retrieval._run_retriever_thread_safely(
+            flask_app=app,
+            dataset_id=dataset_id,
+            query="test query",
+            top_k=4,
+            all_documents=[],
+            document_ids_filter=None,
+            metadata_condition=None,
+            attachment_ids=None,
+            cancel_event=cancel_event,
+            thread_exceptions=thread_exceptions,
+            skip_on_error=True,
+        )
+
+    retrieval_span = next(
+        span
+        for span in memory_span_exporter.get_finished_spans()
+        if span.name.endswith("DatasetRetrieval._run_retriever_thread")
+    )
+    skip_event = next(event for event in parent_span.events if event.name == "dataset_retrieval.skipped")
+    assert retrieval_span.status.status_code == StatusCode.ERROR
+    assert skip_event.attributes["dataset_id"] == dataset_id
+    assert skip_event.attributes["error.message"] == "retrieval failed"
+    assert not cancel_event.is_set()
+    assert thread_exceptions == []
