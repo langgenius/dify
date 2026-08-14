@@ -2,11 +2,7 @@ import type { HttpNodeType } from '@/app/components/workflow/nodes/http/types'
 import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
 import type { Node } from '@/app/components/workflow/types'
 import { describe, expect, it } from 'vitest'
-import {
-  AuthorizationType,
-  BodyType,
-  Method,
-} from '@/app/components/workflow/nodes/http/types'
+import { AuthorizationType, BodyType, Method } from '@/app/components/workflow/nodes/http/types'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { getNodeUsedVars } from '../utils'
 
