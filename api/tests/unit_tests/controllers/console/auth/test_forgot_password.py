@@ -58,11 +58,14 @@ class TestForgotPasswordSendEmailApi:
         )
         with (
             patch(
-                "controllers.console.auth.forgot_password.FeatureService.get_system_features",
-                return_value=controller_features,
+                "controllers.console.auth.forgot_password.SystemFeatureService.is_registration_allowed",
+                return_value=controller_features.is_allow_register,
             ),
             patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-            patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
+            patch(
+                "controllers.console.wraps.SystemFeatureService.is_email_password_login_enabled",
+                return_value=wraps_features.enable_email_password_login,
+            ),
         ):
             with app.test_request_context(
                 "/forgot-password",
@@ -109,7 +112,10 @@ class TestForgotPasswordCheckApi:
         )
         with (
             patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-            patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
+            patch(
+                "controllers.console.wraps.SystemFeatureService.is_email_password_login_enabled",
+                return_value=wraps_features.enable_email_password_login,
+            ),
         ):
             with app.test_request_context(
                 "/forgot-password/validity",
@@ -155,7 +161,10 @@ class TestForgotPasswordResetApi:
         )
         with (
             patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-            patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
+            patch(
+                "controllers.console.wraps.SystemFeatureService.is_email_password_login_enabled",
+                return_value=wraps_features.enable_email_password_login,
+            ),
         ):
             with database_app.test_request_context(
                 "/forgot-password/resets",

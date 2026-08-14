@@ -41,7 +41,7 @@ def test_oauth_login_passes_language_and_timezone_to_authorization_url(
 
 @patch("controllers.console.auth.oauth.AccountService.link_account_integrate")
 @patch("controllers.console.auth.oauth.RegisterService")
-@patch("controllers.console.auth.oauth.FeatureService")
+@patch("controllers.console.auth.oauth.SystemFeatureService")
 @patch("controllers.console.auth.oauth._get_account_by_openid_or_email", return_value=None)
 def test_generate_account_registers_with_browser_timezone(
     mock_get_account,
@@ -52,7 +52,7 @@ def test_generate_account_registers_with_browser_timezone(
 ):
     account = MagicMock()
     mock_register_service.register.return_value = account
-    mock_feature_service.get_system_features.return_value.is_allow_register = True
+    mock_feature_service.is_registration_allowed.return_value = True
     user_info = OAuthUserInfo(id="github-123", name="Test User", email="User@Example.com")
 
     with app.test_request_context(headers={"Accept-Language": "zh-Hans,zh;q=0.9"}):
@@ -75,7 +75,7 @@ def test_generate_account_registers_with_browser_timezone(
 
 @patch("controllers.console.auth.oauth.AccountService.link_account_integrate")
 @patch("controllers.console.auth.oauth.RegisterService")
-@patch("controllers.console.auth.oauth.FeatureService")
+@patch("controllers.console.auth.oauth.SystemFeatureService")
 @patch("controllers.console.auth.oauth._get_account_by_openid_or_email", return_value=None)
 def test_generate_account_prefers_state_language_over_accept_language(
     mock_get_account,
@@ -86,7 +86,7 @@ def test_generate_account_prefers_state_language_over_accept_language(
 ):
     account = MagicMock()
     mock_register_service.register.return_value = account
-    mock_feature_service.get_system_features.return_value.is_allow_register = True
+    mock_feature_service.is_registration_allowed.return_value = True
     user_info = OAuthUserInfo(id="github-123", name="Test User", email="User@Example.com")
 
     with app.test_request_context(headers={"Accept-Language": "en-US,en;q=0.9"}):
@@ -107,7 +107,7 @@ def test_generate_account_prefers_state_language_over_accept_language(
 
 @patch("controllers.console.auth.oauth.dify_config")
 @patch("controllers.console.auth.oauth.RegisterService")
-@patch("controllers.console.auth.oauth.FeatureService")
+@patch("controllers.console.auth.oauth.SystemFeatureService")
 @patch("controllers.console.auth.oauth._get_account_by_openid_or_email", return_value=None)
 def test_generate_account_rejects_new_user_when_registration_disabled(
     mock_get_account,
@@ -116,7 +116,7 @@ def test_generate_account_rejects_new_user_when_registration_disabled(
     mock_config,
     app: Flask,
 ):
-    mock_feature_service.get_system_features.return_value.is_allow_register = False
+    mock_feature_service.is_registration_allowed.return_value = False
     mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
     user_info = OAuthUserInfo(id="github-123", name="Test User", email="user@example.com")
 

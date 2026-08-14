@@ -1208,7 +1208,7 @@ class TestPluginModelProviderCacheInvalidation:
         """Marketplace upgrades invalidate only the mutated tenant provider cache."""
         with (
             patch(f"{MODULE}.dify_config") as mock_config,
-            patch(f"{MODULE}.FeatureService") as feature_service,
+            patch(f"{MODULE}.SystemFeatureService") as feature_service,
             patch(f"{MODULE}.PluginInstaller") as installer_cls,
             patch(f"{MODULE}.marketplace") as marketplace,
             patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
@@ -1318,14 +1318,15 @@ class TestPluginModelProviderCacheInvalidation:
         """Marketplace package installs invalidate only the mutated tenant provider cache."""
         with (
             patch(f"{MODULE}.dify_config") as mock_config,
-            patch(f"{MODULE}.FeatureService") as feature_service,
+            patch(f"{MODULE}.SystemFeatureService") as feature_service,
             patch(f"{MODULE}.PluginService._check_plugin_installation_scope"),
             patch(f"{MODULE}.PluginInstaller") as installer_cls,
             patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
         ):
             mock_config.MARKETPLACE_ENABLED = True
-            feature_service.get_system_features.return_value = SimpleNamespace(
-                plugin_installation_permission=SimpleNamespace(restrict_to_marketplace_only=False)
+            feature_service.get_plugin_installation_permission.return_value = SimpleNamespace(
+                plugin_installation_scope=PluginInstallationScope.ALL,
+                restrict_to_marketplace_only=False
             )
             installer = installer_cls.return_value
             installer.fetch_plugin_manifest.return_value = MagicMock()

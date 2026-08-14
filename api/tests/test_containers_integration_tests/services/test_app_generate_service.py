@@ -38,7 +38,7 @@ class TestAppGenerateService:
             patch(
                 "services.app_generate_service.MessageBasedAppGenerator", autospec=True
             ) as mock_message_based_generator,
-            patch("services.account_service.FeatureService", autospec=True) as mock_account_feature_service,
+            patch("services.account_service.SystemFeatureService", autospec=True) as mock_account_feature_service,
             patch("services.app_generate_service.dify_config") as mock_dify_config,
             patch("services.quota_service.dify_config") as mock_quota_dify_config,
             patch("configs.dify_config") as mock_global_dify_config,
@@ -104,7 +104,7 @@ class TestAppGenerateService:
             mock_message_based_generator.retrieve_events.return_value = ["workflow_events"]
 
             # Setup default mock returns for account service
-            mock_account_feature_service.get_system_features.return_value.is_allow_register = True
+            mock_account_feature_service.is_registration_allowed.return_value = True
 
             # Setup dify_config mock returns
             mock_dify_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
@@ -157,7 +157,7 @@ class TestAppGenerateService:
         # Setup mocks for account creation
         mock_external_service_dependencies[
             "account_feature_service"
-        ].get_system_features.return_value.is_allow_register = True
+        ].is_registration_allowed.return_value = True
 
         # Create account and tenant
         from services.account_service import AccountService, TenantService

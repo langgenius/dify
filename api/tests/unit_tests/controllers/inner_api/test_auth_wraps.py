@@ -12,7 +12,6 @@ from werkzeug.exceptions import HTTPException
 
 from configs import dify_config
 from controllers.inner_api.wraps import (
-    billing_inner_api_only,
     enterprise_inner_api_only,
     enterprise_inner_api_user_auth,
     inner_api_only,
@@ -24,74 +23,6 @@ from models.model import EndUser
 
 def _stable_uuid(value: str) -> str:
     return str(uuid5(NAMESPACE_URL, value))
-
-
-class TestBillingInnerApiOnly:
-    """Test billing_inner_api_only decorator"""
-
-    def test_should_allow_when_inner_api_enabled_and_valid_key(self, app: Flask):
-        """Test that valid API key allows access when INNER_API is enabled"""
-
-        # Arrange
-        @billing_inner_api_only
-        def protected_view():
-            return "success"
-
-        # Act
-        with app.test_request_context(headers={"X-Inner-Api-Key": "valid_key"}):
-            with patch.object(dify_config, "INNER_API", True):
-                with patch.object(dify_config, "INNER_API_KEY", "valid_key"):
-                    result = protected_view()
-
-        # Assert
-        assert result == "success"
-
-    def test_should_return_404_when_inner_api_disabled(self, app: Flask):
-        """Test that 404 is returned when INNER_API is disabled"""
-
-        # Arrange
-        @billing_inner_api_only
-        def protected_view():
-            return "success"
-
-        # Act & Assert
-        with app.test_request_context():
-            with patch.object(dify_config, "INNER_API", False):
-                with pytest.raises(HTTPException) as exc_info:
-                    protected_view()
-                assert exc_info.value.code == 404
-
-    def test_should_return_401_when_api_key_missing(self, app: Flask):
-        """Test that 401 is returned when X-Inner-Api-Key header is missing"""
-
-        # Arrange
-        @billing_inner_api_only
-        def protected_view():
-            return "success"
-
-        # Act & Assert
-        with app.test_request_context(headers={}):
-            with patch.object(dify_config, "INNER_API", True):
-                with patch.object(dify_config, "INNER_API_KEY", "valid_key"):
-                    with pytest.raises(HTTPException) as exc_info:
-                        protected_view()
-                    assert exc_info.value.code == 401
-
-    def test_should_return_401_when_api_key_invalid(self, app: Flask):
-        """Test that 401 is returned when X-Inner-Api-Key header is invalid"""
-
-        # Arrange
-        @billing_inner_api_only
-        def protected_view():
-            return "success"
-
-        # Act & Assert
-        with app.test_request_context(headers={"X-Inner-Api-Key": "invalid_key"}):
-            with patch.object(dify_config, "INNER_API", True):
-                with patch.object(dify_config, "INNER_API_KEY", "valid_key"):
-                    with pytest.raises(HTTPException) as exc_info:
-                        protected_view()
-                    assert exc_info.value.code == 401
 
 
 class TestEnterpriseInnerApiOnly:

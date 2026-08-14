@@ -1,23 +1,25 @@
+"""Tests for SystemFeatureService licensed-seat parsing."""
+
 import pytest
 
 from enums import DeploymentEdition
-from services import feature_service as feature_service_module
+from services import system_feature_service as feature_service_module
 from services.entities.feature_entities import LicenseModel, LicenseStatus
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 
 _ENTERPRISE_INFO = {"License": {"licensedSeats": {"enabled": True, "limit": 3, "used": 1}}}
 
 
-def test_get_license_parses_licensed_seats(monkeypatch: pytest.MonkeyPatch):
+def test_get_license_parses_licensed_seats(monkeypatch: pytest.MonkeyPatch) -> None:
     """The authenticated license accessor copies the licensed-seat quota out of the enterprise payload."""
-    monkeypatch.setattr("services.feature_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE)
+    monkeypatch.setattr("services.system_feature_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE)
     monkeypatch.setattr(
         feature_service_module.EnterpriseService,
         "get_info",
         staticmethod(lambda: _ENTERPRISE_INFO),
     )
 
-    license_model = FeatureService.get_license()
+    license_model = SystemFeatureService.get_license()
 
     assert isinstance(license_model, LicenseModel)
     assert license_model.seats.enabled is True
@@ -25,11 +27,11 @@ def test_get_license_parses_licensed_seats(monkeypatch: pytest.MonkeyPatch):
     assert license_model.seats.size == 1
 
 
-def test_get_license_non_enterprise_is_unconstrained(monkeypatch: pytest.MonkeyPatch):
+def test_get_license_non_enterprise_is_unconstrained(monkeypatch: pytest.MonkeyPatch) -> None:
     """Non-enterprise deployments have no license; seat allocation is unconstrained."""
-    monkeypatch.setattr("services.feature_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    monkeypatch.setattr("services.system_feature_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
 
-    license_model = FeatureService.get_license()
+    license_model = SystemFeatureService.get_license()
 
     assert license_model.status == LicenseStatus.NONE
     assert license_model.seats.enabled is False

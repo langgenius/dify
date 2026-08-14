@@ -93,6 +93,7 @@ from services.errors.app import (
     WorkflowHashNotEqualError,
     WorkflowNotFoundError,
 )
+from services.system_feature_service import SystemFeatureService
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 
@@ -694,9 +695,7 @@ class WorkflowService:
         )
 
         # Validate credentials before publishing, for credential policy check
-        from services.feature_service import FeatureService
-
-        if FeatureService.is_plugin_manager_enabled():
+        if SystemFeatureService.is_plugin_manager_enabled():
             self._validate_workflow_credentials(draft_workflow, session=session)
 
         # validate graph structure

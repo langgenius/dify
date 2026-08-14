@@ -5369,9 +5369,9 @@ class TestAgentAppBackingAgent:
         )
         monkeypatch.setattr(service, "_next_duplicate_agent_name", lambda **_kwargs: "Iris copy")
         monkeypatch.setattr(
-            roster_service.FeatureService,
-            "get_system_features",
-            lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+            roster_service.SystemFeatureService,
+            "is_webapp_auth_enabled",
+            lambda: False,
         )
 
         account = SimpleNamespace(id="account-1")
@@ -5454,8 +5454,8 @@ class TestAgentAppBackingAgent:
 
         monkeypatch.setattr(roster_service, "AppService", FakeAppService)
         monkeypatch.setattr(
-            roster_service.FeatureService,
-            "get_system_features",
+            roster_service.SystemFeatureService,
+            "is_webapp_auth_enabled",
             lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=True)),
         )
         monkeypatch.setattr(roster_service.EnterpriseService, "WebAppAuth", FakeWebAppAuth)
@@ -5517,8 +5517,8 @@ class TestAgentAppBackingAgent:
 
         monkeypatch.setattr(roster_service, "AppService", FakeAppService)
         monkeypatch.setattr(
-            roster_service.FeatureService,
-            "get_system_features",
+            roster_service.SystemFeatureService,
+            "is_webapp_auth_enabled",
             lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=True)),
         )
         monkeypatch.setattr(roster_service.EnterpriseService, "WebAppAuth", FakeWebAppAuth)

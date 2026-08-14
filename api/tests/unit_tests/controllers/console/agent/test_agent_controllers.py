@@ -405,9 +405,9 @@ def test_agent_app_list_and_create_use_agent_route(
         get_or_create_debug_conversation,
     )
     monkeypatch.setattr(
-        roster_controller.FeatureService,
-        "get_system_features",
-        lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+        roster_controller.SystemFeatureService,
+        "is_webapp_auth_enabled",
+        lambda: False,
     )
     with app.test_request_context(
         "/console/api/agent?page=1&limit=10&mode=workflow&sort_by=recently_created&is_created_by_me=true"
@@ -553,9 +553,9 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
         roster_controller.AgentRosterService, "count_agent_app_debug_conversation_messages", lambda _self, **kwargs: 2
     )
     monkeypatch.setattr(
-        roster_controller.FeatureService,
-        "get_system_features",
-        lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+        roster_controller.SystemFeatureService,
+        "is_webapp_auth_enabled",
+        lambda: False,
     )
     monkeypatch.setattr(
         roster_controller,
@@ -1012,9 +1012,9 @@ def test_agent_app_update_allows_empty_role(app: Flask, monkeypatch: pytest.Monk
         roster_controller.AgentRosterService, "count_agent_app_debug_conversation_messages", lambda _self, **kwargs: 0
     )
     monkeypatch.setattr(
-        roster_controller.FeatureService,
-        "get_system_features",
-        lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+        roster_controller.SystemFeatureService,
+        "is_webapp_auth_enabled",
+        lambda: False,
     )
 
     class FakeAppService:

@@ -985,16 +985,15 @@ class TestEnterpriseLicense:
 
     def test_should_allow_with_valid_license(self):
         """Test that valid licenses allow access"""
-        # Arrange
-        mock_settings = MagicMock()
-        mock_settings.license.status = LicenseStatus.ACTIVE
-
         @enterprise_license_required
         def enterprise_feature():
             return "enterprise_success"
 
         # Act
-        with patch("controllers.console.wraps.FeatureService.get_system_features", return_value=mock_settings):
+        with patch(
+            "controllers.console.wraps.SystemFeatureService.get_license_status",
+            return_value=LicenseStatus.ACTIVE,
+        ):
             result = enterprise_feature()
 
         # Assert
@@ -1003,16 +1002,15 @@ class TestEnterpriseLicense:
     @pytest.mark.parametrize("invalid_status", [LicenseStatus.INACTIVE, LicenseStatus.EXPIRED, LicenseStatus.LOST])
     def test_should_reject_with_invalid_license(self, invalid_status):
         """Test that invalid licenses raise UnauthorizedAndForceLogout"""
-        # Arrange
-        mock_settings = MagicMock()
-        mock_settings.license.status = invalid_status
-
         @enterprise_license_required
         def enterprise_feature():
             return "enterprise_success"
 
         # Act & Assert
-        with patch("controllers.console.wraps.FeatureService.get_system_features", return_value=mock_settings):
+        with patch(
+            "controllers.console.wraps.SystemFeatureService.get_license_status",
+            return_value=invalid_status,
+        ):
             with pytest.raises(UnauthorizedAndForceLogout) as exc_info:
                 enterprise_feature()
             assert "license is invalid" in str(exc_info.value)

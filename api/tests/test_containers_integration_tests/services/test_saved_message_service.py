@@ -20,12 +20,12 @@ class TestSavedMessageService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.account_service.FeatureService") as mock_account_feature_service,
+            patch("services.account_service.SystemFeatureService") as mock_account_feature_service,
             patch("services.app_service.ModelManager.for_tenant") as mock_model_manager,
             patch("services.saved_message_service.MessageService") as mock_message_service,
         ):
             # Setup default mock returns
-            mock_account_feature_service.get_system_features.return_value.is_allow_register = True
+            mock_account_feature_service.is_registration_allowed.return_value = True
 
             # Mock ModelManager for app creation
             mock_model_instance = mock_model_manager.return_value
@@ -58,7 +58,7 @@ class TestSavedMessageService:
         # Setup mocks for account creation
         mock_external_service_dependencies[
             "account_feature_service"
-        ].get_system_features.return_value.is_allow_register = True
+        ].is_registration_allowed.return_value = True
 
         # Create account and tenant first
         from services.account_service import AccountService, TenantService

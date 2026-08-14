@@ -1,3 +1,5 @@
+"""Tests for SystemFeatureService deployment-edition behavior."""
+
 from unittest.mock import MagicMock
 
 import pytest
@@ -5,7 +7,7 @@ from pydantic import ValidationError
 
 from enums import DeploymentEdition
 from services.entities.feature_entities import SystemFeatureModel
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 
 
 def test_system_feature_model_requires_deployment_edition() -> None:
@@ -26,13 +28,13 @@ def test_get_system_features_uses_configured_deployment_edition(
     edition: DeploymentEdition,
 ) -> None:
     fulfill_from_enterprise = MagicMock()
-    monkeypatch.setattr("services.feature_service.dify_config.DEPLOYMENT_EDITION", edition)
+    monkeypatch.setattr("services.system_feature_service.dify_config.DEPLOYMENT_EDITION", edition)
     monkeypatch.setattr(
-        "services.feature_service.FeatureService._fulfill_params_from_enterprise",
+        "services.system_feature_service.SystemFeatureService._fulfill_params_from_enterprise",
         fulfill_from_enterprise,
     )
 
-    result = FeatureService.get_system_features()
+    result = SystemFeatureService.get_public_system_features()
 
     assert result.deployment_edition is edition
     assert result.model_dump(mode="json")["deployment_edition"] == edition.value

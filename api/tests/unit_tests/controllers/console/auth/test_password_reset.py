@@ -48,7 +48,7 @@ def enable_password_login_wrappers(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     monkeypatch.setattr(
-        "controllers.console.wraps.FeatureService.get_system_features",
+        "controllers.console.wraps.SystemFeatureService.is_email_password_login_enabled",
         lambda: SystemFeatureModel(
             deployment_edition=DeploymentEdition.COMMUNITY,
             enable_email_password_login=True,

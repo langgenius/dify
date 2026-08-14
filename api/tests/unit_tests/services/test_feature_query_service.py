@@ -51,7 +51,7 @@ def test_deployment_queries_delegate_without_request_context() -> None:
 
     assert service.get_trial_models() == ["langgenius/openai/openai"]
     assert service.get_app_dsl_version() == "0.6.0"
-    assert service.get_system_features() is system_features
+    assert service.get_public_system_features() is system_features
     assert service.get_license() is license_model
 
 

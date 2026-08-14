@@ -27,7 +27,7 @@ class TestTriggerProviderService:
             patch("services.trigger.trigger_provider_service.TriggerManager") as mock_trigger_manager,
             patch("services.trigger.trigger_provider_service.redis_client") as mock_redis_client,
             patch("services.trigger.trigger_provider_service.delete_cache_for_subscription") as mock_delete_cache,
-            patch("services.account_service.FeatureService") as mock_account_feature_service,
+            patch("services.account_service.SystemFeatureService") as mock_account_feature_service,
         ):
             # Setup default mock returns
             mock_provider_controller = MagicMock()
@@ -42,7 +42,7 @@ class TestTriggerProviderService:
             mock_redis_client.lock.return_value = mock_lock
 
             # Setup account feature service mock
-            mock_account_feature_service.get_system_features.return_value.is_allow_register = True
+            mock_account_feature_service.is_registration_allowed.return_value = True
 
             yield {
                 "trigger_manager": mock_trigger_manager,
@@ -73,7 +73,7 @@ class TestTriggerProviderService:
         # Setup mocks for account creation
         mock_external_service_dependencies[
             "account_feature_service"
-        ].get_system_features.return_value.is_allow_register = True
+        ].is_registration_allowed.return_value = True
         mock_external_service_dependencies[
             "trigger_manager"
         ].get_trigger_provider.return_value = mock_external_service_dependencies["provider_controller"]

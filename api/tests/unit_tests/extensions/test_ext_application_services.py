@@ -10,6 +10,7 @@ from enums import DeploymentEdition
 from extensions import ext_application_services
 from extensions.ext_redis import RedisClientWrapper
 from models.model import DifySetup
+from services.entities.mail_entities import InnerMailMessage
 from services.init_validation_service import InvalidInitializationPasswordError
 
 
@@ -134,3 +135,60 @@ def test_build_application_services_does_not_construct_schema_manager(
         )
 
     schema_manager.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("substitutions", "expected_substitutions"),
+    [
+        pytest.param({"name": "Ada"}, {"name": "Ada"}, id="configured"),
+        pytest.param(None, {}, id="omitted-or-null"),
+    ],
+)
+def test_build_application_services_wires_inner_mail_dispatcher(
+    sqlite_session_factory: sessionmaker[Session],
+    substitutions: dict[str, object] | None,
+    expected_substitutions: dict[str, object],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+    message = InnerMailMessage(
+        recipients=("one@example.com", "two@example.com"),
+        subject="Subject",
+        body="Body",
+        substitutions=substitutions,
+    )
+
+    with patch("tasks.mail_inner_task.send_inner_email_task.delay") as delay:
+        services.inner_mail.send(message)
+
+    delay.assert_called_once_with(
+        to=["one@example.com", "two@example.com"],
+        subject="Subject",
+        body="Body",
+        substitutions=expected_substitutions,
+    )
+
+
+def test_build_application_services_uses_passed_edition_for_webapp_auth(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    monkeypatch.setattr(
+        ext_application_services.dify_config,
+        "DEPLOYMENT_EDITION",
+        DeploymentEdition.COMMUNITY,
+    )
+
+    with patch("extensions.ext_application_services.DeploymentWebPassportAuthGateway") as auth_gateway:
+        ext_application_services.build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=DeploymentEdition.ENTERPRISE,
+            initialization_password="",
+            redis=MagicMock(spec=RedisClientWrapper),
+        )
+
+    assert auth_gateway.call_args.kwargs["webapp_auth_enabled"] is True

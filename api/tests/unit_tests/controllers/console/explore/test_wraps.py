@@ -132,17 +132,14 @@ def test_user_allowed_to_access_app_denied():
     def view(installed_app):
         return "ok"
 
-    feature = MagicMock()
-    feature.webapp_auth.enabled = True
-
     with (
         patch(
             "controllers.console.explore.wraps.current_account_with_tenant",
             return_value=(MagicMock(id="user-1"), None),
         ),
         patch(
-            "controllers.console.explore.wraps.FeatureService.get_system_features",
-            return_value=feature,
+            "controllers.console.explore.wraps.SystemFeatureService.is_webapp_auth_enabled",
+            return_value=True,
         ),
         patch(
             "controllers.console.explore.wraps.EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp",
@@ -160,17 +157,14 @@ def test_user_allowed_to_access_app_success():
     def view(installed_app):
         return "ok"
 
-    feature = MagicMock()
-    feature.webapp_auth.enabled = True
-
     with (
         patch(
             "controllers.console.explore.wraps.current_account_with_tenant",
             return_value=(MagicMock(id="user-1"), None),
         ),
         patch(
-            "controllers.console.explore.wraps.FeatureService.get_system_features",
-            return_value=feature,
+            "controllers.console.explore.wraps.SystemFeatureService.is_webapp_auth_enabled",
+            return_value=True,
         ),
         patch(
             "controllers.console.explore.wraps.EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp",

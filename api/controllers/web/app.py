@@ -18,7 +18,7 @@ from libs.token import extract_webapp_passport
 from models.model import App, AppMode, EndUser, load_annotation_reply_config
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 from services.webapp_auth_service import WebAppAuthService
 
 from . import web_ns
@@ -151,8 +151,7 @@ class AppAccessMode(Resource):
         raw_args = request.args.to_dict()
         args = AppAccessModeQuery.model_validate(raw_args)
 
-        features = FeatureService.get_system_features()
-        if not features.webapp_auth.enabled:
+        if not SystemFeatureService.is_webapp_auth_enabled():
             return {"accessMode": "public"}
 
         app_id = args.app_id
@@ -206,8 +205,7 @@ class AppWebAuthPermission(Resource):
             logger.exception("Unexpected error during auth verification")
             raise
 
-        features = FeatureService.get_system_features()
-        if not features.webapp_auth.enabled:
+        if not SystemFeatureService.is_webapp_auth_enabled():
             return {"result": True}
 
         res = True

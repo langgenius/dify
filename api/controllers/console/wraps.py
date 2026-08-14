@@ -31,6 +31,7 @@ from services.billing_service import BillingService
 from services.entities.feature_entities import LicenseStatus
 from services.feature_service import FeatureService
 from services.operation_service import OperationService, UtmInfo
+from services.system_feature_service import SystemFeatureService
 
 from .error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
 
@@ -330,8 +331,11 @@ def setup_required[R](view: Callable[..., R]) -> Callable[..., R]:
 def enterprise_license_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
-        settings = FeatureService.get_system_features()
-        if settings.license.status in [LicenseStatus.INACTIVE, LicenseStatus.EXPIRED, LicenseStatus.LOST]:
+        if SystemFeatureService.get_license_status() in [
+            LicenseStatus.INACTIVE,
+            LicenseStatus.EXPIRED,
+            LicenseStatus.LOST,
+        ]:
             raise UnauthorizedAndForceLogout("Your license is invalid. Please contact your administrator.")
 
         return view(*args, **kwargs)
@@ -342,8 +346,7 @@ def enterprise_license_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
 def email_password_login_enabled[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
-        features = FeatureService.get_system_features()
-        if features.enable_email_password_login:
+        if SystemFeatureService.is_email_password_login_enabled():
             return view(*args, **kwargs)
 
         # otherwise, return 403
@@ -355,8 +358,7 @@ def email_password_login_enabled[**P, R](view: Callable[P, R]) -> Callable[P, R]
 def email_register_enabled[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
-        features = FeatureService.get_system_features()
-        if features.is_allow_register:
+        if SystemFeatureService.is_registration_allowed():
             return view(*args, **kwargs)
 
         # otherwise, return 403
@@ -368,8 +370,7 @@ def email_register_enabled[**P, R](view: Callable[P, R]) -> Callable[P, R]:
 def enable_change_email[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
-        features = FeatureService.get_system_features()
-        if features.enable_change_email:
+        if SystemFeatureService.is_change_email_enabled():
             return view(*args, **kwargs)
 
         # otherwise, return 403

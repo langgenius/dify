@@ -20,7 +20,7 @@ from services.app_service import AppService
 def _mock_deps() -> Iterator[None]:
     with (
         patch("services.app_service.BillingService"),
-        patch("services.app_service.FeatureService"),
+        patch("services.app_service.SystemFeatureService"),
         patch("services.app_service.EnterpriseService"),
         patch("services.app_service.remove_app_and_related_data_task"),
     ):
