@@ -14,7 +14,12 @@ from models.agent_config_entities import AgentSoulConfig
 from models.model import App, AppMode, AppModelConfig, load_annotation_reply_config
 from models.tools import ApiToolProvider
 from models.workflow import Workflow
-from services.app_definition_query_service import AppDefinitionQuery, AppParameterConfig, AppToolIconSource
+from services.app_definition_query_service import (
+    AppDefinitionQuery,
+    AppDefinitionSummary,
+    AppParameterConfig,
+    AppToolIconSource,
+)
 
 
 def _get_public_agent_parameter_config(app: App, *, session: Session) -> AppParameterConfig:
@@ -124,6 +129,21 @@ class AppDefinitionQueryRepository(AppDefinitionQuery):
                 )
 
             return tuple(records)
+
+    @override
+    def get_summary(self, app_id: str) -> AppDefinitionSummary | None:
+        with self._session_factory() as session:
+            app = session.get(App, app_id)
+            if app is None:
+                return None
+
+            return AppDefinitionSummary(
+                name=app.name,
+                description=app.description,
+                tags=tuple(tag.name for tag in app.tags_with_session(session=session)),
+                mode=app.mode.value,
+                author_name=app.author_name_with_session(session=session),
+            )
 
     @staticmethod
     def _get_tools(session: Session, app: App) -> list[dict[str, Any]]:

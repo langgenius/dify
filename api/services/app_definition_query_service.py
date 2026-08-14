@@ -20,6 +20,14 @@ class AppToolIconSource(NamedTuple):
     provider_icon: str | None
 
 
+class AppDefinitionSummary(NamedTuple):
+    name: str
+    description: str | None
+    tags: tuple[str, ...]
+    mode: str
+    author_name: str | None
+
+
 class AppDefinitionQuery(Protocol):
     def get_published_parameter_config(
         self,
@@ -29,6 +37,8 @@ class AppDefinitionQuery(Protocol):
     ) -> AppParameterConfig | None: ...
 
     def get_tool_icon_sources(self, app_id: str) -> Sequence[AppToolIconSource] | None: ...
+
+    def get_summary(self, app_id: str) -> AppDefinitionSummary | None: ...
 
 
 class AppDefinitionUnavailableError(ValueError):
@@ -95,3 +105,9 @@ class AppDefinitionQueryService:
                     tool_icons[tool.tool_name] = _API_TOOL_FALLBACK_ICON.copy()
 
         return tool_icons
+
+    def get_summary(self, app_id: str) -> AppDefinitionSummary:
+        summary = self._definitions.get_summary(app_id)
+        if summary is None:
+            raise AppDefinitionUnavailableError("App not found")
+        return summary

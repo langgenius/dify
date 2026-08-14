@@ -8,6 +8,7 @@ from services.app_definition_query_service import (
     AppDefinitionNotPublishedError,
     AppDefinitionQuery,
     AppDefinitionQueryService,
+    AppDefinitionSummary,
     AppDefinitionUnavailableError,
     AppParameterConfig,
     AppToolIconSource,
@@ -127,3 +128,20 @@ def test_get_tool_icons_rejects_missing_app() -> None:
 
     with pytest.raises(AppDefinitionUnavailableError, match="App not found"):
         service.get_tool_icons("missing")
+
+
+def test_get_summary_returns_repository_record() -> None:
+    service, definitions = _service()
+    summary = AppDefinitionSummary("Test App", "A test application", ("tag",), "chat", "Test Author")
+    definitions.get_summary.return_value = summary
+
+    assert service.get_summary("app-1") == summary
+    definitions.get_summary.assert_called_once_with("app-1")
+
+
+def test_get_summary_rejects_missing_app() -> None:
+    service, definitions = _service()
+    definitions.get_summary.return_value = None
+
+    with pytest.raises(AppDefinitionUnavailableError, match="App not found"):
+        service.get_summary("missing")

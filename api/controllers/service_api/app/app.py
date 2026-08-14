@@ -136,11 +136,8 @@ class AppInfoApi(Resource):
 
         Returns basic information about the application including name, description, tags, and mode.
         """
-        tags = [tag.name for tag in app_model.tags]
-        return {
-            "name": app_model.name,
-            "description": app_model.description,
-            "tags": tags,
-            "mode": app_model.mode,
-            "author_name": app_model.author_name,
-        }
+        try:
+            summary = application_services().app_definitions.get_summary(app_model.id)
+        except AppDefinitionUnavailableError:
+            raise AppUnavailableError() from None
+        return dump_response(AppInfoResponse, summary)

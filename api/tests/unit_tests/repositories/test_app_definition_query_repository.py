@@ -4,11 +4,13 @@ import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.tools.entities.tool_entities import ApiProviderSchemaType
-from models.model import App, AppMode, AppModelConfig
+from models.account import Account
+from models.enums import TagType
+from models.model import App, AppMode, AppModelConfig, Tag, TagBinding
 from models.tools import ApiToolProvider
 from models.workflow import Workflow, WorkflowKind, WorkflowType
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
-from services.app_definition_query_service import AppParameterConfig, AppToolIconSource
+from services.app_definition_query_service import AppDefinitionSummary, AppParameterConfig, AppToolIconSource
 
 _APP_ID = "11111111-1111-1111-1111-111111111111"
 _TENANT_ID = "22222222-2222-2222-2222-222222222222"
@@ -16,9 +18,15 @@ _ACCOUNT_ID = "33333333-3333-3333-3333-333333333333"
 _WORKFLOW_ID = "44444444-4444-4444-4444-444444444444"
 _PROVIDER_ID = "55555555-5555-5555-5555-555555555555"
 _MISSING_PROVIDER_ID = "66666666-6666-6666-6666-666666666666"
+_OTHER_TENANT_ID = "77777777-7777-7777-7777-777777777777"
 
 
-def _persist_app(session: Session, *, mode: AppMode = AppMode.CHAT) -> App:
+def _persist_app(
+    session: Session,
+    *,
+    mode: AppMode = AppMode.CHAT,
+    created_by: str | None = None,
+) -> App:
     app = App(
         id=_APP_ID,
         tenant_id=_TENANT_ID,
@@ -32,6 +40,7 @@ def _persist_app(session: Session, *, mode: AppMode = AppMode.CHAT) -> App:
         enable_api=True,
         is_public=True,
         max_active_requests=None,
+        created_by=created_by,
     )
     session.add(app)
     session.flush()
@@ -181,6 +190,104 @@ def test_get_public_parameter_config_reuses_standard_projection(
 
     assert result is not None
     assert result.features_dict["opening_statement"] == "Public config"
+
+
+def test_get_summary_returns_none_for_missing_app(sqlite_session_factory: sessionmaker[Session]) -> None:
+    repository = AppDefinitionQueryRepository(session_factory=sqlite_session_factory)
+
+    assert repository.get_summary(_APP_ID) is None
+
+
+def test_get_summary_maps_app_mode_and_author(sqlite_session_factory: sessionmaker[Session]) -> None:
+    with sqlite_session_factory.begin() as session:
+        _persist_app(session, mode=AppMode.WORKFLOW, created_by=_ACCOUNT_ID)
+        account = Account(name="Test Author", email="owner@example.com")
+        account.id = _ACCOUNT_ID
+        session.add(account)
+
+    result = AppDefinitionQueryRepository(session_factory=sqlite_session_factory).get_summary(_APP_ID)
+
+    assert result == AppDefinitionSummary(
+        name="Parameter app",
+        description="",
+        tags=(),
+        mode=AppMode.WORKFLOW.value,
+        author_name="Test Author",
+    )
+
+
+def test_get_summary_returns_only_tenant_scoped_app_tags(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        app = _persist_app(session)
+        visible = Tag(tenant_id=_TENANT_ID, type=TagType.APP, name="visible", created_by=_ACCOUNT_ID)
+        visible_second = Tag(
+            tenant_id=_TENANT_ID,
+            type=TagType.APP,
+            name="visible-second",
+            created_by=_ACCOUNT_ID,
+        )
+        foreign_tag = Tag(
+            tenant_id=_OTHER_TENANT_ID,
+            type=TagType.APP,
+            name="foreign-tag",
+            created_by=_ACCOUNT_ID,
+        )
+        foreign_binding = Tag(
+            tenant_id=_TENANT_ID,
+            type=TagType.APP,
+            name="foreign-binding",
+            created_by=_ACCOUNT_ID,
+        )
+        knowledge = Tag(
+            tenant_id=_TENANT_ID,
+            type=TagType.KNOWLEDGE,
+            name="knowledge",
+            created_by=_ACCOUNT_ID,
+        )
+        session.add_all([visible, visible_second, foreign_tag, foreign_binding, knowledge])
+        session.flush()
+        session.add_all(
+            [
+                TagBinding(
+                    tenant_id=_TENANT_ID,
+                    tag_id=visible.id,
+                    target_id=app.id,
+                    created_by=_ACCOUNT_ID,
+                ),
+                TagBinding(
+                    tenant_id=_TENANT_ID,
+                    tag_id=visible_second.id,
+                    target_id=app.id,
+                    created_by=_ACCOUNT_ID,
+                ),
+                TagBinding(
+                    tenant_id=_TENANT_ID,
+                    tag_id=foreign_tag.id,
+                    target_id=app.id,
+                    created_by=_ACCOUNT_ID,
+                ),
+                TagBinding(
+                    tenant_id=_OTHER_TENANT_ID,
+                    tag_id=foreign_binding.id,
+                    target_id=app.id,
+                    created_by=_ACCOUNT_ID,
+                ),
+                TagBinding(
+                    tenant_id=_TENANT_ID,
+                    tag_id=knowledge.id,
+                    target_id=app.id,
+                    created_by=_ACCOUNT_ID,
+                ),
+            ]
+        )
+
+    result = AppDefinitionQueryRepository(session_factory=sqlite_session_factory).get_summary(_APP_ID)
+
+    assert result is not None
+    assert set(result.tags) == {"visible", "visible-second"}
+    assert result.author_name is None
 
 
 def _tool(provider_type: str, provider_id: str, tool_name: str) -> dict[str, object]:
