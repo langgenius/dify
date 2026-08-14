@@ -9,10 +9,10 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Input } from '@langgenius/dify-ui/input'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { userProfileIdAtom } from '@/context/account-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useMembers } from '@/service/use-common'
 
 type CreatorsFilterProps = {
@@ -32,7 +32,10 @@ const baseChipClassName =
 
 const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
   const { t } = useTranslation()
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const { data: membersData } = useMembers()
   const [keywords, setKeywords] = useState('')
 

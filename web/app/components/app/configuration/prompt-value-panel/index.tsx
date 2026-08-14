@@ -11,6 +11,7 @@ import {
   SelectItemIndicator,
   SelectItemText,
   SelectTrigger,
+  SelectValue,
 } from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -208,9 +209,9 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                         }}
                       >
                         <SelectTrigger className="w-full bg-gray-50">
-                          {typeof inputs[key] === 'string' && inputs[key] !== ''
-                            ? inputs[key]
-                            : t(($) => $['placeholder.select'], { ns: 'common' })}
+                          <SelectValue
+                            placeholder={t(($) => $['placeholder.select'], { ns: 'common' })}
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           {(options || []).map((option) => (
@@ -292,7 +293,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                       onClick={() => onSend?.()}
                       className="w-24"
                     >
-                      <RiPlayLargeFill className="mr-0.5 size-4 shrink-0" aria-hidden="true" />
+                      <RiPlayLargeFill className="size-4 shrink-0" aria-hidden="true" />
                       {t(($) => $['inputs.run'], { ns: 'appDebug' })}
                     </Button>
                   }
@@ -309,7 +310,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                 onClick={() => onSend?.()}
                 className="w-24"
               >
-                <RiPlayLargeFill className="mr-0.5 size-4 shrink-0" aria-hidden="true" />
+                <RiPlayLargeFill className="size-4 shrink-0" aria-hidden="true" />
                 {t(($) => $['inputs.run'], { ns: 'appDebug' })}
               </Button>
             )}

@@ -16,7 +16,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
 import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
@@ -28,6 +28,7 @@ import {
 import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import Link from '@/next/link'
+import { consoleQuery } from '@/service/client'
 import { ExternalLinkIndicator, MenuItemContent } from './menu-item-content'
 
 type MainNavRadioItemContentProps = {
@@ -57,6 +58,8 @@ function MainNavRadioItemContent({ iconClassName, label }: MainNavRadioItemConte
 function AppearanceSubmenu() {
   const { t } = useTranslation()
   const { theme, setTheme } = useTheme()
+  const currentTheme: Theme =
+    theme === 'light' || theme === 'dark' || theme === 'system' ? theme : 'system'
 
   return (
     <DropdownMenuSub>
@@ -71,23 +74,35 @@ function AppearanceSubmenu() {
         sideOffset={6}
         popupClassName="w-[139px] max-h-[360px] bg-components-panel-bg-blur p-1 backdrop-blur-[5px]"
       >
-        <DropdownMenuRadioGroup
-          value={theme || 'system'}
-          onValueChange={(value) => setTheme(value as Theme)}
+        <DropdownMenuRadioGroup<Theme>
+          value={currentTheme}
+          onValueChange={(nextTheme) => setTheme(nextTheme)}
         >
-          <DropdownMenuRadioItem value="light" closeOnClick className="mx-0 h-8 gap-1 px-2 py-1">
+          <DropdownMenuRadioItem<Theme>
+            value="light"
+            closeOnClick
+            className="mx-0 h-8 gap-1 px-2 py-1"
+          >
             <MainNavRadioItemContent
               iconClassName="i-ri-sun-line"
               label={t(($) => $['account.appearanceLight'], { ns: 'common' })}
             />
           </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="dark" closeOnClick className="mx-0 h-8 gap-1 px-2 py-1">
+          <DropdownMenuRadioItem<Theme>
+            value="dark"
+            closeOnClick
+            className="mx-0 h-8 gap-1 px-2 py-1"
+          >
             <MainNavRadioItemContent
               iconClassName="i-ri-moon-line"
               label={t(($) => $['account.appearanceDark'], { ns: 'common' })}
             />
           </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="system" closeOnClick className="mx-0 h-8 gap-1 px-2 py-1">
+          <DropdownMenuRadioItem<Theme>
+            value="system"
+            closeOnClick
+            className="mx-0 h-8 gap-1 px-2 py-1"
+          >
             <MainNavRadioItemContent
               iconClassName="i-ri-computer-line"
               label={t(($) => $['account.appearanceSystem'], { ns: 'common' })}
@@ -109,7 +124,13 @@ export function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
   })
-  const { isEducationAccount } = useProviderContext()
+  const { enableEducationPlan } = useProviderContext()
+  const { data: isEducationAccount = false } = useQuery(
+    consoleQuery.account.education.get.queryOptions({
+      enabled: enableEducationPlan,
+      select: ({ is_student }) => is_student ?? false,
+    }),
+  )
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
 
   return (

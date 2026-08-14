@@ -5,6 +5,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { intersection } from 'es-toolkit/array'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -35,13 +36,11 @@ const ChangeItem = ({ data, nodeId, sourceHandle }: ChangeItemProps) => {
     [nodeId, sourceHandle, handleNodeChange],
   )
 
-  const renderTrigger = useCallback(() => {
-    return (
-      <Button variant="ghost" size="medium" className="w-full justify-start px-2">
-        {t(($) => $['panel.change'], { ns: 'workflow' })}
-      </Button>
-    )
-  }, [t])
+  const triggerElement = (
+    <Button variant="ghost" size="medium" className="w-full justify-start px-2">
+      {t(($) => $['panel.change'], { ns: 'workflow' })}
+    </Button>
+  )
 
   return (
     <BlockSelector
@@ -49,7 +48,7 @@ const ChangeItem = ({ data, nodeId, sourceHandle }: ChangeItemProps) => {
       placement="top-end"
       sideOffset={6}
       alignOffset={8}
-      trigger={renderTrigger}
+      trigger={triggerElement}
       popupClassName="w-[328px]!"
       availableBlocksTypes={intersection(availablePrevBlocks, availableNextBlocks).filter(
         (item) => item !== nodeCatalogType,
@@ -73,12 +72,14 @@ const Operator = ({ open, onOpenChange, data, nodeId, sourceHandle }: OperatorPr
     <DropdownMenu open={open} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger
         render={
-          <Button
-            className="size-6 p-0"
+          <IconButton
+            variant="secondary"
+            size="md"
+            className="rounded-lg"
             aria-label={t(($) => $['common.moreActions'], { ns: 'workflow' })}
           >
             <span aria-hidden className="i-ri-more-fill size-4" />
-          </Button>
+          </IconButton>
         }
       />
       <DropdownMenuContent

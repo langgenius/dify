@@ -25,6 +25,7 @@ from typing_extensions import deprecated
 
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
+from core.workflow.llm_environment_variable import LLMEnvironmentVariable, dump_environment_variable
 from core.workflow.nodes.human_input.pause_reason import (
     HumanInputRequired,
 )
@@ -210,6 +211,13 @@ class Workflow(Base):  # bug
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="workflow_pkey"),
         sa.Index("workflow_version_idx", "tenant_id", "app_id", "version"),
+        sa.Index(
+            "workflow_app_version_number_idx",
+            "app_id",
+            "version_number",
+            unique=True,
+            postgresql_where=sa.text("version_number IS NOT NULL"),
+        ),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
@@ -223,6 +231,9 @@ class Workflow(Base):  # bug
         server_default=sa.text("'standard'"),
     )
     version: Mapped[str] = mapped_column(String(255), nullable=False)
+    # User-facing version number, unique and monotonically increasing within an app, displayed as `#N`.
+    # NULL for draft workflows and for versions published before numbering was introduced.
+    version_number: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, default=None)
     marked_name: Mapped[str] = mapped_column(String(255), default="", server_default="")
     marked_comment: Mapped[str] = mapped_column(String(255), default="", server_default="")
     graph: Mapped[str] = mapped_column(LongText)
@@ -264,6 +275,7 @@ class Workflow(Base):  # bug
         marked_name: str = "",
         marked_comment: str = "",
         kind: str | None = WorkflowKind.STANDARD.value,
+        version_number: int | None = None,
     ) -> "Workflow":
         workflow = Workflow()
         workflow.id = str(uuid4())
@@ -272,6 +284,7 @@ class Workflow(Base):  # bug
         workflow.type = WorkflowType(type)
         workflow.kind = resolve_workflow_kind(kind)
         workflow.version = version
+        workflow.version_number = version_number
         workflow.graph = graph
         workflow.features = features
         workflow.created_by = created_by
@@ -581,7 +594,7 @@ class Workflow(Base):  # bug
     @property
     def environment_variables(
         self,
-    ) -> Sequence[StringVariable | IntegerVariable | FloatVariable | SecretVariable]:
+    ) -> Sequence[StringVariable | IntegerVariable | FloatVariable | SecretVariable | LLMEnvironmentVariable]:
         # Use workflow.tenant_id to avoid relying on request user in background threads
         tenant_id = self.tenant_id
 
@@ -596,21 +609,21 @@ class Workflow(Base):  # bug
         # decrypt secret variables value
         def decrypt_func(
             var: VariableBase,
-        ) -> StringVariable | IntegerVariable | FloatVariable | SecretVariable:
+        ) -> StringVariable | IntegerVariable | FloatVariable | SecretVariable | LLMEnvironmentVariable:
             match var:
                 case SecretVariable():
                     return var.model_copy(
                         update={"value": encrypter.decrypt_token(tenant_id=tenant_id, token=var.value)}
                     )
-                case StringVariable() | IntegerVariable() | FloatVariable():
+                case StringVariable() | IntegerVariable() | FloatVariable() | LLMEnvironmentVariable():
                     return var
                 case _:
                     # Other variable types are not supported for environment variables
                     raise AssertionError(f"Unexpected variable type for environment variable: {type(var)}")
 
-        decrypted_results: list[SecretVariable | StringVariable | IntegerVariable | FloatVariable] = [
-            decrypt_func(var) for var in results
-        ]
+        decrypted_results: list[
+            SecretVariable | StringVariable | IntegerVariable | FloatVariable | LLMEnvironmentVariable
+        ] = [decrypt_func(var) for var in results]
         return decrypted_results
 
     @environment_variables.setter
@@ -646,7 +659,7 @@ class Workflow(Base):  # bug
 
         encrypted_vars = list(map(encrypt_func, value))
         environment_variables_json = json.dumps(
-            {var.name: var.model_dump() for var in encrypted_vars},
+            {var.name: dump_environment_variable(var) for var in encrypted_vars},
             ensure_ascii=False,
         )
         self._environment_variables = environment_variables_json
@@ -686,7 +699,7 @@ class Workflow(Base):  # bug
         result: WorkflowContentDict = {
             "graph": self.graph_dict,
             "features": self.features_dict,
-            "environment_variables": [var.model_dump(mode="json") for var in environment_variables],
+            "environment_variables": [dump_environment_variable(var, mode="json") for var in environment_variables],
             "conversation_variables": [var.model_dump(mode="json") for var in self.conversation_variables],
             "rag_pipeline_variables": self.rag_pipeline_variables,
         }
@@ -732,6 +745,24 @@ class Workflow(Base):  # bug
     @staticmethod
     def version_from_datetime(d: datetime) -> str:
         return str(d)
+
+
+class WorkflowVersionCounter(Base):
+    """Monotonic per-app allocator for `Workflow.version_number`.
+
+    One row per app, holding the highest number handed out so far. Numbers are never
+    reused, so deleting a published version does not free its number.
+
+    `app_id` mirrors `Workflow.app_id`, which is polymorphic: it holds an app id, a
+    pipeline id or a snippet id depending on the workflow kind. UUID uniqueness across
+    those tables is why no owner-type column is needed here.
+    """
+
+    __tablename__ = "workflow_version_counters"
+    __table_args__ = (sa.PrimaryKeyConstraint("app_id", name="workflow_version_counter_pkey"),)
+
+    app_id: Mapped[str] = mapped_column(StringUUID)
+    last_version_number: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
 
 
 class WorkflowRunDict(TypedDict):

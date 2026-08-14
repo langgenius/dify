@@ -2,7 +2,6 @@ import type { JSX } from 'react'
 import type { BundledLanguage, BundledTheme } from 'shiki/bundle/web'
 import ReactEcharts from 'echarts-for-react'
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import ActionButton from '@/app/components/base/action-button'
 import CopyIcon from '@/app/components/base/copy-icon'
 import MarkdownMusic from '@/app/components/base/markdown-blocks/music'
 import ErrorBoundary from '@/app/components/base/markdown/error-boundary'
@@ -296,6 +295,7 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
         const parsed = JSON.parse(trimmedContent)
         if (typeof parsed === 'object' && parsed !== null) {
           setFinalChartOption(parsed)
+          finishedEventCountRef.current = 0
           setChartState('success')
           processedRef.current = true
           return
@@ -338,6 +338,7 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
       }
 
       if (isValidOption) {
+        finishedEventCountRef.current = 0
         setChartState('success')
         processedRef.current = true
       }
@@ -424,9 +425,6 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
 
         // Success state: show the chart
         if (chartState === 'success' && finalChartOption) {
-          // Reset finished event counter
-          finishedEventCountRef.current = 0
-
           return (
             <div
               style={{
@@ -546,9 +544,7 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
         <div className="system-xs-semibold-uppercase text-text-secondary">{languageShowName}</div>
         <div className="flex items-center gap-1">
           {language === 'svg' && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG} />}
-          <ActionButton>
-            <CopyIcon content={String(children).replace(/\n$/, '')} />
-          </ActionButton>
+          <CopyIcon content={String(children).replace(/\n$/, '')} />
         </div>
       </div>
       {renderCodeContent}

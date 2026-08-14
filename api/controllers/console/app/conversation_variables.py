@@ -3,7 +3,6 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
@@ -16,6 +15,7 @@ from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
     account_initialization_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
 )
@@ -101,15 +101,15 @@ class ConversationVariablesApi(Resource):
     @account_initialization_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=AppMode.ADVANCED_CHAT)
-    def get(self, app_model: App):
-        args = ConversationVariablesQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(ConversationVariablesQuery)
+    def get(self, req_data: ConversationVariablesQuery, app_model: App):
 
         stmt = (
             select(ConversationVariable)
             .where(ConversationVariable.app_id == app_model.id)
             .order_by(ConversationVariable.created_at)
         )
-        stmt = stmt.where(ConversationVariable.conversation_id == args.conversation_id)
+        stmt = stmt.where(ConversationVariable.conversation_id == req_data.conversation_id)
 
         # NOTE: This is a temporary solution to avoid performance issues.
         page = 1

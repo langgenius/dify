@@ -1,6 +1,8 @@
-import type { ReactNode } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import { screen, waitFor } from '@testing-library/react'
-import { render } from '@/test/console/render'
+import { useEffect } from 'react'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { AppACLPermission } from '@/utils/permission'
 import WorkflowApp from '../index'
 
@@ -8,8 +10,13 @@ const mockSetTriggerStatuses = vi.fn()
 const mockSetInputs = vi.fn()
 const mockSetShowInputsPanel = vi.fn()
 const mockSetShowDebugAndPreviewPanel = vi.fn()
-const mockWorkflowStoreSetState = vi.fn()
+let mockIsWorkflowDataLoaded = true
+const mockWorkflowStoreSetState = vi.fn((state: Record<string, unknown>) => {
+  if (typeof state.isWorkflowDataLoaded === 'boolean')
+    mockIsWorkflowDataLoaded = state.isWorkflowDataLoaded
+})
 const mockDebouncedCancel = vi.fn()
+const mockFinalDraftSync = vi.fn()
 const mockFetchRunDetail = vi.fn()
 const mockInitialNodes = vi.fn()
 const mockInitialEdges = vi.fn()
@@ -59,9 +66,15 @@ let appTriggersState: {
 
 let searchParamsValue: string | null = null
 
+const render = (ui: ReactElement) =>
+  renderWithConsoleState(ui, {
+    wrapper: createAccountProfileQueryWrapper(consoleState.userProfile),
+  })
+
 const mockWorkflowStore = {
   setState: mockWorkflowStoreSetState,
   getState: () => ({
+    isWorkflowDataLoaded: mockIsWorkflowDataLoaded,
     setInputs: mockSetInputs,
     setShowInputsPanel: mockSetShowInputsPanel,
     setShowDebugAndPreviewPanel: mockSetShowDebugAndPreviewPanel,
@@ -85,15 +98,6 @@ vi.mock('@/app/components/workflow/store/trigger-status', () => ({
   }),
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({
-    isLoadingCurrentWorkspace: consoleState.isLoadingCurrentWorkspace,
-    currentWorkspace: consoleState.currentWorkspace,
-    userProfile: consoleState.userProfile,
-    workspacePermissionKeys: consoleState.workspacePermissionKeys,
-  }))
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => ({
@@ -185,16 +189,11 @@ vi.mock('@/app/components/workflow', () => ({
 }))
 
 vi.mock('@/app/components/workflow/context', () => ({
-  WorkflowContextProvider: ({
-    children,
-  }: {
-    injectWorkflowStoreSliceFn: unknown
-    children: ReactNode
-  }) => <div data-testid="workflow-context-provider">{children}</div>,
+  WorkflowContextProvider: ({ children }: { children: ReactNode }) => children,
 }))
 
 vi.mock('@/app/components/workflow-app/components/workflow-main', () => ({
-  default: ({
+  default: function WorkflowMainMock({
     nodes,
     edges,
     viewport,
@@ -202,19 +201,33 @@ vi.mock('@/app/components/workflow-app/components/workflow-main', () => ({
     nodes: Array<Record<string, unknown>>
     edges: Array<Record<string, unknown>>
     viewport: Record<string, unknown>
-  }) => (
-    <div
-      data-testid="workflow-app-main"
-      data-nodes={JSON.stringify(nodes)}
-      data-edges={JSON.stringify(edges)}
-      data-viewport={JSON.stringify(viewport)}
-    />
-  ),
+  }) {
+    useEffect(() => {
+      return () => {
+        const { debouncedSyncWorkflowDraft, isWorkflowDataLoaded } = mockWorkflowStore.getState()
+        if (!isWorkflowDataLoaded) return
+
+        debouncedSyncWorkflowDraft.cancel()
+        mockFinalDraftSync()
+      }
+    }, [])
+
+    return (
+      <div
+        role="region"
+        aria-label="Workflow canvas"
+        data-nodes={JSON.stringify(nodes)}
+        data-edges={JSON.stringify(edges)}
+        data-viewport={JSON.stringify(viewport)}
+      />
+    )
+  },
 }))
 
 describe('WorkflowApp', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockIsWorkflowDataLoaded = true
     appStoreState = {
       appDetail: {
         id: 'app-1',
@@ -262,7 +275,7 @@ describe('WorkflowApp', () => {
     render(<WorkflowApp />)
 
     expect(screen.getByTestId('loading')).toBeInTheDocument()
-    expect(screen.queryByTestId('workflow-app-main')).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Workflow canvas' })).not.toBeInTheDocument()
   })
 
   it('should render the workflow app shell and sync trigger statuses when data is ready', () => {
@@ -277,7 +290,6 @@ describe('WorkflowApp', () => {
 
     render(<WorkflowApp />)
 
-    expect(screen.getByTestId('workflow-context-provider')).toBeInTheDocument()
     expect(screen.getByTestId('workflow-default-context')).toHaveAttribute(
       'data-nodes',
       JSON.stringify([{ id: 'node-1' }]),
@@ -286,7 +298,7 @@ describe('WorkflowApp', () => {
       'data-edges',
       JSON.stringify([{ id: 'edge-1' }]),
     )
-    expect(screen.getByTestId('workflow-app-main')).toHaveAttribute(
+    expect(screen.getByRole('region', { name: 'Workflow canvas' })).toHaveAttribute(
       'data-viewport',
       JSON.stringify({ x: 1, y: 2, zoom: 3 }),
     )
@@ -300,11 +312,11 @@ describe('WorkflowApp', () => {
   it('should not sync trigger statuses when trigger data is unavailable', () => {
     render(<WorkflowApp />)
 
-    expect(screen.getByTestId('workflow-app-main')).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Workflow canvas' })).toBeInTheDocument()
     expect(mockSetTriggerStatuses).not.toHaveBeenCalled()
   })
 
-  it('should replay workflow inputs from replayRunId and clean up workflow state on unmount', async () => {
+  it('should replay workflow inputs from replayRunId', async () => {
     searchParamsValue = 'run-1'
     mockFetchRunDetail.mockResolvedValue({
       inputs:
@@ -327,9 +339,15 @@ describe('WorkflowApp', () => {
     })
 
     unmount()
+  })
 
-    expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ isWorkflowDataLoaded: false })
-    expect(mockDebouncedCancel).toHaveBeenCalled()
+  it('should keep loaded workflow state available for the canvas unmount sync', () => {
+    const { unmount } = render(<WorkflowApp />)
+
+    unmount()
+
+    expect(mockFinalDraftSync).toHaveBeenCalledTimes(1)
+    expect(mockDebouncedCancel).toHaveBeenCalledTimes(1)
   })
 
   it('should skip replay lookups when replayRunId is missing', () => {
@@ -353,7 +371,7 @@ describe('WorkflowApp', () => {
     render(<WorkflowApp />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('workflow-app-main')).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'Workflow canvas' })).toBeInTheDocument()
     })
 
     expect(mockGetWorkflowRunAndTraceUrl).not.toHaveBeenCalled()

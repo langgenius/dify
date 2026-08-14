@@ -1,7 +1,11 @@
 import type { PropsWithChildren } from 'react'
+import type { ToolWithProvider } from '@/app/components/workflow/types'
+import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
+import { Suspense } from 'react'
+import { CollectionType } from '@/app/components/tools/types'
 import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import {
@@ -19,6 +23,17 @@ const toastMock = vi.hoisted(() => ({
 }))
 
 const trackEventMock = vi.hoisted(() => vi.fn())
+
+const toolProviderState = vi.hoisted(() => ({
+  builtInTools: [] as ToolWithProvider[] | undefined,
+  customTools: [] as ToolWithProvider[] | undefined,
+  mcpTools: [] as ToolWithProvider[] | undefined,
+  workflowTools: [] as ToolWithProvider[] | undefined,
+}))
+
+const marketplacePluginState = vi.hoisted(() => ({
+  label: undefined as Record<string, string> | undefined,
+}))
 
 const composerPutMutationFn = vi.hoisted(() =>
   vi.fn(
@@ -80,15 +95,13 @@ type PublishAgentResponse = {
 }
 
 const publishAgentMutationFn = vi.hoisted(() =>
-  vi.fn(
-    async (_variables: PublishAgentVariables): Promise<PublishAgentResponse> => ({
-      active_config_snapshot: {
-        id: 'snapshot-1',
-      },
-      active_config_snapshot_id: 'snapshot-1',
-      result: 'success',
-    }),
-  ),
+  vi.fn(async (_variables: PublishAgentVariables): Promise<PublishAgentResponse> => ({
+    active_config_snapshot: {
+      id: 'snapshot-1',
+    },
+    active_config_snapshot_id: 'snapshot-1',
+    result: 'success',
+  })),
 )
 
 const publishAgentMutationOptions = vi.hoisted(() =>
@@ -139,6 +152,37 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: trackEventMock,
 }))
 
+vi.mock('@/context/i18n', () => ({
+  useGetLanguage: () => 'en_US',
+}))
+
+vi.mock('@/service/use-plugins', () => ({
+  useFetchPluginsInMarketPlaceByInfo: (infos: Array<{ organization: string; plugin: string }>) => ({
+    data:
+      infos.length > 0 && marketplacePluginState.label
+        ? {
+            data: {
+              list: infos.map(({ organization, plugin }) => ({
+                plugin: {
+                  label: marketplacePluginState.label,
+                  labels: marketplacePluginState.label,
+                  name: plugin,
+                  plugin_id: `${organization}/${plugin}`,
+                },
+              })),
+            },
+          }
+        : undefined,
+  }),
+}))
+
+vi.mock('@/service/use-tools', () => ({
+  useAllBuiltInTools: () => ({ data: toolProviderState.builtInTools }),
+  useAllCustomTools: () => ({ data: toolProviderState.customTools }),
+  useAllMCPTools: () => ({ data: toolProviderState.mcpTools }),
+  useAllWorkflowTools: () => ({ data: toolProviderState.workflowTools }),
+}))
+
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     agent: {
@@ -151,6 +195,14 @@ vi.mock('@/service/client', () => ({
             'agent-detail',
             input.params.agent_id,
           ],
+        },
+        apiAccess: {
+          get: {
+            queryKey: ({ input }: { input: { params: { agent_id: string } } }) => [
+              'agent-api-access',
+              input.params.agent_id,
+            ],
+          },
         },
         composer: {
           get: {
@@ -183,11 +235,13 @@ function renderUseAgentConfigureSync({
   baseConfig,
   currentModel,
   enabled = true,
+  suspend = false,
 }: {
   agentName?: Parameters<typeof useAgentConfigureSync>[0]['agentName']
   baseConfig?: Parameters<typeof useAgentConfigureSync>[0]['baseConfig']
   currentModel?: Parameters<typeof useAgentConfigureSync>[0]['currentModel']
   enabled?: boolean
+  suspend?: boolean
 } = {}) {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -196,34 +250,94 @@ function renderUseAgentConfigureSync({
     },
   })
   const store = createStore()
+  const pendingRender = new Promise<void>(() => {})
   const wrapper = ({ children }: PropsWithChildren) => (
     <QueryClientProvider client={queryClient}>
-      <JotaiProvider store={store}>{children}</JotaiProvider>
+      <JotaiProvider store={store}>
+        <Suspense fallback={null}>{children}</Suspense>
+      </JotaiProvider>
     </QueryClientProvider>
   )
 
   return {
     ...renderHook(
-      () =>
-        useAgentConfigureSync({
+      (props) => {
+        const sync = useAgentConfigureSync({
           agentId: 'agent-1',
+          agentName: props.agentName,
+          baseConfig: props.baseConfig,
+          currentModel: props.currentModel,
+          enabled: props.enabled,
+        })
+        if (props.suspend) throw pendingRender
+
+        return sync
+      },
+      {
+        initialProps: {
           agentName,
           baseConfig,
           currentModel,
           enabled,
-        }),
-      { wrapper },
+          suspend,
+        },
+        wrapper,
+      },
     ),
     queryClient,
     store,
   }
 }
 
+const credentialRequiredProvider = {
+  id: 'google',
+  name: 'google',
+  author: 'Google',
+  description: {
+    en_US: 'Google tools.',
+    zh_Hans: 'Google 工具。',
+  },
+  icon: 'https://example.com/google.svg',
+  icon_dark: 'https://example.com/google-dark.svg',
+  label: {
+    en_US: 'Google Tools',
+    zh_Hans: 'Google 工具',
+  },
+  type: CollectionType.builtIn,
+  team_credentials: {
+    api_key: {
+      label: {
+        en_US: 'API Key',
+        zh_Hans: 'API Key',
+      },
+      placeholder: {
+        en_US: 'Enter API key',
+        zh_Hans: '输入 API Key',
+      },
+      required: true,
+      type: 'secret-input',
+      variable: 'api_key',
+    },
+  },
+  is_team_authorization: false,
+  allow_delete: false,
+  labels: [],
+  meta: {
+    version: '0.0.1',
+  },
+  tools: [],
+} satisfies ToolWithProvider
+
 describe('useAgentConfigureSync', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.clearAllMocks()
     composerPutRequestContexts.length = 0
+    toolProviderState.builtInTools = []
+    toolProviderState.customTools = []
+    toolProviderState.mcpTools = []
+    toolProviderState.workflowTools = []
+    marketplacePluginState.label = undefined
   })
 
   afterEach(() => {
@@ -275,6 +389,93 @@ describe('useAgentConfigureSync', () => {
       active_config_is_published: true,
       name: 'Agent',
     })
+  })
+
+  it('should autosave only the latest committed Agent configuration', async () => {
+    const committedProps = {
+      agentName: 'Agent',
+      baseConfig: {
+        app_features: {
+          file_upload: {
+            enabled: true,
+          },
+        },
+      },
+      currentModel: configuredModel,
+      enabled: true,
+      suspend: false,
+    }
+    const nextProps = {
+      agentName: 'Agent',
+      baseConfig: {
+        app_features: {
+          file_upload: {
+            enabled: false,
+          },
+        },
+      },
+      currentModel: {
+        provider: 'langgenius/anthropic/anthropic',
+        model: 'claude-3-5-sonnet',
+      },
+      enabled: true,
+      suspend: true,
+    }
+    const { rerender, store } = renderUseAgentConfigureSync(committedProps)
+
+    rerender(nextProps)
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        prompt: 'Draft while the next configuration is pending',
+      })
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+
+    expect(composerPutMutationFn).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          agent_soul: expect.objectContaining({
+            app_features: expect.objectContaining({
+              file_upload: expect.objectContaining({ enabled: true }),
+            }),
+            model: expect.objectContaining({
+              model: 'gpt-4o-mini',
+              model_provider: 'langgenius/openai/openai',
+            }),
+          }),
+        }),
+      }),
+    )
+
+    rerender({ ...nextProps, suspend: false })
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        prompt: 'Draft after the next configuration commits',
+      })
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+
+    expect(composerPutMutationFn).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          agent_soul: expect.objectContaining({
+            app_features: expect.objectContaining({
+              file_upload: expect.objectContaining({ enabled: false }),
+            }),
+            model: expect.objectContaining({
+              model: 'claude-3-5-sonnet',
+              model_provider: 'langgenius/anthropic/anthropic',
+            }),
+          }),
+        }),
+      }),
+    )
   })
 
   it('should cancel pending autosave when the draft returns to the saved baseline', async () => {
@@ -349,6 +550,61 @@ describe('useAgentConfigureSync', () => {
       saveDeferred.resolve({ agent_soul: {} })
       await Promise.resolve()
     })
+  })
+
+  it('should keep page-close saving enabled until a disabled configuration commits', async () => {
+    const committedProps = {
+      agentName: 'Agent',
+      baseConfig: undefined,
+      currentModel: configuredModel,
+      enabled: true,
+      suspend: false,
+    }
+    const disabledProps = {
+      ...committedProps,
+      enabled: false,
+      suspend: true,
+    }
+    const { rerender, store } = renderUseAgentConfigureSync(committedProps)
+
+    rerender(disabledProps)
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        prompt: 'Committed draft before closing',
+      })
+    })
+    await act(async () => {
+      window.dispatchEvent(new Event('beforeunload'))
+      await Promise.resolve()
+    })
+
+    expect(composerPutMutationFn).toHaveBeenCalledTimes(1)
+    expect(composerPutMutationFn).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          agent_soul: expect.objectContaining({
+            prompt: expect.objectContaining({
+              system_prompt: 'Committed draft before closing',
+            }),
+          }),
+        }),
+      }),
+    )
+
+    rerender({ ...disabledProps, suspend: false })
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        prompt: 'Disabled draft after commit',
+      })
+    })
+    await act(async () => {
+      window.dispatchEvent(new Event('beforeunload'))
+      await Promise.resolve()
+    })
+
+    expect(composerPutMutationFn).toHaveBeenCalledTimes(1)
   })
 
   it('should dispatch the latest keepalive save while an earlier save is pending', async () => {
@@ -878,6 +1134,81 @@ describe('useAgentConfigureSync', () => {
     expect(publishAgentMutationFn).not.toHaveBeenCalled()
     expect(trackEventMock).not.toHaveBeenCalled()
     expect(toastMock.error).toHaveBeenCalledWith('common.modelProvider.selectModel')
+  })
+
+  it('should toast and skip publish when a configured tool is not installed', async () => {
+    marketplacePluginState.label = {
+      en_US: 'Jina',
+    }
+    const { result, store } = renderUseAgentConfigureSync({
+      currentModel: configuredModel,
+    })
+
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        tools: [
+          {
+            id: 'langgenius/jina_tool/jina',
+            kind: 'provider',
+            name: 'langgenius/jina_tool/jina',
+            iconClassName: 'i-custom-public-other-default-tool-icon',
+            providerType: 'plugin',
+            credentialType: 'unauthorized',
+            credentialVariant: 'unauthorized',
+            actions: [],
+          },
+        ],
+      } satisfies AgentSoulConfigFormState)
+    })
+
+    await act(async () => {
+      await result.current.publishDraft()
+    })
+
+    expect(composerPutMutationFn).not.toHaveBeenCalled()
+    expect(publishAgentMutationFn).not.toHaveBeenCalled()
+    expect(trackEventMock).not.toHaveBeenCalled()
+    expect(toastMock.error).toHaveBeenCalledWith(
+      'workflow.nodes.agent.toolNotInstallTooltip:{"tool":"Jina"}',
+    )
+  })
+
+  it('should toast and skip publish when a configured tool is not authorized', async () => {
+    toolProviderState.builtInTools = [credentialRequiredProvider]
+    const { result, store } = renderUseAgentConfigureSync({
+      currentModel: configuredModel,
+    })
+
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        tools: [
+          {
+            id: 'google',
+            kind: 'provider',
+            name: 'google',
+            displayName: 'Google Tools',
+            iconClassName: 'i-custom-public-other-default-tool-icon',
+            providerType: 'builtin',
+            credentialType: 'unauthorized',
+            credentialVariant: 'unauthorized',
+            actions: [],
+          },
+        ],
+      } satisfies AgentSoulConfigFormState)
+    })
+
+    await act(async () => {
+      await result.current.publishDraft()
+    })
+
+    expect(composerPutMutationFn).not.toHaveBeenCalled()
+    expect(publishAgentMutationFn).not.toHaveBeenCalled()
+    expect(trackEventMock).not.toHaveBeenCalled()
+    expect(toastMock.error).toHaveBeenCalledWith(
+      'workflow.nodes.agent.toolNotAuthorizedTooltip:{"tool":"Google Tools"}',
+    )
   })
 
   it('should keep default model fallback from leaving the local draft dirty after publish', async () => {

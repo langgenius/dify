@@ -218,7 +218,7 @@ export function AgentApiKeyModal({
 
           <div className="mt-4 flex justify-start">
             <Button onClick={handleCreateApiKey} loading={isCreating}>
-              <span aria-hidden className="mr-1 i-heroicons-plus-20-solid size-4" />
+              <span aria-hidden className="i-heroicons-plus-20-solid size-4" />
               {t(($) => $['apiKeyModal.createNewSecretKey'])}
             </Button>
           </div>

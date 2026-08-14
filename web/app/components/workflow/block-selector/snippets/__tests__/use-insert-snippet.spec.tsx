@@ -14,6 +14,12 @@ type TestNode = {
     _children?: { nodeId: string; nodeType: string }[]
     _connectedSourceHandleIds?: string[]
     _connectedTargetHandleIds?: string[]
+    variables?: { variable: string; value_selector: string[] }[]
+    iteration_id?: string
+    loop_id?: string
+    start_node_id?: string
+    iterator_selector?: string[]
+    output_selector?: string[]
   }
 }
 
@@ -112,6 +118,9 @@ describe('useInsertSnippet', () => {
                 type: 'iteration',
                 selected: false,
                 _children: [{ nodeId: 'snippet-node-2', nodeType: 'code' }],
+                start_node_id: 'snippet-node-2',
+                iterator_selector: ['start', 'items'],
+                output_selector: ['snippet-node-2', 'result'],
               },
             },
             {
@@ -119,7 +128,11 @@ describe('useInsertSnippet', () => {
               parentId: 'snippet-node-1',
               zIndex: 1002,
               position: { x: 30, y: 40 },
-              data: { type: 'code', selected: false },
+              data: {
+                type: 'code',
+                selected: false,
+                iteration_id: 'snippet-node-1',
+              },
             },
           ],
           edges: [
@@ -155,6 +168,10 @@ describe('useInsertSnippet', () => {
       expect(nextNodes[1]!.zIndex).toBe(0)
       expect(nextNodes[2]!.zIndex).toBe(NESTED_ELEMENT_Z_INDEX)
       expect(nextNodes[1]!.data._children![0]!.nodeId).toBe(nextNodes[2]!.id)
+      expect(nextNodes[1]!.data.start_node_id).toBe(nextNodes[2]!.id)
+      expect(nextNodes[1]!.data.iterator_selector).toEqual(['start', 'items'])
+      expect(nextNodes[1]!.data.output_selector).toEqual([nextNodes[2]!.id, 'result'])
+      expect(nextNodes[2]!.data.iteration_id).toBe(nextNodes[1]!.id)
 
       const nextEdges = mockSetEdges.mock.calls[0]![0] as TestEdge[]
       expect(nextEdges).toHaveLength(2)
@@ -169,6 +186,106 @@ describe('useInsertSnippet', () => {
       expect(mockIncrementSnippetUseCount).toHaveBeenCalledWith({
         params: { snippetId: 'snippet-1' },
       })
+    })
+
+    it('should remap variable selectors that reference nodes inside the snippet', async () => {
+      mockFetchQuery.mockResolvedValue({
+        graph: {
+          nodes: [
+            {
+              id: 'snippet-llm',
+              position: { x: 10, y: 20 },
+              data: {
+                type: 'llm',
+                selected: false,
+                model: { mode: 'chat' },
+                prompt_template: [],
+              },
+            },
+            {
+              id: 'snippet-code',
+              position: { x: 310, y: 20 },
+              data: {
+                type: 'code',
+                selected: false,
+                variables: [
+                  { variable: 'arg1', value_selector: ['snippet-llm', 'text'] },
+                  { variable: 'arg2', value_selector: ['snippet-llm', 'text'] },
+                ],
+              },
+            },
+          ],
+          edges: [
+            {
+              id: 'snippet-llm-source-snippet-code-target',
+              source: 'snippet-llm',
+              sourceHandle: 'source',
+              target: 'snippet-code',
+              targetHandle: 'target',
+              data: {},
+            },
+          ],
+        },
+      })
+
+      const { result } = renderHook(() => useInsertSnippet())
+
+      await act(async () => {
+        await result.current.handleInsertSnippet('snippet-1')
+      })
+
+      const nextNodes = mockSetNodes.mock.calls[0]![0] as TestNode[]
+      const insertedLLMNode = nextNodes.find((node) => node.id.includes('snippet-llm'))!
+      const insertedCodeNode = nextNodes.find((node) => node.id.includes('snippet-code'))!
+
+      expect(insertedLLMNode.id).not.toBe('snippet-llm')
+      expect(insertedCodeNode.data.variables).toEqual([
+        { variable: 'arg1', value_selector: [insertedLLMNode.id, 'text'] },
+        { variable: 'arg2', value_selector: [insertedLLMNode.id, 'text'] },
+      ])
+    })
+
+    it('should remap structural node ids inside a loop snippet', async () => {
+      mockFetchQuery.mockResolvedValue({
+        graph: {
+          nodes: [
+            {
+              id: 'snippet-loop',
+              position: { x: 10, y: 20 },
+              data: {
+                type: 'loop',
+                selected: false,
+                _children: [{ nodeId: 'snippet-loop-start', nodeType: 'loop-start' }],
+                start_node_id: 'snippet-loop-start',
+              },
+            },
+            {
+              id: 'snippet-loop-start',
+              parentId: 'snippet-loop',
+              position: { x: 30, y: 40 },
+              data: {
+                type: 'loop-start',
+                selected: false,
+                loop_id: 'snippet-loop',
+              },
+            },
+          ],
+          edges: [],
+        },
+      })
+
+      const { result } = renderHook(() => useInsertSnippet())
+
+      await act(async () => {
+        await result.current.handleInsertSnippet('snippet-1')
+      })
+
+      const nextNodes = mockSetNodes.mock.calls[0]![0] as TestNode[]
+      const insertedLoopNode = nextNodes.find((node) => node.data.type === 'loop')!
+      const insertedLoopStartNode = nextNodes.find((node) => node.data.type === 'loop-start')!
+
+      expect(insertedLoopNode.data.start_node_id).toBe(insertedLoopStartNode.id)
+      expect(insertedLoopStartNode.data.loop_id).toBe(insertedLoopNode.id)
     })
 
     it.each(['iteration', 'loop'] as const)(
@@ -220,7 +337,12 @@ describe('useInsertSnippet', () => {
               {
                 id: 'snippet-entry',
                 position: { x: 0, y: 0 },
-                data: { type: 'llm', selected: false },
+                data: {
+                  type: 'llm',
+                  selected: false,
+                  model: { mode: 'chat' },
+                  prompt_template: [],
+                },
               },
               {
                 id: 'snippet-exit',

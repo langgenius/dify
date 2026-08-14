@@ -685,6 +685,12 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 )
                 if workflow is None:
                     raise ValueError("Workflow not found")
+                if graph_runtime_state is not None:
+                    self._restore_workflow_run_graph(
+                        session=session,
+                        workflow=workflow,
+                        workflow_run_id=application_generate_entity.workflow_run_id,
+                    )
 
                 # Determine system_user_id based on invocation source
                 is_external_api_call = application_generate_entity.invoke_from in {

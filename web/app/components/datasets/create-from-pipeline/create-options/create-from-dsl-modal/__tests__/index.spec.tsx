@@ -873,7 +873,7 @@ describe('CreateFromDSLModal', () => {
         expect(screen.getByText('test.pipeline'))!.toBeInTheDocument()
       })
 
-      // Now remove the file by clicking delete button (inside ActionButton)
+      // Now remove the file by clicking the delete icon button.
       const actionButton = document.querySelector('[class*="group-hover"]')
       const deleteButton = actionButton?.querySelector('button')
       if (deleteButton) {

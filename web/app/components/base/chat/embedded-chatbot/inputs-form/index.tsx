@@ -18,7 +18,7 @@ const InputsFormNode = ({ collapsed, setCollapsed }: Props) => {
     appSourceType,
     isMobile,
     currentConversationId,
-    themeBuilder,
+    theme,
     handleStartChat,
     allInputsHidden,
     inputsForms,
@@ -87,9 +87,9 @@ const InputsFormNode = ({ collapsed, setCollapsed }: Props) => {
               className="w-full"
               onClick={() => handleStartChat(() => setCollapsed(true))}
               style={
-                themeBuilder?.theme
+                theme
                   ? {
-                      backgroundColor: themeBuilder?.theme.primaryColor,
+                      backgroundColor: theme.primaryColor,
                     }
                   : {}
               }

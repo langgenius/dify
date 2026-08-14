@@ -12,6 +12,7 @@ from core.plugin.impl.model_runtime import PluginModelRuntime
 from core.plugin.plugin_service import PluginService
 from core.workflow import node_factory
 from core.workflow import template_rendering as workflow_template_rendering
+from core.workflow.llm_node import DifyLLMNode
 from core.workflow.node_runtime import DifyPreparedLLM
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from graphon.entities.base_node_data import BaseNodeData
@@ -24,7 +25,7 @@ from graphon.nodes.llm.entities import LLMNodeData
 from graphon.nodes.llm.node import LLMNode
 from graphon.nodes.llm.runtime_protocols import LLMPollingCapableProtocol
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
-from graphon.variables.segments import ArrayObjectSegment, StringSegment
+from graphon.variables.segments import ArrayObjectSegment, ObjectSegment, StringSegment
 from models.base import TypeBase
 from models.model import AppMode, Conversation, ConversationFromSource
 
@@ -320,6 +321,19 @@ class TestDifyNodeFactoryInit:
         assert isinstance(factory, node_factory.DifyNodeFactory)
         graph_init_context.to_graph_init_params.assert_called_once_with()
         init.assert_called_once_with(
+            graph_init_params=sentinel.graph_init_params,
+            graph_runtime_state=sentinel.graph_runtime_state,
+        )
+
+    def test_with_runtime_state_rebinds_factory(self):
+        factory = object.__new__(node_factory.DifyNodeFactory)
+        factory.graph_init_params = sentinel.graph_init_params
+
+        with patch.object(node_factory, "DifyNodeFactory", return_value=sentinel.factory) as factory_cls:
+            rebound = factory.with_runtime_state(sentinel.graph_runtime_state)
+
+        assert rebound is sentinel.factory
+        factory_cls.assert_called_once_with(
             graph_init_params=sentinel.graph_init_params,
             graph_runtime_state=sentinel.graph_runtime_state,
         )
@@ -675,7 +689,7 @@ class TestDifyNodeFactoryCreateNode:
                 },
             }
         )
-        wrapped_model_instance = sentinel.wrapped_model_instance
+        wrapped_model_instance = MagicMock(spec=DifyPreparedLLM)
         memory = sentinel.memory
         factory._build_model_instance_for_llm_node = MagicMock(return_value=sentinel.model_instance)
         factory._build_memory_for_llm_node = MagicMock(return_value=memory)
@@ -704,6 +718,120 @@ class TestDifyNodeFactoryCreateNode:
             request_metadata={"app_id": "app-id"},
         )
         assert kwargs["model_instance"] is wrapped_model_instance
+        assert kwargs["polling_finalizer"] is wrapped_model_instance.finalize_llm_polling
+
+    def test_resolve_llm_model_reference_uses_shared_model_and_parameters(self, factory):
+        node_data = LLMNodeData.model_validate(
+            {
+                "type": BuiltinNodeTypes.LLM,
+                "title": "LLM",
+                "model": {
+                    "provider": "old-provider",
+                    "name": "old-model",
+                    "mode": "chat",
+                    "completion_params": {"temperature": 0.2},
+                },
+                "model_selector": ["env", "for_summarize"],
+                "prompt_template": [{"role": "system", "text": "x"}],
+                "context": {"enabled": False, "variable_selector": []},
+                "vision": {"enabled": False},
+            }
+        )
+        factory.graph_runtime_state.variable_pool.get.return_value = ObjectSegment(
+            value={
+                "provider": "new-provider",
+                "name": "new-model",
+                "mode": "chat",
+                "completion_params": {"temperature": 0.8},
+            }
+        )
+
+        result = factory._resolve_llm_model_reference(node_data)
+
+        assert result.model.provider == "new-provider"
+        assert result.model.name == "new-model"
+        assert result.model.mode == node_data.model.mode
+        assert result.model.completion_params == {"temperature": 0.8}
+        factory.graph_runtime_state.variable_pool.get.assert_called_once_with(("env", "for_summarize"))
+
+    def test_resolve_llm_model_reference_keeps_node_parameters_for_legacy_variable(self, factory):
+        node_data = LLMNodeData.model_validate(
+            {
+                "type": BuiltinNodeTypes.LLM,
+                "title": "LLM",
+                "model": {
+                    "provider": "old-provider",
+                    "name": "old-model",
+                    "mode": "chat",
+                    "completion_params": {"temperature": 0.2},
+                },
+                "model_selector": ["env", "for_summarize"],
+                "prompt_template": [{"role": "system", "text": "x"}],
+                "context": {"enabled": False, "variable_selector": []},
+                "vision": {"enabled": False},
+            }
+        )
+        factory.graph_runtime_state.variable_pool.get.return_value = ObjectSegment(
+            value={"provider": "new-provider", "name": "new-model", "mode": "chat"}
+        )
+
+        result = factory._resolve_llm_model_reference(node_data)
+
+        assert result.model.completion_params == {"temperature": 0.2}
+
+    def test_resolve_llm_model_reference_rejects_mode_mismatch(self, factory):
+        node_data = LLMNodeData.model_validate(
+            {
+                "type": BuiltinNodeTypes.LLM,
+                "title": "LLM",
+                "model": {"provider": "provider", "name": "model", "mode": "chat"},
+                "model_selector": ["env", "shared_model"],
+                "prompt_template": [{"role": "system", "text": "x"}],
+                "context": {"enabled": False, "variable_selector": []},
+                "vision": {"enabled": False},
+            }
+        )
+        factory.graph_runtime_state.variable_pool.get.return_value = ObjectSegment(
+            value={"provider": "provider", "name": "model", "mode": "completion"}
+        )
+
+        with pytest.raises(ValueError, match="uses mode 'completion'.*uses mode 'chat'"):
+            factory._resolve_llm_model_reference(node_data)
+
+    def test_resolve_llm_model_reference_rejects_missing_variable(self, factory):
+        node_data = LLMNodeData.model_validate(
+            {
+                "type": BuiltinNodeTypes.LLM,
+                "title": "LLM",
+                "model": {"provider": "provider", "name": "model", "mode": "chat"},
+                "model_selector": ["env", "shared_model"],
+                "prompt_template": [{"role": "system", "text": "x"}],
+                "context": {"enabled": False, "variable_selector": []},
+                "vision": {"enabled": False},
+            }
+        )
+        factory.graph_runtime_state.variable_pool.get.return_value = None
+
+        with pytest.raises(ValueError, match="shared_model.*not found"):
+            factory._resolve_llm_model_reference(node_data)
+
+    def test_resolve_llm_model_reference_keeps_static_model_for_legacy_non_environment_selector(self, factory):
+        node_data = LLMNodeData.model_validate(
+            {
+                "type": BuiltinNodeTypes.LLM,
+                "title": "LLM",
+                "model": {"provider": "provider", "name": "model", "mode": "chat"},
+                "model_selector": ["conversation", "shared_model"],
+                "prompt_template": [{"role": "system", "text": "x"}],
+                "context": {"enabled": False, "variable_selector": []},
+                "vision": {"enabled": False},
+            }
+        )
+
+        result = factory._resolve_llm_model_reference(node_data)
+
+        assert result is node_data
+        factory.graph_runtime_state.variable_pool.get.assert_not_called()
 
     def test_build_llm_compatible_node_init_kwargs_uses_polling_wrapper_for_polling_llm_node(self, factory):
         node_data = LLMNodeData.model_validate(
@@ -844,6 +972,44 @@ class TestDifyNodeFactoryCreateNode:
 
         assert node.node_data.structured_output_switch_on is True
         assert node.node_data.structured_output_enabled is True
+
+    def test_create_node_uses_dify_llm_node_for_persisted_version_one(self, monkeypatch, factory):
+        factory.graph_init_params = SimpleNamespace(
+            workflow_id="workflow-id",
+            graph_config={},
+            run_context={},
+            call_depth=0,
+        )
+        monkeypatch.setattr(
+            factory,
+            "_build_llm_compatible_node_init_kwargs",
+            MagicMock(
+                return_value={
+                    "model_instance": sentinel.model_instance,
+                    "llm_file_saver": sentinel.llm_file_saver,
+                    "prompt_message_serializer": sentinel.prompt_message_serializer,
+                    "polling_finalizer": MagicMock(),
+                }
+            ),
+        )
+
+        node = factory.create_node(
+            {
+                "id": "llm-node-id",
+                "data": {
+                    "type": BuiltinNodeTypes.LLM,
+                    "version": "1",
+                    "title": "LLM",
+                    "model": {"provider": "provider", "name": "model", "mode": "chat"},
+                    "prompt_template": [{"role": "system", "text": "x"}],
+                    "context": {"enabled": False, "variable_selector": []},
+                    "vision": {"enabled": False},
+                },
+            }
+        )
+
+        assert isinstance(node, DifyLLMNode)
+        assert node.version() == "1"
 
     @pytest.mark.parametrize(
         ("node_type", "constructor_name", "expected_extra_kwargs"),

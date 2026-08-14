@@ -31,6 +31,7 @@ from core.tools.utils.system_encryption import decrypt_system_params
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.account import Account
+from models.enums import PermissionEnum
 from models.provider_ids import ToolProviderID
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
 from services.tools.tools_transform_service import ToolTransformService
@@ -281,8 +282,6 @@ class BuiltinToolManageService:
                         ],
                         cache=NoOpProviderCredentialCache(),
                     )
-
-                    from models.enums import PermissionEnum
 
                     visibility_enum = PermissionEnum(visibility) if visibility else PermissionEnum.ALL_TEAM
                     # Plugin credentials only expose only_me / all_team_members at creation;

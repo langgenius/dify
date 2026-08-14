@@ -31,7 +31,7 @@ const VariableModalTrigger = ({ open, setOpen, showTip, chatVar, onClose, onSave
       <PopoverTrigger
         render={
           <Button variant="primary">
-            <RiAddLine className="mr-1 size-4" />
+            <RiAddLine className="size-4" />
             <span className="system-sm-medium">
               {t(($) => $['chatVariable.button'], { ns: 'workflow' })}
             </span>

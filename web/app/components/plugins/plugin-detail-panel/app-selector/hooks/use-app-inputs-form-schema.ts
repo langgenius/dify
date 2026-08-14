@@ -1,12 +1,15 @@
 'use client'
+import type {
+  AppDetailWithSite,
+  WorkflowResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { FileUpload } from '@/app/components/base/features/types'
 import type { FileUploadConfigResponse } from '@/models/common'
-import type { App } from '@/types/app'
-import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { BlockEnum, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { useAppDetail } from '@/service/use-apps'
+import { consoleQuery } from '@/service/client'
 import { useFileUploadConfig } from '@/service/use-common'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { AppModeEnum, Resolution } from '@/types/app'
@@ -32,6 +35,13 @@ type InputSchemaItem = {
   required: boolean
   fileUploadConfig?: FileUploadConfigResponse
   [key: string]: unknown
+}
+
+type WorkflowNodeWithVariables = {
+  data: {
+    type: BlockEnum
+    variables?: Array<Record<string, unknown>>
+  }
 }
 
 function isBasicAppMode(mode: string): boolean {
@@ -118,7 +128,7 @@ function createImageUploadSchema(
 }
 
 function buildBasicAppSchema(
-  currentApp: App,
+  currentApp: AppDetailWithSite,
   fileUploadConfig?: FileUploadConfigResponse,
 ): InputSchemaItem[] {
   const userInputForm = currentApp.model_config?.user_input_form as
@@ -133,12 +143,15 @@ function buildBasicAppSchema(
 }
 
 function buildWorkflowSchema(
-  workflow: FetchWorkflowDraftResponse,
+  workflow: Pick<WorkflowResponse, 'graph'>,
   fileUploadConfig?: FileUploadConfigResponse,
 ): InputSchemaItem[] {
-  const startNode = workflow.graph?.nodes.find((node) => node.data.type === BlockEnum.Start) as
-    | { data: { variables: Array<Record<string, unknown>> } }
-    | undefined
+  const nodes = workflow.graph.nodes
+  if (!Array.isArray(nodes)) return []
+
+  const startNode = (nodes as WorkflowNodeWithVariables[]).find(
+    (node) => node.data.type === BlockEnum.Start,
+  )
 
   if (!startNode?.data.variables) return []
 
@@ -146,12 +159,14 @@ function buildWorkflowSchema(
 }
 
 type UseAppInputsFormSchemaParams = {
-  appDetail: App
+  appDetail: Pick<AppDetailWithSite, 'id' | 'mode'>
 }
 
 type UseAppInputsFormSchemaResult = {
   inputFormSchema: InputSchemaItem[]
+  isError: boolean
   isLoading: boolean
+  retry: () => void
   fileUploadConfig?: FileUploadConfigResponse
 }
 
@@ -160,13 +175,19 @@ export function useAppInputsFormSchema({
 }: UseAppInputsFormSchemaParams): UseAppInputsFormSchemaResult {
   const isBasicApp = isBasicAppMode(appDetail.mode)
 
-  const { data: fileUploadConfig } = useFileUploadConfig()
-  const { data: currentApp, isFetching: isAppLoading } = useAppDetail(appDetail.id)
-  const { data: currentWorkflow, isFetching: isWorkflowLoading } = useAppWorkflow(
-    isBasicApp ? '' : appDetail.id,
+  const fileUploadConfigQuery = useFileUploadConfig()
+  const { data: fileUploadConfig } = fileUploadConfigQuery
+  const appQuery = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: { params: { app_id: appDetail.id } },
+    }),
   )
+  const { data: currentApp } = appQuery
+  const workflowQuery = useAppWorkflow(isBasicApp ? '' : appDetail.id)
+  const { data: currentWorkflow } = workflowQuery
 
-  const isLoading = isAppLoading || isWorkflowLoading
+  const isLoading = appQuery.isFetching || workflowQuery.isFetching
+  const isError = appQuery.isError || workflowQuery.isError
 
   const inputFormSchema = useMemo(() => {
     if (!currentApp) return []
@@ -192,9 +213,19 @@ export function useAppInputsFormSchema({
     return [...baseSchema, createImageUploadSchema(basicFileConfig, fileUploadConfig)]
   }, [currentApp, currentWorkflow, fileUploadConfig, isBasicApp])
 
+  const retry = () => {
+    void Promise.all([
+      fileUploadConfigQuery.refetch(),
+      appQuery.refetch(),
+      ...(!isBasicApp ? [workflowQuery.refetch()] : []),
+    ])
+  }
+
   return {
     inputFormSchema,
+    isError,
     isLoading,
+    retry,
     fileUploadConfig,
   }
 }

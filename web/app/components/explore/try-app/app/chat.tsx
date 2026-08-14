@@ -3,22 +3,22 @@ import type { FC } from 'react'
 import type { EmbeddedChatbotContextValue } from '@/app/components/base/chat/embedded-chatbot/context'
 import type { TryAppInfo } from '@/service/try-app'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiResetLeftLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import Alert from '@/app/components/base/alert'
 import AppIcon from '@/app/components/base/app-icon'
 import ChatWrapper from '@/app/components/base/chat/embedded-chatbot/chat-wrapper'
 import { EmbeddedChatbotContext } from '@/app/components/base/chat/embedded-chatbot/context'
 import { useEmbeddedChatbot } from '@/app/components/base/chat/embedded-chatbot/hooks'
 import ViewFormDropdown from '@/app/components/base/chat/embedded-chatbot/inputs-form/view-form-dropdown'
+import { createTheme } from '@/app/components/base/chat/embedded-chatbot/theme/theme'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { AppSourceType } from '@/service/share'
-import { useThemeContext } from '../../../base/chat/embedded-chatbot/theme/theme-context'
 
 type Props = Readonly<{
   appId: string
@@ -30,8 +30,11 @@ const TryApp: FC<Props> = ({ appId, appDetail, className }) => {
   const { t } = useTranslation()
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
-  const themeBuilder = useThemeContext()
   const { removeConversationIdInfo, ...chatData } = useEmbeddedChatbot(AppSourceType.tryApp, appId)
+  const theme = createTheme(
+    chatData.appData?.site?.chat_color_theme ?? null,
+    chatData.appData?.site?.chat_color_theme_inverted ?? false,
+  )
   const currentConversationId = chatData.currentConversationId
   const inputsForms = chatData.inputsForms
   useEffect(() => {
@@ -50,7 +53,7 @@ const TryApp: FC<Props> = ({ appId, appDetail, className }) => {
           ...chatData,
           disableFeedback: true,
           isMobile,
-          themeBuilder,
+          theme,
         } as EmbeddedChatbotContextValue
       }
     >
@@ -76,13 +79,13 @@ const TryApp: FC<Props> = ({ appId, appDetail, className }) => {
               <Tooltip>
                 <TooltipTrigger
                   render={
-                    <ActionButton
-                      size="l"
+                    <IconButton
+                      size="lg"
                       aria-label={t(($) => $['chat.resetChat'], { ns: 'share' })}
                       onClick={handleNewConversation}
                     >
                       <RiResetLeftLine className="h-4.5 w-4.5" aria-hidden="true" />
-                    </ActionButton>
+                    </IconButton>
                   }
                 />
                 <TooltipContent>{t(($) => $['chat.resetChat'], { ns: 'share' })}</TooltipContent>

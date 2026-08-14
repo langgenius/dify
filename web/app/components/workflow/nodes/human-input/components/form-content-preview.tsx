@@ -1,11 +1,10 @@
 'use client'
-import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { FC } from 'react'
 import type { FormInputItem, UserAction } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 import { getButtonStyle } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
 import { Markdown } from '@/app/components/base/markdown'
@@ -70,9 +69,9 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
         <Badge uppercase className="border-text-accent-secondary text-text-accent-secondary">
           {t(($) => $[`${i18nPrefix}.formContent.preview`], { ns: 'workflow' })}
         </Badge>
-        <ActionButton onClick={onClose}>
-          <span className="i-ri-close-line size-5 text-text-tertiary" />
-        </ActionButton>
+        <IconButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} onClick={onClose}>
+          <span aria-hidden className="i-ri-close-line size-5 text-text-tertiary" />
+        </IconButton>
       </div>
       <div className="max-h-[calc(100vh-167px)] overflow-y-auto px-4">
         <Markdown
@@ -94,10 +93,7 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
         />
         <div className="mt-3 flex flex-wrap gap-1 py-1">
           {userActions.map((action: UserAction) => (
-            <Button
-              key={action.id}
-              variant={getButtonStyle(action.button_style) as ButtonProps['variant']}
-            >
+            <Button key={action.id} variant={getButtonStyle(action.button_style)}>
               {action.title}
             </Button>
           ))}

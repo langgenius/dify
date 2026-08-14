@@ -212,6 +212,7 @@
   "installModal.uploadingPackage": "Mengunggah {{packageName}}...",
   "installModal.viewDetails": "Lihat Detail",
   "installPlugin": "Instal plugin",
+  "list.emptyInstallFromMarketplace": "Anda dapat menginstal {{category}} dari <marketplace>Marketplace</marketplace>.",
   "list.noAgentStrategyFound": "Tidak ada Strategi Agen yang ditemukan",
   "list.noExtensionFound": "Tidak ada Ekstensi yang ditemukan",
   "list.noInstalled": "Tidak ada plugin yang diinstal",

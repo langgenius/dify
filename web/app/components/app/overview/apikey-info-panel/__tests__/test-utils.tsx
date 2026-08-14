@@ -1,6 +1,6 @@
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { RenderOptions } from '@testing-library/react'
-import type { MockedFunction } from 'vitest'
+import type { MockedFunction } from 'vite-plus/test'
 import { fireEvent, screen } from '@testing-library/react'
 import { noop } from 'es-toolkit/function'
 import { defaultPlan } from '@/app/components/billing/config'
@@ -39,8 +39,10 @@ const mockUseProviderContext = actualUseProviderContext as MockedFunction<
 // Default mock data
 const defaultProviderContext = {
   modelProviders: [],
-  refreshModelProviders: noop,
+  modelProviderPlugins: {},
+  refreshModelProviders: async () => {},
   isLoadingModelProviders: false,
+  isSuccessModelProviders: false,
   textGenerationModelList: [],
   supportRetrievalMethods: [],
   isAPIKeySet: false,
@@ -51,22 +53,8 @@ const defaultProviderContext = {
   onPlanInfoChanged: noop,
   enableReplaceWebAppLogo: false,
   modelLoadBalancingEnabled: false,
-  datasetOperatorEnabled: false,
   enableEducationPlan: false,
-  isEducationWorkspace: false,
-  isEducationAccount: false,
-  allowRefreshEducationVerify: false,
-  educationAccountExpireAt: null,
-  isLoadingEducationAccountInfo: false,
-  isFetchingEducationAccountInfo: false,
   webappCopyrightEnabled: false,
-  licenseLimit: {
-    workspace_members: {
-      size: 0,
-      limit: 0,
-    },
-  },
-  refreshLicenseLimit: noop,
   isAllowTransferWorkspace: false,
   isAllowPublishAsCustomKnowledgePipelineTemplate: false,
   humanInputEmailDeliveryEnabled: false,

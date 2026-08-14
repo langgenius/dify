@@ -7,6 +7,9 @@ This package contains Dify's repository-level Cucumber scenarios with Playwright
 Run commands from the repository root. Install dependencies and browsers once with `pnpm install` and `pnpm -C e2e e2e:install`. Run only one local `pnpm -C e2e e2e*` process at a time because runners share ports, auth state, and log paths.
 
 - Existing initialized instance: `pnpm -C e2e e2e`
+- Standalone automated WCAG Level A scan: `pnpm -C e2e e2e:accessibility:a`
+- Standalone automated WCAG Level AA scan: `pnpm -C e2e e2e:accessibility:aa`
+- One-page automated WCAG scan: `pnpm -C e2e exec tsx ./scripts/run-cucumber.ts --full -- --tags "@axe and @wcag-a and @wcag-page-studio"` (replace the level and page tag as needed)
 - Reset, initialize, and run deterministic scenarios: `pnpm -C e2e e2e:full`
 - Prepare and run scenarios backed by shared fixtures: `E2E_START_AGENT_BACKEND=1 pnpm -C e2e e2e:prepared`
 - Tagged subset: `pnpm -C e2e e2e -- --tags @smoke`
@@ -36,10 +39,12 @@ An uninitialized instance is installed and authenticated lazily; an initialized 
 ## Tags And External Runtime
 
 - Default scenarios use shared authenticated storage state. `@unauthenticated` creates a clean context; `@authenticated` is an intent and selection tag only.
+- `@axe` identifies standalone automated WCAG scans and is excluded from the default functional suite and normal CI commands. `@wcag-a` and `@wcag-aa` qualify the independent level-specific scans, and commands selecting either level must also select `@axe`. Page selectors use `@wcag-page-<slug>` and are attached to the matching Examples blocks under `features/accessibility/`. The accessibility workflow is an opt-in manual audit rather than a regression gate. The PR author should run the AA/all path before merge when changing the audit workflow, page matrix, or readiness contracts.
 - `@prepared` requires the prepared fixtures; the post-merge seed profile includes them.
 - `@external-model` and `@external-tool` identify scenarios that call real external runtimes. Deterministic commands exclude these tags; external commands are opt-in.
 - `@microphone` uses the checked-in fake audio fixture and an isolated Chromium context.
 - `@browser-smoke` runs focused keyboard and navigation coverage in Chromium and WebKit CI lanes.
+- `@skip` temporarily excludes a scenario from every runner profile. Remove it as soon as the covered product behavior is available again; do not use it for permanent or environment-dependent suppression.
 - Feature-owned services use their own tags. Agent v2 runtime scenarios use `@agent-backend-runtime` and require the explicit runtime-availability step. Set `E2E_START_AGENT_BACKEND=1` to start it locally, or provide `E2E_AGENT_BACKEND_URL` / `AGENT_BACKEND_BASE_URL`.
 
 Seed and Cucumber must share one runtime lifecycle. Combined commands own reset, middleware, services, seed, Cucumber, and teardown; CI must not reproduce that lifecycle in workflow YAML. `E2E_START_AGENT_BACKEND=1` starts a managed local backend before the API; it is mutually exclusive with an explicit Agent backend URL.

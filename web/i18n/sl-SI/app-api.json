@@ -3,7 +3,7 @@
   "actionMsg.deleteConfirmTitle": "Izbrisati ta skrivni ključ?",
   "actionMsg.ok": "V redu",
   "apiKey": "API Ključ",
-  "apiKeyModal.apiSecretKey": "API Skrivni ključ",
+  "apiKeyModal.apiSecretKey": "API Ključ",
   "apiKeyModal.apiSecretKeyTips": "Da bi preprečili zlorabo API-ja, zaščitite svoj API ključ. Izogibajte se uporabi v navadnem besedilu v sprednji kodi. :)",
   "apiKeyModal.createNewSecretKey": "Ustvari nov skrivni ključ",
   "apiKeyModal.created": "USTVARJENO",

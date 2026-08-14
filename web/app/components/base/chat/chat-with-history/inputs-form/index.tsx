@@ -14,14 +14,8 @@ type Props = Readonly<{
 
 const InputsFormNode = ({ collapsed, setCollapsed }: Props) => {
   const { t } = useTranslation()
-  const {
-    isMobile,
-    currentConversationId,
-    handleStartChat,
-    allInputsHidden,
-    themeBuilder,
-    inputsForms,
-  } = useChatWithHistoryContext()
+  const { isMobile, currentConversationId, handleStartChat, allInputsHidden, theme, inputsForms } =
+    useChatWithHistoryContext()
 
   if (allInputsHidden || inputsForms.length === 0) return null
 
@@ -77,9 +71,9 @@ const InputsFormNode = ({ collapsed, setCollapsed }: Props) => {
               className="w-full"
               onClick={() => handleStartChat(() => setCollapsed(true))}
               style={
-                themeBuilder?.theme
+                theme
                   ? {
-                      backgroundColor: themeBuilder?.theme.primaryColor,
+                      backgroundColor: theme.primaryColor,
                     }
                   : {}
               }

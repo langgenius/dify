@@ -25,7 +25,6 @@ from dify_agent.layers.dify_core_tools import DIFY_CORE_TOOLS_LAYER_TYPE_ID, Dif
 from dify_agent.layers.dify_plugin import (
     DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
     DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
-    DifyPluginCredentialValue,
     DifyPluginLLMLayerConfig,
     DifyPluginToolsLayerConfig,
 )
@@ -150,7 +149,6 @@ class AgentBackendModelConfig(BaseModel):
     plugin_id: str
     model_provider: str
     model: str
-    credentials: dict[str, DifyPluginCredentialValue] = Field(default_factory=dict)
     model_settings: dict[str, JsonValue] = Field(default_factory=dict)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
@@ -159,8 +157,12 @@ class AgentBackendModelConfig(BaseModel):
 # ``DifyPluginLLMLayerConfig.model_settings`` is pydantic_ai's ``ModelSettings``
 # TypedDict (closed: unknown keys are rejected, explicit ``None`` values fail the
 # per-field type checks). Agent Soul model settings carry a wider, nullable shape
-# (``stop`` / ``response_format`` plus null-padded fields), so the layer config
-# only receives the keys the runtime contract accepts.
+# (``stop`` / ``response_format`` plus null-padded fields, plus arbitrary
+# plugin-declared parameters such as Qwen's ``enable_thinking``), so the layer
+# config only receives the keys the runtime contract accepts directly; anything
+# else is forwarded through ``extra_body``, the TypedDict's own escape hatch for
+# provider-specific parameters (see
+# ``dify_agent.adapters.llm.model._map_model_settings_to_parameters``).
 _AGENT_MODEL_SETTINGS_PASSTHROUGH_KEYS = (
     "temperature",
     "top_p",
@@ -168,6 +170,7 @@ _AGENT_MODEL_SETTINGS_PASSTHROUGH_KEYS = (
     "frequency_penalty",
     "max_tokens",
 )
+_AGENT_MODEL_SETTINGS_KNOWN_KEYS = frozenset({*_AGENT_MODEL_SETTINGS_PASSTHROUGH_KEYS, "stop", "response_format"})
 
 
 def _agent_model_settings(settings: Mapping[str, JsonValue]) -> dict[str, JsonValue] | None:
@@ -177,6 +180,15 @@ def _agent_model_settings(settings: Mapping[str, JsonValue]) -> dict[str, JsonVa
     stop = settings.get("stop")
     if isinstance(stop, list) and stop:
         sanitized["stop_sequences"] = stop
+
+    extra_body: dict[str, JsonValue] = {
+        key: value
+        for key, value in settings.items()
+        if key not in _AGENT_MODEL_SETTINGS_KNOWN_KEYS and value is not None
+    }
+    if extra_body:
+        sanitized["extra_body"] = extra_body
+
     return sanitized or None
 
 
@@ -400,7 +412,6 @@ class AgentBackendRunRequestBuilder:
                     plugin_id=run_input.model.plugin_id,
                     model_provider=run_input.model.model_provider,
                     model=run_input.model.model,
-                    credentials=run_input.model.credentials,
                     model_settings=_agent_model_settings(run_input.model.model_settings),
                 ),
             )
@@ -593,7 +604,6 @@ class AgentBackendRunRequestBuilder:
                         plugin_id=run_input.model.plugin_id,
                         model_provider=run_input.model.model_provider,
                         model=run_input.model.model,
-                        credentials=run_input.model.credentials,
                         model_settings=_agent_model_settings(run_input.model.model_settings),
                     ),
                 ),

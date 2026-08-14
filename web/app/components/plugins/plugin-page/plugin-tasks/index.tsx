@@ -124,24 +124,22 @@ const PluginTasks = ({
     <div className={rootClassName}>
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
-          nativeButton={false}
-          render={<div className={canOpenMenu ? 'cursor-pointer' : 'cursor-default'} />}
+          render={
+            <TaskStatusIndicator
+              id="plugin-task-trigger"
+              tip={tip}
+              isInstalling={isInstalling}
+              isInstallingWithSuccess={isInstallingWithSuccess}
+              isInstallingWithError={isInstallingWithError}
+              isSuccess={isSuccess}
+              isFailed={isFailed}
+              successPluginsLength={successPluginsLength}
+              runningPluginsLength={runningPluginsLength}
+              data-menu-open={open ? '' : undefined}
+            />
+          }
           disabled={!canOpenMenu}
-        >
-          <TaskStatusIndicator
-            tip={tip}
-            isInstalling={isInstalling}
-            isInstallingWithSuccess={isInstallingWithSuccess}
-            isInstallingWithError={isInstallingWithError}
-            isSuccess={isSuccess}
-            isFailed={isFailed}
-            isOpen={open}
-            successPluginsLength={successPluginsLength}
-            runningPluginsLength={runningPluginsLength}
-            totalPluginsLength={totalPluginsLength}
-            onClick={() => {}}
-          />
-        </DropdownMenuTrigger>
+        />
         <DropdownMenuContent
           placement={dropdownPlacement}
           sideOffset={4}

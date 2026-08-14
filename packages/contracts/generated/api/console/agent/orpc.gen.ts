@@ -157,9 +157,9 @@ import {
   zPostAgentByAgentIdPublishBody,
   zPostAgentByAgentIdPublishPath,
   zPostAgentByAgentIdPublishResponse,
-  zPostAgentByAgentIdSandboxFilesUploadBody,
-  zPostAgentByAgentIdSandboxFilesUploadPath,
-  zPostAgentByAgentIdSandboxFilesUploadResponse,
+  zPostAgentByAgentIdSandboxFilesDownloadBody,
+  zPostAgentByAgentIdSandboxFilesDownloadPath,
+  zPostAgentByAgentIdSandboxFilesDownloadResponse,
   zPostAgentByAgentIdSkillsBySlugInferToolsPath,
   zPostAgentByAgentIdSkillsBySlugInferToolsResponse,
   zPostAgentByAgentIdSkillsUploadBody,
@@ -1180,6 +1180,30 @@ export const referencingWorkflows = {
 }
 
 /**
+ * Create a ToolFile from one Agent App Binding file and return its download URL
+ */
+export const post17 = oc
+  .route({
+    description: 'Create a ToolFile from one Agent App Binding file and return its download URL',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAgentByAgentIdSandboxFilesDownload',
+    path: '/agent/{agent_id}/sandbox/files/download',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostAgentByAgentIdSandboxFilesDownloadBody,
+      params: zPostAgentByAgentIdSandboxFilesDownloadPath,
+    }),
+  )
+  .output(zPostAgentByAgentIdSandboxFilesDownloadResponse)
+
+export const download5 = {
+  post: post17,
+}
+
+/**
  * Read a text/binary preview file in an Agent App conversation sandbox
  */
 export const get29 = oc
@@ -1204,30 +1228,6 @@ export const read = {
 }
 
 /**
- * Upload one Agent App sandbox file and return a signed download URL
- */
-export const post17 = oc
-  .route({
-    description: 'Upload one Agent App sandbox file and return a signed download URL',
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postAgentByAgentIdSandboxFilesUpload',
-    path: '/agent/{agent_id}/sandbox/files/upload',
-    tags: ['console'],
-  })
-  .input(
-    z.object({
-      body: zPostAgentByAgentIdSandboxFilesUploadBody,
-      params: zPostAgentByAgentIdSandboxFilesUploadPath,
-    }),
-  )
-  .output(zPostAgentByAgentIdSandboxFilesUploadResponse)
-
-export const upload2 = {
-  post: post17,
-}
-
-/**
  * List a directory in an Agent App conversation sandbox
  */
 export const get30 = oc
@@ -1249,8 +1249,8 @@ export const get30 = oc
 
 export const files5 = {
   get: get30,
+  download: download5,
   read,
-  upload: upload2,
 }
 
 /**
@@ -1294,7 +1294,7 @@ export const post18 = oc
   )
   .output(zPostAgentByAgentIdSkillsUploadResponse)
 
-export const upload3 = {
+export const upload2 = {
   post: post18,
 }
 
@@ -1338,7 +1338,7 @@ export const bySlug = {
 }
 
 export const skills3 = {
-  upload: upload3,
+  upload: upload2,
   bySlug,
 }
 

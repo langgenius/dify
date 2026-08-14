@@ -8,10 +8,12 @@ operation-local and are never serialized into Agenton state.
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Literal, Protocol, cast
 
 import httpx2 as httpx
+from shellctl.client import ShellctlClientError
 
 from dify_agent.adapters.shell.protocols import ShellCommandProtocol
 from dify_agent.adapters.shell.shellctl import ShellctlClientProtocol
@@ -28,7 +30,6 @@ from dify_agent.runtime_backend.protocols import (
     ExecutionBindingAllocation,
     ExecutionBindingCreateSpec,
     ExecutionBindingDestroySpec,
-    FileSystem,
     HomeSnapshotCreateSpec,
     RuntimeLayout,
     RuntimeLease,
@@ -38,7 +39,10 @@ from dify_agent.runtime_backend.shellctl import ShellctlRuntimeLease, create_own
 if TYPE_CHECKING:
     from e2b.connection_config import ApiParams
 
+# One RuntimeLease spans the complete Agent run, not one Shell tool call.
 E2B_MAX_ACTIVE_TIMEOUT_SECONDS = 60 * 60
+_SHELLCTL_READY_MAX_ATTEMPTS = 3
+_SHELLCTL_READY_RETRY_INTERVAL_SECONDS = 0.5
 
 
 class _E2BControlPlaneNotFoundError(RuntimeError):
@@ -250,17 +254,21 @@ class E2BExecutionBindingBackend:
     async def acquire(self, binding_ref: str) -> RuntimeLease:
         """Acquire operation-scoped shellctl access for an opaque Binding ref."""
         sandbox: _E2BSandbox | None = None
+        lease: E2BRuntimeLease | None = None
         try:
             sandbox = await self.control_plane.connect(binding_ref, timeout=self.active_timeout_seconds)
             if not await sandbox.files.exists(self.layout.workspace_dir):
                 raise BindingLostError(f"E2B Binding {binding_ref!r} no longer contains its Workspace")
-            return await self._lease(sandbox)
+            lease = await self._lease(sandbox)
+            await _wait_for_shellctl_ready(lease.data_plane.client)
+            return lease
         except _E2BControlPlaneNotFoundError as exc:
             raise BindingLostError(f"E2B Binding {binding_ref!r} no longer exists") from exc
         except BindingLostError:
             await _best_effort_pause(sandbox)
             raise
         except BaseException as exc:
+            await _best_effort_close_data_plane(lease)
             await _best_effort_pause(sandbox)
             if isinstance(exc, Exception):
                 raise BindingAcquireError(str(exc)) from exc
@@ -349,9 +357,28 @@ class E2BRuntimeLease:
     def commands(self) -> ShellCommandProtocol:
         return self.data_plane.commands
 
-    @property
-    def files(self) -> FileSystem:
-        return self.data_plane.files
+
+async def _wait_for_shellctl_ready(client: ShellctlClientProtocol) -> None:
+    for attempt in range(_SHELLCTL_READY_MAX_ATTEMPTS):
+        try:
+            _ = await client.health()
+            return
+        except (httpx.TimeoutException, httpx.RequestError):
+            if attempt == _SHELLCTL_READY_MAX_ATTEMPTS - 1:
+                raise
+        except ShellctlClientError as exc:
+            if not 500 <= exc.status_code < 600 or attempt == _SHELLCTL_READY_MAX_ATTEMPTS - 1:
+                raise
+        await asyncio.sleep(_SHELLCTL_READY_RETRY_INTERVAL_SECONDS)
+
+
+async def _best_effort_close_data_plane(lease: E2BRuntimeLease | None) -> None:
+    if lease is None:
+        return
+    try:
+        await lease.data_plane.close()
+    except BaseException:
+        pass
 
 
 async def _best_effort_pause(sandbox: _E2BSandbox | None) -> None:

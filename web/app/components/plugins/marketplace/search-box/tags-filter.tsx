@@ -30,7 +30,6 @@ function TagsFilter({ tags, onTagsChange, usedInMarketplace = false }: TagsFilte
       {usedInMarketplace && (
         <MarketplaceTrigger
           selectedTagsLength={selectedTagsLength}
-          open={open}
           tags={tags}
           tagsMap={tagsMap}
           onTagsChange={onTagsChange}
@@ -39,7 +38,6 @@ function TagsFilter({ tags, onTagsChange, usedInMarketplace = false }: TagsFilte
       {!usedInMarketplace && (
         <ToolSelectorTrigger
           selectedTagsLength={selectedTagsLength}
-          open={open}
           tags={tags}
           tagsMap={tagsMap}
           onTagsChange={onTagsChange}

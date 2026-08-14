@@ -2,7 +2,7 @@ from typing import Literal
 from uuid import UUID
 
 import sqlalchemy as sa
-from flask import abort, request
+from flask import abort
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, or_
@@ -18,6 +18,7 @@ from controllers.console.wraps import (
     RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_user,
@@ -108,17 +109,17 @@ class CompletionConversationApi(Resource):
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @with_session(write=False)
     @get_app_model(mode=AppMode.COMPLETION)
-    def get(self, session: Session, current_user: Account, app_model: App):
-        args = CompletionConversationQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(CompletionConversationQuery)
+    def get(self, req_data: CompletionConversationQuery, session: Session, current_user: Account, app_model: App):
 
         query = sa.select(Conversation).where(
             Conversation.app_id == app_model.id, Conversation.mode == "completion", Conversation.is_deleted.is_(False)
         )
 
-        if args.keyword:
+        if req_data.keyword:
             from libs.helper import escape_like_pattern
 
-            escaped_keyword = escape_like_pattern(args.keyword)
+            escaped_keyword = escape_like_pattern(req_data.keyword)
             query = query.join(Message, Message.conversation_id == Conversation.id).where(
                 or_(
                     Message.query.ilike(f"%{escaped_keyword}%", escape="\\"),
@@ -130,7 +131,7 @@ class CompletionConversationApi(Resource):
         assert account.timezone is not None
 
         try:
-            start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
+            start_datetime_utc, end_datetime_utc = parse_time_range(req_data.start, req_data.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 
@@ -142,7 +143,7 @@ class CompletionConversationApi(Resource):
             query = query.where(Conversation.created_at < end_datetime_utc)
 
         # FIXME, the type ignore in this file
-        if args.annotation_status == "annotated":
+        if req_data.annotation_status == "annotated":
             query = (
                 query.options(selectinload(Conversation.message_annotations))  # type: ignore[arg-type]
                 .join(  # type: ignore
@@ -150,7 +151,7 @@ class CompletionConversationApi(Resource):
                 )
                 .group_by(Conversation.id)
             )
-        elif args.annotation_status == "not_annotated":
+        elif req_data.annotation_status == "not_annotated":
             query = (
                 query.outerjoin(MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id)
                 .group_by(Conversation.id)
@@ -159,7 +160,7 @@ class CompletionConversationApi(Resource):
 
         query = query.order_by(Conversation.created_at.desc())
 
-        conversations = paginate_query(query, session=session, page=args.page, per_page=args.limit)
+        conversations = paginate_query(query, session=session, page=req_data.page, per_page=req_data.limit)
 
         return dump_response(
             ConversationPaginationResponse,
@@ -238,8 +239,8 @@ class ChatConversationApi(Resource):
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @with_session(write=False)
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
-    def get(self, session: Session, current_user: Account, app_model: App):
-        args = ChatConversationQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(ChatConversationQuery)
+    def get(self, req_data: ChatConversationQuery, session: Session, current_user: Account, app_model: App):
 
         subquery = (
             sa.select(Conversation.id.label("conversation_id"), EndUser.session_id.label("from_end_user_session_id"))
@@ -249,10 +250,10 @@ class ChatConversationApi(Resource):
 
         query = sa.select(Conversation).where(Conversation.app_id == app_model.id, Conversation.is_deleted.is_(False))
 
-        if args.keyword:
+        if req_data.keyword:
             from libs.helper import escape_like_pattern
 
-            escaped_keyword = escape_like_pattern(args.keyword)
+            escaped_keyword = escape_like_pattern(req_data.keyword)
             keyword_filter = f"%{escaped_keyword}%"
             query = (
                 query.join(
@@ -276,12 +277,12 @@ class ChatConversationApi(Resource):
         assert account.timezone is not None
 
         try:
-            start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
+            start_datetime_utc, end_datetime_utc = parse_time_range(req_data.start, req_data.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 
         if start_datetime_utc:
-            match args.sort_by:
+            match req_data.sort_by:
                 case "updated_at" | "-updated_at":
                     query = query.where(Conversation.updated_at >= start_datetime_utc)
                 case "created_at" | "-created_at" | _:
@@ -289,13 +290,13 @@ class ChatConversationApi(Resource):
 
         if end_datetime_utc:
             end_datetime_utc = end_datetime_utc.replace(second=59)
-            match args.sort_by:
+            match req_data.sort_by:
                 case "updated_at" | "-updated_at":
                     query = query.where(Conversation.updated_at <= end_datetime_utc)
                 case "created_at" | "-created_at" | _:
                     query = query.where(Conversation.created_at <= end_datetime_utc)
 
-        match args.annotation_status:
+        match req_data.annotation_status:
             case "annotated":
                 query = (
                     query.options(selectinload(Conversation.message_annotations))  # type: ignore[arg-type]
@@ -316,7 +317,7 @@ class ChatConversationApi(Resource):
         if app_model.mode == AppMode.ADVANCED_CHAT:
             query = query.where(Conversation.invoke_from != InvokeFrom.DEBUGGER)
 
-        match args.sort_by:
+        match req_data.sort_by:
             case "created_at":
                 query = query.order_by(Conversation.created_at.asc())
             case "-created_at":
@@ -328,7 +329,7 @@ class ChatConversationApi(Resource):
             case _:
                 query = query.order_by(Conversation.created_at.desc())
 
-        conversations = paginate_query(query, session=session, page=args.page, per_page=args.limit)
+        conversations = paginate_query(query, session=session, page=req_data.page, per_page=req_data.limit)
 
         return dump_response(
             ConversationWithSummaryPaginationResponse,

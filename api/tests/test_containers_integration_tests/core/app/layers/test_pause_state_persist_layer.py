@@ -17,7 +17,6 @@ These tests use TestContainers to spin up real services for integration testing,
 providing more reliable and realistic test scenarios than mocks.
 """
 
-import json
 import uuid
 from time import time
 from unittest.mock import Mock
@@ -237,12 +236,12 @@ class TestPauseStatePersistenceLayerTestContainers:
 
         # Create LLM usage
         llm_usage = LLMUsage.empty_usage()
+        llm_usage.total_tokens = total_tokens
 
         # Create graph runtime state
         graph_runtime_state = GraphRuntimeState(
             variable_pool=variable_pool,
             start_at=start_at,
-            total_tokens=total_tokens,
             llm_usage=llm_usage,
             outputs=outputs or {},
             node_run_steps=node_run_steps,
@@ -366,9 +365,6 @@ class TestPauseStatePersistenceLayerTestContainers:
         resumption_context = WorkflowResumptionContext.loads(storage_content)
         assert resumption_context.version == "1"
         assert resumption_context.serialized_graph_runtime_state == graph_runtime_state.dumps()
-        expected_state = json.loads(graph_runtime_state.dumps())
-        actual_state = json.loads(resumption_context.serialized_graph_runtime_state)
-        assert actual_state == expected_state
         persisted_entity = resumption_context.get_generate_entity()
         assert isinstance(persisted_entity, WorkflowAppGenerateEntity)
         assert persisted_entity.workflow_execution_id == self.test_workflow_run_id
@@ -414,13 +410,11 @@ class TestPauseStatePersistenceLayerTestContainers:
 
         state_bytes = pause_entity.get_state()
         resumption_context = WorkflowResumptionContext.loads(state_bytes.decode())
-        retrieved_state = json.loads(resumption_context.serialized_graph_runtime_state)
-        expected_state = json.loads(graph_runtime_state.dumps())
+        retrieved_state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
 
-        assert retrieved_state == expected_state
-        assert retrieved_state["outputs"] == complex_outputs
-        assert retrieved_state["total_tokens"] == 250
-        assert retrieved_state["node_run_steps"] == 10
+        assert retrieved_state.outputs == complex_outputs
+        assert retrieved_state.total_tokens == 250
+        assert retrieved_state.node_run_steps == 10
         assert resumption_context.get_generate_entity().workflow_execution_id == self.test_workflow_run_id
 
     def test_database_transaction_handling(self, db_session_with_containers: Session):

@@ -1,7 +1,6 @@
-import type { ICurrentWorkspace } from '@/models/common'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { screen } from '@testing-library/react'
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
 import { useWorkspacePermissions } from '@/service/use-workspace'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import InviteButton from '../invite-button'
@@ -39,7 +38,7 @@ describe('InviteButton', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockConsoleStateReader.mockReturnValue({
-      currentWorkspace: { id: 'workspace-id' } as ICurrentWorkspace,
+      currentWorkspace: { id: 'workspace-id' },
     } as unknown as ConsoleStateFixture)
   })
 

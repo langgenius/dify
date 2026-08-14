@@ -1,7 +1,6 @@
 import type { LoopNodeType } from './types'
 import type { OnSelectBlock } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import { RiAddLine } from '@remixicon/react'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -37,20 +36,15 @@ const AddBlock = ({ loopNodeData }: AddBlockProps) => {
     [handleNodeAdd, loopNodeData.start_node_id],
   )
 
-  const renderTriggerElement = useCallback(
-    (open: boolean) => {
-      return (
-        <Button
-          variant="secondary"
-          size="medium"
-          className={cn('relative', open && 'bg-components-button-secondary-bg-hover')}
-        >
-          <RiAddLine aria-hidden className="mr-1 size-4" />
-          {t(($) => $['common.addBlock'], { ns: 'workflow' })}
-        </Button>
-      )
-    },
-    [nodesReadOnly, t],
+  const triggerElement = (
+    <Button
+      variant="secondary"
+      size="medium"
+      className="relative data-popup-open:bg-components-button-secondary-bg-hover"
+    >
+      <RiAddLine aria-hidden className="size-4" />
+      {t(($) => $['common.addBlock'], { ns: 'workflow' })}
+    </Button>
   )
 
   return (
@@ -65,7 +59,7 @@ const AddBlock = ({ loopNodeData }: AddBlockProps) => {
           prevNodeId: loopNodeData.start_node_id,
           prevNodeSourceHandle: 'source',
         }}
-        trigger={renderTriggerElement}
+        trigger={triggerElement}
         popupClassName="min-w-[256px]!"
         availableBlocksTypes={availableNextBlocks}
       />

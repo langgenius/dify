@@ -1,17 +1,19 @@
 'use client'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useFavicon, useTitle } from 'ahooks'
+import { useFavicon } from 'ahooks'
 import { useEffect } from 'react'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { formatDocumentTitle, getApplicationTitle } from '@/utils/document-title'
 import { basePath } from '@/utils/var'
 
-export default function useDocumentTitle(title: string) {
+export default function useDocumentTitle(title: string | null) {
   const { data } = useSuspenseQuery(systemFeaturesQueryOptions())
   const branding = data.branding
-  const prefix = title ? `${title} - ` : ''
-  const titleStr = branding.enabled ? `${prefix}${branding.application_title}` : `${prefix}Dify`
+  const titleStr = title === null ? null : formatDocumentTitle(title, getApplicationTitle(branding))
   const favicon = branding.enabled ? branding.favicon : `${basePath}/favicon.ico`
-  useTitle(titleStr)
+  useEffect(() => {
+    if (titleStr !== null) document.title = titleStr
+  }, [titleStr])
   useEffect(() => {
     let apple: HTMLLinkElement | null = null
     if (branding.favicon) {

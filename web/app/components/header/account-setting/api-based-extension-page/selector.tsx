@@ -1,3 +1,4 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
@@ -41,8 +42,12 @@ export function ApiBasedExtensionSelector({ value, onChange }: ApiBasedExtension
     <>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
-          render={
-            <button type="button" className="block w-full border-0 bg-transparent p-0 text-left">
+          render={(props, state) => (
+            <button
+              {...props}
+              type="button"
+              className={cn('block w-full border-0 bg-transparent p-0 text-left', props.className)}
+            >
               {currentItem ? (
                 <div className="flex h-9 cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal pr-2.5 pl-3">
                   <div className="text-sm text-text-primary">{currentItem.name}</div>
@@ -51,7 +56,10 @@ export function ApiBasedExtensionSelector({ value, onChange }: ApiBasedExtension
                       {currentItem.api_endpoint}
                     </div>
                     <span
-                      className={`i-ri-arrow-down-s-line size-4 text-text-secondary ${!open && 'opacity-60'}`}
+                      className={cn(
+                        'i-ri-arrow-down-s-line size-4 text-text-secondary',
+                        !state.open && 'opacity-60',
+                      )}
                       aria-hidden="true"
                     />
                   </div>
@@ -62,13 +70,16 @@ export function ApiBasedExtensionSelector({ value, onChange }: ApiBasedExtension
                     ns: 'common',
                   })}
                   <span
-                    className={`i-ri-arrow-down-s-line h-4 w-4 text-text-secondary ${!open && 'opacity-60'}`}
+                    className={cn(
+                      'i-ri-arrow-down-s-line h-4 w-4 text-text-secondary',
+                      !state.open && 'opacity-60',
+                    )}
                     aria-hidden="true"
                   />
                 </div>
               )}
             </button>
-          }
+          )}
         />
         <PopoverContent
           placement="bottom-start"

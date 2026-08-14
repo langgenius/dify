@@ -1,6 +1,6 @@
 import type { MouseEvent } from 'react'
-import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Toggle } from '@langgenius/dify-ui/toggle'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '../../base/divider'
@@ -13,6 +13,9 @@ import AddBlock from './add-block'
 import { useOperator } from './hooks'
 import MoreActions from './more-actions'
 import TipPopup from './tip-popup'
+
+const pressedModeClassName =
+  'data-pressed:bg-state-accent-active data-pressed:text-text-accent data-pressed:hover:bg-state-base-hover data-pressed:hover:text-text-secondary data-disabled:data-pressed:text-text-disabled data-disabled:data-pressed:hover:bg-transparent data-disabled:data-pressed:hover:text-text-disabled'
 
 const Control = () => {
   const { t } = useTranslation()
@@ -39,92 +42,84 @@ const Control = () => {
     <div className="pointer-events-auto flex flex-col items-center rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 text-text-tertiary shadow-lg">
       <AddBlock />
       <TipPopup title={t(($) => $['nodes.note.addNote'], { ns: 'workflow' })}>
-        <Button
-          variant="ghost"
-          size="small"
+        <IconButton
+          size="lg"
           aria-label={t(($) => $['nodes.note.addNote'], { ns: 'workflow' })}
           disabled={nodesReadOnly}
           focusableWhenDisabled
-          className={cn(
-            'ml-px size-8 p-0 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-            nodesReadOnly &&
-              'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
-          )}
+          className="ml-px rounded-md"
           onClick={addNote}
         >
           <span aria-hidden className="i-ri-sticky-note-add-line size-4" />
-        </Button>
+        </IconButton>
       </TipPopup>
       <Divider className="my-1 w-3.5" />
       <TipPopup
         title={t(($) => $['common.pointerMode'], { ns: 'workflow' })}
         shortcut="workflow.pointer-mode"
       >
-        <Button
-          variant="ghost"
-          size="small"
-          aria-label={t(($) => $['common.pointerMode'], { ns: 'workflow' })}
+        <Toggle
+          pressed={controlMode === ControlMode.Pointer}
+          onPressedChange={handleModePointer}
           disabled={nodesReadOnly}
-          focusableWhenDisabled
-          className={cn(
-            'mr-px size-8 p-0 text-text-tertiary',
-            controlMode === ControlMode.Pointer
-              ? 'bg-state-accent-active text-text-accent'
-              : 'hover:bg-state-base-hover hover:text-text-secondary',
-            nodesReadOnly &&
-              'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
-          )}
-          onClick={handleModePointer}
-        >
-          <span aria-hidden className="i-ri-cursor-line size-4" />
-        </Button>
+          className={pressedModeClassName}
+          render={
+            <IconButton
+              size="lg"
+              aria-label={t(($) => $['common.pointerMode'], { ns: 'workflow' })}
+              disabled={nodesReadOnly}
+              focusableWhenDisabled
+              className="mr-px rounded-md"
+            >
+              <span aria-hidden className="i-ri-cursor-line size-4" />
+            </IconButton>
+          }
+        />
       </TipPopup>
       <TipPopup
         title={t(($) => $['common.handMode'], { ns: 'workflow' })}
         shortcut="workflow.hand-mode"
       >
-        <Button
-          variant="ghost"
-          size="small"
-          aria-label={t(($) => $['common.handMode'], { ns: 'workflow' })}
+        <Toggle
+          pressed={controlMode === ControlMode.Hand}
+          onPressedChange={handleModeHand}
           disabled={nodesReadOnly}
-          focusableWhenDisabled
-          className={cn(
-            'size-8 p-0 text-text-tertiary',
-            controlMode === ControlMode.Hand
-              ? 'bg-state-accent-active text-text-accent'
-              : 'hover:bg-state-base-hover hover:text-text-secondary',
-            nodesReadOnly &&
-              'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
-          )}
-          onClick={handleModeHand}
-        >
-          <span aria-hidden className="i-ri-hand size-4" />
-        </Button>
+          className={pressedModeClassName}
+          render={
+            <IconButton
+              size="lg"
+              aria-label={t(($) => $['common.handMode'], { ns: 'workflow' })}
+              disabled={nodesReadOnly}
+              focusableWhenDisabled
+              className="rounded-md"
+            >
+              <span aria-hidden className="i-ri-hand size-4" />
+            </IconButton>
+          }
+        />
       </TipPopup>
       {isCommentModeAvailable && (
         <TipPopup
           title={t(($) => $['common.commentMode'], { ns: 'workflow' })}
           shortcut="workflow.comment-mode"
         >
-          <Button
-            variant="ghost"
-            size="small"
-            aria-label={t(($) => $['common.commentMode'], { ns: 'workflow' })}
+          <Toggle
+            pressed={controlMode === ControlMode.Comment}
+            onPressedChange={handleModeComment}
             disabled={!canUseCommentMode}
-            focusableWhenDisabled
-            className={cn(
-              'ml-px size-8 p-0 text-text-tertiary',
-              controlMode === ControlMode.Comment
-                ? 'bg-state-accent-active text-text-accent'
-                : 'hover:bg-state-base-hover hover:text-text-secondary',
-              !canUseCommentMode &&
-                'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
-            )}
-            onClick={handleModeComment}
-          >
-            <span aria-hidden className="i-custom-public-other-comment size-4" />
-          </Button>
+            className={pressedModeClassName}
+            render={
+              <IconButton
+                size="lg"
+                aria-label={t(($) => $['common.commentMode'], { ns: 'workflow' })}
+                disabled={!canUseCommentMode}
+                focusableWhenDisabled
+                className="ml-px rounded-md"
+              >
+                <span aria-hidden className="i-custom-public-other-comment size-4" />
+              </IconButton>
+            }
+          />
         </TipPopup>
       )}
       <Divider className="my-1 w-3.5" />
@@ -132,21 +127,16 @@ const Control = () => {
         title={t(($) => $['panel.organizeBlocks'], { ns: 'workflow' })}
         shortcut="workflow.organize"
       >
-        <Button
-          variant="ghost"
-          size="small"
+        <IconButton
+          size="lg"
           aria-label={t(($) => $['panel.organizeBlocks'], { ns: 'workflow' })}
           disabled={nodesReadOnly}
           focusableWhenDisabled
-          className={cn(
-            'size-8 p-0 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-            nodesReadOnly &&
-              'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
-          )}
+          className="rounded-md"
           onClick={handleLayout}
         >
           <span aria-hidden className="i-ri-function-add-line size-4" />
-        </Button>
+        </IconButton>
       </TipPopup>
       <MoreActions />
     </div>

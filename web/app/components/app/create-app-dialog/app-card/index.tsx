@@ -28,7 +28,7 @@ const AppCard = ({ app, canCreate, onCreate }: AppCardProps) => {
   })
   const { app: appBasicInfo } = app
   const canViewApp = deploymentEdition === 'CLOUD'
-  const setShowTryAppPanel = useContextSelector(AppListContext, (ctx) => ctx.setShowTryAppPanel)
+  const openTryAppPanel = useContextSelector(AppListContext, (ctx) => ctx.openTryAppPanel)
   const handleShowTryAppPanel = useCallback(() => {
     trackEvent('preview_template', {
       template_id: app.app_id,
@@ -37,8 +37,8 @@ const AppCard = ({ app, canCreate, onCreate }: AppCardProps) => {
       template_categories: app.categories,
       page: 'studio',
     })
-    setShowTryAppPanel?.(true, { appId: app.app_id, app })
-  }, [setShowTryAppPanel, app, appBasicInfo])
+    openTryAppPanel({ appId: app.app_id, app })
+  }, [openTryAppPanel, app, appBasicInfo])
   return (
     <div
       className={cn(
@@ -89,13 +89,13 @@ const AppCard = ({ app, canCreate, onCreate }: AppCardProps) => {
           >
             {canCreate && (
               <Button variant="primary" onClick={() => onCreate()}>
-                <PlusIcon className="mr-1 size-4" />
+                <PlusIcon className="size-4" />
                 <span className="text-xs">{t(($) => $['newApp.useTemplate'], { ns: 'app' })}</span>
               </Button>
             )}
             {canViewApp && (
               <Button onClick={handleShowTryAppPanel}>
-                <RiInformation2Line className="mr-1 size-4" />
+                <RiInformation2Line className="size-4" />
                 <span>{t(($) => $['appCard.try'], { ns: 'explore' })}</span>
               </Button>
             )}

@@ -4,22 +4,27 @@ import { Slider as BaseSlider } from '@base-ui/react/slider'
 import { cn } from '../cn'
 import { formLabelClassName } from '../form-control-shared'
 
-export const SliderRoot = BaseSlider.Root
+const SliderRoot = BaseSlider.Root
 
-export function SliderLabel({ className, ...props }: BaseSlider.Label.Props) {
+type SliderValue = number
+type SliderRangeValue = readonly number[]
+type SliderRootValue = SliderValue | SliderRangeValue
+type SliderRootProps<Value extends SliderRootValue = SliderRootValue> = BaseSlider.Root.Props<Value>
+
+type SliderLabelProps = Omit<BaseSlider.Label.Props, 'className'> & { className?: string }
+
+function SliderLabel({ className, ...props }: SliderLabelProps) {
   return <BaseSlider.Label className={cn(formLabelClassName, className)} {...props} />
 }
-
-type SliderRootProps = BaseSlider.Root.Props<number>
 
 const sliderControlClassName = cn(
   'relative flex h-5 w-full touch-none items-center select-none',
   'data-disabled:cursor-not-allowed',
 )
 
-type SliderControlProps = BaseSlider.Control.Props
+type SliderControlProps = Omit<BaseSlider.Control.Props, 'className'> & { className?: string }
 
-export function SliderControl({ className, ...props }: SliderControlProps) {
+function SliderControl({ className, ...props }: SliderControlProps) {
   return <BaseSlider.Control className={cn(sliderControlClassName, className)} {...props} />
 }
 
@@ -28,17 +33,19 @@ const sliderTrackClassName = cn(
   'bg-components-slider-track',
 )
 
-type SliderTrackProps = BaseSlider.Track.Props
+type SliderTrackProps = Omit<BaseSlider.Track.Props, 'className'> & { className?: string }
 
-export function SliderTrack({ className, ...props }: SliderTrackProps) {
+function SliderTrack({ className, ...props }: SliderTrackProps) {
   return <BaseSlider.Track className={cn(sliderTrackClassName, className)} {...props} />
 }
 
 const sliderIndicatorClassName = cn('h-full rounded-full', 'bg-components-slider-range')
 
-type SliderIndicatorProps = BaseSlider.Indicator.Props
+type SliderIndicatorProps = Omit<BaseSlider.Indicator.Props, 'className'> & {
+  className?: string
+}
 
-export function SliderIndicator({ className, ...props }: SliderIndicatorProps) {
+function SliderIndicator({ className, ...props }: SliderIndicatorProps) {
   return <BaseSlider.Indicator className={cn(sliderIndicatorClassName, className)} {...props} />
 }
 
@@ -52,9 +59,9 @@ const sliderThumbClassName = cn(
   'group-data-disabled/slider:border-components-slider-knob-border group-data-disabled/slider:bg-components-slider-knob-disabled group-data-disabled/slider:shadow-none',
 )
 
-type SliderThumbProps = BaseSlider.Thumb.Props
+type SliderThumbProps = Omit<BaseSlider.Thumb.Props, 'className'> & { className?: string }
 
-export function SliderThumb({ className, ...props }: SliderThumbProps) {
+function SliderThumb({ className, ...props }: SliderThumbProps) {
   return <BaseSlider.Thumb className={cn(sliderThumbClassName, className)} {...props} />
 }
 
@@ -66,7 +73,7 @@ type SliderSlotClassNames = {
 }
 
 type SliderBaseProps = Pick<
-  SliderRootProps,
+  SliderRootProps<SliderValue>,
   'onValueChange' | 'min' | 'max' | 'step' | 'disabled' | 'name'
 > &
   Pick<SliderThumbProps, 'aria-label' | 'aria-labelledby'> & {
@@ -75,13 +82,13 @@ type SliderBaseProps = Pick<
   }
 
 type ControlledSliderProps = SliderBaseProps & {
-  value: number
+  value: SliderValue
   defaultValue?: never
 }
 
 type UncontrolledSliderProps = SliderBaseProps & {
   value?: never
-  defaultValue?: number
+  defaultValue?: SliderValue
 }
 
 type SliderProps = ControlledSliderProps | UncontrolledSliderProps
@@ -94,7 +101,7 @@ const getSafeValue = (value: number | undefined, min: number) => {
   return Number.isFinite(value) ? value : min
 }
 
-export function Slider({
+function Slider({
   value,
   defaultValue,
   onValueChange,
@@ -133,4 +140,16 @@ export function Slider({
       </SliderControl>
     </SliderRoot>
   )
+}
+
+export { Slider, SliderControl, SliderIndicator, SliderLabel, SliderRoot, SliderThumb, SliderTrack }
+
+export type {
+  SliderControlProps,
+  SliderIndicatorProps,
+  SliderLabelProps,
+  SliderProps,
+  SliderRootProps,
+  SliderThumbProps,
+  SliderTrackProps,
 }

@@ -2,13 +2,12 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from inspect import unwrap
-from unittest.mock import Mock, PropertyMock, patch
+from unittest.mock import Mock
 
 import pytest
 from flask import Flask
 from pydantic import ValidationError
 
-from controllers.console import console_ns
 from controllers.console.onboarding import (
     StepByStepTourStateApi,
     StepByStepTourStatePatchPayload,
@@ -69,13 +68,13 @@ def test_patch_step_by_step_tour_state_passes_action_payload(
     method = unwrap(api.patch)
     payload = {"action": "complete_task", "task_id": "studio"}
 
+    req_data = StepByStepTourStatePatchPayload.model_validate(payload)
     with app.test_request_context(
         "/console/api/onboarding/step-by-step-tour/state",
         method="PATCH",
         json=payload,
     ):
-        with patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload):
-            result = method(api, "workspace-1", _account())
+        result = method(api, req_data, "workspace-1", _account())
 
     assert result["completed_task_ids"] == ["home"]
     patch_state.assert_called_once()

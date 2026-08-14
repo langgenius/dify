@@ -3,23 +3,14 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from inspect import unwrap
 from types import SimpleNamespace
-from unittest.mock import ANY, PropertyMock, patch
+from unittest.mock import ANY, patch
 
-from controllers.console import console_ns
 from controllers.console.auth.data_source_bearer_auth import (
+    ApiKeyAuthBindingPayload,
     ApiKeyAuthDataSource,
     ApiKeyAuthDataSourceBinding,
     ApiKeyAuthDataSourceBindingDelete,
 )
-
-
-def _payload_patch(payload: dict):
-    return patch.object(
-        type(console_ns),
-        "payload",
-        new_callable=PropertyMock,
-        return_value=payload,
-    )
 
 
 def test_list_data_source_auth_uses_injected_tenant_id() -> None:
@@ -56,14 +47,14 @@ def test_create_data_source_auth_binding_uses_injected_tenant_id() -> None:
         "provider": "custom",
         "credentials": {"auth_type": "api_key", "config": {"api_key": "secret"}},
     }
+    req_data = ApiKeyAuthBindingPayload.model_validate(payload)
 
     with (
-        _payload_patch(payload),
         patch("controllers.console.auth.data_source_bearer_auth.db"),
         patch("controllers.console.auth.data_source_bearer_auth.ApiKeyAuthService.validate_api_key_auth_args"),
         patch("controllers.console.auth.data_source_bearer_auth.ApiKeyAuthService.create_provider_auth") as create_auth,
     ):
-        result, status = method(api, "tenant-1")
+        result, status = method(api, req_data, "tenant-1")
 
     create_auth.assert_called_once_with("tenant-1", payload, session=ANY)
     assert result == {"result": "success"}

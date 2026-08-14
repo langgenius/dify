@@ -13,7 +13,7 @@ from werkzeug.exceptions import Unauthorized
 import services.errors.account
 from controllers.console import wraps as console_wraps
 from controllers.web.login import EmailCodeLoginApi, EmailCodeLoginSendEmailApi, LoginApi, LoginStatusApi, LogoutApi
-from enums.deployment_edition import DeploymentEdition
+from enums import DeploymentEdition
 from models.model import DifySetup
 from services.entities.auth_entities import LoginFailureReason
 
@@ -45,8 +45,8 @@ def _patch_wraps(
     sqlite_session: Session,
 ):
     wraps_features = SimpleNamespace(enable_email_password_login=True)
-    console_dify = SimpleNamespace(ENTERPRISE_ENABLED=True, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-    web_dify = SimpleNamespace(ENTERPRISE_ENABLED=True)
+    console_dify = SimpleNamespace(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
+    web_dify = SimpleNamespace(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
     sqlite_session.add(DifySetup(version="test"))
     sqlite_session.commit()
     console_wraps._is_setup_completed.reset_success()

@@ -26,7 +26,7 @@ const NoData: FC<INoDataProps> = ({ onStartCreateContent }) => {
         {t(($) => $['generation.savedNoData.description'], { ns: 'share' })}
       </div>
       <Button variant="primary" className="mt-3" onClick={onStartCreateContent}>
-        <RiAddLine className="mr-1 size-4" />
+        <RiAddLine className="size-4" />
         <span>{t(($) => $['generation.savedNoData.startCreateContent'], { ns: 'share' })}</span>
       </Button>
     </div>

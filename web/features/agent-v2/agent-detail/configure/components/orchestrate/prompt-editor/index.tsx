@@ -43,7 +43,10 @@ import {
   addProviderToolsAtom,
   agentComposerToolsAtom,
 } from '@/features/agent-v2/agent-composer/store-modules/tools'
-import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
+import {
+  ENABLE_AGENT_CLI_TOOLS,
+  ENABLE_AGENT_KNOWLEDGE_RETRIEVAL,
+} from '@/features/agent-v2/agent-detail/configure/feature-flags'
 import { useAgentOrchestrateAddActions } from '../add-actions-context'
 import { AgentConfigureTipContent } from '../common/tip-content'
 import { useAgentConfigFiles, useAgentConfigSkills } from '../config-context'
@@ -125,22 +128,29 @@ const getLastTextContent = (node: Node): string => {
   return textParts.join('')
 }
 
+const hasSlashTriggerBoundary = (text: string) => {
+  if (!text.endsWith('/')) return false
+
+  const previousCharacter = text.at(-2)
+  return previousCharacter === undefined || /\s/.test(previousCharacter)
+}
+
 const isSelectionAfterSlash = (rootElement: HTMLElement | null, fallbackValue: string) => {
-  if (!rootElement) return fallbackValue.endsWith('/')
+  if (!rootElement) return hasSlashTriggerBoundary(fallbackValue)
 
   const selection = rootElement.ownerDocument.getSelection()
   if (!selection || !selection.isCollapsed || selection.rangeCount === 0)
-    return fallbackValue.endsWith('/')
+    return hasSlashTriggerBoundary(fallbackValue)
 
   const anchorNode = selection.anchorNode
   if (!anchorNode || !rootElement.contains(anchorNode)) return false
 
   if (anchorNode.nodeType === Node.TEXT_NODE)
-    return (anchorNode.textContent ?? '').slice(0, selection.anchorOffset).endsWith('/')
+    return hasSlashTriggerBoundary((anchorNode.textContent ?? '').slice(0, selection.anchorOffset))
 
   const element = anchorNode as Element
   const previousChild = element.childNodes.item(selection.anchorOffset - 1)
-  return previousChild ? getLastTextContent(previousChild).endsWith('/') : false
+  return previousChild ? hasSlashTriggerBoundary(getLastTextContent(previousChild)) : false
 }
 
 /* v8 ignore start -- Lexical selection offsets and DOM range geometry are browser-editor integration glue; user-visible slash insertion behavior is covered by AgentPromptEditor tests. @preserve */
@@ -980,11 +990,15 @@ export function AgentPromptEditor() {
       label: t(($) => $['agentDetail.configure.tools.label']),
       icon: 'i-ri-box-3-line',
     },
-    {
-      key: 'knowledge',
-      label: t(($) => $['agentDetail.configure.knowledgeRetrieval.label']),
-      icon: 'i-ri-book-open-line',
-    },
+    ...(ENABLE_AGENT_KNOWLEDGE_RETRIEVAL
+      ? [
+          {
+            key: 'knowledge' as const,
+            label: t(($) => $['agentDetail.configure.knowledgeRetrieval.label']),
+            icon: 'i-ri-book-open-line',
+          },
+        ]
+      : []),
   ]
   const handleOpenSlashMenuCategory = (view: Exclude<SlashMenuView, 'main'>) => {
     parentSlashMenuItemIndexRef.current = Math.max(

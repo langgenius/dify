@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { Dependency } from '../../types'
+import type { Dependency, InstallStatus, Plugin, VersionProps } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent } from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
@@ -11,6 +11,12 @@ import useHideLogic from '../hooks/use-hide-logic'
 import ReadyToInstall from './ready-to-install'
 
 const i18nPrefix = 'installModal'
+
+export type InstallBundleCompleteCallback = (
+  plugins: Plugin[],
+  installStatus: InstallStatus[],
+  versionInfo: VersionProps[],
+) => void
 
 export enum InstallType {
   fromLocal = 'fromLocal',
@@ -23,12 +29,14 @@ type Props = Readonly<{
   fromDSLPayload: Dependency[]
   // plugins?: PluginDeclaration[]
   onClose: () => void
+  onInstallComplete?: InstallBundleCompleteCallback
 }>
 
 const InstallBundle: FC<Props> = ({
   installType = InstallType.fromMarketplace,
   fromDSLPayload,
   onClose,
+  onInstallComplete,
 }) => {
   const { t } = useTranslation()
   const [step, setStep] = useState<InstallStep>(
@@ -78,6 +86,7 @@ const InstallBundle: FC<Props> = ({
           setIsInstalling={setIsInstalling}
           allPlugins={fromDSLPayload}
           onClose={onClose}
+          onInstallComplete={onInstallComplete}
         />
       </DialogContent>
     </Dialog>
