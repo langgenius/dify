@@ -79,7 +79,6 @@ function getCheckMessage(
     return t(($) => $['skillManagement.detail.uploadInvalidExtension'])
   if (code === 'missing_file_extension')
     return t(($) => $['skillManagement.detail.uploadMissingExtension'])
-  if (code === 'file_too_large') return t(($) => $['skillManagement.detail.uploadSizeExceeded'])
   return t(($) => $['skillManagement.detail.uploadInvalidPath'])
 }
 
