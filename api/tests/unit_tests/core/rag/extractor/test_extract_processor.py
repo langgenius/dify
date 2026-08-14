@@ -118,6 +118,16 @@ class TestExtractProcessorLoaders:
         assert len(docs) == 2
         assert text == "u1\nu2"
 
+    def test_load_from_url_extracts_long_text_without_upload_file(self, monkeypatch: pytest.MonkeyPatch):
+        content = "a" * 100_000
+        response = SimpleNamespace(headers={"Content-Type": "text/plain"}, content=content.encode())
+        monkeypatch.setattr(processor_module.remote_fetcher, "make_request", lambda *args, **kwargs: response)
+        monkeypatch.setattr(processor_module.dify_config, "ETL_TYPE", "SelfHosted")
+
+        text = ExtractProcessor.load_from_url("https://example.com/response.txt", return_text=True)
+
+        assert text == content
+
 
 class TestExtractProcessorFileRouting:
     @pytest.fixture(autouse=True)
