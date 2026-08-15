@@ -1,7 +1,6 @@
 import type { TracingProvider } from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
 import type {
   AppDetailResponse,
-  CreateApiKeyResponse,
   DSLImportMode,
   DSLImportResponse,
   TracingConfig,
@@ -169,25 +168,6 @@ export const importDSLConfirm = ({
   return post<DSLImportResponse>(`apps/imports/${import_id}/confirm`, { body: {} })
 }
 
-export const switchApp = ({
-  appID,
-  name,
-  icon_type,
-  icon,
-  icon_background,
-}: {
-  appID: string
-  name: string
-  icon_type: AppIconType
-  icon: string
-  icon_background?: string | null
-}): Promise<{ new_app_id: string; permission_keys: string[] }> => {
-  return post<{ new_app_id: string; permission_keys: string[] }>(
-    `apps/${appID}/convert-to-workflow`,
-    { body: { name, icon_type, icon, icon_background } },
-  )
-}
-
 export const deleteApp = (appID: string): Promise<CommonResponse> => {
   return del<CommonResponse>(`apps/${appID}`)
 }
@@ -228,26 +208,6 @@ export const updateAppModelConfig = ({
   body: Record<string, any>
 }): Promise<UpdateAppModelConfigResponse> => {
   return post<UpdateAppModelConfigResponse>(url, { body })
-}
-
-export const delApikey = ({
-  url,
-  params,
-}: {
-  url: string
-  params: Record<string, any>
-}): Promise<CommonResponse> => {
-  return del<CommonResponse>(url, params)
-}
-
-export const createApikey = ({
-  url,
-  body,
-}: {
-  url: string
-  body: Record<string, any>
-}): Promise<CreateApiKeyResponse> => {
-  return post<CreateApiKeyResponse>(url, body)
 }
 
 // Tracing

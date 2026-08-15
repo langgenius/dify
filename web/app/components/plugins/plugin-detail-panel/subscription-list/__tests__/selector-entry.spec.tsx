@@ -1,7 +1,7 @@
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
 import { SubscriptionSelectorEntry } from '../selector-entry'
 
@@ -27,7 +27,8 @@ vi.mock('@/service/use-triggers', () => ({
   useDeleteTriggerSubscription: () => ({ mutate: vi.fn(), isPending: false }),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => ({
+  ...(await importOriginal()),
   toast: Object.assign(vi.fn(), {
     success: vi.fn(),
     error: vi.fn(),

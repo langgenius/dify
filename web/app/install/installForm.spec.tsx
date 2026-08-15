@@ -45,6 +45,7 @@ describe('InstallForm', () => {
     render(<InstallForm />)
 
     expect(await screen.findByLabelText('login.email')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('login.setAdminAccount')
     expect(screen.getByRole('button', { name: /login\.installBtn/ })).toBeInTheDocument()
   })
 

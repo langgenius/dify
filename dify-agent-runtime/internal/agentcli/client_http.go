@@ -152,26 +152,33 @@ func (c *httpStubClient) GetConfigManifest(_ context.Context) ([]byte, error) {
 	return body, nil
 }
 
-func (c *httpStubClient) PullConfigSkill(_ context.Context, name string) ([]byte, error) {
-	body, statusCode, err := c.http.getRaw(fmt.Sprintf("/config/skills/%s/pull", name), nil)
+func (c *httpStubClient) CreateConfigDownloadURL(
+	_ context.Context,
+	kind, name string,
+) (*FileDownloadResponse, error) {
+	payload := map[string]any{
+		"config": map[string]string{
+			"kind": kind,
+			"name": name,
+		},
+		"for_frontend": false,
+	}
+	body, statusCode, err := c.http.postJSON("/files/download-request", payload)
 	if err != nil {
 		return nil, err
 	}
-	if err := checkHTTPError(body, statusCode, "config skill pull"); err != nil {
+	if err := checkHTTPError(body, statusCode, "config download request"); err != nil {
 		return nil, err
 	}
-	return body, nil
-}
 
-func (c *httpStubClient) PullConfigFile(_ context.Context, name string) ([]byte, error) {
-	body, statusCode, err := c.http.getRaw(fmt.Sprintf("/config/files/%s/pull", name), nil)
-	if err != nil {
-		return nil, err
+	var resp FileDownloadResponse
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("parse config download response: %w", err)
 	}
-	if err := checkHTTPError(body, statusCode, "config file pull"); err != nil {
-		return nil, err
+	if resp.DownloadURL == "" {
+		return nil, fmt.Errorf("signed config download response is missing download_url")
 	}
-	return body, nil
+	return &resp, nil
 }
 
 func (c *httpStubClient) PushConfig(_ context.Context, payload any) ([]byte, error) {

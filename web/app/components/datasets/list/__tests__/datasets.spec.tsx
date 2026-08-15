@@ -1,7 +1,7 @@
 import type { DataSet, DataSetListResponse } from '@/models/datasets'
 import type { useDatasetList } from '@/service/knowledge/use-dataset'
-import { render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
@@ -185,7 +185,6 @@ describe('Datasets', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     intersectionObserverCallback = null
-    document.title = ''
     vi.stubGlobal('IntersectionObserver', MockIntersectionObserver)
   })
 
@@ -246,15 +245,6 @@ describe('Datasets', () => {
       render(<Datasets {...defaultProps} />)
       const anchor = document.querySelector('.h-0')
       expect(anchor).toBeInTheDocument()
-    })
-  })
-
-  describe('Document Title', () => {
-    it('should set document title on mount', async () => {
-      render(<Datasets {...defaultProps} />)
-      await waitFor(() => {
-        expect(document.title).toContain('dataset.knowledge')
-      })
     })
   })
 

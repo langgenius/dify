@@ -62,6 +62,7 @@ def test_upload_request_uses_agent_inner_endpoint_and_binds_sandbox_base(monkeyp
         assert json.loads(request.content) == {
             "tenant_id": "tenant-1",
             "user_id": "user-1",
+            "user_from": "account",
             "filename": "report.pdf",
             "mimetype": "application/pdf",
             "conversation_id": "conversation-1",

@@ -9,7 +9,6 @@ import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
-from unittest.mock import MagicMock
 
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
@@ -23,7 +22,7 @@ from graphon.entities.workflow_node_execution import (
     WorkflowNodeExecutionStatus,
 )
 from graphon.enums import BuiltinNodeTypes
-from models import Account, WorkflowNodeExecutionTriggeredFrom
+from models import Account, Tenant, WorkflowNodeExecutionTriggeredFrom
 from models.enums import ExecutionOffLoadType
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload
 
@@ -113,11 +112,12 @@ def create_workflow_node_execution(
 
 
 def mock_user() -> Account:
-    """Create a mock Account user for testing."""
+    """Create an Account user for testing."""
 
-    user = MagicMock(spec=Account)
+    user = Account(name="Test Account", email="test@example.com")
     user.id = "test-user-id"
-    user.current_tenant_id = "test-tenant-id"
+    user._current_tenant = Tenant(name="Test Tenant")
+    user._current_tenant.id = "test-tenant-id"
     return user
 
 
@@ -143,26 +143,27 @@ class TestSQLAlchemyWorkflowNodeExecutionRepositoryTruncation:
         repo = self.create_repository(sqlite_engine)
 
         # Create a database model without offload data
-        db_model = WorkflowNodeExecutionModel()
-        db_model.id = "test-id"
-        db_model.node_execution_id = "node-exec-id"
-        db_model.workflow_id = "workflow-id"
-        db_model.workflow_run_id = "run-id"
-        db_model.index = 1
-        db_model.predecessor_node_id = None
-        db_model.node_id = "node-id"
-        db_model.node_type = BuiltinNodeTypes.LLM
-        db_model.title = "Test Node"
-        db_model.inputs = json.dumps({"value": "inputs"})
-        db_model.process_data = json.dumps({"value": "process_data"})
-        db_model.outputs = json.dumps({"value": "outputs"})
-        db_model.status = WorkflowNodeExecutionStatus.SUCCEEDED
-        db_model.error = None
-        db_model.elapsed_time = 1.0
-        db_model.execution_metadata = "{}"
-        db_model.created_at = datetime.now(UTC)
-        db_model.finished_at = None
-        db_model.offload_data = []
+        db_model = WorkflowNodeExecutionModel(
+            id="test-id",
+            node_execution_id="node-exec-id",
+            workflow_id="workflow-id",
+            workflow_run_id="run-id",
+            index=1,
+            predecessor_node_id=None,
+            node_id="node-id",
+            node_type=BuiltinNodeTypes.LLM,
+            title="Test Node",
+            inputs=json.dumps({"value": "inputs"}),
+            process_data=json.dumps({"value": "process_data"}),
+            outputs=json.dumps({"value": "outputs"}),
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            error=None,
+            elapsed_time=1.0,
+            execution_metadata="{}",
+            created_at=datetime.now(UTC),
+            finished_at=None,
+            offload_data=[],
+        )
 
         domain_model = repo._to_domain_model(db_model)
 
@@ -206,8 +207,9 @@ class TestWorkflowNodeExecutionModelTruncatedProperties:
 
     def test_truncated_properties_without_offload_data(self):
         """Test truncated properties when no offload data exists."""
-        model = WorkflowNodeExecutionModel()
-        model.offload_data = []
+        model = WorkflowNodeExecutionModel(
+            offload_data=[],
+        )
 
         assert model.inputs_truncated is False
         assert model.outputs_truncated is False

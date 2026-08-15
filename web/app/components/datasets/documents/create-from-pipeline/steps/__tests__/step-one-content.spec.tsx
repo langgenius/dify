@@ -2,7 +2,7 @@ import type { Datasource } from '@/app/components/rag-pipeline/components/panel/
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { Node } from '@/app/components/workflow/types'
 import { screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DatasourceType } from '@/models/pipeline'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import StepOneContent from '../step-one-content'
@@ -254,8 +254,9 @@ describe('StepOneContent', () => {
     datasourceType: DatasourceType.localFile,
     pipelineNodes: mockPipelineNodes,
     supportBatchUpload: true,
-    localFileListLength: 0,
     isShowVectorSpaceFull: false,
+    isShowVectorSpaceUnavailable: false,
+    isRetryingVectorSpace: false,
     showSelect: false,
     totalOptions: 10,
     selectedOptions: 5,
@@ -264,6 +265,7 @@ describe('StepOneContent', () => {
     onSelectDataSource: vi.fn(),
     onCredentialChange: vi.fn(),
     onSelectAll: vi.fn(),
+    onRetryVectorSpace: vi.fn(),
     onNextStep: vi.fn(),
   }
 
@@ -326,14 +328,30 @@ describe('StepOneContent', () => {
     })
   })
 
+  describe('Conditional Rendering - VectorSpaceUnavailable', () => {
+    it('should render the retry action when vector space usage is unavailable', () => {
+      const onRetryVectorSpace = vi.fn()
+      render(
+        <StepOneContent
+          {...defaultProps}
+          isShowVectorSpaceUnavailable
+          onRetryVectorSpace={onRetryVectorSpace}
+        />,
+      )
+
+      screen.getByRole('button', { name: 'common.operation.retry' }).click()
+
+      expect(onRetryVectorSpace).toHaveBeenCalledOnce()
+    })
+  })
+
   describe('Conditional Rendering - UpgradeCard', () => {
-    it('should render UpgradeCard when batch upload not supported and has local files', () => {
+    it('should render UpgradeCard immediately when batch upload is not supported', () => {
       render(
         <StepOneContent
           {...defaultProps}
           supportBatchUpload={false}
           datasourceType={DatasourceType.localFile}
-          localFileListLength={3}
         />,
       )
       // UpgradeCard contains an upgrade button
@@ -346,7 +364,6 @@ describe('StepOneContent', () => {
           {...defaultProps}
           supportBatchUpload={true}
           datasourceType={DatasourceType.localFile}
-          localFileListLength={3}
         />,
       )
       // The upgrade card should not be present
@@ -356,24 +373,7 @@ describe('StepOneContent', () => {
 
     it('should not render UpgradeCard when datasourceType is not localFile', () => {
       render(
-        <StepOneContent
-          {...defaultProps}
-          supportBatchUpload={false}
-          datasourceType={undefined}
-          localFileListLength={3}
-        />,
-      )
-      expect(screen.queryByTestId('upgrade-btn')).not.toBeInTheDocument()
-    })
-
-    it('should not render UpgradeCard when localFileListLength is 0', () => {
-      render(
-        <StepOneContent
-          {...defaultProps}
-          supportBatchUpload={false}
-          datasourceType={DatasourceType.localFile}
-          localFileListLength={0}
-        />,
+        <StepOneContent {...defaultProps} supportBatchUpload={false} datasourceType={undefined} />,
       )
       expect(screen.queryByTestId('upgrade-btn')).not.toBeInTheDocument()
     })

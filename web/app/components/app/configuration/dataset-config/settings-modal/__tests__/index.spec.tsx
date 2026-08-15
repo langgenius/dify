@@ -1,4 +1,4 @@
-import type { MockedFunction } from 'vitest'
+import type { MockedFunction } from 'vite-plus/test'
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -16,6 +16,7 @@ import {
 import { consoleQuery } from '@/service/client'
 import { updateDatasetSetting } from '@/service/datasets'
 import { useMembers } from '@/service/use-common'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { RETRIEVE_METHOD } from '@/types/app'
@@ -29,7 +30,7 @@ const toastMocks = vi.hoisted(() => ({
   promise: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/components/app/configuration/toast', () => ({
   toast: Object.assign(toastMocks.call, {
     success: vi.fn((message: string, options?: Record<string, unknown>) =>
       toastMocks.call({ type: 'success', message, ...options }),
@@ -106,9 +107,9 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({ defaultModel }: { defaultModel?: { provider: string; model: string } }) => (
+  ModelSelector: ({ value }: { value?: { provider: string; model: string } }) => (
     <div data-testid="model-selector">
-      {defaultModel ? `${defaultModel.provider}/${defaultModel.model}` : 'no-model'}
+      {value ? `${value.provider}/${value.model}` : 'no-model'}
     </div>
   ),
 }))
@@ -203,6 +204,7 @@ const renderWithProviders = (dataset: DataSet) => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Number.POSITIVE_INFINITY } },
   })
+  seedAccountProfileQuery(queryClient, { id: 'user-1' })
   queryClient.setQueryData(systemFeaturesQueryOptions().queryKey, createSystemFeaturesFixture())
   queryClient.setQueryData(consoleQuery.datasets.retrievalSetting.get.queryOptions().queryKey, {
     retrieval_method: [RETRIEVE_METHOD.semantic, RETRIEVE_METHOD.fullText, RETRIEVE_METHOD.hybrid],

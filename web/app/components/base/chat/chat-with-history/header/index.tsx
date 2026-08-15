@@ -9,11 +9,11 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiEditBoxLine, RiLayoutRight2Line, RiResetLeftLine } from '@remixicon/react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import AppIcon from '@/app/components/base/app-icon'
 import ViewFormDropdown from '@/app/components/base/chat/chat-with-history/inputs-form/view-form-dropdown'
 import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
@@ -89,13 +89,14 @@ const Header = () => {
             !isSidebarCollapsed && 'user-select-none opacity-0',
           )}
         >
-          <ActionButton
+          <IconButton
+            aria-label={t(($) => $['sidebar.expandSidebar'], { ns: 'layout' })}
             className={cn(!isSidebarCollapsed && 'cursor-default')}
-            size="l"
+            size="lg"
             onClick={() => handleSidebarCollapse(false)}
           >
-            <RiLayoutRight2Line className="h-4.5 w-4.5" />
-          </ActionButton>
+            <RiLayoutRight2Line aria-hidden="true" className="h-4.5 w-4.5" />
+          </IconButton>
           <div className="mr-1 shrink-0">
             <AppIcon
               size="large"
@@ -133,18 +134,14 @@ const Header = () => {
                 disabled={!!currentConversationId}
                 render={
                   <div>
-                    <ActionButton
-                      size="l"
-                      state={
-                        !currentConversationId || isResponding
-                          ? ActionButtonState.Disabled
-                          : ActionButtonState.Default
-                      }
+                    <IconButton
+                      aria-label={t(($) => $['chat.newChatTip'], { ns: 'share' })}
+                      size="lg"
                       disabled={!currentConversationId || isResponding}
                       onClick={handleNewConversation}
                     >
-                      <RiEditBoxLine className="h-4.5 w-4.5" />
-                    </ActionButton>
+                      <RiEditBoxLine aria-hidden="true" className="h-4.5 w-4.5" />
+                    </IconButton>
                   </div>
                 }
               />
@@ -157,9 +154,13 @@ const Header = () => {
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <ActionButton size="l" onClick={handleNewConversation}>
-                    <RiResetLeftLine className="h-4.5 w-4.5" />
-                  </ActionButton>
+                  <IconButton
+                    aria-label={t(($) => $['chat.resetChat'], { ns: 'share' })}
+                    size="lg"
+                    onClick={handleNewConversation}
+                  >
+                    <RiResetLeftLine aria-hidden="true" className="h-4.5 w-4.5" />
+                  </IconButton>
                 }
               />
               <TooltipContent>{t(($) => $['chat.resetChat'], { ns: 'share' })}</TooltipContent>

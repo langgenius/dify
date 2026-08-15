@@ -1,8 +1,8 @@
 import type { OAuthClientSettingsProps } from '../oauth-client-settings'
 import type { FormSchema } from '@/app/components/base/form/types'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { AuthCategory } from '../../types'
 
 const mockGetPluginOAuthUrl = vi
@@ -248,7 +248,7 @@ describe('AddOAuthButton', () => {
     })
     expect(screen.getByText('https://redirect.example.com')).toBeInTheDocument()
 
-    fireEvent.click(within(screen.getByTestId('oauth-schema-label-client_id')).getByRole('button'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.copy' }))
 
     expect(mockWriteText).toHaveBeenCalledWith('https://redirect.example.com')
   })

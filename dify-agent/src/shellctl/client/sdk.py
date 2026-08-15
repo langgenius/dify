@@ -23,6 +23,7 @@ from shellctl.shared.constants import (
     DEFAULT_OUTPUT_LIMIT_BYTES,
     DEFAULT_TERMINATE_GRACE_SECONDS,
     DEFAULT_TIMEOUT_SECONDS,
+    SHELL_TOOL_HTTP_TIMEOUT_GRACE_SECONDS,
 )
 from shellctl.shared.schemas import (
     DeleteJobResponse,
@@ -71,7 +72,7 @@ class ShellctlClient:
         token: str | None = None,
         client: httpx.AsyncClient | None = None,
         transport: httpx.AsyncBaseTransport | None = None,
-        request_timeout_grace_seconds: float = 10.0,
+        request_timeout_grace_seconds: float = SHELL_TOOL_HTTP_TIMEOUT_GRACE_SECONDS,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.output_limit = output_limit

@@ -5,10 +5,11 @@ from unittest.mock import patch
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import BadRequest, UnprocessableEntity
 
 from controllers.console import wraps as console_wraps
 from controllers.console.billing.billing import PartnerTenants
+from enums import DeploymentEdition
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.model import DifySetup
 
@@ -65,7 +66,7 @@ class TestPartnerTenants:
         console_wraps._is_setup_completed.reset_success()
         monkeypatch.setattr(console_wraps.db, "session", sqlite_session)
         with (
-            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
+            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             patch("libs.login.dify_config.LOGIN_DISABLED", False),
             patch("libs.login.check_csrf_token") as mock_csrf,
         ):
@@ -129,7 +130,7 @@ class TestPartnerTenants:
                 assert "Invalid partner_key" in str(exc_info.value)
 
     def test_put_missing_click_id(self, app: Flask, mock_account, mock_billing_service, mock_decorators):
-        """Test that missing click_id raises BadRequest."""
+        """Test that missing click_id raises UnprocessableEntity (422)."""
         # Arrange
         partner_key_encoded = base64.b64encode(b"partner-key-123").decode("utf-8")
 
@@ -148,8 +149,8 @@ class TestPartnerTenants:
                 resource = PartnerTenants()
 
                 # Act & Assert
-                # Validation should raise BadRequest for missing required field
-                with pytest.raises(BadRequest):
+                # Validation should raise UnprocessableEntity (422) for missing required field
+                with pytest.raises(UnprocessableEntity):
                     resource.put(partner_key_encoded)
 
     def test_put_billing_service_json_decode_error(

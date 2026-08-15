@@ -1,13 +1,13 @@
-import type { BasicPlan, UsagePlanInfo } from '../../type'
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import type { UsagePlanInfo } from '../../type'
 import type { PlanRange } from '../plan-switcher/plan-range-switcher'
 import Divider from '@/app/components/base/divider'
-import { Plan, SelfHostedPlan } from '../../type'
 import CloudPlanItem from './cloud-plan-item'
 import SelfHostedPlanItem from './self-hosted-plan-item'
 
 type PlansProps = {
   plan: {
-    type: Plan
+    type: CloudPlan
     usage: UsagePlanInfo
     total: UsagePlanInfo
   }
@@ -17,7 +17,7 @@ type PlansProps = {
 }
 
 const Plans = ({ plan, currentPlan, planRange, canPay }: PlansProps) => {
-  const currentPlanType: BasicPlan = plan.type === Plan.enterprise ? Plan.team : plan.type
+  const currentPlanType = plan.type
   return (
     <div className="flex w-full justify-center border-t border-divider-accent px-10">
       <div className="flex max-w-[1680px] grow border-x border-divider-accent">
@@ -25,21 +25,21 @@ const Plans = ({ plan, currentPlan, planRange, canPay }: PlansProps) => {
           <>
             <CloudPlanItem
               currentPlan={currentPlanType}
-              plan={Plan.sandbox}
+              plan="sandbox"
               planRange={planRange}
               canPay={canPay}
             />
             <Divider type="vertical" className="mx-0 shrink-0 bg-divider-accent" />
             <CloudPlanItem
               currentPlan={currentPlanType}
-              plan={Plan.professional}
+              plan="professional"
               planRange={planRange}
               canPay={canPay}
             />
             <Divider type="vertical" className="mx-0 shrink-0 bg-divider-accent" />
             <CloudPlanItem
               currentPlan={currentPlanType}
-              plan={Plan.team}
+              plan="team"
               planRange={planRange}
               canPay={canPay}
             />
@@ -47,11 +47,11 @@ const Plans = ({ plan, currentPlan, planRange, canPay }: PlansProps) => {
         )}
         {currentPlan === 'self' && (
           <>
-            <SelfHostedPlanItem plan={SelfHostedPlan.community} />
+            <SelfHostedPlanItem plan="community" />
             <Divider type="vertical" className="mx-0 shrink-0 bg-divider-accent" />
-            <SelfHostedPlanItem plan={SelfHostedPlan.premium} />
+            <SelfHostedPlanItem plan="premium" />
             <Divider type="vertical" className="mx-0 shrink-0 bg-divider-accent" />
-            <SelfHostedPlanItem plan={SelfHostedPlan.enterprise} />
+            <SelfHostedPlanItem plan="enterprise" />
           </>
         )}
       </div>

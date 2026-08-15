@@ -1,6 +1,6 @@
 import type { DataSet } from '@/models/datasets'
 import { createEvent, fireEvent, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -22,11 +22,6 @@ const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
     },
   })
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
 

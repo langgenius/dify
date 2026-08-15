@@ -16,10 +16,12 @@ import { HooksStoreContext } from '@/app/components/workflow/hooks-store/provide
 import { createHooksStore } from '@/app/components/workflow/hooks-store/store'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { render } from '@/test/console/render'
 import EmailSenderModal from '../test-email-sender'
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => ({
+  ...(await importOriginal()),
   toast: {
     error: vi.fn(),
   },
@@ -37,10 +39,6 @@ const mockConsoleState = vi.hoisted(() => ({
   },
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState)
@@ -66,6 +64,7 @@ const createQueryClient = () =>
 
 const renderWithProviders = (ui: ReactNode) => {
   const queryClient = createQueryClient()
+  seedAccountProfileQuery(queryClient, mockConsoleState.userProfile)
   const hooksStore = createHooksStore({})
 
   return render(

@@ -162,7 +162,7 @@ export default class AudioPlayer {
         true,
       )
       this.audio.addEventListener(
-        'loaded',
+        'loadeddata',
         () => {
           callback('loaded')
         },
@@ -179,13 +179,6 @@ export default class AudioPlayer {
         'timeupdate',
         () => {
           callback('timeupdate')
-        },
-        true,
-      )
-      this.audio.addEventListener(
-        'loadeddate',
-        () => {
-          callback('loadeddate')
         },
         true,
       )

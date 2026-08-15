@@ -35,6 +35,8 @@ also reads `.env` and `dify-agent/.env` when present.
 | `DIFY_AGENT_REDIS_PREFIX` | `dify-agent` | Prefix for Redis record and event keys. |
 | `DIFY_AGENT_SHUTDOWN_GRACE_SECONDS` | `30` | Seconds to wait for active local runs during graceful shutdown before cancellation. |
 | `DIFY_AGENT_RUN_RETENTION_SECONDS` | `259200` | Seconds to retain Redis run records and per-run event streams; defaults to 3 days. |
+| `DIFY_AGENT_RUN_TIMEOUT_SECONDS` | `3600` | Wall-clock deadline in seconds for the Pydantic AI `agent.run(...)` model/tool loop. Deadline failures use `agent_run_limit_exceeded`. Its default intentionally matches `DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS`, but the settings are independently configurable. |
+| `DIFY_AGENT_API_TOKEN` | empty | Optional Bearer token required by private run, Execution Binding, Home Snapshot, and Binding file control-plane routes. Must match Dify API `AGENT_BACKEND_API_TOKEN`. |
 | `DIFY_AGENT_PLUGIN_DAEMON_URL` | `http://localhost:5002` | Base URL for the Dify plugin daemon. |
 | `DIFY_AGENT_PLUGIN_DAEMON_API_KEY` | empty | API key sent to the Dify plugin daemon. |
 | `DIFY_AGENT_INNER_API_URL` | `http://localhost:5001` | Dify API service root used when dify-agent calls `/inner/api/...` endpoints. |
@@ -51,14 +53,12 @@ also reads `.env` and `dify-agent/.env` when present.
 | `DIFY_AGENT_ENTERPRISE_SANDBOX_PROXY_TIMEOUT` | `60` | Enterprise shellctl-proxy timeout in seconds. |
 | `DIFY_AGENT_E2B_API_KEY` | empty | E2B API key; required for E2B. |
 | `DIFY_AGENT_E2B_TEMPLATE` | `difys-default-team/dify-agent-local-sandbox` | Prepared E2B template containing shellctl and the deployment-default Home environment. |
-| `DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS` | `3600` | Maximum continuous active time, up to 3600 seconds. Binding resources pause on timeout. This is not a retention TTL. |
+| `DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS` | `3600` | Maximum continuous active time for the RuntimeLease spanning one complete Agent run. Its default intentionally matches `DIFY_AGENT_RUN_TIMEOUT_SECONDS`, but the settings are independently configurable. Binding resources pause on timeout; this setting does not own the run terminal state and is not a retention TTL. |
 | `DIFY_AGENT_E2B_SHELLCTL_AUTH_TOKEN` | empty | Optional bearer token expected by shellctl inside the E2B template. |
 | `DIFY_AGENT_E2B_SHELLCTL_PORT` | `5004` | shellctl port exposed by the E2B template. |
-| `DIFY_AGENT_SANDBOX_FILE_UPLOAD_MAX_BYTES` | `52428800` | Standalone Dify Agent maximum for whole-file Workspace upload capture; 50 MiB by default. Docker Compose derives it from `PLUGIN_MAX_FILE_SIZE`. |
 | `DIFY_AGENT_SHELL_REDACT_PATTERNS` | empty | JSON array of additional regex patterns redacted from Shell output. |
-| `DIFY_AGENT_STUB_API_BASE_URL` | empty | Agent Stub API base URL reachable from the Sandbox. HTTP may be the service root or `/agent-stub`; gRPC must be `grpc://host:port`. Enables `DIFY_AGENT_STUB_*` env injection for user `shell.run` jobs. |
-| `DIFY_AGENT_SANDBOX_FILES_BASE_URL` | empty | Dify API base URL reachable from the Sandbox for signed `/files/*` upload/download bytes. Required when Agent Stub file operations are enabled. May include an ingress path prefix, but not a query or fragment. |
-| `DIFY_AGENT_STUB_GRPC_BIND_ADDRESS` | empty | Optional `host:port` bind override used only when `DIFY_AGENT_STUB_API_BASE_URL` uses `grpc://`. |
+| `DIFY_AGENT_STUB_API_BASE_URL` | empty | HTTP(S) Agent Stub API base URL reachable from the Sandbox. It may be the service root or `/agent-stub`. Enables `DIFY_AGENT_STUB_*` env injection for user `shell.run` jobs. |
+| `DIFY_AGENT_SANDBOX_FILES_BASE_URL` | empty | Dify API base URL reachable from the Sandbox for signed `/files/*` upload/download bytes, including Config file and skill pulls. Required when Agent Stub file operations are enabled. May include an ingress path prefix, but not a query or fragment. |
 | `DIFY_AGENT_SERVER_SECRET_KEY` | empty | Security-sensitive server-wide root secret used to derive the JWE encryption key for Agent Stub bearer tokens; required when `DIFY_AGENT_STUB_API_BASE_URL` is set. The supplied default config uses a development value; set a unique unpadded base64url 32-byte secret in production. |
 | `DIFY_AGENT_OUTBOUND_HTTP_CONNECT_TIMEOUT` | `10` | Shared outbound HTTP connect timeout in seconds. |
 | `DIFY_AGENT_OUTBOUND_HTTP_READ_TIMEOUT` | `600` | Shared outbound HTTP read timeout in seconds. |
@@ -75,6 +75,8 @@ DIFY_AGENT_REDIS_URL=redis://localhost:6379/0
 DIFY_AGENT_REDIS_PREFIX=dify-agent-dev
 DIFY_AGENT_SHUTDOWN_GRACE_SECONDS=30
 DIFY_AGENT_RUN_RETENTION_SECONDS=259200
+DIFY_AGENT_RUN_TIMEOUT_SECONDS=3600
+DIFY_AGENT_API_TOKEN=replace-with-agent-backend-token
 DIFY_AGENT_PLUGIN_DAEMON_URL=http://localhost:5002
 DIFY_AGENT_PLUGIN_DAEMON_API_KEY=replace-with-daemon-key
 DIFY_AGENT_INNER_API_URL=http://localhost:5001
@@ -86,7 +88,6 @@ DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN=replace-with-shellctl-token
 DIFY_AGENT_LOCAL_SANDBOX_MATERIALIZED_HOME_ROOT=/tmp/dify-agent/materialized-homes
 DIFY_AGENT_LOCAL_SANDBOX_WORKSPACE_ROOT=/tmp/dify-agent/workspaces
 DIFY_AGENT_LOCAL_SANDBOX_HOME_SNAPSHOT_ROOT=/tmp/dify-agent/home-snapshots
-DIFY_AGENT_SANDBOX_FILE_UPLOAD_MAX_BYTES=52428800
 DIFY_AGENT_STUB_API_BASE_URL=https://agent.example.com/agent-stub
 DIFY_AGENT_SANDBOX_FILES_BASE_URL=https://dify.example.com
 # This is security-sensitive: it derives the JWE encryption key for Agent Stub bearer tokens.
@@ -99,6 +100,14 @@ The two Sandbox-facing base URLs have different owners. Agent Stub control
 requests use `DIFY_AGENT_STUB_API_BASE_URL`; signed file bytes use
 `DIFY_AGENT_SANDBOX_FILES_BASE_URL`. `DIFY_AGENT_INNER_API_URL` remains a
 trusted service-to-service URL and is never returned to the Sandbox.
+
+Config file and skill pulls use the same split: Agent Stub authorizes the
+Config target and returns a short-lived URL, then the Sandbox fetches the bytes
+directly from the Dify API `/files/*` data plane.
+
+Removing Agent Stub gRPC is a breaking transport migration: replace every
+`grpc://` Agent Stub URL with HTTP(S), remove
+`DIFY_AGENT_STUB_GRPC_BIND_ADDRESS`, and deploy without a gRPC fallback.
 
 For a remote Sandbox, expose only `/agent-stub/*` from Agent Backend and the
 existing `/files/*` Dify API data plane. The `/files/*` ingress must preserve
@@ -117,11 +126,6 @@ accepted only as legacy aliases for the two Local settings. New deployments
 must use `DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT` and
 `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN`. There is no compatibility setting for
 the removed shell-provider selector.
-
-The example above is for a standalone Dify Agent process, where the byte limit
-can be set directly. In a Docker deployment, set `PLUGIN_MAX_FILE_SIZE` in
-`docker/.env`; Compose maps it to
-`DIFY_AGENT_SANDBOX_FILE_UPLOAD_MAX_BYTES` inside `agent_backend`.
 
 The backend selection is deployment-private. Shell-enabled run requests use an
 Execution Context, `dify.runtime`, and `dify.shell` graph. Runtime config carries
@@ -204,8 +208,16 @@ docker compose \
 
 `DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS` controls continuous active E2B time.
 The physical resource behind a Binding pauses when that timeout fires, preserving
-the current Workspace. The setting is not a resource-age TTL and does not delete
-paused resources or immutable snapshots.
+the current Workspace. The setting is not a resource-age TTL, does not delete
+paused resources or immutable snapshots, and does not authoritatively finalize
+the Agent run. If the paused Sandbox is first observed by a Shell tool, that
+provider failure is returned to Pydantic AI as a tool error observation.
+
+The run and E2B defaults both equal 3600 seconds, but independent clocks and
+asynchronous E2B pause propagation make their ordering nondeterministic. A Shell
+provider `RuntimeError` observed first becomes a tool observation. In contrast,
+run-deadline cancellation propagates through the Shell boundary; only the Dify
+Agent run deadline owns the terminal `agent_run_limit_exceeded` failure.
 
 ## Run runtime-backend integration contracts
 
@@ -236,16 +248,16 @@ Run the real E2B contract with an explicit test credential and template:
 cd dify-agent
 DIFY_AGENT_TEST_E2B_API_KEY="$E2B_API_TOKEN" \
 DIFY_AGENT_TEST_E2B_TEMPLATE=difys-default-team/dify-agent-local-sandbox \
-DIFY_AGENT_TEST_E2B_ACTIVE_TIMEOUT_SECONDS=900 \
   pdm run pytest --import-mode=importlib \
   tests/integration/dify_agent/runtime_backend/test_working_environment.py \
   -k e2b -q -rs
 ```
 
 The Local auth token is optional when shellctl has authentication disabled.
-The E2B test timeout value `900` means up to 15 minutes of continuous active
-test time; it is not a post-test retention TTL. Both contracts create unique
-resources and perform explicit cleanup in `finally` blocks.
+The E2B contract uses the one-hour `E2B_MAX_ACTIVE_TIMEOUT_SECONDS` RuntimeLease
+limit. This is continuous active test time, not a post-test retention TTL. Both
+contracts create unique resources and perform explicit cleanup in `finally`
+blocks.
 
 ## Scheduling and shutdown semantics
 
@@ -254,6 +266,17 @@ same process. There is no Redis job stream, consumer group, pending reclaim, or
 automatic retry layer. Request-shaped runtime failures such as bad composition,
 prompt, output, or snapshot inputs are reported later as failed runs rather than
 rejected synchronously once the request DTO itself is accepted.
+
+Each run explicitly limits Pydantic AI to 500 model-request steps. Tool calls do
+not have a separate count limit, but every model request used to continue the
+tool loop consumes one of those steps.
+
+`DIFY_AGENT_RUN_TIMEOUT_SECONDS` additionally applies a wall-clock deadline only
+around Pydantic AI's `agent.run(...)`, including its model/tool loop and event
+handler. It does not include compositor entry, RuntimeLease acquisition, tool
+preparation, session snapshot generation, or resource exit. Expiry cancels the
+active run task, allows the compositor to release resources, and finalizes the
+run as failed with `error_type: "agent_run_limit_exceeded"`.
 
 During FastAPI shutdown the scheduler rejects new runs, waits up to
 `DIFY_AGENT_SHUTDOWN_GRACE_SECONDS` for active tasks, then cancels remaining tasks
@@ -324,6 +347,8 @@ progress:
 
 - `POST /runs` creates a running run and schedules it locally.
 - `GET /runs/{run_id}` returns `running`, `succeeded`, `failed`, or `cancelled`.
+  Failed records can also expose a stable machine-readable `error_type` alongside
+  the diagnostic `error` text.
 - `POST /runs/{run_id}/cancel` atomically accepts cancellation on any API process
   and emits `run_cancelled`; it returns `409` only when a success/failure terminal
   already won. Runner cleanup continues asynchronously on the owner process.
@@ -331,7 +356,10 @@ progress:
   `next_cursor` cursors.
 - `GET /runs/{run_id}/events/sse` replays and streams events over SSE. The SSE
   `id` is the event Redis Stream ID. `after` query cursors take precedence over
-  `Last-Event-ID` headers.
+  `Last-Event-ID` headers. The server closes the SSE response normally after
+  delivering a terminal event. Clients must stop reconnecting after consuming
+  that event. Both cursor forms remain exclusive resume cursors, so the server
+  does not resend a terminal event that the supplied cursor already excludes.
 
 Successful runs emit `run_started`, zero or more `pydantic_ai_event`, and
 `run_succeeded`. Failed runs end with `run_failed`, and accepted cancellations
@@ -343,6 +371,16 @@ terminal `run_succeeded.data` object containing a `CompositorSessionSnapshot` fo
 resumption. A successful run has exactly one active result branch: JSON-safe
 `output` for final answers, or `deferred_tool_call` when a layer such as
 `dify.ask_human` ends the current agent run with an external deferred tool call.
+Failed event payloads contain the diagnostic `error`, optional source-specific
+`reason`, and optional stable `error_type`. Pydantic AI request/step budget
+exhaustion enforced by Dify Agent is reported as
+`error_type: "agent_run_limit_exceeded"`; consumers should branch on that value
+rather than parsing the error text. The Dify Agent-owned wall-clock run deadline
+uses the same error type; provider and connection timeouts do not. The matching
+failed run record and terminal event are committed atomically with the same error
+type. For independently deployed Agent backend and API services, deploy consumers
+that accept the optional field before producers begin emitting it because the
+public protocol models reject unknown fields.
 
 ## Examples
 
@@ -354,4 +392,4 @@ The repository includes simple consumers that print observed output/events:
   consumes raw SSE frames for an existing run id.
 
 The create-run examples submit Dify plugin model layers, so they require Redis,
-the API server, plugin-daemon settings, and provider credentials.
+the Agent server, Dify API gateway settings, and a configured model provider in Dify.

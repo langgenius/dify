@@ -67,6 +67,7 @@ def test_remote_file_info_and_upload_config() -> None:
 
     config = UploadConfig(
         file_size_limit=1,
+        knowledge_file_size_limit=11,
         batch_count_limit=2,
         file_upload_limit=3,
         image_file_size_limit=4,
@@ -81,6 +82,7 @@ def test_remote_file_info_and_upload_config() -> None:
 
     dumped = config.model_dump(mode="json")
     assert dumped["file_upload_limit"] == 3
+    assert dumped["knowledge_file_size_limit"] == 11
     assert dumped["skill_file_size_limit"] == 7
     assert dumped["attachment_image_file_size_limit"] == 11
 

@@ -11,11 +11,11 @@ import {
   DrawerPortal,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RiArrowLeftLine, RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import Divider from '@/app/components/base/divider'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import Description from '@/app/components/plugins/card/base/description'
@@ -87,9 +87,12 @@ const StrategyDetail: FC<Props> = ({ provider, detail, onHide }) => {
               {/* header */}
               <div className="relative border-b border-divider-subtle p-4 pb-3">
                 <div className="absolute top-3 right-3">
-                  <ActionButton onClick={onHide}>
-                    <RiCloseLine className="size-4" />
-                  </ActionButton>
+                  <IconButton
+                    aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                    onClick={onHide}
+                  >
+                    <RiCloseLine aria-hidden="true" className="size-4" />
+                  </IconButton>
                 </div>
                 <div
                   className="mb-2 flex cursor-pointer items-center gap-1 system-xs-semibold-uppercase text-text-accent-secondary"

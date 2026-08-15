@@ -1,6 +1,6 @@
 import type { ChildChunkDetail } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import ChildSegmentList from '../child-segment-list'
 
 // Mock document context
