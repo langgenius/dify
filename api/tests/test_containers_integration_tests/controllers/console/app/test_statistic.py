@@ -8,9 +8,8 @@ from uuid import uuid4
 from flask.testing import FlaskClient
 from sqlalchemy.orm import Session
 
-from core.app.entities.app_invoke_entities import InvokeFrom
 from libs.datetime_utils import naive_utc_now
-from models.enums import ConversationFromSource, FeedbackFromSource, FeedbackRating
+from models.enums import ConversationFromSource, ConversationStatus, FeedbackFromSource, FeedbackRating, InvokeFrom
 from models.model import AppMode, Conversation, Message, MessageFeedback
 from tests.test_containers_integration_tests.controllers.console.helpers import (
     authenticate_console_client,
@@ -36,16 +35,16 @@ def _create_conversation(
         override_model_configs=None,
         mode=mode,
         name="Stats Conversation",
-        inputs={},
+        _inputs={},
         introduction="",
         system_instruction="",
         system_instruction_tokens=0,
-        status="normal",
+        status=ConversationStatus.NORMAL,
         from_source=ConversationFromSource.CONSOLE,
         from_account_id=account_id,
-        created_at=created_at,
-        updated_at=created_at,
     )
+    conversation.created_at = created_at
+    conversation.updated_at = created_at
     db_session.add(conversation)
     db_session.commit()
     return conversation
@@ -71,7 +70,7 @@ def _create_message(
         model_id="",
         override_model_configs=None,
         conversation_id=conversation_id,
-        inputs={},
+        _inputs={},
         query="Hello",
         message={"type": "text", "content": "Hello"},
         message_tokens=message_tokens,
@@ -89,10 +88,10 @@ def _create_message(
         from_source=ConversationFromSource.CONSOLE,
         from_end_user_id=from_end_user_id,
         from_account_id=from_account_id,
-        created_at=created_at,
-        updated_at=created_at,
         app_mode=AppMode.CHAT,
     )
+    message.created_at = created_at
+    message.updated_at = created_at
     db_session.add(message)
     db_session.commit()
     return message
