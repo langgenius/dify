@@ -1038,7 +1038,7 @@ class TestDocumentGenerateSummaryApi(_UsesSQLiteSession):
             ),
         ):
             with pytest.raises(NotFound):
-                method(api, self.session, user, "ds-1")
+                method(api, req_data, self.session, user, "ds-1")
                 method(api, req_data, self.session, user, "ds-1")
 
     def test_generate_not_enabled(self, app: Flask, patch_tenant, patch_permission):
@@ -1053,7 +1053,7 @@ class TestDocumentGenerateSummaryApi(_UsesSQLiteSession):
             patch("controllers.console.datasets.datasets_document.DatasetService.get_dataset", return_value=dataset),
         ):
             with pytest.raises(ValueError):
-                method(api, self.session, user, "ds-1")
+                method(api, req_data, self.session, user, "ds-1")
                 method(api, req_data, self.session, user, "ds-1")
 
     def test_generate_summary_success_with_qa_skip(self, app: Flask, patch_tenant, patch_permission):
