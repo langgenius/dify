@@ -40,11 +40,11 @@ def _workflow(
         kind=kind,
         version="1",
         graph=json.dumps({"nodes": [], "edges": []}),
-        features="{}",
+        _features="{}",
         created_by="creator",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
+        _rag_pipeline_variables=[],
     )
 
 

@@ -103,13 +103,13 @@ class TestDraftVarLoaderSimple:
         variable_file.upload_file = upload_file
 
         draft_var = WorkflowDraftVariable(
-            id="draft-var-id",
             node_id="test-node-id",
             name="test_object",
             description="test description",
             selector=json.dumps(["test-node-id", "test_object"]),
-            variable_file=variable_file,
         )
+        draft_var.id = "draft-var-id"
+        draft_var.variable_file = variable_file
 
         test_object = {"key1": "value1", "key2": 42}
         test_json_content = json.dumps(test_object, ensure_ascii=False, separators=(",", ":"))
@@ -132,9 +132,8 @@ class TestDraftVarLoaderSimple:
 
     def test_load_offloaded_variable_missing_variable_file_unit(self, draft_var_loader):
         """Test that assertion error is raised when variable_file is None."""
-        draft_var = WorkflowDraftVariable(
-            variable_file=None,
-        )
+        draft_var = WorkflowDraftVariable()
+        draft_var.variable_file = None
 
         with pytest.raises(AssertionError):
             draft_var_loader._load_offloaded_variable(draft_var)
@@ -152,9 +151,8 @@ class TestDraftVarLoaderSimple:
         )
         variable_file.upload_file = None
 
-        draft_var = WorkflowDraftVariable(
-            variable_file=variable_file,
-        )
+        draft_var = WorkflowDraftVariable()
+        draft_var.variable_file = variable_file
 
         with pytest.raises(AssertionError):
             draft_var_loader._load_offloaded_variable(draft_var)
@@ -199,13 +197,13 @@ class TestDraftVarLoaderSimple:
         variable_file.upload_file = upload_file
 
         draft_var = WorkflowDraftVariable(
-            id="draft-var-id",
             node_id="test-node-id",
             name="test_array",
             description="test array description",
             selector=json.dumps(["test-node-id", "test_array"]),
-            variable_file=variable_file,
         )
+        draft_var.id = "draft-var-id"
+        draft_var.variable_file = variable_file
 
         test_array = ["item1", 2, True]
         test_json_content = json.dumps(test_array)
@@ -251,12 +249,12 @@ class TestDraftVarLoaderSimple:
         variable_file.upload_file = upload_file
 
         draft_var = WorkflowDraftVariable(
-            id="draft-var-id",
             app_id="app-1",
             node_id="test-node-id",
             name="test_file",
             description="test file description",
         )
+        draft_var.id = "draft-var-id"
         draft_var._set_selector(["test-node-id", "test_file"])
         draft_var.variable_file = variable_file
 

@@ -548,10 +548,10 @@ def test_app_list_uses_injected_session_for_draft_workflows(
         type=WorkflowType.WORKFLOW,
         version=Workflow.VERSION_DRAFT,
         graph=json.dumps({"nodes": [{"id": "trigger-1", "data": {"type": "trigger-webhook"}}], "edges": []}),
-        features=json.dumps({}),
+        _features=json.dumps({}),
         created_by="user-1",
-        environment_variables=[],
-        conversation_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
     )
     sqlite_session.add(workflow)
     sqlite_session.commit()

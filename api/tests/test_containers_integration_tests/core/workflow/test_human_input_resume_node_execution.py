@@ -233,7 +233,7 @@ class TestHumanInputResumeNodeExecutionIntegration:
             type="workflow",
             version="draft",
             graph='{"nodes": [], "edges": []}',
-            features='{"file_upload": {"enabled": false}}',
+            _features='{"file_upload": {"enabled": false}}',
             created_by=account.id,
             created_at=naive_utc_now(),
         )

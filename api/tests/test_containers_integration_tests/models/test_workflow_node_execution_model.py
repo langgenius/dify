@@ -12,6 +12,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session
 
+from graphon.enums import WorkflowNodeExecutionStatus
 from models.account import Account
 from models.enums import CreatorUserRole, EndUserType
 from models.model import App, AppMode, EndUser
@@ -72,7 +73,7 @@ class TestWorkflowNodeExecutionModelCreatedBy:
         return app
 
     def _make_execution(
-        self, tenant_id: str, app_id: str, created_by_role: str, created_by: str
+        self, tenant_id: str, app_id: str, created_by_role: CreatorUserRole, created_by: str
     ) -> WorkflowNodeExecutionModel:
         return WorkflowNodeExecutionModel(
             tenant_id=tenant_id,
@@ -89,7 +90,7 @@ class TestWorkflowNodeExecutionModelCreatedBy:
             inputs=None,
             process_data=None,
             outputs=None,
-            status="succeeded",
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
             error=None,
             elapsed_time=0.0,
             execution_metadata=None,
@@ -105,7 +106,7 @@ class TestWorkflowNodeExecutionModelCreatedBy:
         execution = self._make_execution(
             tenant_id=app.tenant_id,
             app_id=app.id,
-            created_by_role=CreatorUserRole.ACCOUNT.value,
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
         )
 
@@ -122,7 +123,7 @@ class TestWorkflowNodeExecutionModelCreatedBy:
         execution = self._make_execution(
             tenant_id=app.tenant_id,
             app_id=app.id,
-            created_by_role=CreatorUserRole.END_USER.value,
+            created_by_role=CreatorUserRole.END_USER,
             created_by=account.id,
         )
 
@@ -142,7 +143,7 @@ class TestWorkflowNodeExecutionModelCreatedBy:
         execution = self._make_execution(
             tenant_id=tenant_id,
             app_id=app.id,
-            created_by_role=CreatorUserRole.END_USER.value,
+            created_by_role=CreatorUserRole.END_USER,
             created_by=end_user.id,
         )
 
@@ -161,7 +162,7 @@ class TestWorkflowNodeExecutionModelCreatedBy:
         execution = self._make_execution(
             tenant_id=tenant_id,
             app_id=app.id,
-            created_by_role=CreatorUserRole.ACCOUNT.value,
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=end_user.id,
         )
 
