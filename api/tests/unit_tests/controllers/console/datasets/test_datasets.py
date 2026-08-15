@@ -1406,14 +1406,12 @@ class TestDatasetApiKeyApi(_UsesSQLiteSession):
             type="dataset",
             token="dataset-aaaa1111bbbb",
             last_used_at=None,
-            created_at=None,
         )
         mock_key_2 = ApiToken(
             id="key-2",
             type="dataset",
             token="dataset-cccc2222dddd",
             last_used_at=None,
-            created_at=None,
         )
         session = self.session
         mock_key_1.tenant_id = "tenant-1"

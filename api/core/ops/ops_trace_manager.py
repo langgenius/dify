@@ -558,8 +558,8 @@ class OpsTraceManager:
         return tracing_instance
 
     @classmethod
-    def get_app_config_through_message_id(cls, message_id: str):
-        app_model_config = None
+    def get_app_config_through_message_id(cls, message_id: str) -> AppModelConfig | str | None:
+        app_model_config: AppModelConfig | str | None = None
         message_stmt = select(Message).where(Message.id == message_id)
         message_data = db.session.scalar(message_stmt)
         if not message_data:

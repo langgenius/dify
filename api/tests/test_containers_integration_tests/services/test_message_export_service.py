@@ -92,7 +92,7 @@ class TestAppMessageExportServiceIntegration:
             model_id="gpt-4o-mini",
             mode="chat",
             name="conv",
-            inputs={"seed": 1},
+            _inputs={"seed": 1},
             status="normal",
             from_source=ConversationFromSource.API,
             from_end_user_id=str(uuid.uuid4()),
@@ -118,7 +118,7 @@ class TestAppMessageExportServiceIntegration:
             conversation_id=conversation.id,
             model_provider="openai",
             model_id="gpt-4o-mini",
-            inputs=inputs,
+            _inputs=inputs,
             query=query,
             answer=answer,
             message=[{"role": "assistant", "content": answer}],
@@ -131,8 +131,8 @@ class TestAppMessageExportServiceIntegration:
             message_metadata=message_metadata,
             from_source=ConversationFromSource.API,
             from_end_user_id=conversation.from_end_user_id,
-            created_at=created_at,
         )
+        message.created_at = created_at
         session.add(message)
         session.flush()
         return message

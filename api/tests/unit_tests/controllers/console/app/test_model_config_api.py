@@ -46,7 +46,6 @@ def test_post_updates_non_agent_model_config_without_implicit_properties(
         mode=app_mode,
         app_model_config_id="config-0",
         updated_by=None,
-        updated_at=None,
     )
     original_config = AppModelConfig(app_id="app-1", created_by="u1", updated_by="u1")
     original_config.id = "config-0"
@@ -181,7 +180,6 @@ def test_post_encrypts_agent_tool_parameters(
         mode=AppMode.AGENT_CHAT,
         app_model_config_id="config-0",
         updated_by=None,
-        updated_at=None,
     )
     _poison_implicit_app_config_properties(monkeypatch)
 

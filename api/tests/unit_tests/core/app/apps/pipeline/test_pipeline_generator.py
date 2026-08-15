@@ -143,7 +143,7 @@ def _persist_worker_records(session: Session) -> None:
         type=EndUserType.BROWSER,
         session_id="session",
         name="User",
-        is_anonymous=True,
+        _is_anonymous=True,
     )
     session.add_all([workflow, end_user])
     session.commit()

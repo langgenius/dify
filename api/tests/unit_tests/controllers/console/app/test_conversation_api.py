@@ -57,7 +57,7 @@ def _conversation(*, conversation_id: str = "c1", app_id: str = "app-1") -> Conv
         model_id=None,
         mode=AppMode.CHAT,
         name="Conversation",
-        inputs={},
+        _inputs={},
         introduction="",
         system_instruction="",
         system_instruction_tokens=0,

@@ -80,7 +80,7 @@ class TestEndUserServiceFactory:
             type=invoke_type,
             external_user_id=session_id,
             name=f"User-{uuid4()}",
-            is_anonymous=is_anonymous,
+            _is_anonymous=is_anonymous,
             session_id=session_id,
         )
         db_session_with_containers.add(end_user)

@@ -114,7 +114,7 @@ class TestFileService:
             tenant_id=str(fake.uuid4()),
             type=EndUserType.BROWSER,
             name=fake.name(),
-            is_anonymous=False,
+            _is_anonymous=False,
             session_id=fake.uuid4(),
         )
 

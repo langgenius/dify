@@ -24,7 +24,7 @@ def _persist_message(session: Session, *, app_id: str) -> Message:
     message = Message(
         app_id=app_id,
         conversation_id=str(uuid4()),
-        inputs={},
+        _inputs={},
         query="hello",
         message=[{"role": "user", "text": "hello"}],
         message_unit_price=Decimal(0),
