@@ -393,6 +393,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   }, [
     isTryApp,
     setShowNewConversationItemInList,
+    handleChangeConversation,
     handleNewConversationInputsChange,
     setClearChatList,
   ])
