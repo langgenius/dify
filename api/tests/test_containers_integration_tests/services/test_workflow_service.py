@@ -144,12 +144,12 @@ class TestWorkflowService:
             type=WorkflowType.WORKFLOW,
             version=Workflow.VERSION_DRAFT,
             graph=json.dumps({"nodes": [], "edges": []}),
-            features=json.dumps({"features": []}),
+            _features=json.dumps({"features": []}),
             # unique_hash is a computed property based on graph and features
             created_by=account.id,
             updated_by=account.id,
-            environment_variables=[],
-            conversation_variables=[],
+            _environment_variables=[],
+            _conversation_variables=[],
         )
 
         db_session_with_containers.add(workflow)
@@ -970,11 +970,11 @@ class TestWorkflowService:
             type=WorkflowType.WORKFLOW,
             version="2026.03.19.001",
             graph=json.dumps({"nodes": [], "edges": []}),
-            features=json.dumps(legacy_features),
+            _features=json.dumps(legacy_features),
             created_by=account.id,
             updated_by=account.id,
-            environment_variables=[],
-            conversation_variables=[],
+            _environment_variables=[],
+            _conversation_variables=[],
         )
         draft_workflow = Workflow(
             id=fake.uuid4(),
@@ -983,11 +983,11 @@ class TestWorkflowService:
             type=WorkflowType.WORKFLOW,
             version=Workflow.VERSION_DRAFT,
             graph=json.dumps({"nodes": [], "edges": []}),
-            features=json.dumps({}),
+            _features=json.dumps({}),
             created_by=account.id,
             updated_by=account.id,
-            environment_variables=[],
-            conversation_variables=[],
+            _environment_variables=[],
+            _conversation_variables=[],
         )
         db_session_with_containers.add(published_workflow)
         db_session_with_containers.add(draft_workflow)

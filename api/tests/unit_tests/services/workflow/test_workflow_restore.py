@@ -47,11 +47,11 @@ def _create_workflow(*, workflow_id: str, version: str, features: dict[str, obje
         type="workflow",
         version=version,
         graph=json.dumps({"nodes": [], "edges": []}),
-        features=json.dumps(features),
+        _features=json.dumps(features),
         created_by="account-id",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
+        _rag_pipeline_variables=[],
     )
 
 

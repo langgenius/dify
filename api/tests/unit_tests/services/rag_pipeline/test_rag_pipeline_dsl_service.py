@@ -93,22 +93,14 @@ def _workflow(session: Session, pipeline: Pipeline, *, graph: dict[str, Any] | N
 def _workflow_for_dependencies(
     *, graph: dict[str, Any], environment_variables: list[LLMEnvironmentVariable] | None = None
 ) -> Workflow:
-    workflow = Workflow(
-        id="workflow-dependencies",
+    return make_workflow(
+        workflow_id="workflow-dependencies",
         tenant_id="tenant-1",
         app_id="pipeline-1",
-        type=WorkflowType.RAG_PIPELINE,
-        kind=WorkflowKind.STANDARD,
-        version=Workflow.VERSION_DRAFT,
-        graph=json.dumps(graph),
-        features="{}",
-        created_by="account-1",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
+        workflow_type=WorkflowType.RAG_PIPELINE,
+        graph=graph,
+        environment_variables=environment_variables or [],
     )
-    workflow.environment_variables = environment_variables or []
-    return workflow
 
 
 def _dataset(
