@@ -27,7 +27,7 @@ const RenameModal: FC<IRenameModalProps> = ({ isShow, saveLoading, name, onClose
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t(($) => $['chat.renameConversation'], { ns: 'common' })}
         </DialogTitle>
-        <div className="mt-6 text-sm leading-[21px] font-medium text-text-primary">
+        <div className="mt-6 text-sm leading-5.25 font-medium text-text-primary">
           {t(($) => $['chat.conversationName'], { ns: 'common' })}
         </div>
         <Input

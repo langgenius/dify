@@ -10,8 +10,14 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { FileTreeFile } from '@langgenius/dify-ui/file-tree'
-import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
-import { useCallback } from 'react'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
+import { useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { AgentFileTree } from '../files/tree'
@@ -113,7 +119,7 @@ function AgentSkillFileList({
     <AgentFileTree
       files={files}
       selectedFileId={selectedFileId}
-      labelledBy="agent-skill-detail-files-heading"
+      treeLabelledBy="agent-skill-detail-files-heading"
       className={cn('h-full bg-background-section p-1', fileListTreeClassName)}
       listClassName={fileListTreeListClassName}
       scrollAreaClassName="flex-1"
@@ -312,7 +318,7 @@ function AgentFilePreviewContent({
   }))
 
   return (
-    <div className="min-h-0 flex-1 overflow-auto px-2 pb-4 font-mono text-[13px] leading-[22px]">
+    <div className="min-h-0 flex-1 overflow-auto px-2 pb-4 font-mono text-[13px] leading-5.5">
       {lines.map((line) => (
         <div key={line.key} className="flex min-w-0 items-start">
           <span
@@ -321,7 +327,7 @@ function AgentFilePreviewContent({
           >
             {line.lineNumber}
           </span>
-          <code className="block min-w-0 flex-1 [overflow-wrap:anywhere] break-words whitespace-pre-wrap text-text-primary">
+          <code className="block min-w-0 flex-1 wrap-anywhere wrap-break-word whitespace-pre-wrap text-text-primary">
             {line.content}
           </code>
         </div>
@@ -337,8 +343,8 @@ export function AgentSkillDetailDialog({
   skillName: string
   detail: AgentSkillDetail
 }) {
-  const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
+  const dialogTitleId = useId()
   const previewTitle = detail.filePreview?.fileName
   const isHeaderDownloadLoading = detail.filePreview?.downloadActionLoadingTarget === 'header'
 
@@ -355,7 +361,9 @@ export function AgentSkillDetailDialog({
         )}
       >
         <DialogDescription className="sr-only">{detail.description}</DialogDescription>
-        <DialogTitle className="sr-only">{previewTitle || skillName}</DialogTitle>
+        <DialogTitle id={dialogTitleId} className="sr-only">
+          {previewTitle || skillName}
+        </DialogTitle>
         <div className="min-h-0 w-full">
           <AgentSkillFileList
             fileListHeader={detail.fileListHeader}
@@ -408,35 +416,42 @@ export function AgentSkillDetailDialog({
             <DialogCloseButton className="static size-7 shrink-0 rounded-md" />
           </div>
         </div>
-        <ScrollArea
-          className="relative min-h-0 flex-1 overflow-hidden has-[>_:first-child:focus-visible]:outline-2 has-[>_:first-child:focus-visible]:outline-offset-0 has-[>_:first-child:focus-visible]:outline-state-accent-solid"
-          label={t(($) => $['agentDetail.configure.skills.detail.contentRegion'])}
-          slotClassNames={{
-            viewport: 'overscroll-contain outline-none focus-visible:outline-none',
-            content: 'flex min-h-full w-full max-w-full min-w-0 flex-col gap-2',
-          }}
-        >
-          {detail.filePreview && (
-            <AgentFilePreviewContent
-              binary={detail.filePreview.binary}
-              content={detail.filePreview.content}
-              downloadActionLoadingTarget={detail.filePreview.downloadActionLoadingTarget}
-              downloadUrl={detail.filePreview.downloadUrl}
-              fileName={detail.filePreview.fileName}
-              imageData={detail.filePreview.imageData}
-              isDownloadError={detail.filePreview.isDownloadError}
-              isDownloadLoading={detail.filePreview.isDownloadLoading}
-              isError={detail.filePreview.isError}
-              isImage={detail.filePreview.isImage}
-              isLoading={detail.filePreview.isLoading}
-              onDownloadFile={detail.onDownloadFile}
-            />
-          )}
-          {detail.sections.map((section) => (
-            <div key={section.id} className="px-4">
-              <AgentSkillDetailSectionBlock section={section} />
-            </div>
-          ))}
+        <ScrollArea className="relative min-h-0 flex-1 overflow-hidden has-[>_:first-child:focus-visible]:outline-2 has-[>_:first-child:focus-visible]:outline-offset-0 has-[>_:first-child:focus-visible]:outline-state-accent-solid">
+          <ScrollAreaViewport
+            aria-labelledby={dialogTitleId}
+            className="overscroll-contain outline-none focus-visible:outline-none"
+            role="region"
+          >
+            <ScrollAreaContent
+              style={{ minWidth: 0 }}
+              className="flex min-h-full w-full max-w-full flex-col gap-2"
+            >
+              {detail.filePreview && (
+                <AgentFilePreviewContent
+                  binary={detail.filePreview.binary}
+                  content={detail.filePreview.content}
+                  downloadActionLoadingTarget={detail.filePreview.downloadActionLoadingTarget}
+                  downloadUrl={detail.filePreview.downloadUrl}
+                  fileName={detail.filePreview.fileName}
+                  imageData={detail.filePreview.imageData}
+                  isDownloadError={detail.filePreview.isDownloadError}
+                  isDownloadLoading={detail.filePreview.isDownloadLoading}
+                  isError={detail.filePreview.isError}
+                  isImage={detail.filePreview.isImage}
+                  isLoading={detail.filePreview.isLoading}
+                  onDownloadFile={detail.onDownloadFile}
+                />
+              )}
+              {detail.sections.map((section) => (
+                <div key={section.id} className="px-4">
+                  <AgentSkillDetailSectionBlock section={section} />
+                </div>
+              ))}
+            </ScrollAreaContent>
+          </ScrollAreaViewport>
+          <ScrollAreaScrollbar>
+            <ScrollAreaThumb />
+          </ScrollAreaScrollbar>
         </ScrollArea>
       </div>
     </DialogContent>

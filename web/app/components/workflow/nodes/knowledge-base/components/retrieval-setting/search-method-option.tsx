@@ -154,7 +154,7 @@ function SearchMethodRadioCard({
         disabled={readonly}
         className={cn(
           'relative flex w-full rounded-t-xl p-2 text-left outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-active',
-          readonly ? 'cursor-not-allowed' : 'cursor-pointer',
+          'cursor-pointer data-disabled:cursor-not-allowed',
         )}
       >
         {getSearchMethodEffect(option.effectColor, isActive)}
@@ -205,7 +205,7 @@ function HybridSearchModeRadioCard({
           'w-full rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-3 text-left outline-hidden transition-colors',
           'data-checked:border-[1.5px] data-checked:bg-components-option-card-option-selected-bg',
           'focus-visible:ring-1 focus-visible:ring-components-input-border-active',
-          readonly ? 'cursor-not-allowed' : 'cursor-pointer hover:shadow-xs',
+          'cursor-pointer hover:shadow-xs data-disabled:cursor-not-allowed data-disabled:hover:shadow-none',
         )}
       >
         <div className="flex items-start gap-2">

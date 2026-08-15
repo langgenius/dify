@@ -2,8 +2,10 @@ package agentcli
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"mime"
 	"os"
 	"path/filepath"
@@ -12,9 +14,9 @@ import (
 
 // FileUploadResponse is the JSON output for `dify-agent file upload`.
 type FileUploadResponse struct {
-	TransferMethod string `json:"transfer_method"`
-	Reference      string `json:"reference"`
-	DownloadURL    string `json:"download_url"`
+	TransferMethod    string `json:"transfer_method"`
+	Reference         string `json:"reference"`
+	PublicDownloadURL string `json:"public_download_url,omitempty"`
 }
 
 // FileDownloadResponse is the response from a file download request.
@@ -26,7 +28,28 @@ type FileDownloadResponse struct {
 }
 
 // RunFileUpload executes the `file upload` command.
-func RunFileUpload(env *Environment, path string) error {
+func RunFileUpload(env *Environment, path string, noDownloadLink bool) error {
+	client, err := NewStubClient(env)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = client.Close() }()
+
+	return runFileUpload(client, path, noDownloadLink, os.Stdout)
+}
+
+type fileUploadClient interface {
+	CreateFileUploadURL(ctx context.Context, filename, mimetype string) (string, error)
+	UploadFileToURL(uploadURL, filePath, filename, mimetype string) ([]byte, error)
+	CreateFileDownloadURL(
+		ctx context.Context,
+		transferMethod string,
+		reference, url *string,
+		forFrontend bool,
+	) (*FileDownloadResponse, error)
+}
+
+func runFileUpload(client fileUploadClient, path string, noDownloadLink bool, output io.Writer) error {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return fmt.Errorf("resolve path: %w", err)
@@ -39,12 +62,6 @@ func RunFileUpload(env *Environment, path string) error {
 	filename := filepath.Base(absPath)
 	mimetype := guessMIMEType(filename)
 	ctx := context.Background()
-
-	client, err := NewStubClient(env)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = client.Close() }()
 
 	// Step 1: Request a signed upload URL
 	uploadURL, err := client.CreateFileUploadURL(ctx, filename, mimetype)
@@ -67,22 +84,45 @@ func RunFileUpload(env *Environment, path string) error {
 	if reference == "" {
 		return fmt.Errorf("signed file upload response is missing reference")
 	}
-
-	// Step 3: Request download URL for the uploaded file
-	ref := reference
-	dlResp, err := client.CreateFileDownloadURL(ctx, "tool_file", &ref, nil, false)
-	if err != nil {
-		return err
+	if noDownloadLink && !isCanonicalDifyFileReference(reference) {
+		return fmt.Errorf("signed file upload response has invalid reference")
 	}
 
 	result := FileUploadResponse{
 		TransferMethod: "tool_file",
 		Reference:      reference,
-		DownloadURL:    dlResp.DownloadURL,
+	}
+	if !noDownloadLink {
+		// Step 3: Request a browser-visible URL unless the caller only needs the
+		// canonical ToolFile reference.
+		ref := reference
+		dlResp, err := client.CreateFileDownloadURL(ctx, "tool_file", &ref, nil, true)
+		if err != nil {
+			return err
+		}
+		result.PublicDownloadURL = dlResp.DownloadURL
 	}
 	out, _ := json.Marshal(result)
-	fmt.Println(string(out))
+	_, _ = fmt.Fprintln(output, string(out))
 	return nil
+}
+
+func isCanonicalDifyFileReference(reference string) bool {
+	encodedPayload, found := strings.CutPrefix(reference, "dify-file-ref:")
+	if !found || encodedPayload == "" {
+		return false
+	}
+	payloadJSON, err := base64.URLEncoding.DecodeString(encodedPayload)
+	if err != nil {
+		return false
+	}
+	var payload struct {
+		RecordID string `json:"record_id"`
+	}
+	if err := json.Unmarshal(payloadJSON, &payload); err != nil {
+		return false
+	}
+	return payload.RecordID != ""
 }
 
 // RunFileDownload executes the `file download` command.

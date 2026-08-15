@@ -43,7 +43,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({ id, data }) => {
 
   if (isLoading) {
     return (
-      <div className="flex h-[200px] items-center justify-center">
+      <div className="flex h-50 items-center justify-center">
         <Loading />
       </div>
     )

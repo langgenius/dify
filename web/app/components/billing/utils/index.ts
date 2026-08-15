@@ -1,4 +1,4 @@
-import type { BasicPlan, BillingQuota, CurrentPlanInfoBackend } from '../type'
+import type { CloudPlan, GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
 import dayjs from 'dayjs'
 import { ALL_PLANS, NUM_INFINITE } from '@/app/components/billing/config'
 
@@ -19,11 +19,8 @@ export const parseVectorSpaceToMB = (vectorSpace: string): number => {
 /**
  * Get the vector space limit in MB for a given plan type from ALL_PLANS config
  */
-export const getPlanVectorSpaceLimitMB = (planType: BasicPlan): number => {
-  const planInfo = ALL_PLANS[planType]
-  if (!planInfo) return 0
-
-  return parseVectorSpaceToMB(planInfo.vectorSpace)
+export const getPlanVectorSpaceLimitMB = (planType: CloudPlan): number => {
+  return parseVectorSpaceToMB(ALL_PLANS[planType].vectorSpace)
 }
 
 const parseLimit = (limit: number) => {
@@ -38,8 +35,8 @@ const parseRateLimit = (limit: number) => {
   return limit
 }
 
-const normalizeResetDate = (resetDate?: number | null) => {
-  if (typeof resetDate !== 'number' || resetDate <= 0) return null
+const normalizeResetDate = (resetDate: number) => {
+  if (resetDate <= 0) return null
 
   if (resetDate >= 1e12) return dayjs(resetDate)
 
@@ -57,7 +54,7 @@ const normalizeResetDate = (resetDate?: number | null) => {
   return null
 }
 
-const getResetInDaysFromDate = (resetDate?: number | null) => {
+const getResetInDaysFromDate = (resetDate: number) => {
   const resetDay = normalizeResetDate(resetDate)
   if (!resetDay) return null
 
@@ -67,46 +64,33 @@ const getResetInDaysFromDate = (resetDate?: number | null) => {
   return diff
 }
 
-export const parseCurrentPlan = (data: CurrentPlanInfoBackend) => {
+export const parseCurrentPlan = (data: GetFeaturesResponse) => {
   const planType = data.billing.subscription.plan
-  const planPreset = ALL_PLANS[planType]
   const vectorSpaceLimit = getPlanVectorSpaceLimitMB(planType)
-  const resolveRateLimit = (limit?: number, fallback?: number) => {
-    const value = limit ?? fallback ?? 0
-    return parseRateLimit(value)
-  }
-  const getQuotaUsage = (quota?: BillingQuota) => quota?.usage ?? 0
-  const getQuotaResetInDays = (quota?: BillingQuota) => {
-    if (!quota) return null
-    return getResetInDaysFromDate(quota.reset_date)
-  }
 
   return {
     type: planType,
     usage: {
       vectorSpace: 0,
-      buildApps: data.apps?.size || 0,
+      buildApps: data.apps.size,
       teamMembers: data.members.size,
       annotatedResponse: data.annotation_quota_limit.size,
       documentsUploadQuota: data.documents_upload_quota.size,
-      apiRateLimit: getQuotaUsage(data.api_rate_limit),
-      triggerEvents: getQuotaUsage(data.trigger_event),
+      apiRateLimit: data.api_rate_limit.usage,
+      triggerEvents: data.trigger_event.usage,
     },
     total: {
       vectorSpace: vectorSpaceLimit,
-      buildApps: parseLimit(data.apps?.limit) || 0,
+      buildApps: parseLimit(data.apps.limit),
       teamMembers: parseLimit(data.members.limit),
       annotatedResponse: parseLimit(data.annotation_quota_limit.limit),
       documentsUploadQuota: parseLimit(data.documents_upload_quota.limit),
-      apiRateLimit: resolveRateLimit(
-        data.api_rate_limit?.limit,
-        planPreset?.apiRateLimit ?? NUM_INFINITE,
-      ),
-      triggerEvents: resolveRateLimit(data.trigger_event?.limit, planPreset?.triggerEvents),
+      apiRateLimit: parseRateLimit(data.api_rate_limit.limit),
+      triggerEvents: parseRateLimit(data.trigger_event.limit),
     },
     reset: {
-      apiRateLimit: getQuotaResetInDays(data.api_rate_limit),
-      triggerEvents: getQuotaResetInDays(data.trigger_event),
+      apiRateLimit: getResetInDaysFromDate(data.api_rate_limit.reset_date),
+      triggerEvents: getResetInDaysFromDate(data.trigger_event.reset_date),
     },
   }
 }

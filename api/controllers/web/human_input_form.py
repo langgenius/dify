@@ -16,6 +16,7 @@ from configs import dify_config
 from controllers.common.errors import NotFoundError
 from controllers.common.human_input import HumanInputFormSubmitPayload, stringify_form_default_values
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.console.wraps import model_validate
 from controllers.web import web_ns
 from controllers.web.error import WebFormRateLimitExceededError
 from controllers.web.site import WebAppSiteResponse
@@ -24,7 +25,7 @@ from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import RateLimiter, dump_response, extract_remote_ip, to_timestamp
 from models.account import TenantStatus
-from models.model import App, Site
+from models.model import App, AppMode, Site
 from repositories.factory import DifyAPIRepositoryFactory
 from services.feature_service import FeatureService
 from services.human_input_file_upload_service import HumanInputFileUploadService
@@ -207,6 +208,7 @@ class HumanInputFormApi(Resource):
                 site=WebAppSiteResponse.from_app_site(
                     tenant=tenant,
                     app_model=app_model,
+                    mode=AppMode.value_of(app_model.mode),
                     site=site,
                     end_user_id=None,
                     features=features,
@@ -234,7 +236,8 @@ class HumanInputFormApi(Resource):
         "Form submitted successfully",
         web_ns.models[HumanInputFormSubmitResponse.__name__],
     )
-    def post(self, form_token: str):
+    @model_validate(HumanInputFormSubmitPayload)
+    def post(self, payload: HumanInputFormSubmitPayload, form_token: str):
         """
         Submit human input form by token.
 
@@ -248,8 +251,6 @@ class HumanInputFormApi(Resource):
             "action": "Approve"
         }
         """
-        payload = HumanInputFormSubmitPayload.model_validate(request.get_json())
-
         ip_address = extract_remote_ip(request)
         if _FORM_SUBMIT_RATE_LIMITER.is_rate_limited(ip_address):
             raise WebFormRateLimitExceededError()

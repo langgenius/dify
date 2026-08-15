@@ -19,7 +19,7 @@ vi.mock('../../hooks', () => ({
 }))
 
 const mockToggleInputFieldPreviewPanel = vi.fn()
-vi.mock('@/app/components/rag-pipeline/hooks', () => ({
+vi.mock('../../../../../hooks/use-input-field-panel', () => ({
   useInputFieldPanel: () => ({
     toggleInputFieldPreviewPanel: mockToggleInputFieldPreviewPanel,
     isPreviewing: true,
@@ -108,7 +108,7 @@ const mapOptionToObject = (option: string) => ({
   value: option,
 })
 
-vi.mock('@/app/components/rag-pipeline/hooks/use-input-fields', () => ({
+vi.mock('../../../../../hooks/use-input-fields', () => ({
   useInitialData: (variables: RAGPipelineVariables) => {
     return React.useMemo(() => {
       return variables.reduce(

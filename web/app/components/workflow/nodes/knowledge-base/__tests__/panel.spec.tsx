@@ -54,9 +54,14 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   useModelList: mockUseModelList,
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesReadOnly: () => ({ nodesReadOnly: false }),
-}))
+vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useNodesReadOnly: () => ({ nodesReadOnly: false }),
+  }
+})
 
 vi.mock('../hooks/use-config', () => ({
   useConfig: () => ({

@@ -54,7 +54,7 @@ const ConditionVariableSelector = ({
                     ns: 'workflow',
                   })}
                 </div>
-                <div className="flex h-5 shrink-0 items-center rounded-[5px] border border-divider-deep px-[5px] system-2xs-medium text-text-tertiary">
+                <div className="flex h-5 shrink-0 items-center rounded-[5px] border border-divider-deep px-1.25 system-2xs-medium text-text-tertiary">
                   {varType}
                 </div>
               </>
@@ -67,7 +67,7 @@ const ConditionVariableSelector = ({
         sideOffset={4}
         popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >
-        <div className="w-[296px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
+        <div className="w-74 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
           <VarReferenceVars vars={nodesOutputVars} isSupportFileVar onChange={handleChange} />
         </div>
       </PopoverContent>

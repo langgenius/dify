@@ -50,7 +50,7 @@ const Records = ({ records, onClickRecord }: RecordsProps) => {
             <td className="rounded-l-lg bg-background-section-burn pl-3">
               {t(($) => $['table.header.queryContent'], { ns: 'datasetHitTesting' })}
             </td>
-            <td className="w-[128px] bg-background-section-burn pl-3">
+            <td className="w-32 bg-background-section-burn pl-3">
               {t(($) => $['table.header.source'], { ns: 'datasetHitTesting' })}
             </td>
             <td className="w-48 rounded-r-lg bg-background-section-burn pl-3">
@@ -84,7 +84,7 @@ const Records = ({ records, onClickRecord }: RecordsProps) => {
                     )}
                   </div>
                 </td>
-                <td className="w-[128px] p-3 pr-2">
+                <td className="w-32 p-3 pr-2">
                   <div className="flex items-center">
                     <SourceIcon className="mr-1 size-4 text-text-tertiary" />
                     <span className="capitalize">

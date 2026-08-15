@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { WORKFLOW_COMMON_NODES } from '@/app/components/workflow/constants/node'
 import humanInputDefault from '@/app/components/workflow/nodes/human-input/default'
 import HumanInputNode from '@/app/components/workflow/nodes/human-input/node'
@@ -48,20 +48,41 @@ vi.mock('@/app/components/workflow/store', () => ({
 }))
 
 // Mock workflow hooks barrel (used by NodeSourceHandle via ../../../hooks)
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesInteractions: () => ({
-    handleNodeAdd: vi.fn(),
-  }),
-  useNodesReadOnly: () => ({
-    getNodesReadOnly: () => false,
-    nodesReadOnly: false,
-  }),
-  useAvailableBlocks: () => ({
-    availableNextBlocks: [],
-    availablePrevBlocks: [],
-  }),
-  useIsChatMode: () => false,
-}))
+vi.mock('../../../hooks/use-available-blocks', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-available-blocks')>()
+
+  return {
+    ...actual,
+    useAvailableBlocks: () => ({
+      availableNextBlocks: [],
+      availablePrevBlocks: [],
+    }),
+  }
+})
+
+vi.mock('../../../hooks/use-nodes-interactions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-nodes-interactions')>()
+
+  return {
+    ...actual,
+    useNodesInteractions: () => ({
+      handleNodeAdd: vi.fn(),
+    }),
+  }
+})
+
+vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useNodesReadOnly: () => ({
+      getNodesReadOnly: () => false,
+      nodesReadOnly: false,
+    }),
+    useIsChatMode: () => false,
+  }
+})
 
 // ── Factory: Build a realistic human-input node as it would appear after DSL import ──
 const createHumanInputNode = (overrides?: Partial<HumanInputNodeType>): Node => ({

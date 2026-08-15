@@ -1,6 +1,6 @@
 import type { CustomCollectionBackend } from '../../types'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { render } from '@/test/console/render'
 import { AuthType } from '../../types'
 import CustomCreateCard, { NewCustomToolButton } from '../custom-create-card'
@@ -130,7 +130,7 @@ describe('CustomCreateCard', () => {
       const card = screen.getByText('tools.createSwaggerAPIAsTool').closest('.col-span-1')
       expect(card).toBeInTheDocument()
       expect(card).toHaveClass(
-        'h-[120px]',
+        'h-30',
         'border-[0.5px]',
         'border-components-panel-border',
         'shadow-md',

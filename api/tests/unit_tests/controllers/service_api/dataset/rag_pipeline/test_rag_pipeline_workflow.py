@@ -24,10 +24,18 @@ from unittest.mock import Mock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import Forbidden, NotFound
 
-from controllers.common.errors import FilenameNotExistsError, NoFileUploadedError, TooManyFilesError
+from controllers.common.errors import (
+    FilenameNotExistsError,
+    NoFileUploadedError,
+    TooManyFilesError,
+)
+from controllers.common.errors import (
+    FileTooLargeError as FileTooLargeHTTPError,
+)
 from controllers.service_api.dataset.error import PipelineRunError
 from controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow import (
     DatasourceNodeRunApi,
@@ -38,12 +46,28 @@ from controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow import (
 )
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models.account import Account
-from services.errors.file import FileTooLargeError, UnsupportedFileTypeError
+from models.dataset import Dataset
+from services.errors.file import FileTooLargeError as FileTooLargeServiceError
+from services.errors.file import UnsupportedFileTypeError
 from services.rag_pipeline.entity.pipeline_service_api_entities import (
     DatasourceNodeRunApiEntity,
     PipelineRunApiEntity,
 )
 from services.rag_pipeline.rag_pipeline import RagPipelineService
+
+
+def _persist_dataset(session: Session, *, tenant_id: str, dataset_id: str) -> Dataset:
+    dataset = Dataset(
+        id=dataset_id,
+        tenant_id=tenant_id,
+        name="Pipeline dataset",
+        created_by="account-1",
+        data_source_type=None,
+        indexing_technique=None,
+    )
+    session.add(dataset)
+    session.commit()
+    return dataset
 
 
 class TestDatasourceNodeRunPayload:
@@ -127,7 +151,7 @@ class TestFileUploadErrors:
 
     def test_file_too_large_error(self):
         """Test FileTooLargeError can be raised."""
-        error = FileTooLargeError("File exceeds size limit")
+        error = FileTooLargeServiceError("File exceeds size limit")
         assert error is not None
 
     def test_unsupported_file_type_error(self):
@@ -470,7 +494,7 @@ class TestDatasourceNodeRunApiPost:
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.PipelineGenerator")
     @patch(
         "controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user",
-        new_callable=lambda: Mock(spec=Account),
+        new_callable=lambda: Account(name="Test Account", email="test@example.com"),
     )
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.RagPipelineService")
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.db")
@@ -546,17 +570,18 @@ class TestPipelineRunApiPost:
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.PipelineGenerateService")
     @patch(
         "controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user",
-        new_callable=lambda: Mock(spec=Account),
+        new_callable=lambda: Account(name="Test Account", email="test@example.com"),
     )
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.RagPipelineService")
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.service_api_ns")
-    def test_post_success_streaming(self, mock_ns, mock_svc_cls, mock_current_user, mock_gen_svc, mock_helper, app):
+    def test_post_success_streaming(
+        self, mock_ns, mock_svc_cls, mock_current_user, mock_gen_svc, mock_helper, app, sqlite_session: Session
+    ):
         """Test successful pipeline run with streaming response."""
         tenant_id = str(uuid.uuid4())
         dataset_id = str(uuid.uuid4())
 
-        session = Mock()
-        session.scalar.return_value = Mock()
+        _persist_dataset(sqlite_session, tenant_id=tenant_id, dataset_id=dataset_id)
 
         mock_ns.payload = {
             "inputs": {"key": "val"},
@@ -577,33 +602,31 @@ class TestPipelineRunApiPost:
 
         with app.test_request_context("/datasets/test/pipeline/run", method="POST"):
             api = PipelineRunApi()
-            response = api.post.__wrapped__(api, session, tenant_id=tenant_id, dataset_id=dataset_id)
+            response = api.post.__wrapped__(api, sqlite_session, tenant_id=tenant_id, dataset_id=dataset_id)
 
         assert response == {"result": "ok"}
-        mock_svc_cls.assert_called_once_with(session)
+        mock_svc_cls.assert_called_once_with(sqlite_session)
         mock_gen_svc.generate.assert_called_once()
 
-    def test_post_not_found(self, app: Flask):
+    def test_post_not_found(self, app: Flask, sqlite_session: Session):
         """Test NotFound when dataset check fails."""
-        session = Mock()
-        session.scalar.return_value = None
-
         with app.test_request_context("/datasets/test/pipeline/run", method="POST"):
             api = PipelineRunApi()
             with pytest.raises(NotFound):
                 api.post.__wrapped__(
                     api,
-                    session,
+                    sqlite_session,
                     tenant_id=str(uuid.uuid4()),
                     dataset_id=str(uuid.uuid4()),
                 )
 
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user", new="not_account")
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.service_api_ns")
-    def test_post_forbidden_non_account_user(self, mock_ns, app: Flask):
+    def test_post_forbidden_non_account_user(self, mock_ns, app: Flask, sqlite_session: Session):
         """Test Forbidden when current_user is not an Account."""
-        session = Mock()
-        session.scalar.return_value = Mock()
+        tenant_id = str(uuid.uuid4())
+        dataset_id = str(uuid.uuid4())
+        _persist_dataset(sqlite_session, tenant_id=tenant_id, dataset_id=dataset_id)
         mock_ns.payload = {
             "inputs": {},
             "datasource_type": "online_document",
@@ -618,9 +641,9 @@ class TestPipelineRunApiPost:
             with pytest.raises(Forbidden):
                 api.post.__wrapped__(
                     api,
-                    session,
-                    tenant_id=str(uuid.uuid4()),
-                    dataset_id=str(uuid.uuid4()),
+                    sqlite_session,
+                    tenant_id=tenant_id,
+                    dataset_id=dataset_id,
                 )
 
 
@@ -665,6 +688,38 @@ class TestFileUploadApiPost:
         assert status == 201
         assert response["name"] == "doc.pdf"
         assert response["extension"] == "pdf"
+
+    @patch(
+        "controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.FeatureService"
+        ".get_knowledge_file_size_limit",
+        return_value=15,
+    )
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.FileService")
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user")
+    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.db")
+    def test_upload_file_too_large_returns_http_413(
+        self, mock_db, mock_current_user, mock_file_svc_cls, mock_get_limit, app: Flask
+    ):
+        mock_current_user.__bool__ = Mock(return_value=True)
+        mock_file_svc_cls.return_value.upload_file.side_effect = FileTooLargeServiceError()
+        file_data = FileStorage(
+            stream=io.BytesIO(b"oversized content"),
+            filename="doc.pdf",
+            content_type="application/pdf",
+        )
+
+        with app.test_request_context(
+            "/datasets/pipeline/file-upload",
+            method="POST",
+            content_type="multipart/form-data",
+            data={"file": file_data},
+        ):
+            with pytest.raises(FileTooLargeHTTPError) as exc_info:
+                KnowledgebasePipelineFileUploadApi().post(tenant_id="tenant-1")
+
+        assert exc_info.value.code == 413
+        assert exc_info.value.error_code == "file_too_large"
+        mock_get_limit.assert_called_once_with("tenant-1")
 
     def test_upload_no_file(self, app: Flask):
         """Test error when no file is uploaded."""

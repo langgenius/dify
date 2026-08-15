@@ -11,7 +11,7 @@ const ChunkLabel: FC<ChunkLabelProps> = (props) => {
   const { label, characterCount } = props
   return (
     <div className="flex items-center text-xs font-medium text-text-tertiary">
-      <SelectionMod className="size-[10px]" />
+      <SelectionMod className="size-2.5" />
       <p className="ml-0.5 flex gap-2">
         <span>{label}</span>
         <span>·</span>
@@ -42,15 +42,11 @@ export const QAPreview: FC<QAPreviewProps> = (props) => {
   return (
     <div className="flex flex-col gap-y-2">
       <div className="flex gap-x-1">
-        <label className="shrink-0 text-[13px] leading-[20px] font-medium text-text-tertiary">
-          Q
-        </label>
+        <label className="shrink-0 text-[13px] leading-5 font-medium text-text-tertiary">Q</label>
         <p className="body-md-regular text-text-secondary">{qa.question}</p>
       </div>
       <div className="flex gap-x-1">
-        <label className="shrink-0 text-[13px] leading-[20px] font-medium text-text-tertiary">
-          A
-        </label>
+        <label className="shrink-0 text-[13px] leading-5 font-medium text-text-tertiary">A</label>
         <p className="body-md-regular text-text-secondary">{qa.answer}</p>
       </div>
     </div>

@@ -19,7 +19,7 @@ vi.mock('../../../constants', () => ({
   isInWorkflowPage: () => mockIsWorkflowPage,
 }))
 
-vi.mock('../../../hooks', () => ({
+vi.mock('../../../hooks/use-workflow', () => ({
   useIsChatMode: () => mockIsChatMode,
 }))
 

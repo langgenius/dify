@@ -198,7 +198,6 @@ export function OutputEditCard({
             variant="primary"
             disabled={confirmDisabled}
             aria-label={t(($) => $['nodes.agent.outputVars.confirm'], { ns: 'workflow' })}
-            className="gap-x-1"
           >
             {t(($) => $['nodes.agent.outputVars.confirm'], { ns: 'workflow' })}
             <ConfirmHotkeyHint />

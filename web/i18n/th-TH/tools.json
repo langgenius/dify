@@ -162,7 +162,7 @@
   "mcp.server.modal.parametersPlaceholder": "วัตถุประสงค์และข้อจำกัดของพารามิเตอร์",
   "mcp.server.modal.parametersTip": "เพิ่มคำอธิบายสำหรับแต่ละพารามิเตอร์เพื่อช่วยให้ LLM เข้าใจวัตถุประสงค์และข้อจำกัดของมัน",
   "mcp.server.publishTip": "แอปไม่ถูกเผยแพร่ กรุณาเผยแพร่แอปก่อน",
-  "mcp.server.reGen": "คุณต้องการสร้าง URL ของเซิร์ฟเวอร์ใหม่หรือไม่?",
+  "mcp.server.reGen": "คุณต้องการสร้าง URL ของเซิร์ฟเวอร์ใหม่หรือไม่? URL ปัจจุบันจะหยุดทำงานทันที",
   "mcp.server.title": "เซิร์ฟเวอร์ MCP",
   "mcp.server.url": "URL ของเซิร์ฟเวอร์",
   "mcp.toolItem.noDescription": "ไม่มีคำอธิบาย",

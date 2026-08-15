@@ -9,7 +9,7 @@ import {
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useDatasetsDetailStore } from '../../datasets-detail-store/store'
-import { useIsChatMode, useNodesReadOnly, useWorkflow } from '../../hooks'
+import { useIsChatMode, useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
 import { BlockEnum } from '../../types'
 import useKnowledgeDatasetSelection from './hooks/use-knowledge-dataset-selection'
 import useKnowledgeInputManager from './hooks/use-knowledge-input-manager'

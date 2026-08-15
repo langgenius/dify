@@ -54,7 +54,7 @@ def test_current_owner_or_admin_ids_returns_current_ids_for_manager(
     ("method", "args"),
     [
         (WorkflowRunArchivesApi.get, ()),
-        (WorkflowRunArchiveDownloadsApi.post, ()),
+        (WorkflowRunArchiveDownloadsApi.post, (None,)),
         (WorkflowRunArchiveDownloadApi.get, ("download-1",)),
         (WorkflowRunArchiveDownloadFileApi.get, ("download-1",)),
     ],
@@ -91,7 +91,6 @@ def test_workflow_run_archive_endpoints_require_cloud_paid_plan(method) -> None:
 
     assert {
         "only_edition_cloud",
-        "cloud_edition_billing_enabled",
         "cloud_edition_billing_paid_plan_required",
     } <= decorator_names
     assert "rbac_permission_required" not in decorator_names

@@ -248,35 +248,6 @@ vi.mock('@/app/components/base/divider', () => ({
   default: () => <hr data-testid="divider" />,
 }))
 
-vi.mock('@langgenius/dify-ui/pagination', () => ({
-  Pagination: ({
-    page,
-    totalPages,
-    onPageChange,
-    pageSize,
-  }: {
-    page: number
-    totalPages: number
-    onPageChange: (page: number) => void
-    pageSize?: {
-      onValueChange: (limit: number) => void
-    }
-  }) => (
-    <div data-testid="pagination">
-      <span data-testid="current-page">{page - 1}</span>
-      <span data-testid="total-pages">{totalPages}</span>
-      <button data-testid="next-page" onClick={() => onPageChange(page + 1)}>
-        Next
-      </button>
-      {pageSize && (
-        <button data-testid="change-limit" onClick={() => pageSize.onValueChange(20)}>
-          Change Limit
-        </button>
-      )}
-    </div>
-  ),
-}))
-
 const createMockSegmentDetail = (
   overrides: Partial<SegmentDetailModel> = {},
 ): SegmentDetailModel => ({
@@ -333,6 +304,11 @@ const createWrapper = () => {
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
 }
+
+const getPageSummaryButton = (page: number, totalPages: number) =>
+  screen.getByRole('button', {
+    name: `common.pagination.editPageNumber:{"page":${page},"totalPages":${totalPages}}`,
+  })
 
 describe('SegmentListContext', () => {
   describe('Default Values', () => {
@@ -500,7 +476,7 @@ describe('Completed Component', () => {
     it('should render Pagination component', () => {
       render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-      expect(screen.getByTestId('pagination'))!.toBeInTheDocument()
+      expect(screen.getByRole('navigation', { name: 'Pagination' })).toBeInTheDocument()
     })
 
     it('should render Divider component', () => {
@@ -525,32 +501,32 @@ describe('Completed Component', () => {
   })
 
   describe('Pagination', () => {
-    it('should start with page 0 (current - 1)', () => {
+    it('should start on the first page', () => {
+      mockSegmentListData.total = 30
       render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-      expect(screen.getByTestId('current-page'))!.toHaveTextContent('0')
+      expect(getPageSummaryButton(1, 3)).toBeInTheDocument()
     })
 
     it('should update page when pagination changes', async () => {
+      mockSegmentListData.total = 30
       render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-      const nextPageButton = screen.getByTestId('next-page')
+      const nextPageButton = screen.getByRole('button', { name: 'common.pagination.next' })
       fireEvent.click(nextPageButton)
 
       await waitFor(() => {
-        expect(screen.getByTestId('current-page'))!.toHaveTextContent('1')
+        expect(getPageSummaryButton(2, 3)).toBeInTheDocument()
       })
     })
 
-    it('should update limit when limit changes', async () => {
+    it('should expose page-size controls', () => {
       render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-      const changeLimitButton = screen.getByTestId('change-limit')
-      fireEvent.click(changeLimitButton)
-
-      // Limit change is handled internally
-      // Limit change is handled internally
-      expect(changeLimitButton)!.toBeInTheDocument()
+      expect(
+        screen.getByRole('radiogroup', { name: 'common.pagination.perPage' }),
+      ).toBeInTheDocument()
+      expect(screen.getByRole('radio', { name: '10' })).toHaveAttribute('aria-checked', 'true')
     })
   })
 
@@ -651,7 +627,7 @@ describe('Edge Cases', () => {
 
       const { unmount } = render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-      expect(screen.getByTestId('pagination'))!.toBeInTheDocument()
+      expect(screen.getByRole('navigation', { name: 'Pagination' })).toBeInTheDocument()
 
       unmount()
     })
@@ -667,7 +643,7 @@ describe('Edge Cases', () => {
 
       const { unmount } = render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-      expect(screen.getByTestId('pagination'))!.toBeInTheDocument()
+      expect(screen.getByRole('navigation', { name: 'Pagination' })).toBeInTheDocument()
 
       unmount()
     })
@@ -696,7 +672,7 @@ describe('Integration Tests', () => {
     // All components should render without errors
     expect(screen.getByTestId('menu-bar'))!.toBeInTheDocument()
     expect(screen.getByTestId('general-mode-content'))!.toBeInTheDocument()
-    expect(screen.getByTestId('pagination'))!.toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: 'Pagination' })).toBeInTheDocument()
     expect(screen.getByTestId('drawer-group'))!.toBeInTheDocument()
   })
 
@@ -1103,17 +1079,18 @@ describe('Inline callback and hook initialization coverage', () => {
 
   // Covers lines 56-58: useSearchFilter({ onPageChange: setCurrentPage })
   it('should reset current page when status filter changes', async () => {
+    mockSegmentListData.total = 30
     render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-    fireEvent.click(screen.getByTestId('next-page'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.pagination.next' }))
     await waitFor(() => {
-      expect(screen.getByTestId('current-page'))!.toHaveTextContent('1')
+      expect(getPageSummaryButton(2, 3)).toBeInTheDocument()
     })
 
     fireEvent.click(screen.getByTestId('status-enabled'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('current-page'))!.toHaveTextContent('0')
+      expect(getPageSummaryButton(1, 3)).toBeInTheDocument()
     })
   })
 
@@ -1226,21 +1203,6 @@ describe('Inline callback and hook initialization coverage', () => {
     })
   })
 
-  // Covers line 133-135: handlePageChange
-  it('should handle multiple page changes', async () => {
-    render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
-
-    fireEvent.click(screen.getByTestId('next-page'))
-    await waitFor(() => {
-      expect(screen.getByTestId('current-page'))!.toHaveTextContent('1')
-    })
-
-    fireEvent.click(screen.getByTestId('next-page'))
-    await waitFor(() => {
-      expect(screen.getByTestId('current-page'))!.toHaveTextContent('2')
-    })
-  })
-
   it('should compute pagination pages from child chunk data in full-doc mode', () => {
     mockDocForm.current = ChunkingModeEnum.parentChild
     mockParentMode.current = 'full-doc'
@@ -1248,7 +1210,7 @@ describe('Inline callback and hook initialization coverage', () => {
 
     render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-    expect(screen.getByTestId('total-pages'))!.toHaveTextContent('5')
+    expect(getPageSummaryButton(1, 5)).toBeInTheDocument()
   })
 
   // Covers search input change

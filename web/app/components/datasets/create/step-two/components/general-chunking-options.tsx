@@ -117,7 +117,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
       actions={
         <>
           <Button variant="secondary-accent" onClick={onPreview}>
-            <RiSearchEyeLine className="mr-0.5 size-4" />
+            <RiSearchEyeLine className="size-4" />
             {t(($) => $['stepTwo.previewChunk'], { ns: 'datasetCreation' })}
           </Button>
           <Button variant="ghost" onClick={onReset}>
@@ -127,8 +127,10 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
       }
       noHighlight={isInUpload && isNotUploadInEmptyDataset}
     >
-      <div className="flex flex-col gap-y-4">
-        <div className="flex gap-3">
+      <div className="@container/chunkfields flex flex-col gap-y-4">
+        {/* Container query, not a viewport breakpoint: three across at/above a
+            552px container, stacked one-per-row below (see inputs.tsx FormField). */}
+        <div className="flex flex-col gap-3 @min-[552px]/chunkfields:flex-row">
           <DelimiterInput
             value={segmentIdentifier}
             onChange={(e) => onSegmentIdentifierChange(e.target.value)}

@@ -1,3 +1,4 @@
+import type { ModelType } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FileTypesRes } from './datasets'
 import type {
   Model,
@@ -15,9 +16,10 @@ import type {
   StructuredOutputRulesResponse,
 } from '@/models/common'
 import type { RETRIEVE_METHOD } from '@/types/app'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 // oxlint-disable-next-line no-restricted-imports
 import { get, post } from './base'
+import { consoleQuery } from './client'
 
 const NAME_SPACE = 'common'
 
@@ -27,7 +29,7 @@ export const commonQueryKeys = {
   filePreview: (fileID: string) => [NAME_SPACE, 'file-preview', fileID] as const,
   schemaDefinitions: [NAME_SPACE, 'schema-type-definitions'] as const,
   modelProviders: [NAME_SPACE, 'model-providers'] as const,
-  modelList: (type: ModelTypeEnum) => [NAME_SPACE, 'model-list', type] as const,
+  modelProviderDetails: [NAME_SPACE, 'model-provider-details'] as const,
   defaultModel: (type: ModelTypeEnum) => [NAME_SPACE, 'default-model', type] as const,
   retrievalMethods: [NAME_SPACE, 'support-retrieval-methods'] as const,
   accountIntegrates: [NAME_SPACE, 'account-integrates'] as const,
@@ -196,16 +198,28 @@ export const useOneMoreStep = () => {
   })
 }
 
-export const useModelProviders = () => {
-  return useQuery<{ data: ModelProvider[] }>({
-    queryKey: commonQueryKeys.modelProviders,
+export const modelProviderDetailsQueryOptions = () =>
+  queryOptions({
+    queryKey: commonQueryKeys.modelProviderDetails,
     queryFn: () => get<{ data: ModelProvider[] }>('/workspaces/current/model-providers'),
+  })
+
+export const useModelProviderDetails = (enabled = true) => {
+  return useQuery({
+    ...modelProviderDetailsQueryOptions(),
+    enabled,
   })
 }
 
-export const useModelListByType = (type: ModelTypeEnum, enabled = true) => {
+export const useModelListByType = (type: ModelTypeEnum | ModelType, enabled = true) => {
   return useQuery<{ data: Model[] }>({
-    queryKey: commonQueryKeys.modelList(type),
+    queryKey: consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+      input: {
+        params: {
+          model_type: type,
+        },
+      },
+    }),
     queryFn: () => get<{ data: Model[] }>(`/workspaces/current/models/model-types/${type}`),
     enabled,
   })

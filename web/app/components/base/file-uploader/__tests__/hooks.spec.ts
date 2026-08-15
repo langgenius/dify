@@ -79,6 +79,7 @@ describe('useFileSizeLimit', () => {
     expect(result.current.docSizeLimit).toBe(15 * 1024 * 1024)
     expect(result.current.audioSizeLimit).toBe(50 * 1024 * 1024)
     expect(result.current.videoSizeLimit).toBe(100 * 1024 * 1024)
+    expect(result.current.skillSizeLimit).toBe(50 * 1024 * 1024)
     expect(result.current.maxFileUploadLimit).toBe(10)
   })
 
@@ -88,6 +89,7 @@ describe('useFileSizeLimit', () => {
       file_size_limit: 30,
       audio_file_size_limit: 100,
       video_file_size_limit: 200,
+      skill_file_size_limit: 60,
       workflow_file_upload_limit: 20,
     } as FileUploadConfigResponse
 
@@ -97,6 +99,7 @@ describe('useFileSizeLimit', () => {
     expect(result.current.docSizeLimit).toBe(30 * 1024 * 1024)
     expect(result.current.audioSizeLimit).toBe(100 * 1024 * 1024)
     expect(result.current.videoSizeLimit).toBe(200 * 1024 * 1024)
+    expect(result.current.skillSizeLimit).toBe(60 * 1024 * 1024)
     expect(result.current.maxFileUploadLimit).toBe(20)
   })
 
@@ -106,6 +109,7 @@ describe('useFileSizeLimit', () => {
       file_size_limit: 0,
       audio_file_size_limit: 0,
       video_file_size_limit: 0,
+      skill_file_size_limit: 0,
       workflow_file_upload_limit: 0,
     } as FileUploadConfigResponse
 
@@ -115,6 +119,7 @@ describe('useFileSizeLimit', () => {
     expect(result.current.docSizeLimit).toBe(15 * 1024 * 1024)
     expect(result.current.audioSizeLimit).toBe(50 * 1024 * 1024)
     expect(result.current.videoSizeLimit).toBe(100 * 1024 * 1024)
+    expect(result.current.skillSizeLimit).toBe(50 * 1024 * 1024)
     expect(result.current.maxFileUploadLimit).toBe(10)
   })
 })

@@ -20,7 +20,7 @@ const ErrorHandleTip = ({ type }: ErrorHandleTipProps) => {
   if (!type) return null
 
   return (
-    <div className="relative flex rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 pr-[52px] shadow-xs">
+    <div className="relative flex rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 pr-13 shadow-xs">
       <div
         className="absolute inset-0 rounded-lg opacity-40"
         style={{

@@ -1,11 +1,11 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import { fireEvent, render, screen, within } from '@testing-library/react'
-import { Plan } from '@/app/components/billing/type'
 import {
   WorkflowVersionApiContent,
   WorkflowVersionApiUpgradeNotice,
 } from '../workflow-version-api-upgrade-notice'
 
-let mockPlanType = Plan.professional
+let mockPlanType: CloudPlan = 'professional'
 let mockEnableBilling = true
 let mockIsFetchedPlan = true
 
@@ -69,13 +69,13 @@ vi.mock('@/app/components/billing/upgrade-btn', () => ({
 
 describe('WorkflowVersionApiUpgradeNotice', () => {
   beforeEach(() => {
-    mockPlanType = Plan.professional
+    mockPlanType = 'professional'
     mockEnableBilling = true
     mockIsFetchedPlan = true
   })
 
   it('should not render before the plan is fetched', () => {
-    mockPlanType = Plan.sandbox
+    mockPlanType = 'sandbox'
     mockIsFetchedPlan = false
 
     render(<WorkflowVersionApiUpgradeNotice />)
@@ -86,7 +86,7 @@ describe('WorkflowVersionApiUpgradeNotice', () => {
   })
 
   it('should not render when billing is disabled', () => {
-    mockPlanType = Plan.sandbox
+    mockPlanType = 'sandbox'
     mockEnableBilling = false
 
     render(<WorkflowVersionApiUpgradeNotice />)
@@ -105,7 +105,7 @@ describe('WorkflowVersionApiUpgradeNotice', () => {
   })
 
   it('should show a small upgrade button and open the plan upgrade modal for sandbox plans', () => {
-    mockPlanType = Plan.sandbox
+    mockPlanType = 'sandbox'
 
     render(<WorkflowVersionApiUpgradeNotice />)
 
@@ -133,7 +133,7 @@ describe('WorkflowVersionApiUpgradeNotice', () => {
 
 describe('WorkflowVersionApiContent', () => {
   beforeEach(() => {
-    mockPlanType = Plan.professional
+    mockPlanType = 'professional'
     mockEnableBilling = true
     mockIsFetchedPlan = true
   })
@@ -147,7 +147,7 @@ describe('WorkflowVersionApiContent', () => {
   })
 
   it('should hide content for sandbox plans', () => {
-    mockPlanType = Plan.sandbox
+    mockPlanType = 'sandbox'
 
     const { container } = render(
       <>
@@ -168,7 +168,7 @@ describe('WorkflowVersionApiContent', () => {
   })
 
   it('should show content when billing is disabled', () => {
-    mockPlanType = Plan.sandbox
+    mockPlanType = 'sandbox'
     mockEnableBilling = false
     mockIsFetchedPlan = false
 

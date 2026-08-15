@@ -5,7 +5,7 @@ import type {
   UpdateFromGitHubPayload,
 } from '../../../types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum } from '../../../types'
 import {
   convertRepoToUrl,
@@ -613,6 +613,42 @@ describe('InstallFromGitHub', () => {
 
       await waitFor(() => {
         expect(defaultProps.onSuccess).toHaveBeenCalledTimes(1)
+      })
+    })
+
+    it('waits for an async onSuccess callback before showing installation success', async () => {
+      let resolveSuccess: (() => void) | undefined
+      const onSuccess = vi.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveSuccess = resolve
+          }),
+      )
+      render(
+        <InstallFromGitHub
+          onClose={vi.fn()}
+          onSuccess={onSuccess}
+          updatePayload={createUpdatePayload()}
+        />,
+      )
+
+      fireEvent.click(screen.getByTestId('trigger-upload-btn'))
+
+      await waitFor(() => {
+        expect(screen.getByTestId('loaded-step')).toBeInTheDocument()
+      })
+
+      fireEvent.click(screen.getByTestId('install-success-btn'))
+
+      await waitFor(() => {
+        expect(onSuccess).toHaveBeenCalledTimes(1)
+      })
+      expect(screen.queryByTestId('installed-step')).not.toBeInTheDocument()
+
+      resolveSuccess?.()
+
+      await waitFor(() => {
+        expect(screen.getByTestId('installed-step')).toBeInTheDocument()
       })
     })
 

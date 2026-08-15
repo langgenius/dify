@@ -124,9 +124,9 @@ export const ValueSection = ({
           onClick={() => onEditorChange(!editInJSON)}
         >
           {editInJSON ? (
-            <RiInputField className="mr-1 size-3.5" />
+            <RiInputField className="size-3.5" />
           ) : (
-            <RiDraftLine className="mr-1 size-3.5" />
+            <RiDraftLine className="size-3.5" />
           )}
           {t(editorToggleLabelSelectors[toggleLabelKey], { ns: 'workflow' })}
         </Button>

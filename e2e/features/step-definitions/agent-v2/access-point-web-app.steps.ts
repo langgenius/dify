@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test'
 import type { DifyWorld } from '../../support/world'
 import { Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
+import { getAgentWebAppURL } from '../../agent-v2/support/access-point'
 import { agentBuilderExpectedTokens } from '../../agent-v2/support/agent-builder-resources'
 import { getCurrentAgentId, getDialog, getWebAppCard } from './access-point-helpers'
 
@@ -21,7 +22,7 @@ Then('I should see the Agent v2 Web app access URL', async function (this: DifyW
   const webAppCard = getWebAppCard(this)
 
   await expect(webAppCard.getByRole('heading', { name: 'Web app' })).toBeVisible()
-  await expect(webAppCard.getByText('Access URL')).toBeVisible()
+  await expect(webAppCard.getByText('Web App URL')).toBeVisible()
   await expect(webAppCard.getByLabel('Copy access URL')).toBeEnabled()
   await expect(webAppCard.getByRole('link', { name: 'Launch' })).toBeVisible()
 })
@@ -48,8 +49,9 @@ When('I launch the Agent v2 Web app', async function (this: DifyWorld) {
 })
 
 When('I open the Agent v2 Web app URL', async function (this: DifyWorld) {
-  const webAppURL = this.agentBuilder.accessPoint.webAppURL
-  if (!webAppURL) throw new Error('No Agent v2 Web app URL was recorded.')
+  const agentId = getCurrentAgentId(this)
+  const agent = await this.getConsoleClient().agent.byAgentId.get({ params: { agent_id: agentId } })
+  const webAppURL = this.agentBuilder.accessPoint.webAppURL ?? getAgentWebAppURL(agent)
   if (!this.context) throw new Error('Playwright browser context has not been initialized.')
 
   const webAppPage = await this.context.newPage()

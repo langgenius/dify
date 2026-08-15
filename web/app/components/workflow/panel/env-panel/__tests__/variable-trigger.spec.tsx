@@ -8,6 +8,23 @@ import { WorkflowContext } from '@/app/components/workflow/context'
 import { createWorkflowStore } from '@/app/components/workflow/store/workflow'
 import VariableTrigger from '../variable-trigger'
 
+vi.mock(
+  '@/app/components/header/account-setting/model-provider-page/hooks',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/header/account-setting/model-provider-page/hooks')
+      >()
+
+    return {
+      ...actual,
+      useTextGenerationCurrentProviderAndModelAndModelList: () => ({
+        activeTextGenerationModelList: [],
+      }),
+    }
+  },
+)
+
 const createEnv = (overrides: Partial<EnvironmentVariable> = {}): EnvironmentVariable => ({
   id: 'env-1',
   name: 'api_key',

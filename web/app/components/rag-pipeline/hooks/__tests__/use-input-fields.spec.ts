@@ -1,6 +1,6 @@
 import type { RAGPipelineVariables } from '@/models/pipeline'
 import { renderHook } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
 import { useConfigurations, useInitialData } from '../use-input-fields'
 

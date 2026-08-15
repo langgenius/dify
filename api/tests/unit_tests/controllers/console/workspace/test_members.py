@@ -1,6 +1,9 @@
 from contextlib import nullcontext
+from datetime import datetime
+from http import HTTPStatus
 from inspect import unwrap
 from types import SimpleNamespace
+from typing import NamedTuple, override
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -28,93 +31,95 @@ from controllers.console.workspace.members import (
     SendOwnerTransferEmailApi,
     _count_new_member_invites,
 )
+from enums import DeploymentEdition
 from libs.external_api import ExternalApi
+from machinery.context import RequestContext
 from services.errors.account import AccountAlreadyInTenantError, SeatsLimitExceededError
+from services.workspace_member_query_service import (
+    WorkspaceMemberQueryService,
+    WorkspaceMemberRole,
+    WorkspaceMemberSummary,
+)
+
+
+class _RecordingWorkspaceMemberQueryService(WorkspaceMemberQueryService):
+    def __init__(self, result: tuple[WorkspaceMemberSummary, ...]) -> None:
+        self._result = result
+        self.contexts: list[RequestContext] = []
+
+    @override
+    def list_current(self, context: RequestContext) -> tuple[WorkspaceMemberSummary, ...]:
+        self.contexts.append(context)
+        return self._result
+
+
+class _ApplicationServicesStub(NamedTuple):
+    workspace_member_queries: WorkspaceMemberQueryService
 
 
 class TestMemberListApi:
-    def test_get_success(self, app: Flask):
+    def test_get_passes_context_and_serializes_application_result(self, app: Flask) -> None:
         api = MemberListApi()
         method = unwrap(api.get)
-
-        tenant = MagicMock()
-        user = MagicMock(current_tenant=tenant)
-        member = MagicMock()
-        member.id = "m1"
-        member.name = "Member"
-        member.email = "member@test.com"
-        member.avatar = "avatar.png"
-        member.current_role = SimpleNamespace(value="admin")
-        member.status = SimpleNamespace(value="active")
-        members = [member]
+        request_context = RequestContext(
+            request_id="request-1",
+            trace_id="trace-1",
+            account_id="actor-1",
+            active_workspace_id="workspace-1",
+        )
+        timestamp = datetime(2026, 1, 1)
+        workspace_member_queries = _RecordingWorkspaceMemberQueryService(
+            (
+                WorkspaceMemberSummary(
+                    id="member-1",
+                    name="Member",
+                    email="member@example.com",
+                    avatar=None,
+                    last_login_at=None,
+                    last_active_at=timestamp,
+                    created_at=timestamp,
+                    role="owner",
+                    roles=(
+                        WorkspaceMemberRole(id="workspace.owner", name="Owner"),
+                        WorkspaceMemberRole(id="workspace.editor", name="Editor"),
+                    ),
+                    status="active",
+                ),
+            )
+        )
+        application_services_stub = _ApplicationServicesStub(workspace_member_queries=workspace_member_queries)
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.members.TenantService.get_tenant_members", return_value=members),
-        ):
-            result, status = method(api, user)
-
-        assert status == 200
-        assert len(result["accounts"]) == 1
-        assert result["accounts"][0]["role"] == "admin"
-        assert result["accounts"][0]["roles"] == [{"id": "admin", "name": "admin"}]
-
-    def test_get_with_rbac_enabled_fetches_roles_in_batch(self, app):
-        api = MemberListApi()
-        method = unwrap(api.get)
-
-        tenant = MagicMock(id="tenant-1")
-        user = MagicMock(id="acct-1", current_tenant=tenant)
-        member = SimpleNamespace(
-            id="m1",
-            name="Member",
-            email="member@test.com",
-            avatar=None,
-            last_login_at=1,
-            last_active_at=2,
-            created_at=3,
-            current_role=SimpleNamespace(value="editor"),
-            status=SimpleNamespace(value="active"),
-        )
-        role_item = SimpleNamespace(
-            account_id="m1",
-            roles=[
-                SimpleNamespace(id="workspace.owner", name="Owner"),
-                SimpleNamespace(id="workspace.editor", name="Editor"),
-            ],
-        )
-
-        with (
-            app.test_request_context("/"),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "tenant-1")),
-            patch("controllers.console.workspace.members.dify_config.RBAC_ENABLED", True),
-            patch("controllers.console.workspace.members.TenantService.get_tenant_members", return_value=[member]),
             patch(
-                "controllers.console.workspace.members.enterprise_rbac_service.RBACService.MemberRoles.batch_get",
-                return_value=[role_item],
-            ) as mock_batch_get,
+                "controllers.console.workspace.members.application_services",
+                return_value=application_services_stub,
+            ),
         ):
-            result, status = method(api)
+            result, status = method(api, request_context=request_context)
 
-        assert status == 200
-        assert result["accounts"][0]["role"] == "editor"
-        assert result["accounts"][0]["roles"] == [
-            {"id": "workspace.owner", "name": "Owner"},
-            {"id": "workspace.editor", "name": "Editor"},
-        ]
-        mock_batch_get.assert_called_once_with("tenant-1", "acct-1", ["m1"])
-
-    def test_get_no_tenant(self, app: Flask):
-        api = MemberListApi()
-        method = unwrap(api.get)
-
-        user = MagicMock(current_tenant=None)
-
-        with (
-            app.test_request_context("/"),
-        ):
-            with pytest.raises(ValueError):
-                method(api, user)
+        assert status == HTTPStatus.OK
+        assert result == {
+            "accounts": [
+                {
+                    "id": "member-1",
+                    "name": "Member",
+                    "email": "member@example.com",
+                    "avatar": None,
+                    "avatar_url": None,
+                    "last_login_at": None,
+                    "last_active_at": int(timestamp.timestamp()),
+                    "created_at": int(timestamp.timestamp()),
+                    "role": "owner",
+                    "roles": [
+                        {"id": "workspace.owner", "name": "Owner"},
+                        {"id": "workspace.editor", "name": "Editor"},
+                    ],
+                    "status": "active",
+                }
+            ]
+        }
+        assert workspace_member_queries.contexts == [request_context]
 
 
 class TestMemberInviteEmailApi:
@@ -130,7 +135,6 @@ class TestMemberInviteEmailApi:
         tenant = MagicMock(id="t1")
         user = MagicMock(current_tenant=tenant)
         features = MagicMock()
-        features.billing.enabled = False
         features.workspace_members.enabled = False
         features.workspace_members.is_available.return_value = True
 
@@ -148,8 +152,7 @@ class TestMemberInviteEmailApi:
                 "controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"
             ) as mock_invite,
             patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "http://x"),
-            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", False),
-            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
+            patch("controllers.console.workspace.members.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
         ):
             result, status = method(api, user)
 
@@ -167,7 +170,6 @@ class TestMemberInviteEmailApi:
         tenant = MagicMock(id="t1")
         user = MagicMock(current_tenant=tenant)
         features = MagicMock()
-        features.billing.enabled = False
         features.workspace_members.enabled = True
         features.workspace_members.is_available.return_value = False
 
@@ -180,20 +182,18 @@ class TestMemberInviteEmailApi:
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
             patch("controllers.console.workspace.members._count_new_member_invites", return_value=(1, 1)),
-            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", True),
-            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
+            patch("controllers.console.workspace.members.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE),
         ):
             with pytest.raises(WorkspaceMembersLimitExceeded):
                 method(api, user)
 
-    def test_invite_billing_limit_exceeded(self, app: Flask):
+    def test_invite_cloud_member_limit_exceeded(self, app: Flask):
         api = MemberInviteEmailApi()
         method = unwrap(api.post)
 
         tenant = MagicMock(id="t1")
         user = MagicMock(current_tenant=tenant)
         features = MagicMock()
-        features.billing.enabled = True
         features.members.size = 9
         features.members.limit = 10
         features.workspace_members.enabled = False
@@ -208,8 +208,7 @@ class TestMemberInviteEmailApi:
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
             patch("controllers.console.workspace.members._count_new_member_invites", return_value=(2, 2)),
             patch("controllers.console.workspace.members._count_current_members", return_value=9),
-            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", False),
-            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", True),
+            patch("controllers.console.workspace.members.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         ):
             with pytest.raises(WorkspaceMembersLimitExceeded):
                 method(api, user)
@@ -221,7 +220,6 @@ class TestMemberInviteEmailApi:
         tenant = MagicMock(id="t1")
         user = MagicMock(current_tenant=tenant)
         features = MagicMock()
-        features.billing.enabled = False
         features.workspace_members.enabled = False
         features.workspace_members.is_available.return_value = True
 
@@ -239,8 +237,7 @@ class TestMemberInviteEmailApi:
                 side_effect=AccountAlreadyInTenantError(),
             ),
             patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "http://x"),
-            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", False),
-            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
+            patch("controllers.console.workspace.members.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
         ):
             result, status = method(api, user)
 
@@ -289,7 +286,6 @@ class TestMemberInviteEmailApi:
         tenant = MagicMock(id="t1")
         user = MagicMock(current_tenant=tenant)
         features = MagicMock()
-        features.billing.enabled = False
         features.workspace_members.enabled = False
         features.workspace_members.is_available.return_value = True
 
@@ -307,8 +303,7 @@ class TestMemberInviteEmailApi:
                 side_effect=Exception("boom"),
             ),
             patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "http://x"),
-            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", False),
-            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
+            patch("controllers.console.workspace.members.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
         ):
             result, _ = method(api, user)
 
@@ -321,7 +316,6 @@ class TestMemberInviteEmailApi:
         tenant = MagicMock(id="t1")
         user = MagicMock(current_tenant=tenant)
         features = MagicMock()
-        features.billing.enabled = False
         features.workspace_members.enabled = False
         license_info = MagicMock()
         license_info.seats.is_available.return_value = False
@@ -340,8 +334,7 @@ class TestMemberInviteEmailApi:
                 return_value=license_info,
             ) as mock_get_license,
             patch("controllers.console.workspace.members.RegisterService.invite_new_member") as mock_invite,
-            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", True),
-            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
+            patch("controllers.console.workspace.members.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE),
         ):
             with pytest.raises(SeatsLimitExceeded):
                 method(api, user)
@@ -357,7 +350,6 @@ class TestMemberInviteEmailApi:
         tenant = MagicMock(id="t1")
         user = MagicMock(current_tenant=tenant)
         features = MagicMock()
-        features.billing.enabled = False
         features.workspace_members.enabled = False
         license_info = MagicMock()
         license_info.seats.is_available.return_value = False
@@ -379,8 +371,7 @@ class TestMemberInviteEmailApi:
                 "controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"
             ) as mock_invite,
             patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "http://x"),
-            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", True),
-            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
+            patch("controllers.console.workspace.members.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE),
         ):
             result, status = method(api, user)
 
@@ -397,7 +388,6 @@ class TestMemberInviteEmailApi:
         tenant = MagicMock(id="t1")
         user = MagicMock(current_tenant=tenant)
         features = MagicMock()
-        features.billing.enabled = False
         features.workspace_members.enabled = False
         license_info = MagicMock()
         license_info.seats.is_available.return_value = True
@@ -419,8 +409,7 @@ class TestMemberInviteEmailApi:
                 "controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"
             ) as mock_invite,
             patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "http://x"),
-            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", True),
-            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
+            patch("controllers.console.workspace.members.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE),
         ):
             result, status = method(api, user)
 
@@ -437,7 +426,6 @@ class TestMemberInviteEmailApi:
         tenant = MagicMock(id="t1")
         user = MagicMock(current_tenant=tenant)
         features = MagicMock()
-        features.billing.enabled = False
         features.workspace_members.enabled = False
         license_info = MagicMock()
         license_info.seats.is_available.return_value = False
@@ -457,8 +445,7 @@ class TestMemberInviteEmailApi:
             ) as mock_get_license,
             patch("controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"),
             patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "http://x"),
-            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", False),
-            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
+            patch("controllers.console.workspace.members.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
         ):
             result, status = method(api, user)
 
@@ -474,7 +461,6 @@ class TestMemberInviteEmailApi:
         tenant = MagicMock(id="t1")
         user = MagicMock(current_tenant=tenant)
         features = MagicMock()
-        features.billing.enabled = False
         features.workspace_members.enabled = False
         license_info = MagicMock()
         license_info.seats.is_available.return_value = True
@@ -497,8 +483,7 @@ class TestMemberInviteEmailApi:
                 side_effect=SeatsLimitExceededError("licensed seats limit exceeded"),
             ),
             patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "http://x"),
-            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", True),
-            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
+            patch("controllers.console.workspace.members.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE),
         ):
             result, status = method(api, user)
 

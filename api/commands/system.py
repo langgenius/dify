@@ -6,12 +6,12 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
-from enums.deployment_edition import DeploymentEdition
+from enums import DeploymentEdition
 from events.app_event import app_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.db_migration_lock import DbMigrationAutoRenewLock
-from libs.rsa import generate_key_pair
+from libs.key_providers import generate_key_pair
 from models import Tenant
 from models.model import App, AppMode, Conversation
 from models.provider import Provider, ProviderModel

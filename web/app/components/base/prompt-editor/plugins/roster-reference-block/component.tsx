@@ -42,7 +42,7 @@ const RosterReferenceBlockComponent = ({ text }: RosterReferenceBlockComponentPr
       data-roster-reference-warning={warning ? true : undefined}
       title={warning ?? token.label}
       className={cn(
-        'inline-flex min-w-[18px] items-center gap-0.5 overflow-hidden rounded-[5px] border py-px pr-1 pl-px align-middle shadow-xs shadow-shadow-shadow-3',
+        'inline-flex min-w-4.5 items-center gap-0.5 overflow-hidden rounded-[5px] border py-px pr-1 pl-px align-middle shadow-xs shadow-shadow-shadow-3',
         warning
           ? 'border-components-badge-status-light-warning-halo bg-state-warning-hover'
           : 'border-state-accent-hover-alt bg-state-accent-hover',
@@ -54,7 +54,7 @@ const RosterReferenceBlockComponent = ({ text }: RosterReferenceBlockComponentPr
           'inline-flex size-4 shrink-0 items-center justify-center rounded-[5px] border-[0.5px] border-divider-subtle bg-background-default-dodge',
           token.kind === 'cli_tool' && 'border-divider-regular bg-text-tertiary',
           isKnowledge &&
-            'border-divider-subtle bg-util-colors-green-green-500 p-[3px] text-text-primary-on-surface shadow-xs shadow-shadow-shadow-3',
+            'border-divider-subtle bg-util-colors-green-green-500 p-0.75 text-text-primary-on-surface shadow-xs shadow-shadow-shadow-3',
         )}
       >
         {customIcon || defaultIcon}

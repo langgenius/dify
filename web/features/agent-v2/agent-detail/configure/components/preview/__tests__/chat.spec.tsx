@@ -1,15 +1,21 @@
 import type { ComponentProps, ReactNode } from 'react'
 import type { AgentPreviewChatController } from '../chat-conversation'
+import type { AgentChatRuntimeEmptyStateProps } from '../chat-runtime'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
+import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
+import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { createRef, useState } from 'react'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { consoleQuery } from '@/service/client'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { render } from '@/test/console/render'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { TransferMethod } from '@/types/app'
@@ -32,7 +38,15 @@ const mockConsoleState = vi.hoisted(() => ({
   deploymentEdition: 'COMMUNITY' as 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE',
 }))
 
-vi.mock('@/context/system-features-state', async () => {
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    error: vi.fn(),
+  },
+}))
+
+const mockToastError = vi.mocked(toast.error)
+
+vi.mock('@/features/system-features/state', async () => {
   const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
   return createSystemFeaturesStateModuleMock(() => mockConsoleState)
 })
@@ -44,7 +58,7 @@ vi.mock('@/next/dynamic', async () => {
     default: () =>
       function MockChat(props: {
         answerActionPosition?: 'auto' | 'below'
-        onSend: (message: string) => unknown
+        onSend: (message: string, files?: FileEntity[]) => unknown
         onStopResponding: () => void
         sendButtonLabel?: string
         sendButtonLoading?: boolean
@@ -99,6 +113,26 @@ vi.mock('@/next/dynamic', async () => {
               }}
             >
               send
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSent(true)
+                sendResultRef.current = props.onSend('read this file', [
+                  {
+                    id: 'file-1',
+                    name: 'brief.docx',
+                    size: 1024,
+                    type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    progress: 100,
+                    transferMethod: TransferMethod.local_file,
+                    supportFileType: 'document',
+                    uploadedId: 'uploaded-file-1',
+                  },
+                ])
+              }}
+            >
+              send with document
             </button>
             <button type="button" onClick={props.onStopResponding}>
               stop
@@ -176,16 +210,6 @@ vi.mock('@/app/components/base/chat/chat/hooks', () => ({
   ),
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({
-    userProfile: {
-      avatar_url: '',
-      name: 'User',
-    },
-  }))
-})
-
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useTextGenerationCurrentProviderAndModelAndModelList: () => ({
     textGenerationModelList: [
@@ -227,6 +251,13 @@ vi.mock('@/service/client', async () => {
       },
     },
     consoleQuery: {
+      account: {
+        profile: {
+          get: {
+            queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
+          },
+        },
+      },
       agent: {
         byAgentId: {
           chatMessages: {
@@ -244,7 +275,16 @@ vi.mock('@/service/client', async () => {
   }
 })
 
-function renderPreviewChat(props?: Partial<ComponentProps<typeof AgentChatRuntime>>) {
+function renderUnconfiguredEmptyState({ showUnconfiguredNotice }: AgentChatRuntimeEmptyStateProps) {
+  return showUnconfiguredNotice ? (
+    <span>agentV2.agentDetail.configure.preview.unconfiguredNotice</span>
+  ) : null
+}
+
+function renderPreviewChat(
+  props?: Partial<ComponentProps<typeof AgentChatRuntime>>,
+  draftOverrides?: Partial<AgentSoulConfigFormState>,
+) {
   const store = createStore()
   seedRegisteredConsoleStateFixture(store)
   const queryClient = new QueryClient({
@@ -254,11 +294,18 @@ function renderPreviewChat(props?: Partial<ComponentProps<typeof AgentChatRuntim
       },
     },
   })
+  seedAccountProfileQuery(queryClient, { avatar_url: '', name: 'User' })
   store.set(agentComposerModelAtom, {
     provider: 'openai',
     model: 'gpt-4',
   })
   store.set(agentComposerPromptAtom, 'You are helpful.')
+  if (draftOverrides) {
+    store.set(agentComposerDraftAtom, {
+      ...store.get(agentComposerDraftAtom),
+      ...draftOverrides,
+    })
+  }
 
   return {
     queryClient,
@@ -322,6 +369,7 @@ function renderPreviewChatWithConversationHarness() {
       },
     },
   })
+  seedAccountProfileQuery(queryClient, { avatar_url: '', name: 'User' })
   store.set(agentComposerModelAtom, {
     provider: 'openai',
     model: 'gpt-4',
@@ -347,6 +395,7 @@ function renderPreviewChatWithClearCommandHarness() {
       },
     },
   })
+  seedAccountProfileQuery(queryClient, { avatar_url: '', name: 'User' })
   store.set(agentComposerModelAtom, {
     provider: 'openai',
     model: 'gpt-4',
@@ -376,6 +425,7 @@ describe('AgentPreviewChat', () => {
     suggestedQuestionsGetMock.mockResolvedValue({ data: [] })
     stopPostMock.mockClear()
     stopPostMock.mockResolvedValue({ result: 'success' })
+    mockToastError.mockClear()
     stopCallbackRef.current = undefined
     sendResultRef.current = undefined
   })
@@ -691,6 +741,21 @@ describe('AgentPreviewChat', () => {
     )
   })
 
+  it('should deliver non-image attachments even when the selected model does not support vision', async () => {
+    renderPreviewChat()
+
+    fireEvent.click(screen.getByRole('button', { name: 'send with document' }))
+
+    await waitFor(() => expect(handleSendMock).toHaveBeenCalledTimes(1))
+    expect(handleSendMock).toHaveBeenCalledWith(
+      'agent/agent-1/chat-messages',
+      expect.objectContaining({
+        files: [expect.objectContaining({ id: 'file-1', name: 'brief.docx' })],
+      }),
+      expect.any(Object),
+    )
+  })
+
   it('should save draft before sending preview chat through the agent chat endpoints', async () => {
     const saveDraftBeforeRun = vi.fn().mockResolvedValue(undefined)
     renderPreviewChat({
@@ -776,6 +841,83 @@ describe('AgentPreviewChat', () => {
         message: 'Ignored',
       }),
     ).toBeUndefined()
+    expect(mockToastError).not.toHaveBeenCalled()
+  })
+
+  it('should show a dedicated error toast when an agent run reaches the time limit', async () => {
+    renderPreviewChat()
+
+    fireEvent.click(screen.getByRole('button', { name: 'send' }))
+
+    await waitFor(() => expect(handleSendMock).toHaveBeenCalledTimes(1))
+    const callbacks = handleSendMock.mock.calls.at(0)?.[2]
+
+    expect(
+      callbacks.onUnhandledEvent({
+        event: 'error',
+        code: 'agent_run_limit_exceeded',
+        status: 400,
+        message: 'Agent run exceeded the configured limit of 3600 seconds',
+      }),
+    ).toEqual({
+      conversationId: undefined,
+      messageId: undefined,
+      errorCode: 'agent_run_limit_exceeded',
+      errorMessage: 'Agent run exceeded the configured limit of 3600 seconds',
+    })
+
+    expect(mockToastError).toHaveBeenCalledTimes(1)
+    expect(mockToastError).toHaveBeenCalledWith(
+      'agentV2.agentDetail.configure.preview.errors.agentRunLimitExceeded',
+      expect.objectContaining({
+        description: expect.anything(),
+        timeout: 0,
+      }),
+    )
+    const toastDescription = mockToastError.mock.calls.at(0)?.[1]?.description
+    render(<>{toastDescription}</>)
+
+    const learnMoreLink = screen.getByRole('link', {
+      name: 'agentV2.agentDetail.configure.rightPanel.learnMore',
+    })
+    expect(learnMoreLink).toHaveAttribute(
+      'href',
+      'https://docs.dify.ai/en/self-host/use-dify/build/new-agent/build#publish',
+    )
+    expect(learnMoreLink).toHaveAttribute('target', '_blank')
+    expect(learnMoreLink).toHaveAttribute('rel', 'noopener noreferrer')
+  })
+
+  it('should show a dedicated error toast when an agent run reaches the model request limit', async () => {
+    renderPreviewChat()
+
+    fireEvent.click(screen.getByRole('button', { name: 'send' }))
+
+    await waitFor(() => expect(handleSendMock).toHaveBeenCalledTimes(1))
+    const callbacks = handleSendMock.mock.calls.at(0)?.[2]
+
+    expect(
+      callbacks.onUnhandledEvent({
+        event: 'error',
+        code: 'agent_run_limit_exceeded',
+        status: 400,
+        message: 'The next request would exceed the request_limit of 500',
+      }),
+    ).toEqual({
+      conversationId: undefined,
+      messageId: undefined,
+      errorCode: 'agent_run_limit_exceeded',
+      errorMessage: 'The next request would exceed the request_limit of 500',
+    })
+
+    expect(mockToastError).toHaveBeenCalledTimes(1)
+    expect(mockToastError).toHaveBeenCalledWith(
+      'agentV2.agentDetail.configure.preview.errors.agentModelRequestLimitExceeded',
+      expect.objectContaining({
+        description: expect.anything(),
+        timeout: 0,
+      }),
+    )
   })
 
   it('should show the send button loading state while preparing a build run', async () => {
@@ -1213,6 +1355,61 @@ describe('AgentPreviewChat', () => {
       screen.getByText('agentV2.agentDetail.configure.preview.sandboxNotice'),
     ).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'sandbox notice info' })).not.toBeInTheDocument()
+  })
+
+  it.each([
+    ['Preview', undefined],
+    ['Build', 'debug_build' as const],
+  ])('should show the unconfigured warning in %s mode', (_mode, draftType) => {
+    renderPreviewChat(
+      {
+        draftType,
+        renderEmptyState: renderUnconfiguredEmptyState,
+      },
+      {
+        prompt: '',
+      },
+    )
+
+    expect(
+      screen.getByText('agentV2.agentDetail.configure.preview.unconfiguredNotice'),
+    ).toBeInTheDocument()
+  })
+
+  it.each([
+    ['prompt', { prompt: 'You are helpful.' }],
+    ['build note (config_note)', { configNote: 'Use the latest build context.' }],
+    ['skill', { skills: [{ id: 'skill-1', name: 'Research' }] }],
+    ['knowledge base', { knowledgeRetrievals: [{ id: 'retrieval-1', name: 'Docs' }] }],
+    ['file', { files: [{ id: 'brief.md', icon: 'markdown' as const, name: 'brief.md' }] }],
+    ['tool', { tools: [{ id: 'cli-1', kind: 'cli' as const, name: 'CLI' }] }],
+    [
+      'environment variable',
+      {
+        envVariables: [
+          {
+            id: 'env-1',
+            key: 'API_KEY',
+            scope: 'secret' as const,
+            value: 'secret',
+          },
+        ],
+      },
+    ],
+  ])('should hide the unconfigured warning when the agent has a %s', (_config, draft) => {
+    renderPreviewChat(
+      {
+        renderEmptyState: renderUnconfiguredEmptyState,
+      },
+      {
+        prompt: '',
+        ...draft,
+      },
+    )
+
+    expect(
+      screen.queryByText('agentV2.agentDetail.configure.preview.unconfiguredNotice'),
+    ).not.toBeInTheDocument()
   })
 
   it('should send build chat inputs from the prepared build draft snapshot', async () => {

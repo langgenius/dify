@@ -2,7 +2,6 @@ import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-so
 import type { CrawlResultItem } from '@/models/datasets'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { CrawlStep } from '@/models/datasets'
 import WebsiteCrawl from '../index'
 
@@ -20,16 +19,11 @@ vi.mock('@/context/dataset-detail', () => ({
   ) => selector({ dataset: { pipeline_id: mockPipelineId } }),
 }))
 
-// Mock modal context - context provider requires mocking
-const mockSetShowAccountSettingModal = vi.fn()
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowAccountSettingModal: mockSetShowAccountSettingModal,
-  }),
-  useModalContextSelector: (
-    selector: (s: { setShowAccountSettingModal: typeof mockSetShowAccountSettingModal }) => unknown,
-  ) => selector({ setShowAccountSettingModal: mockSetShowAccountSettingModal }),
-}))
+const mockSetSettingsDestination = vi.fn()
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
 
 // Mock ssePost - API service requires mocking
 const { mockSsePost } = vi.hoisted(() => ({
@@ -257,7 +251,7 @@ describe('WebsiteCrawl', () => {
 
     // Reset context values
     mockPipelineId = 'pipeline-123'
-    mockSetShowAccountSettingModal.mockClear()
+    mockSetSettingsDestination.mockClear()
 
     // Default mock return values
     mockUseGetDataSourceAuth.mockReturnValue({
@@ -616,9 +610,7 @@ describe('WebsiteCrawl', () => {
 
       fireEvent.click(screen.getByTestId('header-config-btn'))
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-        payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
-      })
+      expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
     })
 
     it('should have stable handleCredentialChange that resets state', () => {
@@ -653,9 +645,7 @@ describe('WebsiteCrawl', () => {
 
       fireEvent.click(screen.getByTestId('header-config-btn'))
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-        payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
-      })
+      expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
     })
 
     it('should handle credential change', () => {

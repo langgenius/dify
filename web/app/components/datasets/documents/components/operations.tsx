@@ -403,7 +403,7 @@ const Operations = ({
             <DropdownMenuContent
               placement="bottom-end"
               sideOffset={4}
-              popupClassName={cn('w-[200px] py-0', className)}
+              popupClassName={cn('w-50 py-0', className)}
             >
               <div className="w-full py-1">
                 {canShowPrimarySection && (

@@ -36,7 +36,7 @@ const LeftHeader = ({ steps, title, currentStep }: LeftHeaderProps) => {
           </Button>
         </Link>
       )}
-      <Effect className="top-[-34px] left-8 opacity-20" />
+      <Effect className="-top-8.5 left-8 opacity-20" />
     </div>
   )
 }

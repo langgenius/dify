@@ -42,7 +42,7 @@ export function ToolTrigger({
       )}
     >
       {value?.provider_name && provider && (
-        <div className="mr-1 shrink-0 rounded-lg border border-components-panel-border bg-components-panel-bg p-px">
+        <div className="shrink-0 rounded-lg border border-components-panel-border bg-components-panel-bg p-px">
           <BlockIcon className="size-4!" type={BlockEnum.Tool} toolIcon={provider.icon} />
         </div>
       )}
@@ -62,7 +62,7 @@ export function ToolTrigger({
         <span
           aria-hidden
           className={cn(
-            'ml-0.5 i-ri-equalizer-2-line size-4 shrink-0 text-text-quaternary group-hover:text-text-secondary',
+            'i-ri-equalizer-2-line size-4 shrink-0 text-text-quaternary group-hover:text-text-secondary',
             open && 'text-text-secondary',
           )}
         />
@@ -71,7 +71,7 @@ export function ToolTrigger({
         <span
           aria-hidden
           className={cn(
-            'ml-0.5 i-ri-arrow-down-s-line size-4 shrink-0 text-text-quaternary group-hover:text-text-secondary',
+            'i-ri-arrow-down-s-line size-4 shrink-0 text-text-quaternary group-hover:text-text-secondary',
             open && 'text-text-secondary',
           )}
         />

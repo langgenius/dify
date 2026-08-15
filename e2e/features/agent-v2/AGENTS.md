@@ -48,16 +48,15 @@ Use `the Agent v2 configuration should be saved automatically` for Configure aut
 
 ## Seed and fixture contract
 
-Seed scripts create or update environment-owned models, plugins, datasets, Agents, and workflows. `fixtures.steps.ts` resolves and validates those resources before a dependent behavior runs. Missing, inactive, unindexed, or drifted fixtures must throw and fail the scenario; never return `skipped`.
+Seed tasks create or update environment-owned models, plugins, datasets, Agents, and workflows. `fixtures.steps.ts` resolves and validates those resources before a dependent behavior runs. Missing, inactive, unindexed, or drifted fixtures must throw and fail the scenario; never return `skipped`.
 
 `@prepared` scenarios are excluded from deterministic PR core. Post-merge runs:
 
 ```bash
-pnpm -C e2e e2e:post-merge:prepare
-pnpm -C e2e e2e:post-merge
+E2E_START_AGENT_BACKEND=1 pnpm -C e2e e2e:post-merge
 ```
 
-The strict seed must finish without blocked tasks. The concrete resource inventory and defaults belong to the seed profile and environment configuration rather than this guidance.
+The command owns runtime setup, strict seed, Cucumber, and teardown. The strict seed must finish without blocked tasks. The concrete resource inventory and defaults belong to the seed profile and environment configuration rather than this guidance.
 
 Organize fixture helpers by the product resource or infrastructure capability they own, not by the feature file that happens to consume them. Keep runtime readiness adapters separate from Console resource fixtures, and keep all fixture state in the current `SeedContext` or scenario `DifyWorld` rather than module globals.
 
