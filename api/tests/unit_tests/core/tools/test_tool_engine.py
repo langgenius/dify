@@ -46,7 +46,7 @@ def _message() -> Message:
         model_id="model",
         override_model_configs=None,
         conversation_id=str(uuid4()),
-        inputs={},
+        _inputs={},
         query="query",
         message="",
         message_tokens=0,

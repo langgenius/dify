@@ -70,10 +70,10 @@ def sample_data(sqlite_session: Session) -> FeedbackSample:
         currency="USD",
         from_source=ConversationFromSource.API,
         from_end_user_id=END_USER_ID,
-        created_at=datetime(2024, 1, 1, 10, 0, 0),
     )
     message.id = MESSAGE_ID
     message._inputs = {"query": "What is AI?"}
+    message.created_at = datetime(2024, 1, 1, 10, 0, 0)
     account = Account(name="Admin User", email="admin@example.com")
     account.id = ACCOUNT_ID
     user_feedback = MessageFeedback(

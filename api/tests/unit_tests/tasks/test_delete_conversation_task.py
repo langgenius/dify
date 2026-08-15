@@ -6,7 +6,6 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.human_input_adapter import DeliveryMethodType
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from graphon.file import FileTransferMethod, FileType
@@ -34,6 +33,7 @@ from models.enums import (
     CreatorUserRole,
     FeedbackFromSource,
     FeedbackRating,
+    InvokeFrom,
     MessageChainType,
 )
 from models.human_input import HumanInputDelivery, HumanInputFormRecipient, RecipientType
@@ -55,7 +55,7 @@ def _conversation(conversation_id: str, *, deleted: bool) -> Conversation:
         app_id=APP_ID,
         mode=AppMode.CHAT,
         name="Test conversation",
-        inputs={},
+        _inputs={},
         status=ConversationStatus.NORMAL,
         from_source=ConversationFromSource.CONSOLE,
         from_account_id=ACCOUNT_ID,
@@ -68,7 +68,7 @@ def _message() -> Message:
         id=MESSAGE_ID,
         app_id=APP_ID,
         conversation_id=CONVERSATION_ID,
-        inputs={},
+        _inputs={},
         query="hello",
         message={"role": "user", "content": "hello"},
         answer="world",

@@ -76,7 +76,7 @@ def test_init_generate_records_marks_existing_conversation(sqlite_session: Sessi
         model_id=None,
         mode=app_config.app_mode.value,
         name="existing",
-        inputs={},
+        _inputs={},
         introduction="",
         system_instruction="",
         system_instruction_tokens=0,
