@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import builtins
+import inspect
 import uuid
 from datetime import datetime
 from types import ModuleType, SimpleNamespace
@@ -13,6 +14,7 @@ import pytest
 from flask import Flask
 from flask.views import MethodView
 
+from controllers.common.controller_schemas import MessageListQuery
 from core.entities.execution_extra_content import HumanInputContent
 
 # Ensure flask_restx.api finds MethodView during import.
@@ -156,7 +158,8 @@ def test_message_list_mapping(app: Flask) -> None:
         patch.object(message_module.MessageService, "pagination_by_first_id", return_value=pagination) as mock_page,
         app.test_request_context(f"/messages?conversation_id={conversation_id}&limit=20"),
     ):
-        response = MessageListApi().get(app_model, end_user)
+        query = MessageListQuery.model_validate({"conversation_id": conversation_id, "limit": 20})
+        response = inspect.unwrap(MessageListApi.get)(MessageListApi(), query, app_model, end_user)
 
     mock_page.assert_called_once_with(app_model, end_user, conversation_id, None, 20, session=ANY)
     assert response["limit"] == 20
