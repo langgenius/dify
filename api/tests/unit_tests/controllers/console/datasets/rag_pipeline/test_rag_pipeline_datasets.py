@@ -17,7 +17,14 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_datasets import (
     CreateRagPipelineDatasetApi,
     RagPipelineDatasetImportPayload,
 )
+from models.account import Account, TenantAccountRole
 from services.entities.dsl_entities import ImportStatus
+
+
+def _account(*, editor: bool) -> Account:
+    account = Account(name="RAG Pipeline Tester", email="rag-pipeline@example.com")
+    account.role = TenantAccountRole.EDITOR if editor else TenantAccountRole.NORMAL
+    return account
 
 
 class TestCreateRagPipelineDatasetApi:
@@ -29,7 +36,7 @@ class TestCreateRagPipelineDatasetApi:
         method = unwrap(api.post)
 
         payload = self._valid_payload()
-        user = MagicMock(is_dataset_editor=True)
+        user = _account(editor=True)
         import_info = {
             "id": "import-1",
             "status": ImportStatus.COMPLETED,
@@ -69,7 +76,7 @@ class TestCreateRagPipelineDatasetApi:
         method = unwrap(api.post)
 
         payload = self._valid_payload()
-        user = MagicMock(is_dataset_editor=False)
+        user = _account(editor=False)
 
         with (
             app.test_request_context("/", json=payload),
@@ -83,7 +90,7 @@ class TestCreateRagPipelineDatasetApi:
         method = unwrap(api.post)
 
         payload = self._valid_payload()
-        user = MagicMock(is_dataset_editor=True)
+        user = _account(editor=True)
 
         mock_service = MagicMock()
         mock_service.create_rag_pipeline_dataset.side_effect = services.errors.dataset.DatasetNameDuplicateError()
@@ -104,7 +111,7 @@ class TestCreateRagPipelineDatasetApi:
         method = unwrap(api.post)
 
         payload: dict[str, str] = {}
-        user = MagicMock(is_dataset_editor=True)
+        user = _account(editor=True)
 
         with (
             app.test_request_context("/", json=payload),
@@ -119,7 +126,7 @@ class TestCreateEmptyRagPipelineDatasetApi:
         api = CreateEmptyRagPipelineDatasetApi()
         method = unwrap(api.post)
 
-        user = MagicMock(is_dataset_editor=False)
+        user = _account(editor=False)
 
         with app.test_request_context("/"):
             with pytest.raises(Forbidden):
