@@ -358,10 +358,10 @@ def test_get_recent_apps_uses_one_tenant_scoped_projection_query(sqlite_session:
             enable_api=False,
             created_by=account.id,
             maintainer=account.id,
-            created_at=updated_at,
-            updated_at=updated_at,
             use_icon_as_answer_icon=False,
         )
+        app.created_at = updated_at
+        app.updated_at = updated_at
         return app
 
     newest = create_app(name="Newest", tenant_id=tenant_id, updated_at=datetime(2026, 7, 3))

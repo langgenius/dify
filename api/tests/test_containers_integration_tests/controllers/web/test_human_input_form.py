@@ -34,7 +34,7 @@ from models.human_input import (
     RecipientType,
     StandaloneWebAppRecipientPayload,
 )
-from models.model import App, AppMode, CustomizeTokenStrategy, Site
+from models.model import App, AppMode, CustomizeTokenStrategy, IconType, Site
 from models.workflow import WorkflowRun, WorkflowType
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services.entities.feature_entities import FeatureModel
@@ -68,7 +68,7 @@ def _create_app_with_site(session: Session) -> tuple[App, Account]:
         name="Test App",
         description="",
         mode=AppMode.WORKFLOW,
-        icon_type="emoji",
+        icon_type=IconType.EMOJI,
         icon="app",
         icon_background="#ffffff",
         enable_site=True,

@@ -103,8 +103,9 @@ def _persist_message(
         currency="USD",
         from_source=ConversationFromSource.API,
         error="e",
-        created_at=created_at,
     )
+    if created_at is not None:
+        message.created_at = created_at
     database.add(message)
     database.commit()
     return message

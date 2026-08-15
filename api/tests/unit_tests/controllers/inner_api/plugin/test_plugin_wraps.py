@@ -65,7 +65,7 @@ def _persist_end_user(
         id=user_id,
         tenant_id=tenant_id,
         type=EndUserType.SERVICE_API,
-        is_anonymous=is_anonymous,
+        _is_anonymous=is_anonymous,
         session_id=session_id,
     )
     with Session(sqlite_engine) as session, session.begin():

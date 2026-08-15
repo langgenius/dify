@@ -104,7 +104,7 @@ class WebAppAuthService:
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
             type=EndUserType.BROWSER,
-            is_anonymous=False,
+            _is_anonymous=False,
             session_id=email,
             name="enterpriseuser",
             external_user_id="enterpriseuser",

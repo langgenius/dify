@@ -6,7 +6,6 @@ from sqlalchemy.exc import IntegrityError
 
 from constants.model_template import default_app_templates
 from core.agent.publish_visibility import workflow_callable_active_snapshot_filter
-from core.app.entities.app_invoke_entities import InvokeFrom
 from libs.datetime_utils import naive_utc_now
 from libs.helper import to_timestamp
 from models.agent import (
@@ -30,7 +29,7 @@ from models.agent import (
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig
-from models.enums import AppStatus, ConversationFromSource, ConversationStatus
+from models.enums import AppStatus, ConversationFromSource, ConversationStatus, InvokeFrom
 from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message
 from models.workflow import Workflow
 from services.agent.agent_soul_state import agent_soul_has_model
@@ -513,7 +512,7 @@ class AgentRosterService:
             override_model_configs=None,
             mode=AppMode.AGENT,
             name="Agent Debugging Conversation",
-            inputs={},
+            _inputs={},
             introduction="",
             system_instruction="",
             system_instruction_tokens=0,

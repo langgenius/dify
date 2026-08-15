@@ -185,6 +185,8 @@ def cloud_edition_billing_resource_check[**P, R](
     def interceptor(view: Callable[P, R]):
         def decorated(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token(api_token_type)
+            if api_token.tenant_id is None:
+                raise Forbidden("API token is not associated with a workspace")
             if resource == "vector_space":
                 if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
                     return view(*args, **kwargs)
@@ -231,6 +233,8 @@ def cloud_edition_billing_knowledge_limit_check[**P, R](
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token(api_token_type)
+            if api_token.tenant_id is None:
+                raise Forbidden("API token is not associated with a workspace")
             features = FeatureService.get_features(api_token.tenant_id, exclude_vector_space=True)
             if features.billing.enabled:
                 if resource == "add_segment":
@@ -256,6 +260,8 @@ def cloud_edition_billing_rate_limit_check[**P, R](
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token(api_token_type)
+            if api_token.tenant_id is None:
+                raise Forbidden("API token is not associated with a workspace")
 
             if resource == "knowledge":
                 knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(api_token.tenant_id)

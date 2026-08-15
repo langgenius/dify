@@ -12,7 +12,7 @@ from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset
 from models.enums import DataSourceType, TagType
-from models.model import App, Tag, TagBinding
+from models.model import App, AppMode, IconType, Tag, TagBinding
 from models.snippet import CustomizedSnippet, SnippetType
 from services.tag_service import (
     SaveTagPayload,
@@ -104,8 +104,8 @@ def _create_app(
     app = App(
         name=f"Tag Service App {suffix}",
         description="Tag service test app",
-        mode="chat",
-        icon_type="emoji",
+        mode=AppMode.CHAT,
+        icon_type=IconType.EMOJI,
         icon="🤖",
         icon_background="#FF6B6B",
         enable_site=False,

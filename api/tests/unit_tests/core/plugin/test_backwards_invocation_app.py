@@ -73,7 +73,7 @@ def _end_user(
         type=EndUserType.BROWSER,
         session_id=session_id,
         name="Browser user",
-        is_anonymous=True,
+        _is_anonymous=True,
     )
 
 
@@ -406,7 +406,7 @@ class TestPluginAppBackwardsInvocation:
             type=EndUserType.BROWSER,
             session_id="browser-session",
             name="Browser user",
-            is_anonymous=True,
+            _is_anonymous=True,
         )
         self.session.add(end_user)
         self.session.commit()
@@ -426,7 +426,7 @@ class TestPluginAppBackwardsInvocation:
             type=EndUserType.BROWSER,
             session_id="wecom-sender-1",
             name="External user",
-            is_anonymous=True,
+            _is_anonymous=True,
         )
         self.session.add(end_user)
         self.session.commit()
@@ -444,7 +444,7 @@ class TestPluginAppBackwardsInvocation:
             type=EndUserType.BROWSER,
             session_id="browser-session",
             name="Browser user",
-            is_anonymous=True,
+            _is_anonymous=True,
         )
         self.session.add(end_user)
         self.session.commit()
@@ -461,7 +461,7 @@ class TestPluginAppBackwardsInvocation:
             type=EndUserType.BROWSER,
             session_id="other-session",
             name="External user",
-            is_anonymous=True,
+            _is_anonymous=True,
         )
         self.session.add(end_user)
         self.session.commit()
@@ -505,7 +505,7 @@ class TestPluginAppBackwardsInvocation:
             type=EndUserType.BROWSER,
             session_id="uid",
             name="Wrong tenant",
-            is_anonymous=True,
+            _is_anonymous=True,
         )
         self.session.add(other_tenant_user)
         self.session.commit()

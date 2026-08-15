@@ -108,7 +108,7 @@ def _create_waiting_form(
                 tenant_id=tenant_id,
                 app_id=app_id,
                 type=EndUserType.BROWSER,
-                is_anonymous=False,
+                _is_anonymous=False,
                 session_id="session-1",
                 external_user_id="external-1",
             )

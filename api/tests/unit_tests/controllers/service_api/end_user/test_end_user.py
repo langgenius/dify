@@ -35,9 +35,9 @@ class TestEndUserApi:
             name="Alice",
             _is_anonymous=True,
             session_id="session-xyz",
-            created_at=datetime(2024, 1, 1, tzinfo=UTC),
-            updated_at=datetime(2024, 1, 2, tzinfo=UTC),
         )
+        end_user.created_at = datetime(2024, 1, 1, tzinfo=UTC)
+        end_user.updated_at = datetime(2024, 1, 2, tzinfo=UTC)
 
         get_end_user_by_id = mocker.patch(
             "controllers.service_api.end_user.end_user.EndUserService.get_end_user_by_id", return_value=end_user

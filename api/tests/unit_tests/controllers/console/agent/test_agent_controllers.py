@@ -94,7 +94,7 @@ def _persist_conversation_message(
             model_id=None,
             mode=AppMode.CHAT,
             name="Conversation",
-            inputs={},
+            _inputs={},
             introduction="",
             system_instruction="",
             system_instruction_tokens=0,
@@ -110,7 +110,7 @@ def _persist_conversation_message(
     message = Message(
         app_id=app_id,
         conversation_id=conversation.id,
-        inputs={},
+        _inputs={},
         query="query",
         message={},
         message_tokens=0,
@@ -128,9 +128,9 @@ def _persist_conversation_message(
         from_end_user_id=None,
         from_account_id="00000000-0000-0000-0000-000000000021",
         app_mode=AppMode.CHAT,
-        created_at=created_at,
     )
     message.id = message_id
+    message.created_at = created_at
     session.add(message)
     session.flush()
     return conversation, message
