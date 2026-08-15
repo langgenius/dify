@@ -1,5 +1,5 @@
 import ts from 'typescript'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { transformSource } from '../migrate-i18n-selectors'
 
 describe('migrate-i18n-selectors', () => {

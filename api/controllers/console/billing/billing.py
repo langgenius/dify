@@ -15,7 +15,7 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.login import login_required
@@ -40,14 +40,18 @@ class BillingInvoiceResponse(ResponseModel):
     url: str
 
 
+class BillingSubscriptionResponse(ResponseModel):
+    url: str
+
+
 register_schema_models(console_ns, SubscriptionQuery, PartnerTenantsPayload)
-register_response_schema_models(console_ns, BillingResponse, BillingInvoiceResponse)
+register_response_schema_models(console_ns, BillingResponse, BillingInvoiceResponse, BillingSubscriptionResponse)
 
 
 @console_ns.route("/billing/subscription")
 class Subscription(Resource):
     @console_ns.doc(params=query_params_from_model(SubscriptionQuery))
-    @console_ns.response(200, "Success", console_ns.models[BillingResponse.__name__])
+    @console_ns.response(200, "Success", console_ns.models[BillingSubscriptionResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -92,8 +96,8 @@ class PartnerTenants(Resource):
         try:
             click_id = req_data.click_id
             decoded_partner_key = base64.b64decode(partner_key).decode("utf-8")
-        except Exception:
-            raise BadRequest("Invalid partner_key")
+        except Exception as e:
+            raise BadRequest("Invalid partner_key") from e
 
         if not click_id or not decoded_partner_key or not current_user.id:
             raise BadRequest("Invalid partner information")

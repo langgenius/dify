@@ -8,7 +8,7 @@ from configs import dify_config
 from controllers.common.schema import register_response_schema_models
 from controllers.web import web_ns
 from controllers.web.wraps import WebApiResource
-from enums.deployment_edition import DeploymentEdition
+from enums import DeploymentEdition
 from extensions.ext_database import db
 from extensions.storage.storage_type import StorageType
 from fields.base import ResponseModel

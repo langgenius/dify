@@ -228,7 +228,7 @@ describe('ModelListItem', () => {
     expect(badge).toBeInTheDocument()
   })
 
-  // Plan.sandbox: ConfigModel shown without load balancing enabled
+  // 'sandbox': ConfigModel shown without load balancing enabled
   it('should show ConfigModel for sandbox plan even without load balancing enabled', () => {
     // Arrange - set plan type to sandbox and keep load balancing disabled
     mockModelLoadBalancingEnabled = false

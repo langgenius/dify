@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.snippet_start import SNIPPET_VIRTUAL_START_NODE_ID
 from models.workflow import Workflow, WorkflowKind, WorkflowType
@@ -277,7 +278,10 @@ def test_run_draft_node_raises_when_draft_workflow_missing(monkeypatch: pytest.M
         )
 
 
-def test_generate_single_iteration_delegates_to_workflow_generator(monkeypatch: pytest.MonkeyPatch):
+def test_generate_single_iteration_delegates_to_workflow_generator(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
     workflow = _workflow({"nodes": [{"id": "iteration-1", "data": {"type": "iteration"}}], "edges": []})
     snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
     user = SimpleNamespace(id="user-1")
@@ -292,13 +296,12 @@ def test_generate_single_iteration_delegates_to_workflow_generator(monkeypatch: 
     )
     monkeypatch.setattr("services.snippet_generate_service.WorkflowAppGenerator", workflow_generator_class)
 
-    session = Mock()
     result = SnippetGenerateService.generate_single_iteration(
         snippet=snippet,
         user=user,
         node_id="iteration-1",
         args={"inputs": {"items": [1]}},
-        session_maker=_session_maker(session),
+        session_maker=sqlite_session_factory,
     )
 
     assert list(result) == ["event"]
@@ -309,7 +312,7 @@ def test_generate_single_iteration_delegates_to_workflow_generator(monkeypatch: 
     assert kwargs["node_id"] == "iteration-1"
     assert kwargs["user"] is user
     assert kwargs["streaming"] is True
-    assert kwargs["session"] is session
+    assert isinstance(kwargs["session"], Session)
     workflow_generator_class.convert_to_event_stream.assert_called_once_with(response)
 
 
@@ -329,7 +332,10 @@ def test_generate_single_iteration_raises_when_draft_workflow_missing(monkeypatc
         )
 
 
-def test_generate_single_loop_delegates_to_workflow_generator(monkeypatch: pytest.MonkeyPatch):
+def test_generate_single_loop_delegates_to_workflow_generator(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
     workflow = _workflow({"nodes": [{"id": "loop-1", "data": {"type": "loop"}}], "edges": []})
     snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
     user = SimpleNamespace(id="user-1")
@@ -344,13 +350,12 @@ def test_generate_single_loop_delegates_to_workflow_generator(monkeypatch: pytes
     )
     monkeypatch.setattr("services.snippet_generate_service.WorkflowAppGenerator", workflow_generator_class)
 
-    session = Mock()
     result = SnippetGenerateService.generate_single_loop(
         snippet=snippet,
         user=user,
         node_id="loop-1",
         args=SimpleNamespace(inputs={"items": [1]}),
-        session_maker=_session_maker(session),
+        session_maker=sqlite_session_factory,
     )
 
     assert list(result) == ["event"]
@@ -361,7 +366,7 @@ def test_generate_single_loop_delegates_to_workflow_generator(monkeypatch: pytes
     assert kwargs["node_id"] == "loop-1"
     assert kwargs["user"] is user
     assert kwargs["streaming"] is True
-    assert kwargs["session"] is session
+    assert isinstance(kwargs["session"], Session)
     workflow_generator_class.convert_to_event_stream.assert_called_once_with(response)
 
 

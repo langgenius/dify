@@ -1,8 +1,8 @@
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import InputsFormContent from '@/app/components/base/chat/embedded-chatbot/inputs-form/content'
 
 type Props = Readonly<{
@@ -14,19 +14,18 @@ const ViewFormDropdown = ({ iconColor }: Props) => {
   return (
     <Popover>
       <PopoverTrigger
-        render={(props, state) => (
-          <ActionButton
-            {...props}
+        render={
+          <IconButton
             aria-label={t(($) => $['chat.viewChatSettings'], { ns: 'share' })}
-            size="l"
-            state={state.open ? ActionButtonState.Hover : ActionButtonState.Default}
+            size="lg"
+            className="data-popup-open:bg-state-base-hover"
           >
             <span
               aria-hidden
               className={cn('i-ri-chat-settings-line h-4.5 w-4.5 shrink-0', iconColor)}
             />
-          </ActionButton>
-        )}
+          </IconButton>
+        }
       />
       <PopoverContent
         placement="bottom-end"

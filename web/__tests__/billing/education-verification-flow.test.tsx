@@ -1,21 +1,10 @@
 import type { RenderOptions } from '@testing-library/react'
 import type { ReactElement } from 'react'
-/**
- * Integration test: Education Verification Flow
- *
- * Tests the education plan verification flow in PlanComp:
- *   PlanComp → handleVerify → useEducationVerify → router.push → education-apply
- *   PlanComp → handleVerify → error → show VerifyStateModal
- *
- * Also covers education button visibility based on context flags.
- */
 import type { UsagePlanInfo, UsageResetInfo } from '@/app/components/billing/type'
-import { cleanup, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { cleanup, screen } from '@testing-library/react'
 import * as React from 'react'
 import { defaultPlan } from '@/app/components/billing/config'
 import PlanComp from '@/app/components/billing/plan'
-import { Plan } from '@/app/components/billing/type'
 import { consoleQuery } from '@/service/client'
 import {
   createConsoleQueryClient,
@@ -41,6 +30,8 @@ const render = (ui: ReactElement, options: RenderOptions = {}) => {
   })
   seedEducationStatus(queryClient, mockEducationStatus)
   const { wrapper } = createConsoleQueryWrapper({
+    accountProfile: mockConsoleState.userProfile as { email?: string },
+    accountProfileMeta: { currentVersion: '1.0.0' },
     systemFeatures: { deployment_edition: 'CLOUD' },
     queryClient,
   })
@@ -49,71 +40,26 @@ const render = (ui: ReactElement, options: RenderOptions = {}) => {
 
 // ─── Mock state ──────────────────────────────────────────────────────────────
 const mockSetShowPricingModal = vi.fn()
-const mockRouterPush = vi.fn()
-const mockMutateAsync = vi.fn()
 
 // ─── Context mocks ───────────────────────────────────────────────────────────
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => mockProviderCtx,
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/version-state', async () => {
-  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createVersionStateModuleMock(() => mockConsoleState)
-})
-
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowPricingModal: mockSetShowPricingModal,
   }),
 }))
 
-// ─── Service mocks ───────────────────────────────────────────────────────────
-vi.mock('@/service/use-education', () => ({
-  useEducationVerify: () => ({
-    mutateAsync: mockMutateAsync,
-    isPending: false,
-  }),
-}))
-
 // ─── Navigation mocks ───────────────────────────────────────────────────────
 vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ push: mockRouterPush }),
   usePathname: () => '/billing',
   useSearchParams: () => new URLSearchParams(),
-}))
-
-// ─── External component mocks ───────────────────────────────────────────────
-vi.mock('@/app/education-apply/verify-state-modal', () => ({
-  default: ({
-    isShow,
-    title,
-    content,
-    email,
-    showLink,
-  }: {
-    isShow: boolean
-    title?: string
-    content?: string
-    email?: string
-    showLink?: boolean
-  }) =>
-    isShow ? (
-      <div data-testid="verify-state-modal">
-        {title && <span data-testid="modal-title">{title}</span>}
-        {content && <span data-testid="modal-content">{content}</span>}
-        {email && <span data-testid="modal-email">{email}</span>}
-        {showLink && <span data-testid="modal-show-link">link</span>}
-      </div>
-    ) : null,
 }))
 
 // ─── Test data factories ────────────────────────────────────────────────────
@@ -183,7 +129,10 @@ describe('Education Verification Flow', () => {
 
       render(<PlanComp loc="test" />)
 
-      expect(screen.getByText(/toVerified/i)).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: /toVerified/i })).toHaveAttribute(
+        'href',
+        '/education/verify',
+      )
     })
 
     it('should not show verify button when already verified and not about to expire', () => {
@@ -208,87 +157,10 @@ describe('Education Verification Flow', () => {
     })
   })
 
-  // ─── 2. Successful Verification Flow ────────────────────────────────────
-  describe('Successful verification flow', () => {
-    it('should let non-manager members start education verification', async () => {
-      mockMutateAsync.mockResolvedValue({ token: 'edu-token-123' })
-      setupContexts({}, { enableEducationPlan: true }, { isCurrentWorkspaceManager: false })
-      const user = userEvent.setup()
-
-      render(<PlanComp loc="test" />)
-
-      const verifyButton = screen.getByText(/toVerified/i)
-      await user.click(verifyButton)
-
-      await waitFor(() => {
-        expect(mockMutateAsync).toHaveBeenCalledTimes(1)
-        expect(mockRouterPush).toHaveBeenCalledWith('/education-apply?token=edu-token-123')
-      })
-    })
-  })
-
-  // ─── 3. Failed Verification Flow ────────────────────────────────────────
-  describe('Failed verification flow', () => {
-    it('should show VerifyStateModal with rejection info on error', async () => {
-      mockMutateAsync.mockRejectedValue(new Error('Verification failed'))
-      setupContexts({}, { enableEducationPlan: true })
-      const user = userEvent.setup()
-
-      render(<PlanComp loc="test" />)
-
-      // Modal should not be visible initially
-      expect(screen.queryByTestId('verify-state-modal')).not.toBeInTheDocument()
-
-      const verifyButton = screen.getByText(/toVerified/i)
-      await user.click(verifyButton)
-
-      // Modal should appear after verification failure
-      await waitFor(() => {
-        expect(screen.getByTestId('verify-state-modal')).toBeInTheDocument()
-      })
-
-      // Modal should display rejection title and content
-      expect(screen.getByTestId('modal-title')).toHaveTextContent(/rejectTitle/i)
-      expect(screen.getByTestId('modal-content')).toHaveTextContent(/rejectContent/i)
-    })
-
-    it('should show email and link in VerifyStateModal', async () => {
-      mockMutateAsync.mockRejectedValue(new Error('fail'))
-      setupContexts({}, { enableEducationPlan: true })
-      const user = userEvent.setup()
-
-      render(<PlanComp loc="test" />)
-
-      await user.click(screen.getByText(/toVerified/i))
-
-      await waitFor(() => {
-        expect(screen.getByTestId('modal-email')).toHaveTextContent('student@university.edu')
-        expect(screen.getByTestId('modal-show-link')).toBeInTheDocument()
-      })
-    })
-
-    it('should not redirect on verification failure', async () => {
-      mockMutateAsync.mockRejectedValue(new Error('fail'))
-      setupContexts({}, { enableEducationPlan: true })
-      const user = userEvent.setup()
-
-      render(<PlanComp loc="test" />)
-
-      await user.click(screen.getByText(/toVerified/i))
-
-      await waitFor(() => {
-        expect(screen.getByTestId('verify-state-modal')).toBeInTheDocument()
-      })
-
-      // Should NOT navigate
-      expect(mockRouterPush).not.toHaveBeenCalled()
-    })
-  })
-
-  // ─── 4. Education + Upgrade Coexistence ─────────────────────────────────
+  // ─── 2. Education + Upgrade Coexistence ─────────────────────────────────
   describe('Education and upgrade button coexistence', () => {
     it('should show both education verify and upgrade buttons for sandbox user', () => {
-      setupContexts({ type: Plan.sandbox }, { enableEducationPlan: true })
+      setupContexts({ type: 'sandbox' }, { enableEducationPlan: true })
 
       render(<PlanComp loc="test" />)
 
@@ -296,18 +168,8 @@ describe('Education Verification Flow', () => {
       expect(screen.getByText(/upgradeBtn\.encourageShort/i)).toBeInTheDocument()
     })
 
-    it('should not show upgrade button for enterprise plan', () => {
-      setupContexts({ type: Plan.enterprise }, { enableEducationPlan: true })
-
-      render(<PlanComp loc="test" />)
-
-      expect(screen.getByText(/toVerified/i)).toBeInTheDocument()
-      expect(screen.queryByText(/upgradeBtn\.encourageShort/i)).not.toBeInTheDocument()
-      expect(screen.queryByText(/upgradeBtn\.plain/i)).not.toBeInTheDocument()
-    })
-
     it('should show team plan with plain upgrade button and education button', () => {
-      setupContexts({ type: Plan.team }, { enableEducationPlan: true })
+      setupContexts({ type: 'team' }, { enableEducationPlan: true })
 
       render(<PlanComp loc="test" />)
 

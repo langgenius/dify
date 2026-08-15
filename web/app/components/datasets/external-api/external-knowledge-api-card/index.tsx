@@ -9,13 +9,11 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
-import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import { useModalContext } from '@/context/modal-context'
 import { consoleQuery } from '@/service/client'
 import {
@@ -28,11 +26,13 @@ import {
 type ExternalKnowledgeAPICardProps = {
   api: ExternalKnowledgeApiResponse
   canManageExternalKnowledgeApi: boolean
+  position: number
 }
 
 const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
   api,
   canManageExternalKnowledgeApi,
+  position,
 }) => {
   const { setShowExternalKnowledgeAPIModal } = useModalContext()
   const [showConfirm, setShowConfirm] = useState(false)
@@ -125,24 +125,34 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
       >
         <div className="flex grow flex-col items-start justify-center gap-1.5 py-1">
           <div className="flex items-center gap-1 self-stretch text-text-secondary">
-            <ApiConnectionMod className="size-4" />
+            <span
+              aria-hidden
+              className="i-custom-vender-solid-development-api-connection-mod size-4"
+            />
             <div className="system-sm-medium">{api.name}</div>
           </div>
           <div className="self-stretch system-xs-regular text-text-tertiary">{endpoint}</div>
         </div>
         {canManageExternalKnowledgeApi && (
           <div className="flex items-start gap-1">
-            <ActionButton onClick={handleEditClick}>
-              <RiEditLine className="size-4 text-text-tertiary hover:text-text-secondary" />
-            </ActionButton>
-            <ActionButton
-              className="hover:bg-state-destructive-hover"
+            <IconButton
+              aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${api.name} ${endpoint} ${position}`}
+              onClick={handleEditClick}
+            >
+              <span
+                aria-hidden
+                className="i-ri-edit-line size-4 text-text-tertiary hover:text-text-secondary"
+              />
+            </IconButton>
+            <IconButton
+              aria-label={`${t(($) => $['operation.delete'], { ns: 'common' })} ${api.name} ${endpoint} ${position}`}
+              tone="destructive"
               onClick={handleDeleteClick}
               onMouseEnter={() => setIsHovered(true)}
               onMouseLeave={() => setIsHovered(false)}
             >
-              <RiDeleteBinLine className="size-4 text-text-tertiary hover:text-text-destructive" />
-            </ActionButton>
+              <span aria-hidden className="i-ri-delete-bin-line size-4" />
+            </IconButton>
           </div>
         )}
       </div>

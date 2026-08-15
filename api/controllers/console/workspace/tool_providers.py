@@ -61,6 +61,7 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
     WorkflowToolParameterConfiguration,
 )
+from enums import DeploymentEdition
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import alphanumeric, dump_response, uuid_value
@@ -282,10 +283,10 @@ def _resolve_identity_mode(requested: IdentityMode | None, *, current: IdentityM
       can never imply forwarding that the runtime won't perform. This gates the
       API surface to match the backend gate in
       ``MCPTool._forwarding_requested`` — both the API and the backend
-      invocation must be gated on ``dify_config.ENTERPRISE_ENABLED``.
+      invocation must be gated on the Enterprise deployment edition.
     """
     mode = current if requested is None else requested
-    if mode != IdentityMode.OFF and not dify_config.ENTERPRISE_ENABLED:
+    if mode != IdentityMode.OFF and dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
         return IdentityMode.OFF
     return mode
 
@@ -579,6 +580,8 @@ class ToolBuiltinProviderAddApi(Resource):
     )
     @setup_required
     @login_required
+    @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_CREATE, resource_required=False)
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -1267,6 +1270,8 @@ class ToolOAuthCustomClient(Resource):
     )
     @setup_required
     @login_required
+    @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     def delete(self, current_tenant_id: str, provider: str):
@@ -1417,7 +1422,7 @@ class ToolProviderMCPApi(Resource):
         with sessionmaker(db.engine).begin() as session:
             service = MCPToolManageService(session=session)
             # Resolve "leave unchanged" (None) against the stored value, and gate
-            # the result on ENTERPRISE_ENABLED — both are API-layer concerns, so
+            # the result on the Enterprise edition — both are API-layer concerns, so
             # the service receives a concrete IdentityMode.
             existing = service.get_provider(provider_id=req_data.provider_id, tenant_id=current_tenant_id)
             identity_mode = _resolve_identity_mode(req_data.identity_mode, current=IdentityMode(existing.identity_mode))

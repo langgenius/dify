@@ -1,3 +1,4 @@
+import type { SecretKeyScope } from '../secret-key-modal'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import SecretKeyButton from '../secret-key-button'
@@ -6,17 +7,17 @@ vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
   default: ({
     isShow,
     onClose,
-    appId,
     canManage,
+    scope,
   }: {
     isShow: boolean
     onClose: () => void
-    appId?: string
     canManage: boolean
+    scope: SecretKeyScope
   }) =>
     isShow ? (
       <div data-testid="secret-key-modal">
-        <span data-testid="modal-app-id">{`Modal for ${appId || 'no-app'}`}</span>
+        <span>{`Modal for ${scope.type === 'dataset' ? 'no-app' : scope.appId}`}</span>
         <span data-testid="modal-can-manage">{String(canManage)}</span>
         <button onClick={onClose} data-testid="close-modal">
           Close

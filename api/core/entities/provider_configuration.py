@@ -1857,10 +1857,10 @@ class ProviderConfiguration(BaseModel):
                             )
                         )
 
-            # if llm name not in restricted llm list, remove it
+            # Hosted allowlists currently use exact model names across model types.
             restrict_model_names = [rm.model for rm in restrict_models]
             for provider_model in provider_models:
-                if provider_model.model_type == ModelType.LLM and provider_model.model not in restrict_model_names:
+                if provider_model.model not in restrict_model_names:
                     provider_model.status = ModelStatus.NO_PERMISSION
                 elif not quota_configuration.is_valid:
                     provider_model.status = ModelStatus.QUOTA_EXCEEDED

@@ -14,6 +14,7 @@ from controllers.console import console_ns
 from controllers.console import wraps as console_wraps
 from controllers.console.app import ops_trace as ops_trace_module
 from controllers.console.app import wraps as app_wraps
+from enums import DeploymentEdition
 from libs import login as login_lib
 from models.account import Account, AccountStatus, TenantAccountRole
 from models.model import App, AppMode, IconType
@@ -42,7 +43,7 @@ def _patch_console_guards(
 ) -> None:
     monkeypatch.setattr(login_lib.dify_config, "LOGIN_DISABLED", True)
     monkeypatch.setattr(login_lib.dify_config, "RBAC_ENABLED", rbac_enabled)
-    monkeypatch.setattr(console_wraps.dify_config, "EDITION", "CLOUD")
+    monkeypatch.setattr(console_wraps.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     monkeypatch.setattr(login_lib, "current_user", account)
     monkeypatch.setattr(login_lib, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
     monkeypatch.setattr(console_wraps, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
