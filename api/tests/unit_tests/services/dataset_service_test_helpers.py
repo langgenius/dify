@@ -183,7 +183,6 @@ class DatasetServiceUnitDataFactory:
             chunk_structure=doc_form,
             enable_api=enable_api,
             updated_by=None,
-            updated_at=None,
             summary_index_setting=summary_index_setting,
             **kwargs,
         )
