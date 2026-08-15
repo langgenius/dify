@@ -14,7 +14,7 @@ from controllers.console.app.message import ChatMessagesQuery, FeedbackExportQue
 from controllers.console.app.message import attach_message_extra_contents as _attach_message_extra_contents
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from libs.datetime_utils import naive_utc_now
-from models.enums import ConversationFromSource, FeedbackRating
+from models.enums import ConversationFromSource, ConversationStatus, FeedbackRating
 from models.model import AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
@@ -34,11 +34,11 @@ def _create_conversation(db_session: Session, app_id: str, account_id: str, mode
         override_model_configs=None,
         mode=mode,
         name="Test Conversation",
-        inputs={},
+        _inputs={},
         introduction="",
         system_instruction="",
         system_instruction_tokens=0,
-        status="normal",
+        status=ConversationStatus.NORMAL,
         from_source=ConversationFromSource.CONSOLE,
         from_account_id=account_id,
     )
@@ -62,7 +62,7 @@ def _create_message(
         model_id="",
         override_model_configs=None,
         conversation_id=conversation_id,
-        inputs={},
+        _inputs={},
         query="Hello",
         message={"type": "text", "content": "Hello"},
         message_tokens=1,
@@ -78,10 +78,10 @@ def _create_message(
         currency="USD",
         from_source=ConversationFromSource.CONSOLE,
         from_account_id=account_id,
-        created_at=created_at,
-        updated_at=created_at,
         app_mode=AppMode.CHAT,
     )
+    message.created_at = created_at
+    message.updated_at = created_at
     db_session.add(message)
     db_session.commit()
     return message

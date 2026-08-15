@@ -57,7 +57,7 @@ def _conversation(*, conversation_id: str = "conv-1", app_id: str = "app-id") ->
         name="",
         status="normal",
         from_source=ConversationFromSource.API,
-        inputs={},
+        _inputs={},
     )
 
 
