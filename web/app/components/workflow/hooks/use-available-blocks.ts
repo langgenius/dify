@@ -11,11 +11,15 @@ const availableBlocksFilter = (nodeType: BlockEnum, inContainer?: boolean) => {
       nodeType === BlockEnum.Loop ||
       nodeType === BlockEnum.End ||
       nodeType === BlockEnum.DataSource ||
-      nodeType === BlockEnum.KnowledgeBase ||
-      nodeType === BlockEnum.HumanInput)
+      nodeType === BlockEnum.KnowledgeBase)
   )
     return false
 
+  // Human Input is supported inside Iteration/Loop nodes since
+  // runtime support landed (#39243). Keep it on the nested block
+  // list so the selector and paste guard accept it. Regression for
+  // #40060 — previously Human Input was excluded here even though
+  // the runtime could execute it.
   if (!inContainer && nodeType === BlockEnum.LoopEnd) return false
 
   return true

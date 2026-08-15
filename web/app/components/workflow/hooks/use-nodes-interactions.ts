@@ -1779,14 +1779,15 @@ export const useNodesInteractions = () => {
     const parentChildrenToAppend: { parentId: string; childId: string; childType: BlockEnum }[] = []
     const selectedNodes = nodes.filter((node) => node.selected)
     // Keep this list aligned with availableBlocksFilter(inContainer)
-    // in use-available-blocks.ts.
+    // in use-available-blocks.ts. Human Input is intentionally omitted
+    // — runtime support landed in #39243 — so users can paste it into
+    // an Iteration or Loop container. Regression for #40060.
     const commonNestedDisallowPasteNodes = [
       BlockEnum.End,
       BlockEnum.Iteration,
       BlockEnum.Loop,
       BlockEnum.DataSource,
       BlockEnum.KnowledgeBase,
-      BlockEnum.HumanInput,
     ]
     // Same-canvas copy keeps the source container selected, so only treat a
     // selected container as the paste target when it is not part of the clipboard.
