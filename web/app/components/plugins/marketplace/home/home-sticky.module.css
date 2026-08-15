@@ -48,9 +48,8 @@
 }
 
 .catalogNavigationPinned {
-  border-bottom: 1px solid var(--color-divider-regular);
   padding-top: 16px;
-  padding-bottom: 15px;
+  padding-bottom: 16px;
   background-color: var(--color-background-default);
 }
 
