@@ -1,7 +1,7 @@
 import type { DefaultModelResponse } from '../../declarations'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
 import { render } from '@/test/console/render'
 import { ModelTypeEnum } from '../../declarations'
 import SystemModel from '../index'

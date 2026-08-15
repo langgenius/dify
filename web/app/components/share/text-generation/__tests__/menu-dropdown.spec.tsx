@@ -1,7 +1,7 @@
 import type { SiteInfo } from '@/models/share'
 import type { WebAppAddress } from '@/service/webapp-address'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import MenuDropdown from '../menu-dropdown'
 
 vi.mock('../info-modal', () => ({

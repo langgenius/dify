@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { createAgentV2SeedTasks } from '../features/agent-v2/support/seed'
 
 const baseTaskIds = [

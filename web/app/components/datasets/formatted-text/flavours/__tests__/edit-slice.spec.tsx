@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 // Capture the onOpenChange callback to simulate hover interactions
 let capturedOnOpenChange: ((open: boolean) => void) | null = null

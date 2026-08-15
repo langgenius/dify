@@ -6,7 +6,7 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
 import { getMarketplaceUrl } from '@/utils/var'
-import IntegrationsPage from './page'
+import IntegrationsPage from './index'
 
 type IntegrationsSettingModalProps = {
   section: IntegrationSection
@@ -44,7 +44,7 @@ export default function IntegrationsSettingModal({
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
               onClick={onCancel}
             >
-              <span className="i-ri-close-line h-5 w-5" />
+              <span aria-hidden className="i-ri-close-line h-5 w-5" />
             </IconButton>
             <div className="mt-1 system-2xs-medium-uppercase text-text-tertiary">ESC</div>
           </div>

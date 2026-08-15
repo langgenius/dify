@@ -90,7 +90,7 @@ function TaskStatusIndicator({
             data-error={showErrorStyle ? '' : undefined}
             className={cn(styles.indicator, className)}
           >
-            <span className="contents">
+            <span aria-hidden className="contents">
               <DownloadingIcon active={hasActiveInstall} />
               {showBadge && (
                 <span className="absolute -top-1.5 -right-1.5 box-content flex size-3.5 items-center justify-center rounded-full border border-components-panel-bg bg-components-panel-bg">

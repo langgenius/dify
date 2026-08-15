@@ -10,25 +10,20 @@ import {
   RiMailLine,
   RiTranslate2,
 } from '@remixicon/react'
-import { skipToken, useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-profile/client'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { useLogout } from '@/service/use-common'
-import { buildOAuthCallbackUrl, buildReturnUrl } from './oauth-url'
-import {
-  shouldSilentAuthorizeMarketplace,
-  useMarketplaceSilentAuthorize,
-} from './use-marketplace-silent-authorize'
+import { buildOAuthCallbackUrl, buildReturnUrl, useSilentAuthorize } from './use-silent-authorize'
 
 export default function OAuthAuthorize() {
   const { t } = useTranslation()
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   const SCOPE_INFO_MAP: Record<
     string,
@@ -76,13 +71,6 @@ export default function OAuthAuthorize() {
   })
   const isLoggedIn = !!userProfileResp && !profileError
   const userProfile = userProfileResp?.profile
-  const shouldAutoAuthorizeMarketplace =
-    hasOAuthParams &&
-    shouldSilentAuthorizeMarketplace({
-      clientId,
-      deploymentEdition: systemFeatures.deployment_edition,
-    })
-  const shouldLoadOAuthApp = hasOAuthParams && (!shouldAutoAuthorizeMarketplace || isLoggedIn)
   const {
     data: authAppInfo,
     isLoading: isOAuthLoading,
@@ -91,7 +79,7 @@ export default function OAuthAuthorize() {
     refetch: refetchOAuthApp,
   } = useQuery(
     consoleQuery.oauth.provider.post.queryOptions({
-      input: shouldLoadOAuthApp
+      input: hasOAuthParams
         ? { body: { client_id: clientId, redirect_uri: redirectUri } }
         : skipToken,
       context: { silent: true },
@@ -101,7 +89,17 @@ export default function OAuthAuthorize() {
     consoleQuery.oauth.provider.authorize.post.mutationOptions(),
   )
   const { mutateAsync: logout } = useLogout()
-  const { isMarketplaceAutoAuthorizing } = useMarketplaceSilentAuthorize()
+  const { isAutoAuthorizing } = useSilentAuthorize({
+    authAppInfo,
+    authorize,
+    clientId,
+    hasOAuthParams,
+    isLoggedIn,
+    isProfileLoading,
+    redirectUri,
+    searchParams,
+    state,
+  })
   const localizedAppLabel =
     authAppInfo?.app_label[language] ?? authAppInfo?.app_label[language.replace('_', '-')]
   const englishAppLabel = authAppInfo?.app_label.en_US ?? authAppInfo?.app_label['en-US']
@@ -109,6 +107,11 @@ export default function OAuthAuthorize() {
     (typeof localizedAppLabel === 'string' && localizedAppLabel) ||
     (typeof englishAppLabel === 'string' && englishAppLabel) ||
     t(($) => $.unknownApp, { ns: 'oauth' })
+  useDocumentTitle(
+    authAppInfo
+      ? `${t(($) => $.connect, { ns: 'oauth' })} ${appLabel}`
+      : t(($) => $.connect, { ns: 'oauth' }),
+  )
 
   const onLoginSwitchClick = async () => {
     try {
@@ -153,7 +156,7 @@ export default function OAuthAuthorize() {
     )
   }
 
-  if (isProfileLoading || isOAuthLoading || isMarketplaceAutoAuthorizing) {
+  if (isProfileLoading || isOAuthLoading || isAutoAuthorizing) {
     return (
       <div className="bg-background-default-subtle">
         <Loading type="app" />

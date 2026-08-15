@@ -24,7 +24,7 @@
     "e2e:prepared:prepare": "tsx ./scripts/run-cucumber.ts --seed-only --profile prepared",
     "e2e:reset": "tsx ./scripts/setup.ts reset",
     "seed": "tsx ./scripts/run-cucumber.ts --seed-only",
-    "test:unit": "vitest run",
+    "test:unit": "vp test run",
     "type-check": "tsc"
   },
   "devDependencies": {

@@ -1,7 +1,7 @@
 import type { MarketplaceCollection } from '@dify/contracts/marketplace'
 import type { Plugin } from '@/app/components/plugins/types'
 import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import ListWrapper from '../list-wrapper'
 
 const mockMarketplaceData = vi.hoisted(() => ({
