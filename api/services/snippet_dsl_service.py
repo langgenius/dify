@@ -3,6 +3,7 @@ import logging
 import uuid
 from collections.abc import Mapping
 from datetime import UTC, datetime
+from typing import cast
 from urllib.parse import urlparse
 
 import yaml
@@ -432,7 +433,7 @@ class SnippetDslService:
         else:
             # Create new snippet
             snippet = CustomizedSnippet(
-                tenant_id=account.current_tenant_id,
+                tenant_id=cast(str, account.current_tenant_id),
                 name=snippet_name,
                 description=snippet_description,
                 type=snippet_type.value,
