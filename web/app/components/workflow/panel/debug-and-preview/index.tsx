@@ -1,14 +1,12 @@
 import type { StartNodeType } from '../../nodes/start/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { RiCloseLine, RiEqualizer2Line } from '@remixicon/react'
 import { debounce } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
-import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
-import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
 import { useStore } from '@/app/components/workflow/store'
 import { useEdgesInteractionsWithoutSync } from '../../hooks/use-edges-interactions-without-sync'
 import { useNodesInteractionsWithoutSync } from '../../hooks/use-nodes-interactions-without-sync'
@@ -97,9 +95,12 @@ const DebugAndPreview = () => {
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <ActionButton aria-label={restartLabel} onClick={() => handleRestartChat()}>
-                    <RefreshCcw01 aria-hidden="true" className="size-4" />
-                  </ActionButton>
+                  <IconButton aria-label={restartLabel} onClick={() => handleRestartChat()}>
+                    <span
+                      aria-hidden="true"
+                      className="i-custom-vender-line-arrows-refresh-ccw-01 size-4"
+                    />
+                  </IconButton>
                 }
               />
               <TooltipContent>{restartLabel}</TooltipContent>
@@ -109,14 +110,14 @@ const DebugAndPreview = () => {
                 <Tooltip>
                   <TooltipTrigger
                     render={
-                      <ActionButton
+                      <IconButton
                         aria-label={userInputFieldLabel}
-                        aria-pressed={expanded}
-                        state={expanded ? ActionButtonState.Active : undefined}
+                        aria-expanded={expanded}
+                        className="aria-expanded:bg-state-accent-active aria-expanded:text-text-accent aria-expanded:hover:bg-state-accent-active-alt"
                         onClick={() => setExpanded(!expanded)}
                       >
-                        <RiEqualizer2Line aria-hidden="true" className="size-4" />
-                      </ActionButton>
+                        <span aria-hidden="true" className="i-ri-equalizer-2-line size-4" />
+                      </IconButton>
                     }
                   />
                   <TooltipContent>{userInputFieldLabel}</TooltipContent>
@@ -127,14 +128,9 @@ const DebugAndPreview = () => {
               </div>
             )}
             <div className="mx-3 h-3.5 w-px bg-divider-regular"></div>
-            <button
-              type="button"
-              aria-label={closeLabel}
-              className="flex size-6 cursor-pointer appearance-none items-center justify-center rounded-md border-0 bg-transparent p-0 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-              onClick={handleCancelDebugAndPreviewPanel}
-            >
-              <RiCloseLine aria-hidden="true" className="size-4 text-text-tertiary" />
-            </button>
+            <IconButton aria-label={closeLabel} onClick={handleCancelDebugAndPreviewPanel}>
+              <span aria-hidden="true" className="i-ri-close-line size-4 text-text-tertiary" />
+            </IconButton>
           </div>
         </div>
         <div className="grow overflow-y-auto rounded-b-2xl">

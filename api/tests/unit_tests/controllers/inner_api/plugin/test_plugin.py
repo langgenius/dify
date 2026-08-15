@@ -34,7 +34,19 @@ from controllers.inner_api.plugin.plugin import (
     PluginUploadFileRequestApi,
 )
 from core.workflow.file_reference import build_file_reference
-from models import Tenant
+from models import Account, Tenant
+
+
+def _tenant() -> Tenant:
+    tenant = Tenant(name="Test Tenant")
+    tenant.id = "tenant-id"
+    return tenant
+
+
+def _user() -> Account:
+    user = Account(name="Test User", email="user@example.com")
+    user.id = "user-id"
+    return user
 
 
 def _extract_raw_post(cls):
@@ -210,16 +222,16 @@ class TestPluginInvokeEncryptApi:
         """Test that post() delegates to PluginEncrypter and returns model_dump output"""
         # Arrange
         mock_encrypter.invoke_encrypt.return_value = {"encrypted": "data"}
-        mock_tenant = MagicMock()
-        mock_user = MagicMock()
+        tenant = _tenant()
+        user = _user()
         mock_payload = MagicMock()
 
         # Act — extract raw post() bypassing all decorators including plugin_data
         raw_post = _extract_raw_post(PluginInvokeEncryptApi)
-        result = raw_post(api_instance, user_model=mock_user, tenant_model=mock_tenant, payload=mock_payload)
+        result = raw_post(api_instance, user_model=user, tenant_model=tenant, payload=mock_payload)
 
         # Assert
-        mock_encrypter.invoke_encrypt.assert_called_once_with(mock_tenant, mock_payload)
+        mock_encrypter.invoke_encrypt.assert_called_once_with(tenant, mock_payload)
         assert result["data"] == {"encrypted": "data"}
         assert result.get("error") == ""
 
@@ -228,13 +240,13 @@ class TestPluginInvokeEncryptApi:
         """Test that post() catches exceptions and returns error response"""
         # Arrange
         mock_encrypter.invoke_encrypt.side_effect = RuntimeError("encrypt failed")
-        mock_tenant = MagicMock()
-        mock_user = MagicMock()
+        tenant = _tenant()
+        user = _user()
         mock_payload = MagicMock()
 
         # Act
         raw_post = _extract_raw_post(PluginInvokeEncryptApi)
-        result = raw_post(api_instance, user_model=mock_user, tenant_model=mock_tenant, payload=mock_payload)
+        result = raw_post(api_instance, user_model=user, tenant_model=tenant, payload=mock_payload)
 
         # Assert
         assert "encrypt failed" in result["error"]
@@ -269,10 +281,8 @@ class TestPluginUploadFileRequestApi:
         # Arrange
         mock_get_uri.return_value = "/files/upload/for-plugin?sign=1"
         monkeypatch.setattr(plugin_module.dify_config, "INTERNAL_FILES_URL", "http://api:5001")
-        mock_tenant = MagicMock()
-        mock_tenant.id = "tenant-id"
-        mock_user = MagicMock()
-        mock_user.id = "user-id"
+        tenant = _tenant()
+        user = _user()
         mock_payload = MagicMock()
         mock_payload.filename = "test.pdf"
         mock_payload.mimetype = "application/pdf"
@@ -280,7 +290,7 @@ class TestPluginUploadFileRequestApi:
 
         # Act
         raw_post = _extract_raw_post(PluginUploadFileRequestApi)
-        result = raw_post(api_instance, user_model=mock_user, tenant_model=mock_tenant, payload=mock_payload)
+        result = raw_post(api_instance, user_model=user, tenant_model=tenant, payload=mock_payload)
 
         # Assert
         mock_get_uri.assert_called_once_with(
@@ -388,15 +398,14 @@ class TestPluginFetchAppInfoApi:
         """Test that post() fetches app info and returns it"""
         # Arrange
         mock_invocation.fetch_app_info.return_value = {"app_name": "My App", "mode": "chat"}
-        mock_tenant = MagicMock()
-        mock_tenant.id = "tenant-id"
-        mock_user = MagicMock()
+        tenant = _tenant()
+        user = _user()
         mock_payload = MagicMock()
         mock_payload.app_id = "app-123"
 
         # Act
         raw_post = _extract_raw_post(PluginFetchAppInfoApi)
-        result = raw_post(api_instance, user_model=mock_user, tenant_model=mock_tenant, payload=mock_payload)
+        result = raw_post(api_instance, user_model=user, tenant_model=tenant, payload=mock_payload)
 
         # Assert
         mock_invocation.fetch_app_info.assert_called_once_with("app-123", "tenant-id")

@@ -18,6 +18,7 @@ inner_api_ns = Namespace("inner_api", description="Internal API operations", pat
 from . import mail as _mail
 from . import runtime_credentials as _runtime_credentials
 from .agent import files as _agent_files
+from .agent import llm as _agent_llm
 from .agent import tools as _agent_tools
 from .app import dsl as _app_dsl
 from .knowledge import retrieval as _knowledge_retrieval
@@ -32,6 +33,7 @@ __all__ = [
     "_agent_config",
     "_agent_drive",
     "_agent_files",
+    "_agent_llm",
     "_agent_tools",
     "_app_dsl",
     "_knowledge_retrieval",

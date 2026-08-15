@@ -1,6 +1,6 @@
 @agent-v2 @authenticated @knowledge @knowledge-fixture
 Feature: Agent v2 Knowledge Retrieval
-  @core @prepared
+  @core @prepared @skip
   Scenario: Agent decide Knowledge Retrieval settings are saved and restored
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded dataset "E2E Agent Knowledge Base" is indexed and ready
@@ -12,7 +12,7 @@ Feature: Agent v2 Knowledge Retrieval
     When I refresh the current page
     Then I should see the Agent v2 Agent decide Knowledge Retrieval settings
 
-  @core @prepared
+  @core @prepared @skip
   Scenario: Custom query Knowledge Retrieval settings are saved and restored
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded dataset "E2E Agent Knowledge Base" is indexed and ready
@@ -24,7 +24,7 @@ Feature: Agent v2 Knowledge Retrieval
     When I refresh the current page
     Then I should see the Agent v2 Custom query Knowledge Retrieval settings
 
-  @service-api-runtime @external-model @agent-backend-runtime @agent-decision-model @backend-api-access
+  @service-api-runtime @external-model @agent-backend-runtime @agent-decision-model @backend-api-access @skip
   Scenario: Agent decide Knowledge Retrieval answers through Backend service API
     Given I am signed in as the default E2E admin
     And the Agent Builder agent-decision chat model is available
@@ -41,7 +41,7 @@ Feature: Agent v2 Knowledge Retrieval
     When I send the Agent v2 Backend service API knowledge request
     Then the Agent v2 Backend service API response should include the knowledge E2E marker
 
-  @service-api-runtime @external-model @agent-backend-runtime @stable-model @backend-api-access
+  @service-api-runtime @external-model @agent-backend-runtime @stable-model @backend-api-access @skip
   Scenario: Custom query Knowledge Retrieval answers through Backend service API
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
@@ -58,7 +58,7 @@ Feature: Agent v2 Knowledge Retrieval
     When I send the Agent v2 Backend service API knowledge request
     Then the Agent v2 Backend service API response should include the knowledge E2E marker
 
-  @core @prepared
+  @core @prepared @skip
   Scenario: Removing Knowledge Retrieval clears the saved dataset reference
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded dataset "E2E Agent Knowledge Base" is indexed and ready

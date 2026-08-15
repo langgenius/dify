@@ -1,5 +1,5 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 import type { DocumentIndexingStatus, IndexingStatusResponse } from '@/models/datasets'
 import type { InitialDocumentDetail } from '@/models/pipeline'
 import { fireEvent, screen, waitFor } from '@testing-library/react'

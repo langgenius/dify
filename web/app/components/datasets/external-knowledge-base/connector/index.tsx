@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import ExternalKnowledgeBaseCreate from '@/app/components/datasets/external-knowledge-base/create'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
 import { createExternalKnowledgeBase } from '@/service/datasets'
 
@@ -14,6 +15,9 @@ const ExternalKnowledgeBaseConnector = () => {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const { t } = useTranslation()
+  useDocumentTitle(
+    t(($) => $['stepByStepTour.guides.knowledge.empty.connect.title'], { ns: 'common' }),
+  )
 
   const handleConnect = async (formValue: CreateKnowledgeBaseReq) => {
     try {

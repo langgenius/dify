@@ -38,7 +38,7 @@
   "agentDetail.access.workflow.table.nodes": "Noduri",
   "agentDetail.access.workflow.table.version": "Versiune",
   "agentDetail.access.workflow.title": "Acces prin workflow",
-  "agentDetail.configure.advancedSettings.description": "Pentru utilizatori avansați. Variabile de mediu, sandbox și memorie.",
+  "agentDetail.configure.advancedSettings.description": "Pentru utilizatori avansați, cum ar fi variabilele de mediu.",
   "agentDetail.configure.advancedSettings.envEditor.add": "Adaugă variabilă de mediu",
   "agentDetail.configure.advancedSettings.envEditor.deleteVariable": "Șterge {{key}}",
   "agentDetail.configure.advancedSettings.envEditor.hideValue": "Ascunde valoarea {{key}}",
@@ -156,6 +156,7 @@
   "agentDetail.configure.preview.empty.description": "Rulează agentul ca un chat finalizat, exact cum îl vor experimenta utilizatorii după publicare.",
   "agentDetail.configure.preview.empty.title": "Previzualizează {{name}}",
   "agentDetail.configure.preview.endUserAuth": "Autentificare utilizator final",
+  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "Această rulare a Agentului a fost oprită după atingerea numărului maxim de solicitări către model. Încearcă din nou sau împarte sarcina în pași mai mici.",
   "agentDetail.configure.preview.errors.agentRunLimitExceeded": "Această rulare a Agentului a fost oprită după atingerea limitei de timp. Încearcă din nou sau împarte sarcina în pași mai mici.",
   "agentDetail.configure.preview.inputPlaceholder": "Trimite mesaj către {{name}}",
   "agentDetail.configure.preview.restart": "Începe din nou",
@@ -425,6 +426,7 @@
   "roster.sort.lastModified": "Ultima modificare",
   "roster.sort.optionsLabel": "Opțiuni de sortare",
   "roster.sort.recentlyCreated": "Create recent",
+  "roster.title": "Agenți",
   "roster.updateSuccess": "Agent actualizat.",
   "roster.usageStatus.draft": "Ciornă"
 }

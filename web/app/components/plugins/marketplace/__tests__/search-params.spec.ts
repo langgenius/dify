@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { PLUGIN_TYPE_SEARCH_MAP } from '../constants'
 import { marketplaceSearchParamsParsers } from '../search-params'
 

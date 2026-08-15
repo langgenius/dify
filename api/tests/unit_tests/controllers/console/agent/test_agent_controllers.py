@@ -845,9 +845,7 @@ def test_agent_publish_and_build_draft_routes_call_composer_service(
     assert captured["discard"] == {"tenant_id": "tenant-1", "agent_id": agent_id, "account_id": account_id}
 
 
-def test_agent_api_access_uses_agent_id_and_returns_service_api_metadata(
-    app: Flask, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_agent_api_access_uses_agent_id_and_returns_service_api_metadata(monkeypatch: pytest.MonkeyPatch) -> None:
     agent_id = "00000000-0000-0000-0000-000000000001"
     app_model = _app_detail_obj(
         id="app-1",
@@ -859,8 +857,8 @@ def test_agent_api_access_uses_agent_id_and_returns_service_api_metadata(
     monkeypatch.setattr(roster_controller, "_resolve_agent_app_model", lambda _session, **kwargs: app_model)
     monkeypatch.setattr(roster_controller, "_agent_api_key_count", lambda _session, _app: 2)
     monkeypatch.setattr(roster_controller, "_agent_app_access_ready", lambda _session, _app: True)
-    with app.test_request_context(base_url="https://api.example.test"):
-        response = unwrap(AgentApiAccessApi.get)(AgentApiAccessApi(), MagicMock(), "tenant-1", agent_id)
+    monkeypatch.setattr("models.model.dify_config.SERVICE_API_URL", "https://api.example.test/v1")
+    response = unwrap(AgentApiAccessApi.get)(AgentApiAccessApi(), MagicMock(), "tenant-1", agent_id)
     assert response == {
         "access_ready": True,
         "enabled": True,

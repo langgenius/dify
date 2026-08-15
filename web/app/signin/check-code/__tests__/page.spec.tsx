@@ -1,9 +1,11 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { emailLoginWithCode, sendEMailLoginCode } from '@/service/common'
+import { seedSystemFeatures } from '@/test/console/query-data'
 import CheckCode from '../page'
 
 const navigationMocks = vi.hoisted(() => ({
@@ -28,7 +30,7 @@ type TurnstileOptions = {
 }
 
 const turnstileMocks = vi.hoisted(() => ({
-  deploymentEdition: 'COMMUNITY',
+  deploymentEdition: 'COMMUNITY' as DeploymentEdition,
   remove: vi.fn(),
   render: vi.fn(),
   scriptProps: undefined as ScriptProps | undefined,
@@ -37,13 +39,6 @@ const turnstileMocks = vi.hoisted(() => ({
 
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
-}))
-
-vi.mock('@/features/system-features/client', () => ({
-  systemFeaturesQueryOptions: () => ({
-    queryKey: ['system-features'],
-    queryFn: () => Promise.resolve({ deployment_edition: turnstileMocks.deploymentEdition }),
-  }),
 }))
 
 vi.mock('@/config', async (importOriginal) => ({
@@ -99,7 +94,7 @@ function createQueryClient() {
       },
     },
   })
-  queryClient.setQueryData(['system-features'], {
+  seedSystemFeatures(queryClient, {
     deployment_edition: turnstileMocks.deploymentEdition,
   })
   return queryClient

@@ -530,7 +530,6 @@ class DifyNodeFactory(NodeFactory):
             return {
                 "binding_resolver": WorkflowAgentBindingResolver(),
                 "runtime_request_builder": WorkflowAgentRuntimeRequestBuilder(
-                    credentials_provider=self._llm_credentials_provider,
                     request_builder=AgentBackendRunRequestBuilder(),
                 ),
                 "agent_backend_client": create_agent_backend_run_client(
@@ -540,7 +539,6 @@ class DifyNodeFactory(NodeFactory):
                     fake_scenario=dify_config.AGENT_BACKEND_FAKE_SCENARIO,
                     stream_read_timeout_seconds=dify_config.AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS,
                     stream_max_reconnects=dify_config.AGENT_BACKEND_STREAM_MAX_RECONNECTS,
-                    stream_run_timeout_seconds=dify_config.AGENT_BACKEND_RUN_TIMEOUT_SECONDS,
                 ),
                 "event_adapter": AgentBackendRunEventAdapter(),
                 # Agent Files §4.6: reback file outputs from the ToolFile row so

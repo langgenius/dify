@@ -49,6 +49,7 @@
   "join": "عضویت",
   "joinTipEnd": "تیم در Dify",
   "joinTipStart": "شما را دعوت می‌کنیم به",
+  "joinWorkspace": "پیوستن به {{workspaceName}}",
   "license.link": "مجوز منبع باز",
   "license.tip": "قبل از شروع Dify Community Edition، GitHub را بخوانید",
   "licenseExpired": "مجوز منقضی شده است",

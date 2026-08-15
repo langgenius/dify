@@ -580,6 +580,8 @@ class ToolBuiltinProviderAddApi(Resource):
     )
     @setup_required
     @login_required
+    @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_CREATE, resource_required=False)
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -1268,6 +1270,8 @@ class ToolOAuthCustomClient(Resource):
     )
     @setup_required
     @login_required
+    @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     def delete(self, current_tenant_id: str, provider: str):
