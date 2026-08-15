@@ -66,10 +66,18 @@ const frozenCollections = [
 
 const frozenCollectionPlugins: Record<string, unknown[]> = {
   'e2e-frozen-featured': Array.from({ length: 8 }, (_, index) =>
-    makeFrozenPlugin(`featured-plugin-${index + 1}`, `Featured Plugin ${index + 1}`, 12_000 - index * 100),
+    makeFrozenPlugin(
+      `featured-plugin-${index + 1}`,
+      `Featured Plugin ${index + 1}`,
+      12_000 - index * 100,
+    ),
   ),
   'e2e-frozen-popular': Array.from({ length: 8 }, (_, index) =>
-    makeFrozenPlugin(`popular-plugin-${index + 1}`, `Popular Plugin ${index + 1}`, 8_000 - index * 100),
+    makeFrozenPlugin(
+      `popular-plugin-${index + 1}`,
+      `Popular Plugin ${index + 1}`,
+      8_000 - index * 100,
+    ),
   ),
 }
 
@@ -138,7 +146,9 @@ const handleRequest = (request: IncomingMessage, response: ServerResponse) => {
   if (!stubResponse) {
     console.warn(`Marketplace stub has no fixture for ${method} ${url.pathname}; returning 404.`)
     response.writeHead(404, { 'Content-Type': 'application/json' })
-    response.end(JSON.stringify({ code: 404, msg: 'Marketplace stub fixture not found', data: null }))
+    response.end(
+      JSON.stringify({ code: 404, msg: 'Marketplace stub fixture not found', data: null }),
+    )
     return
   }
 

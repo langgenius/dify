@@ -91,9 +91,7 @@ describe('proxy frame options', () => {
 
   it('should deny framing for the Marketplace OAuth authorize route', () => {
     const response = proxy(
-      createRequest(
-        'https://cloud.dify.ai/account/oauth/authorize?client_id=marketplace-client',
-      ),
+      createRequest('https://cloud.dify.ai/account/oauth/authorize?client_id=marketplace-client'),
     )
 
     expect(response.headers.get('x-frame-options')).toBe('DENY')

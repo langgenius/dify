@@ -59,7 +59,6 @@ describe('resolveLoginRedirectTarget', () => {
         }),
       ).toEqual({ kind: 'absolute', href: 'https://self-hosted.example:8443/apps' })
     })
-
   })
 
   describe('legacy encoding compatibility', () => {
@@ -140,7 +139,6 @@ describe('resolveLoginRedirectTarget', () => {
         }),
       ).toBeNull()
     })
-
   })
 })
 
