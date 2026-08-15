@@ -15,7 +15,8 @@ METADATA_FILTER_SYSTEM_PROMPT = """
 
 METADATA_FILTER_USER_PROMPT_1 = """
     { "input_text": "I want to know which company’s email address test@example.com is?",
-    "metadata_fields": [{"name": "filename", "type": "string"}, {"name": "email", "type": "string"}, {"name": "phone", "type": "string"}, {"name": "address", "type": "string"}]
+    "metadata_fields": [{"name": "filename", "type": "string"}, {"name": "email", "type": "string"},
+    {"name": "phone", "type": "string"}, {"name": "address", "type": "string"}]
     }
 """
 
@@ -30,7 +31,8 @@ METADATA_FILTER_ASSISTANT_PROMPT_1 = """
 
 METADATA_FILTER_USER_PROMPT_2 = """
     {"input_text": "What are the movies released after 2024-01-01 with a score of more than 9?",
-    "metadata_fields": [{"name": "name", "type": "string"}, {"name": "release_date", "type": "time"}, {"name": "rating", "type": "number"}, {"name": "country", "type": "string"}]}
+    "metadata_fields": [{"name": "name", "type": "string"}, {"name": "release_date", "type": "time"},
+    {"name": "rating", "type": "number"}, {"name": "country", "type": "string"}]}
 """
 
 METADATA_FILTER_ASSISTANT_PROMPT_2 = """
