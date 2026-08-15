@@ -36,7 +36,7 @@ def _workflow_run(
     created_by: str = "eu-1",
     finished_at: datetime | None = None,
 ) -> WorkflowRun:
-    return WorkflowRun(
+    workflow_run = WorkflowRun(
         id="run-1",
         tenant_id="tenant-1",
         app_id=app_id,
@@ -54,9 +54,10 @@ def _workflow_run(
         total_steps=0,
         created_by_role=created_by_role,
         created_by=created_by,
-        created_at=datetime(2024, 1, 1),
         finished_at=finished_at,
     )
+    workflow_run.created_at = datetime(2024, 1, 1)
+    return workflow_run
 
 
 # ---------------------------------------------------------------------------
