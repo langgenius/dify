@@ -13,6 +13,7 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldControl, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -259,16 +260,16 @@ function CreateFromDSLModal({
               <DialogTitle className="title-2xl-semi-bold text-text-primary">
                 {t(($) => $.importApp, { ns: 'app' })}
               </DialogTitle>
-              <Button
+              <IconButton
                 variant="ghost"
-                size="small"
+                size="lg"
                 aria-label={t(($) => $['operation.cancel'], { ns: 'common' })}
-                className="size-8 p-0"
+                className="rounded-md"
                 disabled={isImporting}
                 onClick={onClose}
               >
                 <span aria-hidden className="i-ri-close-line size-5 text-text-tertiary" />
-              </Button>
+              </IconButton>
             </div>
             <Form<ImportFormValues> ref={formRef} onFormSubmit={handleSubmit}>
               <Tabs value={currentTab} onValueChange={handleTabChange}>

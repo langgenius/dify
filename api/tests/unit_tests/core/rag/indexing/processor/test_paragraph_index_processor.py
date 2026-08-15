@@ -16,9 +16,10 @@ from core.rag.models.document import AttachmentDocument, Document
 from extensions.storage.storage_type import StorageType
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, ImagePromptMessageContent
-from graphon.model_runtime.entities.model_entities import ModelFeature
-from models.dataset import DocumentSegment, SegmentAttachmentBinding
-from models.enums import CreatorUserRole
+from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
+from models.dataset import Dataset, DocumentCreatedFrom, DocumentSegment, SegmentAttachmentBinding
+from models.dataset import Document as DatasetDocument
+from models.enums import CreatorUserRole, DataSourceType
 from models.model import UploadFile
 
 
@@ -36,19 +37,34 @@ class TestParagraphIndexProcessor:
         return ParagraphIndexProcessor()
 
     @pytest.fixture
-    def dataset(self) -> Mock:
-        dataset = Mock()
-        dataset.id = "dataset-1"
-        dataset.tenant_id = "tenant-1"
-        dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
-        dataset.is_multimodal = True
+    def dataset(self) -> Dataset:
+        dataset = Dataset(
+            id="dataset-1",
+            tenant_id="tenant-1",
+            name="Dataset",
+            created_by="user-1",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+            is_multimodal=True,
+        )
+        self.session.add(dataset)
+        self.session.flush()
         return dataset
 
     @pytest.fixture
-    def dataset_document(self) -> Mock:
-        document = Mock()
-        document.id = "doc-1"
-        document.created_by = "user-1"
+    def dataset_document(self, dataset: Dataset) -> DatasetDocument:
+        document = DatasetDocument(
+            id="doc-1",
+            tenant_id=dataset.tenant_id,
+            dataset_id=dataset.id,
+            position=1,
+            data_source_type=DataSourceType.UPLOAD_FILE,
+            batch="batch-1",
+            name="Document",
+            created_from=DocumentCreatedFrom.API,
+            created_by="user-1",
+        )
+        self.session.add(document)
+        self.session.flush()
         return document
 
     @pytest.fixture
@@ -209,7 +225,7 @@ class TestParagraphIndexProcessor:
         assert mock_validate.call_count == 1
 
     def test_load_creates_vector_and_multimodal_when_high_quality(
-        self, processor: ParagraphIndexProcessor, dataset: Mock
+        self, processor: ParagraphIndexProcessor, dataset: Dataset
     ) -> None:
         docs = [Document(page_content="chunk", metadata={})]
         multimodal_docs = [AttachmentDocument(page_content="image", metadata={})]
@@ -227,7 +243,7 @@ class TestParagraphIndexProcessor:
         mock_keyword_cls.assert_not_called()
 
     def test_load_uses_keyword_add_texts_with_keywords_when_economy(
-        self, processor: ParagraphIndexProcessor, dataset: Mock
+        self, processor: ParagraphIndexProcessor, dataset: Dataset
     ) -> None:
         dataset.indexing_technique = IndexTechniqueType.ECONOMY
         docs = [Document(page_content="chunk", metadata={})]
@@ -240,7 +256,7 @@ class TestParagraphIndexProcessor:
         mock_keyword_cls.return_value.add_texts.assert_called_once_with(docs, session, keywords_list=keywords_list)
 
     def test_load_uses_keyword_add_texts_without_keywords_when_economy(
-        self, processor: ParagraphIndexProcessor, dataset: Mock
+        self, processor: ParagraphIndexProcessor, dataset: Dataset
     ) -> None:
         dataset.indexing_technique = IndexTechniqueType.ECONOMY
         docs = [Document(page_content="chunk", metadata={})]
@@ -251,7 +267,7 @@ class TestParagraphIndexProcessor:
 
         mock_keyword_cls.return_value.add_texts.assert_called_once_with(docs, session)
 
-    def test_clean_deletes_summaries_and_vector(self, processor: ParagraphIndexProcessor, dataset: Mock) -> None:
+    def test_clean_deletes_summaries_and_vector(self, processor: ParagraphIndexProcessor, dataset: Dataset) -> None:
         session = self.session
         segment = DocumentSegment(
             tenant_id=dataset.tenant_id,
@@ -280,7 +296,7 @@ class TestParagraphIndexProcessor:
         vector.delete_by_ids.assert_called_once_with(["node-1"])
 
     def test_clean_economy_deletes_summaries_and_keywords(
-        self, processor: ParagraphIndexProcessor, dataset: Mock
+        self, processor: ParagraphIndexProcessor, dataset: Dataset
     ) -> None:
         dataset.indexing_technique = IndexTechniqueType.ECONOMY
         session = self.session
@@ -296,7 +312,7 @@ class TestParagraphIndexProcessor:
         mock_summary.assert_called_once_with(dataset, None, session=session)
         mock_keyword_cls.return_value.delete.assert_called_once()
 
-    def test_clean_deletes_keywords_by_ids(self, processor: ParagraphIndexProcessor, dataset: Mock) -> None:
+    def test_clean_deletes_keywords_by_ids(self, processor: ParagraphIndexProcessor, dataset: Dataset) -> None:
         dataset.indexing_technique = IndexTechniqueType.ECONOMY
         session = self.session
         with patch("core.rag.index_processor.processor.paragraph_index_processor.Keyword") as mock_keyword_cls:
@@ -305,7 +321,7 @@ class TestParagraphIndexProcessor:
         mock_keyword_cls.return_value.delete_by_ids.assert_called_once_with(["node-2"], session)
 
     def test_index_list_chunks_high_quality(
-        self, processor: ParagraphIndexProcessor, dataset: Mock, dataset_document: Mock
+        self, processor: ParagraphIndexProcessor, dataset: Dataset, dataset_document: DatasetDocument
     ) -> None:
         session = self.session
         phase_events: list[str] = []
@@ -346,7 +362,7 @@ class TestParagraphIndexProcessor:
         mock_vector_cls.return_value.create_multimodal.assert_called_once()
 
     def test_index_list_chunks_economy(
-        self, processor: ParagraphIndexProcessor, dataset: Mock, dataset_document: Mock
+        self, processor: ParagraphIndexProcessor, dataset: Dataset, dataset_document: DatasetDocument
     ) -> None:
         dataset.indexing_technique = IndexTechniqueType.ECONOMY
         session = self.session
@@ -376,7 +392,7 @@ class TestParagraphIndexProcessor:
         mock_keyword_cls.return_value.add_texts.assert_called_once()
 
     def test_index_multimodal_structure_handles_files_and_account_lookup(
-        self, processor: ParagraphIndexProcessor, dataset: Mock, dataset_document: Mock
+        self, processor: ParagraphIndexProcessor, dataset: Dataset, dataset_document: DatasetDocument
     ) -> None:
         chunk_with_files = SimpleNamespace(
             content="content-1",
@@ -421,7 +437,7 @@ class TestParagraphIndexProcessor:
         assert account_session is not session
 
     def test_index_multimodal_structure_requires_valid_account(
-        self, processor: ParagraphIndexProcessor, dataset: Mock, dataset_document: Mock
+        self, processor: ParagraphIndexProcessor, dataset: Dataset, dataset_document: DatasetDocument
     ) -> None:
         structure = SimpleNamespace(general_chunks=[SimpleNamespace(content="content", files=None)])
         session = self.session
@@ -519,41 +535,51 @@ class TestParagraphIndexProcessor:
         with pytest.raises(ValueError, match="model_name and model_provider_name"):
             ParagraphIndexProcessor.generate_summary("tenant-1", "text", {"enable": True}, session=self.session)
 
-    def test_generate_summary_text_only_flow(self, caplog: pytest.LogCaptureFixture) -> None:
+    def test_generate_summary_text_only_flow(self) -> None:
         model_instance = Mock()
         model_instance.credentials = {"k": "v"}
         model_instance.model_type_instance.get_model_schema.return_value = SimpleNamespace(features=[])
         model_instance.invoke_llm.return_value = self._llm_result("text summary")
 
-        with (
-            patch(
-                "core.rag.index_processor.processor.paragraph_index_processor.create_plugin_provider_manager"
-            ) as mock_provider_manager,
-            patch(
-                "core.rag.index_processor.processor.paragraph_index_processor.ModelInstance",
-                return_value=model_instance,
-            ),
-            patch(
-                "core.rag.index_processor.processor.paragraph_index_processor.deduct_llm_quota",
-                side_effect=RuntimeError("quota"),
-            ),
-        ):
-            mock_provider_manager.return_value.get_provider_model_bundle.return_value = Mock()
-            with caplog.at_level(
-                logging.WARNING, logger="core.rag.index_processor.processor.paragraph_index_processor"
-            ):
-                summary, usage = ParagraphIndexProcessor.generate_summary(
-                    "tenant-1",
-                    "text content",
-                    {"enable": True, "model_name": "model-a", "model_provider_name": "provider-a"},
-                    document_language="English",
-                    session=self.session,
-                )
+        with patch(
+            "core.rag.index_processor.processor.paragraph_index_processor.ModelManager.for_tenant"
+        ) as mock_model_manager:
+            mock_model_manager.return_value.get_model_instance.return_value = model_instance
+            summary, usage = ParagraphIndexProcessor.generate_summary(
+                "tenant-1",
+                "text content",
+                {"enable": True, "model_name": "model-a", "model_provider_name": "provider-a"},
+                document_language="English",
+                session=self.session,
+            )
 
         assert summary == "text summary"
         assert isinstance(usage, LLMUsage)
-        assert sum(1 for r in caplog.records if r.levelno == logging.WARNING) == 1
-        assert any("Failed to deduct quota for summary generation" in record.message for record in caplog.records)
+        mock_model_manager.assert_called_once_with(tenant_id="tenant-1")
+        mock_model_manager.return_value.get_model_instance.assert_called_once_with(
+            tenant_id="tenant-1",
+            provider="provider-a",
+            model_type=ModelType.LLM,
+            model="model-a",
+        )
+
+    def test_generate_summary_propagates_model_invocation_errors(self) -> None:
+        model_instance = Mock()
+        model_instance.credentials = {"k": "v"}
+        model_instance.model_type_instance.get_model_schema.return_value = SimpleNamespace(features=[])
+        model_instance.invoke_llm.side_effect = RuntimeError("invocation failed")
+
+        with patch(
+            "core.rag.index_processor.processor.paragraph_index_processor.ModelManager.for_tenant"
+        ) as mock_model_manager:
+            mock_model_manager.return_value.get_model_instance.return_value = model_instance
+            with pytest.raises(RuntimeError, match="invocation failed"):
+                ParagraphIndexProcessor.generate_summary(
+                    "tenant-1",
+                    "text content",
+                    {"enable": True, "model_name": "model-a", "model_provider_name": "provider-a"},
+                    session=self.session,
+                )
 
     def test_generate_summary_handles_vision_and_image_conversion(self) -> None:
         model_instance = Mock()
@@ -567,12 +593,8 @@ class TestParagraphIndexProcessor:
 
         with (
             patch(
-                "core.rag.index_processor.processor.paragraph_index_processor.create_plugin_provider_manager"
-            ) as mock_provider_manager,
-            patch(
-                "core.rag.index_processor.processor.paragraph_index_processor.ModelInstance",
-                return_value=model_instance,
-            ),
+                "core.rag.index_processor.processor.paragraph_index_processor.ModelManager.for_tenant"
+            ) as mock_model_manager,
             patch.object(
                 ParagraphIndexProcessor, "_extract_images_from_segment_attachments", return_value=[image_file]
             ),
@@ -581,9 +603,8 @@ class TestParagraphIndexProcessor:
                 "core.rag.index_processor.processor.paragraph_index_processor.file_manager.to_prompt_message_content",
                 return_value=image_content,
             ),
-            patch("core.rag.index_processor.processor.paragraph_index_processor.deduct_llm_quota"),
         ):
-            mock_provider_manager.return_value.get_provider_model_bundle.return_value = Mock()
+            mock_model_manager.return_value.get_model_instance.return_value = model_instance
             summary, _ = ParagraphIndexProcessor.generate_summary(
                 "tenant-1",
                 "text content",
@@ -606,12 +627,8 @@ class TestParagraphIndexProcessor:
 
         with (
             patch(
-                "core.rag.index_processor.processor.paragraph_index_processor.create_plugin_provider_manager"
-            ) as mock_provider_manager,
-            patch(
-                "core.rag.index_processor.processor.paragraph_index_processor.ModelInstance",
-                return_value=model_instance,
-            ),
+                "core.rag.index_processor.processor.paragraph_index_processor.ModelManager.for_tenant"
+            ) as mock_model_manager,
             patch(
                 "core.rag.index_processor.processor.paragraph_index_processor.DEFAULT_GENERATOR_SUMMARY_PROMPT",
                 "Prompt {missing}",
@@ -623,7 +640,7 @@ class TestParagraphIndexProcessor:
                 side_effect=RuntimeError("bad image"),
             ),
         ):
-            mock_provider_manager.return_value.get_provider_model_bundle.return_value = Mock()
+            mock_model_manager.return_value.get_model_instance.return_value = model_instance
             with pytest.raises(ValueError, match="Expected LLMResult"):
                 with caplog.at_level(
                     logging.WARNING, logger="core.rag.index_processor.processor.paragraph_index_processor"

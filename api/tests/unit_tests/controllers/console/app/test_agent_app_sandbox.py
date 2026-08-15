@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from inspect import unwrap
-from types import SimpleNamespace
+from inspect import getclosurevars, unwrap
+from types import FunctionType, SimpleNamespace
 
 import pytest
 from dify_agent.client import DifyAgentClientError, DifyAgentHTTPError, DifyAgentTimeoutError
@@ -137,6 +137,27 @@ def _app_model(app_id: str = "app-1") -> App:
         enable_site=False,
         enable_api=False,
     )
+
+
+@pytest.mark.parametrize(
+    "method",
+    [
+        module.AgentAppSandboxInfoResource.get,
+        module.AgentAppSandboxListResource.get,
+        module.AgentAppSandboxReadResource.get,
+        module.AgentAppSandboxDownloadResource.post,
+        module.WorkflowAgentSandboxListResource.get,
+        module.WorkflowAgentSandboxReadResource.get,
+        module.WorkflowAgentSandboxDownloadResource.post,
+    ],
+)
+def test_sandbox_resources_require_app_view_layout(method: FunctionType) -> None:
+    rbac_wrapper = unwrap(method, stop=lambda wrapper: "rbac_permission_required" in wrapper.__code__.co_qualname)
+    config = getclosurevars(rbac_wrapper).nonlocals
+
+    assert config["resource_type"] == module.RBACResourceScope.APP
+    assert config["scene"] == module.RBACPermission.APP_VIEW_LAYOUT
+    assert config["resource_required"] is True
 
 
 def test_handle_maps_sandbox_and_agent_backend_errors() -> None:

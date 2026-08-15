@@ -156,6 +156,7 @@
   "agentDetail.configure.preview.empty.description": "公開後にユーザーが体験する完成版のチャットとしてエージェントを実行します。",
   "agentDetail.configure.preview.empty.title": "{{name}} をプレビュー",
   "agentDetail.configure.preview.endUserAuth": "エンドユーザー認証",
+  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "この Agent 実行はモデルリクエスト数の上限に達したため停止されました。もう一度お試しいただくか、タスクを小さく分割してください。",
   "agentDetail.configure.preview.errors.agentRunLimitExceeded": "この Agent 実行は時間の上限に達したため停止されました。もう一度お試しいただくか、タスクを小さく分割してください。",
   "agentDetail.configure.preview.inputPlaceholder": "{{name}} にメッセージを送信",
   "agentDetail.configure.preview.restart": "新しく始める",
@@ -425,6 +426,7 @@
   "roster.sort.lastModified": "最終更新",
   "roster.sort.optionsLabel": "並び替えオプション",
   "roster.sort.recentlyCreated": "最近作成",
+  "roster.title": "エージェント",
   "roster.updateSuccess": "エージェントを更新しました。",
   "roster.usageStatus.draft": "ドラフト"
 }

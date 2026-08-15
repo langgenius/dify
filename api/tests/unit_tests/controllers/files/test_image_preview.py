@@ -1,4 +1,5 @@
 import types
+from datetime import UTC, datetime
 from inspect import unwrap
 from unittest.mock import patch
 
@@ -6,6 +7,9 @@ import pytest
 from werkzeug.exceptions import NotFound
 
 import controllers.files.image_preview as module
+from extensions.storage.storage_type import StorageType
+from models.enums import CreatorUserRole
+from models.model import UploadFile
 
 
 @pytest.fixture(autouse=True)
@@ -18,12 +22,24 @@ def mock_db():
     module.db = fake_db
 
 
-class DummyUploadFile:
-    def __init__(self, mime_type="text/plain", size=10, name="test.txt", extension="txt"):
-        self.mime_type = mime_type
-        self.size = size
-        self.name = name
-        self.extension = extension
+def _upload_file(
+    *, mime_type: str = "text/plain", size: int = 10, name: str = "test.txt", extension: str = "txt"
+) -> UploadFile:
+    upload_file = UploadFile(
+        tenant_id="tenant-1",
+        storage_type=StorageType.LOCAL,
+        key="uploads/file-id",
+        name=name,
+        size=size,
+        extension=extension,
+        mime_type=mime_type,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account-1",
+        created_at=datetime.now(UTC),
+        used=False,
+    )
+    upload_file.id = "file-id"
+    return upload_file
 
 
 def fake_request(args: dict):
@@ -79,7 +95,7 @@ class TestImagePreviewApi:
 class TestFilePreviewApi:
     @patch.object(module, "enforce_download_for_html")
     @patch.object(module, "FileService")
-    def test_basic_stream(self, mock_file_service, mock_enforce):
+    def test_inline_preview_uses_upload_file_mimetype(self, mock_file_service, mock_enforce):
         module.request = fake_request(
             {
                 "timestamp": "123",
@@ -90,7 +106,12 @@ class TestFilePreviewApi:
         )
 
         generator = iter([b"data"])
-        upload_file = DummyUploadFile(size=100)
+        upload_file = _upload_file(
+            mime_type="application/pdf",
+            size=100,
+            name="doc.pdf",
+            extension="pdf",
+        )
 
         mock_file_service.return_value.get_file_generator_by_file_id.return_value = (
             generator,
@@ -102,10 +123,86 @@ class TestFilePreviewApi:
 
         response = get_fn("file-id")
 
-        assert response.mimetype == "application/octet-stream"
+        assert response.mimetype == "application/pdf"
+        assert response.headers["Content-Type"] == "application/pdf"
         assert response.headers["Content-Length"] == "100"
         assert "Accept-Ranges" not in response.headers
         mock_enforce.assert_called_once()
+
+    @pytest.mark.parametrize(
+        ("mime_type", "name", "extension"),
+        [
+            ("Image/SVG+XML; charset=UTF-8", "image.png", "png"),
+            ("image/png", "image.SVG", "png"),
+            ("image/png", "image.png", ".SVG"),
+        ],
+        ids=("mime-type", "filename", "extension"),
+    )
+    @patch.object(module, "FileService")
+    def test_svg_preview_forces_download(self, mock_file_service, mime_type, name, extension):
+        module.request = fake_request(
+            {
+                "timestamp": "123",
+                "nonce": "abc",
+                "sign": "sig",
+                "as_attachment": False,
+            }
+        )
+
+        generator = iter([b"<svg></svg>"])
+        upload_file = _upload_file(
+            mime_type=mime_type,
+            size=11,
+            name=name,
+            extension=extension,
+        )
+
+        mock_file_service.return_value.get_file_generator_by_file_id.return_value = (
+            generator,
+            upload_file,
+        )
+
+        api = module.FilePreviewApi()
+        get_fn = unwrap(api.get)
+
+        response = get_fn("file-id")
+
+        assert response.headers["Content-Disposition"].startswith("attachment")
+        assert response.headers["Content-Type"] == "application/octet-stream"
+        assert response.headers["X-Content-Type-Options"] == "nosniff"
+
+    @patch.object(module, "FileService")
+    def test_html_preview_still_forces_download(self, mock_file_service):
+        module.request = fake_request(
+            {
+                "timestamp": "123",
+                "nonce": "abc",
+                "sign": "sig",
+                "as_attachment": False,
+            }
+        )
+
+        generator = iter([b"<script>alert(1)</script>"])
+        upload_file = _upload_file(
+            mime_type="text/html",
+            size=25,
+            name="unsafe.html",
+            extension="html",
+        )
+
+        mock_file_service.return_value.get_file_generator_by_file_id.return_value = (
+            generator,
+            upload_file,
+        )
+
+        api = module.FilePreviewApi()
+        get_fn = unwrap(api.get)
+
+        response = get_fn("file-id")
+
+        assert response.headers["Content-Disposition"].startswith("attachment")
+        assert response.headers["Content-Type"] == "application/octet-stream"
+        assert response.headers["X-Content-Type-Options"] == "nosniff"
 
     @patch.object(module, "enforce_download_for_html")
     @patch.object(module, "FileService")
@@ -120,7 +217,7 @@ class TestFilePreviewApi:
         )
 
         generator = iter([b"data"])
-        upload_file = DummyUploadFile(
+        upload_file = _upload_file(
             mime_type="application/pdf",
             name="doc.pdf",
             extension="pdf",

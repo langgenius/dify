@@ -2,7 +2,7 @@ import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/w
 import type { ReactElement } from 'react'
 import type { Model, ModelItem } from '../../declarations'
 import type { PopupProps } from '../popup'
-import { Combobox } from '@langgenius/dify-ui/combobox'
+import { Combobox, ComboboxContent, ComboboxTrigger } from '@langgenius/dify-ui/combobox'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
@@ -16,21 +16,6 @@ import {
 import Popup from '../popup'
 
 let mockLanguage = 'en_US'
-
-const mockSearchParams = vi.hoisted(() => ({
-  current: new URLSearchParams(),
-}))
-const mockSetSettingsDestination = vi.hoisted(() => vi.fn())
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return {
-    ...actual,
-    useQueryState: () => [mockSearchParams.current.get('settings'), mockSetSettingsDestination],
-  }
-})
-vi.mock('@/next/navigation', () => ({
-  useSearchParams: () => mockSearchParams.current,
-}))
 
 vi.mock(
   '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission',
@@ -104,6 +89,19 @@ function PopupHarness(props: PopupTestProps) {
       }}
     >
       <Popup {...props} inputValue={inputValue} onInputValueChange={setInputValue} />
+    </Combobox>
+  )
+}
+
+function PopupContentHarness(props: PopupTestProps) {
+  const [inputValue, setInputValue] = useState('')
+
+  return (
+    <Combobox filter={null} inputValue={inputValue} open>
+      <ComboboxTrigger aria-label="Selected model">Selected model</ComboboxTrigger>
+      <ComboboxContent popupProps={{ 'aria-label': 'Model selector' }}>
+        <Popup {...props} inputValue={inputValue} onInputValueChange={setInputValue} />
+      </ComboboxContent>
     </Combobox>
   )
 }
@@ -250,7 +248,6 @@ describe('Popup', () => {
     mockContextModelProviders.current = []
     mockContextModelProviderPlugins.current = {}
     mockTrialModels.current = ['test-openai', 'test-anthropic']
-    mockSearchParams.current = new URLSearchParams()
     Object.assign(mockTrialCredits, {
       credits: 200,
       totalCredits: 200,
@@ -888,19 +885,20 @@ describe('Popup', () => {
       <PopupHarness
         modelList={[makeModel()]}
         onHide={vi.fn()}
+        onOpenProviderSettings={vi.fn()}
         scopeFeatures={[ModelFeatureEnum.vision]}
       />,
     )
 
     const scrollRegion = screen.getByRole('region', { name: 'common.modelProvider.models' })
     const searchInput = screen.getByPlaceholderText('datasetSettings.form.searchModel')
-    const settingsButton = screen.getByRole('button', {
+    const settingsAction = screen.getByRole('button', {
       name: /common\.modelProvider\.selector\.modelProviderSettings/,
     })
 
     expect(scrollRegion)!.toBeInTheDocument()
     expect(scrollRegion).not.toContainElement(searchInput)
-    expect(scrollRegion).not.toContainElement(settingsButton)
+    expect(scrollRegion).not.toContainElement(settingsAction)
     expect(scrollRegion).toContainElement(
       screen.getByText('common.modelProvider.selector.onlyCompatibleModelsShown'),
     )
@@ -1098,19 +1096,7 @@ describe('Popup', () => {
     expect(screen.queryByTestId('credits-exhausted-alert')).not.toBeInTheDocument()
   })
 
-  it('should open provider settings when clicking footer link', () => {
-    const onHide = vi.fn()
-    renderPopup(<PopupHarness modelList={[makeModel()]} onHide={onHide} />)
-
-    fireEvent.click(screen.getByText('common.modelProvider.selector.modelProviderSettings'))
-
-    expect(onHide).toHaveBeenCalled()
-    expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
-  })
-
-  it('should hide provider settings footer when provider settings are already open', () => {
-    mockSearchParams.current = new URLSearchParams('settings=provider')
-
+  it('should hide the provider settings action when requested by the owner', () => {
     renderPopup(<PopupHarness modelList={[makeModel()]} onHide={vi.fn()} />)
 
     expect(
@@ -1118,19 +1104,55 @@ describe('Popup', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('should hide provider settings footer when requested by the caller', () => {
+  it('should keep popup actions outside the model listbox and reachable by Tab', async () => {
+    const user = userEvent.setup()
+    const onConfigureEmptyState = vi.fn()
+    const onOpenProviderSettings = vi.fn()
+
     renderPopup(
-      <PopupHarness hideProviderSettingsFooter modelList={[makeModel()]} onHide={vi.fn()} />,
+      <PopupContentHarness
+        modelList={[]}
+        onConfigureEmptyState={onConfigureEmptyState}
+        onOpenProviderSettings={onOpenProviderSettings}
+        onHide={vi.fn()}
+      />,
+      {
+        systemFeatures: { enable_marketplace: false },
+      },
     )
 
-    expect(
-      screen.queryByText('common.modelProvider.selector.modelProviderSettings'),
-    ).not.toBeInTheDocument()
+    expect(await screen.findByRole('dialog', { name: 'Model selector' })).toBeInTheDocument()
+
+    const searchInput = screen.getByRole('combobox', {
+      name: 'datasetSettings.form.searchModel',
+    })
+    const configureButton = screen.getByRole('button', {
+      name: /modelProvider\.selector\.configure/,
+    })
+    const providerSettingsButton = screen.getByRole('button', {
+      name: /common\.modelProvider\.selector\.modelProviderSettings/,
+    })
+    const listbox = screen.getByRole('listbox')
+
+    expect(listbox).not.toContainElement(configureButton)
+    expect(listbox).not.toContainElement(providerSettingsButton)
+
+    await user.click(searchInput)
+    await user.tab()
+    expect(configureButton).toHaveFocus()
+    await user.tab()
+    expect(providerSettingsButton).toHaveFocus()
   })
 
   it('should open provider settings from empty state when no providers are configured', () => {
-    const onHide = vi.fn()
-    renderPopup(<PopupHarness modelList={[]} onHide={onHide} />)
+    const onConfigureEmptyState = vi.fn()
+    renderPopup(
+      <PopupHarness
+        modelList={[]}
+        onConfigureEmptyState={onConfigureEmptyState}
+        onHide={vi.fn()}
+      />,
+    )
 
     expect(
       screen.getByText(/modelProvider\.selector\.noProviderConfigured(?!Desc)/),
@@ -1140,19 +1162,7 @@ describe('Popup', () => {
     )!.toBeInTheDocument()
 
     fireEvent.click(screen.getByText(/modelProvider\.selector\.configure/))
-    expect(onHide).toHaveBeenCalled()
-    expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
-  })
-
-  it('should only close the empty state selector when provider settings are already open', () => {
-    mockSearchParams.current = new URLSearchParams('settings=provider')
-    const onHide = vi.fn()
-    renderPopup(<PopupHarness modelList={[]} onHide={onHide} />)
-
-    fireEvent.click(screen.getByText(/modelProvider\.selector\.configure/))
-
-    expect(onHide).toHaveBeenCalled()
-    expect(mockSetSettingsDestination).not.toHaveBeenCalled()
+    expect(onConfigureEmptyState).toHaveBeenCalledTimes(1)
   })
 
   it('should render marketplace providers that are not installed', () => {
