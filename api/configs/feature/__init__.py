@@ -130,6 +130,23 @@ class CodeExecutionSandboxConfig(BaseSettings):
         description="Write timeout in seconds for code execution request",
         default=10.0,
     )
+    CODE_EXECUTION_PROXY_RETRY_COUNT: NonNegativeInt = Field(
+        description=(
+            "Number of times to retry a code execution request when the upstream "
+            "responds with a transient status code (502 / 503 / 504) or the "
+            "connection drops mid-flight. The default of 1 means one retry "
+            "(two attempts total); 0 disables retries. Regression for #40603 "
+            "so transient proxy/sandbox 502s don't fail the entire workflow."
+        ),
+        default=1,
+    )
+    CODE_EXECUTION_PROXY_RETRY_DELAY: PositiveFloat | None = Field(
+        description=(
+            "Seconds to wait between code execution retry attempts. "
+            "Used together with CODE_EXECUTION_PROXY_RETRY_COUNT."
+        ),
+        default=0.5,
+    )
 
     CODE_EXECUTION_POOL_MAX_CONNECTIONS: PositiveInt = Field(
         description="Maximum number of concurrent connections for the code execution HTTP client",

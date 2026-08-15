@@ -108,3 +108,93 @@ def test_execute_code_raises_when_response_contains_runtime_error(mocker: Mocker
 
     with pytest.raises(code_executor_module.CodeExecutionError, match="runtime failed"):
         code_executor_module.CodeExecutor.execute_code(cast(Any, "python3"), preload="", code="print(1)")
+
+
+# Regression tests for #40603: the upstream proxy (typically nginx in front
+# of the sandbox) can return transient 502 / 503 / 504 responses. Without
+# retries, those leak to the user as "sandbox is unavailable" even when
+# the sandbox is healthy. The retry loop should retry on the transient
+# status codes and surface the real error only when every attempt
+# fails.
+def _make_client(responses: list[int]) -> MagicMock:
+    """Return a client that yields each `responses` value in order."""
+    client = MagicMock()
+    iter_responses = iter(responses)
+
+    def _post(*_args, **_kwargs):
+        status = next(iter_responses)
+        resp = MagicMock()
+        resp.status_code = status
+        if status == 200:
+            resp.json.return_value = {"code": 0, "message": "ok", "data": {"stdout": "done", "error": None}}
+        return resp
+
+    client.post.side_effect = _post
+    return client
+
+
+def test_execute_code_retries_transient_502_then_succeeds(mocker: MockerFixture) -> None:
+    """A first 502 from the upstream proxy should be retried and the
+    eventual 200 should be returned normally, no error leaked to the
+    caller. Regression for #40603."""
+    client = _make_client([502, 200])
+    mocker.patch("core.helper.code_executor.code_executor.get_pooled_http_client", return_value=client)
+
+    assert code_executor_module.CodeExecutor.execute_code(
+        cast(Any, "python3"), preload="", code="print(1)"
+    ) == "done"
+    assert client.post.call_count == 2
+
+
+def test_execute_code_retries_transient_503_then_succeeds(mocker: MockerFixture) -> None:
+    client = _make_client([503, 200])
+    mocker.patch("core.helper.code_executor.code_executor.get_pooled_http_client", return_value=client)
+
+    assert code_executor_module.CodeExecutor.execute_code(
+        cast(Any, "python3"), preload="", code="print(1)"
+    ) == "done"
+    assert client.post.call_count == 2
+
+
+def test_execute_code_raises_when_persistent_502_exhausts_retries(mocker: MockerFixture) -> None:
+    """If the upstream proxy keeps returning 502 after every retry, the
+    final error should mention that the sandbox may be down so the user
+    knows where to look. Regression for #40603."""
+    client = _make_client([502, 502, 502, 502])
+    mocker.patch("core.helper.code_executor.code_executor.get_pooled_http_client", return_value=client)
+
+    with pytest.raises(code_executor_module.CodeExecutionError, match="sandbox service is running"):
+        code_executor_module.CodeExecutor.execute_code(
+            cast(Any, "python3"), preload="", code="print(1)"
+        )
+    # Default retry count is 1, so the total attempts is 2
+    # (initial + 1 retry).
+    assert client.post.call_count == 2
+
+
+def test_execute_code_does_not_retry_persistent_500(mocker: MockerFixture) -> None:
+    """A 500 from the sandbox itself isn't transient — don't burn
+    retries on it. Regression for #40603 (retry only the proxy 502/503/504
+    envelope, not arbitrary 5xx)."""
+    client = _make_client([500])
+    mocker.patch("core.helper.code_executor.code_executor.get_pooled_http_client", return_value=client)
+
+    with pytest.raises(code_executor_module.CodeExecutionError, match="likely a network issue"):
+        code_executor_module.CodeExecutor.execute_code(
+            cast(Any, "python3"), preload="", code="print(1)"
+        )
+    assert client.post.call_count == 1
+
+
+def test_execute_code_retry_count_zero_disables_retries(mocker: MockerFixture) -> None:
+    mocker.patch.object(
+        code_executor_module.dify_config, "CODE_EXECUTION_PROXY_RETRY_COUNT", 0
+    )
+    client = _make_client([502, 200])
+    mocker.patch("core.helper.code_executor.code_executor.get_pooled_http_client", return_value=client)
+
+    with pytest.raises(code_executor_module.CodeExecutionError, match="sandbox service is running"):
+        code_executor_module.CodeExecutor.execute_code(
+            cast(Any, "python3"), preload="", code="print(1)"
+        )
+    assert client.post.call_count == 1
