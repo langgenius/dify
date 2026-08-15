@@ -21,7 +21,7 @@ from typing import Protocol
 import httpx
 
 from agenton.compositor import LayerProviderInput
-from dify_agent.protocol.schemas import CancelRunRequest, CancelRunResponse, CreateRunRequest
+from dify_agent.protocol.schemas import CancelRunRequest, CancelRunResponse, CreateRunRequest, RunFailureType
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
 from dify_agent.runtime.event_sink import RunEventSink, emit_run_cancelled, emit_run_failed
 from dify_agent.runtime.runner import DEFAULT_AGENT_RUN_TIMEOUT_SECONDS, AgentRunRunner
@@ -250,7 +250,9 @@ class RunScheduler:
         """Best-effort failure event/status for shutdown-cancelled runs."""
         message = "run cancelled during server shutdown"
         try:
-            _ = await emit_run_failed(self.store, run_id=run_id, error=message, reason="shutdown")
+            _ = await emit_run_failed(
+                self.store, run_id=run_id, error=message, error_type=RunFailureType.AGENT_SHUTDOWN
+            )
         except Exception:
             logger.exception("failed to mark cancelled run failed", extra={"run_id": run_id})
 

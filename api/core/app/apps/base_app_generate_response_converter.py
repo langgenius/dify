@@ -118,7 +118,16 @@ class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
         :param e: exception
         :return:
         """
-        if isinstance(e, AgentBackendRunFailedError) and e.error_type == RunFailureType.AGENT_RUN_LIMIT_EXCEEDED:
+        if isinstance(e, AgentBackendRunFailedError) and e.error_type in {
+            RunFailureType.AGENT_RUN_LIMIT_EXCEEDED,
+            RunFailureType.INVOKE_RATE_LIMIT_EXCEEDED,
+        }:
+            if e.error_type == RunFailureType.INVOKE_RATE_LIMIT_EXCEEDED:
+                return {
+                    "code": "rate_limit_error",
+                    "status": 429,
+                    "message": str(e),
+                }
             return {
                 "code": RunFailureType.AGENT_RUN_LIMIT_EXCEEDED.value,
                 "status": 400,

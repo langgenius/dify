@@ -37,7 +37,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from decimal import Decimal
 from enum import StrEnum
-from typing import Annotated, ClassVar, Final, Literal, TypeAlias
+from typing import Annotated, ClassVar, Final, Literal, Mapping, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter, model_serializer, model_validator
 from pydantic_ai.messages import AgentStreamEvent
@@ -68,6 +68,51 @@ class RunFailureType(StrEnum):
     """
 
     AGENT_RUN_LIMIT_EXCEEDED = "agent_run_limit_exceeded"
+    BINDING_LOST = "binding_lost"
+    INVOKE_AUTHORIZATION_ERROR = "invoke_authorization_error"
+    INVOKE_BAD_REQUEST_ERROR = "invoke_bad_request_error"
+    INVOKE_CONNECTION_ERROR = "invoke_connection_error"
+    INVOKE_RATE_LIMIT_EXCEEDED = "invoke_rate_limit_exceeded"
+    INVOKE_SERVER_UNAVAILABLE_ERROR = "invoke_server_unavailable_error"
+    KNOWLEDGE_RETRIEVE_FAILED = "knowledge_retrieve_failed"
+    AGENT_SHUTDOWN = "agent_shutdown"
+
+
+_LEGACY_REASON_TO_FAILURE_TYPE: Mapping[str, RunFailureType] = {
+    "InvokeAuthorizationError": RunFailureType.INVOKE_AUTHORIZATION_ERROR,
+    "InvokeBadRequestError": RunFailureType.INVOKE_BAD_REQUEST_ERROR,
+    "CredentialsValidateFailedError": RunFailureType.INVOKE_BAD_REQUEST_ERROR,
+    "InvokeConnectionError": RunFailureType.INVOKE_CONNECTION_ERROR,
+    "InvokeRateLimitError": RunFailureType.INVOKE_RATE_LIMIT_EXCEEDED,
+    "InvokeServerUnavailableError": RunFailureType.INVOKE_SERVER_UNAVAILABLE_ERROR,
+    "agent_run_limit_exceeded": RunFailureType.AGENT_RUN_LIMIT_EXCEEDED,
+    "binding_lost": RunFailureType.BINDING_LOST,
+    "invoke_authorization_error": RunFailureType.INVOKE_AUTHORIZATION_ERROR,
+    "invoke_bad_request_error": RunFailureType.INVOKE_BAD_REQUEST_ERROR,
+    "invoke_connection_error": RunFailureType.INVOKE_CONNECTION_ERROR,
+    "invoke_rate_limit_exceeded": RunFailureType.INVOKE_RATE_LIMIT_EXCEEDED,
+    "invoke_server_unavailable_error": RunFailureType.INVOKE_SERVER_UNAVAILABLE_ERROR,
+    "knowledge_retrieve_failed": RunFailureType.KNOWLEDGE_RETRIEVE_FAILED,
+    "agent_shutdown": RunFailureType.AGENT_SHUTDOWN,
+}
+
+
+def resolve_run_failure_type(
+    error_type: RunFailureType | None,
+    reason: str | None,
+) -> RunFailureType | None:
+    """Resolve a structured failure type from ``error_type`` or legacy ``reason``."""
+    if error_type is not None:
+        return error_type
+    if reason is None:
+        return None
+    mapped = _LEGACY_REASON_TO_FAILURE_TYPE.get(reason)
+    if mapped is not None:
+        return mapped
+    try:
+        return RunFailureType(reason)
+    except ValueError:
+        return None
 
 
 def utc_now() -> datetime:
@@ -437,5 +482,6 @@ __all__ = [
     "RunSucceededEventData",
     "RunLayerSpec",
     "normalize_composition",
+    "resolve_run_failure_type",
     "utc_now",
 ]
