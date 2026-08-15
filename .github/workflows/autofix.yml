@@ -50,6 +50,8 @@ jobs:
             vite.config.ts
             lint.config.ts
             eslint.config.mjs
+            knip.config.ts
+            scripts/check-web-production-unused-after-knip-fix.mjs
             oxlint-suppressions.json
             eslint-suppressions.json
             .vscode/**

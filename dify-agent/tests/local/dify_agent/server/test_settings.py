@@ -12,7 +12,8 @@ from dify_agent.agent_stub.server.agent_stub_drive import DifyApiAgentStubDriveR
 from dify_agent.agent_stub.server.agent_stub_files import DifyApiAgentStubFileRequestHandler
 from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec
 from dify_agent.server.settings import ServerSettings
-from dify_agent.runtime_backend.e2b import E2BExecutionBindingBackend
+from dify_agent.runtime.runner import DEFAULT_AGENT_RUN_TIMEOUT_SECONDS
+from dify_agent.runtime_backend.e2b import E2B_MAX_ACTIVE_TIMEOUT_SECONDS, E2BExecutionBindingBackend
 from dify_agent.runtime_backend.enterprise import EnterpriseExecutionBindingBackend
 from dify_agent.runtime_backend.local import LocalExecutionBindingBackend, LocalHomeSnapshotBackend
 
@@ -49,12 +50,36 @@ def test_server_settings_reads_enterprise_timeouts_from_env(monkeypatch: pytest.
     assert settings.enterprise_sandbox_proxy_timeout == 90
 
 
-def test_server_settings_reads_e2b_active_timeout_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS", "900")
+def test_server_settings_run_and_e2b_timeouts_default_align_and_override_independently(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.delenv("DIFY_AGENT_RUN_TIMEOUT_SECONDS", raising=False)
+    monkeypatch.delenv("DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS", raising=False)
+    monkeypatch.chdir(tmp_path)
 
     settings = ServerSettings()
 
-    assert settings.e2b_active_timeout_seconds == 900
+    assert settings.run_timeout_seconds == DEFAULT_AGENT_RUN_TIMEOUT_SECONDS == 3600
+    assert settings.e2b_active_timeout_seconds == E2B_MAX_ACTIVE_TIMEOUT_SECONDS == 3600
+
+    monkeypatch.setenv("DIFY_AGENT_RUN_TIMEOUT_SECONDS", "900.5")
+
+    run_override_settings = ServerSettings()
+    assert run_override_settings.run_timeout_seconds == 900.5
+    assert run_override_settings.e2b_active_timeout_seconds == 3600
+
+    monkeypatch.delenv("DIFY_AGENT_RUN_TIMEOUT_SECONDS")
+    monkeypatch.setenv("DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS", "900")
+
+    e2b_override_settings = ServerSettings()
+    assert e2b_override_settings.run_timeout_seconds == 3600
+    assert e2b_override_settings.e2b_active_timeout_seconds == 900
+
+
+def test_server_settings_rejects_non_positive_run_timeout() -> None:
+    with pytest.raises(ValidationError, match="greater than 0"):
+        _ = ServerSettings(run_timeout_seconds=0)
 
 
 def test_server_settings_defaults_shellctl_auth_token_to_none(

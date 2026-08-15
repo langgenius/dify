@@ -21,15 +21,7 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { useLogout } from '@/service/use-common'
-
-function buildReturnUrl(pathname: string, search: string) {
-  try {
-    const base = `${globalThis.location.origin}${pathname}${search}`
-    return base
-  } catch {
-    return pathname + search
-  }
-}
+import { buildOAuthCallbackUrl, buildReturnUrl, useSilentAuthorize } from './use-silent-authorize'
 
 export default function OAuthAuthorize() {
   const { t } = useTranslation()
@@ -94,6 +86,17 @@ export default function OAuthAuthorize() {
     consoleQuery.oauth.provider.authorize.post.mutationOptions(),
   )
   const { mutateAsync: logout } = useLogout()
+  const { isAutoAuthorizing } = useSilentAuthorize({
+    authAppInfo,
+    authorize,
+    clientId: client_id,
+    hasOAuthParams,
+    isLoggedIn,
+    isProfileLoading,
+    redirectUri: redirect_uri,
+    searchParams,
+    state,
+  })
   const hasNotifiedRef = useRef(false)
   const localizedAppLabel = authAppInfo?.app_label[language]
   const englishAppLabel = authAppInfo?.app_label.en_US
@@ -122,10 +125,7 @@ export default function OAuthAuthorize() {
     if (!client_id || !redirect_uri) return
     try {
       const { code } = await authorize({ body: { client_id } })
-      const url = new URL(redirect_uri)
-      url.searchParams.set('code', code)
-      if (state) url.searchParams.set('state', state)
-      globalThis.location.href = url.toString()
+      globalThis.location.href = buildOAuthCallbackUrl(redirect_uri, code, state)
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error)
       toast.error(`${t(($) => $['error.authorizeFailed'], { ns: 'oauth' })}: ${message}`)
@@ -145,7 +145,7 @@ export default function OAuthAuthorize() {
     }
   }, [client_id, redirect_uri, isError])
 
-  if (isLoading) {
+  if (isLoading || isAutoAuthorizing) {
     return (
       <div className="bg-background-default-subtle">
         <Loading type="app" />
