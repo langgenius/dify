@@ -52,15 +52,15 @@ def _make_workflow(**overrides: object) -> Workflow:
         marked_name="Release 1",
         marked_comment="Initial release",
         graph=json.dumps({"nodes": [], "edges": []}),
-        features=json.dumps({"file_upload": {"enabled": False}}),
+        _features=json.dumps({"file_upload": {"enabled": False}}),
         created_by=DEFAULT_WORKFLOW_CREATED_BY,
-        created_at=datetime(2024, 1, 1, 12, 0, 0),
         updated_by=None,
-        updated_at=datetime(2024, 1, 1, 12, 1, 0),
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
+        _rag_pipeline_variables=[],
     )
+    workflow.created_at = datetime(2024, 1, 1, 12, 0, 0)
+    workflow.updated_at = datetime(2024, 1, 1, 12, 1, 0)
     for key, value in overrides.items():
         setattr(workflow, key, value)
     return workflow

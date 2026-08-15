@@ -171,7 +171,7 @@ def _create_workflow_node_execution(
     node_id: str = "node-1",
 ) -> WorkflowNodeExecutionModel:
     """Create a real mapped node execution returned by the repository boundary."""
-    return WorkflowNodeExecutionModel(
+    execution = WorkflowNodeExecutionModel(
         id=execution_id,
         tenant_id="tenant-1",
         app_id="app-1",
@@ -192,16 +192,17 @@ def _create_workflow_node_execution(
         error=None,
         elapsed_time=0.1,
         execution_metadata="{}",
-        created_at=REAL_DATETIME(2026, 1, 1),
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by="account-1",
         finished_at=REAL_DATETIME(2026, 1, 1, 0, 0, 1),
     )
+    execution.created_at = REAL_DATETIME(2026, 1, 1)
+    return execution
 
 
 def _create_workflow_run(run_id: str) -> WorkflowRun:
     """Create a real mapped workflow run returned by the repository boundary."""
-    return WorkflowRun(
+    workflow_run = WorkflowRun(
         id=run_id,
         tenant_id="tenant-1",
         app_id="app-1",
@@ -219,10 +220,11 @@ def _create_workflow_run(run_id: str) -> WorkflowRun:
         total_steps=1,
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by="account-1",
-        created_at=REAL_DATETIME(2026, 1, 1),
         finished_at=REAL_DATETIME(2026, 1, 1, 0, 0, 1),
         exceptions_count=0,
     )
+    workflow_run.created_at = REAL_DATETIME(2026, 1, 1)
+    return workflow_run
 
 
 def _create_related_records(message_id: str) -> list[object]:

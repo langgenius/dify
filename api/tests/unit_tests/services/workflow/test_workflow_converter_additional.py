@@ -405,10 +405,10 @@ def test_convert_to_workflow_should_create_new_app_with_fallback_fields(
         type=WorkflowType.WORKFLOW,
         version=Workflow.VERSION_DRAFT,
         graph="{}",
-        features="{}",
+        _features="{}",
         created_by="account-1",
-        environment_variables=[],
-        conversation_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
     )
     monkeypatch.setattr(converter, "convert_app_model_config_to_workflow", MagicMock(return_value=workflow))
     phase_events: list[str] = []

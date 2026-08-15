@@ -219,7 +219,7 @@ class TestWorkflowPauseIntegration:
             type="workflow",
             version="draft",
             graph='{"nodes": [], "edges": []}',
-            features='{"file_upload": {"enabled": false}}',
+            _features='{"file_upload": {"enabled": false}}',
             created_by=self.test_user_id,
             created_at=naive_utc_now(),
         )
@@ -727,7 +727,7 @@ class TestWorkflowPauseIntegration:
             type="workflow",
             version="draft",
             graph='{"nodes": [], "edges": []}',
-            features='{"file_upload": {"enabled": false}}',
+            _features='{"file_upload": {"enabled": false}}',
             created_by=account2.id,
             created_at=naive_utc_now(),
         )

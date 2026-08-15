@@ -14,7 +14,16 @@ from graphon.entities import WorkflowExecution
 from graphon.entities.pause_reason import PauseReasonType
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
-from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowPause, WorkflowPauseReason, WorkflowRun
+from models.workflow import (
+    WorkflowAppLog,
+    WorkflowAppLogCreatedFrom,
+    WorkflowPause,
+    WorkflowPauseReason,
+    WorkflowRun,
+)
+from models.workflow import (
+    WorkflowType as ModelWorkflowType,
+)
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 
 
@@ -50,7 +59,7 @@ def _create_workflow_run(
     created_at: datetime,
     tenant_id: str | None = None,
     workflow_id: str | None = None,
-    workflow_type: str = WorkflowType.WORKFLOW,
+    workflow_type: ModelWorkflowType = ModelWorkflowType.WORKFLOW,
 ) -> WorkflowRun:
     workflow_run = WorkflowRun(
         id=str(uuid4()),
@@ -65,8 +74,8 @@ def _create_workflow_run(
         status=status,
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by=scope.user_id,
-        created_at=created_at,
     )
+    workflow_run.created_at = created_at
     session.add(workflow_run)
     session.commit()
     return workflow_run
@@ -140,7 +149,7 @@ class TestGetCleanupRefsBatchByTimeRange:
             db_session_with_containers,
             scope,
             created_at=base + timedelta(minutes=1),
-            workflow_type=WorkflowType.CHAT,
+            workflow_type=ModelWorkflowType.CHAT,
         )
         _create_workflow_run(db_session_with_containers, scope, created_at=base + timedelta(minutes=3))
 

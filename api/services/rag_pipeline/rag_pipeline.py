@@ -379,14 +379,14 @@ class RagPipelineService:
             workflow = Workflow(
                 tenant_id=pipeline.tenant_id,
                 app_id=pipeline.id,
-                features="{}",
-                type=WorkflowType.RAG_PIPELINE.value,
+                _features="{}",
+                type=WorkflowType.RAG_PIPELINE,
                 version="draft",
                 graph=json.dumps(graph),
                 created_by=account.id,
-                environment_variables=environment_variables,
-                conversation_variables=conversation_variables,
-                rag_pipeline_variables=rag_pipeline_variables,
+                _environment_variables=environment_variables,
+                _conversation_variables=conversation_variables,
+                _rag_pipeline_variables=rag_pipeline_variables,
             )
             self._session.add(workflow)
             self._session.flush()

@@ -22,10 +22,10 @@ def _workflow(*, workflow_id: str = "workflow-1", version: str = Workflow.VERSIO
         type=WorkflowType.WORKFLOW,
         version=version,
         graph={"nodes": [], "edges": []},
-        features={},
+        _features={},
         created_by="account-1",
-        environment_variables=[],
-        conversation_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
     )
 
 

@@ -576,14 +576,14 @@ class SnippetService:
             workflow = Workflow(
                 tenant_id=snippet.tenant_id,
                 app_id=snippet.id,
-                features="{}",
+                _features="{}",
                 type=WorkflowType.WORKFLOW,
                 kind=WorkflowKind.SNIPPET,
                 version="draft",
                 graph=json.dumps(graph),
                 created_by=account.id,
-                environment_variables=[],
-                conversation_variables=[],
+                _environment_variables=[],
+                _conversation_variables=[],
             )
         else:
             # Update existing draft workflow

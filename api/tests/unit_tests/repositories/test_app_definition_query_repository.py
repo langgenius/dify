@@ -84,11 +84,11 @@ def test_get_published_parameter_config_returns_workflow_features_and_legacy_inp
             kind=WorkflowKind.STANDARD,
             version="1",
             graph=json.dumps({"nodes": [{"id": "start", "data": {"type": "start", "variables": [variable]}}]}),
-            features=json.dumps({"opening_statement": "Hello from workflow"}),
+            _features=json.dumps({"opening_statement": "Hello from workflow"}),
             created_by=_ACCOUNT_ID,
-            environment_variables=[],
-            conversation_variables=[],
-            rag_pipeline_variables=[],
+            _environment_variables=[],
+            _conversation_variables=[],
+            _rag_pipeline_variables=[],
         )
         session.add(workflow)
         app.workflow_id = workflow.id
@@ -336,11 +336,11 @@ def test_get_tool_icon_sources_reads_workflow_tools(
                     ]
                 }
             ),
-            features="{}",
+            _features="{}",
             created_by=_ACCOUNT_ID,
-            environment_variables=[],
-            conversation_variables=[],
-            rag_pipeline_variables=[],
+            _environment_variables=[],
+            _conversation_variables=[],
+            _rag_pipeline_variables=[],
         )
         session.add(workflow)
         app.workflow_id = workflow.id
