@@ -19,7 +19,13 @@ vi.mock('@/app/components/plugins/marketplace/templates', () => ({
     sortOrder?: string
     view?: string
   }) => (
-    <div data-testid="catalog" data-page={page} data-sort-by={sortBy} data-sort-order={sortOrder} data-view={view}>
+    <div
+      data-testid="catalog"
+      data-page={page}
+      data-sort-by={sortBy}
+      data-sort-order={sortOrder}
+      data-view={view}
+    >
       {`Templates catalog: ${category}:${query}`}
     </div>
   ),
