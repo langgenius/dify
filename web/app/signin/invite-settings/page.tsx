@@ -21,6 +21,7 @@ import { LICENSE_LINK } from '@/constants/link'
 import { useLocale } from '@/context/i18n'
 import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { i18n, setLocaleOnClient } from '@/i18n-config'
 import { languages } from '@/i18n-config/language'
 import Link from '@/next/link'
@@ -115,6 +116,21 @@ export default function InviteSettingsPage() {
     )
   const requiresAccountSetup =
     checkRes?.data?.requires_setup ?? checkRes?.data?.account_status === 'pending'
+  const setupAccountTitle = t(($) => $.setYourAccount, { ns: 'login' })
+  const workspaceInvitationTitle = checkRes?.data?.workspace_name
+    ? t(($) => $.joinWorkspace, {
+        ns: 'login',
+        workspaceName: checkRes.data.workspace_name,
+      })
+    : setupAccountTitle
+  const documentTitle = !checkRes
+    ? setupAccountTitle
+    : !checkRes.is_valid
+      ? t(($) => $.invalid, { ns: 'login' })
+      : requiresAccountSetup || !checkRes.data?.workspace_name
+        ? setupAccountTitle
+        : workspaceInvitationTitle
+  useDocumentTitle(documentTitle)
 
   useEffect(() => {
     if (!shouldReturnToSignIn) return
@@ -198,7 +214,7 @@ export default function InviteSettingsPage() {
         <h1 className="title-4xl-semi-bold text-text-primary">
           {requiresAccountSetup
             ? t(($) => $.setYourAccount, { ns: 'login' })
-            : `${t(($) => $.join, { ns: 'login' })}${checkRes?.data?.workspace_name}`}
+            : workspaceInvitationTitle}
         </h1>
       </div>
       <form onSubmit={noop}>
@@ -284,7 +300,7 @@ export default function InviteSettingsPage() {
             loading={isActivating}
             disabled={isActivating}
           >
-            {`${t(($) => $.join, { ns: 'login' })} ${checkRes?.data?.workspace_name}`}
+            {workspaceInvitationTitle}
           </Button>
         </div>
       </form>

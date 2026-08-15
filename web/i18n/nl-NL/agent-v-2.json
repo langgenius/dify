@@ -38,7 +38,7 @@
   "agentDetail.access.workflow.table.nodes": "Knooppunten",
   "agentDetail.access.workflow.table.version": "Versie",
   "agentDetail.access.workflow.title": "Workflowtoegang",
-  "agentDetail.configure.advancedSettings.description": "Voor gevorderde gebruikers. Omgevingsvariabelen, sandbox en geheugen.",
+  "agentDetail.configure.advancedSettings.description": "Voor gevorderde gebruikers, zoals omgevingsvariabelen.",
   "agentDetail.configure.advancedSettings.envEditor.add": "Omgevingsvariabele toevoegen",
   "agentDetail.configure.advancedSettings.envEditor.deleteVariable": "{{key}} verwijderen",
   "agentDetail.configure.advancedSettings.envEditor.hideValue": "Waarde van {{key}} verbergen",
@@ -156,6 +156,7 @@
   "agentDetail.configure.preview.empty.description": "Voer de agent uit als een afgeronde chat, precies zoals mensen die na publicatie ervaren.",
   "agentDetail.configure.preview.empty.title": "Voorbeeld van {{name}}",
   "agentDetail.configure.preview.endUserAuth": "Authenticatie eindgebruiker",
+  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "Deze Agent-run is gestopt nadat het maximale aantal modelverzoeken was bereikt. Probeer het opnieuw of splits de taak op in kleinere stappen.",
   "agentDetail.configure.preview.errors.agentRunLimitExceeded": "Deze Agent-run is gestopt omdat de tijdslimiet is bereikt. Probeer het opnieuw of splits de taak op in kleinere stappen.",
   "agentDetail.configure.preview.inputPlaceholder": "Bericht sturen naar {{name}}",
   "agentDetail.configure.preview.restart": "Opnieuw beginnen",
@@ -425,6 +426,7 @@
   "roster.sort.lastModified": "Laatst gewijzigd",
   "roster.sort.optionsLabel": "Sorteeropties",
   "roster.sort.recentlyCreated": "Recent aangemaakt",
+  "roster.title": "Agenten",
   "roster.updateSuccess": "Agent bijgewerkt.",
   "roster.usageStatus.draft": "Concept"
 }

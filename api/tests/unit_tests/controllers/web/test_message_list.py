@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import builtins
+import inspect
 import json
 import uuid
 from datetime import datetime
@@ -15,6 +16,7 @@ import pytest
 from flask import Flask
 from flask.views import MethodView
 
+from controllers.common.controller_schemas import MessageListQuery
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.entities.execution_extra_content import HumanInputContent
 from models.enums import ConversationFromSource, EndUserType, FeedbackFromSource, FeedbackRating
@@ -223,7 +225,8 @@ def test_message_list_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlit
         patch.object(message_module.db, "session", return_value=sqlite_session),
         app.test_request_context(f"/messages?conversation_id={conversation_id}&limit=20"),
     ):
-        response = MessageListApi().get(app_model, end_user)
+        query = MessageListQuery.model_validate({"conversation_id": conversation_id, "limit": 20})
+        response = inspect.unwrap(MessageListApi.get)(MessageListApi(), query, app_model, end_user)
 
     mock_page.assert_called_once_with(app_model, end_user, conversation_id, None, 20, session=ANY)
     assert response["limit"] == 20

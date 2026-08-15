@@ -38,7 +38,7 @@
   "agentDetail.access.workflow.table.nodes": "Nodes",
   "agentDetail.access.workflow.table.version": "Version",
   "agentDetail.access.workflow.title": "Workflow access",
-  "agentDetail.configure.advancedSettings.description": "For power users. Env vars, sandbox & memory.",
+  "agentDetail.configure.advancedSettings.description": "For power users, such as environment variables.",
   "agentDetail.configure.advancedSettings.envEditor.add": "Add environment variable",
   "agentDetail.configure.advancedSettings.envEditor.deleteVariable": "Delete {{key}}",
   "agentDetail.configure.advancedSettings.envEditor.hideValue": "Hide {{key}} value",
@@ -156,6 +156,7 @@
   "agentDetail.configure.preview.empty.description": "Run the agent as a finished chat, exactly how people will experience it once published.",
   "agentDetail.configure.preview.empty.title": "Preview {{name}}",
   "agentDetail.configure.preview.endUserAuth": "End-user authentication",
+  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "This agent run stopped after reaching the maximum number of model requests. Try again, or break the task into smaller steps.",
   "agentDetail.configure.preview.errors.agentRunLimitExceeded": "This agent run was stopped at the time limit. Try again, or break the task into smaller steps.",
   "agentDetail.configure.preview.inputPlaceholder": "Message {{name}}",
   "agentDetail.configure.preview.restart": "Start fresh",
@@ -425,6 +426,7 @@
   "roster.sort.lastModified": "Last modified",
   "roster.sort.optionsLabel": "Sort options",
   "roster.sort.recentlyCreated": "Recently created",
+  "roster.title": "Agents",
   "roster.updateSuccess": "Agent updated.",
   "roster.usageStatus.draft": "Draft"
 }

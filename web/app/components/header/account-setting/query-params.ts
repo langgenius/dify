@@ -5,13 +5,11 @@ import { ACCOUNT_SETTING_TAB_VALUES } from './constants'
 
 export const settingsQueryParamName = 'settings'
 
-// Opening the full-screen settings surface is the common write. It creates a history entry and
-// opts into a Next.js navigation so browser Back updates both the URL and the nuqs snapshot.
-// Closing and switching destinations stay shallow and replace history at the modal owner.
+// Settings is a client-owned full-screen surface, so nuqs' shallow replace defaults are enough.
 export const settingsQueryParser = parseAsStringLiteral([
   ...ACCOUNT_SETTING_TAB_VALUES,
   ...INTEGRATION_SECTION_VALUES,
-] as const).withOptions({ history: 'push', shallow: false })
+] as const)
 
 export type SettingsDestination = inferParserType<typeof settingsQueryParser>
 

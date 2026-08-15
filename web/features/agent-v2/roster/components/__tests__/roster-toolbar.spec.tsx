@@ -62,10 +62,10 @@ describe('RosterToolbar', () => {
     const user = userEvent.setup()
     const { onUrlUpdate } = renderToolbar()
 
-    const publishedFilter = screen.getByRole('button', {
+    const publishedFilter = screen.getByRole('radio', {
       name: /agentV2\.roster\.filters\.published/,
     })
-    const draftsFilter = screen.getByRole('button', { name: /agentV2\.roster\.filters\.drafts/ })
+    const draftsFilter = screen.getByRole('radio', { name: /agentV2\.roster\.filters\.drafts/ })
 
     expect(publishedFilter).toBeEnabled()
     expect(draftsFilter).toBeEnabled()
@@ -82,11 +82,11 @@ describe('RosterToolbar', () => {
   it('renders stable filter count badges and omits the all count', () => {
     renderToolbar()
 
-    const allFilter = screen.getByRole('button', { name: /agentV2\.roster\.filters\.all/ })
-    const publishedFilter = screen.getByRole('button', {
+    const allFilter = screen.getByRole('radio', { name: /agentV2\.roster\.filters\.all/ })
+    const publishedFilter = screen.getByRole('radio', {
       name: /agentV2\.roster\.filters\.published/,
     })
-    const draftsFilter = screen.getByRole('button', { name: /agentV2\.roster\.filters\.drafts/ })
+    const draftsFilter = screen.getByRole('radio', { name: /agentV2\.roster\.filters\.drafts/ })
 
     expect(allFilter).not.toHaveTextContent('3')
     expect(within(publishedFilter).getByText('1')).toBeInTheDocument()

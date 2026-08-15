@@ -38,7 +38,7 @@
   "agentDetail.access.workflow.table.nodes": "Knoten",
   "agentDetail.access.workflow.table.version": "Version",
   "agentDetail.access.workflow.title": "Workflow-Zugriff",
-  "agentDetail.configure.advancedSettings.description": "Für erfahrene Nutzer. Umgebungsvariablen, Sandbox und Speicher.",
+  "agentDetail.configure.advancedSettings.description": "Für erfahrene Nutzer, z. B. Umgebungsvariablen.",
   "agentDetail.configure.advancedSettings.envEditor.add": "Umgebungsvariable hinzufügen",
   "agentDetail.configure.advancedSettings.envEditor.deleteVariable": "{{key}} löschen",
   "agentDetail.configure.advancedSettings.envEditor.hideValue": "Wert von {{key}} verbergen",
@@ -156,6 +156,7 @@
   "agentDetail.configure.preview.empty.description": "Führen Sie den Agenten als fertigen Chat aus, genau wie Benutzer ihn nach der Veröffentlichung erleben.",
   "agentDetail.configure.preview.empty.title": "{{name}} in der Vorschau anzeigen",
   "agentDetail.configure.preview.endUserAuth": "Endbenutzer-Authentifizierung",
+  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "Dieser Agent-Lauf wurde beendet, nachdem die maximale Anzahl an Modellanfragen erreicht wurde. Versuche es erneut oder teile die Aufgabe in kleinere Schritte auf.",
   "agentDetail.configure.preview.errors.agentRunLimitExceeded": "Dieser Agent-Lauf wurde beim Erreichen des Zeitlimits gestoppt. Versuche es erneut oder teile die Aufgabe in kleinere Schritte auf.",
   "agentDetail.configure.preview.inputPlaceholder": "Nachricht an {{name}}",
   "agentDetail.configure.preview.restart": "Neu beginnen",
@@ -425,6 +426,7 @@
   "roster.sort.lastModified": "Zuletzt geändert",
   "roster.sort.optionsLabel": "Sortieroptionen",
   "roster.sort.recentlyCreated": "Zuletzt erstellt",
+  "roster.title": "Agenten",
   "roster.updateSuccess": "Agent aktualisiert.",
   "roster.usageStatus.draft": "Entwurf"
 }

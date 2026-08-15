@@ -55,14 +55,17 @@ from libs.helper import dump_response, to_timestamp
 from libs.login import login_required
 from libs.pagination import paginate_query
 from models import Account, Document, DocumentSegment, UploadFile
-from models.dataset import DocumentPipelineExecutionLog
+from models.dataset import DatasetPermissionEnum, DocumentPipelineExecutionLog
 from models.enums import IndexingStatus, ProcessRuleMode, SegmentStatus
 from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DatasetService, DocumentService
+from services.enterprise import rbac_service as enterprise_rbac_service
+from services.enterprise.rbac_service import RBACResourceWhitelistScope, ReplaceMemberBindings
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig, ProcessRule, RetrievalModel
 from services.file_service import FileService
 from services.vector_space_admission_service import get_vector_space_admission_error_fields
 from tasks.generate_summary_index_task import generate_summary_index_task
+from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 from ..app.error import (
     ProviderModelCurrentlyNotSupportError,
@@ -678,6 +681,21 @@ class DatasetInitApi(Resource):
             raise ProviderQuotaExceededError()
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
+
+        if dify_config.RBAC_ENABLED:
+            dataset.permission = DatasetPermissionEnum.ALL_TEAM
+        else:
+            dataset.permission = DatasetPermissionEnum.ONLY_ME
+        session.flush()
+
+        if dify_config.RBAC_ENABLED:
+            enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist(
+                current_tenant_id,
+                current_user.id,
+                dataset.id,
+                ReplaceMemberBindings(scope=RBACResourceWhitelistScope.ALL),
+            )
+            initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, dataset_id=dataset.id)
 
         return dump_response(
             DatasetAndDocumentResponse,
@@ -1469,8 +1487,10 @@ class DocumentRetryApi(DocumentResource):
     @with_current_tenant_id
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @with_session
+    @model_validate(DocumentRetryPayload)
     def post(
         self,
+        req_data: DocumentRetryPayload,
         session: Session,
         current_tenant_id: str,
         current_user: Account,
@@ -1491,13 +1511,12 @@ class DocumentRetryApi(DocumentResource):
             except services.errors.account.NoPermissionError as e:
                 raise Forbidden(str(e))
 
-        payload = DocumentRetryPayload.model_validate(console_ns.payload or {})
         documents = DocumentService.get_documents_by_ids(
-            DatasetRefService.create_dataset_ref(dataset), payload.document_ids, session
+            DatasetRefService.create_dataset_ref(dataset), req_data.document_ids, session
         )
         documents_by_id = {document.id: document for document in documents}
         retry_documents = []
-        for document_id in payload.document_ids:
+        for document_id in req_data.document_ids:
             try:
                 document = documents_by_id.get(document_id)
 
@@ -1533,7 +1552,15 @@ class DocumentRenameApi(DocumentResource):
     @with_current_user
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @with_session
-    def post(self, session: Session, current_user: Account, dataset_id: UUID, document_id: UUID):
+    @model_validate(DocumentRenamePayload)
+    def post(
+        self,
+        req_data: DocumentRenamePayload,
+        session: Session,
+        current_user: Account,
+        dataset_id: UUID,
+        document_id: UUID,
+    ):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         if not current_user.is_dataset_editor:
             raise Forbidden()
@@ -1541,10 +1568,9 @@ class DocumentRenameApi(DocumentResource):
         if not dataset:
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_operator_permission(current_user, dataset, session=session)
-        payload = DocumentRenamePayload.model_validate(console_ns.payload or {})
 
         try:
-            document = DocumentService.rename_document(str(dataset_id), str(document_id), payload.name, session)
+            document = DocumentService.rename_document(str(dataset_id), str(document_id), req_data.name, session)
         except services.errors.document.DocumentIndexingError:
             raise DocumentIndexingError("Cannot delete document during indexing.")
 
@@ -1655,7 +1681,8 @@ class DocumentGenerateSummaryApi(Resource):
     @with_current_user
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @with_session
-    def post(self, session: Session, current_user: Account, dataset_id: UUID):
+    @model_validate(GenerateSummaryPayload)
+    def post(self, req_data: GenerateSummaryPayload, session: Session, current_user: Account, dataset_id: UUID):
         """
         Generate summary index for specified documents.
 
@@ -1679,9 +1706,7 @@ class DocumentGenerateSummaryApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 
-        # Validate request payload
-        payload = GenerateSummaryPayload.model_validate(console_ns.payload or {})
-        document_list = payload.document_list
+        document_list = req_data.document_list
 
         if not document_list:
             from werkzeug.exceptions import BadRequest

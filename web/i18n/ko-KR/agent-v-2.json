@@ -38,7 +38,7 @@
   "agentDetail.access.workflow.table.nodes": "노드",
   "agentDetail.access.workflow.table.version": "버전",
   "agentDetail.access.workflow.title": "워크플로 액세스",
-  "agentDetail.configure.advancedSettings.description": "고급 사용자용. 환경 변수, 샌드박스 및 메모리.",
+  "agentDetail.configure.advancedSettings.description": "고급 사용자용(예: 환경 변수).",
   "agentDetail.configure.advancedSettings.envEditor.add": "환경 변수 추가",
   "agentDetail.configure.advancedSettings.envEditor.deleteVariable": "{{key}} 삭제",
   "agentDetail.configure.advancedSettings.envEditor.hideValue": "{{key}} 값 숨기기",
@@ -156,6 +156,7 @@
   "agentDetail.configure.preview.empty.description": "게시 후 사용자가 경험할 완성된 채팅처럼 에이전트를 실행합니다.",
   "agentDetail.configure.preview.empty.title": "{{name}} 미리보기",
   "agentDetail.configure.preview.endUserAuth": "최종 사용자 인증",
+  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "이 Agent 실행은 모델 요청 횟수 상한에 도달하여 중지되었습니다. 다시 시도하거나 작업을 더 작은 단계로 나누세요.",
   "agentDetail.configure.preview.errors.agentRunLimitExceeded": "이 Agent 실행은 시간 제한에 도달하여 중지되었습니다. 다시 시도하거나 작업을 더 작은 단계로 나누세요.",
   "agentDetail.configure.preview.inputPlaceholder": "{{name}}에게 메시지 보내기",
   "agentDetail.configure.preview.restart": "새로 시작",
@@ -425,6 +426,7 @@
   "roster.sort.lastModified": "마지막 수정",
   "roster.sort.optionsLabel": "정렬 옵션",
   "roster.sort.recentlyCreated": "최근 생성",
+  "roster.title": "에이전트",
   "roster.updateSuccess": "에이전트가 업데이트되었습니다.",
   "roster.usageStatus.draft": "초안"
 }

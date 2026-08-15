@@ -1,12 +1,12 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { RiAddLine, RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid } from 'uuid'
-import ActionButton from '@/app/components/base/action-button'
 
 export type HeaderItem = {
   id: string
@@ -103,13 +103,13 @@ const HeadersInput = ({ headersItems, onChange, readonly = false, isMasked = fal
                 readOnly={readonly}
               />
               {!readonly && !!headersItems.length && (
-                <ActionButton
+                <IconButton
                   aria-label={`${t(($) => $['operation.delete'], { ns: 'common' })} ${item.key.trim() || t(($) => $['mcp.modal.headerKey'], { ns: 'tools' })} ${index + 1}`}
                   onClick={() => handleRemoveItem(index)}
                   className="mr-2"
                 >
                   <RiDeleteBinLine aria-hidden className="size-4 text-text-destructive" />
-                </ActionButton>
+                </IconButton>
               )}
             </div>
           </div>

@@ -9,7 +9,7 @@ import type {
   TenantListItemResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
@@ -720,12 +720,6 @@ describe('MainNav', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('hides deployments in primary navigation when app deploy is enabled', () => {
-    renderMainNav({ branding: { enabled: false }, enable_app_deploy: true })
-
-    expect(screen.queryByRole('link', { name: /common.menus.deployments/ })).not.toBeInTheDocument()
-  })
-
   it('orders the Step-by-step Tour before the account and help actions', async () => {
     localStorage.setItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY, 'collapsed')
 
@@ -811,7 +805,6 @@ describe('MainNav', () => {
       'href',
       '/marketplace',
     )
-    expect(screen.queryByRole('link', { name: /common.menus.deployments/ })).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'explore.sidebar.webApps' }),
     ).not.toBeInTheDocument()
@@ -831,14 +824,13 @@ describe('MainNav', () => {
       workspacePermissionKeys: ['app_library.access', 'tool.manage', 'agent.manage'],
     }
 
-    renderMainNav({ branding: { enabled: false }, enable_app_deploy: true })
+    renderMainNav({ branding: { enabled: false } })
 
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.menus.apps/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Agents/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: /common.menus.deployments/ })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toBeInTheDocument()
   })
 
@@ -891,24 +883,6 @@ describe('MainNav', () => {
     ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.menus.apps/ })).toHaveAttribute('href', '/apps')
   })
-
-  it.each(['/deployments', '/deployments/create'])(
-    'keeps global navigation on deployment collection route %s',
-    (pathname) => {
-      mockPathname = pathname
-
-      renderMainNav({ branding: { enabled: false }, enable_app_deploy: true })
-
-      expect(screen.queryByTestId('deployment-detail-top')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('deployment-detail-section')).not.toBeInTheDocument()
-      expect(
-        screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }),
-      ).toBeInTheDocument()
-      expect(
-        screen.queryByRole('link', { name: /common.menus.deployments/ }),
-      ).not.toBeInTheDocument()
-    },
-  )
 
   it.each([
     '/datasets/create',
@@ -1339,7 +1313,12 @@ describe('MainNav', () => {
       const top = typeof optionsOrX === 'object' ? optionsOrX.top : y
       scrollViewport.scrollTop = Number(top ?? 0)
     }
-    await user.click(await screen.findByRole('button', { name: 'common.operation.search' }))
+    const searchButton = await screen.findByRole('button', { name: 'common.operation.search' })
+    expect(searchButton).toHaveAttribute('aria-expanded', 'false')
+
+    await user.click(searchButton)
+    expect(searchButton).toHaveAttribute('aria-expanded', 'true')
+
     const searchInput = screen.getByPlaceholderText('common.mainNav.webApps.searchPlaceholder')
     await user.type(searchInput, 'beta')
 
@@ -1352,6 +1331,19 @@ describe('MainNav', () => {
     expect(
       screen.getByRole('link', { name: 'common.mainNav.webApps.openApp:{"name":"Beta Tool"}' }),
     ).toHaveAttribute('href', '/installed/installed-2')
+
+    const webAppsButton = screen.getByRole('button', { name: 'explore.sidebar.webApps' })
+    await user.click(webAppsButton)
+    expect(searchButton).toHaveAttribute('aria-expanded', 'false')
+    expect(
+      screen.queryByPlaceholderText('common.mainNav.webApps.searchPlaceholder'),
+    ).not.toBeInTheDocument()
+
+    await user.click(webAppsButton)
+    expect(searchButton).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByPlaceholderText('common.mainNav.webApps.searchPlaceholder')).toHaveValue(
+      'beta',
+    )
   })
 
   it('hides the installed web apps section while installed apps are loading', () => {

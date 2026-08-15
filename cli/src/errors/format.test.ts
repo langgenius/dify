@@ -1,5 +1,5 @@
 import type { ErrorBody } from '@dify/contracts/api/openapi/types.gen'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { setVerbose } from '@/framework/context'
 import { HttpClientError } from './base'
 import { ErrorCode } from './codes'

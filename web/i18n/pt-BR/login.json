@@ -49,6 +49,7 @@
   "join": "Participar",
   "joinTipEnd": "equipe no Dify",
   "joinTipStart": "Convidamos você a participar da",
+  "joinWorkspace": "Participar de {{workspaceName}}",
   "license.link": "Licença de código aberto do GitHub",
   "license.tip": "Antes de começar a usar a Edição Comunitária do Dify, leia a",
   "licenseExpired": "Licença expirada",

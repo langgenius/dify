@@ -1,6 +1,6 @@
 import type { EnvironmentVariablePatch } from '@/service/workflow'
 import { act } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { useNodesSyncDraft } from '../use-nodes-sync-draft'
