@@ -88,7 +88,6 @@ def _persist_human_input_form(
     expiration_time: datetime,
 ) -> HumanInputForm:
     form = HumanInputForm(
-        id="form-1",
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_run_id="run-1",
@@ -100,6 +99,7 @@ def _persist_human_input_form(
         status=HumanInputFormStatus.WAITING,
         expiration_time=expiration_time,
     )
+    form.id = "form-1"
     sqlite_session.add(form)
     sqlite_session.commit()
     return form

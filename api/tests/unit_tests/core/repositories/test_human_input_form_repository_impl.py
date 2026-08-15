@@ -231,8 +231,7 @@ def _make_form(
     submitted_at: datetime | None = None,
     expiration_time: datetime | None = None,
 ) -> HumanInputForm:
-    return HumanInputForm(
-        id=form_id,
+    form = HumanInputForm(
         workflow_run_id=workflow_run_id,
         conversation_id=None,
         node_id=node_id,
@@ -247,6 +246,8 @@ def _make_form(
         submitted_data=submitted_data,
         submitted_at=submitted_at,
     )
+    form.id = form_id
+    return form
 
 
 def _make_recipient(
@@ -256,14 +257,15 @@ def _make_recipient(
     recipient_type: RecipientType = RecipientType.STANDALONE_WEB_APP,
     access_token: str = "token-123",
 ) -> HumanInputFormRecipient:
-    return HumanInputFormRecipient(
-        id=recipient_id,
+    recipient = HumanInputFormRecipient(
         form_id=form_id,
         delivery_id="delivery-1",
         recipient_type=recipient_type,
         access_token=access_token,
         recipient_payload=StandaloneWebAppRecipientPayload().model_dump_json(),
     )
+    recipient.id = recipient_id
+    return recipient
 
 
 def _persist_form(

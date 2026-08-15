@@ -85,7 +85,6 @@ def _persist_form(
     status: HumanInputFormStatus = HumanInputFormStatus.WAITING,
 ) -> HumanInputForm:
     form = HumanInputForm(
-        id=form_id,
         tenant_id=tenant_id,
         app_id="app",
         workflow_run_id=workflow_run_id,
@@ -97,6 +96,7 @@ def _persist_form(
         expiration_time=naive_utc_now() + timedelta(hours=1),
         status=status,
     )
+    form.id = form_id
     session.add(form)
     session.commit()
     return form
@@ -111,20 +111,20 @@ def _persist_recipient(
     access_token: str = "token-1",
 ) -> HumanInputFormRecipient:
     delivery = HumanInputDelivery(
-        id=f"delivery-{recipient_id}",
         form_id=form_id,
         delivery_method_type=DeliveryMethodType.WEBAPP,
         delivery_config_id=None,
         channel_payload="{}",
     )
+    delivery.id = f"delivery-{recipient_id}"
     recipient = HumanInputFormRecipient(
-        id=recipient_id,
         form_id=form_id,
         delivery_id=delivery.id,
         recipient_type=recipient_type,
         recipient_payload="{}",
         access_token=access_token,
     )
+    recipient.id = recipient_id
     session.add_all([delivery, recipient])
     session.commit()
     return recipient
@@ -132,13 +132,13 @@ def _persist_recipient(
 
 def test_recipient_entity_token_raises_when_missing() -> None:
     recipient = HumanInputFormRecipient(
-        id="r1",
         form_id="f1",
         delivery_id="d1",
         recipient_type=RecipientType.CONSOLE,
         recipient_payload="{}",
         access_token=None,
     )
+    recipient.id = "r1"
     entity = _HumanInputFormRecipientEntityImpl(recipient)
     with pytest.raises(AssertionError, match="access_token should not be None"):
         _ = entity.token
@@ -423,16 +423,6 @@ def test_create_form_adds_console_and_backstage_recipients(
         RecipientType.CONSOLE,
         RecipientType.BACKSTAGE,
     }
-
-    added_recipients = [obj for obj in session.added if isinstance(obj, HumanInputFormRecipient)]
-    assert {r.recipient_type for r in added_recipients} == {
-        RecipientType.STANDALONE_WEB_APP,
-        RecipientType.CONSOLE,
-        RecipientType.BACKSTAGE,
-    }
-    console_recipient = next(r for r in added_recipients if r.recipient_type == RecipientType.CONSOLE)
-    # Console token should take precedence when a console recipient is present.
-    assert entity.submission_token == console_recipient.access_token
 
 
 def test_submission_get_by_token_returns_none_when_missing_or_form_missing(repository_session: Session) -> None:

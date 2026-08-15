@@ -55,7 +55,6 @@ def _persist_human_input_form(
 ) -> datetime:
     expiration_time = datetime(2024, 1, 1, tzinfo=UTC)
     form = HumanInputForm(
-        id="form-1",
         tenant_id="tenant-id",
         app_id="app-id",
         workflow_run_id="run-id",
@@ -64,17 +63,18 @@ def _persist_human_input_form(
         rendered_content="Rendered",
         expiration_time=expiration_time,
     )
-    recipient_models = [
-        HumanInputFormRecipient(
-            id=f"recipient-{index}",
+    form.id = "form-1"
+    recipient_models: list[HumanInputFormRecipient] = []
+    for index, (recipient_type, access_token) in enumerate(recipients or ()):
+        recipient = HumanInputFormRecipient(
             form_id=form.id,
             delivery_id=f"delivery-{index}",
             recipient_type=recipient_type,
             recipient_payload="{}",
             access_token=access_token,
         )
-        for index, (recipient_type, access_token) in enumerate(recipients or ())
-    ]
+        recipient.id = f"recipient-{index}"
+        recipient_models.append(recipient)
     session.add(form)
     session.add_all(recipient_models)
     session.commit()

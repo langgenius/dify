@@ -44,12 +44,10 @@ def _build_form(
         rendered_content="",
         expiration_time=expiration_time,
     )
-    return HumanInputForm(
-        id=form_id,
+    form = HumanInputForm(
         tenant_id="tenant-1",
         app_id="app-1",
         form_kind=form_kind,
-        created_at=created_at,
         expiration_time=expiration_time,
         workflow_run_id=workflow_run_id,
         conversation_id=conversation_id,
@@ -58,6 +56,9 @@ def _build_form(
         rendered_content="",
         status=HumanInputFormStatus.WAITING,
     )
+    form.id = form_id
+    form.created_at = created_at
+    return form
 
 
 @pytest.fixture

@@ -4,13 +4,13 @@ from typing import Annotated, Literal, Self, final
 
 import sqlalchemy as sa
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
 
 from core.workflow.human_input_adapter import DeliveryMethodType
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.helper import generate_string
 
-from .base import Base, DefaultFieldsDCMixin, DefaultFieldsMixin, TypeBase
+from .base import DefaultFieldsDCMixin, TypeBase
 from .types import EnumText, StringUUID
 
 _token_length = 22
@@ -287,7 +287,7 @@ class HumanInputFormRecipient(DefaultFieldsDCMixin, TypeBase):
         return recipient_model
 
 
-class HumanInputFormUploadToken(DefaultFieldsMixin, Base):
+class HumanInputFormUploadToken(DefaultFieldsDCMixin, TypeBase):
     """Upload authorization token bound to one human input form recipient.
 
     HITL upload tokens are intentionally separate from app/service bearer tokens.
@@ -314,11 +314,12 @@ class HumanInputFormUploadToken(DefaultFieldsMixin, Base):
         uselist=False,
         foreign_keys=[form_id],
         lazy="raise",
-        primaryjoin=lambda: sa.orm.foreign(HumanInputFormUploadToken.form_id) == HumanInputForm.id,
+        primaryjoin=lambda: foreign(HumanInputFormUploadToken.form_id) == HumanInputForm.id,
+        init=False,
     )
 
 
-class HumanInputFormUploadFile(DefaultFieldsMixin, Base):
+class HumanInputFormUploadFile(DefaultFieldsDCMixin, TypeBase):
     """Association between a human input form and a file uploaded through its token.
 
     Ownership remains on ``UploadFile`` itself; this table only records the
