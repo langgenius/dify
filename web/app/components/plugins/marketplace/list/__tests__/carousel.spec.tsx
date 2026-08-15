@@ -232,7 +232,7 @@ describe('Marketplace Carousel', () => {
     expect(autoplay.play).toHaveBeenCalledTimes(2)
 
     reducedMotion = true
-    reducedMotionListener?.()
+    act(() => reducedMotionListener?.())
     expect(autoplay.stop).toHaveBeenCalled()
 
     Object.defineProperty(document, 'visibilityState', {
@@ -248,7 +248,7 @@ describe('Marketplace Carousel', () => {
     expect(autoplay.play).toHaveBeenCalledTimes(2)
 
     reducedMotion = false
-    reducedMotionListener?.()
+    act(() => reducedMotionListener?.())
     expect(autoplay.play).toHaveBeenCalledTimes(3)
 
     triggerIntersection(intersectionObservers[0]!, 0)
@@ -266,6 +266,38 @@ describe('Marketplace Carousel', () => {
       stopOnMouseEnter: true,
     })
     expect(intersectionObservers).toHaveLength(0)
+  })
+
+  it('honors reduced motion for the eagerly playing first-collection carousel', () => {
+    let reducedMotion = true
+    let reducedMotionListener: (() => void) | undefined
+    vi.stubGlobal('matchMedia', () => ({
+      get matches() {
+        return reducedMotion
+      },
+      media: '(prefers-reduced-motion: reduce)',
+      onchange: null,
+      addEventListener: (_event: string, listener: () => void) => {
+        reducedMotionListener = listener
+      },
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }))
+
+    // The production first collection renders without pauseWhenOffscreen, so
+    // the reduced-motion guard must work outside the viewport-managed path.
+    render(<Carousel pages={pages} autoPlay />)
+    const autoplay = mocks.autoplayInstances[0]!
+
+    expect(autoplay.stop).toHaveBeenCalled()
+    expect(autoplay.play).not.toHaveBeenCalled()
+
+    reducedMotion = false
+    act(() => reducedMotionListener?.())
+
+    expect(autoplay.play).toHaveBeenCalled()
   })
 
   it('keeps off-screen pages out of the tab order and accessibility tree', () => {

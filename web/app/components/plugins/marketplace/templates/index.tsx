@@ -8,6 +8,7 @@ import Link from '@/next/link'
 import {
   getMarketplaceTemplateCollectionsAndTemplates,
   searchMarketplaceTemplates,
+  TEMPLATE_SEARCH_PAGE_SIZE,
 } from '@/service/marketplace-template-discovery'
 import { fetchPluginBanners } from '../home/banners'
 import HomeCatalogNavigation from '../home/home-catalog-navigation'
@@ -29,6 +30,7 @@ import { filterTemplatesForLocale } from './template-language'
 type EmbeddedTemplatesMarketplaceProps = {
   category: TemplateCategory
   locale: Locale
+  page?: number
   query: string
   sortBy?: string
   sortOrder?: string
@@ -103,9 +105,81 @@ function TemplateGrid({
   )
 }
 
+const PAGE_LINK_CLASS =
+  'flex h-8 items-center justify-center rounded-lg border-[0.5px] border-divider-regular px-3 system-sm-medium text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
+const PAGE_LINK_DISABLED_CLASS =
+  'flex h-8 cursor-not-allowed items-center justify-center rounded-lg border-[0.5px] border-divider-subtle px-3 system-sm-medium text-text-quaternary'
+
+// Server-rendered pagination: plain links keep the search results reachable
+// beyond the first page without any client-side state.
+function TemplatePagination({
+  category,
+  navigationLabel,
+  nextLabel,
+  page,
+  pageCount,
+  previousLabel,
+  query,
+  sortBy,
+  sortOrder,
+  view,
+}: {
+  category: TemplateCategory
+  navigationLabel: string
+  nextLabel: string
+  page: number
+  pageCount: number
+  previousLabel: string
+  query: string
+  sortBy?: string
+  sortOrder?: string
+  view?: string
+}) {
+  if (pageCount <= 1) return null
+
+  const buildHref = (targetPage: number) => {
+    const searchParams = new URLSearchParams()
+    if (query) searchParams.set('q', query)
+    if (sortBy) searchParams.set('sort_by', sortBy)
+    if (sortOrder) searchParams.set('sort_order', sortOrder)
+    if (view) searchParams.set('view', view)
+    if (targetPage > 1) searchParams.set('page', String(targetPage))
+    const queryString = searchParams.toString()
+    const basePath = category === 'all' ? '/templates' : `/templates/${category}`
+    return queryString ? `${basePath}?${queryString}` : basePath
+  }
+
+  return (
+    <nav aria-label={navigationLabel} className="mt-6 flex items-center justify-center gap-3 pb-4">
+      {page > 1 ? (
+        <Link href={buildHref(page - 1)} className={PAGE_LINK_CLASS}>
+          {previousLabel}
+        </Link>
+      ) : (
+        <span aria-disabled="true" className={PAGE_LINK_DISABLED_CLASS}>
+          {previousLabel}
+        </span>
+      )}
+      <span aria-current="page" className="system-sm-regular text-text-tertiary">
+        {page} / {pageCount}
+      </span>
+      {page < pageCount ? (
+        <Link href={buildHref(page + 1)} className={PAGE_LINK_CLASS}>
+          {nextLabel}
+        </Link>
+      ) : (
+        <span aria-disabled="true" className={PAGE_LINK_DISABLED_CLASS}>
+          {nextLabel}
+        </span>
+      )}
+    </nav>
+  )
+}
+
 export async function EmbeddedTemplatesMarketplace({
   category,
   locale,
+  page = 1,
   query,
   sortBy,
   sortOrder,
@@ -118,6 +192,7 @@ export async function EmbeddedTemplatesMarketplace({
     { t: tApp },
     { t: tExplore },
     { t: tPluginTags },
+    { t: tCommon },
     collectionsResult,
     searchResult,
     banners,
@@ -126,11 +201,13 @@ export async function EmbeddedTemplatesMarketplace({
     getTranslation(locale, 'app'),
     getTranslation(locale, 'explore'),
     getTranslation(locale, 'pluginTags'),
+    getTranslation(locale, 'common'),
     showCollections ? getMarketplaceTemplateCollectionsAndTemplates() : Promise.resolve(null),
     showCollections
       ? Promise.resolve(null)
       : searchMarketplaceTemplates({
           category,
+          page,
           query: normalizedQuery,
           sortBy,
           sortOrder,
@@ -214,7 +291,9 @@ export async function EmbeddedTemplatesMarketplace({
               />
             }
           />
-          <main
+          {/* The app shell already renders the main landmark; use a plain div
+              to avoid nested main elements. */}
+          <div
             className={cn(
               'relative flex grow flex-col bg-background-default px-8 py-2',
               styles.catalogContent,
@@ -243,9 +322,21 @@ export async function EmbeddedTemplatesMarketplace({
                 ) : (
                   <EmptyState>{tApp('newApp.noTemplateFound' as never)}</EmptyState>
                 )}
+                <TemplatePagination
+                  category={category}
+                  navigationLabel={tCommon('pagination.pageNumber' as never)}
+                  nextLabel={tCommon('pagination.next' as never)}
+                  page={page}
+                  pageCount={Math.ceil((searchResult?.total ?? 0) / TEMPLATE_SEARCH_PAGE_SIZE)}
+                  previousLabel={tCommon('pagination.previous' as never)}
+                  query={normalizedQuery}
+                  sortBy={sortBy}
+                  sortOrder={sortOrder}
+                  view={view}
+                />
               </>
             )}
-          </main>
+          </div>
         </div>
       </div>
     </HomeStickyStateProvider>

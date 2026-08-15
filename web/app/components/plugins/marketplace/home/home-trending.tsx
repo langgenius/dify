@@ -231,6 +231,7 @@ function TrendingRecommendationSlide({
 }
 
 function BlogBannerSlide({ banner }: { banner: BannerBlog }) {
+  const { t } = useTranslation('plugin')
   const opensInNewTab = /^https?:\/\//.test(banner.content.link)
 
   return (
@@ -238,7 +239,9 @@ function BlogBannerSlide({ banner }: { banner: BannerBlog }) {
       href={banner.content.link}
       target={opensInNewTab ? '_blank' : undefined}
       rel={opensInNewTab ? 'noopener noreferrer' : undefined}
-      aria-label={`Read more about ${banner.content.blog_title}`}
+      aria-label={t(($) => $['marketplace.home.trendingReadMoreAbout'], {
+        title: banner.content.blog_title,
+      })}
       className="flex h-[200px] w-full overflow-hidden rounded-2xl bg-background-body outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
     >
       <div className="flex min-w-0 flex-1 flex-col items-start overflow-hidden px-6 py-5">
@@ -265,7 +268,7 @@ function BlogBannerSlide({ banner }: { banner: BannerBlog }) {
                 aria-hidden
                 className="flex shrink-0 items-center gap-1 text-[13px] leading-[normal] font-medium text-text-accent underline decoration-[10%] underline-offset-2"
               >
-                <span>Read more</span>
+                <span>{t(($) => $['marketplace.home.trendingReadMore'])}</span>
                 <span className="i-ri-arrow-right-s-line size-4" />
               </span>
             </div>
@@ -480,6 +483,12 @@ function TrendingNavigation({
       setIsReducedMotionPaused(false)
       setPauseReason('user', false)
       setPauseReason('reduced-motion', false)
+      // Activating Play keeps the pointer and/or keyboard focus on the button
+      // itself, so the implicit hover/focus reasons would silently keep the
+      // rotation paused. An explicit Play overrides them; they re-engage on
+      // the next mouseenter/focusin.
+      setPauseReason('focus', false)
+      setPauseReason('hover', false)
       return
     }
 

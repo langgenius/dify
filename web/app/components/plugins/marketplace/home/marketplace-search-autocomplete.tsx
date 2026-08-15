@@ -121,16 +121,22 @@ export function MarketplaceSearchAutocomplete({
     enabled: hasQuery && searchesTemplates,
     staleTime: 60_000,
   })
-  const pluginSuggestions = searchesPlugins
-    ? (pluginQuery.data?.data.bundles ?? pluginQuery.data?.data.plugins ?? []).map((plugin) =>
-        toPluginSuggestion(plugin, locale),
-      )
-    : []
-  const templateSuggestions = searchesTemplates
-    ? (templateQuery.data?.data?.templates ?? []).map(toTemplateSuggestion)
-    : []
+  // While the edited value is still debouncing, the queries above still hold
+  // the previous term's data; gate the suggestions until both agree so stale
+  // options are never visible or keyboard-selectable.
+  const isDebouncing = value.trim() !== debouncedSearch
+  const pluginSuggestions =
+    !isDebouncing && searchesPlugins
+      ? (pluginQuery.data?.data.bundles ?? pluginQuery.data?.data.plugins ?? []).map((plugin) =>
+          toPluginSuggestion(plugin, locale),
+        )
+      : []
+  const templateSuggestions =
+    !isDebouncing && searchesTemplates
+      ? (templateQuery.data?.data?.templates ?? []).map(toTemplateSuggestion)
+      : []
   const suggestions = [...templateSuggestions, ...pluginSuggestions]
-  const isSearching = pluginQuery.isFetching || templateQuery.isFetching
+  const isSearching = isDebouncing || pluginQuery.isFetching || templateQuery.isFetching
   const emptyText =
     scope === 'templates'
       ? translate('newApp.noTemplateFound', { ns: 'app' })

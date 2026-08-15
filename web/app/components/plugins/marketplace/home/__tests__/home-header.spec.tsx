@@ -44,7 +44,7 @@ describe('HomeHeader', () => {
   it('shows Creator Center before Guide', () => {
     render(<HomeHeader isMarketplacePlatform />)
 
-    const creatorCenterLink = screen.getByRole('link', { name: 'Creator Center' })
+    const creatorCenterLink = screen.getByRole('link', { name: 'marketplace.home.creatorCenter' })
     const guideLink = screen.getByRole('link', { name: 'marketplace.home.guide' })
 
     expect(creatorCenterLink).toHaveAttribute('href', 'https://creators.dify.ai/')
@@ -63,7 +63,7 @@ describe('HomeHeader', () => {
 
     render(<HomeHeader isMarketplacePlatform />)
 
-    expect(screen.getByRole('link', { name: 'Creator Center' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'marketplace.home.creatorCenter' })).toHaveAttribute(
       'href',
       'https://creators-staging.dify.dev/',
     )
@@ -74,7 +74,7 @@ describe('HomeHeader', () => {
 
     render(<HomeHeader isMarketplacePlatform />)
 
-    expect(screen.getByRole('link', { name: 'Creator Center' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'marketplace.home.creatorCenter' })).toHaveAttribute(
       'href',
       'https://creators.dify.ai/',
     )

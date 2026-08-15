@@ -5,6 +5,7 @@ import type { MarketplaceViewProps } from './view'
 import { queryOptions, useQuery } from '@tanstack/react-query'
 import { useLocale } from '@/context/i18n'
 import { marketplaceQuery } from '@/service/client'
+import { useResetMarketplaceSearchModeOnMount } from './atoms'
 import { fetchPluginBanners } from './home/banners'
 import { MarketplaceView } from './view'
 
@@ -27,6 +28,7 @@ export function EmbeddedMarketplace({
   variant = 'default',
   ...props
 }: EmbeddedMarketplaceProps) {
+  useResetMarketplaceSearchModeOnMount()
   const locale = useLocale()
   const input = {
     query: {

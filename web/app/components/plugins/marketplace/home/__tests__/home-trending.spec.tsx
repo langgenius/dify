@@ -121,7 +121,7 @@ describe('HomeTrending', () => {
     expect(screen.getByRole('heading', { name: 'Dify v1.9 new launch' })).toBeInTheDocument()
     const blogSlide = screen.getByRole('group', { name: 'Dify Updates' })
     const blogLink = within(blogSlide).getByRole('link', {
-      name: 'Read more about Dify v1.9 new launch',
+      name: 'plugin.marketplace.home.trendingReadMoreAbout',
     })
     expect(blogLink).toHaveAttribute('href', 'https://dify.ai/blog')
     expect(within(blogSlide).getAllByRole('link')).toHaveLength(1)
@@ -359,6 +359,51 @@ describe('HomeTrending', () => {
 
     unmount()
     marketplaceContainer.remove()
+    Object.defineProperty(Element.prototype, 'animate', {
+      configurable: true,
+      value: originalAnimate,
+    })
+  })
+
+  it('resumes autoplay when Play is activated without moving keyboard focus', async () => {
+    const pause = vi.fn()
+    const play = vi.fn()
+    const progressAnimation = {
+      cancel: vi.fn(),
+      onfinish: null,
+      pause,
+      play,
+    } as unknown as Animation
+    const originalAnimate = Element.prototype.animate
+    Object.defineProperty(Element.prototype, 'animate', {
+      configurable: true,
+      value: vi.fn(() => progressAnimation),
+    })
+    const user = userEvent.setup()
+
+    render(<HomeTrending banners={banners} isMarketplacePlatform />)
+
+    const toggleButton = screen.getByRole('button', {
+      name: 'plugin.marketplace.home.trendingPause',
+    })
+
+    // Focusing the toggle adds the implicit focus pause reason, then Enter
+    // adds the explicit user pause.
+    toggleButton.focus()
+    await user.keyboard('{Enter}')
+    expect(pause).toHaveBeenCalled()
+
+    // Play must resume the rotation even though the button is still focused
+    // (and would normally keep the focus pause reason active).
+    const playsBeforePlay = play.mock.calls.length
+    await user.keyboard('{Enter}')
+
+    expect(play.mock.calls.length).toBeGreaterThan(playsBeforePlay)
+    expect(document.activeElement).toBe(toggleButton)
+    expect(
+      screen.getByRole('button', { name: 'plugin.marketplace.home.trendingPause' }),
+    ).toBeInTheDocument()
+
     Object.defineProperty(Element.prototype, 'animate', {
       configurable: true,
       value: originalAnimate,

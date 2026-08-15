@@ -168,6 +168,13 @@ const Carousel = ({
 }: CarouselProps) => {
   const carouselRootRef = useRef<HTMLDivElement>(null)
   const [isUserPaused, setIsUserPaused] = useState(false)
+  // Tracked independently of pauseWhenOffscreen so every autoplay path honors
+  // prefers-reduced-motion, including the eagerly-playing first collection.
+  const [isReducedMotion, setIsReducedMotion] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      (window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false),
+  )
   const autoplay = useMemo(() => {
     if (!autoPlay) return undefined
 
@@ -264,12 +271,28 @@ const Carousel = ({
     return () => carouselRoot.removeEventListener('focusin', handleFocusIn)
   }, [autoplay])
 
+  // The viewport-managed effect below tracks reduced motion itself; this
+  // effect covers the eager autoplay path (pauseWhenOffscreen=false), which
+  // previously ignored the preference entirely.
+  useEffect(() => {
+    if (!autoPlay || pauseWhenOffscreen) return
+
+    const reducedMotionQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)')
+    if (!reducedMotionQuery) return
+
+    const syncReducedMotion = () => setIsReducedMotion(reducedMotionQuery.matches)
+
+    syncReducedMotion()
+    reducedMotionQuery.addEventListener('change', syncReducedMotion)
+    return () => reducedMotionQuery.removeEventListener('change', syncReducedMotion)
+  }, [autoPlay, pauseWhenOffscreen])
+
   useEffect(() => {
     if (!autoplay || !api || pauseWhenOffscreen) return
 
-    if (isUserPaused) autoplay.stop()
+    if (isUserPaused || isReducedMotion) autoplay.stop()
     else autoplay.play()
-  }, [api, autoplay, isUserPaused, pauseWhenOffscreen])
+  }, [api, autoplay, isReducedMotion, isUserPaused, pauseWhenOffscreen])
 
   useEffect(() => {
     if (!pauseWhenOffscreen || !autoplay || !api) return

@@ -1,7 +1,9 @@
 name: Marketplace Performance E2E
 
+# Opt-in diagnostic: single-sample timing budgets are too noisy to gate every
+# PR, so this lane is only run on demand instead of from the main CI pipeline.
 on:
-  workflow_call:
+  workflow_dispatch:
 
 permissions:
   contents: read

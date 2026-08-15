@@ -2,7 +2,7 @@ import type { PluginsSort, SearchParamsFromCollection } from '@dify/contracts/ma
 import type { ActivePluginType } from './constants'
 import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 import { DEFAULT_SORT, PLUGIN_CATEGORY_WITH_COLLECTIONS } from './constants'
 import { marketplaceSearchParamsParsers } from './search-params'
 
@@ -41,6 +41,21 @@ export function useMarketplaceSearchMode(activePluginTypeOverride?: ActivePlugin
     filterPluginTags.length > 0 ||
     (searchMode ?? !PLUGIN_CATEGORY_WITH_COLLECTIONS.has(activePluginType))
   return isSearchMode
+}
+
+/**
+ * The forced search mode lives in the app-wide Jotai store, so a "View More"
+ * click would otherwise leak into the next visit of the plugin catalog after
+ * navigating away (e.g. to /templates) and back, rendering empty-query search
+ * results instead of the prefetched collections. Reset it when the catalog
+ * route mounts; URL-owned state (q, tags, category) is not affected.
+ */
+export function useResetMarketplaceSearchModeOnMount() {
+  const setSearchMode = useSetAtom(searchModeAtom)
+
+  useEffect(() => {
+    setSearchMode(null)
+  }, [setSearchMode])
 }
 
 export function useMarketplaceMoreClick() {
