@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum } from '../../types'
 import CategoryEmptyState from '../category-empty-state'
 import { getCategoryMarketplaceId } from '../category-marketplace'

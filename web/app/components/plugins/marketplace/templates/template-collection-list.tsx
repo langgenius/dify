@@ -140,6 +140,7 @@ export default function TemplateCollectionList({
         ) : (
           <Carousel
             pages={carouselPages}
+            ariaLabel={getTemplateCollectionText(collection.label, locale)}
             showNavigation
             showPagination
             autoPlay

@@ -1,22 +1,7 @@
 import { toast } from '@langgenius/dify-ui/toast'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MARKETPLACE_OAUTH_CLIENT_ID } from '@/config'
 import { useRouter } from '@/next/navigation'
-
-export function shouldSilentAuthorizeMarketplace({
-  deploymentEdition,
-  clientId,
-}: {
-  deploymentEdition: string | undefined
-  clientId: string
-}) {
-  return (
-    deploymentEdition === 'CLOUD' &&
-    Boolean(MARKETPLACE_OAUTH_CLIENT_ID) &&
-    clientId === MARKETPLACE_OAUTH_CLIENT_ID
-  )
-}
 
 export function buildReturnUrl(pathname: string, search: string) {
   try {
@@ -33,41 +18,41 @@ export function buildOAuthCallbackUrl(redirectUri: string, code: string, state: 
   return url.toString()
 }
 
-type MarketplaceSilentAuthorizeOptions = {
-  authAppInfo: unknown
+type SilentAuthorizeOptions = {
+  authAppInfo: { auto_authorize: boolean } | undefined
   authorize: (input: { body: { client_id: string } }) => Promise<{ code: string }>
   clientId: string
-  deploymentEdition: string | undefined
   hasOAuthParams: boolean
   isLoggedIn: boolean
-  isOAuthError: boolean
-  isOAuthLoading: boolean
   isProfileLoading: boolean
   redirectUri: string
   searchParams: { toString: () => string }
   state: string | null
 }
 
-export function useMarketplaceSilentAuthorize({
+/**
+ * Skips the consent screen for first-party apps (e.g. the Dify Marketplace)
+ * flagged with `auto_authorize` on their `oauth_provider_apps` row, as
+ * returned by `POST /oauth/provider`. The flag is only a rendering hint:
+ * issuing an authorization code still requires a logged-in console session,
+ * so a tampered response only affects the tamperer's own UI.
+ */
+export function useSilentAuthorize({
   authAppInfo,
   authorize,
   clientId,
-  deploymentEdition,
   hasOAuthParams,
   isLoggedIn,
-  isOAuthError,
-  isOAuthLoading,
   isProfileLoading,
   redirectUri,
   searchParams,
   state,
-}: MarketplaceSilentAuthorizeOptions) {
+}: SilentAuthorizeOptions) {
   const { t } = useTranslation()
   const router = useRouter()
   const startedRef = useRef(false)
   const [autoAuthorizationFailed, setAutoAuthorizationFailed] = useState(false)
-  const shouldAutoAuthorize =
-    hasOAuthParams && shouldSilentAuthorizeMarketplace({ clientId, deploymentEdition })
+  const shouldAutoAuthorize = hasOAuthParams && Boolean(authAppInfo?.auto_authorize)
 
   useEffect(() => {
     if (!shouldAutoAuthorize || startedRef.current || isProfileLoading) return
@@ -78,8 +63,6 @@ export function useMarketplaceSilentAuthorize({
       router.replace(`/signin?redirect_url=${encodeURIComponent(returnUrl)}`)
       return
     }
-
-    if (isOAuthLoading || isOAuthError || !authAppInfo) return
 
     startedRef.current = true
     void authorize({ body: { client_id: clientId } })
@@ -92,12 +75,9 @@ export function useMarketplaceSilentAuthorize({
         toast.error(`${t(($) => $['error.authorizeFailed'], { ns: 'oauth' })}: ${message}`)
       })
   }, [
-    authAppInfo,
     authorize,
     clientId,
     isLoggedIn,
-    isOAuthError,
-    isOAuthLoading,
     isProfileLoading,
     redirectUri,
     router,
@@ -108,6 +88,6 @@ export function useMarketplaceSilentAuthorize({
   ])
 
   return {
-    isMarketplaceAutoAuthorizing: shouldAutoAuthorize && !autoAuthorizationFailed,
+    isAutoAuthorizing: shouldAutoAuthorize && !autoAuthorizationFailed,
   }
 }

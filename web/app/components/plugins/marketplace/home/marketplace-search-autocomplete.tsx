@@ -15,7 +15,7 @@ import {
   AutocompleteStatus,
 } from '@langgenius/dify-ui/autocomplete'
 import { cn } from '@langgenius/dify-ui/cn'
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -108,8 +108,9 @@ export function MarketplaceSearchAutocomplete({
       },
       retry: false,
     }),
+    // No placeholderData here: showing the previous term's suggestions would
+    // leave stale items keyboard-selectable while the new request is pending.
     enabled: hasQuery && searchesPlugins,
-    placeholderData: keepPreviousData,
     staleTime: 60_000,
   })
   const templateQuery = useQuery({
@@ -127,19 +128,24 @@ export function MarketplaceSearchAutocomplete({
       retry: false,
     }),
     enabled: hasQuery && searchesTemplates,
-    placeholderData: keepPreviousData,
     staleTime: 60_000,
   })
-  const pluginSuggestions = searchesPlugins
-    ? (pluginQuery.data?.data.bundles ?? pluginQuery.data?.data.plugins ?? []).map((plugin) =>
-        toPluginSuggestion(plugin, locale),
-      )
-    : []
-  const templateSuggestions = searchesTemplates
-    ? (templateQuery.data?.data?.templates ?? []).map(toTemplateSuggestion)
-    : []
+  // While the edited value is still debouncing, the queries above still hold
+  // the previous term's data; gate the suggestions until both agree so stale
+  // options are never visible or keyboard-selectable.
+  const isDebouncing = value.trim() !== debouncedSearch
+  const pluginSuggestions =
+    !isDebouncing && searchesPlugins
+      ? (pluginQuery.data?.data.bundles ?? pluginQuery.data?.data.plugins ?? []).map((plugin) =>
+          toPluginSuggestion(plugin, locale),
+        )
+      : []
+  const templateSuggestions =
+    !isDebouncing && searchesTemplates
+      ? (templateQuery.data?.data?.templates ?? []).map(toTemplateSuggestion)
+      : []
   const suggestions = [...templateSuggestions, ...pluginSuggestions]
-  const isSearching = pluginQuery.isFetching || templateQuery.isFetching
+  const isSearching = isDebouncing || pluginQuery.isFetching || templateQuery.isFetching
   const emptyText =
     scope === 'templates'
       ? translate('newApp.noTemplateFound', { ns: 'app' })

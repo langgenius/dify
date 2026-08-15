@@ -1,36 +1,33 @@
 import type { MarketplaceTemplate } from '@dify/contracts/marketplace'
 
-type TemplateLanguageFamily = 'en' | 'ja' | 'other' | 'zh'
+const getLanguagePrefix = (locale: string) => locale.toLowerCase().split(/[-_]/)[0] ?? ''
 
-function getTemplateLanguageFamily(locale: string): TemplateLanguageFamily {
-  const normalizedLocale = locale.toLowerCase()
-
-  if (normalizedLocale.startsWith('en')) return 'en'
-  if (normalizedLocale.startsWith('zh')) return 'zh'
-  if (normalizedLocale.startsWith('ja')) return 'ja'
-
-  return 'other'
-}
-
+/**
+ * Keeps the templates matching the requested locale's language. Templates
+ * without language metadata are treated as language-agnostic and always kept.
+ * When no template matches the requested language, the list explicitly falls
+ * back to English templates (and finally to the unfiltered list) so locales
+ * such as German render real content instead of an empty state.
+ */
 export function filterTemplatesForLocale<
   T extends Pick<MarketplaceTemplate, 'preferred_languages'>,
 >(templates: T[], locale: string) {
-  const languageFamily = getTemplateLanguageFamily(locale)
+  const requestedLanguage = getLanguagePrefix(locale)
 
-  return templates.filter((template) => {
-    const preferredLanguages = (template.preferred_languages ?? []).map((language) =>
-      language.toLowerCase(),
-    )
+  const filterByLanguage = (languagePrefix: string) =>
+    templates.filter((template) => {
+      const preferredLanguages = template.preferred_languages ?? []
+      if (preferredLanguages.length === 0) return true
+      return preferredLanguages.some((language) => getLanguagePrefix(language) === languagePrefix)
+    })
 
-    if (languageFamily === 'other') {
-      return !preferredLanguages.some(
-        (language) =>
-          language.startsWith('en') || language.startsWith('zh') || language.startsWith('ja'),
-      )
-    }
+  const requestedMatches = filterByLanguage(requestedLanguage)
+  if (requestedMatches.length > 0) return requestedMatches
 
-    return preferredLanguages.some((language) => language.startsWith(languageFamily))
-  })
+  const englishMatches = requestedLanguage === 'en' ? [] : filterByLanguage('en')
+  if (englishMatches.length > 0) return englishMatches
+
+  return templates
 }
 
 export function getTemplateCollectionText(value: Record<string, string>, locale: string) {

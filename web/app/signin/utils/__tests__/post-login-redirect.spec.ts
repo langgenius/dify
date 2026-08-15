@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { resolvePostLoginRedirect, setPostLoginRedirect } from '../post-login-redirect'
 
 describe('post-login redirect utilities', () => {

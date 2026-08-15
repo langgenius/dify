@@ -19,6 +19,7 @@ import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { ChunkingMode, DisplayStatusList } from '@/models/datasets'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import {
@@ -148,6 +149,10 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
       return false
     },
   })
+  const documentTitle =
+    documentDetail?.name || t(($) => $['datasetMenus.documents'], { ns: 'common' })
+  const datasetTitle = dataset?.name || t(($) => $['menus.datasets'], { ns: 'common' })
+  useDocumentTitle(`${documentTitle} · ${datasetTitle}`)
 
   const { data: documentMetadata } = useDocumentMetadata({
     datasetId,

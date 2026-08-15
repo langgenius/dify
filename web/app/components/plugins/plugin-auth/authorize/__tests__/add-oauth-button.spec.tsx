@@ -2,7 +2,7 @@ import type { OAuthClientSettingsProps } from '../oauth-client-settings'
 import type { FormSchema } from '@/app/components/base/form/types'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { AuthCategory } from '../../types'
 
 const mockGetPluginOAuthUrl = vi

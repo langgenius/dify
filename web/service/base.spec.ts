@@ -1,6 +1,6 @@
 import { toast } from '@langgenius/dify-ui/toast'
 import { waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PUBLIC_API_PREFIX } from '@/config'
 // oxlint-disable-next-line no-restricted-imports
 import {

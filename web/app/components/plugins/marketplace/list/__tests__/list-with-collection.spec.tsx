@@ -1,7 +1,7 @@
 import type { MarketplaceCollection } from '@dify/contracts/marketplace'
 import type { Plugin } from '@/app/components/plugins/types'
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import ListWithCollection from '../list-with-collection'
 
 const mockMoreClick = vi.fn()
@@ -285,7 +285,7 @@ describe('ListWithCollection', () => {
     expect(carouselContent).toHaveStyle({ columnGap: '12px' })
   })
 
-  it('defers all real cards until a collection enters the preload range', () => {
+  it('keeps the first collection eager and defers the rest until they enter the preload range', () => {
     const { fixtureCollections, fixturePluginsMap } = buildPerformanceFixture()
     const marketplaceContainer = document.createElement('div')
     marketplaceContainer.id = 'marketplace-container'
@@ -302,33 +302,41 @@ describe('ListWithCollection', () => {
 
     expect(screen.getAllByText(/Collection \d$/)).toHaveLength(7)
     expect(document.querySelectorAll('[data-marketplace-collection]')).toHaveLength(7)
+    // The first (above-the-fold) collection renders its real cards immediately
+    // so server-rendered HTML contains first-screen content; the six remaining
+    // collections keep placeholders until they intersect.
     expect(
       document.querySelectorAll('[data-marketplace-collection-placeholder] > div'),
-    ).toHaveLength(56)
-    expect(screen.queryAllByTestId('card-wrapper')).toHaveLength(0)
-    expect(intersectionObservers).toHaveLength(7)
-    expect(intersectionObservers[0]!.options).toEqual({
+    ).toHaveLength(48)
+    expect(screen.getAllByTestId('card-wrapper')).toHaveLength(61)
+    expect(document.querySelectorAll('[data-carousel-page]')).toHaveLength(8)
+    expect(document.querySelectorAll('[data-carousel-page-mounted="true"]')).toHaveLength(8)
+    // The eager carousel also registers an autoplay visibility observer, so
+    // only count the collection preload observers here.
+    const collectionObservers = intersectionObservers.filter(
+      (observer) => observer.options?.rootMargin === '320px 0px',
+    )
+    expect(collectionObservers).toHaveLength(6)
+    expect(collectionObservers[0]!.options).toEqual({
       root: marketplaceContainer,
       rootMargin: '320px 0px',
       threshold: 0.01,
     })
 
-    triggerIntersection(intersectionObservers[0]!, {
+    triggerIntersection(collectionObservers[0]!, {
       intersectionRatio: 0.01,
       isIntersecting: true,
     })
 
-    expect(intersectionObservers[0]!.disconnect).toHaveBeenCalled()
-    expect(screen.getAllByTestId('card-wrapper')).toHaveLength(21)
-    expect(document.querySelectorAll('[data-carousel-page]')).toHaveLength(8)
-    expect(document.querySelectorAll('[data-carousel-page-mounted="true"]')).toHaveLength(3)
+    expect(collectionObservers[0]!.disconnect).toHaveBeenCalled()
+    expect(screen.getAllByTestId('card-wrapper')).toHaveLength(69)
 
-    triggerIntersection(intersectionObservers[0]!, {
+    triggerIntersection(collectionObservers[0]!, {
       intersectionRatio: 0,
       isIntersecting: false,
     })
 
-    expect(screen.getAllByTestId('card-wrapper')).toHaveLength(21)
+    expect(screen.getAllByTestId('card-wrapper')).toHaveLength(69)
 
     unmount()
     marketplaceContainer.remove()

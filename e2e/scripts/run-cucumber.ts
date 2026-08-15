@@ -3,6 +3,7 @@ import { mkdir, readFile, rm } from 'node:fs/promises'
 import path from 'node:path'
 import { runCleanupTasks } from '../support/cleanup'
 import { assertCucumberScenariosStarted } from '../support/cucumber-messages'
+import { startMarketplaceStub, stopMarketplaceStub } from '../support/marketplace-stub'
 import { startLoggedProcess, stopManagedProcess, waitForUrl } from '../support/process'
 import { startWebServer, stopWebServer } from '../support/web-server'
 import { apiURL, baseURL, reuseExistingWebServer } from '../test-env'
@@ -14,6 +15,25 @@ import './env-register'
 
 const hasCustomTags = (forwardArgs: string[]) =>
   forwardArgs.some((arg) => arg === '--tags' || arg.startsWith('--tags='))
+
+const collectTagExpressions = (forwardArgs: string[]) => {
+  const expressions: string[] = []
+
+  for (let index = 0; index < forwardArgs.length; index += 1) {
+    const arg = forwardArgs[index]!
+    if (arg === '--tags' && forwardArgs[index + 1]) expressions.push(forwardArgs[index + 1]!)
+    else if (arg.startsWith('--tags=')) expressions.push(arg.slice('--tags='.length))
+  }
+
+  if (process.env.E2E_CUCUMBER_TAGS) expressions.push(process.env.E2E_CUCUMBER_TAGS)
+
+  return expressions
+}
+
+const selectsMarketplacePerformance = (forwardArgs: string[]) =>
+  collectTagExpressions(forwardArgs).some((expression) =>
+    /(?<!not\s)@marketplace-performance/.test(expression),
+  )
 
 const fullNonExternalTags =
   'not @axe and not @prepared and not @external-model and not @external-tool and not @marketplace-performance'
@@ -90,6 +110,7 @@ const main = async () => {
       cleanupPromise = (async () => {
         const cleanupErrors = await runCleanupTasks([
           { label: 'Stop web server', run: stopWebServer },
+          { label: 'Stop marketplace API stub', run: stopMarketplaceStub },
           { label: 'Stop celery worker', run: () => stopManagedProcess(celeryProcess) },
           { label: 'Stop API server', run: () => stopManagedProcess(apiProcess) },
           { label: 'Stop agent backend', run: () => stopManagedProcess(difyAgentProcess) },
@@ -186,6 +207,18 @@ const main = async () => {
       label: 'celery worker',
       logFilePath: path.join(logDir, 'cucumber-celery.log'),
     })
+
+    // The performance benchmark must not depend on live marketplace.dify.ai
+    // content, so serve frozen fixtures from a local stub unless the caller
+    // explicitly points the web app at another marketplace API.
+    if (
+      selectsMarketplacePerformance(forwardArgs) &&
+      !process.env.NEXT_PUBLIC_MARKETPLACE_API_PREFIX
+    ) {
+      const { apiPrefix } = await startMarketplaceStub()
+      process.env.NEXT_PUBLIC_MARKETPLACE_API_PREFIX = apiPrefix
+      console.log(`Marketplace API stub is serving frozen fixtures at ${apiPrefix}.`)
+    }
 
     await startWebServer({
       baseURL,

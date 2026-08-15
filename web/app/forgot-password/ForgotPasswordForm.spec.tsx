@@ -1,5 +1,6 @@
 import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import useDocumentTitle from '@/hooks/use-document-title'
 import {
   fetchInitValidateStatus,
   fetchSetupStatus,
@@ -19,9 +20,15 @@ vi.mock('@/service/common', () => ({
   sendForgotPasswordEmail: vi.fn(),
 }))
 
+vi.mock('@/hooks/use-document-title', () => ({
+  __esModule: true,
+  default: vi.fn(),
+}))
+
 const mockFetchSetupStatus = vi.mocked(fetchSetupStatus)
 const mockFetchInitValidateStatus = vi.mocked(fetchInitValidateStatus)
 const mockSendForgotPasswordEmail = vi.mocked(sendForgotPasswordEmail)
+const mockUseDocumentTitle = vi.mocked(useDocumentTitle)
 
 const prepareLoadedState = () => {
   mockFetchSetupStatus.mockResolvedValue({ step: 'not_started' } as SetupStatusResponse)
@@ -39,7 +46,10 @@ describe('ForgotPasswordForm', () => {
   it('should render form after loading', async () => {
     render(<ForgotPasswordForm />)
 
+    expect(mockUseDocumentTitle).toHaveBeenLastCalledWith('common.loading')
     expect(await screen.findByLabelText('login.email')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('login.forgotPassword')
+    expect(mockUseDocumentTitle).toHaveBeenLastCalledWith('login.forgotPassword')
   })
 
   it('should show validation error when email is empty', async () => {
@@ -75,6 +85,7 @@ describe('ForgotPasswordForm', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /login\.backToSignIn/ })).toBeInTheDocument()
     })
+    expect(mockUseDocumentTitle).toHaveBeenLastCalledWith('login.resetLinkSent')
 
     fireEvent.click(screen.getByRole('button', { name: /login\.backToSignIn/ }))
     expect(mockPush).toHaveBeenCalledWith('/signin')

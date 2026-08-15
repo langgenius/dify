@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 import { fireEvent, screen } from '@testing-library/react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'

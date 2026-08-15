@@ -106,6 +106,25 @@ def _build_change_email_token(
     raise AssertionError(f"Unsupported phase for test helper: {phase}")
 
 
+class TestEducationApi:
+    @patch("controllers.console.workspace.account.BillingService.EducationIdentity.activate")
+    def test_post_activates_education_discount(self, mock_activate: MagicMock, app: Flask):
+        account = _build_account("student@example.edu")
+        mock_activate.return_value = {"message": "success"}
+
+        with app.test_request_context(
+            "/account/education",
+            method="POST",
+            json={"token": "education-token", "institution": "Dify University", "role": "Student"},
+        ):
+            api = EducationApi()
+            method = inspect.unwrap(api.post)
+            result = method(api, account)
+
+        assert result == {"message": "success"}
+        mock_activate.assert_called_once_with(account, "education-token", "Dify University", "Student")
+
+
 class TestChangeEmailSend:
     @patch("controllers.console.workspace.account.AccountService.send_change_email_email")
     @patch("controllers.console.workspace.account.AccountService.is_email_send_ip_limit", return_value=False)

@@ -1,6 +1,7 @@
 'use client'
 
-import { Button } from '@langgenius/dify-ui/button'
+import { buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from '#i18n'
 import { defaultDocBaseUrl, getDocHomePath, useDocLink } from '@/context/i18n'
 import { getDocLanguage } from '@/i18n-config/language'
@@ -11,11 +12,18 @@ function GuideLink({ href }: { href: string }) {
   const { t } = useTranslation('plugin')
 
   return (
-    <Link href={href} target="_blank" rel="noopener noreferrer" className={styles.guide}>
-      <Button variant="ghost" size="large" className="min-w-[94px] gap-0.5 px-3 text-text-primary">
-        <span aria-hidden className="i-ri-map-2-line size-5" />
-        <span className="px-1 system-md-medium">{t(($) => $['marketplace.home.guide'])}</span>
-      </Button>
+    <Link
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={cn(
+        styles.guide,
+        buttonVariants({ variant: 'ghost', size: 'large' }),
+        'min-w-[94px] gap-0.5 px-3 text-text-primary',
+      )}
+    >
+      <span aria-hidden className="i-ri-map-2-line size-5" />
+      <span className="px-1 system-md-medium">{t(($) => $['marketplace.home.guide'])}</span>
     </Link>
   )
 }

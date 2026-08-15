@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
 import { useMembers } from '@/service/use-common'
 import MemberSelector from '../member-selector'
 

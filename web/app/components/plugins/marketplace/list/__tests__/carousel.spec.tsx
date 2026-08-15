@@ -232,7 +232,7 @@ describe('Marketplace Carousel', () => {
     expect(autoplay.play).toHaveBeenCalledTimes(2)
 
     reducedMotion = true
-    reducedMotionListener?.()
+    act(() => reducedMotionListener?.())
     expect(autoplay.stop).toHaveBeenCalled()
 
     Object.defineProperty(document, 'visibilityState', {
@@ -248,7 +248,7 @@ describe('Marketplace Carousel', () => {
     expect(autoplay.play).toHaveBeenCalledTimes(2)
 
     reducedMotion = false
-    reducedMotionListener?.()
+    act(() => reducedMotionListener?.())
     expect(autoplay.play).toHaveBeenCalledTimes(3)
 
     triggerIntersection(intersectionObservers[0]!, 0)
@@ -266,6 +266,83 @@ describe('Marketplace Carousel', () => {
       stopOnMouseEnter: true,
     })
     expect(intersectionObservers).toHaveLength(0)
+  })
+
+  it('honors reduced motion for the eagerly playing first-collection carousel', () => {
+    let reducedMotion = true
+    let reducedMotionListener: (() => void) | undefined
+    vi.stubGlobal('matchMedia', () => ({
+      get matches() {
+        return reducedMotion
+      },
+      media: '(prefers-reduced-motion: reduce)',
+      onchange: null,
+      addEventListener: (_event: string, listener: () => void) => {
+        reducedMotionListener = listener
+      },
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }))
+
+    // The production first collection renders without pauseWhenOffscreen, so
+    // the reduced-motion guard must work outside the viewport-managed path.
+    render(<Carousel pages={pages} autoPlay />)
+    const autoplay = mocks.autoplayInstances[0]!
+
+    expect(autoplay.stop).toHaveBeenCalled()
+    expect(autoplay.play).not.toHaveBeenCalled()
+
+    reducedMotion = false
+    act(() => reducedMotionListener?.())
+
+    expect(autoplay.play).toHaveBeenCalled()
+  })
+
+  it('keeps off-screen pages out of the tab order and accessibility tree', () => {
+    render(<Carousel pages={pages} ariaLabel="Featured tools" />)
+
+    expect(screen.getByRole('region', { name: 'Featured tools' })).toBeInTheDocument()
+
+    const slides = document.querySelectorAll('[data-carousel-page]')
+    expect(slides[0]).toHaveAttribute('aria-roledescription', 'slide')
+    expect(slides[0]).toHaveAttribute('aria-label', '1 / 5')
+    expect(slides[0]).not.toHaveAttribute('aria-hidden', 'true')
+    expect(slides[0]).not.toHaveAttribute('inert')
+    expect(slides[1]).toHaveAttribute('aria-hidden', 'true')
+    expect(slides[1]).toHaveAttribute('inert')
+
+    mocks.carouselState.selectedIndex = 3
+    act(() => mocks.emit('select'))
+
+    expect(slides[0]).toHaveAttribute('aria-hidden', 'true')
+    expect(slides[0]).toHaveAttribute('inert')
+    expect(slides[3]).not.toHaveAttribute('aria-hidden', 'true')
+    expect(slides[3]).not.toHaveAttribute('inert')
+  })
+
+  it('stops rotation when focus enters and resumes only from the play control', () => {
+    render(<Carousel pages={pages} autoPlay />)
+    const autoplay = mocks.autoplayInstances[0]!
+    const carousel = screen.getByRole('region')
+
+    const playsBeforeFocus = autoplay.play.mock.calls.length
+    fireEvent.focusIn(carousel)
+
+    expect(autoplay.stop).toHaveBeenCalled()
+    expect(autoplay.play).toHaveBeenCalledTimes(playsBeforeFocus)
+
+    // Moving focus around does not resume rotation on its own.
+    fireEvent.focusIn(carousel)
+    expect(autoplay.play).toHaveBeenCalledTimes(playsBeforeFocus)
+
+    fireEvent.click(screen.getByRole('button', { name: 'plugin.marketplace.home.trendingPlay' }))
+    expect(autoplay.play.mock.calls.length).toBeGreaterThan(playsBeforeFocus)
+
+    const stopsBeforePause = autoplay.stop.mock.calls.length
+    fireEvent.click(screen.getByRole('button', { name: 'plugin.marketplace.home.trendingPause' }))
+    expect(autoplay.stop.mock.calls.length).toBeGreaterThan(stopsBeforePause)
   })
 
   it('does not start managed autoplay when the carousel has only one page', () => {

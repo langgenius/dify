@@ -6,6 +6,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import Autoplay from 'embla-carousel-autoplay'
 import useEmblaCarousel from 'embla-carousel-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from '#i18n'
 import { CAROUSEL_PAGE_CLASS } from './collection-constants'
 
 export type CarouselPage = {
@@ -15,6 +16,7 @@ export type CarouselPage = {
 
 type CarouselProps = {
   pages: CarouselPage[]
+  ariaLabel?: string
   className?: string
   showNavigation?: boolean
   showPagination?: boolean
@@ -48,6 +50,11 @@ const NavButton = ({ direction, disabled, onClick, iconClassName }: NavButtonPro
   </button>
 )
 
+type CarouselAutoplayToggle = {
+  isPaused: boolean
+  onToggle: () => void
+}
+
 type CarouselControlsProps = {
   showPagination: boolean
   selectedIndex: number
@@ -55,6 +62,7 @@ type CarouselControlsProps = {
   scrollPrev: () => void
   scrollSnaps: number[]
   scrollTo: (index: number) => void
+  autoplayToggle?: CarouselAutoplayToggle
 }
 
 const CarouselControls = ({
@@ -64,7 +72,9 @@ const CarouselControls = ({
   scrollPrev,
   scrollSnaps,
   scrollTo,
+  autoplayToggle,
 }: CarouselControlsProps) => {
+  const { t } = useTranslation()
   const paginationItems = scrollSnaps.map((snap, index) => ({
     id: `${snap}-${index}`,
     snap,
@@ -105,6 +115,30 @@ const CarouselControls = ({
           onClick={scrollNext}
           iconClassName="i-ri-arrow-right-s-line"
         />
+        {autoplayToggle && (
+          <button
+            type="button"
+            className="flex cursor-pointer items-center justify-center rounded-full border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-2 shadow-xs backdrop-blur-[5px] transition-all hover:bg-components-button-secondary-bg-hover"
+            onClick={autoplayToggle.onToggle}
+            aria-label={t(
+              ($) =>
+                $[
+                  autoplayToggle.isPaused
+                    ? 'marketplace.home.trendingPlay'
+                    : 'marketplace.home.trendingPause'
+                ],
+              { ns: 'plugin' },
+            )}
+          >
+            <span
+              aria-hidden
+              className={cn(
+                'size-4 text-components-button-secondary-text',
+                autoplayToggle.isPaused ? 'i-ri-play-line' : 'i-ri-pause-line',
+              )}
+            />
+          </button>
+        )}
       </div>
     </div>
   )
@@ -123,6 +157,7 @@ const getPageWindowIds = (pages: CarouselPage[], centerIndex: number) => {
 
 const Carousel = ({
   pages,
+  ariaLabel,
   className,
   showNavigation = true,
   showPagination = true,
@@ -132,6 +167,14 @@ const Carousel = ({
   pauseWhenOffscreen = false,
 }: CarouselProps) => {
   const carouselRootRef = useRef<HTMLDivElement>(null)
+  const [isUserPaused, setIsUserPaused] = useState(false)
+  // Tracked independently of pauseWhenOffscreen so every autoplay path honors
+  // prefers-reduced-motion, including the eagerly-playing first collection.
+  const [isReducedMotion, setIsReducedMotion] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      (window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false),
+  )
   const autoplay = useMemo(() => {
     if (!autoPlay) return undefined
 
@@ -214,6 +257,44 @@ const Carousel = ({
   }, [api, mountPageWindow])
 
   useEffect(() => {
+    if (!autoplay) return
+
+    const carouselRoot = carouselRootRef.current
+    if (!carouselRoot) return
+
+    // Once keyboard or assistive-technology focus enters the carousel
+    // (including its controls), rotation stays stopped until the user
+    // explicitly resumes it with the play control.
+    const handleFocusIn = () => setIsUserPaused(true)
+
+    carouselRoot.addEventListener('focusin', handleFocusIn)
+    return () => carouselRoot.removeEventListener('focusin', handleFocusIn)
+  }, [autoplay])
+
+  // The viewport-managed effect below tracks reduced motion itself; this
+  // effect covers the eager autoplay path (pauseWhenOffscreen=false), which
+  // previously ignored the preference entirely.
+  useEffect(() => {
+    if (!autoPlay || pauseWhenOffscreen) return
+
+    const reducedMotionQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)')
+    if (!reducedMotionQuery) return
+
+    const syncReducedMotion = () => setIsReducedMotion(reducedMotionQuery.matches)
+
+    syncReducedMotion()
+    reducedMotionQuery.addEventListener('change', syncReducedMotion)
+    return () => reducedMotionQuery.removeEventListener('change', syncReducedMotion)
+  }, [autoPlay, pauseWhenOffscreen])
+
+  useEffect(() => {
+    if (!autoplay || !api || pauseWhenOffscreen) return
+
+    if (isUserPaused || isReducedMotion) autoplay.stop()
+    else autoplay.play()
+  }, [api, autoplay, isReducedMotion, isUserPaused, pauseWhenOffscreen])
+
+  useEffect(() => {
     if (!pauseWhenOffscreen || !autoplay || !api) return
 
     const carouselRoot = carouselRootRef.current
@@ -228,7 +309,14 @@ const Carousel = ({
     const syncAutoplay = () => {
       const hasMultiplePages = api.scrollSnapList().length > 1
 
-      if (hasMultiplePages && isInViewport && isDocumentVisible && !isReducedMotion && !isHovered)
+      if (
+        hasMultiplePages &&
+        isInViewport &&
+        isDocumentVisible &&
+        !isReducedMotion &&
+        !isHovered &&
+        !isUserPaused
+      )
         autoplay.play()
       else autoplay.stop()
     }
@@ -280,7 +368,7 @@ const Carousel = ({
       carouselRoot.removeEventListener('mouseleave', handleMouseLeave)
       autoplay.stop()
     }
-  }, [api, autoplay, pauseWhenOffscreen])
+  }, [api, autoplay, isUserPaused, pauseWhenOffscreen])
 
   return (
     <div
@@ -288,6 +376,7 @@ const Carousel = ({
       className={cn('relative', className)}
       role="region"
       aria-roledescription="carousel"
+      aria-label={ariaLabel}
     >
       {showNavigation && (
         <CarouselControls
@@ -297,16 +386,32 @@ const Carousel = ({
           scrollPrev={scrollPrev}
           scrollSnaps={scrollSnaps}
           scrollTo={scrollTo}
+          autoplayToggle={
+            autoPlay
+              ? {
+                  isPaused: isUserPaused,
+                  onToggle: () => setIsUserPaused((paused) => !paused),
+                }
+              : undefined
+          }
         />
       )}
       <div ref={carouselRef} className="overflow-hidden rounded-[inherit]">
         <div className="flex" style={{ columnGap: '12px' }}>
-          {pages.map((page) => {
+          {pages.map((page, index) => {
             const isMounted = !deferMountPages || mountedPageIds.has(page.id)
+            const isCurrent = index === selectedIndex
 
             return (
               <div
                 key={page.id}
+                role="group"
+                aria-roledescription="slide"
+                aria-label={`${index + 1} / ${pages.length}`}
+                // Off-screen pages stay mounted for Embla, but must not be
+                // reachable through the tab order or the accessibility tree.
+                aria-hidden={!isCurrent}
+                inert={!isCurrent}
                 className={CAROUSEL_PAGE_CLASS}
                 data-carousel-page={page.id}
                 data-carousel-page-mounted={isMounted ? 'true' : 'false'}

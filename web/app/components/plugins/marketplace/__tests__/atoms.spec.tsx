@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { act, renderHook } from '@testing-library/react'
 import { Provider as JotaiProvider } from 'jotai'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import {
   useActivePluginType,
