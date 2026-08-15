@@ -21,8 +21,12 @@ from sqlalchemy.sql.schema import SchemaItem
 import models.types
 from models.human_input_v2 import IMMessageInbox
 
-_MIGRATION_PATH = (
+_INITIAL_MIGRATION_PATH = (
     Path(__file__).resolve().parents[3] / "migrations/versions/2026_08_02_1000-f1a2b3c4d5e6_add_im_message_inbox.py"
+)
+_INGRESS_KIND_MIGRATION_PATH = (
+    Path(__file__).resolve().parents[3]
+    / "migrations/versions/2026_08_15_1200-d4e6f8a1b2c3_add_im_event_ingress_kind.py"
 )
 
 
@@ -37,8 +41,8 @@ def _is_migration_module(module: ModuleType) -> TypeGuard[_MigrationModule]:
     return "op" in namespace and callable(namespace.get("upgrade")) and callable(namespace.get("downgrade"))
 
 
-def _load_migration_module() -> _MigrationModule:
-    spec = importlib.util.spec_from_file_location("im_message_inbox_migration", _MIGRATION_PATH)
+def _load_migration_module(path: Path, *, module_name: str) -> _MigrationModule:
+    spec = importlib.util.spec_from_file_location(module_name, path)
     if spec is None or spec.loader is None:
         raise RuntimeError("failed to load migration module")
     module = importlib.util.module_from_spec(spec)
@@ -46,6 +50,19 @@ def _load_migration_module() -> _MigrationModule:
     if not _is_migration_module(module):
         raise RuntimeError("migration module does not expose the required operations")
     return module
+
+
+def _initial_migration() -> _MigrationModule:
+    return _load_migration_module(_INITIAL_MIGRATION_PATH, module_name="im_message_inbox_migration")
+
+
+def _ingress_kind_migration() -> _MigrationModule:
+    return _load_migration_module(_INGRESS_KIND_MIGRATION_PATH, module_name="im_event_ingress_kind_migration")
+
+
+def _upgrade_inbox_schema(engine: sa.Engine) -> None:
+    _run_migration_step(_initial_migration(), engine, "upgrade")
+    _run_migration_step(_ingress_kind_migration(), engine, "upgrade")
 
 
 def _run_migration_step(
@@ -116,7 +133,8 @@ def _inbox_values(**changes: object) -> dict[str, object]:
         "provider_event_time": None,
         "received_at": now,
         "provider_event_type": "card.action",
-        "raw_payload": "{}",
+        "ingress_kind": "webhook",
+        "payload": "{}",
         "status": "pending",
         "attempt_count": 0,
         "claim_token": None,
@@ -140,12 +158,22 @@ def test_legacy_inbox_model_module_is_removed() -> None:
     assert importlib.util.find_spec("models.im_message_inbox") is None
 
 
-def test_inbox_upgrade_matches_single_table_model() -> None:
-    engine = sa.create_engine("sqlite:///:memory:")
-    module = _load_migration_module()
+def test_inbox_model_has_one_non_null_ingress_specific_payload_contract() -> None:
     model_table = _model_table()
 
-    _run_migration_step(module, engine, "upgrade")
+    assert "ingress_kind" in model_table.columns
+    assert model_table.columns.ingress_kind.nullable is False
+    assert "payload" in model_table.columns
+    assert model_table.columns.payload.nullable is False
+    assert "raw_payload" not in model_table.columns
+    assert not hasattr(IMMessageInbox, "raw_payload")
+
+
+def test_inbox_upgrade_matches_single_table_model() -> None:
+    engine = sa.create_engine("sqlite:///:memory:")
+    model_table = _model_table()
+
+    _upgrade_inbox_schema(engine)
 
     inspector = sa.inspect(engine)
     assert inspector.get_table_names() == ["im_message_inbox"]
@@ -155,6 +183,7 @@ def test_inbox_upgrade_matches_single_table_model() -> None:
         "completed_at",
         "created_at",
         "id",
+        "ingress_kind",
         "integration_id",
         "lease_expires_at",
         "provider",
@@ -162,7 +191,7 @@ def test_inbox_upgrade_matches_single_table_model() -> None:
         "provider_event_time",
         "provider_event_type",
         "provider_tenant_id",
-        "raw_payload",
+        "payload",
         "received_at",
         "status",
         "updated_at",
@@ -180,10 +209,15 @@ def test_inbox_upgrade_matches_single_table_model() -> None:
     assert {constraint["name"] for constraint in inspector.get_unique_constraints("im_message_inbox")} == {
         "im_message_inbox_provider_event_uq"
     }
+    ingress_column = next(
+        column for column in inspector.get_columns("im_message_inbox") if column["name"] == "ingress_kind"
+    )
+    assert ingress_column["nullable"] is False
+    assert ingress_column["default"] is None
 
 
 def test_inbox_provider_metadata_lengths_match_model_and_migration() -> None:
-    module = _load_migration_module()
+    module = _initial_migration()
     migration_table = _declared_migration_table(module)
     model_table = _model_table()
 
@@ -197,7 +231,7 @@ def test_inbox_provider_metadata_lengths_match_model_and_migration() -> None:
 
 
 def test_inbox_provider_metadata_uses_plain_strings() -> None:
-    module = _load_migration_module()
+    module = _initial_migration()
     migration_table = _declared_migration_table(module)
     model_table = _model_table()
 
@@ -235,7 +269,7 @@ def test_inbox_updated_at_is_a_repository_owned_transition_anchor() -> None:
 
 
 def test_processing_state_constraint_matches_model_without_timing_columns() -> None:
-    module = _load_migration_module()
+    module = _initial_migration()
     migration_constraint = _processing_state_constraint(_declared_migration_table(module))
     model_constraint = _processing_state_constraint(_model_table())
 
@@ -271,8 +305,7 @@ def test_processing_state_constraint_matches_model_without_timing_columns() -> N
 )
 def test_processing_state_constraint_rejects_invalid_ownership(changes: dict[str, object]) -> None:
     engine = sa.create_engine("sqlite:///:memory:")
-    module = _load_migration_module()
-    _run_migration_step(module, engine, "upgrade")
+    _upgrade_inbox_schema(engine)
 
     with pytest.raises(IntegrityError):
         with engine.begin() as connection:
@@ -309,8 +342,7 @@ def test_processing_state_constraint_rejects_invalid_ownership(changes: dict[str
 )
 def test_processing_state_constraint_only_governs_claim_ownership(values: dict[str, object]) -> None:
     engine = sa.create_engine("sqlite:///:memory:")
-    module = _load_migration_module()
-    _run_migration_step(module, engine, "upgrade")
+    _upgrade_inbox_schema(engine)
 
     with engine.begin() as connection:
         connection.execute(sa.insert(_model_table()).values(**values))
@@ -318,9 +350,18 @@ def test_processing_state_constraint_only_governs_claim_ownership(values: dict[s
 
 def test_empty_inbox_schema_can_be_downgraded() -> None:
     engine = sa.create_engine("sqlite:///:memory:")
-    module = _load_migration_module()
-    _run_migration_step(module, engine, "upgrade")
+    initial_migration = _initial_migration()
+    ingress_kind_migration = _ingress_kind_migration()
+    _run_migration_step(initial_migration, engine, "upgrade")
+    _run_migration_step(ingress_kind_migration, engine, "upgrade")
 
-    _run_migration_step(module, engine, "downgrade")
+    _run_migration_step(ingress_kind_migration, engine, "downgrade")
+
+    columns_after_ingress_downgrade = {column["name"] for column in sa.inspect(engine).get_columns("im_message_inbox")}
+    assert "ingress_kind" not in columns_after_ingress_downgrade
+    assert "payload" not in columns_after_ingress_downgrade
+    assert "raw_payload" in columns_after_ingress_downgrade
+
+    _run_migration_step(initial_migration, engine, "downgrade")
 
     assert "im_message_inbox" not in sa.inspect(engine).get_table_names()

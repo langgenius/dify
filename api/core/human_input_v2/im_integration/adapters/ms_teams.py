@@ -58,6 +58,7 @@ from core.human_input_v2.im_provider import (
     IMDirectory,
     IMDynamicCardMessaging,
     IMEventConsumer,
+    IMEventIngressKind,
     IMEventStream,
     IMMessaging,
     IMWebhookHandler,
@@ -737,6 +738,7 @@ class _MSTeamsWebhookHandler(IMWebhookHandler):
             event_type=activity.type,
             occurred_at=self._occurred_at(activity),
             received_at=request.received_at,
+            ingress_kind=IMEventIngressKind.WEBHOOK,
             payload=json.dumps(decoded_body, ensure_ascii=False, allow_nan=False, separators=(",", ":")),
         )
         try:

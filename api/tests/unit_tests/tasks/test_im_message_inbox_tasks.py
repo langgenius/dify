@@ -14,7 +14,7 @@ from core.human_input_v2.im_message_inbox import (
     IMInboxRecordId,
     InboxProcessingPolicy,
 )
-from core.human_input_v2.im_provider import AuthenticatedIMEvent
+from core.human_input_v2.im_provider import AuthenticatedIMEvent, IMEventIngressKind
 from core.human_input_v2.shared import IntegrationId
 from dify_app import DifyApp
 from extensions.ext_celery import init_app as init_celery_app
@@ -165,6 +165,7 @@ def test_processing_task_runs_repository_backed_worker_and_fenced_finalizes(sqli
         event_type="card.action",
         occurred_at=None,
         received_at=datetime(2026, 8, 2, 8),
+        ingress_kind=IMEventIngressKind.WEBHOOK,
         payload=' {"secret":"must-not-leave-the-database"}\n',
     )
     record_id = repository.insert_or_resolve(IntegrationId("integration-1"), event, now=now).record_id

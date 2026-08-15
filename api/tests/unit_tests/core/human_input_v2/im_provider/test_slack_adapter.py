@@ -37,6 +37,7 @@ from core.human_input_v2.im_provider import (
     DirectoryReadFailure,
     DynamicCardMessagingError,
     EventAcceptance,
+    IMEventIngressKind,
     IMStreamStartError,
     IMStreamStopError,
     MessageAccepted,
@@ -578,14 +579,11 @@ def test_text_send_attempts_creation_once_and_returns_persistable_locator(mocker
 
     assert isinstance(result, MessageAccepted)
     assert isinstance(result.locator, str)
-    assert (
-        slack_module._SlackLocatorPayload.decode(str(result.locator))
-        == slack_module._SlackLocatorPayload(
-            v=1,
-            p=IMProvider.SLACK,
-            channel_id="dm-1",
-            message_ts="1000.000001",
-        )
+    assert slack_module._SlackLocatorPayload.decode(str(result.locator)) == slack_module._SlackLocatorPayload(
+        v=1,
+        p=IMProvider.SLACK,
+        channel_id="dm-1",
+        message_ts="1000.000001",
     )
     assert client.auth_calls == 0
     assert client.post_calls == [{"channel": "user-1", "markdown_text": "Exact **CommonMark**"}]
@@ -605,14 +603,11 @@ def test_card_send_returns_persistable_locator(mocker) -> None:
 
     assert isinstance(result, MessageAccepted)
     assert isinstance(result.locator, str)
-    assert (
-        slack_module._SlackLocatorPayload.decode(str(result.locator))
-        == slack_module._SlackLocatorPayload(
-            v=1,
-            p=IMProvider.SLACK,
-            channel_id="dm-1",
-            message_ts="1000.000001",
-        )
+    assert slack_module._SlackLocatorPayload.decode(str(result.locator)) == slack_module._SlackLocatorPayload(
+        v=1,
+        p=IMProvider.SLACK,
+        channel_id="dm-1",
+        message_ts="1000.000001",
     )
     assert client.auth_calls == 0
 
@@ -873,6 +868,7 @@ def test_webhook_authenticates_challenge_and_business_events_before_consumer(moc
     event = consumer.events[0]
     assert event.event_id == "event-1"
     assert event.event_type == "message"
+    assert event.ingress_kind is IMEventIngressKind.WEBHOOK
     assert json.loads(event.payload) == json.loads(event_body)
 
     unauthenticated = handler.handle(_signed_request(event_body, signature="v0=invalid"))
@@ -957,7 +953,9 @@ def test_stream_start_delivers_complete_sdk_serialization_and_stop_is_idempotent
     assert event.event_id == "event-1"
     assert event.event_type == "message"
     assert event.occurred_at == datetime.fromtimestamp(1786003200, tz=UTC).replace(tzinfo=None)
+    assert event.ingress_kind is IMEventIngressKind.STREAM
     assert json.loads(event.payload) == request.to_dict()
+    assert json.loads(event.payload)["payload"] == request.payload
 
     stream.stop()
     stream.stop()

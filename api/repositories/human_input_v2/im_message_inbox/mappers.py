@@ -32,7 +32,8 @@ def event_record(
         provider_event_time=event.occurred_at,
         received_at=event.received_at,
         provider_event_type=event.event_type,
-        raw_payload=event.payload,
+        ingress_kind=event.ingress_kind,
+        payload=event.payload,
     )
     record.id = str(record_id)
     record.created_at = _naive_utc(now)
@@ -50,7 +51,8 @@ def event_from_record(record: IMMessageInbox) -> AuthenticatedIMEvent:
         event_type=record.provider_event_type,
         occurred_at=record.provider_event_time,
         received_at=record.received_at,
-        payload=record.raw_payload,
+        ingress_kind=record.ingress_kind,
+        payload=record.payload,
     )
 
 

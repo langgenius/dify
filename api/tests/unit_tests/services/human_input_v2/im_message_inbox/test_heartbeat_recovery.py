@@ -20,7 +20,7 @@ from core.human_input_v2.im_message_inbox import (
     InboxProcessingStatus,
     TransitionResult,
 )
-from core.human_input_v2.im_provider import AuthenticatedIMEvent
+from core.human_input_v2.im_provider import AuthenticatedIMEvent, IMEventIngressKind
 from core.human_input_v2.shared import IntegrationId
 from models.human_input_v2 import IMMessageInbox
 from repositories.human_input_v2.im_message_inbox.repository import SQLAlchemyIMMessageInboxRepository
@@ -114,6 +114,7 @@ def _event(event_id: str) -> AuthenticatedIMEvent:
         event_type=None,
         occurred_at=None,
         received_at=datetime.now(UTC).replace(tzinfo=None),
+        ingress_kind=IMEventIngressKind.WEBHOOK,
         payload=' {"secret":"must-not-log"}\n',
     )
 

@@ -20,6 +20,7 @@ from core.human_input_v2.im_provider import (
     CorrelationToken,
     DynamicCardMessagingError,
     IMCardEvent,
+    IMEventIngressKind,
     ProviderUserId,
     UnrecognizedIMEvent,
 )
@@ -68,6 +69,7 @@ def _event(
         event_type=event_type,
         occurred_at=None,
         received_at=_RECEIVED_AT,
+        ingress_kind=IMEventIngressKind.WEBHOOK,
         payload=serialized_payload,
     )
 

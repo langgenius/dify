@@ -52,6 +52,7 @@ from core.human_input_v2.im_provider import (
     DirectoryReadFailure,
     DynamicCardMessagingError,
     EventAcceptance,
+    IMEventIngressKind,
     IMStreamStartError,
     IMStreamStopError,
     MessageAccepted,
@@ -984,12 +985,8 @@ def test_webhook_crypto_challenge_replay_and_ack_over_official_tenant_boundary(
     assert response.status_code == 200
     assert replay.status_code == 409
     assert len(consumer.events) == 1
-    assert json.loads(consumer.events[0].payload) == {
-        "__dify_feishu_lark.webhook": {
-            "encrypted": True,
-            "native_payload": plaintext.decode(),
-        }
-    }
+    assert consumer.events[0].ingress_kind is IMEventIngressKind.WEBHOOK
+    assert json.loads(consumer.events[0].payload) == json.loads(plaintext)
 
     challenge_consumer = _Consumer()
     challenge_credentials = FeishuIMIntegrationCredentials(

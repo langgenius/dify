@@ -280,6 +280,13 @@ class WebhookResponse:
     body: bytes
 
 
+class IMEventIngressKind(StrEnum):
+    """Ingress contract used to construct the Provider payload snapshot."""
+
+    WEBHOOK = "webhook"
+    STREAM = "stream"
+
+
 @dataclass(frozen=True, slots=True)
 class AuthenticatedIMEvent:
     """Authenticated provider evidence before consumer-specific decoding."""
@@ -290,6 +297,7 @@ class AuthenticatedIMEvent:
     event_type: str | None
     occurred_at: NaiveDatetime | None
     received_at: NaiveDatetime
+    ingress_kind: IMEventIngressKind
     payload: str
 
 
@@ -434,6 +442,7 @@ __all__ = [
     "IMDirectory",
     "IMDynamicCardMessaging",
     "IMEventConsumer",
+    "IMEventIngressKind",
     "IMEventStream",
     "IMMessaging",
     "IMProviderAdapter",

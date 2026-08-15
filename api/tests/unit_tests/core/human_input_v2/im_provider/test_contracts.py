@@ -145,6 +145,7 @@ def test_authenticated_event_preserves_provider_payload_verbatim() -> None:
         event_type="card.action",
         occurred_at=datetime(2026, 8, 2, 8),
         received_at=datetime(2026, 8, 2, 8, 0, 1),
+        ingress_kind=im_provider.IMEventIngressKind.WEBHOOK,
         payload=payload,
     )
 
@@ -155,9 +156,50 @@ def test_authenticated_event_preserves_provider_payload_verbatim() -> None:
         "event_type",
         "occurred_at",
         "received_at",
+        "ingress_kind",
         "payload",
     )
     assert event.payload == payload
+
+
+def test_authenticated_event_requires_exported_closed_ingress_kind() -> None:
+    assert hasattr(im_provider, "IMEventIngressKind")
+    ingress_kind_type = im_provider.IMEventIngressKind
+
+    assert {kind.value for kind in ingress_kind_type} == {"webhook", "stream"}
+    assert "IMEventIngressKind" in im_provider.__all__
+
+    event = AuthenticatedIMEvent(
+        provider=IMProvider.SLACK,
+        provider_tenant_id="tenant-1",
+        event_id="event-1",
+        event_type="card.action",
+        occurred_at=None,
+        received_at=datetime(2026, 8, 2, 8),
+        ingress_kind=ingress_kind_type.WEBHOOK,
+        payload="{}",
+    )
+    assert tuple(field.name for field in fields(event)) == (
+        "provider",
+        "provider_tenant_id",
+        "event_id",
+        "event_type",
+        "occurred_at",
+        "received_at",
+        "ingress_kind",
+        "payload",
+    )
+
+    with pytest.raises(TypeError, match="ingress_kind"):
+        AuthenticatedIMEvent(
+            provider=IMProvider.SLACK,
+            provider_tenant_id="tenant-1",
+            event_id="event-1",
+            event_type="card.action",
+            occurred_at=None,
+            received_at=datetime(2026, 8, 2, 8),
+            payload="{}",
+        )
 
 
 def test_provider_contract_does_not_export_superseded_inbox_types() -> None:

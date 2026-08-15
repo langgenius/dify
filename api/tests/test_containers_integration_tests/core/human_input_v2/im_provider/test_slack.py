@@ -32,6 +32,7 @@ from core.human_input_v2.im_provider import (
     EventAcceptance,
     IMCardEvent,
     IMCardEventDecodingError,
+    IMEventIngressKind,
     IMStreamStartError,
     MessageAccepted,
     MessageSendingError,
@@ -113,6 +114,7 @@ def _authenticated_slack_card_event(serialized_callback: str, received_second: i
         event_type="block_actions",
         occurred_at=None,
         received_at=datetime(2026, 8, 11, 12, 0, received_second),
+        ingress_kind=IMEventIngressKind.WEBHOOK,
         payload=serialized_callback,
     )
 
@@ -303,6 +305,7 @@ def test_slack_adapter_composes_capabilities_and_decoder_survives_lifecycle(
                 event_type="message",
                 occurred_at=None,
                 received_at=_RECEIVED_AT,
+                ingress_kind=IMEventIngressKind.WEBHOOK,
                 payload="{}",
             )
         ),
@@ -706,6 +709,7 @@ def test_slack_card_sender_and_decoder_cross_real_web_api_boundary(
         event_type="block_actions",
         occurred_at=None,
         received_at=datetime(2026, 8, 11, 12, 0, 0),
+        ingress_kind=IMEventIngressKind.STREAM,
         payload=json.dumps(socket_request.to_dict(), ensure_ascii=False),
     )
 
@@ -757,6 +761,7 @@ def test_slack_card_sender_and_decoder_cross_real_web_api_boundary(
                 event_type="block_actions",
                 occurred_at=None,
                 received_at=datetime(2026, 8, 11, 12, 0, 1),
+                ingress_kind=IMEventIngressKind.WEBHOOK,
                 payload=json.dumps(missing_input_payload, ensure_ascii=False),
             )
         )
@@ -800,6 +805,7 @@ def test_slack_card_sender_and_decoder_cross_real_web_api_boundary(
                 event_type="block_actions",
                 occurred_at=None,
                 received_at=datetime(2026, 8, 11, 12, 0, 2),
+                ingress_kind=IMEventIngressKind.WEBHOOK,
                 payload=json.dumps(mismatched_action_payload, ensure_ascii=False),
             )
         )
@@ -819,6 +825,7 @@ def test_slack_card_sender_and_decoder_cross_real_web_api_boundary(
                 event_type="block_actions",
                 occurred_at=None,
                 received_at=datetime(2026, 8, 11, 12, 0, 3),
+                ingress_kind=IMEventIngressKind.WEBHOOK,
                 payload=json.dumps(extra_input_payload, ensure_ascii=False),
             )
         )
@@ -842,6 +849,7 @@ def test_slack_card_sender_and_decoder_cross_real_web_api_boundary(
             event_type="block_actions",
             occurred_at=None,
             received_at=datetime(2026, 8, 11, 12, 0, 4),
+            ingress_kind=IMEventIngressKind.WEBHOOK,
             payload=json.dumps(null_input_payload, ensure_ascii=False),
         )
     )
@@ -869,6 +877,7 @@ def test_slack_card_sender_and_decoder_cross_real_web_api_boundary(
         event_type="block_actions",
         occurred_at=None,
         received_at=_RECEIVED_AT,
+        ingress_kind=IMEventIngressKind.STREAM,
         payload=json.dumps(selection_request.to_dict(), ensure_ascii=False),
     )
     assert isinstance(SlackIMProviderAdapter.card_event_decoder().decode(selection_event), UnrecognizedIMEvent)
@@ -885,12 +894,11 @@ def test_slack_card_sender_and_decoder_cross_real_web_api_boundary(
         event_type="block_actions",
         occurred_at=None,
         received_at=_RECEIVED_AT,
+        ingress_kind=IMEventIngressKind.STREAM,
         payload=json.dumps(malformed_socket_request.to_dict(), ensure_ascii=False),
     )
-    assert isinstance(
-        SlackIMProviderAdapter.card_event_decoder().decode(malformed_socket_event),
-        UnrecognizedIMEvent,
-    )
+    with pytest.raises(IMCardEventDecodingError):
+        SlackIMProviderAdapter.card_event_decoder().decode(malformed_socket_event)
 
     legacy_action_payload = deepcopy(callback_payload)
     legacy_actions = legacy_action_payload["actions"]
@@ -905,6 +913,7 @@ def test_slack_card_sender_and_decoder_cross_real_web_api_boundary(
         event_type="block_actions",
         occurred_at=None,
         received_at=_RECEIVED_AT,
+        ingress_kind=IMEventIngressKind.WEBHOOK,
         payload=json.dumps(legacy_action_payload, ensure_ascii=False),
     )
     assert isinstance(SlackIMProviderAdapter.card_event_decoder().decode(legacy_event), UnrecognizedIMEvent)
@@ -981,6 +990,7 @@ def test_slack_zero_input_card_round_trips_without_callback_state(
         event_type="block_actions",
         occurred_at=None,
         received_at=datetime(2026, 8, 11, 12, 0, 5),
+        ingress_kind=IMEventIngressKind.WEBHOOK,
         payload=json.dumps(callback_payload, ensure_ascii=False),
     )
 

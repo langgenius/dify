@@ -21,11 +21,12 @@ from core.human_input_v2.im_integration.adapters.feishu_lark import (
 from core.human_input_v2.im_provider import (
     AuthenticatedIMEvent,
     EventAcceptance,
+    IMEventIngressKind,
     IMStreamStartError,
     IMStreamStopError,
 )
 
-_STREAM_PAYLOAD_KEY = "__dify_feishu_lark.stream"
+_LEGACY_STREAM_PAYLOAD_KEY = "__dify_feishu_lark.stream"
 _CARD_ACTION_TRIGGER_OBJECT_TYPE = "lark_oapi.event.callback.model.p2_card_action_trigger.P2CardActionTrigger"
 _MESSAGE_RECEIVE_OBJECT_TYPE = "lark_oapi.api.im.v1.model.p2_im_message_receive_v1.P2ImMessageReceiveV1"
 
@@ -585,13 +586,11 @@ def test_card_dispatcher_preserves_native_payload_without_event_stream_parsing(
 
     assert clients[0].dispatch_returned is True
     assert len(consumer.events) == 1
-    persisted_envelope = json.loads(consumer.events[0].payload)
-    stream_payload = persisted_envelope[_STREAM_PAYLOAD_KEY]
-    assert isinstance(stream_payload, dict)
-    assert stream_payload == {
-        "native_payload": expected_native_payload,
-        "object_type": _CARD_ACTION_TRIGGER_OBJECT_TYPE,
-    }
+    event = consumer.events[0]
+    assert event.ingress_kind is IMEventIngressKind.STREAM
+    assert event.payload == expected_native_payload
+    assert _LEGACY_STREAM_PAYLOAD_KEY not in event.payload
+    assert _CARD_ACTION_TRIGGER_OBJECT_TYPE not in event.payload
 
 
 def test_message_dispatcher_delivers_and_acks_without_card_wrapper(
@@ -625,8 +624,9 @@ def test_message_dispatcher_delivers_and_acks_without_card_wrapper(
     assert event.provider_tenant_id == "tenant_sanitized"
     assert event.event_id == "evt_sanitized_message"
     assert event.event_type == "im.message.receive_v1"
+    assert event.ingress_kind is IMEventIngressKind.STREAM
     assert event.payload == expected_native_payload
-    assert _STREAM_PAYLOAD_KEY not in event.payload
+    assert _LEGACY_STREAM_PAYLOAD_KEY not in event.payload
 
 
 def test_private_sdk_write_seam_tracks_wire_ack_completion() -> None:
@@ -697,13 +697,10 @@ def test_accepted_event_is_consumed_once_then_acked(monkeypatch: pytest.MonkeyPa
     assert len(consumer.events) == 1
     assert consumer.events[0].provider is IMProvider.FEISHU
     assert consumer.events[0].provider_tenant_id == "tenant_sanitized"
-    persisted_envelope = json.loads(consumer.events[0].payload)
-    stream_payload = persisted_envelope[_STREAM_PAYLOAD_KEY]
-    assert isinstance(stream_payload, dict)
-    persisted_native_payload = stream_payload["native_payload"]
-    assert isinstance(persisted_native_payload, str)
-    persisted_callback = json.loads(persisted_native_payload)
+    assert consumer.events[0].ingress_kind is IMEventIngressKind.STREAM
+    persisted_callback = json.loads(consumer.events[0].payload)
     assert persisted_callback["event"]["preserved"] == [1, None, True]
+    assert _CARD_ACTION_TRIGGER_OBJECT_TYPE not in consumer.events[0].payload
     stream.stop()
 
 
