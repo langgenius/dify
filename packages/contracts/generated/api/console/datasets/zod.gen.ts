@@ -217,14 +217,14 @@ export const zSegmentUpdatePayload = z.object({
  * ChildChunkCreatePayload
  */
 export const zChildChunkCreatePayload = z.object({
-  content: z.string(),
+  content: z.string().max(16384),
 })
 
 /**
  * ChildChunkUpdatePayload
  */
 export const zChildChunkUpdatePayload = z.object({
-  content: z.string(),
+  content: z.string().max(16384),
 })
 
 /**
