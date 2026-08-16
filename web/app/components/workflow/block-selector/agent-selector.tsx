@@ -2,7 +2,7 @@ import type { AgentInviteOptionResponse } from '@dify/contracts/api/console/agen
 import type { ComboboxChangeEventDetails } from '@langgenius/dify-ui/combobox'
 import type { NodeDefault } from '../types'
 import type { AgentRosterNodeData } from './types'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Combobox,
@@ -132,7 +132,7 @@ export function AgentSelectorContent({
               <Button
                 variant="ghost"
                 size="medium"
-                className="min-h-7 w-full justify-start gap-2 px-2 py-1.5 text-left system-sm-regular text-text-secondary"
+                className="h-7 w-full justify-start gap-2 rounded-md px-2 py-1.5 text-left system-sm-regular text-text-secondary"
                 onClick={onStartFromScratch}
               >
                 <span aria-hidden className="i-ri-add-line size-4 shrink-0 text-text-tertiary" />
@@ -146,7 +146,10 @@ export function AgentSelectorContent({
                 href="/agents"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex min-h-7 w-full items-center gap-2 rounded-md px-2 py-1.5 text-left system-sm-regular text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
+                className={cn(
+                  buttonVariants({ variant: 'ghost', size: 'medium' }),
+                  'h-7 w-full justify-start gap-2 rounded-md px-2 py-1.5 text-left system-sm-regular text-text-secondary',
+                )}
                 onClick={() => onOpenChange(false)}
               >
                 <span

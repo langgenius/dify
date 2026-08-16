@@ -58,13 +58,30 @@ describe('AgentSelectorContent', () => {
   })
 
   it('offers the Agent Console link with agent.manage', async () => {
-    await renderSelector()
+    await renderSelector({ onStartFromScratch: vi.fn() })
 
     const listbox = screen.getByRole('listbox')
+    const startButton = screen.getByRole('button', { name: startFromScratchLabel })
     const manageLink = screen.getByRole('link', { name: manageInConsoleLabel })
 
     expect(manageLink).toHaveAttribute('href', '/agents')
     expect(listbox).not.toContainElement(manageLink)
+    expect(startButton).toHaveClass(
+      'h-7',
+      'rounded-md',
+      'px-2',
+      'py-1.5',
+      'system-sm-regular',
+      'text-text-secondary',
+    )
+    expect(manageLink).toHaveClass(
+      'h-7',
+      'rounded-md',
+      'px-2',
+      'py-1.5',
+      'system-sm-regular',
+      'text-text-secondary',
+    )
   })
 
   it('should keep the listbox as the only scroll owner for agent options', async () => {
