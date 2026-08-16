@@ -69,6 +69,17 @@ describe('HomeHeader', () => {
     )
   })
 
+  it('links Creator Center to the dev Creators site on marketplace.dify.dev', () => {
+    mocks.marketplaceUrlPrefix = 'https://marketplace.dify.dev'
+
+    render(<HomeHeader isMarketplacePlatform />)
+
+    expect(screen.getByRole('link', { name: 'marketplace.home.creatorCenter' })).toHaveAttribute(
+      'href',
+      'https://creators.dify.dev/',
+    )
+  })
+
   it('falls back to the public Creator Center for a custom Marketplace origin', () => {
     mocks.marketplaceUrlPrefix = 'http://localhost:3000'
 
