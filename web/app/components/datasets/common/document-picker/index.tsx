@@ -165,7 +165,7 @@ export function DocumentPicker({ datasetId, value, parentMode, onChange }: Props
         <ComboboxPositioner placement="bottom-start" sideOffset={0}>
           <ComboboxPopup
             aria-label={t(($) => $['operation.search'], { ns: 'common' })}
-            className="w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-lg backdrop-blur-[5px]"
+            className="w-90 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-lg backdrop-blur-[5px]"
           >
             <ComboboxInputGroup className="h-8 min-h-8 px-2">
               <span
