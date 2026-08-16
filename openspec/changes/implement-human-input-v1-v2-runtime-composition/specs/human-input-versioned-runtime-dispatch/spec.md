@@ -79,17 +79,17 @@ For one workspace, workflow run and workflow node execution, the v2 callback MUS
 
 ### Requirement: Frozen v2 lifecycle state MUST expose a timeout callback entry
 
-The v2 callback contract MUST decide waiting, node-timeout and global-expiry outcomes from the persisted frozen runtime form state. Both frozen timeout outcomes MUST be representable as the `__timeout__` branch without re-reading authoring recipients, endpoints or form blocks. This change does not require production scheduling or resume-task wiring that invokes the entry.
+The v2 callback contract MUST decide waiting, node-timeout and global-expiry outcomes from the persisted frozen runtime form state. Both frozen timeout outcomes MUST be representable as the `__timeout` branch without re-reading authoring recipients, endpoints or form blocks. This change does not require production scheduling or resume-task wiring that invokes the entry.
 
 #### Scenario: Frozen node timeout is reloaded
 
 - **WHEN** the injected runtime port returns a v2 form whose frozen node timeout has elapsed
-- **THEN** the callback MUST return the timeout decision with selected handle `__timeout__`
+- **THEN** the callback MUST return the timeout decision with selected handle `__timeout`
 
 #### Scenario: Frozen global expiry is reloaded
 
 - **WHEN** the injected runtime port returns a v2 form whose frozen global expiry has elapsed
-- **THEN** the callback MUST return the timeout decision with selected handle `__timeout__`
+- **THEN** the callback MUST return the timeout decision with selected handle `__timeout`
 
 #### Scenario: Timeout production trigger is absent
 

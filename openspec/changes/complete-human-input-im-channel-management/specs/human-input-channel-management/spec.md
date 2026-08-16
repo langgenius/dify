@@ -39,7 +39,7 @@ The system MUST provide one management boundary for discovering, reading, testin
 
 ### Requirement: Management commands MUST preserve provider-specific configuration types
 
-Save and test operations MUST use discriminated channel/provider commands rather than untyped configuration maps. The command union MUST cover Resend plus every current canonical IM provider value and MUST validate the matching provider-specific candidate before invoking a handler. A provider MAY accept an explicit preserve-secret directive only when its concrete port implements protected current-secret resolution and merging.
+Save and test operations MUST use discriminated channel/provider commands rather than untyped configuration maps. The command union MUST cover Resend plus every current canonical IM provider value and MUST validate the matching provider-specific candidate before invoking a handler. A provider MUST accept an explicit preserve-secret directive only when its concrete port implements protected current-secret resolution and merging; otherwise it MUST require an explicit new secret value.
 
 #### Scenario: Resend candidate is submitted
 
@@ -71,7 +71,7 @@ Every current IM save path MUST validate credentials, required directory scopes 
 
 #### Scenario: New IM configuration validates successfully
 
-- **WHEN** an IM provider accepts the candidate credentials, confirms required scopes, and returns the provider tenant identity during save
+- **WHEN** an IM provider accepts the candidate credentials, confirms required scopes and returns the provider tenant identity during save
 - **THEN** the persisted Integration MUST have connected status and a trusted `last_checked_at`
 - **AND** the returned safe channel view MUST be immediately eligible for directory sync
 
@@ -85,7 +85,7 @@ Every current IM save path MUST validate credentials, required directory scopes 
 
 #### Scenario: Candidate validation fails
 
-- **WHEN** provider authentication, required scope validation, or tenant identity resolution fails during save
+- **WHEN** provider authentication, required scope validation or tenant identity resolution fails during save
 - **THEN** no configuration or connectivity diagnostic MUST be created or replaced
 - **AND** the response MUST contain only the stable safe provider failure
 
@@ -93,4 +93,4 @@ Every current IM save path MUST validate credentials, required directory scopes 
 
 - **WHEN** a candidate test succeeds for an unconfigured or configured IM channel
 - **THEN** management MUST return a credential-free `ChannelTestResult`
-- **AND** it MUST NOT persist credentials, status, `last_checked_at`, or a configuration revision
+- **AND** it MUST NOT persist credentials, status, `last_checked_at` or a configuration revision
