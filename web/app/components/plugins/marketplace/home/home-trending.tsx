@@ -4,9 +4,9 @@ import type { PluginBanner } from '@dify/contracts/marketplace'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from '#i18n'
-import styles from './home-trending.module.css'
 import TrendingNavigation from './home-trending-navigation'
 import { HomeBannerSlide } from './home-trending-slides'
+import styles from './home-trending.module.css'
 
 function HomeTrending({
   banners,

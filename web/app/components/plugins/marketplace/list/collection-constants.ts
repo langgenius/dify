@@ -4,7 +4,11 @@ export const BECOME_PARTNER_URL = 'https://share-na2.hsforms.com/1NiS4r9lsSqGcuN
 
 // Collections whose header shows the "Become a Partner" call to action, as
 // named by the Marketplace API for the plugin and template catalogs.
-export const PARTNER_COLLECTION_NAMES = new Set(['partners', 'partner-template', 'Partner Template'])
+export const PARTNER_COLLECTION_NAMES = new Set([
+  'partners',
+  'partner-template',
+  'Partner Template',
+])
 
 export const CAROUSEL_PAGE_CLASS = 'w-full shrink-0'
 
