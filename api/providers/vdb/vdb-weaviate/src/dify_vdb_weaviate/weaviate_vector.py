@@ -339,7 +339,7 @@ class WeaviateVector(BaseVector):
     def _is_uuid(self, val: str) -> bool:
         """Validates whether a string is a valid UUID format."""
         try:
-            _uuid.UUID(str(val))
+            _uuid.UUID(val)
             return True
         except Exception:
             return False

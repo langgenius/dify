@@ -372,7 +372,7 @@ class ExternalDatasetCreateApi(Resource):
 
         dataset_id_str = str(dataset.id)
         permission_keys_map = enterprise_rbac_service.RBACService.DatasetPermissions.batch_get(
-            str(current_tenant_id),
+            current_tenant_id,
             current_user.id,
             [dataset_id_str],
             session=session,

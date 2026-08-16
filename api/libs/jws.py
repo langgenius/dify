@@ -30,7 +30,7 @@ class KeySet:
             raise KeySetError(f"active kid {active_kid!r} missing from key-set")
         if not entries[active_kid]:
             raise KeySetError(f"active kid {active_kid!r} has empty secret")
-        self._entries: dict[str, bytes] = {k: bytes(v) for k, v in entries.items()}
+        self._entries: dict[str, bytes] = dict(entries)
         self._active_kid = active_kid
 
     @classmethod

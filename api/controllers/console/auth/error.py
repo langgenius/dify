@@ -37,7 +37,7 @@ class PasswordResetRateLimitExceededError(BaseHTTPException):
     code = 429
 
     def __init__(self, minutes: int = 1):
-        description = self.description.format(minutes=int(minutes)) if self.description else None
+        description = self.description.format(minutes=minutes) if self.description else None
         super().__init__(description=description)
 
 
@@ -47,7 +47,7 @@ class EmailRegisterRateLimitExceededError(BaseHTTPException):
     code = 429
 
     def __init__(self, minutes: int = 1):
-        description = self.description.format(minutes=int(minutes)) if self.description else None
+        description = self.description.format(minutes=minutes) if self.description else None
         super().__init__(description=description)
 
 
@@ -57,7 +57,7 @@ class EmailChangeRateLimitExceededError(BaseHTTPException):
     code = 429
 
     def __init__(self, minutes: int = 1):
-        description = self.description.format(minutes=int(minutes)) if self.description else None
+        description = self.description.format(minutes=minutes) if self.description else None
         super().__init__(description=description)
 
 
@@ -67,7 +67,7 @@ class OwnerTransferRateLimitExceededError(BaseHTTPException):
     code = 429
 
     def __init__(self, minutes: int = 1):
-        description = self.description.format(minutes=int(minutes)) if self.description else None
+        description = self.description.format(minutes=minutes) if self.description else None
         super().__init__(description=description)
 
 
@@ -113,7 +113,7 @@ class EmailCodeLoginRateLimitExceededError(BaseHTTPException):
     code = 429
 
     def __init__(self, minutes: int = 5):
-        description = self.description.format(minutes=int(minutes)) if self.description else None
+        description = self.description.format(minutes=minutes) if self.description else None
         super().__init__(description=description)
 
 
@@ -123,7 +123,7 @@ class EmailCodeAccountDeletionRateLimitExceededError(BaseHTTPException):
     code = 429
 
     def __init__(self, minutes: int = 5):
-        description = self.description.format(minutes=int(minutes)) if self.description else None
+        description = self.description.format(minutes=minutes) if self.description else None
         super().__init__(description=description)
 
 

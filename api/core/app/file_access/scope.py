@@ -47,7 +47,7 @@ def grant_upload_file_access(upload_file_ids: Iterable[str]) -> None:
     if scope is None:
         return
 
-    granted_upload_file_ids = frozenset(str(file_id) for file_id in upload_file_ids if file_id)
+    granted_upload_file_ids = frozenset(file_id for file_id in upload_file_ids if file_id)
     if not granted_upload_file_ids:
         return
 
@@ -64,7 +64,7 @@ def grant_retriever_segment_access(segment_ids: Iterable[str]) -> None:
     if scope is None:
         return
 
-    granted_segment_ids = frozenset(str(segment_id) for segment_id in segment_ids if segment_id)
+    granted_segment_ids = frozenset(segment_id for segment_id in segment_ids if segment_id)
     if not granted_segment_ids:
         return
 
@@ -80,7 +80,7 @@ def is_retriever_segment_access_granted(segment_id: str) -> bool:
     scope = _current_file_access_scope.get()
     if scope is None or not scope.requires_user_ownership:
         return True
-    return str(segment_id) in scope.granted_retriever_segment_ids
+    return segment_id in scope.granted_retriever_segment_ids
 
 
 @contextmanager

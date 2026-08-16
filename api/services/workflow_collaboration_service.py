@@ -473,7 +473,7 @@ class WorkflowCollaborationService:
         session_info = self._repository.get_session_info(workflow_id, sid)
         if session_info is None:
             return True
-        return bool(session_info.get("graph_active", True))
+        return session_info.get("graph_active", True)
 
     def _demote_leader_if_hidden(self, workflow_id: str, hidden_sid: str) -> None:
         current_leader = self._repository.get_current_leader(workflow_id)
