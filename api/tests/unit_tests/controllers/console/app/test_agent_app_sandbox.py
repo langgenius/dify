@@ -8,6 +8,7 @@ from dify_agent.client import DifyAgentClientError, DifyAgentHTTPError, DifyAgen
 from dify_agent.protocol import BindingFileListResponse, BindingFileReadResponse
 
 from controllers.console import agent_app_sandbox as module
+from models.account import Account
 from models.model import App, AppMode, IconType
 from services.agent_app_sandbox_service import AgentSandboxDownload, AgentSandboxInfo, AgentSandboxInspectorError
 
@@ -139,6 +140,12 @@ def _app_model(app_id: str = "app-1") -> App:
     )
 
 
+def _account() -> Account:
+    account = Account(name="Sandbox Tester", email="sandbox-tester@example.com")
+    account.id = "account-1"
+    return account
+
+
 @pytest.mark.parametrize(
     "method",
     [
@@ -187,7 +194,7 @@ def test_handle_maps_sandbox_and_agent_backend_errors() -> None:
 
 def test_agent_app_sandbox_resources_proxy_service(monkeypatch: pytest.MonkeyPatch) -> None:
     service = _AgentAppService()
-    account = SimpleNamespace(id="account-1")
+    account = _account()
     monkeypatch.setattr(module, "AgentAppSandboxService", lambda: service)
     monkeypatch.setattr(
         module,
@@ -226,7 +233,7 @@ def test_agent_app_sandbox_resource_returns_normalized_errors(monkeypatch: pytes
             raise AgentSandboxInspectorError("no_active_binding", "no active binding", status_code=404)
 
     monkeypatch.setattr(module, "AgentAppSandboxService", FailingService)
-    account = SimpleNamespace(id="account-1")
+    account = _account()
     monkeypatch.setattr(
         module,
         "query_params_from_request",
@@ -262,7 +269,7 @@ def test_workflow_agent_sandbox_resources_proxy_service(monkeypatch: pytest.Monk
     req_data = module.WorkflowAgentSandboxDownloadPayload.model_validate(
         {"node_execution_id": "execution-1", "path": "download.txt"}
     )
-    account = SimpleNamespace(id="account-1")
+    account = _account()
     download = unwrap(module.WorkflowAgentSandboxDownloadResource.post)(
         object(), req_data, "tenant-1", account, "app-1", "run-1", "agent-node"
     )
