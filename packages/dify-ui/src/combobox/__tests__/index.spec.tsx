@@ -274,12 +274,13 @@ describe('Combobox wrappers', () => {
       const screen = await renderWithSafeViewport(
         <Combobox items={[]}>
           <ComboboxInput aria-label="Search resources" />
-          <ComboboxStatus data-testid="status">{null}</ComboboxStatus>
+          <ComboboxStatus>{null}</ComboboxStatus>
         </Combobox>,
       )
 
-      await expect.element(screen.getByRole('status')).toBeInTheDocument()
-      await expect.element(screen.getByTestId('status')).toHaveClass('empty:h-0', 'empty:p-0')
+      const status = screen.getByRole('status')
+
+      expect(status.element().getBoundingClientRect().height).toBe(0)
     })
 
     it('should forward custom classes to group label separator item text and indicator', async () => {

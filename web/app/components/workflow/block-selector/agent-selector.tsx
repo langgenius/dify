@@ -114,9 +114,7 @@ export function AgentSelectorContent({
             />
           </ComboboxInputGroup>
         </div>
-        <ComboboxStatus className={statusText ? 'px-3 py-2 system-xs-regular' : 'h-0'}>
-          {statusText}
-        </ComboboxStatus>
+        <ComboboxStatus className="system-xs-regular">{statusText}</ComboboxStatus>
         {isLoading ? (
           <div className="max-h-54 overflow-hidden p-1">
             <AgentSelectorLoadingSkeleton />
