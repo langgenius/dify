@@ -8,10 +8,10 @@ import {
 } from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
-import { IS_CLOUD_EDITION } from '@/config'
 import { useWebAppStore } from '@/context/web-app-context'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { fetchAccessToken } from '@/service/share'
+import { resolveWebAppAddress } from '@/service/webapp-address'
 import {
   setWebAppAccessToken,
   setWebAppPassport,
@@ -46,28 +46,30 @@ function Splash({ children }: PropsWithChildren) {
 
   const backToHome = useCallback(async () => {
     const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
-    const effectiveShareCode = loginRedirect?.appCode || shareCode
-    if (!effectiveShareCode || (isWebAppSigninPath(pathname) && !loginRedirect)) {
-      replaceLoginRedirect(getClientLoginFallback(IS_CLOUD_EDITION), router.replace, basePath)
+    const address = loginRedirect?.address || resolveWebAppAddress()
+    if (!address || (isWebAppSigninPath(pathname) && !loginRedirect)) {
+      replaceLoginRedirect(getClientLoginFallback(), router.replace, basePath)
       return
     }
 
-    await webAppLogout(effectiveShareCode)
+    await webAppLogout(address)
     const url = getSigninUrl()
     router.replace(url)
-  }, [getSigninUrl, pathname, redirectUrl, router, shareCode])
+  }, [getSigninUrl, pathname, redirectUrl, router])
 
   const [isLoading, setIsLoading] = useState(true)
+  const [unavailableShareCode, setUnavailableShareCode] = useState<string>()
   useEffect(() => {
     const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
     const isSigninRoute = isWebAppSigninPath(pathname)
     if ((redirectUrl !== null && !loginRedirect) || (isSigninRoute && !loginRedirect)) {
-      replaceLoginRedirect(getClientLoginFallback(IS_CLOUD_EDITION), router.replace, basePath)
+      replaceLoginRedirect(getClientLoginFallback(), router.replace, basePath)
       return
     }
 
-    const effectiveShareCode = loginRedirect?.appCode || shareCode
-    if (!effectiveShareCode) return
+    const address = loginRedirect?.address || resolveWebAppAddress()
+    if (!address) return
+    const effectiveShareCode = address.code
 
     if (message) return
 
@@ -86,6 +88,7 @@ function Splash({ children }: PropsWithChildren) {
       // if access mode is public, user login is always true, but the app login(passport) may be expired
       const { userLoggedIn, appLoggedIn } = await webAppLoginStatus(
         effectiveShareCode,
+        webAppAccessMode,
         embeddedUserId || undefined,
       )
       if (userLoggedIn && appLoggedIn) {
@@ -100,10 +103,15 @@ function Splash({ children }: PropsWithChildren) {
             appCode: effectiveShareCode,
             userId: embeddedUserId || undefined,
           })
-          setWebAppPassport(effectiveShareCode, access_token)
+          setWebAppPassport(address, access_token)
           redirectOrFinish()
-        } catch {
-          await webAppLogout(effectiveShareCode)
+        } catch (error) {
+          if (error instanceof Response && error.status === 404) {
+            setUnavailableShareCode(effectiveShareCode)
+            await webAppLogout(address)
+            return
+          }
+          await webAppLogout(address)
           proceedToAuth()
         }
       }
@@ -127,11 +135,23 @@ function Splash({ children }: PropsWithChildren) {
           code={code || t(($) => $['common.appUnavailable'], { ns: 'share' })}
           unknownReason={message}
         />
-        <span className="cursor-pointer system-sm-regular text-text-tertiary" onClick={backToHome}>
+        <button
+          type="button"
+          className="cursor-pointer system-sm-regular text-text-tertiary"
+          onClick={backToHome}
+        >
           {code === '403'
             ? t(($) => $['userProfile.logout'], { ns: 'common' })
             : t(($) => $['login.backToHome'], { ns: 'share' })}
-        </span>
+        </button>
+      </div>
+    )
+  }
+
+  if (unavailableShareCode === shareCode) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <AppUnavailable />
       </div>
     )
   }

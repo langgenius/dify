@@ -1,13 +1,15 @@
 'use client'
 
 import type { MouseEventHandler } from 'react'
+import type { DSLImportWarning } from '@/models/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiAlertFill, RiCloseLine, RiFileDownloadLine } from '@remixicon/react'
 import { memo, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
+import DSLImportWarningDescription from '@/app/components/app/create-from-dsl-modal/dsl-import-warning-description'
+import { Uploader } from '@/app/components/app/create-from-dsl-modal/uploader'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -82,7 +84,7 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
 
   const isCreatingRef = useRef(false)
   const handleCompletedImport = useCallback(
-    async (status: DSLImportStatus, appId?: string) => {
+    async (status: DSLImportStatus, appId?: string, warnings: DSLImportWarning[] = []) => {
       if (!appId) {
         toast.error(t(($) => $['common.importFailure'], { ns: 'workflow' }))
         return
@@ -94,7 +96,13 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
       const payload = getImportNotificationPayload(status, t)
       toast[payload.type](
         payload.message,
-        payload.children ? { description: payload.children } : undefined,
+        payload.children
+          ? {
+              description: (
+                <DSLImportWarningDescription warnings={warnings} fallback={payload.children} />
+              ),
+            }
+          : undefined,
       )
       await handleCheckPluginDependencies(appId)
       setLoading(false)
@@ -133,10 +141,10 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
           yaml_content: fileContent,
           app_id: appDetail.id,
         })
-        const { id, status, app_id, imported_dsl_version, current_dsl_version } = response
+        const { id, status, app_id, imported_dsl_version, current_dsl_version, warnings } = response
 
         if (isImportCompleted(status)) {
-          await handleCompletedImport(status, app_id)
+          await handleCompletedImport(status, app_id, warnings)
         } else if (status === DSLImportStatus.PENDING) {
           handlePendingImport(id, imported_dsl_version, current_dsl_version)
         } else {
@@ -160,10 +168,10 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
         import_id: importId,
       })
 
-      const { status, app_id } = response
+      const { status, app_id, warnings } = response
 
       if (isImportCompleted(status)) {
-        await handleCompletedImport(status, app_id)
+        await handleCompletedImport(status, app_id, warnings)
       } else if (status === DSLImportStatus.FAILED) {
         setLoading(false)
         toast.error(t(($) => $['common.importFailure'], { ns: 'workflow' }))
@@ -182,18 +190,18 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
           if (!open) onCancel()
         }}
       >
-        <DialogContent className="w-full max-w-[480px]! overflow-hidden! rounded-2xl border-none p-6 text-left align-middle">
+        <DialogContent className="w-full max-w-120! overflow-hidden! rounded-2xl border-none p-6 text-left align-middle">
           <div className="mb-3 flex items-center justify-between">
             <div className="title-2xl-semi-bold text-text-primary">
               {t(($) => $.importApp, { ns: 'app' })}
             </div>
             <button
               type="button"
-              className="flex h-[22px] w-[22px] cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+              className="flex h-5.5 w-5.5 cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
               onClick={onCancel}
             >
-              <RiCloseLine className="h-[18px] w-[18px] text-text-tertiary" aria-hidden="true" />
+              <RiCloseLine className="h-4.5 w-4.5 text-text-tertiary" aria-hidden="true" />
             </button>
           </div>
           <div className="relative mb-2 flex grow gap-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs">
@@ -208,7 +216,7 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
               <div className="flex items-start gap-1 self-stretch pt-1 pb-0.5">
                 <Button size="small" variant="secondary" className="relative" onClick={onBackup}>
                   <RiFileDownloadLine className="size-3.5 text-components-button-secondary-text" />
-                  <div className="flex items-center justify-center gap-1 px-[3px]">
+                  <div className="flex items-center justify-center gap-1">
                     {t(($) => $['common.backupCurrentDraft'], { ns: 'workflow' })}
                   </div>
                 </Button>
@@ -243,7 +251,7 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
           if (!open) setShowErrorModal(false)
         }}
       >
-        <DialogContent className="w-full max-w-[480px]! overflow-hidden! border-none text-left align-middle">
+        <DialogContent className="w-full max-w-120! overflow-hidden! border-none text-left align-middle">
           <div className="flex flex-col items-start gap-2 self-stretch pb-4">
             <div className="title-2xl-semi-bold text-text-primary">
               {t(($) => $['newApp.appCreateDSLErrorTitle'], { ns: 'app' })}

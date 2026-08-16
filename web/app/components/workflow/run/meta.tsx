@@ -32,7 +32,7 @@ const MetaData: FC<Props> = ({
       </div>
       <div className="py-1">
         <div className="flex">
-          <div className="w-[104px] shrink-0 truncate px-2 py-1.5 system-xs-regular text-text-tertiary">
+          <div className="w-26 shrink-0 truncate px-2 py-1.5 system-xs-regular text-text-tertiary">
             {t(($) => $['meta.status'], { ns: 'runLog' })}
           </div>
           <div className="grow px-2 py-1.5 system-xs-regular text-text-secondary">
@@ -48,23 +48,23 @@ const MetaData: FC<Props> = ({
           </div>
         </div>
         <div className="flex">
-          <div className="w-[104px] shrink-0 truncate px-2 py-1.5 system-xs-regular text-text-tertiary">
+          <div className="w-26 shrink-0 truncate px-2 py-1.5 system-xs-regular text-text-tertiary">
             {t(($) => $['meta.executor'], { ns: 'runLog' })}
           </div>
           <div className="grow px-2 py-1.5 system-xs-regular text-text-secondary">
             {status === 'running' && (
-              <div className="my-1 h-2 w-[88px] rounded-xs bg-text-quaternary" />
+              <div className="my-1 h-2 w-22 rounded-xs bg-text-quaternary" />
             )}
             {status !== 'running' && <span>{executor || 'N/A'}</span>}
           </div>
         </div>
         <div className="flex">
-          <div className="w-[104px] shrink-0 truncate px-2 py-1.5 system-xs-regular text-text-tertiary">
+          <div className="w-26 shrink-0 truncate px-2 py-1.5 system-xs-regular text-text-tertiary">
             {t(($) => $['meta.startTime'], { ns: 'runLog' })}
           </div>
           <div className="grow px-2 py-1.5 system-xs-regular text-text-secondary">
             {status === 'running' && (
-              <div className="my-1 h-2 w-[72px] rounded-xs bg-text-quaternary" />
+              <div className="my-1 h-2 w-18 rounded-xs bg-text-quaternary" />
             )}
             {status !== 'running' && (
               <span>
@@ -76,35 +76,35 @@ const MetaData: FC<Props> = ({
           </div>
         </div>
         <div className="flex">
-          <div className="w-[104px] shrink-0 truncate px-2 py-1.5 system-xs-regular text-text-tertiary">
+          <div className="w-26 shrink-0 truncate px-2 py-1.5 system-xs-regular text-text-tertiary">
             {t(($) => $['meta.time'], { ns: 'runLog' })}
           </div>
           <div className="grow px-2 py-1.5 system-xs-regular text-text-secondary">
             {status === 'running' && (
-              <div className="my-1 h-2 w-[72px] rounded-xs bg-text-quaternary" />
+              <div className="my-1 h-2 w-18 rounded-xs bg-text-quaternary" />
             )}
             {status !== 'running' && <span>{time ? `${time.toFixed(3)}s` : '-'}</span>}
           </div>
         </div>
         <div className="flex">
-          <div className="w-[104px] shrink-0 truncate px-2 py-1.5 system-xs-regular text-text-tertiary">
+          <div className="w-26 shrink-0 truncate px-2 py-1.5 system-xs-regular text-text-tertiary">
             {t(($) => $['meta.tokens'], { ns: 'runLog' })}
           </div>
           <div className="grow px-2 py-1.5 system-xs-regular text-text-secondary">
             {['running', 'paused'].includes(status) && (
-              <div className="my-1 h-2 w-[48px] animate-pulse rounded-xs bg-text-quaternary" />
+              <div className="my-1 h-2 w-12 animate-pulse rounded-xs bg-text-quaternary" />
             )}
             {!['running', 'paused'].includes(status) && <span>{`${tokens || 0} Tokens`}</span>}
           </div>
         </div>
         {showSteps && (
           <div className="flex">
-            <div className="w-[104px] shrink-0 truncate px-2 py-1.5 system-xs-regular text-text-tertiary">
+            <div className="w-26 shrink-0 truncate px-2 py-1.5 system-xs-regular text-text-tertiary">
               {t(($) => $['meta.steps'], { ns: 'runLog' })}
             </div>
             <div className="grow px-2 py-1.5 system-xs-regular text-text-secondary">
               {status === 'running' && (
-                <div className="my-1 h-2 w-[24px] rounded-xs bg-text-quaternary" />
+                <div className="my-1 h-2 w-6 rounded-xs bg-text-quaternary" />
               )}
               {status !== 'running' && <span>{steps}</span>}
             </div>

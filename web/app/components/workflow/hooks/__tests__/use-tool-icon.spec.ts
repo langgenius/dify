@@ -200,11 +200,6 @@ describe('useGetToolIcon', () => {
     resetReactFlowMockState()
   })
 
-  it('should return a function', () => {
-    const { result } = renderWorkflowHook(() => useGetToolIcon())
-    expect(typeof result.current).toBe('function')
-  })
-
   it('should find icon for TriggerPlugin node via returned function', () => {
     const { result } = renderWorkflowHook(() => useGetToolIcon())
 

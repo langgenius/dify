@@ -60,7 +60,9 @@ describe('AnnotationCtrlButton', () => {
       />,
     )
 
-    expect(screen.getByRole('button')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'appDebug.feature.annotation.edit' }),
+    ).toBeInTheDocument()
   })
 
   it('should call onEdit when edit button is clicked', () => {
@@ -76,7 +78,7 @@ describe('AnnotationCtrlButton', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByRole('button', { name: 'appDebug.feature.annotation.edit' }))
 
     expect(onEdit).toHaveBeenCalled()
   })
@@ -93,7 +95,9 @@ describe('AnnotationCtrlButton', () => {
       />,
     )
 
-    expect(screen.getByRole('button')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'appDebug.feature.annotation.add' }),
+    ).toBeInTheDocument()
   })
 
   it('should not render any button when not cached and no answer', () => {
@@ -125,7 +129,7 @@ describe('AnnotationCtrlButton', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByRole('button', { name: 'appDebug.feature.annotation.add' }))
 
     await waitFor(() => {
       expect(mockAddAnnotation).toHaveBeenCalledWith('test-app', {
@@ -151,7 +155,7 @@ describe('AnnotationCtrlButton', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByRole('button', { name: 'appDebug.feature.annotation.add' }))
 
     expect(mockSetShowAnnotationFullModal).toHaveBeenCalled()
     expect(mockAddAnnotation).not.toHaveBeenCalled()
@@ -176,7 +180,7 @@ describe('AnnotationCtrlButton', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByRole('button', { name: 'appDebug.feature.annotation.add' }))
 
     await waitFor(() => {
       expect(onAdded).toHaveBeenCalledWith('annotation-2', '')

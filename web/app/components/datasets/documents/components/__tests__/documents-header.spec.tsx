@@ -1,7 +1,8 @@
 import type { SortType } from '@/service/datasets'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DataSourceType } from '@/models/datasets'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import DocumentsHeader from '../documents-header'
 
 // Mock the context hooks
@@ -61,11 +62,6 @@ describe('DocumentsHeader', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<DocumentsHeader {...defaultProps} />)
-      expect(screen.getByText(/list\.title/i)).toBeInTheDocument()
-    })
-
     it('should render title', () => {
       render(<DocumentsHeader {...defaultProps} />)
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/list\.title/i)

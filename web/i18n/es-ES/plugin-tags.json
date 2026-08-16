@@ -1,5 +1,6 @@
 {
   "allTags": "Todas las etiquetas",
+  "clearSelectedTags": "Borrar etiquetas seleccionadas: {{tags}}",
   "searchTags": "Etiquetas de búsqueda",
   "tags.agent": "Agente",
   "tags.business": "Negocio",

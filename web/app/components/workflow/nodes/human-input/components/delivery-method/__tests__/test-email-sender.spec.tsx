@@ -9,22 +9,25 @@ import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
 import type { App, AppSSO } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { HooksStoreContext } from '@/app/components/workflow/hooks-store/provider'
 import { createHooksStore } from '@/app/components/workflow/hooks-store/store'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { render } from '@/test/console/render'
 import EmailSenderModal from '../test-email-sender'
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => ({
+  ...(await importOriginal()),
   toast: {
     error: vi.fn(),
   },
 }))
 
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   userProfile: {
     id: 'user-1',
     email: 'owner@example.com',
@@ -36,31 +39,9 @@ const mockAppContextState = vi.hoisted(() => ({
   },
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
 
 type RecordedRequest = {
@@ -83,6 +64,7 @@ const createQueryClient = () =>
 
 const renderWithProviders = (ui: ReactNode) => {
   const queryClient = createQueryClient()
+  seedAccountProfileQuery(queryClient, mockConsoleState.userProfile)
   const hooksStore = createHooksStore({})
 
   return render(

@@ -11,7 +11,7 @@ import { HooksStoreContext } from '../../hooks-store/provider'
 import { createHooksStore } from '../../hooks-store/store'
 import { BlockEnum } from '../../types'
 import Blocks from '../blocks'
-import { BlockClassificationEnum } from '../types'
+import { BlockClassification } from '../types'
 
 const runtimeState = vi.hoisted(() => ({
   appType: 'workflow' as string | undefined,
@@ -50,10 +50,16 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   },
 }))
 
+// Permission-dependent selector actions are covered by agent-selector.spec.tsx;
+// this suite is about block insertion.
+vi.mock('@/features/agent-v2/permissions', () => ({
+  useCanManageAgents: () => true,
+}))
+
 const createBlock = (
   type: BlockEnum,
   title: string,
-  classification = BlockClassificationEnum.Default,
+  classification: BlockClassification = BlockClassification.Default,
   sort = 0,
 ): NodeDefault => ({
   metaData: {
@@ -142,18 +148,20 @@ describe('Blocks', () => {
         availableBlocksTypes={[BlockEnum.LLM, BlockEnum.LoopEnd, BlockEnum.KnowledgeBase]}
         blocks={[
           createBlock(BlockEnum.LLM, 'LLM'),
-          createBlock(BlockEnum.LoopEnd, 'Exit Loop', BlockClassificationEnum.Logic),
+          createBlock(BlockEnum.LoopEnd, 'Exit Loop', BlockClassification.Logic),
           createBlock(BlockEnum.KnowledgeBase, 'Knowledge Retrieval'),
         ]}
       />,
     )
 
-    expect(screen.getByRole('button', { name: 'LLM' })).toBeInTheDocument()
+    const llmButton = screen.getByRole('button', { name: 'LLM' })
+    expect(llmButton).toBeInTheDocument()
+    expect(llmButton).toHaveAccessibleDescription('LLM description')
     expect(screen.getByText('Exit Loop')).toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.loop.loopNode')).toBeInTheDocument()
     expect(screen.queryByText('Knowledge Retrieval')).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'LLM' }))
+    await user.click(llmButton)
 
     expect(onSelect).toHaveBeenCalledWith(BlockEnum.LLM)
   })
@@ -245,8 +253,8 @@ describe('Blocks', () => {
             onSelect={onSelect}
             availableBlocksTypes={[BlockEnum.LLM, BlockEnum.AgentV2]}
             blocks={[
-              createBlock(BlockEnum.LLM, 'LLM', BlockClassificationEnum.Default, 0),
-              createBlock(BlockEnum.AgentV2, 'Agent', BlockClassificationEnum.Default, 3),
+              createBlock(BlockEnum.LLM, 'LLM', BlockClassification.Default, 0),
+              createBlock(BlockEnum.AgentV2, 'Agent', BlockClassification.Default, 3),
             ]}
           />
         </HooksStoreContext>
@@ -334,7 +342,7 @@ describe('Blocks', () => {
             searchText=""
             onSelect={vi.fn()}
             availableBlocksTypes={[BlockEnum.AgentV2]}
-            blocks={[createBlock(BlockEnum.AgentV2, 'Agent', BlockClassificationEnum.Default, 3)]}
+            blocks={[createBlock(BlockEnum.AgentV2, 'Agent', BlockClassification.Default, 3)]}
           />
         </HooksStoreContext>
       </QueryClientProvider>,
@@ -392,7 +400,7 @@ describe('Blocks', () => {
             searchText=""
             onSelect={onSelect}
             availableBlocksTypes={[BlockEnum.AgentV2]}
-            blocks={[createBlock(BlockEnum.AgentV2, 'Agent', BlockClassificationEnum.Default, 3)]}
+            blocks={[createBlock(BlockEnum.AgentV2, 'Agent', BlockClassification.Default, 3)]}
           />
         </HooksStoreContext>
       </QueryClientProvider>,
@@ -435,7 +443,7 @@ describe('Blocks', () => {
             searchText=""
             onSelect={onSelect}
             availableBlocksTypes={[BlockEnum.AgentV2]}
-            blocks={[createBlock(BlockEnum.AgentV2, 'Agent', BlockClassificationEnum.Default, 3)]}
+            blocks={[createBlock(BlockEnum.AgentV2, 'Agent', BlockClassification.Default, 3)]}
           />
         </HooksStoreContext>
       </QueryClientProvider>,

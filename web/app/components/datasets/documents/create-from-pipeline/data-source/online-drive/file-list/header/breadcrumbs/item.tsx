@@ -28,7 +28,7 @@ const BreadcrumbItem = ({
       <button
         type="button"
         className={cn(
-          'max-w-full shrink truncate rounded-md px-[5px] py-1',
+          'max-w-full shrink truncate rounded-md px-1.25 py-1',
           isActive
             ? 'system-sm-medium text-text-secondary'
             : 'system-sm-regular text-text-tertiary',

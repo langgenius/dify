@@ -1,6 +1,8 @@
-import { renderHook, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { renderHook as renderHookWithConsoleState } from '@/test/console/render'
 import { AppACLPermission } from '@/utils/permission'
 import { useWorkflowInit } from '../use-workflow-init'
 
@@ -15,6 +17,11 @@ const mockWorkflowStoreGetState = vi.fn()
 const mockFetchNodesDefaultConfigs = vi.fn()
 const mockFetchPublishedWorkflow = vi.fn()
 const mockSyncWorkflowDraft = vi.fn()
+
+const renderHook = <Result>(callback: () => Result) =>
+  renderHookWithConsoleState(callback, {
+    wrapper: createAccountProfileQueryWrapper({ id: 'user-1' }),
+  })
 
 let appStoreState: {
   appDetail: {
@@ -45,52 +52,12 @@ vi.mock('@/app/components/app/store', () => ({
   useStore: <T>(selector: (state: typeof appStoreState) => T): T => selector(appStoreState),
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: ['app.create_and_management'],
   }))
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: ['app.create_and_management'],
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: ['app.create_and_management'],
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: ['app.create_and_management'],
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'user-1' },
-    workspacePermissionKeys: ['app.create_and_management'],
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('../use-workflow-template', () => ({
@@ -110,13 +77,19 @@ vi.mock('@/service/use-workflow', () => ({
   },
 }))
 
+vi.mock('@/service/workflow-queries', () => ({
+  appWorkflowQueryOptions: (appId: string) => ({
+    queryKey: ['workflow', 'publish', appId],
+    queryFn: () => mockFetchPublishedWorkflow(`/apps/${appId}/workflows/publish`),
+  }),
+}))
+
 const mockFetchWorkflowDraft = vi.fn()
 
 vi.mock('@/service/workflow', () => ({
   fetchWorkflowDraft: (...args: unknown[]) => mockFetchWorkflowDraft(...args),
   syncWorkflowDraft: (...args: unknown[]) => mockSyncWorkflowDraft(...args),
   fetchNodesDefaultConfigs: (...args: unknown[]) => mockFetchNodesDefaultConfigs(...args),
-  fetchPublishedWorkflow: (...args: unknown[]) => mockFetchPublishedWorkflow(...args),
 }))
 
 const notExistError = () => ({
@@ -384,14 +357,45 @@ describe('useWorkflowInit', () => {
     expect(result.current.isLoading).toBe(false)
   })
 
-  it('should fall back to no published user input when preload requests fail', async () => {
+  it('should keep published metadata when loading node defaults fails', async () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     mockFetchWorkflowDraft.mockReset().mockResolvedValue(draftResponse)
     mockFetchNodesDefaultConfigs.mockRejectedValue(new Error('preload failed'))
+    mockFetchPublishedWorkflow.mockResolvedValue({
+      created_at: 99,
+      graph: {
+        nodes: [{ id: 'start', data: { type: BlockEnum.Start } }],
+        edges: [{ source: 'start', target: 'end' }],
+      },
+    })
 
     renderHook(() => useWorkflowInit())
 
     await waitFor(() => {
+      expect(mockSetPublishedAt).toHaveBeenCalledWith(99)
+      expect(mockSetLastPublishedHasUserInput).toHaveBeenCalledWith(true)
+    })
+
+    expect(consoleErrorSpy).toHaveBeenCalled()
+    consoleErrorSpy.mockRestore()
+  })
+
+  it('should keep node defaults when loading published metadata fails', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    mockFetchWorkflowDraft.mockReset().mockResolvedValue(draftResponse)
+    mockFetchNodesDefaultConfigs.mockResolvedValue([
+      { type: 'start', config: { title: 'Start Config' } },
+    ])
+    mockFetchPublishedWorkflow.mockRejectedValue(new Error('published workflow failed'))
+
+    renderHook(() => useWorkflowInit())
+
+    await waitFor(() => {
+      expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({
+        nodesDefaultConfigs: {
+          start: { title: 'Start Config' },
+        },
+      })
       expect(mockSetLastPublishedHasUserInput).toHaveBeenCalledWith(false)
     })
 

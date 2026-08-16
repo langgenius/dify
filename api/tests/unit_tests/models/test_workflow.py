@@ -6,10 +6,12 @@ from uuid import uuid4
 from constants import HIDDEN_VALUE
 from core.helper import encrypter
 from core.workflow.file_reference import build_file_reference
+from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from factories.variable_factory import build_segment
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables import FloatVariable, IntegerVariable, SecretVariable, StringVariable
 from graphon.variables.segments import IntegerSegment, Segment
+from models.account import Account
 from models.workflow import (
     Workflow,
     WorkflowDraftVariable,
@@ -50,6 +52,32 @@ def test_environment_variables():
 
         # Get the environment_variables property and assert its value
         assert workflow.environment_variables == variables
+
+
+def test_llm_environment_variable_round_trip():
+    workflow = Workflow(
+        tenant_id="tenant_id",
+        app_id="app_id",
+        type="workflow",
+        version="draft",
+        graph="{}",
+        features="{}",
+        created_by="account_id",
+        environment_variables=[],
+        conversation_variables=[],
+    )
+    variable = LLMEnvironmentVariable(
+        name="for_research",
+        value={"provider": "langgenius/anthropic/anthropic", "name": "claude-sonnet", "mode": "chat"},
+        id=str(uuid4()),
+        selector=["env", "for_research"],
+    )
+
+    workflow.environment_variables = [variable]
+
+    assert workflow.environment_variables == [variable]
+    assert json.loads(workflow._environment_variables)["for_research"]["value_type"] == "llm"
+    assert workflow.to_dict()["environment_variables"][0]["value_type"] == "llm"
 
 
 def test_update_environment_variables():
@@ -134,6 +162,57 @@ def test_to_dict():
         assert workflow_dict["environment_variables"][1]["value"] == "text"
 
 
+def test_workflow_account_getters_use_caller_session():
+    workflow = Workflow(
+        tenant_id="tenant_id",
+        app_id="app_id",
+        type="workflow",
+        version="draft",
+        graph="{}",
+        features="{}",
+        created_by="created-account-id",
+        environment_variables=[],
+        conversation_variables=[],
+        updated_by="updated-account-id",
+    )
+    created_account = Account(name="Test Account", email="test@example.com")
+    updated_account = Account(name="Test Account", email="test@example.com")
+    session = mock.Mock()
+    session.get.side_effect = [created_account, updated_account]
+
+    with mock.patch("models.workflow.db") as mock_db:
+        assert workflow.get_created_by_account(session=session) is created_account
+        assert workflow.get_updated_by_account(session=session) is updated_account
+
+    assert session.get.call_args_list == [
+        mock.call(Account, "created-account-id"),
+        mock.call(Account, "updated-account-id"),
+    ]
+    mock_db.session.get.assert_not_called()
+
+
+def test_workflow_tool_published_getter_uses_caller_session():
+    workflow = Workflow(
+        tenant_id="tenant_id",
+        app_id="app_id",
+        type="workflow",
+        version="draft",
+        graph="{}",
+        features="{}",
+        created_by="account_id",
+        environment_variables=[],
+        conversation_variables=[],
+    )
+    session = mock.Mock()
+    session.execute.return_value.scalar_one.return_value = True
+
+    with mock.patch("models.workflow.db") as mock_db:
+        assert workflow.get_tool_published(session=session) is True
+
+    session.execute.assert_called_once()
+    mock_db.session.execute.assert_not_called()
+
+
 def test_normalize_environment_variable_mappings_converts_full_mask_to_hidden_value():
     normalized = Workflow.normalize_environment_variable_mappings(
         [
@@ -166,8 +245,9 @@ def test_normalize_environment_variable_mappings_keeps_hidden_value():
 
 class TestWorkflowNodeExecution:
     def test_execution_metadata_dict(self):
-        node_exec = WorkflowNodeExecutionModel()
-        node_exec.execution_metadata = None
+        node_exec = WorkflowNodeExecutionModel(
+            execution_metadata=None,
+        )
         assert node_exec.execution_metadata_dict == {}
 
         original = {"a": 1, "b": ["2"]}
@@ -330,8 +410,9 @@ class TestWorkflowDraftVariableGetValue:
             size=12,
             storage_key="canonical-storage-key",
         )
-        draft_var = WorkflowDraftVariable()
-        draft_var.app_id = "app-1"
+        draft_var = WorkflowDraftVariable(
+            app_id="app-1",
+        )
         draft_var.set_value(build_segment(persisted_file))
         draft_var._WorkflowDraftVariable__value = None
 

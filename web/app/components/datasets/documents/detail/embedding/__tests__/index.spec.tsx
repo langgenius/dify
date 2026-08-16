@@ -4,7 +4,7 @@ import type { IndexingStatusResponse, ProcessRuleResponse } from '@/models/datas
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ProcessMode } from '@/models/datasets'
 import * as datasetsService from '@/service/datasets'
 import * as useDataset from '@/service/knowledge/use-dataset'
@@ -37,7 +37,7 @@ const mockPauseDocIndexing = vi.mocked(datasetsService.pauseDocIndexing)
 const mockResumeDocIndexing = vi.mocked(datasetsService.resumeDocIndexing)
 const mockUseProcessRule = vi.mocked(useDataset.useProcessRule)
 
-const createTestQueryClient = () =>
+const createConsoleQueryClient = () =>
   new QueryClient({
     defaultOptions: {
       queries: { retry: false, gcTime: 0 },
@@ -48,7 +48,7 @@ const createTestQueryClient = () =>
 const createWrapper = (
   contextValue: DocumentContextValue = { datasetId: 'ds1', documentId: 'doc1' },
 ) => {
-  const queryClient = createTestQueryClient()
+  const queryClient = createConsoleQueryClient()
   return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>
       <>
@@ -106,16 +106,6 @@ describe('EmbeddingDetail', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', async () => {
-      mockFetchIndexingStatus.mockResolvedValue(mockIndexingStatus())
-
-      render(<EmbeddingDetail {...defaultProps} />, { wrapper: createWrapper() })
-
-      await waitFor(() => {
-        expect(screen.getByText(/embedding\.processing/i)).toBeInTheDocument()
-      })
-    })
-
     it('should render with provided datasetId and documentId props', async () => {
       mockFetchIndexingStatus.mockResolvedValue(mockIndexingStatus())
 

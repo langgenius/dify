@@ -2,17 +2,17 @@ import type { InputForm } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig, ChatItem, OnSend } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { Avatar } from '@langgenius/dify-ui/avatar'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useImperativeHandle, useMemo } from 'react'
+import { toast } from '@/app/components/app/configuration/toast'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Chat from '@/app/components/base/chat/chat'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
 import { useFeatures } from '@/app/components/base/features/hooks'
-import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { userProfileAtom } from '@/context/account-state'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import { useProviderContext } from '@/context/provider-context'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import {
   fetchConversationMessages,
   fetchSuggestedQuestions,
@@ -33,7 +33,10 @@ const DebugWithSingleModel = ({
 }: DebugWithSingleModelProps & {
   ref: React.RefObject<DebugWithSingleModelRefType>
 }) => {
-  const userProfile = useAtomValue(userProfileAtom)
+  const { data: userProfile } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile,
+  })
   const {
     readonly,
     canTestAndRun = false,
@@ -97,13 +100,6 @@ const DebugWithSingleModel = ({
     (message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
       if (!canTestAndRun) return
       if (checkCanSend && !checkCanSend()) return
-      const currentProvider = textGenerationModelList.find(
-        (item) => item.provider === modelConfig.provider,
-      )
-      const currentModel = currentProvider?.models.find(
-        (model) => model.model === modelConfig.model_id,
-      )
-      const supportVision = currentModel?.features?.includes(ModelFeatureEnum.vision)
 
       const configData = {
         ...config,
@@ -122,9 +118,10 @@ const DebugWithSingleModel = ({
         parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
       }
 
-      if ((config.file_upload as any)?.enabled && files?.length && supportVision) data.files = files
+      if ((config.file_upload as any)?.enabled && files?.length) data.files = files
 
       handleSend(`apps/${appId}/chat-messages`, data, {
+        onNotifyError: (message) => toast.error(message),
         onGetConversationMessages: (conversationId, getAbortController) =>
           fetchConversationMessages(appId, conversationId, getAbortController),
         onGetSuggestedQuestions: (responseItemId, getAbortController) =>

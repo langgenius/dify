@@ -5,8 +5,10 @@ HTTP plumbing or DB. Pin the response shapes that are CLI contracts.
 from __future__ import annotations
 
 from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy.orm import Session
 
 from controllers.openapi.apps import (  # pyright: ignore[reportPrivateUsage]
     _EMPTY_PARAMETERS,
@@ -34,9 +36,15 @@ def _fake_app(**overrides):
     return SimpleNamespace(**base)
 
 
-def test_parameters_payload_raises_app_unavailable_when_no_config():
+def test_parameters_payload_raises_app_unavailable_when_no_config(unbound_session: Session):
+    app = _fake_app(mode="chat")
+    app.app_model_config_with_session = MagicMock(return_value=None)
+    session = unbound_session
+
     with pytest.raises(AppUnavailableError):
-        parameters_payload(_fake_app(mode="chat", app_model_config=None))
+        parameters_payload(app, session=session)
+
+    app.app_model_config_with_session.assert_called_once_with(session=session)
 
 
 def test_empty_parameters_constant_matches_describe_fallback_shape():

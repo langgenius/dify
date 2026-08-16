@@ -36,7 +36,7 @@ const WebsitePreview = ({ currentWebsite, hidePreview }: WebsitePreviewProps) =>
           className="flex size-8 shrink-0 items-center justify-center"
           onClick={hidePreview}
         >
-          <RiCloseLine className="size-[18px]" />
+          <RiCloseLine className="size-4.5" />
         </button>
       </div>
       <div className="grow overflow-hidden px-6 py-5 body-md-regular text-text-secondary">

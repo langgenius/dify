@@ -6,6 +6,13 @@ class TestQueueEntities:
         event = QueueStopEvent(stopped_by=QueueStopEvent.StopBy.USER_MANUAL)
         assert event.get_stop_reason() == "Stopped by user."
 
+    def test_get_stop_reason_prefers_explicit_reason(self):
+        event = QueueStopEvent(
+            stopped_by=QueueStopEvent.StopBy.USER_MANUAL,
+            reason="Workflow execution timed out",
+        )
+        assert event.get_stop_reason() == "Workflow execution timed out"
+
     def test_get_stop_reason_for_unknown_stop_by(self):
         event = QueueStopEvent(stopped_by=QueueStopEvent.StopBy.USER_MANUAL)
         event.stopped_by = "unknown"

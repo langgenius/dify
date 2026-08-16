@@ -1,6 +1,6 @@
 import type { CrawlOptions } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import Options from '../options'
 
 // Test Data Factory
@@ -65,16 +65,6 @@ describe('Options (watercrawl)', () => {
       render(<Options payload={payload} onChange={mockOnChange} />)
 
       expect(screen.getByPlaceholderText('articles/*'))!.toBeInTheDocument()
-    })
-
-    it('should render with custom className', () => {
-      const payload = createMockCrawlOptions()
-      const { container } = render(
-        <Options payload={payload} onChange={mockOnChange} className="custom-class" />,
-      )
-
-      const rootElement = container.firstChild as HTMLElement
-      expect(rootElement)!.toHaveClass('custom-class')
     })
   })
 

@@ -6,9 +6,17 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.agent.publish_visibility import workflow_callable_active_snapshot_filter
 from core.workflow.graph_topology import WorkflowGraphTopology
 from graphon.enums import BuiltinNodeTypes
-from models.agent import Agent, AgentConfigSnapshot, AgentStatus, WorkflowAgentBindingType, WorkflowAgentNodeBinding
+from models.agent import (
+    Agent,
+    AgentConfigSnapshot,
+    AgentScope,
+    AgentStatus,
+    WorkflowAgentBindingType,
+    WorkflowAgentNodeBinding,
+)
 from models.agent_config_entities import (
     AgentFileRefConfig,
     AgentHumanContactConfig,
@@ -61,16 +69,33 @@ class WorkflowAgentNodeValidator:
 
     @classmethod
     def validate_draft_workflow(cls, *, session: Session, workflow: Workflow) -> None:
-        cls._validate_workflow(session=session, workflow=workflow, require_binding=False)
+        cls._validate_workflow(
+            session=session,
+            workflow=workflow,
+            require_binding=False,
+            validate_previous_node_topology=False,
+        )
 
     @classmethod
     def validate_published_workflow(cls, *, session: Session, workflow: Workflow) -> None:
-        cls._validate_workflow(session=session, workflow=workflow, require_binding=True)
+        cls._validate_workflow(
+            session=session,
+            workflow=workflow,
+            require_binding=True,
+            validate_previous_node_topology=True,
+        )
 
     @classmethod
-    def _validate_workflow(cls, *, session: Session, workflow: Workflow, require_binding: bool) -> None:
+    def _validate_workflow(
+        cls,
+        *,
+        session: Session,
+        workflow: Workflow,
+        require_binding: bool,
+        validate_previous_node_topology: bool,
+    ) -> None:
         graph = workflow.graph_dict
-        topology = _WorkflowGraphTopology.from_graph(graph)
+        topology = _WorkflowGraphTopology.from_graph(graph) if validate_previous_node_topology else None
         for node_id, node_data in cls.iter_agent_v2_nodes(graph):
             cls._validate_node_schema(node_id=node_id, node_data=node_data)
             binding = cls._find_binding(
@@ -100,21 +125,28 @@ class WorkflowAgentNodeValidator:
         binding: WorkflowAgentNodeBinding,
         topology: _WorkflowGraphTopology | None = None,
     ) -> None:
+        """Validate binding ownership, publication state, Agent Soul, and node-job references."""
+
         if binding.agent_id is None:
             raise WorkflowAgentNodeValidationError(f"Workflow Agent node {binding.node_id} is missing agent binding.")
 
-        agent = session.scalar(
-            select(Agent)
-            .where(
-                Agent.tenant_id == binding.tenant_id,
-                Agent.id == binding.agent_id,
-            )
-            .limit(1)
+        agent_stmt = select(Agent).where(
+            Agent.tenant_id == binding.tenant_id,
+            Agent.id == binding.agent_id,
         )
-        if agent is None or agent.status == AgentStatus.ARCHIVED:
-            raise WorkflowAgentNodeValidationError(
-                f"Workflow Agent node {binding.node_id} references an unavailable agent."
+        if binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT:
+            agent_stmt = agent_stmt.where(
+                Agent.scope == AgentScope.ROSTER,
+                workflow_callable_active_snapshot_filter(),
             )
+        agent = session.scalar(agent_stmt.limit(1))
+        if agent is None or agent.status == AgentStatus.ARCHIVED:
+            availability = (
+                "an unavailable or unpublished roster agent"
+                if binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT
+                else "an unavailable agent"
+            )
+            raise WorkflowAgentNodeValidationError(f"Workflow Agent node {binding.node_id} references {availability}.")
 
         snapshot_id = (
             agent.active_config_snapshot_id
@@ -147,7 +179,7 @@ class WorkflowAgentNodeValidator:
             )
         cls._validate_agent_soul_env(binding=binding, agent_soul=agent_soul)
         cls._validate_agent_soul_tools(binding=binding, agent_soul=agent_soul)
-        cls._validate_agent_soul_knowledge(binding=binding, agent_soul=agent_soul)
+        cls._validate_agent_soul_knowledge(session=session, binding=binding, agent_soul=agent_soul)
         node_job = WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
         cls.validate_node_job(session=session, binding=binding, node_job=node_job, topology=topology)
 
@@ -185,12 +217,12 @@ class WorkflowAgentNodeValidator:
                 raise WorkflowAgentNodeValidationError(
                     f"Workflow Agent node {binding.node_id} has invalid previous node output ref."
                 )
-            if topology is None:
-                continue
             if len(selector) < 2:
                 raise WorkflowAgentNodeValidationError(
                     f"Workflow Agent node {binding.node_id} has incomplete previous node output ref."
                 )
+            if topology is None:
+                continue
             source_node_id = selector[0]
             if not topology.has_node(source_node_id):
                 raise WorkflowAgentNodeValidationError(
@@ -370,11 +402,13 @@ class WorkflowAgentNodeValidator:
     def _validate_agent_soul_knowledge(
         cls,
         *,
+        session: Session,
         binding: WorkflowAgentNodeBinding,
         agent_soul: AgentSoulConfig,
     ) -> None:
         """Validate knowledge set dataset rows against the publishing tenant."""
         missing_ids = list_missing_tenant_knowledge_dataset_ids(
+            session=session,
             tenant_id=binding.tenant_id,
             agent_soul=agent_soul,
         )

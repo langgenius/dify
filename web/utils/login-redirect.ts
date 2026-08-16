@@ -7,7 +7,6 @@ type ResolveLoginRedirectOptions = {
   allowSameOriginAbsolute?: boolean
 }
 
-const CLOUD_CONSOLE_HOME = 'https://cloud.dify.ai/'
 const INTERNAL_URL_BASE = 'https://login-redirect.invalid'
 const CONTROL_CHARACTER_PATTERN = /[\u0000-\u001F\u007F]/
 const MALFORMED_PERCENT_PATTERN = /%(?![\dA-F]{2})/i
@@ -176,17 +175,11 @@ export function resolveLoginRedirectTarget(
   }
 }
 
-export function getClientLoginFallback(isCloudEdition: boolean): LoginRedirectTarget {
-  if (isCloudEdition) return { kind: 'absolute', href: CLOUD_CONSOLE_HOME }
+export function getClientLoginFallback(): LoginRedirectTarget {
   return { kind: 'internal', href: '/' }
 }
 
-export function getServerLoginFallback(
-  isCloudEdition: boolean,
-  basePath: string,
-): LoginRedirectTarget {
-  if (isCloudEdition) return { kind: 'absolute', href: CLOUD_CONSOLE_HOME }
-
+export function getServerLoginFallback(basePath: string): LoginRedirectTarget {
   const normalizedBasePath = normalizeBasePath(basePath)
   return { kind: 'internal', href: normalizedBasePath ? `${normalizedBasePath}/` : '/' }
 }

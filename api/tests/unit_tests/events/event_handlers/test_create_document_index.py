@@ -90,6 +90,11 @@ def test_handle_runs_indexing_on_success(
     mock_indexing_runner: MagicMock,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
+    def assert_status_committed(_documents: list[Document], session: Session) -> None:
+        assert not session.in_transaction()
+
+    mock_indexing_runner.run.side_effect = assert_status_committed
+
     with patch.object(handler_module, "IndexingRunner", return_value=mock_indexing_runner):
         with caplog.at_level(logging.INFO, logger=handler_module.logger.name):
             handler_module.handle("dataset-1", document_ids=["doc-1"])

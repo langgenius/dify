@@ -78,7 +78,7 @@ const VirtualPageList = ({
   })
 
   return (
-    <div ref={scrollRef} className="h-[296px] overflow-auto" data-testid="virtual-list">
+    <div ref={scrollRef} className="h-74 overflow-auto" data-testid="virtual-list">
       <div
         style={{
           height: `${rowVirtualizer.getTotalSize()}px`,

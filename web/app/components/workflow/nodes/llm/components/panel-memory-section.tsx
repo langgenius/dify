@@ -75,7 +75,7 @@ const PanelMemorySection: FC<Props> = ({
                 {t(($) => $['nodes.common.memories.tip'], { ns: 'workflow' })}
               </Infotip>
             </div>
-            <div className="flex h-[18px] items-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 text-xs font-semibold text-text-tertiary uppercase">
+            <div className="flex h-4.5 items-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 text-xs font-semibold text-text-tertiary uppercase">
               {t(($) => $['nodes.common.memories.builtIn'], { ns: 'workflow' })}
             </div>
           </div>
@@ -107,7 +107,7 @@ const PanelMemorySection: FC<Props> = ({
             {shouldCheckSysQuery &&
               inputs.memory.query_prompt_template &&
               !inputs.memory.query_prompt_template.includes('{{#sys.query#}}') && (
-                <div className="text-xs leading-[18px] font-normal text-[#DC6803]">
+                <div className="text-xs leading-4.5 font-normal text-[#DC6803]">
                   {t(($) => $[`${i18nPrefix}.sysQueryInUser`], { ns: 'workflow' })}
                 </div>
               )}

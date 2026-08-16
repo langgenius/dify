@@ -21,7 +21,7 @@ vi.mock('reactflow', () => ({
 
 const getZoomControls = () => {
   const label = Array.from(document.querySelectorAll('button')).find((element) => {
-    return /^\d+%$/.test(element.textContent ?? '') && element.className.includes('w-[34px]')
+    return /^\d+%$/.test(element.textContent ?? '') && element.className.includes('w-8.5')
   })
   const zoomOutIcon = document.querySelector('.i-ri-zoom-out-line')
   const zoomInIcon = document.querySelector('.i-ri-zoom-in-line')

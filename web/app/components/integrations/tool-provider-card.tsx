@@ -90,7 +90,7 @@ function IntegrationsToolProviderCard({
         <div className="flex h-6 w-full shrink-0 items-center px-4 py-1">
           <div className="flex h-4 min-w-0 flex-1 flex-wrap items-start gap-x-2 gap-y-1 overflow-hidden system-xs-regular whitespace-nowrap">
             {collection.labels?.map((label) => (
-              <div key={label} className="flex max-w-[120px] shrink-0 items-center gap-0.5">
+              <div key={label} className="flex max-w-30 shrink-0 items-center gap-0.5">
                 <span className="text-text-quaternary">#</span>
                 <span className="min-w-0 truncate text-text-tertiary" title={label}>
                   {label}
@@ -109,7 +109,7 @@ function IntegrationsToolProviderCard({
       data-from={collection.plugin_id ? 'marketplace' : 'package'}
       data-org={collection.plugin_id ? org : ''}
       className={cn(
-        'group/tool-provider relative flex min-w-[min(100%,496px)] flex-1 cursor-pointer flex-col overflow-hidden rounded-xl bg-background-section-burn p-[3px]',
+        'group/tool-provider relative flex min-w-[min(100%,496px)] flex-1 cursor-pointer flex-col overflow-hidden rounded-xl bg-background-section-burn p-0.75',
         current &&
           "after:pointer-events-none after:absolute after:inset-0 after:rounded-xl after:inset-ring-[1.5px] after:inset-ring-components-option-card-option-selected-border after:content-['']",
       )}
@@ -127,7 +127,7 @@ function IntegrationsToolProviderCard({
           </div>
         </div>
       </div>
-      <div className="flex h-[26px] w-full items-center gap-2 px-3 pt-1.5 pb-1">
+      <div className="flex h-6.5 w-full items-center gap-2 px-3 pt-1.5 pb-1">
         <div className="flex h-4 min-w-0 shrink-0 items-center gap-0.5 system-xs-regular">
           {!!org && (
             <>

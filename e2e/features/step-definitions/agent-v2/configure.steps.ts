@@ -6,7 +6,6 @@ import { waitForAgentConfigureAutosaved } from '../../../support/agent-configure
 import {
   createConfiguredTestAgent,
   createTestAgent,
-  getAgentComposerDraft,
   getAgentConfigurePath,
   saveAgentComposerDraft,
 } from '../../agent-v2/support/agent'
@@ -43,21 +42,28 @@ async function fillAgentPromptEditor(page: Page, prompt: string) {
 }
 
 async function selectAgentModel(page: Page, modelName: string) {
-  await page.getByRole('combobox', { name: 'Configure model' }).click()
-  await page.getByLabel('Search model').fill(modelName)
-  await page.getByRole('option', { name: modelName }).click()
+  await page.getByRole('combobox').first().click()
+  await page.getByPlaceholder('Search model').fill(modelName)
+  const escapedModelName = modelName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  await page.getByRole('option', { name: new RegExp(`${escapedModelName}(?:\\s|$)`) }).click()
 }
 
-async function expectAgentComposerPrompt(agentId: string, prompt: string) {
+async function expectAgentComposerPrompt(world: DifyWorld, agentId: string, prompt: string) {
   await expect
-    .poll(async () => (await getAgentComposerDraft(agentId)).agent_soul?.prompt?.system_prompt, {
-      timeout: 30_000,
-    })
+    .poll(
+      async () => {
+        const draft = await world
+          .getConsoleClient()
+          .agent.byAgentId.composer.get({ params: { agent_id: agentId } })
+        return draft.agent_soul?.prompt?.system_prompt
+      },
+      { timeout: 30_000 },
+    )
     .toBe(prompt)
 }
 
 Given('an Agent v2 test agent has been created via API', async function (this: DifyWorld) {
-  const agent = await createTestAgent()
+  const agent = await createTestAgent(this.getConsoleClient())
   this.createdAgentIds.push(agent.id)
   this.lastCreatedAgentName = agent.name
   this.lastCreatedAgentRole = agent.role ?? undefined
@@ -66,7 +72,7 @@ Given('an Agent v2 test agent has been created via API', async function (this: D
 Given(
   'a basic configured Agent v2 test agent has been created via API',
   async function (this: DifyWorld) {
-    const agent = await createConfiguredTestAgent()
+    const agent = await createConfiguredTestAgent(this.getConsoleClient())
     this.createdAgentIds.push(agent.id)
     this.lastCreatedAgentName = agent.name
     this.lastCreatedAgentRole = agent.role ?? undefined
@@ -74,13 +80,13 @@ Given(
 )
 
 Given('a runnable Agent v2 test agent has been created via API', async function (this: DifyWorld) {
-  if (!this.agentBuilder.preflight.stableModel)
-    throw new Error('Create a runnable Agent v2 test agent after stable model preflight.')
+  if (!this.agentBuilder.fixtures.stableModel)
+    throw new Error('Create a runnable Agent v2 test agent after stable model fixture setup.')
 
-  const agent = await createConfiguredTestAgent({
+  const agent = await createConfiguredTestAgent(this.getConsoleClient(), {
     agentSoul: createAgentSoulConfigWithModel(
       normalAgentSoulConfig,
-      this.agentBuilder.preflight.stableModel,
+      this.agentBuilder.fixtures.stableModel,
     ),
   })
   this.createdAgentIds.push(agent.id)
@@ -91,16 +97,16 @@ Given('a runnable Agent v2 test agent has been created via API', async function 
 Given(
   'a runnable Agent v2 test agent using the agent-decision model has been created via API',
   async function (this: DifyWorld) {
-    if (!this.agentBuilder.preflight.agentDecisionModel) {
+    if (!this.agentBuilder.fixtures.agentDecisionModel) {
       throw new Error(
-        'Create an agent-decision Agent v2 test agent after agent-decision model preflight.',
+        'Create an agent-decision Agent v2 test agent after agent-decision model fixture setup.',
       )
     }
 
-    const agent = await createConfiguredTestAgent({
+    const agent = await createConfiguredTestAgent(this.getConsoleClient(), {
       agentSoul: createAgentSoulConfigWithModel(
         normalAgentSoulConfig,
-        this.agentBuilder.preflight.agentDecisionModel,
+        this.agentBuilder.fixtures.agentDecisionModel,
       ),
     })
     this.createdAgentIds.push(agent.id)
@@ -112,15 +118,20 @@ Given(
 Given('a minimal Agent v2 composer draft has been synced', async function (this: DifyWorld) {
   const agentId = getCurrentAgentId(this)
 
-  await saveAgentComposerDraft(agentId)
+  await saveAgentComposerDraft(this.getConsoleClient(), agentId)
 })
 
 Given('the Agent v2 composer draft uses the normal E2E prompt', async function (this: DifyWorld) {
-  await saveAgentComposerDraft(getCurrentAgentId(this), normalAgentSoulConfig)
+  await saveAgentComposerDraft(
+    this.getConsoleClient(),
+    getCurrentAgentId(this),
+    normalAgentSoulConfig,
+  )
 })
 
 Given('the Agent v2 composer draft is publishable', async function (this: DifyWorld) {
   await saveAgentComposerDraft(
+    this.getConsoleClient(),
     getCurrentAgentId(this),
     createPublishableAgentSoulConfig(normalAgentSoulConfig),
   )
@@ -130,7 +141,7 @@ Given(
   'the e2e-summary-skill Skill is available to the Agent v2 test agent',
   async function (this: DifyWorld) {
     const agentId = getCurrentAgentId(this)
-    const upload = await uploadAgentDriveSkill({
+    const upload = await uploadAgentDriveSkill(this.getConsoleClient(), {
       agentId,
       fileName: agentBuilderTestMaterials.summarySkill,
       filePath: getAgentBuilderTestMaterialPath('summarySkill'),
@@ -144,7 +155,7 @@ Given(
 Then(
   'the Agent v2 test agent should include drive skill {string}',
   async function (this: DifyWorld, skillName: string) {
-    const skills = await getAgentDriveSkills(getCurrentAgentId(this))
+    const skills = await getAgentDriveSkills(this.getConsoleClient(), getCurrentAgentId(this))
 
     expect(skills.map((skill) => skill.name)).toContain(skillName)
   },
@@ -157,11 +168,24 @@ When('I open the Agent v2 configure page', async function (this: DifyWorld) {
 When(
   'I select the stable E2E model in the Agent v2 model selector',
   async function (this: DifyWorld) {
-    const stableModel = this.agentBuilder.preflight.stableModel
+    const stableModel = this.agentBuilder.fixtures.stableModel
     if (!stableModel)
-      throw new Error('Stable chat model preflight must run before selecting the Agent model.')
+      throw new Error('Stable chat model fixture setup must run before selecting the Agent model.')
 
     await selectAgentModel(this.getPage(), stableModel.name)
+  },
+)
+
+When(
+  'I select the agent-decision E2E model in the Agent v2 model selector',
+  async function (this: DifyWorld) {
+    const model = this.agentBuilder.fixtures.agentDecisionModel
+    if (!model)
+      throw new Error(
+        'Agent-decision chat model fixture setup must run before selecting the Agent model.',
+      )
+
+    await selectAgentModel(this.getPage(), model.name)
   },
 )
 
@@ -243,7 +267,7 @@ When('I save the Agent v2 prompt from the first configure tab', async function (
 
   await fillAgentPromptEditor(this.getPage(), concurrentFirstAgentPrompt)
   await waitForAgentConfigureAutosaved(this.getPage())
-  await expectAgentComposerPrompt(agentId, concurrentFirstAgentPrompt)
+  await expectAgentComposerPrompt(this, agentId, concurrentFirstAgentPrompt)
 })
 
 When('I save the Agent v2 prompt from the second configure tab', async function (this: DifyWorld) {
@@ -254,7 +278,7 @@ When('I save the Agent v2 prompt from the second configure tab', async function 
 
   await fillAgentPromptEditor(concurrentPage, concurrentSecondAgentPrompt)
   await waitForAgentConfigureAutosaved(concurrentPage)
-  await expectAgentComposerPrompt(agentId, concurrentSecondAgentPrompt)
+  await expectAgentComposerPrompt(this, agentId, concurrentSecondAgentPrompt)
 })
 
 When('I refresh both Agent v2 configure tabs', async function (this: DifyWorld) {
@@ -298,11 +322,26 @@ Then(
 Then(
   'I should see the stable E2E model in the Agent v2 model selector',
   async function (this: DifyWorld) {
-    const stableModel = this.agentBuilder.preflight.stableModel
+    const stableModel = this.agentBuilder.fixtures.stableModel
     if (!stableModel)
-      throw new Error('Stable chat model preflight must run before asserting the Agent model.')
+      throw new Error('Stable chat model fixture setup must run before asserting the Agent model.')
 
     await expect(this.getPage().getByText(stableModel.name, { exact: true })).toBeVisible({
+      timeout: 30_000,
+    })
+  },
+)
+
+Then(
+  'I should see the agent-decision E2E model in the Agent v2 model selector',
+  async function (this: DifyWorld) {
+    const model = this.agentBuilder.fixtures.agentDecisionModel
+    if (!model)
+      throw new Error(
+        'Agent-decision chat model fixture setup must run before asserting the Agent model.',
+      )
+
+    await expect(this.getPage().getByText(model.name, { exact: true })).toBeVisible({
       timeout: 30_000,
     })
   },
@@ -331,7 +370,10 @@ Then(
     await expect
       .poll(
         async () => {
-          const prompt = (await getAgentComposerDraft(agentId)).agent_soul?.prompt?.system_prompt
+          const draft = await this.getConsoleClient().agent.byAgentId.composer.get({
+            params: { agent_id: agentId },
+          })
+          const prompt = draft.agent_soul?.prompt?.system_prompt
           if (prompt && concurrentAgentPrompts.includes(prompt)) savedPrompt = prompt
 
           return !!savedPrompt
@@ -342,16 +384,6 @@ Then(
 
     await expect(getPromptEditor(this.getPage())).toContainText(savedPrompt)
     await expect(getPromptEditor(concurrentPage)).toContainText(savedPrompt)
-  },
-)
-
-Then(
-  'Agent v2 Preview should be unavailable until a model is configured',
-  async function (this: DifyWorld) {
-    const page = this.getPage()
-
-    await expect(page.getByRole('heading', { name: 'Configure' })).toBeVisible({ timeout: 30_000 })
-    await expect(page.getByRole('button', { name: /^Preview$/i })).toBeDisabled()
   },
 )
 
@@ -373,22 +405,33 @@ Then(
   'the normal Agent v2 draft should use the updated E2E prompt',
   async function (this: DifyWorld) {
     await expect
-      .poll(async () => (await getAgentComposerDraft(getCurrentAgentId(this))).agent_soul?.prompt, {
-        timeout: 30_000,
-      })
+      .poll(
+        async () => {
+          const agentId = getCurrentAgentId(this)
+          const draft = await this.getConsoleClient().agent.byAgentId.composer.get({
+            params: { agent_id: agentId },
+          })
+          return draft.agent_soul?.prompt
+        },
+        { timeout: 30_000 },
+      )
       .toEqual({ system_prompt: updatedAgentPrompt })
   },
 )
 
 Then('the Agent v2 draft should use the stable E2E model', async function (this: DifyWorld) {
-  const stableModel = this.agentBuilder.preflight.stableModel
+  const stableModel = this.agentBuilder.fixtures.stableModel
   if (!stableModel)
-    throw new Error('Stable chat model preflight must run before asserting the Agent model.')
+    throw new Error('Stable chat model fixture setup must run before asserting the Agent model.')
 
   await expect
     .poll(
       async () => {
-        const model = (await getAgentComposerDraft(getCurrentAgentId(this))).agent_soul?.model
+        const agentId = getCurrentAgentId(this)
+        const draft = await this.getConsoleClient().agent.byAgentId.composer.get({
+          params: { agent_id: agentId },
+        })
+        const model = draft.agent_soul?.model
         const modelConfig =
           typeof model === 'object' && model !== null && !Array.isArray(model)
             ? (model as Record<string, unknown>)
@@ -406,3 +449,39 @@ Then('the Agent v2 draft should use the stable E2E model', async function (this:
       provider: stableModel.provider,
     })
 })
+
+Then(
+  'the Agent v2 draft should use the agent-decision E2E model',
+  async function (this: DifyWorld) {
+    const model = this.agentBuilder.fixtures.agentDecisionModel
+    if (!model)
+      throw new Error(
+        'Agent-decision chat model fixture setup must run before asserting the Agent model.',
+      )
+
+    await expect
+      .poll(
+        async () => {
+          const agentId = getCurrentAgentId(this)
+          const draft = await this.getConsoleClient().agent.byAgentId.composer.get({
+            params: { agent_id: agentId },
+          })
+          const draftModel = draft.agent_soul?.model
+          const modelConfig =
+            typeof draftModel === 'object' && draftModel !== null && !Array.isArray(draftModel)
+              ? (draftModel as Record<string, unknown>)
+              : undefined
+
+          return {
+            model: modelConfig?.model,
+            provider: modelConfig?.model_provider,
+          }
+        },
+        { timeout: 30_000 },
+      )
+      .toEqual({
+        model: model.name,
+        provider: model.provider,
+      })
+  },
+)

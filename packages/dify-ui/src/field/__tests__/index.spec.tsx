@@ -33,7 +33,7 @@ describe('Field primitives', () => {
       description.id,
     )
 
-    asHTMLElement(screen.getByRole('button', { name: 'Save' }).element()).click()
+    await screen.getByRole('button', { name: 'Save' }).click()
 
     await vi.waitFor(async () => {
       const error = asHTMLElement(screen.getByText('Email is required.').element())
@@ -58,7 +58,7 @@ describe('Field primitives', () => {
       </Form>,
     )
 
-    asHTMLElement(screen.getByRole('button', { name: 'Save' }).element()).click()
+    await screen.getByRole('button', { name: 'Save' }).click()
 
     expect(onFormSubmit).toHaveBeenCalledTimes(1)
     expect(onFormSubmit.mock.calls[0]?.[0]).toMatchObject({ apiKey: 'sk-test' })

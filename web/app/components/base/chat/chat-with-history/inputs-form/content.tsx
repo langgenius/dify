@@ -5,6 +5,7 @@ import {
   SelectItemIndicator,
   SelectItemText,
   SelectTrigger,
+  SelectValue,
 } from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
@@ -103,12 +104,12 @@ const InputsFormContent = ({ showTip }: Props) => {
             />
           )}
           {form.type === InputVarType.select && (
-            <Select
+            <Select<string>
               value={(inputsFormValue?.[form.variable] ?? form.default ?? '') || null}
               onValueChange={(value) => value && handleFormChange(form.variable, value)}
             >
               <SelectTrigger className="w-full">
-                {String(inputsFormValue?.[form.variable] ?? form.default ?? form.label)}
+                <SelectValue placeholder={form.label} />
               </SelectTrigger>
               <SelectContent>
                 {form.options.map((option: string) => (
@@ -152,7 +153,7 @@ const InputsFormContent = ({ showTip }: Props) => {
               value={inputsFormValue?.[form.variable] || ''}
               onChange={(v) => handleFormChange(form.variable, v)}
               noWrapper
-              className="bg h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
+              className="bg h-20 overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
               placeholder={<div className="whitespace-pre">{form.json_schema}</div>}
             />
           )}

@@ -20,7 +20,7 @@ import {
   selectRootEnd,
   setEditorRootText,
   waitForEditorReady,
-} from '../test-helpers'
+} from './test-helpers'
 
 describe('test-helpers', () => {
   describe('renderLexicalEditor & waitForEditorReady', () => {

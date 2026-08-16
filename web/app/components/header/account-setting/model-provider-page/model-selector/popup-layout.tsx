@@ -2,25 +2,13 @@ import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ComboboxInput, ComboboxInputGroup } from '@langgenius/dify-ui/combobox'
 import {
+  ScrollArea,
   ScrollAreaContent,
-  ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
 import { useTranslation } from 'react-i18next'
-
-type ModelSelectorPopupFrameProps = {
-  children: ReactNode
-}
-
-export function ModelSelectorPopupFrame({ children }: ModelSelectorPopupFrameProps) {
-  return (
-    <div className="flex max-h-[min(624px,var(--available-height,624px))] flex-col overflow-hidden rounded-xl bg-components-panel-bg">
-      {children}
-    </div>
-  )
-}
 
 type ModelSelectorSearchHeaderProps = {
   inputValue: string
@@ -75,18 +63,19 @@ type ModelSelectorScrollBodyProps = {
 
 export function ModelSelectorScrollBody({ children, label }: ModelSelectorScrollBodyProps) {
   return (
-    <ScrollAreaRoot className="relative min-h-0 overflow-hidden overscroll-contain">
+    <ScrollArea className="relative min-h-0 overflow-hidden">
       <ScrollAreaViewport
         aria-label={label}
-        className="max-h-[calc(min(624px,var(--available-height,624px))-84px)] overflow-x-hidden overscroll-contain"
+        style={{ overflowX: 'hidden' }}
+        className="max-h-[calc(min(624px,var(--available-height,624px))-84px)] overscroll-contain"
         role="region"
       >
-        <ScrollAreaContent className="min-w-0 overflow-x-hidden">{children}</ScrollAreaContent>
+        <ScrollAreaContent style={{ minWidth: 0 }}>{children}</ScrollAreaContent>
       </ScrollAreaViewport>
       <ScrollAreaScrollbar className="z-2">
         <ScrollAreaThumb />
       </ScrollAreaScrollbar>
-    </ScrollAreaRoot>
+    </ScrollArea>
   )
 }
 
@@ -94,10 +83,7 @@ export function CompatibleModelsNotice() {
   const { t } = useTranslation()
 
   return (
-    <div
-      data-testid="compatible-models-banner"
-      className="px-4 py-2 system-xs-regular text-text-tertiary"
-    >
+    <div className="px-4 py-2 system-xs-regular text-text-tertiary">
       {t(($) => $['modelProvider.selector.onlyCompatibleModelsShown'], { ns: 'common' })}
     </div>
   )
@@ -140,10 +126,10 @@ export function ModelProviderSettingsFooter({ onOpenSettings }: ModelProviderSet
     <div className="shrink-0 border-t border-divider-subtle p-1">
       <button
         type="button"
-        className="flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+        className="flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
         onClick={onOpenSettings}
       >
-        <span className="i-ri-equalizer-2-line size-4 shrink-0" />
+        <span aria-hidden className="i-ri-equalizer-2-line size-4 shrink-0" />
         <span className="system-xs-medium">
           {t(($) => $['modelProvider.selector.modelProviderSettings'], { ns: 'common' })}
         </span>

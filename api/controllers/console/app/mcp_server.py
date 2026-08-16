@@ -1,7 +1,6 @@
 import json
 from datetime import datetime
 from typing import Any
-from uuid import UUID
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
@@ -16,6 +15,7 @@ from controllers.console.wraps import (
     RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
@@ -110,17 +110,16 @@ class AppMCPServerController(Resource):
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_tenant_id
     @get_app_model
-    def post(self, current_tenant_id: str, app_model: App):
-        payload = MCPServerCreatePayload.model_validate(console_ns.payload or {})
-
-        description = payload.description
+    @model_validate(MCPServerCreatePayload)
+    def post(self, req_data: MCPServerCreatePayload, current_tenant_id: str, app_model: App):
+        description = req_data.description
         if not description:
             description = app_model.description or ""
 
         server = AppMCPServer(
             name=app_model.name,
             description=description,
-            parameters=json.dumps(payload.parameters, ensure_ascii=False),
+            parameters=json.dumps(req_data.parameters, ensure_ascii=False),
             status=AppMCPServerStatus.ACTIVE,
             app_id=app_model.id,
             tenant_id=current_tenant_id,
@@ -145,23 +144,23 @@ class AppMCPServerController(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @get_app_model
-    def put(self, app_model: App):
-        payload = MCPServerUpdatePayload.model_validate(console_ns.payload or {})
+    @model_validate(MCPServerUpdatePayload)
+    def put(self, req_data: MCPServerUpdatePayload, app_model: App):
         app_ref = AppRefService.create_app_ref(app_model)
-        server_ref = AppRefService.create_mcp_server_ref(app_ref, payload.id)
+        server_ref = AppRefService.create_mcp_server_ref(app_ref, req_data.id)
         server = db.session.scalar(
             select(AppMCPServer)
             .where(
                 AppMCPServer.id == server_ref.server_id,
-                AppMCPServer.tenant_id == server_ref.tenant_id,
-                AppMCPServer.app_id == server_ref.app_id,
+                AppMCPServer.tenant_id == server_ref.app.tenant_id,
+                AppMCPServer.app_id == server_ref.app.app_id,
             )
             .limit(1)
         )
         if not server:
             raise NotFound()
 
-        description = payload.description
+        description = req_data.description
         if description is None or not description:
             server.description = app_model.description or ""
         else:
@@ -169,21 +168,21 @@ class AppMCPServerController(Resource):
 
         server.name = app_model.name
 
-        server.parameters = json.dumps(payload.parameters, ensure_ascii=False)
-        if payload.status:
+        server.parameters = json.dumps(req_data.parameters, ensure_ascii=False)
+        if req_data.status:
             try:
-                server.status = AppMCPServerStatus(payload.status)
+                server.status = AppMCPServerStatus(req_data.status)
             except ValueError:
                 raise ValueError("Invalid status")
         db.session.commit()
         return dump_response(AppMCPServerResponse, server)
 
 
-@console_ns.route("/apps/<uuid:server_id>/server/refresh")
+@console_ns.route("/apps/<uuid:app_id>/server/refresh")
 class AppMCPServerRefreshController(Resource):
     @console_ns.doc("refresh_app_mcp_server")
     @console_ns.doc(description="Refresh MCP server configuration and regenerate server code")
-    @console_ns.doc(params={"server_id": "Server ID"})
+    @console_ns.doc(params={"app_id": "App ID"})
     @console_ns.response(200, "MCP server refreshed successfully", console_ns.models[AppMCPServerResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(404, "Server not found")
@@ -193,10 +192,11 @@ class AppMCPServerRefreshController(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @with_current_tenant_id
-    def get(self, current_tenant_id: str, server_id: UUID):
+    @get_app_model
+    def post(self, current_tenant_id: str, app_model: App):
         server = db.session.scalar(
             select(AppMCPServer)
-            .where(AppMCPServer.id == server_id, AppMCPServer.tenant_id == current_tenant_id)
+            .where(AppMCPServer.app_id == app_model.id, AppMCPServer.tenant_id == current_tenant_id)
             .limit(1)
         )
         if not server:

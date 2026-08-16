@@ -25,7 +25,7 @@ const mockHandleStopRun = vi.fn()
 const mockHandleWorkflowStartRunInWorkflow = vi.fn()
 const mockHandleCheckBeforePublish = vi.fn()
 const mockUseAvailableNodesMetaData = vi.hoisted(() => vi.fn())
-const mockAppContext = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: ['snippets.create_and_modify'] as string[],
 }))
 const mockInspectVarsCrud = {
@@ -52,47 +52,11 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   },
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockAppContext.workspacePermissionKeys,
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: mockConsoleState.workspacePermissionKeys,
   }))
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockAppContext.workspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockAppContext.workspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockAppContext.workspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockAppContext.workspacePermissionKeys,
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 let capturedHooksStore: Record<string, unknown> | undefined
@@ -118,7 +82,7 @@ vi.mock('@/service/use-snippet-workflows', () => ({
   }),
 }))
 
-vi.mock('@/app/components/snippets/hooks/use-configs-map', () => ({
+vi.mock('../../hooks/use-configs-map', () => ({
   useConfigsMap: () => ({
     flowId: 'snippet-1',
     flowType: 'snippet',
@@ -138,15 +102,15 @@ vi.mock('@/app/components/workflow/hooks/use-checklist', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow-app/hooks', () => ({
+vi.mock('@/app/components/workflow-app/hooks/use-available-nodes-meta-data', () => ({
   useAvailableNodesMetaData: () => mockUseAvailableNodesMetaData(),
 }))
 
-vi.mock('@/app/components/snippets/hooks/use-inspect-vars-crud', () => ({
+vi.mock('../../hooks/use-inspect-vars-crud', () => ({
   useInspectVarsCrud: () => mockInspectVarsCrud,
 }))
 
-vi.mock('@/app/components/snippets/hooks/use-nodes-sync-draft', () => ({
+vi.mock('../../hooks/use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => ({
     doSyncWorkflowDraft: mockDoSyncWorkflowDraft,
     syncInputFieldsDraft: mockSyncInputFieldsDraft,
@@ -154,13 +118,13 @@ vi.mock('@/app/components/snippets/hooks/use-nodes-sync-draft', () => ({
   }),
 }))
 
-vi.mock('@/app/components/snippets/hooks/use-snippet-refresh-draft', () => ({
+vi.mock('../../hooks/use-snippet-refresh-draft', () => ({
   useSnippetRefreshDraft: () => ({
     handleRefreshWorkflowDraft: vi.fn(),
   }),
 }))
 
-vi.mock('@/app/components/snippets/hooks/use-snippet-run', () => ({
+vi.mock('../../hooks/use-snippet-run', () => ({
   useSnippetRun: () => ({
     handleBackupDraft: mockHandleBackupDraft,
     handleLoadBackupDraft: mockHandleLoadBackupDraft,
@@ -170,7 +134,7 @@ vi.mock('@/app/components/snippets/hooks/use-snippet-run', () => ({
   }),
 }))
 
-vi.mock('@/app/components/snippets/hooks/use-snippet-start-run', () => ({
+vi.mock('../../hooks/use-snippet-start-run', () => ({
   useSnippetStartRun: () => ({
     handleStartWorkflowRun: mockHandleStartWorkflowRun,
     handleWorkflowStartRunInWorkflow: mockHandleWorkflowStartRunInWorkflow,
@@ -297,7 +261,7 @@ const createDraftNode = (id = 'draft-node') =>
 describe('SnippetMain', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockAppContext.workspacePermissionKeys = ['snippets.create_and_modify']
+    mockConsoleState.workspacePermissionKeys = ['snippets.create_and_modify']
     mockDoSyncWorkflowDraft.mockResolvedValue(undefined)
     mockSyncInputFieldsDraft.mockResolvedValue(undefined)
     mockPublishSnippetMutateAsync.mockResolvedValue({ created_at: 1_744_000_000 })
@@ -373,7 +337,7 @@ describe('SnippetMain', () => {
     })
 
     it('should make the snippet canvas readonly and skip draft sync without create-and-modify permission', async () => {
-      mockAppContext.workspacePermissionKeys = ['snippets.management']
+      mockConsoleState.workspacePermissionKeys = ['snippets.management']
 
       const { store } = renderSnippetMain({
         hasPublishedWorkflow: false,

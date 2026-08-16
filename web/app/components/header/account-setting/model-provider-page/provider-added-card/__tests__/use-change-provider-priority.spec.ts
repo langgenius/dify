@@ -86,7 +86,7 @@ const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =
     ...overrides,
   }) as ModelProvider
 
-const createTestQueryClient = () =>
+const createConsoleQueryClient = () =>
   new QueryClient({
     defaultOptions: {
       queries: { retry: false, gcTime: 0 },
@@ -107,7 +107,7 @@ describe('useChangeProviderPriority', () => {
 
   describe('when changing provider priority', () => {
     it('should submit the selected preferred provider type for the current provider', async () => {
-      const queryClient = createTestQueryClient()
+      const queryClient = createConsoleQueryClient()
       const invalidateQueries = vi
         .spyOn(queryClient, 'invalidateQueries')
         .mockResolvedValue(undefined)
@@ -152,7 +152,7 @@ describe('useChangeProviderPriority', () => {
     })
 
     it('should tolerate an undefined provider and still submit a request without refreshing model lists', async () => {
-      const queryClient = createTestQueryClient()
+      const queryClient = createConsoleQueryClient()
       const invalidateQueries = vi
         .spyOn(queryClient, 'invalidateQueries')
         .mockResolvedValue(undefined)
@@ -183,7 +183,7 @@ describe('useChangeProviderPriority', () => {
 
   describe('when the mutation is not successful immediately', () => {
     it('should show an error toast when the mutation fails', async () => {
-      const queryClient = createTestQueryClient()
+      const queryClient = createConsoleQueryClient()
       const invalidateQueries = vi
         .spyOn(queryClient, 'invalidateQueries')
         .mockResolvedValue(undefined)
@@ -218,7 +218,7 @@ describe('useChangeProviderPriority', () => {
           }),
       )
 
-      const queryClient = createTestQueryClient()
+      const queryClient = createConsoleQueryClient()
       const { result } = renderHook(() => useChangeProviderPriority(createProvider()), {
         wrapper: createWrapper(queryClient),
       })

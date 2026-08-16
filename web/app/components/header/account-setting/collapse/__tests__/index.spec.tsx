@@ -1,5 +1,6 @@
 import type { IItem } from '../index'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import Collapse from '../index'
 
 describe('Collapse', () => {
@@ -8,7 +9,7 @@ describe('Collapse', () => {
     { key: '2', name: 'Item 2' },
   ]
 
-  const mockRenderItem = (item: IItem) => <div data-testid={`item-${item.key}`}>{item.name}</div>
+  const mockRenderItem = (item: IItem) => <div>{item.name}</div>
 
   const mockOnSelect = vi.fn()
 
@@ -16,86 +17,25 @@ describe('Collapse', () => {
     vi.clearAllMocks()
   })
 
-  describe('Rendering', () => {
-    it('should render title and initially closed state', () => {
-      // Act
-      const { container } = render(
-        <Collapse title="Test Title" items={mockItems} renderItem={mockRenderItem} />,
-      )
+  it('toggles its items and reports the selected item', async () => {
+    const user = userEvent.setup()
+    render(
+      <Collapse
+        title="Test Title"
+        items={mockItems}
+        renderItem={mockRenderItem}
+        onSelect={mockOnSelect}
+      />,
+    )
 
-      // Assert
-      expect(screen.getByText('Test Title')).toBeInTheDocument()
-      expect(screen.queryByTestId('item-1')).not.toBeInTheDocument()
-      expect(container.querySelector('svg')).toBeInTheDocument()
-    })
+    const trigger = screen.getByRole('button', { name: 'Test Title' })
+    expect(screen.queryByText('Item 1')).not.toBeInTheDocument()
 
-    it('should apply custom wrapperClassName', () => {
-      // Act
-      const { container } = render(
-        <Collapse
-          title="Test Title"
-          items={[]}
-          renderItem={mockRenderItem}
-          wrapperClassName="custom-class"
-        />,
-      )
+    await user.click(trigger)
+    await user.click(screen.getByText('Item 1'))
+    expect(mockOnSelect).toHaveBeenCalledWith(mockItems[0])
 
-      // Assert
-      expect(container.firstChild).toHaveClass('custom-class')
-    })
-  })
-
-  describe('Interactions', () => {
-    it('should toggle content open and closed', () => {
-      // Act & Assert
-      render(<Collapse title="Test Title" items={mockItems} renderItem={mockRenderItem} />)
-
-      // Initially closed
-      expect(screen.queryByTestId('item-1')).not.toBeInTheDocument()
-
-      // Click to open
-      fireEvent.click(screen.getByRole('button', { name: 'Test Title' }))
-      expect(screen.getByTestId('item-1')).toBeInTheDocument()
-      expect(screen.getByTestId('item-2')).toBeInTheDocument()
-
-      // Click to close
-      fireEvent.click(screen.getByRole('button', { name: 'Test Title' }))
-      expect(screen.queryByTestId('item-1')).not.toBeInTheDocument()
-    })
-
-    it('should handle item selection', () => {
-      // Arrange
-      render(
-        <Collapse
-          title="Test Title"
-          items={mockItems}
-          renderItem={mockRenderItem}
-          onSelect={mockOnSelect}
-        />,
-      )
-
-      // Act
-      fireEvent.click(screen.getByRole('button', { name: 'Test Title' }))
-      const item1 = screen.getByTestId('item-1')
-      fireEvent.click(item1)
-
-      // Assert
-      expect(mockOnSelect).toHaveBeenCalledTimes(1)
-      expect(mockOnSelect).toHaveBeenCalledWith(mockItems[0])
-    })
-
-    it('should not crash when onSelect is undefined and item is clicked', () => {
-      // Arrange
-      render(<Collapse title="Test Title" items={mockItems} renderItem={mockRenderItem} />)
-
-      // Act
-      fireEvent.click(screen.getByRole('button', { name: 'Test Title' }))
-      const item1 = screen.getByTestId('item-1')
-      fireEvent.click(item1)
-
-      // Assert
-      // Should not throw
-      expect(screen.getByTestId('item-1')).toBeInTheDocument()
-    })
+    await user.click(trigger)
+    expect(screen.queryByText('Item 1')).not.toBeInTheDocument()
   })
 })

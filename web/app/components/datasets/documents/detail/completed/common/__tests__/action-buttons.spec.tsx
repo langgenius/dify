@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode } from '@/models/datasets'
 import { DocumentContext } from '../../../context'
 import { ActionButtons } from '../action-buttons'
@@ -42,15 +42,6 @@ describe('ActionButtons', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(
-        <ActionButtons handleCancel={vi.fn()} handleSave={vi.fn()} loading={false} />,
-        { wrapper: createWrapper({}) },
-      )
-
-      expect(container.firstChild)!.toBeInTheDocument()
-    })
-
     it('should render cancel button', () => {
       render(<ActionButtons handleCancel={vi.fn()} handleSave={vi.fn()} loading={false} />, {
         wrapper: createWrapper({}),

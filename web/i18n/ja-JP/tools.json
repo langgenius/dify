@@ -162,7 +162,7 @@
   "mcp.server.modal.parametersPlaceholder": "パラメータの目的と制約",
   "mcp.server.modal.parametersTip": "各パラメータの説明を追加して、LLM がその目的と制約を理解できるようにします。",
   "mcp.server.publishTip": "アプリが公開されていません。まずアプリを公開してください。",
-  "mcp.server.reGen": "サーバーURL を再生成しますか？",
+  "mcp.server.reGen": "サーバー URL を再生成しますか？現在の URL は直ちに使用できなくなります。",
   "mcp.server.title": "MCP サーバー",
   "mcp.server.url": "サーバーURL",
   "mcp.toolItem.noDescription": "説明なし",

@@ -82,7 +82,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/declaration
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: () => <div data-testid="model-selector">Model Selector</div>,
+  ModelSelector: () => <div data-testid="model-selector">Model Selector</div>,
 }))
 
 const defaultFeatures: Features = {

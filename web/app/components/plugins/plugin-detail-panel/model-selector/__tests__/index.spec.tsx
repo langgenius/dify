@@ -3,7 +3,8 @@ import type {
   ModelItem,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import {
   ConfigurationMethodEnum,
   ModelStatusEnum,
@@ -77,91 +78,58 @@ vi.mock('@/utils/completion-params', () => ({
 }))
 
 // Mock child components
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({
-    defaultModel,
-    modelList,
+vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => {
+  const ModelSelector = ({
+    value,
+    models,
     scopeFeatures,
-    triggerClassName,
-    readonly,
-    onSelect,
+    surface,
+    disabled,
+    onValueChange,
   }: {
-    defaultModel?: { provider?: string; model?: string }
-    modelList?: Model[]
+    value?: { provider?: string; model?: string }
+    models?: Model[]
     scopeFeatures?: string[]
-    triggerClassName?: string
-    readonly?: boolean
-    onSelect?: (model: { provider: string; model: string }) => void
+    surface?: 'default' | 'workflow'
+    disabled?: boolean
+    onValueChange?: (model: { provider: string; model: string }) => void
   }) => {
-    const currentProvider = modelList?.find((model) => model.provider === defaultModel?.provider)
-    const currentModel = currentProvider?.models.find(
-      (model) => model.model === defaultModel?.model,
-    )
-    const hasDeprecated = !!defaultModel && (!currentProvider || !currentModel)
+    const currentProvider = models?.find((model) => model.provider === value?.provider)
+    const currentModel = currentProvider?.models.find((model) => model.model === value?.model)
+    const hasDeprecated = !!value && (!currentProvider || !currentModel)
     const modelDisabled = currentModel?.status !== ModelStatusEnum.active
 
     return (
       <div
         data-testid="trigger"
-        data-disabled={readonly || hasDeprecated || modelDisabled}
+        data-disabled={disabled || hasDeprecated || modelDisabled}
         data-has-deprecated={hasDeprecated}
         data-model-disabled={modelDisabled}
-        data-provider={defaultModel?.provider}
-        data-model={defaultModel?.model}
-        data-in-workflow={triggerClassName?.includes('workflow-block-parma-bg')}
+        data-provider={value?.provider}
+        data-model={value?.model}
+        data-in-workflow={surface === 'workflow'}
         data-has-current-provider={!!currentProvider}
         data-has-current-model={!!currentModel}
       >
         <button
           type="button"
           data-testid="model-selector"
-          data-default-model={JSON.stringify(defaultModel)}
-          data-model-list-count={modelList?.length || 0}
+          data-default-model={JSON.stringify(value)}
+          data-model-list-count={models?.length || 0}
           data-scope-features={JSON.stringify(scopeFeatures)}
-          onClick={() => onSelect?.({ provider: 'openai', model: 'gpt-4' })}
+          onClick={() => onValueChange?.({ provider: 'openai', model: 'gpt-4' })}
         >
           Model Selector
         </button>
       </div>
     )
-  },
-}))
+  }
 
-vi.mock(
-  '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/agent-model-trigger',
-  () => ({
-    default: ({
-      disabled,
-      hasDeprecated,
-      currentProvider,
-      currentModel,
-      providerName,
-      modelId,
-      scope,
-    }: {
-      disabled?: boolean
-      hasDeprecated?: boolean
-      currentProvider?: Model
-      currentModel?: ModelItem
-      providerName?: string
-      modelId?: string
-      scope?: string
-    }) => (
-      <div
-        data-testid="agent-model-trigger"
-        data-disabled={disabled}
-        data-has-deprecated={hasDeprecated}
-        data-provider={providerName}
-        data-model={modelId}
-        data-scope={scope}
-        data-has-current-provider={!!currentProvider}
-        data-has-current-model={!!currentModel}
-      >
-        Agent Model Trigger
-      </div>
-    ),
-  }),
-)
+  return {
+    ModelSelector,
+    SplitModelSelector: ModelSelector,
+  }
+})
 
 vi.mock('../llm-params-panel', () => ({
   default: ({
@@ -176,7 +144,8 @@ vi.mock('../llm-params-panel', () => ({
     onCompletionParamsChange?: (params: Record<string, unknown>) => void
     isAdvancedMode: boolean
   }) => (
-    <div
+    <button
+      type="button"
       data-testid="llm-params-panel"
       data-provider={provider}
       data-model={modelId}
@@ -184,7 +153,7 @@ vi.mock('../llm-params-panel', () => ({
       onClick={() => onCompletionParamsChange?.({ temperature: 0.8 })}
     >
       LLM Params Panel
-    </div>
+    </button>
   ),
 }))
 
@@ -199,14 +168,15 @@ vi.mock('../tts-params-panel', () => ({
     voice?: string
     onChange?: (language: string, voice: string) => void
   }) => (
-    <div
+    <button
+      type="button"
       data-testid="tts-params-panel"
       data-language={language}
       data-voice={voice}
       onClick={() => onChange?.('en-US', 'alloy')}
     >
       TTS Params Panel
-    </div>
+    </button>
   ),
 }))
 
@@ -295,17 +265,6 @@ describe('ModelParameterModal', () => {
 
   // ==================== Rendering Tests ====================
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      // Arrange
-      const props = createDefaultProps()
-
-      // Act
-      const { container } = render(<ModelParameterModal {...props} />)
-
-      // Assert
-      expect(container).toBeInTheDocument()
-    })
-
     it('should render trigger component by default', () => {
       // Arrange
       const props = createDefaultProps()
@@ -325,50 +284,6 @@ describe('ModelParameterModal', () => {
       expect(screen.getByTestId('model-selector')).toBeInTheDocument()
       expect(screen.queryByTestId('llm-params-panel')).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: /modelProvider\.modelSettings/i })).toBeDisabled()
-    })
-
-    it('should render agent model trigger when isAgentStrategy is true', () => {
-      // Arrange
-      const props = createDefaultProps({ isAgentStrategy: true })
-
-      // Act
-      render(<ModelParameterModal {...props} />)
-
-      // Assert
-      expect(screen.getByTestId('agent-model-trigger')).toBeInTheDocument()
-      expect(screen.queryByTestId('trigger')).not.toBeInTheDocument()
-    })
-
-    it('should render custom trigger when renderTrigger is provided', () => {
-      // Arrange
-      const renderTrigger = vi.fn().mockReturnValue(<div data-testid="custom-trigger">Custom</div>)
-      const props = createDefaultProps({ renderTrigger })
-
-      // Act
-      render(<ModelParameterModal {...props} />)
-
-      // Assert
-      expect(screen.getByTestId('custom-trigger')).toBeInTheDocument()
-      expect(screen.queryByTestId('trigger')).not.toBeInTheDocument()
-    })
-
-    it('should call renderTrigger with correct props', () => {
-      // Arrange
-      const renderTrigger = vi.fn().mockReturnValue(<div>Custom</div>)
-      const value = { provider: 'openai', model: 'gpt-4' }
-      const props = createDefaultProps({ renderTrigger, value })
-
-      // Act
-      render(<ModelParameterModal {...props} />)
-
-      // Assert
-      expect(renderTrigger).toHaveBeenCalledWith(
-        expect.objectContaining({
-          open: false,
-          providerName: 'openai',
-          modelId: 'gpt-4',
-        }),
-      )
     })
 
     it('should not render portal content when closed', () => {
@@ -413,39 +328,6 @@ describe('ModelParameterModal', () => {
 
       // Assert
       expect(screen.getByTestId('trigger')).toHaveAttribute('data-in-workflow', 'true')
-    })
-
-    it('should pass scope to agent model trigger', () => {
-      // Arrange
-      const props = createDefaultProps({ isAgentStrategy: true, scope: 'llm&vision' })
-
-      // Act
-      render(<ModelParameterModal {...props} />)
-
-      // Assert
-      expect(screen.getByTestId('agent-model-trigger')).toHaveAttribute('data-scope', 'llm&vision')
-    })
-
-    it('should apply popupClassName to portal content', async () => {
-      // Arrange
-      const model = createModel({
-        provider: 'openai',
-        models: [createModelItem({ model: 'gpt-4' })],
-      })
-      setupModelLists({ textGeneration: [model] })
-      const props = createDefaultProps({
-        popupClassName: 'custom-popup-class',
-        value: { provider: 'openai', model: 'gpt-4' },
-      })
-
-      // Act
-      render(<ModelParameterModal {...props} />)
-      openSettings()
-
-      // Assert
-      await waitFor(() => {
-        expect(document.querySelector('.custom-popup-class')).toBeInTheDocument()
-      })
     })
 
     it('should default scope to textGeneration', () => {
@@ -790,6 +672,39 @@ describe('ModelParameterModal', () => {
   })
 
   describe('Memoization - disabled', () => {
+    it('should keep active TTS model settings available without an active text generation model', async () => {
+      const user = userEvent.setup()
+      mockProviderContextValue.isAPIKeySet = false
+      const ttsModel = createModel({
+        provider: 'tts-provider',
+        models: [
+          createModelItem({
+            model: 'tts-1',
+            model_type: ModelTypeEnum.tts,
+            status: ModelStatusEnum.active,
+          }),
+        ],
+      })
+      setupModelLists({ tts: [ttsModel] })
+
+      render(
+        <ModelParameterModal
+          {...createDefaultProps()}
+          scope={ModelTypeEnum.tts}
+          value={{ provider: 'tts-provider', model: 'tts-1' }}
+        />,
+      )
+
+      const settingsButton = screen.getByRole('button', {
+        name: /modelProvider\.modelSettings/i,
+      })
+      expect(settingsButton).toBeEnabled()
+
+      await user.click(settingsButton)
+
+      expect(await screen.findByTestId('tts-params-panel')).toBeInTheDocument()
+    })
+
     it('should keep model selection available when isAPIKeySet is false', () => {
       // Arrange
       mockProviderContextValue.isAPIKeySet = false
@@ -1219,7 +1134,7 @@ describe('ModelParameterModal', () => {
       })
     })
 
-    it('should handle value with only provider', () => {
+    it('should not pass a partial value with only provider', () => {
       // Arrange
       const model = createModel({ provider: 'openai' })
       setupModelLists({ textGeneration: [model] })
@@ -1229,10 +1144,10 @@ describe('ModelParameterModal', () => {
       render(<ModelParameterModal {...props} />)
 
       // Assert
-      expect(screen.getByTestId('trigger')).toHaveAttribute('data-provider', 'openai')
+      expect(screen.getByTestId('trigger')).not.toHaveAttribute('data-provider')
     })
 
-    it('should handle value with only model', () => {
+    it('should not pass a partial value with only model', () => {
       // Arrange
       const props = createDefaultProps({ value: { model: 'gpt-4' } })
 
@@ -1240,7 +1155,7 @@ describe('ModelParameterModal', () => {
       render(<ModelParameterModal {...props} />)
 
       // Assert
-      expect(screen.getByTestId('trigger')).toHaveAttribute('data-model', 'gpt-4')
+      expect(screen.getByTestId('trigger')).not.toHaveAttribute('data-model')
     })
 
     it('should handle complex scope with multiple features', async () => {
@@ -1321,9 +1236,9 @@ describe('ModelParameterModal', () => {
     })
   })
 
-  // ==================== Model Selector Default Model ====================
-  describe('Model Selector Default Model', () => {
-    it('should pass defaultModel to ModelSelector when provider and model exist', async () => {
+  // ==================== Model Selector Value ====================
+  describe('Model Selector Value', () => {
+    it('should pass value to ModelSelector when provider and model exist', async () => {
       // Arrange
       const props = createDefaultProps({ value: { provider: 'openai', model: 'gpt-4' } })
 
@@ -1339,37 +1254,29 @@ describe('ModelParameterModal', () => {
       })
     })
 
-    it('should pass partial defaultModel when provider is missing', async () => {
-      // Arrange - component creates defaultModel when either provider or model exists
+    it('should pass no value when provider is missing', async () => {
       const props = createDefaultProps({ value: { model: 'gpt-4' } })
 
       // Act
       render(<ModelParameterModal {...props} />)
       openSettings()
 
-      // Assert - defaultModel is created with undefined provider
       await waitFor(() => {
         const selector = screen.getByTestId('model-selector')
-        const defaultModel = JSON.parse(selector.getAttribute('data-default-model') || '{}')
-        expect(defaultModel.model).toBe('gpt-4')
-        expect(defaultModel.provider).toBeUndefined()
+        expect(selector.getAttribute('data-default-model')).toBeNull()
       })
     })
 
-    it('should pass partial defaultModel when model is missing', async () => {
-      // Arrange - component creates defaultModel when either provider or model exists
+    it('should pass no value when model is missing', async () => {
       const props = createDefaultProps({ value: { provider: 'openai' } })
 
       // Act
       render(<ModelParameterModal {...props} />)
       openSettings()
 
-      // Assert - defaultModel is created with undefined model
       await waitFor(() => {
         const selector = screen.getByTestId('model-selector')
-        const defaultModel = JSON.parse(selector.getAttribute('data-default-model') || '{}')
-        expect(defaultModel.provider).toBe('openai')
-        expect(defaultModel.model).toBeUndefined()
+        expect(selector.getAttribute('data-default-model')).toBeNull()
       })
     })
 
@@ -1464,22 +1371,6 @@ describe('ModelParameterModal', () => {
       // Assert
       const trigger = screen.getByTestId('trigger')
       expect(trigger).toBeInTheDocument()
-    })
-  })
-
-  // ==================== Component Type ====================
-  describe('Component Type', () => {
-    it('should be a functional component', () => {
-      // Assert
-      expect(typeof ModelParameterModal).toBe('function')
-    })
-
-    it('should accept all required props', () => {
-      // Arrange
-      const props = createDefaultProps()
-
-      // Act & Assert
-      expect(() => render(<ModelParameterModal {...props} />)).not.toThrow()
     })
   })
 })

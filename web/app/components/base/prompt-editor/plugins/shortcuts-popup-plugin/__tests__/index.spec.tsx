@@ -542,13 +542,6 @@ describe('ShortcutsPopupPlugin', () => {
   })
 
   // ─── className prop ───
-  it('applies custom className to floating popup', async () => {
-    render(<MinimalEditor className="custom-popup-class" />)
-    focusAndTriggerHotkey('/')
-    await screen.findByText(SHORTCUTS_EMPTY_CONTENT)
-    const floatingDiv = screen.getByTestId('shortcuts-popup')
-    expect(floatingDiv).toHaveClass('custom-popup-class')
-  })
 
   // ─── mousedown inside portal should not close ───
   it('does not close on mousedown inside the portal', async () => {

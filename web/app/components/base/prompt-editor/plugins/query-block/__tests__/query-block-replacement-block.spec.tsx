@@ -1,13 +1,13 @@
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { render, waitFor } from '@testing-library/react'
 import { QUERY_PLACEHOLDER_TEXT } from '../../../constants'
-import { CustomTextNode } from '../../custom-text/node'
 import {
   getNodeCount,
   renderLexicalEditor,
   setEditorRootText,
   waitForEditorReady,
-} from '../../test-helpers'
+} from '../../__tests__/test-helpers'
+import { CustomTextNode } from '../../custom-text/node'
 import { QueryBlockNode } from '../index'
 import QueryBlockReplacementBlock from '../query-block-replacement-block'
 

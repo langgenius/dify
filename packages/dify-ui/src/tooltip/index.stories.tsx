@@ -1,10 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type { Placement } from '.'
+import type { TooltipContentProps } from '.'
 import * as React from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '.'
+import { IconButton as DifyIconButton } from '../icon-button'
 
-const iconButtonClassName =
-  'inline-flex h-8 w-8 items-center justify-center rounded-lg border border-divider-subtle bg-components-button-secondary-bg text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
 const triggerButtonClassName =
   'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
 
@@ -56,9 +55,9 @@ export const IconButton: Story = {
         <Tooltip key={label}>
           <TooltipTrigger
             render={
-              <button type="button" aria-label={label} className={iconButtonClassName}>
-                <span aria-hidden className={`${icon} h-4 w-4`} />
-              </button>
+              <DifyIconButton aria-label={label} size="lg" variant="secondary">
+                <span aria-hidden className={`${icon} size-4`} />
+              </DifyIconButton>
             }
           />
           <TooltipContent>{label}</TooltipContent>
@@ -91,7 +90,9 @@ export const KeyboardShortcut: Story = {
   ),
 }
 
-const PLACEMENTS: Placement[] = [
+type TooltipPlacement = NonNullable<TooltipContentProps['placement']>
+
+const PLACEMENTS: TooltipPlacement[] = [
   'top-start',
   'top',
   'top-end',
@@ -107,7 +108,7 @@ const PLACEMENTS: Placement[] = [
 ]
 
 const PlacementsDemo = () => {
-  const [placement, setPlacement] = React.useState<Placement>('top')
+  const [placement, setPlacement] = React.useState<TooltipPlacement>('top')
 
   return (
     <div className="flex flex-col items-center gap-4 p-24">
@@ -117,7 +118,7 @@ const PlacementsDemo = () => {
             key={value}
             type="button"
             onClick={() => setPlacement(value)}
-            className={`rounded-md border border-divider-subtle px-2 py-1 text-text-secondary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid ${
+            className={`rounded-md border border-divider-subtle px-2 py-1 text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden ${
               placement === value ? 'bg-state-base-hover' : 'bg-components-button-secondary-bg'
             }`}
           >
@@ -128,9 +129,9 @@ const PlacementsDemo = () => {
       <Tooltip open>
         <TooltipTrigger
           render={
-            <button type="button" aria-label="Placement anchor" className={iconButtonClassName}>
-              <span aria-hidden className="i-ri-pushpin-line h-4 w-4" />
-            </button>
+            <DifyIconButton aria-label="Placement anchor" size="lg" variant="secondary">
+              <span aria-hidden className="i-ri-pushpin-line size-4" />
+            </DifyIconButton>
           }
         />
         <TooltipContent placement={placement}>{`placement="${placement}"`}</TooltipContent>
@@ -165,13 +166,9 @@ const DelayDemo = () => (
         <Tooltip>
           <TooltipTrigger
             render={
-              <button
-                type="button"
-                aria-label={`${label} (${delay}ms)`}
-                className={iconButtonClassName}
-              >
-                <span aria-hidden className="i-ri-timer-line h-4 w-4" />
-              </button>
+              <DifyIconButton aria-label={`${label} (${delay}ms)`} size="lg" variant="secondary">
+                <span aria-hidden className="i-ri-timer-line size-4" />
+              </DifyIconButton>
             }
           />
           <TooltipContent>{`${label} (${delay}ms)`}</TooltipContent>

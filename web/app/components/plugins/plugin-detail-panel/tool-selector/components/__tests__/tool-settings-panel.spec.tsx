@@ -1,7 +1,7 @@
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
-import ToolSettingsPanel from '../tool-settings-panel'
+import { describe, expect, it, vi } from 'vite-plus/test'
+import { ToolSettingsPanel } from '../tool-settings-panel'
 
 vi.mock('@/app/components/base/tab-slider-plain', () => ({
   default: ({

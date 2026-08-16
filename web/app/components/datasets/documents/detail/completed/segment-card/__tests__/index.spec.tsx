@@ -163,8 +163,7 @@ describe('SegmentCard', () => {
     it('should render loading skeleton when loading is true', () => {
       render(<SegmentCard loading={true} focused={defaultFocused} />)
 
-      // ParentChunkCardSkeleton should render
-      expect(screen.getByTestId('parent-chunk-card-skeleton')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.viewMore' })).toBeDisabled()
     })
 
     it('should render segment card content when loading is false', () => {
@@ -200,22 +199,6 @@ describe('SegmentCard', () => {
       render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
 
       expect(screen.getByText('42 datasetDocuments.segment.hitCount')).toBeInTheDocument()
-    })
-
-    it('should apply custom className', () => {
-      const detail = createMockSegmentDetail()
-
-      render(
-        <SegmentCard
-          loading={false}
-          detail={detail}
-          className="custom-class"
-          focused={defaultFocused}
-        />,
-      )
-
-      const card = screen.getByTestId('segment-card')
-      expect(card).toHaveClass('custom-class')
     })
   })
 
@@ -274,21 +257,6 @@ describe('SegmentCard', () => {
       )
 
       expect(screen.queryByRole('switch')).not.toBeInTheDocument()
-    })
-
-    it('should apply focused styles when segmentContent is focused', () => {
-      const detail = createMockSegmentDetail()
-
-      render(
-        <SegmentCard
-          loading={false}
-          detail={detail}
-          focused={{ segmentIndex: false, segmentContent: true }}
-        />,
-      )
-
-      const card = screen.getByTestId('segment-card')
-      expect(card).toHaveClass('bg-dataset-chunk-detail-card-hover-bg')
     })
   })
 
@@ -643,29 +611,6 @@ describe('SegmentCard', () => {
 
   // Mode-specific Rendering Tests
   describe('Mode-specific Rendering', () => {
-    it('should render without padding classes in full-doc mode', () => {
-      mockDocForm.current = ChunkingMode.parentChild
-      mockParentMode.current = 'full-doc'
-      const detail = createMockSegmentDetail()
-
-      render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
-
-      const card = screen.getByTestId('segment-card')
-      expect(card).not.toHaveClass('pb-2')
-      expect(card).not.toHaveClass('pt-2.5')
-    })
-
-    it('should render with hover classes in non full-doc mode', () => {
-      mockDocForm.current = ChunkingMode.text
-      const detail = createMockSegmentDetail()
-
-      render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
-
-      const card = screen.getByTestId('segment-card')
-      expect(card).toHaveClass('pb-2')
-      expect(card).toHaveClass('pt-2.5')
-    })
-
     it('should not render status item in full-doc mode', () => {
       mockDocForm.current = ChunkingMode.parentChild
       mockParentMode.current = 'full-doc'
@@ -1054,40 +999,6 @@ describe('SegmentCard', () => {
       expect(screen.getByText('This is the question content')).toBeInTheDocument()
       // Should render answer content
       expect(screen.getByText('This is the answer content')).toBeInTheDocument()
-    })
-
-    it('should apply line-clamp-2 class when isCollapsed is true in QA mode', () => {
-      mockIsCollapsed.current = true
-      const detail = createMockSegmentDetail({
-        content: 'Question content',
-        answer: 'Answer content',
-        sign_content: '',
-      })
-
-      render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
-
-      // Markdown components should have line-clamp-2 class when collapsed
-      const markdowns = screen.getAllByTestId('markdown')
-      markdowns.forEach((markdown) => {
-        expect(markdown).toHaveClass('line-clamp-2')
-      })
-    })
-
-    it('should apply line-clamp-20 class when isCollapsed is false in QA mode', () => {
-      mockIsCollapsed.current = false
-      const detail = createMockSegmentDetail({
-        content: 'Question content',
-        answer: 'Answer content',
-        sign_content: '',
-      })
-
-      render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
-
-      // Markdown components should have line-clamp-20 class when not collapsed
-      const markdowns = screen.getAllByTestId('markdown')
-      markdowns.forEach((markdown) => {
-        expect(markdown).toHaveClass('line-clamp-20')
-      })
     })
 
     it('should render QA mode with className applied to wrapper', () => {

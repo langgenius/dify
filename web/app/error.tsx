@@ -1,6 +1,7 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
+import { useQueryErrorResetBoundary } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { FullScreenLoading } from '@/app/components/full-screen-loading'
 import { isLegacyBase401 } from '@/features/account-profile/client'
@@ -13,6 +14,7 @@ type Props = {
 
 export default function AppError({ error, reset, unstable_retry }: Props) {
   const { t } = useTranslation('common')
+  const { reset: resetQueries } = useQueryErrorResetBoundary()
   const retry = reset ?? unstable_retry
 
   console.error(error)
@@ -25,7 +27,14 @@ export default function AppError({ error, reset, unstable_retry }: Props) {
         {t(($) => $['errorBoundary.message'])}
       </div>
       {retry && (
-        <Button size="small" variant="secondary" onClick={() => retry()}>
+        <Button
+          size="small"
+          variant="secondary"
+          onClick={() => {
+            resetQueries()
+            retry()
+          }}
+        >
           {t(($) => $['errorBoundary.tryAgain'])}
         </Button>
       )}

@@ -1,10 +1,13 @@
+import type { WebAppAddress } from '@/service/webapp-address'
 import type { LoginRedirectTarget } from '@/utils/login-redirect'
+import { parseWebAppAddress } from '@/service/webapp-address'
 import { resolveLoginRedirectTarget } from '@/utils/login-redirect'
 
 const INTERNAL_PATH_PARSE_BASE = 'https://login-redirect.invalid'
 
 export type WebAppLoginRedirect = {
   appCode: string
+  address: WebAppAddress
   target: LoginRedirectTarget
 }
 
@@ -40,10 +43,10 @@ export function resolveWebAppLoginRedirect(
     const url = new URL(target.href, currentOrigin || INTERNAL_PATH_PARSE_BASE)
     if (isWebAppSigninPath(url.pathname)) return null
 
-    const appCode = url.pathname.split('/').filter(Boolean).at(-1)
-    if (!appCode) return null
+    const address = parseWebAppAddress(url.pathname)
+    if (!address) return null
 
-    return { appCode, target }
+    return { appCode: address.code, address, target }
   } catch {
     return null
   }

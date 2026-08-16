@@ -1,8 +1,12 @@
 import type { CustomFile as File, FileItem } from '@/models/datasets'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { PROGRESS_NOT_STARTED } from '../constants'
 import FileUploader from '../index'
+
+const render = (ui: React.ReactElement) =>
+  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: 'CLOUD' } })
 
 const mockNotify = vi.fn()
 vi.mock('use-context-selector', async () => {
@@ -31,10 +35,6 @@ vi.mock('@/i18n-config/language', () => ({
   LanguagesSupported: ['en-US', 'zh-Hans'],
 }))
 
-vi.mock('@/config', () => ({
-  IS_CE_EDITION: false,
-}))
-
 vi.mock('@/app/components/base/file-uploader/utils', () => ({
   getFileUploadErrorMessage: () => 'Upload error',
 }))
@@ -44,7 +44,8 @@ vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
 }))
 
-vi.mock('@/types/app', () => ({
+vi.mock('@/types/app', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/types/app')>()),
   Theme: { dark: 'dark', light: 'light' },
 }))
 
@@ -108,12 +109,6 @@ describe('FileUploader', () => {
     it('should render browse button', () => {
       render(<FileUploader {...defaultProps} />)
       expect(screen.getByText('datasetCreation.stepOne.uploader.browse')).toBeInTheDocument()
-    })
-
-    it('should apply custom title className', () => {
-      render(<FileUploader {...defaultProps} titleClassName="custom-class" />)
-      const title = screen.getByText('datasetCreation.stepOne.uploader.title')
-      expect(title).toHaveClass('custom-class')
     })
   })
 
@@ -253,7 +248,7 @@ describe('FileUploader', () => {
     it('should have correct container width', () => {
       const { container } = render(<FileUploader {...defaultProps} />)
       const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('w-[640px]')
+      expect(wrapper).toHaveClass('w-160')
     })
 
     it('should have proper spacing', () => {

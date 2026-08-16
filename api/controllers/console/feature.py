@@ -1,23 +1,21 @@
 from flask_restx import Resource
 
 from controllers.common.schema import register_response_schema_models
+from controllers.console.flask_admission import console_account_admission
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.helper import dump_response
-from libs.login import current_account_with_tenant_optional, login_required
-from services.feature_service import (
+from machinery.context import RequestContext
+from services.entities.feature_entities import (
     FeatureModel,
-    FeatureService,
+    LicenseModel,
     LimitationModel,
     SystemFeatureModel,
+    VectorSpaceLimitationModel,
 )
 
 from . import console_ns
-from .wraps import (
-    account_initialization_required,
-    cloud_utm_record,
-    setup_required,
-    with_current_tenant_id,
-)
+from .wraps import cloud_utm_record
 
 
 class TrialModelsResponse(ResponseModel):
@@ -32,9 +30,11 @@ register_response_schema_models(
     console_ns,
     AppDslVersionResponse,
     FeatureModel,
+    LicenseModel,
     LimitationModel,
     SystemFeatureModel,
     TrialModelsResponse,
+    VectorSpaceLimitationModel,
 )
 
 
@@ -47,17 +47,11 @@ class FeatureApi(Resource):
         "Success",
         console_ns.models[FeatureModel.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
+    @console_account_admission()
     @cloud_utm_record
-    @with_current_tenant_id
-    def get(self, current_tenant_id: str):
+    def get(self, request_context: RequestContext):
         """Get feature configuration for current tenant"""
-        payload = FeatureService.get_features(
-            current_tenant_id,
-            exclude_vector_space=True,
-        ).model_dump()
+        payload = application_services().feature_queries.get_features(request_context).model_dump()
         payload.pop("vector_space", None)
         return payload
 
@@ -69,16 +63,13 @@ class FeatureVectorSpaceApi(Resource):
     @console_ns.response(
         200,
         "Success",
-        console_ns.models[LimitationModel.__name__],
+        console_ns.models[VectorSpaceLimitationModel.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
+    @console_account_admission()
     @cloud_utm_record
-    @with_current_tenant_id
-    def get(self, current_tenant_id: str):
+    def get(self, request_context: RequestContext):
         """Get vector-space usage and limit for current tenant"""
-        return FeatureService.get_vector_space(current_tenant_id).model_dump()
+        return application_services().feature_queries.get_vector_space(request_context).model_dump()
 
 
 @console_ns.route("/trial-models")
@@ -90,14 +81,12 @@ class TrialModelsApi(Resource):
         "Success",
         console_ns.models[TrialModelsResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self):
+    @console_account_admission()
+    def get(self, _request_context: RequestContext):
         """Get hosted trial model provider configuration for model-provider pages."""
         return dump_response(
             TrialModelsResponse,
-            {"trial_models": FeatureService.get_trial_models()},
+            {"trial_models": application_services().feature_queries.get_trial_models()},
         )
 
 
@@ -114,29 +103,45 @@ class AppDslVersionApi(Resource):
         """Get current app DSL version for workflow clipboard compatibility."""
         return dump_response(
             AppDslVersionResponse,
-            {"app_dsl_version": FeatureService.get_app_dsl_version()},
+            {"app_dsl_version": application_services().feature_queries.get_app_dsl_version()},
         )
 
 
 @console_ns.route("/system-features")
 class SystemFeatureApi(Resource):
     @console_ns.doc("get_system_features")
-    @console_ns.doc(description="Get system-wide feature configuration")
+    @console_ns.doc(
+        description="Get the non-sensitive bootstrap snapshot exposed before Console or Web authentication. "
+        "This is not a general feature registry."
+    )
     @console_ns.response(
         200,
         "Success",
         console_ns.models[SystemFeatureModel.__name__],
     )
     def get(self):
-        """Get system-wide feature configuration
+        """Get the non-sensitive bootstrap snapshot exposed before authentication.
 
-        NOTE: This endpoint is unauthenticated by design, as it provides system features
-        data required for dashboard initialization.
-
-        Authentication would create circular dependency (can't login without dashboard loading).
-
-        Only non-sensitive configuration data should be returned by this endpoint.
+        Authentication configuration must be available before the authentication flow can be selected.
+        Authenticated license detail is served separately by SystemFeatureLicenseApi.
         """
-        current_user, _ = current_account_with_tenant_optional()
-        is_authenticated = current_user is not None
-        return FeatureService.get_system_features(is_authenticated=is_authenticated).model_dump()
+        return dump_response(SystemFeatureModel, application_services().feature_queries.get_system_features())
+
+
+@console_ns.route("/system-features/license")
+class SystemFeatureLicenseApi(Resource):
+    @console_ns.doc("get_system_license")
+    @console_ns.doc(description="Get license status and usage detail")
+    @console_ns.response(
+        200,
+        "Success",
+        console_ns.models[LicenseModel.__name__],
+    )
+    @console_account_admission()
+    def get(self, _request_context: RequestContext):
+        """Get full license detail (status, expiry, workspace/seat usage).
+
+        Authenticated counterpart to the license *status* exposed on the public
+        system-features endpoint.
+        """
+        return application_services().feature_queries.get_license().model_dump()

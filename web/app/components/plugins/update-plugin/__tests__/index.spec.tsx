@@ -6,9 +6,11 @@ import type {
 } from '../../types'
 import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { render } from '@/test/console/render'
 import { PluginCategoryEnum, PluginSource, TaskStatus } from '../../types'
 import DowngradeWarningModal from '../downgrade-warning'
 import FromGitHub from '../from-github'
@@ -21,6 +23,13 @@ import PluginVersionPicker from '../plugin-version-picker'
 // Mock app context for useGetIcon
 
 // Mock hooks/use-timestamp
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
+
 vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({
     formatDate: (timestamp: number, _format: string) => {
@@ -273,15 +282,6 @@ describe('update-plugin', () => {
       })
     })
 
-    describe('Component Memoization', () => {
-      it('should be memoized with React.memo', () => {
-        // Verify the component is wrapped with React.memo
-        expect(UpdatePlugin).toBeDefined()
-        // The component should have $$typeof indicating it's a memo component
-        expect((UpdatePlugin as { $$typeof?: symbol }).$$typeof?.toString()).toContain('Symbol')
-      })
-    })
-
     describe('Props Passing', () => {
       it('should pass correct props to UpdateFromGitHub', () => {
         // Arrange
@@ -360,13 +360,6 @@ describe('update-plugin', () => {
 
         // Assert
         expect(screen.getByTestId('install-from-github')).toBeInTheDocument()
-      })
-    })
-
-    describe('Component Memoization', () => {
-      it('should be memoized with React.memo', () => {
-        expect(FromGitHub).toBeDefined()
-        expect((FromGitHub as { $$typeof?: symbol }).$$typeof?.toString()).toContain('Symbol')
       })
     })
 
@@ -726,15 +719,6 @@ describe('update-plugin', () => {
       })
     })
 
-    describe('Component Memoization', () => {
-      it('should be memoized with React.memo', () => {
-        expect(UpdateFromMarketplace).toBeDefined()
-        expect((UpdateFromMarketplace as { $$typeof?: symbol }).$$typeof?.toString()).toContain(
-          'Symbol',
-        )
-      })
-    })
-
     describe('Exclude and Downgrade', () => {
       it('should call mutateAsync and handleConfirm when exclude and downgrade is clicked', async () => {
         // Arrange
@@ -922,7 +906,7 @@ describe('update-plugin', () => {
       onShowChange: vi.fn(),
       pluginID: 'test-plugin-id',
       currentVersion: '1.0.0',
-      trigger: <span>Select Version</span>,
+      trigger: () => <span>Select Version</span>,
       onSelect: vi.fn(),
     }
 
@@ -997,10 +981,11 @@ describe('update-plugin', () => {
         expect(onShowChange).not.toHaveBeenCalled()
       })
 
-      it('should call onSelect with correct params when a version is selected', () => {
+      it('should call onSelect with correct params when a version is selected', async () => {
         // Arrange
         const onSelect = vi.fn()
         const onShowChange = vi.fn()
+        const user = userEvent.setup()
 
         // Act
         render(
@@ -1012,12 +997,7 @@ describe('update-plugin', () => {
             onShowChange={onShowChange}
           />,
         )
-        // Click on version 2.0.0
-        const versionElements = screen.getAllByText(/^\d+\.\d+\.\d+$/)
-        const version2Element = versionElements.find((el) => el.textContent === '2.0.0')
-        if (version2Element) {
-          fireEvent.click(version2Element.closest('div[class*="cursor-pointer"]')!)
-        }
+        await user.click(screen.getByRole('button', { name: /2\.0\.0/ }))
 
         // Assert
         expect(onSelect).toHaveBeenCalledWith({
@@ -1028,9 +1008,10 @@ describe('update-plugin', () => {
         expect(onShowChange).toHaveBeenCalledWith(false)
       })
 
-      it('should not call onSelect when clicking on current version', () => {
+      it('should not call onSelect when clicking on current version', async () => {
         // Arrange
         const onSelect = vi.fn()
+        const user = userEvent.setup()
 
         // Act
         render(
@@ -1041,20 +1022,16 @@ describe('update-plugin', () => {
             onSelect={onSelect}
           />,
         )
-        // Click on current version 1.0.0
-        const versionElements = screen.getAllByText(/^\d+\.\d+\.\d+$/)
-        const version1Element = versionElements.find((el) => el.textContent === '1.0.0')
-        if (version1Element) {
-          fireEvent.click(version1Element.closest('div[class*="cursor"]')!)
-        }
+        await user.click(screen.getByRole('button', { name: /1\.0\.0/ }))
 
         // Assert
         expect(onSelect).not.toHaveBeenCalled()
       })
 
-      it('should indicate downgrade when selecting a lower version', () => {
+      it('should indicate downgrade when selecting a lower version', async () => {
         // Arrange
         const onSelect = vi.fn()
+        const user = userEvent.setup()
 
         // Act
         render(
@@ -1065,12 +1042,7 @@ describe('update-plugin', () => {
             onSelect={onSelect}
           />,
         )
-        // Click on version 1.0.0 (downgrade)
-        const versionElements = screen.getAllByText(/^\d+\.\d+\.\d+$/)
-        const version1Element = versionElements.find((el) => el.textContent === '1.0.0')
-        if (version1Element) {
-          fireEvent.click(version1Element.closest('div[class*="cursor-pointer"]')!)
-        }
+        await user.click(screen.getByRole('button', { name: /1\.0\.0/ }))
 
         // Assert
         expect(onSelect).toHaveBeenCalledWith({
@@ -1098,15 +1070,6 @@ describe('update-plugin', () => {
 
         // Assert
         expect(screen.getByText('plugin.detailPanel.switchVersion')).toBeInTheDocument()
-      })
-    })
-
-    describe('Component Memoization', () => {
-      it('should be memoized with React.memo', () => {
-        expect(PluginVersionPicker).toBeDefined()
-        expect((PluginVersionPicker as { $$typeof?: symbol }).$$typeof?.toString()).toContain(
-          'Symbol',
-        )
       })
     })
   })
@@ -1162,7 +1125,7 @@ describe('update-plugin', () => {
             onShowChange: vi.fn(),
             pluginID: 'test',
             currentVersion: '1.0.0',
-            trigger: <span>Select</span>,
+            trigger: () => <span>Select</span>,
             onSelect: vi.fn(),
           }}
         />,

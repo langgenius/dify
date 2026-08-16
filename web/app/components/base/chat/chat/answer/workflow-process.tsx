@@ -53,15 +53,15 @@ const WorkflowProcessItem = ({
       className={cn(
         '-mx-1 rounded-xl px-2.5',
         collapse
-          ? 'border-l-[0.25px] border-components-panel-border py-[7px]'
-          : 'border-[0.5px] border-components-panel-border-subtle px-1 pt-[7px] pb-1',
+          ? 'border-l-[0.25px] border-components-panel-border py-1.75'
+          : 'border-[0.5px] border-components-panel-border-subtle px-1 pt-1.75 pb-1',
         running && !collapse && 'bg-background-section-burn',
         succeeded && !collapse && 'bg-state-success-hover',
         failed && !collapse && 'bg-state-destructive-hover',
         paused && !collapse && 'bg-state-warning-hover',
         collapse && !failed && !paused && 'bg-workflow-process-bg',
         collapse && paused && 'bg-workflow-process-paused-bg',
-        collapse && failed && 'bg-[var(--color-workflow-process-failed-bg)]',
+        collapse && failed && 'bg-(--color-workflow-process-failed-bg)',
       )}
       data-testid="workflow-process-item"
     >

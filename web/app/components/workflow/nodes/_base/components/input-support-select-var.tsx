@@ -59,7 +59,7 @@ const Editor: FC<Props> = ({
       <>
         <PromptEditor
           instanceId={instanceId}
-          className={cn(promptMinHeightClassName, 'leading-[18px]')}
+          className={cn(promptMinHeightClassName, 'leading-4.5')}
           placeholder={placeholder}
           placeholderClassName={placeholderClassName}
           value={value}
@@ -115,7 +115,7 @@ const Editor: FC<Props> = ({
           <div
             className={cn(
               'absolute z-10',
-              insertVarTipToLeft ? 'top-1.5 left-[-12px]' : 'top-[-9px] right-1',
+              insertVarTipToLeft ? 'top-1.5 -left-3' : '-top-2.25 right-1',
             )}
           >
             <Tooltip>

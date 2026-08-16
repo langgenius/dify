@@ -13,14 +13,16 @@ from tests.test_containers_integration_tests.controllers.openapi.conftest import
 
 
 class TestAccountInfo:
-    def test_returns_account_and_owner_workspace(self, app: Flask, make_account: Callable[..., Account]) -> None:
+    def test_returns_account_and_owner_workspace(
+        self, app: Flask, db_session_with_containers: Session, make_account: Callable[..., Account]
+    ) -> None:
         account = make_account()
         owner_tenant = account.current_tenant
         assert owner_tenant is not None
 
         api = AccountApi()
         with app.test_request_context("/openapi/v1/account"):
-            result = unwrap(api.get)(api, auth_data=auth_for(account))
+            result = unwrap(api.get)(api, db_session_with_containers, auth_data=auth_for(account))
 
         assert result.subject_type == "account"
         assert result.subject_email == account.email
@@ -45,7 +47,7 @@ class TestAccountInfo:
 
         api = AccountApi()
         with app.test_request_context("/openapi/v1/account"):
-            result = unwrap(api.get)(api, auth_data=auth_for(account))
+            result = unwrap(api.get)(api, db_session_with_containers, auth_data=auth_for(account))
 
         assert {w.id for w in result.workspaces} == {owner_tenant.id, second.id}
         roles = {w.id: w.role for w in result.workspaces}

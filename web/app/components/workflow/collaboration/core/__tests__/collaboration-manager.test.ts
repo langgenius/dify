@@ -8,6 +8,7 @@ import { LoroDoc } from 'loro-crdt/base64'
 import { Position } from 'reactflow'
 import { CollaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { attachCrdtRuntime } from './test-crdt-runtime'
 
 const NODE_ID = '1760342909316'
 
@@ -100,6 +101,7 @@ type CollaborationManagerInternals = {
   forceDisconnect: () => void
   activeConnections: Set<string>
   isUndoRedoInProgress: boolean
+  crdtTrusted: boolean
 }
 
 const createVariable = (
@@ -246,11 +248,13 @@ const setupManager = (): {
   internals: CollaborationManagerInternals
 } => {
   const manager = new CollaborationManager()
+  attachCrdtRuntime(manager)
   const doc = new LoroDoc()
   const internals = getManagerInternals(manager)
   internals.doc = doc
   internals.nodesMap = doc.getMap('nodes')
   internals.edgesMap = doc.getMap('edges')
+  internals.crdtTrusted = true
   return { manager, internals }
 }
 
@@ -653,6 +657,7 @@ describe('CollaborationManager public API wrappers', () => {
   beforeEach(() => {
     manager = new CollaborationManager()
     internals = getManagerInternals(manager)
+    internals.crdtTrusted = true
   })
 
   it('setNodes delegates to syncNodes and commits the CRDT document', () => {

@@ -67,7 +67,7 @@ const TagsFilter = ({ value, onChange }: TagsFilterProps) => {
         sideOffset={4}
         popupClassName="border-none bg-transparent shadow-none"
       >
-        <div className="w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
+        <div className="w-60 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="p-2 pb-1">
             <SearchInput
               value={searchText}
@@ -79,7 +79,7 @@ const TagsFilter = ({ value, onChange }: TagsFilterProps) => {
             aria-label={t(($) => $.allTags, { ns: 'pluginTags' })}
             value={value}
             onValueChange={(nextValue) => onChange(nextValue)}
-            className="max-h-[448px] overflow-y-auto p-1"
+            className="max-h-112 overflow-y-auto p-1"
           >
             {filteredOptions.map((option) => (
               <label

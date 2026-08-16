@@ -7,7 +7,7 @@ WorkflowNodeExecutionModel operations using Aliyun SLS LogStore.
 
 import logging
 import time
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any, override
 
@@ -129,6 +129,11 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
         """
         logger.debug("LogstoreAPIWorkflowNodeExecutionRepository.__init__: initializing")
         self.logstore_client = AliyunLogStore()
+
+    @override
+    def load_full_process_data(self, execution: WorkflowNodeExecutionModel) -> Mapping[str, Any] | None:
+        """Return complete Process Data already stored inline by LogStore."""
+        return execution.process_data_dict
 
     @override
     def get_node_last_execution(

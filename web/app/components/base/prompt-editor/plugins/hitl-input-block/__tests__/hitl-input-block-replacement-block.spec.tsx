@@ -7,14 +7,14 @@ import { render, waitFor } from '@testing-library/react'
 import { $nodesOfType } from 'lexical'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
-import { CustomTextNode } from '../../custom-text/node'
 import {
   getNodesByType,
   readEditorStateValue,
   renderLexicalEditor,
   setEditorRootText,
   waitForEditorReady,
-} from '../../test-helpers'
+} from '../../__tests__/test-helpers'
+import { CustomTextNode } from '../../custom-text/node'
 import HITLInputReplacementBlock from '../hitl-input-block-replacement-block'
 import { HITLInputNode } from '../node'
 

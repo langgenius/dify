@@ -21,6 +21,7 @@ from fields._value_type_serializer import serialize_value_type
 from fields.base import ResponseModel
 from fields.conversation_fields import (
     ConversationInfiniteScrollPagination,
+    ConversationResponseSource,
     SimpleConversation,
 )
 from graphon.variables.types import SegmentType
@@ -204,7 +205,13 @@ class ConversationApi(Resource):
                     sort_by=query_args.sort_by,
                 )
                 adapter = TypeAdapter(SimpleConversation)
-                conversations = [adapter.validate_python(item, from_attributes=True) for item in pagination.data]
+                conversations = [
+                    adapter.validate_python(
+                        ConversationResponseSource(item, session=session),
+                        from_attributes=True,
+                    )
+                    for item in pagination.data
+                ]
                 return ConversationInfiniteScrollPagination(
                     limit=pagination.limit, has_more=pagination.has_more, data=conversations
                 ).model_dump(mode="json")
@@ -294,10 +301,11 @@ class ConversationRenameApi(Resource):
         payload = ConversationRenamePayload.model_validate(service_api_ns.payload or {})
 
         try:
+            session = db.session()
             conversation = ConversationService.rename(
-                app_model, conversation_id, end_user, payload.name, payload.auto_generate, session=db.session()
+                app_model, conversation_id, end_user, payload.name, payload.auto_generate, session=session
             )
-            return dump_response(SimpleConversation, conversation)
+            return dump_response(SimpleConversation, ConversationResponseSource(conversation, session=session))
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 

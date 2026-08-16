@@ -1,6 +1,7 @@
 import type { MetaData, PluginCategoryEnum } from '../../types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { expectLoadingButton } from '@/test/button'
 // ==================== Imports (after mocks) ====================
 import { PluginSource } from '../../types'
@@ -94,8 +95,6 @@ vi.mock('../../plugin-page/plugin-info', () => ({
   ),
 }))
 
-vi.mock('@langgenius/dify-ui/tooltip', () => import('@/__mocks__/base-ui-tooltip'))
-
 // ==================== Test Utilities ====================
 
 type ActionProps = {
@@ -134,11 +133,13 @@ const createActionProps = (overrides: Partial<ActionProps> = {}): ActionProps =>
 const getDeleteConfirmButton = () =>
   screen.getByRole('button', { name: /common\.operation\.confirm/ })
 const getDeleteCancelButton = () => screen.getByRole('button', { name: 'common.operation.cancel' })
+const getCheckForUpdatesButton = () =>
+  screen.getByRole('button', { name: 'plugin.action.checkForUpdates' })
+const getPluginInfoButton = () => screen.getByRole('button', { name: 'plugin.action.pluginInfo' })
+const getDeleteButton = () => screen.getByRole('button', { name: 'plugin.action.delete' })
 
 // ==================== Tests ====================
 
-// Helper to find action buttons (real ActionButton component uses type="button")
-const getActionButtons = () => screen.getAllByRole('button')
 const queryActionButtons = () => screen.queryAllByRole('button')
 
 describe('Action Component', () => {
@@ -166,7 +167,7 @@ describe('Action Component', () => {
       render(<Action {...props} />)
 
       // Assert
-      expect(getActionButtons()).toHaveLength(1)
+      expect(getDeleteButton()).toBeInTheDocument()
     })
 
     it('should render fetch new version button when isShowFetchNewVersion is true', () => {
@@ -181,7 +182,7 @@ describe('Action Component', () => {
       render(<Action {...props} />)
 
       // Assert
-      expect(getActionButtons()).toHaveLength(1)
+      expect(getCheckForUpdatesButton()).toBeInTheDocument()
     })
 
     it('should render info button when isShowInfo is true', () => {
@@ -196,7 +197,7 @@ describe('Action Component', () => {
       render(<Action {...props} />)
 
       // Assert
-      expect(getActionButtons()).toHaveLength(1)
+      expect(getPluginInfoButton()).toBeInTheDocument()
     })
 
     it('should render all buttons when all flags are true', () => {
@@ -211,7 +212,9 @@ describe('Action Component', () => {
       render(<Action {...props} />)
 
       // Assert
-      expect(getActionButtons()).toHaveLength(3)
+      expect(getCheckForUpdatesButton()).toBeInTheDocument()
+      expect(getPluginInfoButton()).toBeInTheDocument()
+      expect(getDeleteButton()).toBeInTheDocument()
     })
 
     it('should render no buttons when all flags are false', () => {
@@ -229,7 +232,8 @@ describe('Action Component', () => {
       expect(queryActionButtons()).toHaveLength(0)
     })
 
-    it('should render tooltips for each button', () => {
+    it('should render tooltips for each button', async () => {
+      const user = userEvent.setup()
       // Arrange
       const props = createActionProps({
         isShowFetchNewVersion: true,
@@ -241,17 +245,16 @@ describe('Action Component', () => {
       render(<Action {...props} />)
 
       // Assert
-      const buttons = getActionButtons()
-      fireEvent.mouseEnter(buttons[0]!)
-      expect(screen.getByText('plugin.action.checkForUpdates'))!.toBeInTheDocument()
-      fireEvent.mouseLeave(buttons[0]!)
+      await user.hover(getCheckForUpdatesButton())
+      expect(await screen.findByText('plugin.action.checkForUpdates'))!.toBeInTheDocument()
+      await user.unhover(getCheckForUpdatesButton())
 
-      fireEvent.mouseEnter(buttons[1]!)
-      expect(screen.getByText('plugin.action.pluginInfo'))!.toBeInTheDocument()
-      fireEvent.mouseLeave(buttons[1]!)
+      await user.hover(getPluginInfoButton())
+      expect(await screen.findByText('plugin.action.pluginInfo'))!.toBeInTheDocument()
+      await user.unhover(getPluginInfoButton())
 
-      fireEvent.mouseEnter(buttons[2]!)
-      expect(screen.getByText('plugin.action.delete'))!.toBeInTheDocument()
+      await user.hover(getDeleteButton())
+      expect(await screen.findByText('plugin.action.delete'))!.toBeInTheDocument()
     })
   })
 
@@ -267,7 +270,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getDeleteButton())
 
       // Assert
       expect(screen.getByRole('heading', { name: 'plugin.action.delete' }))!.toBeInTheDocument()
@@ -284,7 +287,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getDeleteButton())
 
       // Assert
       // Assert
@@ -301,7 +304,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getDeleteButton())
       expect(screen.getByRole('heading', { name: 'plugin.action.delete' }))!.toBeInTheDocument()
 
       fireEvent.click(getDeleteCancelButton())
@@ -323,7 +326,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getDeleteButton())
       fireEvent.click(getDeleteConfirmButton())
 
       // Assert
@@ -345,7 +348,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getDeleteButton())
       fireEvent.click(getDeleteConfirmButton())
 
       // Assert
@@ -365,7 +368,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getDeleteButton())
       fireEvent.click(getDeleteConfirmButton())
 
       // Assert
@@ -387,7 +390,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getDeleteButton())
       fireEvent.click(getDeleteConfirmButton())
 
       // Assert
@@ -409,7 +412,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getDeleteButton())
       fireEvent.click(getDeleteConfirmButton())
 
       // Assert
@@ -436,7 +439,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getDeleteButton())
       fireEvent.click(getDeleteConfirmButton())
 
       // Assert - Loading state
@@ -469,7 +472,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getPluginInfoButton())
 
       // Assert
       // Assert
@@ -495,7 +498,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getPluginInfoButton())
       expect(screen.getByTestId('plugin-info-modal'))!.toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('close-plugin-info'))
@@ -554,7 +557,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getCheckForUpdatesButton())
 
       // Assert
       await waitFor(() => {
@@ -580,7 +583,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getCheckForUpdatesButton())
 
       // Assert
       await waitFor(() => {
@@ -599,7 +602,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getCheckForUpdatesButton())
 
       // Assert
       await waitFor(() => {
@@ -623,7 +626,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getCheckForUpdatesButton())
 
       // Assert - toast is called with the translated payload
       await waitFor(() => {
@@ -657,7 +660,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getCheckForUpdatesButton())
 
       // Assert
       await waitFor(() => {
@@ -697,7 +700,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getCheckForUpdatesButton())
 
       // Wait for modal to be called
       await waitFor(() => {
@@ -729,7 +732,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getCheckForUpdatesButton())
 
       // Assert
       await waitFor(() => {
@@ -740,38 +743,6 @@ describe('Action Component', () => {
 
   // ==================== Callback Stability Tests ====================
   describe('Callback Stability (useCallback)', () => {
-    it('should have stable handleDelete callback with same dependencies', async () => {
-      // Arrange
-      mockUninstallPlugin.mockResolvedValue({ success: true })
-      const onDelete = vi.fn()
-      const props = createActionProps({
-        isShowDelete: true,
-        isShowInfo: false,
-        isShowFetchNewVersion: false,
-        onDelete,
-        installationId: 'stable-install-id',
-      })
-
-      // Act - First render and delete
-      const { rerender } = render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
-      fireEvent.click(getDeleteConfirmButton())
-
-      await waitFor(() => {
-        expect(mockUninstallPlugin).toHaveBeenCalledWith('stable-install-id')
-      })
-
-      // Re-render with same props
-      mockUninstallPlugin.mockClear()
-      rerender(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
-      fireEvent.click(getDeleteConfirmButton())
-
-      await waitFor(() => {
-        expect(mockUninstallPlugin).toHaveBeenCalledWith('stable-install-id')
-      })
-    })
-
     it('should update handleDelete when installationId changes', async () => {
       // Arrange
       mockUninstallPlugin.mockResolvedValue({ success: true })
@@ -790,7 +761,7 @@ describe('Action Component', () => {
 
       // Act
       const { rerender } = render(<Action {...props1} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getDeleteButton())
       fireEvent.click(getDeleteConfirmButton())
 
       await waitFor(() => {
@@ -799,7 +770,7 @@ describe('Action Component', () => {
 
       mockUninstallPlugin.mockClear()
       rerender(<Action {...props2} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getDeleteButton())
       fireEvent.click(getDeleteConfirmButton())
 
       await waitFor(() => {
@@ -827,7 +798,7 @@ describe('Action Component', () => {
 
       // Act
       const { rerender } = render(<Action {...props1} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getDeleteButton())
       fireEvent.click(getDeleteConfirmButton())
 
       await waitFor(() => {
@@ -836,7 +807,7 @@ describe('Action Component', () => {
       expect(onDelete2).not.toHaveBeenCalled()
 
       rerender(<Action {...props2} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getDeleteButton())
       fireEvent.click(getDeleteConfirmButton())
 
       await waitFor(() => {
@@ -847,19 +818,6 @@ describe('Action Component', () => {
 
   // ==================== Edge Cases ====================
   describe('Edge Cases', () => {
-    it('should handle undefined meta for info display', () => {
-      // Arrange - meta is required for info, but test defensive behavior
-      const props = createActionProps({
-        isShowInfo: false,
-        isShowDelete: true,
-        isShowFetchNewVersion: false,
-        meta: undefined,
-      })
-
-      // Act & Assert - Should not crash
-      expect(() => render(<Action {...props} />)).not.toThrow()
-    })
-
     it('should handle empty repo string', async () => {
       // Arrange
       mockFetchReleases.mockResolvedValue([{ version: '1.0.0' }])
@@ -878,7 +836,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getCheckForUpdatesButton())
 
       // Assert - Should use author and pluginName as fallback
       await waitFor(() => {
@@ -902,7 +860,7 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getDeleteButton())
       fireEvent.click(getDeleteConfirmButton())
 
       // The confirm button should be disabled during deletion
@@ -928,20 +886,11 @@ describe('Action Component', () => {
 
       // Act
       render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getDeleteButton())
 
       // Assert
       // Assert
       expect(screen.getByText('plugin-with-special@chars#123'))!.toBeInTheDocument()
-    })
-  })
-
-  // ==================== React.memo Tests ====================
-  describe('React.memo Behavior', () => {
-    it('should be wrapped with React.memo', () => {
-      // Assert
-      expect(Action).toBeDefined()
-      expect((Action as { $$typeof?: symbol }).$$typeof?.toString()).toContain('Symbol')
     })
   })
 

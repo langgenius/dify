@@ -594,6 +594,17 @@ describe('createWorkflowStreamHandlers', () => {
           workflow_run_id: 'run-1',
         },
       })
+      handlers.onWorkflowPaused({
+        task_id: 'task-1',
+        workflow_run_id: 'run-1',
+        event: 'workflow_paused',
+        data: {
+          outputs: {},
+          paused_nodes: [],
+          reasons: [],
+          workflow_run_id: 'run-1',
+        },
+      })
       handlers.onWorkflowFinished({
         task_id: 'task-1',
         workflow_run_id: 'run-1',
@@ -627,17 +638,38 @@ describe('createWorkflowStreamHandlers', () => {
       }),
     )
     expect(sseGetMock).toHaveBeenCalledWith(
-      '/workflow/run-1/events',
+      '/workflow/run-1/events?include_state_snapshot=true&continue_on_pause=true',
       {},
       expect.objectContaining({ isPublicAPI: true }),
     )
+    expect(sseGetMock).toHaveBeenCalledTimes(1)
     expect(setup.messageId()).toBe('run-1')
     expect(setup.onCompleted).toHaveBeenCalledWith('{"answer":"Hello"}', 3, true)
     expect(setup.setRespondingFalse).toHaveBeenCalled()
     expect(setup.resetRunState).toHaveBeenCalled()
   })
 
-  it('should handle timeout and workflow failures', () => {
+  it('should keep one resumable stream for installed apps', () => {
+    const { handlers } = setupHandlers({ isPublicAPI: false })
+    const onWorkflowPaused = handlers.onWorkflowPaused!
+    const pausedEvent = {
+      data: {
+        workflow_run_id: 'run-installed',
+      },
+    } as never
+
+    onWorkflowPaused(pausedEvent)
+    onWorkflowPaused(pausedEvent)
+
+    expect(sseGetMock).toHaveBeenCalledWith(
+      '/workflow/run-installed/events?include_state_snapshot=true&continue_on_pause=true',
+      {},
+      expect.objectContaining({ isPublicAPI: false }),
+    )
+    expect(sseGetMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('should finish timed-out workflow state and warn without applying late outputs', () => {
     const timeoutSetup = setupHandlers({
       isTimedOut: () => true,
     })
@@ -654,7 +686,7 @@ describe('createWorkflowStreamHandlers', () => {
           id: 'run-1',
           workflow_id: 'wf-1',
           status: WorkflowRunningStatus.Succeeded,
-          outputs: null,
+          outputs: { answer: 'Late result' },
           error: '',
           elapsed_time: 0,
           total_tokens: 0,
@@ -674,7 +706,18 @@ describe('createWorkflowStreamHandlers', () => {
       type: 'warning',
       message: 'warningMessage.timeoutExceeded',
     })
+    expect(timeoutSetup.workflowProcessData()).toEqual(
+      expect.objectContaining({
+        resultText: '',
+        status: WorkflowRunningStatus.Succeeded,
+      }),
+    )
+    expect(timeoutSetup.onCompleted).not.toHaveBeenCalled()
+    expect(timeoutSetup.setRespondingFalse).not.toHaveBeenCalled()
+    expect(timeoutSetup.resetRunState).not.toHaveBeenCalled()
+  })
 
+  it('should handle workflow failures', () => {
     const failureSetup = setupHandlers()
     const failureHandlers = failureSetup.handlers as Required<
       Pick<IOtherOptions, 'onWorkflowStarted' | 'onWorkflowFinished'>

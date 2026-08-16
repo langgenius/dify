@@ -14,9 +14,11 @@ import { useTranslation } from 'react-i18next'
 import { useStore as useReactFlowStore } from 'reactflow'
 import { useCreateSnippetFromSelection } from '@/app/components/snippets/hooks/use-create-snippet-from-selection'
 import { canCreateAndModifySnippets } from '@/app/components/snippets/utils/permission'
-import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { useNodesInteractions, useNodesReadOnly, useNodesSyncDraft } from './hooks'
+import { useCollaborativeWorkflow } from './hooks/use-collaborative-workflow'
+import { useNodesInteractions } from './hooks/use-nodes-interactions'
+import { useNodesSyncDraft } from './hooks/use-nodes-sync-draft'
+import { useNodesReadOnly } from './hooks/use-workflow'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './hooks/use-workflow-history'
 import { ShortcutKbd } from './shortcuts/shortcut-kbd'
 import { useStore, useWorkflowStore } from './store'
@@ -248,6 +250,7 @@ export function SelectionContextmenu({ onClose }: { onClose: () => void }) {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { handleNodesCopy, handleNodesDelete, handleNodesDuplicate } = useNodesInteractions()
   const isSelectionContextMenu = useStore((s) => s.contextMenuTarget?.type === 'selection')
+  const environmentVariables = useStore((s) => s.environmentVariables)
 
   // Access React Flow methods
   const workflowStore = useWorkflowStore()
@@ -263,6 +266,7 @@ export function SelectionContextmenu({ onClose }: { onClose: () => void }) {
   const { createSnippetDialog, handleOpenCreateSnippet, isCreateSnippetDialogOpen } =
     useCreateSnippetFromSelection({
       edges,
+      environmentVariables,
       selectedNodes,
       onClose,
     })
@@ -459,7 +463,6 @@ export function SelectionContextmenu({ onClose }: { onClose: () => void }) {
               return (
                 <ContextMenuItem
                   key={item.alignType}
-                  data-testid={`selection-contextmenu-item-${item.alignType}`}
                   onClick={() => handleAlignNodes(item.alignType)}
                 >
                   <span

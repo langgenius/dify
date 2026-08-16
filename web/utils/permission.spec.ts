@@ -25,22 +25,29 @@ describe('permission', () => {
   })
 
   describe('getAppACLCapabilities', () => {
-    it('allows test-and-run users to access layout without edit or comment', () => {
+    it('allows test-and-run users to access layout without edit', () => {
       const capabilities = getAppACLCapabilities([AppACLPermission.TestAndRun])
 
       expect(capabilities.canTestAndRun).toBe(true)
       expect(capabilities.canAccessLayout).toBe(true)
-      expect(capabilities.canComment).toBe(false)
       expect(capabilities.canEdit).toBe(false)
     })
 
-    it('allows view-layout users to preview the app and comment but not run/debug', () => {
+    it('allows view-layout users to preview the app but not run/debug', () => {
       const capabilities = getAppACLCapabilities([AppACLPermission.ViewLayout])
 
       expect(capabilities.canPreviewApp).toBe(true)
       expect(capabilities.canAccessLayout).toBe(true)
-      expect(capabilities.canComment).toBe(true)
       expect(capabilities.canTestAndRun).toBe(false)
+    })
+
+    it('keeps deployment permission independent from app publishing and version management', () => {
+      const deployCapabilities = getAppACLCapabilities([AppACLPermission.Deploy])
+      const releaseCapabilities = getAppACLCapabilities([AppACLPermission.ReleaseAndVersion])
+
+      expect(deployCapabilities.canDeploy).toBe(true)
+      expect(deployCapabilities.canReleaseAndVersion).toBe(false)
+      expect(releaseCapabilities.canDeploy).toBe(false)
     })
 
     it('keeps monitor, tracing config, and log/annotation permissions independent', () => {
@@ -107,6 +114,7 @@ describe('permission', () => {
       expect(capabilities.canImportExportDSL).toBe(true)
       expect(capabilities.canDelete).toBe(true)
       expect(capabilities.canReleaseAndVersion).toBe(true)
+      expect(capabilities.canDeploy).toBe(false)
       expect(capabilities.canMonitor).toBe(true)
       expect(capabilities.canConfigureTracing).toBe(true)
       expect(capabilities.canAccessLogAndAnnotation).toBe(true)

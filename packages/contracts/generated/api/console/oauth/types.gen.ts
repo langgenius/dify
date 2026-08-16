@@ -30,6 +30,7 @@ export type OAuthProviderAppResponse = {
   app_label: {
     [key: string]: unknown
   }
+  auto_authorize: boolean
   scope: string
 }
 
@@ -40,6 +41,7 @@ export type OAuthClientPayload = {
 export type OAuthProviderAccountResponse = {
   avatar?: string | null
   email: string
+  id: string
   interface_language: string
   name: string
   timezone: string

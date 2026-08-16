@@ -23,7 +23,7 @@ from controllers.web.error import (
 )
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
-from services.app_ref_service import MessageRef
+from services.app_ref_service import AppRef, MessageRef
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
@@ -147,8 +147,7 @@ class TestTextApi:
 
         assert result == "audio-bytes"
         assert mock_tts.call_args.kwargs["message_ref"] == MessageRef(
-            "tenant-1",
-            "app-1",
+            AppRef("tenant-1", "app-1"),
             message_id,
             end_user_id="eu-1",
         )

@@ -12,7 +12,7 @@ import { debounce } from 'es-toolkit/compat'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
-import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
+import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
 import {
   useBuildTriggerSubscription,
   useCreateTriggerSubscriptionBuilder,
@@ -42,10 +42,10 @@ export enum ApiKeyStep {
   Configuration = 'configuration',
 }
 
-const CREDENTIAL_TYPE_MAP: Record<SupportedCreationMethods, TriggerCredentialTypeEnum> = {
-  [SupportedCreationMethods.APIKEY]: TriggerCredentialTypeEnum.ApiKey,
-  [SupportedCreationMethods.OAUTH]: TriggerCredentialTypeEnum.Oauth2,
-  [SupportedCreationMethods.MANUAL]: TriggerCredentialTypeEnum.Unauthorized,
+const CREDENTIAL_TYPE_MAP: Record<SupportedCreationMethods, TriggerCredentialType> = {
+  [SupportedCreationMethods.APIKEY]: TriggerCredentialType.ApiKey,
+  [SupportedCreationMethods.OAUTH]: TriggerCredentialType.Oauth2,
+  [SupportedCreationMethods.MANUAL]: TriggerCredentialType.Unauthorized,
 }
 
 export const MODAL_TITLE_KEY_MAP: Record<

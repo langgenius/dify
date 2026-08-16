@@ -31,6 +31,7 @@ export const useAvailableNodesMetaData = () => {
   const isChatMode = useIsChatMode()
   const docLink = useDocLink()
   const agentV2Enabled = isAgentV2Enabled()
+  const shouldUseAgentV2 = agentV2Enabled && !isChatMode
 
   const startNodeMetaData = useMemo(
     () => ({
@@ -45,7 +46,7 @@ export const useAvailableNodesMetaData = () => {
 
   const mergedNodesMetaData = useMemo(() => {
     const commonNodes = WORKFLOW_COMMON_NODES.filter((node) =>
-      agentV2Enabled
+      shouldUseAgentV2
         ? node.metaData.type !== BlockEnum.Agent
         : node.metaData.type !== BlockEnum.AgentV2,
     )
@@ -63,7 +64,7 @@ export const useAvailableNodesMetaData = () => {
             TriggerPluginDefault,
           ]),
     ]
-  }, [agentV2Enabled, isChatMode, startNodeMetaData])
+  }, [isChatMode, shouldUseAgentV2, startNodeMetaData])
 
   const availableNodesMetaData = useMemo(
     () =>

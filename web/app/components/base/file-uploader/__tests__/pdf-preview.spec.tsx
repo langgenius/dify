@@ -64,16 +64,10 @@ describe('PdfPreview', () => {
     render(<PdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
 
     expect(document.querySelector('[tabindex="-1"]')).toBeInTheDocument()
+    expect(getScaleContainer()).not.toHaveAttribute('aria-label')
     expect(screen.getByTestId('pdf-loader')).toBeInTheDocument()
     expect(screen.getByTestId('pdf-highlighter')).toBeInTheDocument()
     expect(screen.getByRole('status')).toBeInTheDocument()
-  })
-
-  it('should render zoom in, zoom out, and close icon SVGs', () => {
-    render(<PdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
-
-    const svgs = document.querySelectorAll('svg')
-    expect(svgs.length).toBeGreaterThanOrEqual(3)
   })
 
   it('should zoom in when zoom in control is clicked', () => {
@@ -143,12 +137,10 @@ describe('PdfPreview', () => {
     expect(mockOnCancel).toHaveBeenCalled()
   })
 
-  it('should render the overlay and keep backdrop clicks from closing', () => {
+  it('should keep preview content clicks from closing', () => {
     render(<PdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
 
-    const overlay = screen.getByRole('dialog')
-    expect(overlay).toBeInTheDocument()
-    fireEvent.click(overlay)
+    fireEvent.click(getScaleContainer())
     expect(mockOnCancel).not.toHaveBeenCalled()
   })
 })

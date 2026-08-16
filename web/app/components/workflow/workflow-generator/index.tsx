@@ -34,6 +34,7 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import WorkflowPreview from '@/app/components/workflow/workflow-preview'
+import { WORKFLOW_GENERATION_TIMEOUT_MS } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { fetchWorkflowDraft } from '@/service/workflow'
@@ -56,12 +57,6 @@ import {
 import { useWorkflowGeneratorStore } from './store'
 import useGenGraph from './use-gen-graph'
 
-// Hard ceiling before we abort a hung request. Generous on purpose: the
-// backend runs two sequential LLM calls and may retry a transient provider
-// error (bounded backoff) or an unparseable response (one extra call), so a
-// slow-but-succeeding generation can legitimately pass the one-minute mark.
-// Aborting work that would have landed is the worse failure mode.
-const FE_TIMEOUT_MS = 90_000
 // Mirrors the backend's instruction/ideal-output cap on /workflow-generate —
 // keeping the limit client-side turns an opaque 400 into a visible input stop.
 const MAX_INSTRUCTION_LENGTH = 10_000
@@ -251,7 +246,7 @@ function WorkflowGeneratorModal() {
 
   // Holds the AbortController of the in-flight ``/workflow-generate`` request
   // so we can cancel it on (a) modal close, (b) a second Generate click
-  // while loading, (c) the hard 60 s frontend timeout, or (d) the user
+  // while loading, (c) the hard frontend timeout, or (d) the user
   // pressing Cancel. Without this an in-flight request outlives the modal
   // and can race a future Generate call.
   const abortRef = useRef<AbortController | null>(null)
@@ -349,13 +344,17 @@ function WorkflowGeneratorModal() {
     setLoadingTrue()
 
     // Hard frontend timeout — aborts the request and surfaces a localised toast
-    // instead of a perpetual spinner if the backend hangs.
+    // instead of a perpetual spinner if the backend hangs. Generous on purpose
+    // (NEXT_PUBLIC_WORKFLOW_GENERATION_TIMEOUT_MS, default 180s): the backend
+    // runs a planner call plus parallel builder calls and may retry transient
+    // errors, so aborting a slow-but-succeeding generation is the worse
+    // failure mode.
     timeoutRef.current = setTimeout(() => {
       abortRef.current?.abort()
       abortRef.current = null
       toast.error(t(($) => $['workflowGenerator.errors.timeout']))
       setLoadingFalse()
-    }, FE_TIMEOUT_MS)
+    }, WORKFLOW_GENERATION_TIMEOUT_MS)
 
     // Refine mode: pull the current draft so the backend amends it instead of
     // starting from scratch. The modal mounts outside the Studio's ReactFlow
@@ -570,12 +569,12 @@ function WorkflowGeneratorModal() {
         }
       }}
     >
-      <DialogContent className="h-[min(680px,calc(100dvh-2rem))] max-h-none! w-[calc(100vw-2rem)] max-w-[1140px]! min-w-0 overflow-hidden! border-none p-0! text-left align-middle">
+      <DialogContent className="h-[min(680px,calc(100dvh-2rem))] max-h-none! w-[calc(100vw-2rem)] max-w-285! min-w-0 overflow-hidden! border-none p-0! text-left align-middle">
         <div className="flex h-full min-h-0 flex-col md:flex-row">
           {/* Left pane: instructions + ideal output + model selector */}
-          <div className="max-h-[55%] w-full shrink-0 overflow-y-auto border-b border-divider-regular p-6 md:h-full md:max-h-none md:w-1/2 md:border-r md:border-b-0 lg:w-[570px]">
+          <div className="max-h-[55%] w-full shrink-0 overflow-y-auto border-b border-divider-regular p-6 md:h-full md:max-h-none md:w-1/2 md:border-r md:border-b-0 lg:w-142.5">
             <div className="mb-5">
-              <DialogTitle className="text-lg leading-[28px] font-bold text-text-primary">
+              <DialogTitle className="text-lg leading-7 font-bold text-text-primary">
                 {isRefine
                   ? t(($) => $['workflowGenerator.refineTitle'], { mode: modeLabel })
                   : t(($) => $['workflowGenerator.title'], { mode: modeLabel })}
@@ -609,7 +608,7 @@ function WorkflowGeneratorModal() {
                 // capture an instruction, so focusing it on open aids the flow.
                 // oxlint-disable-next-line jsx-a11y/no-autofocus
                 autoFocus
-                className="h-[160px]"
+                className="h-40"
                 placeholder={
                   isRefine
                     ? t(($) => $['workflowGenerator.refineInstructionPlaceholder'])
@@ -639,18 +638,14 @@ function WorkflowGeneratorModal() {
                   // window where the user might want to bail (slow
                   // model, wrong instruction, etc.). Hidden when idle so
                   // the row stays focused on the primary action.
-                  <Button
-                    className="flex space-x-1"
-                    variant="secondary"
-                    onClick={onCancelGeneration}
-                  >
+                  <Button className="flex" variant="secondary" onClick={onCancelGeneration}>
                     <span className="text-xs font-semibold">
                       {t(($) => $['workflowGenerator.cancel'])}
                     </span>
                   </Button>
                 ) : (
                   <Button
-                    className="flex space-x-1"
+                    className="flex"
                     variant="primary"
                     onClick={onGenerate}
                     disabled={!model.name}

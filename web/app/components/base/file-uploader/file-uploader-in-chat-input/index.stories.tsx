@@ -39,7 +39,7 @@ const ChatInputDemo = ({ initialFiles = mockFiles, ...props }: ChatInputDemoProp
     <>
       <ToastHost />
       <FileContextProvider value={files} onChange={setFiles}>
-        <div className="w-[360px] rounded-2xl border border-divider-subtle bg-components-panel-bg p-4">
+        <div className="w-90 rounded-2xl border border-divider-subtle bg-components-panel-bg p-4">
           <div className="mb-3 text-xs text-text-secondary">Simulated chat input</div>
           <div className="flex items-center gap-2">
             <FileUploaderInChatInput {...props} />

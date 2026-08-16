@@ -20,7 +20,7 @@ const ShowPanel: FC<Props> = ({ payload, rootClassName }) => {
     },
   }
   return (
-    <div className="relative left-[-7px]">
+    <div className="relative -left-1.75">
       {Object.keys(schema.schema.properties!).map((name) => (
         <Field
           key={name}

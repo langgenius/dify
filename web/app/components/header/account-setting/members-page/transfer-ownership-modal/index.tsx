@@ -2,12 +2,13 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { userProfileAtom } from '@/context/account-state'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { ownershipTransfer, sendOwnerEmail, verifyOwnerEmail } from '@/service/common'
 import MemberSelector from './member-selector'
 
@@ -29,7 +30,10 @@ const getErrorMessage = (error: unknown) => {
 const TransferOwnershipModal = ({ onClose, show }: Props) => {
   const { t } = useTranslation()
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
-  const userProfile = useAtomValue(userProfileAtom)
+  const { data: userProfile } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile,
+  })
   const [step, setStep] = useState<Step>(STEP.start)
   const [code, setCode] = useState<string>('')
   const [time, setTime] = useState<number>(0)
@@ -107,7 +111,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
   }
   return (
     <Dialog open={show}>
-      <DialogContent className="w-[420px]">
+      <DialogContent className="w-105">
         <button
           type="button"
           className="absolute top-5 right-5 cursor-pointer border-none bg-transparent p-1.5 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
@@ -145,7 +149,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
               <Button className="w-full!" variant="primary" onClick={sendCodeToOriginEmail}>
                 {t(($) => $['members.transferModal.sendVerifyCode'], { ns: 'common' })}
               </Button>
-              <Button data-testid="transfer-modal-cancel" className="w-full!" onClick={onClose}>
+              <Button className="w-full!" onClick={onClose}>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </Button>
             </div>
@@ -174,7 +178,6 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
                 {t(($) => $['members.transferModal.codeLabel'], { ns: 'common' })}
               </div>
               <Input
-                data-testid="transfer-modal-code-input"
                 className="w-full!"
                 placeholder={t(($) => $['members.transferModal.codePlaceholder'], { ns: 'common' })}
                 value={code}
@@ -184,7 +187,6 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
             </div>
             <div className="mt-3 space-y-2">
               <Button
-                data-testid="transfer-modal-continue"
                 disabled={code.length !== 6}
                 className="w-full!"
                 variant="primary"
@@ -192,7 +194,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
               >
                 {t(($) => $['members.transferModal.continue'], { ns: 'common' })}
               </Button>
-              <Button data-testid="transfer-modal-cancel" className="w-full!" onClick={onClose}>
+              <Button className="w-full!" onClick={onClose}>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </Button>
             </div>
@@ -239,7 +241,6 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
             </div>
             <div className="mt-4 space-y-2">
               <Button
-                data-testid="transfer-modal-submit"
                 disabled={!newOwner || isTransfer}
                 className="w-full!"
                 variant="primary"
@@ -248,7 +249,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
               >
                 {t(($) => $['members.transferModal.transfer'], { ns: 'common' })}
               </Button>
-              <Button data-testid="transfer-modal-cancel" className="w-full!" onClick={onClose}>
+              <Button className="w-full!" onClick={onClose}>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </Button>
             </div>

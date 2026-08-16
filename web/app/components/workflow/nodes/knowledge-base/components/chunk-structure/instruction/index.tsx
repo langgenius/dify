@@ -22,10 +22,10 @@ const Instruction = ({ className }: InstructionProps) => {
     >
       <div className="relative flex size-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur-[5px]">
         <AddChunks className="size-5 text-text-accent" />
-        <Line className="absolute bottom-[-76px] -left-px" type="vertical" />
-        <Line className="absolute -right-px bottom-[-76px]" type="vertical" />
-        <Line className="absolute -top-px right-[-184px]" type="horizontal" />
-        <Line className="absolute right-[-184px] -bottom-px" type="horizontal" />
+        <Line className="absolute -bottom-19 -left-px" type="vertical" />
+        <Line className="absolute -right-px -bottom-19" type="vertical" />
+        <Line className="absolute -top-px -right-46" type="horizontal" />
+        <Line className="absolute -right-46 -bottom-px" type="horizontal" />
       </div>
       <div className="flex flex-col gap-y-1">
         <div className="system-sm-medium text-text-secondary">

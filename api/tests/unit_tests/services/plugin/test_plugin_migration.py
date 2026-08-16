@@ -1,9 +1,12 @@
 import json
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy.orm import Session
 
+from models.model import App, AppMode
 from services.plugin.plugin_migration import PluginMigration
 
 MIGRATION_MODULE = "services.plugin.plugin_migration"
@@ -31,6 +34,30 @@ def test_fetch_latest_package_identifier_calls_marketplace_when_enabled(mocker: 
     result = PluginMigration._fetch_latest_package_identifier("langgenius/openai")
 
     assert result == "langgenius/openai:1.0.0@abc"
+
+
+def test_extract_app_tables_checks_agent_mode_with_its_session(mocker: MockerFixture, sqlite_session: Session) -> None:
+    app = App(
+        id="app-1",
+        tenant_id="tenant-1",
+        name="Chat app",
+        description="",
+        mode=AppMode.CHAT,
+        icon_type=None,
+        icon="",
+        icon_background=None,
+        enable_site=False,
+        enable_api=False,
+        created_by="account-1",
+        max_active_requests=0,
+    )
+    sqlite_session.add(app)
+    sqlite_session.commit()
+    mocker.patch(f"{MIGRATION_MODULE}.db", SimpleNamespace(engine=sqlite_session.get_bind()))
+
+    result = PluginMigration.extract_app_tables("tenant-1")
+
+    assert result == []
 
 
 class TestHandlePluginInstanceInstall:

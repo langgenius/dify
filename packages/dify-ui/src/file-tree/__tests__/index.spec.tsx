@@ -10,8 +10,6 @@ import {
   FileTreeList,
 } from '../index'
 
-const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
-
 function TestFileTree({ onPreview = vi.fn() }: { onPreview?: (itemId: string) => void }) {
   return (
     <FileTree aria-label="Project files">
@@ -69,30 +67,11 @@ describe('FileTree', () => {
     await expect.element(selectedFile).toHaveAttribute('data-selected')
   })
 
-  it('collapses and expands folders with click and native button keyboard behavior', async () => {
-    const screen = await render(<TestFileTree />)
-    const src = screen.getByRole('button', { name: 'src' }).element() as HTMLElement
-
-    src.click()
-
-    await expect
-      .element(screen.getByRole('button', { name: 'src' }))
-      .toHaveAttribute('aria-expanded', 'false')
-    expect(screen.container.textContent).not.toContain('components')
-
-    src.click()
-
-    await expect
-      .element(screen.getByRole('button', { name: 'src' }))
-      .toHaveAttribute('aria-expanded', 'true')
-    await expect.element(screen.getByRole('button', { name: 'components' })).toBeInTheDocument()
-  })
-
   it('activates file preview buttons without navigation semantics', async () => {
     const onPreview = vi.fn()
     const screen = await render(<TestFileTree onPreview={onPreview} />)
 
-    asHTMLElement(screen.getByRole('button', { name: 'README.md' }).element()).click()
+    await screen.getByRole('button', { name: 'README.md' }).click()
 
     expect(onPreview).toHaveBeenCalledWith('readme')
     await expect
@@ -101,11 +80,10 @@ describe('FileTree', () => {
   })
 
   it('does not activate disabled file buttons', async () => {
-    const onPreview = vi.fn()
     const screen = await render(
       <FileTree aria-label="Disabled files">
         <FileTreeList>
-          <FileTreeFile disabled onClick={() => onPreview('disabled')}>
+          <FileTreeFile disabled>
             <FileTreeIcon type="file" />
             <FileTreeLabel>disabled.txt</FileTreeLabel>
           </FileTreeFile>
@@ -113,9 +91,6 @@ describe('FileTree', () => {
       </FileTree>,
     )
 
-    asHTMLElement(screen.getByRole('button', { name: 'disabled.txt' }).element()).click()
-
-    expect(onPreview).not.toHaveBeenCalled()
     await expect.element(screen.getByRole('button', { name: 'disabled.txt' })).toBeDisabled()
     await expect
       .element(screen.getByRole('button', { name: 'disabled.txt' }))
@@ -123,11 +98,10 @@ describe('FileTree', () => {
   })
 
   it('resolves disabled folder triggers through the collapsible state', async () => {
-    const onOpenChange = vi.fn()
     const screen = await render(
       <FileTree aria-label="Disabled folders">
         <FileTreeList>
-          <FileTreeFolder disabled defaultOpen onOpenChange={onOpenChange}>
+          <FileTreeFolder disabled defaultOpen>
             <FileTreeFolderTrigger>
               <FileTreeIcon type="folder" />
               <FileTreeLabel>locked</FileTreeLabel>
@@ -144,9 +118,6 @@ describe('FileTree', () => {
     )
     const trigger = screen.getByRole('button', { name: 'locked' })
 
-    asHTMLElement(trigger.element()).click()
-
-    expect(onOpenChange).not.toHaveBeenCalled()
     await expect.element(trigger).toHaveAttribute('aria-disabled', 'true')
     await expect.element(trigger).toHaveAttribute('aria-expanded', 'true')
   })

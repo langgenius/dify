@@ -1,8 +1,9 @@
 import type { FC, ReactNode } from 'react'
-import type { Theme } from '../embedded-chatbot/theme/theme-context'
+import type { Theme } from '../embedded-chatbot/theme/theme'
 import type { ChatItem } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import copy from 'copy-to-clipboard'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
@@ -157,7 +158,7 @@ const Question: FC<QuestionProps> = ({
             className="absolute hidden gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs group-hover:flex"
             style={{ right: contentWidth + 8 }}
           >
-            <ActionButton
+            <IconButton
               aria-label={copyLabel}
               onClick={() => {
                 copy(content)
@@ -165,11 +166,11 @@ const Question: FC<QuestionProps> = ({
               }}
             >
               <div className="i-ri-clipboard-line size-4" aria-hidden="true" />
-            </ActionButton>
+            </IconButton>
             {enableEdit && (
-              <ActionButton aria-label={editLabel} onClick={handleEdit}>
+              <IconButton aria-label={editLabel} onClick={handleEdit}>
                 <div className="i-ri-edit-line size-4" aria-hidden="true" />
-              </ActionButton>
+              </IconButton>
             )}
           </div>
         </div>
@@ -181,7 +182,7 @@ const Question: FC<QuestionProps> = ({
             !isEditing &&
               'rounded-2xl bg-background-gradient-bg-fill-chat-bubble-bg-3 text-text-primary',
             isEditing &&
-              'rounded-[24px] border-[3px] border-components-option-card-option-selected-border bg-components-panel-bg-blur shadow-lg',
+              'rounded-3xl border-[3px] border-components-option-card-option-selected-border bg-components-panel-bg-blur shadow-lg',
           )}
           style={
             !isEditing && theme?.chatBubbleColorStyle
@@ -201,7 +202,7 @@ const Question: FC<QuestionProps> = ({
             <div className="break-words whitespace-pre-wrap">{content}</div>
           ) : (
             <div className="flex flex-col gap-4">
-              <div className="max-h-[158px] overflow-x-hidden overflow-y-auto pr-1">
+              <div className="max-h-39.5 overflow-x-hidden overflow-y-auto pr-1">
                 <Textarea
                   className={cn(
                     'w-full resize-none bg-transparent p-0 body-lg-regular leading-7 text-text-primary outline-hidden',
@@ -235,7 +236,7 @@ const Question: FC<QuestionProps> = ({
             />
           )}
         </div>
-        <div className="mt-1 h-[18px]" />
+        <div className="mt-1 h-4.5" />
       </div>
       {!hideAvatar && (
         <div className="size-10 shrink-0">

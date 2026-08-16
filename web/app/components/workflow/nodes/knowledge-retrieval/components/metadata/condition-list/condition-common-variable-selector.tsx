@@ -35,7 +35,7 @@ const ConditionCommonVariableSelector = ({
         render={
           <div className="flex h-6 grow cursor-pointer items-center">
             {selected && (
-              <div className="inline-flex h-6 items-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark pr-1.5 pl-[5px] system-xs-medium text-text-secondary shadow-xs">
+              <div className="inline-flex h-6 items-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark pr-1.5 pl-1.25 system-xs-medium text-text-secondary shadow-xs">
                 <Variable02 className="mr-1 size-3.5 text-text-accent" />
                 {selected.value}
               </div>
@@ -48,7 +48,7 @@ const ConditionCommonVariableSelector = ({
                     ns: 'workflow',
                   })}
                 </div>
-                <div className="flex h-5 shrink-0 items-center rounded-[5px] border border-divider-deep px-[5px] system-2xs-medium text-text-tertiary">
+                <div className="flex h-5 shrink-0 items-center rounded-[5px] border border-divider-deep px-1.25 system-2xs-medium text-text-tertiary">
                   {varType}
                 </div>
               </>
@@ -64,7 +64,7 @@ const ConditionCommonVariableSelector = ({
         sideOffset={4}
         popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >
-        <div className="w-[200px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg">
+        <div className="w-50 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg">
           {variables.map((v) => (
             <div
               key={v.value}

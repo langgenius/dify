@@ -229,9 +229,19 @@ class ComposerConfigValidator:
     @classmethod
     def validate_agent_soul(cls, agent_soul: AgentSoulConfig) -> None:
         dumped = agent_soul.model_dump(mode="json")
+        cls._reject_missing_config_assets(agent_soul)
         cls._validate_knowledge_runtime_config(agent_soul)
         cls._reject_plaintext_secrets(dumped, path="agent_soul")
         cls._validate_shell_config(dumped)
+
+    @staticmethod
+    def _reject_missing_config_assets(agent_soul: AgentSoulConfig) -> None:
+        missing = [f"skill:{item.name}" for item in agent_soul.config_skills if item.is_missing]
+        missing.extend(f"file:{item.name}" for item in agent_soul.config_files if item.is_missing)
+        if missing:
+            raise InvalidComposerConfigError(
+                "config_asset_missing: upload the missing Agent config assets before publishing: " + ", ".join(missing)
+            )
 
     @classmethod
     def _validate_knowledge_runtime_config(cls, agent_soul: AgentSoulConfig) -> None:

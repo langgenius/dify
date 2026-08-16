@@ -68,10 +68,7 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
           }}
         >
           <div className="mb-4 pr-8">
-            <DialogTitle
-              className="text-xl font-semibold text-text-primary"
-              data-testid="edit-workspace-title"
-            >
+            <DialogTitle className="text-xl font-semibold text-text-primary">
               {t(($) => $['account.editWorkspaceInfo'], { ns: 'common' })}
             </DialogTitle>
           </div>
@@ -96,12 +93,7 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
             />
             <div className="min-h-6">
               {hasError && (
-                <p
-                  id={errorId}
-                  data-testid="edit-workspace-error"
-                  className="system-xs-regular text-text-destructive"
-                  role="alert"
-                >
+                <p id={errorId} className="system-xs-regular text-text-destructive" role="alert">
                   {nameErrorMessage}
                 </p>
               )}

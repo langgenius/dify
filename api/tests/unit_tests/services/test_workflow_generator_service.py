@@ -27,20 +27,26 @@ class TestWorkflowGeneratorService:
     @patch("services.workflow_generator_service.WorkflowGenerator")
     @patch("services.workflow_generator_service.ModelManager")
     @patch("services.workflow_generator_service.build_tool_catalogue")
-    @patch("services.workflow_generator_service.format_tool_catalogue")
-    def test_forwards_model_instance_and_catalogue_text_to_generator(
+    def test_forwards_model_instance_and_complete_catalogue_to_generator(
         self,
-        mock_format_catalogue: MagicMock,
         mock_build_catalogue: MagicMock,
         mock_model_manager: MagicMock,
         mock_workflow_generator: MagicMock,
     ):
-        """Happy path: model_instance + catalogue text + payload flow through."""
+        """Happy path: the runner receives the complete catalogue for dynamic routing."""
         # Arrange
         instance = MagicMock(name="model_instance")
         mock_model_manager.for_tenant.return_value.get_model_instance.return_value = instance
-        mock_build_catalogue.return_value = [{"provider_name": "google"}]
-        mock_format_catalogue.return_value = "- google/search — Search."
+        mock_build_catalogue.return_value = [
+            {
+                "provider_name": "google",
+                "provider_type": "builtin",
+                "plugin_id": "",
+                "tool_name": "search",
+                "tool_label": "Search",
+                "description": "Search.",
+            }
+        ]
         mock_workflow_generator.generate_workflow_graph.return_value = {
             "graph": {"nodes": [], "edges": [], "viewport": {"x": 0, "y": 0, "zoom": 0.7}},
             "message": "ok",
@@ -66,7 +72,8 @@ class TestWorkflowGeneratorService:
         assert call_kwargs["mode"] == "workflow"
         assert call_kwargs["instruction"] == "Summarize a URL"
         assert call_kwargs["ideal_output"] == "A 3-sentence summary"
-        assert call_kwargs["tool_catalogue_text"] == "- google/search — Search."
+        assert call_kwargs["tool_catalogue_text"] == ""
+        assert call_kwargs["tool_catalogue_entries"] == mock_build_catalogue.return_value
         assert call_kwargs["model_parameters"] == {"temperature": 0.4}
         assert result["error"] == ""
 
@@ -107,10 +114,8 @@ class TestWorkflowGeneratorService:
     @patch("services.workflow_generator_service.WorkflowGenerator")
     @patch("services.workflow_generator_service.ModelManager")
     @patch("services.workflow_generator_service.build_tool_catalogue")
-    @patch("services.workflow_generator_service.format_tool_catalogue")
     def test_defaults_ideal_output_to_empty_string(
         self,
-        mock_format_catalogue: MagicMock,
         mock_build_catalogue: MagicMock,
         mock_model_manager: MagicMock,
         mock_workflow_generator: MagicMock,
@@ -118,7 +123,6 @@ class TestWorkflowGeneratorService:
         """Callers can omit ideal_output; the runner should still receive ""."""
         mock_model_manager.for_tenant.return_value.get_model_instance.return_value = MagicMock()
         mock_build_catalogue.return_value = []
-        mock_format_catalogue.return_value = ""
         mock_workflow_generator.generate_workflow_graph.return_value = {
             "graph": {"nodes": [], "edges": [], "viewport": {"x": 0, "y": 0, "zoom": 0.7}},
             "message": "",
@@ -139,10 +143,8 @@ class TestWorkflowGeneratorService:
     @patch("services.workflow_generator_service.WorkflowGenerator")
     @patch("services.workflow_generator_service.ModelManager")
     @patch("services.workflow_generator_service.build_tool_catalogue")
-    @patch("services.workflow_generator_service.format_tool_catalogue")
     def test_forwards_current_graph_for_refine(
         self,
-        mock_format_catalogue: MagicMock,
         mock_build_catalogue: MagicMock,
         mock_model_manager: MagicMock,
         mock_workflow_generator: MagicMock,
@@ -150,7 +152,6 @@ class TestWorkflowGeneratorService:
         """The cmd+k `/refine` path passes the existing draft graph through to the runner."""
         mock_model_manager.for_tenant.return_value.get_model_instance.return_value = MagicMock()
         mock_build_catalogue.return_value = []
-        mock_format_catalogue.return_value = ""
         mock_workflow_generator.generate_workflow_graph.return_value = {
             "graph": {"nodes": [], "edges": [], "viewport": {"x": 0, "y": 0, "zoom": 0.7}},
             "message": "",
@@ -172,10 +173,8 @@ class TestWorkflowGeneratorService:
     @patch("services.workflow_generator_service.WorkflowGenerator")
     @patch("services.workflow_generator_service.ModelManager")
     @patch("services.workflow_generator_service.build_tool_catalogue")
-    @patch("services.workflow_generator_service.format_tool_catalogue")
     def test_defaults_current_graph_to_none_for_create(
         self,
-        mock_format_catalogue: MagicMock,
         mock_build_catalogue: MagicMock,
         mock_model_manager: MagicMock,
         mock_workflow_generator: MagicMock,
@@ -183,7 +182,6 @@ class TestWorkflowGeneratorService:
         """Omitting current_graph (the `/create` path) forwards None to the runner."""
         mock_model_manager.for_tenant.return_value.get_model_instance.return_value = MagicMock()
         mock_build_catalogue.return_value = []
-        mock_format_catalogue.return_value = ""
         mock_workflow_generator.generate_workflow_graph.return_value = {
             "graph": {"nodes": [], "edges": [], "viewport": {"x": 0, "y": 0, "zoom": 0.7}},
             "message": "",
@@ -200,24 +198,18 @@ class TestWorkflowGeneratorService:
         call_kwargs = mock_workflow_generator.generate_workflow_graph.call_args.kwargs
         assert call_kwargs["current_graph"] is None
 
-    @patch("services.workflow_generator_service.LLMGenerator")
     @patch("services.workflow_generator_service.WorkflowGenerator")
     @patch("services.workflow_generator_service.ModelManager")
     @patch("services.workflow_generator_service.build_tool_catalogue")
-    @patch("services.workflow_generator_service.format_tool_catalogue")
-    def test_auto_mode_resolves_via_classifier(
+    def test_auto_mode_forwards_sentinel_to_runner(
         self,
-        mock_format_catalogue: MagicMock,
         mock_build_catalogue: MagicMock,
         mock_model_manager: MagicMock,
         mock_workflow_generator: MagicMock,
-        mock_llm_generator: MagicMock,
     ):
-        """Task 3: ``mode="auto"`` is classified before planning; the concrete mode reaches the runner."""
+        """``mode="auto"`` passes straight through — the planner resolves it, no extra LLM call."""
         mock_model_manager.for_tenant.return_value.get_model_instance.return_value = MagicMock()
         mock_build_catalogue.return_value = []
-        mock_format_catalogue.return_value = ""
-        mock_llm_generator.classify_workflow_mode.return_value = "workflow"
         mock_workflow_generator.generate_workflow_graph.return_value = {
             "graph": {"nodes": [], "edges": [], "viewport": {"x": 0, "y": 0, "zoom": 0.7}},
             "message": "",
@@ -231,29 +223,22 @@ class TestWorkflowGeneratorService:
             model_config=_model_config(),
         )
 
-        mock_llm_generator.classify_workflow_mode.assert_called_once()
-        classify_kwargs = mock_llm_generator.classify_workflow_mode.call_args.kwargs
-        assert classify_kwargs["tenant_id"] == "t-1"
-        assert classify_kwargs["instruction"] == "Summarize a URL"
-        assert mock_workflow_generator.generate_workflow_graph.call_args.kwargs["mode"] == "workflow"
+        assert mock_workflow_generator.generate_workflow_graph.call_args.kwargs["mode"] == "auto"
+        # the model registry is consulted exactly once — no classifier resolution
+        mock_model_manager.for_tenant.return_value.get_model_instance.assert_called_once()
 
-    @patch("services.workflow_generator_service.LLMGenerator")
     @patch("services.workflow_generator_service.WorkflowGenerator")
     @patch("services.workflow_generator_service.ModelManager")
     @patch("services.workflow_generator_service.build_tool_catalogue")
-    @patch("services.workflow_generator_service.format_tool_catalogue")
-    def test_explicit_mode_skips_classifier(
+    def test_explicit_mode_passes_through_unchanged(
         self,
-        mock_format_catalogue: MagicMock,
         mock_build_catalogue: MagicMock,
         mock_model_manager: MagicMock,
         mock_workflow_generator: MagicMock,
-        mock_llm_generator: MagicMock,
     ):
-        """A concrete mode passes through unchanged without an extra classification call."""
+        """A concrete mode reaches the runner verbatim."""
         mock_model_manager.for_tenant.return_value.get_model_instance.return_value = MagicMock()
         mock_build_catalogue.return_value = []
-        mock_format_catalogue.return_value = ""
         mock_workflow_generator.generate_workflow_graph.return_value = {
             "graph": {"nodes": [], "edges": [], "viewport": {"x": 0, "y": 0, "zoom": 0.7}},
             "message": "",
@@ -267,16 +252,13 @@ class TestWorkflowGeneratorService:
             model_config=_model_config(),
         )
 
-        mock_llm_generator.classify_workflow_mode.assert_not_called()
         assert mock_workflow_generator.generate_workflow_graph.call_args.kwargs["mode"] == "advanced-chat"
 
     @patch("services.workflow_generator_service.WorkflowGenerator")
     @patch("services.workflow_generator_service.ModelManager")
     @patch("services.workflow_generator_service.build_tool_catalogue")
-    @patch("services.workflow_generator_service.format_tool_catalogue")
     def test_stream_delegates_to_runner_stream(
         self,
-        mock_format_catalogue: MagicMock,
         mock_build_catalogue: MagicMock,
         mock_model_manager: MagicMock,
         mock_workflow_generator: MagicMock,
@@ -285,7 +267,6 @@ class TestWorkflowGeneratorService:
         instance = MagicMock(name="model_instance")
         mock_model_manager.for_tenant.return_value.get_model_instance.return_value = instance
         mock_build_catalogue.return_value = []
-        mock_format_catalogue.return_value = ""
 
         def _runner_stream(**_kwargs):
             yield ("plan", {"mode": "workflow"})

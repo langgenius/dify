@@ -2,6 +2,7 @@ import { DSLImportStatus } from '@/models/app'
 import { AppModeEnum } from '@/types/app'
 import { BlockEnum } from '../types'
 import {
+  getImportNotificationPayload,
   getInvalidNodeTypes,
   isImportCompleted,
   normalizeWorkflowFeatures,
@@ -92,6 +93,23 @@ workflow:
       expect(isImportCompleted(DSLImportStatus.COMPLETED)).toBe(true)
       expect(isImportCompleted(DSLImportStatus.COMPLETED_WITH_WARNINGS)).toBe(true)
       expect(isImportCompleted(DSLImportStatus.PENDING)).toBe(false)
+    })
+
+    it('should use the warning fallback in the import notification', () => {
+      const t = ((key: (selector: Record<string, string>) => string) =>
+        key({
+          'common.importSuccess': 'Import succeeded',
+          'common.importWarning': 'Caution',
+          'common.importWarningDetails': 'Some configuration may need attention',
+        })) as never
+
+      const payload = getImportNotificationPayload(DSLImportStatus.COMPLETED_WITH_WARNINGS, t)
+
+      expect(payload).toEqual({
+        type: 'warning',
+        message: 'Caution',
+        children: 'Some configuration may need attention',
+      })
     })
 
     it('should normalize workflow features with defaults', () => {
