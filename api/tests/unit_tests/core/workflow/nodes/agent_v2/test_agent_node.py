@@ -62,13 +62,6 @@ from models.agent_config_entities import (
 from services.agent.workspace_service import AgentWorkspaceNotFoundError
 
 
-class FakeCredentialsProvider:
-    def fetch(self, provider_name: str, model_name: str) -> dict[str, object]:
-        assert provider_name == "openai"
-        assert model_name == "gpt-test"
-        return {"api_key": "secret-key"}
-
-
 def _restored_file(*, transfer_method: FileTransferMethod, reference: str) -> File:
     return File(
         type=FileType.DOCUMENT,
@@ -360,8 +353,7 @@ def _node(
             ),
         ),
         binding_resolver=binding_resolver,
-        runtime_request_builder=runtime_request_builder
-        or WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()),
+        runtime_request_builder=runtime_request_builder or WorkflowAgentRuntimeRequestBuilder(),
         agent_backend_client=client,
         event_adapter=AgentBackendRunEventAdapter(),
         output_adapter=WorkflowAgentOutputAdapter(),
@@ -402,7 +394,7 @@ def test_agent_node_run_maps_successful_agent_backend_run_to_node_result():
     assert agent_log["agent_backend"]["status"] == "succeeded"
     assert result.process_data["agent_id"] == "agent-1"
     layers = {layer["name"]: layer for layer in result.inputs["agent_backend_request"]["composition"]["layers"]}
-    assert layers["llm"]["config"]["credentials"] == "[REDACTED]"
+    assert "credentials" not in layers["llm"]["config"]
 
 
 def test_agent_node_uses_resolved_backend_binding_before_backend_invocation() -> None:
@@ -466,7 +458,7 @@ def test_agent_node_maps_persisted_participant_lookup_error_to_node_failure() ->
 
 def test_agent_node_passes_execution_id_to_session_store_and_runtime_request_builder() -> None:
     store = FakeSessionStore()
-    request_builder = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider())
+    request_builder = WorkflowAgentRuntimeRequestBuilder()
     node = _node(session_store=store, runtime_request_builder=request_builder)
     execution_id = node.execution_id
 

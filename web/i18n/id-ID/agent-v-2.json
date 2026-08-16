@@ -156,6 +156,7 @@
   "agentDetail.configure.preview.empty.description": "Jalankan agen sebagai chat final, persis seperti yang akan dialami orang setelah diterbitkan.",
   "agentDetail.configure.preview.empty.title": "Pratinjau {{name}}",
   "agentDetail.configure.preview.endUserAuth": "Autentikasi pengguna akhir",
+  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "Proses Agent ini dihentikan setelah mencapai jumlah maksimum permintaan model. Coba lagi, atau bagi tugas menjadi langkah-langkah yang lebih kecil.",
   "agentDetail.configure.preview.errors.agentRunLimitExceeded": "Proses Agent ini dihentikan karena mencapai batas waktu. Coba lagi, atau bagi tugas menjadi langkah-langkah yang lebih kecil.",
   "agentDetail.configure.preview.inputPlaceholder": "Kirim pesan ke {{name}}",
   "agentDetail.configure.preview.restart": "Mulai dari awal",
@@ -425,6 +426,7 @@
   "roster.sort.lastModified": "Terakhir diubah",
   "roster.sort.optionsLabel": "Opsi pengurutan",
   "roster.sort.recentlyCreated": "Baru dibuat",
+  "roster.title": "Agen",
   "roster.updateSuccess": "Agen diperbarui.",
   "roster.usageStatus.draft": "Draf"
 }

@@ -1,7 +1,7 @@
 import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { AgentOutputVariables } from '../index'
 
 const editorLabel = 'workflow.nodes.agent.outputVars.editorLabel'

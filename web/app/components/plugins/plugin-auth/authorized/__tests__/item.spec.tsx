@@ -1,6 +1,6 @@
 import type { Credential } from '../../types'
 import { cleanup, fireEvent, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { CredentialTypeEnum } from '../../types'
 import Item from '../item'

@@ -415,7 +415,12 @@ class AgentDriveService:
         file_kind = AgentDriveFileKind(item.file_ref.kind)
         file_id = item.file_ref.id
         size, mime_type, file_hash = self._validate_source(
-            session, tenant_id=tenant_id, user_id=user_id, file_kind=file_kind, file_id=file_id
+            session,
+            tenant_id=tenant_id,
+            user_id=user_id,
+            file_kind=file_kind,
+            file_id=file_id,
+            take_ownership=item.value_owned_by_drive,
         )
 
         existing = session.scalar(
@@ -725,6 +730,7 @@ class AgentDriveService:
         user_id: str,
         file_kind: AgentDriveFileKind,
         file_id: str,
+        take_ownership: bool = False,
     ) -> tuple[int | None, str | None, str | None]:
         """Verify the source file exists for the tenant (and user, for ToolFile).
 
@@ -734,16 +740,20 @@ class AgentDriveService:
         try:
             if file_kind == AgentDriveFileKind.TOOL_FILE:
                 tool_file = session.scalar(
-                    select(ToolFile).where(
+                    select(ToolFile)
+                    .where(
                         ToolFile.id == file_id,
                         ToolFile.tenant_id == tenant_id,
                         ToolFile.user_id == user_id,
                     )
+                    .with_for_update()
                 )
                 if tool_file is None:
                     raise AgentDriveError(
                         "source_not_found", "source ToolFile not found for this tenant/user", status_code=404
                     )
+                if take_ownership:
+                    tool_file.conversation_id = None
                 return tool_file.size, tool_file.mimetype, None
             upload_file = session.scalar(
                 select(UploadFile).where(UploadFile.id == file_id, UploadFile.tenant_id == tenant_id)

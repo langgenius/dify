@@ -24,8 +24,11 @@ from controllers.console import console_ns
 from controllers.console.app.error import AppNotFoundError
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     model_validate,
+    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
@@ -154,6 +157,7 @@ class AgentAppSandboxInfoResource(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @with_current_tenant_id
     @with_current_user
     def get(self, current_user: Account, tenant_id: str, agent_id: UUID):
@@ -183,6 +187,7 @@ class AgentAppSandboxListResource(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @with_current_tenant_id
     @with_current_user
     def get(self, current_user: Account, tenant_id: str, agent_id: UUID):
@@ -213,6 +218,7 @@ class AgentAppSandboxReadResource(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @with_current_tenant_id
     @with_current_user
     def get(self, current_user: Account, tenant_id: str, agent_id: UUID):
@@ -243,6 +249,7 @@ class AgentAppSandboxDownloadResource(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @with_current_tenant_id
     @with_current_user
     @model_validate(AgentSandboxDownloadPayload)
@@ -286,6 +293,7 @@ class WorkflowAgentSandboxListResource(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @with_current_tenant_id
     def get(self, tenant_id: str, app_model: App, workflow_run_id: UUID, node_id: str):
@@ -323,6 +331,7 @@ class WorkflowAgentSandboxReadResource(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @with_current_tenant_id
     def get(self, tenant_id: str, app_model: App, workflow_run_id: UUID, node_id: str):
@@ -353,6 +362,7 @@ class WorkflowAgentSandboxDownloadResource(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @with_current_user
     @with_current_tenant_id
     @model_validate(WorkflowAgentSandboxDownloadPayload)

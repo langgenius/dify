@@ -68,7 +68,7 @@ Keep implementation-only render helpers, context values, styling helpers, and up
 | Actions          | `./button`, `./icon-button`, `./toggle`                                                                                                                       | Visible-label actions, icon-only commands, and persistent toggles.                                    |
 | Controls         | `./segmented-control`                                                                                                                                         | SegmentedControl for mode, filter, and view selection.                                                |
 | Display          | `./collapsible`, `./kbd`                                                                                                                                      | Collapsible disclosure primitive; keyboard input and shortcut keycap primitives.                      |
-| Feedback         | `./meter`, `./toast`                                                                                                                                          | Meter is inline status; Toast owns the `z-60` layer.                                                  |
+| Feedback         | `./meter`, `./progress`, `./status-dot`, `./toast`                                                                                                            | Inline and asynchronous status primitives; Toast owns the `z-60` layer.                               |
 | Form             | `./form`, `./field`, `./fieldset`, `./input`, `./textarea`, `./checkbox`, `./checkbox-group`, `./radio`, `./number-field`, `./select`, `./slider`, `./switch` | Native form boundary, field semantics, and controls.                                                  |
 | Layout           | `./scroll-area`                                                                                                                                               | Custom-styled scrollbar over the host viewport.                                                       |
 | Media            | `./avatar`                                                                                                                                                    | Avatar root, image, and fallback primitives.                                                          |
@@ -96,7 +96,7 @@ When `loading` is true, `Button` defaults `focusableWhenDisabled` to true. Loadi
 
 Use `IconButton` for a command represented by one icon and no visible text. Use `Button` when the control has a visible label, including buttons with leading or trailing icons.
 
-Pass exactly one CSS or React SVG icon and provide either `aria-label` or `aria-labelledby`:
+Pass exactly one React element containing the decorative glyph and provide either `aria-label` or `aria-labelledby`. Mark the glyph or its decorative wrapper `aria-hidden="true"`; `IconButton` does not add that attribute to its child:
 
 ```tsx
 <IconButton aria-label="Close">
@@ -104,9 +104,11 @@ Pass exactly one CSS or React SVG icon and provide either `aria-label` or `aria-
 </IconButton>
 ```
 
-Every icon button must have an `aria-label` or `aria-labelledby`; a tooltip is only a visual enhancement. The child chooses the glyph and its optical size. Omit `variant` for the neutral action-button appearance, or use the same appearance variants as `Button`. Use `tone="destructive"` for destructive intent. Size, radius, colors, hover, disabled, and focus-visible styles belong to `IconButton`; limit `className` to external layout.
+Every icon button must have an `aria-label` or `aria-labelledby`; a tooltip is only a visual enhancement. The child chooses the glyph and its optical size. Omit `variant` for the IconButton-specific neutral appearance; the other appearance names align with `Button`. Use `tone="destructive"` for destructive intent.
 
-`IconButton` preserves Base UI Button's `render`, `nativeButton`, event, and ref composition.
+Size, radius, colors, hover, disabled, and focus-visible styles belong to `IconButton`. Use `className` for external layout or selectors driven by the composed primitive or business-state owner; do not recreate an existing appearance variant.
+
+When Toggle, Menu, Popover, Tooltip, or Collapsible owns the interaction state, keep that primitive outside and use its `render` prop to render `IconButton` as the final button. `IconButton` preserves Base UI Button's `render`, `nativeButton`, event, and ref composition.
 
 ## Segmented control contract
 
@@ -245,19 +247,19 @@ Equivalent: any root element with `isolation: isolate` in CSS. Without it, overl
 
 Every overlay primitive uses a single, shared z-index. Do **not** override it at call sites.
 
-| Layer                                                                                                               | z-index | Where                                                                      |
-| ------------------------------------------------------------------------------------------------------------------- | ------- | -------------------------------------------------------------------------- |
-| Overlays (Dialog, AlertDialog, Autocomplete, Combobox, Drawer, Popover, DropdownMenu, ContextMenu, Select, Tooltip) | `z-50`  | Positioner / Backdrop                                                      |
-| Toast viewport                                                                                                      | `z-60`  | One layer above overlays so notifications are never hidden under a dialog. |
+| Layer                                                                                                                            | z-index | Where                                                                      |
+| -------------------------------------------------------------------------------------------------------------------------------- | ------- | -------------------------------------------------------------------------- |
+| Overlays (Dialog, AlertDialog, Autocomplete, Combobox, Drawer, Popover, PreviewCard, DropdownMenu, ContextMenu, Select, Tooltip) | `z-50`  | Positioner / Backdrop                                                      |
+| Toast viewport                                                                                                                   | `z-60`  | One layer above overlays so notifications are never hidden under a dialog. |
 
 Rationale: Dify UI owns the normal application overlay layer. Overlay primitives share `z-50` and **rely on DOM order** for stacking — the portal mounted later wins. Toast owns `z-60` so notifications remain visible above dialogs, popovers, and other portalled surfaces without falling back to `z-9999`.
 
-See `[web/docs/overlay.md](../../web/docs/overlay.md)` for the web app overlay best practices.
+See the [web overlay guide] for the web app overlay best practices.
 
 ### Rules
 
 - Never add ad hoc `z-*` overrides on primitives from this package. If something is getting clipped, fix the parent overlay structure instead of raising the child primitive.
-- Never create an extra manual portal on top of our primitives — use the exported content / portal parts such as `DialogContent`, `PopoverContent`, and `DrawerPortal`. Base UI handles focus management, scroll-locking, and dismissal.
+- Never create an extra manual portal on top of our primitives. Use the exported content or portal parts such as `DialogContent`, `PopoverContent`, and `DrawerPortal`, and preserve each primitive's own focus, modal, and dismissal contract.
 - When a primitive needs additional presentation chrome (e.g. a custom backdrop), add it **inside** the exported component, not at call sites.
 
 ### Tooltip, preview card, infotip, and popover semantics
@@ -270,11 +272,11 @@ See `[web/docs/overlay.md](../../web/docs/overlay.md)` for the web app overlay b
 
 ## Development
 
-- `vp check packages/dify-ui` (from the repository root) — formatting, lint, and TypeScript diagnostics for the package.
+- `vp check packages/dify-ui` (from the repository root) — formatting and lint for the package plus the repository-wide TypeScript diagnostics configured by Vite+.
 - `pnpm -C packages/dify-ui test` — Vitest unit tests for primitives.
 - `pnpm -C packages/dify-ui storybook` — Storybook on the default port. Each primitive has `index.stories.tsx`.
 - `pnpm -C packages/dify-ui test:storybook` — Storybook component tests in Vitest browser mode. Stories without `play` are render and a11y smoke tests; stories with `play` should cover public UI contracts such as opening overlays, keyboard navigation, disabled/loading guards, form submission, and controlled state updates.
-- `pnpm -C packages/dify-ui type-check` — `tsgo --noEmit` for this package only.
+- `pnpm -C packages/dify-ui type-check` — TypeScript 7 native type checking for this package only.
 
 ### Test Boundary
 
@@ -306,7 +308,7 @@ Set the Base UI test flag in a Vitest setup file to skip those waits:
 
 `packages/dify-ui/vitest.setup.ts` already applies this for primitive tests.
 
-See `[AGENTS.md](./AGENTS.md)` for:
+See [component authoring rules] for:
 
 - Component authoring rules (one-component-per-folder, `cva` + `cn`, relative imports inside the package, subpath imports from consumers).
 
@@ -323,3 +325,5 @@ See `[AGENTS.md](./AGENTS.md)` for:
 [Base UI forms handbook]: https://base-ui.com/react/handbook/forms
 [Base UI]: https://base-ui.com/react
 [Overlay & portal contract]: #overlay--portal-contract
+[component authoring rules]: ./AGENTS.md
+[web overlay guide]: ../../web/docs/overlay.md
