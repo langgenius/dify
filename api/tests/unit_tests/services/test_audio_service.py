@@ -66,7 +66,7 @@ from models.enums import ConversationFromSource, MessageStatus
 from models.model import App, AppMode, AppModelConfig, Message
 from models.workflow import Workflow
 from services.app_ref_service import AppRef, MessageRef
-from services.audio_service import AudioService
+from services.audio_service import AudioService, _sniff_audio_content_type, _stream_tts_response
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
@@ -846,3 +846,115 @@ class TestAudioServiceTTSVoices:
         # Act & Assert
         with pytest.raises(RuntimeError, match="Model error"):
             AudioService.transcript_tts_voices(tenant_id=tenant_id, language=language)
+
+
+class TestSniffAudioContentType:
+    """
+    Test detection of the actual audio container format from a TTS provider's
+    output bytes, used to set a correct Content-Type header instead of assuming
+    every provider returns MP3.
+    """
+
+    def test_detects_wav(self):
+        # Arrange
+        chunk = b"RIFF" + b"\x00\x00\x00\x00" + b"WAVEfmt "
+
+        # Act
+        result = _sniff_audio_content_type(chunk)
+
+        # Assert
+        assert result == "audio/wav"
+
+    def test_detects_mp3_with_id3_tag(self):
+        # Arrange
+        chunk = b"ID3\x03\x00\x00\x00\x00\x00\x00"
+
+        # Act
+        result = _sniff_audio_content_type(chunk)
+
+        # Assert
+        assert result == "audio/mpeg"
+
+    def test_detects_mp3_raw_frame_sync(self):
+        # Arrange
+        chunk = b"\xff\xfb\x90\x64\x00"
+
+        # Act
+        result = _sniff_audio_content_type(chunk)
+
+        # Assert
+        assert result == "audio/mpeg"
+
+    def test_detects_ogg(self):
+        # Arrange
+        chunk = b"OggS\x00\x02"
+
+        # Act
+        result = _sniff_audio_content_type(chunk)
+
+        # Assert
+        assert result == "audio/ogg"
+
+    def test_detects_flac(self):
+        # Arrange
+        chunk = b"fLaC\x00\x00\x00\x22"
+
+        # Act
+        result = _sniff_audio_content_type(chunk)
+
+        # Assert
+        assert result == "audio/flac"
+
+    def test_falls_back_to_mpeg_for_unrecognized_bytes(self):
+        # Arrange
+        chunk = b"\x00\x01\x02\x03"
+
+        # Act
+        result = _sniff_audio_content_type(chunk)
+
+        # Assert
+        assert result == "audio/mpeg"
+
+    def test_falls_back_to_mpeg_for_empty_chunk(self):
+        # Arrange / Act
+        result = _sniff_audio_content_type(b"")
+
+        # Assert
+        assert result == "audio/mpeg"
+
+
+class TestStreamTtsResponse:
+    """Test that streaming TTS responses get the correct Content-Type and preserve all bytes."""
+
+    def test_sets_wav_content_type_and_preserves_chunks(self):
+        # Arrange
+        chunks = [b"RIFF" + b"\x00\x00\x00\x00" + b"WAVEfmt ", b"...rest of the wav data..."]
+
+        # Act
+        response = _stream_tts_response(chunk for chunk in chunks)
+
+        # Assert
+        assert response.content_type == "audio/wav"
+        assert list(response.response) == chunks
+
+    def test_sets_mpeg_content_type_for_mp3_stream(self):
+        # Arrange
+        chunks = [b"ID3\x03\x00\x00\x00\x00\x00\x00", b"...rest of the mp3 data..."]
+
+        # Act
+        response = _stream_tts_response(chunk for chunk in chunks)
+
+        # Assert
+        assert response.content_type == "audio/mpeg"
+        assert list(response.response) == chunks
+
+    def test_handles_empty_generator(self):
+        # Arrange
+        chunks: list[bytes] = []
+
+        # Act
+        response = _stream_tts_response(chunk for chunk in chunks)
+
+        # Assert
+        assert response.content_type == "audio/mpeg"
+        assert list(response.response) == []

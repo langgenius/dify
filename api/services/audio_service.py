@@ -36,6 +36,50 @@ _ASR_MIME_TYPE_ALIASES = {
 
 logger = logging.getLogger(__name__)
 
+# Default content type used when the audio format can't be determined from the stream.
+_DEFAULT_TTS_CONTENT_TYPE = "audio/mpeg"
+
+
+def _sniff_audio_content_type(chunk: bytes) -> str:
+    """
+    Best-effort detection of the audio container format from the first bytes of a
+    TTS provider's output stream.
+
+    Different model/plugin providers return different audio encodings (e.g. some
+    return WAV, others MP3), but the provider interface doesn't currently surface
+    that format to the caller. Guessing wrong here means the browser receives a
+    Content-Type header that doesn't match the actual bytes, which can cause the
+    audio to fail to play. Falls back to the previous default (audio/mpeg) when the
+    format can't be recognized, so unrecognized/empty streams keep their old behavior.
+    """
+    if chunk.startswith(b"RIFF") and chunk[8:12] == b"WAVE":
+        return "audio/wav"
+    if chunk.startswith(b"OggS"):
+        return "audio/ogg"
+    if chunk.startswith(b"fLaC"):
+        return "audio/flac"
+    if chunk.startswith(b"ID3") or (len(chunk) >= 2 and chunk[0] == 0xFF and (chunk[1] & 0xE0) == 0xE0):
+        return "audio/mpeg"
+    return _DEFAULT_TTS_CONTENT_TYPE
+
+
+def _stream_tts_response(generator: Generator[bytes, None, None]) -> Response:
+    """
+    Wrap a TTS provider's byte-chunk generator in a Flask Response, setting the
+    Content-Type header based on the actual audio format found in the first chunk
+    rather than assuming it's always MP3.
+    """
+    iterator = iter(generator)
+    first_chunk = next(iterator, b"")
+    content_type = _sniff_audio_content_type(first_chunk)
+
+    def _rechain() -> Generator[bytes, None, None]:
+        if first_chunk:
+            yield first_chunk
+        yield from iterator
+
+    return Response(stream_with_context(_rechain()), content_type=content_type)  # type: ignore
+
 
 class AudioService:
     @staticmethod
@@ -227,14 +271,14 @@ class AudioService:
             else:
                 response = invoke_tts(text_content=message.answer, app_model=app_model, voice=voice, is_draft=is_draft)
                 if isinstance(response, Generator):
-                    return Response(stream_with_context(response), content_type="audio/mpeg")  # type: ignore
+                    return _stream_tts_response(response)
                 return response
         else:
             if text is None:
                 raise ValueError("Text is required")
             response = invoke_tts(text_content=text, app_model=app_model, voice=voice, is_draft=is_draft)
             if isinstance(response, Generator):
-                return Response(stream_with_context(response), content_type="audio/mpeg")  # type: ignore
+                return _stream_tts_response(response)
             return response
 
     @classmethod

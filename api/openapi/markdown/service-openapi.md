@@ -376,10 +376,10 @@ Get next questions suggestions for the current message.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Suggested questions retrieved successfully | **application/json**: [SimpleResultStringListResponse](#simpleresultstringlistresponse)<br> |
-| 400 | - `not_chat_app` : App mode does not match the API route. - `bad_request` : Suggested questions feature is disabled. |  |
+| 400 | - `not_chat_app` : App mode does not match the API route. - `bad_request` : Suggested questions feature is disabled. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exceeded. - `model_currently_not_support` : Model currently not supported. - `completion_request_error` : Completion request failed. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | `not_found` : Message does not exist. |  |
+| 404 | `not_found` : Message or conversation does not exist. |  |
 | 500 | `internal_server_error` : Internal server error. |  |
 
 ### [GET] /workflow/{task_id}/events
@@ -523,10 +523,10 @@ Get next questions suggestions for the current message.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Suggested questions retrieved successfully | **application/json**: [SimpleResultStringListResponse](#simpleresultstringlistresponse)<br> |
-| 400 | - `not_chat_app` : App mode does not match the API route. - `bad_request` : Suggested questions feature is disabled. |  |
+| 400 | - `not_chat_app` : App mode does not match the API route. - `bad_request` : Suggested questions feature is disabled. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exceeded. - `model_currently_not_support` : Model currently not supported. - `completion_request_error` : Completion request failed. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | `not_found` : Message does not exist. |  |
+| 404 | `not_found` : Message or conversation does not exist. |  |
 | 500 | `internal_server_error` : Internal server error. |  |
 
 ---

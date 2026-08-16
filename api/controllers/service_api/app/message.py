@@ -11,16 +11,25 @@ from controllers.common.controller_schemas import MessageFeedbackPayload, Messag
 from controllers.common.fields import SimpleResultStringListResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.service_api import service_api_ns
-from controllers.service_api.app.error import NotChatAppError
+from controllers.service_api.app.error import (
+    CompletionRequestError,
+    NotChatAppError,
+    ProviderModelCurrentlyNotSupportError,
+    ProviderNotInitializeError,
+    ProviderQuotaExceededError,
+)
 from controllers.service_api.schema import expect_with_user
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.conversation_fields import MessageResponseSource, ResultResponse
 from fields.message_fields import MessageInfiniteScrollPagination, MessageListItem
+from graphon.model_runtime.errors.invoke import InvokeError
 from models.enums import FeedbackRating
 from models.model import App, AppMode, EndUser
+from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import (
     FirstMessageNotExistsError,
     MessageNotExistsError,
@@ -230,9 +239,13 @@ class MessageSuggestedApi(Resource):
             200: "Successfully retrieved suggested questions.",
             400: (
                 "- `not_chat_app` : App mode does not match the API route.\n"
-                "- `bad_request` : Suggested questions feature is disabled."
+                "- `bad_request` : Suggested questions feature is disabled.\n"
+                "- `provider_not_initialize` : No valid model provider credentials found.\n"
+                "- `provider_quota_exceeded` : Model provider quota exceeded.\n"
+                "- `model_currently_not_support` : Model currently not supported.\n"
+                "- `completion_request_error` : Completion request failed."
             ),
-            404: "`not_found` : Message does not exist.",
+            404: "`not_found` : Message or conversation does not exist.",
             500: "`internal_server_error` : Internal server error.",
         },
     )
@@ -273,8 +286,18 @@ class MessageSuggestedApi(Resource):
             )
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
+        except ConversationNotExistsError:
+            raise NotFound("Conversation Not Exists.")
         except SuggestedQuestionsAfterAnswerDisabledError:
             raise BadRequest("Suggested Questions Is Disabled.")
+        except ProviderTokenNotInitError as ex:
+            raise ProviderNotInitializeError(ex.description)
+        except QuotaExceededError:
+            raise ProviderQuotaExceededError()
+        except ModelCurrentlyNotSupportError:
+            raise ProviderModelCurrentlyNotSupportError()
+        except InvokeError as e:
+            raise CompletionRequestError(e.description)
         except Exception:
             logger.exception("internal server error.")
             raise InternalServerError()

@@ -487,7 +487,13 @@ class MessagesCleanService:
                     delete_messages_start = time.monotonic()
                     delete_stmt = delete(Message).where(Message.id.in_(message_ids_to_delete))
                     delete_result = cast(CursorResult, session.execute(delete_stmt))
-                    messages_deleted = delete_result.rowcount
+                    # `CursorResult.rowcount` can be `None` for some DBAPI drivers/result
+                    # types instead of the DB-API convention of `-1` for "unknown". Guard
+                    # against that here, since it is later added into `stats["total_deleted"]`
+                    # (an int), which raises `TypeError: unsupported operand type(s) for
+                    # +=: 'int' and 'NoneType'` if left unguarded (same class of issue
+                    # fixed for the workflow bulk-delete methods in #38054).
+                    messages_deleted = delete_result.rowcount or 0
                     delete_messages_ms = int((time.monotonic() - delete_messages_start) * 1000)
                     commit_ms = 0
 
