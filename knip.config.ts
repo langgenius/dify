@@ -21,6 +21,7 @@ const config: KnipConfig = {
         // repo as a submodule and imports these modules via path aliases.
         'app/components/plugins/marketplace/index.tsx',
         'app/components/plugins/marketplace/home/marketplace-live-search.tsx',
+        'app/components/plugins/marketplace/home/marketplace-search-autocomplete.tsx',
       ],
       project: [
         '**/*.{js,mjs,cjs,jsx,ts,tsx,mts,cts,css,mdx}!',
