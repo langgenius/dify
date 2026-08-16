@@ -126,6 +126,29 @@ describe('DatasetMetadataPicker', () => {
       expect(screen.getByRole('option', { name: /field_one/ })).toBeInTheDocument()
       expect(screen.getByRole('option', { name: /field_three/ })).toBeInTheDocument()
     })
+
+    it('should reset the search query after the picker finishes closing', async () => {
+      const user = userEvent.setup()
+      renderDatasetMetadataPicker()
+
+      const trigger = screen.getByRole('button', { name: 'dataset.metadata.addMetadata' })
+      await user.click(trigger)
+      await user.type(
+        screen.getByRole('combobox', { name: 'dataset.metadata.selectMetadata.search' }),
+        'two',
+      )
+      await user.keyboard('{Escape}')
+      await waitFor(() => {
+        expect(trigger).toHaveAttribute('aria-expanded', 'false')
+      })
+
+      await user.click(trigger)
+      expect(
+        screen.getByRole('combobox', { name: 'dataset.metadata.selectMetadata.search' }),
+      ).toHaveValue('')
+      expect(screen.getByRole('option', { name: /field_one/ })).toBeInTheDocument()
+      expect(screen.getByRole('option', { name: /field_three/ })).toBeInTheDocument()
+    })
   })
 
   describe('Selection', () => {

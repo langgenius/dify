@@ -70,8 +70,7 @@ export function DatasetMetadataPicker({
     setQuery('')
   }
 
-  const handleOpenChange = (nextOpen: boolean) => {
-    setOpen(nextOpen)
+  const handleOpenChangeComplete = (nextOpen: boolean) => {
     if (!nextOpen) resetPickerState()
   }
 
@@ -100,12 +99,12 @@ export function DatasetMetadataPicker({
   }
 
   const handleOpenMetadataManagement = () => {
-    handleOpenChange(false)
+    setOpen(false)
     onOpenMetadataManagement()
   }
 
   return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
+    <Popover open={open} onOpenChange={setOpen} onOpenChangeComplete={handleOpenChangeComplete}>
       <PopoverTrigger
         render={
           <Button
@@ -139,7 +138,7 @@ export function DatasetMetadataPicker({
           <Combobox<MetadataItem>
             inline
             open={open}
-            onOpenChange={handleOpenChange}
+            onOpenChange={setOpen}
             value={null}
             items={metadataItems}
             inputValue={query}

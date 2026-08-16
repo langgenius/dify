@@ -599,14 +599,15 @@ const InlinePopoverDemo = () => {
   const [value, setValue] = React.useState<Option | null>(null)
   const [inputValue, setInputValue] = React.useState('')
 
-  const handleOpenChange = (nextOpen: boolean) => {
-    setOpen(nextOpen)
-    if (!nextOpen) setInputValue('')
-  }
-
   return (
     <div className="flex w-80 flex-col items-start gap-3">
-      <Popover open={open} onOpenChange={handleOpenChange}>
+      <Popover
+        open={open}
+        onOpenChange={setOpen}
+        onOpenChangeComplete={(nextOpen) => {
+          if (!nextOpen) setInputValue('')
+        }}
+      >
         <PopoverTrigger render={<Button variant="secondary" />}>Choose reviewer</PopoverTrigger>
         <PopoverContent placement="bottom-start" sideOffset={4} popupClassName="w-80 p-0">
           <PopoverTitle className="sr-only">Choose reviewer</PopoverTitle>
@@ -617,7 +618,7 @@ const InlinePopoverDemo = () => {
             value={value}
             inputValue={inputValue}
             itemToStringLabel={getOptionLabel}
-            onOpenChange={handleOpenChange}
+            onOpenChange={setOpen}
             onValueChange={setValue}
             onInputValueChange={setInputValue}
           >
@@ -759,6 +760,12 @@ export const InlineInPopover: Story = {
     await waitFor(async () => {
       await expect(body.queryByRole('dialog', { name: 'Choose reviewer' })).not.toBeInTheDocument()
     })
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Choose reviewer' }))
+    const reopenedPopover = await body.findByRole('dialog', { name: 'Choose reviewer' })
+    await expect(
+      within(reopenedPopover).getByRole('combobox', { name: 'Search reviewers' }),
+    ).toHaveValue('')
   },
 }
 
