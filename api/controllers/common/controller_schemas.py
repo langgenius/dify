@@ -2,9 +2,8 @@ from copy import deepcopy
 from typing import Annotated, Any, Literal, override
 from uuid import UUID
 
-from pydantic import BaseModel, Field, GetJsonSchemaHandler, WithJsonSchema, model_validator
-
 from libs.helper import UUIDStrOrEmpty
+from pydantic import BaseModel, Field, GetJsonSchemaHandler, WithJsonSchema, model_validator
 
 # --- Conversation schemas ---
 
@@ -182,13 +181,27 @@ class WorkflowUpdatePayload(BaseModel):
 
 DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS = 100
 
+# Cap on the size of a single child chunk's text content. Generous relative to the
+# default child chunk size (~1024 tokens ≈ 4096 chars at ~4 chars/token) and the
+# existing 10000-char "very long content" test, but bounded to prevent embedding
+# cost / latency / DB-row-size abuse from a single oversized API call.
+CHILD_CHUNK_CONTENT_MAX_LENGTH = 16384
+
 
 class ChildChunkCreatePayload(BaseModel):
-    content: str = Field(description="Child chunk text content.")
+    content: str = Field(
+        ...,
+        max_length=CHILD_CHUNK_CONTENT_MAX_LENGTH,
+        description="Child chunk text content.",
+    )
 
 
 class ChildChunkUpdatePayload(BaseModel):
-    content: str = Field(description="Child chunk text content.")
+    content: str = Field(
+        ...,
+        max_length=CHILD_CHUNK_CONTENT_MAX_LENGTH,
+        description="Child chunk text content.",
+    )
 
 
 class DocumentBatchDownloadZipPayload(BaseModel):

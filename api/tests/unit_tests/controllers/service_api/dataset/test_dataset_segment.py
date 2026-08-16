@@ -19,9 +19,6 @@ import uuid
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-from flask import Flask
-from werkzeug.exceptions import NotFound
-
 from controllers.service_api.dataset.segment import (
     ChildChunkApi,
     ChildChunkCreatePayload,
@@ -35,10 +32,12 @@ from controllers.service_api.dataset.segment import (
     SegmentListQuery,
 )
 from core.rag.index_processor.constant.index_type import IndexStructureType
+from flask import Flask
 from libs.datetime_utils import naive_utc_now
 from models.dataset import ChildChunk, Dataset, Document, DocumentSegment
 from models.enums import IndexingStatus, SegmentType
 from services.dataset_service import DocumentService, SegmentService
+from werkzeug.exceptions import NotFound
 
 
 def _session_factory_mock():
@@ -225,6 +224,20 @@ class TestChildChunkCreatePayload:
         payload = ChildChunkCreatePayload(content=long_content)
         assert len(payload.content) == 10000
 
+    def test_payload_accepts_content_at_max_length(self):
+        """Content at exactly the cap (16384 chars) is accepted."""
+        from controllers.common.controller_schemas import CHILD_CHUNK_CONTENT_MAX_LENGTH
+
+        payload = ChildChunkCreatePayload(content="A" * CHILD_CHUNK_CONTENT_MAX_LENGTH)
+        assert len(payload.content) == CHILD_CHUNK_CONTENT_MAX_LENGTH
+
+    def test_payload_rejects_content_above_max_length(self):
+        """Content one char above the cap is rejected with a validation error."""
+        from controllers.common.controller_schemas import CHILD_CHUNK_CONTENT_MAX_LENGTH
+
+        with pytest.raises(ValueError):
+            ChildChunkCreatePayload.model_validate({"content": "A" * (CHILD_CHUNK_CONTENT_MAX_LENGTH + 1)})
+
     def test_payload_with_unicode_content(self):
         """Test payload with unicode content."""
         unicode_content = "这是中文内容 🎉 Привет мир"
@@ -287,6 +300,20 @@ class TestChildChunkUpdatePayload:
         """Test payload with empty content."""
         payload = ChildChunkUpdatePayload(content="")
         assert payload.content == ""
+
+    def test_payload_accepts_content_at_max_length(self):
+        """Content at exactly the cap (16384 chars) is accepted."""
+        from controllers.common.controller_schemas import CHILD_CHUNK_CONTENT_MAX_LENGTH
+
+        payload = ChildChunkUpdatePayload(content="A" * CHILD_CHUNK_CONTENT_MAX_LENGTH)
+        assert len(payload.content) == CHILD_CHUNK_CONTENT_MAX_LENGTH
+
+    def test_payload_rejects_content_above_max_length(self):
+        """Content one char above the cap is rejected with a validation error."""
+        from controllers.common.controller_schemas import CHILD_CHUNK_CONTENT_MAX_LENGTH
+
+        with pytest.raises(ValueError):
+            ChildChunkUpdatePayload.model_validate({"content": "A" * (CHILD_CHUNK_CONTENT_MAX_LENGTH + 1)})
 
 
 class TestSegmentServiceInterface:
