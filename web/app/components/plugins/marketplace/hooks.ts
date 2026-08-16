@@ -9,7 +9,7 @@ import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useCallback, useEffect, useState } from 'react'
 import { postMarketplace } from '@/service/base'
-import { SCROLL_BOTTOM_THRESHOLD } from './constants'
+import { MARKETPLACE_CONTAINER_ID, SCROLL_BOTTOM_THRESHOLD } from './constants'
 import {
   getFormattedPlugin,
   getMarketplaceCollectionsAndPlugins,

@@ -7,9 +7,8 @@ import HomeCatalogTabs from './home-catalog-tabs'
 import HomeHeader from './home-header'
 import HomeHero from './home-hero'
 import HomeSearch from './home-search'
-import { HomeStickyStateProvider } from './home-sticky-state-provider'
+import { HomeShell } from './home-shell'
 import styles from './home-sticky.module.css'
-import HomeTrending from './home-trending'
 
 type MarketplaceHomeProps = {
   actions?: React.ReactNode
@@ -37,45 +36,42 @@ const MarketplaceHome = ({
   showInstallButton,
 }: MarketplaceHomeProps) => {
   return (
-    <HomeStickyStateProvider>
-      <div className="flex min-h-full w-full shrink-0 flex-col bg-background-default">
+    <HomeShell
+      banners={banners}
+      isMarketplacePlatform={isMarketplacePlatform}
+      header={
         <HomeHeader
           actions={actions}
           catalogLabels={catalogLabels}
           isMarketplacePlatform={isMarketplacePlatform}
           language={language}
         />
-        <div className="relative flex w-full flex-col">
-          <HomeHero isMarketplacePlatform={isMarketplacePlatform} />
-          <HomeSearch enableSearchShortcut={isMarketplacePlatform}>{search}</HomeSearch>
-          {banners.length > 0 && (
-            <>
-              <div aria-hidden="true" className="h-12 shrink-0" />
-              <HomeTrending banners={banners} isMarketplacePlatform={isMarketplacePlatform} />
-            </>
-          )}
-          <HomeCatalogNavigation
-            catalogCategories={catalogCategories}
-            catalogTabs={
-              <HomeCatalogTabs
-                isMarketplacePlatform={isMarketplacePlatform}
-                labels={catalogLabels}
-                language={language}
-              />
-            }
-          />
-          <div className="contents [&>div]:bg-background-default!">
-            <ListWrapper
-              activePluginType={activePluginType}
-              className={styles.catalogContent}
-              deferOffscreenCollections={!isMarketplacePlatform}
-              showInstallButton={showInstallButton}
-              linkToMarketplaceDetail={linkToMarketplaceDetail}
+      }
+      hero={<HomeHero isMarketplacePlatform={isMarketplacePlatform} />}
+      search={<HomeSearch enableSearchShortcut={isMarketplacePlatform}>{search}</HomeSearch>}
+      navigation={
+        <HomeCatalogNavigation
+          catalogCategories={catalogCategories}
+          catalogTabs={
+            <HomeCatalogTabs
+              isMarketplacePlatform={isMarketplacePlatform}
+              labels={catalogLabels}
+              language={language}
             />
-          </div>
-        </div>
+          }
+        />
+      }
+    >
+      <div className="contents [&>div]:bg-background-default!">
+        <ListWrapper
+          activePluginType={activePluginType}
+          className={styles.catalogContent}
+          deferOffscreenCollections={!isMarketplacePlatform}
+          showInstallButton={showInstallButton}
+          linkToMarketplaceDetail={linkToMarketplaceDetail}
+        />
       </div>
-    </HomeStickyStateProvider>
+    </HomeShell>
   )
 }
 
