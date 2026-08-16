@@ -300,9 +300,11 @@ describe('TagFilter', () => {
       expect(screen.queryByText('Backend')).not.toBeInTheDocument()
 
       const clearButton = screen.getByRole('button', { name: i18n.operationClear })
-      await user.click(clearButton)
+      clearButton.focus()
+      await user.keyboard('{Enter}')
 
       expect(searchInput).toHaveValue('')
+      expect(searchInput).toHaveFocus()
 
       expect(screen.getByText('Backend')).toBeInTheDocument()
       expect(screen.getByText('Frontend')).toBeInTheDocument()

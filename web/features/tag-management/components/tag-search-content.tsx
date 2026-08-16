@@ -14,7 +14,7 @@ import {
 } from '@langgenius/dify-ui/combobox'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useAtomValue } from 'jotai'
-import { Fragment } from 'react'
+import { Fragment, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { hasPermission } from '@/utils/permission'
@@ -39,11 +39,17 @@ export const TagSearchContent = ({
   canBindOrUnbindTags = false,
 }: TagSearchContentProps) => {
   const { t } = useTranslation()
+  const inputRef = useRef<HTMLInputElement>(null)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageTags = hasPermission(workspacePermissionKeys, getTagManagePermissionKey(type))
   const filteredItems = useComboboxFilteredItems<TagComboboxItem>()
   const realItemCount = filteredItems.filter((tag) => !isCreateTagOption(tag)).length
   const placeholder = t(($) => $['tag.selectorPlaceholder'], { ns: 'common' }) || ''
+
+  const handleClearInput = () => {
+    onInputValueChange('')
+    inputRef.current?.focus()
+  }
 
   return (
     <div className="relative w-full">
@@ -54,6 +60,7 @@ export const TagSearchContent = ({
             className="ml-2 i-ri-search-line size-4 shrink-0 text-text-tertiary"
           />
           <ComboboxInput
+            ref={inputRef}
             aria-label={placeholder}
             name={`tag-search-${type}`}
             placeholder={placeholder}
@@ -64,8 +71,8 @@ export const TagSearchContent = ({
               size="sm"
               aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
               className="mr-1.5 shrink-0 hover:bg-components-input-bg-hover focus-visible:bg-components-input-bg-hover"
-              onClick={() => onInputValueChange('')}
-              onPointerDown={(event) => event.preventDefault()}
+              onClick={handleClearInput}
+              onMouseDown={(event) => event.preventDefault()}
             >
               <span className="i-ri-close-line size-4" aria-hidden="true" />
             </IconButton>

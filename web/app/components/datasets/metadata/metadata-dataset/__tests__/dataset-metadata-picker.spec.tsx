@@ -105,6 +105,27 @@ describe('DatasetMetadataPicker', () => {
 
       expect(await screen.findByRole('status')).toHaveTextContent('common.noData')
     })
+
+    it('should clear only the search query and keep focus in the input', async () => {
+      const user = userEvent.setup()
+      const onSelectMetadata = vi.fn()
+      renderDatasetMetadataPicker({ onSelectMetadata })
+
+      await user.click(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))
+      const searchInput = screen.getByRole('combobox', {
+        name: 'dataset.metadata.selectMetadata.search',
+      })
+      await user.type(searchInput, 'two')
+      const clearButton = screen.getByRole('button', { name: 'common.operation.clear' })
+      clearButton.focus()
+      await user.keyboard('{Enter}')
+
+      expect(searchInput).toHaveValue('')
+      expect(searchInput).toHaveFocus()
+      expect(onSelectMetadata).not.toHaveBeenCalled()
+      expect(screen.getByRole('option', { name: /field_one/ })).toBeInTheDocument()
+      expect(screen.getByRole('option', { name: /field_three/ })).toBeInTheDocument()
+    })
   })
 
   describe('Selection', () => {

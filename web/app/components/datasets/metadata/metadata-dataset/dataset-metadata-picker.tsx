@@ -6,7 +6,6 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Combobox,
-  ComboboxClear,
   ComboboxEmpty,
   ComboboxInput,
   ComboboxInputGroup,
@@ -15,8 +14,9 @@ import {
   ComboboxList,
   ComboboxSeparator,
 } from '@langgenius/dify-ui/combobox'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDatasetMetaData } from '@/service/knowledge/use-metadata'
 import { getIconClassName } from '../utils/get-icon'
@@ -150,6 +150,7 @@ export function DatasetMetadataPicker({
           >
             <MetadataPickerSelectPanel
               query={query}
+              onClearQuery={() => setQuery('')}
               onStartMetadataCreation={handleStartMetadataCreation}
               onOpenMetadataManagement={handleOpenMetadataManagement}
             />
@@ -169,14 +170,22 @@ export function DatasetMetadataPicker({
 
 function MetadataPickerSelectPanel({
   query,
+  onClearQuery,
   onStartMetadataCreation,
   onOpenMetadataManagement,
 }: {
   query: string
+  onClearQuery: () => void
   onStartMetadataCreation: () => void
   onOpenMetadataManagement: () => void
 }) {
   const { t } = useTranslation()
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const handleClearQuery = () => {
+    onClearQuery()
+    inputRef.current?.focus()
+  }
 
   return (
     <>
@@ -187,11 +196,22 @@ function MetadataPickerSelectPanel({
             aria-hidden="true"
           />
           <ComboboxInput
+            ref={inputRef}
             aria-label={t(($) => $[`${i18nPrefix}.search`], { ns: 'dataset' })}
             placeholder={t(($) => $[`${i18nPrefix}.search`], { ns: 'dataset' })}
             className="pl-2"
           />
-          {query && <ComboboxClear aria-label={t(($) => $['operation.clear'], { ns: 'common' })} />}
+          {query && (
+            <IconButton
+              size="sm"
+              aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
+              className="mr-1.5 shrink-0 hover:bg-components-input-bg-hover focus-visible:bg-components-input-bg-hover"
+              onClick={handleClearQuery}
+              onMouseDown={(event) => event.preventDefault()}
+            >
+              <span className="i-ri-close-line size-4" aria-hidden="true" />
+            </IconButton>
+          )}
         </ComboboxInputGroup>
       </div>
       <ComboboxList<MetadataItem>>

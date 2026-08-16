@@ -7,7 +7,6 @@ import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Combobox,
-  ComboboxClear,
   ComboboxEmpty,
   ComboboxInput,
   ComboboxInputGroup,
@@ -20,6 +19,7 @@ import {
   ComboboxStatus,
   ComboboxTrigger,
 } from '@langgenius/dify-ui/combobox'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -27,7 +27,7 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { useCallback } from 'react'
+import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { AppModeEnum } from '@/types/app'
@@ -115,6 +115,7 @@ export function AppPicker({
   onSearchChange,
 }: AppPickerProps) {
   const { t } = useTranslation()
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const handleValueChange = useCallback(
     (app: AppPartial | null) => {
@@ -125,6 +126,11 @@ export function AppPicker({
     },
     [onSelect, onShowChange],
   )
+
+  const handleClearSearch = () => {
+    onSearchChange('')
+    inputRef.current?.focus()
+  }
 
   return (
     <Combobox<AppPartial>
@@ -160,20 +166,24 @@ export function AppPicker({
                     aria-hidden="true"
                   />
                   <ComboboxInput
+                    ref={inputRef}
                     aria-label={t(($) => $['appSelector.placeholder'], { ns: 'app' })}
                     placeholder={t(($) => $['appSelector.placeholder'], { ns: 'app' })}
                     className="block h-4.5 grow px-1 py-0 text-[13px] text-text-primary"
                   />
                   {searchText && (
-                    <ComboboxClear
+                    <IconButton
+                      size="xs"
                       aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-                      className="ml-1.5 flex size-3.5 shrink-0 cursor-pointer items-center justify-center rounded-none text-text-quaternary outline-hidden hover:bg-transparent hover:text-text-quaternary focus-visible:ring-1 focus-visible:ring-components-input-border-active"
+                      className="ml-1.5 size-3.5 shrink-0 rounded-none text-text-quaternary hover:bg-transparent hover:text-text-quaternary focus-visible:ring-1 focus-visible:ring-components-input-border-active"
+                      onClick={handleClearSearch}
+                      onMouseDown={(event) => event.preventDefault()}
                     >
                       <span
                         className="i-custom-vender-solid-general-x-circle size-3.5"
                         aria-hidden="true"
                       />
-                    </ComboboxClear>
+                    </IconButton>
                   )}
                 </ComboboxInputGroup>
               </div>
