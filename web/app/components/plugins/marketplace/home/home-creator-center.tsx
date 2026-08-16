@@ -5,30 +5,11 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from '#i18n'
 import { MARKETPLACE_URL_PREFIX } from '@/config'
 import Link from '@/next/link'
-
-const PUBLIC_CREATOR_CENTER_URL = 'https://creators.dify.ai/'
-
-const getCreatorCenterUrl = (marketplaceUrlPrefix: string) => {
-  if (!marketplaceUrlPrefix) return PUBLIC_CREATOR_CENTER_URL
-
-  try {
-    const marketplaceUrl = new URL(marketplaceUrlPrefix)
-    const [service, ...domain] = marketplaceUrl.hostname.split('.')
-    if (!service?.startsWith('marketplace') || domain.length === 0) return PUBLIC_CREATOR_CENTER_URL
-
-    marketplaceUrl.hostname = [service.replace(/^marketplace/, 'creators'), ...domain].join('.')
-    marketplaceUrl.pathname = '/'
-    marketplaceUrl.search = ''
-    marketplaceUrl.hash = ''
-    return marketplaceUrl.toString()
-  } catch {
-    return PUBLIC_CREATOR_CENTER_URL
-  }
-}
+import { useCreatorCenterUrl } from '../creator-center-url'
 
 export default function HomeCreatorCenter() {
   const { t } = useTranslation('plugin')
-  const creatorCenterUrl = getCreatorCenterUrl(MARKETPLACE_URL_PREFIX)
+  const creatorCenterUrl = useCreatorCenterUrl(MARKETPLACE_URL_PREFIX)
   const label = t(($) => $['marketplace.home.creatorCenter'])
 
   return (
