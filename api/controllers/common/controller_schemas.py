@@ -2,8 +2,9 @@ from copy import deepcopy
 from typing import Annotated, Any, Literal, override
 from uuid import UUID
 
-from libs.helper import UUIDStrOrEmpty
 from pydantic import BaseModel, Field, GetJsonSchemaHandler, WithJsonSchema, model_validator
+
+from libs.helper import UUIDStrOrEmpty
 
 # --- Conversation schemas ---
 

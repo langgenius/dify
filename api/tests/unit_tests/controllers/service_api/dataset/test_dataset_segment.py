@@ -19,6 +19,9 @@ import uuid
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+from flask import Flask
+from werkzeug.exceptions import NotFound
+
 from controllers.service_api.dataset.segment import (
     ChildChunkApi,
     ChildChunkCreatePayload,
@@ -32,12 +35,10 @@ from controllers.service_api.dataset.segment import (
     SegmentListQuery,
 )
 from core.rag.index_processor.constant.index_type import IndexStructureType
-from flask import Flask
 from libs.datetime_utils import naive_utc_now
 from models.dataset import ChildChunk, Dataset, Document, DocumentSegment
 from models.enums import IndexingStatus, SegmentType
 from services.dataset_service import DocumentService, SegmentService
-from werkzeug.exceptions import NotFound
 
 
 def _session_factory_mock():
