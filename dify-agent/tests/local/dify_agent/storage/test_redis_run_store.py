@@ -22,7 +22,7 @@ from dify_agent.protocol.schemas import (
     utc_now,
 )
 from dify_agent.runtime.cancellation import RunCancellationIntent
-from dify_agent.runtime.event_sink import RunFinalizationResult
+from dify_agent.runtime.event_sink import RunFinalizationResult, RunSealedError
 from dify_agent.storage.redis_run_store import DEFAULT_RUN_RETENTION_SECONDS, RedisRunStore, RunNotFoundError
 
 
@@ -114,6 +114,19 @@ class FakeRedis:
 
     async def eval(self, script: str, numkeys: int, *keys_and_args: object) -> list[object]:
         self.commands.append(("eval", script, numkeys, *keys_and_args))
+        if numkeys == 2:
+            record_key = str(keys_and_args[0])
+            events_key = str(keys_and_args[1])
+            payload = str(keys_and_args[2])
+            record_json = self.values.get(record_key)
+            if record_json is None:
+                return [-1, ""]
+            if isinstance(record_json, bytes):
+                record_json = record_json.decode()
+            record = json.loads(cast(str, record_json))
+            if record["status"] != "running":
+                return [0, record["status"]]
+            return [1, self._append_stream_entry(events_key, {"payload": payload})]
         if self.eval_result is None:
             raise AssertionError("test must configure FakeRedis.eval_result")
         return list(self.eval_result)
@@ -418,28 +431,52 @@ def test_wait_for_cancellation_returns_none_when_success_wins() -> None:
     assert asyncio.run(scenario()) is None
 
 
+@pytest.mark.parametrize("terminal_type", ["run_succeeded", "run_failed", "run_cancelled"])
+def test_append_event_rejects_late_write_after_terminal_status_without_refreshing_ttls(terminal_type: str) -> None:
+    redis = FakeRedis()
+    store = RedisRunStore(redis, prefix="test", run_retention_seconds=60)  # pyright: ignore[reportArgumentType]
+
+    async def scenario() -> str:
+        record = await store.create_run()
+        status = terminal_type.removeprefix("run_")
+        redis.values[f"test:runs:{record.run_id}:record"] = record.model_copy(update={"status": status}).model_dump_json()
+        _ = redis._append_stream_entry(
+            f"test:runs:{record.run_id}:events",
+            {"payload": RUN_EVENT_ADAPTER.dump_json(_terminal_event(terminal_type, record.run_id), exclude={"id"}).decode()},
+        )
+        redis.commands.clear()
+
+        with pytest.raises(RunSealedError) as raised:
+            _ = await store.append_event(RunStartedEvent(run_id=record.run_id))
+        assert raised.value.status == status
+        return record.run_id
+
+    run_id = asyncio.run(scenario())
+
+    assert len(redis.streams[f"test:runs:{run_id}:events"]) == 1
+    assert [command[0] for command in redis.commands] == ["eval"]
+
+
 def test_append_event_serializes_typed_event_without_id_and_expires_run_keys() -> None:
     redis = FakeRedis()
     store = RedisRunStore(redis, prefix="test", run_retention_seconds=60)  # pyright: ignore[reportArgumentType]
 
-    event_id = asyncio.run(store.append_event(RunStartedEvent(id="local", run_id="run-1")))
+    async def scenario() -> tuple[str, str]:
+        record = await store.create_run()
+        redis.commands.clear()
+        event_id = await store.append_event(RunStartedEvent(id="local", run_id=record.run_id))
+        return event_id, record.run_id
+
+    event_id, run_id = asyncio.run(scenario())
 
     assert event_id == "1-0"
-    pipeline_commands = [command for command in redis.commands if command[0] == "pipeline"]
-    assert len(pipeline_commands) == 1
-    assert pipeline_commands[0][1] is True
-    xadd_commands = [command for command in redis.commands if command[0] == "xadd"]
-    assert len(xadd_commands) == 1
-    fields = xadd_commands[0][2]
-    assert isinstance(fields, dict)
-    assert '"id"' not in str(fields["payload"])
-    assert '"type":"run_started"' in str(fields["payload"])
-    expire_commands = {command for command in redis.commands if command[0] == "expire"}
-    assert expire_commands == {
-        ("expire", "test:runs:run-1:events", 60),
-        ("expire", "test:runs:run-1:record", 60),
-    }
-    assert ("execute",) in redis.commands
+    assert [command[0] for command in redis.commands] == ["eval"]
+    eval_command = redis.commands[0]
+    assert eval_command[2] == 2
+    assert eval_command[3:5] == (f"test:runs:{run_id}:record", f"test:runs:{run_id}:events")
+    assert '"id"' not in str(eval_command[5])
+    assert '"type":"run_started"' in str(eval_command[5])
+    assert eval_command[6] == "60"
 
 
 def test_get_events_round_trips_run_succeeded_output_and_session_snapshot() -> None:
