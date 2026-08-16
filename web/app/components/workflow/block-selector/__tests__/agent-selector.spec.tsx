@@ -34,14 +34,20 @@ vi.mock('@/service/client', () => ({
 const manageInConsoleLabel = /manageInAgentConsole/
 const startFromScratchLabel = /startFromScratch/
 
-const renderSelector = async ({ onStartFromScratch }: { onStartFromScratch?: () => void } = {}) => {
+const renderSelector = async ({
+  onOpenChange = vi.fn(),
+  onStartFromScratch,
+}: {
+  onOpenChange?: (open: boolean) => void
+  onStartFromScratch?: () => void
+} = {}) => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
   render(
     <QueryClientProvider client={queryClient}>
       <AgentSelectorContent
         open
-        onOpenChange={vi.fn()}
+        onOpenChange={onOpenChange}
         onSelect={vi.fn()}
         onStartFromScratch={onStartFromScratch}
       />
@@ -126,6 +132,23 @@ describe('AgentSelectorContent', () => {
     await user.tab()
 
     expect(startButton).toHaveFocus()
+  })
+
+  it('does not dismiss the combobox when pressing a footer action', async () => {
+    const user = userEvent.setup()
+    const onOpenChange = vi.fn()
+    const onStartFromScratch = vi.fn()
+    await renderSelector({ onOpenChange, onStartFromScratch })
+
+    const startButton = screen.getByRole('button', { name: startFromScratchLabel })
+
+    await user.pointer({ keys: '[MouseLeft>]', target: startButton })
+
+    expect(onOpenChange).not.toHaveBeenCalled()
+
+    await user.pointer({ keys: '[/MouseLeft]', target: startButton })
+
+    expect(onStartFromScratch).toHaveBeenCalledOnce()
   })
 
   it('renders no action row when neither action is available', async () => {
