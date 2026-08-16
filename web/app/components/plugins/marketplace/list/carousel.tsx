@@ -34,6 +34,7 @@ type NavButtonProps = {
 
 const NavButton = ({ label, onClick, iconClassName }: NavButtonProps) => (
   <button
+    type="button"
     className="flex cursor-pointer items-center justify-center rounded-full border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-2 shadow-xs backdrop-blur-[5px] transition-all hover:bg-components-button-secondary-bg-hover"
     onClick={onClick}
     aria-label={label}
@@ -45,11 +46,6 @@ const NavButton = ({ label, onClick, iconClassName }: NavButtonProps) => (
   </button>
 )
 
-type CarouselAutoplayToggle = {
-  isPaused: boolean
-  onToggle: () => void
-}
-
 type CarouselControlsProps = {
   showPagination: boolean
   selectedIndex: number
@@ -57,7 +53,6 @@ type CarouselControlsProps = {
   scrollPrev: () => void
   scrollSnaps: number[]
   scrollTo: (index: number) => void
-  autoplayToggle?: CarouselAutoplayToggle
 }
 
 const CarouselControls = ({
@@ -67,7 +62,6 @@ const CarouselControls = ({
   scrollPrev,
   scrollSnaps,
   scrollTo,
-  autoplayToggle,
 }: CarouselControlsProps) => {
   const { t } = useTranslation()
   const paginationItems = scrollSnaps.map((snap, index) => ({
@@ -111,30 +105,6 @@ const CarouselControls = ({
           onClick={scrollNext}
           iconClassName="i-ri-arrow-right-s-line"
         />
-        {autoplayToggle && (
-          <button
-            type="button"
-            className="flex cursor-pointer items-center justify-center rounded-full border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-2 shadow-xs backdrop-blur-[5px] transition-all hover:bg-components-button-secondary-bg-hover"
-            onClick={autoplayToggle.onToggle}
-            aria-label={t(
-              ($) =>
-                $[
-                  autoplayToggle.isPaused
-                    ? 'marketplace.home.trendingPlay'
-                    : 'marketplace.home.trendingPause'
-                ],
-              { ns: 'plugin' },
-            )}
-          >
-            <span
-              aria-hidden
-              className={cn(
-                'size-4 text-components-button-secondary-text',
-                autoplayToggle.isPaused ? 'i-ri-play-line' : 'i-ri-pause-line',
-              )}
-            />
-          </button>
-        )}
       </div>
     </div>
   )
@@ -163,7 +133,7 @@ const Carousel = ({
   pauseWhenOffscreen = false,
 }: CarouselProps) => {
   const carouselRootRef = useRef<HTMLDivElement>(null)
-  const [isUserPaused, setIsUserPaused] = useState(false)
+  const [isFocusPaused, setIsFocusPaused] = useState(false)
   // Tracked independently of pauseWhenOffscreen so every autoplay path honors
   // prefers-reduced-motion, including the eagerly-playing first collection.
   const [isReducedMotion, setIsReducedMotion] = useState(
@@ -259,9 +229,9 @@ const Carousel = ({
     if (!carouselRoot) return
 
     // Once keyboard or assistive-technology focus enters the carousel
-    // (including its controls), rotation stays stopped until the user
-    // explicitly resumes it with the play control.
-    const handleFocusIn = () => setIsUserPaused(true)
+    // (including its controls), rotation stays stopped so the content no
+    // longer changes underneath the user.
+    const handleFocusIn = () => setIsFocusPaused(true)
 
     carouselRoot.addEventListener('focusin', handleFocusIn)
     return () => carouselRoot.removeEventListener('focusin', handleFocusIn)
@@ -286,9 +256,11 @@ const Carousel = ({
   useEffect(() => {
     if (!autoplay || !api || pauseWhenOffscreen) return
 
-    if (isUserPaused || isReducedMotion) autoplay.stop()
+    // Autoplay skips its own setup on single-page carousels, so play() would
+    // crash inside the plugin; a lone page has nothing to rotate through anyway.
+    if (scrollSnaps.length <= 1 || isFocusPaused || isReducedMotion) autoplay.stop()
     else autoplay.play()
-  }, [api, autoplay, isReducedMotion, isUserPaused, pauseWhenOffscreen])
+  }, [api, autoplay, isFocusPaused, isReducedMotion, pauseWhenOffscreen, scrollSnaps])
 
   useEffect(() => {
     if (!pauseWhenOffscreen || !autoplay || !api) return
@@ -311,7 +283,7 @@ const Carousel = ({
         isDocumentVisible &&
         !isReducedMotion &&
         !isHovered &&
-        !isUserPaused
+        !isFocusPaused
       )
         autoplay.play()
       else autoplay.stop()
@@ -364,7 +336,7 @@ const Carousel = ({
       carouselRoot.removeEventListener('mouseleave', handleMouseLeave)
       autoplay.stop()
     }
-  }, [api, autoplay, isUserPaused, pauseWhenOffscreen])
+  }, [api, autoplay, isFocusPaused, pauseWhenOffscreen])
 
   return (
     <div
@@ -382,14 +354,6 @@ const Carousel = ({
           scrollPrev={scrollPrev}
           scrollSnaps={scrollSnaps}
           scrollTo={scrollTo}
-          autoplayToggle={
-            autoPlay
-              ? {
-                  isPaused: isUserPaused,
-                  onToggle: () => setIsUserPaused((paused) => !paused),
-                }
-              : undefined
-          }
         />
       )}
       <div ref={carouselRef} className="overflow-hidden rounded-[inherit]">

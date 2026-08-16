@@ -326,10 +326,13 @@ describe('Marketplace Carousel', () => {
     expect(slides[3]).not.toHaveAttribute('inert')
   })
 
-  it('stops rotation when focus enters and resumes only from the play control', () => {
+  it('stops rotation for the rest of the session once focus enters', () => {
     render(<Carousel pages={pages} autoPlay />)
     const autoplay = mocks.autoplayInstances[0]!
     const carousel = screen.getByRole('region')
+
+    // The controls expose only the pagination dots and the two nav arrows.
+    expect(screen.getAllByRole('button')).toHaveLength(7)
 
     const playsBeforeFocus = autoplay.play.mock.calls.length
     fireEvent.focusIn(carousel)
@@ -340,13 +343,6 @@ describe('Marketplace Carousel', () => {
     // Moving focus around does not resume rotation on its own.
     fireEvent.focusIn(carousel)
     expect(autoplay.play).toHaveBeenCalledTimes(playsBeforeFocus)
-
-    fireEvent.click(screen.getByRole('button', { name: 'plugin.marketplace.home.trendingPlay' }))
-    expect(autoplay.play.mock.calls.length).toBeGreaterThan(playsBeforeFocus)
-
-    const stopsBeforePause = autoplay.stop.mock.calls.length
-    fireEvent.click(screen.getByRole('button', { name: 'plugin.marketplace.home.trendingPause' }))
-    expect(autoplay.stop.mock.calls.length).toBeGreaterThan(stopsBeforePause)
   })
 
   it('does not start managed autoplay when the carousel has only one page', () => {
@@ -359,5 +355,17 @@ describe('Marketplace Carousel', () => {
     triggerIntersection(intersectionObservers[0]!, 1)
 
     expect(autoplay.play).not.toHaveBeenCalled()
+  })
+
+  // The autoplay plugin skips its own setup on single-page carousels, so an
+  // external play() call would crash inside the plugin (undefined delay list).
+  it('does not start eager autoplay when the carousel has only one page', () => {
+    mocks.carouselState.scrollSnaps = [0]
+
+    render(<Carousel pages={pages.slice(0, 1)} autoPlay />)
+    const autoplay = mocks.autoplayInstances[0]!
+
+    expect(autoplay.play).not.toHaveBeenCalled()
+    expect(autoplay.stop).toHaveBeenCalled()
   })
 })
