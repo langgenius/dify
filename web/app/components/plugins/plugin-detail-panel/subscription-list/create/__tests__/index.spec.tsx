@@ -3,10 +3,11 @@ import type {
   TriggerProviderApiEntity,
   TriggerSubscription,
 } from '@/app/components/workflow/block-selector/types'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import { CreateSubscriptionButton } from '../index'
+import { CreateButtonType } from '../types'
 
 const toastMocks = vi.hoisted(() => ({
   success: vi.fn(),
@@ -198,13 +199,19 @@ describe('CreateSubscriptionButton', () => {
   })
 
   it('does not create more than ten subscriptions', async () => {
+    const user = userEvent.setup()
+
     mockSubscriptions.push(
       ...Array.from({ length: 10 }, (_, index) => ({ id: `${index}` }) as TriggerSubscription),
     )
-    render(<CreateSubscriptionButton />)
+    render(<CreateSubscriptionButton buttonType={CreateButtonType.ICON_BUTTON} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /subscription\.createButton\.manual/ }))
+    const createButton = screen.getByLabelText(/subscription\.createButton\.manual/)
+    await user.click(createButton)
+    createButton.focus()
 
+    expect(createButton).toHaveAttribute('aria-disabled', 'true')
+    expect(createButton).toHaveFocus()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })

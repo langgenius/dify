@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url'
-import { defineConfig, lazyPlugins } from 'vite-plus'
+import { configDefaults, defineConfig, lazyPlugins } from 'vite-plus'
 import {
   createCodeInspectorPlugin,
   createForceInspectorClientInjectionPlugin,
@@ -95,6 +95,7 @@ export default defineConfig(({ mode }) => {
       environment: 'happy-dom',
       globals: true,
       setupFiles: ['./vitest.setup.ts'],
+      exclude: [...configDefaults.exclude, '**/*.browser.spec.{ts,tsx}'],
       coverage: {
         provider: 'v8',
         reporter: isCI ? ['json', 'json-summary'] : ['text', 'json', 'json-summary'],

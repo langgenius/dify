@@ -92,11 +92,9 @@ class DifyAgentBackendRunClient:
         client: _DifyAgentSyncClient,
         *,
         stream_max_reconnects: int = 3,
-        stream_timeout_seconds: float = 1200,
     ) -> None:
         self.client = client
         self._stream_max_reconnects = stream_max_reconnects
-        self._stream_timeout_seconds = stream_timeout_seconds
 
     def create_run(self, request: CreateRunRequest) -> CreateRunResponse:
         """Create one run through ``POST /runs`` and normalize client exceptions."""
@@ -125,7 +123,6 @@ class DifyAgentBackendRunClient:
                 run_id,
                 after=after,
                 max_reconnects=self._stream_max_reconnects,
-                timeout_seconds=self._stream_timeout_seconds,
                 should_stop=should_stop,
             )
         except Exception as exc:

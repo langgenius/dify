@@ -19,6 +19,7 @@ import type { RETRIEVE_METHOD } from '@/types/app'
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 // oxlint-disable-next-line no-restricted-imports
 import { get, post } from './base'
+import { consoleQuery } from './client'
 
 const NAME_SPACE = 'common'
 
@@ -29,7 +30,6 @@ export const commonQueryKeys = {
   schemaDefinitions: [NAME_SPACE, 'schema-type-definitions'] as const,
   modelProviders: [NAME_SPACE, 'model-providers'] as const,
   modelProviderDetails: [NAME_SPACE, 'model-provider-details'] as const,
-  modelList: (type: ModelTypeEnum | ModelType) => [NAME_SPACE, 'model-list', type] as const,
   defaultModel: (type: ModelTypeEnum) => [NAME_SPACE, 'default-model', type] as const,
   retrievalMethods: [NAME_SPACE, 'support-retrieval-methods'] as const,
   accountIntegrates: [NAME_SPACE, 'account-integrates'] as const,
@@ -211,9 +211,15 @@ export const useModelProviderDetails = (enabled = true) => {
   })
 }
 
-export const useModelListByType = (type: ModelTypeEnum, enabled = true) => {
+export const useModelListByType = (type: ModelTypeEnum | ModelType, enabled = true) => {
   return useQuery<{ data: Model[] }>({
-    queryKey: commonQueryKeys.modelList(type),
+    queryKey: consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+      input: {
+        params: {
+          model_type: type,
+        },
+      },
+    }),
     queryFn: () => get<{ data: Model[] }>(`/workspaces/current/models/model-types/${type}`),
     enabled,
   })

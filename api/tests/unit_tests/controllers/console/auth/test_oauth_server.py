@@ -3,7 +3,13 @@ from __future__ import annotations
 from inspect import unwrap
 from unittest.mock import patch
 
-from controllers.console.auth.oauth_server import OAuthServerUserAccountApi, OAuthServerUserAuthorizeApi
+from controllers.console.auth.oauth_server import (
+    OAuthProviderAppResponse,
+    OAuthProviderRequest,
+    OAuthServerAppApi,
+    OAuthServerUserAccountApi,
+    OAuthServerUserAuthorizeApi,
+)
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
 from models.model import OAuthProviderApp
@@ -55,3 +61,24 @@ def test_oauth_account_returns_stable_account_id() -> None:
     response = method(api, _make_oauth_provider_app(), account)
 
     assert response["id"] == "account-1"
+
+
+def test_oauth_provider_app_response_requires_auto_authorize() -> None:
+    # A missing field must fail validation instead of silently defaulting:
+    # an optional field would surface as `undefined` in the generated TS
+    # contract and silently disable silent authorization.
+    assert "auto_authorize" in OAuthProviderAppResponse.model_json_schema()["required"]
+
+
+def test_oauth_provider_returns_auto_authorize_flag() -> None:
+    api = OAuthServerAppApi()
+    method = unwrap(api.post)
+    payload = OAuthProviderRequest(client_id="client-1", redirect_uri="https://example.com/callback")
+
+    response = method(api, payload, _make_oauth_provider_app())
+    assert response["auto_authorize"] is False
+
+    opted_in = _make_oauth_provider_app()
+    opted_in.auto_authorize = True
+    response = method(api, payload, opted_in)
+    assert response["auto_authorize"] is True

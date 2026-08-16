@@ -171,6 +171,9 @@ request = CreateRunRequest(
                 type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
                 config=DifyExecutionContextLayerConfig(
                     tenant_id="92cca973-2d6f-45e0-906e-0b7eda5f2ccf",
+                    user_id="replace-with-user-id",
+                    user_from="account",
+                    app_id="replace-with-app-id",
                     agent_id="8d542564-159d-4168-985c-dde8d8ff6092",
                     agent_config_version_id="931a4cee-4434-4c1c-8fbd-0a3c7591095d",
                     agent_config_version_kind="snapshot",
@@ -197,7 +200,6 @@ request = CreateRunRequest(
                     plugin_id="langgenius/gemini",
                     model_provider="google",
                     model="gemini-2.5-flash",
-                    credentials={"google_api_key": "<redacted>"},
                 ),
             ),
         ]

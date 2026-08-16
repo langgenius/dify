@@ -5,6 +5,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { intersection } from 'es-toolkit/array'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -71,12 +72,14 @@ const Operator = ({ open, onOpenChange, data, nodeId, sourceHandle }: OperatorPr
     <DropdownMenu open={open} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger
         render={
-          <Button
-            className="size-6 p-0"
+          <IconButton
+            variant="secondary"
+            size="md"
+            className="rounded-lg"
             aria-label={t(($) => $['common.moreActions'], { ns: 'workflow' })}
           >
             <span aria-hidden className="i-ri-more-fill size-4" />
-          </Button>
+          </IconButton>
         }
       />
       <DropdownMenuContent
