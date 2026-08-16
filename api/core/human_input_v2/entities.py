@@ -3,7 +3,7 @@ from typing import NewType
 
 from pydantic import NaiveDatetime
 
-from core.human_input_v2.shared import AccountId, NormalizedEmail, WorkspaceId
+from core.human_input_v2.shared import AccountId, NormalizedEmail, TenantId
 
 
 class HumanInputContactType(StrEnum):
@@ -195,5 +195,5 @@ __all__ = [
     "NaiveDatetime",
     "NormalizedEmail",
     "OrganizationCandidateId",
-    "WorkspaceId",
+    "TenantId",
 ]

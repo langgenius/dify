@@ -61,7 +61,7 @@ from core.human_input_v2.im_provider import (
     StaticCardIntent,
     WebhookRequest,
 )
-from core.human_input_v2.shared import AccountId, IntegrationId, NormalizedEmail, WorkspaceId
+from core.human_input_v2.shared import AccountId, IntegrationId, NormalizedEmail, TenantId
 from services import human_input_slack_channel as slack_service_module
 from services.human_input_im_channel_manager import IMProviderConfigurationError
 from services.human_input_slack_channel import (
@@ -1286,7 +1286,7 @@ def test_service_port_uses_real_adapter_boundary_and_protects_all_secrets(
             {"ok": True, "url": "wss://sanitized.invalid/socket"},
         )
     context = HumanInputChannelManagementContext(
-        workspace_id=WorkspaceId("sanitized-workspace"),
+        tenant_id=TenantId("sanitized-workspace"),
         actor_account_id=AccountId("sanitized-account"),
         actor_email=NormalizedEmail("operator@example.com"),
     )
@@ -1301,7 +1301,7 @@ def test_service_port_uses_real_adapter_boundary_and_protects_all_secrets(
     tested = port.test(context, _candidate(), None)
     current = IMIntegration.create(
         integration_id=IntegrationId("sanitized-integration"),
-        workspace_id=context.workspace_id,
+        tenant_id=context.tenant_id,
         provider_tenant=ProviderTenantIdentity(IMProvider.SLACK, confirmed.provider_tenant_id),
         encrypted_credentials=confirmed.encrypted_credentials,
         configured_by_account_id=context.actor_account_id,
@@ -1326,7 +1326,7 @@ def test_service_port_maps_real_provider_rejection_without_provider_details(
     del adapter
     slack_api_server.state.enqueue("auth.test", {"ok": False, "error": "invalid_auth"})
     context = HumanInputChannelManagementContext(
-        workspace_id=WorkspaceId("sanitized-workspace"),
+        tenant_id=TenantId("sanitized-workspace"),
         actor_account_id=AccountId("sanitized-account"),
         actor_email=NormalizedEmail("operator@example.com"),
     )
@@ -1346,7 +1346,7 @@ def test_service_port_rejects_candidate_mismatch_and_unresolvable_preserve(
     adapter, _ = _adapter(monkeypatch, slack_api_server)
     del adapter
     context = HumanInputChannelManagementContext(
-        workspace_id=WorkspaceId("sanitized-workspace"),
+        tenant_id=TenantId("sanitized-workspace"),
         actor_account_id=AccountId("sanitized-account"),
         actor_email=NormalizedEmail("operator@example.com"),
     )
@@ -1383,7 +1383,7 @@ def test_service_port_normalizes_protection_and_reveal_failures(
     adapter, _ = _adapter(monkeypatch, slack_api_server)
     del adapter
     context = HumanInputChannelManagementContext(
-        workspace_id=WorkspaceId("sanitized-workspace"),
+        tenant_id=TenantId("sanitized-workspace"),
         actor_account_id=AccountId("sanitized-account"),
         actor_email=NormalizedEmail("operator@example.com"),
     )
@@ -1399,7 +1399,7 @@ def test_service_port_normalizes_protection_and_reveal_failures(
 
     current = IMIntegration.create(
         integration_id=IntegrationId("sanitized-integration"),
-        workspace_id=context.workspace_id,
+        tenant_id=context.tenant_id,
         provider_tenant=ProviderTenantIdentity(IMProvider.SLACK, "sanitized-team"),
         encrypted_credentials=EncryptedCredentials.from_mapping(
             {

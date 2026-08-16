@@ -20,7 +20,7 @@ from core.human_input_v2.shared import (
     AccountId,
     EmailProviderId,
     NormalizedEmail,
-    WorkspaceId,
+    TenantId,
 )
 from models.account import Tenant
 from models.human_input_v2 import HumanInputEmailProvider
@@ -32,16 +32,16 @@ from repositories.human_input_v2.email_channel.repository import SQLAlchemyEmail
 
 _NOW = datetime(2026, 7, 28, 8)
 _EARLIER = datetime(2026, 7, 28, 7)
-_WORKSPACE_ID = WorkspaceId("00000000-0000-0000-0000-000000000001")
+_TENANT_ID = TenantId("00000000-0000-0000-0000-000000000001")
 
 
 def _configuration(
     configuration_id: str = "00000000-0000-0000-0000-000000000010",
-    workspace_id: WorkspaceId = _WORKSPACE_ID,
+    tenant_id: TenantId = _TENANT_ID,
 ) -> EmailChannelConfiguration:
     return EmailChannelConfiguration(
         EmailProviderId(configuration_id),
-        workspace_id,
+        tenant_id,
         NormalizedEmail("sender@example.com"),
         "Sender",
         ProtectedAPIKey("ciphertext"),
@@ -60,7 +60,7 @@ def _context(sqlite_engine: Engine) -> tuple[SQLAlchemyEmailChannelRepository, s
         session.flush()
         tenant = session.scalar(sa.select(Tenant))
         assert tenant is not None
-        tenant.id = str(_WORKSPACE_ID)
+        tenant.id = str(_TENANT_ID)
     return SQLAlchemyEmailChannelRepository(session_maker), session_maker
 
 
@@ -72,8 +72,8 @@ def test_create_load_conflict_and_cross_tenant_isolation(sqlite_engine: Engine) 
 
     assert created.status is CreateEmailConfigurationStatus.CREATED
     assert conflict.status is CreateEmailConfigurationStatus.CONFLICT
-    assert repository.load(_WORKSPACE_ID) == created.configuration
-    assert repository.load(WorkspaceId("00000000-0000-0000-0000-000000000099")) is None
+    assert repository.load(_TENANT_ID) == created.configuration
+    assert repository.load(TenantId("00000000-0000-0000-0000-000000000099")) is None
 
 
 def test_email_configuration_mapper_round_trip_is_detached() -> None:
@@ -105,14 +105,14 @@ def test_update_uses_identity_and_timestamp_and_advances_equal_clock(sqlite_engi
     assert result.configuration is not None
     assert result.configuration.updated_at > current.updated_at
     assert stale.status is UpdateEmailConfigurationStatus.STALE
-    assert repository.load(_WORKSPACE_ID) == result.configuration
+    assert repository.load(_TENANT_ID) == result.configuration
 
 
 def test_delete_recreate_rejects_deleted_identity_snapshot(sqlite_engine: Engine) -> None:
     repository, _ = _context(sqlite_engine)
     deleted = repository.create(_configuration()).configuration
     assert deleted is not None
-    assert repository.delete(_WORKSPACE_ID).status is DeleteEmailConfigurationStatus.DELETED
+    assert repository.delete(_TENANT_ID).status is DeleteEmailConfigurationStatus.DELETED
     recreated = repository.create(_configuration("00000000-0000-0000-0000-000000000011")).configuration
     assert recreated is not None
 
@@ -123,7 +123,7 @@ def test_delete_recreate_rejects_deleted_identity_snapshot(sqlite_engine: Engine
     )
 
     assert stale.status is UpdateEmailConfigurationStatus.STALE
-    assert repository.load(_WORKSPACE_ID) == recreated
+    assert repository.load(_TENANT_ID) == recreated
 
 
 def test_operation_scoped_loads_have_bounded_query_counts(sqlite_engine: Engine) -> None:
@@ -137,7 +137,7 @@ def test_operation_scoped_loads_have_bounded_query_counts(sqlite_engine: Engine)
 
     event.listen(sqlite_engine, "before_cursor_execute", record_statement)
     try:
-        repository.load(_WORKSPACE_ID)
+        repository.load(_TENANT_ID)
         assert len(statements) == 1
         statements.clear()
 
@@ -171,4 +171,4 @@ def test_failed_update_rolls_back_all_changes(sqlite_engine: Engine) -> None:
     finally:
         event.remove(sqlite_engine, "before_cursor_execute", fail_update)
 
-    assert repository.load(_WORKSPACE_ID) == current
+    assert repository.load(_TENANT_ID) == current

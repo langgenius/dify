@@ -10,13 +10,13 @@ import pytest
 
 from core.human_input_v2.entities import IMProvider, IMSyncRunStatus
 from core.human_input_v2.im_integration import IMSyncRun, IntegrationRevisionToken
-from core.human_input_v2.shared import IMSyncRunId, IntegrationId, WorkspaceId, WorkspaceScope
+from core.human_input_v2.shared import IMSyncRunId, IntegrationId, TenantId, WorkspaceScope
 from services.human_input_v2.im_contact_sync.coordinator import IMSyncRetryableError
 from services.human_input_v2.im_contact_sync.worker import IMContactSyncWorker
 from tasks import im_contact_sync_tasks
 
 _NOW = datetime(2026, 8, 11, 8)
-_SCOPE = WorkspaceScope(WorkspaceId("workspace-1"))
+_SCOPE = WorkspaceScope(id=TenantId("workspace-1"))
 
 
 def _queued_run() -> IMSyncRun:

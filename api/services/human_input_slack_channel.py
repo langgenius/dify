@@ -225,7 +225,7 @@ class SlackIMProviderConfigurationPort:
             if context.deployment_id is None:
                 raise IMProviderConfigurationError("missing_deployment_owner")
             return context.deployment_id
-        return str(context.workspace_id)
+        return str(context.tenant_id)
 
 
 __all__ = ["SlackIMCredentialProtector", "SlackIMProviderConfigurationPort"]

@@ -305,7 +305,7 @@ class EmailOTPAuthorizationProof(_ImmutableJSONModel):
         description="Discriminator for email OTP authorization evidence.",
     )
     otp_challenge_id: str = Field(description="Historical Human Input OTP challenge identifier.")
-    workspace_id: str = Field(description="Workspace owner captured by the verified challenge form reference.")
+    tenant_id: str = Field(description="Dify Tenant owner captured by the verified challenge form reference.")
     form_id: str = Field(description="Human Input v2 form identifier scoped by the verified challenge.")
     approver_grant_id: str = Field(description="Approver grant identifier scoped by the verified challenge.")
     subject_type: _HumanInputApproverGrantSubjectType = Field(

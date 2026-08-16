@@ -46,7 +46,7 @@ from core.human_input_v2.shared import (
     NormalizedEmail,
     OTPChallengeId,
     SubmissionId,
-    WorkspaceId,
+    TenantId,
 )
 from libs.datetime_utils import ensure_naive_utc
 from models.human_input_v2 import (
@@ -85,7 +85,7 @@ def proof_to_record_value(proof: VerifiedSubmissionProof) -> FormAuthorizationPr
                 contact_id = str(email_proof.subject.contact_id)
             return EmailOTPAuthorizationProof(
                 otp_challenge_id=str(email_proof.challenge_ref.challenge_id),
-                workspace_id=str(email_proof.challenge_ref.form_ref.workspace_id),
+                tenant_id=str(email_proof.challenge_ref.form_ref.tenant_id),
                 form_id=str(email_proof.challenge_ref.form_ref.form_id),
                 approver_grant_id=str(email_proof.challenge_ref.grant_ref.grant_id),
                 subject_type=subject_type,
@@ -108,7 +108,7 @@ def proof_to_record_value(proof: VerifiedSubmissionProof) -> FormAuthorizationPr
 def proof_from_record_value(
     record_value: FormAuthorizationProof,
     *,
-    workspace_id: WorkspaceId,
+    tenant_id: TenantId,
 ) -> VerifiedSubmissionProof:
     """Rebuild verified evidence using the owner scope from its audit record."""
 
@@ -118,7 +118,7 @@ def proof_from_record_value(
         case TrustedEndUserAuthorizationProof(app_id=app_id, end_user_id=end_user_id):
             return VerifiedTrustedEndUserProof(EndUserId(end_user_id), AppId(app_id))
         case EmailOTPAuthorizationProof() as email_proof:
-            if email_proof.workspace_id != str(workspace_id):
+            if email_proof.tenant_id != str(tenant_id):
                 raise ValueError("authorized Email proof owner does not match the audit event")
             normalized_email = NormalizedEmail(email_proof.verified_email)
             subject: EmailOTPSubject
@@ -133,7 +133,7 @@ def proof_from_record_value(
             else:
                 raise ValueError("Email proof record has an unsupported subject type")
             challenge_ref = (
-                FormRef(workspace_id, FormId(email_proof.form_id))
+                FormRef(tenant_id, FormId(email_proof.form_id))
                 .grant(ApproverGrantId(email_proof.approver_grant_id))
                 .challenge(OTPChallengeId(email_proof.otp_challenge_id))
             )
@@ -203,7 +203,7 @@ def submission_to_record(submission: FormSubmission) -> HumanInputV2FormSubmissi
 
     actor_fields = _actor_to_record_fields(submission.actor)
     record = HumanInputV2FormSubmission(
-        tenant_id=str(submission.form_ref.workspace_id),
+        tenant_id=str(submission.form_ref.tenant_id),
         form_id=str(submission.form_ref.form_id),
         approver_grant_id=str(submission.approver_grant_id),
         actor_type=actor_fields.actor_type,
@@ -232,7 +232,7 @@ def submission_from_record(record: HumanInputV2FormSubmission) -> FormSubmission
         raise ValueError("submission record has malformed structured values")
     return FormSubmission(
         id=SubmissionId(record.id),
-        form_ref=FormRef(WorkspaceId(record.tenant_id), FormId(record.form_id)),
+        form_ref=FormRef(TenantId(record.tenant_id), FormId(record.form_id)),
         approver_grant_id=ApproverGrantId(record.approver_grant_id),
         endpoint_id=DeliveryEndpointId(record.endpoint_id) if record.endpoint_id is not None else None,
         authorization_audit_event_id=AuditEventId(record.authorization_audit_event_id),
@@ -251,7 +251,7 @@ def audit_event_to_record(event: FormAuthorizationAuditEvent) -> HumanInputV2For
 
     event.validate_authorization_proof_owner()
     record = HumanInputV2FormAuditEvent(
-        tenant_id=str(event.form_ref.workspace_id),
+        tenant_id=str(event.form_ref.tenant_id),
         form_id=str(event.form_ref.form_id),
         event_type=event.event_type.value,
         occurred_at=event.occurred_at,
@@ -279,7 +279,7 @@ def audit_event_from_record(record: HumanInputV2FormAuditEvent) -> FormAuthoriza
     except ValueError as error:
         raise ValueError("audit record has an unsupported event type") from error
     proof = (
-        proof_from_record_value(record.authorization_proof, workspace_id=WorkspaceId(record.tenant_id))
+        proof_from_record_value(record.authorization_proof, tenant_id=TenantId(record.tenant_id))
         if record.authorization_proof is not None
         else None
     )
@@ -290,7 +290,7 @@ def audit_event_from_record(record: HumanInputV2FormAuditEvent) -> FormAuthoriza
     return FormAuthorizationAuditEvent(
         id=AuditEventId(record.id),
         event_type=event_type,
-        form_ref=FormRef(WorkspaceId(record.tenant_id), FormId(record.form_id)),
+        form_ref=FormRef(TenantId(record.tenant_id), FormId(record.form_id)),
         approver_grant_id=(ApproverGrantId(record.approver_grant_id) if record.approver_grant_id is not None else None),
         endpoint_id=DeliveryEndpointId(record.endpoint_id) if record.endpoint_id is not None else None,
         channel=record.channel,

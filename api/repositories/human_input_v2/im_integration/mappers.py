@@ -33,7 +33,7 @@ from core.human_input_v2.shared import (
     IMSyncRunId,
     IntegrationId,
     NormalizedEmail,
-    WorkspaceId,
+    TenantId,
 )
 from libs.datetime_utils import ensure_naive_utc
 from models.human_input_v2 import (
@@ -70,7 +70,7 @@ def integration_from_record(record: HumanInputIMIntegration) -> IMIntegration:
     credential_values.pop("provider", None)
     return IMIntegration(
         id=IntegrationId(record.id),
-        workspace_id=WorkspaceId(record.tenant_id) if record.tenant_id is not None else None,
+        tenant_id=TenantId(record.tenant_id) if record.tenant_id is not None else None,
         provider_tenant=ProviderTenantIdentity(record.provider, record.provider_tenant_id),
         encrypted_credentials=EncryptedCredentials.from_mapping(credential_values),
         configured_by_account_id=(
@@ -95,7 +95,7 @@ def integration_to_record(integration: IMIntegration) -> HumanInputIMIntegration
     record = HumanInputIMIntegration(
         provider=integration.provider_tenant.provider,
         encrypted_credentials=credentials,
-        tenant_id=str(integration.workspace_id) if integration.workspace_id is not None else None,
+        tenant_id=str(integration.tenant_id) if integration.tenant_id is not None else None,
         provider_tenant_id=integration.provider_tenant.provider_tenant_id,
         status=integration.status,
         config_version=integration.config_version,

@@ -30,7 +30,7 @@ from core.human_input_v2.shared import (
     IMIdentityId,
     IMSyncRunId,
     IntegrationId,
-    WorkspaceId,
+    TenantId,
     WorkspaceScope,
 )
 from services.human_input_v2.im_contact_sync.coordinator import (
@@ -43,14 +43,14 @@ from services.human_input_v2.im_contact_sync.locking import (
 )
 
 _NOW = datetime(2026, 8, 11, 8)
-_WORKSPACE_ID = WorkspaceId("workspace-1")
-_SCOPE = WorkspaceScope(_WORKSPACE_ID)
+_TENANT_ID = TenantId("workspace-1")
+_SCOPE = WorkspaceScope(id=_TENANT_ID)
 
 
 def _integration() -> IMIntegration:
     return IMIntegration.create(
         integration_id=IntegrationId("integration-1"),
-        workspace_id=_WORKSPACE_ID,
+        tenant_id=_TENANT_ID,
         provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, "provider-tenant-1"),
         encrypted_credentials=EncryptedCredentials.from_mapping(
             {"app_id": "app-1", "encrypted_app_secret": "ciphertext"}
@@ -76,8 +76,8 @@ class _ReadRepository:
         self.integration = _integration()
         self.run = _queued_run()
 
-    def load_current_integration(self, workspace_id: WorkspaceId | None) -> IMIntegration | None:
-        assert workspace_id == _WORKSPACE_ID
+    def load_current_integration(self, tenant_id: TenantId | None) -> IMIntegration | None:
+        assert tenant_id == _TENANT_ID
         return self.integration
 
     def load_sync_run(self, sync_run_id: IMSyncRunId) -> IMSyncRun | None:

@@ -126,7 +126,7 @@ class SQLAlchemySubmissionTransaction:
         return (
             select(HumanInputV2Form)
             .where(
-                HumanInputV2Form.tenant_id == str(scope.form_ref.workspace_id),
+                HumanInputV2Form.tenant_id == str(scope.form_ref.tenant_id),
                 HumanInputV2Form.id == str(scope.form_ref.form_id),
             )
             .with_for_update()
@@ -142,7 +142,7 @@ class SQLAlchemySubmissionTransaction:
             raise SubmissionScopeNotFoundError("form owner scope does not exist")
         grant_record = self._session.scalar(
             select(HumanInputV2FormApproverGrant).where(
-                HumanInputV2FormApproverGrant.tenant_id == str(self._scope.form_ref.workspace_id),
+                HumanInputV2FormApproverGrant.tenant_id == str(self._scope.form_ref.tenant_id),
                 HumanInputV2FormApproverGrant.form_id == str(self._scope.form_ref.form_id),
                 HumanInputV2FormApproverGrant.id == str(self._scope.approver_grant_id),
             )
@@ -239,7 +239,7 @@ class SQLAlchemySubmissionTransaction:
             return None
         endpoint_record = self._session.scalar(
             select(HumanInputV2FormDeliveryEndpoint).where(
-                HumanInputV2FormDeliveryEndpoint.tenant_id == str(self._scope.form_ref.workspace_id),
+                HumanInputV2FormDeliveryEndpoint.tenant_id == str(self._scope.form_ref.tenant_id),
                 HumanInputV2FormDeliveryEndpoint.form_id == str(self._scope.form_ref.form_id),
                 HumanInputV2FormDeliveryEndpoint.approver_grant_id == str(self._scope.approver_grant_id),
                 HumanInputV2FormDeliveryEndpoint.id == str(self._scope.endpoint_id),
@@ -252,13 +252,13 @@ class SQLAlchemySubmissionTransaction:
     def _load_current_contact(self, grant) -> CurrentContactAuthorizationFacts | None:
         if not isinstance(grant.subject, ContactApprovalSubject):
             return None
-        workspace_id = str(self._scope.form_ref.workspace_id)
+        tenant_id = str(self._scope.form_ref.tenant_id)
         membership_exists = sa.exists().where(
-            TenantAccountJoin.tenant_id == workspace_id,
+            TenantAccountJoin.tenant_id == tenant_id,
             TenantAccountJoin.account_id == HumanInputContact.account_id,
         )
         platform_exists = sa.exists().where(
-            HumanInputPlatformContactWorkspaceEntry.tenant_id == workspace_id,
+            HumanInputPlatformContactWorkspaceEntry.tenant_id == tenant_id,
             HumanInputPlatformContactWorkspaceEntry.contact_id == HumanInputContact.id,
         )
         row = self._session.execute(
@@ -266,7 +266,7 @@ class SQLAlchemySubmissionTransaction:
             .outerjoin(Account, Account.id == HumanInputContact.account_id)
             .where(
                 HumanInputContact.id == str(grant.subject.contact_id),
-                sa.or_(HumanInputContact.tenant_id == workspace_id, HumanInputContact.tenant_id.is_(None)),
+                sa.or_(HumanInputContact.tenant_id == tenant_id, HumanInputContact.tenant_id.is_(None)),
             )
         ).one_or_none()
         if row is None:
@@ -274,9 +274,9 @@ class SQLAlchemySubmissionTransaction:
         contact_record, account_status, has_membership, has_platform_entry = row
         identity_source = contact_record.identity_source
         if identity_source is HumanInputContactIdentitySource.EXTERNAL:
-            workspace_available = contact_record.tenant_id == workspace_id
+            workspace_available = contact_record.tenant_id == tenant_id
         elif identity_source is HumanInputContactIdentitySource.WORKSPACE_MEMBER:
-            workspace_available = contact_record.tenant_id == workspace_id and has_membership
+            workspace_available = contact_record.tenant_id == tenant_id and has_membership
         else:
             workspace_available = has_membership or has_platform_entry
         normalized_email = (
@@ -294,11 +294,11 @@ class SQLAlchemySubmissionTransaction:
         if not isinstance(grant.subject, EndUserApprovalSubject):
             return None
         end_user_id = str(grant.subject.end_user_id)
-        workspace_id = str(self._scope.form_ref.workspace_id)
+        tenant_id = str(self._scope.form_ref.tenant_id)
         row = self._session.execute(
             select(EndUser.id, EndUser.app_id).where(
                 EndUser.id == end_user_id,
-                EndUser.tenant_id == workspace_id,
+                EndUser.tenant_id == tenant_id,
                 EndUser.app_id == str(app_id),
             )
         ).one_or_none()
@@ -317,12 +317,12 @@ class SQLAlchemySubmissionTransaction:
     ) -> CurrentIMAuthorizationFacts | None:
         if not isinstance(proof, VerifiedIMIdentityProof) or current_contact is None:
             return None
-        workspace_id = str(self._scope.form_ref.workspace_id)
+        tenant_id = str(self._scope.form_ref.tenant_id)
         integration = self._session.scalar(
             select(HumanInputIMIntegration).where(
                 HumanInputIMIntegration.id == str(proof.integration_id),
                 HumanInputIMIntegration.provider == proof.provider,
-                sa.or_(HumanInputIMIntegration.tenant_id == workspace_id, HumanInputIMIntegration.tenant_id.is_(None)),
+                sa.or_(HumanInputIMIntegration.tenant_id == tenant_id, HumanInputIMIntegration.tenant_id.is_(None)),
             )
         )
         if integration is None:
@@ -341,7 +341,7 @@ class SQLAlchemySubmissionTransaction:
                 sa.or_(
                     sa.and_(
                         HumanInputIMBinding.scope == IMBindingScope.WORKSPACE,
-                        HumanInputIMBinding.scope_id == workspace_id,
+                        HumanInputIMBinding.scope_id == tenant_id,
                     ),
                     sa.and_(
                         HumanInputIMBinding.scope == IMBindingScope.ORGANIZATION,

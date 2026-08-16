@@ -35,7 +35,7 @@ from core.human_input_v2.shared import (
     DirectoryScope,
     IntegrationId,
     NormalizedEmail,
-    WorkspaceId,
+    TenantId,
     WorkspaceScope,
 )
 from services.human_input_im_channel_manager import (
@@ -49,7 +49,7 @@ from services.human_input_im_channel_manager import (
 _NOW = datetime(2026, 7, 28, 8)
 _LATER = datetime(2026, 7, 28, 9)
 _CONTEXT = HumanInputChannelManagementContext(
-    WorkspaceId("workspace-1"),
+    TenantId("workspace-1"),
     AccountId("account-1"),
     NormalizedEmail("operator@example.com"),
     organization_id="organization-1",
@@ -71,13 +71,13 @@ class FakeRepository:
         self.current = current
         self.transition_kind = None
         self.load_calls = 0
-        self.loaded_workspace_ids: list[WorkspaceId | None] = []
+        self.loaded_tenant_ids: list[TenantId | None] = []
         self.write_scopes: list[DirectoryScope] = []
 
-    def load_current_integration(self, workspace_id):
+    def load_current_integration(self, tenant_id):
         self.load_calls += 1
-        self.loaded_workspace_ids.append(workspace_id)
-        if self.current is None or self.current.workspace_id == workspace_id:
+        self.loaded_tenant_ids.append(tenant_id)
+        if self.current is None or self.current.tenant_id == tenant_id:
             return self.current
         return None
 
@@ -140,7 +140,7 @@ class FakeProviderPort:
 def _current(provider: IMProvider = IMProvider.FEISHU) -> IMIntegration:
     return IMIntegration.create(
         integration_id=IntegrationId("integration-1"),
-        workspace_id=_CONTEXT.workspace_id,
+        tenant_id=_CONTEXT.tenant_id,
         provider_tenant=ProviderTenantIdentity(provider, "provider-tenant"),
         encrypted_credentials=EncryptedCredentials.from_mapping(
             {"app_id": "app", "encrypted_app_secret": "ciphertext"}
@@ -177,7 +177,7 @@ def test_provider_replacement_is_planned_by_im_aggregate() -> None:
     assert repository.transition_kind is ConfigurationTransitionKind.PROVIDER_REPLACEMENT
     assert repository.current is not None
     assert repository.current.id == IntegrationId("integration-2")
-    assert repository.write_scopes == [WorkspaceScope(_CONTEXT.workspace_id)]
+    assert repository.write_scopes == [WorkspaceScope(id=_CONTEXT.tenant_id)]
 
 
 def test_im_capabilities_expose_provider_replacement_without_unimplemented_secret_retention() -> None:
@@ -338,7 +338,7 @@ def test_im_handler_maps_trusted_context_to_owner_and_effective_scope() -> None:
 
     organization_result = manager.get(_CONTEXT)
     deployment_context = HumanInputChannelManagementContext(
-        WorkspaceId("workspace-ignored"),
+        TenantId("workspace-ignored"),
         AccountId("account-1"),
         NormalizedEmail("operator@example.com"),
         deployment_id="deployment-1",
@@ -346,7 +346,7 @@ def test_im_handler_maps_trusted_context_to_owner_and_effective_scope() -> None:
     )
     deployment_result = manager.get(deployment_context)
 
-    assert repository.loaded_workspace_ids == [_CONTEXT.workspace_id, None]
+    assert repository.loaded_tenant_ids == [_CONTEXT.tenant_id, None]
     assert organization_result.view is not None
     assert organization_result.view.scope.kind is ChannelScopeKind.ORGANIZATION
     assert organization_result.view.scope.scope_id == "organization-1"

@@ -214,7 +214,7 @@ def test_context_factory_builds_workspace_actor_facts_without_im_ownership_resol
         actor_email="Operator@Example.com",
     )
 
-    assert str(context.workspace_id) == "workspace-1"
+    assert str(context.tenant_id) == "workspace-1"
     assert str(context.actor_account_id) == "account-1"
     assert str(context.actor_email) == "operator@example.com"
     assert context.organization_id is None

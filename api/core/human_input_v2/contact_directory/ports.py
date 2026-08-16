@@ -6,7 +6,7 @@ rollback. Callers receive domain values and never persistence records.
 
 from typing import Protocol
 
-from core.human_input_v2.shared import AccountId, ContactId, DirectoryScope, WorkspaceId
+from core.human_input_v2.shared import AccountId, ContactId, DirectoryScope, TenantId
 
 from .entities import Contact
 from .policy import ContactDirectorySnapshot
@@ -15,7 +15,7 @@ from .policy import ContactDirectorySnapshot
 class ContactDirectoryRepository(Protocol):
     """Persistence contract centered on coherent directory invariants."""
 
-    def load_snapshot(self, workspace_id: WorkspaceId) -> ContactDirectorySnapshot:
+    def load_snapshot(self, tenant_id: TenantId) -> ContactDirectorySnapshot:
         """Load one immutable workspace-scoped directory view."""
         ...
 
@@ -37,13 +37,13 @@ class ContactDirectoryRepository(Protocol):
         """Create or update one Contact backed by current workspace membership."""
         ...
 
-    def admit_external(self, workspace_id: WorkspaceId, *, name: str, email: str) -> Contact:
+    def admit_external(self, tenant_id: TenantId, *, name: str, email: str) -> Contact:
         """Atomically admit one External Contact against tenant and configured Organization identities."""
         ...
 
     def set_platform_availability(
         self,
-        workspace_id: WorkspaceId,
+        tenant_id: TenantId,
         contact_id: ContactId,
         *,
         added_by_account_id: AccountId,
@@ -52,6 +52,6 @@ class ContactDirectoryRepository(Protocol):
         """Atomically add or remove one EE Platform allow-list fact."""
         ...
 
-    def hard_delete_external(self, workspace_id: WorkspaceId, contact_id: ContactId) -> None:
+    def hard_delete_external(self, tenant_id: TenantId, contact_id: ContactId) -> None:
         """Delete an External Contact and its IM bindings without retaining an identity tombstone."""
         ...

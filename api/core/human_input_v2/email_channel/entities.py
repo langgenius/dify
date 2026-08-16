@@ -11,7 +11,7 @@ from core.human_input_v2.shared import (
     AccountId,
     EmailProviderId,
     NormalizedEmail,
-    WorkspaceId,
+    TenantId,
 )
 
 
@@ -82,7 +82,7 @@ class EmailChannelConfiguration:
     """Workspace-owned Resend configuration independent from ORM lifetime."""
 
     id: EmailProviderId
-    workspace_id: WorkspaceId
+    tenant_id: TenantId
     sender_email: NormalizedEmail
     sender_name: str
     protected_api_key: ProtectedAPIKey = field(repr=False)

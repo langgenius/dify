@@ -9,7 +9,7 @@ from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.common import human_input_v2_migration as migration_boundary
-from core.human_input_v2.shared.values import NormalizedEmail
+from core.human_input_v2.shared.values import NormalizedEmail, TenantId
 from core.workflow.nodes.human_input_v2 import migration as migration_module
 from core.workflow.nodes.human_input_v2.migration import (
     LegacyDeliveryParseIssue,
@@ -56,11 +56,11 @@ def _member_node(title: str, *member_ids: str) -> LegacyHumanInputNodeData:
 
 class _LookupSpy:
     def __init__(self, unavailable_account_ids: frozenset[str] = frozenset()) -> None:
-        self.calls: list[tuple[str, tuple[str, ...]]] = []
+        self.calls: list[tuple[TenantId, tuple[str, ...]]] = []
         self._unavailable_account_ids = unavailable_account_ids
 
-    def find_member_emails(self, workspace_id: str, account_ids: Sequence[str]) -> MemberEmailSnapshot:
-        self.calls.append((workspace_id, tuple(account_ids)))
+    def find_member_emails(self, tenant_id: TenantId, account_ids: Sequence[str]) -> MemberEmailSnapshot:
+        self.calls.append((tenant_id, tuple(account_ids)))
         return MemberEmailSnapshot(
             tuple(
                 ResolvedMemberEmail(account_id, NormalizedEmail(f"{account_id}@example.com"))
@@ -104,7 +104,7 @@ def test_batch_uses_one_ordered_member_lookup_and_one_immutable_snapshot() -> No
         MigrationNode("node-2", _member_node("Second", "member-1", "member-3")),
     )
 
-    outcome = service.migrate(workspace_id="workspace-1", nodes=nodes)
+    outcome = service.migrate(tenant_id=TenantId("workspace-1"), nodes=nodes)
 
     assert lookup.calls == [("workspace-1", ("member-2", "member-1", "member-3"))]
     assert len(set(converter.snapshot_ids)) == 1
@@ -133,7 +133,7 @@ def test_service_collects_real_frontend_user_id_member_references() -> None:
     )
 
     outcome = service.migrate(
-        workspace_id="workspace-1",
+        tenant_id=TenantId("workspace-1"),
         nodes=(MigrationNode("node-1", node_data),),
     )
 
@@ -168,7 +168,7 @@ def test_service_merges_typed_preflight_issues_and_discards_converted_data() -> 
     )
 
     outcome = service.migrate(
-        workspace_id="workspace-1",
+        tenant_id=TenantId("workspace-1"),
         nodes=(
             MigrationNode(
                 "node-1",
@@ -212,7 +212,7 @@ def test_service_preserves_method_order_when_merging_preflight_and_conversion_bl
     )
 
     outcome = service.migrate(
-        workspace_id="workspace-1",
+        tenant_id=TenantId("workspace-1"),
         nodes=(
             MigrationNode(
                 "node-1",
@@ -258,7 +258,7 @@ def test_service_preserves_recipient_source_order_across_preflight_and_converter
     service = HumanInputNodeDataMigrationService(member_email_lookup=_LookupSpy())
 
     outcome = service.migrate(
-        workspace_id="workspace-1",
+        tenant_id=TenantId("workspace-1"),
         nodes=(
             MigrationNode.from_preflight(
                 "node-1", migration_boundary.preflight_legacy_human_input_node_data(transport_node_data)
@@ -298,7 +298,7 @@ def test_service_preserves_adversarial_preflight_and_conversion_order_without_pa
     service = HumanInputNodeDataMigrationService(member_email_lookup=_LookupSpy())
 
     outcome = service.migrate(
-        workspace_id="workspace-1",
+        tenant_id=TenantId("workspace-1"),
         nodes=(
             MigrationNode.from_preflight(
                 "node-1", migration_boundary.preflight_legacy_human_input_node_data(transport_node_data)
@@ -332,7 +332,7 @@ def test_service_orders_invalid_delivery_ids_without_partial_data_or_persistence
     service = HumanInputNodeDataMigrationService(member_email_lookup=lookup)
 
     outcome = service.migrate(
-        workspace_id="workspace-1",
+        tenant_id=TenantId("workspace-1"),
         nodes=(
             MigrationNode.from_preflight(
                 "node-1", migration_boundary.preflight_legacy_human_input_node_data(transport_node_data)
@@ -374,7 +374,7 @@ def test_service_source_orders_disabled_unknown_methods_as_unsupported_without_p
     service = HumanInputNodeDataMigrationService(member_email_lookup=_LookupSpy())
 
     outcome = service.migrate(
-        workspace_id="workspace-1",
+        tenant_id=TenantId("workspace-1"),
         nodes=(
             MigrationNode.from_preflight(
                 "node-1", migration_boundary.preflight_legacy_human_input_node_data(transport_node_data)
@@ -427,7 +427,7 @@ def test_service_orders_duplicate_method_ids_by_canonical_index_not_id() -> None
     service = HumanInputNodeDataMigrationService(member_email_lookup=_LookupSpy())
 
     outcome = service.migrate(
-        workspace_id="workspace-1",
+        tenant_id=TenantId("workspace-1"),
         nodes=(
             MigrationNode(
                 "node-1",
@@ -472,7 +472,7 @@ def test_service_aggregates_real_im_and_disabled_unknown_method_blockers() -> No
     )
 
     outcome = service.migrate(
-        workspace_id="workspace-1",
+        tenant_id=TenantId("workspace-1"),
         nodes=(MigrationNode("node-1", node_data, preflight_issues=issues),),
     )
 
@@ -516,8 +516,8 @@ def test_batch_aggregates_blockers_discards_valid_results_and_retries_equivalent
     )
     nodes = (MigrationNode("node-valid", valid_node), MigrationNode("node-invalid", invalid_node))
 
-    first = service.migrate(workspace_id="workspace-1", nodes=nodes)
-    second = service.migrate(workspace_id="workspace-1", nodes=nodes)
+    first = service.migrate(tenant_id=TenantId("workspace-1"), nodes=nodes)
+    second = service.migrate(tenant_id=TenantId("workspace-1"), nodes=nodes)
 
     assert first == second
     assert isinstance(first, NodeDataMigrationFailure)
@@ -565,10 +565,10 @@ def test_success_blocked_and_repeated_requests_have_no_persistence_write_boundar
         ),
     )
 
-    success = service.migrate(workspace_id="workspace-1", nodes=successful_nodes)
-    blocked = service.migrate(workspace_id="workspace-1", nodes=blocked_nodes)
-    repeated_first = service.migrate(workspace_id="workspace-1", nodes=successful_nodes)
-    repeated_second = service.migrate(workspace_id="workspace-1", nodes=successful_nodes)
+    success = service.migrate(tenant_id=TenantId("workspace-1"), nodes=successful_nodes)
+    blocked = service.migrate(tenant_id=TenantId("workspace-1"), nodes=blocked_nodes)
+    repeated_first = service.migrate(tenant_id=TenantId("workspace-1"), nodes=successful_nodes)
+    repeated_second = service.migrate(tenant_id=TenantId("workspace-1"), nodes=successful_nodes)
 
     assert isinstance(success, NodeDataMigrationSuccess)
     assert isinstance(blocked, NodeDataMigrationFailure)
@@ -597,7 +597,7 @@ def test_whole_workspace_does_not_enumerate_members() -> None:
     )
 
     outcome = service.migrate(
-        workspace_id="workspace-1",
+        tenant_id=TenantId("workspace-1"),
         nodes=(MigrationNode("node-1", node_data),),
     )
 
@@ -629,8 +629,8 @@ class _TrackingReadSession(Session):
 def test_sql_lookup_is_tenant_scoped_active_read_only_and_closes_session(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-    workspace_id = str(uuid4())
-    other_workspace_id = str(uuid4())
+    tenant_id = TenantId(str(uuid4()))
+    other_tenant_id = TenantId(str(uuid4()))
     with sqlite_session_factory.begin() as arrange_session:
         active = Account(name="Active", email="  ACTIVE@Example.COM ")
         banned = Account(name="Banned", email="banned@example.com", status=AccountStatus.BANNED)
@@ -640,10 +640,10 @@ def test_sql_lookup_is_tenant_scoped_active_read_only_and_closes_session(
         arrange_session.flush()
         arrange_session.add_all(
             [
-                TenantAccountJoin(tenant_id=workspace_id, account_id=active.id),
-                TenantAccountJoin(tenant_id=workspace_id, account_id=banned.id),
-                TenantAccountJoin(tenant_id=workspace_id, account_id=invalid_email.id),
-                TenantAccountJoin(tenant_id=other_workspace_id, account_id=cross_workspace.id),
+                TenantAccountJoin(tenant_id=tenant_id, account_id=active.id),
+                TenantAccountJoin(tenant_id=tenant_id, account_id=banned.id),
+                TenantAccountJoin(tenant_id=tenant_id, account_id=invalid_email.id),
+                TenantAccountJoin(tenant_id=other_tenant_id, account_id=cross_workspace.id),
             ]
         )
 
@@ -671,7 +671,7 @@ def test_sql_lookup_is_tenant_scoped_active_read_only_and_closes_session(
     try:
         lookup = SQLAlchemyWorkspaceMemberEmailLookup(read_factory)
         member_emails = lookup.find_member_emails(
-            workspace_id,
+            tenant_id,
             (active.id, banned.id, invalid_email.id, cross_workspace.id, str(uuid4())),
         )
     finally:

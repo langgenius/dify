@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from typing import Protocol
 
 from core.human_input_v2.channel_identity import ChannelProvider, ChannelRef
-from core.human_input_v2.shared import WorkspaceId
+from core.human_input_v2.shared import TenantId
 
 from .contracts import (
     ConfigurationSnapshotIdentity,
@@ -19,7 +19,7 @@ from .contracts import (
 class EmailProviderConfigurationSnapshotResolver(Protocol):
     def resolve(
         self,
-        workspace_id: WorkspaceId,
+        tenant_id: TenantId,
         channel: ChannelRef,
         *,
         expected: ConfigurationSnapshotIdentity | None = None,

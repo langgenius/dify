@@ -14,7 +14,7 @@ from core.human_input_v2.shared import (
     AccountId,
     ContactId,
     PlatformEntryId,
-    WorkspaceId,
+    TenantId,
 )
 from models.human_input_v2 import HumanInputContactIdentitySource
 from repositories.human_input_v2.contact_directory.mappers import (
@@ -52,7 +52,7 @@ def test_organization_contact_round_trip_preserves_values_and_identity_source() 
 def test_external_contact_round_trip_preserves_workspace_owner_and_avatar() -> None:
     contact = Contact.external(
         contact_id=ContactId("contact-1"),
-        workspace_id=WorkspaceId("workspace-1"),
+        tenant_id=TenantId("workspace-1"),
         name="Reviewer",
         email="reviewer@example.com",
         avatar_file_id="avatar-1",
@@ -106,7 +106,7 @@ def test_record_mapper_converts_aware_database_timestamps_to_naive_utc() -> None
 def test_platform_entry_round_trip_preserves_owner_references() -> None:
     entry = PlatformWorkspaceEntry(
         id=PlatformEntryId("entry-1"),
-        workspace_id=WorkspaceId("workspace-1"),
+        tenant_id=TenantId("workspace-1"),
         contact_id=ContactId("contact-1"),
         added_by_account_id=AccountId("admin-1"),
         created_at=_NOW,

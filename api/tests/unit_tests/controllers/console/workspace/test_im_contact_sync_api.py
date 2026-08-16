@@ -58,7 +58,7 @@ from core.human_input_v2.shared import (
     IMSyncResultId,
     IMSyncRunId,
     IntegrationId,
-    WorkspaceId,
+    TenantId,
     WorkspaceScope,
 )
 from models.human_input_v2 import (
@@ -113,22 +113,22 @@ _RESULT = SyncResultFact(
 
 class _SyncService:
     def create_or_get_active_run(self, organization_scope, started_by_account_id):
-        assert organization_scope == WorkspaceScope(WorkspaceId("workspace-1"))
+        assert organization_scope == WorkspaceScope(id=TenantId("workspace-1"))
         assert started_by_account_id == AccountId("account-1")
         return _RUN
 
     def get_latest_run(self, organization_scope):
-        assert organization_scope == WorkspaceScope(WorkspaceId("workspace-1"))
+        assert organization_scope == WorkspaceScope(id=TenantId("workspace-1"))
         return _RUN
 
     def list_latest_results(self, organization_scope, result_type, *, page, limit):
-        assert organization_scope == WorkspaceScope(WorkspaceId("workspace-1"))
+        assert organization_scope == WorkspaceScope(id=TenantId("workspace-1"))
         assert result_type is IMSyncResultType.NOT_MATCHED
         assert (page, limit) == (1, 20)
         return SyncResultPage((_RESULT,), page=page, limit=limit, total=1)
 
     def search_identities(self, organization_scope, *, keyword, page, limit):
-        assert organization_scope == WorkspaceScope(WorkspaceId("workspace-1"))
+        assert organization_scope == WorkspaceScope(id=TenantId("workspace-1"))
         assert (keyword, page, limit) == ("provider-user", 1, 20)
         return SynchronizedIMIdentityPage(
             (
@@ -173,8 +173,8 @@ def _contact_view(scope: IMBindingScope) -> ContactIMBindingView:
 class _BindingService:
     def create_organization_binding(self, **kwargs):
         assert kwargs == {
-            "organization_scope": WorkspaceScope(WorkspaceId("workspace-1")),
-            "workspace_id": WorkspaceId("workspace-1"),
+            "organization_scope": WorkspaceScope(id=TenantId("workspace-1")),
+            "tenant_id": TenantId("workspace-1"),
             "contact_id": ContactId("00000000-0000-0000-0000-000000000001"),
             "identity_id": IMIdentityId("identity-1"),
             "bound_by_account_id": AccountId("account-1"),
@@ -504,11 +504,11 @@ def test_organization_binding_controller_uses_sqlite_backed_guarded_service(
     ]
     HumanInputIMIntegration.metadata.create_all(sqlite_engine, tables=tables)
     sessions = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    workspace_id = WorkspaceId("workspace-1")
+    tenant_id = TenantId("workspace-1")
     contact_id = ContactId("00000000-0000-0000-0000-000000000001")
     integration = IMIntegration.create(
         integration_id=IntegrationId("integration-1"),
-        workspace_id=workspace_id,
+        tenant_id=tenant_id,
         provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, "provider-tenant-1"),
         encrypted_credentials=EncryptedCredentials.from_mapping(
             {"app_id": "app-1", "encrypted_app_secret": "ciphertext"}
@@ -519,7 +519,7 @@ def test_organization_binding_controller_uses_sqlite_backed_guarded_service(
     )
     contact = Contact.workspace_member(
         contact_id=contact_id,
-        workspace_id=workspace_id,
+        tenant_id=tenant_id,
         account_id=AccountId("account-1"),
         name="Reviewer",
         email="reviewer@example.com",

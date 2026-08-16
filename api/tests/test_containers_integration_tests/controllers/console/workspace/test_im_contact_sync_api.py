@@ -35,7 +35,7 @@ from core.human_input_v2.shared import (
     IMSyncResultId,
     IMSyncRunId,
     IntegrationId,
-    WorkspaceId,
+    TenantId,
 )
 from models.human_input_v2 import HumanInputIMBinding, HumanInputIMSyncRun
 from repositories.human_input_v2.contact_directory.mappers import contact_to_record
@@ -62,10 +62,10 @@ _SYNC_RUNS_PATH = "/console/api/workspaces/current/human-input/im-sync-runs"
 
 def _seed_control_plane(session: Session):
     account, tenant = create_console_account_and_tenant(session)
-    workspace_id = WorkspaceId(tenant.id)
+    tenant_id = TenantId(tenant.id)
     contact = Contact.workspace_member(
         contact_id=_CONTACT_ID,
-        workspace_id=workspace_id,
+        tenant_id=tenant_id,
         account_id=AccountId(account.id),
         name="Reviewer",
         email="reviewer@example.com",
@@ -73,7 +73,7 @@ def _seed_control_plane(session: Session):
     )
     integration = IMIntegration.create(
         integration_id=_INTEGRATION_ID,
-        workspace_id=workspace_id,
+        tenant_id=tenant_id,
         provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, "provider-tenant-1"),
         encrypted_credentials=EncryptedCredentials.from_mapping(
             {"app_id": "app-1", "encrypted_app_secret": "ciphertext"}
@@ -388,7 +388,7 @@ def test_missing_control_plane_state_returns_stable_http_errors(
 
     integration = IMIntegration.create(
         integration_id=_INTEGRATION_ID,
-        workspace_id=WorkspaceId(tenant.id),
+        tenant_id=TenantId(tenant.id),
         provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, "provider-tenant-1"),
         encrypted_credentials=EncryptedCredentials.from_mapping(
             {"app_id": "app-1", "encrypted_app_secret": "ciphertext"}

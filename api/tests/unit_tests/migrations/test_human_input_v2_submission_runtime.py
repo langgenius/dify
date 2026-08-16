@@ -131,7 +131,7 @@ def test_structured_submission_and_authorized_audit_values_round_trip() -> None:
     _run_migration_step(module, engine, "upgrade")
     proof = EmailOTPAuthorizationProof(
         otp_challenge_id="challenge-1",
-        workspace_id="workspace-1",
+        tenant_id="workspace-1",
         form_id="form-1",
         approver_grant_id="grant-1",
         subject_type=HumanInputApproverGrantSubjectType.CONTACT,

@@ -10,7 +10,7 @@ from core.human_input_v2.shared import (
     AccountId,
     EmailProviderId,
     NormalizedEmail,
-    WorkspaceId,
+    TenantId,
 )
 from libs.datetime_utils import ensure_naive_utc
 from models.human_input_v2 import HumanInputEmailProvider, ResendEmailProviderEncryptedCredentials
@@ -27,7 +27,7 @@ def email_configuration_to_record(configuration: EmailChannelConfiguration) -> H
         encrypted_credentials=ResendEmailProviderEncryptedCredentials(
             encrypted_api_key=configuration.protected_api_key.value
         ),
-        tenant_id=str(configuration.workspace_id),
+        tenant_id=str(configuration.tenant_id),
         sender_name=configuration.sender_name,
         configured_by_account_id=(
             str(configuration.configured_by_account_id) if configuration.configured_by_account_id is not None else None
@@ -42,7 +42,7 @@ def email_configuration_to_record(configuration: EmailChannelConfiguration) -> H
 def email_configuration_from_record(record: HumanInputEmailProvider) -> EmailChannelConfiguration:
     return EmailChannelConfiguration(
         id=EmailProviderId(record.id),
-        workspace_id=WorkspaceId(record.tenant_id),
+        tenant_id=TenantId(record.tenant_id),
         provider=record.provider,
         sender_email=NormalizedEmail(record.sender_email),
         sender_name=record.sender_name,
@@ -64,7 +64,7 @@ def email_provider_to_record(provider: EmailProviderConfiguration) -> HumanInput
     return email_configuration_to_record(
         EmailChannelConfiguration(
             id=provider.id,
-            workspace_id=provider.workspace_id,
+            tenant_id=provider.tenant_id,
             provider=provider.provider,
             sender_email=provider.sender_email,
             sender_name=provider.sender_name,
@@ -82,7 +82,7 @@ def email_provider_from_record(record: HumanInputEmailProvider) -> EmailProvider
     configuration = email_configuration_from_record(record)
     return EmailProviderConfiguration(
         id=configuration.id,
-        workspace_id=configuration.workspace_id,
+        tenant_id=configuration.tenant_id,
         provider=configuration.provider,
         sender_email=configuration.sender_email,
         sender_name=configuration.sender_name,

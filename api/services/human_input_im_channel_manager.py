@@ -42,7 +42,7 @@ from core.human_input_v2.shared import (
     DeploymentScope,
     DirectoryScope,
     IntegrationId,
-    WorkspaceId,
+    TenantId,
     WorkspaceScope,
 )
 from libs.datetime_utils import naive_utc_now
@@ -141,7 +141,7 @@ class HumanInputIMChannelManager:
         self._id_factory = id_factory
 
     def get(self, context: HumanInputChannelManagementContext) -> ChannelOperationResult:
-        current = self._repository.load_current_integration(self._owner_workspace_id(context))
+        current = self._repository.load_current_integration(self._owner_tenant_id(context))
         return ChannelOperationResult.success(self._view(context, self._matching(current)))
 
     def test(
@@ -151,7 +151,7 @@ class HumanInputIMChannelManager:
     ) -> ChannelOperationResult:
         if not isinstance(command, TestIMChannelCommand) or command.ref != self.ref:
             return self._mismatch()
-        current = self._repository.load_current_integration(self._owner_workspace_id(context))
+        current = self._repository.load_current_integration(self._owner_tenant_id(context))
         try:
             result = self._provider_port.test(context, command.candidate, current)
         except IMProviderConfigurationError as error:
@@ -180,8 +180,8 @@ class HumanInputIMChannelManager:
     ) -> ChannelOperationResult:
         if not isinstance(command, SaveIMChannelCommand) or command.ref != self.ref:
             return self._mismatch()
-        owner_workspace_id = self._owner_workspace_id(context)
-        current = self._repository.load_current_integration(owner_workspace_id)
+        owner_tenant_id = self._owner_tenant_id(context)
+        current = self._repository.load_current_integration(owner_tenant_id)
         expected = self._expected_revision(command)
         if (current is None and expected is not None) or (
             current is not None and (expected is None or expected != current.revision)
@@ -207,7 +207,7 @@ class HumanInputIMChannelManager:
         if current is None:
             integration = IMIntegration.create(
                 integration_id=IntegrationId(self._id_factory()),
-                workspace_id=owner_workspace_id,
+                tenant_id=owner_tenant_id,
                 provider_tenant=ProviderTenantIdentity(confirmed.provider, confirmed.provider_tenant_id),
                 encrypted_credentials=confirmed.encrypted_credentials,
                 configured_by_account_id=context.actor_account_id,
@@ -254,7 +254,7 @@ class HumanInputIMChannelManager:
     ) -> ChannelOperationResult:
         if command.ref != self.ref:
             return self._mismatch()
-        current = self._repository.load_current_integration(self._owner_workspace_id(context))
+        current = self._repository.load_current_integration(self._owner_tenant_id(context))
         current = self._matching(current)
         if current is None:
             return ChannelOperationResult.failed(ChannelFailureCategory.NOT_CONFIGURED)
@@ -309,14 +309,14 @@ class HumanInputIMChannelManager:
         )
 
     @staticmethod
-    def _owner_workspace_id(context: HumanInputChannelManagementContext) -> WorkspaceId | None:
-        return None if context.use_deployment_im_scope else context.workspace_id
+    def _owner_tenant_id(context: HumanInputChannelManagementContext) -> TenantId | None:
+        return None if context.use_deployment_im_scope else context.tenant_id
 
     @staticmethod
     def _organization_write_scope(context: HumanInputChannelManagementContext) -> DirectoryScope:
         if context.use_deployment_im_scope:
             return DeploymentScope()
-        return WorkspaceScope(context.workspace_id)
+        return WorkspaceScope(id=context.tenant_id)
 
     @staticmethod
     def _scope(context: HumanInputChannelManagementContext) -> ChannelScope:
@@ -325,7 +325,7 @@ class HumanInputIMChannelManager:
             return ChannelScope(ChannelScopeKind.DEPLOYMENT, context.deployment_id)
         if context.organization_id is not None:
             return ChannelScope(ChannelScopeKind.ORGANIZATION, context.organization_id)
-        return ChannelScope(ChannelScopeKind.WORKSPACE, str(context.workspace_id))
+        return ChannelScope(ChannelScopeKind.WORKSPACE, str(context.tenant_id))
 
     @staticmethod
     def _status(status: IMIntegrationStatus) -> ChannelStatus:

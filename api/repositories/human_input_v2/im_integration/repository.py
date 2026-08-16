@@ -44,7 +44,7 @@ from core.human_input_v2.shared import (
     IMIdentityId,
     IMSyncRunId,
     IntegrationId,
-    WorkspaceId,
+    TenantId,
     WorkspaceScope,
 )
 from models.human_input_v2 import (
@@ -128,13 +128,13 @@ class SQLAlchemyIMControlPlaneRepository:
         self._session_maker = session_maker
         self._write_unit_of_work_factory = write_unit_of_work_factory
 
-    def load_current_integration(self, workspace_id: WorkspaceId | None) -> IMIntegration | None:
+    def load_current_integration(self, tenant_id: TenantId | None) -> IMIntegration | None:
         """Load only the exact owner scope used by management."""
 
         owner_predicate = (
             HumanInputIMIntegration.tenant_id.is_(None)
-            if workspace_id is None
-            else HumanInputIMIntegration.tenant_id == str(workspace_id)
+            if tenant_id is None
+            else HumanInputIMIntegration.tenant_id == str(tenant_id)
         )
         with self._session_maker() as session:
             record = session.scalar(select(HumanInputIMIntegration).where(owner_predicate).limit(1))
@@ -148,7 +148,7 @@ class SQLAlchemyIMControlPlaneRepository:
     ) -> IMIntegration:
         """Route configuration creation through the explicit Organization guard."""
 
-        self._ensure_scope_matches_owner(organization_scope, integration.workspace_id)
+        self._ensure_scope_matches_owner(organization_scope, integration.tenant_id)
         with self._write_unit_of_work_factory(organization_scope) as protected_repository:
             return protected_repository.create_integration(
                 integration,
@@ -156,13 +156,13 @@ class SQLAlchemyIMControlPlaneRepository:
             )
 
     @staticmethod
-    def _ensure_scope_matches_owner(scope: DirectoryScope, workspace_id: WorkspaceId | None) -> None:
+    def _ensure_scope_matches_owner(scope: DirectoryScope, tenant_id: TenantId | None) -> None:
         if isinstance(scope, WorkspaceScope):
-            if workspace_id != scope.workspace_id:
+            if tenant_id != scope.id:
                 raise ValueError("Organization write scope does not match IM Integration owner")
             return
         if isinstance(scope, DeploymentScope):
-            if workspace_id is not None:
+            if tenant_id is not None:
                 raise ValueError("Organization write scope does not match IM Integration owner")
             return
         raise TypeError("unsupported Organization write scope")
@@ -175,7 +175,7 @@ class SQLAlchemyIMControlPlaneRepository:
     ) -> IMIntegration | StaleRevision:
         """Route configuration CAS through the explicit Organization guard."""
 
-        self._ensure_scope_matches_owner(organization_scope, transition.integration.workspace_id)
+        self._ensure_scope_matches_owner(organization_scope, transition.integration.tenant_id)
         with self._write_unit_of_work_factory(organization_scope) as protected_repository:
             return protected_repository.compare_and_swap_configuration(
                 transition,
@@ -368,7 +368,7 @@ class SQLAlchemyIMControlPlaneRepository:
         *,
         integration_id: IntegrationId,
         provider: IMProvider,
-        workspace_id: WorkspaceId,
+        tenant_id: TenantId,
         contact_id: ContactId,
     ) -> BindingResolutionResult:
         """Validate Integration ownership before loading consumer-safe binding facts."""
@@ -378,7 +378,7 @@ class SQLAlchemyIMControlPlaneRepository:
                 select(HumanInputIMIntegration).where(
                     HumanInputIMIntegration.id == str(integration_id),
                     sa.or_(
-                        HumanInputIMIntegration.tenant_id == str(workspace_id),
+                        HumanInputIMIntegration.tenant_id == str(tenant_id),
                         HumanInputIMIntegration.tenant_id.is_(None),
                     ),
                 )
@@ -389,7 +389,7 @@ class SQLAlchemyIMControlPlaneRepository:
             contact_record = session.scalar(
                 select(HumanInputContact).where(
                     HumanInputContact.id == str(contact_id),
-                    sa.or_(HumanInputContact.tenant_id == str(workspace_id), HumanInputContact.tenant_id.is_(None)),
+                    sa.or_(HumanInputContact.tenant_id == str(tenant_id), HumanInputContact.tenant_id.is_(None)),
                 )
             )
             if contact_record is None:
@@ -416,7 +416,7 @@ class SQLAlchemyIMControlPlaneRepository:
             return EffectiveBindingResolver.resolve(
                 integration_revision=integration.revision,
                 provider_tenant=integration.provider_tenant,
-                workspace_id=workspace_id,
+                tenant_id=tenant_id,
                 contact=contact,
                 identities=identities,
                 bindings=bindings,

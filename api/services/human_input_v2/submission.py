@@ -32,7 +32,7 @@ from core.human_input_v2.approval import (
     SubmissionRepository,
 )
 from core.human_input_v2.entities import HumanInputV2FormKind
-from core.human_input_v2.shared import AuditEventId, FormId, SubmissionId, WorkspaceId
+from core.human_input_v2.shared import AuditEventId, FormId, SubmissionId, TenantId
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ _MAX_SUBMISSION_TRANSACTION_RETRIES = 1
 class WorkflowResumeIdentity:
     """Stable workflow owner identity used by an idempotent resume adapter."""
 
-    workspace_id: WorkspaceId
+    tenant_id: TenantId
     form_id: FormId
     workflow_pause_id: str
     node_execution_id: str
@@ -117,8 +117,8 @@ class SubmitHumanInputFormHandler:
         except WorkflowResumeEnqueueError:
             logger.exception(
                 "Failed to enqueue Human Input v2 workflow resume after submission commit: "
-                "workspace_id=%s form_id=%s workflow_pause_id=%s node_execution_id=%s",
-                identity.workspace_id,
+                "tenant_id=%s form_id=%s workflow_pause_id=%s node_execution_id=%s",
+                identity.tenant_id,
                 identity.form_id,
                 identity.workflow_pause_id,
                 identity.node_execution_id,
@@ -149,8 +149,8 @@ class SubmitHumanInputFormHandler:
                     raise
                 logger.warning(
                     "Retrying Human Input v2 submission after transaction serialization failure: "
-                    "workspace_id=%s form_id=%s retry_count=%s",
-                    identity.workspace_id,
+                    "tenant_id=%s form_id=%s retry_count=%s",
+                    identity.tenant_id,
                     identity.form_id,
                     retry_count + 1,
                 )
@@ -215,10 +215,7 @@ class SubmitHumanInputFormHandler:
         identity = command.resume_identity
         if identity is None:
             raise ValueError("runtime resume identity is required before submission persistence")
-        if (
-            identity.workspace_id != command.scope.form_ref.workspace_id
-            or identity.form_id != command.scope.form_ref.form_id
-        ):
+        if identity.tenant_id != command.scope.form_ref.tenant_id or identity.form_id != command.scope.form_ref.form_id:
             raise ValueError("runtime resume identity does not match the submission form owner")
         return identity
 

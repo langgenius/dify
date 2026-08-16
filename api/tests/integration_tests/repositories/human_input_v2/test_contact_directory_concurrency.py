@@ -15,7 +15,7 @@ from core.human_input_v2.contact_directory import (
     ContactDirectorySnapshot,
     ContactRejectionCode,
 )
-from core.human_input_v2.shared import AccountId, ContactId, DeploymentScope, DirectoryScope, WorkspaceId
+from core.human_input_v2.shared import AccountId, ContactId, DeploymentScope, DirectoryScope, TenantId
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
@@ -110,10 +110,10 @@ def test_concurrent_organization_and_external_admission_share_identity_claim(fla
 
     session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
     with session_maker() as session:
-        workspace_id = session.scalar(
+        tenant_id = session.scalar(
             sa.select(TenantAccountJoin.tenant_id).where(TenantAccountJoin.account_id == setup_account.id)
         )
-    assert workspace_id is not None
+    assert tenant_id is not None
     normalized_email = f"concurrent-org-external-{uuidv7()}@example.com"
     organization_account_id = str(uuidv7())
     organization_contact_id = ContactId(str(uuidv7()))
@@ -188,7 +188,7 @@ def test_concurrent_organization_and_external_admission_share_identity_claim(fla
             repository = _repository(sessionmaker(bind=connection, expire_on_commit=False))
             try:
                 return repository.admit_external(
-                    WorkspaceId(workspace_id),
+                    TenantId(tenant_id),
                     name="Concurrent External",
                     email=normalized_email,
                 )
@@ -244,10 +244,10 @@ def test_concurrent_platform_enable_is_idempotent(flask_req_ctx, setup_account) 
 
     session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
     with session_maker() as session:
-        workspace_id = session.scalar(
+        tenant_id = session.scalar(
             sa.select(TenantAccountJoin.tenant_id).where(TenantAccountJoin.account_id == setup_account.id)
         )
-    assert workspace_id is not None
+    assert tenant_id is not None
     repository = _repository(session_maker)
     contact = _save_organization_contact(
         repository,
@@ -266,7 +266,7 @@ def test_concurrent_platform_enable_is_idempotent(flask_req_ctx, setup_account) 
         barrier.wait()
         try:
             concurrent_repository.set_platform_availability(
-                WorkspaceId(workspace_id),
+                TenantId(tenant_id),
                 contact.id,
                 added_by_account_id=AccountId(setup_account.id),
                 enabled=True,
@@ -283,7 +283,7 @@ def test_concurrent_platform_enable_is_idempotent(flask_req_ctx, setup_account) 
         with session_maker() as session:
             entry_count = session.scalar(
                 sa.select(sa.func.count(HumanInputPlatformContactWorkspaceEntry.id)).where(
-                    HumanInputPlatformContactWorkspaceEntry.tenant_id == workspace_id,
+                    HumanInputPlatformContactWorkspaceEntry.tenant_id == tenant_id,
                     HumanInputPlatformContactWorkspaceEntry.contact_id == str(contact.id),
                 )
             )
@@ -308,7 +308,7 @@ def test_snapshot_uses_one_repeatable_read_view_across_statements(flask_req_ctx,
             sa.select(TenantAccountJoin).where(TenantAccountJoin.account_id == setup_account.id)
         )
     assert membership is not None
-    workspace_id = WorkspaceId(membership.tenant_id)
+    tenant_id = TenantId(membership.tenant_id)
     repository = _repository(session_maker)
     contact = _save_organization_contact(
         repository,
@@ -337,7 +337,7 @@ def test_snapshot_uses_one_repeatable_read_view_across_statements(flask_req_ctx,
 
     def load_snapshot() -> ContactDirectorySnapshot:
         loader_thread_id.append(get_ident())
-        return repository.load_snapshot(workspace_id)
+        return repository.load_snapshot(tenant_id)
 
     event.listen(db.engine, "after_cursor_execute", pause_after_contact_query)
     future = None
@@ -348,14 +348,14 @@ def test_snapshot_uses_one_repeatable_read_view_across_statements(flask_req_ctx,
             with session_maker.begin() as session:
                 session.execute(
                     sa.delete(TenantAccountJoin).where(
-                        TenantAccountJoin.tenant_id == str(workspace_id),
+                        TenantAccountJoin.tenant_id == str(tenant_id),
                         TenantAccountJoin.account_id == setup_account.id,
                     )
                 )
                 account = session.get_one(Account, setup_account.id)
                 account.status = AccountStatus.BANNED
                 entry = HumanInputPlatformContactWorkspaceEntry(
-                    tenant_id=str(workspace_id),
+                    tenant_id=str(tenant_id),
                     contact_id=str(contact.id),
                     added_by_account_id=setup_account.id,
                 )
@@ -383,13 +383,13 @@ def test_snapshot_uses_one_repeatable_read_view_across_statements(flask_req_ctx,
             account.status = AccountStatus.ACTIVE
             existing_membership = session.scalar(
                 sa.select(TenantAccountJoin.id).where(
-                    TenantAccountJoin.tenant_id == str(workspace_id),
+                    TenantAccountJoin.tenant_id == str(tenant_id),
                     TenantAccountJoin.account_id == setup_account.id,
                 )
             )
             if existing_membership is None:
                 restored_membership = TenantAccountJoin(
-                    tenant_id=str(workspace_id),
+                    tenant_id=str(tenant_id),
                     account_id=setup_account.id,
                     role=membership.role,
                     current=membership.current,

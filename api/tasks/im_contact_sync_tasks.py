@@ -6,7 +6,7 @@ import logging
 
 from celery import shared_task
 
-from core.human_input_v2.shared import DeploymentScope, DirectoryScope, IMSyncRunId, WorkspaceId, WorkspaceScope
+from core.human_input_v2.shared import DeploymentScope, DirectoryScope, IMSyncRunId, TenantId, WorkspaceScope
 from services.human_input_v2.im_contact_sync.coordinator import IMSyncRetryableError
 from services.human_input_v2.im_contact_sync.worker import IMContactSyncWorker
 
@@ -30,10 +30,10 @@ def build_im_contact_sync_worker() -> IMContactSyncWorker:
     retry_backoff=True,
     retry_kwargs={"max_retries": 5},
 )
-def reconcile_im_contacts_task(sync_run_id: str, scope_kind: str, workspace_id: str | None) -> str:
+def reconcile_im_contacts_task(sync_run_id: str, scope_kind: str, tenant_id: str | None) -> str:
     """Accept durable identifiers and return the persisted terminal run status."""
 
-    scope = _scope_from_payload(scope_kind, workspace_id)
+    scope = _scope_from_payload(scope_kind, tenant_id)
     logger.info("IM Contact sync task received, sync_run_id=%s", sync_run_id)
     terminal_run = build_im_contact_sync_worker().execute(IMSyncRunId(sync_run_id), scope)
     logger.info(
@@ -45,10 +45,10 @@ def reconcile_im_contacts_task(sync_run_id: str, scope_kind: str, workspace_id: 
     return terminal_run.status.value
 
 
-def _scope_from_payload(scope_kind: str, workspace_id: str | None) -> DirectoryScope:
-    if scope_kind == _WORKSPACE_SCOPE_KIND and workspace_id is not None:
-        return WorkspaceScope(WorkspaceId(workspace_id))
-    if scope_kind == _DEPLOYMENT_SCOPE_KIND and workspace_id is None:
+def _scope_from_payload(scope_kind: str, tenant_id: str | None) -> DirectoryScope:
+    if scope_kind == _WORKSPACE_SCOPE_KIND and tenant_id is not None:
+        return WorkspaceScope(id=TenantId(tenant_id))
+    if scope_kind == _DEPLOYMENT_SCOPE_KIND and tenant_id is None:
         return DeploymentScope()
     raise ValueError("invalid Organization scope payload")
 

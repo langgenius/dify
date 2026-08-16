@@ -9,7 +9,7 @@ from pydantic import NaiveDatetime
 
 from core.human_input_v2 import ResolvedForm
 from core.human_input_v2.entities import HumanInputV2FormStatus
-from core.human_input_v2.shared import WorkspaceId
+from core.human_input_v2.shared import TenantId
 
 from .delivery import (
     DeliveryAttempt,
@@ -66,7 +66,7 @@ class FormRepository(Protocol):
     def load_definition_by_endpoint_token(
         self,
         *,
-        workspace_id: WorkspaceId,
+        tenant_id: TenantId,
         token_hash: str,
     ) -> FormDefinitionProjection | None:
         """Resolve a scoped interaction capability without creating authority."""
@@ -92,6 +92,6 @@ class FormRepository(Protocol):
 class RenderedEmailRequestProtector(Protocol):
     """Protect provider-ready content before it enters durable storage."""
 
-    def protect(self, workspace_id: WorkspaceId, serialized_request: str) -> ProtectedRenderedEmailRequest: ...
+    def protect(self, tenant_id: TenantId, serialized_request: str) -> ProtectedRenderedEmailRequest: ...
 
-    def reveal(self, workspace_id: WorkspaceId, protected: ProtectedRenderedEmailRequest) -> str: ...
+    def reveal(self, tenant_id: TenantId, protected: ProtectedRenderedEmailRequest) -> str: ...

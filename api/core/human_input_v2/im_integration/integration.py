@@ -10,7 +10,7 @@ from enum import StrEnum
 from pydantic import JsonValue, NaiveDatetime
 
 from core.human_input_v2.entities import IMIntegrationStatus, IMProvider
-from core.human_input_v2.shared import AccountId, IntegrationId, WorkspaceId
+from core.human_input_v2.shared import AccountId, IntegrationId, TenantId
 
 
 @dataclass(frozen=True, slots=True)
@@ -109,7 +109,7 @@ class IMIntegration:
     """
 
     id: IntegrationId
-    workspace_id: WorkspaceId | None
+    tenant_id: TenantId | None
     provider_tenant: ProviderTenantIdentity
     encrypted_credentials: EncryptedCredentials
     configured_by_account_id: AccountId | None
@@ -130,7 +130,7 @@ class IMIntegration:
         cls,
         *,
         integration_id: IntegrationId,
-        workspace_id: WorkspaceId | None,
+        tenant_id: TenantId | None,
         provider_tenant: ProviderTenantIdentity,
         encrypted_credentials: EncryptedCredentials,
         configured_by_account_id: AccountId | None,
@@ -139,7 +139,7 @@ class IMIntegration:
     ) -> IMIntegration:
         return cls(
             id=integration_id,
-            workspace_id=workspace_id,
+            tenant_id=tenant_id,
             provider_tenant=provider_tenant,
             encrypted_credentials=encrypted_credentials,
             configured_by_account_id=configured_by_account_id,
@@ -197,7 +197,7 @@ class IMIntegration:
             raise ValueError("provider replacement requires a new integration identity")
         replacement = IMIntegration.create(
             integration_id=replacement_integration_id,
-            workspace_id=self.workspace_id,
+            tenant_id=self.tenant_id,
             provider_tenant=provider_tenant,
             encrypted_credentials=encrypted_credentials,
             configured_by_account_id=configured_by_account_id,

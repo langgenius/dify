@@ -17,18 +17,18 @@ from core.human_input_v2.shared import (
     AccountId,
     EmailProviderId,
     NormalizedEmail,
-    WorkspaceId,
+    TenantId,
 )
 from libs.datetime_utils import naive_utc_now
 from models.account import Tenant
 from repositories.human_input_v2.email_channel.repository import SQLAlchemyEmailChannelRepository
 
 
-def _configuration(workspace_id: WorkspaceId, *, configuration_id: str | None = None) -> EmailChannelConfiguration:
+def _configuration(tenant_id: TenantId, *, configuration_id: str | None = None) -> EmailChannelConfiguration:
     now = naive_utc_now()
     return EmailChannelConfiguration(
         EmailProviderId(configuration_id or str(uuid4())),
-        workspace_id,
+        tenant_id,
         NormalizedEmail("sender@example.com"),
         "Sender",
         ProtectedAPIKey("ciphertext"),
@@ -38,17 +38,17 @@ def _configuration(workspace_id: WorkspaceId, *, configuration_id: str | None = 
     )
 
 
-def _repository(db_session: Session) -> tuple[SQLAlchemyEmailChannelRepository, WorkspaceId]:
+def _repository(db_session: Session) -> tuple[SQLAlchemyEmailChannelRepository, TenantId]:
     tenant = Tenant(name="Email channel concurrency")
     db_session.add(tenant)
     db_session.commit()
-    workspace_id = WorkspaceId(tenant.id)
+    tenant_id = TenantId(tenant.id)
     maker = sessionmaker(bind=db_session.get_bind(), expire_on_commit=False)
-    return SQLAlchemyEmailChannelRepository(maker), workspace_id
+    return SQLAlchemyEmailChannelRepository(maker), tenant_id
 
 
 def test_concurrent_first_creation_has_one_winner(db_session_with_containers: Session) -> None:
-    repository, workspace_id = _repository(db_session_with_containers)
+    repository, tenant_id = _repository(db_session_with_containers)
     barrier = Barrier(2)
 
     def create(configuration: EmailChannelConfiguration):
@@ -59,7 +59,7 @@ def test_concurrent_first_creation_has_one_winner(db_session_with_containers: Se
         results = tuple(
             executor.map(
                 create,
-                (_configuration(workspace_id), _configuration(workspace_id)),
+                (_configuration(tenant_id), _configuration(tenant_id)),
             )
         )
 
@@ -70,8 +70,8 @@ def test_concurrent_first_creation_has_one_winner(db_session_with_containers: Se
 
 
 def test_concurrent_conditional_updates_have_one_winner(db_session_with_containers: Session) -> None:
-    repository, workspace_id = _repository(db_session_with_containers)
-    current = repository.create(_configuration(workspace_id)).configuration
+    repository, tenant_id = _repository(db_session_with_containers)
+    current = repository.create(_configuration(tenant_id)).configuration
     assert current is not None
     barrier = Barrier(2)
 
@@ -93,8 +93,8 @@ def test_concurrent_conditional_updates_have_one_winner(db_session_with_containe
 
 
 def test_update_delete_race_cannot_restore_deleted_row(db_session_with_containers: Session) -> None:
-    repository, workspace_id = _repository(db_session_with_containers)
-    current = repository.create(_configuration(workspace_id)).configuration
+    repository, tenant_id = _repository(db_session_with_containers)
+    current = repository.create(_configuration(tenant_id)).configuration
     assert current is not None
     barrier = Barrier(2)
 
@@ -108,7 +108,7 @@ def test_update_delete_race_cannot_restore_deleted_row(db_session_with_container
 
     def delete():
         barrier.wait()
-        return repository.delete(workspace_id)
+        return repository.delete(tenant_id)
 
     with ThreadPoolExecutor(max_workers=2) as executor:
         update_future = executor.submit(update)
@@ -120,15 +120,15 @@ def test_update_delete_race_cannot_restore_deleted_row(db_session_with_container
         UpdateEmailConfigurationStatus.UPDATED,
         UpdateEmailConfigurationStatus.STALE,
     )
-    assert repository.load(workspace_id) is None
+    assert repository.load(tenant_id) is None
 
 
 def test_delete_recreate_rejects_previous_identity(db_session_with_containers: Session) -> None:
-    repository, workspace_id = _repository(db_session_with_containers)
-    deleted = repository.create(_configuration(workspace_id)).configuration
+    repository, tenant_id = _repository(db_session_with_containers)
+    deleted = repository.create(_configuration(tenant_id)).configuration
     assert deleted is not None
-    repository.delete(workspace_id)
-    recreated = repository.create(_configuration(workspace_id)).configuration
+    repository.delete(tenant_id)
+    recreated = repository.create(_configuration(tenant_id)).configuration
     assert recreated is not None
 
     stale = repository.update(
@@ -138,4 +138,4 @@ def test_delete_recreate_rejects_previous_identity(db_session_with_containers: S
     )
 
     assert stale.status is UpdateEmailConfigurationStatus.STALE
-    assert repository.load(workspace_id) == recreated
+    assert repository.load(tenant_id) == recreated

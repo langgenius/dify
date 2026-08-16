@@ -248,7 +248,7 @@ class SQLAlchemyOTPChallengeRepository:
         return (
             select(HumanInputV2FormApproverGrant)
             .where(
-                HumanInputV2FormApproverGrant.tenant_id == str(grant_ref.form_ref.workspace_id),
+                HumanInputV2FormApproverGrant.tenant_id == str(grant_ref.form_ref.tenant_id),
                 HumanInputV2FormApproverGrant.form_id == str(grant_ref.form_ref.form_id),
                 HumanInputV2FormApproverGrant.id == str(grant_ref.grant_id),
             )
@@ -269,7 +269,7 @@ class SQLAlchemyOTPChallengeRepository:
         return session.scalar(
             select(HumanInputV2FormOTPChallenge)
             .where(
-                HumanInputV2FormOTPChallenge.tenant_id == str(grant_ref.form_ref.workspace_id),
+                HumanInputV2FormOTPChallenge.tenant_id == str(grant_ref.form_ref.tenant_id),
                 HumanInputV2FormOTPChallenge.form_id == str(grant_ref.form_ref.form_id),
                 HumanInputV2FormOTPChallenge.approver_grant_id == str(grant_ref.grant_id),
             )
@@ -281,7 +281,7 @@ class SQLAlchemyOTPChallengeRepository:
     def _load_record(session: Session, challenge_ref: OTPChallengeRef) -> HumanInputV2FormOTPChallenge | None:
         return session.scalar(
             select(HumanInputV2FormOTPChallenge).where(
-                HumanInputV2FormOTPChallenge.tenant_id == str(challenge_ref.form_ref.workspace_id),
+                HumanInputV2FormOTPChallenge.tenant_id == str(challenge_ref.form_ref.tenant_id),
                 HumanInputV2FormOTPChallenge.form_id == str(challenge_ref.form_ref.form_id),
                 HumanInputV2FormOTPChallenge.approver_grant_id == str(challenge_ref.grant_ref.grant_id),
                 HumanInputV2FormOTPChallenge.id == str(challenge_ref.challenge_id),
@@ -301,7 +301,7 @@ class SQLAlchemyOTPChallengeRepository:
                 select(HumanInputContact).where(
                     HumanInputContact.id == grant_record.contact_id,
                     sa.or_(
-                        HumanInputContact.tenant_id == str(grant_ref.form_ref.workspace_id),
+                        HumanInputContact.tenant_id == str(grant_ref.form_ref.tenant_id),
                         HumanInputContact.tenant_id.is_(None),
                     ),
                 )

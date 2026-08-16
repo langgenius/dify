@@ -1,5 +1,8 @@
 import base64
+import json
 from datetime import datetime, timedelta
+
+import pytest
 
 from core.human_input import ButtonStyle
 from core.human_input_v2 import MarkdownText, ResolvedForm, ResolvedFormAction
@@ -27,12 +30,13 @@ from core.human_input_v2.shared import (
     IMIdentityId,
     IntegrationId,
     NormalizedEmail,
-    WorkspaceId,
+    TenantId,
 )
 from services.human_input_v2.notification_producer import (
     EndpointAccessTokenIssuer,
     HumanInputV2NotificationProducer,
     deserialize_rendered_email_request,
+    serialize_rendered_email_request,
 )
 
 _NOW = datetime(2026, 7, 31, 8)
@@ -60,14 +64,14 @@ class Repository:
 
 
 class Protector:
-    def protect(self, workspace_id, serialized_request):
+    def protect(self, tenant_id, serialized_request):
         from core.human_input_v2.approval import ProtectedRenderedEmailRequest
 
-        assert workspace_id == WorkspaceId("workspace-1")
+        assert tenant_id == TenantId("workspace-1")
         return ProtectedRenderedEmailRequest(base64.b64encode(serialized_request.encode()).decode())
 
-    def reveal(self, workspace_id, protected):
-        assert workspace_id == WorkspaceId("workspace-1")
+    def reveal(self, tenant_id, protected):
+        assert tenant_id == TenantId("workspace-1")
         return base64.b64decode(protected.ciphertext).decode()
 
 
@@ -92,7 +96,7 @@ def _creation(*, second_email: bool = False):
         ),
     )
     return HumanInputForm.create_from_plan(
-        ref=FormRef(WorkspaceId("workspace-1"), FormId("form-1")),
+        ref=FormRef(TenantId("workspace-1"), FormId("form-1")),
         app_id=AppId("app-1"),
         resolved_form=ResolvedForm(
             title="Review",
@@ -128,7 +132,7 @@ def test_producer_persists_one_protected_email_attempt_and_ignores_im() -> None:
         subject_template="Approve {{#node.value#}}",
         body_template="Please review {{#node.value#}}",
         render_template=lambda template: template.replace("{{#node.value#}}", "request"),
-        build_form_url=lambda _workspace_id, token: f"https://example.com/human-input/{token}",
+        build_form_url=lambda _tenant_id, token: f"https://example.com/human-input/{token}",
     )
 
     assert produced.attempt_ids == (DeliveryAttemptId("attempt-1"),)
@@ -146,12 +150,51 @@ def test_producer_persists_one_protected_email_attempt_and_ignores_im() -> None:
     assert isinstance(data, DeliveryAttemptData)
     assert "plaintext-form-token" not in data.protected_request.ciphertext
 
-    serialized = protector.reveal(WorkspaceId("workspace-1"), data.protected_request)
+    serialized = protector.reveal(TenantId("workspace-1"), data.protected_request)
+    serialized_payload = json.loads(serialized)
+    assert serialized_payload["tenant_id"] == "workspace-1"
+    assert "workspace_id" not in serialized_payload
     request = deserialize_rendered_email_request(serialized)
     assert request.subject == "Approve request"
     assert "Please review request" in request.html
     assert "plaintext-form-token" in request.html
     assert request.delivery_id == "attempt-1"
+
+
+def _serialized_rendered_email_request(owner: dict[str, str]) -> str:
+    return json.dumps(
+        {
+            "schema_version": 1,
+            **owner,
+            "channel": {"kind": "email", "provider": "resend"},
+            "delivery_id": "attempt-1",
+            "recipient": "reviewer@example.com",
+            "subject": "Approve request",
+            "html": "<p>Please review</p>",
+            "text": "Please review",
+            "idempotency_key": "delivery-key",
+        }
+    )
+
+
+def test_rendered_email_deserializer_accepts_only_tenant_id() -> None:
+    request = deserialize_rendered_email_request(_serialized_rendered_email_request({"tenant_id": "tenant-1"}))
+
+    assert request.tenant_id == "tenant-1"
+    assert json.loads(serialize_rendered_email_request(request))["tenant_id"] == "tenant-1"
+
+
+@pytest.mark.parametrize(
+    "owner",
+    [
+        {"workspace_id": "tenant-1"},
+        {"tenant_id": "tenant-1", "workspace_id": "legacy-tenant-1"},
+        {},
+    ],
+)
+def test_rendered_email_deserializer_rejects_noncanonical_owner(owner: dict[str, str]) -> None:
+    with pytest.raises(ValueError, match="protected rendered Email request is malformed"):
+        deserialize_rendered_email_request(_serialized_rendered_email_request(owner))
 
 
 def test_producer_isolates_one_endpoint_materialization_failure() -> None:
@@ -161,11 +204,11 @@ def test_producer_isolates_one_endpoint_materialization_failure() -> None:
         def __init__(self) -> None:
             self.calls = 0
 
-        def protect(self, workspace_id, serialized_request):
+        def protect(self, tenant_id, serialized_request):
             self.calls += 1
             if self.calls == 1:
                 raise RuntimeError("protection unavailable")
-            return super().protect(workspace_id, serialized_request)
+            return super().protect(tenant_id, serialized_request)
 
     tokens = iter(("token-1", "token-2"))
     attempt_ids = iter(("attempt-1", "attempt-2"))
@@ -182,7 +225,7 @@ def test_producer_isolates_one_endpoint_materialization_failure() -> None:
         subject_template="Approve",
         body_template="Please review",
         render_template=lambda template: template,
-        build_form_url=lambda _workspace_id, token: f"https://example.com/{token}",
+        build_form_url=lambda _tenant_id, token: f"https://example.com/{token}",
     )
 
     assert repository.creation is not None

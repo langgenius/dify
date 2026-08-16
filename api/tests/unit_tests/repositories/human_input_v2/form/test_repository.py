@@ -50,9 +50,9 @@ from core.human_input_v2.shared import (
     EmailProviderId,
     FormId,
     NormalizedEmail,
+    TenantId,
     UploadCapabilityId,
     UploadFileAssociationId,
-    WorkspaceId,
 )
 from extensions.storage.storage_type import StorageType
 from models.enums import CreatorUserRole
@@ -70,8 +70,8 @@ from repositories.human_input_v2.form.delivery_repository import SQLAlchemyDeliv
 from repositories.human_input_v2.form.repository import FormPersistenceError, SQLAlchemyFormRepository
 
 _NOW = datetime(2026, 7, 25, 8)
-_WORKSPACE_ID = WorkspaceId("workspace-1")
-_FORM_REF = FormRef(_WORKSPACE_ID, FormId("form-1"))
+_TENANT_ID = TenantId("workspace-1")
+_FORM_REF = FormRef(_TENANT_ID, FormId("form-1"))
 
 
 class _SequentialIdentifierFactory(FormSnapshotIdentifierFactory):
@@ -386,7 +386,7 @@ def test_lifecycle_load_is_owner_scoped_and_has_a_fixed_two_query_shape(reposito
     assert loaded is not None
     assert len(loaded.grants) == 2
     assert len(statements) == 2
-    assert repository.load_for_lifecycle(FormRef(WorkspaceId("other-workspace"), _FORM_REF.form_id)) is None
+    assert repository.load_for_lifecycle(FormRef(TenantId("other-workspace"), _FORM_REF.form_id)) is None
 
 
 def test_delivery_attempt_is_append_only_and_does_not_change_form_status(repository_context) -> None:
@@ -417,7 +417,7 @@ def test_endpoint_token_read_projection_does_not_return_a_grant_or_actor(reposit
     )
     repository.create_form(FormCreation(creation.form, (endpoint_with_token, *creation.endpoints[1:])))
 
-    projection = repository.load_definition_by_endpoint_token(workspace_id=_WORKSPACE_ID, token_hash="a" * 64)
+    projection = repository.load_definition_by_endpoint_token(tenant_id=_TENANT_ID, token_hash="a" * 64)
 
     assert projection is not None
     assert projection.endpoint_ref == endpoint.ref
@@ -426,10 +426,9 @@ def test_endpoint_token_read_projection_does_not_return_a_grant_or_actor(reposit
     assert not hasattr(projection, "grant")
     assert not hasattr(projection, "actor")
     assert (
-        repository.load_definition_by_endpoint_token(workspace_id=WorkspaceId("other-workspace"), token_hash="a" * 64)
-        is None
+        repository.load_definition_by_endpoint_token(tenant_id=TenantId("other-workspace"), token_hash="a" * 64) is None
     )
-    assert repository.load_definition_by_endpoint_token(workspace_id=_WORKSPACE_ID, token_hash="b" * 64) is None
+    assert repository.load_definition_by_endpoint_token(tenant_id=_TENANT_ID, token_hash="b" * 64) is None
     with session_maker() as session:
         endpoint_record = session.get_one(HumanInputV2FormDeliveryEndpoint, str(endpoint.id))
         with pytest.raises(sa.exc.InvalidRequestError):
@@ -540,7 +539,7 @@ def test_delivery_projection_is_scoped_to_the_complete_endpoint_owner_chain(repo
     assert projection.endpoint == endpoint
     assert (
         repository.load_delivery_projection(
-            FormRef(WorkspaceId("other-workspace"), endpoint.ref.form_ref.form_id)
+            FormRef(TenantId("other-workspace"), endpoint.ref.form_ref.form_id)
             .grant(endpoint.grant_ref.grant_id)
             .endpoint(endpoint.id)
         )

@@ -25,7 +25,7 @@ from core.human_input_v2.shared import (
     IMIdentityId,
     IMSyncRunId,
     IntegrationId,
-    WorkspaceId,
+    TenantId,
     WorkspaceScope,
 )
 from models.account import Account, AccountStatus, TenantAccountJoin, TenantAccountRole
@@ -46,8 +46,8 @@ from repositories.human_input_v2.im_integration.mappers import (
 from repositories.human_input_v2.im_integration.unit_of_work import SQLAlchemyOrganizationIMWriteUnitOfWork
 
 _NOW = datetime(2026, 8, 11, 8)
-_WORKSPACE_ID = WorkspaceId("workspace-1")
-_OTHER_WORKSPACE_ID = WorkspaceId("workspace-2")
+_TENANT_ID = TenantId("workspace-1")
+_OTHER_TENANT_ID = TenantId("workspace-2")
 _INTEGRATION_ID = IntegrationId("integration-1")
 
 
@@ -72,7 +72,7 @@ class _OwnedWriteLock:
 
 @pytest.fixture
 def loader_context(sqlite_engine: Engine) -> tuple[sessionmaker[Session], _OwnedWriteLock, ReconciliationRunRef]:
-    return _create_loader_context(sqlite_engine, owner_tenant_id=str(_WORKSPACE_ID))
+    return _create_loader_context(sqlite_engine, owner_tenant_id=str(_TENANT_ID))
 
 
 @pytest.fixture
@@ -156,7 +156,7 @@ def test_workspace_projection_rejects_scope_that_does_not_own_integration(loader
 
     with SQLAlchemyOrganizationIMWriteUnitOfWork(session_maker, lock) as repository:
         with pytest.raises(ValueError, match="Contact scope does not own IM Integration"):
-            repository.load_reconciliation_input(run, (), WorkspaceScope(_OTHER_WORKSPACE_ID))
+            repository.load_reconciliation_input(run, (), WorkspaceScope(id=_OTHER_TENANT_ID))
 
 
 def test_run_capture_mismatch_fails_before_loading_reconciliation_snapshots(
@@ -185,7 +185,7 @@ def test_run_capture_mismatch_fails_before_loading_reconciliation_snapshots(
     try:
         with SQLAlchemyOrganizationIMWriteUnitOfWork(session_maker, lock) as repository:
             with pytest.raises(ValueError, match="sync run capture does not match reconciliation input"):
-                repository.load_reconciliation_input(mismatched_run, (), WorkspaceScope(_WORKSPACE_ID))
+                repository.load_reconciliation_input(mismatched_run, (), WorkspaceScope(id=_TENANT_ID))
     finally:
         event.remove(sqlite_engine, "before_cursor_execute", record_statement)
 
@@ -230,7 +230,7 @@ def test_empty_identity_namespace_does_not_load_unreferenced_bindings(
     event.listen(sqlite_engine, "before_cursor_execute", record_statement)
     try:
         with SQLAlchemyOrganizationIMWriteUnitOfWork(session_maker, lock) as repository:
-            reconciliation_input = repository.load_reconciliation_input(run, (), WorkspaceScope(_WORKSPACE_ID))
+            reconciliation_input = repository.load_reconciliation_input(run, (), WorkspaceScope(id=_TENANT_ID))
     finally:
         event.remove(sqlite_engine, "before_cursor_execute", record_statement)
 
@@ -265,7 +265,7 @@ def test_deployment_projection_loads_only_active_organization_account_contacts(d
     )
     workspace_contact = Contact.workspace_member(
         contact_id=ContactId("contact-workspace"),
-        workspace_id=_WORKSPACE_ID,
+        tenant_id=_TENANT_ID,
         account_id=AccountId("account-workspace"),
         name="Workspace",
         email="workspace@example.com",
@@ -273,7 +273,7 @@ def test_deployment_projection_loads_only_active_organization_account_contacts(d
     )
     external_contact = Contact.external(
         contact_id=ContactId("contact-external"),
-        workspace_id=_WORKSPACE_ID,
+        tenant_id=_TENANT_ID,
         name="External",
         email="external@example.com",
         now=_NOW,
@@ -326,7 +326,7 @@ def test_workspace_projection_loads_complete_namespace_and_only_active_member_co
         binding_id=IMBindingId("binding-override"),
         integration_id=_INTEGRATION_ID,
         scope=IMBindingScope.WORKSPACE,
-        scope_id=str(_WORKSPACE_ID),
+        scope_id=str(_TENANT_ID),
         contact_id=ContactId("contact-active"),
         identity_id=bound_identity.id,
         provider=IMProvider.FEISHU,
@@ -346,7 +346,7 @@ def test_workspace_projection_loads_complete_namespace_and_only_active_member_co
     )
     active_contact = Contact.workspace_member(
         contact_id=ContactId("contact-active"),
-        workspace_id=_WORKSPACE_ID,
+        tenant_id=_TENANT_ID,
         account_id=AccountId("account-active"),
         name="Active",
         email="active@example.com",
@@ -354,7 +354,7 @@ def test_workspace_projection_loads_complete_namespace_and_only_active_member_co
     )
     banned_contact = Contact.workspace_member(
         contact_id=ContactId("contact-banned"),
-        workspace_id=_WORKSPACE_ID,
+        tenant_id=_TENANT_ID,
         account_id=AccountId("account-banned"),
         name="Banned",
         email="banned@example.com",
@@ -362,7 +362,7 @@ def test_workspace_projection_loads_complete_namespace_and_only_active_member_co
     )
     stale_member_contact = Contact.workspace_member(
         contact_id=ContactId("contact-stale-member"),
-        workspace_id=_WORKSPACE_ID,
+        tenant_id=_TENANT_ID,
         account_id=AccountId("account-stale-member"),
         name="Stale Member",
         email="stale-member@example.com",
@@ -370,7 +370,7 @@ def test_workspace_projection_loads_complete_namespace_and_only_active_member_co
     )
     other_workspace_contact = Contact.workspace_member(
         contact_id=ContactId("contact-other-workspace"),
-        workspace_id=_OTHER_WORKSPACE_ID,
+        tenant_id=_OTHER_TENANT_ID,
         account_id=AccountId("account-other-workspace"),
         name="Other Workspace",
         email="other-workspace@example.com",
@@ -378,7 +378,7 @@ def test_workspace_projection_loads_complete_namespace_and_only_active_member_co
     )
     external_contact = Contact.external(
         contact_id=ContactId("contact-external"),
-        workspace_id=_WORKSPACE_ID,
+        tenant_id=_TENANT_ID,
         name="External",
         email="external@example.com",
         now=_NOW,
@@ -395,18 +395,18 @@ def test_workspace_projection_loads_complete_namespace_and_only_active_member_co
         session.add_all(
             [
                 TenantAccountJoin(
-                    tenant_id=str(_WORKSPACE_ID),
+                    tenant_id=str(_TENANT_ID),
                     account_id="account-active",
                     role=TenantAccountRole.NORMAL,
                     current=False,
                 ),
                 TenantAccountJoin(
-                    tenant_id=str(_WORKSPACE_ID),
+                    tenant_id=str(_TENANT_ID),
                     account_id="account-banned",
                     role=TenantAccountRole.NORMAL,
                 ),
                 TenantAccountJoin(
-                    tenant_id=str(_OTHER_WORKSPACE_ID),
+                    tenant_id=str(_OTHER_TENANT_ID),
                     account_id="account-other-workspace",
                     role=TenantAccountRole.NORMAL,
                 ),
@@ -433,7 +433,7 @@ def test_workspace_projection_loads_complete_namespace_and_only_active_member_co
         )
 
     with SQLAlchemyOrganizationIMWriteUnitOfWork(session_maker, lock) as repository:
-        reconciliation_input = repository.load_reconciliation_input(run, (), WorkspaceScope(_WORKSPACE_ID))
+        reconciliation_input = repository.load_reconciliation_input(run, (), WorkspaceScope(id=_TENANT_ID))
 
     assert {identity.identity_id for identity in reconciliation_input.current_identities} == {
         bound_identity.id,

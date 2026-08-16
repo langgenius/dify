@@ -108,9 +108,7 @@ class DifyIMProviderAdapterFactory:
 
     def __call__(self, integration: IMIntegration) -> _IMContactSyncAdapter:
         owner_key = (
-            str(integration.workspace_id)
-            if integration.workspace_id is not None
-            else self._deployment_owner_key_loader()
+            str(integration.tenant_id) if integration.tenant_id is not None else self._deployment_owner_key_loader()
         )
         provider = integration.provider_tenant.provider
         encrypted_values = integration.encrypted_credentials.to_mapping()
@@ -233,9 +231,9 @@ def build_im_contact_sync_application(
     def dispatch(sync_run_id: IMSyncRunId, scope: DirectoryScope) -> None:
         from tasks.im_contact_sync_tasks import reconcile_im_contacts_task
 
-        scope_kind, workspace_id = _scope_payload(scope)
+        scope_kind, tenant_id = _scope_payload(scope)
         reconcile_im_contacts_task.apply_async(
-            args=(str(sync_run_id), scope_kind, workspace_id),
+            args=(str(sync_run_id), scope_kind, tenant_id),
             queue="human_input_contact_sync",
         )
 
@@ -256,9 +254,9 @@ def build_im_sync_service(
     def dispatch(sync_run_id: IMSyncRunId, scope: DirectoryScope) -> None:
         from tasks.im_contact_sync_tasks import reconcile_im_contacts_task
 
-        scope_kind, workspace_id = _scope_payload(scope)
+        scope_kind, tenant_id = _scope_payload(scope)
         reconcile_im_contacts_task.apply_async(
-            args=(str(sync_run_id), scope_kind, workspace_id),
+            args=(str(sync_run_id), scope_kind, tenant_id),
             queue="human_input_contact_sync",
         )
 
@@ -270,7 +268,7 @@ def _write_unit_of_work_factory(
 ) -> Callable[[DirectoryScope], SQLAlchemyOrganizationIMWriteUnitOfWork]:
     def create(scope: DirectoryScope) -> SQLAlchemyOrganizationIMWriteUnitOfWork:
         if isinstance(scope, WorkspaceScope):
-            lock_scope = OrganizationIMWriteScope.for_workspace(scope.workspace_id)
+            lock_scope = OrganizationIMWriteScope.for_workspace(scope.id)
         elif isinstance(scope, DeploymentScope):
             lock_scope = OrganizationIMWriteScope.for_deployment()
         else:
@@ -301,7 +299,7 @@ def _load_deployment_owner_key(sessions: sessionmaker[Session]) -> str:
 
 def _scope_payload(scope: DirectoryScope) -> tuple[str, str | None]:
     if isinstance(scope, WorkspaceScope):
-        return "workspace", str(scope.workspace_id)
+        return "workspace", str(scope.id)
     if isinstance(scope, DeploymentScope):
         return "deployment", None
     raise TypeError("unsupported Organization write scope")

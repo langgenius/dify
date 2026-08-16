@@ -16,7 +16,7 @@ from core.human_input_v2.entities import (
     HumanInputV2FormKind,
     HumanInputV2FormStatus,
 )
-from core.human_input_v2.shared import ApproverGrantId, FormId, OTPChallengeId, WorkspaceId
+from core.human_input_v2.shared import ApproverGrantId, FormId, OTPChallengeId, TenantId
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
@@ -67,26 +67,26 @@ def _require_postgresql() -> None:
 def test_concurrent_resend_leaves_exactly_one_usable_challenge(flask_req_ctx) -> None:
     _require_postgresql()
     session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-    workspace_id = str(uuidv7())
+    tenant_id = str(uuidv7())
     form_id = str(uuidv7())
     grant_id = str(uuidv7())
     contact_id = str(uuidv7())
     initial_challenge_id = str(uuidv7())
     replacement_ids = (str(uuidv7()), str(uuidv7()))
     issued_at = naive_utc_now()
-    grant_ref = FormRef(WorkspaceId(workspace_id), FormId(form_id)).grant(ApproverGrantId(grant_id))
+    grant_ref = FormRef(TenantId(tenant_id), FormId(form_id)).grant(ApproverGrantId(grant_id))
     contact_email = f"otp-{uuidv7()}@example.com"
     contact = HumanInputContact(
         name="Concurrent OTP Reviewer",
         normalized_name="concurrent otp reviewer",
         identity_source=HumanInputContactIdentitySource.EXTERNAL,
-        tenant_id=workspace_id,
+        tenant_id=tenant_id,
         email=contact_email,
         normalized_email=contact_email,
     )
     contact.id = contact_id
     form = HumanInputV2Form(
-        tenant_id=workspace_id,
+        tenant_id=tenant_id,
         app_id=str(uuidv7()),
         form_definition=HumanInputV2FormDefinition(),
         rendered_content="Approve",
@@ -99,7 +99,7 @@ def test_concurrent_resend_leaves_exactly_one_usable_challenge(flask_req_ctx) ->
     )
     form.id = form_id
     grant = HumanInputV2FormApproverGrant(
-        tenant_id=workspace_id,
+        tenant_id=tenant_id,
         form_id=form_id,
         subject_type=HumanInputApproverGrantSubjectType.CONTACT,
         subject_key=f"contact:{contact_id}",
@@ -151,7 +151,7 @@ def test_concurrent_resend_leaves_exactly_one_usable_challenge(flask_req_ctx) ->
         with session_maker() as session:
             records = session.scalars(
                 sa.select(HumanInputV2FormOTPChallenge).where(
-                    HumanInputV2FormOTPChallenge.tenant_id == workspace_id,
+                    HumanInputV2FormOTPChallenge.tenant_id == tenant_id,
                     HumanInputV2FormOTPChallenge.form_id == form_id,
                     HumanInputV2FormOTPChallenge.approver_grant_id == grant_id,
                 )

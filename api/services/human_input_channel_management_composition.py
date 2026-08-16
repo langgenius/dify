@@ -24,7 +24,7 @@ from core.human_input_v2.shared import (
     DeploymentScope,
     DirectoryScope,
     NormalizedEmail,
-    WorkspaceId,
+    TenantId,
     WorkspaceScope,
 )
 from extensions.ext_database import db
@@ -119,7 +119,7 @@ def build_human_input_channel_management_service(
 
     def create_im_write_unit_of_work(scope: DirectoryScope) -> SQLAlchemyOrganizationIMWriteUnitOfWork:
         if isinstance(scope, WorkspaceScope):
-            lock_scope = OrganizationIMWriteScope.for_workspace(scope.workspace_id)
+            lock_scope = OrganizationIMWriteScope.for_workspace(scope.id)
         elif isinstance(scope, DeploymentScope):
             lock_scope = OrganizationIMWriteScope.for_deployment()
         else:
@@ -153,7 +153,7 @@ def build_human_input_channel_management_context(
     """Build the Community and Cloud workspace context from authenticated server state."""
 
     return HumanInputChannelManagementContext(
-        workspace_id=WorkspaceId(workspace_id),
+        tenant_id=TenantId(workspace_id),
         actor_account_id=AccountId(actor_account_id),
         actor_email=NormalizedEmail(actor_email),
     )

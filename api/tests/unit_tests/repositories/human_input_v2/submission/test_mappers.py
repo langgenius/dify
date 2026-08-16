@@ -40,7 +40,7 @@ from core.human_input_v2.shared import (
     NormalizedEmail,
     OTPChallengeId,
     SubmissionId,
-    WorkspaceId,
+    TenantId,
 )
 from models.human_input_v2 import (
     EmailOTPAuthorizationProof,
@@ -59,7 +59,7 @@ from repositories.human_input_v2.submission.mappers import (
 )
 
 _NOW = datetime(2026, 7, 25, 8)
-_FORM_REF = FormRef(WorkspaceId("workspace-1"), FormId("form-1"))
+_FORM_REF = FormRef(TenantId("workspace-1"), FormId("form-1"))
 _GRANT_ID = ApproverGrantId("grant-1")
 _ENDPOINT_ID = DeliveryEndpointId("endpoint-1")
 _EMAIL = NormalizedEmail("reviewer@example.com")
@@ -111,7 +111,7 @@ def _standalone_email_proof() -> VerifiedEmailOTPProof:
 def test_verified_proof_values_round_trip_without_raw_credentials(proof) -> None:
     record_value = proof_to_record_value(proof)
 
-    assert proof_from_record_value(record_value, workspace_id=_FORM_REF.workspace_id) == proof
+    assert proof_from_record_value(record_value, tenant_id=_FORM_REF.tenant_id) == proof
     assert "token" not in record_value.model_dump()
     assert "plaintext" not in record_value.model_dump()
 
@@ -291,7 +291,7 @@ def test_email_proof_mapper_rejects_inconsistent_subject_columns(
 ) -> None:
     record_value = EmailOTPAuthorizationProof(
         otp_challenge_id="challenge-1",
-        workspace_id=str(_FORM_REF.workspace_id),
+        tenant_id=str(_FORM_REF.tenant_id),
         form_id="form-1",
         approver_grant_id="grant-1",
         subject_type=subject_type,
@@ -301,13 +301,13 @@ def test_email_proof_mapper_rejects_inconsistent_subject_columns(
     )
 
     with pytest.raises(ValueError, match=expected):
-        proof_from_record_value(record_value, workspace_id=_FORM_REF.workspace_id)
+        proof_from_record_value(record_value, tenant_id=_FORM_REF.tenant_id)
 
 
 def test_email_proof_mapper_rejects_unsupported_subject_type() -> None:
     record_value = EmailOTPAuthorizationProof.model_construct(
         otp_challenge_id="challenge-1",
-        workspace_id=str(_FORM_REF.workspace_id),
+        tenant_id=str(_FORM_REF.tenant_id),
         form_id="form-1",
         approver_grant_id="grant-1",
         subject_type="end_user",
@@ -317,14 +317,14 @@ def test_email_proof_mapper_rejects_unsupported_subject_type() -> None:
     )
 
     with pytest.raises(ValueError, match="unsupported subject type"):
-        proof_from_record_value(record_value, workspace_id=_FORM_REF.workspace_id)
+        proof_from_record_value(record_value, tenant_id=_FORM_REF.tenant_id)
 
 
 @pytest.mark.parametrize(
     ("proof_form_ref", "proof_grant_id"),
     [
-        (FormRef(WorkspaceId("workspace-2"), _FORM_REF.form_id), _GRANT_ID),
-        (FormRef(_FORM_REF.workspace_id, FormId("form-2")), _GRANT_ID),
+        (FormRef(TenantId("workspace-2"), _FORM_REF.form_id), _GRANT_ID),
+        (FormRef(_FORM_REF.tenant_id, FormId("form-2")), _GRANT_ID),
         (_FORM_REF, ApproverGrantId("grant-2")),
     ],
 )
@@ -373,14 +373,14 @@ def test_audit_mapper_write_revalidates_authorized_email_proof_owner() -> None:
         created_at=_NOW,
         updated_at=_NOW,
     )
-    object.__setattr__(event, "form_ref", FormRef(WorkspaceId("workspace-2"), _FORM_REF.form_id))
+    object.__setattr__(event, "form_ref", FormRef(TenantId("workspace-2"), _FORM_REF.form_id))
 
     with pytest.raises(ValueError, match="proof owner"):
         audit_event_to_record(event)
 
 
 @pytest.mark.parametrize(
-    ("proof_workspace_id", "proof_form_id", "proof_grant_id"),
+    ("proof_tenant_id", "proof_form_id", "proof_grant_id"),
     [
         ("workspace-2", "form-1", "grant-1"),
         ("workspace-1", "form-2", "grant-1"),
@@ -388,7 +388,7 @@ def test_audit_mapper_write_revalidates_authorized_email_proof_owner() -> None:
     ],
 )
 def test_audit_mapper_read_rejects_authorized_email_proof_from_another_owner(
-    proof_workspace_id: str,
+    proof_tenant_id: str,
     proof_form_id: str,
     proof_grant_id: str,
 ) -> None:
@@ -404,7 +404,7 @@ def test_audit_mapper_read_rejects_authorized_email_proof_from_another_owner(
         reason_message=None,
         authorization_proof=EmailOTPAuthorizationProof(
             otp_challenge_id="challenge-1",
-            workspace_id=proof_workspace_id,
+            tenant_id=proof_tenant_id,
             form_id=proof_form_id,
             approver_grant_id=proof_grant_id,
             subject_type=HumanInputApproverGrantSubjectType.CONTACT,

@@ -69,7 +69,7 @@ from core.human_input_v2.shared import (
     IMSyncRunId,
     IntegrationId,
     NormalizedEmail,
-    WorkspaceId,
+    TenantId,
     WorkspaceScope,
 )
 from libs.uuid_utils import uuidv7
@@ -154,11 +154,11 @@ class _SQLAlchemyProtectedIMRepository:
         """Create one owner-scoped Integration inside the guarded transaction."""
 
         self._write_lock.ensure_owned()
-        self._ensure_scope_matches_workspace_id(organization_scope, integration.workspace_id)
+        self._ensure_scope_matches_tenant_id(organization_scope, integration.tenant_id)
         owner_predicate = (
             HumanInputIMIntegration.tenant_id.is_(None)
-            if integration.workspace_id is None
-            else HumanInputIMIntegration.tenant_id == str(integration.workspace_id)
+            if integration.tenant_id is None
+            else HumanInputIMIntegration.tenant_id == str(integration.tenant_id)
         )
         existing_id = self._session.scalar(select(HumanInputIMIntegration.id).where(owner_predicate).limit(1))
         if existing_id is not None:
@@ -177,7 +177,7 @@ class _SQLAlchemyProtectedIMRepository:
         """Persist one aggregate-decided configuration transition under the Organization guard."""
 
         self._write_lock.ensure_owned()
-        self._ensure_scope_matches_workspace_id(organization_scope, transition.integration.workspace_id)
+        self._ensure_scope_matches_tenant_id(organization_scope, transition.integration.tenant_id)
         current_record = self._session.scalar(
             select(HumanInputIMIntegration).where(
                 HumanInputIMIntegration.id == str(transition.expected_revision.integration_id),
@@ -310,16 +310,16 @@ class _SQLAlchemyProtectedIMRepository:
         return IntegrationRevisionToken(IntegrationId(record.id), record.config_version)
 
     @staticmethod
-    def _ensure_scope_matches_workspace_id(
+    def _ensure_scope_matches_tenant_id(
         organization_scope: DirectoryScope,
-        workspace_id: WorkspaceId | None,
+        tenant_id: TenantId | None,
     ) -> None:
         if isinstance(organization_scope, WorkspaceScope):
-            if workspace_id != organization_scope.workspace_id:
+            if tenant_id != organization_scope.id:
                 raise ValueError("Organization write scope does not match IM Integration owner")
             return
         if isinstance(organization_scope, DeploymentScope):
-            if workspace_id is not None:
+            if tenant_id is not None:
                 raise ValueError("Organization write scope does not match IM Integration owner")
             return
         raise TypeError("unsupported Organization write scope")
@@ -329,12 +329,12 @@ class _SQLAlchemyProtectedIMRepository:
         organization_scope: DirectoryScope,
         integration_record: HumanInputIMIntegration,
     ) -> None:
-        persisted_workspace_id = (
-            WorkspaceId(integration_record.tenant_id) if integration_record.tenant_id is not None else None
+        persisted_tenant_id = (
+            TenantId(integration_record.tenant_id) if integration_record.tenant_id is not None else None
         )
-        _SQLAlchemyProtectedIMRepository._ensure_scope_matches_workspace_id(
+        _SQLAlchemyProtectedIMRepository._ensure_scope_matches_tenant_id(
             organization_scope,
-            persisted_workspace_id,
+            persisted_tenant_id,
         )
 
     @staticmethod
@@ -438,7 +438,7 @@ class _SQLAlchemyProtectedIMRepository:
         self,
         *,
         organization_scope: DirectoryScope,
-        workspace_id: WorkspaceId,
+        tenant_id: TenantId,
         integration_id: IntegrationId,
         contact_id: ContactId,
         identity_id: IMIdentityId,
@@ -450,13 +450,13 @@ class _SQLAlchemyProtectedIMRepository:
 
         self._write_lock.ensure_owned()
         integration = self._require_owned_integration(organization_scope, integration_id)
-        self._ensure_workspace_belongs_to_scope(organization_scope, workspace_id)
+        self._ensure_workspace_belongs_to_scope(organization_scope, tenant_id)
         self._require_integration_identity(integration, identity_id)
-        self._require_contact_available_in_workspace(workspace_id, contact_id)
+        self._require_contact_available_in_workspace(tenant_id, contact_id)
         identity_binding = self._session.scalar(
             select(HumanInputIMBinding).where(
                 HumanInputIMBinding.scope == IMBindingScope.WORKSPACE,
-                HumanInputIMBinding.scope_id == str(workspace_id),
+                HumanInputIMBinding.scope_id == str(tenant_id),
                 HumanInputIMBinding.provider == integration.provider,
                 HumanInputIMBinding.im_identity_id == str(identity_id),
                 HumanInputIMBinding.contact_id != str(contact_id),
@@ -470,7 +470,7 @@ class _SQLAlchemyProtectedIMRepository:
         existing = self._session.scalar(
             select(HumanInputIMBinding).where(
                 HumanInputIMBinding.scope == IMBindingScope.WORKSPACE,
-                HumanInputIMBinding.scope_id == str(workspace_id),
+                HumanInputIMBinding.scope_id == str(tenant_id),
                 HumanInputIMBinding.provider == integration.provider,
                 HumanInputIMBinding.contact_id == str(contact_id),
             )
@@ -486,7 +486,7 @@ class _SQLAlchemyProtectedIMRepository:
             binding_id=binding_id,
             integration_id=integration_id,
             scope=IMBindingScope.WORKSPACE,
-            scope_id=str(workspace_id),
+            scope_id=str(tenant_id),
             contact_id=contact_id,
             identity_id=identity_id,
             provider=integration.provider,
@@ -502,7 +502,7 @@ class _SQLAlchemyProtectedIMRepository:
         self,
         *,
         organization_scope: DirectoryScope,
-        workspace_id: WorkspaceId,
+        tenant_id: TenantId,
         integration_id: IntegrationId,
         contact_id: ContactId,
     ) -> None:
@@ -510,14 +510,14 @@ class _SQLAlchemyProtectedIMRepository:
 
         self._write_lock.ensure_owned()
         integration = self._require_owned_integration(organization_scope, integration_id)
-        self._ensure_workspace_belongs_to_scope(organization_scope, workspace_id)
-        self._require_contact_available_in_workspace(workspace_id, contact_id)
+        self._ensure_workspace_belongs_to_scope(organization_scope, tenant_id)
+        self._require_contact_available_in_workspace(tenant_id, contact_id)
         record = self._session.scalar(
             select(HumanInputIMBinding).where(
                 HumanInputIMBinding.integration_id == str(integration_id),
                 HumanInputIMBinding.provider == integration.provider,
                 HumanInputIMBinding.scope == IMBindingScope.WORKSPACE,
-                HumanInputIMBinding.scope_id == str(workspace_id),
+                HumanInputIMBinding.scope_id == str(tenant_id),
                 HumanInputIMBinding.contact_id == str(contact_id),
             )
         )
@@ -531,7 +531,7 @@ class _SQLAlchemyProtectedIMRepository:
 
         self._write_lock.ensure_owned()
         if isinstance(organization_scope, WorkspaceScope):
-            owner_predicate = HumanInputIMIntegration.tenant_id == str(organization_scope.workspace_id)
+            owner_predicate = HumanInputIMIntegration.tenant_id == str(organization_scope.id)
         elif isinstance(organization_scope, DeploymentScope):
             owner_predicate = HumanInputIMIntegration.tenant_id.is_(None)
         else:
@@ -550,20 +550,20 @@ class _SQLAlchemyProtectedIMRepository:
     def load_contact_im_binding_view(
         self,
         *,
-        workspace_id: WorkspaceId,
+        tenant_id: TenantId,
         integration_id: IntegrationId,
         contact_id: ContactId,
     ) -> ContactIMBindingView:
         """Project the current effective binding after a protected mutation."""
 
         self._write_lock.ensure_owned()
-        contact = self._require_contact_available_in_workspace(workspace_id, contact_id)
-        contact_type = self._resolve_contact_type(workspace_id, contact)
+        contact = self._require_contact_available_in_workspace(tenant_id, contact_id)
+        contact_type = self._resolve_contact_type(tenant_id, contact)
         workspace_binding = self._session.scalar(
             select(HumanInputIMBinding).where(
                 HumanInputIMBinding.integration_id == str(integration_id),
                 HumanInputIMBinding.scope == IMBindingScope.WORKSPACE,
-                HumanInputIMBinding.scope_id == str(workspace_id),
+                HumanInputIMBinding.scope_id == str(tenant_id),
                 HumanInputIMBinding.contact_id == str(contact_id),
             )
         )
@@ -632,7 +632,7 @@ class _SQLAlchemyProtectedIMRepository:
         if isinstance(organization_scope, WorkspaceScope):
             valid = (
                 contact is not None
-                and contact.tenant_id == str(organization_scope.workspace_id)
+                and contact.tenant_id == str(organization_scope.id)
                 and contact.identity_source is HumanInputContactIdentitySource.WORKSPACE_MEMBER
             )
         elif isinstance(organization_scope, DeploymentScope):
@@ -653,9 +653,9 @@ class _SQLAlchemyProtectedIMRepository:
     @staticmethod
     def _ensure_workspace_belongs_to_scope(
         organization_scope: DirectoryScope,
-        workspace_id: WorkspaceId,
+        tenant_id: TenantId,
     ) -> None:
-        if isinstance(organization_scope, WorkspaceScope) and workspace_id != organization_scope.workspace_id:
+        if isinstance(organization_scope, WorkspaceScope) and tenant_id != organization_scope.id:
             raise IMBindingCommandError(
                 IMBindingCommandErrorCode.INVALID_SCOPE,
                 "Workspace override does not belong to the Organization scope",
@@ -668,7 +668,7 @@ class _SQLAlchemyProtectedIMRepository:
 
     def _require_contact_available_in_workspace(
         self,
-        workspace_id: WorkspaceId,
+        tenant_id: TenantId,
         contact_id: ContactId,
     ) -> HumanInputContact:
         contact = self._session.get(HumanInputContact, str(contact_id))
@@ -677,7 +677,7 @@ class _SQLAlchemyProtectedIMRepository:
                 IMBindingCommandErrorCode.CONTACT_NOT_FOUND,
                 "Contact was not found in the current workspace",
             )
-        if contact.tenant_id == str(workspace_id):
+        if contact.tenant_id == str(tenant_id):
             return contact
         if (
             contact.tenant_id is not None
@@ -691,7 +691,7 @@ class _SQLAlchemyProtectedIMRepository:
         membership_exists = self._session.scalar(
             select(TenantAccountJoin.account_id)
             .where(
-                TenantAccountJoin.tenant_id == str(workspace_id),
+                TenantAccountJoin.tenant_id == str(tenant_id),
                 TenantAccountJoin.account_id == contact.account_id,
             )
             .limit(1)
@@ -699,7 +699,7 @@ class _SQLAlchemyProtectedIMRepository:
         platform_entry_exists = self._session.scalar(
             select(HumanInputPlatformContactWorkspaceEntry.id)
             .where(
-                HumanInputPlatformContactWorkspaceEntry.tenant_id == str(workspace_id),
+                HumanInputPlatformContactWorkspaceEntry.tenant_id == str(tenant_id),
                 HumanInputPlatformContactWorkspaceEntry.contact_id == str(contact_id),
             )
             .limit(1)
@@ -713,10 +713,10 @@ class _SQLAlchemyProtectedIMRepository:
 
     def _resolve_contact_type(
         self,
-        workspace_id: WorkspaceId,
+        tenant_id: TenantId,
         contact: HumanInputContact,
     ) -> HumanInputContactType:
-        if contact.tenant_id == str(workspace_id):
+        if contact.tenant_id == str(tenant_id):
             if contact.identity_source is HumanInputContactIdentitySource.EXTERNAL:
                 return HumanInputContactType.EXTERNAL
             return HumanInputContactType.WORKSPACE
@@ -724,7 +724,7 @@ class _SQLAlchemyProtectedIMRepository:
             membership_exists = self._session.scalar(
                 select(TenantAccountJoin.account_id)
                 .where(
-                    TenantAccountJoin.tenant_id == str(workspace_id),
+                    TenantAccountJoin.tenant_id == str(tenant_id),
                     TenantAccountJoin.account_id == contact.account_id,
                 )
                 .limit(1)
@@ -758,7 +758,7 @@ class _SQLAlchemyProtectedIMRepository:
         if integration_record is None:
             raise ValueError("IM Integration not found")
         if isinstance(contact_scope, WorkspaceScope):
-            if integration_record.tenant_id != str(contact_scope.workspace_id):
+            if integration_record.tenant_id != str(contact_scope.id):
                 raise ValueError("Contact scope does not own IM Integration")
         elif isinstance(contact_scope, DeploymentScope):
             if integration_record.tenant_id is not None:
@@ -843,11 +843,11 @@ class _SQLAlchemyProtectedIMRepository:
             statement = statement.join(
                 TenantAccountJoin,
                 sa.and_(
-                    TenantAccountJoin.tenant_id == str(contact_scope.workspace_id),
+                    TenantAccountJoin.tenant_id == str(contact_scope.id),
                     TenantAccountJoin.account_id == HumanInputContact.account_id,
                 ),
             ).where(
-                HumanInputContact.tenant_id == str(contact_scope.workspace_id),
+                HumanInputContact.tenant_id == str(contact_scope.id),
                 HumanInputContact.identity_source == HumanInputContactIdentitySource.WORKSPACE_MEMBER,
             )
         elif isinstance(contact_scope, DeploymentScope):
@@ -1066,7 +1066,7 @@ class _SQLAlchemyProtectedIMRepository:
         self,
         plan: ReconciliationPlan,
         mutation: CreateIMBinding | ReplaceIMBinding | DeleteIMBinding,
-        integration_workspace_id: str | None,
+        integration_tenant_id: str | None,
         now: NaiveDatetime,
         identity_id_by_new_ref: dict[NewIMIdentityRef, IMIdentityId],
         binding_id_by_identity_contact: dict[tuple[IMIdentityId, ContactId], IMBindingId],
@@ -1074,7 +1074,7 @@ class _SQLAlchemyProtectedIMRepository:
     ) -> None:
         if isinstance(mutation, CreateIMBinding):
             identity_id = self._resolve_identity_ref(mutation.identity_ref, identity_id_by_new_ref)
-            self._require_contact_precondition(mutation.contact_precondition, integration_workspace_id)
+            self._require_contact_precondition(mutation.contact_precondition, integration_tenant_id)
             occupied = self._session.scalar(
                 select(HumanInputIMBinding.id).where(
                     HumanInputIMBinding.integration_id == str(plan.run.integration_revision.integration_id),
@@ -1118,7 +1118,7 @@ class _SQLAlchemyProtectedIMRepository:
         before_snapshot = IMBindingChangeSnapshot(before.binding_id, before.identity_id, before.contact_id)
         if isinstance(mutation, ReplaceIMBinding):
             next_identity_id = self._resolve_identity_ref(mutation.next_identity_ref, identity_id_by_new_ref)
-            self._require_contact_precondition(mutation.contact_precondition, integration_workspace_id)
+            self._require_contact_precondition(mutation.contact_precondition, integration_tenant_id)
             replacement_statement = (
                 sa.update(HumanInputIMBinding)
                 .where(
@@ -1386,7 +1386,7 @@ class _SQLAlchemyProtectedIMRepository:
     def _require_contact_precondition(
         self,
         precondition: ContactEmailMatchState,
-        integration_workspace_id: str | None,
+        integration_tenant_id: str | None,
     ) -> None:
         statement = (
             select(HumanInputContact.id)
@@ -1400,7 +1400,7 @@ class _SQLAlchemyProtectedIMRepository:
                 Account.status == AccountStatus.ACTIVE,
             )
         )
-        if integration_workspace_id is None:
+        if integration_tenant_id is None:
             statement = statement.where(
                 HumanInputContact.tenant_id.is_(None),
                 HumanInputContact.identity_source == HumanInputContactIdentitySource.ORGANIZATION_ACCOUNT,
@@ -1409,11 +1409,11 @@ class _SQLAlchemyProtectedIMRepository:
             statement = statement.join(
                 TenantAccountJoin,
                 sa.and_(
-                    TenantAccountJoin.tenant_id == integration_workspace_id,
+                    TenantAccountJoin.tenant_id == integration_tenant_id,
                     TenantAccountJoin.account_id == HumanInputContact.account_id,
                 ),
             ).where(
-                HumanInputContact.tenant_id == integration_workspace_id,
+                HumanInputContact.tenant_id == integration_tenant_id,
                 HumanInputContact.identity_source == HumanInputContactIdentitySource.WORKSPACE_MEMBER,
             )
         if self._session.scalar(statement.limit(1)) is None:

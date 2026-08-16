@@ -22,7 +22,7 @@ from core.human_input_v2.im_integration import (
     ReconciliationPlan,
     StaleRevision,
 )
-from core.human_input_v2.shared import AccountId, ContactId, IMSyncRunId, IntegrationId, WorkspaceId
+from core.human_input_v2.shared import AccountId, ContactId, IMSyncRunId, IntegrationId, TenantId
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
@@ -43,11 +43,11 @@ def _require_postgresql() -> None:
         pytest.skip("requires the CI PostgreSQL integration database")
 
 
-def _integration(integration_id: str, workspace_id: str | None) -> IMIntegration:
+def _integration(integration_id: str, tenant_id: str | None) -> IMIntegration:
     return IMIntegration.create(
         integration_id=IntegrationId(integration_id),
-        workspace_id=WorkspaceId(workspace_id) if workspace_id is not None else None,
-        provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, f"provider-{workspace_id or 'deployment'}"),
+        tenant_id=TenantId(tenant_id) if tenant_id is not None else None,
+        provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, f"provider-{tenant_id or 'deployment'}"),
         encrypted_credentials=EncryptedCredentials.from_mapping(
             {"app_id": "app-1", "encrypted_app_secret": "ciphertext"}
         ),

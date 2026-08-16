@@ -29,7 +29,7 @@ from core.human_input_v2.shared import (
     IMSyncResultId,
     IMSyncRunId,
     IntegrationId,
-    WorkspaceId,
+    TenantId,
 )
 from models.human_input_v2 import (
     HumanInputContact,
@@ -50,7 +50,7 @@ from repositories.human_input_v2.im_integration.mappers import (
 from repositories.human_input_v2.im_integration.repository import SQLAlchemyIMControlPlaneRepository
 
 _NOW = datetime(2026, 8, 11, 8)
-_WORKSPACE_ID = WorkspaceId("workspace-1")
+_TENANT_ID = TenantId("workspace-1")
 _INTEGRATION_ID = IntegrationId("integration-1")
 
 
@@ -80,11 +80,11 @@ def repository_context(
 def _integration(
     integration_id: IntegrationId = _INTEGRATION_ID,
     *,
-    workspace_id: WorkspaceId | None = _WORKSPACE_ID,
+    tenant_id: TenantId | None = _TENANT_ID,
 ) -> IMIntegration:
     return IMIntegration.create(
         integration_id=integration_id,
-        workspace_id=workspace_id,
+        tenant_id=tenant_id,
         provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, f"provider-tenant:{integration_id}"),
         encrypted_credentials=EncryptedCredentials.from_mapping(
             {"app_id": "app-1", "encrypted_app_secret": "ciphertext"}
@@ -161,7 +161,7 @@ def _result(result_id: str = "result-1") -> SyncResultFact:
 
 def test_current_integration_read_is_exactly_owner_scoped(repository_context) -> None:
     repository, sessions = repository_context
-    deployment_integration = _integration(IntegrationId("integration-deployment"), workspace_id=None)
+    deployment_integration = _integration(IntegrationId("integration-deployment"), tenant_id=None)
     workspace_integration = _integration()
     with sessions.begin() as session:
         session.add_all(
@@ -172,8 +172,8 @@ def test_current_integration_read_is_exactly_owner_scoped(repository_context) ->
         )
 
     assert repository.load_current_integration(None) == deployment_integration
-    assert repository.load_current_integration(_WORKSPACE_ID) == workspace_integration
-    assert repository.load_current_integration(WorkspaceId("workspace-missing")) is None
+    assert repository.load_current_integration(_TENANT_ID) == workspace_integration
+    assert repository.load_current_integration(TenantId("workspace-missing")) is None
 
 
 def test_integration_state_eagerly_maps_current_children(repository_context) -> None:
@@ -214,7 +214,7 @@ def test_effective_binding_maps_only_persisted_owner_scoped_facts(repository_con
     repository, sessions = repository_context
     contact = Contact.external(
         contact_id=ContactId("contact-1"),
-        workspace_id=_WORKSPACE_ID,
+        tenant_id=_TENANT_ID,
         name="Reviewer",
         email="reviewer@example.com",
         now=_NOW,
@@ -232,19 +232,19 @@ def test_effective_binding_maps_only_persisted_owner_scoped_facts(repository_con
     resolved = repository.resolve_effective_binding(
         integration_id=_INTEGRATION_ID,
         provider=IMProvider.FEISHU,
-        workspace_id=_WORKSPACE_ID,
+        tenant_id=_TENANT_ID,
         contact_id=contact.id,
     )
     cross_workspace = repository.resolve_effective_binding(
         integration_id=_INTEGRATION_ID,
         provider=IMProvider.FEISHU,
-        workspace_id=WorkspaceId("workspace-other"),
+        tenant_id=TenantId("workspace-other"),
         contact_id=contact.id,
     )
     missing_contact = repository.resolve_effective_binding(
         integration_id=_INTEGRATION_ID,
         provider=IMProvider.FEISHU,
-        workspace_id=_WORKSPACE_ID,
+        tenant_id=_TENANT_ID,
         contact_id=ContactId("contact-missing"),
     )
 

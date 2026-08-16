@@ -13,14 +13,14 @@ from core.human_input_v2.shared import (
     ApproverGrantId,
     FormId,
     OTPChallengeId,
-    WorkspaceId,
+    TenantId,
 )
 from models.human_input_v2 import HumanInputV2FormAuditEvent
 from repositories.human_input_v2.approval import OTPChallengeAuditFact
 from repositories.human_input_v2.submission.otp_audit_writer import SQLAlchemyOTPChallengeAuditWriter
 
 _NOW = datetime(2026, 7, 25, 8)
-_GRANT_REF = FormRef(WorkspaceId("workspace-1"), FormId("form-1")).grant(ApproverGrantId("grant-1"))
+_GRANT_REF = FormRef(TenantId("workspace-1"), FormId("form-1")).grant(ApproverGrantId("grant-1"))
 
 
 @pytest.fixture

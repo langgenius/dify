@@ -20,7 +20,7 @@ from core.human_input_v2.email_channel import (
     UpdateEmailConfigurationResult,
     UpdateEmailConfigurationStatus,
 )
-from core.human_input_v2.shared import WorkspaceId
+from core.human_input_v2.shared import TenantId
 from models.account import Tenant
 from models.human_input_v2 import HumanInputEmailProvider
 
@@ -33,22 +33,22 @@ class SQLAlchemyEmailChannelRepository:
     def __init__(self, session_maker: sessionmaker[Session]) -> None:
         self._session_maker = session_maker
 
-    def load(self, workspace_id: WorkspaceId) -> EmailChannelConfiguration | None:
+    def load(self, tenant_id: TenantId) -> EmailChannelConfiguration | None:
         with self._session_maker() as session:
             record = session.scalar(
-                select(HumanInputEmailProvider).where(HumanInputEmailProvider.tenant_id == str(workspace_id))
+                select(HumanInputEmailProvider).where(HumanInputEmailProvider.tenant_id == str(tenant_id))
             )
             return email_configuration_from_record(record) if record is not None else None
 
     def create(self, configuration: EmailChannelConfiguration) -> CreateEmailConfigurationResult:
         try:
             with self._session_maker() as session, session.begin():
-                owner = session.get(Tenant, str(configuration.workspace_id), with_for_update=True)
+                owner = session.get(Tenant, str(configuration.tenant_id), with_for_update=True)
                 if owner is None:
                     raise ValueError("workspace owner does not exist")
                 existing = session.scalar(
                     select(HumanInputEmailProvider.id)
-                    .where(HumanInputEmailProvider.tenant_id == str(configuration.workspace_id))
+                    .where(HumanInputEmailProvider.tenant_id == str(configuration.tenant_id))
                     .limit(1)
                 )
                 if existing is not None:
@@ -75,7 +75,7 @@ class SQLAlchemyEmailChannelRepository:
                 select(HumanInputEmailProvider)
                 .where(
                     HumanInputEmailProvider.id == str(expected.configuration_id),
-                    HumanInputEmailProvider.tenant_id == str(configuration.workspace_id),
+                    HumanInputEmailProvider.tenant_id == str(configuration.tenant_id),
                     HumanInputEmailProvider.updated_at == expected.updated_at,
                 )
                 .with_for_update()
@@ -103,11 +103,11 @@ class SQLAlchemyEmailChannelRepository:
                 email_configuration_from_record(record),
             )
 
-    def delete(self, workspace_id: WorkspaceId) -> DeleteEmailConfigurationResult:
+    def delete(self, tenant_id: TenantId) -> DeleteEmailConfigurationResult:
         with self._session_maker() as session, session.begin():
             record = session.scalar(
                 select(HumanInputEmailProvider)
-                .where(HumanInputEmailProvider.tenant_id == str(workspace_id))
+                .where(HumanInputEmailProvider.tenant_id == str(tenant_id))
                 .with_for_update()
             )
             if record is None:

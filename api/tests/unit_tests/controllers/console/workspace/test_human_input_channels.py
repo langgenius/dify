@@ -33,11 +33,11 @@ from core.human_input_v2.channel_management import (
     ResendChannelSummary,
     ResendChannelTestSummary,
 )
-from core.human_input_v2.shared import AccountId, NormalizedEmail, WorkspaceId
+from core.human_input_v2.shared import AccountId, NormalizedEmail, TenantId
 from enums.deployment_edition import DeploymentEdition
 
 _CONTEXT = HumanInputChannelManagementContext(
-    workspace_id=WorkspaceId("workspace-1"),
+    tenant_id=TenantId("workspace-1"),
     actor_account_id=AccountId("account-1"),
     actor_email=NormalizedEmail("operator@example.com"),
 )

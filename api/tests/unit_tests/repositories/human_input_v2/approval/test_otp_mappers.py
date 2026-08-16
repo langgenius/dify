@@ -22,7 +22,7 @@ from core.human_input_v2.shared import (
     FormId,
     NormalizedEmail,
     OTPChallengeId,
-    WorkspaceId,
+    TenantId,
 )
 from repositories.human_input_v2.approval.mappers import (
     challenge_from_record,
@@ -32,7 +32,7 @@ from repositories.human_input_v2.approval.mappers import (
 )
 
 _NOW = datetime(2026, 7, 25, 8)
-_FORM_REF = FormRef(WorkspaceId("workspace-1"), FormId("form-1"))
+_FORM_REF = FormRef(TenantId("workspace-1"), FormId("form-1"))
 _GRANT_REF = _FORM_REF.grant(ApproverGrantId("grant-1"))
 _CONTACT_SUBJECT = ContactOTPSubject(ContactId("contact-1"))
 
@@ -170,7 +170,7 @@ def test_verified_proof_mapper_preserves_scope_email_identity_and_timestamp_with
     assert record_value.model_dump(mode="json") == {
         "type": "email_otp",
         "otp_challenge_id": "challenge-1",
-        "workspace_id": "workspace-1",
+        "tenant_id": "workspace-1",
         "form_id": "form-1",
         "approver_grant_id": "grant-1",
         "subject_type": "contact",
@@ -179,7 +179,7 @@ def test_verified_proof_mapper_preserves_scope_email_identity_and_timestamp_with
         "verified_at": "2026-07-25T08:00:30",
     }
     assert not any("hash" in key or "code" in key for key in type(record_value).model_fields)
-    assert proof_from_record_value(record_value, workspace_id=WorkspaceId("workspace-1")) == proof
+    assert proof_from_record_value(record_value, tenant_id=TenantId("workspace-1")) == proof
 
 
 def test_verified_proof_mapper_rejects_a_record_from_another_workspace() -> None:
@@ -189,10 +189,10 @@ def test_verified_proof_mapper_rejects_a_record_from_another_workspace() -> None
         normalized_email=NormalizedEmail("reviewer@example.com"),
         verified_at=_NOW,
     )
-    record_value = proof_to_record_value(proof).model_copy(update={"workspace_id": "workspace-2"})
+    record_value = proof_to_record_value(proof).model_copy(update={"tenant_id": "workspace-2"})
 
     with pytest.raises(ValueError, match="proof owner"):
-        proof_from_record_value(record_value, workspace_id=WorkspaceId("workspace-1"))
+        proof_from_record_value(record_value, tenant_id=TenantId("workspace-1"))
 
 
 def test_verified_proof_mapper_rejects_malformed_subject_values() -> None:
@@ -205,7 +205,7 @@ def test_verified_proof_mapper_rejects_malformed_subject_values() -> None:
     record_value = proof_to_record_value(proof).model_copy(update={"contact_id": None})
 
     with pytest.raises(ValueError, match="contact_id"):
-        proof_from_record_value(record_value, workspace_id=WorkspaceId("workspace-1"))
+        proof_from_record_value(record_value, tenant_id=TenantId("workspace-1"))
 
 
 def test_proof_mapper_rebuilds_email_address_subject_without_contact_id() -> None:
@@ -220,7 +220,7 @@ def test_proof_mapper_rebuilds_email_address_subject_without_contact_id() -> Non
     assert (
         proof_from_record_value(
             proof_to_record_value(proof),
-            workspace_id=WorkspaceId("workspace-1"),
+            tenant_id=TenantId("workspace-1"),
         )
         == proof
     )
@@ -246,4 +246,4 @@ def test_verified_proof_mapper_rejects_unsupported_persisted_subject_shapes(
     record_value = proof_to_record_value(proof).model_copy(update=updates)
 
     with pytest.raises(ValueError, match=message):
-        proof_from_record_value(record_value, workspace_id=WorkspaceId("workspace-1"))
+        proof_from_record_value(record_value, tenant_id=TenantId("workspace-1"))

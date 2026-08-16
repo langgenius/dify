@@ -39,22 +39,22 @@ from core.human_input_v2.shared import (
     IMIdentityId,
     IntegrationId,
     NormalizedEmail,
-    WorkspaceId,
+    TenantId,
 )
 
 _NOW = datetime(2026, 7, 25, 8)
-_WORKSPACE_ID = WorkspaceId("workspace-1")
+_TENANT_ID = TenantId("workspace-1")
 
 
 def _workspace_contact(
     contact_id: str = "contact-1",
     account_id: str = "account-1",
     email: str | None = "reviewer@example.com",
-    workspace_id: WorkspaceId = _WORKSPACE_ID,
+    tenant_id: TenantId = _TENANT_ID,
 ) -> Contact:
     return Contact.workspace_member(
         contact_id=ContactId(contact_id),
-        workspace_id=workspace_id,
+        tenant_id=tenant_id,
         account_id=AccountId(account_id),
         name=f"Reviewer {contact_id}",
         email=email,
@@ -79,7 +79,7 @@ def _organization_contact(
 def _directory(*contacts: Contact) -> ContactDirectorySnapshot:
     selected_contacts = contacts or (_workspace_contact(),)
     return ContactDirectorySnapshot(
-        workspace_id=_WORKSPACE_ID,
+        tenant_id=_TENANT_ID,
         contacts=selected_contacts,
         member_account_ids=frozenset(
             contact.account_id for contact in selected_contacts if contact.account_id is not None
@@ -165,7 +165,7 @@ def test_unmatched_email_is_upgraded_to_email_subject_and_normalized_duplicates_
 def test_email_matching_contact_with_unavailable_account_does_not_bypass_contact_governance() -> None:
     contact = _workspace_contact()
     directory = ContactDirectorySnapshot(
-        workspace_id=_WORKSPACE_ID,
+        tenant_id=_TENANT_ID,
         contacts=(contact,),
         member_account_ids=frozenset({AccountId("account-1")}),
         unavailable_account_ids=frozenset({AccountId("account-1")}),
@@ -188,7 +188,7 @@ def test_email_matching_contact_with_unavailable_account_does_not_bypass_contact
 
 def test_email_matching_organization_contact_outside_workspace_visibility_does_not_fallback() -> None:
     contact = _organization_contact()
-    directory = ContactDirectorySnapshot(workspace_id=_WORKSPACE_ID, contacts=(contact,))
+    directory = ContactDirectorySnapshot(tenant_id=_TENANT_ID, contacts=(contact,))
 
     plan = RecipientResolver.resolve(
         specifications=(OneTimeEmailRecipientSpecification("reviewer@example.com"),),
@@ -206,9 +206,9 @@ def test_email_matching_organization_contact_outside_workspace_visibility_does_n
 
 
 def test_email_matching_cross_workspace_contact_does_not_fallback() -> None:
-    contact = _workspace_contact(workspace_id=WorkspaceId("workspace-2"))
+    contact = _workspace_contact(tenant_id=TenantId("workspace-2"))
     directory = ContactDirectorySnapshot(
-        workspace_id=_WORKSPACE_ID,
+        tenant_id=_TENANT_ID,
         contacts=(contact,),
         member_account_ids=frozenset({AccountId("account-1")}),
     )

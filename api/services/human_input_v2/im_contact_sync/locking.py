@@ -10,7 +10,7 @@ from typing import Protocol, Self
 
 from redis.exceptions import RedisError
 
-from core.human_input_v2.shared import WorkspaceId
+from core.human_input_v2.shared import TenantId
 
 _LOCK_KEY_PREFIX = "human-input-v2:organization-im-write"
 
@@ -30,8 +30,8 @@ class OrganizationIMWriteScope:
     redis_key: str
 
     @classmethod
-    def for_workspace(cls, workspace_id: WorkspaceId) -> OrganizationIMWriteScope:
-        return cls(f"{_LOCK_KEY_PREFIX}:workspace:{workspace_id}")
+    def for_workspace(cls, tenant_id: TenantId) -> OrganizationIMWriteScope:
+        return cls(f"{_LOCK_KEY_PREFIX}:workspace:{tenant_id}")
 
     @classmethod
     def for_deployment(cls) -> OrganizationIMWriteScope:

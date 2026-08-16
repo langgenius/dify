@@ -38,7 +38,7 @@ from core.human_input_v2.shared import (
     EmailProviderId,
     IntegrationId,
     NormalizedEmail,
-    WorkspaceId,
+    TenantId,
 )
 from services.human_input_channel_management_service import HumanInputChannelManagementService
 from services.human_input_email_channel_manager import HumanInputEmailChannelManager
@@ -51,7 +51,7 @@ from services.human_input_im_channel_manager import (
 _NOW = datetime(2026, 7, 28, 8)
 _LATER = datetime(2026, 7, 28, 9)
 _CONTEXT = HumanInputChannelManagementContext(
-    workspace_id=WorkspaceId("workspace-1"),
+    tenant_id=TenantId("workspace-1"),
     actor_account_id=AccountId("account-1"),
     actor_email=NormalizedEmail("operator@example.com"),
 )
@@ -64,8 +64,8 @@ class EmailRepository:
         self.current = current
         self.writes: list[str] = []
 
-    def load(self, workspace_id):
-        return self.current if self.current.workspace_id == workspace_id else None
+    def load(self, tenant_id):
+        return self.current if self.current.tenant_id == tenant_id else None
 
     def create(self, configuration):
         del configuration
@@ -79,9 +79,9 @@ class EmailRepository:
         self.current = replace(configuration, updated_at=now)
         return UpdateEmailConfigurationResult(UpdateEmailConfigurationStatus.UPDATED, self.current)
 
-    def delete(self, workspace_id):
+    def delete(self, tenant_id):
         self.writes.append("delete")
-        if self.current.workspace_id != workspace_id:
+        if self.current.tenant_id != tenant_id:
             return DeleteEmailConfigurationResult(DeleteEmailConfigurationStatus.NOT_CONFIGURED)
         raise AssertionError("delete is not used by this test")
 
@@ -95,12 +95,12 @@ class EmailValidator:
 
 
 class EmailProtector:
-    def protect(self, workspace_id, api_key):
+    def protect(self, tenant_id, api_key):
         del api_key
-        return ProtectedAPIKey(f"{workspace_id}:protected")
+        return ProtectedAPIKey(f"{tenant_id}:protected")
 
-    def reveal(self, workspace_id, protected_api_key):
-        del workspace_id, protected_api_key
+    def reveal(self, tenant_id, protected_api_key):
+        del tenant_id, protected_api_key
         return "existing-key"
 
 
@@ -109,8 +109,8 @@ class IMRepository:
         self.current = current
         self.mutations: list[str] = []
 
-    def load_current_integration(self, workspace_id):
-        if self.current.workspace_id == workspace_id:
+    def load_current_integration(self, tenant_id):
+        if self.current.tenant_id == tenant_id:
             return self.current
         return None
 
@@ -163,7 +163,7 @@ class IMProviderPort:
 def _email_configuration() -> EmailChannelConfiguration:
     return EmailChannelConfiguration(
         id=EmailProviderId("email-1"),
-        workspace_id=_CONTEXT.workspace_id,
+        tenant_id=_CONTEXT.tenant_id,
         sender_email=NormalizedEmail("old@example.com"),
         sender_name="Old Sender",
         protected_api_key=ProtectedAPIKey("workspace-1:protected"),
@@ -176,7 +176,7 @@ def _email_configuration() -> EmailChannelConfiguration:
 def _im_integration() -> IMIntegration:
     return IMIntegration.create(
         integration_id=IntegrationId("integration-1"),
-        workspace_id=_CONTEXT.workspace_id,
+        tenant_id=_CONTEXT.tenant_id,
         provider_tenant=ProviderTenantIdentity(IMProvider.SLACK, "slack-workspace"),
         encrypted_credentials=EncryptedCredentials.from_mapping(
             {

@@ -18,7 +18,7 @@ from core.human_input_v2.shared import (
     IMBindingId,
     IMIdentityId,
     IntegrationId,
-    WorkspaceId,
+    TenantId,
 )
 from models.human_input_v2 import (
     FeishuIMIntegrationEncryptedCredentials,
@@ -38,7 +38,7 @@ from services.human_input_v2.im_contact_sync.locking import OrganizationIMWriteL
 
 _NOW = datetime(2026, 8, 11, 8)
 _INTEGRATION_ID = IntegrationId("integration-1")
-_WORKSPACE_ID = WorkspaceId("workspace-1")
+_TENANT_ID = TenantId("workspace-1")
 _CONTACT_ID = ContactId("contact-1")
 _IDENTITY_ID = IMIdentityId("identity-1")
 
@@ -108,7 +108,7 @@ def binding_context(
         )
         integration.id = str(_INTEGRATION_ID)
         platform_entry = HumanInputPlatformContactWorkspaceEntry(
-            tenant_id=str(_WORKSPACE_ID),
+            tenant_id=str(_TENANT_ID),
             contact_id=str(_CONTACT_ID),
             added_by_account_id="account-admin",
         )
@@ -163,7 +163,7 @@ def test_binding_service_resolves_current_integration_and_returns_contact_projec
 
     contact = service.create_organization_binding(
         organization_scope=DeploymentScope(),
-        workspace_id=_WORKSPACE_ID,
+        tenant_id=_TENANT_ID,
         contact_id=_CONTACT_ID,
         identity_id=_IDENTITY_ID,
         bound_by_account_id=AccountId("account-admin"),
@@ -194,7 +194,7 @@ def test_binding_service_maps_lock_unavailable_to_retryable_application_error(co
     with pytest.raises(RuntimeError) as error_info:
         method(
             organization_scope=DeploymentScope(),
-            workspace_id=_WORKSPACE_ID,
+            tenant_id=_TENANT_ID,
             contact_id=_CONTACT_ID,
             identity_id=_IDENTITY_ID,
             bound_by_account_id=AccountId("account-admin"),
@@ -232,7 +232,7 @@ def test_organization_binding_rejects_contact_outside_organization(binding_conte
     with sessions.begin() as session:
         contact = session.get_one(HumanInputContact, str(_CONTACT_ID))
         contact.identity_source = HumanInputContactIdentitySource.WORKSPACE_MEMBER
-        contact.tenant_id = str(_WORKSPACE_ID)
+        contact.tenant_id = str(_TENANT_ID)
 
     with pytest.raises(IMBindingCommandError) as error_info:
         with SQLAlchemyOrganizationIMWriteUnitOfWork(sessions, lock) as repository:
@@ -263,34 +263,34 @@ def test_workspace_override_set_replaces_and_reset_removes_only_workspace_scope(
     )
     organization_binding = service.create_organization_binding(
         organization_scope=DeploymentScope(),
-        workspace_id=_WORKSPACE_ID,
+        tenant_id=_TENANT_ID,
         contact_id=_CONTACT_ID,
         identity_id=_IDENTITY_ID,
         bound_by_account_id=AccountId("account-admin"),
     )
     workspace_binding = service.set_workspace_override(
         organization_scope=DeploymentScope(),
-        workspace_id=_WORKSPACE_ID,
+        tenant_id=_TENANT_ID,
         contact_id=_CONTACT_ID,
         identity_id=_IDENTITY_ID,
         bound_by_account_id=AccountId("account-admin"),
     )
     replaced = service.set_workspace_override(
         organization_scope=DeploymentScope(),
-        workspace_id=_WORKSPACE_ID,
+        tenant_id=_TENANT_ID,
         contact_id=_CONTACT_ID,
         identity_id=_IDENTITY_ID,
         bound_by_account_id=AccountId("account-2"),
     )
 
     assert workspace_binding.im_bindings[0].scope is IMBindingScope.WORKSPACE
-    assert workspace_binding.im_bindings[0].scope_id == str(_WORKSPACE_ID)
+    assert workspace_binding.im_bindings[0].scope_id == str(_TENANT_ID)
     assert replaced.im_bindings[0].id == workspace_binding.im_bindings[0].id
     assert replaced.im_bindings[0].bound_by_account_id == AccountId("account-2")
 
     service.reset_workspace_override(
         organization_scope=DeploymentScope(),
-        workspace_id=_WORKSPACE_ID,
+        tenant_id=_TENANT_ID,
         contact_id=_CONTACT_ID,
     )
 
@@ -313,7 +313,7 @@ def test_workspace_override_rejects_contact_not_available_in_workspace(binding_c
     with pytest.raises(IMBindingCommandError) as error_info:
         service.set_workspace_override(
             organization_scope=DeploymentScope(),
-            workspace_id=_WORKSPACE_ID,
+            tenant_id=_TENANT_ID,
             contact_id=_CONTACT_ID,
             identity_id=_IDENTITY_ID,
             bound_by_account_id=AccountId("account-admin"),

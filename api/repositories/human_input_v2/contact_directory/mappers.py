@@ -18,7 +18,7 @@ from core.human_input_v2.shared import (
     ContactId,
     NormalizedEmail,
     PlatformEntryId,
-    WorkspaceId,
+    TenantId,
 )
 from libs.datetime_utils import ensure_naive_utc
 from models.human_input_v2 import (
@@ -47,11 +47,11 @@ def contact_from_record(record: HumanInputContact) -> Contact:
         case ContactIdentitySource.WORKSPACE_MEMBER:
             if record.tenant_id is None or record.account_id is None:
                 raise ValueError("workspace member record is missing owner fields")
-            owner = WorkspaceMemberOwner(WorkspaceId(record.tenant_id), AccountId(record.account_id))
+            owner = WorkspaceMemberOwner(TenantId(record.tenant_id), AccountId(record.account_id))
         case ContactIdentitySource.EXTERNAL:
             if record.tenant_id is None:
                 raise ValueError("external contact record is missing tenant_id")
-            owner = ExternalContactOwner(WorkspaceId(record.tenant_id))
+            owner = ExternalContactOwner(TenantId(record.tenant_id))
 
     return Contact(
         id=ContactId(record.id),
@@ -76,11 +76,11 @@ def contact_to_record(contact: Contact) -> HumanInputContact:
         case OrganizationAccountOwner(account_id=owner_account_id):
             tenant_id = None
             account_id = str(owner_account_id)
-        case WorkspaceMemberOwner(workspace_id=workspace_id, account_id=owner_account_id):
-            tenant_id = str(workspace_id)
+        case WorkspaceMemberOwner(tenant_id=tenant_id, account_id=owner_account_id):
+            tenant_id = str(tenant_id)
             account_id = str(owner_account_id)
-        case ExternalContactOwner(workspace_id=workspace_id):
-            tenant_id = str(workspace_id)
+        case ExternalContactOwner(tenant_id=tenant_id):
+            tenant_id = str(tenant_id)
             account_id = None
 
     record = HumanInputContact(
@@ -104,7 +104,7 @@ def platform_entry_from_record(record: HumanInputPlatformContactWorkspaceEntry) 
 
     return PlatformWorkspaceEntry(
         id=PlatformEntryId(record.id),
-        workspace_id=WorkspaceId(record.tenant_id),
+        tenant_id=TenantId(record.tenant_id),
         contact_id=ContactId(record.contact_id),
         added_by_account_id=AccountId(record.added_by_account_id),
         created_at=_timestamp(record.created_at),
@@ -116,7 +116,7 @@ def platform_entry_to_record(entry: PlatformWorkspaceEntry) -> HumanInputPlatfor
     """Map one Platform allow-list fact into a detached persistence record."""
 
     record = HumanInputPlatformContactWorkspaceEntry(
-        tenant_id=str(entry.workspace_id),
+        tenant_id=str(entry.tenant_id),
         contact_id=str(entry.contact_id),
         added_by_account_id=str(entry.added_by_account_id),
     )

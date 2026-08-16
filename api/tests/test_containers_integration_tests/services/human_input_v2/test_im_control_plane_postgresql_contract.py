@@ -33,7 +33,7 @@ from core.human_input_v2.shared import (
     IMIdentityId,
     IMSyncRunId,
     IntegrationId,
-    WorkspaceId,
+    TenantId,
     WorkspaceScope,
 )
 from extensions.ext_database import db
@@ -66,7 +66,7 @@ def _write_unit_of_work(
     scope: WorkspaceScope | DeploymentScope,
 ) -> SQLAlchemyOrganizationIMWriteUnitOfWork:
     lock_scope = (
-        OrganizationIMWriteScope.for_workspace(scope.workspace_id)
+        OrganizationIMWriteScope.for_workspace(scope.id)
         if isinstance(scope, WorkspaceScope)
         else OrganizationIMWriteScope.for_deployment()
     )
@@ -81,10 +81,10 @@ def _write_unit_of_work(
     )
 
 
-def _integration(workspace_id: WorkspaceId | None, integration_id: IntegrationId = _INTEGRATION_ID) -> IMIntegration:
+def _integration(tenant_id: TenantId | None, integration_id: IntegrationId = _INTEGRATION_ID) -> IMIntegration:
     return IMIntegration.create(
         integration_id=integration_id,
-        workspace_id=workspace_id,
+        tenant_id=tenant_id,
         provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, "provider-tenant-1"),
         encrypted_credentials=EncryptedCredentials.from_mapping(
             {"app_id": "app-1", "encrypted_app_secret": "ciphertext"}
@@ -114,10 +114,10 @@ def test_guarded_configuration_cas_and_active_run_matrix_use_postgresql(
     db_session_with_containers: Session,
 ) -> None:
     account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    workspace_id = WorkspaceId(tenant.id)
-    scope = WorkspaceScope(workspace_id)
+    tenant_id = TenantId(tenant.id)
+    scope = WorkspaceScope(id=tenant_id)
     sessions = sessionmaker(bind=db.engine, expire_on_commit=False)
-    initial = _integration(workspace_id)
+    initial = _integration(tenant_id)
     db_session_with_containers.add(integration_to_record(initial))
     db_session_with_containers.commit()
     unit_of_work = _write_unit_of_work(sessions, scope)
@@ -128,7 +128,7 @@ def test_guarded_configuration_cas_and_active_run_matrix_use_postgresql(
         assert repository is unit_of_work.protected_repository
         with pytest.raises(ValueError, match="already exists"):
             repository.create_integration(
-                _integration(workspace_id, _REPLACEMENT_INTEGRATION_ID), organization_scope=scope
+                _integration(tenant_id, _REPLACEMENT_INTEGRATION_ID), organization_scope=scope
             )
     with pytest.raises(RuntimeError, match="active"):
         _ = unit_of_work.protected_repository
@@ -192,7 +192,7 @@ def test_guarded_configuration_cas_and_active_run_matrix_use_postgresql(
     assert isinstance(stale_delete, StaleRevision)
     assert deleted is None
 
-    replacement = _integration(workspace_id, _REPLACEMENT_INTEGRATION_ID)
+    replacement = _integration(tenant_id, _REPLACEMENT_INTEGRATION_ID)
     with _write_unit_of_work(sessions, scope) as repository:
         created = repository.create_integration(replacement, organization_scope=scope)
     assert created == replacement
@@ -257,7 +257,7 @@ def test_deployment_binding_and_input_loading_matrix_use_postgresql(
     db_session_with_containers.commit()
     sessions = sessionmaker(bind=db.engine, expire_on_commit=False)
     scope = DeploymentScope()
-    workspace_id = WorkspaceId(tenant.id)
+    tenant_id = TenantId(tenant.id)
 
     with _write_unit_of_work(sessions, scope) as repository:
         assert repository.require_current_integration(scope) == deployment_integration
@@ -272,7 +272,7 @@ def test_deployment_binding_and_input_loading_matrix_use_postgresql(
         )
         workspace_override = repository.set_workspace_override(
             organization_scope=scope,
-            workspace_id=workspace_id,
+            tenant_id=tenant_id,
             integration_id=deployment_integration.id,
             contact_id=primary_contact.id,
             identity_id=secondary_identity.id,
@@ -281,7 +281,7 @@ def test_deployment_binding_and_input_loading_matrix_use_postgresql(
             now=_NOW,
         )
         view = repository.load_contact_im_binding_view(
-            workspace_id=workspace_id,
+            tenant_id=tenant_id,
             integration_id=deployment_integration.id,
             contact_id=primary_contact.id,
         )
@@ -300,7 +300,7 @@ def test_deployment_binding_and_input_loading_matrix_use_postgresql(
         with pytest.raises(IMBindingCommandError) as conflict:
             repository.set_workspace_override(
                 organization_scope=scope,
-                workspace_id=workspace_id,
+                tenant_id=tenant_id,
                 integration_id=deployment_integration.id,
                 contact_id=secondary_contact.id,
                 identity_id=secondary_identity.id,
@@ -330,9 +330,9 @@ def test_reconciliation_input_rejects_stale_or_cross_owner_captures(
     db_session_with_containers: Session,
 ) -> None:
     account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    workspace_id = WorkspaceId(tenant.id)
-    scope = WorkspaceScope(workspace_id)
-    integration = _integration(workspace_id)
+    tenant_id = TenantId(tenant.id)
+    scope = WorkspaceScope(id=tenant_id)
+    integration = _integration(tenant_id)
     run = IMSyncRun.create(
         sync_run_id=IMSyncRunId("00000000-0000-0000-0000-000000000521"),
         integration_revision=integration.revision,
@@ -369,7 +369,7 @@ def test_reconciliation_input_rejects_stale_or_cross_owner_captures(
             repository.load_reconciliation_input(
                 ReconciliationRunRef(run.id, run.integration_revision, run.provider),
                 (),
-                WorkspaceScope(WorkspaceId("00000000-0000-0000-0000-000000000999")),
+                WorkspaceScope(id=TenantId("00000000-0000-0000-0000-000000000999")),
             )
 
     with sessions.begin() as session:

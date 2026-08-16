@@ -18,12 +18,12 @@ from core.human_input_v2.shared import (
     IMBindingId,
     IMIdentityId,
     IntegrationId,
-    WorkspaceId,
+    TenantId,
 )
 
 _NOW = datetime(2026, 7, 25, 8)
 _INTEGRATION_ID = IntegrationId("integration-1")
-_WORKSPACE_ID = WorkspaceId("workspace-1")
+_TENANT_ID = TenantId("workspace-1")
 
 
 def _contact(email: str | None = "reviewer@example.com") -> ContactSnapshot:
@@ -59,7 +59,7 @@ def _binding(binding_id: str, identity: IMIdentity, scope: IMBindingScope) -> IM
         binding_id=IMBindingId(binding_id),
         integration_id=_INTEGRATION_ID,
         scope=scope,
-        scope_id=str(_WORKSPACE_ID if scope is IMBindingScope.WORKSPACE else _INTEGRATION_ID),
+        scope_id=str(_TENANT_ID if scope is IMBindingScope.WORKSPACE else _INTEGRATION_ID),
         contact_id=ContactId("contact-1"),
         identity_id=identity.id,
         provider=IMProvider.FEISHU,
@@ -72,7 +72,7 @@ def _resolve(*, identities: tuple[IMIdentity, ...], bindings: tuple[IMBinding, .
     return EffectiveBindingResolver.resolve(
         integration_revision=IntegrationRevisionToken(_INTEGRATION_ID, 1),
         provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, "provider-tenant-1"),
-        workspace_id=_WORKSPACE_ID,
+        tenant_id=_TENANT_ID,
         contact=_contact(),
         identities=identities,
         bindings=bindings,
@@ -81,13 +81,13 @@ def _resolve(*, identities: tuple[IMIdentity, ...], bindings: tuple[IMBinding, .
 
 def test_workspace_binding_has_priority_over_organization_binding() -> None:
     organization_identity = _identity("identity-org", "org-user")
-    workspace_identity = _identity("identity-workspace", "workspace-user")
+    tenant_identity = _identity("identity-workspace", "workspace-user")
 
     result = _resolve(
-        identities=(organization_identity, workspace_identity),
+        identities=(organization_identity, tenant_identity),
         bindings=(
             _binding("binding-org", organization_identity, IMBindingScope.ORGANIZATION),
-            _binding("binding-workspace", workspace_identity, IMBindingScope.WORKSPACE),
+            _binding("binding-workspace", tenant_identity, IMBindingScope.WORKSPACE),
         ),
     )
 
@@ -126,7 +126,7 @@ def test_missing_email_or_matching_identity_returns_not_available() -> None:
     without_email = EffectiveBindingResolver.resolve(
         integration_revision=IntegrationRevisionToken(_INTEGRATION_ID, 1),
         provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, "provider-tenant-1"),
-        workspace_id=_WORKSPACE_ID,
+        tenant_id=_TENANT_ID,
         contact=_contact(None),
         identities=(),
         bindings=(),
@@ -154,7 +154,7 @@ def test_integration_or_provider_mismatch_returns_stable_rejection_without_bindi
         binding_id=IMBindingId("binding-other"),
         integration_id=_INTEGRATION_ID,
         scope=IMBindingScope.WORKSPACE,
-        scope_id=str(_WORKSPACE_ID),
+        scope_id=str(_TENANT_ID),
         contact_id=ContactId("contact-1"),
         identity_id=identity.id,
         provider=IMProvider.FEISHU,

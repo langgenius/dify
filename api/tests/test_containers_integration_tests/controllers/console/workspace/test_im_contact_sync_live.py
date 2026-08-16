@@ -17,7 +17,7 @@ from core.human_input_v2.im_integration import (
     IMIntegration,
     ProviderTenantIdentity,
 )
-from core.human_input_v2.shared import AccountId, IMSyncRunId, IntegrationId, WorkspaceId, WorkspaceScope
+from core.human_input_v2.shared import AccountId, IMSyncRunId, IntegrationId, TenantId, WorkspaceScope
 from libs.datetime_utils import naive_utc_now
 from libs.rsa import generate_key_pair
 from libs.uuid_utils import uuidv7
@@ -51,7 +51,7 @@ def test_authenticated_http_sync_reaches_live_provider_worker_and_persisted_quer
     db_session_with_containers.commit()
     integration = _persist_live_slack_integration(
         db_session_with_containers,
-        workspace_id=WorkspaceId(tenant.id),
+        tenant_id=TenantId(tenant.id),
         actor_id=AccountId(account.id),
         credentials=credentials,
         now=naive_utc_now(),
@@ -81,7 +81,7 @@ def test_authenticated_http_sync_reaches_live_provider_worker_and_persisted_quer
 
     terminal_run = build_im_contact_sync_worker().execute(
         sync_run_id,
-        WorkspaceScope(WorkspaceId(tenant.id)),
+        WorkspaceScope(id=TenantId(tenant.id)),
     )
 
     assert terminal_run.status is IMSyncRunStatus.SUCCEEDED
@@ -139,28 +139,24 @@ def _live_slack_credentials() -> dict[str, str]:
 def _persist_live_slack_integration(
     session: Session,
     *,
-    workspace_id: WorkspaceId,
+    tenant_id: TenantId,
     actor_id: AccountId,
     credentials: dict[str, str],
     now: datetime,
 ) -> IMIntegration:
     integration = IMIntegration.create(
         integration_id=IntegrationId(str(uuidv7())),
-        workspace_id=workspace_id,
+        tenant_id=tenant_id,
         provider_tenant=ProviderTenantIdentity(IMProvider.SLACK, "live-slack-workspace"),
         encrypted_credentials=EncryptedCredentials.from_mapping(
             {
                 "client_id": credentials["SLACK_CLIENT_ID"],
-                "encrypted_client_secret": encrypter.encrypt_token(
-                    str(workspace_id), credentials["SLACK_CLIENT_SECRET"]
-                ),
+                "encrypted_client_secret": encrypter.encrypt_token(str(tenant_id), credentials["SLACK_CLIENT_SECRET"]),
                 "encrypted_signing_secret": encrypter.encrypt_token(
-                    str(workspace_id), credentials["SLACK_SIGNING_SECRET"]
+                    str(tenant_id), credentials["SLACK_SIGNING_SECRET"]
                 ),
-                "encrypted_bot_token": encrypter.encrypt_token(str(workspace_id), credentials["SLACK_BOT_TOKEN"]),
-                "encrypted_app_token": encrypter.encrypt_token(
-                    str(workspace_id), credentials["SLACK_APP_SOCKET_TOKEN"]
-                ),
+                "encrypted_bot_token": encrypter.encrypt_token(str(tenant_id), credentials["SLACK_BOT_TOKEN"]),
+                "encrypted_app_token": encrypter.encrypt_token(str(tenant_id), credentials["SLACK_APP_SOCKET_TOKEN"]),
             }
         ),
         configured_by_account_id=actor_id,

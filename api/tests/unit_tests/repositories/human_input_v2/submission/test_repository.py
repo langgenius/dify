@@ -61,7 +61,7 @@ from core.human_input_v2.shared import (
     IMIdentityId,
     IntegrationId,
     SubmissionId,
-    WorkspaceId,
+    TenantId,
 )
 from models.account import Account, AccountStatus, TenantAccountJoin, TenantAccountRole
 from models.enums import EndUserType
@@ -92,8 +92,8 @@ from repositories.human_input_v2.submission.repository import (
 )
 
 _NOW = datetime(2026, 7, 25, 8)
-_WORKSPACE_ID = WorkspaceId("workspace-1")
-_FORM_REF = FormRef(_WORKSPACE_ID, FormId("form-1"))
+_TENANT_ID = TenantId("workspace-1")
+_FORM_REF = FormRef(_TENANT_ID, FormId("form-1"))
 _GRANT_ID = ApproverGrantId("grant-1")
 _ENDPOINT_ID = DeliveryEndpointId("endpoint-1")
 _ACCOUNT_ID = AccountId("account-1")
@@ -103,7 +103,7 @@ _IDENTITY_ID = IMIdentityId("identity-1")
 _BINDING_ID = IMBindingId("binding-1")
 _SCOPE = SubmissionAttemptScope(_FORM_REF, _GRANT_ID, _ENDPOINT_ID)
 _END_USER_ID = EndUserId("end-user-1")
-_END_USER_FORM_REF = FormRef(_WORKSPACE_ID, FormId("form-2"))
+_END_USER_FORM_REF = FormRef(_TENANT_ID, FormId("form-2"))
 _END_USER_GRANT_ID = ApproverGrantId("grant-2")
 _END_USER_SCOPE = SubmissionAttemptScope(_END_USER_FORM_REF, _END_USER_GRANT_ID, None)
 
@@ -244,7 +244,7 @@ def _seed_current_account_im_form(session_maker: sessionmaker[Session]) -> None:
         session.execute(
             sa.insert(TenantAccountJoin.__table__).values(
                 id="membership-1",
-                tenant_id=str(_WORKSPACE_ID),
+                tenant_id=str(_TENANT_ID),
                 account_id=str(_ACCOUNT_ID),
                 role=TenantAccountRole.NORMAL.value,
             )
@@ -269,7 +269,7 @@ def _seed_current_account_im_form(session_maker: sessionmaker[Session]) -> None:
                 encrypted_bot_token="encrypted-bot-token",
                 encrypted_app_token="encrypted-app-token",
             ),
-            tenant_id=str(_WORKSPACE_ID),
+            tenant_id=str(_TENANT_ID),
             provider_tenant_id="provider-tenant-1",
             status=IMIntegrationStatus.CONNECTED,
             config_version=1,
@@ -295,7 +295,7 @@ def _seed_current_account_im_form(session_maker: sessionmaker[Session]) -> None:
         binding = HumanInputIMBinding(
             integration_id=str(_INTEGRATION_ID),
             scope=IMBindingScope.WORKSPACE,
-            scope_id=str(_WORKSPACE_ID),
+            scope_id=str(_TENANT_ID),
             contact_id=str(_CONTACT_ID),
             im_identity_id=str(_IDENTITY_ID),
             provider=IMProvider.SLACK,
@@ -313,7 +313,7 @@ def _seed_current_account_im_form(session_maker: sessionmaker[Session]) -> None:
                 endpoint_to_record(_endpoint(grant)),
                 EndUser(
                     id=str(_END_USER_ID),
-                    tenant_id=str(_WORKSPACE_ID),
+                    tenant_id=str(_TENANT_ID),
                     app_id="app-1",
                     type=EndUserType.SERVICE_API,
                     name="App Reviewer",
@@ -358,7 +358,7 @@ def _add_feishu_workspace_binding(session: Session, *, binding_id: str = "000-fe
     binding = HumanInputIMBinding(
         integration_id=integration.id,
         scope=IMBindingScope.WORKSPACE,
-        scope_id=str(_WORKSPACE_ID),
+        scope_id=str(_TENANT_ID),
         contact_id=str(_CONTACT_ID),
         im_identity_id=identity.id,
         provider=IMProvider.FEISHU,
@@ -540,7 +540,7 @@ def test_context_load_is_coherent_bounded_and_tenant_scoped(repository_context) 
     assert len(statements) <= 6
 
     cross_tenant = SubmissionAttemptScope(
-        FormRef(WorkspaceId("workspace-2"), _FORM_REF.form_id),
+        FormRef(TenantId("workspace-2"), _FORM_REF.form_id),
         _GRANT_ID,
         _ENDPOINT_ID,
     )
@@ -900,7 +900,7 @@ def test_rejection_audit_is_append_only_and_requires_the_complete_owner_scope(re
     wrong_owner = FormAuthorizationAuditEvent(
         id=AuditEventId("wrong-owner"),
         event_type=event_fact.event_type,
-        form_ref=FormRef(WorkspaceId("workspace-2"), _FORM_REF.form_id),
+        form_ref=FormRef(TenantId("workspace-2"), _FORM_REF.form_id),
         approver_grant_id=event_fact.approver_grant_id,
         endpoint_id=event_fact.endpoint_id,
         channel=event_fact.channel,

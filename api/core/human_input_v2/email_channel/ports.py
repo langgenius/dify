@@ -8,7 +8,7 @@ from typing import Protocol
 
 from pydantic import NaiveDatetime
 
-from core.human_input_v2.shared import NormalizedEmail, WorkspaceId
+from core.human_input_v2.shared import NormalizedEmail, TenantId
 
 from .entities import (
     EmailChannelConfiguration,
@@ -53,9 +53,9 @@ class EmailProviderValidator(Protocol):
 class EmailCredentialProtector(Protocol):
     """Workspace-scoped protection boundary for Resend credentials."""
 
-    def protect(self, workspace_id: WorkspaceId, api_key: str) -> ProtectedAPIKey: ...
+    def protect(self, tenant_id: TenantId, api_key: str) -> ProtectedAPIKey: ...
 
-    def reveal(self, workspace_id: WorkspaceId, protected_api_key: ProtectedAPIKey) -> str: ...
+    def reveal(self, tenant_id: TenantId, protected_api_key: ProtectedAPIKey) -> str: ...
 
 
 class CreateEmailConfigurationStatus(StrEnum):
@@ -108,7 +108,7 @@ class DeleteEmailConfigurationResult:
 class EmailChannelRepository(Protocol):
     """Operation-scoped transactional persistence for one workspace row."""
 
-    def load(self, workspace_id: WorkspaceId) -> EmailChannelConfiguration | None: ...
+    def load(self, tenant_id: TenantId) -> EmailChannelConfiguration | None: ...
 
     def create(self, configuration: EmailChannelConfiguration) -> CreateEmailConfigurationResult: ...
 
@@ -120,4 +120,4 @@ class EmailChannelRepository(Protocol):
         now: NaiveDatetime,
     ) -> UpdateEmailConfigurationResult: ...
 
-    def delete(self, workspace_id: WorkspaceId) -> DeleteEmailConfigurationResult: ...
+    def delete(self, tenant_id: TenantId) -> DeleteEmailConfigurationResult: ...

@@ -12,10 +12,10 @@ from core.human_input_v2.contact_directory import (
     ContactRejectionCode,
     ContactResolution,
 )
-from core.human_input_v2.shared import AccountId, ContactId, WorkspaceId
+from core.human_input_v2.shared import AccountId, ContactId, TenantId
 
 _NOW = datetime(2026, 7, 25)
-_WORKSPACE_ID = WorkspaceId("workspace-1")
+_TENANT_ID = TenantId("workspace-1")
 
 
 def _organization_contact() -> Contact:
@@ -31,7 +31,7 @@ def _organization_contact() -> Contact:
 def _workspace_member_contact() -> Contact:
     return Contact.workspace_member(
         contact_id=ContactId("member-contact"),
-        workspace_id=_WORKSPACE_ID,
+        tenant_id=_TENANT_ID,
         account_id=AccountId("account-2"),
         name="Grace",
         email="grace@example.com",
@@ -65,7 +65,7 @@ def test_account_contact_resolution(
 ) -> None:
     contact = contact_factory()
     snapshot = ContactDirectorySnapshot(
-        workspace_id=_WORKSPACE_ID,
+        tenant_id=_TENANT_ID,
         contacts=(contact,),
         member_account_ids=frozenset(member_accounts),
         platform_contact_ids=frozenset(platform_contacts),
@@ -79,13 +79,13 @@ def test_account_contact_resolution(
 def test_external_contact_resolves_only_in_its_owner_workspace() -> None:
     contact = Contact.external(
         contact_id=ContactId("external-contact"),
-        workspace_id=_WORKSPACE_ID,
+        tenant_id=_TENANT_ID,
         name="Reviewer",
         email="reviewer@example.com",
         now=_NOW,
     )
-    owner_snapshot = ContactDirectorySnapshot(workspace_id=_WORKSPACE_ID, contacts=(contact,))
-    other_snapshot = ContactDirectorySnapshot(workspace_id=WorkspaceId("workspace-2"), contacts=(contact,))
+    owner_snapshot = ContactDirectorySnapshot(tenant_id=_TENANT_ID, contacts=(contact,))
+    other_snapshot = ContactDirectorySnapshot(tenant_id=TenantId("workspace-2"), contacts=(contact,))
 
     assert ContactDirectoryPolicy.resolve_for_workspace(owner_snapshot, contact.id) is ContactResolution.EXTERNAL
     with pytest.raises(ContactDirectoryError) as error:
@@ -94,13 +94,13 @@ def test_external_contact_resolves_only_in_its_owner_workspace() -> None:
 
 
 def test_missing_contact_resolves_absent() -> None:
-    snapshot = ContactDirectorySnapshot(workspace_id=_WORKSPACE_ID)
+    snapshot = ContactDirectorySnapshot(tenant_id=_TENANT_ID)
 
     assert ContactDirectoryPolicy.resolve_for_workspace(snapshot, ContactId("missing")) is ContactResolution.ABSENT
 
 
 def test_external_admission_rejects_normalized_email_collision() -> None:
-    snapshot = ContactDirectorySnapshot(workspace_id=_WORKSPACE_ID, contacts=(_organization_contact(),))
+    snapshot = ContactDirectorySnapshot(tenant_id=_TENANT_ID, contacts=(_organization_contact(),))
 
     with pytest.raises(ContactDirectoryError) as error:
         ContactDirectoryPolicy.admit_external(
@@ -114,7 +114,7 @@ def test_external_admission_rejects_normalized_email_collision() -> None:
 
 
 def test_deleted_external_email_can_be_recreated_with_a_new_contact_id() -> None:
-    empty_after_deletion = ContactDirectorySnapshot(workspace_id=_WORKSPACE_ID)
+    empty_after_deletion = ContactDirectorySnapshot(tenant_id=_TENANT_ID)
 
     recreated = ContactDirectoryPolicy.admit_external(
         empty_after_deletion,
@@ -130,34 +130,34 @@ def test_deleted_external_email_can_be_recreated_with_a_new_contact_id() -> None
 def test_hard_deletion_rejects_cross_organization_contact() -> None:
     contact = Contact.external(
         contact_id=ContactId("external-contact"),
-        workspace_id=WorkspaceId("workspace-2"),
+        tenant_id=TenantId("workspace-2"),
         name="Reviewer",
         email="reviewer@example.com",
         now=_NOW,
     )
 
     with pytest.raises(ContactDirectoryError) as error:
-        ContactDirectoryPolicy.ensure_external_deletable(contact, _WORKSPACE_ID)
+        ContactDirectoryPolicy.ensure_external_deletable(contact, _TENANT_ID)
     assert error.value.code is ContactRejectionCode.CROSS_ORGANIZATION
 
 
 def test_hard_deletion_accepts_contact_from_owner_workspace_without_mutation() -> None:
     contact = Contact.external(
         contact_id=ContactId("external-contact"),
-        workspace_id=_WORKSPACE_ID,
+        tenant_id=_TENANT_ID,
         name="Reviewer",
         email="reviewer@example.com",
         now=_NOW,
     )
 
-    ContactDirectoryPolicy.ensure_external_deletable(contact, _WORKSPACE_ID)
+    ContactDirectoryPolicy.ensure_external_deletable(contact, _TENANT_ID)
 
-    assert contact.owner.workspace_id == _WORKSPACE_ID
+    assert contact.owner.tenant_id == _TENANT_ID
 
 
 def test_workspace_member_resolution_rejects_cross_organization_use() -> None:
     contact = _workspace_member_contact()
-    snapshot = ContactDirectorySnapshot(workspace_id=WorkspaceId("workspace-2"), contacts=(contact,))
+    snapshot = ContactDirectorySnapshot(tenant_id=TenantId("workspace-2"), contacts=(contact,))
 
     with pytest.raises(ContactDirectoryError) as error:
         ContactDirectoryPolicy.resolve_for_workspace(snapshot, contact.id)
@@ -165,7 +165,7 @@ def test_workspace_member_resolution_rejects_cross_organization_use() -> None:
 
 
 def test_external_admission_rejects_invalid_email() -> None:
-    snapshot = ContactDirectorySnapshot(workspace_id=_WORKSPACE_ID)
+    snapshot = ContactDirectorySnapshot(tenant_id=_TENANT_ID)
 
     with pytest.raises(ContactDirectoryError) as error:
         ContactDirectoryPolicy.admit_external(
@@ -180,5 +180,5 @@ def test_external_admission_rejects_invalid_email() -> None:
 
 def test_hard_deletion_rejects_account_backed_contact() -> None:
     with pytest.raises(ContactDirectoryError) as error:
-        ContactDirectoryPolicy.ensure_external_deletable(_organization_contact(), _WORKSPACE_ID)
+        ContactDirectoryPolicy.ensure_external_deletable(_organization_contact(), _TENANT_ID)
     assert error.value.code is ContactRejectionCode.INVALID_OWNER
