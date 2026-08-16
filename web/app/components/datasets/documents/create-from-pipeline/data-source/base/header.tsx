@@ -1,5 +1,5 @@
 import type { CredentialSelectorProps } from './credential-selector'
-import { Button } from '@langgenius/dify-ui/button'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -25,15 +25,15 @@ const Header = ({ docTitle, docLink, onClickConfiguration, pluginName, ...rest }
         <Tooltip>
           <TooltipTrigger
             render={
-              <Button
+              <IconButton
                 variant="ghost"
-                size="small"
-                className="size-6 shrink-0 px-1"
+                size="md"
+                className="shrink-0"
                 aria-label={configurationTip}
                 onClick={onClickConfiguration}
               >
                 <span aria-hidden className="i-ri-equalizer-2-line size-4" />
-              </Button>
+              </IconButton>
             }
           />
           <TooltipContent>{configurationTip}</TooltipContent>

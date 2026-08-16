@@ -11,8 +11,8 @@ const HasNotSetAPI: FC<IHasNotSetAPIProps> = ({ onSetting }) => {
   const { t } = useTranslation()
 
   return (
-    <div className="flex grow flex-col items-center justify-center pb-[120px]">
-      <div className="flex w-full max-w-[400px] flex-col gap-2 px-4 py-4">
+    <div className="flex grow flex-col items-center justify-center pb-30">
+      <div className="flex w-full max-w-100 flex-col gap-2 px-4 py-4">
         <div className="flex h-10 w-10 items-center justify-center rounded-[10px]">
           <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg p-1 shadow-lg backdrop-blur-[5px]">
             <span className="i-ri-brain-2-line size-5 text-text-tertiary" />

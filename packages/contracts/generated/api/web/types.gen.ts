@@ -43,6 +43,16 @@ export type AppMetaResponse = {
   }
 }
 
+export type AppMode =
+  | 'advanced-chat'
+  | 'agent'
+  | 'agent-chat'
+  | 'channel'
+  | 'chat'
+  | 'completion'
+  | 'rag-pipeline'
+  | 'workflow'
+
 export type AppPermissionQuery = {
   appId: string
 }
@@ -117,6 +127,8 @@ export type ConversationRenamePayload = (
   auto_generate?: boolean
   name?: string | null
 }
+
+export type DeploymentEdition = 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE'
 
 export type EmailCodeLoginSendPayload = {
   email: string
@@ -300,20 +312,11 @@ export type JsonValueType = unknown
 
 export type JsonValue2 = unknown
 
-export type LicenseLimitationModel = {
-  enabled: boolean
-  limit: number
-  size: number
-}
-
-export type LicenseModel = {
-  expired_at: string
-  seats: LicenseLimitationModel
-  status: LicenseStatus
-  workspaces: LicenseLimitationModel
-}
-
 export type LicenseStatus = 'active' | 'expired' | 'expiring' | 'inactive' | 'lost' | 'none'
+
+export type LicenseStatusModel = {
+  status: LicenseStatus
+}
 
 export type LoginPayload = {
   email: string
@@ -397,10 +400,6 @@ export type PluginInstallationScope =
   | 'official_and_specific_partners'
   | 'official_only'
 
-export type PluginManagerModel = {
-  enabled: boolean
-}
-
 export type RemoteFileInfo = {
   file_length: number
   file_type: string
@@ -433,6 +432,8 @@ export type RetrieverResource = {
   summary?: string | null
   word_count?: number | null
 }
+
+export type SsoProtocol = 'oauth2' | 'oidc' | 'saml'
 
 export type SavedMessageCreatePayload = {
   message_id: string
@@ -510,6 +511,7 @@ export type SuggestedQuestionsResponse = {
 
 export type SystemFeatureModel = {
   branding: BrandingModel
+  deployment_edition: DeploymentEdition
   enable_app_deploy: boolean
   enable_change_email: boolean
   enable_collaboration_mode: boolean
@@ -521,18 +523,14 @@ export type SystemFeatureModel = {
   enable_marketplace: boolean
   enable_social_oauth_login: boolean
   enable_step_by_step_tour: boolean
-  enable_trial_app: boolean
-  is_allow_create_workspace: boolean
   is_allow_register: boolean
   is_email_setup: boolean
   knowledge_fs_enabled: boolean
-  license: LicenseModel
-  max_plugin_package_size: number
+  license: LicenseStatusModel
   plugin_installation_permission: PluginInstallationPermissionModel
-  plugin_manager: PluginManagerModel
   rbac_enabled: boolean
   sso_enforced_for_signin: boolean
-  sso_enforced_for_signin_protocol: string
+  sso_enforced_for_signin_protocol: SsoProtocol | null
   webapp_auth: WebAppAuthModel
 }
 
@@ -575,7 +573,7 @@ export type WebAppAuthModel = {
 }
 
 export type WebAppAuthSsoModel = {
-  protocol: string
+  protocol: SsoProtocol | null
 }
 
 export type WebAppCustomConfigResponse = {
@@ -589,6 +587,7 @@ export type WebAppSiteResponse = {
   custom_config?: WebAppCustomConfigResponse | null
   enable_site: boolean
   end_user_id?: string | null
+  mode: AppMode
   model_config?: WebModelConfigResponse | null
   plan: string
   site: WebSiteResponse
@@ -646,7 +645,7 @@ export type WebSiteResponse = {
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
-  readonly icon_url: string | null
+  icon_url?: string | null
   input_placeholder?: string | null
   privacy_policy?: string | null
   prompt_public?: boolean | null
@@ -669,30 +668,8 @@ export type WorkflowRunPayload = {
 
 export type GeneratedAppResponseWritable = JsonValue
 
-export type HumanInputFormDefinitionResponseWritable = {
-  expiration_time: number
-  form_content: string
-  inputs: Array<FormInputConfig>
-  resolved_default_values: {
-    [key: string]: string
-  }
-  site?: WebAppSiteResponseWritable | null
-  user_actions: Array<UserActionConfig>
-}
-
 export type HumanInputFormSubmitResponseWritable = {
   [key: string]: unknown
-}
-
-export type WebAppSiteResponseWritable = {
-  app_id: string
-  can_replace_logo: boolean
-  custom_config?: WebAppCustomConfigResponse | null
-  enable_site: boolean
-  end_user_id?: string | null
-  model_config?: WebModelConfigResponse | null
-  plan: string
-  site: WebSiteResponseWritable
 }
 
 export type WebMessageInfiniteScrollPaginationWritable = {
@@ -724,24 +701,6 @@ export type WebMessageListItemWritable = {
   retriever_resources: Array<RetrieverResource>
   status: string
   total_price?: string | null
-}
-
-export type WebSiteResponseWritable = {
-  chat_color_theme?: string | null
-  chat_color_theme_inverted: boolean
-  copyright?: string | null
-  custom_disclaimer?: string | null
-  default_language?: string | null
-  description?: string | null
-  icon?: string | null
-  icon_background?: string | null
-  icon_type?: string | null
-  input_placeholder?: string | null
-  privacy_policy?: string | null
-  prompt_public?: boolean | null
-  show_workflow_steps?: boolean | null
-  title: string
-  use_icon_as_answer_icon?: boolean | null
 }
 
 export type PostAudioToTextData = {

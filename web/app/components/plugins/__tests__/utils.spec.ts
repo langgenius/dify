@@ -1,5 +1,5 @@
 import type { Plugin } from '../types'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { API_PREFIX, MARKETPLACE_API_PREFIX } from '@/config'
 import { getPluginCardIconUrl } from '../utils'
 

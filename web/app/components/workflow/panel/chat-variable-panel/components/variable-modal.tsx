@@ -77,8 +77,8 @@ const ChatVariableModal = ({ chatVar, onClose, onSave }: ModalPropsType) => {
   return (
     <div
       className={cn(
-        'flex h-full w-[360px] flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl',
-        type === ChatVarType.Object && 'w-[480px]',
+        'flex h-full w-90 flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl',
+        type === ChatVarType.Object && 'w-120',
       )}
     >
       <div className="mb-3 flex shrink-0 items-center justify-between p-4 pb-0 system-xl-semibold text-text-primary">
@@ -91,7 +91,7 @@ const ChatVariableModal = ({ chatVar, onClose, onSave }: ModalPropsType) => {
           </div>
         </div>
       </div>
-      <div className="max-h-[480px] overflow-y-auto px-4 py-2">
+      <div className="max-h-120 overflow-y-auto px-4 py-2">
         <NameSection
           name={name}
           onBlur={(nextName) =>

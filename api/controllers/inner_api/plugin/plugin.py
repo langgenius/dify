@@ -1,6 +1,7 @@
 from flask_restx import Resource
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from controllers.console.app.wraps import with_session
 from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns
@@ -31,7 +32,7 @@ from core.plugin.entities.request import (
     RequestRequestUploadFile,
 )
 from core.tools.entities.tool_entities import ToolProviderType
-from core.tools.signature import get_signed_file_url_for_plugin
+from core.tools.signature import bind_file_uri, get_signed_file_uri_for_plugin
 from extensions.ext_database import db
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import length_prefixed_response
@@ -429,13 +430,14 @@ class PluginUploadFileRequestApi(Resource):
     )
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestRequestUploadFile):
         # generate signed url
-        url = get_signed_file_url_for_plugin(
+        uri = get_signed_file_uri_for_plugin(
             filename=payload.filename,
             mimetype=payload.mimetype,
             tenant_id=tenant_model.id,
             user_id=user_model.id,
             conversation_id=payload.conversation_id,
         )
+        url = bind_file_uri(uri, dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL)
         return BaseBackwardsInvocationResponse(data={"url": url}).model_dump()
 
 
@@ -454,36 +456,33 @@ class PluginDownloadFileRequestApi(Resource):
         }
     )
     def post(self, payload: RequestRequestDownloadFile):
-        """Resolve signed download metadata for trusted external runtimes.
+        """Adapt a shared file request result to the Plugin backward contract.
 
-        Unlike end-user-facing upload/download APIs, this inner endpoint serves
-        trusted callers such as the ``dify-agent`` back proxy. The caller sends
-        flattened ``tenant_id`` / ``user_id`` / ``user_from`` / ``invoke_from``
-        context explicitly in the body, and ``FileRequestService`` rebuilds the
-        corresponding ``FileAccessScope`` before resolving the signed URL.
-
-        The response is control-plane metadata only: filename, mime type, size,
-        and the signed download URL. File bytes still flow through the existing
-        signed file endpoints rather than through this inner API.
+        ``FileRequestService`` rebuilds the caller's ``FileAccessScope`` and
+        resolves one origin-free signed URI. This controller binds that URI to
+        the Plugin-selected external or internal files base URL, then returns
+        the existing backward-invocation envelope.
         """
         tenant_model = db.session.get(Tenant, payload.tenant_id)
         if tenant_model is None:
             raise ValueError("tenant not found")
 
-        result = FileRequestService().request_download_url(
+        result = FileRequestService().request_download(
             tenant_id=tenant_model.id,
             user_id=payload.user_id,
             user_from=payload.user_from,
             invoke_from=payload.invoke_from,
             file_mapping=payload.file.model_dump(mode="python", exclude_none=True),
-            for_external=payload.for_external,
+        )
+        base_url = (
+            dify_config.FILES_URL if payload.for_external else (dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL)
         )
         return BaseBackwardsInvocationResponse(
             data={
                 "filename": result.filename,
                 "mime_type": result.mime_type,
                 "size": result.size,
-                "download_url": result.download_url,
+                "download_url": bind_file_uri(result.download_uri, base_url),
             }
         ).model_dump()
 

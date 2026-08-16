@@ -1,6 +1,6 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { render } from '@/test/console/render'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { ApiBasedExtensionPage } from '../index'
 
 const {
@@ -28,6 +28,15 @@ vi.mock('@/context/permission-state', async () => {
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
+    systemFeatures: {
+      get: {
+        queryKey: () => ['system-features'],
+        queryOptions: (options: Record<string, unknown> = {}) => ({
+          queryKey: ['system-features'],
+          ...options,
+        }),
+      },
+    },
     apiBasedExtension: {
       get: {
         queryOptions: () => ({}),
@@ -47,15 +56,19 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-vi.mock('@tanstack/react-query', () => ({
-  useQuery: vi.fn(() => mockApiBasedExtensionsQuery()),
-  useMutation: vi.fn((options: { mutationFn: (variables: unknown) => Promise<unknown> }) => ({
-    isPending: false,
-    mutate: (variables: unknown, mutationOptions?: { onSuccess?: (data: unknown) => void }) => {
-      options.mutationFn(variables).then((data) => mutationOptions?.onSuccess?.(data))
-    },
-  })),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: vi.fn(() => mockApiBasedExtensionsQuery()),
+    useMutation: vi.fn((options: { mutationFn: (variables: unknown) => Promise<unknown> }) => ({
+      isPending: false,
+      mutate: (variables: unknown, mutationOptions?: { onSuccess?: (data: unknown) => void }) => {
+        options.mutationFn(variables).then((data) => mutationOptions?.onSuccess?.(data))
+      },
+    })),
+  }
+})
 
 describe('ApiBasedExtensionPage', () => {
   beforeEach(() => {

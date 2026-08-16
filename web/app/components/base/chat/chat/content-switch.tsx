@@ -25,7 +25,7 @@ export default function ContentSwitch({
           disabled={prevDisabled}
           onClick={() => !prevDisabled && switchSibling('prev')}
         >
-          <ChevronRight className="h-[14px] w-[14px] rotate-180 text-text-primary" />
+          <ChevronRight className="h-3.5 w-3.5 rotate-180 text-text-primary" />
         </button>
         <span className="px-2 text-xs text-text-primary">
           {currentIndex + 1} /{count}
@@ -37,7 +37,7 @@ export default function ContentSwitch({
           disabled={nextDisabled}
           onClick={() => !nextDisabled && switchSibling('next')}
         >
-          <ChevronRight className="h-[14px] w-[14px] text-text-primary" />
+          <ChevronRight className="h-3.5 w-3.5 text-text-primary" />
         </button>
       </div>
     )

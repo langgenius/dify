@@ -3,20 +3,28 @@
 import type * as React from 'react'
 import { Dialog as BaseDialog } from '@base-ui/react/dialog'
 import { cn } from '../cn'
+import { iconButtonVariants } from '../icon-button/variants'
 import { modalBackdropClassName, modalPopupAnimationClassName } from '../overlay-shared'
 
-export const Dialog = BaseDialog.Root
-export const DialogTrigger = BaseDialog.Trigger
-export const DialogTitle = BaseDialog.Title
-export const DialogDescription = BaseDialog.Description
-export const DialogPortal = BaseDialog.Portal
-export const createDialogHandle = BaseDialog.createHandle
+const Dialog = BaseDialog.Root
+const DialogTrigger = BaseDialog.Trigger
+const DialogTitle = BaseDialog.Title
+const DialogDescription = BaseDialog.Description
+const DialogPortal = BaseDialog.Portal
+const createDialogHandle = BaseDialog.createHandle
+
+type DialogProps<Payload = unknown> = BaseDialog.Root.Props<Payload>
+type DialogHandle<Payload = unknown> = BaseDialog.Handle<Payload>
+type DialogTriggerProps<Payload = unknown> = BaseDialog.Trigger.Props<Payload>
+type DialogTitleProps = BaseDialog.Title.Props
+type DialogDescriptionProps = BaseDialog.Description.Props
+type DialogPortalProps = BaseDialog.Portal.Props
 
 type DialogBackdropProps = Omit<BaseDialog.Backdrop.Props, 'className'> & {
   className?: string
 }
 
-export function DialogBackdrop({ className, ...props }: DialogBackdropProps) {
+function DialogBackdrop({ className, ...props }: DialogBackdropProps) {
   return <BaseDialog.Backdrop {...props} className={cn(modalBackdropClassName, className)} />
 }
 
@@ -24,7 +32,7 @@ type DialogViewportProps = Omit<BaseDialog.Viewport.Props, 'className'> & {
   className?: string
 }
 
-export function DialogViewport({ className, ...props }: DialogViewportProps) {
+function DialogViewport({ className, ...props }: DialogViewportProps) {
   return <BaseDialog.Viewport className={cn('fixed inset-0 z-50', className)} {...props} />
 }
 
@@ -32,7 +40,7 @@ type DialogPopupProps = Omit<BaseDialog.Popup.Props, 'className'> & {
   className?: string
 }
 
-export function DialogPopup({ className, ...props }: DialogPopupProps) {
+function DialogPopup({ className, ...props }: DialogPopupProps) {
   return (
     <BaseDialog.Popup
       className={cn(
@@ -45,9 +53,11 @@ export function DialogPopup({ className, ...props }: DialogPopupProps) {
   )
 }
 
-type DialogCloseButtonProps = Omit<BaseDialog.Close.Props, 'children'>
+type DialogCloseButtonProps = Omit<BaseDialog.Close.Props, 'children' | 'className'> & {
+  className?: string
+}
 
-export function DialogCloseButton({
+function DialogCloseButton({
   className,
   'aria-label': ariaLabel = 'Close',
   ...props
@@ -57,11 +67,12 @@ export function DialogCloseButton({
       aria-label={ariaLabel}
       {...props}
       className={cn(
-        'absolute inset-e-6 top-6 z-10 flex h-5 w-5 cursor-pointer items-center justify-center rounded-2xl hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50',
+        iconButtonVariants({ size: 'sm' }),
+        'absolute inset-e-6 top-6 z-10 rounded-2xl disabled:cursor-not-allowed disabled:opacity-50',
         className,
       )}
     >
-      <span aria-hidden="true" className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+      <span aria-hidden="true" className="i-ri-close-line size-4 text-text-tertiary" />
     </BaseDialog.Close>
   )
 }
@@ -73,7 +84,7 @@ type DialogContentProps = {
   backdropProps?: Omit<BaseDialog.Backdrop.Props, 'className'>
 }
 
-export function DialogContent({
+function DialogContent({
   children,
   className,
   backdropClassName,
@@ -92,4 +103,32 @@ export function DialogContent({
       </DialogPopup>
     </DialogPortal>
   )
+}
+
+export {
+  createDialogHandle,
+  Dialog,
+  DialogBackdrop,
+  DialogCloseButton,
+  DialogContent,
+  DialogDescription,
+  DialogPopup,
+  DialogPortal,
+  DialogTitle,
+  DialogTrigger,
+  DialogViewport,
+}
+
+export type {
+  DialogBackdropProps,
+  DialogCloseButtonProps,
+  DialogContentProps,
+  DialogDescriptionProps,
+  DialogHandle,
+  DialogPopupProps,
+  DialogPortalProps,
+  DialogProps,
+  DialogTitleProps,
+  DialogTriggerProps,
+  DialogViewportProps,
 }

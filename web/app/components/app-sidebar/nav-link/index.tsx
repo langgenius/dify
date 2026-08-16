@@ -66,7 +66,7 @@ const NavLink = ({
 
   const renderIcon = () => (
     <div className="flex size-5 items-center justify-center">
-      <NavIcon className="size-[18px] shrink-0" aria-hidden="true" />
+      <NavIcon className="size-4.5 shrink-0" aria-hidden="true" />
     </div>
   )
 

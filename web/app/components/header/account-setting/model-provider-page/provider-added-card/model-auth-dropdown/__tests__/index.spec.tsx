@@ -1,8 +1,13 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ModelProvider } from '../../../declarations'
 import type { CredentialPanelState } from '../../use-credential-panel-state'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { commonQueryKeys } from '@/service/use-common'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { CustomConfigurationStatusEnum, PreferredProviderTypeEnum } from '../../../declarations'
 import ModelAuthDropdown from '../index'
+
+const render = (ui: React.ReactElement) => renderWithConsoleQuery(ui)
 
 vi.mock('../../../model-auth/hooks', () => ({
   useAuth: () => ({
@@ -190,6 +195,64 @@ describe('ModelAuthDropdown', () => {
   })
 
   describe('Popover behavior', () => {
+    it('should keep the popover open and allow retrying when loading a summary detail fails', async () => {
+      const providerSummary = {
+        provider: 'test',
+        plugin_id: 'test-plugin',
+        label: { en_US: 'Test', zh_Hans: 'Test' },
+        supported_model_types: ['llm'],
+        configurate_methods: [],
+        preferred_provider_type: 'system',
+        is_configured: true,
+        custom_configuration: {
+          status: 'active',
+          has_custom_models: false,
+          available_credentials: [],
+          current_credential_usable: false,
+        },
+        system_configuration: { enabled: true },
+      } satisfies ModelProviderSummaryResponse
+      const fullProvider = createProvider()
+      render(
+        <ModelAuthDropdown
+          provider={providerSummary}
+          state={createState()}
+          isChangingPriority={false}
+          onChangePriority={onChangePriority}
+        />,
+      )
+      let resolveFirstRequest: ((response: Response) => void) | undefined
+      const fetchMock = vi.mocked(globalThis.fetch)
+      fetchMock.mockImplementationOnce(
+        () =>
+          new Promise<Response>((resolve) => {
+            resolveFirstRequest = resolve
+          }),
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: /addApiKey/i }))
+
+      expect(await screen.findByRole('status')).toBeInTheDocument()
+      await act(async () => {
+        resolveFirstRequest?.(new Response(null, { status: 500 }))
+      })
+      expect(await screen.findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+
+      fetchMock.mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: [fullProvider] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+      await waitFor(() => {
+        expect(screen.getByText('common.modelProvider.card.noApiKeysTitle')).toBeInTheDocument()
+      })
+      expect(fetchMock).toHaveBeenCalledTimes(2)
+    })
+
     it('should open popover on button click and show dropdown content', async () => {
       render(
         <ModelAuthDropdown
@@ -212,6 +275,113 @@ describe('ModelAuthDropdown', () => {
       await waitFor(() => {
         expect(screen.getByText('Key 1')).toBeInTheDocument()
       })
+    })
+
+    it('should load provider detail on first click and reuse it on reopen', async () => {
+      const fullProvider = createProvider({
+        custom_configuration: {
+          status: CustomConfigurationStatusEnum.active,
+          available_credentials: [{ credential_id: 'c1', credential_name: 'Key 1' }],
+          current_credential_id: 'c1',
+          current_credential_name: 'Key 1',
+        },
+      })
+      const providerSummary = {
+        provider: 'test',
+        is_configured: true,
+        custom_configuration: {
+          available_credentials: [{ credential_id: 'c1', credential_name: 'Key 1' }],
+          current_credential_id: 'c1',
+          current_credential_name: 'Key 1',
+          current_credential_usable: true,
+        },
+      } as unknown as ModelProviderSummaryResponse
+      const rendered = render(
+        <ModelAuthDropdown
+          provider={providerSummary}
+          state={createState({ hasCredentials: true, variant: 'api-active' })}
+          isChangingPriority={false}
+          onChangePriority={onChangePriority}
+        />,
+      )
+      const fetchQuery = vi
+        .spyOn(rendered.queryClient, 'fetchQuery')
+        .mockImplementation(async () => {
+          const response = { data: [fullProvider] }
+          rendered.queryClient.setQueryData(commonQueryKeys.modelProviderDetails, response)
+          return response
+        })
+      const trigger = screen.getByRole('button', { name: /config/i })
+
+      fireEvent.click(trigger)
+
+      await waitFor(() => {
+        expect(screen.getByText('Key 1')).toBeInTheDocument()
+      })
+      expect(fetchQuery).toHaveBeenCalledTimes(1)
+
+      fireEvent.click(trigger)
+      await waitFor(() => {
+        expect(screen.queryByText('Key 1')).not.toBeInTheDocument()
+      })
+      fireEvent.click(trigger)
+
+      await waitFor(() => {
+        expect(screen.getByText('Key 1')).toBeInTheDocument()
+      })
+      expect(fetchQuery).toHaveBeenCalledTimes(1)
+    })
+
+    it('should render updated provider detail from the query cache', async () => {
+      const providerSummary = {
+        provider: 'test',
+        is_configured: true,
+        custom_configuration: {
+          available_credentials: [],
+          current_credential_usable: true,
+        },
+      } as unknown as ModelProviderSummaryResponse
+      const firstProvider = createProvider({
+        custom_configuration: {
+          status: CustomConfigurationStatusEnum.active,
+          available_credentials: [{ credential_id: 'c1', credential_name: 'Key 1' }],
+          current_credential_id: 'c1',
+          current_credential_name: 'Key 1',
+        },
+      })
+      const nextProvider = createProvider({
+        custom_configuration: {
+          status: CustomConfigurationStatusEnum.active,
+          available_credentials: [{ credential_id: 'c2', credential_name: 'Key 2' }],
+          current_credential_id: 'c2',
+          current_credential_name: 'Key 2',
+        },
+      })
+      const rendered = render(
+        <ModelAuthDropdown
+          provider={providerSummary}
+          state={createState({ hasCredentials: true, variant: 'api-active' })}
+          isChangingPriority={false}
+          onChangePriority={onChangePriority}
+        />,
+      )
+      vi.spyOn(rendered.queryClient, 'fetchQuery').mockImplementation(async () => {
+        const response = { data: [firstProvider] }
+        rendered.queryClient.setQueryData(commonQueryKeys.modelProviderDetails, response)
+        return response
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: /config/i }))
+      await waitFor(() => expect(screen.getByText('Key 1')).toBeInTheDocument())
+
+      rendered.queryClient.setQueryData(commonQueryKeys.modelProviderDetails, {
+        data: [nextProvider],
+      })
+
+      await waitFor(() => {
+        expect(screen.getByText('Key 2')).toBeInTheDocument()
+      })
+      expect(screen.queryByText('Key 1')).not.toBeInTheDocument()
     })
   })
 })

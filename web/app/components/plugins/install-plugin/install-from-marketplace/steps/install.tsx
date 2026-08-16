@@ -3,12 +3,12 @@ import type { FC } from 'react'
 import type { InstallPackageResponse, Plugin, PluginManifestInMarket } from '../../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiLoader2Line } from '@remixicon/react'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
-import { langGeniusVersionInfoAtom } from '@/context/version-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import {
   useInstallPackageFromMarketPlace,
   usePluginDeclarationFromMarketPlace,
@@ -126,17 +126,20 @@ const Installed: FC<Props> = ({
     }
   }
 
-  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
+  const { data: currentVersion } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.meta.currentVersion ?? '',
+  })
   const { data: pluginDeclaration } = usePluginDeclarationFromMarketPlace(uniqueIdentifier)
   const isDifyVersionCompatible = useMemo(() => {
-    if (!pluginDeclaration || !langGeniusVersionInfo.current_version) return true
+    if (!pluginDeclaration || !currentVersion) return true
     return isEqualOrLaterThanVersion(
-      langGeniusVersionInfo.current_version,
+      currentVersion,
       pluginDeclaration?.manifest.meta.minimum_dify_version ?? '0.0.0',
     )
-  }, [langGeniusVersionInfo.current_version, pluginDeclaration])
+  }, [currentVersion, pluginDeclaration])
 
-  const { canInstall, isLoading: isInstallLimitLoading } = useInstallPluginLimit({
+  const { canInstall } = useInstallPluginLimit({
     ...payload,
     from: 'marketplace',
   })
@@ -167,21 +170,21 @@ const Installed: FC<Props> = ({
                 />
               )
             }
-            limitedInstall={!isInstallLimitLoading && !canInstall}
+            limitedInstall={!canInstall}
           />
         </div>
       </div>
       {/* Action Buttons */}
       <div className="flex items-center justify-end gap-2 self-stretch p-6 pt-5">
         {!isInstalling && (
-          <Button variant="secondary" className="min-w-[72px]" onClick={handleCancel}>
+          <Button variant="secondary" className="min-w-18" onClick={handleCancel}>
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </Button>
         )}
         <Button
           variant="primary"
-          className="flex min-w-[72px] space-x-0.5"
-          disabled={isInstalling || isLoading || isInstallLimitLoading || !canInstall}
+          className="flex min-w-18"
+          disabled={isInstalling || isLoading || !canInstall}
           onClick={handleInstall}
         >
           {isInstalling && <RiLoader2Line className="size-4 animate-spin-slow" />}

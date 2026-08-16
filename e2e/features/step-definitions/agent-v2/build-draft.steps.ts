@@ -159,7 +159,7 @@ When(
       await readFile(getAgentBuilderTestMaterialPath('buildInstruction'), 'utf8')
     ).trim()
 
-    await page.getByRole('button', { exact: true, name: 'Build' }).click()
+    await page.getByRole('radio', { exact: true, name: 'Build' }).click()
     await page.getByPlaceholder('Describe what your agent should do').fill(instruction)
 
     const checkoutResponsePromise = page.waitForResponse(
@@ -191,7 +191,7 @@ When(
 When('I try to generate an Agent v2 Build draft without a model', async function (this: DifyWorld) {
   const page = this.getPage()
 
-  await page.getByRole('button', { exact: true, name: 'Build' }).click()
+  await page.getByRole('radio', { exact: true, name: 'Build' }).click()
   await page
     .getByPlaceholder('Describe what your agent should do')
     .fill('Update the agent instructions for E2E.')

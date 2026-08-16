@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import Details from '../index'
 
 // Mock WorkflowPreview
@@ -281,7 +281,7 @@ describe('Details', () => {
       })
 
       const { container } = render(<Details {...defaultProps} />)
-      const sidebar = container.querySelector('[class*="w-[360px]"]')
+      const sidebar = container.querySelector('.w-90')
       expect(sidebar).toBeInTheDocument()
     })
 

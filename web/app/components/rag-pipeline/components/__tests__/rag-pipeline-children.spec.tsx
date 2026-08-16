@@ -60,11 +60,14 @@ vi.mock('@/app/components/workflow/hooks-store', () => ({
     }),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks/use-DSL', () => ({
   useDSL: () => ({
     exportCheck: mockExportCheck,
     handleExportDSL: mockHandleExportDSL,
   }),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-panel-interactions', () => ({
   usePanelInteractions: () => ({
     handlePaneContextmenuCancel: mockHandlePaneContextmenuCancel,
   }),
@@ -74,7 +77,7 @@ vi.mock('../../hooks/use-rag-pipeline-search', () => ({
   useRagPipelineSearch: mockUseRagPipelineSearch,
 }))
 
-vi.mock('../../../workflow/plugin-dependency', () => ({
+vi.mock('@/app/components/workflow/plugin-dependency', () => ({
   default: () => <div data-testid="plugin-dependency" />,
 }))
 

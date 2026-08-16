@@ -6,11 +6,12 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
+from enums import DeploymentEdition
 from events.app_event import app_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.db_migration_lock import DbMigrationAutoRenewLock
-from libs.rsa import generate_key_pair
+from libs.key_providers import generate_key_pair
 from models import Tenant
 from models.model import App, AppMode, Conversation
 from models.provider import Provider, ProviderModel
@@ -42,7 +43,7 @@ def reset_encrypt_key_pair():
     After the reset, all LLM credentials will become invalid, requiring re-entry.
     Only support SELF_HOSTED mode.
     """
-    if dify_config.EDITION != "SELF_HOSTED":
+    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
         click.echo(click.style("This command is only for SELF_HOSTED installations.", fg="red"))
         return
     with sessionmaker(db.engine, expire_on_commit=False).begin() as session:

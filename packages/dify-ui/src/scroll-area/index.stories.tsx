@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import type * as React from 'react'
 import {
+  ScrollArea,
   ScrollAreaContent,
   ScrollAreaCorner,
-  ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
@@ -12,18 +12,18 @@ import { cn } from '../cn'
 
 const meta = {
   title: 'Base/UI/ScrollArea',
-  component: ScrollAreaRoot,
+  component: ScrollArea,
   parameters: {
     layout: 'padded',
     docs: {
       description: {
         component:
-          'Compound scroll container built on Base UI Scroll Area. The examples mirror the upstream anatomy and focus patterns while applying Dify UI tokens and surface treatments. Base UI ScrollArea.Content defaults to min-width: fit-content, so vertical-only regions that should truncate long content must set min-width: 0 on the content slot.',
+          'Compound scroll container built on Base UI Scroll Area. ScrollArea is the structural root; ScrollAreaViewport is the actual scroll and focus owner, so place scroll refs, events, role, accessible-name attributes, and overscroll behavior on the viewport. Add role="region" only when the content is important enough to be a landmark, preferring aria-labelledby when a visible heading exists. Base UI sets Viewport overflow and Content min-width inline: use style={{ overflowX: "hidden" }} for an axis override and style={{ minWidth: 0 }} for vertical content that should truncate; regular overflow-x-hidden and min-w-0 utilities cannot override those inline defaults. This is a targeted override contract for those Base UI defaults, not a general preference for inline styles over className.',
       },
     },
   },
   tags: ['autodocs'],
-} satisfies Meta<typeof ScrollAreaRoot>
+} satisfies Meta<typeof ScrollArea>
 
 export default meta
 type Story = StoryObj<typeof meta>
@@ -54,12 +54,14 @@ const gridCells = Array.from({ length: 100 }, (_, index) => index + 1)
 function StorySection({
   eyebrow,
   title,
+  titleId,
   description,
   children,
   className,
 }: {
   eyebrow: string
   title: string
+  titleId?: string
   description: string
   children: React.ReactNode
   className?: string
@@ -73,7 +75,9 @@ function StorySection({
     >
       <div className="space-y-1">
         <div className="system-xs-medium-uppercase text-text-tertiary">{eyebrow}</div>
-        <h3 className="system-md-semibold text-text-primary">{title}</h3>
+        <h3 id={titleId} className="system-md-semibold text-text-primary">
+          {title}
+        </h3>
         <p className="max-w-[72ch] system-sm-regular text-pretty text-text-secondary">
           {description}
         </p>
@@ -91,10 +95,7 @@ function VerticalContent({
   className?: string
 }) {
   return (
-    <ScrollAreaContent
-      style={verticalContentStyle}
-      className={cn('w-full max-w-full min-w-0', className)}
-    >
+    <ScrollAreaContent style={verticalContentStyle} className={cn('w-full max-w-full', className)}>
       {children}
     </ScrollAreaContent>
   )
@@ -105,11 +106,12 @@ export const Anatomy: Story = {
     <StorySection
       eyebrow="Anatomy"
       title="Base UI compound parts"
-      description="The baseline story mirrors the official Scroll Area anatomy: Root, Viewport, Content, Scrollbar, and Thumb, with keyboard focus drawn by the viewport."
+      titleId="scroll-area-anatomy-title"
+      description="The baseline story uses ScrollArea as the structural root, with Viewport, Content, Scrollbar, and Thumb composed explicitly. Keyboard focus and accessible naming belong to the viewport."
     >
-      <ScrollAreaRoot className="relative h-75 w-full max-w-105 min-w-0">
+      <ScrollArea className="relative h-75 w-full max-w-105 min-w-0">
         <ScrollAreaViewport
-          aria-label="Scrollable anatomy example"
+          aria-labelledby="scroll-area-anatomy-title"
           role="region"
           className="h-full max-h-full max-w-full rounded-xl border-[0.5px] border-divider-subtle bg-components-panel-bg"
         >
@@ -122,7 +124,7 @@ export const Anatomy: Story = {
         <ScrollAreaScrollbar>
           <ScrollAreaThumb />
         </ScrollAreaScrollbar>
-      </ScrollAreaRoot>
+      </ScrollArea>
     </StorySection>
   ),
 }
@@ -134,7 +136,7 @@ export const Vertical: Story = {
       title="Long form content"
       description="Vertical overflow keeps the official viewport focus pattern while constraining content width so text never leaks outside the frame."
     >
-      <ScrollAreaRoot className="relative h-90 w-full max-w-130 min-w-0">
+      <ScrollArea className="relative h-90 w-full max-w-130 min-w-0">
         <ScrollAreaViewport
           aria-label="Long form content"
           role="region"
@@ -155,7 +157,7 @@ export const Vertical: Story = {
         <ScrollAreaScrollbar>
           <ScrollAreaThumb />
         </ScrollAreaScrollbar>
-      </ScrollAreaRoot>
+      </ScrollArea>
     </StorySection>
   ),
 }
@@ -165,9 +167,9 @@ export const VerticalTruncation: Story = {
     <StorySection
       eyebrow="Vertical"
       title="Constrained content width"
-      description="Use width constraints plus minWidth: 0 on ScrollArea.Content when a vertical-only list should keep vertical scrolling while truncating long labels instead of creating horizontal scroll."
+      description="Pass style={{ minWidth: 0 }} to ScrollAreaContent when a vertical-only list should truncate long labels instead of creating horizontal scroll. A regular min-w-0 utility cannot override Base UI's inline fit-content default."
     >
-      <ScrollAreaRoot className="relative h-48 w-full max-w-80 min-w-0">
+      <ScrollArea className="relative h-48 w-full max-w-80 min-w-0">
         <ScrollAreaViewport
           aria-label="Vertical file list"
           role="region"
@@ -190,7 +192,7 @@ export const VerticalTruncation: Story = {
         <ScrollAreaScrollbar>
           <ScrollAreaThumb />
         </ScrollAreaScrollbar>
-      </ScrollAreaRoot>
+      </ScrollArea>
     </StorySection>
   ),
 }
@@ -202,7 +204,7 @@ export const ScrollFade: Story = {
       title="Viewport mask with root focus"
       description="This mirrors the Base UI scroll-fade example: the viewport owns the mask and the root owns the focus outline so the indicator is never clipped."
     >
-      <ScrollAreaRoot
+      <ScrollArea
         className={cn(
           'relative h-90 w-full max-w-130 min-w-0',
           'has-[>_:first-child:focus-visible]:outline-2 has-[>_:first-child:focus-visible]:outline-offset-0 has-[>_:first-child:focus-visible]:outline-state-accent-solid',
@@ -213,7 +215,7 @@ export const ScrollFade: Story = {
           role="region"
           className={cn(
             'h-full max-h-full max-w-full rounded-xl bg-components-panel-bg outline-none focus-visible:outline-none',
-            'mask-linear-[to_bottom,transparent_0,black_min(40px,var(--scroll-area-overflow-y-start)),black_calc(100%_-_min(40px,var(--scroll-area-overflow-y-end,40px))),transparent_100%] mask-no-repeat',
+            'mask-linear-[to_bottom,transparent_0,black_min(40px,var(--scroll-area-overflow-y-start)),black_calc(100%-min(40px,var(--scroll-area-overflow-y-end,40px))),transparent_100%] mask-no-repeat',
           )}
         >
           <VerticalContent className="flex flex-col gap-4 px-4 py-3 pr-6 system-sm-regular leading-6 text-text-secondary">
@@ -227,7 +229,7 @@ export const ScrollFade: Story = {
         <ScrollAreaScrollbar className="opacity-0 data-hovering:opacity-100 data-scrolling:opacity-100 data-scrolling:duration-0">
           <ScrollAreaThumb />
         </ScrollAreaScrollbar>
-      </ScrollAreaRoot>
+      </ScrollArea>
     </StorySection>
   ),
 }
@@ -240,7 +242,7 @@ export const Horizontal: Story = {
       description="Horizontal overflow keeps Base UI's content sizing behavior and uses the same viewport focus treatment on the scrollable element."
       className="mx-auto max-w-190"
     >
-      <ScrollAreaRoot className="relative h-46 w-full max-w-130 min-w-0">
+      <ScrollArea className="relative h-46 w-full max-w-130 min-w-0">
         <ScrollAreaViewport
           aria-label="Horizontal numbered row"
           role="region"
@@ -262,7 +264,7 @@ export const Horizontal: Story = {
         <ScrollAreaScrollbar orientation="horizontal">
           <ScrollAreaThumb />
         </ScrollAreaScrollbar>
-      </ScrollAreaRoot>
+      </ScrollArea>
     </StorySection>
   ),
 }
@@ -274,7 +276,7 @@ export const BothAxes: Story = {
       title="Numbered grid"
       description="This follows the official two-axis example: both scrollbars are rendered and Corner reserves the intersection."
     >
-      <ScrollAreaRoot className="relative h-85 w-full max-w-140 min-w-0">
+      <ScrollArea className="relative h-85 w-full max-w-140 min-w-0">
         <ScrollAreaViewport
           aria-label="Numbered grid"
           role="region"
@@ -300,7 +302,7 @@ export const BothAxes: Story = {
           <ScrollAreaThumb />
         </ScrollAreaScrollbar>
         <ScrollAreaCorner />
-      </ScrollAreaRoot>
+      </ScrollArea>
     </StorySection>
   ),
 }

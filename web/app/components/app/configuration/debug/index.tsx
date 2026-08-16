@@ -6,9 +6,9 @@ import type { ModelParameterModalProps } from '@/app/components/header/account-s
 import type { Inputs } from '@/models/debug'
 import type { ModelConfig as BackendModelConfig, VisionFile, VisionSettings } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { RiAddLine, RiEqualizer2Line, RiSparklingFill } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { cloneDeep } from 'es-toolkit/object'
@@ -20,12 +20,11 @@ import { useContext } from 'use-context-selector'
 import { useShallow } from 'zustand/react/shallow'
 import ChatUserInput from '@/app/components/app/configuration/debug/chat-user-input'
 import PromptValuePanel from '@/app/components/app/configuration/prompt-value-panel'
+import { toast } from '@/app/components/app/configuration/toast'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import TextGeneration from '@/app/components/app/text-generate/item'
-import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import AgentLogModal from '@/app/components/base/agent-log-modal'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
-import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
 import PromptLogModal from '@/app/components/base/prompt-log-modal'
 import {
   ModelFeatureEnum,
@@ -305,6 +304,7 @@ const Debug: FC<IDebug> = ({
       onError() {
         setRespondingFalse()
       },
+      onNotifyError: (message) => toast.error(message),
     })
   }
 
@@ -409,7 +409,7 @@ const Debug: FC<IDebug> = ({
 
   return (
     <>
-      <div className="shrink-0">
+      <Collapsible open={expanded} onOpenChange={setExpanded} render={<div className="shrink-0" />}>
         <div className="flex items-center justify-between px-4 pt-3 pb-2">
           <div className="system-xl-semibold text-text-primary">
             {t(($) => $['inputs.title'], { ns: 'appDebug' })}
@@ -427,12 +427,12 @@ const Debug: FC<IDebug> = ({
                   }
                   disabled={multipleModelConfigs.length >= 4 || !canTestAndRun}
                 >
-                  <RiAddLine className="mr-1 size-3.5" />
+                  <span aria-hidden="true" className="i-ri-add-line size-3.5" />
                   {t(($) => $['modelProvider.addModel'], { ns: 'common' })}(
                   {multipleModelConfigs.length}
                   /4)
                 </Button>
-                <div className="mx-2 h-[14px] w-px bg-divider-regular" />
+                <div className="mx-2 h-3.5 w-px bg-divider-regular" />
               </>
             ) : null}
             {mode !== AppModeEnum.COMPLETION && (
@@ -441,9 +441,15 @@ const Debug: FC<IDebug> = ({
                   <Tooltip>
                     <TooltipTrigger
                       render={
-                        <ActionButton onClick={clearConversation}>
-                          <RefreshCcw01 className="size-4" />
-                        </ActionButton>
+                        <IconButton
+                          aria-label={t(($) => $['operation.refresh'], { ns: 'common' })}
+                          onClick={clearConversation}
+                        >
+                          <span
+                            aria-hidden="true"
+                            className="i-custom-vender-line-arrows-refresh-ccw-01 size-4"
+                          />
+                        </IconButton>
                       }
                     />
                     <TooltipContent>
@@ -457,13 +463,17 @@ const Debug: FC<IDebug> = ({
                     <Tooltip>
                       <TooltipTrigger
                         render={
-                          <ActionButton
-                            state={expanded ? ActionButtonState.Active : undefined}
-                            disabled={!canTestAndRun}
-                            onClick={() => setExpanded(!expanded)}
-                          >
-                            <RiEqualizer2Line className="size-4" />
-                          </ActionButton>
+                          <CollapsibleTrigger
+                            className="size-6 min-h-0 justify-center gap-0 p-0.5 hover:not-data-disabled:text-text-secondary data-panel-open:bg-state-accent-active data-panel-open:text-text-accent data-panel-open:hover:bg-state-accent-active-alt"
+                            render={
+                              <IconButton
+                                aria-label={t(($) => $['panel.userInputField'], { ns: 'workflow' })}
+                                disabled={!canTestAndRun}
+                              >
+                                <span aria-hidden="true" className="i-ri-equalizer-2-line size-4" />
+                              </IconButton>
+                            }
+                          />
                         }
                       />
                       <TooltipContent>
@@ -471,7 +481,7 @@ const Debug: FC<IDebug> = ({
                       </TooltipContent>
                     </Tooltip>
                     {expanded && (
-                      <div className="absolute right-[5px] bottom-[-14px] z-10 h-3 w-3 rotate-45 border-t-[0.5px] border-l-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg" />
+                      <div className="absolute right-1.25 -bottom-3.5 z-10 h-3 w-3 rotate-45 border-t-[0.5px] border-l-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg" />
                     )}
                   </div>
                 )}
@@ -479,10 +489,10 @@ const Debug: FC<IDebug> = ({
             )}
           </div>
         </div>
-        {mode !== AppModeEnum.COMPLETION && expanded && (
-          <div className="mx-3">
+        {mode !== AppModeEnum.COMPLETION && (
+          <CollapsiblePanel render={<div className="mx-3" />}>
             <ChatUserInput inputs={inputs} />
-          </div>
+          </CollapsiblePanel>
         )}
         {mode === AppModeEnum.COMPLETION && (
           <PromptValuePanel
@@ -497,7 +507,7 @@ const Debug: FC<IDebug> = ({
             onVisionFilesChange={setCompletionFiles}
           />
         )}
-      </div>
+      </Collapsible>
       {debugWithMultipleModel && (
         <div className="mt-3 grow overflow-hidden" ref={ref}>
           <DebugWithMultipleModel
@@ -534,8 +544,8 @@ const Debug: FC<IDebug> = ({
           {(!modelConfig.provider || !isAPIKeySet) && <HasNotSetAPIKEY onSetting={onSetting} />}
           {/* No model selected */}
           {modelConfig.provider && isAPIKeySet && !modelConfig.model_id && (
-            <div className="flex grow flex-col items-center justify-center pb-[120px]">
-              <div className="flex w-full max-w-[400px] flex-col gap-2 px-4 py-4">
+            <div className="flex grow flex-col items-center justify-center pb-30">
+              <div className="flex w-full max-w-100 flex-col gap-2 px-4 py-4">
                 <div className="flex h-10 w-10 items-center justify-center rounded-[10px]">
                   <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg p-1 shadow-lg backdrop-blur-[5px]">
                     <span className="i-ri-brain-2-line size-5 text-text-tertiary" />
@@ -584,7 +594,10 @@ const Debug: FC<IDebug> = ({
               )}
               {!completionRes && !isResponding && (
                 <div className="flex grow flex-col items-center justify-center gap-2">
-                  <RiSparklingFill className="size-12 text-text-empty-state-icon" />
+                  <span
+                    aria-hidden="true"
+                    className="i-ri-sparkling-fill size-12 text-text-empty-state-icon"
+                  />
                   <div className="system-sm-regular text-text-quaternary">
                     {t(($) => $.noResult, { ns: 'appDebug' })}
                   </div>

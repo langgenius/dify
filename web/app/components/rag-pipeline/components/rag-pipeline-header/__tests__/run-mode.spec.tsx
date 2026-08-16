@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { RunMode } from '../run-mode'
 
 const mockHandleWorkflowStartRunInWorkflow = vi.fn()
@@ -33,10 +33,13 @@ vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
 
 let mockWorkflowRunningData: { task_id: string; result: { status: string } } | undefined
 let mockIsPreparingDataSource = false
-vi.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks/use-workflow-run', () => ({
   useWorkflowRun: () => ({
     handleStopRun: mockHandleStopRun,
   }),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-workflow-start-run', () => ({
   useWorkflowStartRun: () => ({
     handleWorkflowStartRunInWorkflow: mockHandleWorkflowStartRunInWorkflow,
   }),

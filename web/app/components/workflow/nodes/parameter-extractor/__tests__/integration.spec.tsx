@@ -35,9 +35,8 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  __esModule: true,
-  default: ({ defaultModel }: { defaultModel?: { provider: string; model: string } }) => (
-    <div>{defaultModel ? `${defaultModel.provider}:${defaultModel.model}` : 'no-model'}</div>
+  ModelSelector: ({ value }: { value?: { provider: string; model: string } }) => (
+    <div>{value ? `${value.provider}:${value.model}` : 'no-model'}</div>
   ),
 }))
 
@@ -72,14 +71,6 @@ vi.mock(
     ),
   }),
 )
-
-vi.mock('@langgenius/dify-ui/dialog', () => ({
-  __esModule: true,
-  Dialog: ({ children, open }: { children: ReactNode; open?: boolean }) =>
-    open !== false ? <div data-testid="base-modal">{children}</div> : null,
-  DialogContent: ({ children }: { children: ReactNode }) => <>{children}</>,
-  DialogTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/collapse', () => ({
   FieldCollapse: ({ title, children }: { title: ReactNode; children: ReactNode }) => (

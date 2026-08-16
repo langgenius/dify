@@ -21,7 +21,13 @@ from models import Account
 from services.step_by_step_tour_service import StepByStepTourPatch, StepByStepTourService
 
 from . import console_ns
-from .wraps import account_initialization_required, setup_required, with_current_tenant_id, with_current_user
+from .wraps import (
+    account_initialization_required,
+    model_validate,
+    setup_required,
+    with_current_tenant_id,
+    with_current_user,
+)
 
 StepByStepTourAction = Literal[
     "skip",
@@ -92,9 +98,9 @@ class StepByStepTourStateApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def patch(self, current_tenant_id: str, current_user: Account):
-        payload = StepByStepTourStatePatchPayload.model_validate(console_ns.payload or {})
-        patch = cast(StepByStepTourPatch, payload.model_dump(exclude_unset=True, exclude_none=True))
+    @model_validate(StepByStepTourStatePatchPayload)
+    def patch(self, req_data: StepByStepTourStatePatchPayload, current_tenant_id: str, current_user: Account):
+        patch = cast(StepByStepTourPatch, req_data.model_dump(exclude_unset=True, exclude_none=True))
         return dump_response(
             StepByStepTourStateResponse,
             StepByStepTourService.patch_state(

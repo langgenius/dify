@@ -1,7 +1,7 @@
 import type { Topic } from '../../types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useEdgesInteractions } from '../../../../hooks'
+import { useEdgesInteractions } from '../../../../hooks/use-edges-interactions'
 import ClassList from '../class-list'
 
 vi.mock('react-sortablejs', () => ({
@@ -9,8 +9,8 @@ vi.mock('react-sortablejs', () => ({
   ReactSortable: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
-vi.mock('../../../../hooks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../../hooks')>()
+vi.mock('../../../../hooks/use-edges-interactions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../hooks/use-edges-interactions')>()
   return {
     ...actual,
     useEdgesInteractions: vi.fn(),

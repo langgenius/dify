@@ -4,11 +4,11 @@ import ChatVariableTrigger from '../chat-variable-trigger'
 const mockUseNodesReadOnly = vi.fn()
 const mockUseIsChatMode = vi.fn()
 
-vi.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks/use-workflow', () => ({
   useNodesReadOnly: () => mockUseNodesReadOnly(),
 }))
 
-vi.mock('../../../hooks', () => ({
+vi.mock('../../../hooks/use-is-chat-mode', () => ({
   useIsChatMode: () => mockUseIsChatMode(),
 }))
 

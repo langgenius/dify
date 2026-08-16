@@ -8,13 +8,18 @@ import type {
 } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Popover, PopoverContent } from '@langgenius/dify-ui/popover'
-import { useQuery } from '@tanstack/react-query'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
+import { useQueryState } from 'nuqs'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
-import { IS_CLOUD_EDITION } from '@/config'
+import { useEducationExpireNotice } from '@/app/education/expire-notice/use-expire-notice'
 import { useDocLink } from '@/context/i18n'
 import { useModalContextSelector } from '@/context/modal-context'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -24,7 +29,7 @@ import { usePathname, useRouter } from '@/next/navigation'
 import { hasPermission } from '@/utils/permission'
 import { getStepByStepTourPermissionVariant, trackStepByStepTourEvent } from './analytics'
 import { StepByStepTourCoachmark } from './coachmark'
-import { FloatingChecklist } from './floating-widget'
+import { FloatingChecklist, MinimizedTourPill } from './floating-widget'
 import {
   activeStepByStepTourGuideGroupAtom,
   activeStepByStepTourGuideIndexAtom,
@@ -131,7 +136,9 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const hasBlockingModalOpen = useModalContextSelector((state) => state.hasBlockingModalOpen)
-  const { data: systemFeatures } = useQuery(systemFeaturesQueryOptions())
+  const [educationExpireNotice] = useEducationExpireNotice()
+  const [settingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const completedTaskIds = useAtomValue(completedStepByStepTourTaskIdsAtom)
   const skipped = useAtomValue(stepByStepTourSkippedAtom)
   const firstWorkspaceId = useAtomValue(stepByStepTourFirstWorkspaceIdAtom)
@@ -151,6 +158,8 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
   const shellMode = useStepByStepTourShellModeValue()
   const setShellMode = useSetStepByStepTourShellMode()
   const anchorRef = useRef<HTMLDivElement>(null)
+  const checklistCloseButtonRef = useRef<HTMLButtonElement>(null)
+  const restoreTriggerRef = useRef<HTMLButtonElement>(null)
   const lastRequestedIntegrationRouteRef = useRef<string | undefined>(undefined)
   const previousSkippedRef = useRef(skipped)
   const permissionFallbackAnalyticsKeyRef = useRef<string | undefined>(undefined)
@@ -182,8 +191,8 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
     [],
   )
 
-  const learnDifyEnabled = systemFeatures?.enable_learn_app ?? true
-  const stepByStepTourFeatureEnabled = Boolean(systemFeatures?.enable_step_by_step_tour)
+  const learnDifyEnabled = systemFeatures.enable_learn_app
+  const stepByStepTourFeatureEnabled = systemFeatures.enable_step_by_step_tour
   const availableTasks = learnDifyEnabled
     ? STEP_BY_STEP_TOUR_TASKS
     : STEP_BY_STEP_TOUR_TASKS.filter((task) => task.id !== 'home')
@@ -229,11 +238,15 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
         }
       : undefined
   const visible =
-    IS_CLOUD_EDITION &&
+    systemFeatures.deployment_edition === 'CLOUD' &&
     stepByStepTourFeatureEnabled &&
     enabledForCurrentWorkspace &&
     (hasActiveGuide || !shouldHideOnPathname(pathname))
-  const overlayVisible = visible && !hasBlockingModalOpen
+  const overlayVisible =
+    visible &&
+    !hasBlockingModalOpen &&
+    !settingsDestination &&
+    !(pathname === '/apps' && educationExpireNotice)
   const completionPromptVisible = visible && allTasksCompleted && !activeTask
   const checklistMinimized = completionPromptVisible ? false : minimized
   const expanded = !checklistMinimized
@@ -577,19 +590,19 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
     setShellMode('expanded')
   }
 
+  const progress = {
+    ariaValueText: t(($) => $['stepByStepTour.progressAriaValueText'], {
+      completed: completedAvailableTaskIds.length,
+      total: availableTasks.length,
+    }),
+    completed: completedAvailableTaskIds.length,
+    total: availableTasks.length,
+  }
   const floatingChecklist = (
     <FloatingChecklist
       title={title}
       duration={t(($) => $['stepByStepTour.duration'])}
-      minimized={checklistMinimized}
-      progress={{
-        ariaValueText: t(($) => $['stepByStepTour.progressAriaValueText'], {
-          completed: completedAvailableTaskIds.length,
-          total: availableTasks.length,
-        }),
-        completed: completedAvailableTaskIds.length,
-        total: availableTasks.length,
-      }}
+      progress={progress}
       completionPrompt={
         completionPromptVisible
           ? {
@@ -602,9 +615,9 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
           : undefined
       }
       tasks={tasks}
+      closeButtonRef={checklistCloseButtonRef}
       skipLabel={t(($) => $['stepByStepTour.skip'])}
       minimizeLabel={t(($) => $['stepByStepTour.minimize'])}
-      restoreLabel={t(($) => $['stepByStepTour.restore'])}
       getTaskCompleteLabel={(taskTitle) =>
         t(($) => $['stepByStepTour.markTaskComplete'], { title: taskTitle })
       }
@@ -613,9 +626,6 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
       }
       onMinimize={() => {
         setShellMode('collapsed')
-      }}
-      onRestore={() => {
-        setShellMode('expanded')
       }}
       onSkip={skipTour}
       onCompleteTask={(taskId) => {
@@ -719,13 +729,24 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
         />
       )}
       {visible && (!allTasksCompleted || completionPromptVisible) && (
-        <Popover open={overlayVisible && expanded}>
+        <Popover
+          open={overlayVisible && expanded}
+          onOpenChange={(open) => {
+            if (open) setShellMode('expanded')
+          }}
+        >
           <div
             ref={anchorRef}
             aria-hidden="true"
             className="pointer-events-none absolute bottom-0 left-0 h-0 w-full"
           />
-          {checklistMinimized && floatingChecklist}
+          {checklistMinimized && (
+            <PopoverTrigger
+              ref={restoreTriggerRef}
+              aria-label={t(($) => $['stepByStepTour.restore'])}
+              render={(props) => <MinimizedTourPill {...props} title={title} progress={progress} />}
+            />
+          )}
           {overlayVisible && (
             <PopoverContent
               placement="top-start"
@@ -740,6 +761,10 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
                 },
               }}
               popupClassName="overflow-visible rounded-none border-0 bg-transparent p-0 shadow-none"
+              popupProps={{
+                initialFocus: checklistCloseButtonRef,
+                finalFocus: restoreTriggerRef,
+              }}
             >
               {floatingChecklist}
             </PopoverContent>
@@ -778,7 +803,7 @@ function SkipRecoveryPrompt({
   return (
     <section
       aria-label={label}
-      className="fixed bottom-[76px] left-1.5 z-50 flex w-[260px] max-w-[calc(100vw-12px)] flex-col gap-1 rounded-2xl border-[0.5px] border-state-accent-hover-alt bg-state-accent-hover p-4 shadow-[0_20px_24px_-4px_var(--color-shadow-shadow-5),0_8px_8px_-4px_var(--color-shadow-shadow-1)] backdrop-blur-[10px]"
+      className="fixed bottom-19 left-1.5 z-50 flex w-65 max-w-[calc(100vw-12px)] flex-col gap-1 rounded-2xl border-[0.5px] border-state-accent-hover-alt bg-state-accent-hover p-4 shadow-[0_20px_24px_-4px_var(--color-shadow-shadow-5),0_8px_8px_-4px_var(--color-shadow-shadow-1)] backdrop-blur-[10px]"
     >
       <p className="system-sm-regular text-text-secondary">{message}</p>
       <div className="flex h-12 items-end justify-end pt-4">
@@ -794,11 +819,11 @@ function SkipRecoveryPrompt({
       </div>
       <span
         aria-hidden
-        className="absolute top-full left-[214px] h-7 w-0.5 bg-state-accent-hover-alt"
+        className="absolute top-full left-53.5 h-7 w-0.5 bg-state-accent-hover-alt"
       />
       <span
         aria-hidden
-        className="absolute top-[calc(100%+22px)] left-[209px] size-3 rounded-full border-2 border-state-accent-hover bg-state-accent-solid shadow-xs"
+        className="absolute top-[calc(100%+22px)] left-52.25 size-3 rounded-full border-2 border-state-accent-hover bg-state-accent-solid shadow-xs"
       />
     </section>
   )

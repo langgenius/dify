@@ -94,11 +94,66 @@ describe('useWorkflowSearch', () => {
 
     const toolResults = findWorkflowNodes('search')
     expect(toolResults.map((item) => item.id)).toEqual(['tool-1'])
-    expect(toolResults[0]?.description).toBe('Search the web')
+    // description now includes nodeId suffix: "desc · nodeId"
+    expect(toolResults[0]?.description).toBe('Search the web · tool-1')
 
     unmount()
 
     expect(findWorkflowNodes('gpt')).toEqual([])
+  })
+
+  it('matches by node_id with highest priority scoring', async () => {
+    runtimeNodes.push(
+      createNode({
+        id: '1721234567890',
+        data: {
+          type: BlockEnum.LLM,
+          title: 'Writer',
+          desc: 'Draft content',
+        } as CommonNodeType,
+      }),
+      createNode({
+        id: 'other-node',
+        data: {
+          type: BlockEnum.LLM,
+          title: '1721234567890', // title also matches the searchTerm
+          desc: '',
+        } as CommonNodeType,
+      }),
+    )
+
+    const { unmount } = renderHook(() => useWorkflowSearch())
+
+    // Exact nodeId match (120pts) should rank higher than title exact match (100pts)
+    const results = findWorkflowNodes('1721234567890')
+    expect(results.map((item) => item.id)).toEqual(['1721234567890', 'other-node'])
+
+    unmount()
+  })
+
+  it('matches by partial node_id', async () => {
+    runtimeNodes.push(
+      createNode({
+        id: '1721234567890',
+        data: {
+          type: BlockEnum.LLM,
+          title: 'Writer',
+          desc: 'Draft content',
+        } as CommonNodeType,
+      }),
+    )
+
+    const { unmount } = renderHook(() => useWorkflowSearch())
+
+    // Prefix match
+    const prefixResults = findWorkflowNodes('172123')
+    expect(prefixResults.map((item) => item.id)).toEqual(['1721234567890'])
+
+    // Partial match
+    const partialResults = findWorkflowNodes('456')
+    expect(partialResults.map((item) => item.id)).toEqual(['1721234567890'])
+
+    unmount()
   })
 
   it('binds the node selection listener to handleNodeSelect', () => {

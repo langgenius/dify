@@ -4,7 +4,7 @@ from unittest.mock import patch
 import pytest
 import pytz
 
-from libs.datetime_utils import naive_utc_now, parse_time_range
+from libs.datetime_utils import naive_utc_now, parse_time_range, to_utc_timestamp
 
 
 def test_naive_utc_now(monkeypatch: pytest.MonkeyPatch):
@@ -22,6 +22,18 @@ def test_naive_utc_now(monkeypatch: pytest.MonkeyPatch):
     naive_time = naive_datetime.time()
     utc_time = tz_aware_utc_now.time()
     assert naive_time == utc_time
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        datetime.datetime(2024, 1, 1),
+        datetime.datetime(2024, 1, 1, tzinfo=datetime.UTC),
+        datetime.datetime(2024, 1, 1, 9, tzinfo=datetime.timezone(datetime.timedelta(hours=9))),
+    ],
+)
+def test_to_utc_timestamp(value: datetime.datetime):
+    assert to_utc_timestamp(value) == 1704067200
 
 
 class TestParseTimeRange:

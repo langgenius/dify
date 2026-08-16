@@ -6,7 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { NodeSourceHandle } from '../_base/components/node-handle'
 import ReadonlyInputWithSelectVar from '../_base/components/readonly-input-with-select-var'
 import { getDisplayClassLabel } from './components/class-label-utils'
@@ -36,7 +36,7 @@ const TruncatedClassItem: FC<TruncatedClassItemProps> = ({ topic, index, nodeId,
   )
 
   return (
-    <div className="flex flex-col gap-y-0.5 rounded-md bg-workflow-block-parma-bg px-[5px] py-[3px]">
+    <div className="flex flex-col gap-y-0.5 rounded-md bg-workflow-block-parma-bg px-1.25 py-0.75">
       <div className="text-xs/4 font-semibold text-text-secondary">{displayLabel}</div>
       {shouldShowTooltip ? (
         <Popover>
@@ -74,10 +74,10 @@ const Node: FC<NodeProps<QuestionClassifierNodeType>> = (props) => {
     <div className="mb-1 px-3 py-1">
       {hasSetModel && (
         <ModelSelector
-          defaultModel={{ provider, model: modelId }}
-          triggerClassName="h-6! rounded-md!"
-          modelList={textGenerationModelList}
-          readonly
+          value={{ provider, model: modelId }}
+          models={textGenerationModelList}
+          size="small"
+          disabled
         />
       )}
       {!!topics.length && (

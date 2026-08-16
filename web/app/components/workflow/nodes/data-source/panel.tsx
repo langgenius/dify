@@ -5,12 +5,12 @@ import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import TagInput from '@/app/components/base/tag-input'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import { BoxGroupField } from '@/app/components/workflow/nodes/_base/components/layout'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import StructureOutputItem from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
 import { useStore } from '@/app/components/workflow/store'
 import { wrapStructuredVarItem } from '@/app/components/workflow/utils/tool'
+import { useNodesReadOnly } from '../../hooks/use-workflow'
 import useMatchSchemaType, {
   getMatchedSchemaType,
 } from '../_base/components/variable/use-match-schema-type'

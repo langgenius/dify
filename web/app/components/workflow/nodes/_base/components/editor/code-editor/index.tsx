@@ -162,7 +162,7 @@ const CodeEditor: FC<Props> = ({
         onMount={handleEditorDidMount}
       />
       {!outPutValue && !isFocus && (
-        <div className="pointer-events-none absolute top-0 left-[36px] text-[13px] leading-[18px] font-normal text-components-input-text-placeholder">
+        <div className="pointer-events-none absolute top-0 left-9 text-[13px] leading-4.5 font-normal text-components-input-text-placeholder">
           {placeholder}
         </div>
       )}

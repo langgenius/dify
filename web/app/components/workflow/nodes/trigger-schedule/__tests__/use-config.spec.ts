@@ -1,16 +1,21 @@
 import type { ScheduleTriggerNodeType } from '../types'
 import { renderHook } from '@testing-library/react'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { useNodesReadOnly } from '../../../hooks/use-workflow'
 import { BlockEnum } from '../../../types'
 import useConfig from '../use-config'
 
 const mockConsoleStateReader = vi.hoisted(() => vi.fn())
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesReadOnly: vi.fn(),
-}))
+vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useNodesReadOnly: vi.fn(),
+  }
+})
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   __esModule: true,

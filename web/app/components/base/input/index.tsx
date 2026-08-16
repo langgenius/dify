@@ -104,13 +104,13 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           ref={ref}
           style={styleCss}
           className={cn(
-            'w-full appearance-none border border-transparent bg-components-input-bg-normal py-[7px] text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs',
+            'w-full appearance-none border border-transparent bg-components-input-bg-normal py-1.75 text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs',
             inputVariants({ size }),
-            showLeftIcon && 'pl-[26px]',
+            showLeftIcon && 'pl-6.5',
             showLeftIcon && size === 'large' && 'pl-7',
-            showClearIcon && value && 'pr-[26px]',
+            showClearIcon && value && 'pr-6.5',
             showClearIcon && value && size === 'large' && 'pr-7',
-            (destructive || showCopyIcon) && 'pr-[26px]',
+            (destructive || showCopyIcon) && 'pr-6.5',
             (destructive || showCopyIcon) && size === 'large' && 'pr-7',
             disabled &&
               'cursor-not-allowed border-transparent bg-components-input-bg-disabled text-components-input-text-filled-disabled hover:border-transparent hover:bg-components-input-bg-disabled',

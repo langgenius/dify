@@ -1,6 +1,6 @@
 import { useCallback, useRef } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { useWorkflowUpdate } from '@/app/components/workflow/hooks'
+import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { useWorkflowDraftGraphForCanvas } from './use-workflow-draft-graph-for-canvas'
@@ -51,7 +51,7 @@ export const useWorkflowRefreshDraft = () => {
               .filter((env) => env.value_type === 'secret')
               .reduce(
                 (acc, env) => {
-                  acc[env.id] = env.value
+                  if (typeof env.value === 'string') acc[env.id] = env.value
                   return acc
                 },
                 {} as Record<string, string>,

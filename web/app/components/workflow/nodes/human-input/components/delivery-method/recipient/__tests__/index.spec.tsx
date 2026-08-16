@@ -1,5 +1,7 @@
+import type { ReactElement } from 'react'
 import { fireEvent, screen } from '@testing-library/react'
-import { render } from '@/test/console/render'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { withSelectorKey } from '@/test/i18n-mock'
 import Recipient from '../index'
 
@@ -11,14 +13,15 @@ const mockConsoleState = vi.hoisted(() => ({
   currentWorkspace: { name: "Dify's Lab" },
 }))
 
+const render = (ui: ReactElement) =>
+  renderWithConsoleState(ui, {
+    wrapper: createAccountProfileQueryWrapper(mockConsoleState.userProfile),
+  })
+
 vi.mock('react-i18next', () => ({
   useTranslation: () => mockUseTranslation(),
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState)
@@ -26,14 +29,6 @@ vi.mock('@/context/workspace-state', async () => {
 
 vi.mock('@/service/use-common', () => ({
   useMembers: () => mockUseMembers(),
-}))
-
-vi.mock('@langgenius/dify-ui/switch', () => ({
-  Switch: (props: { checked: boolean; onCheckedChange: (value: boolean) => void }) => (
-    <button type="button" onClick={() => props.onCheckedChange(!props.checked)}>
-      toggle-workspace
-    </button>
-  ),
 }))
 
 vi.mock('../member-selector', () => ({
@@ -116,7 +111,7 @@ describe('Recipient', () => {
     fireEvent.click(screen.getByText('add-email-member'))
     fireEvent.click(screen.getByText('delete-member'))
     fireEvent.click(screen.getByText('delete-external'))
-    fireEvent.click(screen.getByText('toggle-workspace'))
+    fireEvent.click(screen.getByRole('switch'))
 
     expect(onChange).toHaveBeenNthCalledWith(1, {
       whole_workspace: false,

@@ -515,7 +515,7 @@ describe('Crawling', () => {
       const { container } = render(<Crawling {...defaultProps} />)
 
       // Assert - Should have 3 skeleton items
-      const skeletonItems = container.querySelectorAll('.px-2.py-\\[5px\\]')
+      const skeletonItems = container.querySelectorAll('.px-2.py-1\\.25')
       expect(skeletonItems.length).toBe(3)
     })
 

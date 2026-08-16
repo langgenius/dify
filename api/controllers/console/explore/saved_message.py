@@ -10,7 +10,7 @@ from controllers.console import console_ns
 from controllers.console.app.error import AppUnavailableError
 from controllers.console.explore.error import NotCompletionAppError
 from controllers.console.explore.wraps import InstalledAppResource
-from controllers.console.wraps import with_current_user
+from controllers.console.wraps import model_validate, with_current_user
 from extensions.ext_database import db
 from fields.conversation_fields import MessageResponseSource, ResultResponse
 from fields.message_fields import SavedMessageInfiniteScrollPagination, SavedMessageItem
@@ -55,17 +55,16 @@ class SavedMessageListApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[SavedMessageCreatePayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[ResultResponse.__name__])
     @with_current_user
-    def post(self, current_user: Account, installed_app: InstalledApp):
+    @model_validate(SavedMessageCreatePayload)
+    def post(self, req_data: SavedMessageCreatePayload, current_user: Account, installed_app: InstalledApp):
         app_model = installed_app.app_with_session(session=db.session())
         if app_model is None:
             raise AppUnavailableError()
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
-        payload = SavedMessageCreatePayload.model_validate(console_ns.payload or {})
-
         try:
-            SavedMessageService.save(app_model, current_user, str(payload.message_id), session=db.session())
+            SavedMessageService.save(app_model, current_user, str(req_data.message_id), session=db.session())
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
 

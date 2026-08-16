@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -12,7 +13,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerat
 from core.workflow.system_variables import default_system_variables
 from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.runtime import GraphRuntimeState, VariablePool
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowKind
 
 
 def _make_graph_state():
@@ -55,13 +56,14 @@ def test_run_uses_single_node_execution_branch(
     app_generate_entity.single_iteration_run = single_iteration_run
     app_generate_entity.single_loop_run = single_loop_run
 
-    workflow = MagicMock(spec=Workflow)
-    workflow.tenant_id = "tenant"
-    workflow.app_id = "app"
-    workflow.id = "workflow"
-    workflow.type = "workflow"
-    workflow.version = "v1"
-    workflow.graph_dict = {"nodes": [], "edges": []}
+    workflow = Workflow(
+        tenant_id="tenant",
+        app_id="app",
+        id="workflow",
+        type="workflow",
+        version="v1",
+        graph=json.dumps({"nodes": [], "edges": []}),
+    )
     workflow.environment_variables = []
 
     runner = WorkflowAppRunner(
@@ -119,24 +121,28 @@ def test_single_node_run_validates_target_node_config(monkeypatch: pytest.Monkey
         app_id="app",
     )
 
-    workflow = MagicMock(spec=Workflow)
-    workflow.id = "workflow"
-    workflow.tenant_id = "tenant"
-    workflow.graph_dict = {
-        "nodes": [
+    workflow = Workflow(
+        id="workflow",
+        tenant_id="tenant",
+        graph=json.dumps(
             {
-                "id": "loop-node",
-                "data": {
-                    "type": "loop",
-                    "title": "Loop",
-                    "loop_count": 1,
-                    "break_conditions": [],
-                    "logical_operator": "and",
-                },
+                "nodes": [
+                    {
+                        "id": "loop-node",
+                        "data": {
+                            "type": "loop",
+                            "title": "Loop",
+                            "loop_count": 1,
+                            "start_node_id": "loop-start",
+                            "break_conditions": [],
+                            "logical_operator": "and",
+                        },
+                    }
+                ],
+                "edges": [],
             }
-        ],
-        "edges": [],
-    }
+        ),
+    )
 
     _, _, graph_runtime_state = _make_graph_state()
     seen_configs: list[object] = []
@@ -187,15 +193,16 @@ def test_run_adds_inputs_with_snippet_compatible_start_aliases() -> None:
     app_generate_entity.single_iteration_run = None
     app_generate_entity.single_loop_run = None
 
-    workflow = MagicMock(spec=Workflow)
-    workflow.tenant_id = "tenant"
-    workflow.app_id = "app"
-    workflow.id = "workflow"
-    workflow.type = "workflow"
-    workflow.version = "v1"
-    workflow.graph_dict = {"nodes": [], "edges": []}
+    workflow = Workflow(
+        tenant_id="tenant",
+        app_id="app",
+        id="workflow",
+        type="workflow",
+        version="v1",
+        graph=json.dumps({"nodes": [], "edges": []}),
+        kind=WorkflowKind.SNIPPET,
+    )
     workflow.environment_variables = []
-    workflow.kind_or_standard = "snippet"
 
     runner = WorkflowAppRunner(
         application_generate_entity=app_generate_entity,

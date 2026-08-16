@@ -1,6 +1,7 @@
 import type { FC, ReactNode } from 'react'
 import type { ChatConfig, ChatItem } from '../../types'
 import type { HumanInputFormSubmitData } from './human-input-content/type'
+import type { AnswerActionPosition } from './operation'
 import type { AppData } from '@/models/share'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
@@ -23,6 +24,7 @@ import SuggestedQuestions from './suggested-questions'
 import WorkflowProcessItem from './workflow-process'
 
 type AnswerProps = {
+  answerActionPosition?: AnswerActionPosition
   item: ChatItem
   question: string
   index: number
@@ -44,6 +46,7 @@ type AnswerProps = {
   onHumanInputFormSubmit?: (formToken: string, formData: HumanInputFormSubmitData) => Promise<void>
 }
 const Answer: FC<AnswerProps> = ({
+  answerActionPosition,
   item,
   question,
   index,
@@ -160,7 +163,7 @@ const Answer: FC<AnswerProps> = ({
         <div className="relative size-10 shrink-0">
           {answerIcon || <AnswerIcon />}
           {responding && (
-            <div className="absolute top-[-3px] left-[-3px] flex h-4 w-4 items-center rounded-full border-[0.5px] border-divider-subtle bg-background-section-burn pl-[6px] shadow-xs">
+            <div className="absolute -top-0.75 -left-0.75 flex h-4 w-4 items-center rounded-full border-[0.5px] border-divider-subtle bg-background-section-burn pl-1.5 shadow-xs">
               <LoadingAnim type="avatar" />
             </div>
           )}
@@ -185,6 +188,7 @@ const Answer: FC<AnswerProps> = ({
             >
               {!responding && contentIsEmpty && !hasAgentContent && (
                 <Operation
+                  answerActionPosition={answerActionPosition}
                   hasWorkflowProcess={!!workflowProcess}
                   maxSize={containerWidth - humanInputFormContainerWidth - 4}
                   contentWidth={humanInputFormContainerWidth}
@@ -245,6 +249,7 @@ const Answer: FC<AnswerProps> = ({
             >
               {!responding && (
                 <Operation
+                  answerActionPosition={answerActionPosition}
                   hasWorkflowProcess={!!workflowProcess}
                   maxSize={containerWidth - contentWidth - 4}
                   contentWidth={contentWidth}
@@ -321,6 +326,7 @@ const Answer: FC<AnswerProps> = ({
             >
               {!responding && (
                 <Operation
+                  answerActionPosition={answerActionPosition}
                   hasWorkflowProcess={!!workflowProcess}
                   maxSize={containerWidth - contentWidth - 4}
                   contentWidth={contentWidth}

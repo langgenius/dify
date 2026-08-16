@@ -1,62 +1,65 @@
-"""
-Unit tests for clean_document_task.
+"""SQLite-backed resilience tests for ``clean_document_task``.
 
-Focuses on the resilience contract added by the billing-failure fix:
-``index_processor.clean()`` is wrapped in ``try/except`` so that a transient
-failure inside the vector / keyword cleanup (e.g. ``ValueError("Unable to
-retrieve billing information...")`` raised by ``BillingService._send_request``
-when ``Vector(dataset)`` transitively triggers ``FeatureService.get_features``)
-does not abort the entire task and leave PG with stranded ``DocumentSegment``
-/ ``ChildChunk`` / ``UploadFile`` / ``DatasetMetadataBinding`` rows.
+The task must continue PostgreSQL cleanup when vector cleanup fails. Each test
+starts from the production incident shape: the caller has already deleted the
+``Document`` row while its segments and metadata bindings remain.
 """
 
 import uuid
 from unittest.mock import MagicMock, patch
 
 import pytest
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
+import tasks.clean_document_task as clean_document_task_module
+from models.dataset import (
+    Dataset,
+    DatasetMetadataBinding,
+    Document,
+    DocumentSegment,
+    SegmentAttachmentBinding,
+)
+from models.enums import DataSourceType, DocumentCreatedFrom
+from models.model import UploadFile
 from tasks.clean_document_task import clean_document_task
 
+SQLITE_MODELS = (
+    Dataset,
+    Document,
+    DocumentSegment,
+    SegmentAttachmentBinding,
+    UploadFile,
+    DatasetMetadataBinding,
+)
+
+pytestmark = pytest.mark.parametrize("sqlite_session", [SQLITE_MODELS], indirect=True)
+
 
 @pytest.fixture
-def document_id():
+def document_id() -> str:
     return str(uuid.uuid4())
 
 
 @pytest.fixture
-def dataset_id():
+def dataset_id() -> str:
     return str(uuid.uuid4())
 
 
 @pytest.fixture
-def tenant_id():
+def tenant_id() -> str:
     return str(uuid.uuid4())
 
 
 @pytest.fixture
-def mock_session_factory():
-    """Patch ``session_factory.create_session`` to return per-call mock sessions.
-
-    Each call to ``create_session()`` yields a fresh ``MagicMock`` session so we
-    can assert ``execute()`` calls across the multiple short-lived transactions
-    used by ``clean_document_task``.
-    """
-    with patch("tasks.clean_document_task.session_factory", autospec=True) as mock_sf:
-        sessions: list[MagicMock] = []
-
-        def _create_session():
-            session = MagicMock()
-            session.scalars.return_value.all.return_value = []
-            session.execute.return_value.all.return_value = []
-            session.scalar.return_value = None
-            cm = MagicMock()
-            cm.__enter__.return_value = session
-            cm.__exit__.return_value = None
-            sessions.append(session)
-            return cm
-
-        mock_sf.create_session.side_effect = _create_session
-        yield mock_sf, sessions
+def bind_task_sessions(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+    """Bind every short-lived task transaction to the isolated SQLite engine."""
+    engine = sqlite_session.get_bind()
+    monkeypatch.setattr(
+        clean_document_task_module.session_factory,
+        "create_session",
+        lambda: Session(engine, expire_on_commit=False),
+    )
 
 
 @pytest.fixture
@@ -68,7 +71,7 @@ def mock_storage():
 
 @pytest.fixture
 def mock_index_processor_factory():
-    """Mock ``IndexProcessorFactory`` so we can inject behavior into ``clean``."""
+    """Mock the vector/index boundary so cleanup behavior is deterministic."""
     with patch("tasks.clean_document_task.IndexProcessorFactory", autospec=True) as factory_cls:
         processor = MagicMock()
         processor.clean.return_value = None
@@ -83,87 +86,142 @@ def mock_index_processor_factory():
         }
 
 
-def _build_segment(segment_id: str, content: str = "segment content") -> MagicMock:
-    seg = MagicMock()
-    seg.id = segment_id
-    seg.index_node_id = f"node-{segment_id}"
-    seg.content = content
-    return seg
+def _document(*, document_id: str, dataset_id: str, tenant_id: str, created_by: str) -> Document:
+    return Document(
+        id=document_id,
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        position=1,
+        data_source_type=DataSourceType.UPLOAD_FILE,
+        batch="batch-1",
+        name=f"{document_id}.txt",
+        created_from=DocumentCreatedFrom.WEB,
+        created_by=created_by,
+    )
 
 
-def _build_dataset(dataset_id: str, tenant_id: str) -> MagicMock:
-    ds = MagicMock()
-    ds.id = dataset_id
-    ds.tenant_id = tenant_id
-    return ds
+def _segment(*, segment_id: str, document_id: str, dataset_id: str, tenant_id: str, created_by: str) -> DocumentSegment:
+    segment = DocumentSegment(
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        document_id=document_id,
+        position=1,
+        content="segment content",
+        word_count=2,
+        tokens=2,
+        created_by=created_by,
+        index_node_id=f"node-{segment_id}",
+    )
+    segment.id = segment_id
+    return segment
+
+
+def _persist_deleted_document_state(
+    session: Session,
+    *,
+    document_id: str,
+    dataset_id: str,
+    tenant_id: str,
+    target_segment_ids: list[str],
+) -> tuple[str, str]:
+    """Persist target children after deleting their document, plus scoped control rows."""
+    created_by = str(uuid.uuid4())
+    other_document_id = str(uuid.uuid4())
+    survivor_segment_id = str(uuid.uuid4())
+    dataset = Dataset(
+        id=dataset_id,
+        tenant_id=tenant_id,
+        name="Cleanup dataset",
+        data_source_type=DataSourceType.UPLOAD_FILE,
+        created_by=created_by,
+    )
+    target_document = _document(
+        document_id=document_id,
+        dataset_id=dataset_id,
+        tenant_id=tenant_id,
+        created_by=created_by,
+    )
+    other_document = _document(
+        document_id=other_document_id,
+        dataset_id=dataset_id,
+        tenant_id=tenant_id,
+        created_by=created_by,
+    )
+    segments = [
+        _segment(
+            segment_id=segment_id,
+            document_id=document_id,
+            dataset_id=dataset_id,
+            tenant_id=tenant_id,
+            created_by=created_by,
+        )
+        for segment_id in target_segment_ids
+    ]
+    segments.append(
+        _segment(
+            segment_id=survivor_segment_id,
+            document_id=other_document_id,
+            dataset_id=dataset_id,
+            tenant_id=tenant_id,
+            created_by=created_by,
+        )
+    )
+    metadata_bindings = [
+        DatasetMetadataBinding(
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            metadata_id=str(uuid.uuid4()),
+            document_id=current_document_id,
+            created_by=created_by,
+        )
+        for current_document_id in (document_id, other_document_id)
+    ]
+
+    session.add_all([dataset, target_document, other_document, *segments, *metadata_bindings])
+    session.commit()
+    session.delete(target_document)
+    session.commit()
+    return other_document_id, survivor_segment_id
+
+
+def _assert_relational_cleanup(
+    session: Session,
+    *,
+    document_id: str,
+    other_document_id: str,
+    survivor_segment_id: str,
+) -> None:
+    session.expire_all()
+    assert session.get(Document, document_id) is None
+    remaining_segments = session.scalars(select(DocumentSegment)).all()
+    assert [(segment.id, segment.document_id) for segment in remaining_segments] == [
+        (survivor_segment_id, other_document_id)
+    ]
+    remaining_binding_document_ids = set(session.scalars(select(DatasetMetadataBinding.document_id)).all())
+    assert remaining_binding_document_ids == {other_document_id}
 
 
 class TestVectorCleanupResilience:
-    """Vector / keyword cleanup must not abort the task on transient failure."""
+    """Vector/index failures must not abort relational cleanup."""
 
     def test_billing_failure_during_vector_cleanup_does_not_skip_pg_cleanup(
         self,
-        document_id,
-        dataset_id,
-        tenant_id,
-        mock_session_factory,
+        document_id: str,
+        dataset_id: str,
+        tenant_id: str,
+        sqlite_session: Session,
+        bind_task_sessions: None,
         mock_storage,
         mock_index_processor_factory,
-    ):
-        """Reproduces the production incident:
-
-        ``Vector(dataset)`` transitively calls ``FeatureService.get_features``
-        which calls ``BillingService._send_request("GET", ...)``. When billing
-        returns non-200 it raises ``ValueError("Unable to retrieve billing
-        information...")``. Before the fix this propagated out of
-        ``clean_document_task`` and left ``DocumentSegment`` / ``ChildChunk`` /
-        ``UploadFile`` / ``DatasetMetadataBinding`` rows orphaned because the
-        already-deleted ``Document`` row had been hard-committed by the caller
-        (``dataset_service.delete_document``) before ``.delay()`` was invoked.
-
-        Contract: a billing failure inside ``index_processor.clean()`` must be
-        caught, logged, and the rest of the task must continue so PG ends up
-        consistent with the deleted ``Document`` even if Qdrant retains
-        orphan vectors that can be reaped later.
-        """
-        mock_sf, sessions = mock_session_factory
-
-        # First create_session(): Step 1 (load segments + attachments).
-        step1_session = MagicMock()
-        step1_session.scalars.return_value.all.return_value = [
-            _build_segment("seg-1"),
-            _build_segment("seg-2"),
-        ]
-        step1_session.execute.return_value.all.return_value = []
-        step1_session.scalar.return_value = _build_dataset(dataset_id, tenant_id)
-        # Second create_session(): Step 2 (vector cleanup). Returns dataset.
-        step2_session = MagicMock()
-        step2_session.scalar.return_value = _build_dataset(dataset_id, tenant_id)
-        step2_session.scalars.return_value.all.return_value = []
-        step2_session.execute.return_value.all.return_value = []
-        # Subsequent sessions: Step 3+ (image / segment / file / metadata cleanup).
-        # Default fixture returns empty results which is fine for these short txns.
-        cm1, cm2 = MagicMock(), MagicMock()
-        cm1.__enter__.return_value = step1_session
-        cm1.__exit__.return_value = None
-        cm2.__enter__.return_value = step2_session
-        cm2.__exit__.return_value = None
-
-        def _default_cm():
-            session = MagicMock()
-            session.scalars.return_value.all.return_value = []
-            session.execute.return_value.all.return_value = []
-            session.scalar.return_value = None
-            cm = MagicMock()
-            cm.__enter__.return_value = session
-            cm.__exit__.return_value = None
-            sessions.append(session)
-            return cm
-
-        mock_sf.create_session.side_effect = [cm1, cm2] + [_default_cm() for _ in range(10)]
-
-        # Simulate the production failure: index_processor.clean() raises ValueError
-        # mirroring BillingService._send_request when billing returns non-200.
+    ) -> None:
+        """A transient billing failure leaves only the unrelated document's rows."""
+        other_document_id, survivor_segment_id = _persist_deleted_document_state(
+            sqlite_session,
+            document_id=document_id,
+            dataset_id=dataset_id,
+            tenant_id=tenant_id,
+            target_segment_ids=["seg-1", "seg-2"],
+        )
         mock_index_processor_factory["processor"].clean.side_effect = ValueError(
             "Unable to retrieve billing information. Please try again later or contact support."
         )
@@ -177,59 +235,33 @@ class TestVectorCleanupResilience:
                 file_id=None,
             )
 
-        # Assert
-        # 1. Vector cleanup was attempted.
         mock_index_processor_factory["processor"].clean.assert_called_once()
-        # 2. Despite the failure the task continued: at least one DocumentSegment
-        #    delete was issued. We use the count of session.execute calls across
-        #    later short transactions as a proxy for "Step 3+ executed".
-        execute_calls = sum(s.execute.call_count for s in sessions)
-        assert execute_calls > 0, (
-            "Step 3+ DB cleanup did not run after vector cleanup failure; "
-            "this regression would re-introduce the orphan-segment bug."
+        _assert_relational_cleanup(
+            sqlite_session,
+            document_id=document_id,
+            other_document_id=other_document_id,
+            survivor_segment_id=survivor_segment_id,
         )
         schedule_refresh.assert_not_called()
 
     def test_vector_cleanup_success_path_remains_unaffected(
         self,
-        document_id,
-        dataset_id,
-        tenant_id,
-        mock_session_factory,
+        document_id: str,
+        dataset_id: str,
+        tenant_id: str,
+        sqlite_session: Session,
+        bind_task_sessions: None,
         mock_storage,
         mock_index_processor_factory,
-    ):
-        """Backward-compat: the happy path must still call ``clean()`` exactly
-        once with the expected arguments and complete without errors.
-        """
-        mock_sf, sessions = mock_session_factory
-
-        step1_session = MagicMock()
-        step1_session.scalars.return_value.all.return_value = [_build_segment("seg-1")]
-        step1_session.execute.return_value.all.return_value = []
-        step1_session.scalar.return_value = _build_dataset(dataset_id, tenant_id)
-        step2_session = MagicMock()
-        step2_session.scalar.return_value = _build_dataset(dataset_id, tenant_id)
-        step2_session.scalars.return_value.all.return_value = []
-        step2_session.execute.return_value.all.return_value = []
-        cm1, cm2 = MagicMock(), MagicMock()
-        cm1.__enter__.return_value = step1_session
-        cm1.__exit__.return_value = None
-        cm2.__enter__.return_value = step2_session
-        cm2.__exit__.return_value = None
-
-        def _default_cm():
-            session = MagicMock()
-            session.scalars.return_value.all.return_value = []
-            session.execute.return_value.all.return_value = []
-            session.scalar.return_value = None
-            cm = MagicMock()
-            cm.__enter__.return_value = session
-            cm.__exit__.return_value = None
-            sessions.append(session)
-            return cm
-
-        mock_sf.create_session.side_effect = [cm1, cm2] + [_default_cm() for _ in range(10)]
+    ) -> None:
+        """The happy path calls the index boundary and completes scoped cleanup."""
+        other_document_id, survivor_segment_id = _persist_deleted_document_state(
+            sqlite_session,
+            document_id=document_id,
+            dataset_id=dataset_id,
+            tenant_id=tenant_id,
+            target_segment_ids=["seg-1"],
+        )
 
         with patch("tasks.clean_document_task.schedule_billing_vector_space_refresh") as schedule_refresh:
             clean_document_task(
@@ -239,49 +271,42 @@ class TestVectorCleanupResilience:
                 file_id=None,
             )
 
-        assert mock_index_processor_factory["processor"].clean.call_count == 1
-        # Index cleanup invoked with the expected delete_summaries / delete_child_chunks flags.
+        mock_index_processor_factory["processor"].clean.assert_called_once()
         _, kwargs = mock_index_processor_factory["processor"].clean.call_args
-        assert kwargs.get("with_keywords") is True
-        assert kwargs.get("delete_child_chunks") is True
-        assert kwargs.get("delete_summaries") is True
+        cleanup_session = kwargs.pop("session")
+        assert isinstance(cleanup_session, Session)
+        assert cleanup_session.get_bind() is sqlite_session.get_bind()
+        assert kwargs == {
+            "with_keywords": True,
+            "delete_child_chunks": True,
+            "delete_summaries": True,
+        }
+        _assert_relational_cleanup(
+            sqlite_session,
+            document_id=document_id,
+            other_document_id=other_document_id,
+            survivor_segment_id=survivor_segment_id,
+        )
         schedule_refresh.assert_called_once_with(tenant_id)
 
     def test_no_segments_skips_vector_cleanup(
         self,
-        document_id,
-        dataset_id,
-        tenant_id,
-        mock_session_factory,
+        document_id: str,
+        dataset_id: str,
+        tenant_id: str,
+        sqlite_session: Session,
+        bind_task_sessions: None,
         mock_storage,
         mock_index_processor_factory,
-    ):
-        """When the document has no segments (e.g. indexing failed before
-        producing any), vector cleanup must not be attempted — and therefore
-        the new try/except wrapper does not change behavior here.
-        """
-        mock_sf, sessions = mock_session_factory
-
-        step1_session = MagicMock()
-        step1_session.scalars.return_value.all.return_value = []  # no segments
-        step1_session.execute.return_value.all.return_value = []
-        step1_session.scalar.return_value = _build_dataset(dataset_id, tenant_id)
-        cm1 = MagicMock()
-        cm1.__enter__.return_value = step1_session
-        cm1.__exit__.return_value = None
-
-        def _default_cm():
-            session = MagicMock()
-            session.scalars.return_value.all.return_value = []
-            session.execute.return_value.all.return_value = []
-            session.scalar.return_value = None
-            cm = MagicMock()
-            cm.__enter__.return_value = session
-            cm.__exit__.return_value = None
-            sessions.append(session)
-            return cm
-
-        mock_sf.create_session.side_effect = [cm1] + [_default_cm() for _ in range(10)]
+    ) -> None:
+        """A target document without segments skips the vector/index boundary."""
+        other_document_id, survivor_segment_id = _persist_deleted_document_state(
+            sqlite_session,
+            document_id=document_id,
+            dataset_id=dataset_id,
+            tenant_id=tenant_id,
+            target_segment_ids=[],
+        )
 
         with patch("tasks.clean_document_task.schedule_billing_vector_space_refresh") as schedule_refresh:
             clean_document_task(
@@ -291,7 +316,11 @@ class TestVectorCleanupResilience:
                 file_id=None,
             )
 
-        # Vector cleanup is gated on ``index_node_ids``; when there are no
-        # segments the IndexProcessorFactory path is never entered.
         mock_index_processor_factory["factory_cls"].assert_not_called()
+        _assert_relational_cleanup(
+            sqlite_session,
+            document_id=document_id,
+            other_document_id=other_document_id,
+            survivor_segment_id=survivor_segment_id,
+        )
         schedule_refresh.assert_not_called()

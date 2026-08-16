@@ -1,5 +1,5 @@
 import Cookies from 'js-cookie'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import * as amplitude from '@/app/components/base/amplitude/utils'
 import { AppModeEnum } from '@/types/app'
 import {
@@ -138,6 +138,23 @@ describe('create-app-tracking', () => {
         source: 'explore_template_list',
         app_mode: 'agent',
         time: '04-13-09:08:08',
+      })
+    })
+
+    it('should preserve agent v2 mode as its own app mode', () => {
+      expect(
+        buildCreateAppEventPayload(
+          {
+            source: 'studio_blank',
+            appMode: 'agent-v2',
+          },
+          null,
+          new Date(2026, 3, 13, 9, 8, 9),
+        ),
+      ).toEqual({
+        source: 'studio_blank',
+        app_mode: 'agent-v2',
+        time: '04-13-09:08:09',
       })
     })
 

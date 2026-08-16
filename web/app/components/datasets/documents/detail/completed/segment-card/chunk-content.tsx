@@ -25,9 +25,7 @@ const ChunkContent: FC<ChunkContentProps> = ({ detail, isFullDocMode, className 
     return (
       <div className={className}>
         <div className="flex gap-x-1">
-          <div className="w-4 shrink-0 text-[13px] leading-[20px] font-medium text-text-tertiary">
-            Q
-          </div>
+          <div className="w-4 shrink-0 text-[13px] leading-5 font-medium text-text-tertiary">Q</div>
           <Markdown
             className={cn(
               'body-md-regular text-text-secondary',
@@ -38,9 +36,7 @@ const ChunkContent: FC<ChunkContentProps> = ({ detail, isFullDocMode, className 
           />
         </div>
         <div className="flex gap-x-1">
-          <div className="w-4 shrink-0 text-[13px] leading-[20px] font-medium text-text-tertiary">
-            A
-          </div>
+          <div className="w-4 shrink-0 text-[13px] leading-5 font-medium text-text-tertiary">A</div>
           <Markdown
             className={cn(
               'body-md-regular text-text-secondary',

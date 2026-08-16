@@ -11,12 +11,13 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { RadioGroup } from '@langgenius/dify-ui/radio'
 import { RiSearchEyeLine } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { ParentChildChunk } from '@/app/components/base/icons/src/vender/knowledge'
 import RadioCard from '@/app/components/base/radio-card'
 import SummaryIndexSetting from '@/app/components/datasets/settings/summary-index-setting'
-import { IS_CE_EDITION } from '@/config'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { ChunkingMode } from '@/models/datasets'
 import FileList from '../../assets/file-list-3-fill.svg'
 import Note from '../../assets/note-mod.svg'
@@ -78,6 +79,11 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
   showSummaryIndexSetting,
 }) => {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+  const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
 
   const getRuleName = (key: string): string => {
     const ruleNameMap: Record<string, string> = {
@@ -91,7 +97,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
   return (
     <OptionCard
       title={t(($) => $['stepTwo.parentChild'], { ns: 'datasetCreation' })}
-      icon={<ParentChildChunk className="h-[20px] w-[20px]" />}
+      icon={<ParentChildChunk className="h-5 w-5" />}
       effectImg={BlueEffect.src}
       className="text-util-colors-blue-light-blue-light-500"
       activeHeaderClassName="bg-dataset-option-card-blue-gradient"
@@ -101,7 +107,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
       actions={
         <>
           <Button variant="secondary-accent" onClick={onPreview}>
-            <RiSearchEyeLine className="mr-0.5 size-4" />
+            <RiSearchEyeLine className="size-4" />
             {t(($) => $['stepTwo.previewChunk'], { ns: 'datasetCreation' })}
           </Button>
           <Button variant="ghost" onClick={onReset}>
@@ -137,9 +143,9 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
                 <div className="flex gap-3">
                   <DelimiterInput
                     value={parentChildConfig.parent.delimiter}
-                    tooltip={
-                      t(($) => $['stepTwo.parentChildDelimiterTip'], { ns: 'datasetCreation' })!
-                    }
+                    tooltip={t(($) => $['stepTwo.parentChildDelimiterTip'], {
+                      ns: 'datasetCreation',
+                    })!}
                     onChange={(e) => onParentDelimiterChange(e.target.value)}
                   />
                   <MaxLengthInput
@@ -172,9 +178,9 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
           <div className="mt-1 flex gap-3">
             <DelimiterInput
               value={parentChildConfig.child.delimiter}
-              tooltip={
-                t(($) => $['stepTwo.parentChildChunkDelimiterTip'], { ns: 'datasetCreation' })!
-              }
+              tooltip={t(($) => $['stepTwo.parentChildChunkDelimiterTip'], {
+                ns: 'datasetCreation',
+              })!}
               onChange={(e) => onChildDelimiterChange(e.target.value)}
             />
             <MaxLengthInput
@@ -202,7 +208,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
                 </span>
               </label>
             ))}
-            {showSummaryIndexSetting && IS_CE_EDITION && (
+            {showSummaryIndexSetting && isNonCloudEdition && (
               <div className="mt-3">
                 <SummaryIndexSetting
                   entry="create-document"

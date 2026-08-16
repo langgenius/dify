@@ -15,7 +15,7 @@ export const useChunkStructure = () => {
     icon: (isActive: boolean) => (
       <GeneralChunk
         className={cn(
-          'h-[18px] w-[18px] text-text-tertiary group-hover:text-util-colors-indigo-indigo-600',
+          'h-4.5 w-4.5 text-text-tertiary group-hover:text-util-colors-indigo-indigo-600',
           isActive && 'text-util-colors-indigo-indigo-600',
         )}
       />
@@ -29,7 +29,7 @@ export const useChunkStructure = () => {
     icon: (isActive: boolean) => (
       <ParentChildChunk
         className={cn(
-          'h-[18px] w-[18px] text-text-tertiary group-hover:text-util-colors-blue-light-blue-light-500',
+          'h-4.5 w-4.5 text-text-tertiary group-hover:text-util-colors-blue-light-blue-light-500',
           isActive && 'text-util-colors-blue-light-blue-light-500',
         )}
       />
@@ -43,7 +43,7 @@ export const useChunkStructure = () => {
     icon: (isActive: boolean) => (
       <QuestionAndAnswer
         className={cn(
-          'h-[18px] w-[18px] text-text-tertiary group-hover:text-util-colors-teal-teal-600',
+          'h-4.5 w-4.5 text-text-tertiary group-hover:text-util-colors-teal-teal-600',
           isActive && 'text-util-colors-teal-teal-600',
         )}
       />

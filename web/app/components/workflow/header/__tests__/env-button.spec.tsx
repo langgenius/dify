@@ -11,7 +11,7 @@ vi.mock('@/hooks/use-theme', () => ({
   }),
 }))
 
-vi.mock('@/app/components/rag-pipeline/hooks', () => ({
+vi.mock('@/app/components/rag-pipeline/hooks/use-input-field-panel', () => ({
   useInputFieldPanel: () => ({
     closeAllInputFieldPanels: mockCloseAllInputFieldPanels,
   }),

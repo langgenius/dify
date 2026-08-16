@@ -6,21 +6,15 @@ from typing import Literal
 
 import pytest
 
-from dify_agent.adapters.shell.shellctl import ShellctlProvider
 from dify_agent.layers.drive import DifyDriveLayerConfig, DifyDriveSkillConfig
 from dify_agent.layers.drive.layer import DifyDriveLayer, DifyDriveLayerError, _AGENT_FILE_UPLOAD_REPLY_HINT
 from dify_agent.layers.shell import DifyShellLayerConfig
 from dify_agent.layers.shell.layer import CompleteRemoteCommandResult, DifyShellLayer
 
 
-def _unused_client_factory():
-    raise AssertionError("shellctl client should not be used by these drive-layer tests")
-
-
 def _shell_layer() -> DifyShellLayer:
     return DifyShellLayer.from_config_with_settings(
         DifyShellLayerConfig(agent_stub_drive_ref="agent-1"),
-        shell_provider=ShellctlProvider(entrypoint="http://shellctl", token="", client_factory=_unused_client_factory),
     )
 
 

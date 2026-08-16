@@ -17,23 +17,26 @@ type DSLConfirmModalProps = {
   onCancel: () => void
   onConfirm: () => void
   confirmDisabled?: boolean
+  confirmLoading?: boolean
 }
-const DSLConfirmModal = ({
+
+function DSLConfirmModal({
   versions = { importedVersion: '', systemVersion: '' },
   onCancel,
   onConfirm,
   confirmDisabled = false,
-}: DSLConfirmModalProps) => {
+  confirmLoading = false,
+}: DSLConfirmModalProps) {
   const { t } = useTranslation()
 
   return (
     <AlertDialog
       open
       onOpenChange={(open) => {
-        if (!open) onCancel()
+        if (!open && !confirmLoading) onCancel()
       }}
     >
-      <AlertDialogContent className="w-[480px] overflow-hidden! border-none text-left align-middle shadow-xl">
+      <AlertDialogContent className="w-120 overflow-hidden! border-none text-left align-middle shadow-xl">
         <div className="flex flex-col items-start gap-2 self-stretch p-6 pb-4">
           <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
             {t(($) => $['newApp.appCreateDSLErrorTitle'], { ns: 'app' })}
@@ -56,10 +59,14 @@ const DSLConfirmModal = ({
           </AlertDialogDescription>
         </div>
         <AlertDialogActions>
-          <AlertDialogCancelButton variant="secondary">
+          <AlertDialogCancelButton variant="secondary" disabled={confirmLoading}>
             {t(($) => $['newApp.Cancel'], { ns: 'app' })}
           </AlertDialogCancelButton>
-          <AlertDialogConfirmButton onClick={onConfirm} disabled={confirmDisabled}>
+          <AlertDialogConfirmButton
+            onClick={onConfirm}
+            disabled={confirmDisabled}
+            loading={confirmLoading}
+          >
             {t(($) => $['newApp.Confirm'], { ns: 'app' })}
           </AlertDialogConfirmButton>
         </AlertDialogActions>

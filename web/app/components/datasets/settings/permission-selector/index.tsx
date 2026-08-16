@@ -4,12 +4,12 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RadioGroup } from '@langgenius/dify-ui/radio'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
-import { useAtomValue } from 'jotai'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { userProfileAtom } from '@/context/account-state'
-import { datasetRbacEnabledAtom } from '@/context/system-features-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { DatasetPermission } from '@/models/datasets'
 import MemberItem from './member-item'
 import PermissionItem from './permission-item'
@@ -32,8 +32,14 @@ const PermissionSelector = ({
   onMemberSelect,
 }: PermissionSelectorProps) => {
   const { t } = useTranslation()
-  const userProfile = useAtomValue(userProfileAtom)
-  const isRbacEnabled = useAtomValue(datasetRbacEnabledAtom)
+  const { data: userProfile } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile,
+  })
+  const { data: isRbacEnabled } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ rbac_enabled }) => rbac_enabled,
+  })
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
   const { run: handleSearch } = useDebounceFn(
@@ -167,7 +173,7 @@ const PermissionSelector = ({
         popupClassName="border-none bg-transparent shadow-none"
       >
         <PopoverTitle className="sr-only">{permissionLabel}</PopoverTitle>
-        <div className="relative w-[480px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5">
+        <div className="relative w-120 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5">
           <RadioGroup<DatasetPermission>
             value={permission}
             onValueChange={(nextPermission) => {
@@ -221,7 +227,7 @@ const PermissionSelector = ({
             />
           </RadioGroup>
           {isPartialMembers && (
-            <div className="max-h-[360px] overflow-y-auto border-t border-divider-regular pr-1 pb-1 pl-1">
+            <div className="max-h-90 overflow-y-auto border-t border-divider-regular pr-1 pb-1 pl-1">
               <div className="sticky top-0 left-0 z-10 bg-components-panel-on-panel-item-bg p-2 pb-1">
                 <div className="relative w-full">
                   <span
@@ -232,7 +238,7 @@ const PermissionSelector = ({
                     aria-label={t(($) => $['operation.search'], { ns: 'common' })}
                     name="member-search"
                     autoComplete="off"
-                    className={cn('w-full pl-[26px]', keywords && 'pr-[26px]')}
+                    className={cn('w-full pl-6.5', keywords && 'pr-6.5')}
                     value={keywords}
                     placeholder={t(($) => $['operation.search'], { ns: 'common' }) || ''}
                     onChange={(event) => handleKeywordsChange(event.target.value)}
@@ -241,7 +247,7 @@ const PermissionSelector = ({
                     <button
                       type="button"
                       aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-                      className="group absolute top-1/2 right-2 -translate-y-1/2 cursor-pointer touch-manipulation border-none bg-transparent p-px outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                      className="group absolute top-1/2 right-2 -translate-y-1/2 cursor-pointer touch-manipulation border-none bg-transparent p-px focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                       onClick={() => handleKeywordsChange('')}
                     >
                       <span

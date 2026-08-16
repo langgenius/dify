@@ -1,4 +1,5 @@
 import type { DataSourceCredential } from '@/types/pipeline'
+import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
@@ -37,9 +38,14 @@ const CredentialSelector = ({
 
   return (
     <Popover open={open} onOpenChange={set}>
-      <PopoverTrigger nativeButton={false} render={<div className="grow overflow-hidden" />}>
-        <Trigger currentCredential={currentCredential} isOpen={open} />
-      </PopoverTrigger>
+      <PopoverTrigger
+        nativeButton={false}
+        render={(props, state) => (
+          <div {...props} className={cn('grow overflow-hidden', props.className)}>
+            <Trigger currentCredential={currentCredential} isOpen={state.open} />
+          </div>
+        )}
+      />
       <PopoverContent
         placement="bottom-start"
         sideOffset={4}

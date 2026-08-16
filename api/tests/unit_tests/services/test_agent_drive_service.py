@@ -91,11 +91,11 @@ def _seed_agent(*, tenant_id: str = TENANT, agent_id: str = AGENT) -> None:
         session.commit()
 
 
-def _seed_tool_file(*, user_id: str = USER, name: str = "f.txt") -> str:
+def _seed_tool_file(*, user_id: str = USER, name: str = "f.txt", conversation_id: str | None = None) -> str:
     tool_file = ToolFile(
         user_id=user_id,
         tenant_id=TENANT,
-        conversation_id=None,
+        conversation_id=conversation_id,
         file_key=f"tools/{TENANT}/{name}",
         mimetype="text/plain",
         name=name,
@@ -154,6 +154,30 @@ def test_commit_then_manifest_lists_the_entry():
         )
         == []
     )
+
+
+def test_commit_owned_tool_file_detaches_conversation_ownership():
+    conversation_id = "44444444-4444-4444-4444-444444444444"
+    tool_file_id = _seed_tool_file(conversation_id=conversation_id)
+
+    _commit("data/report.txt", tool_file_id, owned=True)
+
+    with session_factory.create_session() as session:
+        tool_file = session.get(ToolFile, tool_file_id)
+        assert tool_file is not None
+        assert tool_file.conversation_id is None
+
+
+def test_commit_shared_tool_file_keeps_conversation_ownership():
+    conversation_id = "44444444-4444-4444-4444-444444444444"
+    tool_file_id = _seed_tool_file(conversation_id=conversation_id)
+
+    _commit("data/report.txt", tool_file_id, owned=False)
+
+    with session_factory.create_session() as session:
+        tool_file = session.get(ToolFile, tool_file_id)
+        assert tool_file is not None
+        assert tool_file.conversation_id == conversation_id
 
 
 def test_commit_skill_row_persists_metadata_and_lists_catalog() -> None:

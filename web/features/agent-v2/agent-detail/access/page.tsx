@@ -1,6 +1,12 @@
 'use client'
 
-import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
@@ -49,35 +55,40 @@ export function AgentAccessPage({ agentId }: AgentAccessPageProps) {
         </div>
       </header>
 
-      <ScrollArea
-        className="min-h-0 flex-1 overflow-hidden"
-        slotClassNames={{
-          content: 'px-6 pt-2 pb-8',
-        }}
-      >
-        <div className="w-full min-w-0 space-y-6">
-          <div className="grid w-full grid-cols-1 gap-3 xl:grid-cols-2">
-            <WebAppAccessCard
-              agent={agentQuery.data}
-              agentId={agentId}
-              isLoading={agentQuery.isPending}
-            />
-            <ServiceApiAccessCard agentId={agentId} />
-          </div>
+      <ScrollArea className="min-h-0 flex-1 overflow-hidden">
+        <ScrollAreaViewport>
+          <ScrollAreaContent className="px-6 pt-2 pb-8">
+            <div className="w-full min-w-0 space-y-6">
+              <div className="grid w-full grid-cols-1 gap-3 xl:grid-cols-2">
+                <WebAppAccessCard
+                  agent={agentQuery.data}
+                  agentId={agentId}
+                  isLoading={agentQuery.isPending}
+                />
+                <ServiceApiAccessCard agentId={agentId} />
+              </div>
 
-          <section aria-labelledby="agent-workflow-access-title">
-            <div className="mb-3">
-              <h3 id="agent-workflow-access-title" className="system-md-semibold text-text-primary">
-                {t(($) => $['agentDetail.access.workflow.title'])}
-              </h3>
-              <p className="mt-0.5 system-xs-regular text-text-tertiary">
-                {t(($) => $['agentDetail.access.workflow.description'])}
-              </p>
+              <section aria-labelledby="agent-workflow-access-title">
+                <div className="mb-3">
+                  <h3
+                    id="agent-workflow-access-title"
+                    className="system-md-semibold text-text-primary"
+                  >
+                    {t(($) => $['agentDetail.access.workflow.title'])}
+                  </h3>
+                  <p className="mt-0.5 system-xs-regular text-text-tertiary">
+                    {t(($) => $['agentDetail.access.workflow.description'])}
+                  </p>
+                </div>
+
+                <WorkflowReferencesTable agentId={agentId} enabled={agentQuery.isSuccess} />
+              </section>
             </div>
-
-            <WorkflowReferencesTable agentId={agentId} enabled={agentQuery.isSuccess} />
-          </section>
-        </div>
+          </ScrollAreaContent>
+        </ScrollAreaViewport>
+        <ScrollAreaScrollbar>
+          <ScrollAreaThumb />
+        </ScrollAreaScrollbar>
       </ScrollArea>
     </AgentDetailSectionSurface>
   )

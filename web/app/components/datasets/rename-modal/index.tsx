@@ -97,9 +97,9 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
   ])
   return (
     <Dialog open={show}>
-      <DialogContent className="w-full max-w-[520px] overflow-hidden! rounded-xl border-none px-8 py-6 text-left align-middle">
+      <DialogContent className="w-full max-w-130 overflow-hidden! rounded-xl border-none px-8 py-6 text-left align-middle">
         <div className="flex items-center justify-between pb-2">
-          <div className="text-xl leading-[30px] font-medium text-text-primary">
+          <div className="text-xl leading-7.5 font-medium text-text-primary">
             {t(($) => $.title, { ns: 'datasetSettings' })}
           </div>
           <button
@@ -113,7 +113,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
         </div>
         <div>
           <div className={cn('flex flex-col py-4')}>
-            <div className="shrink-0 py-2 text-sm leading-[20px] font-medium text-text-primary">
+            <div className="shrink-0 py-2 text-sm leading-5 font-medium text-text-primary">
               {t(($) => $['form.name'], { ns: 'datasetSettings' })}
             </div>
             <div className="flex items-center gap-x-2">
@@ -136,7 +136,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
             </div>
           </div>
           <div className={cn('flex flex-col py-4')}>
-            <div className="shrink-0 py-2 text-sm leading-[20px] font-medium text-text-primary">
+            <div className="shrink-0 py-2 text-sm leading-5 font-medium text-text-primary">
               {t(($) => $['form.desc'], { ns: 'datasetSettings' })}
             </div>
             <div className="w-full">

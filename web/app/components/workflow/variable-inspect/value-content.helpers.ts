@@ -15,6 +15,7 @@ type UploadedFileLike = {
 }
 
 export const getValueEditorState = (currentVar: VarInInspect) => {
+  const valueType = String(currentVar.value_type)
   const showTextEditor =
     currentVar.value_type === 'secret' ||
     currentVar.value_type === 'string' ||
@@ -25,8 +26,8 @@ export const getValueEditorState = (currentVar: VarInInspect) => {
   const isSysFiles = currentVar.type === VarInInspectType.system && currentVar.name === 'files'
   const showJSONEditor =
     !isSysFiles &&
-    ['object', 'array[string]', 'array[number]', 'array[object]', 'array[any]'].includes(
-      currentVar.value_type,
+    ['object', 'array[string]', 'array[number]', 'array[object]', 'array[any]', 'llm'].includes(
+      valueType,
     )
   const showFileEditor =
     isSysFiles || currentVar.value_type === 'file' || currentVar.value_type === 'array[file]'
@@ -35,7 +36,7 @@ export const getValueEditorState = (currentVar: VarInInspect) => {
     (currentVar.type === VarInInspectType.system &&
       currentVar.name !== 'query' &&
       currentVar.name !== 'files')
-  const JSONEditorDisabled = currentVar.value_type === 'array[any]'
+  const JSONEditorDisabled = valueType === 'array[any]' || valueType === 'llm'
   const hasChunks = !!currentVar.schemaType && CHUNK_SCHEMA_TYPES.includes(currentVar.schemaType)
 
   return {

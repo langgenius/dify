@@ -21,11 +21,6 @@ type SnippetPublishStatusFilterProps = {
 
 const chipClassName =
   'flex h-8 items-center rounded-lg border-[0.5px] px-2 text-[13px] leading-4 outline-hidden transition-colors focus-visible:ring-2 focus-visible:ring-state-accent-solid'
-const snippetPublishStatusValues: SnippetPublishStatus[] = ['all', 'published', 'draft']
-
-const isSnippetPublishStatus = (value: string): value is SnippetPublishStatus => {
-  return snippetPublishStatusValues.includes(value as SnippetPublishStatus)
-}
 
 const SnippetPublishStatusFilter = ({ value, onChange }: SnippetPublishStatusFilterProps) => {
   const { t } = useTranslation()
@@ -64,12 +59,16 @@ const SnippetPublishStatusFilter = ({ value, onChange }: SnippetPublishStatusFil
         <span aria-hidden className="i-ri-arrow-down-s-line h-4 w-4 shrink-0 text-text-tertiary" />
       </DropdownMenuTrigger>
       <DropdownMenuContent placement="bottom-start" popupClassName="w-[220px]">
-        <DropdownMenuRadioGroup
+        <DropdownMenuRadioGroup<SnippetPublishStatus>
           value={value}
-          onValueChange={(nextValue) => isSnippetPublishStatus(nextValue) && onChange(nextValue)}
+          onValueChange={(nextValue) => onChange(nextValue)}
         >
           {options.map((option) => (
-            <DropdownMenuRadioItem key={option.value} value={option.value} closeOnClick>
+            <DropdownMenuRadioItem<SnippetPublishStatus>
+              key={option.value}
+              value={option.value}
+              closeOnClick
+            >
               <span>{option.text}</span>
               <DropdownMenuRadioItemIndicator />
             </DropdownMenuRadioItem>
