@@ -1,5 +1,5 @@
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
 import { TagFilter } from '../components/tag-filter'
@@ -225,7 +225,7 @@ describe('TagFilter', () => {
 
       expect(screen.getByRole('dialog', { name: i18n.placeholder })).toBeInTheDocument()
       expect(listbox).not.toContainElement(manageButton)
-      expect(input).toHaveFocus()
+      await waitFor(() => expect(input).toHaveFocus())
 
       await user.tab()
       expect(manageButton).toHaveFocus()

@@ -997,5 +997,8 @@ export const Controlled: Story = {
 
     await expect(trigger).toHaveTextContent('Finance')
     await expect(canvas.getByText('Selected: Finance')).toBeVisible()
+    await waitFor(async () => {
+      await expect(body.queryByRole('dialog', { name: 'Default app tag' })).not.toBeInTheDocument()
+    })
   },
 }
