@@ -1,5 +1,5 @@
+import type { PluginBanner } from '@dify/contracts/marketplace'
 import type { ActivePluginType } from './constants'
-import type { PluginBanner } from './home/banners'
 import type { HomeCatalogTabLabels } from './home/home-catalog-tabs'
 import { PluginInstallPermissionProviderGuard } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
 import Description from './description'

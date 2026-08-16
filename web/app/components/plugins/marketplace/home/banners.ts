@@ -1,74 +1,19 @@
+import type {
+  BannerAd,
+  BannerBase,
+  BannerBlog,
+  BannerEvent,
+  BannerImageContent,
+  BannerRecommend,
+  BannerRecommendCard,
+  PluginBanner,
+} from '@dify/contracts/marketplace'
 import { marketplaceClient } from '@/service/client'
 
+// The banner types live in @dify/contracts/marketplace so the standalone
+// marketplace and the embedded console share one definition; this module owns
+// the runtime normalization of the untyped delivery payload.
 const MAX_CARDS_PER_PAGE = 4
-
-type BannerBase = {
-  id: string
-  title: string
-  sort: number
-  language: string
-}
-
-export type BannerRecommendCard = {
-  item_type: 'plugin' | 'template'
-  item_id: string
-  display_name: string
-  icon_url?: string
-  icon?: string
-  icon_background?: string
-  creator?: string
-  badges?: Array<'partner' | 'verified'>
-  link: string
-  card_position: number
-}
-
-export type BannerRecommend = BannerBase & {
-  style_type: 'recommend'
-  content: {
-    theme_type: 'newest' | 'hottest' | 'partner'
-    heading?: string
-    subheadings?: string[]
-    description?: string
-    cards: BannerRecommendCard[]
-  }
-}
-
-export type BannerBlog = BannerBase & {
-  style_type: 'blog'
-  content: {
-    blog_title: string
-    subtitle?: string
-    description?: string
-    link: string
-    link_target_type: 'blog' | 'github'
-  }
-}
-
-type BannerImageContent = {
-  images: {
-    desktop: string
-    tablet?: string
-    mobile?: string
-  }
-  link: string
-  alt_text?: string
-  activity_id?: string
-}
-
-export type BannerEvent = BannerBase & {
-  style_type: 'event'
-  content: BannerImageContent
-}
-
-export type BannerAd = BannerBase & {
-  style_type: 'ad'
-  content: BannerImageContent & {
-    partner_id?: string
-    campaign_id?: string
-  }
-}
-
-export type PluginBanner = BannerRecommend | BannerBlog | BannerEvent | BannerAd
 
 const isRecord = (value: unknown): value is Record<string, unknown> => {
   return typeof value === 'object' && value !== null && !Array.isArray(value)

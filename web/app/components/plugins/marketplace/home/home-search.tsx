@@ -7,11 +7,23 @@ import { useTranslation } from '#i18n'
 import styles from './home-sticky.module.css'
 import MarketplacePluginSearch from './marketplace-plugin-search'
 
-const HomeSearch = ({ children }: { children?: ReactNode }) => {
+type HomeSearchProps = {
+  children?: ReactNode
+  /**
+   * Registers the global Cmd/Ctrl+K focus shortcut. The embedded console
+   * already binds Mod+K to GotoAnything, so only the standalone marketplace
+   * should keep this enabled.
+   */
+  enableSearchShortcut?: boolean
+}
+
+const HomeSearch = ({ children, enableSearchShortcut = true }: HomeSearchProps) => {
   const searchRef = useRef<HTMLDivElement>(null)
   const { t } = useTranslation('plugin')
 
   useEffect(() => {
+    if (!enableSearchShortcut) return
+
     const handleGlobalSearchShortcut = (event: KeyboardEvent) => {
       if (event.key.toLowerCase() !== 'k' || (!event.metaKey && !event.ctrlKey)) return
 
@@ -21,7 +33,7 @@ const HomeSearch = ({ children }: { children?: ReactNode }) => {
 
     document.addEventListener('keydown', handleGlobalSearchShortcut)
     return () => document.removeEventListener('keydown', handleGlobalSearchShortcut)
-  }, [])
+  }, [enableSearchShortcut])
 
   return (
     <div

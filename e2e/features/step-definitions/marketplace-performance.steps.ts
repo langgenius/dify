@@ -6,7 +6,8 @@ import { e2eBrowser } from '../../test-env'
 // Baseline against the frozen marketplace fixture stub: the first card lands
 // around 2.3-2.6s under Fast 4G + 4x CPU throttling (dominated by the ~630KB
 // server-rendered HTML), so 4s guards regressions with headroom for slower CI
-// runners.
+// runners. The stub serves a frozen recommend banner, so the measured first
+// screen also includes the trending carousel and its background image.
 const FIRST_CARD_BUDGET_MS = 4_000
 const DOCUMENT_ELEMENT_BUDGET = 2_000
 // Hydrating the server-rendered list peaks around ~220ms on shared CI runners

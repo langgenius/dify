@@ -138,7 +138,9 @@ describe('Marketplace Carousel', () => {
     expect(screen.getByText('Page content 5')).toBeInTheDocument()
     expect(screen.queryByText('Page content 3')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Go to page 4' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'plugin.marketplace.carousel.goToPage:{"page":4}' }),
+    )
 
     expect(screen.getByText('Page content 3')).toBeInTheDocument()
     expect(screen.getByText('Page content 4')).toBeInTheDocument()
@@ -162,8 +164,10 @@ describe('Marketplace Carousel', () => {
 
     expect(document.querySelectorAll('[data-carousel-page-mounted="true"]')).toHaveLength(5)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Scroll left' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Scroll right' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'plugin.marketplace.carousel.scrollPrevious' }),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'plugin.marketplace.carousel.scrollNext' }))
 
     expect(mocks.api.scrollPrev).toHaveBeenCalledOnce()
     expect(mocks.api.scrollNext).toHaveBeenCalledOnce()

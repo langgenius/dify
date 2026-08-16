@@ -1,6 +1,5 @@
 'use client'
 
-import type { RefObject } from 'react'
 import type {
   BannerAd,
   BannerBlog,
@@ -8,7 +7,8 @@ import type {
   BannerRecommend,
   BannerRecommendCard,
   PluginBanner,
-} from './banners'
+} from '@dify/contracts/marketplace'
+import type { RefObject } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from '#i18n'
@@ -16,7 +16,7 @@ import Partner from '@/app/components/plugins/base/badges/partner'
 import Verified from '@/app/components/plugins/base/badges/verified'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 import Link from '@/next/link'
-import background from './assets/background.jpg'
+import background from './assets/background.webp'
 import difyUpdatesArt from './assets/dify-updates-art.png'
 import styles from './home-trending.module.css'
 
@@ -208,8 +208,8 @@ function TrendingRecommendationSlide({
       >
         <img
           src={background.src}
-          width={3840}
-          height={2160}
+          width={1600}
+          height={900}
           alt=""
           aria-hidden
           className="absolute top-[-173px] left-[-990px] h-[1201px] w-[2135px] max-w-none opacity-80"
@@ -534,12 +534,6 @@ function TrendingNavigation({
                 if (isCurrent) return
                 onSelect(index)
               }}
-              onKeyDown={(event) => {
-                if (event.key !== 'Enter' && event.key !== ' ') return
-                event.preventDefault()
-                if (isCurrent) return
-                onSelect(index)
-              }}
               className={cn(
                 'absolute top-0 left-0 z-2 h-1.5 overflow-hidden rounded-full outline-hidden transition-[transform,width,background-color] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] after:absolute after:-inset-2 hover:bg-state-base-handle-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid motion-reduce:transition-none',
                 isCurrent ? 'bg-transparent' : 'bg-state-base-handle',
@@ -564,11 +558,6 @@ function TrendingNavigation({
             ],
         )}
         onClick={toggleAutoplay}
-        onKeyDown={(event) => {
-          if (event.key !== 'Enter' && event.key !== ' ') return
-          event.preventDefault()
-          toggleAutoplay()
-        }}
         className="flex size-4 shrink-0 items-center justify-center rounded-full bg-state-base-handle text-text-primary outline-hidden hover:bg-state-base-handle-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
       >
         {isExplicitlyPaused ? (
@@ -625,15 +614,19 @@ function HomeTrending({
           className="relative h-[200px] w-full rounded-2xl"
           data-home-trending-carousel-root
         >
-          <TrendingNavigation
-            banners={banners}
-            selectedIndex={selectedIndex}
-            carouselRootRef={carouselRootRef}
-            pauseWhenOffscreen={!isMarketplacePlatform}
-            onSelect={selectSlide}
-            onNext={selectNextSlide}
-            onPausedChange={setIsRotationPaused}
-          />
+          {/* A single banner has nothing to rotate through, so skip the
+              pagination/autoplay controls entirely. */}
+          {banners.length > 1 && (
+            <TrendingNavigation
+              banners={banners}
+              selectedIndex={selectedIndex}
+              carouselRootRef={carouselRootRef}
+              pauseWhenOffscreen={!isMarketplacePlatform}
+              onSelect={selectSlide}
+              onNext={selectNextSlide}
+              onPausedChange={setIsRotationPaused}
+            />
+          )}
           <div className="h-full overflow-hidden rounded-2xl">
             <div
               // Keep automatic rotation silent for screen readers; announce

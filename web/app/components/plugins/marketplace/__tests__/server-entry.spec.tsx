@@ -1,5 +1,5 @@
+import type { PluginBanner } from '@dify/contracts/marketplace'
 import type { ReactNode } from 'react'
-import type { PluginBanner } from '../home/banners'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 

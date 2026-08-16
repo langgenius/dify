@@ -83,7 +83,7 @@ describe('marketplace template discovery', () => {
     mocks.templateCollections.mockRejectedValueOnce(new Error('Unavailable'))
 
     const failed = await getMarketplaceTemplateCollectionsAndTemplates()
-    expect(failed).toEqual({ collections: [], templatesByCollection: {} })
+    expect(failed).toEqual({ collections: [], templatesByCollection: {}, ok: false })
 
     mocks.templateCollections.mockResolvedValue({
       data: {
@@ -95,6 +95,7 @@ describe('marketplace template discovery', () => {
     })
 
     const recovered = await getMarketplaceTemplateCollectionsAndTemplates()
+    expect(recovered.ok).toBe(true)
     expect(recovered.templatesByCollection).toEqual({ featured: [{ id: 'template-1' }] })
   })
 
@@ -123,6 +124,18 @@ describe('marketplace template discovery', () => {
         categories: ['marketing'],
       },
     })
-    expect(result).toEqual({ page: 2, templates: [{ id: 'template-1' }], total: 1 })
+    expect(result).toEqual({ ok: true, page: 2, templates: [{ id: 'template-1' }], total: 1 })
+  })
+
+  it('marks a failed template search instead of reporting an empty result', async () => {
+    const { searchMarketplaceTemplates } = await importDiscovery()
+    mocks.templateSearch.mockRejectedValueOnce(new Error('Unavailable'))
+
+    const result = await searchMarketplaceTemplates({
+      category: 'all',
+      query: 'campaign',
+    })
+
+    expect(result).toEqual({ ok: false, page: 1, templates: [], total: 0 })
   })
 })

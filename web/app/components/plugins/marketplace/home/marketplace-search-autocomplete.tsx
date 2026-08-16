@@ -18,7 +18,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { renderI18nObject } from '@/i18n-config/index'
 import { marketplaceQuery } from '@/service/client'
 
@@ -86,7 +86,6 @@ export function MarketplaceSearchAutocomplete({
 }: MarketplaceSearchAutocompleteProps) {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
-  const translate = t as (key: string, options?: Record<string, unknown>) => string
   const debouncedSearch = useDebounce(value.trim(), { wait: 300 })
   const hasQuery = Boolean(debouncedSearch)
   const showDropdown = isOpen && hasQuery
@@ -146,10 +145,17 @@ export function MarketplaceSearchAutocomplete({
       : []
   const suggestions = [...templateSuggestions, ...pluginSuggestions]
   const isSearching = isDebouncing || pluginQuery.isFetching || templateQuery.isFetching
-  const emptyText =
-    scope === 'templates'
-      ? translate('newApp.noTemplateFound', { ns: 'app' })
-      : translate('marketplace.noPluginFound', { ns: 'plugin' })
+  // A failed request must not read as "nothing matched"; when every source in
+  // scope errored and nothing is displayable, surface a load failure instead.
+  const hasLoadError =
+    !isDebouncing &&
+    suggestions.length === 0 &&
+    ((searchesPlugins && pluginQuery.isError) || (searchesTemplates && templateQuery.isError))
+  const emptyText = hasLoadError
+    ? t(($) => $['marketplace.loadError'], { ns: 'plugin' })
+    : scope === 'templates'
+      ? t(($) => $['newApp.noTemplateFound'], { ns: 'app' })
+      : t(($) => $['marketplace.noPluginFound'], { ns: 'plugin' })
 
   return (
     <Autocomplete
@@ -185,7 +191,7 @@ export function MarketplaceSearchAutocomplete({
         />
         {!!value && (
           <AutocompleteClear
-            aria-label={translate('clearSearch', { ns: 'plugin', label: placeholder })}
+            aria-label={t(($) => $.clearSearch, { ns: 'plugin', label: placeholder })}
             size="large"
           />
         )}
@@ -198,7 +204,7 @@ export function MarketplaceSearchAutocomplete({
       >
         {isSearching && suggestions.length === 0 && (
           <AutocompleteStatus>
-            {translate('gotoAnything.searching', { ns: 'app' })}
+            {t(($) => $['gotoAnything.searching'], { ns: 'app' })}
           </AutocompleteStatus>
         )}
         <AutocompleteList<MarketplaceSuggestion>>

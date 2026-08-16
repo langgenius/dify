@@ -5,6 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import AccountSection from '@/app/components/main-nav/components/account-section'
 import { getTranslation } from '@/i18n-config/server'
 import Link from '@/next/link'
+import { redirect } from '@/next/navigation'
 import {
   getMarketplaceTemplateCollectionsAndTemplates,
   searchMarketplaceTemplates,
@@ -110,6 +111,55 @@ const PAGE_LINK_CLASS =
 const PAGE_LINK_DISABLED_CLASS =
   'flex h-8 cursor-not-allowed items-center justify-center rounded-lg border-[0.5px] border-divider-subtle px-3 system-sm-medium text-text-quaternary'
 
+type TemplatesHrefOptions = {
+  category: TemplateCategory
+  page?: number
+  query?: string
+  sortBy?: string
+  sortOrder?: string
+  view?: string
+}
+
+function buildTemplatesHref({
+  category,
+  page = 1,
+  query,
+  sortBy,
+  sortOrder,
+  view,
+}: TemplatesHrefOptions) {
+  const searchParams = new URLSearchParams()
+  if (query) searchParams.set('q', query)
+  if (sortBy) searchParams.set('sort_by', sortBy)
+  if (sortOrder) searchParams.set('sort_order', sortOrder)
+  if (view) searchParams.set('view', view)
+  if (page > 1) searchParams.set('page', String(page))
+  const queryString = searchParams.toString()
+  const basePath = category === 'all' ? '/templates' : `/templates/${category}`
+  return queryString ? `${basePath}?${queryString}` : basePath
+}
+
+// The retry link is a plain anchor on purpose: a full navigation re-runs the
+// failed (and uncached) server fetch instead of reusing the router cache.
+function LoadErrorState({
+  message,
+  retryHref,
+  retryLabel,
+}: {
+  message: string
+  retryHref: string
+  retryLabel: string
+}) {
+  return (
+    <div className="flex min-h-60 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-divider-regular text-sm text-text-tertiary">
+      <span>{message}</span>
+      <a href={retryHref} className={PAGE_LINK_CLASS}>
+        {retryLabel}
+      </a>
+    </div>
+  )
+}
+
 // Server-rendered pagination: plain links keep the search results reachable
 // beyond the first page without any client-side state.
 function TemplatePagination({
@@ -137,17 +187,8 @@ function TemplatePagination({
 }) {
   if (pageCount <= 1) return null
 
-  const buildHref = (targetPage: number) => {
-    const searchParams = new URLSearchParams()
-    if (query) searchParams.set('q', query)
-    if (sortBy) searchParams.set('sort_by', sortBy)
-    if (sortOrder) searchParams.set('sort_order', sortOrder)
-    if (view) searchParams.set('view', view)
-    if (targetPage > 1) searchParams.set('page', String(targetPage))
-    const queryString = searchParams.toString()
-    const basePath = category === 'all' ? '/templates' : `/templates/${category}`
-    return queryString ? `${basePath}?${queryString}` : basePath
-  }
+  const buildHref = (targetPage: number) =>
+    buildTemplatesHref({ category, page: targetPage, query, sortBy, sortOrder, view })
 
   return (
     <nav aria-label={navigationLabel} className="mt-6 flex items-center justify-center gap-3 pb-4">
@@ -215,16 +256,32 @@ export async function EmbeddedTemplatesMarketplace({
     fetchPluginBanners(locale).catch(() => []),
   ])
   const categoryLabels: TemplateCategoryLabels = {
-    all: tPlugin('category.all' as never),
-    marketing: tApp('marketplace.template.category.marketing' as never),
-    sales: tApp('marketplace.template.category.sales' as never),
-    support: tApp('marketplace.template.category.support' as never),
-    operations: tApp('marketplace.template.category.operations' as never),
-    it: tApp('marketplace.template.category.it' as never),
-    knowledge: tApp('marketplace.template.category.knowledge' as never),
-    design: tApp('marketplace.template.category.design' as never),
-    others: tPluginTags('tags.other' as never),
+    all: tPlugin(($) => $['category.all'], { ns: 'plugin' }),
+    marketing: tApp(($) => $['marketplace.template.category.marketing'], { ns: 'app' }),
+    sales: tApp(($) => $['marketplace.template.category.sales'], { ns: 'app' }),
+    support: tApp(($) => $['marketplace.template.category.support'], { ns: 'app' }),
+    operations: tApp(($) => $['marketplace.template.category.operations'], { ns: 'app' }),
+    it: tApp(($) => $['marketplace.template.category.it'], { ns: 'app' }),
+    knowledge: tApp(($) => $['marketplace.template.category.knowledge'], { ns: 'app' }),
+    design: tApp(($) => $['marketplace.template.category.design'], { ns: 'app' }),
+    others: tPluginTags(($) => $['tags.other'], { ns: 'pluginTags' }),
   }
+  const pageCount = Math.ceil((searchResult?.total ?? 0) / TEMPLATE_SEARCH_PAGE_SIZE)
+  // An out-of-range ?page= would render a misleading empty state; send the
+  // visitor to the last page that actually exists instead.
+  if (searchResult?.ok && searchResult.total > 0 && page > pageCount) {
+    redirect(
+      buildTemplatesHref({
+        category,
+        page: pageCount,
+        query: normalizedQuery,
+        sortBy,
+        sortOrder,
+        view,
+      }),
+    )
+  }
+
   const templates = filterTemplatesForLocale(searchResult?.templates ?? [], locale)
   const hasVisibleCollections =
     collectionsResult?.collections.some(
@@ -234,9 +291,29 @@ export async function EmbeddedTemplatesMarketplace({
           locale,
         ).length > 0,
     ) ?? false
-  const pluginsLabel = tPlugin('marketplace.home.plugins' as never)
-  const templatesLabel = tPlugin('marketplace.home.templates' as never)
-  const partnerText = tPlugin('marketplace.partnerTip' as never)
+  const pluginsLabel = tPlugin(($) => $['marketplace.home.plugins'], { ns: 'plugin' })
+  const templatesLabel = tPlugin(($) => $['marketplace.home.templates'], { ns: 'plugin' })
+  const partnerText = tPlugin(($) => $['marketplace.partnerTip'], { ns: 'plugin' })
+  const loadFailed = collectionsResult
+    ? !collectionsResult.ok
+    : searchResult
+      ? !searchResult.ok
+      : false
+  const currentHref = buildTemplatesHref({
+    category,
+    page,
+    query: normalizedQuery,
+    sortBy,
+    sortOrder,
+    view,
+  })
+  const loadErrorState = (
+    <LoadErrorState
+      message={tPlugin(($) => $['marketplace.loadError'], { ns: 'plugin' })}
+      retryHref={currentHref}
+      retryLabel={tCommon(($) => $['operation.retry'], { ns: 'common' })}
+    />
+  )
 
   return (
     <HomeStickyStateProvider>
@@ -255,15 +332,15 @@ export async function EmbeddedTemplatesMarketplace({
           <HomeHero
             isMarketplacePlatform={false}
             title={templatesLabel}
-            subtitle={tExplore('apps.description' as never)}
+            subtitle={tExplore(($) => $['apps.description'], { ns: 'explore' })}
           />
-          <HomeSearch>
+          <HomeSearch enableSearchShortcut={false}>
             <MarketplaceSearchForm
               action={category === 'all' ? '/templates' : `/templates/${category}`}
               category={category}
               className="w-full"
               locale={locale}
-              placeholder={tApp('newAppFromTemplate.searchAllTemplate' as never)}
+              placeholder={tApp(($) => $['newAppFromTemplate.searchAllTemplate'], { ns: 'app' })}
               query={query}
               scope="templates"
             />
@@ -285,7 +362,7 @@ export async function EmbeddedTemplatesMarketplace({
             catalogCategories={
               <TemplateCategoryNavigation
                 activeCategory={category}
-                ariaLabel={tPlugin('allCategories' as never)}
+                ariaLabel={tPlugin(($) => $.allCategories, { ns: 'plugin' })}
                 labels={categoryLabels}
                 query={query}
               />
@@ -299,36 +376,43 @@ export async function EmbeddedTemplatesMarketplace({
               styles.catalogContent,
             )}
           >
-            {collectionsResult ? (
+            {loadFailed ? (
+              loadErrorState
+            ) : collectionsResult ? (
               hasVisibleCollections ? (
                 <TemplateCollectionList
-                  becomePartnerText={tPlugin('marketplace.becomePartner' as never)}
+                  becomePartnerText={tPlugin(($) => $['marketplace.becomePartner'], {
+                    ns: 'plugin',
+                  })}
                   collections={collectionsResult.collections}
                   locale={locale}
                   partnerText={partnerText}
                   templatesByCollection={collectionsResult.templatesByCollection}
-                  viewMoreText={tPlugin('marketplace.viewMore' as never)}
+                  viewMoreText={tPlugin(($) => $['marketplace.viewMore'], { ns: 'plugin' })}
                 />
               ) : (
-                <EmptyState>{tApp('newApp.noTemplateFound' as never)}</EmptyState>
+                <EmptyState>{tApp(($) => $['newApp.noTemplateFound'], { ns: 'app' })}</EmptyState>
               )
             ) : (
               <>
+                {/* The locale filter runs after pagination, so the API total
+                    does not describe what is on screen; show the number of
+                    templates actually rendered on this page instead. */}
                 <div className="mb-5 text-right text-sm text-text-tertiary">
-                  {tExplore('apps.resultNum' as never, { num: searchResult?.total ?? 0 })}
+                  {tExplore(($) => $['apps.resultNum'], { ns: 'explore', num: templates.length })}
                 </div>
                 {templates.length > 0 ? (
                   <TemplateGrid partnerText={partnerText} templates={templates} />
                 ) : (
-                  <EmptyState>{tApp('newApp.noTemplateFound' as never)}</EmptyState>
+                  <EmptyState>{tApp(($) => $['newApp.noTemplateFound'], { ns: 'app' })}</EmptyState>
                 )}
                 <TemplatePagination
                   category={category}
-                  navigationLabel={tCommon('pagination.pageNumber' as never)}
-                  nextLabel={tCommon('pagination.next' as never)}
+                  navigationLabel={tCommon(($) => $['pagination.pageNumber'], { ns: 'common' })}
+                  nextLabel={tCommon(($) => $['pagination.next'], { ns: 'common' })}
                   page={page}
-                  pageCount={Math.ceil((searchResult?.total ?? 0) / TEMPLATE_SEARCH_PAGE_SIZE)}
-                  previousLabel={tCommon('pagination.previous' as never)}
+                  pageCount={pageCount}
+                  previousLabel={tCommon(($) => $['pagination.previous'], { ns: 'common' })}
                   query={normalizedQuery}
                   sortBy={sortBy}
                   sortOrder={sortOrder}

@@ -7,6 +7,11 @@ import { marketplaceClient } from './client'
 export type MarketplaceTemplateCollectionsResult = {
   collections: MarketplaceTemplateCollection[]
   templatesByCollection: Record<string, MarketplaceTemplate[]>
+  /**
+   * False when the Marketplace API request failed, so the UI can render an
+   * error state instead of claiming the catalog is empty.
+   */
+  ok: boolean
 }
 
 export const TEMPLATE_SEARCH_PAGE_SIZE = 40
@@ -19,9 +24,10 @@ type SearchMarketplaceTemplatesOptions = {
   sortOrder?: string
 }
 
-const EMPTY_COLLECTIONS_RESULT: MarketplaceTemplateCollectionsResult = {
+const FAILED_COLLECTIONS_RESULT: MarketplaceTemplateCollectionsResult = {
   collections: [],
   templatesByCollection: {},
+  ok: false,
 }
 
 const COLLECTION_PREVIEW_TEMPLATE_LIMIT = 24
@@ -73,6 +79,7 @@ async function fetchCollectionsAndTemplates(): Promise<MarketplaceTemplateCollec
   return {
     collections,
     templatesByCollection: Object.fromEntries(entries),
+    ok: true,
   }
 }
 
@@ -92,7 +99,7 @@ export async function getMarketplaceTemplateCollectionsAndTemplates(): Promise<M
       collectionsCache = { expiresAt: Date.now() + COLLECTIONS_CACHE_TTL_MS, result }
       return result
     })
-    .catch(() => EMPTY_COLLECTIONS_RESULT)
+    .catch(() => FAILED_COLLECTIONS_RESULT)
     .finally(() => {
       collectionsInFlight = null
     })
@@ -120,12 +127,16 @@ export async function searchMarketplaceTemplates({
     })
 
     return {
+      ok: true,
       page,
       templates: response.data?.templates ?? [],
       total: response.data?.total ?? 0,
     }
   } catch {
+    // Marked as failed so callers can distinguish an API outage from a
+    // genuinely empty search result.
     return {
+      ok: false,
       page,
       templates: [],
       total: 0,

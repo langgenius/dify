@@ -1,5 +1,5 @@
+import type { PluginBanner } from '@dify/contracts/marketplace'
 import type { ActivePluginType } from '../constants'
-import type { PluginBanner } from './banners'
 import type { HomeCatalogTabLabels } from './home-catalog-tabs'
 import ListWrapper from '../list/list-wrapper'
 import HomeCatalogNavigation from './home-catalog-navigation'
@@ -47,7 +47,7 @@ const MarketplaceHome = ({
         />
         <div className="relative flex w-full flex-col">
           <HomeHero isMarketplacePlatform={isMarketplacePlatform} />
-          <HomeSearch>{search}</HomeSearch>
+          <HomeSearch enableSearchShortcut={isMarketplacePlatform}>{search}</HomeSearch>
           {banners.length > 0 && (
             <>
               <div aria-hidden="true" className="h-12 shrink-0" />

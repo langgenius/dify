@@ -64,6 +64,33 @@ const frozenCollections = [
   makeFrozenCollection('e2e-frozen-popular', 'Frozen Popular'),
 ]
 
+// A frozen recommend banner keeps the trending carousel (and its decorative
+// background image) inside the measured first screen, so the benchmark covers
+// the same rendering paths as production instead of an empty banner state.
+const frozenBanners = [
+  {
+    id: 'e2e-frozen-banner-trending',
+    title: 'Trending',
+    sort: 1,
+    language: 'en-US',
+    style_type: 'recommend',
+    content: {
+      theme_type: 'hottest',
+      heading: 'Frozen Trending Plugins',
+      description: 'Frozen fixture banner for the performance benchmark.',
+      cards: Array.from({ length: 4 }, (_, index) => ({
+        item_type: 'plugin',
+        item_id: `e2e-fixtures/featured-plugin-${index + 1}`,
+        display_name: `Featured Plugin ${index + 1}`,
+        icon_url: `/api/v1/plugins/e2e-fixtures/featured-plugin-${index + 1}/icon`,
+        creator: 'e2e-fixtures',
+        link: '',
+        card_position: index + 1,
+      })),
+    },
+  },
+]
+
 const frozenCollectionPlugins: Record<string, unknown[]> = {
   'e2e-frozen-featured': Array.from({ length: 8 }, (_, index) =>
     makeFrozenPlugin(
@@ -92,7 +119,7 @@ const jsonResponse = (data: unknown): StubResponse => ({
 })
 
 const resolveStubResponse = (method: string, pathname: string): StubResponse | undefined => {
-  if (method === 'GET' && pathname === '/banners') return jsonResponse({ banners: [] })
+  if (method === 'GET' && pathname === '/banners') return jsonResponse({ banners: frozenBanners })
   if (method === 'GET' && pathname === '/collections')
     return jsonResponse({ collections: frozenCollections })
 

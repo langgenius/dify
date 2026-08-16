@@ -58,7 +58,9 @@ describe('MarketplaceDetailDialog', () => {
     const frame = screen.getByTitle('Plugin A · plugin.detailPanel.operation.detail')
     expect(frame).toHaveAttribute(
       'src',
-      'about:blank?plugin=dify/plugin-a&installed=true&language=en-US&source=http://localhost:3000&theme=system&view=modal',
+      // resolvedTheme maps the "system" preference to the concrete value, so
+      // the embedded detail page receives light/dark rather than "system".
+      'about:blank?plugin=dify/plugin-a&installed=true&language=en-US&source=http://localhost:3000&theme=light&view=modal',
     )
     expect(document.querySelector('.bg-linear-to-t')).toBeNull()
 

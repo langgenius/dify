@@ -27,16 +27,16 @@ vi.mock('ahooks', async (importOriginal) => {
   }
 })
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) =>
-      ({
-        'gotoAnything.searching': 'Searching...',
-        'marketplace.noPluginFound': 'No integration found',
-        'newApp.noTemplateFound': 'No templates found',
-      })[key] ?? key,
-  }),
-}))
+vi.mock('react-i18next', async () => {
+  const { createReactI18nextMock } = await import('@/test/i18n-mock')
+
+  return createReactI18nextMock({
+    clearSearch: 'Clear search',
+    'gotoAnything.searching': 'Searching...',
+    'marketplace.noPluginFound': 'No integration found',
+    'newApp.noTemplateFound': 'No templates found',
+  })
+})
 
 vi.mock('@/service/client', () => ({
   marketplaceQuery: {
@@ -125,7 +125,7 @@ describe('MarketplaceSearchAutocomplete', () => {
     expect(container.querySelector('form')).toHaveAttribute('action', '/templates/knowledge')
     expect(container.querySelector('input[role="combobox"]')).toHaveAttribute('name', 'q')
     expect(container.querySelector('input[role="combobox"]')).toHaveAttribute('type', 'text')
-    expect(container.querySelectorAll('button[aria-label="clearSearch"]')).toHaveLength(1)
+    expect(container.querySelectorAll('button[aria-label="Clear search"]')).toHaveLength(1)
     expect(container.querySelector('input[type="hidden"]')).toHaveValue('en-US')
     expect(mockPluginSearch).not.toHaveBeenCalled()
   })
