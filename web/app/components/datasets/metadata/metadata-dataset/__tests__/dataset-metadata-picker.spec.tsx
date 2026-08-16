@@ -64,9 +64,13 @@ describe('DatasetMetadataPicker', () => {
       expect(
         screen.getByRole('dialog', { name: 'dataset.metadata.addMetadata' }),
       ).toBeInTheDocument()
-      expect(
-        screen.getByRole('combobox', { name: 'dataset.metadata.selectMetadata.search' }),
-      ).toHaveFocus()
+      const searchInput = screen.getByRole('combobox', {
+        name: 'dataset.metadata.selectMetadata.search',
+      })
+      const listbox = screen.getByRole('listbox')
+      expect(searchInput).toHaveFocus()
+      expect(searchInput).toHaveAttribute('aria-expanded', 'true')
+      expect(searchInput).toHaveAttribute('aria-controls', listbox.id)
       expect(await screen.findByRole('option', { name: /field_one/ })).toBeInTheDocument()
       expect(screen.getByRole('option', { name: /field_two/ })).toBeInTheDocument()
       expect(screen.getByRole('option', { name: /field_three/ })).toBeInTheDocument()
@@ -126,6 +130,30 @@ describe('DatasetMetadataPicker', () => {
   })
 
   describe('Actions', () => {
+    it('should keep footer actions interactive until their click completes', async () => {
+      const user = userEvent.setup()
+      const onOpenMetadataManagement = vi.fn()
+      renderDatasetMetadataPicker({ onOpenMetadataManagement })
+
+      const trigger = screen.getByRole('button', { name: 'dataset.metadata.addMetadata' })
+      await user.click(trigger)
+      const manageButton = screen.getByRole('button', {
+        name: 'dataset.metadata.selectMetadata.manageAction',
+      })
+
+      await user.pointer({ keys: '[MouseLeft>]', target: manageButton })
+
+      expect(trigger).toHaveAttribute('aria-expanded', 'true')
+      expect(onOpenMetadataManagement).not.toHaveBeenCalled()
+
+      await user.pointer({ keys: '[/MouseLeft]', target: manageButton })
+
+      expect(onOpenMetadataManagement).toHaveBeenCalledOnce()
+      await waitFor(() => {
+        expect(trigger).toHaveAttribute('aria-expanded', 'false')
+      })
+    })
+
     it('should switch to create view and save a new metadata item', async () => {
       const user = userEvent.setup()
       const onCreateMetadata = vi.fn().mockResolvedValue(undefined)

@@ -1,6 +1,6 @@
 'use client'
 
-import type { ComboboxChangeEventDetails, Placement } from '@langgenius/dify-ui/combobox'
+import type { PopoverContentProps } from '@langgenius/dify-ui/popover'
 import type { BuiltInMetadataItem, MetadataItem } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -31,11 +31,11 @@ const PickerView = {
 
 type PickerView = (typeof PickerView)[keyof typeof PickerView]
 
-export type DatasetMetadataPickerProps = {
+export type DatasetMetadataPickerProps = Pick<
+  PopoverContentProps,
+  'placement' | 'sideOffset' | 'alignOffset'
+> & {
   datasetId: string
-  placement?: Placement
-  sideOffset?: number
-  alignOffset?: number
   onSelectMetadata: (metadata: MetadataItem) => void
   onCreateMetadata: (metadata: BuiltInMetadataItem) => void | Promise<void>
   onOpenMetadataManagement: () => void
@@ -43,14 +43,6 @@ export type DatasetMetadataPickerProps = {
 
 function getMetadataLabel(metadata: MetadataItem) {
   return metadata.name
-}
-
-function getMetadataValue(metadata: MetadataItem) {
-  return metadata.id
-}
-
-function isSameMetadata(item: MetadataItem, value: MetadataItem) {
-  return item.id === value.id
 }
 
 function metadataFilter(metadata: MetadataItem, query: string) {
@@ -73,21 +65,22 @@ export function DatasetMetadataPicker({
   const [view, setView] = useState<PickerView>(PickerView.select)
   const [query, setQuery] = useState('')
 
-  const resetPicker = () => {
+  const resetPickerState = () => {
     setView(PickerView.select)
     setQuery('')
   }
 
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen)
-    if (!nextOpen) resetPicker()
+    if (!nextOpen) resetPickerState()
   }
 
-  const handleInputValueChange = (inputValue: string, details: ComboboxChangeEventDetails) => {
-    if (details.reason !== 'item-press') setQuery(inputValue)
+  const handleStartMetadataCreation = () => {
+    setView(PickerView.create)
+    setQuery('')
   }
 
-  const handleMetadataChange = (metadata: MetadataItem | null) => {
+  const handleSelectMetadata = (metadata: MetadataItem | null) => {
     if (!metadata) return
 
     onSelectMetadata({
@@ -95,22 +88,19 @@ export function DatasetMetadataPicker({
       name: metadata.name,
       type: metadata.type,
     })
-    setOpen(false)
-    resetPicker()
   }
 
   const handleCreateMetadata = async (metadata: BuiltInMetadataItem) => {
     try {
       await onCreateMetadata(metadata)
-      resetPicker()
+      resetPickerState()
     } catch {
       // Keep the create view open so callers can surface validation feedback and the user can correct the input.
     }
   }
 
-  const handleOpenManagement = () => {
-    setOpen(false)
-    resetPicker()
+  const handleOpenMetadataManagement = () => {
+    handleOpenChange(false)
     onOpenMetadataManagement()
   }
 
@@ -147,31 +137,29 @@ export function DatasetMetadataPicker({
         </PopoverTitle>
         {view === PickerView.select ? (
           <Combobox<MetadataItem>
+            inline
+            open={open}
+            onOpenChange={handleOpenChange}
             value={null}
             items={metadataItems}
             inputValue={query}
-            onInputValueChange={handleInputValueChange}
-            onValueChange={handleMetadataChange}
+            onInputValueChange={setQuery}
+            onValueChange={handleSelectMetadata}
             itemToStringLabel={getMetadataLabel}
-            itemToStringValue={getMetadataValue}
-            isItemEqualToValue={isSameMetadata}
             filter={metadataFilter}
           >
             <MetadataPickerSelectPanel
               query={query}
-              onNewMetadata={() => {
-                setView(PickerView.create)
-                setQuery('')
-              }}
-              onOpenMetadataManagement={handleOpenManagement}
+              onStartMetadataCreation={handleStartMetadataCreation}
+              onOpenMetadataManagement={handleOpenMetadataManagement}
             />
           </Combobox>
         ) : (
           <CreateContent
             onSave={handleCreateMetadata}
             hasBack
-            onBack={resetPicker}
-            onClose={resetPicker}
+            onBack={resetPickerState}
+            onClose={resetPickerState}
           />
         )}
       </PopoverContent>
@@ -181,11 +169,11 @@ export function DatasetMetadataPicker({
 
 function MetadataPickerSelectPanel({
   query,
-  onNewMetadata,
+  onStartMetadataCreation,
   onOpenMetadataManagement,
 }: {
   query: string
-  onNewMetadata: () => void
+  onStartMetadataCreation: () => void
   onOpenMetadataManagement: () => void
 }) {
   const { t } = useTranslation()
@@ -212,7 +200,7 @@ function MetadataPickerSelectPanel({
       <ComboboxEmpty>{t(($) => $.noData, { ns: 'common' })}</ComboboxEmpty>
       <ComboboxSeparator />
       <MetadataPickerActions
-        onNewMetadata={onNewMetadata}
+        onStartMetadataCreation={onStartMetadataCreation}
         onOpenMetadataManagement={onOpenMetadataManagement}
       />
     </>
@@ -234,10 +222,10 @@ function MetadataOption({ metadata }: { metadata: MetadataItem }) {
 }
 
 function MetadataPickerActions({
-  onNewMetadata,
+  onStartMetadataCreation,
   onOpenMetadataManagement,
 }: {
-  onNewMetadata: () => void
+  onStartMetadataCreation: () => void
   onOpenMetadataManagement: () => void
 }) {
   const { t } = useTranslation()
@@ -248,7 +236,7 @@ function MetadataPickerActions({
         variant="ghost"
         size="medium"
         className="min-w-0 justify-start gap-1 px-2 text-left text-text-secondary"
-        onClick={onNewMetadata}
+        onClick={onStartMetadataCreation}
       >
         <span className="i-ri-add-line size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
         <span className="truncate system-sm-medium">
