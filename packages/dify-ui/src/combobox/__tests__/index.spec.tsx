@@ -6,7 +6,6 @@ import {
   ComboboxChipRemove,
   ComboboxChips,
   ComboboxClear,
-  ComboboxContent,
   ComboboxEmpty,
   ComboboxGroup,
   ComboboxGroupLabel,
@@ -18,6 +17,9 @@ import {
   ComboboxItemText,
   ComboboxLabel,
   ComboboxList,
+  ComboboxPopup,
+  ComboboxPortal,
+  ComboboxPositioner,
   ComboboxSeparator,
   ComboboxStatus,
   ComboboxTrigger,
@@ -41,31 +43,27 @@ const renderSelectLikeCombobox = ({
       {children ?? (
         <React.Fragment>
           <ComboboxLabel data-testid="label">Resource type</ComboboxLabel>
-          <ComboboxTrigger aria-label="Resource type" data-testid="trigger">
+          <ComboboxTrigger data-testid="trigger">
             <ComboboxValue placeholder="Select resource" />
           </ComboboxTrigger>
-          <ComboboxContent
-            positionerProps={{
-              role: 'group',
-              'aria-label': 'combobox positioner',
-            }}
-            popupProps={{
-              role: 'dialog',
-              'aria-label': 'combobox popup',
-            }}
-          >
-            <ComboboxStatus data-testid="status">2 options</ComboboxStatus>
-            <ComboboxList role="listbox" aria-label="combobox list" data-testid="list">
-              <ComboboxItem value="workflow">
-                <ComboboxItemText>Workflow</ComboboxItemText>
-                <ComboboxItemIndicator />
-              </ComboboxItem>
-              <ComboboxItem value="dataset">
-                <ComboboxItemText>Dataset</ComboboxItemText>
-              </ComboboxItem>
-            </ComboboxList>
-            <ComboboxEmpty data-testid="empty">No options</ComboboxEmpty>
-          </ComboboxContent>
+          <ComboboxPortal>
+            <ComboboxPositioner data-testid="combobox-positioner">
+              <ComboboxPopup aria-label="Choose a resource" data-testid="combobox-popup">
+                <ComboboxInput aria-label="Filter resources" />
+                <ComboboxStatus data-testid="status">2 options</ComboboxStatus>
+                <ComboboxList data-testid="list">
+                  <ComboboxItem value="workflow">
+                    <ComboboxItemText>Workflow</ComboboxItemText>
+                    <ComboboxItemIndicator />
+                  </ComboboxItem>
+                  <ComboboxItem value="dataset">
+                    <ComboboxItemText>Dataset</ComboboxItemText>
+                  </ComboboxItem>
+                </ComboboxList>
+                <ComboboxEmpty data-testid="empty">No options</ComboboxEmpty>
+              </ComboboxPopup>
+            </ComboboxPositioner>
+          </ComboboxPortal>
         </React.Fragment>
       )}
     </Combobox>,
@@ -87,14 +85,18 @@ const renderInputCombobox = ({
             <ComboboxClear data-testid="clear" />
             <ComboboxInputTrigger data-testid="input-trigger" />
           </ComboboxInputGroup>
-          <ComboboxContent popupProps={{ role: 'dialog', 'aria-label': 'combobox popup' }}>
-            <ComboboxList role="listbox" aria-label="combobox list">
-              <ComboboxItem value="workflow">
-                <ComboboxItemText>Workflow</ComboboxItemText>
-                <ComboboxItemIndicator />
-              </ComboboxItem>
-            </ComboboxList>
-          </ComboboxContent>
+          <ComboboxPortal>
+            <ComboboxPositioner>
+              <ComboboxPopup data-testid="combobox-popup">
+                <ComboboxList>
+                  <ComboboxItem value="workflow">
+                    <ComboboxItemText>Workflow</ComboboxItemText>
+                    <ComboboxItemIndicator />
+                  </ComboboxItem>
+                </ComboboxList>
+              </ComboboxPopup>
+            </ComboboxPositioner>
+          </ComboboxPortal>
         </React.Fragment>
       )}
     </Combobox>,
@@ -188,16 +190,19 @@ describe('Combobox wrappers', () => {
     })
   })
 
-  describe('Content and options', () => {
+  describe('Popup anatomy and options', () => {
     it('should use default overlay placement', async () => {
       const screen = await renderSelectLikeCombobox({ open: true })
 
       await expect
-        .element(screen.getByRole('group', { name: 'combobox positioner' }))
+        .element(screen.getByTestId('combobox-positioner'))
         .toHaveAttribute('data-side', 'bottom')
       await expect
-        .element(screen.getByRole('group', { name: 'combobox positioner' }))
+        .element(screen.getByTestId('combobox-positioner'))
         .toHaveAttribute('data-align', 'start')
+      await expect
+        .element(screen.getByRole('dialog', { name: 'Choose a resource' }))
+        .toBeInTheDocument()
     })
 
     it('should apply custom placement side and passthrough popup props', async () => {
@@ -207,32 +212,74 @@ describe('Combobox wrappers', () => {
           <ComboboxTrigger aria-label="Resource type">
             <ComboboxValue />
           </ComboboxTrigger>
-          <ComboboxContent
-            placement="top-end"
-            sideOffset={12}
-            alignOffset={6}
-            positionerProps={{ role: 'group', 'aria-label': 'combobox positioner' }}
-            popupProps={{
-              role: 'dialog',
-              'aria-label': 'combobox popup',
-              onClick: onPopupClick,
-            }}
-          >
-            <ComboboxList role="listbox" aria-label="combobox list">
-              <ComboboxItem value="workflow">
-                <ComboboxItemText>Workflow</ComboboxItemText>
-              </ComboboxItem>
-            </ComboboxList>
-          </ComboboxContent>
+          <ComboboxPortal>
+            <ComboboxPositioner
+              placement="top-end"
+              sideOffset={12}
+              alignOffset={6}
+              data-testid="combobox-positioner"
+            >
+              <ComboboxPopup
+                aria-label="Choose a resource"
+                data-testid="combobox-popup"
+                onClick={onPopupClick}
+              >
+                <ComboboxInput aria-label="Filter resources" />
+                <ComboboxList>
+                  <ComboboxItem value="workflow">
+                    <ComboboxItemText>Workflow</ComboboxItemText>
+                  </ComboboxItem>
+                </ComboboxList>
+              </ComboboxPopup>
+            </ComboboxPositioner>
+          </ComboboxPortal>
         </Combobox>,
       )
 
-      await screen.getByRole('dialog', { name: 'combobox popup' }).click()
+      await screen.getByTestId('combobox-popup').click()
 
       await expect
-        .element(screen.getByRole('group', { name: 'combobox positioner' }))
+        .element(screen.getByTestId('combobox-positioner'))
         .toHaveAttribute('data-side', 'top')
       expect(onPopupClick).toHaveBeenCalledTimes(1)
+    })
+
+    it('names the dialog popup when the input is composed inside it', async () => {
+      const screen = await renderWithSafeViewport(
+        <Combobox open items={['workflow']}>
+          <ComboboxLabel>Resource type</ComboboxLabel>
+          <ComboboxTrigger>Choose resource</ComboboxTrigger>
+          <ComboboxPortal>
+            <ComboboxPositioner>
+              <ComboboxPopup aria-label="Choose a resource">
+                <ComboboxInput aria-label="Filter resources" />
+                <ComboboxList>
+                  <ComboboxItem value="workflow">Workflow</ComboboxItem>
+                </ComboboxList>
+              </ComboboxPopup>
+            </ComboboxPositioner>
+          </ComboboxPortal>
+        </Combobox>,
+      )
+
+      await expect
+        .element(screen.getByRole('dialog', { name: 'Choose a resource' }))
+        .toBeInTheDocument()
+      await expect
+        .element(screen.getByRole('combobox', { name: 'Filter resources' }))
+        .toBeInTheDocument()
+    })
+
+    it('keeps an empty live region mounted without visible spacing', async () => {
+      const screen = await renderWithSafeViewport(
+        <Combobox items={[]}>
+          <ComboboxInput aria-label="Search resources" />
+          <ComboboxStatus data-testid="status">{null}</ComboboxStatus>
+        </Combobox>,
+      )
+
+      await expect.element(screen.getByRole('status')).toBeInTheDocument()
+      await expect.element(screen.getByTestId('status')).toHaveClass('empty:h-0', 'empty:p-0')
     })
 
     it('should forward custom classes to group label separator item text and indicator', async () => {
@@ -241,18 +288,23 @@ describe('Combobox wrappers', () => {
           <ComboboxTrigger aria-label="Resource type">
             <ComboboxValue />
           </ComboboxTrigger>
-          <ComboboxContent popupProps={{ role: 'dialog', 'aria-label': 'combobox popup' }}>
-            <ComboboxList role="listbox" aria-label="combobox list" data-testid="custom-list">
-              <ComboboxGroup items={['workflow']}>
-                <ComboboxGroupLabel className="custom-label">Resources</ComboboxGroupLabel>
-                <ComboboxSeparator className="custom-separator" data-testid="separator" />
-                <ComboboxItem value="workflow" className="custom-item">
-                  <ComboboxItemText className="custom-text">Workflow</ComboboxItemText>
-                  <ComboboxItemIndicator className="custom-indicator" data-testid="indicator" />
-                </ComboboxItem>
-              </ComboboxGroup>
-            </ComboboxList>
-          </ComboboxContent>
+          <ComboboxPortal>
+            <ComboboxPositioner>
+              <ComboboxPopup aria-label="Choose a resource">
+                <ComboboxInput aria-label="Filter resources" />
+                <ComboboxList data-testid="custom-list">
+                  <ComboboxGroup items={['workflow']}>
+                    <ComboboxGroupLabel className="custom-label">Resources</ComboboxGroupLabel>
+                    <ComboboxSeparator className="custom-separator" data-testid="separator" />
+                    <ComboboxItem value="workflow" className="custom-item">
+                      <ComboboxItemText className="custom-text">Workflow</ComboboxItemText>
+                      <ComboboxItemIndicator className="custom-indicator" data-testid="indicator" />
+                    </ComboboxItem>
+                  </ComboboxGroup>
+                </ComboboxList>
+              </ComboboxPopup>
+            </ComboboxPositioner>
+          </ComboboxPortal>
         </Combobox>,
       )
 
@@ -273,16 +325,20 @@ describe('Combobox wrappers', () => {
           <ComboboxInputGroup>
             <ComboboxInput aria-label="Search resources" />
           </ComboboxInputGroup>
-          <ComboboxContent>
-            <ComboboxList<string>>
-              {(item) => (
-                <ComboboxItem key={item} value={item}>
-                  <ComboboxItemText>{item}</ComboboxItemText>
-                  <ComboboxItemIndicator />
-                </ComboboxItem>
-              )}
-            </ComboboxList>
-          </ComboboxContent>
+          <ComboboxPortal>
+            <ComboboxPositioner>
+              <ComboboxPopup>
+                <ComboboxList<string>>
+                  {(item) => (
+                    <ComboboxItem key={item} value={item}>
+                      <ComboboxItemText>{item}</ComboboxItemText>
+                      <ComboboxItemIndicator />
+                    </ComboboxItem>
+                  )}
+                </ComboboxList>
+              </ComboboxPopup>
+            </ComboboxPositioner>
+          </ComboboxPortal>
         </Combobox>,
       )
 

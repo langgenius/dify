@@ -10,7 +10,6 @@ import {
   ComboboxChips,
   ComboboxClear,
   ComboboxCollection,
-  ComboboxContent,
   ComboboxEmpty,
   ComboboxGroup,
   ComboboxGroupLabel,
@@ -22,6 +21,9 @@ import {
   ComboboxItemText,
   ComboboxLabel,
   ComboboxList,
+  ComboboxPopup,
+  ComboboxPortal,
+  ComboboxPositioner,
   ComboboxSeparator,
   ComboboxStatus,
   ComboboxTrigger,
@@ -31,6 +33,13 @@ import {
 } from '.'
 import { cn } from '../cn'
 import { Field, FieldDescription, FieldLabel } from '../field'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '../scroll-area'
 
 type Option = {
   value: string
@@ -392,36 +401,46 @@ const VirtualizedModelList = ({
   }, [virtualizer, virtualizerRef])
 
   return (
-    <div
-      ref={scrollRef}
-      className="max-h-[min(22rem,var(--available-height))] overflow-x-hidden overflow-y-auto overscroll-contain outline-hidden"
-    >
-      <ComboboxList
-        className="relative max-h-none overflow-visible p-0"
-        style={{
-          height: virtualizer.getTotalSize(),
-        }}
+    <ScrollArea className="relative overflow-hidden">
+      <ScrollAreaViewport
+        ref={scrollRef}
+        role="region"
+        aria-label="Model catalog"
+        className="max-h-[min(22rem,var(--available-height))] overscroll-contain"
+        style={{ overflowX: 'hidden' }}
       >
-        {virtualizer.getVirtualItems().map((virtualItem) => {
-          const option = filteredItems[virtualItem.index]
+        <ScrollAreaContent style={{ minWidth: 0 }}>
+          <ComboboxList
+            className="relative max-h-none overflow-visible p-0"
+            style={{
+              height: virtualizer.getTotalSize(),
+            }}
+          >
+            {virtualizer.getVirtualItems().map((virtualItem) => {
+              const option = filteredItems[virtualItem.index]
 
-          if (!option) return null
+              if (!option) return null
 
-          return (
-            <div
-              key={virtualItem.key}
-              className="absolute top-0 left-0 w-full"
-              style={{
-                height: virtualItem.size,
-                transform: `translateY(${virtualItem.start}px)`,
-              }}
-            >
-              {renderVirtualizedOptionItem(option, virtualItem.index)}
-            </div>
-          )
-        })}
-      </ComboboxList>
-    </div>
+              return (
+                <div
+                  key={virtualItem.key}
+                  className="absolute top-0 left-0 w-full"
+                  style={{
+                    height: virtualItem.size,
+                    transform: `translateY(${virtualItem.start}px)`,
+                  }}
+                >
+                  {renderVirtualizedOptionItem(option, virtualItem.index)}
+                </div>
+              )
+            })}
+          </ComboboxList>
+        </ScrollAreaContent>
+      </ScrollAreaViewport>
+      <ScrollAreaScrollbar>
+        <ScrollAreaThumb />
+      </ScrollAreaScrollbar>
+    </ScrollArea>
   )
 }
 
@@ -451,15 +470,19 @@ const VirtualizedLongListDemo = () => {
         }}
       >
         <ComboboxLabel>Model catalog</ComboboxLabel>
-        <ComboboxTrigger aria-label="Model catalog">
+        <ComboboxTrigger>
           <ComboboxValue placeholder="Select model" />
         </ComboboxTrigger>
-        <ComboboxContent popupClassName="w-[440px]">
-          <PopupSearchInput label="Filter model catalog" placeholder="Filter 1,000 models" />
-          <FilteredModelStatus />
-          <VirtualizedModelList virtualizerRef={virtualizerRef} />
-          <ComboboxEmpty>No model matches this filter</ComboboxEmpty>
-        </ComboboxContent>
+        <ComboboxPortal>
+          <ComboboxPositioner>
+            <ComboboxPopup className="w-110" aria-label="Model catalog">
+              <PopupSearchInput label="Filter model catalog" placeholder="Filter 1,000 models" />
+              <FilteredModelStatus />
+              <VirtualizedModelList virtualizerRef={virtualizerRef} />
+              <ComboboxEmpty>No model matches this filter</ComboboxEmpty>
+            </ComboboxPopup>
+          </ComboboxPositioner>
+        </ComboboxPortal>
       </Combobox>
     </div>
   )
@@ -555,14 +578,15 @@ const AsyncDirectoryDemo = () => {
           <ComboboxClear className="mr-0.5" />
           <ComboboxInputTrigger className="mr-0" />
         </ComboboxInputGroup>
-        <ComboboxContent
-          popupClassName="w-[420px]"
-          popupProps={{ 'aria-busy': isPending || undefined }}
-        >
-          <ComboboxStatus className="border-b border-divider-subtle">{status}</ComboboxStatus>
-          <ComboboxList<Option>>{renderOptionItem}</ComboboxList>
-          <ComboboxEmpty>{emptyMessage}</ComboboxEmpty>
-        </ComboboxContent>
+        <ComboboxPortal>
+          <ComboboxPositioner>
+            <ComboboxPopup className="w-105" aria-busy={isPending || undefined}>
+              <ComboboxStatus className="border-b border-divider-subtle">{status}</ComboboxStatus>
+              <ComboboxList<Option>>{renderOptionItem}</ComboboxList>
+              <ComboboxEmpty>{emptyMessage}</ComboboxEmpty>
+            </ComboboxPopup>
+          </ComboboxPositioner>
+        </ComboboxPortal>
       </Combobox>
     </Field>
   )
@@ -689,14 +713,15 @@ const AsyncReviewerDemo = () => {
             </ComboboxValue>
           </ComboboxChips>
         </ComboboxInputGroup>
-        <ComboboxContent
-          popupClassName="w-[420px]"
-          popupProps={{ 'aria-busy': isPending || undefined }}
-        >
-          <ComboboxStatus className="border-b border-divider-subtle">{status}</ComboboxStatus>
-          <ComboboxList<Option>>{renderOptionItem}</ComboboxList>
-          <ComboboxEmpty>{emptyMessage}</ComboboxEmpty>
-        </ComboboxContent>
+        <ComboboxPortal>
+          <ComboboxPositioner>
+            <ComboboxPopup className="w-105" aria-busy={isPending || undefined}>
+              <ComboboxStatus className="border-b border-divider-subtle">{status}</ComboboxStatus>
+              <ComboboxList<Option>>{renderOptionItem}</ComboboxList>
+              <ComboboxEmpty>{emptyMessage}</ComboboxEmpty>
+            </ComboboxPopup>
+          </ComboboxPositioner>
+        </ComboboxPortal>
       </Combobox>
       <FieldDescription>
         Selected reviewers stay available while async matches change.
@@ -713,7 +738,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Compound combobox built on Base UI Combobox for searchable predefined selections. Compose triggers, inputs, lists, groups, status, empty states, and chips without importing Base UI primitives directly.',
+          'Compound combobox built on Base UI Combobox for searchable predefined selections. Compose Portal, Positioner, and Popup explicitly so placement, accessible naming, and focus behavior stay on their Base UI owners. Keep Status mounted while changing its children, label the trigger or input form control, and give Popup an accessible name when the input is rendered inside it.',
       },
     },
   },
@@ -740,9 +765,13 @@ export const Default: Story = {
           <ComboboxClear className="mr-0.5" />
           <ComboboxInputTrigger className="mr-0" />
         </ComboboxInputGroup>
-        <ComboboxContent>
-          <ComboboxList<Option>>{renderSimpleOptionItem}</ComboboxList>
-        </ComboboxContent>
+        <ComboboxPortal>
+          <ComboboxPositioner>
+            <ComboboxPopup>
+              <ComboboxList<Option>>{renderSimpleOptionItem}</ComboboxList>
+            </ComboboxPopup>
+          </ComboboxPositioner>
+        </ComboboxPortal>
       </Combobox>
     </Field>
   ),
@@ -765,9 +794,13 @@ export const FormField: Story = {
           <ComboboxClear className="mr-0.5" />
           <ComboboxInputTrigger className="mr-0" />
         </ComboboxInputGroup>
-        <ComboboxContent>
-          <ComboboxList<Option>>{renderSimpleOptionItem}</ComboboxList>
-        </ComboboxContent>
+        <ComboboxPortal>
+          <ComboboxPositioner>
+            <ComboboxPopup>
+              <ComboboxList<Option>>{renderSimpleOptionItem}</ComboboxList>
+            </ComboboxPopup>
+          </ComboboxPositioner>
+        </ComboboxPortal>
       </Combobox>
       <FieldDescription>Type to filter, then choose a remembered data source.</FieldDescription>
     </Field>
@@ -779,13 +812,17 @@ export const CompactTriggerWithPopupSearch: Story = {
     <div className={fieldWidth}>
       <Combobox items={dataSourceOptions} defaultValue={defaultPopupDataSource}>
         <ComboboxLabel>Data source</ComboboxLabel>
-        <ComboboxTrigger aria-label="Data source">
+        <ComboboxTrigger>
           <ComboboxValue placeholder="Choose source" />
         </ComboboxTrigger>
-        <ComboboxContent>
-          <PopupSearchInput label="Search data sources" placeholder="Search sources" />
-          <ComboboxList<Option>>{renderOptionItem}</ComboboxList>
-        </ComboboxContent>
+        <ComboboxPortal>
+          <ComboboxPositioner>
+            <ComboboxPopup aria-label="Data source">
+              <PopupSearchInput label="Search data sources" placeholder="Search sources" />
+              <ComboboxList<Option>>{renderOptionItem}</ComboboxList>
+            </ComboboxPopup>
+          </ComboboxPositioner>
+        </ComboboxPortal>
       </Combobox>
     </div>
   ),
@@ -815,9 +852,13 @@ export const Sizes: Story = {
               <ComboboxClear size={size} className="mr-0.5" />
               <ComboboxInputTrigger size={size} className="mr-0" />
             </ComboboxInputGroup>
-            <ComboboxContent>
-              <ComboboxList<Option>>{renderOptionItem}</ComboboxList>
-            </ComboboxContent>
+            <ComboboxPortal>
+              <ComboboxPositioner>
+                <ComboboxPopup>
+                  <ComboboxList<Option>>{renderOptionItem}</ComboboxList>
+                </ComboboxPopup>
+              </ComboboxPositioner>
+            </ComboboxPortal>
           </Combobox>
         </Field>
       ))}
@@ -830,13 +871,17 @@ export const Grouped: Story = {
     <div className={fieldWidth}>
       <Combobox items={toolGroups} defaultValue={defaultTool}>
         <ComboboxLabel>Workflow tool</ComboboxLabel>
-        <ComboboxTrigger aria-label="Workflow tool">
+        <ComboboxTrigger>
           <ComboboxValue placeholder="Select tool" />
         </ComboboxTrigger>
-        <ComboboxContent>
-          <PopupSearchInput label="Search workflow tools" placeholder="Search workflow tools" />
-          <GroupedToolList />
-        </ComboboxContent>
+        <ComboboxPortal>
+          <ComboboxPositioner>
+            <ComboboxPopup aria-label="Workflow tool">
+              <PopupSearchInput label="Search workflow tools" placeholder="Search workflow tools" />
+              <GroupedToolList />
+            </ComboboxPopup>
+          </ComboboxPositioner>
+        </ComboboxPortal>
       </Combobox>
     </div>
   ),
@@ -869,9 +914,13 @@ const MultipleChipsDemo = () => {
             </ComboboxValue>
           </ComboboxChips>
         </ComboboxInputGroup>
-        <ComboboxContent>
-          <ComboboxList<Option>>{renderOptionItem}</ComboboxList>
-        </ComboboxContent>
+        <ComboboxPortal>
+          <ComboboxPositioner>
+            <ComboboxPopup>
+              <ComboboxList<Option>>{renderOptionItem}</ComboboxList>
+            </ComboboxPopup>
+          </ComboboxPositioner>
+        </ComboboxPortal>
       </Combobox>
       <FieldDescription>
         Selected reviewers wrap inside the input instead of scrolling horizontally.
@@ -914,11 +963,15 @@ export const EmptyAndStatus: Story = {
           <ComboboxClear className="mr-0.5" />
           <ComboboxInputTrigger className="mr-0" />
         </ComboboxInputGroup>
-        <ComboboxContent>
-          <ComboboxStatus>Search workspace connectors</ComboboxStatus>
-          <ComboboxEmpty>No connectors found</ComboboxEmpty>
-          <ComboboxList<Option>>{renderSimpleOptionItem}</ComboboxList>
-        </ComboboxContent>
+        <ComboboxPortal>
+          <ComboboxPositioner>
+            <ComboboxPopup>
+              <ComboboxStatus>Search workspace connectors</ComboboxStatus>
+              <ComboboxEmpty>No connectors found</ComboboxEmpty>
+              <ComboboxList<Option>>{renderSimpleOptionItem}</ComboboxList>
+            </ComboboxPopup>
+          </ComboboxPositioner>
+        </ComboboxPortal>
       </Combobox>
     </Field>
   ),
@@ -930,13 +983,20 @@ export const DisabledAndReadOnly: Story = {
       <Field name="disabledProvider" disabled>
         <Combobox items={providerOptions} defaultValue={disabledProvider} disabled>
           <ComboboxLabel>Disabled provider</ComboboxLabel>
-          <ComboboxTrigger aria-label="Disabled model provider">
+          <ComboboxTrigger>
             <ComboboxValue />
           </ComboboxTrigger>
-          <ComboboxContent>
-            <PopupSearchInput label="Search disabled providers" placeholder="Search providers" />
-            <ComboboxList<Option>>{renderOptionItem}</ComboboxList>
-          </ComboboxContent>
+          <ComboboxPortal>
+            <ComboboxPositioner>
+              <ComboboxPopup aria-label="Disabled provider">
+                <PopupSearchInput
+                  label="Search disabled providers"
+                  placeholder="Search providers"
+                />
+                <ComboboxList<Option>>{renderOptionItem}</ComboboxList>
+              </ComboboxPopup>
+            </ComboboxPositioner>
+          </ComboboxPortal>
         </Combobox>
       </Field>
       <Field name="readOnlySource">
@@ -950,9 +1010,13 @@ export const DisabledAndReadOnly: Story = {
             <ComboboxClear className="mr-0.5" />
             <ComboboxInputTrigger className="mr-0" />
           </ComboboxInputGroup>
-          <ComboboxContent>
-            <ComboboxList<Option>>{renderOptionItem}</ComboboxList>
-          </ComboboxContent>
+          <ComboboxPortal>
+            <ComboboxPositioner>
+              <ComboboxPopup>
+                <ComboboxList<Option>>{renderOptionItem}</ComboboxList>
+              </ComboboxPopup>
+            </ComboboxPositioner>
+          </ComboboxPortal>
         </Combobox>
       </Field>
     </div>
@@ -967,13 +1031,17 @@ const ControlledDemo = () => {
       <div className="w-full">
         <Combobox items={tagOptions} value={value} onValueChange={setValue}>
           <ComboboxLabel>Default app tag</ComboboxLabel>
-          <ComboboxTrigger aria-label="Default app tag">
+          <ComboboxTrigger>
             <ComboboxValue placeholder="Select tag" />
           </ComboboxTrigger>
-          <ComboboxContent>
-            <PopupSearchInput label="Search app tags" placeholder="Search tags" />
-            <ComboboxList<Option>>{renderSimpleOptionItem}</ComboboxList>
-          </ComboboxContent>
+          <ComboboxPortal>
+            <ComboboxPositioner>
+              <ComboboxPopup aria-label="Default app tag">
+                <PopupSearchInput label="Search app tags" placeholder="Search tags" />
+                <ComboboxList<Option>>{renderSimpleOptionItem}</ComboboxList>
+              </ComboboxPopup>
+            </ComboboxPositioner>
+          </ComboboxPortal>
         </Combobox>
       </div>
       <span className="rounded-md border border-divider-subtle bg-components-panel-bg px-2 py-1 system-xs-regular text-text-tertiary">

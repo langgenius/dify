@@ -61,6 +61,12 @@ describe('DatasetMetadataPicker', () => {
 
       await user.click(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))
 
+      expect(
+        screen.getByRole('dialog', { name: 'dataset.metadata.addMetadata' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('combobox', { name: 'dataset.metadata.selectMetadata.search' }),
+      ).toHaveFocus()
       expect(await screen.findByRole('option', { name: /field_one/ })).toBeInTheDocument()
       expect(screen.getByRole('option', { name: /field_two/ })).toBeInTheDocument()
       expect(screen.getByRole('option', { name: /field_three/ })).toBeInTheDocument()
@@ -204,6 +210,9 @@ describe('DatasetMetadataPicker', () => {
       expect(
         screen.getByRole('button', { name: 'dataset.metadata.selectMetadata.manageAction' }),
       ).toBeInTheDocument()
+      expect(screen.getByRole('listbox')).not.toContainElement(
+        screen.getByRole('button', { name: 'dataset.metadata.selectMetadata.newAction' }),
+      )
     })
   })
 })

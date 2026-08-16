@@ -7,6 +7,17 @@ import { createConsoleQueryClient } from '@/test/console/query-data'
 import { ConfigurationMethodEnum, ModelStatusEnum, ModelTypeEnum } from '../../declarations'
 import { ModelSelector, SplitModelSelector } from '../index'
 
+const makeModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
+  model: 'gpt-4',
+  label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' },
+  model_type: ModelTypeEnum.textGeneration,
+  fetch_from: ConfigurationMethodEnum.predefinedModel,
+  status: ModelStatusEnum.active,
+  model_properties: {},
+  load_balancing_enabled: false,
+  ...overrides,
+})
+
 const mockModelProviders = vi.hoisted(() => ({ current: [] as Model[] }))
 const mockSetSettingsDestination = vi.hoisted(() => vi.fn())
 
@@ -34,23 +45,23 @@ vi.mock('../../provider-added-card/use-credential-panel-state', () => ({
   }),
 }))
 
-vi.mock('../popup', async () => {
-  const { ComboboxItem } = await vi.importActual<typeof import('@langgenius/dify-ui/combobox')>(
-    '@langgenius/dify-ui/combobox',
-  )
-
+vi.mock('../popup', () => {
   return {
     default: ({
       onConfigureEmptyState,
       onHide,
       onOpenProviderSettings,
+      onSelect,
     }: {
       onConfigureEmptyState?: () => void
       onHide: () => void
       onOpenProviderSettings?: () => void
+      onSelect: (provider: string, model: ModelItem) => void
     }) => (
       <>
-        <ComboboxItem value={{ provider: 'openai', model: 'gpt-4' }}>select</ComboboxItem>
+        <button type="button" onClick={() => onSelect('openai', makeModelItem())}>
+          select
+        </button>
         <button type="button" onClick={onHide}>
           hide
         </button>
@@ -67,17 +78,6 @@ vi.mock('../popup', async () => {
       </>
     ),
   }
-})
-
-const makeModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
-  model: 'gpt-4',
-  label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' },
-  model_type: ModelTypeEnum.textGeneration,
-  fetch_from: ConfigurationMethodEnum.predefinedModel,
-  status: ModelStatusEnum.active,
-  model_properties: {},
-  load_balancing_enabled: false,
-  ...overrides,
 })
 
 const makeModel = (overrides: Partial<Model> = {}): Model => ({
@@ -103,10 +103,13 @@ describe('ModelSelector', () => {
   it('should toggle popup and close it after selecting a model', () => {
     renderWithQueryClient(<ModelSelector models={[makeModel()]} />)
 
-    const triggerButton = screen.getByRole('combobox')
+    const triggerButton = screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' })
 
     fireEvent.click(triggerButton)
     expect(triggerButton).toHaveAttribute('aria-expanded', 'true')
+    expect(
+      screen.getByRole('dialog', { name: 'plugin.detailPanel.configureModel' }),
+    ).toBeInTheDocument()
     expect(screen.getByText('select')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('select'))
@@ -117,7 +120,7 @@ describe('ModelSelector', () => {
     const onValueChange = vi.fn()
     renderWithQueryClient(<ModelSelector models={[makeModel()]} onValueChange={onValueChange} />)
 
-    fireEvent.click(screen.getByRole('combobox'))
+    fireEvent.click(screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }))
     fireEvent.click(screen.getByText('select'))
 
     expect(onValueChange).toHaveBeenCalledWith({
@@ -130,7 +133,7 @@ describe('ModelSelector', () => {
   it('should close popup when popup requests hide', () => {
     renderWithQueryClient(<ModelSelector models={[makeModel()]} />)
 
-    const triggerButton = screen.getByRole('combobox')
+    const triggerButton = screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' })
     fireEvent.click(triggerButton)
     expect(triggerButton).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText('hide')).toBeInTheDocument()
@@ -145,7 +148,7 @@ describe('ModelSelector', () => {
       <ModelSelector models={[makeModel()]} onConfigureEmptyState={onConfigureEmptyState} />,
     )
 
-    const triggerButton = screen.getByRole('combobox')
+    const triggerButton = screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' })
     fireEvent.click(triggerButton)
     expect(triggerButton).toHaveAttribute('aria-expanded', 'true')
 
@@ -160,7 +163,7 @@ describe('ModelSelector', () => {
     const onHide = vi.fn()
     renderWithQueryClient(<ModelSelector models={[makeModel()]} onHide={onHide} />)
 
-    const triggerButton = screen.getByRole('combobox')
+    const triggerButton = screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' })
     await user.click(triggerButton)
     await user.click(screen.getByRole('button', { name: 'provider-settings' }))
 
@@ -172,14 +175,14 @@ describe('ModelSelector', () => {
   it('should not open popup when disabled', () => {
     renderWithQueryClient(<ModelSelector models={[makeModel()]} disabled />)
 
-    fireEvent.click(screen.getByRole('combobox'))
+    fireEvent.click(screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }))
     expect(screen.queryByText('select')).not.toBeInTheDocument()
   })
 
   it('should let the split trigger own the combobox interaction', () => {
     renderWithQueryClient(<SplitModelSelector models={[makeModel()]} />)
 
-    const trigger = screen.getByRole('combobox')
+    const trigger = screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' })
     expect(trigger).toHaveAttribute('data-shape', 'split')
   })
 

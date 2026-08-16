@@ -213,6 +213,24 @@ describe('TagFilter', () => {
       expect(onOpenTagManagement).toHaveBeenCalledTimes(1)
     })
 
+    it('should expose popup actions after the combobox in keyboard order', async () => {
+      const user = userEvent.setup()
+      render(<TagFilter {...defaultProps} />)
+
+      await user.click(screen.getByText(i18n.placeholder))
+
+      const input = screen.getByRole('combobox', { name: i18n.selectorPlaceholder })
+      const manageButton = screen.getByRole('button', { name: i18n.manageTags })
+      const listbox = screen.getByRole('listbox')
+
+      expect(screen.getByRole('dialog', { name: i18n.placeholder })).toBeInTheDocument()
+      expect(listbox).not.toContainElement(manageButton)
+      expect(input).toHaveFocus()
+
+      await user.tab()
+      expect(manageButton).toHaveFocus()
+    })
+
     it('should hide tag management action without tag management permission', async () => {
       const user = userEvent.setup()
       mockWorkspacePermissionKeys.value = []

@@ -2,6 +2,7 @@
 
 import type { ComboboxChangeEventDetails, Placement } from '@langgenius/dify-ui/combobox'
 import type { BuiltInMetadataItem, MetadataItem } from '../types'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Combobox,
@@ -14,7 +15,7 @@ import {
   ComboboxList,
   ComboboxSeparator,
 } from '@langgenius/dify-ui/combobox'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDatasetMetaData } from '@/service/knowledge/use-metadata'
@@ -117,11 +118,11 @@ export function DatasetMetadataPicker({
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
         render={
-          <button
-            type="button"
+          <Button
+            variant="tertiary"
+            size="small"
             aria-label={t(($) => $['metadata.addMetadata'], { ns: 'dataset' })}
-            aria-expanded={open}
-            className="flex h-6 w-full cursor-pointer items-center justify-center rounded-md border-0 bg-components-button-tertiary-bg px-2 py-0 text-xs font-medium text-components-button-tertiary-text hover:bg-components-button-tertiary-bg-hover focus-visible:bg-components-button-tertiary-bg-hover"
+            className="w-full px-2 py-0"
           >
             <span className="flex min-w-0 items-center justify-center gap-1">
               <span
@@ -132,7 +133,7 @@ export function DatasetMetadataPicker({
                 {t(($) => $['metadata.addMetadata'], { ns: 'dataset' })}
               </span>
             </span>
-          </button>
+          </Button>
         }
       />
       <PopoverContent
@@ -141,6 +142,9 @@ export function DatasetMetadataPicker({
         alignOffset={alignOffset}
         popupClassName="w-[320px] bg-components-panel-bg-blur backdrop-blur-[5px]"
       >
+        <PopoverTitle className="sr-only">
+          {t(($) => $['metadata.addMetadata'], { ns: 'dataset' })}
+        </PopoverTitle>
         {view === PickerView.select ? (
           <Combobox<MetadataItem>
             value={null}
@@ -240,27 +244,23 @@ function MetadataPickerActions({
 
   return (
     <div className="flex items-center justify-between p-1">
-      <button
-        type="button"
-        className={cn(
-          'flex h-8 min-w-0 cursor-pointer items-center gap-1 rounded-lg border-none bg-transparent px-2 text-left text-text-secondary outline-hidden',
-          'hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active',
-        )}
+      <Button
+        variant="ghost"
+        size="medium"
+        className="min-w-0 justify-start gap-1 px-2 text-left text-text-secondary"
         onClick={onNewMetadata}
       >
         <span className="i-ri-add-line size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
         <span className="truncate system-sm-medium">
           {t(($) => $[`${i18nPrefix}.newAction`], { ns: 'dataset' })}
         </span>
-      </button>
+      </Button>
       <div className="flex h-8 shrink-0 items-center text-text-secondary">
         <div className="mx-1 h-3 w-px bg-divider-regular" />
-        <button
-          type="button"
-          className={cn(
-            'flex h-8 cursor-pointer items-center gap-1 rounded-lg border-none bg-transparent px-2 text-left text-text-secondary outline-hidden',
-            'hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active',
-          )}
+        <Button
+          variant="ghost"
+          size="medium"
+          className="justify-start gap-1 px-2 text-left text-text-secondary"
           onClick={onOpenMetadataManagement}
         >
           <span className="system-sm-medium">
@@ -270,7 +270,7 @@ function MetadataPickerActions({
             className="i-ri-arrow-right-up-line size-4 shrink-0 text-text-tertiary"
             aria-hidden="true"
           />
-        </button>
+        </Button>
       </div>
     </div>
   )

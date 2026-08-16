@@ -307,52 +307,46 @@ function ComboboxIcon({ className, children, ...props }: ComboboxIconProps) {
   )
 }
 
-type ComboboxContentProps = {
-  children: React.ReactNode
-  placement?: Placement
-  sideOffset?: number
-  alignOffset?: number
+const ComboboxPortal = BaseCombobox.Portal
+type ComboboxPortalProps = BaseCombobox.Portal.Props
+
+type ComboboxPositionerProps = Omit<
+  BaseCombobox.Positioner.Props,
+  'className' | 'side' | 'align'
+> & {
   className?: string
-  popupClassName?: string
-  portalProps?: Omit<BaseCombobox.Portal.Props, 'children'>
-  positionerProps?: Omit<
-    BaseCombobox.Positioner.Props,
-    'children' | 'className' | 'side' | 'align' | 'sideOffset' | 'alignOffset'
-  >
-  popupProps?: Omit<BaseCombobox.Popup.Props, 'children' | 'className'>
+  placement?: Placement
 }
 
-function ComboboxContent({
-  children,
+function ComboboxPositioner({
+  className,
   placement = 'bottom-start',
   sideOffset = 4,
-  alignOffset = 0,
-  className,
-  popupClassName,
-  portalProps,
-  positionerProps,
-  popupProps,
-}: ComboboxContentProps) {
+  ...props
+}: ComboboxPositionerProps) {
   const { side, align } = parsePlacement(placement)
 
   return (
-    <BaseCombobox.Portal {...portalProps}>
-      <BaseCombobox.Positioner
-        side={side}
-        align={align}
-        sideOffset={sideOffset}
-        alignOffset={alignOffset}
-        className={cn('z-50 outline-hidden', className)}
-        {...positionerProps}
-      >
-        <BaseCombobox.Popup
-          className={cn(comboboxPopupClassName, floatingPopupAnimationClassName, popupClassName)}
-          {...popupProps}
-        >
-          {children}
-        </BaseCombobox.Popup>
-      </BaseCombobox.Positioner>
-    </BaseCombobox.Portal>
+    <BaseCombobox.Positioner
+      side={side}
+      align={align}
+      sideOffset={sideOffset}
+      className={cn('z-50 outline-hidden', className)}
+      {...props}
+    />
+  )
+}
+
+type ComboboxPopupProps = Omit<BaseCombobox.Popup.Props, 'className'> & {
+  className?: string
+}
+
+function ComboboxPopup({ className, ...props }: ComboboxPopupProps) {
+  return (
+    <BaseCombobox.Popup
+      className={cn(comboboxPopupClassName, floatingPopupAnimationClassName, className)}
+      {...props}
+    />
   )
 }
 
@@ -453,7 +447,10 @@ type ComboboxStatusProps = Omit<BaseCombobox.Status.Props, 'className'> & {
 function ComboboxStatus({ className, ...props }: ComboboxStatusProps) {
   return (
     <BaseCombobox.Status
-      className={cn('px-3 py-2 system-sm-regular text-text-tertiary', className)}
+      className={cn(
+        'px-3 py-2 system-sm-regular text-text-tertiary empty:h-0 empty:p-0',
+        className,
+      )}
       {...props}
     />
   )
@@ -522,7 +519,6 @@ export {
   ComboboxChips,
   ComboboxClear,
   ComboboxCollection,
-  ComboboxContent,
   ComboboxEmpty,
   ComboboxGroup,
   ComboboxGroupLabel,
@@ -535,6 +531,9 @@ export {
   ComboboxItemText,
   ComboboxLabel,
   ComboboxList,
+  ComboboxPopup,
+  ComboboxPortal,
+  ComboboxPositioner,
   ComboboxRow,
   ComboboxSeparator,
   ComboboxStatus,
@@ -551,7 +550,6 @@ export type {
   ComboboxChipsProps,
   ComboboxClearProps,
   ComboboxCollectionProps,
-  ComboboxContentProps,
   ComboboxEmptyProps,
   ComboboxGroupLabelProps,
   ComboboxGroupProps,
@@ -564,6 +562,9 @@ export type {
   ComboboxItemTextProps,
   ComboboxLabelProps,
   ComboboxListProps,
+  ComboboxPopupProps,
+  ComboboxPortalProps,
+  ComboboxPositionerProps,
   ComboboxProps,
   ComboboxRowProps,
   ComboboxSeparatorProps,

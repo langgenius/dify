@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { AgentSelectorContent } from '../agent-selector'
 
 const mocks = vi.hoisted(() => ({
@@ -59,7 +60,20 @@ describe('AgentSelectorContent', () => {
   it('offers the Agent Console link with agent.manage', async () => {
     await renderSelector()
 
-    expect(screen.getByText(manageInConsoleLabel)).toBeInTheDocument()
+    const listbox = screen.getByRole('listbox')
+    const manageLink = screen.getByRole('link', { name: manageInConsoleLabel })
+
+    expect(manageLink).toHaveAttribute('href', '/agents')
+    expect(listbox).not.toContainElement(manageLink)
+  })
+
+  it('should keep the listbox as the only scroll owner for agent options', async () => {
+    await renderSelector()
+
+    const listbox = screen.getByRole('listbox')
+
+    expect(listbox).toHaveClass('max-h-54', 'overflow-y-auto', 'outline-hidden')
+    expect(listbox.querySelector('.overflow-y-auto')).not.toBeInTheDocument()
   })
 
   it('hides the Agent Console link without agent.manage', async () => {
@@ -75,8 +89,26 @@ describe('AgentSelectorContent', () => {
 
     await renderSelector({ onStartFromScratch: vi.fn() })
 
-    expect(screen.getByText(startFromScratchLabel)).toBeInTheDocument()
+    const listbox = screen.getByRole('listbox')
+    const startButton = screen.getByRole('button', { name: startFromScratchLabel })
+
+    expect(listbox).not.toContainElement(startButton)
     expect(screen.queryByText(manageInConsoleLabel)).not.toBeInTheDocument()
+  })
+
+  it('should move focus from the combobox to actions outside the listbox', async () => {
+    const user = userEvent.setup()
+    await renderSelector({ onStartFromScratch: vi.fn() })
+
+    const input = screen.getByRole('combobox')
+    const startButton = screen.getByRole('button', { name: startFromScratchLabel })
+    const listbox = screen.getByRole('listbox')
+
+    expect(listbox).not.toContainElement(startButton)
+    input.focus()
+    await user.tab()
+
+    expect(startButton).toHaveFocus()
   })
 
   it('renders no action row when neither action is available', async () => {
