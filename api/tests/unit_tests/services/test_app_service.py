@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import datetime
+from operator import attrgetter
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock, patch
@@ -219,13 +220,13 @@ def test_app_status_updates_commit_before_signal(update_status: Callable[..., Ap
 
 
 @pytest.mark.parametrize(
-    ("method", "column"),
+    ("method", "column", "read"),
     [
-        (AppService.update_app_site_status, "enable_site"),
-        (AppService.update_app_api_status, "enable_api"),
+        (AppService.update_app_site_status, "enable_site", attrgetter("enable_site")),
+        (AppService.update_app_api_status, "enable_api", attrgetter("enable_api")),
     ],
 )
-def test_status_toggle_writes_conditional_update_even_when_read_is_stale(method, column: str) -> None:
+def test_status_toggle_writes_conditional_update_even_when_read_is_stale(method, column: str, read) -> None:
     """A stale snapshot must not suppress the toggle (rapid disable→enable race).
 
     The old in-memory guard (`value == app.<column>`) read the possibly stale
@@ -249,18 +250,18 @@ def test_status_toggle_writes_conditional_update_even_when_read_is_stale(method,
     compiled = str(stmt.compile(compile_kwargs={"literal_binds": True}))
     assert f"{column} != true" in compiled.lower() or f"{column} != 1" in compiled.lower()
     send.assert_called_once_with(app)
-    assert getattr(app, column) is True
+    assert read(app) is True
     session.commit.assert_called_once()
 
 
 @pytest.mark.parametrize(
-    ("method", "column"),
+    ("method", "column", "read"),
     [
-        (AppService.update_app_site_status, "enable_site"),
-        (AppService.update_app_api_status, "enable_api"),
+        (AppService.update_app_site_status, "enable_site", attrgetter("enable_site")),
+        (AppService.update_app_api_status, "enable_api", attrgetter("enable_api")),
     ],
 )
-def test_status_toggle_skips_signal_when_row_already_at_target(method, column: str) -> None:
+def test_status_toggle_skips_signal_when_row_already_at_target(method, column: str, read) -> None:
     app = cast(App, SimpleNamespace(mode=AppMode.CHAT, id="app-1", **{column: False}))
     session = MagicMock()
     session.execute.return_value = SimpleNamespace(rowcount=0)
@@ -273,7 +274,7 @@ def test_status_toggle_skips_signal_when_row_already_at_target(method, column: s
 
     send.assert_not_called()
     # the object still reflects the committed state
-    assert getattr(app, column) is True
+    assert read(app) is True
     session.commit.assert_called_once()
 
 
