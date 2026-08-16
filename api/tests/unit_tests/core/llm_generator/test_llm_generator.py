@@ -647,6 +647,7 @@ class TestLLMGenerator:
                 model_config_entity,
                 "ideal",
                 workflow_service,
+                session=database,
             )
 
     def test_instruction_modify_workflow_rejects_app_from_another_tenant(
@@ -668,6 +669,7 @@ class TestLLMGenerator:
                 model_config_entity,
                 "ideal",
                 workflow_service,
+                session=database,
             )
 
     def test_instruction_modify_workflow_requires_draft_workflow(
@@ -689,6 +691,7 @@ class TestLLMGenerator:
                 model_config_entity,
                 "ideal",
                 workflow_service,
+                session=database,
             )
 
     def test_instruction_modify_workflow_uses_last_run(
@@ -718,6 +721,7 @@ class TestLLMGenerator:
             model_config_entity,
             "ideal",
             workflow_service,
+            session=database,
         )
 
         assert result == {"modified": "workflow"}
@@ -746,6 +750,7 @@ class TestLLMGenerator:
             model_config_entity,
             "ideal",
             workflow_service,
+            session=database,
         )
 
         assert result == {"modified": "workflow"}
@@ -781,6 +786,7 @@ class TestLLMGenerator:
             model_config_entity,
             "ideal",
             workflow_service,
+            session=database,
         )
 
         assert result == {"modified": "fallback"}
@@ -805,6 +811,7 @@ class TestLLMGenerator:
             model_config_entity,
             "ideal",
             workflow_service,
+            session=database,
         )
 
         assert result == {"modified": "workflow"}
