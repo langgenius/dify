@@ -4,6 +4,7 @@ import Link from '@/next/link'
 import MarketplaceLogoDark from '@/public/marketplace/dify-marketplace-logo-dark.svg'
 import MarketplaceLogo from '@/public/marketplace/dify-marketplace-logo.svg'
 import HomeCatalogTabs from './home-catalog-tabs'
+import { HOME_HEADER_HEIGHT_PX } from './home-constants'
 // HomeCreatorCenter stays in its own client module: it derives styles via
 // buttonVariants(), which cannot be invoked inside this server component.
 import HomeCreatorCenter from './home-creator-center'
@@ -28,10 +29,8 @@ const HomeHeader = ({
 }: HomeHeaderProps) => {
   return (
     <header
-      className={cn(
-        'sticky top-0 z-50 flex w-full shrink-0 items-center gap-4 bg-background-default px-4 py-1.5 md:px-9',
-        styles.header,
-      )}
+      className="sticky top-0 z-50 flex w-full shrink-0 items-center gap-4 bg-background-default px-4 py-1.5 md:px-9"
+      style={{ height: HOME_HEADER_HEIGHT_PX }}
     >
       <div className="flex min-w-0 flex-1 items-center gap-4">
         <Link

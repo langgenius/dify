@@ -207,7 +207,7 @@ export const useMarketplacePlugins = (enabled = true) => {
 
 export const useMarketplaceContainerScroll = (
   callback: () => void,
-  scrollContainerId = 'marketplace-container',
+  scrollContainerId = MARKETPLACE_CONTAINER_ID,
 ) => {
   const handleScroll = useCallback(
     (e: Event) => {

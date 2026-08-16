@@ -1,5 +1,6 @@
 import type { SearchParams } from 'nuqs'
 import AccountSection from '@/app/components/main-nav/components/account-section'
+import { MARKETPLACE_CONTAINER_ID } from '@/app/components/plugins/marketplace/constants'
 import { EmbeddedMarketplace } from '@/app/components/plugins/marketplace/embedded'
 import { fetchPluginBanners } from '@/app/components/plugins/marketplace/home/banners'
 import { HydrateQueryClient } from '@/app/components/plugins/marketplace/hydration-server'
@@ -16,7 +17,7 @@ const MarketplacePage = async ({ searchParams }: MarketplacePageProps) => {
 
   return (
     <div
-      id="marketplace-container"
+      id={MARKETPLACE_CONTAINER_ID}
       className="flex h-full min-h-0 flex-col overflow-y-auto bg-background-default"
     >
       <MarketplaceInstallPermissionProvider>

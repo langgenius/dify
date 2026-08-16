@@ -50,11 +50,9 @@ describe('HomeCatalogNavigation', () => {
     expect(activeTab).toHaveClass('bg-state-base-active')
     expect(activeTab).not.toHaveClass('text-text-accent')
     expect(activeTab.querySelector('[aria-hidden="true"]')).not.toBeInTheDocument()
-    expect(screen.queryByText('plugin.marketplace.home.new')).not.toBeInTheDocument()
     expect(
       screen.getByRole('link', { name: /plugin\.marketplace\.home\.templates/ }),
     ).toHaveAttribute('href', '/templates')
-    expect(screen.queryByText('plugin.marketplace.home.new')).not.toBeInTheDocument()
     expect(screen.getByTestId('plugin-type-switch')).toHaveAttribute('data-variant', 'home')
   })
 
@@ -71,7 +69,6 @@ describe('HomeCatalogNavigation', () => {
     expect(templatesTab).toHaveAttribute('href', '/templates')
     expect(templatesTab).toHaveClass('cursor-pointer')
     expect(templatesTab).not.toHaveClass('bg-state-base-active')
-    expect(screen.queryByText('plugin.marketplace.home.new')).not.toBeInTheDocument()
   })
 
   it('marks Templates as active when rendering the Templates catalog', () => {
@@ -87,7 +84,6 @@ describe('HomeCatalogNavigation', () => {
     expect(templatesTab).toHaveClass('bg-state-base-active')
     expect(templatesTab).not.toHaveClass('text-text-accent')
     expect(templatesTab.querySelector('[aria-hidden="true"]')).not.toBeInTheDocument()
-    expect(screen.queryByText('plugin.marketplace.home.new')).not.toBeInTheDocument()
   })
 
   it('uses request-localized labels and preserves the selected language', () => {

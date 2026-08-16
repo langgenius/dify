@@ -5,7 +5,9 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from '#i18n'
+import { MARKETPLACE_CONTAINER_ID } from '../constants'
 import PluginTypeSwitch from '../plugin-type-switch'
+import { HOME_HEADER_HEIGHT_PX } from './home-constants'
 import { homeCatalogPinnedAtom } from './home-sticky-state'
 import styles from './home-sticky.module.css'
 
@@ -14,8 +16,6 @@ type HomeCatalogNavigationProps = {
   catalogTabs: ReactNode
 }
 
-const STICKY_TOP = 48
-
 function HomeCatalogNavigation({ catalogCategories, catalogTabs }: HomeCatalogNavigationProps) {
   const { t } = useTranslation()
   const isPinned = useAtomValue(homeCatalogPinnedAtom)
@@ -23,7 +23,7 @@ function HomeCatalogNavigation({ catalogCategories, catalogTabs }: HomeCatalogNa
   const pinTriggerRef = useRef<HTMLSpanElement>(null)
 
   useEffect(() => {
-    const scrollContainer = document.getElementById('marketplace-container')
+    const scrollContainer = document.getElementById(MARKETPLACE_CONTAINER_ID)
     if (!scrollContainer) return
 
     const previousOverflowAnchor = scrollContainer.style.overflowAnchor
@@ -37,7 +37,7 @@ function HomeCatalogNavigation({ catalogCategories, catalogTabs }: HomeCatalogNa
 
       const containerTop = scrollContainer.getBoundingClientRect().top
       const triggerTop = pinTrigger.getBoundingClientRect().top
-      setIsPinned(triggerTop <= containerTop + STICKY_TOP)
+      setIsPinned(triggerTop <= containerTop + HOME_HEADER_HEIGHT_PX)
     }
 
     updatePinnedState()
@@ -61,6 +61,8 @@ function HomeCatalogNavigation({ catalogCategories, catalogTabs }: HomeCatalogNa
           styles.catalogNavigation,
           isPinned && styles.catalogNavigationPinned,
         )}
+        // Pins directly below the header, so the offset is the header height.
+        style={{ top: HOME_HEADER_HEIGHT_PX }}
       >
         <div className="w-full">
           <div className={cn('-ml-2', isPinned && styles.catalogTabsPinned)}>{catalogTabs}</div>

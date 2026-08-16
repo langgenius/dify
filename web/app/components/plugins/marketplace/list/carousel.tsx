@@ -7,6 +7,7 @@ import Autoplay from 'embla-carousel-autoplay'
 import useEmblaCarousel from 'embla-carousel-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from '#i18n'
+import { MARKETPLACE_CONTAINER_ID } from '../constants'
 import { CAROUSEL_PAGE_CLASS } from './collection-constants'
 
 export type CarouselPage = {
@@ -314,7 +315,7 @@ const Carousel = ({
               syncAutoplay()
             },
             {
-              root: document.getElementById('marketplace-container'),
+              root: document.getElementById(MARKETPLACE_CONTAINER_ID),
               threshold: 0.25,
             },
           )
