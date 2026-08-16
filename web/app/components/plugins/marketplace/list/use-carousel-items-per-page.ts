@@ -12,7 +12,7 @@ const subscribeToViewport = (onStoreChange: () => void) => {
 const getViewportWidth = () => globalThis.window?.innerWidth ?? CAROUSEL_BREAKPOINTS.xl
 const getServerViewportWidth = () => CAROUSEL_BREAKPOINTS.xl
 
-export function getCarouselItemsPerPage(viewportWidth: number) {
+function getCarouselItemsPerPage(viewportWidth: number) {
   if (viewportWidth >= CAROUSEL_BREAKPOINTS.xl) return CAROUSEL_PAGE_SIZE.xl
   if (viewportWidth >= CAROUSEL_BREAKPOINTS.lg) return CAROUSEL_PAGE_SIZE.lg
   if (viewportWidth >= CAROUSEL_BREAKPOINTS.sm) return CAROUSEL_PAGE_SIZE.sm
