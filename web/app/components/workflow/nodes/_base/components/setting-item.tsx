@@ -20,7 +20,7 @@ export const SettingItem = memo(({ label, children, status, tooltip }: SettingIt
       <div
         className={cn(
           'max-w-full shrink-0 truncate system-xs-medium-uppercase text-text-tertiary',
-          !!children && 'max-w-[100px]',
+          !!children && 'max-w-25',
         )}
       >
         {label}

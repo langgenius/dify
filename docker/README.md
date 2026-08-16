@@ -86,8 +86,8 @@ The root `.env.example` file contains the essential startup settings. Optional a
    - `CONSOLE_API_URL`, `CONSOLE_WEB_URL`, `SERVICE_API_URL`, `APP_API_URL`, `APP_WEB_URL`: public URLs for the API and frontend services.
    - `SERVER_CONSOLE_API_URL`: internal API origin used by web server-side requests and, when `INTERNAL_FILES_URL` is unset, as the default fallback for API-side internal file URL generation. Keep the default `http://api:5001` for standard Docker Compose deployments, and only change it when services must reach the API through a different internal address.
    - `FILES_URL`, `INTERNAL_FILES_URL`: Public and internal base URLs for file downloads and previews.
-   - `ENDPOINT_URL_TEMPLATE`, `NEXT_PUBLIC_SOCKET_URL`, `TRIGGER_URL`: Additional service URLs. 
-   
+   - `ENDPOINT_URL_TEMPLATE`, `NEXT_PUBLIC_SOCKET_URL`, `TRIGGER_URL`: Additional service URLs.
+
    See `.env.example` for the full list.
 
 2. **Server Configuration**:

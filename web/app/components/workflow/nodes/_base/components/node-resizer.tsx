@@ -3,7 +3,7 @@ import type { CommonNodeType } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useCallback } from 'react'
 import { NodeResizeControl } from 'reactflow'
-import { useNodesInteractions } from '../../../hooks'
+import { useNodesInteractions } from '../../../hooks/use-nodes-interactions'
 
 const Icon = () => {
   return (

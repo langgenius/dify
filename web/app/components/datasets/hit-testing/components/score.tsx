@@ -13,8 +13,8 @@ const Score: FC<Props> = ({ value, besideChunkName }) => {
   return (
     <div
       className={cn(
-        'relative items-center overflow-hidden border border-components-progress-bar-border px-[5px]',
-        besideChunkName ? 'h-[20.5px] border-l-0' : 'h-[20px] rounded-md',
+        'relative items-center overflow-hidden border border-components-progress-bar-border px-1.25',
+        besideChunkName ? 'h-[20.5px] border-l-0' : 'h-5 rounded-md',
       )}
     >
       <div

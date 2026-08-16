@@ -1,7 +1,8 @@
-import type { FC } from 'react'
+import type { FC, ReactElement } from 'react'
 import { fireEvent, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render } from '@/test/console/render'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { CommentInput } from './comment-input'
 
 type MentionInputProps = {
@@ -26,6 +27,11 @@ const mockConsoleState = vi.hoisted(() => ({
   },
 }))
 
+const render = (ui: ReactElement) =>
+  renderWithConsoleState(ui, {
+    wrapper: createAccountProfileQueryWrapper(mockConsoleState.userProfile),
+  })
+
 vi.mock('react-i18next', async () => {
   const { withSelectorKey } = await import('@/test/i18n-mock')
   return {
@@ -34,16 +40,6 @@ vi.mock('react-i18next', async () => {
     }),
   }
 })
-
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
-
-vi.mock('@langgenius/dify-ui/avatar', () => ({
-  Avatar: ({ name }: { name: string }) => <div data-testid="avatar">{name}</div>,
-  default: ({ name }: { name: string }) => <div data-testid="avatar">{name}</div>,
-}))
 
 vi.mock('./mention-input', () => ({
   MentionInput: ((props: MentionInputProps) => {

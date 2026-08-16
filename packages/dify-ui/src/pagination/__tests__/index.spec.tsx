@@ -16,18 +16,26 @@ import {
 
 const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
 
+function getRenderedPageNumbers(container: HTMLElement) {
+  return Array.from(container.querySelectorAll('ol button'), (button) => Number(button.textContent))
+}
+
 async function renderPagination({
   page = 2,
   totalPages = 200,
   onPageChange = vi.fn(),
   pageSize = 25,
   onPageSizeChange = vi.fn(),
+  siblingCount,
+  boundaryCount,
 }: {
   page?: number
   totalPages?: number
   onPageChange?: (page: number) => void
   pageSize?: number
   onPageSizeChange?: (pageSize: number) => void
+  siblingCount?: number
+  boundaryCount?: number
 } = {}) {
   const screen = await render(
     <div className="w-236">
@@ -35,6 +43,8 @@ async function renderPagination({
         page={page}
         totalPages={totalPages}
         onPageChange={onPageChange}
+        siblingCount={siblingCount}
+        boundaryCount={boundaryCount}
         data-testid="pagination"
       >
         <PaginationContent data-testid="content">
@@ -65,9 +75,7 @@ describe('Pagination primitive', () => {
   it('renders the pagination structure with semantic navigation', async () => {
     const { screen } = await renderPagination()
 
-    await expect
-      .element(screen.getByRole('navigation', { name: 'Pagination' }))
-      .toHaveAttribute('data-page', '2')
+    await expect.element(screen.getByRole('navigation', { name: 'Pagination' })).toBeInTheDocument()
     await expect.element(screen.getByRole('button', { name: 'Previous page' })).toBeInTheDocument()
     await expect.element(screen.getByRole('button', { name: 'Next page' })).toBeInTheDocument()
     await expect
@@ -76,19 +84,53 @@ describe('Pagination primitive', () => {
     await expect
       .element(screen.getByRole('button', { name: 'Page 2, current page' }))
       .toHaveAttribute('aria-current', 'page')
+    await expect
+      .element(screen.getByRole('button', { name: 'Page 2, current page' }))
+      .not.toHaveAttribute('aria-pressed')
     await expect.element(screen.getByText('…')).toBeInTheDocument()
   })
 
   it('uses one-based page changes for previous, next, and page buttons', async () => {
-    const { screen, onPageChange } = await renderPagination({ page: 4 })
+    const { screen, onPageChange } = await renderPagination({ page: 100 })
 
     await screen.getByRole('button', { name: 'Previous page' }).click()
     await screen.getByRole('button', { name: 'Next page' }).click()
-    await screen.getByRole('button', { name: 'Go to page 6' }).click()
+    await screen.getByRole('button', { name: 'Go to page 1', exact: true }).click()
 
-    expect(onPageChange).toHaveBeenNthCalledWith(1, 3)
-    expect(onPageChange).toHaveBeenNthCalledWith(2, 5)
-    expect(onPageChange).toHaveBeenNthCalledWith(3, 6)
+    expect(onPageChange).toHaveBeenNthCalledWith(1, 99)
+    expect(onPageChange).toHaveBeenNthCalledWith(2, 101)
+    expect(onPageChange).toHaveBeenNthCalledWith(3, 1)
+  })
+
+  it('does not report a page change when the current page is activated', async () => {
+    const { screen, onPageChange } = await renderPagination({ page: 4 })
+
+    await screen.getByRole('button', { name: 'Page 4, current page' }).click()
+
+    expect(onPageChange).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['near the start', 2, [1, 2, 3, 4, 5, 200], 1],
+    ['in the middle', 100, [1, 99, 100, 101, 200], 2],
+    ['near the end', 199, [1, 196, 197, 198, 199, 200], 1],
+  ])('keeps a compact page window %s', async (_position, page, expectedPages, expectedEllipses) => {
+    const { screen } = await renderPagination({ page })
+
+    expect(getRenderedPageNumbers(screen.container)).toEqual(expectedPages)
+    expect(screen.container.querySelectorAll('ol [aria-hidden="true"]')).toHaveLength(
+      expectedEllipses,
+    )
+  })
+
+  it('uses sibling and boundary counts as the page range contract', async () => {
+    const { screen } = await renderPagination({
+      page: 100,
+      siblingCount: 0,
+      boundaryCount: 2,
+    })
+
+    expect(getRenderedPageNumbers(screen.container)).toEqual([1, 2, 100, 199, 200])
   })
 
   it('disables previous at the first page', async () => {
@@ -107,11 +149,16 @@ describe('Pagination primitive', () => {
     const { screen } = await renderPagination({ page: 999, totalPages: 10 })
 
     await expect
-      .element(screen.getByRole('navigation', { name: 'Pagination' }))
-      .toHaveAttribute('data-page', '10')
-    await expect
       .element(screen.getByRole('button', { name: 'Page 10, current page' }))
       .toHaveAttribute('aria-current', 'page')
+  })
+
+  it('treats a non-finite page count as an empty pagination state', async () => {
+    const screen = await render(
+      <Pagination page={1} totalPages={Number.NaN} onPageChange={vi.fn()} />,
+    )
+
+    expect(screen.container.querySelector('nav')).not.toBeInTheDocument()
   })
 
   it('switches the page summary into a selected labelled number field', async () => {
@@ -196,14 +243,14 @@ describe('Pagination primitive', () => {
     expect(onPageChange).not.toHaveBeenCalled()
   })
 
-  it('uses segmented control semantics for page size', async () => {
+  it('uses required single-choice semantics for page size', async () => {
     const { screen, onPageSizeChange } = await renderPagination()
 
     await expect
-      .element(screen.getByRole('button', { name: '25' }))
-      .toHaveAttribute('aria-pressed', 'true')
+      .element(screen.getByRole('radio', { name: '25' }))
+      .toHaveAttribute('aria-checked', 'true')
 
-    await screen.getByRole('button', { name: '50' }).click()
+    await screen.getByRole('radio', { name: '50' }).click()
 
     expect(onPageSizeChange).toHaveBeenCalledWith(50)
   })
@@ -226,7 +273,9 @@ describe('Pagination primitive', () => {
     await expect
       .element(screen.getByRole('button', { name: 'Edit page number, current page 2 of 10' }))
       .toBeInTheDocument()
-    await expect.element(screen.getByRole('group', { name: 'Items per page' })).toBeInTheDocument()
+    await expect
+      .element(screen.getByRole('radiogroup', { name: 'Items per page' }))
+      .toBeInTheDocument()
   })
 
   it('uses a localized action label for editing the page number', async () => {
@@ -265,9 +314,7 @@ describe('Pagination primitive', () => {
   it('omits compound page jump and page list content for empty pagination state', async () => {
     const { screen } = await renderPagination({ page: 1, totalPages: 0 })
 
-    await expect
-      .element(screen.getByRole('navigation', { name: 'Pagination' }))
-      .toHaveAttribute('data-page', '1')
+    await expect.element(screen.getByRole('navigation', { name: 'Pagination' })).toBeInTheDocument()
     expect(
       screen.container.querySelector('button[aria-label*="current page 1 of 0"]'),
     ).not.toBeInTheDocument()

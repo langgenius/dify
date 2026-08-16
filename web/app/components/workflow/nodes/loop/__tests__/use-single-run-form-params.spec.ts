@@ -20,7 +20,7 @@ const mockGetNodeUsedVarPassToServerKey = vi.hoisted(() => vi.fn())
 const mockGetNodeInfoById = vi.hoisted(() => vi.fn())
 const mockIsSystemVar = vi.hoisted(() => vi.fn())
 
-vi.mock('../../../hooks', () => ({
+vi.mock('../../../hooks/use-workflow', () => ({
   useIsNodeInLoop: (...args: unknown[]) => mockUseIsNodeInLoop(...args),
   useWorkflow: () => mockUseWorkflow(),
 }))

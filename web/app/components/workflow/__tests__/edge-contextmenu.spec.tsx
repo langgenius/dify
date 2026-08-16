@@ -35,16 +35,6 @@ vi.mock('../utils', async (importOriginal) => {
   }
 })
 
-vi.mock('../hooks', async () => {
-  const { useEdgesInteractions } = await import('../hooks/use-edges-interactions')
-  const { usePanelInteractions } = await import('../hooks/use-panel-interactions')
-
-  return {
-    useEdgesInteractions,
-    usePanelInteractions,
-  }
-})
-
 type EdgeRuntimeState = {
   _hovering?: boolean
   _isBundled?: boolean

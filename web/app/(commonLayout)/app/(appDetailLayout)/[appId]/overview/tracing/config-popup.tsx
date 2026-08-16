@@ -359,7 +359,7 @@ const ConfigPopup: FC<PopupProps> = ({
   }
 
   return (
-    <div className="w-[420px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-4 shadow-xl">
+    <div className="w-105 rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-4 shadow-xl">
       <div className="flex items-center justify-between">
         <div className="flex items-center">
           <TracingIcon size="md" className="mr-2" />

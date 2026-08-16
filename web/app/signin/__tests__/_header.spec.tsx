@@ -1,21 +1,14 @@
-import { useSuspenseQuery } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { setLocaleOnClient } from '@/i18n-config'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import Header from '../_header'
 
-vi.mock('@tanstack/react-query', () => ({
-  useSuspenseQuery: vi.fn(),
-}))
 vi.mock('@/i18n-config', () => ({
   setLocaleOnClient: vi.fn(),
 }))
 
 vi.mock('@/next/dynamic', () => ({
   default: () => () => null,
-}))
-
-vi.mock('@/features/system-features/client', () => ({
-  systemFeaturesQueryOptions: () => ({}),
 }))
 
 vi.mock('../_locale-menu', () => ({
@@ -26,20 +19,11 @@ vi.mock('../_locale-menu', () => ({
   ),
 }))
 
-const mockUseSuspenseQuery = vi.mocked(useSuspenseQuery)
 const mockSetLocaleOnClient = vi.mocked(setLocaleOnClient)
 
 describe('Signin Header', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseSuspenseQuery.mockReturnValue({
-      data: {
-        branding: {
-          enabled: false,
-          login_page_logo: '',
-        },
-      },
-    } as ReturnType<typeof useSuspenseQuery>)
   })
 
   it('should switch locale without forcing a full page reload', () => {

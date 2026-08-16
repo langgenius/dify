@@ -197,8 +197,21 @@ const toToolRuntimeParameters = (settings: Record<string, unknown> | undefined) 
   return runtimeParameters
 }
 
+const getDifyToolProviderId = (tool: AgentSoulDifyToolConfig) =>
+  tool.provider_id ??
+  (tool.plugin_id && tool.provider
+    ? `${tool.plugin_id}/${tool.provider}`
+    : (tool.provider ?? tool.plugin_id ?? ''))
+
+const getDifyToolProviderName = (tool: AgentSoulDifyToolConfig) => {
+  if (tool.provider) return tool.provider
+
+  const providerIdSegments = getDifyToolProviderId(tool).split('/').filter(Boolean)
+  return providerIdSegments.at(-1) ?? ''
+}
+
 const getDifyToolActionId = (tool: AgentSoulDifyToolConfig) =>
-  `${tool.provider_id ?? tool.provider ?? tool.plugin_id ?? 'provider'}:${tool.tool_name ?? tool.name ?? 'tool'}`
+  `${getDifyToolProviderId(tool) || 'provider'}:${tool.tool_name ?? tool.name ?? 'tool'}`
 
 const toCredentialVariant = (tool: AgentSoulDifyToolConfig) => {
   const credentialType = tool.credential_type
@@ -227,7 +240,7 @@ const toProviderToolFormState = (
   const toolSettings: AgentSoulConfigFormState['toolSettings'] = {}
 
   for (const tool of config?.tools?.dify_tools ?? []) {
-    const providerId = tool.provider_id ?? tool.provider ?? tool.plugin_id ?? ''
+    const providerId = getDifyToolProviderId(tool)
     const toolName = tool.tool_name ?? tool.name ?? ''
     if (!providerId || !toolName) continue
 
@@ -249,8 +262,9 @@ const toProviderToolFormState = (
 
     toolByProviderId.set(providerId, {
       id: providerId,
-      name: tool.provider ?? providerId,
+      name: getDifyToolProviderName(tool),
       kind: 'provider',
+      pluginId: tool.plugin_id ?? undefined,
       iconClassName: 'i-custom-public-other-default-tool-icon text-text-tertiary',
       providerType: tool.provider_type,
       allowDelete:
@@ -287,6 +301,7 @@ const toDifyToolConfigs = (
       enabled: true,
       provider: tool.name,
       provider_id: tool.id,
+      plugin_id: tool.pluginId,
       provider_type: tool.providerType,
       tool_name: action.toolName,
       runtime_parameters: toToolRuntimeParameters(toolSettings[action.id]),

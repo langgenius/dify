@@ -13,6 +13,12 @@ class InvalidEmailError(BaseHTTPException):
     code = 400
 
 
+class InvitationAccountMismatchError(BaseHTTPException):
+    error_code = "invitation_account_mismatch"
+    description = "This invitation was sent to another account. Please sign in with the invited account."
+    code = 403
+
+
 class PasswordMismatchError(BaseHTTPException):
     error_code = "password_mismatch"
     description = "The passwords do not match."
@@ -87,6 +93,18 @@ class EmailPasswordLoginLimitError(BaseHTTPException):
     error_code = "email_code_login_limit"
     description = "Too many incorrect password attempts. Please try again later."
     code = 429
+
+
+class TurnstileVerificationFailedError(BaseHTTPException):
+    error_code = "turnstile_verification_failed"
+    description = "Turnstile verification failed. Please try again."
+    code = 400
+
+
+class TurnstileServiceUnavailableError(BaseHTTPException):
+    error_code = "turnstile_service_unavailable"
+    description = "Turnstile verification is temporarily unavailable. Please try again later."
+    code = 503
 
 
 class EmailCodeLoginRateLimitExceededError(BaseHTTPException):

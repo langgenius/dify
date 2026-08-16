@@ -48,7 +48,7 @@ const ParamConfigContent: FC = () => {
       <div className="space-y-6 pt-3">
         <div>
           <div className="mb-2 flex items-center space-x-1">
-            <div className="text-[13px] leading-[18px] font-semibold text-text-secondary">
+            <div className="text-[13px] leading-4.5 font-semibold text-text-secondary">
               {t(($) => $['vision.visionSettings.resolution'], { ns: 'appDebug' })}
             </div>
             <Infotip
@@ -90,7 +90,7 @@ const ParamConfigContent: FC = () => {
           </div>
         </div>
         <div>
-          <div className="mb-2 text-[13px] leading-[18px] font-semibold text-text-secondary">
+          <div className="mb-2 text-[13px] leading-4.5 font-semibold text-text-secondary">
             {t(($) => $['vision.visionSettings.uploadMethod'], { ns: 'appDebug' })}
           </div>
           <div className="flex items-center gap-1">

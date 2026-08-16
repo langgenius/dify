@@ -1,6 +1,7 @@
 import type { EndpointListItem, PluginDetail } from '../../types'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import EndpointCard from '../endpoint-card'
 
 const mockHandleChange = vi.fn()
@@ -9,6 +10,10 @@ const mockDisableEndpoint = vi.fn()
 const mockDeleteEndpoint = vi.fn()
 const mockUpdateEndpoint = vi.fn()
 const mockToastNotify = vi.fn()
+
+const getEditButton = () => screen.getByRole('button', { name: 'common.operation.edit' })
+const getDeleteButton = () => screen.getByRole('button', { name: 'common.operation.delete' })
+const getCopyButton = () => screen.getByRole('button', { name: 'common.operation.copy' })
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(
@@ -212,6 +217,26 @@ describe('EndpointCard', () => {
   })
 
   describe('User Interactions', () => {
+    it('should reach endpoint actions through the tab order', async () => {
+      const user = userEvent.setup()
+      render(
+        <EndpointCard
+          pluginDetail={mockPluginDetail}
+          data={mockEndpointData}
+          handleChange={mockHandleChange}
+        />,
+      )
+
+      await user.tab()
+      expect(getEditButton()).toHaveFocus()
+
+      await user.tab()
+      expect(getDeleteButton()).toHaveFocus()
+
+      await user.keyboard('{Enter}')
+      expect(screen.getByText('plugin.detailPanel.endpointDeleteTip')).toBeInTheDocument()
+    })
+
     it('should show disable confirm when switching off', () => {
       render(
         <EndpointCard
@@ -251,8 +276,7 @@ describe('EndpointCard', () => {
         />,
       )
 
-      const allButtons = screen.getAllByRole('button')
-      fireEvent.click(allButtons[1]!)
+      fireEvent.click(getDeleteButton())
 
       expect(screen.getByText('plugin.detailPanel.endpointDeleteTip'))!.toBeInTheDocument()
     })
@@ -266,8 +290,7 @@ describe('EndpointCard', () => {
         />,
       )
 
-      const allButtons = screen.getAllByRole('button')
-      fireEvent.click(allButtons[1]!)
+      fireEvent.click(getDeleteButton())
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
       expect(mockDeleteEndpoint).toHaveBeenCalledWith('ep-1')
@@ -282,8 +305,7 @@ describe('EndpointCard', () => {
         />,
       )
 
-      const allButtons = screen.getAllByRole('button')
-      fireEvent.click(allButtons[0]!)
+      fireEvent.click(getEditButton())
 
       expect(screen.getByTestId('endpoint-modal'))!.toBeInTheDocument()
     })
@@ -297,8 +319,7 @@ describe('EndpointCard', () => {
         />,
       )
 
-      const allButtons = screen.getAllByRole('button')
-      fireEvent.click(allButtons[0]!)
+      fireEvent.click(getEditButton())
       fireEvent.click(screen.getByTestId('modal-save'))
 
       expect(mockUpdateEndpoint).toHaveBeenCalled()
@@ -316,8 +337,7 @@ describe('EndpointCard', () => {
         />,
       )
 
-      const allButtons = screen.getAllByRole('button')
-      fireEvent.click(allButtons[2]!)
+      fireEvent.click(getCopyButton())
 
       act(() => {
         vi.advanceTimersByTime(2000)
@@ -386,8 +406,7 @@ describe('EndpointCard', () => {
         />,
       )
 
-      const allButtons = screen.getAllByRole('button')
-      fireEvent.click(allButtons[1]!)
+      fireEvent.click(getDeleteButton())
       expect(screen.getByText('plugin.detailPanel.endpointDeleteTip'))!.toBeInTheDocument()
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
@@ -403,8 +422,7 @@ describe('EndpointCard', () => {
         />,
       )
 
-      const allButtons = screen.getAllByRole('button')
-      fireEvent.click(allButtons[0]!)
+      fireEvent.click(getEditButton())
       expect(screen.getByTestId('endpoint-modal'))!.toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('modal-cancel'))
@@ -456,8 +474,7 @@ describe('EndpointCard', () => {
         />,
       )
 
-      const allButtons = screen.getAllByRole('button')
-      fireEvent.click(allButtons[1]!)
+      fireEvent.click(getDeleteButton())
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
       expect(mockDeleteEndpoint).toHaveBeenCalled()
@@ -472,8 +489,7 @@ describe('EndpointCard', () => {
         />,
       )
 
-      const allButtons = screen.getAllByRole('button')
-      fireEvent.click(allButtons[0]!)
+      fireEvent.click(getEditButton())
 
       expect(screen.getByTestId('endpoint-modal'))!.toBeInTheDocument()
 

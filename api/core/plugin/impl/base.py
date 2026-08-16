@@ -1,7 +1,7 @@
 import inspect
 import json
 import logging
-from collections.abc import Callable, Generator
+from collections.abc import Callable, Generator, Mapping
 from typing import Any, cast
 from urllib.parse import unquote
 
@@ -23,6 +23,7 @@ from core.plugin.impl.exc import (
     PluginLLMPollingUnsupportedError,
     PluginNotFoundError,
     PluginPermissionDeniedError,
+    PluginRuntimeError,
     PluginUniqueIdentifierError,
 )
 from core.trigger.errors import (
@@ -275,19 +276,19 @@ class BasePluginClient:
                 json_response = transformer(json_response)
             # https://stackoverflow.com/questions/59634937/variable-foo-class-is-not-valid-as-type-but-why
             rep = PluginDaemonBasicResponse[type_].model_validate(json_response)  # type: ignore
-        except Exception:
+        except Exception as e:
             msg = (
                 f"Failed to parse response from plugin daemon to PluginDaemonBasicResponse [{str(type_.__name__)}],"
                 f" url: {path}"
             )
             logger.exception(msg)
-            raise ValueError(msg)
+            raise ValueError(msg) from e
 
         if rep.code != 0:
             try:
                 error = PluginDaemonError.model_validate(json.loads(rep.message))
-            except Exception:
-                raise ValueError(f"{rep.message}, code: {rep.code}")
+            except Exception as e:
+                raise ValueError(f"{rep.message}, code: {rep.code}") from e
 
             self._handle_plugin_daemon_error(error.error_type, error.message)
         if rep.data is None:
@@ -375,6 +376,18 @@ class BasePluginClient:
                     # type `PluginLLMPollingUnsupportedError`.
                     case PluginLLMPollingUnsupportedError.__name__:
                         raise PluginLLMPollingUnsupportedError(description=error_object.get("message"))
+                    case PluginRuntimeError.__name__:
+                        args = error_object.get("args")
+                        lambda_request_id = args.get("request_id") if isinstance(args, Mapping) else None
+                        if not isinstance(lambda_request_id, str):
+                            lambda_request_id = None
+                        runtime_message = error_object.get("message")
+                        if not isinstance(runtime_message, str):
+                            runtime_message = "Plugin runtime request failed"
+                        raise PluginRuntimeError(
+                            description=runtime_message,
+                            lambda_request_id=lambda_request_id,
+                        )
                     case _:
                         raise PluginInvokeError(description=message)
             case PluginDaemonInternalServerError.__name__:

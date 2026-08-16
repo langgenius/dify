@@ -324,7 +324,7 @@ export function AgentOutputVariables({
               <Button
                 size="small"
                 variant="tertiary"
-                className="h-6 w-full gap-x-1 rounded-md bg-components-input-bg-normal text-text-secondary hover:bg-state-base-hover"
+                className="h-6 w-full rounded-md bg-components-input-bg-normal text-text-secondary hover:bg-state-base-hover"
                 onClick={handleNewOutput}
               >
                 <span aria-hidden="true" className="i-ri-add-line size-3.5" />

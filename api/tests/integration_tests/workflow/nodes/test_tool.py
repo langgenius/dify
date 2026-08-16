@@ -70,6 +70,7 @@ def init_tool_node(config: dict):
         tool_file_manager=tool_file_manager,
         runtime=DifyToolNodeRuntime(init_params.run_context),
     )
+    node.bind_execution_id(str(uuid.uuid4()))
     return node
 
 

@@ -39,7 +39,7 @@ function EmojiPickerContent({ className, onOpenChange, onSelect }: EmojiPickerCo
     <DialogContent
       className={cn(
         'max-h-none w-full overflow-hidden! text-left align-middle',
-        'flex max-h-[552px] flex-col rounded-xl border-[0.5px] border-divider-subtle p-0 shadow-xl',
+        'flex max-h-138 flex-col rounded-xl border-[0.5px] border-divider-subtle p-0 shadow-xl',
         className,
       )}
     >

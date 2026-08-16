@@ -151,6 +151,9 @@ def fetch_model_config(
     credentials_provider: CredentialsProvider,
     model_factory: DifyModelFactory,
 ) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:
+    if not node_data_model.provider or not node_data_model.name:
+        raise ValueError("LLM provider and model are required.")
+
     if not node_data_model.mode:
         raise LLMModeRequiredError("LLM mode is required.")
 

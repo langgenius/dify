@@ -1,8 +1,10 @@
 {
+  "agent.manage": "Manage Agents",
   "api_extension.manage": "Manage API extension configuration",
   "app.access_config": "Configure app access permissions",
   "app.acl.access_config": "Configure app access permissions",
   "app.acl.delete": "Delete app",
+  "app.acl.deploy": "Deploy app",
   "app.acl.edit": "Edit and orchestrate app",
   "app.acl.import_export_dsl": "Import / export DSL",
   "app.acl.log_and_annotation": "Access logs and annotations",

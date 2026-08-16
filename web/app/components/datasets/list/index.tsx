@@ -2,6 +2,7 @@
 
 import type { KnowledgeViewSwitcherProps } from '@/features/new-rag/components/knowledge-view-switcher'
 // Libraries
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean, useDebounceFn } from 'ahooks'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
@@ -17,11 +18,10 @@ import {
   getStepByStepTourGuides,
   STEP_BY_STEP_TOUR_TARGETS,
 } from '@/app/components/step-by-step-tour/target-registry'
-import { useExternalApiPanel } from '@/context/external-api-panel-context'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { systemFeaturesAtom } from '@/context/system-features-state'
 import { isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { NewKnowledgeList } from '@/features/new-rag/new-knowledge-list'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
@@ -49,7 +49,7 @@ function LegacyList({
   const { push } = useRouter()
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
-  const { showExternalApiPanel, setShowExternalApiPanel } = useExternalApiPanel()
+  const [showExternalApiPanel, setShowExternalApiPanel] = useState(false)
   const [includeAll, { toggle: toggleIncludeAll }] = useBoolean(false)
   const invalidDatasetList = useInvalidDatasetList()
   useDocumentTitle(t(($) => $.knowledge, { ns: 'dataset' }))
@@ -228,7 +228,10 @@ function KnowledgeFsList() {
 }
 
 function List() {
-  const { knowledge_fs_enabled: knowledgeFsEnabled } = useAtomValue(systemFeaturesAtom)
+  const { data: knowledgeFsEnabled } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ knowledge_fs_enabled }) => knowledge_fs_enabled,
+  })
 
   if (!knowledgeFsEnabled) return <LegacyList />
 

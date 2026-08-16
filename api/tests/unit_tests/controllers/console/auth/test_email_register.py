@@ -11,7 +11,8 @@ from controllers.console.auth.email_register import (
     EmailRegisterResetApi,
     EmailRegisterSendEmailApi,
 )
-from services.feature_service import SystemFeatureModel
+from enums import DeploymentEdition
+from services.entities.feature_entities import SystemFeatureModel
 
 
 class TestEmailRegisterSendEmailApi:
@@ -34,10 +35,14 @@ class TestEmailRegisterSendEmailApi:
         mock_account = MagicMock()
         mock_get_account.return_value = mock_account
 
-        feature_flags = SystemFeatureModel(enable_email_password_login=True, is_allow_register=True)
+        feature_flags = SystemFeatureModel(
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            enable_email_password_login=True,
+            is_allow_register=True,
+        )
         with (
-            patch("controllers.console.auth.email_register.dify_config.BILLING_ENABLED", True),
-            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
+            patch("controllers.console.auth.email_register.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
+            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
         ):
             with app.test_request_context(
@@ -75,9 +80,13 @@ class TestEmailRegisterCheckApi:
         mock_get_data.return_value = {"email": "User@Example.com", "code": "4321"}
         mock_generate_token.return_value = (None, "new-token")
 
-        feature_flags = SystemFeatureModel(enable_email_password_login=True, is_allow_register=True)
+        feature_flags = SystemFeatureModel(
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            enable_email_password_login=True,
+            is_allow_register=True,
+        )
         with (
-            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
+            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
         ):
             with app.test_request_context(
@@ -123,9 +132,13 @@ class TestEmailRegisterResetApi:
         mock_login.return_value = token_pair
         mock_get_account.return_value = None
 
-        feature_flags = SystemFeatureModel(enable_email_password_login=True, is_allow_register=True)
+        feature_flags = SystemFeatureModel(
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            enable_email_password_login=True,
+            is_allow_register=True,
+        )
         with (
-            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
+            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
         ):
             with app.test_request_context(
@@ -171,9 +184,13 @@ class TestEmailRegisterResetApi:
         mock_login.return_value = token_pair
         mock_get_account.return_value = None
 
-        feature_flags = SystemFeatureModel(enable_email_password_login=True, is_allow_register=True)
+        feature_flags = SystemFeatureModel(
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            enable_email_password_login=True,
+            is_allow_register=True,
+        )
         with (
-            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
+            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
         ):
             with app.test_request_context(
@@ -224,9 +241,13 @@ class TestEmailRegisterResetApi:
         mock_login.return_value = token_pair
         mock_get_account.return_value = None
 
-        feature_flags = SystemFeatureModel(enable_email_password_login=True, is_allow_register=True)
+        feature_flags = SystemFeatureModel(
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            enable_email_password_login=True,
+            is_allow_register=True,
+        )
         with (
-            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
+            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
         ):
             with app.test_request_context(

@@ -10,7 +10,7 @@ import type {
   Rules,
 } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
-import { act, cleanup, fireEvent, render, renderHook, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, renderHook, screen } from '@testing-library/react'
 import {
   ConfigurationMethodEnum,
   ModelStatusEnum,
@@ -18,6 +18,7 @@ import {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ChunkingMode, DataSourceType, ProcessMode } from '@/models/datasets'
 import { expectLoadingButton } from '@/test/button'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { PreviewPanel } from '../components/preview-panel'
 import { StepTwoFooter } from '../components/step-two-footer'
@@ -196,12 +197,6 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
 }))
 
-// Enable IS_CE_EDITION to show QA checkbox in tests
-vi.mock('@/config', async () => {
-  const actual = await vi.importActual('@/config')
-  return { ...actual, IS_CE_EDITION: true }
-})
-
 // Mock PreviewDocumentPicker to allow testing handlePickerChange
 vi.mock('@/app/components/datasets/common/document-picker/preview-document-picker', () => ({
   /* oxlint-disable typescript/no-explicit-any */
@@ -232,15 +227,17 @@ vi.mock('@/app/components/datasets/settings/utils', () => ({
 
 // Mock complex child components to avoid deep dependency chains when rendering StepTwo
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({
-    onSelect,
-    readonly,
+  ModelSelector: ({
+    onValueChange,
+    disabled,
   }: {
-    onSelect?: (val: Record<string, string>) => void
-    readonly?: boolean
+    onValueChange?: (val: Record<string, string>) => void
+    disabled?: boolean
   }) => (
-    <div data-testid="model-selector" data-readonly={readonly}>
-      <button onClick={() => onSelect?.({ provider: 'openai', model: 'text-embedding-3-small' })}>
+    <div data-testid="model-selector" data-disabled={disabled}>
+      <button
+        onClick={() => onValueChange?.({ provider: 'openai', model: 'text-embedding-3-small' })}
+      >
         Select Model
       </button>
     </div>
@@ -2531,7 +2528,7 @@ describe('StepTwo Component', () => {
       render(<StepTwo {...defaultStepTwoProps} datasetId="test-id" />)
       // isModelAndRetrievalConfigDisabled should be true
       const modelSelector = screen.getByTestId('model-selector')
-      expect(modelSelector)!.toHaveAttribute('data-readonly', 'true')
+      expect(modelSelector)!.toHaveAttribute('data-disabled', 'true')
     })
   })
 

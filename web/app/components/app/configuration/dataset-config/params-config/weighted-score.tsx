@@ -44,7 +44,7 @@ const WeightedScore = ({ value, onChange = noop, readonly = false }: WeightedSco
           />
         </div>
         <div className="mt-3 flex justify-between">
-          <div className="flex w-[90px] shrink-0 items-center system-xs-semibold-uppercase text-util-colors-blue-light-blue-light-500">
+          <div className="flex w-22.5 shrink-0 items-center system-xs-semibold-uppercase text-util-colors-blue-light-blue-light-500">
             <div
               className="mr-1 truncate uppercase"
               title={t(($) => $['weightedScore.semantic'], { ns: 'dataset' }) || ''}
@@ -53,7 +53,7 @@ const WeightedScore = ({ value, onChange = noop, readonly = false }: WeightedSco
             </div>
             {formatNumber(value.value[0]!)}
           </div>
-          <div className="flex w-[90px] shrink-0 items-center justify-end system-xs-semibold-uppercase text-util-colors-teal-teal-500">
+          <div className="flex w-22.5 shrink-0 items-center justify-end system-xs-semibold-uppercase text-util-colors-teal-teal-500">
             {formatNumber(value.value[1]!)}
             <div
               className="ml-1 truncate uppercase"

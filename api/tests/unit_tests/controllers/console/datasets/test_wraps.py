@@ -39,9 +39,11 @@ class TestGetRagPipeline:
         get_pipeline_by_id.assert_called_once_with("pipeline-1", "tenant-1", session=session_factory.return_value)
 
     def test_pipeline_found_and_injected(self, mocker: MockerFixture):
-        pipeline = Mock(spec=Pipeline)
+        pipeline = Pipeline(
+            tenant_id="tenant-1",
+            name="Test Pipeline",
+        )
         pipeline.id = "pipeline-1"
-        pipeline.tenant_id = "tenant-1"
 
         @get_rag_pipeline
         def dummy_view(**kwargs):
@@ -63,9 +65,8 @@ class TestGetRagPipeline:
         assert result is pipeline
         get_pipeline_by_id.assert_called_once_with("pipeline-1", "tenant-1", session=session_factory.return_value)
 
-    def test_load_rag_pipeline_uses_provided_session(self, mocker: MockerFixture):
-        pipeline = Mock(spec=Pipeline)
-        session = Mock(spec=Session)
+    def test_load_rag_pipeline_uses_provided_session(self, mocker: MockerFixture, sqlite_session: Session):
+        pipeline = Pipeline(tenant_id="tenant-id", name="Test Pipeline")
 
         mocker.patch(
             "controllers.console.datasets.wraps.current_account_with_tenant",
@@ -76,13 +77,13 @@ class TestGetRagPipeline:
             return_value=pipeline,
         )
 
-        result = load_rag_pipeline(session, "pipeline-1")
+        result = load_rag_pipeline(sqlite_session, "pipeline-1")
 
         assert result is pipeline
-        get_pipeline_by_id.assert_called_once_with("pipeline-1", "tenant-1", session=session)
+        get_pipeline_by_id.assert_called_once_with("pipeline-1", "tenant-1", session=sqlite_session)
 
     def test_pipeline_id_removed_from_kwargs(self, mocker: MockerFixture):
-        pipeline = Mock(spec=Pipeline)
+        pipeline = Pipeline(tenant_id="tenant-id", name="Test Pipeline")
 
         @get_rag_pipeline
         def dummy_view(**kwargs):
@@ -105,7 +106,7 @@ class TestGetRagPipeline:
         assert result == "ok"
 
     def test_pipeline_id_cast_to_string(self, mocker: MockerFixture):
-        pipeline = Mock(spec=Pipeline)
+        pipeline = Pipeline(tenant_id="tenant-id", name="Test Pipeline")
 
         @get_rag_pipeline
         def dummy_view(**kwargs):

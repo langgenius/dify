@@ -29,15 +29,22 @@ class TestHandleMCPRequest:
 
     def setup_method(self):
         """Setup test fixtures"""
-        self.app = Mock(spec=App)
+        self.app = App()
         self.app.name = "test_app"
         self.app.mode = AppMode.CHAT
 
-        self.mcp_server = Mock(spec=AppMCPServer)
+        self.mcp_server = AppMCPServer(
+            tenant_id="tenant-id",
+            app_id="app-id",
+            name="Test Server",
+            description="",
+            server_code="test-server",
+            status="active",
+            parameters="{}",
+        )
         self.mcp_server.description = "Test server"
-        self.mcp_server.parameters_dict = {}
 
-        self.end_user = Mock(spec=EndUser)
+        self.end_user = EndUser()
         self.user_input_form = []
 
         # Create mock request
@@ -336,8 +343,9 @@ class TestIndividualHandlers:
     @patch("core.mcp.server.streamable_http.AppGenerateService")
     def test_handle_call_tool(self, mock_app_generate):
         """Test call tool handler"""
-        app = Mock(spec=App)
-        app.mode = AppMode.CHAT
+        app = App(
+            mode=AppMode.CHAT,
+        )
 
         # Create mock request
         mock_request = Mock()
@@ -347,7 +355,7 @@ class TestIndividualHandlers:
         mock_request.root = mock_call_request
 
         user_input_form: list[VariableEntity] = []
-        end_user = Mock(spec=EndUser)
+        end_user = EndUser()
 
         # Mock app generate service response
         mock_response = {"answer": "test answer"}
@@ -365,8 +373,9 @@ class TestIndividualHandlers:
     @patch("core.mcp.server.streamable_http.AppGenerateService")
     def test_handle_call_tool_structured_output_modern_client(self, mock_app_generate):
         """structuredContent is attached alongside TextContent for >= 2025-06-18."""
-        app = Mock(spec=App)
-        app.mode = AppMode.CHAT
+        app = App(
+            mode=AppMode.CHAT,
+        )
 
         mock_request = Mock()
         mock_call_request = Mock(spec=types.CallToolRequest)
@@ -376,7 +385,7 @@ class TestIndividualHandlers:
 
         mock_app_generate.generate.return_value = {"answer": "test answer"}
 
-        result = handle_call_tool(Mock(), app, mock_request, [], Mock(spec=EndUser), "2025-06-18")
+        result = handle_call_tool(Mock(), app, mock_request, [], EndUser(), "2025-06-18")
 
         assert result.structuredContent == {"answer": "test answer"}
         assert result.content[0].text == "test answer"
@@ -384,8 +393,9 @@ class TestIndividualHandlers:
     @patch("core.mcp.server.streamable_http.AppGenerateService")
     def test_handle_call_tool_no_structured_output_legacy_client(self, mock_app_generate):
         """structuredContent is omitted for 2024-11-05 clients."""
-        app = Mock(spec=App)
-        app.mode = AppMode.CHAT
+        app = App(
+            mode=AppMode.CHAT,
+        )
 
         mock_request = Mock()
         mock_call_request = Mock(spec=types.CallToolRequest)
@@ -395,14 +405,14 @@ class TestIndividualHandlers:
 
         mock_app_generate.generate.return_value = {"answer": "test answer"}
 
-        result = handle_call_tool(Mock(), app, mock_request, [], Mock(spec=EndUser), "2024-11-05")
+        result = handle_call_tool(Mock(), app, mock_request, [], EndUser(), "2024-11-05")
 
         assert result.structuredContent is None
         assert result.content[0].text == "test answer"
 
     def test_handle_call_tool_no_end_user(self):
         """Test call tool handler without end user"""
-        app = Mock(spec=App)
+        app = App()
         mock_request = Mock()
         user_input_form: list[VariableEntity] = []
 
@@ -460,8 +470,9 @@ class TestUtilityFunctions:
 
     def test_prepare_tool_arguments_chat_mode(self):
         """Test preparing tool arguments for chat mode"""
-        app = Mock(spec=App)
-        app.mode = AppMode.CHAT
+        app = App(
+            mode=AppMode.CHAT,
+        )
 
         arguments = {"query": "test question", "name": "John"}
 
@@ -474,8 +485,9 @@ class TestUtilityFunctions:
 
     def test_prepare_tool_arguments_workflow_mode(self):
         """Test preparing tool arguments for workflow mode"""
-        app = Mock(spec=App)
-        app.mode = AppMode.WORKFLOW
+        app = App(
+            mode=AppMode.WORKFLOW,
+        )
 
         arguments = {"input_text": "test input"}
 
@@ -486,8 +498,9 @@ class TestUtilityFunctions:
 
     def test_prepare_tool_arguments_completion_mode(self):
         """Test preparing tool arguments for completion mode"""
-        app = Mock(spec=App)
-        app.mode = AppMode.COMPLETION
+        app = App(
+            mode=AppMode.COMPLETION,
+        )
 
         arguments = {"name": "John"}
 
@@ -498,8 +511,9 @@ class TestUtilityFunctions:
 
     def test_extract_answer_from_mapping_response_chat(self):
         """Test extracting answer from mapping response for chat mode"""
-        app = Mock(spec=App)
-        app.mode = AppMode.CHAT
+        app = App(
+            mode=AppMode.CHAT,
+        )
 
         response = {"answer": "test answer", "other": "data"}
 
@@ -509,8 +523,9 @@ class TestUtilityFunctions:
 
     def test_extract_answer_from_mapping_response_workflow(self):
         """Test extracting answer from mapping response for workflow mode"""
-        app = Mock(spec=App)
-        app.mode = AppMode.WORKFLOW
+        app = App(
+            mode=AppMode.WORKFLOW,
+        )
 
         response = {"data": {"outputs": {"result": "test result"}}}
 
@@ -521,7 +536,7 @@ class TestUtilityFunctions:
 
     def test_extract_answer_from_streaming_response(self):
         """Test extracting answer from streaming response"""
-        app = Mock(spec=App)
+        app = App()
 
         # Mock RateLimitGenerator
         mock_generator = Mock(spec=RateLimitGenerator)
@@ -538,8 +553,9 @@ class TestUtilityFunctions:
 
     def test_extract_structured_output_workflow(self):
         """Workflow mode exposes the raw outputs mapping as structured content."""
-        app = Mock(spec=App)
-        app.mode = AppMode.WORKFLOW
+        app = App(
+            mode=AppMode.WORKFLOW,
+        )
 
         response = {"data": {"outputs": {"result": "test result"}}}
 
@@ -547,58 +563,66 @@ class TestUtilityFunctions:
 
     def test_extract_structured_output_chat(self):
         """Chat mode wraps the answer string under an 'answer' key."""
-        app = Mock(spec=App)
-        app.mode = AppMode.CHAT
+        app = App(
+            mode=AppMode.CHAT,
+        )
 
         assert extract_structured_output(app, {"answer": "hi"}, "hi") == {"answer": "hi"}
 
     def test_extract_structured_output_workflow_missing_outputs(self):
         """Missing or malformed outputs fall back to None."""
-        app = Mock(spec=App)
-        app.mode = AppMode.WORKFLOW
+        app = App(
+            mode=AppMode.WORKFLOW,
+        )
 
         assert extract_structured_output(app, {"data": {}}, "ignored") is None
 
     def test_extract_structured_output_workflow_non_mapping_response(self):
         """A non-mapping workflow response yields no structured output."""
-        app = Mock(spec=App)
-        app.mode = AppMode.WORKFLOW
+        app = App(
+            mode=AppMode.WORKFLOW,
+        )
 
         assert extract_structured_output(app, None, "ignored") is None
 
     def test_extract_structured_output_workflow_non_mapping_data(self):
         """A non-mapping 'data' entry yields no structured output."""
-        app = Mock(spec=App)
-        app.mode = AppMode.WORKFLOW
+        app = App(
+            mode=AppMode.WORKFLOW,
+        )
 
         assert extract_structured_output(app, {"data": "not a mapping"}, "ignored") is None
 
     def test_extract_structured_output_workflow_non_mapping_outputs(self):
         """A non-mapping 'outputs' entry yields no structured output."""
-        app = Mock(spec=App)
-        app.mode = AppMode.WORKFLOW
+        app = App(
+            mode=AppMode.WORKFLOW,
+        )
 
         assert extract_structured_output(app, {"data": {"outputs": ["not", "a", "mapping"]}}, "ignored") is None
 
     @pytest.mark.parametrize("mode", [AppMode.ADVANCED_CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION])
     def test_extract_structured_output_other_answer_modes(self, mode):
         """Every chat-style mode wraps the answer string under an 'answer' key."""
-        app = Mock(spec=App)
-        app.mode = mode
+        app = App(
+            mode=mode,
+        )
 
         assert extract_structured_output(app, {"answer": "hi"}, "hi") == {"answer": "hi"}
 
     def test_extract_structured_output_unknown_mode(self):
         """Modes outside the MCP surface produce no structured output."""
-        app = Mock(spec=App)
-        app.mode = AppMode.CHANNEL
+        app = App(
+            mode=AppMode.CHANNEL,
+        )
 
         assert extract_structured_output(app, {"answer": "hi"}, "hi") is None
 
     def test_process_mapping_response_invalid_mode(self):
         """Test processing mapping response with invalid app mode"""
-        app = Mock(spec=App)
-        app.mode = "invalid_mode"
+        app = App(
+            mode="invalid_mode",
+        )
 
         response = {"answer": "test"}
 

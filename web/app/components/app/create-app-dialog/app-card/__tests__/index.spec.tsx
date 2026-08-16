@@ -1,22 +1,18 @@
+import type { ReactElement } from 'react'
 import type { App } from '@/models/explore'
 import type { AppIconType } from '@/types/app'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { trackEvent } from '@/app/components/base/amplitude'
 import AppListContext from '@/context/app-list-context'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import AppCard from '../index'
 
 vi.mock('@/app/components/base/amplitude', () => ({ trackEvent: vi.fn() }))
 
-const mockConfig = vi.hoisted(() => ({ isCloudEdition: true }))
-vi.mock('@/config', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/config')>()),
-  get IS_CLOUD_EDITION() {
-    return mockConfig.isCloudEdition
-  },
-}))
+const render = (ui: ReactElement) =>
+  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: 'CLOUD' } })
 
 const app: App = {
   can_trial: true,
@@ -47,7 +43,6 @@ const app: App = {
 
 describe('AppCard', () => {
   beforeEach(() => {
-    mockConfig.isCloudEdition = true
     vi.clearAllMocks()
   })
 
@@ -94,10 +89,7 @@ describe('AppCard', () => {
       // oxlint-disable-next-line eslint-react/no-context-provider
       <AppListContext.Provider
         value={{
-          currentApp: undefined,
-          isShowTryAppPanel: false,
-          setShowTryAppPanel: openPreview,
-          controlHideCreateFromTemplatePanel: 0,
+          openTryAppPanel: openPreview,
         }}
       >
         <AppCard app={app} canCreate onCreate={vi.fn()} />
@@ -110,6 +102,6 @@ describe('AppCard', () => {
       'preview_template',
       expect.objectContaining({ template_id: 'app-1', page: 'studio' }),
     )
-    expect(openPreview).toHaveBeenCalledWith(true, { appId: 'app-1', app })
+    expect(openPreview).toHaveBeenCalledWith({ appId: 'app-1', app })
   })
 })

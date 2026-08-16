@@ -270,7 +270,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
             value={jsonSchemaStr}
             onChange={onJSONSchemaChange}
             noWrapper
-            className="h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
+            className="h-20 overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
             placeholder={<div className="whitespace-pre">{jsonConfigPlaceHolder}</div>}
           />
         </Field>

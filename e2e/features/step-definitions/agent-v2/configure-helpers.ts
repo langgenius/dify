@@ -224,7 +224,6 @@ export const expectAgentEnvVariableRows = async (
   for (const variableRow of variableRows) {
     await expect(variableRow.getByRole('textbox', { name: 'Key' })).toHaveValue(key)
     await expect(variableRow.getByRole('textbox', { name: 'Value' })).toHaveValue(value)
-    await expect(variableRow.getByText('Plain', { exact: true })).toBeVisible()
   }
 }
 
@@ -276,7 +275,7 @@ export const expectProviderToolActionVisible = async (
   const action = toolsSection.getByText(tool.actionName, { exact: true })
   await expect(action).toBeVisible()
 
-  return { action, tool }
+  return { action, provider, tool }
 }
 
 export const openAgentKnowledgeRetrievalDialog = async (

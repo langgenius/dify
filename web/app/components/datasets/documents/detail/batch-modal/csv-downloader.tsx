@@ -40,7 +40,7 @@ const CSVDownload: FC<{ docForm: ChunkingMode }> = ({ docForm }) => {
       <div className="text-sm font-medium text-text-primary">
         {t(($) => $['generation.csvStructureTitle'], { ns: 'share' })}
       </div>
-      <div className="mt-2 max-h-[500px] overflow-auto">
+      <div className="mt-2 max-h-125 overflow-auto">
         {docForm === ChunkingMode.qa && (
           <table className="w-full table-fixed border-separate border-spacing-0 rounded-lg border border-divider-subtle text-xs">
             <thead className="text-text-secondary">
@@ -104,7 +104,7 @@ const CSVDownload: FC<{ docForm: ChunkingMode }> = ({ docForm }) => {
         bom={true}
         data={getTemplate()}
       >
-        <div className="flex h-[18px] items-center space-x-1 text-xs font-medium text-text-accent">
+        <div className="flex h-4.5 items-center space-x-1 text-xs font-medium text-text-accent">
           <DownloadIcon className="mr-1 size-3" />
           {t(($) => $['list.batchModal.template'], { ns: 'datasetDocuments' })}
         </div>

@@ -66,11 +66,7 @@ class MessageCycleManager:
         # Use SQLAlchemy 2.x style session.scalar(select(...))
         with session_factory.create_session() as session:
             message_file = session.scalar(
-                select(MessageFile)
-                .where(
-                    MessageFile.message_id == message_id,
-                )
-                .where(MessageFile.belongs_to == "assistant")
+                select(MessageFile).where(MessageFile.message_id == message_id, MessageFile.belongs_to == "assistant")
             )
 
         if message_file:

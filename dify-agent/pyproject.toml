@@ -1,6 +1,6 @@
 [project]
 name = "dify-agent"
-version = "1.16.0"
+version = "1.16.1"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12,<4.0"
@@ -8,7 +8,7 @@ dependencies = [
     "httpx==0.28.1",
     "httpx2>=2.5.0,<3.0.0",
     "pydantic>=2.12.5,<2.13",
-    "pydantic-ai-slim>=1.102.0,<2.0.0",
+    "pydantic-ai-slim>=1.106.0,<2.0.0",
     "typing-extensions>=4.12.2,<5.0.0",
 ]
 
@@ -17,8 +17,8 @@ dify-agent-stub-server = "dify_agent.agent_stub.server.cli:main"
 
 
 [project.optional-dependencies]
-grpc = ["grpclib[protobuf]>=0.4.9,<0.5.0", "protobuf>=6.33.5,<7.0.0"]
 server = [
+    "e2b>=2.34.0,<3.0.0",
     "fastapi==0.136.0",
     "graphon==0.5.2",
     "jsonschema>=4.23.0,<5.0.0",
@@ -47,6 +47,7 @@ extraPaths = ["src", "examples/agenton", "examples/dify_agent"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
+markers = ["integration: requires a real external service or exercises multiple concrete adapters"]
 
 [tool.ruff]
 line-length = 120
@@ -57,7 +58,6 @@ include = ["src/**/*.py", "examples/**/*.py", "tests/**/*.py", "docs/**/*.py"]
 dev = [
     "basedpyright>=1.39.3",
     "coverage[toml]>=7.10.7",
-    "grpcio-tools>=1.81.0,<2.0.0",
     "pytest>=9.0.3",
     "pytest-examples>=0.0.18",
     "pytest-mock>=3.14.0",

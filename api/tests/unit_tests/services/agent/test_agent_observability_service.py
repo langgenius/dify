@@ -1,11 +1,19 @@
 from datetime import UTC, datetime
 from decimal import Decimal
 from types import SimpleNamespace
+from typing import Protocol
 
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from models.enums import ConversationFromSource, MessageStatus
+from graphon.enums import WorkflowNodeExecutionStatus
+from models.enums import (
+    ConversationFromSource,
+    CreatorUserRole,
+    FeedbackFromSource,
+    FeedbackRating,
+    MessageStatus,
+)
 from services.agent import observability_service as observability_service_module
 from services.agent.observability_service import AgentLogQueryParams, AgentObservabilityService
 
@@ -268,6 +276,238 @@ def test_list_logs_sorts_by_requested_field(monkeypatch: pytest.MonkeyPatch) -> 
     assert [item["id"] for item in payload["data"]] == ["old", "new"]
 
 
+def test_list_log_messages_merges_deduplicates_and_sorts_sources(monkeypatch: pytest.MonkeyPatch) -> None:
+    service = AgentObservabilityService(session=None)
+    webapp_message = SimpleNamespace(id="shared")
+    webapp_row = {"id": "shared", "created_at": 10, "updated_at": 30}
+    workflow_rows = [
+        {"id": "shared", "created_at": 10, "updated_at": 20},
+        {"id": "workflow-only", "created_at": 20, "updated_at": 10},
+    ]
+    monkeypatch.setattr(service, "_list_webapp_messages", lambda **kwargs: [webapp_message])
+    monkeypatch.setattr(service, "_list_message_feedbacks", lambda **kwargs: {})
+    monkeypatch.setattr(service, "serialize_log_message", lambda message, feedbacks=(): webapp_row)
+    monkeypatch.setattr(service, "_list_workflow_messages", lambda **kwargs: workflow_rows)
+
+    payload = service.list_log_messages(
+        app=SimpleNamespace(id="agent-app"),  # type: ignore[arg-type]
+        agent_id="agent-1",
+        conversation_id="execution-1",
+        params=AgentLogQueryParams(
+            sources=("webapp:agent-app", "workflow:workflow-app"),
+            sort_by="created_at",
+            sort_order="asc",
+        ),
+    )
+
+    assert payload == {
+        "data": [workflow_rows[0], workflow_rows[1]],
+        "page": 1,
+        "limit": 20,
+        "total": 2,
+        "has_more": False,
+    }
+
+
+def test_list_webapp_conversation_logs_includes_feedback_rates(monkeypatch: pytest.MonkeyPatch) -> None:
+    timestamp = datetime(2026, 7, 23, 7, 0, 19, tzinfo=UTC)
+    conversation = SimpleNamespace(
+        id="conversation-1",
+        name="Feedback conversation",
+        from_end_user_id="end-user-1",
+        read_at=None,
+    )
+
+    class FakeRow:
+        message_count = 2
+        paused_count = 0
+        failed_count = 0
+        created_at = timestamp
+        updated_at = timestamp
+
+        def __getitem__(self, index: int) -> SimpleNamespace:
+            if index != 0:
+                raise IndexError(index)
+            return conversation
+
+    class FakeResult:
+        def all(self) -> list[FakeRow]:
+            return [FakeRow()]
+
+    class FakeSession:
+        def execute(self, stmt: object) -> FakeResult:
+            str(stmt)
+            return FakeResult()
+
+    app = SimpleNamespace(
+        id="app-1",
+        name="Agent WebApp",
+        icon_type=None,
+        icon=None,
+        icon_background=None,
+    )
+    service = AgentObservabilityService(FakeSession())
+    monkeypatch.setattr(
+        service,
+        "_list_conversation_feedback_rates",
+        lambda **kwargs: {"conversation-1": {"user_rate": 0.5, "operation_rate": 1.0}},
+    )
+
+    rows = service._list_webapp_conversation_logs(
+        app=app,  # type: ignore[arg-type]
+        params=AgentLogQueryParams(),
+        source_filter=AgentObservabilityService.resolve_source_filter("webapp"),
+    )
+
+    assert rows[0]["user_rate"] == 0.5
+    assert rows[0]["operation_rate"] == 1.0
+
+
+def test_list_workflow_logs_uses_node_executions_without_messages() -> None:
+    created_at = datetime(2026, 7, 23, 7, 0, 19, tzinfo=UTC)
+    node_execution = SimpleNamespace(
+        id="node-execution-1",
+        title="Agent",
+        status=WorkflowNodeExecutionStatus.SUCCEEDED,
+        created_by_role=CreatorUserRole.END_USER,
+        created_by="end-user-1",
+        created_at=created_at,
+        finished_at=None,
+    )
+    workflow_app = SimpleNamespace(
+        id="workflow-app-1",
+        name="Marketing Department",
+        icon_type=None,
+        icon=None,
+        icon_background=None,
+    )
+
+    class FakeRow:
+        node_execution_id = node_execution.id
+        node_title = node_execution.title
+        node_status = node_execution.status
+        node_created_by_role = node_execution.created_by_role
+        node_created_by = node_execution.created_by
+        node_created_at = node_execution.created_at
+        node_finished_at = node_execution.finished_at
+        workflow_id = "workflow-1"
+        workflow_version = "v1"
+        node_id = "node-1"
+
+        def __getitem__(self, index: int):
+            return (None, None, None, None, None, None, None, workflow_app)[index]
+
+    class FakeResult:
+        def all(self):
+            return [FakeRow()]
+
+    class FakeSession:
+        def __init__(self):
+            self.query = ""
+
+        def execute(self, stmt):
+            self.query = str(stmt)
+            return FakeResult()
+
+    session = FakeSession()
+    service = AgentObservabilityService(session)
+
+    rows = service._list_workflow_conversation_logs(
+        app=SimpleNamespace(tenant_id="tenant-1"),  # type: ignore[arg-type]
+        agent_id="agent-1",
+        params=AgentLogQueryParams(),
+        source_filter=AgentObservabilityService.resolve_source_filter("workflow:workflow-app-1"),
+    )
+
+    assert "FROM workflow_node_executions" in session.query
+    assert "JOIN messages" not in session.query
+    assert rows[0]["id"] == "node-execution-1"
+    assert rows[0]["source"]["app_name"] == "Marketing Department"
+
+
+def test_list_workflow_messages_uses_node_execution_identity(monkeypatch: pytest.MonkeyPatch) -> None:
+    node_execution = SimpleNamespace(id="node-execution-1")
+
+    class FakeScalarResult:
+        def all(self):
+            return [node_execution]
+
+    class FakeSession:
+        def __init__(self):
+            self.query = ""
+
+        def scalars(self, stmt):
+            self.query = str(stmt)
+            return FakeScalarResult()
+
+    session = FakeSession()
+    service = AgentObservabilityService(session)
+    serialized = {"id": "node-execution-1", "conversation_id": "node-execution-1"}
+    monkeypatch.setattr(service, "serialize_workflow_node_message", lambda execution: serialized)
+
+    rows = service._list_workflow_messages(
+        app=SimpleNamespace(tenant_id="tenant-1"),  # type: ignore[arg-type]
+        agent_id="agent-1",
+        conversation_id="node-execution-1",
+        params=AgentLogQueryParams(),
+        source_filter=AgentObservabilityService.resolve_source_filter("workflow:workflow-app-1"),
+    )
+
+    assert rows == [serialized]
+    assert "FROM workflow_node_executions" in session.query
+    assert "workflow_node_executions.id =" in session.query
+    assert "JOIN messages" not in session.query
+
+
+def test_apply_workflow_node_filters_supports_time_keyword_and_status() -> None:
+    class FakeStmt:
+        def __init__(self):
+            self.conditions = []
+
+        def where(self, *conditions):
+            self.conditions.extend(conditions)
+            return self
+
+    stmt = FakeStmt()
+    params = AgentLogQueryParams(
+        start=datetime(2026, 7, 1, tzinfo=UTC),
+        end=datetime(2026, 8, 1, tzinfo=UTC),
+        keyword="meeting_100%",
+        statuses=("success",),
+    )
+
+    result = AgentObservabilityService._apply_workflow_node_filters(
+        stmt,
+        params=params,
+        workflow_app=SimpleNamespace(name=observability_service_module.App.name),
+    )
+
+    assert result is stmt
+    assert len(stmt.conditions) == 4
+
+
+def test_apply_workflow_node_status_filter_supports_all_status_groups() -> None:
+    class FakeStmt:
+        def __init__(self):
+            self.conditions = []
+
+        def where(self, *conditions):
+            self.conditions.extend(conditions)
+            return self
+
+    stmt = FakeStmt()
+
+    result = AgentObservabilityService._apply_workflow_node_status_filter(stmt, ("normal", "error", "paused"))
+
+    assert result is stmt
+    assert len(stmt.conditions) == 1
+    empty_stmt = FakeStmt()
+    assert AgentObservabilityService._apply_workflow_node_status_filter(empty_stmt, ()) is empty_stmt
+    assert empty_stmt.conditions == []
+    with pytest.raises(ValueError, match="Unsupported status"):
+        AgentObservabilityService._apply_workflow_node_status_filter(FakeStmt(), ("unknown",))
+
+
 def test_source_serializers_return_structured_frontend_shape() -> None:
     app = SimpleNamespace(
         id="app-1",
@@ -373,8 +613,24 @@ def test_serialize_log_message_returns_frontend_log_shape() -> None:
         updated_at=updated_at,
     )
     conversation = SimpleNamespace(name="Debug conversation")
+    feedbacks = [
+        SimpleNamespace(
+            rating=FeedbackRating.LIKE,
+            content="Useful",
+            from_source=FeedbackFromSource.USER,
+        ),
+        SimpleNamespace(
+            rating=FeedbackRating.DISLIKE,
+            content="Needs more detail",
+            from_source=FeedbackFromSource.ADMIN,
+        ),
+    ]
 
-    payload = AgentObservabilityService.serialize_log_message(message, conversation)  # type: ignore[arg-type]
+    payload = AgentObservabilityService.serialize_log_message(  # type: ignore[arg-type]
+        message,
+        conversation,
+        feedbacks,
+    )
 
     assert payload == {
         "id": "message-1",
@@ -389,6 +645,11 @@ def test_serialize_log_message_returns_frontend_log_shape() -> None:
         "from_source": "console",
         "from_end_user_id": None,
         "from_account_id": "account-1",
+        "feedback_enabled": True,
+        "feedbacks": [
+            {"rating": "like", "content": "Useful", "from_source": "user"},
+            {"rating": "dislike", "content": "Needs more detail", "from_source": "admin"},
+        ],
         "message_tokens": 3,
         "answer_tokens": 4,
         "total_tokens": 7,
@@ -398,6 +659,245 @@ def test_serialize_log_message_returns_frontend_log_shape() -> None:
         "created_at": int(created_at.timestamp()),
         "updated_at": int(updated_at.timestamp()),
     }
+
+
+def test_serialize_workflow_node_message_returns_frontend_log_shape() -> None:
+    created_at = datetime(2026, 7, 23, 7, 0, 19, tzinfo=UTC)
+    finished_at = datetime(2026, 7, 23, 7, 0, 28, tzinfo=UTC)
+    node_execution = SimpleNamespace(
+        id="node-execution-1",
+        title="Agent",
+        inputs=(
+            '{"agent_backend_request":{"composition":{"layers":['
+            '{"name":"workflow_node_job_prompt","config":{"user":"Summarize the meeting"}},'
+            '{"name":"workflow_user_prompt","config":{"user":"Focus on action items"}}]}}}'
+        ),
+        outputs='{"output":"Alice owns the follow-up."}',
+        execution_metadata=(
+            '{"agent_log":{"agent_backend":{"usage":{"prompt_tokens":10,"completion_tokens":5,'
+            '"total_tokens":15,"total_price":"0.0015","currency":"USD","latency":1.25}}}}'
+        ),
+        status=WorkflowNodeExecutionStatus.SUCCEEDED,
+        error=None,
+        elapsed_time=1.5,
+        created_by_role=CreatorUserRole.END_USER,
+        created_by="end-user-1",
+        created_at=created_at,
+        finished_at=finished_at,
+    )
+
+    payload = AgentObservabilityService.serialize_workflow_node_message(node_execution)  # type: ignore[arg-type]
+
+    assert payload == {
+        "id": "node-execution-1",
+        "message_id": "node-execution-1",
+        "conversation_id": "node-execution-1",
+        "query": "Summarize the meeting\n\nFocus on action items",
+        "answer": "Alice owns the follow-up.",
+        "status": "success",
+        "error": None,
+        "from_end_user_id": "end-user-1",
+        "from_account_id": None,
+        "feedback_enabled": False,
+        "feedbacks": [],
+        "message_tokens": 10,
+        "answer_tokens": 5,
+        "total_tokens": 15,
+        "total_price": "0.0015",
+        "currency": "USD",
+        "latency": 1.25,
+        "created_at": int(created_at.timestamp()),
+        "updated_at": int(finished_at.timestamp()),
+    }
+
+
+def test_serialize_workflow_node_message_handles_sparse_runtime_data() -> None:
+    created_at = datetime(2026, 7, 23, 7, 0, 19, tzinfo=UTC)
+    node_execution = SimpleNamespace(
+        id="node-execution-2",
+        title="Fallback prompt",
+        inputs={
+            "agent_backend_request": {
+                "composition": {
+                    "layers": [
+                        None,
+                        {"name": "unrelated", "config": {"user": "ignored"}},
+                        {"name": "workflow_user_prompt", "config": {"user": "  "}},
+                    ]
+                }
+            }
+        },
+        outputs={"output": {"structured": True}},
+        execution_metadata={
+            "agent_log": {
+                "agent_backend": {
+                    "usage": {
+                        "prompt_tokens": "2",
+                        "completion_tokens": 3,
+                    }
+                }
+            }
+        },
+        status=WorkflowNodeExecutionStatus.PAUSED,
+        error=None,
+        elapsed_time=2,
+        created_by_role=CreatorUserRole.ACCOUNT.value,
+        created_by="account-1",
+        created_at=created_at,
+        finished_at=None,
+    )
+
+    payload = AgentObservabilityService.serialize_workflow_node_message(node_execution)  # type: ignore[arg-type]
+
+    assert payload["query"] == "Fallback prompt"
+    assert payload["answer"] == '{"output": {"structured": true}}'
+    assert payload["status"] == "paused"
+    assert payload["from_end_user_id"] is None
+    assert payload["from_account_id"] == "account-1"
+    assert payload["total_tokens"] == 5
+    assert payload["total_price"] == "0"
+    assert payload["currency"] == ""
+    assert payload["latency"] == 2.0
+    assert payload["updated_at"] == int(created_at.timestamp())
+
+
+def test_positive_feedback_rate_uses_rated_messages_as_denominator() -> None:
+    assert AgentObservabilityService._positive_feedback_rate(like_count=2, total_count=4) == 0.5
+    assert AgentObservabilityService._positive_feedback_rate(like_count=0, total_count=1) == 0
+    assert AgentObservabilityService._positive_feedback_rate(like_count=None, total_count=0) is None
+
+
+def test_list_message_feedbacks_groups_feedbacks_by_message() -> None:
+    feedbacks = [
+        SimpleNamespace(message_id="message-1"),
+        SimpleNamespace(message_id="message-1"),
+        SimpleNamespace(message_id="message-2"),
+    ]
+
+    class Compilable(Protocol):
+        def compile(self) -> object: ...
+
+    class FakeScalarResult:
+        def all(self) -> list[SimpleNamespace]:
+            return feedbacks
+
+    class FakeSession:
+        def __init__(self) -> None:
+            self.scalar_calls = 0
+
+        def scalars(self, stmt: Compilable) -> FakeScalarResult:
+            stmt.compile()
+            self.scalar_calls += 1
+            return FakeScalarResult()
+
+    session = FakeSession()
+    service = AgentObservabilityService(session)  # type: ignore[arg-type]
+
+    grouped_feedbacks = service._list_message_feedbacks(
+        app=SimpleNamespace(id="app-1"),  # type: ignore[arg-type]
+        messages=[SimpleNamespace(id="message-1"), SimpleNamespace(id="message-2")],  # type: ignore[list-item]
+    )
+
+    assert grouped_feedbacks == {
+        "message-1": feedbacks[:2],
+        "message-2": feedbacks[2:],
+    }
+    assert service._list_message_feedbacks(app=SimpleNamespace(id="app-1"), messages=[]) == {}  # type: ignore[arg-type]
+    assert session.scalar_calls == 1
+
+
+def test_list_conversation_feedback_rates_maps_user_and_admin_sources() -> None:
+    class FakeResult:
+        def all(self):
+            return [
+                SimpleNamespace(
+                    conversation_id="conversation-1",
+                    from_source=FeedbackFromSource.USER,
+                    like_count=2,
+                    total_count=4,
+                ),
+                SimpleNamespace(
+                    conversation_id="conversation-1",
+                    from_source=FeedbackFromSource.ADMIN,
+                    like_count=1,
+                    total_count=1,
+                ),
+                SimpleNamespace(
+                    conversation_id="conversation-without-ratings",
+                    from_source=FeedbackFromSource.USER,
+                    like_count=0,
+                    total_count=0,
+                ),
+            ]
+
+    class FakeSession:
+        def execute(self, stmt):
+            stmt.compile()
+            return FakeResult()
+
+    service = AgentObservabilityService(FakeSession())
+
+    rates = service._list_conversation_feedback_rates(
+        app=SimpleNamespace(id="app-1"),  # type: ignore[arg-type]
+        conversation_ids=["conversation-1"],
+    )
+
+    assert rates == {"conversation-1": {"user_rate": 0.5, "operation_rate": 1.0}}
+    assert (
+        service._list_conversation_feedback_rates(
+            app=SimpleNamespace(id="app-1"),  # type: ignore[arg-type]
+            conversation_ids=[],
+        )
+        == {}
+    )
+
+
+def test_workflow_node_serialization_helpers_handle_invalid_values() -> None:
+    assert AgentObservabilityService._json_mapping(None) == {}
+    assert AgentObservabilityService._json_mapping("not-json") == {}
+    assert AgentObservabilityService._json_mapping("[]") == {}
+    assert AgentObservabilityService._mapping_value({"value": []}, "value") == {}
+    assert AgentObservabilityService._int_value(None) == 0
+    assert AgentObservabilityService._int_value("not-a-number") == 0
+    assert (
+        AgentObservabilityService._workflow_node_query(
+            {"agent_backend_request": {"composition": {"layers": "invalid"}}}, fallback="fallback"
+        )
+        == "fallback"
+    )
+    assert AgentObservabilityService._workflow_node_answer({"output": 1, "text": "fallback text"}) == "fallback text"
+    assert AgentObservabilityService._workflow_node_answer({}) == ""
+
+
+def test_serialize_workflow_execution_log_uses_node_execution_identity() -> None:
+    created_at = datetime(2026, 7, 23, 7, 0, 19, tzinfo=UTC)
+    node_execution = SimpleNamespace(
+        id="node-execution-1",
+        title="Agent",
+        status=WorkflowNodeExecutionStatus.FAILED,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account-1",
+        created_at=created_at,
+        finished_at=None,
+    )
+
+    payload = AgentObservabilityService._serialize_workflow_execution_log(
+        node_execution_id=node_execution.id,
+        title=node_execution.title,
+        status=node_execution.status,
+        created_by_role=node_execution.created_by_role,
+        created_by=node_execution.created_by,
+        created_at=node_execution.created_at,
+        finished_at=node_execution.finished_at,
+        source={"id": "workflow:app-1:workflow-1:v1:node-1"},
+    )
+
+    assert payload["id"] == "node-execution-1"
+    assert payload["conversation_id"] == "node-execution-1"
+    assert payload["message_count"] == 1
+    assert payload["end_user_id"] is None
+    assert payload["status"] == "failed"
+    assert payload["unread"] is False
 
 
 def test_build_charts_and_summary_match_monitoring_metrics() -> None:

@@ -82,7 +82,7 @@ vi.mock('@/service/use-snippet-workflows', () => ({
   }),
 }))
 
-vi.mock('@/app/components/snippets/hooks/use-configs-map', () => ({
+vi.mock('../../hooks/use-configs-map', () => ({
   useConfigsMap: () => ({
     flowId: 'snippet-1',
     flowType: 'snippet',
@@ -102,15 +102,15 @@ vi.mock('@/app/components/workflow/hooks/use-checklist', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow-app/hooks', () => ({
+vi.mock('@/app/components/workflow-app/hooks/use-available-nodes-meta-data', () => ({
   useAvailableNodesMetaData: () => mockUseAvailableNodesMetaData(),
 }))
 
-vi.mock('@/app/components/snippets/hooks/use-inspect-vars-crud', () => ({
+vi.mock('../../hooks/use-inspect-vars-crud', () => ({
   useInspectVarsCrud: () => mockInspectVarsCrud,
 }))
 
-vi.mock('@/app/components/snippets/hooks/use-nodes-sync-draft', () => ({
+vi.mock('../../hooks/use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => ({
     doSyncWorkflowDraft: mockDoSyncWorkflowDraft,
     syncInputFieldsDraft: mockSyncInputFieldsDraft,
@@ -118,13 +118,13 @@ vi.mock('@/app/components/snippets/hooks/use-nodes-sync-draft', () => ({
   }),
 }))
 
-vi.mock('@/app/components/snippets/hooks/use-snippet-refresh-draft', () => ({
+vi.mock('../../hooks/use-snippet-refresh-draft', () => ({
   useSnippetRefreshDraft: () => ({
     handleRefreshWorkflowDraft: vi.fn(),
   }),
 }))
 
-vi.mock('@/app/components/snippets/hooks/use-snippet-run', () => ({
+vi.mock('../../hooks/use-snippet-run', () => ({
   useSnippetRun: () => ({
     handleBackupDraft: mockHandleBackupDraft,
     handleLoadBackupDraft: mockHandleLoadBackupDraft,
@@ -134,7 +134,7 @@ vi.mock('@/app/components/snippets/hooks/use-snippet-run', () => ({
   }),
 }))
 
-vi.mock('@/app/components/snippets/hooks/use-snippet-start-run', () => ({
+vi.mock('../../hooks/use-snippet-start-run', () => ({
   useSnippetStartRun: () => ({
     handleStartWorkflowRun: mockHandleStartWorkflowRun,
     handleWorkflowStartRunInWorkflow: mockHandleWorkflowStartRunInWorkflow,

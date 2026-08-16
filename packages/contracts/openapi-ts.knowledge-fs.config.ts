@@ -1,4 +1,4 @@
-import { defineConfig } from '@hey-api/openapi-ts'
+import { $, defineConfig } from '@hey-api/openapi-ts'
 
 const input = process.env.KNOWLEDGE_FS_OPENAPI
 const outputPath = process.env.KNOWLEDGE_FS_OUTPUT ?? 'generated/knowledge-fs'
@@ -38,6 +38,17 @@ export default defineConfig({
     },
     {
       name: 'zod',
+      '~resolvers': {
+        string: (ctx) => {
+          if (ctx.schema.format === 'binary')
+            return $(ctx.symbols.z)
+              .attr('custom')
+              .call()
+              .generic($.type.or($.type('Blob'), $.type('File')))
+
+          return undefined
+        },
+      },
     },
     {
       contracts: {

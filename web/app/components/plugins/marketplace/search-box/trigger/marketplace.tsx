@@ -1,13 +1,13 @@
 import type { Tag } from '../../../hooks'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { memo, useEffect, useRef } from 'react'
 import { useTranslation } from '#i18n'
 
 type MarketplaceTriggerProps = {
   selectedTagsLength: number
-  open: boolean
   tags: string[]
   tagsMap: Record<string, Tag>
   onTagsChange: (tags: string[]) => void
@@ -15,7 +15,6 @@ type MarketplaceTriggerProps = {
 
 function MarketplaceTrigger({
   selectedTagsLength,
-  open,
   tags,
   tagsMap,
   onTagsChange,
@@ -48,10 +47,10 @@ function MarketplaceTrigger({
               'h-8 justify-start px-2 py-1 text-text-tertiary focus-visible:ring-inset',
               !!selectedTagsLength &&
                 'border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg pr-8 shadow-xs shadow-shadow-shadow-3',
-              open && !selectedTagsLength && 'bg-state-base-hover',
+              !selectedTagsLength && 'data-popup-open:bg-state-base-hover',
             )}
           >
-            <span className="p-0.5">
+            <span className="py-0.5">
               <span
                 aria-hidden
                 className={cn(
@@ -60,7 +59,7 @@ function MarketplaceTrigger({
                 )}
               />
             </span>
-            <span className="flex items-center gap-x-1 p-1 system-sm-medium">
+            <span className="flex items-center gap-x-1 py-1 system-sm-medium">
               {!selectedTagsLength && <span>{t(($) => $.allTags, { ns: 'pluginTags' })}</span>}
               {!!selectedTagsLength && (
                 <span className="text-text-secondary">
@@ -78,7 +77,7 @@ function MarketplaceTrigger({
               )}
             </span>
             {!selectedTagsLength && (
-              <span className="p-0.5">
+              <span className="py-0.5">
                 <span
                   aria-hidden
                   className="i-ri-arrow-down-s-line block size-4 text-text-tertiary"
@@ -89,21 +88,21 @@ function MarketplaceTrigger({
         }
       />
       {!!selectedTagsLength && (
-        <Button
+        <IconButton
           variant="ghost"
-          size="small"
+          size="md"
           aria-label={t(($) => $.clearSelectedTags, {
             ns: 'pluginTags',
             tags: triggerLabel,
           })}
-          className="absolute right-1 size-6 min-h-0 p-0 focus-visible:ring-inset"
+          className="absolute right-1 focus-visible:ring-inset"
           onClick={() => {
             shouldRestoreFocusRef.current = true
             onTagsChange([])
           }}
         >
           <span aria-hidden className="i-ri-close-circle-fill size-4 text-text-quaternary" />
-        </Button>
+        </IconButton>
       )}
     </div>
   )

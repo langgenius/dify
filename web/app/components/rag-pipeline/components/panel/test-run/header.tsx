@@ -2,7 +2,7 @@ import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useWorkflowInteractions } from '@/app/components/workflow/hooks'
+import { useWorkflowInteractions } from '@/app/components/workflow/hooks/use-workflow-panel-interactions'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 
 const Header = () => {

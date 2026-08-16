@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { useCanManageAgents } from '@/features/agent-v2/permissions'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
 import BlockIcon from '../block-icon'
@@ -60,9 +61,13 @@ export function AgentSelectorContent({
     staleTime: 0,
   })
   const agents = agentsQuery.data?.data ?? []
-  const actionOptions: AgentSelectorActionOption[] = onStartFromScratch
-    ? ['start-from-scratch', 'manage-in-agent-console']
-    : ['manage-in-agent-console']
+  const canManageAgents = useCanManageAgents()
+  const actionOptions: AgentSelectorActionOption[] = [
+    // Start from scratch stays available to everyone: it only writes the node's
+    // own inline draft and never reaches the Agent Console.
+    ...(onStartFromScratch ? (['start-from-scratch'] as const) : []),
+    ...(canManageAgents ? (['manage-in-agent-console'] as const) : []),
+  ]
   const options: AgentSelectorOption[] = [...agents, ...actionOptions]
   const getOptionLabel = (option: AgentSelectorOption) => {
     if (isAgentSelectorActionOption(option)) {
@@ -150,11 +155,13 @@ export function AgentSelectorContent({
               </>
             )}
           </div>
-          <div role="presentation" className="border-t border-divider-subtle p-1">
-            {actionOptions.map((option) => (
-              <AgentSelectorActionItem key={option} option={option} />
-            ))}
-          </div>
+          {actionOptions.length > 0 && (
+            <div role="presentation" className="border-t border-divider-subtle p-1">
+              {actionOptions.map((option) => (
+                <AgentSelectorActionItem key={option} option={option} />
+              ))}
+            </div>
+          )}
         </ComboboxList>
       </Combobox>
     </div>

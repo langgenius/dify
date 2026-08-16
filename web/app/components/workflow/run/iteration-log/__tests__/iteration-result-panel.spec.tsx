@@ -1,6 +1,7 @@
 import type { IterationDurationMap, NodeTracing } from '@/types/workflow'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { BlockEnum, NodeRunningStatus } from '../../../types'
 import IterationResultPanel from '../iteration-result-panel'
 

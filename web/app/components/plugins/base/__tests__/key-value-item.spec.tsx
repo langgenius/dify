@@ -1,5 +1,6 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import KeyValueItem from '../key-value-item'
 
 vi.mock('../../../base/icons/src/vender/line/files', () => ({
@@ -34,9 +35,20 @@ describe('KeyValueItem', () => {
     expect(screen.queryByText('sk-secret')).not.toBeInTheDocument()
   })
 
-  it('copies actual value (not masked) when copy button is clicked', () => {
+  it('associates the label with the copy action and announces the result', async () => {
+    vi.useRealTimers()
+    const user = userEvent.setup()
     render(<KeyValueItem label="Key" value="sk-secret" maskedValue="sk-***" />)
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.copy' }))
+
+    const keyGroup = screen.getByRole('group', { name: 'Key' })
+    const copyButton = within(keyGroup).getByRole('button', {
+      name: 'common.operation.copy: Key',
+    })
+
+    await user.click(copyButton)
+
     expect(mockCopy).toHaveBeenCalledWith('sk-secret')
+    expect(copyButton).toHaveAccessibleName('common.operation.copy: Key')
+    expect(within(keyGroup).getByRole('status')).toHaveTextContent('common.operation.copied: Key')
   })
 })

@@ -2,19 +2,20 @@
 import type { FC } from 'react'
 import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { userProfileIdAtom } from '@/context/account-state'
 import DatasetDetailContext from '@/context/dataset-detail'
 import {
   workspacePermissionKeysAtom,
   workspacePermissionKeysLoadingAtom,
 } from '@/context/permission-state'
-import { datasetRbacEnabledAtom } from '@/context/system-features-state'
 import { currentWorkspaceLoadingAtom } from '@/context/workspace-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
 import { useDatasetDetail } from '@/service/knowledge/use-dataset'
@@ -35,6 +36,36 @@ const getResponseStatus = (error: unknown) => {
 const shouldRedirectToDatasetList = (error: unknown) => {
   const status = getResponseStatus(error)
   return status === 403 || status === 404
+}
+
+const datasetDetailPageTitle = (pathname: string, t: ReturnType<typeof useTranslation>['t']) => {
+  if (
+    pathname.endsWith('/documents/create') ||
+    pathname.endsWith('/documents/create-from-pipeline')
+  )
+    return t(($) => $['addDocuments.title'], { ns: 'datasetPipeline' })
+  if (pathname.includes('/documents'))
+    return t(($) => $['datasetMenus.documents'], { ns: 'common' })
+  if (pathname.endsWith('/pipeline')) return t(($) => $['datasetMenus.pipeline'], { ns: 'common' })
+  if (pathname.endsWith('/hitTesting'))
+    return t(($) => $['datasetMenus.hitTesting'], { ns: 'common' })
+  if (pathname.endsWith('/settings')) return t(($) => $['datasetMenus.settings'], { ns: 'common' })
+  if (pathname.endsWith('/access-config'))
+    return t(($) => $['settings.resourceAccess'], { ns: 'common' })
+  if (pathname.endsWith('/api')) return t(($) => $['appMenus.apiAccess'], { ns: 'common' })
+
+  return t(($) => $['menus.datasets'], { ns: 'common' })
+}
+
+const isDocumentDetailPath = (pathname: string) =>
+  /^\/datasets\/[^/]+\/documents\/(?!create(?:-from-pipeline)?\/?$)[^/]+(?:\/settings)?\/?$/.test(
+    pathname,
+  )
+
+const DatasetDetailPageTitle = ({ title }: { title: string }) => {
+  useDocumentTitle(title)
+
+  return null
 }
 
 const getDatasetRedirectionPath = (
@@ -60,8 +91,14 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const pathname = usePathname()
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
   const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
-  const isRbacEnabled = useAtomValue(datasetRbacEnabledAtom)
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: isRbacEnabled } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ rbac_enabled }) => rbac_enabled,
+  })
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
   const { data: datasetRes, error, refetch: mutateDatasetRes } = useDatasetDetail(datasetId)
@@ -94,8 +131,8 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     !isCheckingRouteAccess &&
     ((isAccessConfigPath && !datasetACLCapabilities.canAccessConfig) ||
       (isHitTestingPath && !datasetACLCapabilities.canRetrievalRecall))
-
-  useDocumentTitle(datasetRes?.name || t(($) => $['menus.datasets'], { ns: 'common' }))
+  const pageTitle = datasetDetailPageTitle(pathname, t)
+  const documentTitle = `${pageTitle} · ${datasetRes?.name || t(($) => $['menus.datasets'], { ns: 'common' })}`
 
   useEffect(() => {
     if (shouldRedirect) router.replace('/datasets')
@@ -114,6 +151,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     shouldRedirect ||
     isCheckingRouteAccess ||
     shouldRedirectUnauthorizedRoute
+  const documentTitleOwnedByChild = isDocumentDetailPath(pathname) && !shouldShowLoading
   const content = shouldShowLoading ? (
     <Loading type="app" />
   ) : (
@@ -144,6 +182,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background-body">
+      {!documentTitleOwnedByChild && <DatasetDetailPageTitle title={documentTitle} />}
       {content}
     </div>
   )

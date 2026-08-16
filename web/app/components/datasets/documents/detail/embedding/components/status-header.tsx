@@ -54,7 +54,7 @@ const StatusHeader: FC<StatusHeaderProps> = React.memo(
             disabled={isPauseLoading}
           >
             <RiPauseCircleLine className="size-3.5 text-components-button-secondary-text" />
-            <span className="pr-[3px] system-xs-medium text-components-button-secondary-text">
+            <span className="pr-0.75 system-xs-medium text-components-button-secondary-text">
               {t(($) => $['embedding.pause'], { ns: 'datasetDocuments' })}
             </span>
           </button>
@@ -67,7 +67,7 @@ const StatusHeader: FC<StatusHeaderProps> = React.memo(
             disabled={isResumeLoading}
           >
             <RiPlayCircleLine className="size-3.5 text-components-button-secondary-text" />
-            <span className="pr-[3px] system-xs-medium text-components-button-secondary-text">
+            <span className="pr-0.75 system-xs-medium text-components-button-secondary-text">
               {t(($) => $['embedding.resume'], { ns: 'datasetDocuments' })}
             </span>
           </button>

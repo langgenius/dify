@@ -70,7 +70,7 @@ const InstructionEditor: FC<Props> = ({
         instanceId={editorKey}
         placeholder={placeholder}
         placeholderClassName="px-4 pt-3"
-        className={cn('min-h-[240px] pb-8')}
+        className={cn('min-h-60 pb-8')}
         value={value}
         workflowVariableBlock={{
           show: true,

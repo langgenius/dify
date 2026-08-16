@@ -19,12 +19,13 @@ import {
   RiDraftLine,
   RiRefreshLine,
 } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { SearchLinesSparkle } from '@/app/components/base/icons/src/vender/knowledge'
-import { IS_CE_EDITION } from '@/config'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
 const i18nPrefix = 'batchAction'
 type IBatchActionProps = {
@@ -55,6 +56,11 @@ const BatchAction: FC<IBatchActionProps> = ({
   onCancel,
 }) => {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+  const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
   const [isShowDeleteConfirm, { setTrue: showDeleteConfirm, setFalse: hideDeleteConfirm }] =
     useBoolean(false)
   const [isDeleting, { setTrue: setIsDeleting }] = useBoolean(false)
@@ -79,72 +85,57 @@ const BatchAction: FC<IBatchActionProps> = ({
         </div>
         <Divider type="vertical" className="mx-0.5 h-3.5 bg-divider-regular" />
         {onBatchEnable && (
-          <Button variant="ghost" className="gap-x-0.5 px-3" onClick={onBatchEnable}>
+          <Button variant="ghost" onClick={onBatchEnable}>
             <RiCheckboxCircleLine className="size-4" />
-            <span className="px-0.5">{t(($) => $[`${i18nPrefix}.enable`], { ns: 'dataset' })}</span>
+            <span>{t(($) => $[`${i18nPrefix}.enable`], { ns: 'dataset' })}</span>
           </Button>
         )}
         {onBatchDisable && (
-          <Button variant="ghost" className="gap-x-0.5 px-3" onClick={onBatchDisable}>
+          <Button variant="ghost" onClick={onBatchDisable}>
             <RiCloseCircleLine className="size-4" />
-            <span className="px-0.5">
-              {t(($) => $[`${i18nPrefix}.disable`], { ns: 'dataset' })}
-            </span>
+            <span>{t(($) => $[`${i18nPrefix}.disable`], { ns: 'dataset' })}</span>
           </Button>
         )}
         {onEditMetadata && (
-          <Button variant="ghost" className="gap-x-0.5 px-3" onClick={onEditMetadata}>
+          <Button variant="ghost" onClick={onEditMetadata}>
             <RiDraftLine className="size-4" />
-            <span className="px-0.5">{t(($) => $['metadata.metadata'], { ns: 'dataset' })}</span>
+            <span>{t(($) => $['metadata.metadata'], { ns: 'dataset' })}</span>
           </Button>
         )}
-        {onBatchSummary && IS_CE_EDITION && (
-          <Button variant="ghost" className="gap-x-0.5 px-3" onClick={onBatchSummary}>
+        {onBatchSummary && isNonCloudEdition && (
+          <Button variant="ghost" onClick={onBatchSummary}>
             <SearchLinesSparkle className="size-4" />
-            <span className="px-0.5">
-              {t(($) => $['list.action.summary'], { ns: 'datasetDocuments' })}
-            </span>
+            <span>{t(($) => $['list.action.summary'], { ns: 'datasetDocuments' })}</span>
           </Button>
         )}
         {onArchive && (
-          <Button variant="ghost" className="gap-x-0.5 px-3" onClick={onArchive}>
+          <Button variant="ghost" onClick={onArchive}>
             <RiArchive2Line className="size-4" />
-            <span className="px-0.5">
-              {t(($) => $[`${i18nPrefix}.archive`], { ns: 'dataset' })}
-            </span>
+            <span>{t(($) => $[`${i18nPrefix}.archive`], { ns: 'dataset' })}</span>
           </Button>
         )}
         {onBatchReIndex && (
-          <Button variant="ghost" className="gap-x-0.5 px-3" onClick={onBatchReIndex}>
+          <Button variant="ghost" onClick={onBatchReIndex}>
             <RiRefreshLine className="size-4" />
-            <span className="px-0.5">
-              {t(($) => $[`${i18nPrefix}.reIndex`], { ns: 'dataset' })}
-            </span>
+            <span>{t(($) => $[`${i18nPrefix}.reIndex`], { ns: 'dataset' })}</span>
           </Button>
         )}
         {onBatchDownload && (
-          <Button variant="ghost" className="gap-x-0.5 px-3" onClick={onBatchDownload}>
+          <Button variant="ghost" onClick={onBatchDownload}>
             <RiDownload2Line className="size-4" />
-            <span className="px-0.5">
-              {t(($) => $[`${i18nPrefix}.download`], { ns: 'dataset' })}
-            </span>
+            <span>{t(($) => $[`${i18nPrefix}.download`], { ns: 'dataset' })}</span>
           </Button>
         )}
         {onBatchDelete && (
-          <Button
-            variant="ghost"
-            tone="destructive"
-            className="gap-x-0.5 px-3"
-            onClick={showDeleteConfirm}
-          >
+          <Button variant="ghost" tone="destructive" onClick={showDeleteConfirm}>
             <RiDeleteBinLine className="size-4" />
-            <span className="px-0.5">{t(($) => $[`${i18nPrefix}.delete`], { ns: 'dataset' })}</span>
+            <span>{t(($) => $[`${i18nPrefix}.delete`], { ns: 'dataset' })}</span>
           </Button>
         )}
 
         <Divider type="vertical" className="mx-0.5 h-3.5 bg-divider-regular" />
-        <Button variant="ghost" className="px-3" onClick={onCancel}>
-          <span className="px-0.5">{t(($) => $[`${i18nPrefix}.cancel`], { ns: 'dataset' })}</span>
+        <Button variant="ghost" onClick={onCancel}>
+          <span>{t(($) => $[`${i18nPrefix}.cancel`], { ns: 'dataset' })}</span>
         </Button>
       </div>
       {onBatchDelete && (

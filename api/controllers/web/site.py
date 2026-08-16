@@ -1,6 +1,6 @@
 from typing import Any, Self
 
-from pydantic import AliasChoices, Field, computed_field
+from pydantic import AliasChoices, Field
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden
 
@@ -8,12 +8,16 @@ from configs import dify_config
 from controllers.common.schema import register_response_schema_models
 from controllers.web import web_ns
 from controllers.web.wraps import WebApiResource
+from enums import DeploymentEdition
 from extensions.ext_database import db
+from extensions.storage.storage_type import StorageType
 from fields.base import ResponseModel
 from libs.helper import build_icon_url
 from models.account import Tenant, TenantStatus
-from models.model import App, EndUser, Site
-from services.feature_service import FeatureModel, FeatureService
+from models.model import App, AppMode, EndUser, IconType, Site
+from services.entities.feature_entities import FeatureModel
+from services.feature_service import FeatureService
+from services.file_service import FileService
 
 
 class WebSiteResponse(ResponseModel):
@@ -32,11 +36,7 @@ class WebSiteResponse(ResponseModel):
     prompt_public: bool | None = None
     show_workflow_steps: bool | None = None
     use_icon_as_answer_icon: bool | None = None
-
-    @computed_field(return_type=str | None)  # type: ignore[prop-decorator]
-    @property
-    def icon_url(self) -> str | None:
-        return build_icon_url(self.icon_type, self.icon)
+    icon_url: str | None = None
 
 
 class WebModelConfigResponse(ResponseModel):
@@ -68,6 +68,7 @@ class WebAppCustomConfigResponse(ResponseModel):
 
 class WebAppSiteResponse(ResponseModel):
     app_id: str
+    mode: AppMode
     end_user_id: str | None = None
     enable_site: bool
     site: WebSiteResponse
@@ -84,10 +85,12 @@ class WebAppSiteResponse(ResponseModel):
         *,
         tenant: Tenant,
         app_model: App,
+        mode: AppMode,
         site: Site,
         end_user_id: str | None,
         features: FeatureModel,
         can_replace_logo: bool,
+        icon_url: str | None = None,
     ) -> Self:
         custom_config = None
         if can_replace_logo:
@@ -102,12 +105,14 @@ class WebAppSiteResponse(ResponseModel):
             )
 
         site_response = WebSiteResponse.model_validate(site, from_attributes=True)
+        site_response.icon_url = icon_url if icon_url is not None else build_icon_url(site.icon_type, site.icon)
         if features.billing.enabled and not features.webapp_copyright_enabled:
             site_response.copyright = None
             site_response.input_placeholder = None
 
         return cls(
             app_id=app_model.id,
+            mode=mode,
             end_user_id=end_user_id,
             enable_site=app_model.enable_site,
             site=site_response,
@@ -121,6 +126,17 @@ class WebAppSiteResponse(ResponseModel):
 register_response_schema_models(
     web_ns, WebSiteResponse, WebModelConfigResponse, WebAppCustomConfigResponse, WebAppSiteResponse
 )
+
+
+def _build_site_icon_url(*, site: Site, tenant_id: str) -> str | None:
+    """Use direct S3 URLs only in Cloud Mode and preserve preview URLs elsewhere."""
+    if site.icon_type != IconType.IMAGE or not site.icon:
+        return None
+    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and (
+        StorageType(dify_config.STORAGE_TYPE) == StorageType.S3
+    ):
+        return FileService(db.engine).get_file_presigned_url(file_id=site.icon, tenant_id=tenant_id)
+    return build_icon_url(site.icon_type, site.icon)
 
 
 @web_ns.route("/site")
@@ -155,8 +171,10 @@ class AppSiteApi(WebApiResource):
         return WebAppSiteResponse.from_app_site(
             tenant=tenant,
             app_model=app_model,
+            mode=AppMode.value_of(app_model.mode_compatible_with_agent_with_session(session=db.session())),
             site=site,
             end_user_id=end_user.id,
             features=features,
             can_replace_logo=features.can_replace_logo,
+            icon_url=_build_site_icon_url(site=site, tenant_id=tenant.id),
         ).model_dump(mode="json")

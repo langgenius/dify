@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import PublishToast from '../publish-toast'
 
 let mockPublishedAt = 0
@@ -96,9 +96,7 @@ describe('PublishToast', () => {
     it('should have correct toast width', () => {
       render(<PublishToast />)
 
-      const toastContainer = screen
-        .getByText('pipeline.publishToast.title')
-        .closest('.w-\\[420px\\]')
+      const toastContainer = screen.getByText('pipeline.publishToast.title').closest('.w-105')
       expect(toastContainer).toBeInTheDocument()
     })
 

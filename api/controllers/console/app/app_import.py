@@ -1,6 +1,7 @@
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.common.schema import register_enum_models, register_schema_models
@@ -11,6 +12,7 @@ from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
     edit_permission_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_user,
@@ -28,6 +30,7 @@ from services.app_dsl_service import (
 )
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
+from services.errors.account import NoPermissionError
 from services.feature_service import FeatureService
 
 from .. import console_ns
@@ -81,8 +84,8 @@ class AppImportApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_IMPORT_EXPORT_DSL, resource_required=False)
     @with_current_user
-    def post(self, current_user: Account | None = None):
-        args = AppImportPayload.model_validate(console_ns.payload)
+    @model_validate(AppImportPayload)
+    def post(self, req_data: AppImportPayload, current_user: Account | None = None):
         current_user = current_user if current_user is not None else _current_user_and_tenant_id(None)[0]
 
         # AppDslService performs internal commits for some creation paths, so use a plain
@@ -91,24 +94,27 @@ class AppImportApi(Resource):
             import_service = AppDslService(session)
             # Import app
             account = current_user
-            result = import_service.import_app(
-                account=account,
-                import_mode=args.mode,
-                yaml_content=args.yaml_content,
-                yaml_url=args.yaml_url,
-                name=args.name,
-                description=args.description,
-                icon_type=args.icon_type,
-                icon=args.icon,
-                icon_background=args.icon_background,
-                app_id=args.app_id,
-            )
+            try:
+                result = import_service.import_app(
+                    account=account,
+                    import_mode=req_data.mode,
+                    yaml_content=req_data.yaml_content,
+                    yaml_url=req_data.yaml_url,
+                    name=req_data.name,
+                    description=req_data.description,
+                    icon_type=req_data.icon_type,
+                    icon=req_data.icon,
+                    icon_background=req_data.icon_background,
+                    app_id=req_data.app_id,
+                )
+            except NoPermissionError as e:
+                raise Forbidden(str(e))
             if result.status == ImportStatus.FAILED:
                 session.rollback()
             else:
                 session.commit()
 
-        is_created_app = args.app_id is None and result.status in {
+        is_created_app = req_data.app_id is None and result.status in {
             ImportStatus.COMPLETED,
             ImportStatus.COMPLETED_WITH_WARNINGS,
         }
@@ -157,7 +163,10 @@ class AppImportConfirmApi(Resource):
             import_service = AppDslService(session)
             # Confirm import
             account = current_user
-            result = import_service.confirm_import(import_id=import_id, account=account)
+            try:
+                result = import_service.confirm_import(import_id=import_id, account=account)
+            except NoPermissionError as e:
+                raise Forbidden(str(e))
             if result.status == ImportStatus.FAILED:
                 session.rollback()
             else:

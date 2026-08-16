@@ -166,7 +166,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
                       {item.name}
                     </div>
                     {!item.embedding_available && (
-                      <span className="ml-1 shrink-0 rounded-md border border-divider-deep px-1 text-xs leading-[18px] font-normal text-text-tertiary">
+                      <span className="ml-1 shrink-0 rounded-md border border-divider-deep px-1 text-xs leading-4.5 font-normal text-text-tertiary">
                         {t(($) => $.unavailable, { ns: 'dataset' })}
                       </span>
                     )}

@@ -1,13 +1,14 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import Link from '@/next/link'
 import {
@@ -25,7 +26,10 @@ const Card = ({ apiEnabled }: CardProps) => {
   const datasetId = useDatasetDetailContextWithSelector((state) => state.dataset?.id)
   const dataset = useDatasetDetailContextWithSelector((state) => state.dataset)
   const mutateDatasetRes = useDatasetDetailContextWithSelector((state) => state.mutateDatasetRes)
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { mutateAsync: enableDatasetServiceApi } = useEnableDatasetServiceApi()
   const { mutateAsync: disableDatasetServiceApi } = useDisableDatasetServiceApi()
@@ -54,7 +58,7 @@ const Card = ({ apiEnabled }: CardProps) => {
   )
 
   return (
-    <div className="w-[208px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
+    <div className="w-52 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
       <div className="p-1">
         <div className="p-2">
           <div className="mb-1.5 flex justify-between">
@@ -88,7 +92,7 @@ const Card = ({ apiEnabled }: CardProps) => {
           href={apiReferenceUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex h-8 items-center space-x-[7px] rounded-lg px-2 text-text-tertiary hover:bg-state-base-hover"
+          className="flex h-8 items-center space-x-1.75 rounded-lg px-2 text-text-tertiary hover:bg-state-base-hover"
         >
           <span className="i-ri-book-open-line size-3.5 shrink-0" />
           <div className="grow truncate system-sm-regular">

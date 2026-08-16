@@ -165,11 +165,8 @@ class Account(UserMixin, TypeBase):
 
     def set_tenant_id_with_session(self, tenant_id: str, *, session: Session) -> None:
         """Set the current tenant by id using the caller-owned session."""
-        query = (
-            select(Tenant, TenantAccountJoin)
-            .where(Tenant.id == tenant_id)
-            .where(TenantAccountJoin.tenant_id == Tenant.id)
-            .where(TenantAccountJoin.account_id == self.id)
+        query = select(Tenant, TenantAccountJoin).where(
+            Tenant.id == tenant_id, TenantAccountJoin.tenant_id == Tenant.id, TenantAccountJoin.account_id == self.id
         )
         tenant_account_join = session.execute(query).first()
         if not tenant_account_join:

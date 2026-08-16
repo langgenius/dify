@@ -97,6 +97,7 @@ from controllers.console.datasets.external import (
     ExternalApiTemplateListApi,
 )
 from controllers.console.datasets.hit_testing import HitTestingApi
+from enums import DeploymentEdition
 from models.account import Account, AccountStatus, TenantAccountRole
 from models.dataset import Dataset, DatasetPermissionEnum
 
@@ -192,34 +193,27 @@ class ControllerApiTestDataFactory:
         tenant_id: str = "tenant-123",
         permission: DatasetPermissionEnum = DatasetPermissionEnum.ONLY_ME,
         **kwargs,
-    ) -> Mock:
+    ) -> Dataset:
         """
-        Create a mock Dataset instance.
+        Create a Dataset instance.
 
         Args:
             dataset_id: Unique identifier for the dataset
             name: Name of the dataset
             tenant_id: Tenant identifier
             permission: Dataset permission level
-            **kwargs: Additional attributes to set on the mock
+            **kwargs: Additional mapped attributes for the dataset
 
         Returns:
-            Mock object configured as a Dataset instance
+            Configured Dataset instance
         """
-        dataset = Mock(spec=Dataset)
-        dataset.id = dataset_id
-        dataset.name = name
-        dataset.tenant_id = tenant_id
-        dataset.permission = permission
-        dataset.to_dict.return_value = {
-            "id": dataset_id,
-            "name": name,
-            "tenant_id": tenant_id,
-            "permission": permission.value,
-        }
-        for key, value in kwargs.items():
-            setattr(dataset, key, value)
-        return dataset
+        return Dataset(
+            id=dataset_id,
+            name=name,
+            tenant_id=tenant_id,
+            permission=permission,
+            **kwargs,
+        )
 
     @staticmethod
     def create_user_mock(
@@ -240,15 +234,14 @@ class ControllerApiTestDataFactory:
         Returns:
             Mock object configured as a user/account instance
         """
-        user = Mock()
-        user.id = user_id
-        user.current_tenant_id = tenant_id
-        user.is_dataset_editor = is_dataset_editor
-        user.has_edit_permission = True
-        user.is_dataset_operator = False
-        for key, value in kwargs.items():
-            setattr(user, key, value)
-        return user
+        return Mock(
+            id=user_id,
+            current_tenant_id=tenant_id,
+            is_dataset_editor=is_dataset_editor,
+            has_edit_permission=True,
+            is_dataset_operator=False,
+            **kwargs,
+        )
 
     @staticmethod
     def create_paginated_response(items, total, page=1, per_page=20):
@@ -822,23 +815,22 @@ class TestExternalDatasetApi:
     @pytest.fixture
     def mock_current_account_context(self, app: Flask) -> Iterator[Mock]:
         """Provide the wrapper auth context required by HTTP-client controller tests."""
-        mock_user = Account(name="Test User", email="user-123@example.com")
+        mock_user = Account(
+            name="Test User",
+            email="user-123@example.com",
+            status=AccountStatus.ACTIVE,
+        )
         mock_user.id = "user-123"
-        mock_user.status = AccountStatus.ACTIVE
         mock_user.role = TenantAccountRole.EDITOR
 
         def load_user_from_request_context() -> None:
             g._login_user = mock_user
 
-        setattr(  # noqa: B010
-            app,
-            "login_manager",
-            SimpleNamespace(load_user_from_request_context=load_user_from_request_context),
-        )
+        app.login_manager = SimpleNamespace(load_user_from_request_context=load_user_from_request_context)
 
         with (
             patch("controllers.console.wraps.current_account_with_tenant") as mock_get_user,
-            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
+            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             patch("libs.login.check_csrf_token", return_value=None),
         ):
             mock_tenant_id = "tenant-123"

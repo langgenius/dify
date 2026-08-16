@@ -40,6 +40,7 @@ RUN apt-get update \
         openssh-client \
         procps \
         ripgrep \
+        tini \
         tmux \
         unzip \
         xz-utils \
@@ -79,4 +80,5 @@ WORKDIR /home/dify
 
 EXPOSE 5004
 
+ENTRYPOINT ["/usr/bin/tini", "-g", "--"]
 CMD ["shellctl", "serve", "--listen", "0.0.0.0:5004"]

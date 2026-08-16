@@ -83,7 +83,7 @@ Keep the production code that owns or transforms the asserted behavior real. Moc
 - External SDKs and expensive providers.
 - Independently tested child boundaries that do not own or transform the asserted behavior and whose setup would otherwise dominate the owner test.
 
-Mocks must preserve the public contract needed by the test. Do not replace Dify UI or legacy base primitives with semantically inaccurate stubs just to make a test easier.
+Mocks must preserve the public contract needed by the test. Do not mock interactive Dify UI primitives or feature-owned wrappers around them. Keep their semantic roles, state attributes, portals, focus behavior, and `render(props, state)` contract real; mock only service or external-data boundaries needed to reach the scenario.
 
 - Never make real network requests.
 - Reset shared mock state before each test that mutates it.

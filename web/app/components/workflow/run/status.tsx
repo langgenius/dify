@@ -88,12 +88,7 @@ const StatusPanel: FC<ResultProps> = ({
   return (
     <StatusContainer status={status}>
       <div className="flex">
-        <div
-          className={cn(
-            'max-w-[120px] flex-[33%]',
-            status === 'partial-succeeded' && 'min-w-[140px]',
-          )}
-        >
+        <div className={cn('max-w-30 flex-[33%]', status === 'partial-succeeded' && 'min-w-35')}>
           <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary">
             {t(($) => $['resultPanel.status'], { ns: 'runLog' })}
           </div>
@@ -152,7 +147,7 @@ const StatusPanel: FC<ResultProps> = ({
             )}
           </div>
         </div>
-        <div className="max-w-[152px] flex-[33%]">
+        <div className="max-w-38 flex-[33%]">
           <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary">
             {t(($) => $['resultPanel.time'], { ns: 'runLog' })}
           </div>

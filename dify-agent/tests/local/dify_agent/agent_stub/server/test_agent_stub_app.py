@@ -64,6 +64,7 @@ def test_create_agent_stub_app_wires_configured_file_handler_for_upload_requests
         server_secret_key=_base64url_secret(b"1" * 32),
         inner_api_url="https://api.example.com",
         inner_api_key="inner-secret",
+        sandbox_files_base_url="https://files.example.com",
     )
     token_codec = settings.create_agent_stub_token_codec()
     assert token_codec is not None
@@ -72,9 +73,9 @@ def test_create_agent_stub_app_wires_configured_file_handler_for_upload_requests
     original_async_client = httpx.AsyncClient
 
     def handler(request: httpx.Request) -> httpx.Response:
-        assert str(request.url) == "https://api.example.com/inner/api/upload/file/request"
+        assert str(request.url) == "https://api.example.com/inner/api/agent/files/upload-request"
         assert request.headers["X-Inner-Api-Key"] == "inner-secret"
-        return httpx.Response(200, json={"data": {"url": "https://files.example.com/upload"}})
+        return httpx.Response(200, json={"upload_uri": "/files/upload/for-plugin?sign=1"})
 
     monkeypatch.setattr(
         "dify_agent.agent_stub.server.agent_stub_files.httpx.AsyncClient",
@@ -89,7 +90,7 @@ def test_create_agent_stub_app_wires_configured_file_handler_for_upload_requests
     )
 
     assert response.status_code == 200
-    assert response.json() == {"upload_url": "https://files.example.com/upload"}
+    assert response.json() == {"upload_url": "https://files.example.com/files/upload/for-plugin?sign=1"}
 
 
 def test_create_agent_stub_app_wires_configured_drive_handler_for_manifest_requests(monkeypatch) -> None:
@@ -98,6 +99,7 @@ def test_create_agent_stub_app_wires_configured_drive_handler_for_manifest_reque
         server_secret_key=_base64url_secret(b"1" * 32),
         inner_api_url="https://api.example.com",
         inner_api_key="inner-secret",
+        sandbox_files_base_url="https://files.example.com",
     )
     token_codec = settings.create_agent_stub_token_codec()
     assert token_codec is not None
