@@ -182,13 +182,15 @@ class WorkflowUpdatePayload(BaseModel):
 
 DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS = 100
 
+CHILD_CHUNK_CONTENT_MAX_LENGTH = 16384
+
 
 class ChildChunkCreatePayload(BaseModel):
-    content: str = Field(description="Child chunk text content.")
+    content: str = Field(description="Child chunk text content.", max_length=CHILD_CHUNK_CONTENT_MAX_LENGTH)
 
 
 class ChildChunkUpdatePayload(BaseModel):
-    content: str = Field(description="Child chunk text content.")
+    content: str = Field(description="Child chunk text content.", max_length=CHILD_CHUNK_CONTENT_MAX_LENGTH)
 
 
 class DocumentBatchDownloadZipPayload(BaseModel):
