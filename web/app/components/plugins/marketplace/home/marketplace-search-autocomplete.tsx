@@ -12,15 +12,16 @@ import {
   AutocompleteItemIndicator,
   AutocompleteItemText,
   AutocompleteList,
-  AutocompleteStatus,
 } from '@langgenius/dify-ui/autocomplete'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useState } from 'react'
 import { useTranslation } from '#i18n'
+import { MARKETPLACE_API_PREFIX } from '@/config'
 import { renderI18nObject } from '@/i18n-config/index'
 import { marketplaceQuery } from '@/service/client'
+import { getPluginIconInMarketplace } from '../utils'
 
 type MarketplaceSearchScope = 'all' | 'plugins' | 'templates'
 
@@ -30,6 +31,7 @@ export type MarketplaceSearchSelection =
 
 type MarketplaceSuggestion = {
   description: string
+  iconUrl?: string
   id: string
   kind: 'plugin' | 'template'
   label: string
@@ -58,6 +60,9 @@ const getPluginText = (
 
 const toTemplateSuggestion = (template: MarketplaceTemplate): MarketplaceSuggestion => ({
   description: template.overview,
+  iconUrl: template.icon_file_key
+    ? `${MARKETPLACE_API_PREFIX}/templates/${template.id}/icon`
+    : undefined,
   id: `template:${template.id}`,
   kind: 'template',
   label: template.template_name,
@@ -67,6 +72,7 @@ const toTemplateSuggestion = (template: MarketplaceTemplate): MarketplaceSuggest
 
 const toPluginSuggestion = (plugin: MarketplacePlugin, locale: string): MarketplaceSuggestion => ({
   description: getPluginText(plugin.brief, locale),
+  iconUrl: getPluginIconInMarketplace(plugin),
   id: `plugin:${plugin.org}/${plugin.name}`,
   kind: 'plugin',
   label: getPluginText(plugin.label, locale) || plugin.name,
@@ -88,7 +94,6 @@ export function MarketplaceSearchAutocomplete({
   const [isOpen, setIsOpen] = useState(false)
   const debouncedSearch = useDebounce(value.trim(), { wait: 300 })
   const hasQuery = Boolean(debouncedSearch)
-  const showDropdown = isOpen && hasQuery
   const searchesPlugins = scope === 'all' || scope === 'plugins'
   const searchesTemplates = scope === 'all' || scope === 'templates'
   const isBundleSearch = category === 'bundle'
@@ -145,6 +150,8 @@ export function MarketplaceSearchAutocomplete({
       : []
   const suggestions = [...templateSuggestions, ...pluginSuggestions]
   const isSearching = isDebouncing || pluginQuery.isFetching || templateQuery.isFetching
+  // Open only when there is something to show; do not flash a searching status.
+  const showDropdown = isOpen && hasQuery && (!isSearching || suggestions.length > 0)
   // A failed request must not read as "nothing matched"; when every source in
   // scope errored and nothing is displayable, surface a load failure instead.
   const hasLoadError =
@@ -202,11 +209,6 @@ export function MarketplaceSearchAutocomplete({
         popupClassName="max-w-[420px]"
         popupProps={{ 'aria-busy': isSearching || undefined }}
       >
-        {isSearching && suggestions.length === 0 && (
-          <AutocompleteStatus>
-            {t(($) => $['gotoAnything.searching'], { ns: 'app' })}
-          </AutocompleteStatus>
-        )}
         <AutocompleteList<MarketplaceSuggestion>>
           {(item) => (
             <AutocompleteItem
@@ -225,13 +227,24 @@ export function MarketplaceSearchAutocomplete({
                   : undefined
               }
             >
-              <span
-                aria-hidden
-                className={cn(
-                  'mt-0.5 size-4 shrink-0 text-text-tertiary',
-                  item.kind === 'template' ? 'i-ri-layout-grid-line' : 'i-ri-puzzle-2-line',
-                )}
-              />
+              {item.iconUrl ? (
+                <img
+                  alt=""
+                  className="mt-0.5 size-6 shrink-0 rounded-md object-contain"
+                  src={item.iconUrl}
+                  onError={({ currentTarget }) => {
+                    currentTarget.style.display = 'none'
+                  }}
+                />
+              ) : (
+                <span
+                  aria-hidden
+                  className={cn(
+                    'mt-0.5 size-4 shrink-0 text-text-tertiary',
+                    item.kind === 'template' ? 'i-ri-layout-grid-line' : 'i-ri-puzzle-2-line',
+                  )}
+                />
+              )}
               <span className="flex min-w-0 grow flex-col gap-0.5">
                 <AutocompleteItemText className="px-0 text-text-primary">
                   {item.label}
