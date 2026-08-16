@@ -4,6 +4,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { MARKETPLACE_API_PREFIX } from '@/config'
 import {
   MarketplaceSearchAutocomplete,
   MarketplaceSearchForm,
@@ -32,7 +33,6 @@ vi.mock('react-i18next', async () => {
 
   return createReactI18nextMock({
     clearSearch: 'Clear search',
-    'gotoAnything.searching': 'Searching...',
     'marketplace.noPluginFound': 'No integration found',
     'newApp.noTemplateFound': 'No templates found',
   })
@@ -118,6 +118,8 @@ describe('MarketplaceSearchAutocomplete', () => {
 
     await user.type(screen.getByRole('combobox'), 'legal')
     expect(screen.queryByText('Legal Research Agent')).not.toBeInTheDocument()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
     resolveTemplateSearch(templateSearchResponse)
 
     expect(await screen.findByText('Legal Research Agent')).toBeInTheDocument()
@@ -172,6 +174,10 @@ describe('MarketplaceSearchAutocomplete', () => {
 
     expect(await screen.findByText('Google Search')).toBeInTheDocument()
     expect(screen.getByText('Search the web from your workflow.')).toBeInTheDocument()
+    expect(screen.getByRole('listbox').querySelector('img')).toHaveAttribute(
+      'src',
+      `${MARKETPLACE_API_PREFIX}/plugins/langgenius/google-search/icon`,
+    )
     expect(onValueChange).toHaveBeenLastCalledWith('google')
     expect(mockTemplateSearch).not.toHaveBeenCalled()
   })
@@ -262,7 +268,8 @@ describe('MarketplaceSearchAutocomplete', () => {
     await user.type(screen.getByRole('combobox'), ' drive')
 
     expect(screen.queryByText('Google Search')).not.toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent('Searching...')
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
   })
 
   it('clears suggestions while the edited value is still debouncing', async () => {
@@ -309,6 +316,7 @@ describe('MarketplaceSearchAutocomplete', () => {
     await user.type(screen.getByRole('combobox'), ' drive')
 
     expect(screen.queryByText('Google Search')).not.toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent('Searching...')
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
   })
 })
