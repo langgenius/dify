@@ -54,7 +54,7 @@ Dify application service拥有：
 
 EE service只拥有Dashboard transport/authentication和Dify client orchestration。它不通过Ent或共享DB旁路Dify service，也不在Go中复制领域对象与状态机。
 
-Organization Contact projection 使用 Dify `Account` 作为 source fact，并由 Dify-owned `OrganizationContactProjectionService` 隐藏完整生命周期：首次部署执行幂等 backfill；Organization Contact read 与 manual sync 在消费 Contact 前执行 bounded ensure；周期 reconciliation修复绕过Dify service的Account create/update/disable/delete写入。Active Account创建或更新同一Account-backed Contact；disabled或已删除Account对应Contact保留稳定ID但从current-state projection排除；同一Account重新active时复用原Contact，删除后以新Account ID重建的主体不得复用旧Contact。
+Organization Contact projection 使用 Dify `Account` 作为 source fact，并保持单一 Dify business owner，但交付边界拆分为两个 upstream changes：`integrate-im-contact-sync-end-to-end` 只负责版本升级运行的 `flask data-migrate human-input-contacts --apply` initialization；`implement-contact-projection-lifecycle-maintenance` 负责 authoritative Account create/profile-update write-through、availability 与独立 periodic reconciliation。Account disabled不修改或删除Contact，disabled或已删除Account对应Contact保留稳定ID但从current-state projection排除；同一Account重新active时复用原Contact，删除后以新Account ID重建的主体不得复用旧Contact。Organization Contact read与manual sync只消费current projection，不触发initialization或repair。
 
 `Contact.created_at`继续表示Contact projection自身的创建时间。EE Contacts read model另行从`Account.created_at`投影`joined_at`；不得把backfill时间解释为Organization加入时间，也不得为此在Contact aggregate复制Account timestamp。
 

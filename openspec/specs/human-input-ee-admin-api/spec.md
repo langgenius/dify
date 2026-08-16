@@ -97,7 +97,7 @@ EE 管理后台 MUST 通过 Protobuf-defined Kratos HTTP 暴露 manual IM sync A
 - **THEN** 系统 MUST 返回 `not_present_in_directory`、`binding_invalidated` 或 `binding_replaced` 之一作为 machine-readable removal reason
 
 ### Requirement: EE dashboard MUST expose Organization Contact IM binding façade APIs
-EE 管理后台 MUST 通过 Protobuf-defined Kratos HTTP 暴露 Organization Contact 查询、已同步 IM identity 搜索、binding 创建、删除与连通性测试 API。Dify MUST 通过同一`OrganizationContactProjectionService`负责Account-to-Contact的幂等initial backfill、bounded ensure、periodic reconciliation与availability，并拥有Organization binding transaction boundary；EE MUST 只消费Dify current-state projection。`HumanInputContact`生命周期 MUST 绑定Organization Account，而不是任意单个workspace membership。该façade MUST只适配Organization Contact与Organization-scoped IM binding，MUST NOT承担workspace Contact lifecycle或workspace override。The façade MUST NOT imply one global `im_user_id -> Contact` reverse mapping; identity reuse remains a scope-aware Dify-owned resolution concern.
+EE 管理后台 MUST 通过 Protobuf-defined Kratos HTTP 暴露 Organization Contact 查询、已同步 IM identity 搜索、binding 创建、删除与连通性测试 API。Dify MUST 通过版本升级的 `flask data-migrate human-input-contacts --apply` 提供一次性、幂等的 Account-to-Contact initialization，并 MUST 由独立的 Contact lifecycle maintenance 负责 authoritative Account write-through、periodic reconciliation与availability；Dify同时拥有Organization binding transaction boundary，EE MUST 只消费Dify current-state projection。Organization Contact read与manual IM sync MUST NOT触发Contact initialization或repair。`HumanInputContact`生命周期 MUST 绑定Organization Account，而不是任意单个workspace membership。该façade MUST只适配Organization Contact与Organization-scoped IM binding，MUST NOT承担workspace Contact lifecycle或workspace override。The façade MUST NOT imply one global `im_user_id -> Contact` reverse mapping; identity reuse remains a scope-aware Dify-owned resolution concern.
 
 #### Scenario: 按姓名与 Email 查询 Organization Contact
 - **WHEN** an EE admin opens the Contacts admin view or filters by member name or Email
@@ -107,9 +107,13 @@ EE 管理后台 MUST 通过 Protobuf-defined Kratos HTTP 暴露 Organization Con
 - **WHEN** an Organization Account joins or leaves one workspace while the Account remains in the EE Organization
 - **THEN** 系统 MUST 保留同一个`HumanInputContact` ID与Contact lifecycle timestamps，MUST NOT因单个workspace membership变化创建或删除该Organization Contact；`joined_at`继续来自同一Account
 
+#### Scenario: 历史 Account initialization import
+- **WHEN** production rollout encounters an eligible existing Organization Account without an Account-backed Contact
+- **THEN** Dify version upgrade MUST run `flask data-migrate human-input-contacts --apply` to idempotently create or reuse that Contact, and EE MUST NOT trigger the migration through read、manual sync、Ent or shared-table write
+
 #### Scenario: Account lifecycle驱动current projection
-- **WHEN** an Organization Account is created, updated, disabled, deleted, or reactivated
-- **THEN** Dify MUST 通过initial backfill、bounded ensure与periodic reconciliation创建或更新同一Account-backed Contact；unavailable Account MUST 从current-state response省略，同一Account重新active时MUST复用原Contact ID，EE MUST NOT通过Ent或shared-table write修复projection
+- **WHEN** an Organization Account is created, updated, disabled, deleted, or reactivated after the initialization baseline
+- **THEN** Dify authoritative Account create/profile-update integration与periodic reconciliation MUST创建或更新同一Account-backed Contact；disable MUST NOT修改或删除Contact，unavailable Account MUST从current-state response省略，同一Account重新active时MUST复用原Contact ID，EE MUST NOT通过read、manual sync、Ent或shared-table write修复projection
 
 #### Scenario: 从同步结果搜索 IM identity
 - **WHEN** an EE admin adds an IM channel for one Contact

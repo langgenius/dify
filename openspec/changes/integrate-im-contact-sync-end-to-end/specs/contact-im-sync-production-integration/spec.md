@@ -1,5 +1,39 @@
 ## ADDED Requirements
 
+### Requirement: Human Input control-plane orchestration MUST converge in reusable Dify application services
+
+IM credential/configuration、manual sync、automatic binding reconciliation、Organization binding与workspace override的业务规则 MUST 由各自Dify-owned application services或其worker orchestration拥有。Workspace Console与未来Dify EE inner API MUST 作为thin transport adapters调用同一service boundary；它们 MAY 负责各自入口的authentication/authorization、trusted scope/actor construction、必要audit/correlation metadata、DTO mapping与stable error translation，但 MUST NOT 直接编排repository、provider adapter、credential protector、Celery task或reconciliation mutation。Contact initialization MUST only run as the version-upgrade operation `flask data-migrate human-input-contacts --apply`; transports and sync workers MUST NOT expose or invoke it。Ongoing Account/member-to-Contact projection and lifecycle maintenance, including authoritative Account/member write-through and periodic reconciliation, MUST remain owned by the independent `implement-contact-projection-lifecycle-maintenance` change and MUST NOT be implemented or repaired by this production IM sync integration.
+
+#### Scenario: Workspace管理员配置IM channel
+
+- **WHEN** an authenticated Workspace administrator tests, saves, replaces or deletes an IM configuration
+- **THEN** Workspace controller MUST map the trusted Workspace context into the shared channel-management application service
+- **AND** credential validation/protection、Integration CAS与provider diagnostics MUST remain below that service boundary
+
+#### Scenario: Workspace管理员触发同步或修改关联
+
+- **WHEN** an authenticated Workspace administrator starts manual sync, creates/deletes an Organization binding, or sets/resets a workspace override
+- **THEN** controller MUST call the shared manual-sync or binding application service
+- **AND** eligibility、dispatch、automatic reconciliation、owner predicates与binding transaction MUST NOT be implemented in the controller
+
+#### Scenario: Manual sync reads current Contacts without repairing them
+
+- **WHEN** the manual-sync worker has read a complete provider directory
+- **THEN** the guarded reconciliation input load MUST query currently available Contacts and current membership facts for the trusted scope before planning
+- **AND** the manual-sync service、worker、planner and IM repository MUST NOT create、update、delete or backfill Contacts
+
+#### Scenario: Future EE inner API reuses the application services
+
+- **WHEN** a future trusted EE inner API adapter exposes Organization-level credential configuration, manual sync or Contact/IM Identity binding
+- **THEN** it MUST reuse the same Dify application services with deployment-scoped trusted context
+- **AND** it MUST restrict itself to trusted-service authentication/authorization, necessary audit/correlation handling, DTO/error mapping and transport concerns rather than copying Workspace or domain orchestration
+
+#### Scenario: Multiple transport entrypoints exist
+
+- **WHEN** Workspace Console and EE inner API both expose one Human Input operation
+- **THEN** both call paths MUST converge before repository、provider、worker or reconciliation access
+- **AND** neither controller MAY invoke the other transport endpoint or form a `Dify -> EE -> Dify` loop
+
 ### Requirement: Production Contacts Channels MUST use generated Console clients
 
 非 Enterprise 的 production Contacts Channels composition MUST 通过 generated `consoleClient` / `consoleQuery` bindings 访问 canonical Channels 与 IM sync APIs。内存 mock repository MUST 仅用于测试、Story 或显式开发 fixture，MUST NOT 成为 production page 的默认数据源。
@@ -16,11 +50,13 @@
 - **THEN** frontend MUST refetch the authoritative current channel view through generated bindings
 - **AND** frontend MUST NOT infer persisted credential or connection state from the submitted candidate
 
-#### Scenario: 显式开发 fixture 被启用
+#### Scenario: 非生产 composition 显式注入 mock repository
 
-- **WHEN** a test, Story, or explicit development-only composition injects the mock repository
-- **THEN** existing deterministic scenarios MAY remain available
-- **AND** that selection MUST be instance-scoped and absent from the production composition
+- **WHEN** a test、Storybook Story or development-only entrypoint explicitly injects an in-memory mock repository and named scenario into the Contacts Channels composition
+- **THEN** the repository、selected scenario and mutable state MUST be owned by that composition instance
+- **AND** different composition instances MUST NOT share or mutate each other's mock state
+- **AND** production composition MUST instantiate only generated-client repositories
+- **AND** production runtime MUST NOT provide a feature flag、URL parameter、browser storage、global variable or fallback path that selects a mock repository or mock scenario
 
 ### Requirement: Manual sync UI MUST follow the server-owned latest run
 
@@ -28,7 +64,7 @@
 
 #### Scenario: 管理员手动触发同步
 
-- **WHEN** current IM channel is connected, advertises directory-sync capability, and the authorized administrator selects `Sync now`
+- **WHEN** the current channel is IM, has persisted connected status, and the authorized administrator selects `Sync now`
 - **THEN** frontend MUST issue exactly one create-or-get-active request
 - **AND** it MUST render the returned persisted run rather than a client-generated placeholder
 
@@ -81,7 +117,9 @@
 #### Scenario: Removed 结果被展示
 
 - **WHEN** latest results contain a `removed` item
-- **THEN** frontend MUST display the last-known identity, Contact snapshot and machine-readable removal reason
+- **THEN** backend MUST generate immutable last-known identity and Contact snapshots from pre-reconciliation state before mutating or deleting the current binding or identity
+- **AND** backend MUST persist those snapshots and the machine-readable removal reason with the `removed` result in the same transaction
+- **AND** frontend MUST display the persisted snapshots and removal reason without resolving current identity or Contact state
 - **AND** it MUST NOT interpret removal as Contact deletion
 
 ### Requirement: Sync details MUST remain latest-only and bucket-paginated
@@ -114,19 +152,19 @@
 
 ### Requirement: Sync eligibility and failures MUST be server-authoritative
 
-Frontend MUST combine the server-declared directory-sync capability, persisted channel status and current authorization to determine eligibility。Stable application errors MUST map to safe, actionable states without exposing provider payloads or raw exception text。
+Frontend MUST combine channel kind, persisted channel status and current authorization to determine eligibility。Every current IM provider uses directory synchronization; Email channels do not。Stable application errors MUST map to safe, actionable states without exposing provider payloads or raw exception text。
 
 #### Scenario: Channel is not eligible for sync
 
-- **WHEN** the current IM channel is absent, not connected, or lacks directory-sync capability
+- **WHEN** the current channel is absent, is not an IM channel, or does not have persisted connected status
 - **THEN** frontend MUST disable manual sync and display the corresponding safe reason
 - **AND** it MUST NOT call the sync create endpoint
 
 #### Scenario: Client bypasses the eligibility gate
 
-- **WHEN** a caller requests a new sync for an Integration that is not connected or whose provider lacks server-declared directory-sync capability
+- **WHEN** a caller requests a new sync without a connected IM Integration in the trusted scope
 - **THEN** backend MUST reject the command with a stable safe error before run creation, dispatch, or provider I/O
-- **AND** it MUST NOT rely on the frontend gate as an authorization or capability boundary
+- **AND** it MUST NOT rely on the frontend gate as an authorization or channel-kind boundary
 
 #### Scenario: Integration revision changes
 
@@ -136,7 +174,7 @@ Frontend MUST combine the server-declared directory-sync capability, persisted c
 
 #### Scenario: Sync infrastructure is unavailable
 
-- **WHEN** Contact projection, Organization write lock, dispatch, or another sync prerequisite returns a stable unavailable failure
+- **WHEN** Organization write lock、dispatch or another sync prerequisite returns a stable unavailable failure
 - **THEN** frontend MUST show a retryable safe error and preserve the last completed summary
 - **AND** it MUST NOT expose internal queue, lock, credential, or provider details
 
@@ -153,7 +191,7 @@ Every supported default API worker deployment MUST consume the `human_input_cont
 #### Scenario: Operator configures a custom queue list
 
 - **WHEN** `CELERY_QUEUES` or `CELERY_WORKER_QUEUES` overrides the default list
-- **THEN** deployment documentation MUST identify `human_input_contact_sync` as required for this capability
+- **THEN** deployment documentation MUST identify `human_input_contact_sync` as required for manual IM Contact synchronization
 - **AND** automated configuration coverage MUST detect its omission from repository-owned examples
 
 #### Scenario: Worker completes a dispatched run
@@ -176,21 +214,44 @@ Release coverage MUST use executable line coverage aggregated across production 
 - **WHEN** the CI-owned PostgreSQL/Redis container suite reports less than 80% aggregate line coverage for backend production modules added or changed by this change
 - **THEN** integration verification MUST fail
 
-### Requirement: Slack MUST be the first end-to-end provider slice
+### Requirement: Existing IMProviderAdapter implementations MUST remain the sole provider directory integration
 
-The initial release gate for this capability MUST prove self-managed Slack configuration, directory read, reconciliation, latest query and frontend rendering in Community or non-Enterprise Workspace scope。Other providers MUST remain unavailable unless their management path and the same end-to-end contract are complete。
+All provider directory synchronization MUST reuse the existing provider-specific `IMProviderAdapter` implementations。The worker MUST obtain the adapter through the existing `DifyIMProviderAdapterFactory` path and MUST read the directory through `adapter.directory.read_directory()`。This change MUST NOT introduce a parallel directory adapter、provider directory HTTP client、pagination/normalization pipeline or management-owned directory read。Existing credential structures MUST remain unchanged when they can already construct and operate the corresponding adapter；a credential change is allowed only when a failing adapter-construction or adapter-contract test proves it necessary，and it MUST be the smallest change that restores the existing adapter path。
 
-#### Scenario: Self-managed Slack is connected
+#### Scenario: A current provider directory is synchronized
 
-- **WHEN** an administrator configures valid Slack credentials with required directory scopes and the server reports the channel connected
-- **THEN** the UI MUST allow manual sync and drive the complete production path
+- **WHEN** a worker executes a manual sync for any current IM provider
+- **THEN** it MUST construct the existing provider-specific `IMProviderAdapter` through the existing factory path and call its `directory.read_directory()` capability
+- **AND** no controller、management handler、application service or frontend repository MAY implement or invoke a parallel provider directory read
+
+#### Scenario: Existing credential structures satisfy adapter construction
+
+- **WHEN** the current plaintext/encrypted credential models can round-trip persisted configuration and construct the existing provider adapter
+- **THEN** this change MUST reuse those structures without renaming、duplicating or replacing them
+- **AND** provider management wiring MUST adapt its candidate mapping to the existing credential owner rather than introduce a sync-specific credential model
+
+#### Scenario: A credential adjustment is demonstrably required
+
+- **WHEN** a failing test proves that one existing provider adapter cannot be correctly constructed or exercised from the current credential mapping
+- **THEN** the implementation MAY minimally adjust the credential structure in its existing owner
+- **AND** tests MUST cover encryption round-trip、adapter construction、directory contract compatibility and unaffected provider regressions
+- **AND** the adjustment MUST NOT create another directory implementation or move directory ownership out of `IMProviderAdapter`
+
+### Requirement: Current supported IM providers MUST complete end-to-end directory synchronization
+
+The production Workspace path MUST cover the current five IM provider families: Slack、Feishu/Lark、DingTalk、Microsoft Teams and WeCom。`feishu` and `lark` MUST remain separate canonical provider values while sharing their provider-family implementation。For every current IM provider，the Channel API and frontend MUST support credential configuration，manual sync dispatch，complete provider directory read in the worker，binding reconciliation，latest-run and paginated latest-result queries，and frontend result rendering through the same production path。Email MUST remain outside directory synchronization by channel kind。
+
+#### Scenario: A current self-managed IM channel is connected
+
+- **WHEN** an administrator configures valid credentials and required directory scopes for any current IM provider named by this requirement and the server reports the channel connected
+- **THEN** the UI MUST allow manual sync and drive run creation、worker directory read、reconciliation、latest query and result rendering through the complete production path
 - **AND** provider secrets MUST remain absent from frontend state, responses, logs and sync records
 
-#### Scenario: Another provider is incomplete
+#### Scenario: An Email channel is configured
 
-- **WHEN** Feishu, DingTalk or another provider lacks complete management or release-gate coverage
-- **THEN** the server MUST omit directory-sync capability or return a safe unavailable state for that provider
-- **AND** frontend MUST NOT enable sync by inferring capability from provider name
+- **WHEN** the configured Human Input channel is an Email channel
+- **THEN** the UI MUST NOT offer directory synchronization
+- **AND** the server MUST reject directory-sync operations for that channel before run creation, dispatch or provider I/O
 
 #### Scenario: Enterprise workspace opens settings
 

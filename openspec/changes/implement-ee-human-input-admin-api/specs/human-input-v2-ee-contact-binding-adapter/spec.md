@@ -4,13 +4,22 @@
 
 EE MUST 通过 Dify internal API列出 current Organization Contact，并 MUST 不在 EE 中实现 Account-to-Contact projector、backfill、normalized-email collision或 availability规则。Dify response MUST 是 Contact ID、current name/email/avatar、Organization binding与`joined_at`的唯一current-state业务投影；`joined_at` MUST 来自Dify `Account.created_at`，MUST NOT 使用或重新解释`Contact.created_at`。
 
-#### Scenario: Organization Account首次进入projection或执行历史backfill
-- **WHEN** an eligible Organization Account needs a canonical Human Input Contact
-- **THEN** Dify `OrganizationContactProjectionService` MUST idempotently create or reuse the Account-backed Contact and preserve its stable Contact ID; initial backfill, bounded ensure与periodic reconciliation MUST 使用同一规则，EE MUST NOT create、backfill或repair该projection
+#### Scenario: 历史 Organization Account 执行 initialization import
+- **WHEN** production rollout finds an eligible existing Organization Account without a canonical Human Input Contact
+- **THEN** the version upgrade MUST use `flask data-migrate human-input-contacts --apply` owned by `integrate-im-contact-sync-end-to-end` to idempotently create or reuse the Account-backed Contact, and EE MUST NOT create or backfill that projection
+
+#### Scenario: Organization Account 在初始化后首次进入 projection
+- **WHEN** an eligible Organization Account is created after the initialization baseline
+- **THEN** the authoritative write-through owned by `implement-contact-projection-lifecycle-maintenance` MUST create the Account-backed Contact and preserve that identity across later profile updates
 
 #### Scenario: Organization Account属性变化
 - **WHEN** current Account的name、email、avatar或active status变化
-- **THEN** Dify reconciliation MUST 更新同一Account-backed Contact的mutable projection；disabled或deleted Account MUST 从current-state结果省略但不得把旧Contact ID分配给另一Account，同一Account重新active时MUST复用原Contact
+- **THEN** Dify authoritative Account write path MUST更新同一Account-backed Contact的mutable profile projection；disable MUST NOT修改或删除Contact，disabled或deleted Account MUST从current-state结果省略但不得把旧Contact ID分配给另一Account，同一Account重新active时MUST复用原Contact
+
+#### Scenario: Organization Contact read或manual sync消费projection
+- **WHEN** EE lists Organization Contacts or starts a manual IM sync
+- **THEN** Dify MUST read the current projection without triggering Contact initialization or repair
+- **AND** post-initialization projection drift MUST remain owned by authoritative Account writes and periodic reconciliation
 
 #### Scenario: Organization Account不再可用
 - **WHEN** Dify availability policy excludes an Account-backed Contact
