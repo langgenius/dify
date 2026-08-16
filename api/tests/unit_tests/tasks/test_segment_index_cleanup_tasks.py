@@ -1,7 +1,6 @@
 import uuid
 from collections.abc import Generator
-from contextlib import contextmanager
-from contextlib import nullcontext
+from contextlib import contextmanager, nullcontext
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
