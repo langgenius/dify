@@ -23,11 +23,14 @@ def create_agent_backend_run_client(
     stream_read_timeout_seconds: float = 30,
     stream_max_reconnects: int = 3,
 ) -> AgentBackendRunClient:
-    """Create the API-side run client without hiding the ``dify-agent`` protocol."""
-    if use_fake:
+    """Create the API-side run client without hiding the ``dify-agent`` protocol.
+
+    Falls back to the in-process fake client when no ``base_url`` is configured, since a
+    self-hosted deployment that hasn't set up the standalone Agent backend service should
+    still be able to serve Agent V2 requests instead of failing every call with a 500.
+    """
+    if use_fake or not base_url:
         return FakeAgentBackendRunClient(scenario=FakeAgentBackendScenario(fake_scenario))
-    if base_url is None:
-        raise ValueError("base_url is required when creating a real Agent backend client")
     return DifyAgentBackendRunClient(
         create_agent_backend_client(
             base_url=base_url,
