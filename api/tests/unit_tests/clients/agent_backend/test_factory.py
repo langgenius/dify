@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from dify_agent.client import Client
 
-from clients.agent_backend.factory import create_agent_backend_client
+from clients.agent_backend.factory import create_agent_backend_client, create_agent_backend_run_client
 from configs import dify_config
 from services import agent_app_sandbox_service
 from services.agent import home_snapshot_service, workspace_service
@@ -32,6 +32,21 @@ def test_create_agent_backend_client_forwards_authentication(
         base_url="http://agent-backend",
         stream_timeout=30,
         headers=headers,
+    )
+
+
+@patch("clients.agent_backend.factory.create_agent_backend_client")
+def test_create_agent_backend_run_client_forwards_stream_read_timeout(create_client: MagicMock) -> None:
+    create_agent_backend_run_client(
+        base_url="http://agent-backend",
+        api_token="secret-token",
+        stream_read_timeout_seconds=17.5,
+    )
+
+    create_client.assert_called_once_with(
+        base_url="http://agent-backend",
+        api_token="secret-token",
+        stream_timeout=17.5,
     )
 
 

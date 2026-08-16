@@ -4,6 +4,8 @@ extends: default
 rules:
   brackets:
     max-spaces-inside: 1
+  comments:
+    min-spaces-from-content: 1
   comments-indentation: disable
   document-start: disable
   line-length: disable
