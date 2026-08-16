@@ -388,7 +388,7 @@ class PipelineGenerator(BaseAppGenerator):
         """
         Generate App response.
 
-        :param app_model: App
+        :param pipeline: Pipeline
         :param workflow: Workflow
         :param node_id: the node id
         :param user: account or end user
@@ -490,7 +490,7 @@ class PipelineGenerator(BaseAppGenerator):
         """
         Generate App response.
 
-        :param app_model: App
+        :param pipeline: Pipeline
         :param workflow: Workflow
         :param node_id: the node id
         :param user: account or end user
