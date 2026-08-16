@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import datetime
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -274,6 +275,9 @@ def test_status_toggle_skips_signal_when_row_already_at_target(method, column: s
     # the object still reflects the committed state
     assert getattr(app, column) is True
     session.commit.assert_called_once()
+
+
+@pytest.mark.parametrize(
     "update_status",
     [
         AppService.update_app_site_status,
