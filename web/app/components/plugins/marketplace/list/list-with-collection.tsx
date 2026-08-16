@@ -10,24 +10,14 @@ import { useMarketplaceMoreClick } from '../atoms'
 import { buildCarouselPages } from '../utils'
 import CardWrapper from './card-wrapper'
 import Carousel from './carousel'
-import { CAROUSEL_BREAKPOINTS, CAROUSEL_PAGE_SIZE, GRID_CLASS } from './collection-constants'
+import { GRID_CLASS } from './collection-constants'
+import { useCarouselItemsPerPage } from './use-carousel-items-per-page'
 
 const BECOME_PARTNER_URL = 'https://share-na2.hsforms.com/1NiS4r9lsSqGcuNBB77DeEQ40s9fk'
 const PARTNERS_COLLECTION_NAMES = new Set(['partners', 'partner-template', 'Partner Template'])
 const COLLECTION_PRELOAD_MARGIN = '320px 0px'
 const COLLECTION_INTERSECTION_THRESHOLD = 0.01
 const MAX_PLACEHOLDER_CARDS = 8
-
-const getViewportWidth = () =>
-  typeof window === 'undefined' ? CAROUSEL_BREAKPOINTS.xl : window.innerWidth
-
-const getCarouselItemsPerPage = (viewportWidth: number) => {
-  if (viewportWidth >= CAROUSEL_BREAKPOINTS.xl) return CAROUSEL_PAGE_SIZE.xl
-  if (viewportWidth >= CAROUSEL_BREAKPOINTS.lg) return CAROUSEL_PAGE_SIZE.lg
-  if (viewportWidth >= CAROUSEL_BREAKPOINTS.sm) return CAROUSEL_PAGE_SIZE.sm
-
-  return CAROUSEL_PAGE_SIZE.base
-}
 
 type ListWithCollectionProps = {
   marketplaceCollections: MarketplaceCollection[]
@@ -269,16 +259,7 @@ const ListWithCollection = ({
 }: ListWithCollectionProps) => {
   const defaultOnMoreClick = useMarketplaceMoreClick()
   const handleMoreClick = onCollectionMoreClick ?? defaultOnMoreClick
-  const [viewportWidth, setViewportWidth] = useState(getViewportWidth)
-  const itemsPerPage = useMemo(() => getCarouselItemsPerPage(viewportWidth), [viewportWidth])
-
-  useEffect(() => {
-    const handleResize = () => setViewportWidth(window.innerWidth)
-
-    window.addEventListener('resize', handleResize)
-
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
+  const itemsPerPage = useCarouselItemsPerPage()
 
   return marketplaceCollections
     .filter((collection) => marketplaceCollectionPluginsMap[collection.name]?.length)

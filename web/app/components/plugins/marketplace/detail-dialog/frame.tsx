@@ -20,6 +20,11 @@ type MarketplaceDetailDialogFrameProps = {
   onOpenChange: (open: boolean) => void
 }
 
+// The iframe load event can be delayed indefinitely on a stalled connection
+// (and cross-origin load errors are not observable), so reveal the frame after
+// this timeout instead of keeping the skeleton up forever.
+const LOADING_REVEAL_TIMEOUT_MS = 15_000
+
 export default function MarketplaceDetailDialogFrame({
   open,
   src,
@@ -31,6 +36,13 @@ export default function MarketplaceDetailDialogFrame({
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    if (!open) return
+
+    const timeout = window.setTimeout(() => setIsLoading(false), LOADING_REVEAL_TIMEOUT_MS)
+    return () => window.clearTimeout(timeout)
+  }, [open, src])
 
   useEffect(() => {
     if (!open || !onMessage) return

@@ -276,7 +276,9 @@ describe('ListWithCollection', () => {
     )
 
     expect(screen.queryByText('plugin.marketplace.viewMore')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Scroll right' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'plugin.marketplace.carousel.scrollNext' }),
+    ).toBeInTheDocument()
     const carousel = screen.getByRole('region')
     const carouselViewport = carousel.querySelector('.overflow-hidden')
     const carouselContent = carouselViewport?.firstElementChild

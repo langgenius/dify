@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test'
-import { filterTemplatesForLocale } from '../template-language'
+import { filterTemplatesForLocale, getTemplateCollectionText } from '../template-language'
 
 const template = (id: string, preferredLanguages?: string[]) => ({
   id,
@@ -64,5 +64,24 @@ describe('filterTemplatesForLocale', () => {
     const templates = [template('zh', ['zh_Hans']), template('en', ['en_US'])]
 
     expect(ids(filterTemplatesForLocale(templates, 'zh_Hans'))).toEqual(['zh'])
+  })
+})
+
+describe('getTemplateCollectionText', () => {
+  it('uses the matching collection translation and falls back to English', () => {
+    const label = {
+      en_US: 'Featured',
+      zh_Hans: '精选',
+      zh_Hant: '精選',
+      ja_JP: '注目',
+    }
+
+    expect(getTemplateCollectionText(label, 'zh-Hant')).toBe('精選')
+    expect(getTemplateCollectionText(label, 'de-DE')).toBe('Featured')
+  })
+
+  it('falls back to the first available translation when English is missing', () => {
+    expect(getTemplateCollectionText({ ja_JP: '注目' }, 'de-DE')).toBe('注目')
+    expect(getTemplateCollectionText({}, 'de-DE')).toBe('')
   })
 })

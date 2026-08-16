@@ -27,21 +27,16 @@ type CarouselProps = {
 }
 
 type NavButtonProps = {
-  direction: 'left' | 'right'
-  disabled: boolean
+  label: string
   onClick: () => void
   iconClassName: string
 }
 
-const NavButton = ({ direction, disabled, onClick, iconClassName }: NavButtonProps) => (
+const NavButton = ({ label, onClick, iconClassName }: NavButtonProps) => (
   <button
-    className={cn(
-      'flex cursor-pointer items-center justify-center rounded-full border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-2 shadow-xs backdrop-blur-[5px] transition-all hover:bg-components-button-secondary-bg-hover',
-      disabled && 'cursor-not-allowed opacity-50 hover:bg-components-button-secondary-bg',
-    )}
+    className="flex cursor-pointer items-center justify-center rounded-full border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-2 shadow-xs backdrop-blur-[5px] transition-all hover:bg-components-button-secondary-bg-hover"
     onClick={onClick}
-    disabled={disabled}
-    aria-label={`Scroll ${direction}`}
+    aria-label={label}
   >
     <span
       aria-hidden
@@ -97,21 +92,22 @@ const CarouselControls = ({
                   : 'bg-components-button-secondary-border hover:bg-components-button-secondary-border-hover',
               )}
               onClick={() => scrollTo(index)}
-              aria-label={`Go to page ${index + 1}`}
+              aria-label={t(($) => $['marketplace.carousel.goToPage'], {
+                ns: 'plugin',
+                page: index + 1,
+              })}
             />
           ))}
         </div>
       )}
       <div className="flex items-center gap-1">
         <NavButton
-          direction="left"
-          disabled={totalPages <= 1}
+          label={t(($) => $['marketplace.carousel.scrollPrevious'], { ns: 'plugin' })}
           onClick={scrollPrev}
           iconClassName="i-ri-arrow-left-s-line"
         />
         <NavButton
-          direction="right"
-          disabled={totalPages <= 1}
+          label={t(($) => $['marketplace.carousel.scrollNext'], { ns: 'plugin' })}
           onClick={scrollNext}
           iconClassName="i-ri-arrow-right-s-line"
         />
