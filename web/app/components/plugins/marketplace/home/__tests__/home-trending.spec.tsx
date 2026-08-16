@@ -21,6 +21,11 @@ vi.mock('@/app/components/plugins/base/badges/verified', () => ({
   default: () => <span data-testid="verified-badge" />,
 }))
 
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  MARKETPLACE_URL_PREFIX: 'https://marketplace.example.com',
+}))
+
 const banners: PluginBanner[] = [
   {
     id: 'recommend',
@@ -408,6 +413,60 @@ describe('HomeTrending', () => {
       configurable: true,
       value: originalAnimate,
     })
+  })
+
+  it('sends embedded cards without a delivery link to the marketplace site', () => {
+    const bannerWithMixedLinks: PluginBanner = {
+      id: 'recommend-mixed',
+      style_type: 'recommend',
+      title: 'Trending',
+      sort: 0,
+      language: 'en',
+      content: {
+        theme_type: 'hottest',
+        cards: [
+          {
+            item_type: 'plugin',
+            item_id: 'langgenius/dropbox',
+            display_name: 'Dropbox',
+            link: 'https://external.example.com/dropbox',
+            card_position: 0,
+          },
+          {
+            // The console has no local /plugin route, so a card without a
+            // delivery-provided link must open the marketplace detail page.
+            item_type: 'plugin',
+            item_id: 'langgenius/notion',
+            display_name: 'Notion',
+            link: '',
+            card_position: 1,
+          },
+          {
+            item_type: 'template',
+            item_id: 'tpl-1',
+            display_name: 'Support Bot',
+            link: '',
+            card_position: 2,
+          },
+        ],
+      },
+    }
+
+    render(<HomeTrending banners={[bannerWithMixedLinks]} isMarketplacePlatform={false} />)
+
+    expect(screen.getByRole('link', { name: 'Dropbox' })).toHaveAttribute(
+      'href',
+      'https://external.example.com/dropbox',
+    )
+    const marketplaceFallbackLink = screen.getByRole('link', { name: 'Notion' })
+    expect(marketplaceFallbackLink.getAttribute('href')).toMatch(
+      /^https:\/\/marketplace\.example\.com\/plugins\/langgenius\/notion/,
+    )
+    expect(marketplaceFallbackLink).toHaveAttribute('target', '_blank')
+    expect(screen.getByRole('link', { name: 'Support Bot' })).toHaveAttribute(
+      'href',
+      '/templates?tid=tpl-1',
+    )
   })
 
   it('renders no carousel when the API returns no banners', () => {

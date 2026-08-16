@@ -1,0 +1,50 @@
+import type { PluginBanner } from '@dify/contracts/marketplace'
+import type { ReactNode } from 'react'
+import { HomeStickyStateProvider } from './home-sticky-state-provider'
+import HomeTrending from './home-trending'
+
+type HomeShellProps = {
+  banners: PluginBanner[]
+  children: ReactNode
+  header: ReactNode
+  hero: ReactNode
+  isMarketplacePlatform: boolean
+  navigation: ReactNode
+  search: ReactNode
+}
+
+/**
+ * Shared scaffold for the marketplace catalog homes (Plugins and Templates):
+ * sticky header, hero, floating search, the optional trending banners, and
+ * the sticky catalog navigation above the page content. Keeping the structure
+ * in one place stops the two catalog pages from drifting apart.
+ */
+export function HomeShell({
+  banners,
+  children,
+  header,
+  hero,
+  isMarketplacePlatform,
+  navigation,
+  search,
+}: HomeShellProps) {
+  return (
+    <HomeStickyStateProvider>
+      <div className="flex min-h-full w-full shrink-0 flex-col bg-background-default">
+        {header}
+        <div className="relative flex w-full flex-col">
+          {hero}
+          {search}
+          {banners.length > 0 && (
+            <>
+              <div aria-hidden="true" className="h-12 shrink-0" />
+              <HomeTrending banners={banners} isMarketplacePlatform={isMarketplacePlatform} />
+            </>
+          )}
+          {navigation}
+          {children}
+        </div>
+      </div>
+    </HomeStickyStateProvider>
+  )
+}

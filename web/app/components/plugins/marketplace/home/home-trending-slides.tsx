@@ -1,0 +1,331 @@
+'use client'
+
+import type {
+  BannerAd,
+  BannerBlog,
+  BannerEvent,
+  BannerRecommend,
+  BannerRecommendCard,
+  PluginBanner,
+} from '@dify/contracts/marketplace'
+import { cn } from '@langgenius/dify-ui/cn'
+import { useTranslation } from '#i18n'
+import Partner from '@/app/components/plugins/base/badges/partner'
+import Verified from '@/app/components/plugins/base/badges/verified'
+import { MARKETPLACE_API_PREFIX } from '@/config'
+import Link from '@/next/link'
+import { getPluginLinkInMarketplace } from '../utils'
+import background from './assets/background.webp'
+import difyUpdatesArt from './assets/dify-updates-art.png'
+import styles from './home-trending.module.css'
+
+const getMarketplaceAssetURL = (path?: string) => {
+  if (!path) return ''
+  if (/^https?:\/\//.test(path) || path.startsWith('/_next/')) return path
+
+  try {
+    const apiURL = new URL(MARKETPLACE_API_PREFIX)
+    if (path.startsWith('/api/')) return `${apiURL.origin}${path}`
+    return `${MARKETPLACE_API_PREFIX.replace(/\/$/, '')}/${path.replace(/^\//, '')}`
+  } catch {
+    return path
+  }
+}
+
+const getLocalCardHref = (card: BannerRecommendCard) => {
+  if (card.item_type === 'plugin') {
+    const [organization, pluginName] = card.item_id.split('/')
+    if (organization && pluginName)
+      return `/plugin/${encodeURIComponent(organization)}/${encodeURIComponent(pluginName)}`
+  }
+
+  if (card.item_type === 'template') return `/templates?tid=${encodeURIComponent(card.item_id)}`
+
+  return '/'
+}
+
+const getCardHref = (card: BannerRecommendCard, isMarketplacePlatform: boolean) => {
+  if (isMarketplacePlatform) return getLocalCardHref(card)
+  if (card.link) return card.link
+
+  // The embedded console has no local plugin detail route, so a plugin card
+  // without a delivery-provided link opens the marketplace site detail page.
+  if (card.item_type === 'plugin') {
+    const [organization, pluginName] = card.item_id.split('/')
+    if (organization && pluginName)
+      return getPluginLinkInMarketplace({ org: organization, name: pluginName, type: 'plugin' })
+  }
+
+  return getLocalCardHref(card)
+}
+
+const getCardCreator = (card: BannerRecommendCard) => {
+  if (card.creator) return card.creator
+  if (card.item_type !== 'plugin') return ''
+
+  return card.item_id.split('/')[0] || ''
+}
+
+function TrendingCopy({
+  banner,
+  isMarketplacePlatform,
+}: {
+  banner: BannerRecommend
+  isMarketplacePlatform: boolean
+}) {
+  const { t } = useTranslation('plugin')
+  const heading = banner.content.heading || t(($) => $['marketplace.home.trendingTitle'])
+  const description =
+    banner.content.description ||
+    banner.content.subheadings?.join(' · ') ||
+    t(($) => $['marketplace.home.trendingDescription'])
+
+  return (
+    <div
+      className={cn(
+        styles.copy,
+        'flex min-w-0 flex-col items-start overflow-hidden p-5',
+        isMarketplacePlatform ? styles.marketplaceCopy : styles.embeddedCopy,
+      )}
+    >
+      <div className="flex w-full flex-col items-start gap-2 overflow-hidden">
+        <p className="shrink-0 rounded-sm bg-state-accent-hover-alt px-1.5 py-0.5 text-[10px] leading-3 font-semibold tracking-[-0.2px] text-text-accent">
+          {banner.title}
+        </p>
+        <h2 className="shrink-0 text-xl leading-6 font-semibold tracking-[-0.4px] text-text-primary">
+          {heading}
+        </h2>
+        <p className="w-full text-[13px] leading-5 font-normal tracking-[-0.065px] text-text-tertiary">
+          {description}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function TrendingCard({
+  card,
+  isMarketplacePlatform,
+}: {
+  card: BannerRecommendCard
+  isMarketplacePlatform: boolean
+}) {
+  const { t } = useTranslation('plugin')
+  const iconURL = getMarketplaceAssetURL(card.icon_url)
+  const creator = getCardCreator(card)
+  const href = getCardHref(card, isMarketplacePlatform)
+  const opensInNewTab = !isMarketplacePlatform && /^https?:\/\//.test(href)
+  const isPartner = card.badges?.includes('partner')
+  const isVerified = card.badges?.includes('verified')
+
+  return (
+    <Link
+      href={href}
+      target={opensInNewTab ? '_blank' : undefined}
+      rel={opensInNewTab ? 'noopener noreferrer' : undefined}
+      aria-label={card.display_name}
+      className={cn(
+        styles.card,
+        'flex h-[116px] shrink-0 flex-col items-start justify-between overflow-hidden rounded-lg bg-background-default-dodge p-3.5 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+      )}
+    >
+      <div
+        className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-[10px] border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge"
+        style={{
+          backgroundColor: !iconURL ? card.icon_background : undefined,
+        }}
+      >
+        {iconURL ? (
+          <img
+            src={iconURL}
+            width={40}
+            height={40}
+            alt=""
+            aria-hidden
+            className="size-full object-cover"
+          />
+        ) : card.icon ? (
+          <span className="text-xl leading-none">{card.icon}</span>
+        ) : (
+          <span aria-hidden="true" className="i-ri-image-line size-5 text-text-quaternary" />
+        )}
+      </div>
+
+      <div className="flex w-full items-end gap-1">
+        <div className="flex min-w-0 flex-1 flex-col items-start gap-[3px]">
+          <div className="flex w-full min-w-0 items-center gap-[3px]">
+            <h3 className="min-w-0 truncate text-sm leading-[normal] font-medium text-text-primary">
+              {card.display_name}
+            </h3>
+            {(isPartner || isVerified) && (
+              <div className="flex shrink-0 items-start gap-[3.5px]">
+                {isPartner && (
+                  <Partner className="size-3.5" text={t(($) => $['marketplace.partnerTip'])} />
+                )}
+                {isVerified && (
+                  <Verified className="size-3.5" text={t(($) => $['marketplace.verifiedTip'])} />
+                )}
+              </div>
+            )}
+          </div>
+          {creator && (
+            <p className="w-full truncate text-xs leading-[normal] font-normal text-text-tertiary">
+              {t(($) => $['marketplace.home.trendingByCreator'], { creator })}
+            </p>
+          )}
+        </div>
+        <span className="shrink-0 rounded-full bg-background-section-burn px-1.5 py-[3px] text-[10px] leading-3 font-normal text-text-primary">
+          {t(($) => $['marketplace.home.trendingView'])}
+        </span>
+      </div>
+    </Link>
+  )
+}
+
+function TrendingRecommendationSlide({
+  banner,
+  isMarketplacePlatform,
+}: {
+  banner: BannerRecommend
+  isMarketplacePlatform: boolean
+}) {
+  return (
+    <div
+      className={cn(
+        styles.recommendSlide,
+        'flex h-[200px] w-full overflow-hidden rounded-2xl bg-background-body',
+      )}
+    >
+      <TrendingCopy banner={banner} isMarketplacePlatform={isMarketplacePlatform} />
+      <div
+        className={cn(
+          styles.recommendVisual,
+          'relative h-[200px] shrink-0 overflow-hidden rounded-xl bg-background-body',
+        )}
+      >
+        <img
+          src={background.src}
+          width={1600}
+          height={900}
+          alt=""
+          aria-hidden
+          className="absolute top-[-173px] left-[-990px] h-[1201px] w-[2135px] max-w-none opacity-80"
+        />
+        <div aria-hidden className="absolute inset-0 bg-text-accent mix-blend-color" />
+
+        <div className={cn(styles.recommendCards, 'relative z-10 h-full items-center')}>
+          {banner.content.cards.map((card) => (
+            <TrendingCard
+              key={`${card.item_type}:${card.item_id}`}
+              card={card}
+              isMarketplacePlatform={isMarketplacePlatform}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function BlogBannerSlide({ banner }: { banner: BannerBlog }) {
+  const { t } = useTranslation('plugin')
+  const opensInNewTab = /^https?:\/\//.test(banner.content.link)
+
+  return (
+    <Link
+      href={banner.content.link}
+      target={opensInNewTab ? '_blank' : undefined}
+      rel={opensInNewTab ? 'noopener noreferrer' : undefined}
+      aria-label={t(($) => $['marketplace.home.trendingReadMoreAbout'], {
+        title: banner.content.blog_title,
+      })}
+      className="flex h-[200px] w-full overflow-hidden rounded-2xl bg-background-body outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+    >
+      <div className="flex min-w-0 flex-1 flex-col items-start overflow-hidden px-6 py-5">
+        <div className="flex min-h-0 w-full flex-1 flex-col items-start gap-2">
+          <p className="shrink-0 rounded-sm bg-state-success-hover-alt px-1.5 py-0.5 text-[10px] leading-3 font-semibold tracking-[-0.2px] text-text-success">
+            {banner.title}
+          </p>
+          <div className="flex min-h-0 w-full max-w-[800px] flex-1 flex-col items-start gap-3">
+            <h2 className="shrink-0 text-xl leading-6 font-semibold tracking-[-0.4px] text-text-primary">
+              {banner.content.blog_title}
+            </h2>
+            <div className="flex min-h-0 w-full flex-1 flex-col items-start gap-2">
+              {banner.content.subtitle && (
+                <p className="shrink-0 text-[15px] leading-[18px] font-normal tracking-[-0.3px] text-text-primary">
+                  {banner.content.subtitle}
+                </p>
+              )}
+              {banner.content.description && (
+                <p className="min-h-0 w-full flex-1 overflow-hidden text-[13px] leading-5 font-normal tracking-[-0.065px] text-text-tertiary">
+                  <span className={styles.updatesDescription}>{banner.content.description}</span>
+                </p>
+              )}
+              <span
+                aria-hidden
+                className="flex shrink-0 items-center gap-1 text-[13px] leading-[normal] font-medium text-text-accent underline decoration-[10%] underline-offset-2"
+              >
+                <span>{t(($) => $['marketplace.home.trendingReadMore'])}</span>
+                <span className="i-ri-arrow-right-s-line size-4" />
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <img
+        src={difyUpdatesArt.src}
+        width={400}
+        height={200}
+        alt=""
+        aria-hidden
+        className={cn(styles.updatesArt, 'h-[200px] shrink-0 object-cover')}
+      />
+    </Link>
+  )
+}
+
+function ImageBannerSlide({ banner }: { banner: BannerEvent | BannerAd }) {
+  const desktopImage = getMarketplaceAssetURL(banner.content.images.desktop)
+  const tabletImage = getMarketplaceAssetURL(banner.content.images.tablet)
+  const mobileImage = getMarketplaceAssetURL(banner.content.images.mobile)
+
+  return (
+    <Link
+      href={banner.content.link}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={banner.content.alt_text || banner.title}
+      className="block h-[200px] w-full overflow-hidden rounded-2xl outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+    >
+      <picture className="block size-full">
+        {mobileImage && <source media="(max-width: 639px)" srcSet={mobileImage} />}
+        {tabletImage && <source media="(max-width: 1023px)" srcSet={tabletImage} />}
+        <img
+          src={desktopImage}
+          width={1200}
+          height={200}
+          alt=""
+          aria-hidden
+          className="size-full object-cover"
+        />
+      </picture>
+    </Link>
+  )
+}
+
+export function HomeBannerSlide({
+  banner,
+  isMarketplacePlatform,
+}: {
+  banner: PluginBanner
+  isMarketplacePlatform: boolean
+}) {
+  if (banner.style_type === 'blog') return <BlogBannerSlide banner={banner} />
+
+  if (banner.style_type === 'event' || banner.style_type === 'ad')
+    return <ImageBannerSlide banner={banner} />
+
+  return (
+    <TrendingRecommendationSlide banner={banner} isMarketplacePlatform={isMarketplacePlatform} />
+  )
+}

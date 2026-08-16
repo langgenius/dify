@@ -7,14 +7,13 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocale, useTranslation } from '#i18n'
 import { getLanguage } from '@/i18n-config/language'
 import { useMarketplaceMoreClick } from '../atoms'
+import { MARKETPLACE_CONTAINER_ID } from '../constants'
 import { buildCarouselPages } from '../utils'
 import CardWrapper from './card-wrapper'
 import Carousel from './carousel'
-import { GRID_CLASS } from './collection-constants'
+import { BECOME_PARTNER_URL, GRID_CLASS, PARTNER_COLLECTION_NAMES } from './collection-constants'
 import { useCarouselItemsPerPage } from './use-carousel-items-per-page'
 
-const BECOME_PARTNER_URL = 'https://share-na2.hsforms.com/1NiS4r9lsSqGcuNBB77DeEQ40s9fk'
-const PARTNERS_COLLECTION_NAMES = new Set(['partners', 'partner-template', 'Partner Template'])
 const COLLECTION_PRELOAD_MARGIN = '320px 0px'
 const COLLECTION_INTERSECTION_THRESHOLD = 0.01
 const MAX_PLACEHOLDER_CARDS = 8
@@ -110,7 +109,7 @@ const CollectionSection = ({
   const [isMounted, setIsMounted] = useState(!deferMount)
   const pages = useMemo(() => buildCarouselPages(plugins, itemsPerPage), [itemsPerPage, plugins])
   const hasMultiplePages = pages.length > 1
-  const isPartnersCollection = PARTNERS_COLLECTION_NAMES.has(collection.name)
+  const isPartnersCollection = PARTNER_COLLECTION_NAMES.has(collection.name)
 
   useEffect(() => {
     if (!deferMount || isMounted) return
@@ -132,7 +131,7 @@ const CollectionSection = ({
         observer.disconnect()
       },
       {
-        root: document.getElementById('marketplace-container'),
+        root: document.getElementById(MARKETPLACE_CONTAINER_ID),
         rootMargin: COLLECTION_PRELOAD_MARGIN,
         threshold: COLLECTION_INTERSECTION_THRESHOLD,
       },

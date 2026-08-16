@@ -1,3 +1,4 @@
+import { MARKETPLACE_CONTAINER_ID } from '@/app/components/plugins/marketplace/constants'
 import { EmbeddedTemplatesMarketplace } from '@/app/components/plugins/marketplace/templates'
 import { isTemplateCategory } from '@/app/components/plugins/marketplace/templates/categories'
 import { getLocaleOnServer } from '@/i18n-config/server'
@@ -51,7 +52,7 @@ export default async function TemplatesPage({ params, searchParams }: TemplatesP
 
   return (
     <div
-      id="marketplace-container"
+      id={MARKETPLACE_CONTAINER_ID}
       className="flex h-full min-h-0 flex-col overflow-y-auto bg-background-default"
     >
       <EmbeddedTemplatesMarketplace

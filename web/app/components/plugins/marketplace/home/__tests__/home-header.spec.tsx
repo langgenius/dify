@@ -133,6 +133,5 @@ describe('HomeHeader', () => {
     expect(templatesTab).toHaveClass('bg-state-base-active')
     expect(templatesTab).not.toHaveClass('text-text-accent')
     expect(templatesTab.querySelector('[aria-hidden="true"]')).not.toBeInTheDocument()
-    expect(screen.queryByText('marketplace.home.new')).not.toBeInTheDocument()
   })
 })
