@@ -54,7 +54,7 @@ Dify application service拥有：
 
 EE service只拥有Dashboard transport/authentication和Dify client orchestration。它不通过Ent或共享DB旁路Dify service，也不在Go中复制领域对象与状态机。
 
-Organization Contact projection 使用 Dify `Account` 作为 source fact，并保持单一 Dify business owner，但交付边界拆分为两个 upstream changes：`integrate-im-contact-sync-end-to-end` 只负责版本升级运行的 `flask data-migrate human-input-contacts --apply` initialization；`implement-contact-projection-lifecycle-maintenance` 负责 authoritative Account create/profile-update write-through、availability 与独立 periodic reconciliation。Account disabled不修改或删除Contact，disabled或已删除Account对应Contact保留稳定ID但从current-state projection排除；同一Account重新active时复用原Contact，删除后以新Account ID重建的主体不得复用旧Contact。Organization Contact read与manual sync只消费current projection，不触发initialization或repair。
+Organization Contact projection 使用 Dify `Account` 作为 source fact，并保持单一 Dify business owner，但交付边界拆分为两个 upstream changes：`initialize-human-input-contact-projection` 只负责版本升级运行的 `flask data-migrate human-input-contacts --apply` initialization；`implement-contact-projection-lifecycle-maintenance` 负责 authoritative Account create/profile-update write-through、availability 与独立 periodic reconciliation。Account disabled不修改或删除Contact，disabled或已删除Account对应Contact保留稳定ID但从current-state projection排除；同一Account重新active时复用原Contact，删除后以新Account ID重建的主体不得复用旧Contact。Organization Contact read与manual sync只消费current projection，不触发initialization或repair。
 
 `Contact.created_at`继续表示Contact projection自身的创建时间。EE Contacts read model另行从`Account.created_at`投影`joined_at`；不得把backfill时间解释为Organization加入时间，也不得为此在Contact aggregate复制Account timestamp。
 
@@ -165,7 +165,7 @@ EE Dashboard是Organization integration/sync/binding管理入口。Dify workspac
 
 ## Migration Plan
 
-1. 先在独立Dify change中落地Human Input application service、provider/sync implementation与`/inner/api/enterprise/human-input/*` contract，并完成workspace controller共用service的验证。
+1. 先完成 `complete-human-input-im-channel-management`、`integrate-im-contact-sync-runtime` 与 `complete-human-input-contact-binding-api` 的共享 application boundaries，再由独立 Dify change 落地 `/inner/api/enterprise/human-input/*` contract，并完成 workspace controller 共用 service 的验证。
 2. 在EE repo增加Human Input Protobuf API、Kratos HTTP generated bindings与typed `difyclient`，使用fake upstream完成service/client tests。
 3. 对Dify internal JSON/error contract与EE必需public fields执行语义cross-repo contract test，确认EE不需要Human Input Ent schema、worker或provider dependency，也不要求两个contract整体同构。
 4. 注册Kratos HTTP service并在feature gate下部署，先验证read endpoint，再验证CAS mutation、manual sync和binding mutation。

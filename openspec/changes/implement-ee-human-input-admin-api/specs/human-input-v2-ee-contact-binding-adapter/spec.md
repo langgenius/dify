@@ -6,7 +6,7 @@ EE MUST 通过 Dify internal API列出 current Organization Contact，并 MUST �
 
 #### Scenario: 历史 Organization Account 执行 initialization import
 - **WHEN** production rollout finds an eligible existing Organization Account without a canonical Human Input Contact
-- **THEN** the version upgrade MUST use `flask data-migrate human-input-contacts --apply` owned by `integrate-im-contact-sync-end-to-end` to idempotently create or reuse the Account-backed Contact, and EE MUST NOT create or backfill that projection
+- **THEN** the version upgrade MUST use `flask data-migrate human-input-contacts --apply` owned by `initialize-human-input-contact-projection` to idempotently create or reuse the Account-backed Contact, and EE MUST NOT create or backfill that projection
 
 #### Scenario: Organization Account 在初始化后首次进入 projection
 - **WHEN** an eligible Organization Account is created after the initialization baseline

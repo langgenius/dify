@@ -37,6 +37,6 @@ Human Input v2 已经在 Dify 主仓库形成 Contact Directory、IM control-pla
 
 - EE API contract：`dify-enterprise/server/pkg/apis/enterprise/v1/` 及其 Kratos HTTP generated bindings。
 - EE application/client：`dify-enterprise/server/pkg/enterprise/service/`、负责 audit/orchestration 的 use case、`server/pkg/difyclient/`、HTTP registration 与 Wire composition。
-- Dify upstream dependency：需要一个独立 change 提供 Organization Contact projection lifecycle、`/inner/api/enterprise/human-input/*` trusted HTTP surface，并让它与 workspace controllers 共用 Dify Human Input application service。
+- Dify upstream dependencies：`initialize-human-input-contact-projection`、`implement-contact-projection-lifecycle-maintenance`、`complete-human-input-im-channel-management`、`integrate-im-contact-sync-runtime` 与 `complete-human-input-contact-binding-api` 分别提供初始化、持续 projection、channel configuration、sync runtime 与 binding application boundaries；另需独立 Dify change 提供 `/inner/api/enterprise/human-input/*` trusted HTTP surface，并让它与 workspace controllers 共用这些 Dify Human Input application services。
 - 不影响 EE Dify DB Ent schema，不新增 EE worker/provider dependency，不在 EE repo拥有 Human Input persistence migration。
 - Dify normative specification 来源：Dify Contact Directory / IM control-plane core specs 与 Dify internal API contract；`human-input-v2-api-summary.md` 和 `human-input-v2-api-contracts/specs/human-input-ee-admin-api/spec.md` 仅作为 EE delivery contract 输入。
