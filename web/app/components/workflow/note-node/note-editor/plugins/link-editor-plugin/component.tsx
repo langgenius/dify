@@ -20,7 +20,12 @@ const LinkEditorComponent = ({ containerElement }: LinkEditorComponentProps) => 
   const linkOperatorShow = useStore((s) => s.linkOperatorShow)
   const setLinkAnchorElement = useStore((s) => s.setLinkAnchorElement)
   const setLinkOperatorShow = useStore((s) => s.setLinkOperatorShow)
+  const [prevSelectedLinkUrl, setPrevSelectedLinkUrl] = useState(selectedLinkUrl)
   const [url, setUrl] = useState(selectedLinkUrl)
+  if (prevSelectedLinkUrl !== selectedLinkUrl) {
+    setPrevSelectedLinkUrl(selectedLinkUrl)
+    setUrl(selectedLinkUrl)
+  }
   const floatingRef = useRef<HTMLDivElement | null>(null)
   const { refs, floatingStyles, elements } = useFloating({
     placement: 'top',
@@ -40,10 +45,6 @@ const LinkEditorComponent = ({ containerElement }: LinkEditorComponentProps) => 
   useClickAway(() => {
     handleCancelLinkEdit()
   }, [floatingRef, linkAnchorElement])
-
-  useEffect(() => {
-    setUrl(selectedLinkUrl)
-  }, [selectedLinkUrl])
 
   useEffect(() => {
     if (linkAnchorElement) refs.setReference(linkAnchorElement)
