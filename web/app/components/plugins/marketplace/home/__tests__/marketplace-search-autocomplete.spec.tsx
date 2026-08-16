@@ -187,6 +187,46 @@ describe('MarketplaceSearchAutocomplete', () => {
     expect(onValueChange).toHaveBeenLastCalledWith('')
   })
 
+  it('submits the route search form when a suggestion is chosen', async () => {
+    mockPluginSearch.mockResolvedValue({
+      data: {
+        plugins: [
+          {
+            type: 'plugin',
+            org: 'langgenius',
+            name: 'google-search',
+            label: { en_US: 'Google Search' },
+            brief: { en_US: 'Search the web from your workflow.' },
+            category: 'tool',
+          },
+        ],
+        total: 1,
+      },
+    })
+    const user = userEvent.setup()
+    const handleSubmit = vi.fn((event: Event) => {
+      event.preventDefault()
+    })
+
+    const { container } = render(
+      <MarketplaceSearchForm
+        action="/plugins"
+        locale="en-US"
+        placeholder="Search plugins"
+        query=""
+        scope="plugins"
+      />,
+      { wrapper: Wrapper },
+    )
+
+    container.querySelector('form')?.addEventListener('submit', handleSubmit)
+
+    await user.type(screen.getByRole('combobox'), 'google')
+    await user.click(await screen.findByText('Google Search'))
+
+    expect(handleSubmit).toHaveBeenCalledOnce()
+  })
+
   it('does not offer the previous term suggestions while a new search is pending', async () => {
     const googleResponse = {
       data: {
