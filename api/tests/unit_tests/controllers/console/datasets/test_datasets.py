@@ -392,10 +392,8 @@ class TestDatasetList:
         datasets = [make_dataset()]
         with (
             app.test_request_context("/datasets?tag_ids=tag1"),
-            (
-                patch.object(DatasetService, "get_datasets", return_value=(datasets, 1)),
-                patch.object(ProviderManager, "get_configurations", return_value=MagicMock(get_models=lambda **_: [])),
-            ),
+            patch.object(DatasetService, "get_datasets", return_value=(datasets, 1)),
+            patch.object(ProviderManager, "get_configurations", return_value=MagicMock(get_models=lambda **_: [])),
         ):
             resp, status = method(api, MagicMock(), "tenant-1", current_user)
         assert status == 200
@@ -634,10 +632,8 @@ class TestDatasetApiGet:
         method = unwrap(api.get)
         dataset_id = "missing-id"
         with (
-            (
-                app.test_request_context(f"/datasets/{dataset_id}"),
-                patch.object(DatasetService, "get_dataset", return_value=None),
-            ),
+            app.test_request_context(f"/datasets/{dataset_id}"),
+            patch.object(DatasetService, "get_dataset", return_value=None),
             pytest.raises(NotFound, match="Dataset not found"),
         ):
             method(api, MagicMock(), "tenant", make_account(), dataset_id)
@@ -724,10 +720,8 @@ class TestDatasetApiPatch:
         api = DatasetApi()
         method = unwrap(api.patch)
         with (
-            (
-                app.test_request_context("/datasets/missing"),
-                patch.object(DatasetService, "get_dataset", return_value=None),
-            ),
+            app.test_request_context("/datasets/missing"),
+            patch.object(DatasetService, "get_dataset", return_value=None),
             pytest.raises(NotFound, match="Dataset not found"),
         ):
             method(api, DatasetUpdatePayload(), MagicMock(), "tenant-1", make_account(), "missing")
@@ -739,12 +733,10 @@ class TestDatasetApiPatch:
         dataset = make_dataset(id=dataset_id)
         payload = {"name": "x"}
         with (
-            (
-                app.test_request_context(f"/datasets/{dataset_id}"),
-                patch.object(type(console_ns), "payload", payload),
-                patch.object(DatasetService, "get_dataset", return_value=dataset),
-                patch.object(DatasetPermissionService, "check_permission", side_effect=Forbidden("no permission")),
-            ),
+            app.test_request_context(f"/datasets/{dataset_id}"),
+            patch.object(type(console_ns), "payload", payload),
+            patch.object(DatasetService, "get_dataset", return_value=dataset),
+            patch.object(DatasetPermissionService, "check_permission", side_effect=Forbidden("no permission")),
             pytest.raises(Forbidden),
         ):
             method(api, DatasetUpdatePayload(), MagicMock(), "tenant", make_account(), dataset_id)
@@ -815,10 +807,8 @@ class TestDatasetApiDelete:
         dataset_id = "missing-dataset"
         user = make_account()
         with (
-            (
-                app.test_request_context(f"/datasets/{dataset_id}"),
-                patch.object(DatasetService, "delete_dataset", return_value=False),
-            ),
+            app.test_request_context(f"/datasets/{dataset_id}"),
+            patch.object(DatasetService, "delete_dataset", return_value=False),
             pytest.raises(NotFound, match="Dataset not found"),
         ):
             method(api, MagicMock(), user, dataset_id)
@@ -829,10 +819,8 @@ class TestDatasetApiDelete:
         dataset_id = "dataset-id"
         user = make_account()
         with (
-            (
-                app.test_request_context(f"/datasets/{dataset_id}"),
-                patch.object(DatasetService, "delete_dataset", side_effect=services.errors.dataset.DatasetInUseError()),
-            ),
+            app.test_request_context(f"/datasets/{dataset_id}"),
+            patch.object(DatasetService, "delete_dataset", side_effect=services.errors.dataset.DatasetInUseError()),
             pytest.raises(DatasetInUseError),
         ):
             method(api, MagicMock(), user, dataset_id)
@@ -994,10 +982,8 @@ class TestDatasetQueryApi:
         dataset_id = "dataset-id"
         current_user = make_account()
         with (
-            (
-                app.test_request_context("/datasets/queries"),
-                patch.object(DatasetService, "get_dataset", return_value=None),
-            ),
+            app.test_request_context("/datasets/queries"),
+            patch.object(DatasetService, "get_dataset", return_value=None),
             pytest.raises(NotFound, match="Dataset not found"),
         ):
             method(api, MagicMock(), current_user, dataset_id)
@@ -1105,13 +1091,9 @@ class TestDatasetIndexingEstimateApi:
         session = MagicMock()
         session.scalars.return_value.all.return_value = None
         with (
-            (
-                app.test_request_context("/"),
-                patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
-                patch(
-                    "controllers.console.datasets.datasets.DocumentService.estimate_args_validate", return_value=None
-                ),
-            ),
+            app.test_request_context("/"),
+            patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
+            patch("controllers.console.datasets.datasets.DocumentService.estimate_args_validate", return_value=None),
             pytest.raises(NotFound),
         ):
             method(
@@ -1251,10 +1233,8 @@ class TestDatasetRelatedAppListApi:
         api = DatasetRelatedAppListApi()
         method = unwrap(api.get)
         with (
-            (
-                app.test_request_context("/"),
-                patch("controllers.console.datasets.datasets.DatasetService.get_dataset", return_value=None),
-            ),
+            app.test_request_context("/"),
+            patch("controllers.console.datasets.datasets.DatasetService.get_dataset", return_value=None),
             pytest.raises(NotFound),
         ):
             method(api, MagicMock(), make_account(), "dataset-1")

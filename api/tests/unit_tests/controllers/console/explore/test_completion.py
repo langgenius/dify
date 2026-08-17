@@ -139,7 +139,8 @@ class TestCompletionApi:
                 completion_module.AppGenerateService,
                 "generate",
                 side_effect=completion_module.services.errors.conversation.ConversationCompletedError(),
-            ),pytest.raises(ConversationCompletedError)
+            ),
+            pytest.raises(ConversationCompletedError),
         ):
             method(
                 api,
@@ -160,7 +161,8 @@ class TestCompletionApi:
                 completion_module.AppGenerateService,
                 "generate",
                 side_effect=Exception("boom"),
-            ),pytest.raises(InternalServerError)
+            ),
+            pytest.raises(InternalServerError),
         ):
             method(
                 api,
@@ -181,7 +183,8 @@ class TestCompletionApi:
                 completion_module.AppGenerateService,
                 "generate",
                 side_effect=completion_module.services.errors.conversation.ConversationNotExistsError(),
-            ),pytest.raises(completion_module.NotFound)
+            ),
+            pytest.raises(completion_module.NotFound),
         ):
             method(
                 api,
@@ -202,7 +205,8 @@ class TestCompletionApi:
                 completion_module.AppGenerateService,
                 "generate",
                 side_effect=completion_module.services.errors.app_model_config.AppModelConfigBrokenError(),
-            ),pytest.raises(completion_module.AppUnavailableError)
+            ),
+            pytest.raises(completion_module.AppUnavailableError),
         ):
             method(
                 api,
@@ -223,7 +227,8 @@ class TestCompletionApi:
                 completion_module.AppGenerateService,
                 "generate",
                 side_effect=completion_module.ProviderTokenNotInitError("not init"),
-            ),pytest.raises(completion_module.ProviderNotInitializeError)
+            ),
+            pytest.raises(completion_module.ProviderNotInitializeError),
         ):
             method(
                 api,
@@ -244,7 +249,8 @@ class TestCompletionApi:
                 completion_module.AppGenerateService,
                 "generate",
                 side_effect=completion_module.QuotaExceededError(),
-            ),pytest.raises(completion_module.ProviderQuotaExceededError)
+            ),
+            pytest.raises(completion_module.ProviderQuotaExceededError),
         ):
             method(
                 api,
@@ -265,7 +271,8 @@ class TestCompletionApi:
                 completion_module.AppGenerateService,
                 "generate",
                 side_effect=completion_module.ModelCurrentlyNotSupportError(),
-            ),pytest.raises(completion_module.ProviderModelCurrentlyNotSupportError)
+            ),
+            pytest.raises(completion_module.ProviderModelCurrentlyNotSupportError),
         ):
             method(
                 api,
@@ -286,7 +293,8 @@ class TestCompletionApi:
                 completion_module.AppGenerateService,
                 "generate",
                 side_effect=completion_module.InvokeError("invoke failed"),
-            ),pytest.raises(completion_module.CompletionRequestError)
+            ),
+            pytest.raises(completion_module.CompletionRequestError),
         ):
             method(
                 api,
@@ -373,7 +381,8 @@ class TestChatApi:
                 completion_module.AppGenerateService,
                 "generate",
                 side_effect=InvokeRateLimitError("limit"),
-            ),pytest.raises(InvokeRateLimitHttpError)
+            ),
+            pytest.raises(InvokeRateLimitHttpError),
         ):
             method(
                 api,
@@ -394,7 +403,8 @@ class TestChatApi:
                 completion_module.AppGenerateService,
                 "generate",
                 side_effect=completion_module.services.errors.conversation.ConversationCompletedError(),
-            ),pytest.raises(ConversationCompletedError)
+            ),
+            pytest.raises(ConversationCompletedError),
         ):
             method(
                 api,
@@ -415,7 +425,8 @@ class TestChatApi:
                 completion_module.AppGenerateService,
                 "generate",
                 side_effect=completion_module.services.errors.conversation.ConversationNotExistsError(),
-            ),pytest.raises(completion_module.NotFound)
+            ),
+            pytest.raises(completion_module.NotFound),
         ):
             method(
                 api,
@@ -454,17 +465,17 @@ class TestChatApi:
                 get_conversation_mock,
             ),
             patch.object(completion_module.AppGenerateService, "generate", generate_mock),
+            pytest.raises(completion_module.NotFound),
         ):
-            with pytest.raises(completion_module.NotFound):
-                method(
-                    api,
-                    completion_module.ChatMessagePayload.model_validate(
-                        {"inputs": {}, "query": "hi", "conversation_id": conversation_id}
-                    ),
-                    session,
-                    user,
-                    chat_app,
-                )
+            method(
+                api,
+                completion_module.ChatMessagePayload.model_validate(
+                    {"inputs": {}, "query": "hi", "conversation_id": conversation_id}
+                ),
+                session,
+                user,
+                chat_app,
+            )
 
         # The lookup must run before generation, so the generator is never started.
         generate_mock.assert_not_called()
@@ -481,7 +492,8 @@ class TestChatApi:
                 completion_module.AppGenerateService,
                 "generate",
                 side_effect=completion_module.services.errors.app_model_config.AppModelConfigBrokenError(),
-            ),pytest.raises(completion_module.AppUnavailableError)
+            ),
+            pytest.raises(completion_module.AppUnavailableError),
         ):
             method(
                 api,
@@ -502,7 +514,8 @@ class TestChatApi:
                 completion_module.AppGenerateService,
                 "generate",
                 side_effect=completion_module.ProviderTokenNotInitError("not init"),
-            ),pytest.raises(completion_module.ProviderNotInitializeError)
+            ),
+            pytest.raises(completion_module.ProviderNotInitializeError),
         ):
             method(
                 api,
@@ -523,7 +536,8 @@ class TestChatApi:
                 completion_module.AppGenerateService,
                 "generate",
                 side_effect=completion_module.QuotaExceededError(),
-            ),pytest.raises(completion_module.ProviderQuotaExceededError)
+            ),
+            pytest.raises(completion_module.ProviderQuotaExceededError),
         ):
             method(
                 api,
@@ -544,7 +558,8 @@ class TestChatApi:
                 completion_module.AppGenerateService,
                 "generate",
                 side_effect=completion_module.ModelCurrentlyNotSupportError(),
-            ),pytest.raises(completion_module.ProviderModelCurrentlyNotSupportError)
+            ),
+            pytest.raises(completion_module.ProviderModelCurrentlyNotSupportError),
         ):
             method(
                 api,
@@ -565,7 +580,8 @@ class TestChatApi:
                 completion_module.AppGenerateService,
                 "generate",
                 side_effect=completion_module.InvokeError("invoke failed"),
-            ),pytest.raises(completion_module.CompletionRequestError)
+            ),
+            pytest.raises(completion_module.CompletionRequestError),
         ):
             method(
                 api,
@@ -586,7 +602,8 @@ class TestChatApi:
                 completion_module.AppGenerateService,
                 "generate",
                 side_effect=Exception("boom"),
-            ),pytest.raises(InternalServerError)
+            ),
+            pytest.raises(InternalServerError),
         ):
             method(
                 api,

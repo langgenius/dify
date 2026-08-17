@@ -516,10 +516,8 @@ class TestInstalledAppsListApi:
         session.execute.return_value.all.return_value = [(installed_app, installed_app.app)]
 
         with (
-            (
-                app.test_request_context("/"),
-                patch.object(module.db, "session", session),
-            ),
+            app.test_request_context("/"),
+            patch.object(module.db, "session", session),
             pytest.raises(ValueError, match="current_user.current_tenant must not be None"),
         ):
             method(api, tenant_id, current_user)

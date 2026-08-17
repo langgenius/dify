@@ -65,8 +65,7 @@ class TestMemberInviteEmailApi:
 
         with (
             patch("controllers.console.workspace.members._count_new_member_invites", return_value=(1, 1)),
-        ):
-            with app.test_request_context(
+            app.test_request_context(
                 "/workspaces/current/members/invite-email",
                 method="POST",
                 json={"emails": ["User@Example.com"], "role": TenantAccountRole.EDITOR.value, "language": "en-US"},

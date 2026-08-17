@@ -592,10 +592,8 @@ class TestDatasourceProviderService:
     def test_should_raise_value_error_when_no_oauth_config_available(self, service, sqlite_session):
         """Neither tenant nor system credentials → raises ValueError."""
         with (
-            (
-                patch.object(service.provider_manager, "fetch_datasource_provider"),
-                patch("services.datasource_provider_service.PluginService.is_plugin_verified", return_value=False),
-            ),
+            patch.object(service.provider_manager, "fetch_datasource_provider"),
+            patch("services.datasource_provider_service.PluginService.is_plugin_verified", return_value=False),
             pytest.raises(ValueError, match="Please configure oauth client params"),
         ):
             service.get_oauth_client("t1", make_id())
@@ -748,13 +746,9 @@ class TestDatasourceProviderService:
 
     def test_should_raise_value_error_when_credentials_validation_fails(self, service, sqlite_session, mock_user):
         with (
-            (
-                patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
-                patch.object(
-                    service.provider_manager, "validate_provider_credentials", side_effect=Exception("bad cred")
-                ),
-                patch.object(service, "extract_secret_variables", return_value=[]),
-            ),
+            patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
+            patch.object(service.provider_manager, "validate_provider_credentials", side_effect=Exception("bad cred")),
+            patch.object(service, "extract_secret_variables", return_value=[]),
             pytest.raises(ValueError, match="Failed to validate"),
         ):
             service.add_datasource_api_key_provider("nm", "t1", make_id(), {"k": "v"})
@@ -913,11 +907,9 @@ class TestDatasourceProviderService:
         p = make_provider(credential_id="id", name="old_name", encrypted_credentials={"sk": "e"})
         persist(sqlite_session, p)
         with (
-            (
-                patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
-                patch.object(service, "extract_secret_variables", return_value=["sk"]),
-                patch.object(service.provider_manager, "validate_provider_credentials", side_effect=Exception("bad")),
-            ),
+            patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
+            patch.object(service, "extract_secret_variables", return_value=["sk"]),
+            patch.object(service.provider_manager, "validate_provider_credentials", side_effect=Exception("bad")),
             pytest.raises(ValueError, match="Failed to validate"),
         ):
             service.update_datasource_credentials("t1", "id", "prov", "org/plug", {"sk": "v"}, "name")

@@ -188,6 +188,7 @@ class TestMemberInviteEmailApi:
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
             patch("controllers.console.workspace.members._count_new_member_invites", return_value=(1, 1)),
+            pytest.raises(WorkspaceMembersLimitExceeded),
         ):
             method(api, user)
 
@@ -213,6 +214,7 @@ class TestMemberInviteEmailApi:
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
             patch("controllers.console.workspace.members._count_new_member_invites", return_value=(2, 2)),
             patch("controllers.console.workspace.members._count_current_members", return_value=9),
+            pytest.raises(WorkspaceMembersLimitExceeded),
         ):
             method(api, user)
 
@@ -333,6 +335,7 @@ class TestMemberInviteEmailApi:
                 return_value=license_info,
             ) as mock_get_license,
             patch("controllers.console.workspace.members.RegisterService.invite_new_member") as mock_invite,
+            pytest.raises(SeatsLimitExceeded),
         ):
             method(api, user)
 

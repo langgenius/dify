@@ -285,13 +285,15 @@ def test_invoke_skips_forwarding_outside_enterprise_edition(config_overrides):
             content=[],
             _meta=None,
         )
-        with patch.object(tool, "_inject_forwarded_identity") as inject:
-            with patch("services.tools.mcp_tools_manage_service.MCPToolManageService"):
-                with patch("core.entities.mcp_provider.MCPProviderEntity.decrypt_server_url", return_value="u"):
-                    with patch("core.entities.mcp_provider.MCPProviderEntity.decrypt_headers", return_value={}):
-                        # Should not raise; should not call enterprise.
-                        try:
-                            tool.invoke_remote_mcp_tool({}, user_id=None, app_id=None)
-                        except Exception:
-                            pass
+        with (
+            patch.object(tool, "_inject_forwarded_identity") as inject,
+            patch("services.tools.mcp_tools_manage_service.MCPToolManageService"),
+            patch("core.entities.mcp_provider.MCPProviderEntity.decrypt_server_url", return_value="u"),
+            patch("core.entities.mcp_provider.MCPProviderEntity.decrypt_headers", return_value={}),
+        ):
+            # Should not raise; should not call enterprise.
+            try:
+                tool.invoke_remote_mcp_tool({}, user_id=None, app_id=None)
+            except Exception:
+                pass
         inject.assert_not_called()

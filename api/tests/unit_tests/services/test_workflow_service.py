@@ -2020,13 +2020,11 @@ class TestWorkflowService:
         self, workflow_service: WorkflowService
     ):
         with (
-            (
-                patch(
-                    "services.workflow_service.get_node_type_classes_mapping",
-                    return_value={BuiltinNodeTypes.HTTP_REQUEST: {"latest": HttpRequestNode}},
-                ),
-                patch("services.workflow_service.LATEST_VERSION", "latest"),
+            patch(
+                "services.workflow_service.get_node_type_classes_mapping",
+                return_value={BuiltinNodeTypes.HTTP_REQUEST: {"latest": HttpRequestNode}},
             ),
+            patch("services.workflow_service.LATEST_VERSION", "latest"),
             pytest.raises(TypeError, match="http_request_config must be an HttpRequestNodeConfig instance"),
         ):
             workflow_service.get_default_block_config(
@@ -3528,10 +3526,8 @@ class TestWorkflowServiceHumanInputOperations:
         service.get_draft_workflow = MagicMock(return_value=draft)
 
         with (
-            (
-                patch("services.workflow_service.HumanInputNodeData.model_validate"),
-                patch.object(service, "_resolve_human_input_delivery_method", return_value=None),
-            ),
+            patch("services.workflow_service.HumanInputNodeData.model_validate"),
+            patch.object(service, "_resolve_human_input_delivery_method", return_value=None),
             pytest.raises(ValueError, match="Delivery method not found"),
         ):
             service.test_human_input_delivery(

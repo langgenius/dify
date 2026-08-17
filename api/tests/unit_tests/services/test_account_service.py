@@ -1430,6 +1430,7 @@ class TestRegisterService:
                     interface_language="en-US",
                     password="password123",
                     is_setup=True,
+                    ip_address="192.168.1.1",
                     session=service_session,
                 )
                 mock_create_tenant.assert_called_once_with(

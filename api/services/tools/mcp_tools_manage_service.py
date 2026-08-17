@@ -10,8 +10,9 @@ from urllib.parse import urlparse
 from pydantic import BaseModel, Field
 from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
+from core.db.session_factory import session_factory as default_session_factory
 from core.entities.mcp_provider import IdentityMode, MCPAuthentication, MCPConfiguration, MCPProviderEntity
 from core.helper import encrypter
 from core.helper.provider_cache import NoOpProviderCredentialCache
@@ -345,6 +346,31 @@ class MCPToolManageService:
         return self._build_tool_provider_response(db_provider, provider_entity, tools)
 
     # ========== OAuth and Credentials Operations ==========
+
+    @classmethod
+    def update_provider_credentials_in_new_transaction(
+        cls,
+        *,
+        provider_id: str,
+        tenant_id: str,
+        credentials: dict[str, Any],
+        authed: bool | None = None,
+        session_maker: sessionmaker[Session] | None = None,
+    ) -> None:
+        """Update provider credentials in a service-owned transaction.
+
+        Callers can perform remote MCP operations before invoking this method
+        without holding a database transaction open during network I/O. An
+        alternate session maker may be injected for isolated databases.
+        """
+        session_maker = session_maker or default_session_factory.get_session_maker()
+        with session_maker.begin() as session:
+            cls(session=session).update_provider_credentials(
+                provider_id=provider_id,
+                tenant_id=tenant_id,
+                credentials=credentials,
+                authed=authed,
+            )
 
     def update_provider_credentials(
         self, *, provider_id: str, tenant_id: str, credentials: dict[str, Any], authed: bool | None = None

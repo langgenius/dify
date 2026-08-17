@@ -314,7 +314,8 @@ class TestTrialAppWorkflowRunApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate",
                 side_effect=ProviderTokenNotInitError("test"),
-            ),pytest.raises(ProviderNotInitializeError)
+            ),
+            pytest.raises(ProviderNotInitializeError),
         ):
             method(
                 api,
@@ -334,7 +335,8 @@ class TestTrialAppWorkflowRunApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate",
                 side_effect=QuotaExceededError(),
-            ),pytest.raises(ProviderQuotaExceededError)
+            ),
+            pytest.raises(ProviderQuotaExceededError),
         ):
             method(
                 api,
@@ -354,7 +356,8 @@ class TestTrialAppWorkflowRunApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate",
                 side_effect=ModelCurrentlyNotSupportError(),
-            ),pytest.raises(ProviderModelCurrentlyNotSupportError)
+            ),
+            pytest.raises(ProviderModelCurrentlyNotSupportError),
         ):
             method(
                 api,
@@ -374,7 +377,8 @@ class TestTrialAppWorkflowRunApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate",
                 side_effect=InvokeError("test error"),
-            ),pytest.raises(CompletionRequestError)
+            ),
+            pytest.raises(CompletionRequestError),
         ):
             method(
                 api,
@@ -394,7 +398,8 @@ class TestTrialAppWorkflowRunApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate",
                 side_effect=InvokeRateLimitError("test"),
-            ),pytest.raises(InvokeRateLimitHttpError)
+            ),
+            pytest.raises(InvokeRateLimitHttpError),
         ):
             method(
                 api,
@@ -414,7 +419,8 @@ class TestTrialAppWorkflowRunApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate",
                 side_effect=ValueError("test error"),
-            ),pytest.raises(ValueError)
+            ),
+            pytest.raises(ValueError),
         ):
             method(
                 api,
@@ -434,7 +440,8 @@ class TestTrialAppWorkflowRunApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate",
                 side_effect=RuntimeError("unexpected error"),
-            ),pytest.raises(InternalServerError)
+            ),
+            pytest.raises(InternalServerError),
         ):
             method(
                 api,
@@ -490,11 +497,10 @@ class TestTrialChatApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate",
                 side_effect=module.services.errors.conversation.ConversationNotExistsError(),
-            ),pytest.raises(NotFound)
+            ),
+            pytest.raises(NotFound),
         ):
-            method(
-                api, ChatRequest.model_validate(request.get_json()), self.sqlite_session, account, trial_app_chat
-            )
+            method(api, ChatRequest.model_validate(request.get_json()), self.sqlite_session, account, trial_app_chat)
 
     def test_chat_conversation_completed(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatApi()
@@ -506,11 +512,10 @@ class TestTrialChatApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate",
                 side_effect=module.services.errors.conversation.ConversationCompletedError(),
-            ),pytest.raises(ConversationCompletedError)
+            ),
+            pytest.raises(ConversationCompletedError),
         ):
-            method(
-                api, ChatRequest.model_validate(request.get_json()), self.sqlite_session, account, trial_app_chat
-            )
+            method(api, ChatRequest.model_validate(request.get_json()), self.sqlite_session, account, trial_app_chat)
 
     def test_chat_app_config_broken(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatApi()
@@ -522,11 +527,10 @@ class TestTrialChatApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate",
                 side_effect=module.services.errors.app_model_config.AppModelConfigBrokenError(),
-            ),pytest.raises(AppUnavailableError)
+            ),
+            pytest.raises(AppUnavailableError),
         ):
-            method(
-                api, ChatRequest.model_validate(request.get_json()), self.sqlite_session, account, trial_app_chat
-            )
+            method(api, ChatRequest.model_validate(request.get_json()), self.sqlite_session, account, trial_app_chat)
 
     def test_chat_provider_not_init(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatApi()
@@ -538,11 +542,10 @@ class TestTrialChatApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate",
                 side_effect=ProviderTokenNotInitError("test"),
-            ),pytest.raises(ProviderNotInitializeError)
+            ),
+            pytest.raises(ProviderNotInitializeError),
         ):
-            method(
-                api, ChatRequest.model_validate(request.get_json()), self.sqlite_session, account, trial_app_chat
-            )
+            method(api, ChatRequest.model_validate(request.get_json()), self.sqlite_session, account, trial_app_chat)
 
     def test_chat_quota_exceeded(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatApi()
@@ -554,11 +557,10 @@ class TestTrialChatApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate",
                 side_effect=QuotaExceededError(),
-            ),pytest.raises(ProviderQuotaExceededError)
+            ),
+            pytest.raises(ProviderQuotaExceededError),
         ):
-            method(
-                api, ChatRequest.model_validate(request.get_json()), self.sqlite_session, account, trial_app_chat
-            )
+            method(api, ChatRequest.model_validate(request.get_json()), self.sqlite_session, account, trial_app_chat)
 
     def test_chat_model_not_support(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatApi()
@@ -570,11 +572,10 @@ class TestTrialChatApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate",
                 side_effect=ModelCurrentlyNotSupportError(),
-            ),pytest.raises(ProviderModelCurrentlyNotSupportError)
+            ),
+            pytest.raises(ProviderModelCurrentlyNotSupportError),
         ):
-            method(
-                api, ChatRequest.model_validate(request.get_json()), self.sqlite_session, account, trial_app_chat
-            )
+            method(api, ChatRequest.model_validate(request.get_json()), self.sqlite_session, account, trial_app_chat)
 
     def test_chat_invoke_error(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatApi()
@@ -586,11 +587,10 @@ class TestTrialChatApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate",
                 side_effect=InvokeError("test error"),
-            ),pytest.raises(CompletionRequestError)
+            ),
+            pytest.raises(CompletionRequestError),
         ):
-            method(
-                api, ChatRequest.model_validate(request.get_json()), self.sqlite_session, account, trial_app_chat
-            )
+            method(api, ChatRequest.model_validate(request.get_json()), self.sqlite_session, account, trial_app_chat)
 
     def test_chat_rate_limit_error(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatApi()
@@ -602,11 +602,10 @@ class TestTrialChatApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate",
                 side_effect=InvokeRateLimitError("test"),
-            ),pytest.raises(InvokeRateLimitHttpError)
+            ),
+            pytest.raises(InvokeRateLimitHttpError),
         ):
-            method(
-                api, ChatRequest.model_validate(request.get_json()), self.sqlite_session, account, trial_app_chat
-            )
+            method(api, ChatRequest.model_validate(request.get_json()), self.sqlite_session, account, trial_app_chat)
 
     def test_chat_value_error(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatApi()
@@ -618,11 +617,10 @@ class TestTrialChatApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate",
                 side_effect=ValueError("test error"),
-            ),pytest.raises(ValueError)
+            ),
+            pytest.raises(ValueError),
         ):
-            method(
-                api, ChatRequest.model_validate(request.get_json()), self.sqlite_session, account, trial_app_chat
-            )
+            method(api, ChatRequest.model_validate(request.get_json()), self.sqlite_session, account, trial_app_chat)
 
     def test_chat_generic_exception(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatApi()
@@ -634,11 +632,10 @@ class TestTrialChatApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate",
                 side_effect=RuntimeError("unexpected error"),
-            ),pytest.raises(InternalServerError)
+            ),
+            pytest.raises(InternalServerError),
         ):
-            method(
-                api, ChatRequest.model_validate(request.get_json()), self.sqlite_session, account, trial_app_chat
-            )
+            method(api, ChatRequest.model_validate(request.get_json()), self.sqlite_session, account, trial_app_chat)
 
 
 class TestTrialCompletionApi(_UsesSQLiteSession):
@@ -691,7 +688,8 @@ class TestTrialCompletionApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate",
                 side_effect=module.services.errors.app_model_config.AppModelConfigBrokenError(),
-            ),pytest.raises(AppUnavailableError)
+            ),
+            pytest.raises(AppUnavailableError),
         ):
             method(
                 api,
@@ -711,7 +709,8 @@ class TestTrialCompletionApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate",
                 side_effect=ProviderTokenNotInitError("test"),
-            ),pytest.raises(ProviderNotInitializeError)
+            ),
+            pytest.raises(ProviderNotInitializeError),
         ):
             method(
                 api,
@@ -731,7 +730,8 @@ class TestTrialCompletionApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate",
                 side_effect=QuotaExceededError(),
-            ),pytest.raises(ProviderQuotaExceededError)
+            ),
+            pytest.raises(ProviderQuotaExceededError),
         ):
             method(
                 api,
@@ -751,7 +751,8 @@ class TestTrialCompletionApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate",
                 side_effect=ModelCurrentlyNotSupportError(),
-            ),pytest.raises(ProviderModelCurrentlyNotSupportError)
+            ),
+            pytest.raises(ProviderModelCurrentlyNotSupportError),
         ):
             method(
                 api,
@@ -771,7 +772,8 @@ class TestTrialCompletionApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate",
                 side_effect=InvokeError("test error"),
-            ),pytest.raises(CompletionRequestError)
+            ),
+            pytest.raises(CompletionRequestError),
         ):
             method(
                 api,
@@ -791,7 +793,8 @@ class TestTrialCompletionApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate",
                 side_effect=InvokeRateLimitError("test"),
-            ),pytest.raises(InternalServerError)
+            ),
+            pytest.raises(InternalServerError),
         ):
             method(
                 api,
@@ -811,7 +814,8 @@ class TestTrialCompletionApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate",
                 side_effect=ValueError("test error"),
-            ),pytest.raises(ValueError)
+            ),
+            pytest.raises(ValueError),
         ):
             method(
                 api,
@@ -831,7 +835,8 @@ class TestTrialCompletionApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate",
                 side_effect=RuntimeError("unexpected error"),
-            ),pytest.raises(InternalServerError)
+            ),
+            pytest.raises(InternalServerError),
         ):
             method(
                 api,
@@ -876,7 +881,8 @@ class TestTrialMessageSuggestedQuestionApi:
                 module.MessageService,
                 "get_suggested_questions_after_answer",
                 side_effect=ConversationNotExistsError(),
-            ),pytest.raises(NotFound)
+            ),
+            pytest.raises(NotFound),
         ):
             method(api, account, trial_app_chat, str(uuid4()))
 
@@ -956,7 +962,8 @@ class TestTrialChatAudioApi:
                 module.AudioService,
                 "transcript_asr",
                 side_effect=module.services.errors.app_model_config.AppModelConfigBrokenError(),
-            ),pytest.raises(module.AppUnavailableError)
+            ),
+            pytest.raises(module.AppUnavailableError),
         ):
             method(
                 api,
@@ -978,7 +985,8 @@ class TestTrialChatAudioApi:
                 module.AudioService,
                 "transcript_asr",
                 side_effect=module.services.errors.audio.NoAudioUploadedServiceError(),
-            ),pytest.raises(module.NoAudioUploadedError)
+            ),
+            pytest.raises(module.NoAudioUploadedError),
         ):
             method(
                 api,
@@ -1003,13 +1011,13 @@ class TestTrialChatAudioApi:
         with (
             app.test_request_context("/", method="POST", data={}, content_type="multipart/form-data"),
             patch.object(module.AudioService, "transcript_asr", side_effect=fake_asr),
+            pytest.raises(module.NoAudioUploadedError) as exc_info,
         ):
-            with pytest.raises(module.NoAudioUploadedError) as exc_info:
-                method(
-                    api,
-                    account,
-                    trial_app_chat,
-                )
+            method(
+                api,
+                account,
+                trial_app_chat,
+            )
 
         assert exc_info.value.code == 400
 
@@ -1027,7 +1035,8 @@ class TestTrialChatAudioApi:
                 module.AudioService,
                 "transcript_asr",
                 side_effect=module.services.errors.audio.AudioTooLargeServiceError("Too large"),
-            ),pytest.raises(module.AudioTooLargeError)
+            ),
+            pytest.raises(module.AudioTooLargeError),
         ):
             method(
                 api,
@@ -1049,7 +1058,8 @@ class TestTrialChatAudioApi:
                 module.AudioService,
                 "transcript_asr",
                 side_effect=module.services.errors.audio.UnsupportedAudioTypeServiceError(),
-            ),pytest.raises(module.UnsupportedAudioTypeError)
+            ),
+            pytest.raises(module.UnsupportedAudioTypeError),
         ):
             method(
                 api,
@@ -1071,7 +1081,8 @@ class TestTrialChatAudioApi:
                 module.AudioService,
                 "transcript_asr",
                 side_effect=module.services.errors.audio.ProviderNotSupportSpeechToTextServiceError(),
-            ),pytest.raises(module.ProviderNotSupportSpeechToTextError)
+            ),
+            pytest.raises(module.ProviderNotSupportSpeechToTextError),
         ):
             method(
                 api,
@@ -1092,7 +1103,8 @@ class TestTrialChatAudioApi:
                 module.AudioService,
                 "transcript_asr",
                 side_effect=SpeechToTextDisabledServiceError(),
-            ),pytest.raises(SpeechToTextDisabledError)
+            ),
+            pytest.raises(SpeechToTextDisabledError),
         ):
             method(
                 api,
@@ -1111,13 +1123,13 @@ class TestTrialChatAudioApi:
                 "/", method="POST", data={"file": (file_data, "test.wav")}, content_type="multipart/form-data"
             ),
             patch.object(module.AudioService, "transcript_asr", side_effect=ProviderTokenNotInitError("test")),
+            pytest.raises(ProviderNotInitializeError),
         ):
-            with pytest.raises(ProviderNotInitializeError):
-                method(
-                    api,
-                    account,
-                    trial_app_chat,
-                )
+            method(
+                api,
+                account,
+                trial_app_chat,
+            )
 
     def test_quota_exceeded(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatAudioApi()
@@ -1130,13 +1142,13 @@ class TestTrialChatAudioApi:
                 "/", method="POST", data={"file": (file_data, "test.wav")}, content_type="multipart/form-data"
             ),
             patch.object(module.AudioService, "transcript_asr", side_effect=QuotaExceededError()),
+            pytest.raises(ProviderQuotaExceededError),
         ):
-            with pytest.raises(ProviderQuotaExceededError):
-                method(
-                    api,
-                    account,
-                    trial_app_chat,
-                )
+            method(
+                api,
+                account,
+                trial_app_chat,
+            )
 
 
 class TestTrialChatTextApi:
@@ -1199,7 +1211,8 @@ class TestTrialChatTextApi:
                 module.AudioService,
                 "transcript_tts",
                 side_effect=module.services.errors.app_model_config.AppModelConfigBrokenError(),
-            ),pytest.raises(module.AppUnavailableError)
+            ),
+            pytest.raises(module.AppUnavailableError),
         ):
             method(
                 api,
@@ -1218,7 +1231,8 @@ class TestTrialChatTextApi:
                 module.AudioService,
                 "transcript_tts",
                 side_effect=module.services.errors.audio.ProviderNotSupportSpeechToTextServiceError(),
-            ),pytest.raises(module.ProviderNotSupportSpeechToTextError)
+            ),
+            pytest.raises(module.ProviderNotSupportSpeechToTextError),
         ):
             method(
                 api,
@@ -1237,7 +1251,8 @@ class TestTrialChatTextApi:
                 module.AudioService,
                 "transcript_tts",
                 side_effect=module.services.errors.audio.AudioTooLargeServiceError("Too large"),
-            ),pytest.raises(module.AudioTooLargeError)
+            ),
+            pytest.raises(module.AudioTooLargeError),
         ):
             method(
                 api,
@@ -1256,7 +1271,8 @@ class TestTrialChatTextApi:
                 module.AudioService,
                 "transcript_tts",
                 side_effect=module.services.errors.audio.NoAudioUploadedServiceError(),
-            ),pytest.raises(module.NoAudioUploadedError)
+            ),
+            pytest.raises(module.NoAudioUploadedError),
         ):
             method(
                 api,
@@ -1272,14 +1288,14 @@ class TestTrialChatTextApi:
         with (
             app.test_request_context("/", json={"text": "hello", "voice": "en-US"}),
             patch.object(module.AudioService, "transcript_tts", side_effect=ProviderTokenNotInitError("test")),
+            pytest.raises(ProviderNotInitializeError),
         ):
-            with pytest.raises(ProviderNotInitializeError):
-                method(
-                    api,
-                    TextToSpeechRequest.model_validate(request.get_json(silent=True) or {}),
-                    account,
-                    trial_app_chat,
-                )
+            method(
+                api,
+                TextToSpeechRequest.model_validate(request.get_json(silent=True) or {}),
+                account,
+                trial_app_chat,
+            )
 
     def test_quota_exceeded(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatTextApi()
@@ -1288,14 +1304,14 @@ class TestTrialChatTextApi:
         with (
             app.test_request_context("/", json={"text": "hello", "voice": "en-US"}),
             patch.object(module.AudioService, "transcript_tts", side_effect=QuotaExceededError()),
+            pytest.raises(ProviderQuotaExceededError),
         ):
-            with pytest.raises(ProviderQuotaExceededError):
-                method(
-                    api,
-                    TextToSpeechRequest.model_validate(request.get_json(silent=True) or {}),
-                    account,
-                    trial_app_chat,
-                )
+            method(
+                api,
+                TextToSpeechRequest.model_validate(request.get_json(silent=True) or {}),
+                account,
+                trial_app_chat,
+            )
 
     def test_model_not_support(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatTextApi()
@@ -1304,14 +1320,14 @@ class TestTrialChatTextApi:
         with (
             app.test_request_context("/", json={"text": "hello", "voice": "en-US"}),
             patch.object(module.AudioService, "transcript_tts", side_effect=ModelCurrentlyNotSupportError()),
+            pytest.raises(ProviderModelCurrentlyNotSupportError),
         ):
-            with pytest.raises(ProviderModelCurrentlyNotSupportError):
-                method(
-                    api,
-                    TextToSpeechRequest.model_validate(request.get_json(silent=True) or {}),
-                    account,
-                    trial_app_chat,
-                )
+            method(
+                api,
+                TextToSpeechRequest.model_validate(request.get_json(silent=True) or {}),
+                account,
+                trial_app_chat,
+            )
 
     def test_invoke_error(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatTextApi()
@@ -1320,14 +1336,14 @@ class TestTrialChatTextApi:
         with (
             app.test_request_context("/", json={"text": "hello", "voice": "en-US"}),
             patch.object(module.AudioService, "transcript_tts", side_effect=InvokeError("test error")),
+            pytest.raises(CompletionRequestError),
         ):
-            with pytest.raises(CompletionRequestError):
-                method(
-                    api,
-                    TextToSpeechRequest.model_validate(request.get_json(silent=True) or {}),
-                    account,
-                    trial_app_chat,
-                )
+            method(
+                api,
+                TextToSpeechRequest.model_validate(request.get_json(silent=True) or {}),
+                account,
+                trial_app_chat,
+            )
 
 
 class TestTrialAppWorkflowTaskStopApi:
@@ -1534,7 +1550,8 @@ class TestTrialChatAudioApiExceptionHandlers:
                 module.AudioService,
                 "transcript_asr",
                 side_effect=ProviderTokenNotInitError("test"),
-            ),pytest.raises(ProviderNotInitializeError)
+            ),
+            pytest.raises(ProviderNotInitializeError),
         ):
             method(
                 api,
@@ -1556,7 +1573,8 @@ class TestTrialChatAudioApiExceptionHandlers:
                 module.AudioService,
                 "transcript_asr",
                 side_effect=QuotaExceededError(),
-            ),pytest.raises(ProviderQuotaExceededError)
+            ),
+            pytest.raises(ProviderQuotaExceededError),
         ):
             method(
                 api,
@@ -1578,7 +1596,8 @@ class TestTrialChatAudioApiExceptionHandlers:
                 module.AudioService,
                 "transcript_asr",
                 side_effect=InvokeError("test error"),
-            ),pytest.raises(CompletionRequestError)
+            ),
+            pytest.raises(CompletionRequestError),
         ):
             method(
                 api,
@@ -1598,7 +1617,8 @@ class TestTrialChatTextApiExceptionHandlers:
                 module.AudioService,
                 "transcript_tts",
                 side_effect=module.services.errors.app_model_config.AppModelConfigBrokenError(),
-            ),pytest.raises(module.AppUnavailableError)
+            ),
+            pytest.raises(module.AppUnavailableError),
         ):
             method(
                 api,
@@ -1617,7 +1637,8 @@ class TestTrialChatTextApiExceptionHandlers:
                 module.AudioService,
                 "transcript_tts",
                 side_effect=module.services.errors.audio.UnsupportedAudioTypeServiceError("test"),
-            ),pytest.raises(module.UnsupportedAudioTypeError)
+            ),
+            pytest.raises(module.UnsupportedAudioTypeError),
         ):
             method(
                 api,

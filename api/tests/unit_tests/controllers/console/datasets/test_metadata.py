@@ -92,12 +92,10 @@ class TestDatasetMetadataCreateApi:
         method = unwrap(api.post)
         valid_payload = {"type": "string", "name": "author"}
         with (
-            (
-                app.test_request_context("/"),
-                patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=valid_payload),
-                patch.object(MetadataArgs, "model_validate", return_value=MagicMock()),
-                patch.object(DatasetService, "get_dataset", return_value=None),
-            ),
+            app.test_request_context("/"),
+            patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=valid_payload),
+            patch.object(MetadataArgs, "model_validate", return_value=MagicMock()),
+            patch.object(DatasetService, "get_dataset", return_value=None),
             pytest.raises(NotFound, match="Dataset not found"),
         ):
             method(api, MetadataArgs(type="string", name="author"), MagicMock(), "tenant-1", current_user, dataset_id)

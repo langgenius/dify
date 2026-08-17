@@ -309,26 +309,32 @@ class TestDocumentServiceMutations:
         assert commits == 0
 
     def test_rename_document_raises_when_dataset_is_missing(self, sqlite_session: Session):
-        with patch("services.dataset_service.current_user", _account()):
-            with pytest.raises(ValueError, match="Dataset not found"):
-                DocumentService.rename_document("dataset-1", "doc-1", "New Name", sqlite_session)
+        with (
+            patch("services.dataset_service.current_user", _account()),
+            pytest.raises(ValueError, match="Dataset not found"),
+        ):
+            DocumentService.rename_document("dataset-1", "doc-1", "New Name", sqlite_session)
 
     def test_rename_document_raises_when_document_is_missing(self, sqlite_session: Session):
         dataset = _dataset_row()
         sqlite_session.add(dataset)
         sqlite_session.commit()
-        with patch("services.dataset_service.current_user", _account()):
-            with pytest.raises(ValueError, match="Document not found"):
-                DocumentService.rename_document(dataset.id, "doc-1", "New Name", sqlite_session)
+        with (
+            patch("services.dataset_service.current_user", _account()),
+            pytest.raises(ValueError, match="Document not found"),
+        ):
+            DocumentService.rename_document(dataset.id, "doc-1", "New Name", sqlite_session)
 
     def test_rename_document_rejects_cross_tenant_access(self, sqlite_session: Session):
         dataset = _dataset_row()
         document = _document_row(tenant_id="tenant-other")
         sqlite_session.add_all([dataset, document])
         sqlite_session.commit()
-        with patch("services.dataset_service.current_user", _account()):
-            with pytest.raises(ValueError, match="No permission"):
-                DocumentService.rename_document(dataset.id, document.id, "New Name", sqlite_session)
+        with (
+            patch("services.dataset_service.current_user", _account()),
+            pytest.raises(ValueError, match="No permission"),
+        ):
+            DocumentService.rename_document(dataset.id, document.id, "New Name", sqlite_session)
 
     def test_rename_document_updates_document_metadata_and_upload_file_name(self, sqlite_session: Session):
         dataset = _dataset_row(built_in_field_enabled=True)
@@ -398,7 +404,8 @@ class TestDocumentServiceMutations:
         retry_flags = _RetryFlagStore({f"document_{document.id}_is_retried": "other-request"})
         with (
             patch("services.dataset_service.current_user", _account()),
-            patch("services.dataset_service.redis_client", retry_flags),pytest.raises(ValueError, match="being retried")
+            patch("services.dataset_service.redis_client", retry_flags),
+            pytest.raises(ValueError, match="being retried"),
         ):
             DocumentService.retry_document("dataset-1", [document], sqlite_session)
 
@@ -446,7 +453,8 @@ class TestDocumentServiceMutations:
 
         with (
             patch("services.dataset_service.current_user", _account()),
-            patch("services.dataset_service.redis_client", retry_flags),pytest.raises(ValueError, match="being retried")
+            patch("services.dataset_service.redis_client", retry_flags),
+            pytest.raises(ValueError, match="being retried"),
         ):
             DocumentService.retry_document("dataset-1", documents, sqlite_session)
 
