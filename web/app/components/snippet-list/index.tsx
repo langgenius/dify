@@ -75,6 +75,7 @@ const SnippetList = () => {
   const debouncedKeywords = useDebounce(keywords, { wait: SNIPPET_LIST_SEARCH_DEBOUNCE_MS })
   const containerRef = useRef<HTMLDivElement>(null)
   const anchorRef = useRef<HTMLDivElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const [publishStatus, setPublishStatus] = useState<SnippetPublishStatus>('all')
 
@@ -184,24 +185,29 @@ const SnippetList = () => {
               onOpenTagManagement={() => setShowTagManagementModal(true)}
             />
             <InputGroup className="w-50">
+              <InputGroupInput
+                ref={searchInputRef}
+                aria-label={t(($) => $['tabs.searchSnippets'], { ns: 'workflow' })}
+                value={keywords}
+                onValueChange={(nextKeywords) => setKeywords(nextKeywords)}
+                placeholder={t(($) => $['tabs.searchSnippets'], { ns: 'workflow' })}
+              />
               <InputGroupAddon className="ps-1.75 pe-0.75">
                 <span
                   aria-hidden
                   className="i-ri-search-line size-4 text-components-input-text-placeholder"
                 />
               </InputGroupAddon>
-              <InputGroupInput
-                value={keywords}
-                onValueChange={(nextKeywords) => setKeywords(nextKeywords)}
-                placeholder={t(($) => $['tabs.searchSnippets'], { ns: 'workflow' })}
-              />
               {!!keywords && (
                 <InputGroupAddon align="inline-end" className="ps-0.75 pe-1.75">
                   <IconButton
                     size="xs"
                     aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
                     className="text-components-input-text-placeholder hover:bg-transparent hover:text-components-input-text-filled focus-visible:ring-inset"
-                    onClick={() => setKeywords('')}
+                    onClick={() => {
+                      setKeywords('')
+                      searchInputRef.current?.focus()
+                    }}
                   >
                     <span aria-hidden className="i-ri-close-circle-fill size-4" />
                   </IconButton>

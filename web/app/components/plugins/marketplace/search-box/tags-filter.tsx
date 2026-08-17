@@ -52,12 +52,6 @@ function TagsFilter({ tags, onTagsChange, usedInMarketplace = false }: TagsFilte
         <div className="w-60 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="p-2 pb-1">
             <InputGroup>
-              <InputGroupAddon className="ps-1.75 pe-0.75">
-                <span
-                  aria-hidden
-                  className="i-ri-search-line size-4 text-components-input-text-placeholder"
-                />
-              </InputGroupAddon>
               <InputGroupInput
                 type="search"
                 name="tag-query"
@@ -67,6 +61,12 @@ function TagsFilter({ tags, onTagsChange, usedInMarketplace = false }: TagsFilte
                 onValueChange={setSearchText}
                 placeholder={t(($) => $.searchTags, { ns: 'pluginTags' }) || ''}
               />
+              <InputGroupAddon className="ps-1.75 pe-0.75">
+                <span
+                  aria-hidden
+                  className="i-ri-search-line size-4 text-components-input-text-placeholder"
+                />
+              </InputGroupAddon>
             </InputGroup>
           </div>
           <CheckboxGroup

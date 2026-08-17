@@ -94,12 +94,6 @@ const SnippetTagsFilter = ({ embedded = false, value, onChange }: SnippetTagsFil
         <PopoverTitle className="sr-only">{triggerLabel}</PopoverTitle>
         <div className="p-2 pb-1">
           <InputGroup>
-            <InputGroupAddon className="ps-1.75 pe-0.75">
-              <span
-                className="i-ri-search-line size-4 text-components-input-text-placeholder"
-                aria-hidden="true"
-              />
-            </InputGroupAddon>
             <InputGroupInput
               aria-label={t(($) => $.searchTags, { ns: 'pluginTags' }) || ''}
               autoComplete="off"
@@ -107,6 +101,12 @@ const SnippetTagsFilter = ({ embedded = false, value, onChange }: SnippetTagsFil
               onValueChange={setSearchText}
               placeholder={t(($) => $.searchTags, { ns: 'pluginTags' }) || ''}
             />
+            <InputGroupAddon className="ps-1.75 pe-0.75">
+              <span
+                className="i-ri-search-line size-4 text-components-input-text-placeholder"
+                aria-hidden="true"
+              />
+            </InputGroupAddon>
           </InputGroup>
         </div>
         <CheckboxGroup

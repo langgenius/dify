@@ -84,12 +84,6 @@ function AddAccessSubjectPopover({
       >
         <div className="p-2 pb-1">
           <InputGroup>
-            <InputGroupAddon className="ps-1.75 pe-1.25">
-              <span
-                className="i-ri-search-line size-4 text-components-input-text-placeholder"
-                aria-hidden="true"
-              />
-            </InputGroupAddon>
             <InputGroupInput
               type="search"
               aria-label={t(($) => $['operation.search'], { ns: 'common' })}
@@ -100,6 +94,12 @@ function AddAccessSubjectPopover({
               autoComplete="off"
               enterKeyHint="search"
             />
+            <InputGroupAddon className="ps-1.75 pe-1.25">
+              <span
+                className="i-ri-search-line size-4 text-components-input-text-placeholder"
+                aria-hidden="true"
+              />
+            </InputGroupAddon>
           </InputGroup>
         </div>
         {isLoading ? (

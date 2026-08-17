@@ -42,12 +42,6 @@ export function SearchInput({
 
   return (
     <InputGroup className={className}>
-      <InputGroupAddon className="ps-1.75 pe-1.25">
-        <span
-          className="i-ri-search-line size-4 text-components-input-text-placeholder"
-          aria-hidden="true"
-        />
-      </InputGroupAddon>
       <InputGroupInput
         ref={inputRef}
         type="search"
@@ -92,6 +86,12 @@ export function SearchInput({
         autoFocus={autoFocus}
         enterKeyHint="search"
       />
+      <InputGroupAddon className="ps-1.75 pe-1.25">
+        <span
+          className="i-ri-search-line size-4 text-components-input-text-placeholder"
+          aria-hidden="true"
+        />
+      </InputGroupAddon>
       {!!inputValue && !disabled && (
         <InputGroupAddon align="inline-end" className="ps-0.75 pe-1.25">
           <IconButton

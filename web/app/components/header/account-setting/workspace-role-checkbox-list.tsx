@@ -75,6 +75,7 @@ const WorkspaceRoleCheckboxList = ({
   const [keyword, setKeyword] = useState('')
   const containerRef = useRef<HTMLDivElement>(null)
   const anchorRef = useRef<HTMLDivElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
 
   const {
@@ -211,21 +212,26 @@ const WorkspaceRoleCheckboxList = ({
     <>
       <div className="shrink-0 px-6 pt-3 pb-2">
         <InputGroup>
-          <InputGroupAddon className="ps-2.75 pe-1.25">
-            <span aria-hidden className="i-ri-search-line size-4 text-text-tertiary" />
-          </InputGroupAddon>
           <InputGroupInput
+            ref={searchInputRef}
+            aria-label={t(($) => $['role.searchPlaceholder'], { ns: 'permission' })}
             value={keyword}
             onValueChange={setKeyword}
             placeholder={t(($) => $['role.searchPlaceholder'], { ns: 'permission' })}
           />
+          <InputGroupAddon className="ps-2.75 pe-1.25">
+            <span aria-hidden className="i-ri-search-line size-4 text-text-tertiary" />
+          </InputGroupAddon>
           {keyword && (
             <InputGroupAddon align="inline-end" className="ps-1.25 pe-1.75">
               <IconButton
                 size="sm"
                 className="text-text-tertiary"
                 aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-                onClick={() => setKeyword('')}
+                onClick={() => {
+                  setKeyword('')
+                  searchInputRef.current?.focus()
+                }}
               >
                 <span aria-hidden className="i-ri-close-line size-4" />
               </IconButton>
