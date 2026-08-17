@@ -128,7 +128,7 @@ class IndexingRunner:
                         document_id=requeried_document.id,
                         doc_form=requeried_document.doc_form,
                         documents=documents,
-                        include_summaries=bool(requeried_document.need_summary),
+                        include_summaries=requeried_document.need_summary,
                         session=session,
                     )
                 token_counts = calculate_segment_token_counts(dataset=dataset, documents=documents)

@@ -116,7 +116,7 @@ class DbMigrationAutoRenewLock:
         if self._lock is None:
             return False
         try:
-            return bool(self._lock.owned())
+            return self._lock.owned()
         except Exception:
             # Ownership checks are best-effort and must not break callers.
             return False

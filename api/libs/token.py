@@ -116,7 +116,7 @@ def set_access_token_to_cookie(request: Request, response: Response, token: str,
         domain=_cookie_domain(),
         secure=is_secure(),
         samesite=samesite,
-        max_age=int(dify_config.ACCESS_TOKEN_EXPIRE_MINUTES * 60),
+        max_age=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         path="/",
     )
 
@@ -142,7 +142,7 @@ def set_csrf_token_to_cookie(request: Request, response: Response, token: str):
         domain=_cookie_domain(),
         secure=is_secure(),
         samesite="Lax",
-        max_age=int(60 * dify_config.ACCESS_TOKEN_EXPIRE_MINUTES),
+        max_age=60 * dify_config.ACCESS_TOKEN_EXPIRE_MINUTES,
         path="/",
     )
 

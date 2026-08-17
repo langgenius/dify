@@ -414,7 +414,7 @@ class AliyunDataTrace(BaseTraceInstance):
                     tool_name=node_execution.title,
                     tool_type=map_gen_ai_tool_type(str(provider_type) if provider_type else None),
                     tool_description=extract_tool_description(tool_info),
-                    tool_call_id=str(node_execution.id or ""),
+                    tool_call_id=node_execution.id or "",
                     tool_call_arguments=inputs_json,
                     tool_call_result=outputs_json,
                 ),

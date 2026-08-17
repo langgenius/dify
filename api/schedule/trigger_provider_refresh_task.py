@@ -56,7 +56,7 @@ def trigger_provider_refresh() -> None:
 
     with Session(db.engine, expire_on_commit=False) as session:
         filter: ColumnElement[bool] = _build_due_filter(now_ts=now)
-        total_due: int = int(session.scalar(statement=select(func.count()).where(filter)) or 0)
+        total_due: int = session.scalar(statement=select(func.count()).where(filter)) or 0
         logger.info("Trigger refresh scan start: due=%d", total_due)
         if total_due == 0:
             return

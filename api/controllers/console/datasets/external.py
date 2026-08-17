@@ -370,7 +370,7 @@ class ExternalDatasetCreateApi(Resource):
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
 
-        dataset_id_str = str(dataset.id)
+        dataset_id_str = dataset.id
         permission_keys_map = enterprise_rbac_service.RBACService.DatasetPermissions.batch_get(
             current_tenant_id,
             current_user.id,

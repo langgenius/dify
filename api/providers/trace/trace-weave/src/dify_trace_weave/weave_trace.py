@@ -466,7 +466,7 @@ class WeaveDataTrace(BaseTraceInstance):
             start=StartedCallSchemaForInsert(
                 project_id=self.project_id,
                 id=run_data.id,
-                op_name=str(run_data.op),
+                op_name=run_data.op,
                 trace_id=trace_id,
                 parent_id=parent_run_id,
                 started_at=started_at,
@@ -511,7 +511,7 @@ class WeaveDataTrace(BaseTraceInstance):
             "weave": {"latency_ms": elapsed_ms},
         }
 
-        exception_str = str(run_data.exception) if run_data.exception else None
+        exception_str = run_data.exception or None
 
         call_end_req = CallEndReq(
             end=EndedCallSchemaForInsert(

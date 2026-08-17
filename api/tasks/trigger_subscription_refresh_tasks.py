@@ -30,7 +30,7 @@ def _refresh_oauth_if_expired(tenant_id: str, subscription: TriggerSubscription,
     threshold_seconds: int = dify_config.TRIGGER_PROVIDER_CREDENTIAL_THRESHOLD_SECONDS
     if (
         subscription.credential_expires_at != -1
-        and int(subscription.credential_expires_at) <= now + threshold_seconds
+        and subscription.credential_expires_at <= now + threshold_seconds
         and CredentialType.of(subscription.credential_type) == CredentialType.OAUTH2
     ):
         logger.info(
@@ -57,7 +57,7 @@ def _refresh_subscription_if_expired(
     now: int,
 ) -> None:
     threshold_seconds: int = dify_config.TRIGGER_PROVIDER_SUBSCRIPTION_THRESHOLD_SECONDS
-    if subscription.expires_at == -1 or int(subscription.expires_at) > now + threshold_seconds:
+    if subscription.expires_at == -1 or subscription.expires_at > now + threshold_seconds:
         logger.debug(
             "Subscription not due: tenant=%s subscription_id=%s expires_at=%s now=%s threshold=%s",
             tenant_id,

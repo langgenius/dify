@@ -552,7 +552,7 @@ class TriggerProviderService:
             if subscription is None:
                 raise ValueError(f"Trigger provider subscription {subscription_id} not found")
 
-            if subscription.expires_at == -1 or int(subscription.expires_at) > now_ts:
+            if subscription.expires_at == -1 or subscription.expires_at > now_ts:
                 logger.debug(
                     "Subscription not due for refresh: tenant=%s id=%s expires_at=%s now=%s",
                     tenant_id,
@@ -560,7 +560,7 @@ class TriggerProviderService:
                     subscription.expires_at,
                     now_ts,
                 )
-                return {"result": "skipped", "expires_at": int(subscription.expires_at)}
+                return {"result": "skipped", "expires_at": subscription.expires_at}
 
             provider_id = TriggerProviderID(subscription.provider_id)
             controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
@@ -583,7 +583,7 @@ class TriggerProviderService:
             decrypted_properties = properties_encrypter.decrypt(subscription.properties)
 
             sub_entity: TriggerSubscriptionEntity = TriggerSubscriptionEntity(
-                expires_at=int(subscription.expires_at),
+                expires_at=subscription.expires_at,
                 endpoint=generate_plugin_trigger_endpoint_url(subscription.endpoint_id),
                 parameters=subscription.parameters,
                 properties=decrypted_properties,

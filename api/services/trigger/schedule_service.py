@@ -183,7 +183,7 @@ class ScheduleService:
             if not cron_expression:
                 raise ScheduleConfigError("Cron expression is required for cron mode")
         elif mode == "visual":
-            frequency = str(node_data.frequency or "")
+            frequency = node_data.frequency or ""
             if not frequency:
                 raise ScheduleConfigError("Frequency is required for visual mode")
             visual_config = VisualConfig.model_validate(node_data.visual_config or {})

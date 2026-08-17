@@ -120,9 +120,9 @@ def init_flask_instrumentor(app: DifyApp) -> None:
                 attributes: dict[str, str | int] = {"status_code": status_code, "status_class": status_class}
                 request = flask.request
                 if request and request.url_rule:
-                    attributes[HTTP_ROUTE] = str(request.url_rule.rule)
+                    attributes[HTTP_ROUTE] = request.url_rule.rule
                 if request and request.method:
-                    attributes[HTTP_REQUEST_METHOD] = str(request.method)
+                    attributes[HTTP_REQUEST_METHOD] = request.method
                 _http_response_counter.add(1, attributes)
             except Exception:
                 logger.exception("Error setting status and attributes")

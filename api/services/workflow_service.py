@@ -336,7 +336,7 @@ class WorkflowService:
             return set()
 
         stmt = select(App.id).where(App.id.in_(app_ids), App.tenant_id == tenant_id)
-        return {str(app_id) for app_id in session.scalars(stmt).all()}
+        return set(session.scalars(stmt).all())
 
     def get_all_published_workflow(
         self,

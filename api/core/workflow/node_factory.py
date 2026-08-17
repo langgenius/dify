@@ -400,7 +400,7 @@ class DifyNodeFactory(NodeFactory):
         typed_node_config = NodeConfigDictAdapter.validate_python(adapted_node_config)
         node_id = typed_node_config["id"]
         node_data = typed_node_config["data"]
-        node_class = self._resolve_node_class(node_type=node_data.type, node_version=str(node_data.version))
+        node_class = self._resolve_node_class(node_type=node_data.type, node_version=node_data.version)
         # Graph configs are initially validated against permissive shared node data.
         # Re-validate using the resolved node class so workflow-local node schemas
         # stay explicit and constructors receive the concrete typed payload.

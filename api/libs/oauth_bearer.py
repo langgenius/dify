@@ -427,9 +427,9 @@ class _VariantResolver:
         resolved = ResolvedRow(
             subject_email=row.subject_email,
             subject_issuer=row.subject_issuer,
-            account_id=uuid.UUID(str(row.account_id)) if row.account_id else None,
+            account_id=uuid.UUID(row.account_id) if row.account_id else None,
             client_id=row.client_id,
-            token_id=uuid.UUID(str(row.id)),
+            token_id=uuid.UUID(row.id),
             expires_at=row.expires_at,
         )
         self._parent.cache_set_positive(token_hash, resolved)

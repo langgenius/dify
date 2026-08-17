@@ -327,7 +327,7 @@ class FileService:
                 UploadFile.id.in_(unique_upload_file_ids),
             )
         ).all()
-        return {str(upload_file.id): upload_file for upload_file in upload_files}
+        return {upload_file.id: upload_file for upload_file in upload_files}
 
     @staticmethod
     def _sanitize_zip_entry_name(name: str) -> str:

@@ -55,7 +55,7 @@ def user_allowed_to_access_app[**P, R](view: Callable[Concatenate[InstalledApp, 
             if feature.webapp_auth.enabled:
                 app_id = installed_app.app_id
                 res = EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(
-                    user_id=str(current_user.id),
+                    user_id=current_user.id,
                     app_id=app_id,
                 )
                 if not res:

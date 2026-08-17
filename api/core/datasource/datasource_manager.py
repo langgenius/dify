@@ -359,7 +359,7 @@ class DatasourceManager:
             file_type=FileType.CUSTOM,
             transfer_method=FileTransferMethod.LOCAL_FILE,
             remote_url=upload_file.source_url,
-            reference=build_file_reference(record_id=str(upload_file.id)),
+            reference=build_file_reference(record_id=upload_file.id),
             size=upload_file.size,
             storage_key=upload_file.key,
             url=upload_file.source_url,

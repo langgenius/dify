@@ -530,10 +530,10 @@ class AccountService:
             TenantService.create_owner_tenant_if_not_exist(account=account, session=session)
         except Exception:
             # Enterprise-only side-effect should run independently from personal workspace creation.
-            _try_join_enterprise_default_workspace(str(account.id))
+            _try_join_enterprise_default_workspace(account.id)
             raise
 
-        _try_join_enterprise_default_workspace(str(account.id))
+        _try_join_enterprise_default_workspace(account.id)
 
         return account
 
@@ -1361,9 +1361,9 @@ class TenantService:
             )
         TenantService.create_tenant_member(tenant, account, session, role="owner")
         if dify_config.RBAC_ENABLED:
-            owner_role_id = AccountService._resolve_legacy_role_id(str(tenant.id), account.id, TenantAccountRole.OWNER)
+            owner_role_id = AccountService._resolve_legacy_role_id(tenant.id, account.id, TenantAccountRole.OWNER)
             RBACService.MemberRoles.replace(
-                tenant_id=str(tenant.id),
+                tenant_id=tenant.id,
                 account_id=account.id,
                 member_account_id=account.id,
                 role_ids=[owner_role_id],
@@ -1699,8 +1699,8 @@ class TenantService:
 
         if dify_config.RBAC_ENABLED:
             workspace_permission_keys = AccountService.get_workspace_permission_keys(
-                str(tenant.id),
-                str(operator.id),
+                tenant.id,
+                operator.id,
                 session=session,
             )
             required_permission_key = (
@@ -1712,9 +1712,7 @@ class TenantService:
             if (
                 action == "remove"
                 and member
-                and AccountService.is_rbac_workspace_owner(
-                    str(tenant.id), str(operator.id), str(member.id), session=session
-                )
+                and AccountService.is_rbac_workspace_owner(tenant.id, operator.id, member.id, session=session)
             ):
                 raise NoPermissionError(f"No permission to {action} member.")
             return
@@ -1773,9 +1771,7 @@ class TenantService:
 
         owner_id: str | None
         if dify_config.RBAC_ENABLED:
-            owner_id = AccountService.get_rbac_workspace_owner_account_id(
-                str(tenant.id), str(operator.id), session=session
-            )
+            owner_id = AccountService.get_rbac_workspace_owner_account_id(tenant.id, operator.id, session=session)
         else:
             owner_id = session.scalar(
                 select(TenantAccountJoin.account_id)
@@ -1883,14 +1879,14 @@ class TenantService:
                     current_owner_join.role = TenantAccountRole.ADMIN
             elif current_owner_join:
                 admin_role_id = AccountService._resolve_legacy_role_id(
-                    tenant_id=str(tenant.id),
+                    tenant_id=tenant.id,
                     account_id=operator.id,
                     role=TenantAccountRole.ADMIN,
                 )
                 RBACService.MemberRoles.replace(
-                    tenant_id=str(tenant.id),
+                    tenant_id=tenant.id,
                     account_id=operator.id,
-                    member_account_id=str(current_owner_join.account_id),
+                    member_account_id=current_owner_join.account_id,
                     role_ids=[admin_role_id],
                     session=session,
                 )
@@ -1898,12 +1894,12 @@ class TenantService:
         # Update the role of the target member
         if dify_config.RBAC_ENABLED:
             resolved_role_id = AccountService._resolve_legacy_role_id(
-                tenant_id=str(tenant.id),
+                tenant_id=tenant.id,
                 account_id=operator.id,
                 role=TenantAccountRole.OWNER,
             )
             RBACService.MemberRoles.replace(
-                tenant_id=str(tenant.id),
+                tenant_id=tenant.id,
                 account_id=operator.id,
                 member_account_id=member.id,
                 role_ids=[resolved_role_id],
@@ -2030,12 +2026,12 @@ class RegisterService:
                 try:
                     TenantService.create_owner_tenant(account, session=session)
                 except Exception:
-                    _try_join_enterprise_default_workspace(str(account.id))
+                    _try_join_enterprise_default_workspace(account.id)
                     raise
 
             session.commit()
 
-            _try_join_enterprise_default_workspace(str(account.id))
+            _try_join_enterprise_default_workspace(account.id)
         except WorkSpaceNotAllowedCreateError:
             session.rollback()
             logger.exception("Register failed")
@@ -2112,7 +2108,7 @@ class RegisterService:
             if account.status != AccountStatus.PENDING:
                 if dify_config.RBAC_ENABLED and not ta:
                     RBACService.MemberRoles.replace(
-                        tenant_id=str(tenant.id),
+                        tenant_id=tenant.id,
                         account_id=inviter.id,
                         member_account_id=account.id,
                         role_ids=[role],
@@ -2124,7 +2120,7 @@ class RegisterService:
         # Assign RBAC role if RBAC is enabled
         if dify_config.RBAC_ENABLED:
             RBACService.MemberRoles.replace(
-                tenant_id=str(tenant.id),
+                tenant_id=tenant.id,
                 account_id=inviter.id,
                 member_account_id=account.id,
                 role_ids=[role],
@@ -2194,7 +2190,7 @@ class RegisterService:
         if not account:
             return None
 
-        if invitation_data["account_id"] != str(account.id):
+        if invitation_data["account_id"] != account.id:
             return None
 
         return {
