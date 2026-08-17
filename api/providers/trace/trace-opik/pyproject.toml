@@ -2,7 +2,7 @@
 name = "dify-trace-opik"
 version = "0.0.1"
 dependencies = [
-    "opik~=1.11.2",
+    "opik~=2.2.28",
 ]
 description = "Dify ops tracing provider (Opik)."
 
