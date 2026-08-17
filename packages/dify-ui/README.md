@@ -124,9 +124,9 @@ Dify UI's form primitives are a Base UI composition layer for native form semant
 
 Use `Form` for the submit boundary. It renders a native `<form>`, preserves Enter-to-submit and submit-button behavior, and adds Base UI's `onFormSubmit`, `errors`, `actionsRef`, and `validationMode` APIs for structured values and consolidated field validation. Prefer it over a bare `<form>` when the form is composed with Dify UI fields.
 
-Use `Field` for each standalone named field. A field must have a stable `name`, a label relationship, and a control that participates in the same Base UI field context. Prefer a visible label for normal form rows; when the surrounding UI already supplies the visible text, use the matching label primitive visually hidden or put `aria-label` on the actual interactive control. `FieldDescription` and `FieldError` provide the message relationships that screen readers need, while the Dify wrapper adds the default Form Input Set styling from the design system.
+Use `Field` when a text control needs Base UI field semantics such as shared name, label, validation, description, or error state. A standalone `Input` may instead use a native `<label htmlFor>` relationship or an accessible name on the input itself. Prefer a visible label for normal form rows. `FieldDescription` and `FieldError` provide the message relationships that screen readers need, while the Dify wrapper adds the default Form Input Set styling from the design system.
 
-`Input` is the standalone Dify UI text-input control; `Field` owns its name, label, validation, and messages. For a prefix, suffix, or action, use the [Input Group composition contract].
+`Input` is the standalone Dify UI text-input control. When `Field` is present, it owns the shared name, label, validation, and messages. For a prefix, suffix, or action, use the [Input Group composition contract].
 
 Choose the label primitive by the control semantics. Text-like inputs, `Textarea`, input-based `Combobox` / `Autocomplete`, single `Checkbox` / `Radio`, `Switch`, and `NumberField` use `FieldLabel`. Trigger-based `Select` fields use `SelectLabel`; `Slider` fields use `SliderLabel`, with per-thumb `aria-label` only when the thumbs need distinct names. `SelectGroupLabel` and `AutocompleteGroupLabel` only label grouped options inside their popup content; they are not field labels.
 
