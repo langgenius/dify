@@ -1456,7 +1456,9 @@ export function FileTree({
                               onCancel={() => setInlineAction(undefined)}
                               onSubmit={handleSubmitInlineAction}
                               placeholder={
-                                inlineAction.nodeType === 'file' ? 'File name' : 'Folder name'
+                                inlineAction.nodeType === 'file'
+                                  ? t(($) => $['skillManagement.detail.createFile'])
+                                  : t(($) => $['skillManagement.detail.createFolder'])
                               }
                             />
                           )}

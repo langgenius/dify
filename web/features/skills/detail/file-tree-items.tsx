@@ -405,6 +405,7 @@ export function FileTreeItem({
   selectedPaths: string[]
   selectedPath: string | undefined
 }) {
+  const { t } = useTranslation('skill')
   const contextUploadInputRef = useRef<HTMLInputElement>(null)
   const expandTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const isDragging = draggingPaths.includes(node.path)
@@ -614,7 +615,11 @@ export function FileTreeItem({
                 nodeType={childCreateAction.nodeType}
                 onCancel={onCancelInlineAction}
                 onSubmit={onSubmitInlineAction}
-                placeholder={childCreateAction.nodeType === 'file' ? 'File name' : 'Folder name'}
+                placeholder={
+                  childCreateAction.nodeType === 'file'
+                    ? t(($) => $['skillManagement.detail.createFile'])
+                    : t(($) => $['skillManagement.detail.createFolder'])
+                }
               />
             )}
             {node.children?.map((child) => (

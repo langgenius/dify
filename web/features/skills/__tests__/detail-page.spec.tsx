@@ -1783,9 +1783,9 @@ describe('SkillDetailPage', { timeout: 10000 }, () => {
     expect(screen.getByText(/skill\.skillManagement\.detail\.saveFailed/)).toBeInTheDocument()
   })
 
-  it('shows a save failure for non-conflict autosave errors', async () => {
+  it('stops autosaving unchanged content after a non-conflict save failure', async () => {
     const user = userEvent.setup()
-    mocks.saveDraftFileMutationFn.mockRejectedValueOnce(new Error('save failed'))
+    mocks.saveDraftFileMutationFn.mockRejectedValue(new Error('save failed'))
 
     renderSkillDetailPage()
 
@@ -1803,7 +1803,20 @@ describe('SkillDetailPage', { timeout: 10000 }, () => {
       { timeout: 4000 },
     )
     expect(screen.getByText(/skill\.skillManagement\.detail\.saveFailed/)).toBeInTheDocument()
-  })
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 2200))
+    })
+    expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(1)
+
+    await user.type(getSourceEditor(), '\nRetry after another edit')
+    await waitFor(
+      () => {
+        expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(2)
+      },
+      { timeout: 2500 },
+    )
+  }, 10000)
 
   it('does not expose display-name editing in the SKILL.md metadata editor before publishing', async () => {
     const user = userEvent.setup()
@@ -4131,7 +4144,10 @@ describe('SkillDetailPage', { timeout: 10000 }, () => {
 
     await openRootCreateMenu(user)
     await user.click(await screen.findByText('skill.skillManagement.detail.createFileMenu'))
-    await user.type(await screen.findByPlaceholderText('File name'), 'notes.md{Enter}')
+    await user.type(
+      await screen.findByPlaceholderText('skill.skillManagement.detail.createFile'),
+      'notes.md{Enter}',
+    )
 
     expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(1)
 
@@ -4204,7 +4220,9 @@ describe('SkillDetailPage', { timeout: 10000 }, () => {
     })
     await openRootCreateMenu(user)
     await user.click(await screen.findByText('skill.skillManagement.detail.createFolderMenu'))
-    const folderNameInput = await screen.findByPlaceholderText('Folder name')
+    const folderNameInput = await screen.findByPlaceholderText(
+      'skill.skillManagement.detail.createFolder',
+    )
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(folderNameInput).toHaveFocus()
@@ -4234,7 +4252,9 @@ describe('SkillDetailPage', { timeout: 10000 }, () => {
     })
     await openRootCreateMenu(user)
     await user.click(await screen.findByText('skill.skillManagement.detail.createFileMenu'))
-    const fileNameInput = await screen.findByPlaceholderText('File name')
+    const fileNameInput = await screen.findByPlaceholderText(
+      'skill.skillManagement.detail.createFile',
+    )
 
     await user.type(fileNameInput, 'notes.md')
     await user.click(screen.getByTestId('skill-detail-sidebar-header'))
@@ -4278,7 +4298,9 @@ describe('SkillDetailPage', { timeout: 10000 }, () => {
     })
     await openRootCreateMenu(user)
     await user.click(await screen.findByText('skill.skillManagement.detail.createFileMenu'))
-    const fileNameInput = await screen.findByPlaceholderText('File name')
+    const fileNameInput = await screen.findByPlaceholderText(
+      'skill.skillManagement.detail.createFile',
+    )
 
     await user.type(fileNameInput, 'notes.md')
     await user.click(screen.getByTestId('skill-detail-sidebar-header'))
@@ -4298,7 +4320,9 @@ describe('SkillDetailPage', { timeout: 10000 }, () => {
     })
     await openRootCreateMenu(user)
     await user.click(await screen.findByText('skill.skillManagement.detail.createFileMenu'))
-    const fileNameInput = await screen.findByPlaceholderText('File name')
+    const fileNameInput = await screen.findByPlaceholderText(
+      'skill.skillManagement.detail.createFile',
+    )
 
     await user.type(fileNameInput, 'tool.schema.json')
     await user.click(screen.getByTestId('skill-detail-sidebar-header'))
@@ -4379,7 +4403,9 @@ describe('SkillDetailPage', { timeout: 10000 }, () => {
     })
     await openRootCreateMenu(user)
     await user.click(await screen.findByText('skill.skillManagement.detail.createFileMenu'))
-    const fileNameInput = await screen.findByPlaceholderText('File name')
+    const fileNameInput = await screen.findByPlaceholderText(
+      'skill.skillManagement.detail.createFile',
+    )
 
     await user.click(screen.getByTestId('skill-detail-sidebar-header'))
 
@@ -4414,7 +4440,9 @@ describe('SkillDetailPage', { timeout: 10000 }, () => {
     })
     await openFileTreeActions(user, 'scripts')
     await user.click(await screen.findByText('skill.skillManagement.detail.createFileMenu'))
-    const fileNameInput = await screen.findByPlaceholderText('File name')
+    const fileNameInput = await screen.findByPlaceholderText(
+      'skill.skillManagement.detail.createFile',
+    )
 
     expect(fileNameInput.closest('ul')).toContainElement(getFileTreeItem('scripts/example.ts'))
     await user.type(fileNameInput, 'helper.ts{Enter}')
@@ -4457,7 +4485,9 @@ describe('SkillDetailPage', { timeout: 10000 }, () => {
     })
     await openFileTreeActions(user, 'scripts')
     await user.click(await screen.findByText('skill.skillManagement.detail.createFolderMenu'))
-    const folderNameInput = await screen.findByPlaceholderText('Folder name')
+    const folderNameInput = await screen.findByPlaceholderText(
+      'skill.skillManagement.detail.createFolder',
+    )
 
     expect(folderNameInput.closest('ul')).toContainElement(getFileTreeItem('scripts/example.ts'))
     await user.type(folderNameInput, 'helpers{Enter}')
@@ -4611,7 +4641,10 @@ describe('SkillDetailPage', { timeout: 10000 }, () => {
     })
     await openRootCreateMenu(user)
     await user.click(await screen.findByText('skill.skillManagement.detail.createFileMenu'))
-    await user.type(await screen.findByPlaceholderText('File name'), 'broken.md{Enter}')
+    await user.type(
+      await screen.findByPlaceholderText('skill.skillManagement.detail.createFile'),
+      'broken.md{Enter}',
+    )
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('backend exploded')
@@ -5063,7 +5096,10 @@ describe('SkillDetailPage', { timeout: 10000 }, () => {
       clientY: 520,
     })
     await user.click(await screen.findByText('skill.skillManagement.detail.createFileMenu'))
-    await user.type(await screen.findByPlaceholderText('File name'), 'from-context.md{Enter}')
+    await user.type(
+      await screen.findByPlaceholderText('skill.skillManagement.detail.createFile'),
+      'from-context.md{Enter}',
+    )
 
     await waitFor(() => {
       expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
