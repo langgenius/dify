@@ -162,7 +162,7 @@
   "mcp.server.modal.parametersPlaceholder": "Namen in omejitve parametra",
   "mcp.server.modal.parametersTip": "Dodajte opise za vsak parameter, da pomagate LLM razumeti njihov namen in omejitve.",
   "mcp.server.publishTip": "Aplikacija ni objavljena. Najprej objavite aplikacijo.",
-  "mcp.server.reGen": "Želite ponovno ustvariti URL strežnika?",
+  "mcp.server.reGen": "Želite ponovno ustvariti URL strežnika? Trenutni URL bo takoj prenehal delovati.",
   "mcp.server.title": "Strežnik MCP",
   "mcp.server.url": "URL strežnika",
   "mcp.toolItem.noDescription": "Brez opisa",

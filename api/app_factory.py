@@ -14,9 +14,10 @@ from contexts.wrapper import RecyclableContextVar
 from controllers.console.error import UnauthorizedAndForceLogout
 from core.logging.context import init_request_context
 from dify_app import DifyApp
+from enums import DeploymentEdition
 from extensions.ext_socketio import sio
 from services.enterprise.enterprise_service import EnterpriseService
-from services.feature_service import LicenseStatus
+from services.entities.feature_entities import LicenseStatus
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +113,7 @@ def create_flask_app_with_configs() -> DifyApp:
         init_request_context()
         RecyclableContextVar.increment_thread_recycles()
 
-        if dify_config.ENTERPRISE_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
             surface = _match_license_gated_surface(request.path)
             if surface is not None:
                 try:
@@ -184,6 +185,7 @@ def initialize_extensions(app: DifyApp):
         ext_forward_refs,
         ext_hosting_provider,
         ext_import_modules,
+        ext_key_provider,
         ext_logging,
         ext_login,
         ext_logstore,
@@ -219,6 +221,7 @@ def initialize_extensions(app: DifyApp):
         ext_migrate,
         ext_redis,
         ext_storage,
+        ext_key_provider,  # Initialize after storage, since RSAKeyProvider reads private keys from it
         ext_set_secretkey,
         ext_logstore,  # Initialize logstore after storage, before celery
         ext_celery,

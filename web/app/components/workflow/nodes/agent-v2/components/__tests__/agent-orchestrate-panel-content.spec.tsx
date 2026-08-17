@@ -3,6 +3,7 @@ import type {
   WorkflowAgentComposerResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactNode, Ref } from 'react'
+import type { AgentBuildDraftChangeSummary } from '@/features/agent-v2/agent-detail/configure/components/orchestrate/build-draft-changes-context'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
@@ -13,6 +14,8 @@ const mocks = vi.hoisted(() => ({
   checkoutBuildDraft: vi.fn(),
   completeBuildConversation: undefined as (() => void) | undefined,
   deleteBuildDraft: vi.fn(),
+  downloadAgentSandboxFile: vi.fn(),
+  downloadWorkflowSandboxFile: vi.fn(),
   loadBuildDraft: vi.fn(),
   applyBuildDraft: vi.fn(),
   finalizeBuildChat: vi.fn(),
@@ -79,6 +82,7 @@ vi.mock(
   '@/features/agent-v2/agent-detail/configure/components/orchestrate/build-draft-bar',
   () => ({
     AgentBuildDraftBar: (props: {
+      changeSummary?: AgentBuildDraftChangeSummary
       changesCount: number
       disabled?: boolean
       onApply: () => void
@@ -86,6 +90,9 @@ vi.mock(
     }) => (
       <div role="region" aria-label="build-draft-bar">
         <span>{`changes:${props.changesCount}`}</span>
+        <span>
+          {`summary:${props.changeSummary?.files.map((file) => file.name).join(',') ?? 'none'}`}
+        </span>
         <button type="button" disabled={props.disabled} onClick={props.onApply}>
           apply build draft
         </button>
@@ -328,6 +335,11 @@ vi.mock('@/service/client', async () => {
                   }),
                 },
               },
+              download: {
+                post: {
+                  mutationOptions: () => ({ mutationFn: mocks.downloadAgentSandboxFile }),
+                },
+              },
               upload: {
                 post: {
                   mutationOptions: () => ({ mutationFn: mocks.uploadAgentSandboxFile }),
@@ -369,6 +381,13 @@ vi.mock('@/service/client', async () => {
                               Promise.resolve({
                                 text: 'result',
                               }),
+                          }),
+                        },
+                      },
+                      download: {
+                        post: {
+                          mutationOptions: () => ({
+                            mutationFn: mocks.downloadWorkflowSandboxFile,
                           }),
                         },
                       },
@@ -560,7 +579,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       const user = userEvent.setup()
       renderWorkspace()
 
-      const previewButton = await screen.findByRole('button', {
+      const previewButton = await screen.findByRole('radio', {
         name: 'agentV2.agentDetail.configure.rightPanel.preview',
       })
       expect(previewButton).toBeEnabled()
@@ -579,7 +598,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       expect(mocks.saveBuildDraft).not.toHaveBeenCalled()
 
       await user.click(
-        screen.getByRole('button', {
+        screen.getByRole('radio', {
           name: 'agentV2.agentDetail.configure.rightPanel.build',
         }),
       )
@@ -599,7 +618,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       })
 
       await user.click(
-        await screen.findByRole('button', {
+        await screen.findByRole('radio', {
           name: 'agentV2.agentDetail.configure.rightPanel.preview',
         }),
       )
@@ -631,7 +650,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent('preview:none')
 
       await user.click(
-        screen.getByRole('button', {
+        screen.getByRole('radio', {
           name: 'agentV2.agentDetail.configure.rightPanel.build',
         }),
       )
@@ -651,7 +670,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       )
 
       await user.click(
-        screen.getByRole('button', {
+        screen.getByRole('radio', {
           name: 'agentV2.agentDetail.configure.rightPanel.preview',
         }),
       )
@@ -702,7 +721,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       await waitFor(() => expect(mocks.saveBuildDraft).toHaveBeenCalledTimes(1))
 
       await user.click(
-        screen.getByRole('button', {
+        screen.getByRole('radio', {
           name: 'agentV2.agentDetail.configure.rightPanel.preview',
         }),
       )
@@ -744,7 +763,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       if (!completeBuildConversation) throw new Error('Expected a Build completion callback.')
 
       await user.click(
-        screen.getByRole('button', {
+        screen.getByRole('radio', {
           name: 'agentV2.agentDetail.configure.rightPanel.preview',
         }),
       )
@@ -756,7 +775,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       await screen.findByRole('region', { name: 'preview-chat' })
 
       await user.click(
-        screen.getByRole('button', {
+        screen.getByRole('radio', {
           name: 'agentV2.agentDetail.configure.rightPanel.build',
         }),
       )
@@ -790,7 +809,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       renderWorkspace()
 
       await user.click(
-        await screen.findByRole('button', {
+        await screen.findByRole('radio', {
           name: 'agentV2.agentDetail.configure.rightPanel.preview',
         }),
       )
@@ -813,7 +832,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       renderWorkspace({ deploymentEdition: 'COMMUNITY' })
 
       expect(
-        await screen.findByRole('button', {
+        await screen.findByRole('radio', {
           name: 'agentV2.agentDetail.configure.rightPanel.preview',
         }),
       ).toBeDisabled()
@@ -1073,6 +1092,9 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       })
 
       expect(await screen.findByRole('region', { name: 'build-draft-bar' })).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'build-draft-bar' })).toHaveTextContent(
+        'summary:build_note.md',
+      )
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent(
         'build:inline-debug-conversation-1',
       )

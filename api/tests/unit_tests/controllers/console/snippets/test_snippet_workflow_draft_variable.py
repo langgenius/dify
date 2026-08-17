@@ -255,6 +255,7 @@ def test_variable_patch_returns_persisted_variable_without_committing_when_no_ch
         with app.test_request_context("/", method="PATCH", json={}):
             result = handler(
                 api,
+                module.WorkflowDraftVariableUpdatePayload(),
                 _make_account(),
                 snippet=SimpleNamespace(id="snippet-1", tenant_id="tenant-1"),
                 variable_id="var-1",

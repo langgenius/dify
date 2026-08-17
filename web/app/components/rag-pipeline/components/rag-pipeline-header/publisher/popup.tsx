@@ -25,7 +25,6 @@ import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import { useChecklistBeforePublish } from '@/app/components/workflow/hooks/use-checklist'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
-import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useModalContextSelector } from '@/context/modal-context'
 import {
@@ -33,6 +32,7 @@ import {
   workspacePermissionKeysLoadingAtom,
 } from '@/context/permission-state'
 import { useProviderContextSelector } from '@/context/provider-context'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -74,7 +74,10 @@ export function Popup({
   const pipelineId = useStore((s) => s.pipelineId)
   const dataset = useDatasetDetailContextWithSelector((s) => s.dataset)
   const mutateDatasetRes = useDatasetDetailContextWithSelector((s) => s.mutateDatasetRes)
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const [published, setPublished] = useState(false)

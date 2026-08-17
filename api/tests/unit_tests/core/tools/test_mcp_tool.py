@@ -22,6 +22,7 @@ from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolEntity, ToolIdentity, ToolInvokeMessage, ToolProviderType
 from core.tools.errors import ToolInvokeError
 from core.tools.mcp_tool.tool import MCPTool
+from enums import DeploymentEdition
 
 
 def _build_mcp_tool(*, with_output_schema: bool = True) -> MCPTool:
@@ -262,12 +263,12 @@ def test_invoke_remote_mcp_tool_fails_closed_when_user_id_missing():
     tool = _build_forwarding_tool()
 
     with patch("core.tools.mcp_tool.tool.dify_config") as cfg:
-        cfg.ENTERPRISE_ENABLED = True
+        cfg.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
         with pytest.raises(ToolInvokeError, match="no end-user context"):
             tool.invoke_remote_mcp_tool({}, user_id=None, app_id=None)
 
 
-def test_invoke_skips_forwarding_when_enterprise_disabled():
+def test_invoke_skips_forwarding_outside_enterprise_edition():
     """Non-enterprise deployments treat the DB selector as a no-op: a stale
     `identity_mode="idp_token"` row must NOT raise (fail-closed) AND must
     NOT call the enterprise inner API. The runtime falls through to the
@@ -275,7 +276,7 @@ def test_invoke_skips_forwarding_when_enterprise_disabled():
     tool = _build_forwarding_tool()
 
     with patch("core.tools.mcp_tool.tool.dify_config") as cfg:
-        cfg.ENTERPRISE_ENABLED = False
+        cfg.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
         # The fail-closed branch must NOT fire (no enterprise → no forwarding).
         # The function will still try the legacy DB-load path; we patch that
         # to keep the test unit-scoped.

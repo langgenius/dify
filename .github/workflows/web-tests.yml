@@ -44,6 +44,31 @@ jobs:
           include-hidden-files: true
           retention-days: 1
 
+  browser-test:
+    name: Web Browser Tests
+    runs-on: depot-ubuntu-24.04-4
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./web
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup web environment
+        uses: ./.github/actions/setup-web
+
+      - name: Install Chromium for Browser Mode
+        timeout-minutes: 15
+        run: vp exec playwright install --with-deps --only-shell chromium
+
+      - name: Run browser tests
+        run: vp test run --config vitest.browser.config.ts --silent=passed-only
+
   merge-reports:
     name: Merge Test Reports
     if: ${{ !cancelled() }}
@@ -101,6 +126,11 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Switch Ubuntu mirror
+        run: |
+          sudo sed -i 's|http://us-east-1.ec2.archive.ubuntu.com/ubuntu|http://azure.archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources
+          sudo apt-get update
+
       - name: Setup web environment
         uses: ./.github/actions/setup-web
 
@@ -134,6 +164,11 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      - name: Switch Ubuntu mirror
+        run: |
+          sudo sed -i 's|http://us-east-1.ec2.archive.ubuntu.com/ubuntu|http://azure.archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources
+          sudo apt-get update
 
       - name: Setup web environment
         uses: ./.github/actions/setup-web

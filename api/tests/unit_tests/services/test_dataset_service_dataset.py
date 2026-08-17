@@ -1,5 +1,9 @@
 """Unit tests for DatasetService and dataset-related collaborators."""
 
+from sqlalchemy.orm import Session
+
+from models.dataset import DatasetPermission
+
 from .dataset_service_test_helpers import (
     DatasetNameDuplicateError,
     DatasetPermissionEnum,
@@ -44,6 +48,29 @@ class TestDatasetServiceValidation:
 
         with pytest.raises(ValueError, match="doc_form is different"):
             DatasetService.check_doc_form(dataset, "text_model", session=session)
+
+    @pytest.mark.parametrize("operator_check", [False, True])
+    def test_dataset_permission_checks_ignore_foreign_tenant_binding(
+        self, sqlite_session: Session, operator_check: bool
+    ) -> None:
+        dataset = DatasetServiceUnitDataFactory.create_dataset_mock(
+            dataset_id="dataset-1",
+            tenant_id="tenant-1",
+            permission=DatasetPermissionEnum.PARTIAL_TEAM,
+            maintainer="owner-1",
+        )
+        user = DatasetServiceUnitDataFactory.create_user_mock(
+            user_id="user-1",
+            tenant_id="tenant-1",
+            role=TenantAccountRole.NORMAL,
+        )
+        sqlite_session.add(DatasetPermission(dataset_id=dataset.id, account_id=user.id, tenant_id="tenant-2"))
+
+        with pytest.raises(NoPermissionError):
+            if operator_check:
+                DatasetService.check_dataset_operator_permission(user, dataset, session=sqlite_session)
+            else:
+                DatasetService.check_dataset_permission(dataset, user, sqlite_session)
 
     def test_check_dataset_model_setting_skips_non_high_quality_datasets(self):
         dataset = DatasetServiceUnitDataFactory.create_dataset_mock(indexing_technique="economy")

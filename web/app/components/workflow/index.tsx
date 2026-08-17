@@ -4,6 +4,7 @@ import type { FC } from 'react'
 import type { Viewport } from 'reactflow'
 import type { CursorPosition, OnlineUser } from './collaboration/types/collaboration'
 import type { Shape as HooksStoreShape } from './hooks-store'
+import type { WorkflowHistoryState } from './store/workflow/history-slice'
 import type { WorkflowSliceShape } from './store/workflow/workflow-slice'
 import type { ConversationVariable, Edge, EnvironmentVariable, Node } from './types'
 import type { EventEmitterValue } from '@/context/event-emitter'
@@ -29,6 +30,7 @@ import {
   useCallback,
   useEffect,
   useEffectEvent,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -372,7 +374,10 @@ export const Workflow: FC<WorkflowProps> = memo(
     }, [])
 
     const syncWorkflowDraftOnUnmount = useEffectEvent(() => {
-      if (!workflowStore.getState().isWorkflowDataLoaded) return
+      const { debouncedSyncWorkflowDraft, isWorkflowDataLoaded } = workflowStore.getState()
+      if (!isWorkflowDataLoaded) return
+
+      debouncedSyncWorkflowDraft.cancel?.()
 
       if (isCollaborationEnabled && collaborationManager.canUseLocalDraftFallback()) {
         syncWorkflowDraftWhenPageClose()
@@ -848,20 +853,23 @@ const WorkflowHistoryStoreInitializer = ({
   children,
 }: WorkflowWithDefaultContextProps) => {
   const workflowStore = useWorkflowStore()
-  const initializedRef = useRef(false)
+  const initializedWorkflowHistory = useStore((state) => state.initializedWorkflowHistory)
+  const [initialWorkflowHistory] = useState<WorkflowHistoryState>(() => ({
+    nodes,
+    edges,
+    workflowHistoryEvent: undefined,
+    workflowHistoryEventMeta: undefined,
+  }))
 
-  if (!initializedRef.current) {
-    workflowStore.temporal.getState().pause()
-    workflowStore.getState().setWorkflowHistory({
-      nodes,
-      edges,
-      workflowHistoryEvent: undefined,
-      workflowHistoryEventMeta: undefined,
-    })
-    workflowStore.temporal.getState().clear()
-    workflowStore.temporal.getState().resume()
-    initializedRef.current = true
-  }
+  useLayoutEffect(() => {
+    const temporalStore = workflowStore.temporal.getState()
+    temporalStore.pause()
+    workflowStore.getState().initializeWorkflowHistory(initialWorkflowHistory)
+    temporalStore.clear()
+    temporalStore.resume()
+  }, [initialWorkflowHistory, workflowStore])
+
+  if (initializedWorkflowHistory !== initialWorkflowHistory) return null
 
   return children
 }

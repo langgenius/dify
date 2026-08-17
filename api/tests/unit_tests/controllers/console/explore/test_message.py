@@ -160,7 +160,9 @@ class TestMessageFeedbackApi:
                 "create_feedback",
             ),
         ):
-            result = method(MagicMock(), installed_app, "mid")
+            result = method(
+                module.MessageFeedbackPayload.model_validate({"rating": "like"}), MagicMock(), installed_app, "mid"
+            )
 
         assert result["result"] == "success"
 
@@ -179,7 +181,7 @@ class TestMessageFeedbackApi:
             ),
         ):
             with pytest.raises(NotFound):
-                method(MagicMock(), installed_app, "mid")
+                method(module.MessageFeedbackPayload.model_validate({}), MagicMock(), installed_app, "mid")
 
 
 class TestMessageMoreLikeThisApi:

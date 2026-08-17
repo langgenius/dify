@@ -487,6 +487,11 @@ describe('AgentPromptEditor', () => {
       expect(
         screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i }),
       ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', {
+          name: /agentDetail\.configure\.knowledgeRetrieval\.label/i,
+        }),
+      ).not.toBeInTheDocument()
     })
 
     it.each(['Review/', 'Use https:/', 'path/to/'])(

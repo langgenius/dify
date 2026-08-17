@@ -1,6 +1,7 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import type { IconButtonProps } from '@langgenius/dify-ui/icon-button'
+import type { ReactElement } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -12,8 +13,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -36,22 +38,25 @@ import {
   stepByStepTourStateUpdatingAtom,
 } from '@/app/components/step-by-step-tour/state'
 import { useSetStepByStepTourShellMode } from '@/app/components/step-by-step-tour/storage'
+import { getLangGeniusVersionInfo } from '@/context/app-context-normalizers'
 import { useDocLink } from '@/context/i18n'
-import { langGeniusVersionInfoAtom } from '@/context/version-state'
 import {
   currentWorkspaceIdAtom,
   currentWorkspaceLoadingAtom,
   isCurrentWorkspaceOwnerAtom,
 } from '@/context/workspace-state'
 import { env } from '@/env'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { consoleQuery } from '@/service/client'
 import styles from './help-menu.module.css'
 import AccountAboutDialog from './help-menu/account-about-dialog'
 import SupportMenu from './support-menu'
 
 type HelpMenuProps = {
-  triggerIcon?: ReactNode
+  triggerIcon?: ReactElement
   triggerClassName?: string
+  triggerSize?: IconButtonProps['size']
 }
 
 const defaultTriggerIcon = (
@@ -82,12 +87,24 @@ const MenuSwitchIndicator = ({ checked }: { checked: boolean }) => (
   />
 )
 
-const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMenuProps) => {
+const HelpMenu = ({ triggerIcon, triggerClassName, triggerSize }: HelpMenuProps) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const { data: profileMeta } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.meta,
+  })
+  const { data: versionData } = useQuery(
+    consoleQuery.version.get.queryOptions({
+      input: profileMeta.currentVersion
+        ? { query: { current_version: profileMeta.currentVersion } }
+        : skipToken,
+      enabled: !systemFeatures.branding.enabled,
+    }),
+  )
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
-  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
+  const langGeniusVersionInfo = getLangGeniusVersionInfo({ meta: profileMeta, versionData })
   const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
   const learnDifyHidden = useLearnDifyHiddenValue()
@@ -100,6 +117,7 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
   const disableStepByStepTour = useSetAtom(disableStepByStepTourForCurrentWorkspaceAtom)
   const setStepByStepTourShellMode = useSetStepByStepTourShellMode()
   const [aboutOpen, setAboutOpen] = useState(false)
+  const usesDefaultTrigger = !triggerIcon
   const shouldShowLearnDifySwitch = systemFeatures.enable_learn_app
   const shouldShowStepByStepTourSwitch = systemFeatures.enable_step_by_step_tour
   const canToggleStepByStepTour =
@@ -134,17 +152,27 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
     <>
       <DropdownMenu onOpenChange={handleOpenChange}>
         <DropdownMenuTrigger
-          aria-label={t(($) => $['mainNav.help.openMenu'], { ns: 'common' })}
           data-learn-dify-help-target
-          className={cn(
-            'inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full border border-components-card-border bg-components-card-bg p-0 text-text-tertiary shadow-xs transition-colors hover:bg-components-card-bg-alt hover:text-saas-dify-blue-inverted focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
-            triggerClassName,
-            'data-popup-open:bg-components-card-bg-alt data-popup-open:text-saas-dify-blue-inverted',
-            skipRecoveryVisible && styles.stepByStepTourRecoveryPulse,
-          )}
-        >
-          {triggerIcon}
-        </DropdownMenuTrigger>
+          render={
+            <IconButton
+              size={triggerSize ?? 'lg'}
+              aria-label={t(($) => $['mainNav.help.openMenu'], { ns: 'common' })}
+              className={cn(
+                usesDefaultTrigger && [
+                  'rounded-full border border-components-card-border bg-components-card-bg text-text-tertiary shadow-xs transition-colors hover:bg-components-card-bg-alt hover:text-saas-dify-blue-inverted',
+                  !triggerSize && 'size-7 p-0',
+                  'data-popup-open:bg-components-card-bg-alt data-popup-open:text-saas-dify-blue-inverted',
+                ],
+                !usesDefaultTrigger &&
+                  'data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary',
+                triggerClassName,
+                skipRecoveryVisible && styles.stepByStepTourRecoveryPulse,
+              )}
+            >
+              {triggerIcon ?? defaultTriggerIcon}
+            </IconButton>
+          }
+        />
         <DropdownMenuContent
           placement="top-end"
           sideOffset={8}

@@ -9,7 +9,6 @@ from __future__ import annotations
 import json
 from collections.abc import Sequence
 from datetime import UTC, datetime
-from types import SimpleNamespace
 from typing import Any, Protocol
 from unittest.mock import MagicMock, patch
 
@@ -17,13 +16,26 @@ import pytest
 from sqlalchemy.orm import Session
 
 from core.workflow.file_reference import build_file_reference
+from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingBundle
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
+from models.agent import (
+    Agent,
+    AgentConfigSnapshot,
+    AgentScope,
+    AgentSource,
+    AgentStatus,
+    WorkflowAgentBindingType,
+    WorkflowAgentNodeBinding,
+)
 from models.agent_config_entities import (
+    AgentSoulConfig,
     DeclaredArrayItem,
     DeclaredOutputConfig,
     DeclaredOutputType,
+    WorkflowNodeJobConfig,
 )
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.model import App
 from models.workflow import (
     WorkflowNodeExecutionModel,
     WorkflowNodeExecutionTriggeredFrom,
@@ -43,8 +55,8 @@ from services.workflow.node_output_inspector_service import (
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def _app_model(*, tenant_id: str = "tenant-1", app_id: str = "app-1"):
-    return SimpleNamespace(tenant_id=tenant_id, id=app_id)
+def _app_model(*, tenant_id: str = "tenant-1", app_id: str = "app-1") -> App:
+    return App(id=app_id, tenant_id=tenant_id)
 
 
 def _workflow_run(
@@ -168,16 +180,35 @@ def session_for(sqlite_session: Session) -> SessionFor:
 def _stub_binding_resolver(*, declared_outputs: list[DeclaredOutputConfig]):
     """Build a fake ``WorkflowAgentBindingResolver`` whose ``.resolve`` returns
     a binding with ``node_job_config_dict.declared_outputs``."""
-    binding = SimpleNamespace(
+    binding = WorkflowAgentNodeBinding(
         id="binding-1",
-        node_job_config_dict={
-            "workflow_prompt": "stub",
-            "declared_outputs": [o.model_dump() for o in declared_outputs],
-        },
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        workflow_version="draft",
+        node_id="agent-node-1",
+        binding_type=WorkflowAgentBindingType.INLINE_AGENT,
+        agent_id="agent-1",
+        current_snapshot_id="snapshot-1",
+        node_job_config=WorkflowNodeJobConfig(workflow_prompt="stub", declared_outputs=declared_outputs),
     )
-    bundle = SimpleNamespace(binding=binding, agent=None, snapshot=None)
+    agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        name="Agent",
+        scope=AgentScope.WORKFLOW_ONLY,
+        source=AgentSource.WORKFLOW,
+        status=AgentStatus.ACTIVE,
+    )
+    snapshot = AgentConfigSnapshot(
+        id="snapshot-1",
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        version=1,
+        config_snapshot=AgentSoulConfig(),
+    )
     resolver = MagicMock()
-    resolver.resolve.return_value = bundle
+    resolver.resolve.return_value = WorkflowAgentBindingBundle(binding=binding, agent=agent, snapshot=snapshot)
     return resolver
 
 

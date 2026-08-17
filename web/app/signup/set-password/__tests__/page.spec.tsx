@@ -1,12 +1,13 @@
 import type { ReactElement } from 'react'
-import type { MockedFunction } from 'vitest'
+import type { MockedFunction } from 'vite-plus/test'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import Cookies from 'js-cookie'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useLocale } from '@/context/i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { useMailRegister } from '@/service/use-common'
+import { seedSystemFeatures } from '@/test/console/query-data'
 import { getBrowserTimezone } from '@/utils/timezone'
 import ChangePasswordForm from '../page'
 
@@ -68,6 +69,7 @@ const renderWithQueryClient = (ui: ReactElement) => {
       mutations: { retry: false },
     },
   })
+  seedSystemFeatures(queryClient)
   return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
 }
 
@@ -88,6 +90,12 @@ describe('Signup Set Password Page', () => {
     } as unknown as ReturnType<typeof useMailRegister>)
     mockGetBrowserTimezone.mockReturnValue('Asia/Shanghai')
     mockRegister.mockResolvedValue({ result: 'fail', data: {} })
+  })
+
+  it('exposes the page title as the main heading', () => {
+    renderWithQueryClient(<ChangePasswordForm />)
+
+    expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
   })
 
   describe('Registration payload', () => {

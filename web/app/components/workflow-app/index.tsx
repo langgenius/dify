@@ -2,6 +2,7 @@
 
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useEffect, useMemo } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -12,9 +13,9 @@ import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
-import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/workspace-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useSearchParams } from '@/next/navigation'
 import { fetchRunDetail } from '@/service/log'
 import { useAppTriggers } from '@/service/use-tools'
@@ -31,7 +32,10 @@ const WorkflowAppWithAdditionalContext = () => {
   const workflowStore = useWorkflowStore()
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
   // Initialize trigger status at application level
@@ -59,22 +63,6 @@ const WorkflowAppWithAdditionalContext = () => {
       setTriggerStatuses(buildTriggerStatusMap(triggersResponse.data))
     }
   }, [triggersResponse?.data, setTriggerStatuses])
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      // Reset the loaded flag when component unmounts
-      workflowStore.setState({ isWorkflowDataLoaded: false })
-
-      // Cancel any pending debounced sync operations
-      const { debouncedSyncWorkflowDraft } = workflowStore.getState()
-      // The debounced function from lodash has a cancel method
-      const cancellableSyncWorkflowDraft = debouncedSyncWorkflowDraft as
-        | { cancel?: () => void }
-        | undefined
-      cancellableSyncWorkflowDraft?.cancel?.()
-    }
-  }, [workflowStore])
 
   const nodesData = useMemo(() => {
     if (data) {

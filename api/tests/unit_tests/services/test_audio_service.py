@@ -224,6 +224,10 @@ def factory():
 class TestAudioServiceASR:
     """Test speech-to-text (ASR) operations."""
 
+    @pytest.fixture(autouse=True)
+    def _bind_sqlite_session(self, sqlite_session: Session) -> None:
+        self.session = sqlite_session
+
     @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
     def test_transcript_asr_success_chat_mode(self, mock_model_manager_class, factory: AudioServiceTestDataFactory):
         """Test successful ASR transcription in CHAT mode."""
@@ -242,12 +246,32 @@ class TestAudioServiceASR:
         mock_model_manager.get_default_model_instance.return_value = mock_model_instance
 
         # Act
-        result = AudioService.transcript_asr(app_model=app, file=file, session=MagicMock(), end_user="user-123")
+        result = AudioService.transcript_asr(app_model=app, file=file, session=self.session, end_user="user-123")
 
         # Assert
         assert result == {"text": "Transcribed text"}
         mock_model_instance.invoke_speech2text.assert_called_once()
         mock_model_manager_class.assert_called_once_with(tenant_id=app.tenant_id, user_id="user-123")
+
+    @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
+    def test_transcript_asr_accepts_x_m4a_mimetype(
+        self, mock_model_manager_class, factory: AudioServiceTestDataFactory
+    ):
+        """Test that the x-m4a MIME alias follows the normal m4a transcription flow."""
+        # Arrange
+        app_model_config = factory.create_app_model_config_mock(speech_to_text_dict={"enabled": True})
+        app = factory.create_app_mock(mode=AppMode.CHAT, app_model_config=app_model_config)
+        file = factory.create_file_storage_mock(filename="audio.m4a", mimetype="audio/x-m4a")
+        mock_model_instance = MagicMock()
+        mock_model_instance.invoke_speech2text.return_value = "M4A transcript"
+        mock_model_manager_class.return_value.get_default_model_instance.return_value = mock_model_instance
+
+        # Act
+        result = AudioService.transcript_asr(app_model=app, file=file, session=self.session)
+
+        # Assert
+        assert result == {"text": "M4A transcript"}
+        mock_model_instance.invoke_speech2text.assert_called_once()
 
     @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
     def test_transcript_asr_success_advanced_chat_mode(
@@ -269,7 +293,7 @@ class TestAudioServiceASR:
         mock_model_manager.get_default_model_instance.return_value = mock_model_instance
 
         # Act
-        result = AudioService.transcript_asr(app_model=app, file=file, session=MagicMock())
+        result = AudioService.transcript_asr(app_model=app, file=file, session=self.session)
 
         # Assert
         assert result == {"text": "Workflow transcribed text"}
@@ -290,7 +314,7 @@ class TestAudioServiceASR:
         mock_model_instance.invoke_speech2text.return_value = "Published Agent transcript"
         mock_model_manager_class.return_value.get_default_model_instance.return_value = mock_model_instance
 
-        result = AudioService.transcript_asr(app_model=app, file=file, session=MagicMock(), end_user="end-user-1")
+        result = AudioService.transcript_asr(app_model=app, file=file, session=self.session, end_user="end-user-1")
 
         assert result == {"text": "Published Agent transcript"}
         mock_roster_service_class.return_value.get_published_agent_soul_for_app.assert_called_once_with(
@@ -314,7 +338,7 @@ class TestAudioServiceASR:
         mock_model_instance.invoke_speech2text.return_value = "Legacy Agent transcript"
         mock_model_manager_class.return_value.get_default_model_instance.return_value = mock_model_instance
 
-        result = AudioService.transcript_asr(app_model=app, file=file, session=MagicMock())
+        result = AudioService.transcript_asr(app_model=app, file=file, session=self.session)
 
         assert result == {"text": "Legacy Agent transcript"}
 
@@ -333,7 +357,7 @@ class TestAudioServiceASR:
             app_model=app,
             agent_soul=agent_soul,
             file=file,
-            session=MagicMock(),
+            session=self.session,
             end_user="account-1",
         )
 
@@ -354,7 +378,7 @@ class TestAudioServiceASR:
         file = factory.create_file_storage_mock()
 
         with pytest.raises(SpeechToTextDisabledServiceError):
-            AudioService.transcript_agent_asr(app_model=app, agent_soul=agent_soul, file=file, session=MagicMock())
+            AudioService.transcript_agent_asr(app_model=app, agent_soul=agent_soul, file=file, session=self.session)
 
     @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
     def test_transcript_agent_asr_preserves_legacy_feature_fallback(
@@ -372,7 +396,7 @@ class TestAudioServiceASR:
             app_model=app,
             agent_soul=AgentSoulConfig(),
             file=file,
-            session=MagicMock(),
+            session=self.session,
         )
 
         assert result == {"text": "Legacy feature transcript"}
@@ -385,7 +409,7 @@ class TestAudioServiceASR:
         agent_soul = AgentSoulConfig.model_validate({"app_features": {"speech_to_text": {"enabled": False}}})
 
         with pytest.raises(SpeechToTextDisabledServiceError):
-            AudioService.transcript_agent_asr(app_model=app, agent_soul=agent_soul, file=file, session=MagicMock())
+            AudioService.transcript_agent_asr(app_model=app, agent_soul=agent_soul, file=file, session=self.session)
 
     def test_transcript_asr_raises_error_when_feature_disabled_chat_mode(self, factory: AudioServiceTestDataFactory):
         """Test that ASR raises error when speech-to-text is disabled in CHAT mode."""
@@ -399,7 +423,7 @@ class TestAudioServiceASR:
 
         # Act & Assert
         with pytest.raises(SpeechToTextDisabledServiceError):
-            AudioService.transcript_asr(app_model=app, file=file, session=MagicMock())
+            AudioService.transcript_asr(app_model=app, file=file, session=self.session)
 
     def test_transcript_asr_raises_error_when_feature_disabled_workflow_mode(
         self, factory: AudioServiceTestDataFactory
@@ -415,7 +439,7 @@ class TestAudioServiceASR:
 
         # Act & Assert
         with pytest.raises(SpeechToTextDisabledServiceError):
-            AudioService.transcript_asr(app_model=app, file=file, session=MagicMock())
+            AudioService.transcript_asr(app_model=app, file=file, session=self.session)
 
     def test_transcript_asr_raises_error_when_workflow_missing(self, factory: AudioServiceTestDataFactory):
         """Test that ASR raises error when workflow is missing in WORKFLOW mode."""
@@ -428,7 +452,7 @@ class TestAudioServiceASR:
 
         # Act & Assert
         with pytest.raises(SpeechToTextDisabledServiceError):
-            AudioService.transcript_asr(app_model=app, file=file, session=MagicMock())
+            AudioService.transcript_asr(app_model=app, file=file, session=self.session)
 
     def test_transcript_asr_raises_error_when_no_file_uploaded(self, factory: AudioServiceTestDataFactory):
         """Test that ASR raises error when no file is uploaded."""
@@ -441,7 +465,7 @@ class TestAudioServiceASR:
 
         # Act & Assert
         with pytest.raises(NoAudioUploadedServiceError):
-            AudioService.transcript_asr(app_model=app, file=None, session=MagicMock())
+            AudioService.transcript_asr(app_model=app, file=None, session=self.session)
 
     def test_transcript_asr_raises_error_for_unsupported_audio_type(self, factory: AudioServiceTestDataFactory):
         """Test that ASR raises error for unsupported audio file types."""
@@ -455,7 +479,7 @@ class TestAudioServiceASR:
 
         # Act & Assert
         with pytest.raises(UnsupportedAudioTypeServiceError):
-            AudioService.transcript_asr(app_model=app, file=file, session=MagicMock())
+            AudioService.transcript_asr(app_model=app, file=file, session=self.session)
 
     def test_transcript_asr_raises_error_for_large_file(self, factory: AudioServiceTestDataFactory):
         """Test that ASR raises error when file exceeds size limit (30MB)."""
@@ -471,7 +495,7 @@ class TestAudioServiceASR:
 
         # Act & Assert
         with pytest.raises(AudioTooLargeServiceError, match="Audio size larger than 30 mb"):
-            AudioService.transcript_asr(app_model=app, file=file, session=MagicMock())
+            AudioService.transcript_asr(app_model=app, file=file, session=self.session)
 
     @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
     def test_transcript_asr_raises_error_when_no_model_instance(
@@ -492,10 +516,9 @@ class TestAudioServiceASR:
 
         # Act & Assert
         with pytest.raises(ProviderNotSupportSpeechToTextServiceError):
-            AudioService.transcript_asr(app_model=app, file=file, session=MagicMock())
+            AudioService.transcript_asr(app_model=app, file=file, session=self.session)
 
 
-@pytest.mark.parametrize("sqlite_session", [(Message,)], indirect=True)
 class TestAudioServiceTTS:
     """Test text-to-speech (TTS) operations."""
 

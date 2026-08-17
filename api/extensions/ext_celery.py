@@ -10,6 +10,7 @@ from typing_extensions import TypedDict
 
 from configs import dify_config
 from dify_app import DifyApp
+from enums import DeploymentEdition
 from extensions.redis_names import normalize_redis_key_prefix
 from extensions.workflow_warm_shutdown import setup_workflow_warm_shutdown_handler
 
@@ -180,6 +181,12 @@ def init_app(app: DifyApp) -> Celery:
 
     # if you add a new task, please add the switch to CeleryScheduleTasksConfig
     beat_schedule: dict[str, CeleryBeatScheduleEntry] = {}
+    if dify_config.ENABLE_CONVERSATION_CLEANUP_TASK:
+        imports.append("tasks.delete_conversation_task")
+        beat_schedule["conversation_cleanup_sweeper"] = {
+            "task": "tasks.delete_conversation_task.sweep_deleted_conversations",
+            "schedule": timedelta(minutes=dify_config.CONVERSATION_CLEANUP_TASK_INTERVAL),
+        }
     if dify_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK:
         imports.append("schedule.clean_embedding_cache_task")
         beat_schedule["clean_embedding_cache_task"] = {
@@ -276,8 +283,7 @@ def init_app(app: DifyApp) -> Celery:
         }
 
     if (
-        dify_config.EDITION == "SELF_HOSTED"
-        and not dify_config.ENTERPRISE_ENABLED
+        dify_config.DEPLOYMENT_EDITION == DeploymentEdition.COMMUNITY
         and not dify_config.DISABLE_TELEMETRY
         and not dify_config.DO_NOT_TRACK
         and not dify_config.CI
@@ -288,7 +294,7 @@ def init_app(app: DifyApp) -> Celery:
             "schedule": timedelta(minutes=dify_config.TELEMETRY_HEARTBEAT_INTERVAL_MINUTES),
         }
 
-    if dify_config.ENTERPRISE_ENABLED and dify_config.ENTERPRISE_TELEMETRY_ENABLED:
+    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE and dify_config.ENTERPRISE_TELEMETRY_ENABLED:
         imports.append("tasks.enterprise_telemetry_task")
     celery_app.conf.update(beat_schedule=beat_schedule, imports=imports)
 

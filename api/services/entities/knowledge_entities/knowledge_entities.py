@@ -6,6 +6,7 @@ from core.rag.entities import Rule
 from core.rag.entities.metadata_entities import MetadataFilteringCondition
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from libs.helper import UUIDStr
 from models.enums import ProcessRuleMode
 
 DocForm = Annotated[
@@ -283,7 +284,7 @@ class MetadataUpdateArgs(BaseModel):
 
 
 class MetadataDetail(BaseModel):
-    id: str = Field(description="Metadata field ID.")
+    id: UUIDStr = Field(description="Metadata field ID.")
     name: str = Field(description="Metadata field name.")
     value: str | int | float | None = Field(
         default=None,
@@ -292,7 +293,7 @@ class MetadataDetail(BaseModel):
 
 
 class DocumentMetadataOperation(BaseModel):
-    document_id: str = Field(description="Document ID whose metadata should be updated.")
+    document_id: UUIDStr = Field(description="Document ID whose metadata should be updated.")
     metadata_list: list[MetadataDetail] = Field(description="Metadata fields to update.")
     partial_update: bool = Field(
         default=False,
