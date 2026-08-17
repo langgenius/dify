@@ -3,7 +3,7 @@ import { waitFor } from '@testing-library/react'
 import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { useCollaboration } from '../use-collaboration'
 
-type HookReactFlowStore = NonNullable<Parameters<typeof useCollaboration>[1]>
+type HookReactFlowStore = NonNullable<Parameters<typeof useCollaboration>[2]>
 type HookReactFlowInstance = Parameters<
   ReturnType<typeof useCollaboration>['startCursorTracking']
 >[1]
@@ -105,7 +105,7 @@ describe('useCollaboration', () => {
       getState: vi.fn(),
     }
     const { result, unmount } = renderHookWithConsoleQuery(
-      () => useCollaboration('app-1', reactFlowStore),
+      () => useCollaboration('app-1', true, reactFlowStore),
       {
         systemFeatures: { enable_collaboration_mode: isCollaborationEnabled },
       },
@@ -157,8 +157,22 @@ describe('useCollaboration', () => {
 
   it('does not connect or start cursor tracking when collaboration is disabled', async () => {
     isCollaborationEnabled = false
-    const { result } = renderHookWithConsoleQuery(() => useCollaboration('app-1'), {
+    const { result } = renderHookWithConsoleQuery(() => useCollaboration('app-1', true), {
       systemFeatures: { enable_collaboration_mode: isCollaborationEnabled },
+    })
+
+    await waitFor(() => {
+      expect(mockConnect).not.toHaveBeenCalled()
+      expect(result.current.isEnabled).toBe(false)
+    })
+
+    result.current.startCursorTracking({ current: document.createElement('div') })
+    expect(mockStartTracking).not.toHaveBeenCalled()
+  })
+
+  it('does not connect or start cursor tracking without edit access', async () => {
+    const { result } = renderHookWithConsoleQuery(() => useCollaboration('app-1', false), {
+      systemFeatures: { enable_collaboration_mode: true },
     })
 
     await waitFor(() => {

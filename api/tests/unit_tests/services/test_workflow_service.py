@@ -219,6 +219,26 @@ class TestWorkflowService:
         """Create a WorkflowService whose repositories use the test SQLite engine."""
         return WorkflowService(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
 
+    def test_get_tenant_app_maintainers_scopes_requested_apps(
+        self, workflow_service: WorkflowService, sqlite_session: Session
+    ) -> None:
+        sqlite_session.add_all(
+            [
+                TestWorkflowAssociatedDataFactory.create_app(
+                    app_id="app-1", tenant_id="tenant-1", maintainer="owner-1"
+                ),
+                TestWorkflowAssociatedDataFactory.create_app(app_id="app-2", tenant_id="tenant-1"),
+                TestWorkflowAssociatedDataFactory.create_app(
+                    app_id="app-3", tenant_id="tenant-2", maintainer="owner-2"
+                ),
+            ]
+        )
+        sqlite_session.commit()
+
+        assert workflow_service.get_tenant_app_maintainers(
+            ["app-1", "app-2", "app-3", "missing"], "tenant-1", session=sqlite_session
+        ) == {"app-1": "owner-1", "app-2": None}
+
     # ==================== Workflow Existence Tests ====================
     # These tests verify the service can check if a draft workflow exists
 

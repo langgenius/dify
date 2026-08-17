@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import inspect
 import json
+from contextlib import nullcontext
 from datetime import datetime
 from types import SimpleNamespace
 from typing import cast
@@ -752,12 +753,19 @@ def test_workflow_online_users_filters_inaccessible_workflow(app: Flask, monkeyp
     app_id_2 = "22222222-2222-2222-2222-222222222222"
     signed_avatar_url = "https://files.example.com/signed/avatar-1"
     sign_avatar = Mock(return_value=signed_avatar_url)
+    get_tenant_app_maintainers = Mock(return_value={app_id_1: "owner-1", app_id_2: "owner-2"})
     monkeypatch.setattr(
         workflow_module,
         "WorkflowService",
-        lambda: SimpleNamespace(get_accessible_app_ids=lambda app_ids, tenant_id, session: {app_id_1}),
+        lambda: SimpleNamespace(get_tenant_app_maintainers=get_tenant_app_maintainers),
     )
+    access_filter = SimpleNamespace(is_app_accessible=lambda app_id, _maintainer, _account_id: app_id == app_id_1)
+    resolve_access = Mock(return_value=access_filter)
+    monkeypatch.setattr(workflow_module, "resolve_app_access_filter", resolve_access)
+    monkeypatch.setattr(workflow_module.dify_config, "RBAC_ENABLED", True)
     monkeypatch.setattr(workflow_module.file_helpers, "get_signed_file_url", sign_avatar)
+    short_session = Mock()
+    monkeypatch.setattr(workflow_module.session_factory, "create_session", lambda: nullcontext(short_session))
 
     redis_pipeline = Mock()
     redis_pipeline.execute.return_value = [
@@ -805,7 +813,7 @@ def test_workflow_online_users_filters_inaccessible_workflow(app: Flask, monkeyp
         method="POST",
         json={"app_ids": [app_id_1, app_id_2]},
     ):
-        response = handler(api, "tenant-1")
+        response = handler(api, "tenant-1", SimpleNamespace(id="account-1"))
 
     assert response == {
         "data": [
@@ -830,6 +838,11 @@ def test_workflow_online_users_filters_inaccessible_workflow(app: Flask, monkeyp
     redis_pipeline.hgetall.assert_called_once_with(f"{workflow_module.WORKFLOW_ONLINE_USERS_PREFIX}{app_id_1}")
     redis_pipeline.execute.assert_called_once_with()
     sign_avatar.assert_called_once_with("avatar-file-id")
+    get_tenant_app_maintainers.assert_called_once()
+    resolve_access.assert_called_once()
+    assert get_tenant_app_maintainers.call_args.args == ([app_id_1, app_id_2], "tenant-1")
+    assert resolve_access.call_args.args == ("tenant-1", "account-1")
+    assert get_tenant_app_maintainers.call_args.kwargs["session"] is resolve_access.call_args.kwargs["session"]
 
 
 def test_workflow_online_users_batches_redis_reads(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -837,8 +850,10 @@ def test_workflow_online_users_batches_redis_reads(app: Flask, monkeypatch: pyte
     monkeypatch.setattr(
         workflow_module,
         "WorkflowService",
-        lambda: SimpleNamespace(get_accessible_app_ids=lambda app_ids, tenant_id, session: set(app_ids)),
+        lambda: SimpleNamespace(get_tenant_app_maintainers=lambda app_ids, tenant_id, session: dict.fromkeys(app_ids)),
     )
+    monkeypatch.setattr(workflow_module.dify_config, "RBAC_ENABLED", False)
+    monkeypatch.setattr(workflow_module.session_factory, "create_session", lambda: nullcontext(Mock()))
 
     first_pipeline = Mock()
     first_pipeline.execute.return_value = [{} for _ in range(workflow_module.WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE)]
@@ -855,7 +870,7 @@ def test_workflow_online_users_batches_redis_reads(app: Flask, monkeypatch: pyte
         method="POST",
         json={"app_ids": app_ids},
     ):
-        response = handler(api, "tenant-1")
+        response = handler(api, "tenant-1", SimpleNamespace(id="account-1"))
 
     assert len(response["data"]) == len(app_ids)
     assert redis_pipeline_factory.call_count == 2
@@ -864,11 +879,11 @@ def test_workflow_online_users_batches_redis_reads(app: Flask, monkeypatch: pyte
 
 
 def test_workflow_online_users_rejects_excessive_workflow_ids(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    accessible_app_ids = Mock(return_value=set())
+    get_tenant_app_maintainers = Mock(return_value={})
     monkeypatch.setattr(
         workflow_module,
         "WorkflowService",
-        lambda: SimpleNamespace(get_accessible_app_ids=accessible_app_ids),
+        lambda: SimpleNamespace(get_tenant_app_maintainers=get_tenant_app_maintainers),
     )
 
     excessive_ids = [f"wf-{index}" for index in range(workflow_module.MAX_WORKFLOW_ONLINE_USERS_REQUEST_IDS + 1)]
@@ -882,9 +897,9 @@ def test_workflow_online_users_rejects_excessive_workflow_ids(app: Flask, monkey
         json={"app_ids": excessive_ids},
     ):
         with pytest.raises(HTTPException) as exc:
-            handler(api, "tenant-1")
+            handler(api, "tenant-1", SimpleNamespace(id="account-1"))
 
     assert exc.value.code == 400
     assert exc.value.description is not None
     assert "Maximum" in exc.value.description
-    accessible_app_ids.assert_not_called()
+    get_tenant_app_maintainers.assert_not_called()
