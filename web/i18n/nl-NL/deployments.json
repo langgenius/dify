@@ -22,7 +22,6 @@
   "deployTab.moreActions": "Meer acties",
   "deployTab.redeploy": "Opnieuw implementeren",
   "deployTab.undeploy": "Implementatie ongedaan maken",
-  "deployTab.undeployConfirmWarning": "Na bevestiging krijgt deze omgeving de status 'implementatie ongedaan maken' en worden acties tijdelijk uitgeschakeld.",
   "health.ENVIRONMENT_STATUS_FAILED": "Niet beschikbaar",
   "list.emptyTitle": "Nog geen implementaties",
   "overview.chip.latest": "nieuwste",

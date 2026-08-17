@@ -666,8 +666,6 @@ vi.mock('react-i18next', async () => {
     'deployments.studio.undeployConfirmDesc':
       "The app will stop running in this environment, and all of its access points will become unavailable. The deployed version won't be deleted.",
     'deployments.studio.undeployConfirmTitle': 'Undeploy {{versionName}} from {{envName}}',
-    'deployments.deployTab.undeployConfirmWarning':
-      'After confirmation, this environment will enter the undeploying state and actions will be temporarily disabled.',
     'deployments.status.RUNTIME_INSTANCE_STATUS_READY': 'Running',
     'deployments.studio.activity.deploySucceeded': 'Deploy {{target}} succeeded',
     'deployments.studio.activity.meta': '{{name}} · {{time}}',
@@ -1771,11 +1769,6 @@ describe('AppDeploy', () => {
     expect(
       within(dialog).getByText(
         "The app will stop running in this environment, and all of its access points will become unavailable. The deployed version won't be deleted.",
-      ),
-    ).toBeInTheDocument()
-    expect(
-      within(dialog).getByText(
-        'After confirmation, this environment will enter the undeploying state and actions will be temporarily disabled.',
       ),
     ).toBeInTheDocument()
     expect(onUndeploy).not.toHaveBeenCalled()
