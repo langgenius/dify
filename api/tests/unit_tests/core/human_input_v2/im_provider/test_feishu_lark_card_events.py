@@ -41,8 +41,8 @@ _RECEIVED_AT = datetime(2026, 8, 12, 10, 0, 0)
 _DIFY_ACTION_MARKER = "__dify.human_input.action"
 _WEBHOOK_VERIFICATION_TOKEN = "verification_test_only"
 _WEBHOOK_ENCRYPT_KEY = "encrypt_key_test_only"
-_LEGACY_WEBHOOK_PAYLOAD_KEY = "__dify_feishu_lark.webhook"
-_LEGACY_STREAM_PAYLOAD_KEY = "__dify_feishu_lark.stream"
+_WEBHOOK_PROVENANCE_PAYLOAD_KEY = "__dify_feishu_lark.webhook"
+_STREAM_PROVENANCE_PAYLOAD_KEY = "__dify_feishu_lark.stream"
 
 
 class _WebhookGateway:
@@ -149,7 +149,7 @@ def _replay_sanitized_webhook(monkeypatch: pytest.MonkeyPatch) -> AuthenticatedI
     ).decode()
     assert consumer.event.payload == expected_native_payload
     assert json.loads(consumer.event.payload) == authenticated_event["payload"]
-    assert _LEGACY_WEBHOOK_PAYLOAD_KEY not in consumer.event.payload
+    assert _WEBHOOK_PROVENANCE_PAYLOAD_KEY not in consumer.event.payload
     return consumer.event
 
 
@@ -230,7 +230,7 @@ def _deliver_sanitized_stream(monkeypatch: pytest.MonkeyPatch) -> AuthenticatedI
     assert consumer.event.ingress_kind is IMEventIngressKind.STREAM
     assert json.loads(consumer.event.payload) == sdk_event_mapping
     assert json.loads(consumer.event.payload) == authenticated_event["payload"]
-    assert _LEGACY_STREAM_PAYLOAD_KEY not in consumer.event.payload
+    assert _STREAM_PROVENANCE_PAYLOAD_KEY not in consumer.event.payload
     assert stream_evidence["object_type"] not in consumer.event.payload
     return consumer.event
 
@@ -574,45 +574,6 @@ def test_non_object_foreign_action_value_is_unrecognized() -> None:
     result = feishu_lark._MSFeishuLarkCardCodec().decode(_event(callback))
 
     assert isinstance(result, UnrecognizedIMEvent)
-
-
-@pytest.mark.parametrize(
-    ("ingress_kind", "legacy_payload"),
-    [
-        pytest.param(
-            IMEventIngressKind.WEBHOOK,
-            {_LEGACY_WEBHOOK_PAYLOAD_KEY: {"encrypted": True, "native_payload": "{}"}},
-            id="webhook-wrapper",
-        ),
-        pytest.param(
-            IMEventIngressKind.STREAM,
-            {
-                _LEGACY_STREAM_PAYLOAD_KEY: {
-                    "native_payload": "{}",
-                    "object_type": "lark_oapi.event.callback.model.p2_card_action_trigger.P2CardActionTrigger",
-                }
-            },
-            id="stream-wrapper",
-        ),
-    ],
-)
-def test_decoder_rejects_legacy_provenance_wrapper(
-    ingress_kind: IMEventIngressKind,
-    legacy_payload: dict[str, object],
-) -> None:
-    event = AuthenticatedIMEvent(
-        provider=IMProvider.FEISHU,
-        provider_tenant_id="tenant_test_only",
-        event_id="evt_test_only",
-        event_type="card.action.trigger",
-        occurred_at=None,
-        received_at=_RECEIVED_AT,
-        ingress_kind=ingress_kind,
-        payload=json.dumps(legacy_payload, ensure_ascii=False),
-    )
-
-    with pytest.raises(IMCardEventDecodingError):
-        feishu_lark._MSFeishuLarkCardCodec().decode(event)
 
 
 def test_sanitized_real_webhook_envelope_authenticates_before_card_decoding(

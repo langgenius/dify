@@ -220,7 +220,7 @@ Feishu/Lark Webhook handling MUST construct `AuthenticatedIMEvent` with `ingress
 
 The adapters MUST remove the Dify-owned payload representations produced by `_authenticated_webhook_payload` and `_authenticated_stream_payload`; they MUST NOT persist encryption provenance, custom Webhook/STREAM wrapper keys, SDK object type or implementation-specific SDK class names solely for decoder dispatch. Supported stream SDK object-type validation MUST remain at the stream adapter boundary before `AuthenticatedIMEvent` reaches `IMEventConsumer`.
 
-`_MSFeishuLarkCardCodec` MUST dispatch explicitly by `AuthenticatedIMEvent.ingress_kind` and then decode the direct Provider callback JSON. It MUST normalize valid Webhook and STREAM representations into the same `IMCardEvent` contract. It MUST reject malformed JSON, obsolete Dify-owned provenance wrappers and payloads that violate the direct Provider callback contract, without retrying another ingress interpretation. When valid Webhook and SDK callback serializations expose the same Provider JSON shape, the decoder MUST NOT fabricate additional provenance by persisting an SDK class name or adding a canonical wrapper.
+`_MSFeishuLarkCardCodec` MUST dispatch explicitly by `AuthenticatedIMEvent.ingress_kind` and then decode the direct Provider callback JSON. It MUST normalize valid Webhook and STREAM representations into the same `IMCardEvent` contract. It MUST reject malformed JSON and payloads that violate the direct Provider callback contract, without retrying another ingress interpretation. When valid Webhook and SDK callback serializations expose the same Provider JSON shape, the decoder MUST NOT fabricate additional provenance by persisting an SDK class name or adding a canonical wrapper.
 
 #### Scenario: Encrypted Feishu or Lark Webhook event is accepted
 - **WHEN** a Feishu/Lark Webhook envelope authenticates and decrypts to a Provider business-event JSON object
@@ -233,10 +233,6 @@ The adapters MUST remove the Dify-owned payload representations produced by `_au
 #### Scenario: Feishu or Lark stream SDK object type is unsupported
 - **WHEN** the stream adapter receives an unsupported SDK callback object type
 - **THEN** it MUST reject the callback at the stream adapter boundary and MUST NOT persist an implementation-specific class name for later decoder dispatch
-
-#### Scenario: Feishu or Lark legacy provenance wrapper reaches the decoder
-- **WHEN** `_MSFeishuLarkCardCodec` receives a recognized card event whose payload uses the removed `_authenticated_webhook_payload` or `_authenticated_stream_payload` wrapper shape
-- **THEN** it MUST raise the applicable operator-safe decoding error rather than accept the wrapper or infer ingress from it
 
 #### Scenario: Equivalent Feishu or Lark callbacks arrive through both ingress kinds
 - **WHEN** direct decrypted Webhook JSON and direct `sdk_event.native_payload` represent the same card interaction

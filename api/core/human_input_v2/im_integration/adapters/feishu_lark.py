@@ -762,7 +762,6 @@ class _MSFeishuLarkCardCodec(IMCardEventDecoder):
     _SUPPORTED_PROVIDERS = frozenset((IMProvider.FEISHU, IMProvider.LARK))
     _SUPPORTED_ACTION_STYLES = frozenset((ButtonStyle.DEFAULT, ButtonStyle.PRIMARY, ButtonStyle.ACCENT))
     _ACTION_MARKER = _FEISHU_LARK_DIFY_ACTION_MARKER
-    _OBSOLETE_PROVENANCE_KEYS = frozenset(("__dify_feishu_lark.webhook", "__dify_feishu_lark.stream"))
     _JSON_OBJECT_ADAPTER: ClassVar[TypeAdapter[dict[str, JsonValue]]] = TypeAdapter(
         dict[str, JsonValue],
         config=ConfigDict(strict=True, allow_inf_nan=False),
@@ -909,17 +908,10 @@ class _MSFeishuLarkCardCodec(IMCardEventDecoder):
         serialized_callback: str,
     ) -> dict[str, JsonValue] | None:
         if ingress_kind is IMEventIngressKind.WEBHOOK:
-            return cls._decode_direct_callback(serialized_callback)
+            return cls._decode_json_object(serialized_callback)
         if ingress_kind is IMEventIngressKind.STREAM:
-            return cls._decode_direct_callback(serialized_callback)
+            return cls._decode_json_object(serialized_callback)
         return None
-
-    @classmethod
-    def _decode_direct_callback(cls, serialized_callback: str) -> dict[str, JsonValue] | None:
-        callback = cls._decode_json_object(serialized_callback)
-        if callback is None or cls._OBSOLETE_PROVENANCE_KEYS.intersection(callback):
-            return None
-        return callback
 
     @classmethod
     def _recognition_action_value(cls, callback: dict[str, JsonValue]) -> dict[str, JsonValue] | None:
