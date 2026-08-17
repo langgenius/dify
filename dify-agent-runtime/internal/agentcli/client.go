@@ -7,6 +7,7 @@ type StubClient interface {
 	// HTTP control-plane
 	Connect(ctx context.Context, argv []string, metadataJSON string) (*ConnectResponse, error)
 	CreateFileUploadURL(ctx context.Context, filename, mimetype string) (string, error)
+	CreateToolFileUploadURL(ctx context.Context, filename, mimetype string) (string, error)
 	CreateFileDownloadURL(ctx context.Context, transferMethod string, reference, url *string, forFrontend bool) (*FileDownloadResponse, error)
 
 	// Drive operations (HTTP-only control-plane)
