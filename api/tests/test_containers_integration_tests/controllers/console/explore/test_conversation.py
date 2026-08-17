@@ -120,17 +120,16 @@ class TestConversationListApi:
                 "pagination_by_last_id",
                 side_effect=LastConversationNotExistsError(),
             ),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                method(api, user, chat_app)
+            method(api, user, chat_app)
 
     def test_wrong_app_mode(self, app: Flask, non_chat_app: InstalledApp, user: Account) -> None:
         api = conversation_module.ConversationListApi()
         method = unwrap(api.get)
 
-        with app.test_request_context("/"):
-            with pytest.raises(NotChatAppError):
-                method(api, user, non_chat_app)
+        with app.test_request_context("/"), pytest.raises(NotChatAppError):
+            method(api, user, non_chat_app)
 
 
 class TestConversationApi:
@@ -166,17 +165,16 @@ class TestConversationApi:
                 "delete",
                 side_effect=ConversationNotExistsError(),
             ),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                method(api, user, chat_app, "cid")
+            method(api, user, chat_app, "cid")
 
     def test_delete_wrong_app_mode(self, app: Flask, non_chat_app: InstalledApp, user: Account) -> None:
         api = conversation_module.ConversationApi()
         method = unwrap(api.delete)
 
-        with app.test_request_context("/"):
-            with pytest.raises(NotChatAppError):
-                method(api, user, non_chat_app, "cid")
+        with app.test_request_context("/"), pytest.raises(NotChatAppError):
+            method(api, user, non_chat_app, "cid")
 
 
 class TestConversationRenameApi:
@@ -219,15 +217,15 @@ class TestConversationRenameApi:
                 "rename",
                 side_effect=ConversationNotExistsError(),
             ),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                method(
-                    api,
-                    conversation_module.ConversationRenamePayload.model_validate({"name": "new"}),
-                    user,
-                    chat_app,
-                    "cid",
-                )
+            method(
+                api,
+                conversation_module.ConversationRenamePayload.model_validate({"name": "new"}),
+                user,
+                chat_app,
+                "cid",
+            )
 
 
 class TestConversationPinApi:

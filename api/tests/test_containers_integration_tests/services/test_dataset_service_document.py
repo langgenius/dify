@@ -286,9 +286,11 @@ def test_get_upload_file_for_upload_file_document_raises_when_file_service_retur
         data_source_info={"upload_file_id": "missing-file"},
     )
 
-    with patch("services.dataset_service.FileService.get_upload_files_by_ids", return_value={}):
-        with pytest.raises(NotFound, match="Uploaded file not found"):
-            DocumentService._get_upload_file_for_upload_file_document(document, session=db_session_with_containers)
+    with (
+        patch("services.dataset_service.FileService.get_upload_files_by_ids", return_value={}),
+        pytest.raises(NotFound, match="Uploaded file not found"),
+    ):
+        DocumentService._get_upload_file_for_upload_file_document(document, session=db_session_with_containers)
 
 
 def test_get_upload_file_for_upload_file_document_returns_upload_file(db_session_with_containers: Session):
@@ -409,15 +411,14 @@ def test_get_upload_files_by_document_id_for_zip_download_returns_document_keyed
 def test_prepare_document_batch_download_zip_raises_not_found_for_missing_dataset(
     current_user_mock, flask_app_with_containers, db_session_with_containers: Session
 ):
-    with flask_app_with_containers.app_context():
-        with pytest.raises(NotFound, match="Dataset not found"):
-            DocumentService.prepare_document_batch_download_zip(
-                dataset_id=str(uuid4()),
-                document_ids=[str(uuid4())],
-                tenant_id=current_user_mock.current_tenant_id,
-                current_user=current_user_mock,
-                session=db_session_with_containers,
-            )
+    with flask_app_with_containers.app_context(), pytest.raises(NotFound, match="Dataset not found"):
+        DocumentService.prepare_document_batch_download_zip(
+            dataset_id=str(uuid4()),
+            document_ids=[str(uuid4())],
+            tenant_id=current_user_mock.current_tenant_id,
+            current_user=current_user_mock,
+            session=db_session_with_containers,
+        )
 
 
 def test_prepare_document_batch_download_zip_translates_permission_error_to_forbidden(
@@ -430,18 +431,20 @@ def test_prepare_document_batch_download_zip_translates_permission_error_to_forb
         created_by=current_user_mock.id,
     )
 
-    with patch(
-        "services.dataset_service.DatasetService.check_dataset_permission",
-        side_effect=NoPermissionError("denied"),
+    with (
+        patch(
+            "services.dataset_service.DatasetService.check_dataset_permission",
+            side_effect=NoPermissionError("denied"),
+        ),
+        pytest.raises(Forbidden, match="denied"),
     ):
-        with pytest.raises(Forbidden, match="denied"):
-            DocumentService.prepare_document_batch_download_zip(
-                dataset_id=dataset.id,
-                document_ids=[],
-                tenant_id=current_user_mock.current_tenant_id,
-                current_user=current_user_mock,
-                session=db_session_with_containers,
-            )
+        DocumentService.prepare_document_batch_download_zip(
+            dataset_id=dataset.id,
+            document_ids=[],
+            tenant_id=current_user_mock.current_tenant_id,
+            current_user=current_user_mock,
+            session=db_session_with_containers,
+        )
 
 
 def test_prepare_document_batch_download_zip_returns_upload_files_in_requested_order(

@@ -212,9 +212,9 @@ class TestEmailCodeLoginSendEmailApi:
         with (
             patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             app.test_request_context("/email-code-login", method="POST", json={"email": "test@example.com"}),
+            pytest.raises(EmailSendIpLimitError),
         ):
-            with pytest.raises(EmailSendIpLimitError):
-                EmailCodeLoginSendEmailApi().post()
+            EmailCodeLoginSendEmailApi().post()
 
         mock_verify.assert_not_called()
 

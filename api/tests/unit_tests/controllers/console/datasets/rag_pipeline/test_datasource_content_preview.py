@@ -80,9 +80,9 @@ class TestDataSourceContentPreviewApi:
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
+            pytest.raises(ValueError),
         ):
-            with pytest.raises(ValueError):
-                method(api, Parser.model_validate(payload), account, pipeline, "node-1")
+            method(api, Parser.model_validate(payload), account, pipeline, "node-1")
 
     def test_post_without_credential_id(self, app: Flask):
         api = DataSourceContentPreviewApi()

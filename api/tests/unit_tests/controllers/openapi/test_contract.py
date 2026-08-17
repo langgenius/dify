@@ -85,9 +85,8 @@ def test_accepts_rejects_invalid_query_with_422(app, query_string):
     def view(*, query):
         return query
 
-    with app.test_request_context(f"/?{query_string}"):
-        with pytest.raises(UnprocessableEntity):
-            view()
+    with app.test_request_context(f"/?{query_string}"), pytest.raises(UnprocessableEntity):
+        view()
 
 
 def test_accepts_validation_error_is_sanitized_and_structured(app):
@@ -97,9 +96,11 @@ def test_accepts_validation_error_is_sanitized_and_structured(app):
     def view(*, body):
         return body
 
-    with app.test_request_context("/", method="POST", json={"secret": "leak-me"}):
-        with pytest.raises(UnprocessableEntity) as exc_info:
-            view()
+    with (
+        app.test_request_context("/", method="POST", json={"secret": "leak-me"}),
+        pytest.raises(UnprocessableEntity) as exc_info,
+    ):
+        view()
 
     data = cast(dict[str, Any], cast(Any, exc_info.value).data)
     assert data["message"] == "Request validation failed"
@@ -129,9 +130,8 @@ def test_accepts_rejects_invalid_body_with_422(app):
     def view(*, body):
         return body
 
-    with app.test_request_context("/", method="POST", json={"wrong": 1}):
-        with pytest.raises(UnprocessableEntity):
-            view()
+    with app.test_request_context("/", method="POST", json={"wrong": 1}), pytest.raises(UnprocessableEntity):
+        view()
 
 
 def test_returns_serializes_model_with_decorator_status(app):

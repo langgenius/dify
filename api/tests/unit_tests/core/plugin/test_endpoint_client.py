@@ -150,17 +150,18 @@ class TestPluginEndpointClientDelete:
             ),
         }
 
-        with patch("httpx.request", return_value=mock_response, autospec=True):
-            # Act & Assert
-            with pytest.raises(PluginDaemonInternalServerError) as exc_info:
-                endpoint_client.delete_endpoint(
-                    tenant_id=tenant_id,
-                    user_id=user_id,
-                    endpoint_id=endpoint_id,
-                )
+        with (
+            patch("httpx.request", return_value=mock_response, autospec=True),
+            pytest.raises(PluginDaemonInternalServerError) as exc_info,
+        ):
+            endpoint_client.delete_endpoint(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                endpoint_id=endpoint_id,
+            )
 
-            # Assert - the error message should not be "record not found"
-            assert "record not found" not in str(exc_info.value.description)
+        # Assert - the error message should not be "record not found"
+        assert "record not found" not in str(exc_info.value.description)
 
     def test_delete_endpoint_idempotent_case_insensitive(self, endpoint_client, mock_config):
         """Test idempotent delete behavior with case-insensitive error message.
@@ -277,14 +278,12 @@ class TestPluginEndpointClientDelete:
             "message": '{"error_type": "PluginDaemonUnauthorizedError", "message": "unauthorized access"}',
         }
 
-        with patch("httpx.request", return_value=mock_response, autospec=True):
-            # Act & Assert
-            with pytest.raises(Exception) as exc_info:
-                endpoint_client.delete_endpoint(
-                    tenant_id=tenant_id,
-                    user_id=user_id,
-                    endpoint_id=endpoint_id,
-                )
+        with patch("httpx.request", return_value=mock_response, autospec=True), pytest.raises(Exception) as exc_info:
+            endpoint_client.delete_endpoint(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                endpoint_id=endpoint_id,
+            )
 
-            # Assert - should not return True for unauthorized errors
-            assert exc_info.value.__class__.__name__ == "PluginDaemonUnauthorizedError"
+        # Assert - should not return True for unauthorized errors
+        assert exc_info.value.__class__.__name__ == "PluginDaemonUnauthorizedError"

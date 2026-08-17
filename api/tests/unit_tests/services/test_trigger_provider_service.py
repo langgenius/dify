@@ -336,9 +336,8 @@ def test_add_duplicate_name_rolls_back_and_database_constraint_matches_precheck(
         credentials={},
         credential_type=CredentialType.UNAUTHORIZED,
     )
-    with pytest.raises(IntegrityError):
-        with trigger_db.session_maker.begin() as session:
-            session.add(duplicate)
+    with pytest.raises(IntegrityError), trigger_db.session_maker.begin() as session:
+        session.add(duplicate)
     assert trigger_db.get_subscription(original.id) is not None
 
 

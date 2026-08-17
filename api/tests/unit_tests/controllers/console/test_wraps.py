@@ -121,9 +121,11 @@ class TestAccountInitialization:
             return "success"
 
         # Act & Assert
-        with patch("controllers.console.wraps.current_account_with_tenant", return_value=(mock_user, "tenant123")):
-            with pytest.raises(AccountNotInitializedError):
-                protected_view()
+        with (
+            patch("controllers.console.wraps.current_account_with_tenant", return_value=(mock_user, "tenant123")),
+            pytest.raises(AccountNotInitializedError),
+        ):
+            protected_view()
 
 
 class TestCurrentContextInjection:
@@ -656,9 +658,11 @@ class TestModelValidationInjection:
             def post(self, payload: TestModelValidationInjection.Payload):
                 return payload
 
-        with app.test_request_context("/items", method="POST", json={"name": "alpha"}):
-            with pytest.raises(HTTPException) as exc_info:
-                Handler().post()
+        with (
+            app.test_request_context("/items", method="POST", json={"name": "alpha"}),
+            pytest.raises(HTTPException) as exc_info,
+        ):
+            Handler().post()
 
         assert exc_info.value.code == 422
         assert exc_info.value.description is not None
@@ -693,11 +697,13 @@ class TestEditionChecks:
             return "cloud_success"
 
         # Act & Assert
-        with app.test_request_context():
-            with patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY):
-                with pytest.raises(HTTPException) as exc_info:
-                    cloud_view()
-                assert exc_info.value.code == 404
+        with (
+            app.test_request_context(),
+            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
+        ):
+            with pytest.raises(HTTPException) as exc_info:
+                cloud_view()
+            assert exc_info.value.code == 404
 
     def test_only_edition_enterprise_allows_enterprise_edition(self):
         """Test enterprise edition decorator allows the ENTERPRISE edition."""
@@ -762,16 +768,16 @@ class TestBillingPaidPlanRequired:
             return "paid_success"
 
         billing_info = {"enabled": enabled, "subscription": {"plan": plan}}
-        with app.test_request_context():
-            with (
-                patch(
-                    "controllers.console.wraps.current_account_with_tenant",
-                    return_value=(MockUser("test_user"), "tenant123"),
-                ),
-                patch("controllers.console.wraps.BillingService.get_info", return_value=billing_info),
-                pytest.raises(HTTPException) as exc_info,
-            ):
-                paid_view()
+        with (
+            app.test_request_context(),
+            patch(
+                "controllers.console.wraps.current_account_with_tenant",
+                return_value=(MockUser("test_user"), "tenant123"),
+            ),
+            patch("controllers.console.wraps.BillingService.get_info", return_value=billing_info),
+            pytest.raises(HTTPException) as exc_info,
+        ):
+            paid_view()
 
         assert exc_info.value.code == 403
         assert "requires a paid plan" in str(exc_info.value.description)
@@ -793,13 +799,14 @@ class TestBillingResourceLimits:
             return "member_added"
 
         # Act
-        with patch(
-            "controllers.console.wraps.current_account_with_tenant", return_value=(MockUser("test_user"), "tenant123")
+        with (
+            patch(
+                "controllers.console.wraps.current_account_with_tenant",
+                return_value=(MockUser("test_user"), "tenant123"),
+            ),
+            patch("controllers.console.wraps.FeatureService.get_features", return_value=mock_features) as get_features,
         ):
-            with patch(
-                "controllers.console.wraps.FeatureService.get_features", return_value=mock_features
-            ) as get_features:
-                result = add_member()
+            result = add_member()
 
         # Assert
         assert result == "member_added"
@@ -817,17 +824,18 @@ class TestBillingResourceLimits:
             return "segment_added"
 
         # Act
-        with patch(
-            "controllers.console.wraps.current_account_with_tenant", return_value=(MockUser("test_user"), "tenant123")
+        with (
+            patch(
+                "controllers.console.wraps.current_account_with_tenant",
+                return_value=(MockUser("test_user"), "tenant123"),
+            ),
+            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
+            patch(
+                "controllers.console.wraps.FeatureService.get_vector_space", return_value=mock_vector_space
+            ) as get_vector_space,
+            patch("controllers.console.wraps.FeatureService.get_features") as get_features,
         ):
-            with (
-                patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-                patch(
-                    "controllers.console.wraps.FeatureService.get_vector_space", return_value=mock_vector_space
-                ) as get_vector_space,
-                patch("controllers.console.wraps.FeatureService.get_features") as get_features,
-            ):
-                result = add_segment()
+            result = add_segment()
 
         # Assert
         assert result == "segment_added"
@@ -848,16 +856,18 @@ class TestBillingResourceLimits:
             return "member_added"
 
         # Act & Assert
-        with app.test_request_context():
-            with patch(
+        with (
+            app.test_request_context(),
+            patch(
                 "controllers.console.wraps.current_account_with_tenant",
                 return_value=(MockUser("test_user"), "tenant123"),
-            ):
-                with patch("controllers.console.wraps.FeatureService.get_features", return_value=mock_features):
-                    with pytest.raises(HTTPException) as exc_info:
-                        add_member()
-                    assert exc_info.value.code == 403
-                    assert "members has reached the limit" in str(exc_info.value.description)
+            ),
+            patch("controllers.console.wraps.FeatureService.get_features", return_value=mock_features),
+        ):
+            with pytest.raises(HTTPException) as exc_info:
+                add_member()
+            assert exc_info.value.code == 403
+            assert "members has reached the limit" in str(exc_info.value.description)
 
     def test_should_check_source_for_documents_limit(self):
         """Test document limit checks request source"""
@@ -873,36 +883,42 @@ class TestBillingResourceLimits:
             return "document_uploaded"
 
         # Test 1: Should reject when source is datasets
-        with app.test_request_context("/?source=datasets"):
-            with patch(
+        with (
+            app.test_request_context("/?source=datasets"),
+            patch(
                 "controllers.console.wraps.current_account_with_tenant",
                 return_value=(MockUser("test_user"), "tenant123"),
-            ):
-                with patch("controllers.console.wraps.FeatureService.get_features", return_value=mock_features):
-                    with pytest.raises(HTTPException) as exc_info:
-                        upload_document()
-                    assert exc_info.value.code == 403
+            ),
+            patch("controllers.console.wraps.FeatureService.get_features", return_value=mock_features),
+        ):
+            with pytest.raises(HTTPException) as exc_info:
+                upload_document()
+            assert exc_info.value.code == 403
 
         # Test 2: Should allow when source is not datasets
-        with app.test_request_context("/?source=other"):
-            with patch(
+        with (
+            app.test_request_context("/?source=other"),
+            patch(
                 "controllers.console.wraps.current_account_with_tenant",
                 return_value=(MockUser("test_user"), "tenant123"),
-            ):
-                with patch("controllers.console.wraps.FeatureService.get_features", return_value=mock_features):
-                    result = upload_document()
-                    assert result == "document_uploaded"
+            ),
+            patch("controllers.console.wraps.FeatureService.get_features", return_value=mock_features),
+        ):
+            result = upload_document()
+            assert result == "document_uploaded"
 
         # Test 3: Form source must enforce the same quota as query source
-        with app.test_request_context("/", method="POST", data={"source": "datasets"}):
-            with patch(
+        with (
+            app.test_request_context("/", method="POST", data={"source": "datasets"}),
+            patch(
                 "controllers.console.wraps.current_account_with_tenant",
                 return_value=(MockUser("test_user"), "tenant123"),
-            ):
-                with patch("controllers.console.wraps.FeatureService.get_features", return_value=mock_features):
-                    with pytest.raises(HTTPException) as exc_info:
-                        upload_document()
-                    assert exc_info.value.code == 403
+            ),
+            patch("controllers.console.wraps.FeatureService.get_features", return_value=mock_features),
+        ):
+            with pytest.raises(HTTPException) as exc_info:
+                upload_document()
+            assert exc_info.value.code == 403
 
 
 class TestRateLimiting:
@@ -922,13 +938,14 @@ class TestRateLimiting:
             return "knowledge_success"
 
         # Act
-        with patch(
-            "controllers.console.wraps.current_account_with_tenant", return_value=(MockUser("test_user"), "tenant123")
+        with (
+            patch(
+                "controllers.console.wraps.current_account_with_tenant",
+                return_value=(MockUser("test_user"), "tenant123"),
+            ),
+            patch("controllers.console.wraps.FeatureService.get_knowledge_rate_limit", return_value=mock_rate_limit),
         ):
-            with patch(
-                "controllers.console.wraps.FeatureService.get_knowledge_rate_limit", return_value=mock_rate_limit
-            ):
-                result = knowledge_request()
+            result = knowledge_request()
 
         # Assert
         assert result == "knowledge_success"
@@ -959,26 +976,26 @@ class TestRateLimiting:
             return "knowledge_success"
 
         # Act & Assert
-        with app.test_request_context():
-            with patch(
+        with (
+            app.test_request_context(),
+            patch(
                 "controllers.console.wraps.current_account_with_tenant",
                 return_value=(MockUser("test_user"), "tenant123"),
-            ):
-                with patch(
-                    "controllers.console.wraps.FeatureService.get_knowledge_rate_limit", return_value=mock_rate_limit
-                ):
-                    with pytest.raises(HTTPException) as exc_info:
-                        knowledge_request()
+            ),
+            patch("controllers.console.wraps.FeatureService.get_knowledge_rate_limit", return_value=mock_rate_limit),
+        ):
+            with pytest.raises(HTTPException) as exc_info:
+                knowledge_request()
 
-                    # Verify error
-                    assert exc_info.value.code == 403
-                    assert "rate limit" in str(exc_info.value.description)
+            # Verify error
+            assert exc_info.value.code == 403
+            assert "rate limit" in str(exc_info.value.description)
 
-                    rate_limit_log = sqlite_session.scalar(select(RateLimitLog))
-                    assert rate_limit_log is not None
-                    assert rate_limit_log.tenant_id == "tenant123"
-                    assert rate_limit_log.subscription_plan == "pro"
-                    assert rate_limit_log.operation == "knowledge"
+            rate_limit_log = sqlite_session.scalar(select(RateLimitLog))
+            assert rate_limit_log is not None
+            assert rate_limit_log.tenant_id == "tenant123"
+            assert rate_limit_log.subscription_plan == "pro"
+            assert rate_limit_log.operation == "knowledge"
 
 
 class TestCloudUtmRecord:
@@ -992,14 +1009,14 @@ class TestCloudUtmRecord:
         def view():
             return "success"
 
-        with app.test_request_context("/", headers={"Cookie": "utm_info={}"}):
-            with (
-                patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-                patch("controllers.console.wraps.current_account_with_tenant", return_value=(MockUser("u1"), "t1")),
-                patch("controllers.console.wraps.OperationService.record_utm") as record_utm,
-                patch("controllers.console.wraps.FeatureService.get_features") as get_features,
-            ):
-                result = view()
+        with (
+            app.test_request_context("/", headers={"Cookie": "utm_info={}"}),
+            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
+            patch("controllers.console.wraps.current_account_with_tenant", return_value=(MockUser("u1"), "t1")),
+            patch("controllers.console.wraps.OperationService.record_utm") as record_utm,
+            patch("controllers.console.wraps.FeatureService.get_features") as get_features,
+        ):
+            result = view()
 
         assert result == "success"
         record_utm.assert_called_once_with("t1", {})
@@ -1013,14 +1030,14 @@ class TestCloudUtmRecord:
         def view():
             return "success"
 
-        with app.test_request_context("/", headers={"Cookie": "utm_info={}"}):
-            with (
-                patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
-                patch("controllers.console.wraps.current_account_with_tenant") as current_account,
-                patch("controllers.console.wraps.OperationService.record_utm") as record_utm,
-                patch("controllers.console.wraps.FeatureService.get_features") as get_features,
-            ):
-                result = view()
+        with (
+            app.test_request_context("/", headers={"Cookie": "utm_info={}"}),
+            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
+            patch("controllers.console.wraps.current_account_with_tenant") as current_account,
+            patch("controllers.console.wraps.OperationService.record_utm") as record_utm,
+            patch("controllers.console.wraps.FeatureService.get_features") as get_features,
+        ):
+            result = view()
 
         assert result == "success"
         current_account.assert_not_called()
@@ -1104,9 +1121,9 @@ class TestSystemSetup:
             patch("controllers.console.wraps.db.session", sqlite_session),
             patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
             patch("controllers.console.wraps.dify_config.INIT_PASSWORD", "some_password"),
+            pytest.raises(NotInitValidateError),
         ):
-            with pytest.raises(NotInitValidateError):
-                admin_view()
+            admin_view()
 
     def test_should_raise_not_setup_error_without_init_password(self, sqlite_session: Session):
         """Test NotSetupError when no INIT_PASSWORD and setup not complete"""
@@ -1120,9 +1137,9 @@ class TestSystemSetup:
             patch("controllers.console.wraps.db.session", sqlite_session),
             patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
             patch("controllers.console.wraps.dify_config.INIT_PASSWORD", ""),
+            pytest.raises(NotSetupError),
         ):
-            with pytest.raises(NotSetupError):
-                admin_view()
+            admin_view()
 
 
 class TestEnterpriseLicense:

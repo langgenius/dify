@@ -1052,24 +1052,26 @@ class TestAdvancedChatAppGeneratorInternals:
 
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.AdvancedChatAppGenerateTaskPipeline", _Pipeline)
 
-        with caplog.at_level(logging.ERROR, logger="core.app.apps.advanced_chat.app_generator"):
-            with pytest.raises(ValueError, match="other error"):
-                generator._handle_advanced_chat_response(
-                    application_generate_entity=application_generate_entity,
-                    workflow=WorkflowSnapshot(id="wf", tenant_id="tenant", features_dict={}),
-                    queue_manager=SimpleNamespace(),
-                    conversation=ConversationSnapshot(id="conv", mode=AppMode.ADVANCED_CHAT),
-                    message=MessageSnapshot(
-                        id="msg",
-                        query="hello",
-                        created_at=naive_utc_now(),
-                        status=MessageStatus.NORMAL,
-                        answer="",
-                    ),
-                    user=SimpleNamespace(),
-                    draft_var_saver_factory=lambda **kwargs: None,
-                    stream=False,
-                )
+        with (
+            caplog.at_level(logging.ERROR, logger="core.app.apps.advanced_chat.app_generator"),
+            pytest.raises(ValueError, match="other error"),
+        ):
+            generator._handle_advanced_chat_response(
+                application_generate_entity=application_generate_entity,
+                workflow=WorkflowSnapshot(id="wf", tenant_id="tenant", features_dict={}),
+                queue_manager=SimpleNamespace(),
+                conversation=ConversationSnapshot(id="conv", mode=AppMode.ADVANCED_CHAT),
+                message=MessageSnapshot(
+                    id="msg",
+                    query="hello",
+                    created_at=naive_utc_now(),
+                    status=MessageStatus.NORMAL,
+                    answer="",
+                ),
+                user=SimpleNamespace(),
+                draft_var_saver_factory=lambda **kwargs: None,
+                stream=False,
+            )
 
         assert "Failed to process generate task pipeline, conversation_id: conv" in caplog.messages
 

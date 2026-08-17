@@ -40,9 +40,8 @@ def _end_user() -> EndUser:
 # ---------------------------------------------------------------------------
 class TestWorkflowRunApi:
     def test_wrong_mode_raises(self, app: Flask) -> None:
-        with app.test_request_context("/workflows/run", method="POST"):
-            with pytest.raises(NotWorkflowAppError):
-                WorkflowRunApi().post(_chat_app(), _end_user())
+        with app.test_request_context("/workflows/run", method="POST"), pytest.raises(NotWorkflowAppError):
+            WorkflowRunApi().post(_chat_app(), _end_user())
 
     @patch("controllers.web.workflow.helper.compact_generate_response", return_value={"result": "ok"})
     @patch("controllers.web.workflow.AppGenerateService.generate")
@@ -64,9 +63,8 @@ class TestWorkflowRunApi:
     def test_provider_not_init(self, mock_ns: MagicMock, mock_gen: MagicMock, app: Flask) -> None:
         mock_ns.payload = {"inputs": {}}
 
-        with app.test_request_context("/workflows/run", method="POST"):
-            with pytest.raises(ProviderNotInitializeError):
-                WorkflowRunApi().post(_workflow_app(), _end_user())
+        with app.test_request_context("/workflows/run", method="POST"), pytest.raises(ProviderNotInitializeError):
+            WorkflowRunApi().post(_workflow_app(), _end_user())
 
     @patch(
         "controllers.web.workflow.AppGenerateService.generate",
@@ -76,9 +74,8 @@ class TestWorkflowRunApi:
     def test_quota_exceeded(self, mock_ns: MagicMock, mock_gen: MagicMock, app: Flask) -> None:
         mock_ns.payload = {"inputs": {}}
 
-        with app.test_request_context("/workflows/run", method="POST"):
-            with pytest.raises(ProviderQuotaExceededError):
-                WorkflowRunApi().post(_workflow_app(), _end_user())
+        with app.test_request_context("/workflows/run", method="POST"), pytest.raises(ProviderQuotaExceededError):
+            WorkflowRunApi().post(_workflow_app(), _end_user())
 
 
 # ---------------------------------------------------------------------------
@@ -86,9 +83,11 @@ class TestWorkflowRunApi:
 # ---------------------------------------------------------------------------
 class TestWorkflowTaskStopApi:
     def test_wrong_mode_raises(self, app: Flask) -> None:
-        with app.test_request_context("/workflows/tasks/task-1/stop", method="POST"):
-            with pytest.raises(NotWorkflowAppError):
-                WorkflowTaskStopApi().post(_chat_app(), _end_user(), "task-1")
+        with (
+            app.test_request_context("/workflows/tasks/task-1/stop", method="POST"),
+            pytest.raises(NotWorkflowAppError),
+        ):
+            WorkflowTaskStopApi().post(_chat_app(), _end_user(), "task-1")
 
     @patch("controllers.web.workflow.GraphEngineManager.send_stop_command")
     @patch("controllers.web.workflow.AppQueueManager.set_stop_flag_no_user_check")

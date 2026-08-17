@@ -103,11 +103,12 @@ class TestValidateAndGetApiToken:
     def test_invalid_auth_scheme(self, app: Flask):
         """Test that Unauthorized is raised when auth scheme is not Bearer."""
         # Arrange
-        with app.test_request_context("/", method="GET", headers={"Authorization": "Basic token123"}):
-            # Act & Assert
-            with pytest.raises(Unauthorized) as exc_info:
-                validate_and_get_api_token("app")
-            assert "Authorization scheme must be 'Bearer'" in str(exc_info.value)
+        with (
+            app.test_request_context("/", method="GET", headers={"Authorization": "Basic token123"}),
+            pytest.raises(Unauthorized) as exc_info,
+        ):
+            validate_and_get_api_token("app")
+        assert "Authorization scheme must be 'Bearer'" in str(exc_info.value)
 
     @patch("controllers.service_api.wraps.record_token_usage")
     @patch("controllers.service_api.wraps.ApiTokenCache")

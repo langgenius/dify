@@ -311,8 +311,10 @@ class TestMetadataPartialUpdate:
         )
         metadata_args = MetadataOperationData(operation_data=[operation])
 
-        with patch.object(db_session_with_containers, "commit", side_effect=RuntimeError("database connection lost")):
-            with pytest.raises(RuntimeError, match="database connection lost"):
-                MetadataService.update_documents_metadata(
-                    dataset, metadata_args, current_account, session=db_session_with_containers
-                )
+        with (
+            patch.object(db_session_with_containers, "commit", side_effect=RuntimeError("database connection lost")),
+            pytest.raises(RuntimeError, match="database connection lost"),
+        ):
+            MetadataService.update_documents_metadata(
+                dataset, metadata_args, current_account, session=db_session_with_containers
+            )

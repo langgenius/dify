@@ -81,9 +81,9 @@ class TestCreateRagPipelineDatasetApi:
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
+            pytest.raises(Forbidden),
         ):
-            with pytest.raises(Forbidden):
-                method(api, RagPipelineDatasetImportPayload.model_validate(payload), "tenant-1", user)
+            method(api, RagPipelineDatasetImportPayload.model_validate(payload), "tenant-1", user)
 
     def test_post_dataset_name_duplicate(self, app: Flask) -> None:
         api = CreateRagPipelineDatasetApi()
@@ -102,9 +102,9 @@ class TestCreateRagPipelineDatasetApi:
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_datasets.RagPipelineDslService",
                 return_value=mock_service,
             ),
+            pytest.raises(DatasetNameDuplicateError),
         ):
-            with pytest.raises(DatasetNameDuplicateError):
-                method(api, RagPipelineDatasetImportPayload.model_validate(payload), "tenant-1", user)
+            method(api, RagPipelineDatasetImportPayload.model_validate(payload), "tenant-1", user)
 
     def test_post_invalid_payload(self, app: Flask) -> None:
         api = CreateRagPipelineDatasetApi()
@@ -116,9 +116,9 @@ class TestCreateRagPipelineDatasetApi:
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
+            pytest.raises(ValueError),
         ):
-            with pytest.raises(ValueError):
-                method(api, RagPipelineDatasetImportPayload.model_validate(payload), "tenant-1", user)
+            method(api, RagPipelineDatasetImportPayload.model_validate(payload), "tenant-1", user)
 
 
 class TestCreateEmptyRagPipelineDatasetApi:
@@ -128,6 +128,5 @@ class TestCreateEmptyRagPipelineDatasetApi:
 
         user = _account(editor=False)
 
-        with app.test_request_context("/"):
-            with pytest.raises(Forbidden):
-                method(api, "tenant-1", user)
+        with app.test_request_context("/"), pytest.raises(Forbidden):
+            method(api, "tenant-1", user)

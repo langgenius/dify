@@ -30,9 +30,11 @@ def database_session(sqlite_engine: Engine):
     models = (App, Site, EndUser)
     tables = [model.metadata.tables[model.__tablename__] for model in models]
     TypeBase.metadata.create_all(sqlite_engine, tables=tables)
-    with Session(sqlite_engine, expire_on_commit=False) as session:
-        with patch("controllers.web.passport.db.session", session):
-            yield session
+    with (
+        Session(sqlite_engine, expire_on_commit=False) as session,
+        patch("controllers.web.passport.db.session", session),
+    ):
+        yield session
 
 
 def _persist_webapp(
@@ -167,9 +169,8 @@ class TestPassportResource:
     @patch("controllers.web.passport.FeatureService.get_system_features")
     def test_missing_app_code_raises_unauthorized(self, mock_features: MagicMock, app: Flask) -> None:
         mock_features.return_value = SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False))
-        with app.test_request_context("/passport"):
-            with pytest.raises(Unauthorized, match="X-App-Code"):
-                PassportResource().get()
+        with app.test_request_context("/passport"), pytest.raises(Unauthorized, match="X-App-Code"):
+            PassportResource().get()
 
     @patch("controllers.web.passport.PassportService")
     @patch("controllers.web.passport.generate_session_id", return_value="new-sess-id")
@@ -225,9 +226,8 @@ class TestPassportResource:
     @patch("controllers.web.passport.FeatureService.get_system_features")
     def test_site_not_found_raises(self, mock_features: MagicMock, app: Flask, database_session: Session) -> None:
         mock_features.return_value = SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False))
-        with app.test_request_context("/passport", headers={"X-App-Code": "code1"}):
-            with pytest.raises(NotFound):
-                PassportResource().get()
+        with app.test_request_context("/passport", headers={"X-App-Code": "code1"}), pytest.raises(NotFound):
+            PassportResource().get()
 
     @patch("controllers.web.passport.FeatureService.get_system_features")
     def test_disabled_app_raises_not_found(
@@ -235,6 +235,5 @@ class TestPassportResource:
     ) -> None:
         mock_features.return_value = SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False))
         _persist_webapp(database_session, enable_site=False)
-        with app.test_request_context("/passport", headers={"X-App-Code": "code1"}):
-            with pytest.raises(NotFound):
-                PassportResource().get()
+        with app.test_request_context("/passport", headers={"X-App-Code": "code1"}), pytest.raises(NotFound):
+            PassportResource().get()

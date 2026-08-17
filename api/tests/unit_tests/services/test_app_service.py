@@ -600,23 +600,22 @@ class TestAgentAppType:
 
         with (
             patch("services.app_service.current_user", _account_identity(str(uuid4()))),
-            patch("services.app_service.app_was_updated.send"),
+            patch("services.app_service.app_was_updated.send"),pytest.raises(AgentNameConflictError)
         ):
-            with pytest.raises(AgentNameConflictError):
-                AppService().update_app(
-                    app,
-                    {
-                        "name": "Existing Agent",
-                        "description": "agent app",
-                        "role": "research assistant",
-                        "icon_type": "emoji",
-                        "icon": "robot",
-                        "icon_background": "#fff",
-                        "use_icon_as_answer_icon": False,
-                        "max_active_requests": 0,
-                    },
-                    session=sqlite_session,
-                )
+            AppService().update_app(
+                app,
+                {
+                    "name": "Existing Agent",
+                    "description": "agent app",
+                    "role": "research assistant",
+                    "icon_type": "emoji",
+                    "icon": "robot",
+                    "icon_background": "#fff",
+                    "use_icon_as_answer_icon": False,
+                    "max_active_requests": 0,
+                },
+                session=sqlite_session,
+            )
 
         assert rollback_events == ["rollback"]
         sqlite_session.expire_all()

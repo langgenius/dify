@@ -167,12 +167,14 @@ def test_create_file_by_url_prefers_url_extension_over_mimetype(
 def test_create_file_by_url_raises_on_timeout() -> None:
     manager = ToolFileManager()
 
-    with patch(
-        "core.tools.tool_file_manager.remote_fetcher.make_request",
-        side_effect=httpx.TimeoutException("timeout"),
+    with (
+        patch(
+            "core.tools.tool_file_manager.remote_fetcher.make_request",
+            side_effect=httpx.TimeoutException("timeout"),
+        ),
+        pytest.raises(ValueError, match="timeout when downloading file"),
     ):
-        with pytest.raises(ValueError, match="timeout when downloading file"):
-            manager.create_file_by_url("u1", "t1", "https://example.com/f.bin", "c1")
+        manager.create_file_by_url("u1", "t1", "https://example.com/f.bin", "c1")
 
 
 def test_get_file_binary_returns_none_when_not_found(sqlite_tool_file_session: Session) -> None:

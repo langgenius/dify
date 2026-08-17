@@ -84,6 +84,8 @@ def test_validate_credentials_failure():
     manager = Mock()
     manager.validate_provider_credentials.return_value = False
 
-    with patch("core.tools.plugin_tool.provider.PluginToolManager", return_value=manager):
-        with pytest.raises(ToolProviderCredentialValidationError, match="Invalid credentials"):
-            controller._validate_credentials(user_id="u1", credentials={"api_key": "x"})
+    with (
+        patch("core.tools.plugin_tool.provider.PluginToolManager", return_value=manager),
+        pytest.raises(ToolProviderCredentialValidationError, match="Invalid credentials"),
+    ):
+        controller._validate_credentials(user_id="u1", credentials={"api_key": "x"})

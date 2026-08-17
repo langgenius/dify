@@ -49,9 +49,8 @@ _list_post = inspect.unwrap(SavedMessageListApi.post)
 class TestSavedMessageListApiGet:
     def test_non_completion_mode_raises(self, app: Flask) -> None:
         query = SavedMessageListQuery.model_validate({})
-        with app.test_request_context("/saved-messages"):
-            with pytest.raises(NotCompletionAppError):
-                _list_get(SavedMessageListApi(), query, _chat_app(), _end_user())
+        with app.test_request_context("/saved-messages"), pytest.raises(NotCompletionAppError):
+            _list_get(SavedMessageListApi(), query, _chat_app(), _end_user())
 
     @patch("controllers.web.saved_message.SavedMessageService.pagination_by_last_id")
     def test_happy_path(self, mock_paginate: MagicMock, app: Flask) -> None:
@@ -71,9 +70,8 @@ class TestSavedMessageListApiGet:
 class TestSavedMessageListApiPost:
     def test_non_completion_mode_raises(self, app: Flask) -> None:
         payload = SavedMessageCreatePayload.model_validate({"message_id": str(uuid4())})
-        with app.test_request_context("/saved-messages", method="POST"):
-            with pytest.raises(NotCompletionAppError):
-                _list_post(SavedMessageListApi(), payload, _chat_app(), _end_user())
+        with app.test_request_context("/saved-messages", method="POST"), pytest.raises(NotCompletionAppError):
+            _list_post(SavedMessageListApi(), payload, _chat_app(), _end_user())
 
     @patch("controllers.web.saved_message.SavedMessageService.save")
     def test_save_success(self, mock_save: MagicMock, app: Flask) -> None:
@@ -88,9 +86,11 @@ class TestSavedMessageListApiPost:
     def test_save_not_found(self, mock_save: MagicMock, app: Flask) -> None:
         payload = SavedMessageCreatePayload.model_validate({"message_id": str(uuid4())})
 
-        with app.test_request_context("/saved-messages", method="POST"):
-            with pytest.raises(NotFound, match="Message Not Exists"):
-                _list_post(SavedMessageListApi(), payload, _completion_app(), _end_user())
+        with (
+            app.test_request_context("/saved-messages", method="POST"),
+            pytest.raises(NotFound, match="Message Not Exists"),
+        ):
+            _list_post(SavedMessageListApi(), payload, _completion_app(), _end_user())
 
 
 # ---------------------------------------------------------------------------
@@ -99,9 +99,11 @@ class TestSavedMessageListApiPost:
 class TestSavedMessageApi:
     def test_non_completion_mode_raises(self, app: Flask) -> None:
         msg_id = uuid4()
-        with app.test_request_context(f"/saved-messages/{msg_id}", method="DELETE"):
-            with pytest.raises(NotCompletionAppError):
-                SavedMessageApi().delete(_chat_app(), _end_user(), msg_id)
+        with (
+            app.test_request_context(f"/saved-messages/{msg_id}", method="DELETE"),
+            pytest.raises(NotCompletionAppError),
+        ):
+            SavedMessageApi().delete(_chat_app(), _end_user(), msg_id)
 
     @patch("controllers.web.saved_message.SavedMessageService.delete")
     def test_delete_success(self, mock_delete: MagicMock, app: Flask) -> None:

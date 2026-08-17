@@ -113,9 +113,9 @@ class TestAgentManageRequiredForAgentApp:
             patches[0],
             patches[1],
             patch("controllers.console.app.wraps.enforce_rbac_access", side_effect=Forbidden()),
+            pytest.raises(Forbidden),
         ):
-            with pytest.raises(Forbidden):
-                view(app_id="app-1")
+            view(app_id="app-1")
 
         assert calls == []
 
@@ -135,9 +135,8 @@ class TestAgentManageRequiredForAgentApp:
         _persist_app(self.sqlite_session, scope=AgentScope.WORKFLOW_ONLY)
         patches = _patch_guard(self.account, rbac_enabled=False)
 
-        with patches[0], patches[1]:
-            with pytest.raises(AppNotFoundError):
-                view(app_id="app-1")
+        with patches[0], patches[1], pytest.raises(AppNotFoundError):
+            view(app_id="app-1")
 
         assert calls == []
 
@@ -146,9 +145,13 @@ class TestAgentManageRequiredForAgentApp:
         _persist_app(self.sqlite_session, scope=AgentScope.WORKFLOW_ONLY)
         patches = _patch_guard(self.account, rbac_enabled=True)
 
-        with patches[0], patches[1], patch("controllers.console.app.wraps.enforce_rbac_access") as gate:
-            with pytest.raises(AppNotFoundError):
-                view(app_id="app-1")
+        with (
+            patches[0],
+            patches[1],
+            patch("controllers.console.app.wraps.enforce_rbac_access") as gate,
+            pytest.raises(AppNotFoundError),
+        ):
+            view(app_id="app-1")
 
         gate.assert_not_called()
         assert calls == []

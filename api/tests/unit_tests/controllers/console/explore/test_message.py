@@ -164,10 +164,9 @@ class TestMessageListApi(_UsesSQLiteSession):
                 module.MessageService,
                 "pagination_by_first_id",
                 side_effect=ConversationNotExistsError(),
-            ),
+            ),pytest.raises(NotFound)
         ):
-            with pytest.raises(NotFound):
-                method(self.account, installed_app)
+            method(self.account, installed_app)
 
     def test_first_message_not_exists(self, app: Flask):
         api = module.MessageListApi()
@@ -184,10 +183,9 @@ class TestMessageListApi(_UsesSQLiteSession):
                 module.MessageService,
                 "pagination_by_first_id",
                 side_effect=FirstMessageNotExistsError(),
-            ),
+            ),pytest.raises(NotFound)
         ):
-            with pytest.raises(NotFound):
-                method(self.account, installed_app)
+            method(self.account, installed_app)
 
 
 class TestMessageFeedbackApi(_UsesSQLiteSession):
@@ -222,10 +220,9 @@ class TestMessageFeedbackApi(_UsesSQLiteSession):
                 module.MessageService,
                 "create_feedback",
                 side_effect=MessageNotExistsError(),
-            ),
+            ),pytest.raises(NotFound)
         ):
-            with pytest.raises(NotFound):
-                method(module.MessageFeedbackPayload.model_validate({}), self.account, installed_app, "mid")
+            method(module.MessageFeedbackPayload.model_validate({}), self.account, installed_app, "mid")
 
 
 class TestMessageMoreLikeThisApi(_UsesSQLiteSession):
@@ -279,10 +276,9 @@ class TestMessageMoreLikeThisApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate_more_like_this",
                 side_effect=module.MoreLikeThisDisabledError(),
-            ),
+            ),pytest.raises(AppMoreLikeThisDisabledError)
         ):
-            with pytest.raises(AppMoreLikeThisDisabledError):
-                method(self.sqlite_session, self.account, installed_app, "mid")
+            method(self.sqlite_session, self.account, installed_app, "mid")
 
     def test_message_not_exists_more_like_this(self, app: Flask):
         api = module.MessageMoreLikeThisApi()
@@ -299,10 +295,9 @@ class TestMessageMoreLikeThisApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate_more_like_this",
                 side_effect=MessageNotExistsError(),
-            ),
+            ),pytest.raises(NotFound)
         ):
-            with pytest.raises(NotFound):
-                method(self.sqlite_session, self.account, installed_app, "mid")
+            method(self.sqlite_session, self.account, installed_app, "mid")
 
     def test_provider_not_init_more_like_this(self, app: Flask):
         api = module.MessageMoreLikeThisApi()
@@ -319,10 +314,9 @@ class TestMessageMoreLikeThisApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate_more_like_this",
                 side_effect=ProviderTokenNotInitError("test"),
-            ),
+            ),pytest.raises(ProviderNotInitializeError)
         ):
-            with pytest.raises(ProviderNotInitializeError):
-                method(self.sqlite_session, self.account, installed_app, "mid")
+            method(self.sqlite_session, self.account, installed_app, "mid")
 
     def test_quota_exceeded_more_like_this(self, app: Flask):
         api = module.MessageMoreLikeThisApi()
@@ -339,10 +333,9 @@ class TestMessageMoreLikeThisApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate_more_like_this",
                 side_effect=QuotaExceededError(),
-            ),
+            ),pytest.raises(ProviderQuotaExceededError)
         ):
-            with pytest.raises(ProviderQuotaExceededError):
-                method(self.sqlite_session, self.account, installed_app, "mid")
+            method(self.sqlite_session, self.account, installed_app, "mid")
 
     def test_model_not_support_more_like_this(self, app: Flask):
         api = module.MessageMoreLikeThisApi()
@@ -359,10 +352,9 @@ class TestMessageMoreLikeThisApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate_more_like_this",
                 side_effect=ModelCurrentlyNotSupportError(),
-            ),
+            ),pytest.raises(ProviderModelCurrentlyNotSupportError)
         ):
-            with pytest.raises(ProviderModelCurrentlyNotSupportError):
-                method(self.sqlite_session, self.account, installed_app, "mid")
+            method(self.sqlite_session, self.account, installed_app, "mid")
 
     def test_invoke_error_more_like_this(self, app: Flask):
         api = module.MessageMoreLikeThisApi()
@@ -379,10 +371,9 @@ class TestMessageMoreLikeThisApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate_more_like_this",
                 side_effect=InvokeError("test error"),
-            ),
+            ),pytest.raises(CompletionRequestError)
         ):
-            with pytest.raises(CompletionRequestError):
-                method(self.sqlite_session, self.account, installed_app, "mid")
+            method(self.sqlite_session, self.account, installed_app, "mid")
 
     def test_unexpected_error_more_like_this(self, app: Flask):
         api = module.MessageMoreLikeThisApi()
@@ -399,10 +390,9 @@ class TestMessageMoreLikeThisApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate_more_like_this",
                 side_effect=Exception("unexpected"),
-            ),
+            ),pytest.raises(InternalServerError)
         ):
-            with pytest.raises(InternalServerError):
-                method(self.sqlite_session, self.account, installed_app, "mid")
+            method(self.sqlite_session, self.account, installed_app, "mid")
 
 
 class TestMessageSuggestedQuestionApi(_UsesSQLiteSession):
@@ -443,10 +433,9 @@ class TestMessageSuggestedQuestionApi(_UsesSQLiteSession):
                 module.MessageService,
                 "get_suggested_questions_after_answer",
                 side_effect=SuggestedQuestionsAfterAnswerDisabledError(),
-            ),
+            ),pytest.raises(AppSuggestedQuestionsAfterAnswerDisabledError)
         ):
-            with pytest.raises(AppSuggestedQuestionsAfterAnswerDisabledError):
-                method(self.account, installed_app, "mid")
+            method(self.account, installed_app, "mid")
 
     def test_message_not_exists_suggested_question(self):
         api = module.MessageSuggestedQuestionApi()
@@ -459,10 +448,9 @@ class TestMessageSuggestedQuestionApi(_UsesSQLiteSession):
                 module.MessageService,
                 "get_suggested_questions_after_answer",
                 side_effect=MessageNotExistsError(),
-            ),
+            ),pytest.raises(NotFound)
         ):
-            with pytest.raises(NotFound):
-                method(self.account, installed_app, "mid")
+            method(self.account, installed_app, "mid")
 
     def test_conversation_not_exists_suggested_question(self):
         api = module.MessageSuggestedQuestionApi()
@@ -475,10 +463,9 @@ class TestMessageSuggestedQuestionApi(_UsesSQLiteSession):
                 module.MessageService,
                 "get_suggested_questions_after_answer",
                 side_effect=ConversationNotExistsError(),
-            ),
+            ),pytest.raises(NotFound)
         ):
-            with pytest.raises(NotFound):
-                method(self.account, installed_app, "mid")
+            method(self.account, installed_app, "mid")
 
     def test_provider_not_init_suggested_question(self):
         api = module.MessageSuggestedQuestionApi()
@@ -491,10 +478,9 @@ class TestMessageSuggestedQuestionApi(_UsesSQLiteSession):
                 module.MessageService,
                 "get_suggested_questions_after_answer",
                 side_effect=ProviderTokenNotInitError("test"),
-            ),
+            ),pytest.raises(ProviderNotInitializeError)
         ):
-            with pytest.raises(ProviderNotInitializeError):
-                method(self.account, installed_app, "mid")
+            method(self.account, installed_app, "mid")
 
     def test_quota_exceeded_suggested_question(self):
         api = module.MessageSuggestedQuestionApi()
@@ -507,10 +493,9 @@ class TestMessageSuggestedQuestionApi(_UsesSQLiteSession):
                 module.MessageService,
                 "get_suggested_questions_after_answer",
                 side_effect=QuotaExceededError(),
-            ),
+            ),pytest.raises(ProviderQuotaExceededError)
         ):
-            with pytest.raises(ProviderQuotaExceededError):
-                method(self.account, installed_app, "mid")
+            method(self.account, installed_app, "mid")
 
     def test_model_not_support_suggested_question(self):
         api = module.MessageSuggestedQuestionApi()
@@ -523,10 +508,9 @@ class TestMessageSuggestedQuestionApi(_UsesSQLiteSession):
                 module.MessageService,
                 "get_suggested_questions_after_answer",
                 side_effect=ModelCurrentlyNotSupportError(),
-            ),
+            ),pytest.raises(ProviderModelCurrentlyNotSupportError)
         ):
-            with pytest.raises(ProviderModelCurrentlyNotSupportError):
-                method(self.account, installed_app, "mid")
+            method(self.account, installed_app, "mid")
 
     def test_invoke_error_suggested_question(self):
         api = module.MessageSuggestedQuestionApi()
@@ -539,10 +523,9 @@ class TestMessageSuggestedQuestionApi(_UsesSQLiteSession):
                 module.MessageService,
                 "get_suggested_questions_after_answer",
                 side_effect=InvokeError("test error"),
-            ),
+            ),pytest.raises(CompletionRequestError)
         ):
-            with pytest.raises(CompletionRequestError):
-                method(self.account, installed_app, "mid")
+            method(self.account, installed_app, "mid")
 
     def test_unexpected_error_suggested_question(self):
         api = module.MessageSuggestedQuestionApi()
@@ -555,7 +538,6 @@ class TestMessageSuggestedQuestionApi(_UsesSQLiteSession):
                 module.MessageService,
                 "get_suggested_questions_after_answer",
                 side_effect=Exception("unexpected"),
-            ),
+            ),pytest.raises(InternalServerError)
         ):
-            with pytest.raises(InternalServerError):
-                method(self.account, installed_app, "mid")
+            method(self.account, installed_app, "mid")

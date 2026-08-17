@@ -142,9 +142,9 @@ class TestDataSourceNotionDatasetSyncApi:
                 "controllers.console.datasets.data_source.DatasetService.get_dataset",
                 return_value=None,
             ),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                method(api, sqlite_session, "ds-1")
+            method(api, sqlite_session, "ds-1")
 
 
 class TestDataSourceNotionDocumentSyncApi:
@@ -187,6 +187,6 @@ class TestDataSourceNotionDocumentSyncApi:
                 "controllers.console.datasets.data_source.DocumentService.get_document",
                 return_value=None,
             ),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                method(api, sqlite_session, "ds-1", "doc-1")
+            method(api, sqlite_session, "ds-1", "doc-1")

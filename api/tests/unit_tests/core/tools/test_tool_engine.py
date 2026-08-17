@@ -235,23 +235,25 @@ def test_agent_invoke_success(sqlite_session: Session):
     message = _message()
     meta = ToolInvokeMeta.empty()
 
-    with patch.object(ToolEngine, "_invoke", return_value=iter([tool.create_text_message("ok"), meta])):
-        with patch(
+    with (
+        patch.object(ToolEngine, "_invoke", return_value=iter([tool.create_text_message("ok"), meta])),
+        patch(
             "core.tools.tool_engine.ToolFileMessageTransformer.transform_tool_invoke_messages",
             side_effect=lambda messages, **kwargs: messages,
-        ):
-            with patch.object(ToolEngine, "_extract_tool_response_binary_and_text", return_value=iter([])):
-                with patch.object(ToolEngine, "_create_message_files", return_value=[]):
-                    result_text, message_files, result_meta = ToolEngine.agent_invoke(
-                        session=sqlite_session,
-                        tool=tool,
-                        tool_parameters="hello",
-                        user_id="u1",
-                        tenant_id="tenant-1",
-                        message=message,
-                        invoke_from=InvokeFrom.DEBUGGER,
-                        agent_tool_callback=callback,
-                    )
+        ),
+        patch.object(ToolEngine, "_extract_tool_response_binary_and_text", return_value=iter([])),
+        patch.object(ToolEngine, "_create_message_files", return_value=[]),
+    ):
+        result_text, message_files, result_meta = ToolEngine.agent_invoke(
+            session=sqlite_session,
+            tool=tool,
+            tool_parameters="hello",
+            user_id="u1",
+            tenant_id="tenant-1",
+            message=message,
+            invoke_from=InvokeFrom.DEBUGGER,
+            agent_tool_callback=callback,
+        )
 
     assert result_text == "ok"
     assert message_files == []

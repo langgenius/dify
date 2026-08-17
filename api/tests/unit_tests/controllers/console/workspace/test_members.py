@@ -189,8 +189,7 @@ class TestMemberInviteEmailApi:
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
             patch("controllers.console.workspace.members._count_new_member_invites", return_value=(1, 1)),
         ):
-            with pytest.raises(WorkspaceMembersLimitExceeded):
-                method(api, user)
+            method(api, user)
 
     def test_invite_cloud_member_limit_exceeded(self, app: Flask, config_overrides):
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
@@ -215,8 +214,7 @@ class TestMemberInviteEmailApi:
             patch("controllers.console.workspace.members._count_new_member_invites", return_value=(2, 2)),
             patch("controllers.console.workspace.members._count_current_members", return_value=9),
         ):
-            with pytest.raises(WorkspaceMembersLimitExceeded):
-                method(api, user)
+            method(api, user)
 
     def test_invite_already_member(self, app: Flask):
         api = MemberInviteEmailApi()
@@ -257,9 +255,8 @@ class TestMemberInviteEmailApi:
             "role": "owner",
         }
 
-        with app.test_request_context("/", json=payload):
-            with pytest.raises(InvalidMemberRoleError) as exc_info:
-                method(api, MagicMock())
+        with app.test_request_context("/", json=payload), pytest.raises(InvalidMemberRoleError) as exc_info:
+            method(api, MagicMock())
 
         assert exc_info.value.error_code == "invalid_role"
 
@@ -337,8 +334,7 @@ class TestMemberInviteEmailApi:
             ) as mock_get_license,
             patch("controllers.console.workspace.members.RegisterService.invite_new_member") as mock_invite,
         ):
-            with pytest.raises(SeatsLimitExceeded):
-                method(api, user)
+            method(api, user)
 
         mock_get_license.assert_called_once_with()
         license_info.seats.is_available.assert_called_once_with(2)
@@ -558,11 +554,8 @@ class TestDatasetOperatorMemberListApi:
 
         user = MagicMock(current_tenant=None)
 
-        with (
-            app.test_request_context("/"),
-        ):
-            with pytest.raises(ValueError):
-                method(api, user)
+        with app.test_request_context("/"), pytest.raises(ValueError):
+            method(api, user)
 
 
 class TestSendOwnerTransferEmailApi:
@@ -598,9 +591,9 @@ class TestSendOwnerTransferEmailApi:
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.members.extract_remote_ip", return_value="1.1.1.1"),
             patch("controllers.console.workspace.members.AccountService.is_email_send_ip_limit", return_value=True),
+            pytest.raises(EmailSendIpLimitError),
         ):
-            with pytest.raises(EmailSendIpLimitError):
-                method(api, MagicMock())
+            method(api, MagicMock())
 
     def test_send_not_owner(self, app: Flask):
         api = SendOwnerTransferEmailApi()
@@ -614,9 +607,9 @@ class TestSendOwnerTransferEmailApi:
             patch("controllers.console.workspace.members.extract_remote_ip", return_value="1.1.1.1"),
             patch("controllers.console.workspace.members.AccountService.is_email_send_ip_limit", return_value=False),
             patch("controllers.console.workspace.members.TenantService.is_owner", return_value=False),
+            pytest.raises(NotOwnerError),
         ):
-            with pytest.raises(NotOwnerError):
-                method(api, user)
+            method(api, user)
 
 
 class TestOwnerTransferCheckApi:
@@ -640,9 +633,9 @@ class TestOwnerTransferCheckApi:
                 "controllers.console.workspace.members.AccountService.get_owner_transfer_data",
                 return_value={"email": "a@test.com", "code": "y"},
             ),
+            pytest.raises(EmailCodeError),
         ):
-            with pytest.raises(EmailCodeError):
-                method(api, user)
+            method(api, user)
 
     def test_rate_limited(self, app: Flask):
         api = OwnerTransferCheckApi()
@@ -660,9 +653,9 @@ class TestOwnerTransferCheckApi:
                 "controllers.console.workspace.members.AccountService.is_owner_transfer_error_rate_limit",
                 return_value=True,
             ),
+            pytest.raises(OwnerTransferLimitError),
         ):
-            with pytest.raises(OwnerTransferLimitError):
-                method(api, user)
+            method(api, user)
 
     def test_invalid_token(self, app: Flask):
         api = OwnerTransferCheckApi()
@@ -681,9 +674,9 @@ class TestOwnerTransferCheckApi:
                 return_value=False,
             ),
             patch("controllers.console.workspace.members.AccountService.get_owner_transfer_data", return_value=None),
+            pytest.raises(InvalidTokenError),
         ):
-            with pytest.raises(InvalidTokenError):
-                method(api, user)
+            method(api, user)
 
     def test_invalid_email(self, app: Flask):
         api = OwnerTransferCheckApi()
@@ -705,9 +698,9 @@ class TestOwnerTransferCheckApi:
                 "controllers.console.workspace.members.AccountService.get_owner_transfer_data",
                 return_value={"email": "b@test.com", "code": "x"},
             ),
+            pytest.raises(InvalidEmailError),
         ):
-            with pytest.raises(InvalidEmailError):
-                method(api, user)
+            method(api, user)
 
 
 class TestOwnerTransferApi:
@@ -723,9 +716,9 @@ class TestOwnerTransferApi:
         with (
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.members.TenantService.is_owner", return_value=True),
+            pytest.raises(CannotTransferOwnerToSelfError),
         ):
-            with pytest.raises(CannotTransferOwnerToSelfError):
-                method(api, user, "1")
+            method(api, user, "1")
 
     def test_invalid_token(self, app: Flask):
         api = OwnerTransfer()
@@ -740,6 +733,6 @@ class TestOwnerTransferApi:
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.members.TenantService.is_owner", return_value=True),
             patch("controllers.console.workspace.members.AccountService.get_owner_transfer_data", return_value=None),
+            pytest.raises(InvalidTokenError),
         ):
-            with pytest.raises(InvalidTokenError):
-                method(api, user, "2")
+            method(api, user, "2")

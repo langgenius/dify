@@ -154,13 +154,15 @@ def test_pause_details_tenant_isolation(app: Flask, monkeypatch: pytest.MonkeyPa
     )
 
     handler = inspect.unwrap(workflow_run_module.ConsoleWorkflowPauseDetailsApi.get)
-    with app.test_request_context(f"/console/api/workflow/{run_id}/pause-details", method="GET"):
-        with pytest.raises(NotFoundError):
-            handler(
-                workflow_run_module.ConsoleWorkflowPauseDetailsApi(),
-                str(uuid4()),
-                workflow_run_id=run_id,
-            )
+    with (
+        app.test_request_context(f"/console/api/workflow/{run_id}/pause-details", method="GET"),
+        pytest.raises(NotFoundError),
+    ):
+        handler(
+            workflow_run_module.ConsoleWorkflowPauseDetailsApi(),
+            str(uuid4()),
+            workflow_run_id=run_id,
+        )
 
 
 def test_pause_details_returns_empty_response_for_non_paused_run(

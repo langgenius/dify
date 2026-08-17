@@ -80,9 +80,9 @@ class TestQueryTokenFromDb:
         with (
             patch.object(api_token_service_module.ApiTokenCache, "set") as mock_cache_set,
             patch.object(api_token_service_module, "record_token_usage") as mock_record_usage,
+            pytest.raises(Unauthorized, match="Access token is invalid"),
         ):
-            with pytest.raises(Unauthorized, match="Access token is invalid"):
-                api_token_service_module.query_token_from_db(f"missing-{uuid4()}", "app")
+            api_token_service_module.query_token_from_db(f"missing-{uuid4()}", "app")
 
         mock_cache_set.assert_called_once()
         call_args = mock_cache_set.call_args[0]

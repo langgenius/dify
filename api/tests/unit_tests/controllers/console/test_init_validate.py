@@ -53,9 +53,8 @@ def test_validate_init_password_already_setup(
     init_validation.validate_password.side_effect = AlreadyInitializedError
     app.secret_key = "test-secret"
 
-    with app.test_request_context("/console/api/init", method="POST"):
-        with pytest.raises(AlreadySetupError):
-            init_validate.validate_init_password(init_validate.InitValidatePayload(password="pw"))
+    with app.test_request_context("/console/api/init", method="POST"), pytest.raises(AlreadySetupError):
+        init_validate.validate_init_password(init_validate.InitValidatePayload(password="pw"))
 
 
 def test_validate_init_password_wrong_password(

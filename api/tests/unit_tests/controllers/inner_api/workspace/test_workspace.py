@@ -113,10 +113,9 @@ class TestEnterpriseWorkspace:
 
         # Act — unwrap to bypass auth/setup decorators (tested in test_auth_wraps.py)
         unwrapped_post = inspect.unwrap(api_instance.post)
-        with app.test_request_context():
-            with patch("controllers.inner_api.workspace.workspace.inner_api_ns") as mock_ns:
-                mock_ns.payload = {"name": "My Workspace", "owner_email": "owner@example.com"}
-                result = unwrapped_post(api_instance)
+        with app.test_request_context(), patch("controllers.inner_api.workspace.workspace.inner_api_ns") as mock_ns:
+            mock_ns.payload = {"name": "My Workspace", "owner_email": "owner@example.com"}
+            result = unwrapped_post(api_instance)
 
         # Assert
         assert result["message"] == "enterprise workspace created."
@@ -136,10 +135,9 @@ class TestEnterpriseWorkspace:
         """Test that post() returns 404 when the owner account does not exist"""
         # Act
         unwrapped_post = inspect.unwrap(api_instance.post)
-        with app.test_request_context():
-            with patch("controllers.inner_api.workspace.workspace.inner_api_ns") as mock_ns:
-                mock_ns.payload = {"name": "My Workspace", "owner_email": "missing@example.com"}
-                result = unwrapped_post(api_instance)
+        with app.test_request_context(), patch("controllers.inner_api.workspace.workspace.inner_api_ns") as mock_ns:
+            mock_ns.payload = {"name": "My Workspace", "owner_email": "missing@example.com"}
+            result = unwrapped_post(api_instance)
 
         # Assert
         assert result == ({"message": "owner account not found."}, 404)
@@ -182,10 +180,9 @@ class TestEnterpriseWorkspaceNoOwnerEmail:
 
         # Act — unwrap to bypass auth/setup decorators (tested in test_auth_wraps.py)
         unwrapped_post = inspect.unwrap(api_instance.post)
-        with app.test_request_context():
-            with patch("controllers.inner_api.workspace.workspace.inner_api_ns") as mock_ns:
-                mock_ns.payload = {"name": "My Workspace"}
-                result = unwrapped_post(api_instance)
+        with app.test_request_context(), patch("controllers.inner_api.workspace.workspace.inner_api_ns") as mock_ns:
+            mock_ns.payload = {"name": "My Workspace"}
+            result = unwrapped_post(api_instance)
 
         # Assert
         assert result["message"] == "enterprise workspace created."

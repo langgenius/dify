@@ -145,9 +145,11 @@ def test_mcp_tool_invoke_raises_for_unsupported_embedded_resource(sqlite_session
     bad_resource = EmbeddedResource.model_construct(type="resource", resource=object())
     result = CallToolResult(content=[bad_resource], _meta=None)
 
-    with patch.object(MCPTool, "invoke_remote_mcp_tool", return_value=result):
-        with pytest.raises(ToolInvokeError, match="Unsupported embedded resource type"):
-            list(tool.invoke(session=sqlite_session, user_id="user-1", tool_parameters={}))
+    with (
+        patch.object(MCPTool, "invoke_remote_mcp_tool", return_value=result),
+        pytest.raises(ToolInvokeError, match="Unsupported embedded resource type"),
+    ):
+        list(tool.invoke(session=sqlite_session, user_id="user-1", tool_parameters={}))
 
 
 def test_mcp_tool_handle_none_parameter_filters_empty_values():
@@ -211,14 +213,14 @@ def test_inject_forwarded_identity_translates_token_error_to_invoke_error():
     tool = _build_forwarding_tool()
     headers: dict[str, str] = {}
 
-    with patch(
-        "services.enterprise.enterprise_service.EnterpriseService.issue_mcp_token",
-        side_effect=MCPNoRefreshTokenError("please re-sso"),
+    with (
+        patch(
+            "services.enterprise.enterprise_service.EnterpriseService.issue_mcp_token",
+            side_effect=MCPNoRefreshTokenError("please re-sso"),
+        ),
+        pytest.raises(ToolInvokeError, match="forwarded identity token"),
     ):
-        with pytest.raises(ToolInvokeError, match="forwarded identity token"):
-            tool._inject_forwarded_identity(
-                headers, user_id="alice", app_id=None, audience="https://mcp.example.com/mcp/"
-            )
+        tool._inject_forwarded_identity(headers, user_id="alice", app_id=None, audience="https://mcp.example.com/mcp/")
 
     # Headers must NOT have been mutated when token-issuance failed.
     assert FORWARDED_IDENTITY_HEADER not in headers

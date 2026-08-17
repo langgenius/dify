@@ -165,9 +165,9 @@ def test_get_app_ref_raises_not_found_when_app_is_not_in_current_tenant(sqlite_s
             "current_account_with_tenant",
             return_value=(_account(), "tenant-2"),
         ),
+        pytest.raises(NotFound),
     ):
-        with pytest.raises(NotFound):
-            annotation_module._get_app_ref(sqlite_session, "app-1")
+        annotation_module._get_app_ref(sqlite_session, "app-1")
 
 
 class TestConsoleAnnotationRefBoundaries:

@@ -449,10 +449,9 @@ class ClickzettaVector(BaseVector):
     def _table_exists(self) -> bool:
         """Check if the table exists."""
         try:
-            with self.get_connection_context() as connection:
-                with connection.cursor() as cursor:
-                    cursor.execute(f"DESC {self._config.schema_name}.{self._table_name}")
-                    return True
+            with self.get_connection_context() as connection, connection.cursor() as cursor:
+                cursor.execute(f"DESC {self._config.schema_name}.{self._table_name}")
+                return True
         except Exception as e:
             error_message = str(e).lower()
             # Handle ClickZetta specific "table or view not found" errors
@@ -502,17 +501,16 @@ class ClickzettaVector(BaseVector):
         ) COMMENT 'Dify RAG knowledge base vector storage table for document embeddings and content'
         """
 
-        with self.get_connection_context() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(create_table_sql)
-                logger.info("Created table %s.%s", self._config.schema_name, self._table_name)
+        with self.get_connection_context() as connection, connection.cursor() as cursor:
+            cursor.execute(create_table_sql)
+            logger.info("Created table %s.%s", self._config.schema_name, self._table_name)
 
-                # Create vector index
-                self._create_vector_index(cursor)
+            # Create vector index
+            self._create_vector_index(cursor)
 
-                # Create inverted index for full-text search if enabled
-                if self._config.enable_inverted_index:
-                    self._create_inverted_index(cursor)
+            # Create inverted index for full-text search if enabled
+            if self._config.enable_inverted_index:
+                self._create_inverted_index(cursor)
 
     def _create_vector_index(self, cursor):
         """Create HNSW vector index for similarity search."""
@@ -688,37 +686,36 @@ class ClickzettaVector(BaseVector):
             f"VALUES (?, ?, CAST(? AS JSON), CAST(? AS VECTOR({vector_dimension})))"
         )
 
-        with self.get_connection_context() as connection:
-            with connection.cursor() as cursor:
+        with self.get_connection_context() as connection, connection.cursor() as cursor:
+            try:
+                # Set session-level hints for batch insert operations
+                # Note: executemany doesn't support hints parameter, so we set them as session variables
+                # Temporarily suppress ClickZetta client logging to reduce noise
+                clickzetta_logger = logging.getLogger("clickzetta")
+                original_level = clickzetta_logger.level
+                clickzetta_logger.setLevel(logging.WARNING)
+
                 try:
-                    # Set session-level hints for batch insert operations
-                    # Note: executemany doesn't support hints parameter, so we set them as session variables
-                    # Temporarily suppress ClickZetta client logging to reduce noise
-                    clickzetta_logger = logging.getLogger("clickzetta")
-                    original_level = clickzetta_logger.level
-                    clickzetta_logger.setLevel(logging.WARNING)
+                    cursor.execute("SET cz.sql.job.fast.mode = true")
+                    cursor.execute("SET cz.sql.compaction.after.commit = true")
+                    cursor.execute("SET cz.storage.always.prefetch.internal = true")
+                finally:
+                    # Restore original logging level
+                    clickzetta_logger.setLevel(original_level)
 
-                    try:
-                        cursor.execute("SET cz.sql.job.fast.mode = true")
-                        cursor.execute("SET cz.sql.compaction.after.commit = true")
-                        cursor.execute("SET cz.storage.always.prefetch.internal = true")
-                    finally:
-                        # Restore original logging level
-                        clickzetta_logger.setLevel(original_level)
-
-                    cursor.executemany(insert_sql, data_rows)
-                    logger.info(
-                        "Inserted batch %d/%d (%d valid docs using parameterized query with VECTOR(%d) cast)",
-                        batch_index // batch_size + 1,
-                        total_batches,
-                        len(data_rows),
-                        vector_dimension,
-                    )
-                except (RuntimeError, ValueError, TypeError, ConnectionError):
-                    logger.exception("Parameterized SQL execution failed for %d documents", len(data_rows))
-                    logger.exception("SQL template: %s", insert_sql)
-                    logger.exception("Sample data row: %s", data_rows[0] if data_rows else "None")
-                    raise
+                cursor.executemany(insert_sql, data_rows)
+                logger.info(
+                    "Inserted batch %d/%d (%d valid docs using parameterized query with VECTOR(%d) cast)",
+                    batch_index // batch_size + 1,
+                    total_batches,
+                    len(data_rows),
+                    vector_dimension,
+                )
+            except (RuntimeError, ValueError, TypeError, ConnectionError):
+                logger.exception("Parameterized SQL execution failed for %d documents", len(data_rows))
+                logger.exception("SQL template: %s", insert_sql)
+                logger.exception("Sample data row: %s", data_rows[0] if data_rows else "None")
+                raise
 
     @override
     def text_exists(self, id: str) -> bool:
@@ -728,14 +725,13 @@ class ClickzettaVector(BaseVector):
             return False
 
         safe_id = self._safe_doc_id(id)
-        with self.get_connection_context() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    f"SELECT COUNT(*) FROM {self._config.schema_name}.{self._table_name} WHERE id = ?",
-                    binding_params=[safe_id],
-                )
-                result = cursor.fetchone()
-                return result[0] > 0 if result else False
+        with self.get_connection_context() as connection, connection.cursor() as cursor:
+            cursor.execute(
+                f"SELECT COUNT(*) FROM {self._config.schema_name}.{self._table_name} WHERE id = ?",
+                binding_params=[safe_id],
+            )
+            result = cursor.fetchone()
+            return result[0] > 0 if result else False
 
     @override
     def delete_by_ids(self, ids: list[str]):
@@ -759,9 +755,8 @@ class ClickzettaVector(BaseVector):
         placeholders = ",".join("?" for _ in safe_ids)
         sql = f"DELETE FROM {self._config.schema_name}.{self._table_name} WHERE id IN ({placeholders})"
 
-        with self.get_connection_context() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(sql, binding_params=safe_ids)
+        with self.get_connection_context() as connection, connection.cursor() as cursor:
+            cursor.execute(sql, binding_params=safe_ids)
 
     @override
     def delete_by_metadata_field(self, key: str, value: str):
@@ -776,16 +771,15 @@ class ClickzettaVector(BaseVector):
 
     def _delete_by_metadata_field_impl(self, key: str, value: str):
         """Implementation of delete by metadata field (executed in write worker thread)."""
-        with self.get_connection_context() as connection:
-            with connection.cursor() as cursor:
-                # Using JSON path to filter with parameterized query
-                # Note: JSON path requires literal key name, cannot be parameterized
-                # Use json_extract_string function for ClickZetta compatibility
-                sql = (
-                    f"DELETE FROM {self._config.schema_name}.{self._table_name} "
-                    f"WHERE json_extract_string({Field.METADATA_KEY}, '$.{key}') = ?"
-                )
-                cursor.execute(sql, binding_params=[value])
+        with self.get_connection_context() as connection, connection.cursor() as cursor:
+            # Using JSON path to filter with parameterized query
+            # Note: JSON path requires literal key name, cannot be parameterized
+            # Use json_extract_string function for ClickZetta compatibility
+            sql = (
+                f"DELETE FROM {self._config.schema_name}.{self._table_name} "
+                f"WHERE json_extract_string({Field.METADATA_KEY}, '$.{key}') = ?"
+            )
+            cursor.execute(sql, binding_params=[value])
 
     @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
@@ -845,31 +839,30 @@ class ClickzettaVector(BaseVector):
         """
 
         documents = []
-        with self.get_connection_context() as connection:
-            with connection.cursor() as cursor:
-                # Use hints parameter for vector search optimization
-                search_hints = {
-                    "hints": {
-                        "sdk.job.timeout": 60,  # Increase timeout for vector search
-                        "cz.sql.job.fast.mode": True,
-                        "cz.storage.parquet.vector.index.read.memory.cache": True,
-                    }
+        with self.get_connection_context() as connection, connection.cursor() as cursor:
+            # Use hints parameter for vector search optimization
+            search_hints = {
+                "hints": {
+                    "sdk.job.timeout": 60,  # Increase timeout for vector search
+                    "cz.sql.job.fast.mode": True,
+                    "cz.storage.parquet.vector.index.read.memory.cache": True,
                 }
-                cursor.execute(search_sql, search_hints)
-                results = cursor.fetchall()
+            }
+            cursor.execute(search_sql, search_hints)
+            results = cursor.fetchall()
 
-                for row in results:
-                    # Parse metadata using centralized method
-                    metadata = self._parse_metadata(row[2], row[0])
+            for row in results:
+                # Parse metadata using centralized method
+                metadata = self._parse_metadata(row[2], row[0])
 
-                    # Add score based on distance
-                    if self._config.vector_distance_function == "cosine_distance":
-                        metadata["score"] = 1 - (row[3] / 2)
-                    else:
-                        metadata["score"] = 1 / (1 + row[3])
+                # Add score based on distance
+                if self._config.vector_distance_function == "cosine_distance":
+                    metadata["score"] = 1 - (row[3] / 2)
+                else:
+                    metadata["score"] = 1 / (1 + row[3])
 
-                    doc = Document(page_content=row[1], metadata=metadata)
-                    documents.append(doc)
+                doc = Document(page_content=row[1], metadata=metadata)
+                documents.append(doc)
 
         return documents
 
@@ -922,58 +915,57 @@ class ClickzettaVector(BaseVector):
         """
 
         documents = []
-        with self.get_connection_context() as connection:
-            with connection.cursor() as cursor:
-                try:
-                    # Use hints parameter for full-text search optimization
-                    fulltext_hints = {
-                        "hints": {
-                            "sdk.job.timeout": 30,  # Timeout for full-text search
-                            "cz.sql.job.fast.mode": True,
-                            "cz.sql.index.prewhere.enabled": True,
-                        }
+        with self.get_connection_context() as connection, connection.cursor() as cursor:
+            try:
+                # Use hints parameter for full-text search optimization
+                fulltext_hints = {
+                    "hints": {
+                        "sdk.job.timeout": 30,  # Timeout for full-text search
+                        "cz.sql.job.fast.mode": True,
+                        "cz.sql.index.prewhere.enabled": True,
                     }
-                    cursor.execute(search_sql, fulltext_hints)
-                    results = cursor.fetchall()
+                }
+                cursor.execute(search_sql, fulltext_hints)
+                results = cursor.fetchall()
 
-                    for row in results:
-                        # Parse metadata from JSON string (may be double-encoded)
-                        try:
-                            if row[2]:
-                                # First parse may yield a string (double-encoded JSON)
-                                first_pass = json.loads(row[2])
+                for row in results:
+                    # Parse metadata from JSON string (may be double-encoded)
+                    try:
+                        if row[2]:
+                            # First parse may yield a string (double-encoded JSON)
+                            first_pass = json.loads(row[2])
 
-                                match first_pass:
-                                    case str():
-                                        metadata = parse_metadata_json(first_pass)
-                                    case dict():
-                                        metadata = first_pass
-                                    case _:
-                                        metadata = {}
-                            else:
-                                metadata = {}
-                        except (json.JSONDecodeError, ValueError, TypeError):
-                            logger.exception("JSON parsing failed")
-                            # Fallback: extract document_id with regex
+                            match first_pass:
+                                case str():
+                                    metadata = parse_metadata_json(first_pass)
+                                case dict():
+                                    metadata = first_pass
+                                case _:
+                                    metadata = {}
+                        else:
+                            metadata = {}
+                    except (json.JSONDecodeError, ValueError, TypeError):
+                        logger.exception("JSON parsing failed")
+                        # Fallback: extract document_id with regex
 
-                            doc_id_match = re.search(r'"document_id":\s*"([^"]+)"', str(row[2] or ""))
-                            metadata = {"document_id": doc_id_match.group(1)} if doc_id_match else {}
+                        doc_id_match = re.search(r'"document_id":\s*"([^"]+)"', str(row[2] or ""))
+                        metadata = {"document_id": doc_id_match.group(1)} if doc_id_match else {}
 
-                        # Ensure required fields are set
-                        metadata["doc_id"] = row[0]  # segment id
+                    # Ensure required fields are set
+                    metadata["doc_id"] = row[0]  # segment id
 
-                        # Ensure document_id exists (critical for Dify's format_retrieval_documents)
-                        if "document_id" not in metadata:
-                            metadata["document_id"] = row[0]  # fallback to segment id
+                    # Ensure document_id exists (critical for Dify's format_retrieval_documents)
+                    if "document_id" not in metadata:
+                        metadata["document_id"] = row[0]  # fallback to segment id
 
-                        # Add a relevance score for full-text search
-                        metadata["score"] = 1.0  # Clickzetta doesn't provide relevance scores
-                        doc = Document(page_content=row[1], metadata=metadata)
-                        documents.append(doc)
-                except (RuntimeError, ValueError, TypeError, ConnectionError):
-                    logger.exception("Full-text search failed")
-                    # Fallback to LIKE search if full-text search fails
-                    return self._search_by_like(query, **kwargs)
+                    # Add a relevance score for full-text search
+                    metadata["score"] = 1.0  # Clickzetta doesn't provide relevance scores
+                    doc = Document(page_content=row[1], metadata=metadata)
+                    documents.append(doc)
+            except (RuntimeError, ValueError, TypeError, ConnectionError):
+                logger.exception("Full-text search failed")
+                # Fallback to LIKE search if full-text search fails
+                return self._search_by_like(query, **kwargs)
 
         return documents
 
@@ -1019,34 +1011,32 @@ class ClickzettaVector(BaseVector):
         """
 
         documents = []
-        with self.get_connection_context() as connection:
-            with connection.cursor() as cursor:
-                # Use hints parameter for LIKE search optimization
-                like_hints = {
-                    "hints": {
-                        "sdk.job.timeout": 20,  # Timeout for LIKE search
-                        "cz.sql.job.fast.mode": True,
-                    }
+        with self.get_connection_context() as connection, connection.cursor() as cursor:
+            # Use hints parameter for LIKE search optimization
+            like_hints = {
+                "hints": {
+                    "sdk.job.timeout": 20,  # Timeout for LIKE search
+                    "cz.sql.job.fast.mode": True,
                 }
-                cursor.execute(search_sql, like_hints)
-                results = cursor.fetchall()
+            }
+            cursor.execute(search_sql, like_hints)
+            results = cursor.fetchall()
 
-                for row in results:
-                    # Parse metadata using centralized method
-                    metadata = self._parse_metadata(row[2], row[0])
+            for row in results:
+                # Parse metadata using centralized method
+                metadata = self._parse_metadata(row[2], row[0])
 
-                    metadata["score"] = 0.5  # Lower score for LIKE search
-                    doc = Document(page_content=row[1], metadata=metadata)
-                    documents.append(doc)
+                metadata["score"] = 0.5  # Lower score for LIKE search
+                doc = Document(page_content=row[1], metadata=metadata)
+                documents.append(doc)
 
         return documents
 
     @override
     def delete(self):
         """Delete the entire collection."""
-        with self.get_connection_context() as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(f"DROP TABLE IF EXISTS {self._config.schema_name}.{self._table_name}")
+        with self.get_connection_context() as connection, connection.cursor() as cursor:
+            cursor.execute(f"DROP TABLE IF EXISTS {self._config.schema_name}.{self._table_name}")
 
     def _format_vector_simple(self, vector: list[float]) -> str:
         """Simple vector formatting for SQL queries."""

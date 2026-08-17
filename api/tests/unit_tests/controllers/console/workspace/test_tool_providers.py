@@ -883,13 +883,15 @@ def _invoke_oauth_callback(
     ctx = {"user_id": "user-oauth", "tenant_id": "tenant-oauth"}
     if stored_visibility is not None:
         ctx["visibility"] = stored_visibility
-    with app.test_request_context(
-        f"/oauth/plugin/{provider}/tool/callback",
-        method="GET",
-        headers={"Cookie": "context_id=ctx-id"},
+    with (
+        app.test_request_context(
+            f"/oauth/plugin/{provider}/tool/callback",
+            method="GET",
+            headers={"Cookie": "context_id=ctx-id"},
+        ),
+        patch.object(controller_module.OAuthProxyService, "use_proxy_context", return_value=ctx),
     ):
-        with patch.object(controller_module.OAuthProxyService, "use_proxy_context", return_value=ctx):
-            return unwrap(api.get)(api, provider=provider)
+        return unwrap(api.get)(api, provider=provider)
 
 
 @contextmanager

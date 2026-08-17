@@ -224,17 +224,19 @@ def test_single_dataset_retriever_external_run_returns_content_and_resources(sql
         inputs={"x": 1},
     )
 
-    with patch.object(
-        single_retriever_module.DatasetRetrieval,
-        "get_metadata_filter_condition",
-        return_value=metadata_filter_result,
-    ):
-        with patch.object(
+    with (
+        patch.object(
+            single_retriever_module.DatasetRetrieval,
+            "get_metadata_filter_condition",
+            return_value=metadata_filter_result,
+        ),
+        patch.object(
             single_retriever_module.ExternalDatasetService,
             "fetch_external_knowledge_retrieval",
             return_value=external_documents,
-        ) as fetch_mock:
-            result = tool.run(session=sqlite_session, query="hello")
+        ) as fetch_mock,
+    ):
+        result = tool.run(session=sqlite_session, query="hello")
 
     assert result == "first\nsecond"
     assert callback.queries == [("hello", dataset.id)]
@@ -260,13 +262,15 @@ def test_single_dataset_retriever_returns_empty_when_metadata_filter_finds_no_do
         inputs={},
     )
 
-    with patch.object(
-        single_retriever_module.DatasetRetrieval,
-        "get_metadata_filter_condition",
-        return_value=({dataset.id: []}, {"logical_operator": "and"}),
+    with (
+        patch.object(
+            single_retriever_module.DatasetRetrieval,
+            "get_metadata_filter_condition",
+            return_value=({dataset.id: []}, {"logical_operator": "and"}),
+        ),
+        patch.object(single_retriever_module.RetrievalService, "retrieve") as retrieve_mock,
     ):
-        with patch.object(single_retriever_module.RetrievalService, "retrieve") as retrieve_mock:
-            result = tool.run(session=sqlite_session, query="hello")
+        result = tool.run(session=sqlite_session, query="hello")
 
     assert result == ""
     retrieve_mock.assert_not_called()
@@ -407,15 +411,17 @@ def test_multi_dataset_retriever_retriever_returns_early_when_dataset_is_missing
     )
 
     try:
-        with patch.object(multi_retriever_module, "db", _DatabaseWithSession(db_session)):
-            with patch.object(multi_retriever_module.RetrievalService, "retrieve") as retrieve_mock:
-                result = tool._retriever(
-                    flask_app=_FakeFlaskApp(),
-                    dataset_id=str(uuid.uuid4()),
-                    query="hello",
-                    all_documents=all_documents,
-                    hit_callbacks=[callback],
-                )
+        with (
+            patch.object(multi_retriever_module, "db", _DatabaseWithSession(db_session)),
+            patch.object(multi_retriever_module.RetrievalService, "retrieve") as retrieve_mock,
+        ):
+            result = tool._retriever(
+                flask_app=_FakeFlaskApp(),
+                dataset_id=str(uuid.uuid4()),
+                query="hello",
+                all_documents=all_documents,
+                hit_callbacks=[callback],
+            )
     finally:
         db_session.remove()
 
@@ -456,17 +462,17 @@ def test_multi_dataset_retriever_retriever_non_economy_uses_retrieval_model(
     )
 
     try:
-        with patch.object(multi_retriever_module, "db", _DatabaseWithSession(db_session)):
-            with patch.object(
-                multi_retriever_module.RetrievalService, "retrieve", return_value=documents
-            ) as retrieve_mock:
-                tool._retriever(
-                    flask_app=_FakeFlaskApp(),
-                    dataset_id=dataset.id,
-                    query="hello",
-                    all_documents=all_documents,
-                    hit_callbacks=[callback],
-                )
+        with (
+            patch.object(multi_retriever_module, "db", _DatabaseWithSession(db_session)),
+            patch.object(multi_retriever_module.RetrievalService, "retrieve", return_value=documents) as retrieve_mock,
+        ):
+            tool._retriever(
+                flask_app=_FakeFlaskApp(),
+                dataset_id=dataset.id,
+                query="hello",
+                all_documents=all_documents,
+                hit_callbacks=[callback],
+            )
     finally:
         db_session.remove()
 

@@ -115,14 +115,13 @@ class TestOpenApiWorkflowEventsApi:
         app_model = _make_app()
         caller = _make_account()
 
-        with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
-            with pytest.raises(NotFound):
-                api.get.__wrapped__(
-                    api,
-                    app_id="app-1",
-                    task_id="wf-run-1",
-                    auth_data=_make_auth_data(app_model, caller, "account"),
-                )
+        with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"), pytest.raises(NotFound):
+            api.get.__wrapped__(
+                api,
+                app_id="app-1",
+                task_id="wf-run-1",
+                auth_data=_make_auth_data(app_model, caller, "account"),
+            )
 
         session_maker = factory_mock.create_api_workflow_run_repository.call_args.args[0]
         assert isinstance(session_maker, sessionmaker)
@@ -144,14 +143,13 @@ class TestOpenApiWorkflowEventsApi:
         app_model = _make_app()
         caller = _make_account()
 
-        with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
-            with pytest.raises(NotFound):
-                api.get.__wrapped__(
-                    api,
-                    app_id="app-1",
-                    task_id="wf-run-1",
-                    auth_data=_make_auth_data(app_model, caller, "account"),
-                )
+        with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"), pytest.raises(NotFound):
+            api.get.__wrapped__(
+                api,
+                app_id="app-1",
+                task_id="wf-run-1",
+                auth_data=_make_auth_data(app_model, caller, "account"),
+            )
 
     def test_account_caller_checks_created_by_account(
         self, app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch
@@ -205,14 +203,13 @@ class TestOpenApiWorkflowEventsApi:
         caller = _make_account()
 
         api = self._get_api()
-        with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
-            with pytest.raises(NotFound):
-                api.get.__wrapped__(
-                    api,
-                    app_id="app-1",
-                    task_id="wf-run-1",
-                    auth_data=_make_auth_data(app_model, caller, "account"),
-                )
+        with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"), pytest.raises(NotFound):
+            api.get.__wrapped__(
+                api,
+                app_id="app-1",
+                task_id="wf-run-1",
+                auth_data=_make_auth_data(app_model, caller, "account"),
+            )
 
     def test_end_user_caller_checks_created_by_end_user(
         self, app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch

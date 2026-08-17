@@ -139,16 +139,15 @@ class TestCompletionApi:
                 completion_module.AppGenerateService,
                 "generate",
                 side_effect=completion_module.services.errors.conversation.ConversationCompletedError(),
-            ),
+            ),pytest.raises(ConversationCompletedError)
         ):
-            with pytest.raises(ConversationCompletedError):
-                method(
-                    api,
-                    completion_module.CompletionMessageExplorePayload.model_validate(payload_data),
-                    _session(completion_app),
-                    user,
-                    completion_app,
-                )
+            method(
+                api,
+                completion_module.CompletionMessageExplorePayload.model_validate(payload_data),
+                _session(completion_app),
+                user,
+                completion_app,
+            )
 
     def test_internal_error(self, app: Flask, completion_app, user, payload_patch, payload_data):
         api = completion_module.CompletionApi()
@@ -161,16 +160,15 @@ class TestCompletionApi:
                 completion_module.AppGenerateService,
                 "generate",
                 side_effect=Exception("boom"),
-            ),
+            ),pytest.raises(InternalServerError)
         ):
-            with pytest.raises(InternalServerError):
-                method(
-                    api,
-                    completion_module.CompletionMessageExplorePayload.model_validate(payload_data),
-                    _session(completion_app),
-                    user,
-                    completion_app,
-                )
+            method(
+                api,
+                completion_module.CompletionMessageExplorePayload.model_validate(payload_data),
+                _session(completion_app),
+                user,
+                completion_app,
+            )
 
     def test_conversation_not_exists(self, app: Flask, completion_app, user, payload_patch, payload_data):
         api = completion_module.CompletionApi()
@@ -183,16 +181,15 @@ class TestCompletionApi:
                 completion_module.AppGenerateService,
                 "generate",
                 side_effect=completion_module.services.errors.conversation.ConversationNotExistsError(),
-            ),
+            ),pytest.raises(completion_module.NotFound)
         ):
-            with pytest.raises(completion_module.NotFound):
-                method(
-                    api,
-                    completion_module.CompletionMessageExplorePayload.model_validate(payload_data),
-                    _session(completion_app),
-                    user,
-                    completion_app,
-                )
+            method(
+                api,
+                completion_module.CompletionMessageExplorePayload.model_validate(payload_data),
+                _session(completion_app),
+                user,
+                completion_app,
+            )
 
     def test_app_unavailable(self, app: Flask, completion_app, user, payload_patch, payload_data):
         api = completion_module.CompletionApi()
@@ -205,16 +202,15 @@ class TestCompletionApi:
                 completion_module.AppGenerateService,
                 "generate",
                 side_effect=completion_module.services.errors.app_model_config.AppModelConfigBrokenError(),
-            ),
+            ),pytest.raises(completion_module.AppUnavailableError)
         ):
-            with pytest.raises(completion_module.AppUnavailableError):
-                method(
-                    api,
-                    completion_module.CompletionMessageExplorePayload.model_validate(payload_data),
-                    _session(completion_app),
-                    user,
-                    completion_app,
-                )
+            method(
+                api,
+                completion_module.CompletionMessageExplorePayload.model_validate(payload_data),
+                _session(completion_app),
+                user,
+                completion_app,
+            )
 
     def test_provider_not_initialized(self, app: Flask, completion_app, user, payload_patch, payload_data):
         api = completion_module.CompletionApi()
@@ -227,16 +223,15 @@ class TestCompletionApi:
                 completion_module.AppGenerateService,
                 "generate",
                 side_effect=completion_module.ProviderTokenNotInitError("not init"),
-            ),
+            ),pytest.raises(completion_module.ProviderNotInitializeError)
         ):
-            with pytest.raises(completion_module.ProviderNotInitializeError):
-                method(
-                    api,
-                    completion_module.CompletionMessageExplorePayload.model_validate(payload_data),
-                    _session(completion_app),
-                    user,
-                    completion_app,
-                )
+            method(
+                api,
+                completion_module.CompletionMessageExplorePayload.model_validate(payload_data),
+                _session(completion_app),
+                user,
+                completion_app,
+            )
 
     def test_quota_exceeded(self, app: Flask, completion_app, user, payload_patch, payload_data):
         api = completion_module.CompletionApi()
@@ -249,16 +244,15 @@ class TestCompletionApi:
                 completion_module.AppGenerateService,
                 "generate",
                 side_effect=completion_module.QuotaExceededError(),
-            ),
+            ),pytest.raises(completion_module.ProviderQuotaExceededError)
         ):
-            with pytest.raises(completion_module.ProviderQuotaExceededError):
-                method(
-                    api,
-                    completion_module.CompletionMessageExplorePayload.model_validate(payload_data),
-                    _session(completion_app),
-                    user,
-                    completion_app,
-                )
+            method(
+                api,
+                completion_module.CompletionMessageExplorePayload.model_validate(payload_data),
+                _session(completion_app),
+                user,
+                completion_app,
+            )
 
     def test_model_not_supported(self, app: Flask, completion_app, user, payload_patch, payload_data):
         api = completion_module.CompletionApi()
@@ -271,16 +265,15 @@ class TestCompletionApi:
                 completion_module.AppGenerateService,
                 "generate",
                 side_effect=completion_module.ModelCurrentlyNotSupportError(),
-            ),
+            ),pytest.raises(completion_module.ProviderModelCurrentlyNotSupportError)
         ):
-            with pytest.raises(completion_module.ProviderModelCurrentlyNotSupportError):
-                method(
-                    api,
-                    completion_module.CompletionMessageExplorePayload.model_validate(payload_data),
-                    _session(completion_app),
-                    user,
-                    completion_app,
-                )
+            method(
+                api,
+                completion_module.CompletionMessageExplorePayload.model_validate(payload_data),
+                _session(completion_app),
+                user,
+                completion_app,
+            )
 
     def test_invoke_error(self, app: Flask, completion_app, user, payload_patch, payload_data):
         api = completion_module.CompletionApi()
@@ -293,16 +286,15 @@ class TestCompletionApi:
                 completion_module.AppGenerateService,
                 "generate",
                 side_effect=completion_module.InvokeError("invoke failed"),
-            ),
+            ),pytest.raises(completion_module.CompletionRequestError)
         ):
-            with pytest.raises(completion_module.CompletionRequestError):
-                method(
-                    api,
-                    completion_module.CompletionMessageExplorePayload.model_validate(payload_data),
-                    _session(completion_app),
-                    user,
-                    completion_app,
-                )
+            method(
+                api,
+                completion_module.CompletionMessageExplorePayload.model_validate(payload_data),
+                _session(completion_app),
+                user,
+                completion_app,
+            )
 
 
 class TestCompletionStopApi:
@@ -381,16 +373,15 @@ class TestChatApi:
                 completion_module.AppGenerateService,
                 "generate",
                 side_effect=InvokeRateLimitError("limit"),
-            ),
+            ),pytest.raises(InvokeRateLimitHttpError)
         ):
-            with pytest.raises(InvokeRateLimitHttpError):
-                method(
-                    api,
-                    completion_module.ChatMessagePayload.model_validate(payload_data),
-                    _session(chat_app),
-                    user,
-                    chat_app,
-                )
+            method(
+                api,
+                completion_module.ChatMessagePayload.model_validate(payload_data),
+                _session(chat_app),
+                user,
+                chat_app,
+            )
 
     def test_conversation_completed_chat(self, app: Flask, chat_app, user, payload_patch, payload_data):
         api = completion_module.ChatApi()
@@ -403,16 +394,15 @@ class TestChatApi:
                 completion_module.AppGenerateService,
                 "generate",
                 side_effect=completion_module.services.errors.conversation.ConversationCompletedError(),
-            ),
+            ),pytest.raises(ConversationCompletedError)
         ):
-            with pytest.raises(ConversationCompletedError):
-                method(
-                    api,
-                    completion_module.ChatMessagePayload.model_validate(payload_data),
-                    _session(chat_app),
-                    user,
-                    chat_app,
-                )
+            method(
+                api,
+                completion_module.ChatMessagePayload.model_validate(payload_data),
+                _session(chat_app),
+                user,
+                chat_app,
+            )
 
     def test_conversation_not_exists_chat(self, app: Flask, chat_app, user, payload_patch, payload_data):
         api = completion_module.ChatApi()
@@ -425,16 +415,15 @@ class TestChatApi:
                 completion_module.AppGenerateService,
                 "generate",
                 side_effect=completion_module.services.errors.conversation.ConversationNotExistsError(),
-            ),
+            ),pytest.raises(completion_module.NotFound)
         ):
-            with pytest.raises(completion_module.NotFound):
-                method(
-                    api,
-                    completion_module.ChatMessagePayload.model_validate(payload_data),
-                    _session(chat_app),
-                    user,
-                    chat_app,
-                )
+            method(
+                api,
+                completion_module.ChatMessagePayload.model_validate(payload_data),
+                _session(chat_app),
+                user,
+                chat_app,
+            )
 
     def test_invalid_conversation_id_fails_fast_as_not_found(self, app: Flask, chat_app, user) -> None:
         # A nonexistent conversation_id must fail fast as 404, before the streaming
@@ -492,16 +481,15 @@ class TestChatApi:
                 completion_module.AppGenerateService,
                 "generate",
                 side_effect=completion_module.services.errors.app_model_config.AppModelConfigBrokenError(),
-            ),
+            ),pytest.raises(completion_module.AppUnavailableError)
         ):
-            with pytest.raises(completion_module.AppUnavailableError):
-                method(
-                    api,
-                    completion_module.ChatMessagePayload.model_validate(payload_data),
-                    _session(chat_app),
-                    user,
-                    chat_app,
-                )
+            method(
+                api,
+                completion_module.ChatMessagePayload.model_validate(payload_data),
+                _session(chat_app),
+                user,
+                chat_app,
+            )
 
     def test_provider_not_initialized_chat(self, app: Flask, chat_app, user, payload_patch, payload_data):
         api = completion_module.ChatApi()
@@ -514,16 +502,15 @@ class TestChatApi:
                 completion_module.AppGenerateService,
                 "generate",
                 side_effect=completion_module.ProviderTokenNotInitError("not init"),
-            ),
+            ),pytest.raises(completion_module.ProviderNotInitializeError)
         ):
-            with pytest.raises(completion_module.ProviderNotInitializeError):
-                method(
-                    api,
-                    completion_module.ChatMessagePayload.model_validate(payload_data),
-                    _session(chat_app),
-                    user,
-                    chat_app,
-                )
+            method(
+                api,
+                completion_module.ChatMessagePayload.model_validate(payload_data),
+                _session(chat_app),
+                user,
+                chat_app,
+            )
 
     def test_quota_exceeded_chat(self, app: Flask, chat_app, user, payload_patch, payload_data):
         api = completion_module.ChatApi()
@@ -536,16 +523,15 @@ class TestChatApi:
                 completion_module.AppGenerateService,
                 "generate",
                 side_effect=completion_module.QuotaExceededError(),
-            ),
+            ),pytest.raises(completion_module.ProviderQuotaExceededError)
         ):
-            with pytest.raises(completion_module.ProviderQuotaExceededError):
-                method(
-                    api,
-                    completion_module.ChatMessagePayload.model_validate(payload_data),
-                    _session(chat_app),
-                    user,
-                    chat_app,
-                )
+            method(
+                api,
+                completion_module.ChatMessagePayload.model_validate(payload_data),
+                _session(chat_app),
+                user,
+                chat_app,
+            )
 
     def test_model_not_supported_chat(self, app: Flask, chat_app, user, payload_patch, payload_data):
         api = completion_module.ChatApi()
@@ -558,16 +544,15 @@ class TestChatApi:
                 completion_module.AppGenerateService,
                 "generate",
                 side_effect=completion_module.ModelCurrentlyNotSupportError(),
-            ),
+            ),pytest.raises(completion_module.ProviderModelCurrentlyNotSupportError)
         ):
-            with pytest.raises(completion_module.ProviderModelCurrentlyNotSupportError):
-                method(
-                    api,
-                    completion_module.ChatMessagePayload.model_validate(payload_data),
-                    _session(chat_app),
-                    user,
-                    chat_app,
-                )
+            method(
+                api,
+                completion_module.ChatMessagePayload.model_validate(payload_data),
+                _session(chat_app),
+                user,
+                chat_app,
+            )
 
     def test_invoke_error_chat(self, app: Flask, chat_app, user, payload_patch, payload_data):
         api = completion_module.ChatApi()
@@ -580,16 +565,15 @@ class TestChatApi:
                 completion_module.AppGenerateService,
                 "generate",
                 side_effect=completion_module.InvokeError("invoke failed"),
-            ),
+            ),pytest.raises(completion_module.CompletionRequestError)
         ):
-            with pytest.raises(completion_module.CompletionRequestError):
-                method(
-                    api,
-                    completion_module.ChatMessagePayload.model_validate(payload_data),
-                    _session(chat_app),
-                    user,
-                    chat_app,
-                )
+            method(
+                api,
+                completion_module.ChatMessagePayload.model_validate(payload_data),
+                _session(chat_app),
+                user,
+                chat_app,
+            )
 
     def test_internal_error_chat(self, app: Flask, chat_app, user, payload_patch, payload_data):
         api = completion_module.ChatApi()
@@ -602,16 +586,15 @@ class TestChatApi:
                 completion_module.AppGenerateService,
                 "generate",
                 side_effect=Exception("boom"),
-            ),
+            ),pytest.raises(InternalServerError)
         ):
-            with pytest.raises(InternalServerError):
-                method(
-                    api,
-                    completion_module.ChatMessagePayload.model_validate(payload_data),
-                    _session(chat_app),
-                    user,
-                    chat_app,
-                )
+            method(
+                api,
+                completion_module.ChatMessagePayload.model_validate(payload_data),
+                _session(chat_app),
+                user,
+                chat_app,
+            )
 
 
 class TestChatStopApi:

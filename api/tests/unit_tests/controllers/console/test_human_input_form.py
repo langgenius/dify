@@ -83,9 +83,8 @@ def test_get_form_definition_not_found(app: Flask, monkeypatch: pytest.MonkeyPat
     api = ConsoleHumanInputFormApi()
     handler = unwrap(api.get)
 
-    with app.test_request_context("/console/api/form/human_input/token", method="GET"):
-        with pytest.raises(NotFoundError):
-            handler(api, "tenant-1", form_token="token")
+    with app.test_request_context("/console/api/form/human_input/token", method="GET"), pytest.raises(NotFoundError):
+        handler(api, "tenant-1", form_token="token")
 
 
 def test_post_form_invalid_recipient_type(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -104,19 +103,21 @@ def test_post_form_invalid_recipient_type(app: Flask, monkeypatch: pytest.Monkey
     api = ConsoleHumanInputFormApi()
     handler = unwrap(api.post)
 
-    with app.test_request_context(
-        "/console/api/form/human_input/token",
-        method="POST",
-        json={"inputs": {"content": "ok"}, "action": "approve"},
+    with (
+        app.test_request_context(
+            "/console/api/form/human_input/token",
+            method="POST",
+            json={"inputs": {"content": "ok"}, "action": "approve"},
+        ),
+        pytest.raises(NotFoundError),
     ):
-        with pytest.raises(NotFoundError):
-            handler(
-                api,
-                HumanInputFormSubmitPayload.model_validate({"inputs": {"content": "ok"}, "action": "approve"}),
-                "tenant-1",
-                SimpleNamespace(id="user-1"),
-                form_token="token",
-            )
+        handler(
+            api,
+            HumanInputFormSubmitPayload.model_validate({"inputs": {"content": "ok"}, "action": "approve"}),
+            "tenant-1",
+            SimpleNamespace(id="user-1"),
+            form_token="token",
+        )
 
 
 def test_post_form_rejects_webapp_recipient_type(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -135,19 +136,21 @@ def test_post_form_rejects_webapp_recipient_type(app: Flask, monkeypatch: pytest
     api = ConsoleHumanInputFormApi()
     handler = unwrap(api.post)
 
-    with app.test_request_context(
-        "/console/api/form/human_input/token",
-        method="POST",
-        json={"inputs": {"content": "ok"}, "action": "approve"},
+    with (
+        app.test_request_context(
+            "/console/api/form/human_input/token",
+            method="POST",
+            json={"inputs": {"content": "ok"}, "action": "approve"},
+        ),
+        pytest.raises(NotFoundError),
     ):
-        with pytest.raises(NotFoundError):
-            handler(
-                api,
-                HumanInputFormSubmitPayload.model_validate({"inputs": {"content": "ok"}, "action": "approve"}),
-                "tenant-1",
-                SimpleNamespace(id="user-1"),
-                form_token="token",
-            )
+        handler(
+            api,
+            HumanInputFormSubmitPayload.model_validate({"inputs": {"content": "ok"}, "action": "approve"}),
+            "tenant-1",
+            SimpleNamespace(id="user-1"),
+            form_token="token",
+        )
 
 
 def test_post_form_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -242,9 +245,8 @@ def test_workflow_events_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) 
     api = ConsoleWorkflowEventsApi()
     handler = unwrap(api.get)
 
-    with app.test_request_context("/console/api/workflow/run/events", method="GET"):
-        with pytest.raises(NotFoundError):
-            handler(api, "t1", SimpleNamespace(id="u1"), workflow_run_id="run-1")
+    with app.test_request_context("/console/api/workflow/run/events", method="GET"), pytest.raises(NotFoundError):
+        handler(api, "t1", SimpleNamespace(id="u1"), workflow_run_id="run-1")
 
 
 def test_workflow_events_requires_account(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -269,9 +271,8 @@ def test_workflow_events_requires_account(app: Flask, monkeypatch: pytest.Monkey
     api = ConsoleWorkflowEventsApi()
     handler = unwrap(api.get)
 
-    with app.test_request_context("/console/api/workflow/run/events", method="GET"):
-        with pytest.raises(NotFoundError):
-            handler(api, "t1", SimpleNamespace(id="u1"), workflow_run_id="run-1")
+    with app.test_request_context("/console/api/workflow/run/events", method="GET"), pytest.raises(NotFoundError):
+        handler(api, "t1", SimpleNamespace(id="u1"), workflow_run_id="run-1")
 
 
 def test_workflow_events_requires_creator(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -296,9 +297,8 @@ def test_workflow_events_requires_creator(app: Flask, monkeypatch: pytest.Monkey
     api = ConsoleWorkflowEventsApi()
     handler = unwrap(api.get)
 
-    with app.test_request_context("/console/api/workflow/run/events", method="GET"):
-        with pytest.raises(NotFoundError):
-            handler(api, "t1", SimpleNamespace(id="u1"), workflow_run_id="run-1")
+    with app.test_request_context("/console/api/workflow/run/events", method="GET"), pytest.raises(NotFoundError):
+        handler(api, "t1", SimpleNamespace(id="u1"), workflow_run_id="run-1")
 
 
 def test_workflow_events_finished(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

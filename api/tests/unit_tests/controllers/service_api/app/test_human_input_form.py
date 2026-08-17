@@ -124,9 +124,8 @@ class TestWorkflowHumanInputFormApi:
         handler = unwrap(api.get)
         app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
 
-        with app.test_request_context("/form/human_input/token-1", method="GET"):
-            with pytest.raises(NotFound):
-                handler(api, app_model=app_model, form_token="token-1")
+        with app.test_request_context("/form/human_input/token-1", method="GET"), pytest.raises(NotFound):
+            handler(api, app_model=app_model, form_token="token-1")
 
     @pytest.mark.parametrize(
         "recipient_type",
@@ -156,9 +155,8 @@ class TestWorkflowHumanInputFormApi:
         handler = unwrap(api.get)
         app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
 
-        with app.test_request_context("/form/human_input/token-1", method="GET"):
-            with pytest.raises(NotFound):
-                handler(api, app_model=app_model, form_token="token-1")
+        with app.test_request_context("/form/human_input/token-1", method="GET"), pytest.raises(NotFound):
+            handler(api, app_model=app_model, form_token="token-1")
 
         service_mock.ensure_form_active.assert_not_called()
 
@@ -289,12 +287,14 @@ class TestWorkflowHumanInputFormApi:
         app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
         end_user = SimpleNamespace(id="end-user-1")
 
-        with app.test_request_context(
-            "/form/human_input/token-1",
-            method="POST",
-            json={"inputs": {"name": "Alice"}, "action": "approve", "user": "external-1"},
+        with (
+            app.test_request_context(
+                "/form/human_input/token-1",
+                method="POST",
+                json={"inputs": {"name": "Alice"}, "action": "approve", "user": "external-1"},
+            ),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                handler(api, app_model=app_model, end_user=end_user, form_token="token-1")
+            handler(api, app_model=app_model, end_user=end_user, form_token="token-1")
 
         service_mock.submit_form_by_token.assert_not_called()

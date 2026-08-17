@@ -240,11 +240,13 @@ class TestHandleMCPRequest:
         self.mock_request.root.id = 123
 
         # Patch handle_ping to raise exception instead of type
-        with patch("core.mcp.server.streamable_http.handle_ping", side_effect=Exception("Test error")):
-            with patch("core.mcp.server.streamable_http.type", return_value=types.PingRequest):
-                result = handle_mcp_request(
-                    Mock(), self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123
-                )
+        with (
+            patch("core.mcp.server.streamable_http.handle_ping", side_effect=Exception("Test error")),
+            patch("core.mcp.server.streamable_http.type", return_value=types.PingRequest),
+        ):
+            result = handle_mcp_request(
+                Mock(), self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123
+            )
 
         assert isinstance(result, types.JSONRPCError)
         assert result.error.code == types.INTERNAL_ERROR

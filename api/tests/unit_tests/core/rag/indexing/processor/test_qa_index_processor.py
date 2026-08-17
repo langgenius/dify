@@ -201,19 +201,23 @@ class TestQAIndexProcessor:
         csv_file = Mock(spec=FileStorage)
         csv_file.filename = "qa.csv"
 
-        with patch("core.rag.index_processor.processor.qa_index_processor.pd.read_csv", return_value=pd.DataFrame()):
-            with pytest.raises(ValueError, match="empty"):
-                processor.format_by_template(csv_file)
+        with (
+            patch("core.rag.index_processor.processor.qa_index_processor.pd.read_csv", return_value=pd.DataFrame()),
+            pytest.raises(ValueError, match="empty"),
+        ):
+            processor.format_by_template(csv_file)
 
     def test_format_by_template_raises_on_invalid_csv(self, processor: QAIndexProcessor) -> None:
         csv_file = Mock(spec=FileStorage)
         csv_file.filename = "qa.csv"
 
-        with patch(
-            "core.rag.index_processor.processor.qa_index_processor.pd.read_csv", side_effect=Exception("bad csv")
+        with (
+            patch(
+                "core.rag.index_processor.processor.qa_index_processor.pd.read_csv", side_effect=Exception("bad csv")
+            ),
+            pytest.raises(ValueError, match="bad csv"),
         ):
-            with pytest.raises(ValueError, match="bad csv"):
-                processor.format_by_template(csv_file)
+            processor.format_by_template(csv_file)
 
     def test_load_creates_vectors_for_high_quality_dataset(
         self, processor: QAIndexProcessor, dataset: Dataset, sqlite_session: Session
@@ -384,9 +388,9 @@ class TestQAIndexProcessor:
                 "core.rag.index_processor.processor.qa_index_processor.calculate_segment_token_counts",
                 return_value=[0],
             ),
+            pytest.raises(ValueError, match="must be high quality"),
         ):
-            with pytest.raises(ValueError, match="must be high quality"):
-                processor.index(dataset, dataset_document, {"qa_chunks": []}, session)
+            processor.index(dataset, dataset_document, {"qa_chunks": []}, session)
 
     def test_format_preview_returns_qa_preview(self, processor: QAIndexProcessor) -> None:
         qa_chunks = SimpleNamespace(qa_chunks=[SimpleNamespace(question="Q1", answer="A1")])

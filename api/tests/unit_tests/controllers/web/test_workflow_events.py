@@ -71,9 +71,8 @@ class TestWorkflowEventsApi:
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = None
         mock_factory.create_api_workflow_run_repository.return_value = mock_repo
 
-        with app.test_request_context("/workflow/run-1/events"):
-            with pytest.raises(NotFoundError):
-                WorkflowEventsApi().get(_workflow_app(), _end_user(), "run-1")
+        with app.test_request_context("/workflow/run-1/events"), pytest.raises(NotFoundError):
+            WorkflowEventsApi().get(_workflow_app(), _end_user(), "run-1")
 
     @patch("controllers.web.workflow_events.DifyAPIRepositoryFactory")
     @patch("controllers.web.workflow_events.db")
@@ -84,9 +83,8 @@ class TestWorkflowEventsApi:
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run
         mock_factory.create_api_workflow_run_repository.return_value = mock_repo
 
-        with app.test_request_context("/workflow/run-1/events"):
-            with pytest.raises(NotFoundError):
-                WorkflowEventsApi().get(_workflow_app(), _end_user(), "run-1")
+        with app.test_request_context("/workflow/run-1/events"), pytest.raises(NotFoundError):
+            WorkflowEventsApi().get(_workflow_app(), _end_user(), "run-1")
 
     @patch("controllers.web.workflow_events.DifyAPIRepositoryFactory")
     @patch("controllers.web.workflow_events.db")
@@ -99,9 +97,8 @@ class TestWorkflowEventsApi:
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run
         mock_factory.create_api_workflow_run_repository.return_value = mock_repo
 
-        with app.test_request_context("/workflow/run-1/events"):
-            with pytest.raises(NotFoundError):
-                WorkflowEventsApi().get(_workflow_app(), _end_user(), "run-1")
+        with app.test_request_context("/workflow/run-1/events"), pytest.raises(NotFoundError):
+            WorkflowEventsApi().get(_workflow_app(), _end_user(), "run-1")
 
     @patch("controllers.web.workflow_events.DifyAPIRepositoryFactory")
     @patch("controllers.web.workflow_events.db")
@@ -112,9 +109,8 @@ class TestWorkflowEventsApi:
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run
         mock_factory.create_api_workflow_run_repository.return_value = mock_repo
 
-        with app.test_request_context("/workflow/run-1/events"):
-            with pytest.raises(NotFoundError):
-                WorkflowEventsApi().get(_workflow_app(), _end_user(), "run-1")
+        with app.test_request_context("/workflow/run-1/events"), pytest.raises(NotFoundError):
+            WorkflowEventsApi().get(_workflow_app(), _end_user(), "run-1")
 
     @patch("controllers.web.workflow_events.WorkflowResponseConverter")
     @patch("controllers.web.workflow_events.DifyAPIRepositoryFactory")

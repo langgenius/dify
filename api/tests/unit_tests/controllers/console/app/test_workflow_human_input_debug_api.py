@@ -222,13 +222,15 @@ def test_human_input_delivery_test_maps_validation_error(app: Flask, monkeypatch
     service_instance.test_human_input_delivery.side_effect = ValueError("bad delivery method")
     monkeypatch.setattr(workflow_module, "WorkflowService", MagicMock(return_value=service_instance))
 
-    with app.test_request_context(
-        "/console/api/apps/app-123/workflows/draft/human-input/nodes/node-1/delivery-test",
-        method="POST",
-        json={"delivery_method_id": "bad"},
+    with (
+        app.test_request_context(
+            "/console/api/apps/app-123/workflows/draft/human-input/nodes/node-1/delivery-test",
+            method="POST",
+            json={"delivery_method_id": "bad"},
+        ),
+        pytest.raises(ValueError),
     ):
-        with pytest.raises(ValueError):
-            workflow_module.WorkflowDraftHumanInputDeliveryTestApi().post(app_id=app_model.id, node_id="node-1")
+        workflow_module.WorkflowDraftHumanInputDeliveryTestApi().post(app_id=app_model.id, node_id="node-1")
 
 
 def test_human_input_preview_rejects_non_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -236,10 +238,12 @@ def test_human_input_preview_rejects_non_mapping(app: Flask, monkeypatch: pytest
     app_model = _make_app(AppMode.ADVANCED_CHAT)
     _patch_console_guards(monkeypatch, account, app_model)
 
-    with app.test_request_context(
-        "/console/api/apps/app-123/advanced-chat/workflows/draft/human-input/nodes/node-1/form/preview",
-        method="POST",
-        json={"inputs": ["not-a-dict"]},
+    with (
+        app.test_request_context(
+            "/console/api/apps/app-123/advanced-chat/workflows/draft/human-input/nodes/node-1/form/preview",
+            method="POST",
+            json={"inputs": ["not-a-dict"]},
+        ),
+        pytest.raises(ValidationError),
     ):
-        with pytest.raises(ValidationError):
-            workflow_module.AdvancedChatDraftHumanInputFormPreviewApi().post(app_id=app_model.id, node_id="node-1")
+        workflow_module.AdvancedChatDraftHumanInputFormPreviewApi().post(app_id=app_model.id, node_id="node-1")

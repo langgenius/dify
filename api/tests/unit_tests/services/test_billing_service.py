@@ -280,11 +280,10 @@ class TestBillingServiceSendRequest:
         mock_httpx_request.return_value = mock_response
 
         # Act & Assert
-        with caplog.at_level(logging.ERROR, logger="services.billing_service"):
-            with pytest.raises(ValueError) as exc_info:
-                BillingService._send_request("DELETE", "/test", json={"key": "value"})
-            assert "Unable to process delete request" in str(exc_info.value)
-            assert "DELETE response" in caplog.text
+        with caplog.at_level(logging.ERROR, logger="services.billing_service"), pytest.raises(ValueError) as exc_info:
+            BillingService._send_request("DELETE", "/test", json={"key": "value"})
+        assert "Unable to process delete request" in str(exc_info.value)
+        assert "DELETE response" in caplog.text
 
     @pytest.mark.parametrize(
         "status_code", [httpx.codes.BAD_REQUEST, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.NOT_FOUND]
@@ -323,11 +322,10 @@ class TestBillingServiceSendRequest:
         mock_httpx_request.return_value = mock_response
 
         # Act & Assert
-        with caplog.at_level(logging.ERROR, logger="services.billing_service"):
-            with pytest.raises(ValueError) as exc_info:
-                BillingService._send_request("DELETE", "/test", json={"key": "value"})
-            assert "Unable to process delete request" in str(exc_info.value)
-            assert "DELETE response" in caplog.text
+        with caplog.at_level(logging.ERROR, logger="services.billing_service"), pytest.raises(ValueError) as exc_info:
+            BillingService._send_request("DELETE", "/test", json={"key": "value"})
+        assert "Unable to process delete request" in str(exc_info.value)
+        assert "DELETE response" in caplog.text
 
     def test_retry_on_request_error(self, mock_httpx_request, mock_billing_config):
         """Test that _send_request retries on httpx.RequestError."""
@@ -1070,15 +1068,16 @@ class TestBillingServiceRateLimitEnforcement:
         from controllers.console.error import ComplianceRateLimitError
 
         # Mock the rate limiter to return True (rate limited)
-        with patch.object(
-            BillingService.compliance_download_rate_limiter, "is_rate_limited", return_value=True
-        ) as mock_is_limited:
-            # Act & Assert
-            with pytest.raises(ComplianceRateLimitError):
-                BillingService.get_compliance_download_link(doc_name, account_id, tenant_id, ip, device_info)
+        with (
+            patch.object(
+                BillingService.compliance_download_rate_limiter, "is_rate_limited", return_value=True
+            ) as mock_is_limited,
+            pytest.raises(ComplianceRateLimitError),
+        ):
+            BillingService.get_compliance_download_link(doc_name, account_id, tenant_id, ip, device_info)
 
-            mock_is_limited.assert_called_once_with(f"{account_id}:{tenant_id}")
-            mock_send_request.assert_not_called()
+        mock_is_limited.assert_called_once_with(f"{account_id}:{tenant_id}")
+        mock_send_request.assert_not_called()
 
     def test_education_verify_rate_limit_not_exceeded(self, mock_send_request):
         """Test education verification when rate limit is not exceeded."""
@@ -1117,15 +1116,16 @@ class TestBillingServiceRateLimitEnforcement:
         from controllers.console.error import EducationVerifyLimitError
 
         # Mock the rate limiter to return True (rate limited)
-        with patch.object(
-            BillingService.EducationIdentity.verification_rate_limit, "is_rate_limited", return_value=True
-        ) as mock_is_limited:
-            # Act & Assert
-            with pytest.raises(EducationVerifyLimitError):
-                BillingService.EducationIdentity.verify(account_id, account_email)
+        with (
+            patch.object(
+                BillingService.EducationIdentity.verification_rate_limit, "is_rate_limited", return_value=True
+            ) as mock_is_limited,
+            pytest.raises(EducationVerifyLimitError),
+        ):
+            BillingService.EducationIdentity.verify(account_id, account_email)
 
-            mock_is_limited.assert_called_once_with(account_email)
-            mock_send_request.assert_not_called()
+        mock_is_limited.assert_called_once_with(account_email)
+        mock_send_request.assert_not_called()
 
     def test_education_activate_rate_limit_not_exceeded(self, mock_send_request):
         """Test education activation when rate limit is not exceeded."""
@@ -1173,15 +1173,16 @@ class TestBillingServiceRateLimitEnforcement:
         from controllers.console.error import EducationActivateLimitError
 
         # Mock the rate limiter to return True (rate limited)
-        with patch.object(
-            BillingService.EducationIdentity.activation_rate_limit, "is_rate_limited", return_value=True
-        ) as mock_is_limited:
-            # Act & Assert
-            with pytest.raises(EducationActivateLimitError):
-                BillingService.EducationIdentity.activate(account, token, institution, role)
+        with (
+            patch.object(
+                BillingService.EducationIdentity.activation_rate_limit, "is_rate_limited", return_value=True
+            ) as mock_is_limited,
+            pytest.raises(EducationActivateLimitError),
+        ):
+            BillingService.EducationIdentity.activate(account, token, institution, role)
 
-            mock_is_limited.assert_called_once_with(account.email)
-            mock_send_request.assert_not_called()
+        mock_is_limited.assert_called_once_with(account.email)
+        mock_send_request.assert_not_called()
 
 
 class TestBillingServiceEducationIdentity:

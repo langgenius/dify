@@ -594,13 +594,15 @@ class TestLoginApi:
         )
         mock_get_account.side_effect = Unauthorized("Account is banned.")
 
-        with app.test_request_context(
-            "/email-code-login/validity",
-            method="POST",
-            json={"email": "User@Example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
+        with (
+            app.test_request_context(
+                "/email-code-login/validity",
+                method="POST",
+                json={"email": "User@Example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
+            ),
+            pytest.raises(AccountBannedError),
         ):
-            with pytest.raises(AccountBannedError):
-                EmailCodeLoginApi().post()
+            EmailCodeLoginApi().post()
 
         warn_records = [
             r for r in caplog.records if r.name == "controllers.console.auth.login" and r.levelno == logging.WARNING
@@ -638,13 +640,15 @@ class TestLoginApi:
         mock_create_account.side_effect = SeatsLimitExceededError("licensed seats limit exceeded")
 
         # Act & Assert
-        with app.test_request_context(
-            "/email-code-login/validity",
-            method="POST",
-            json={"email": "User@Example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
+        with (
+            app.test_request_context(
+                "/email-code-login/validity",
+                method="POST",
+                json={"email": "User@Example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
+            ),
+            pytest.raises(SeatsLimitExceeded),
         ):
-            with pytest.raises(SeatsLimitExceeded):
-                EmailCodeLoginApi().post()
+            EmailCodeLoginApi().post()
 
         mock_create_account.assert_called_once()
 

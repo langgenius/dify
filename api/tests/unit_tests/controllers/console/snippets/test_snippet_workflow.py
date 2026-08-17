@@ -56,9 +56,8 @@ def test_get_snippet_requires_snippet_id(app):
     def view(**kwargs):
         return kwargs
 
-    with app.test_request_context("/snippets"):
-        with pytest.raises(ValueError, match="missing snippet_id"):
-            view()
+    with app.test_request_context("/snippets"), pytest.raises(ValueError, match="missing snippet_id"):
+        view()
 
 
 def test_get_snippet_injects_resolved_snippet(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -93,9 +92,8 @@ def test_get_snippet_raises_not_found_when_snippet_missing(app: Flask, monkeypat
     )
     monkeypatch.setattr(snippet_workflow_module.SnippetService, "get_snippet_by_id", Mock(return_value=None))
 
-    with app.test_request_context("/snippets/snippet-1"):
-        with pytest.raises(NotFound, match="Snippet not found"):
-            view(snippet_id="snippet-1")
+    with app.test_request_context("/snippets/snippet-1"), pytest.raises(NotFound, match="Snippet not found"):
+        view(snippet_id="snippet-1")
 
 
 def test_draft_workflow_get_raises_when_missing(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -109,9 +107,11 @@ def test_draft_workflow_get_raises_when_missing(app: Flask, monkeypatch: pytest.
     api = snippet_workflow_module.SnippetDraftWorkflowApi()
     handler = unwrap(api.get)
 
-    with app.test_request_context("/snippets/snippet-1/workflows/draft"):
-        with pytest.raises(snippet_workflow_module.DraftWorkflowNotExist):
-            handler(api, snippet=snippet)
+    with (
+        app.test_request_context("/snippets/snippet-1/workflows/draft"),
+        pytest.raises(snippet_workflow_module.DraftWorkflowNotExist),
+    ):
+        handler(api, snippet=snippet)
 
 
 def test_draft_workflow_post_returns_400_for_invalid_graph(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -332,12 +332,14 @@ def test_restore_published_snippet_workflow_to_draft_not_found(app: Flask, monke
     api = snippet_workflow_module.SnippetDraftWorkflowRestoreApi()
     handler = unwrap(api.post)
 
-    with app.test_request_context(
-        "/snippets/snippet-1/workflows/published-workflow/restore",
-        method="POST",
+    with (
+        app.test_request_context(
+            "/snippets/snippet-1/workflows/published-workflow/restore",
+            method="POST",
+        ),
+        pytest.raises(NotFound),
     ):
-        with pytest.raises(NotFound):
-            handler(api, user, snippet, workflow_id="published-workflow")
+        handler(api, user, snippet, workflow_id="published-workflow")
 
 
 def test_restore_published_snippet_workflow_to_draft_returns_400_for_draft_source(
@@ -359,12 +361,14 @@ def test_restore_published_snippet_workflow_to_draft_returns_400_for_draft_sourc
     api = snippet_workflow_module.SnippetDraftWorkflowRestoreApi()
     handler = unwrap(api.post)
 
-    with app.test_request_context(
-        "/snippets/snippet-1/workflows/draft-workflow/restore",
-        method="POST",
+    with (
+        app.test_request_context(
+            "/snippets/snippet-1/workflows/draft-workflow/restore",
+            method="POST",
+        ),
+        pytest.raises(HTTPException) as exc,
     ):
-        with pytest.raises(HTTPException) as exc:
-            handler(api, user, snippet, workflow_id="draft-workflow")
+        handler(api, user, snippet, workflow_id="draft-workflow")
 
     assert exc.value.code == 400
     assert exc.value.description == snippet_workflow_module.RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE
@@ -389,12 +393,14 @@ def test_restore_published_snippet_workflow_to_draft_returns_400_for_invalid_gra
     api = snippet_workflow_module.SnippetDraftWorkflowRestoreApi()
     handler = unwrap(api.post)
 
-    with app.test_request_context(
-        "/snippets/snippet-1/workflows/published-workflow/restore",
-        method="POST",
+    with (
+        app.test_request_context(
+            "/snippets/snippet-1/workflows/published-workflow/restore",
+            method="POST",
+        ),
+        pytest.raises(HTTPException) as exc,
     ):
-        with pytest.raises(HTTPException) as exc:
-            handler(api, user, snippet, workflow_id="published-workflow")
+        handler(api, user, snippet, workflow_id="published-workflow")
 
     assert exc.value.code == 400
     assert exc.value.description == "invalid snippet workflow graph"
@@ -514,19 +520,21 @@ def test_update_published_snippet_workflow_raises_not_found(
     api = snippet_workflow_module.SnippetWorkflowByIdApi()
     handler = unwrap(api.patch)
 
-    with app.test_request_context(
-        "/snippets/snippet-1/workflows/missing-workflow",
-        method="PATCH",
-        json={"marked_name": "v1"},
+    with (
+        app.test_request_context(
+            "/snippets/snippet-1/workflows/missing-workflow",
+            method="PATCH",
+            json={"marked_name": "v1"},
+        ),
+        pytest.raises(NotFound, match="Workflow not found"),
     ):
-        with pytest.raises(NotFound, match="Workflow not found"):
-            handler(
-                api,
-                snippet_workflow_module.WorkflowUpdatePayload.model_validate({"marked_name": "v1"}),
-                user,
-                snippet,
-                workflow_id="missing-workflow",
-            )
+        handler(
+            api,
+            snippet_workflow_module.WorkflowUpdatePayload.model_validate({"marked_name": "v1"}),
+            user,
+            snippet,
+            workflow_id="missing-workflow",
+        )
 
     sqlite_session.refresh(snippet)
     assert snippet.name == "Snippet"
@@ -607,9 +615,11 @@ def test_workflow_run_detail_raises_not_found_when_run_missing(app: Flask, monke
     api = snippet_workflow_module.SnippetWorkflowRunDetailApi()
     handler = unwrap(api.get)
 
-    with app.test_request_context("/snippets/snippet-1/workflow-runs/run-1"):
-        with pytest.raises(NotFound, match="Workflow run not found"):
-            handler(api, snippet=snippet, run_id="run-1")
+    with (
+        app.test_request_context("/snippets/snippet-1/workflow-runs/run-1"),
+        pytest.raises(NotFound, match="Workflow run not found"),
+    ):
+        handler(api, snippet=snippet, run_id="run-1")
 
 
 def test_draft_node_last_run_raises_not_found_when_execution_missing(
@@ -629,9 +639,11 @@ def test_draft_node_last_run_raises_not_found_when_execution_missing(
     api = snippet_workflow_module.SnippetDraftNodeLastRunApi()
     handler = unwrap(api.get)
 
-    with app.test_request_context("/snippets/snippet-1/workflows/draft/nodes/llm-1/last-run"):
-        with pytest.raises(NotFound, match="Node last run not found"):
-            handler(api, snippet=snippet, node_id="llm-1")
+    with (
+        app.test_request_context("/snippets/snippet-1/workflows/draft/nodes/llm-1/last-run"),
+        pytest.raises(NotFound, match="Node last run not found"),
+    ):
+        handler(api, snippet=snippet, node_id="llm-1")
 
 
 def test_workflow_task_stop_uses_queue_flag_and_graph_command(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

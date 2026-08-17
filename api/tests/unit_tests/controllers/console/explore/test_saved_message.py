@@ -185,10 +185,9 @@ class TestSavedMessageListApi(_UsesSQLiteSession):
                 module.SavedMessageService,
                 "save",
                 side_effect=MessageNotExistsError(),
-            ),
+            ),pytest.raises(NotFound)
         ):
-            with pytest.raises(NotFound):
-                method(api, module.SavedMessageCreatePayload.model_validate(payload), self.account, installed_app)
+            method(api, module.SavedMessageCreatePayload.model_validate(payload), self.account, installed_app)
 
 
 class TestSavedMessageApi(_UsesSQLiteSession):

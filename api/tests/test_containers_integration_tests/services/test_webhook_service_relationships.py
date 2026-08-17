@@ -385,13 +385,13 @@ class TestWebhookServiceTriggerExecutionWithContainers:
             patch(
                 "services.trigger.webhook_service.AppTriggerService.mark_tenant_triggers_rate_limited"
             ) as mock_mark_rate_limited,
+            pytest.raises(QuotaExceededError),
         ):
-            with pytest.raises(QuotaExceededError):
-                WebhookService.trigger_workflow_execution(
-                    webhook_trigger,
-                    {"body": {}, "headers": {}, "query_params": {}, "files": {}, "method": "POST"},
-                    workflow,
-                )
+            WebhookService.trigger_workflow_execution(
+                webhook_trigger,
+                {"body": {}, "headers": {}, "query_params": {}, "files": {}, "method": "POST"},
+                workflow,
+            )
 
         mock_mark_rate_limited.assert_called_once_with(tenant.id)
 
@@ -413,16 +413,18 @@ class TestWebhookServiceTriggerExecutionWithContainers:
         )
         caplog.set_level(logging.ERROR, logger="services.trigger.webhook_service")
 
-        with patch(
-            "services.trigger.webhook_service.EndUserService.get_or_create_end_user_by_type",
-            side_effect=RuntimeError("boom"),
+        with (
+            patch(
+                "services.trigger.webhook_service.EndUserService.get_or_create_end_user_by_type",
+                side_effect=RuntimeError("boom"),
+            ),
+            pytest.raises(RuntimeError, match="boom"),
         ):
-            with pytest.raises(RuntimeError, match="boom"):
-                WebhookService.trigger_workflow_execution(
-                    webhook_trigger,
-                    {"body": {}, "headers": {}, "query_params": {}, "files": {}, "method": "POST"},
-                    workflow,
-                )
+            WebhookService.trigger_workflow_execution(
+                webhook_trigger,
+                {"body": {}, "headers": {}, "query_params": {}, "files": {}, "method": "POST"},
+                workflow,
+            )
 
         assert caplog.messages.count(f"Failed to trigger workflow for webhook {webhook_trigger.webhook_id}") == 1
 
@@ -456,9 +458,11 @@ class TestWebhookServiceRelationshipSyncWithContainers:
         lock = MagicMock()
         lock.acquire.return_value = False
 
-        with patch("services.trigger.webhook_service.redis_client.lock", return_value=lock):
-            with pytest.raises(RuntimeError, match="Failed to acquire lock"):
-                WebhookService.sync_webhook_relationships(app, workflow)
+        with (
+            patch("services.trigger.webhook_service.redis_client.lock", return_value=lock),
+            pytest.raises(RuntimeError, match="Failed to acquire lock"),
+        ):
+            WebhookService.sync_webhook_relationships(app, workflow)
 
     def test_sync_webhook_relationships_creates_missing_records_and_deletes_stale_records(
         self, db_session_with_containers: Session, flask_app_with_containers: Flask

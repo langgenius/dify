@@ -398,10 +398,9 @@ class TestDocumentServiceMutations:
         retry_flags = _RetryFlagStore({f"document_{document.id}_is_retried": "other-request"})
         with (
             patch("services.dataset_service.current_user", _account()),
-            patch("services.dataset_service.redis_client", retry_flags),
+            patch("services.dataset_service.redis_client", retry_flags),pytest.raises(ValueError, match="being retried")
         ):
-            with pytest.raises(ValueError, match="being retried"):
-                DocumentService.retry_document("dataset-1", [document], sqlite_session)
+            DocumentService.retry_document("dataset-1", [document], sqlite_session)
 
     def test_retry_document_leaves_batch_unchanged_when_later_document_is_already_being_retried(
         self, sqlite_session: Session
@@ -447,10 +446,9 @@ class TestDocumentServiceMutations:
 
         with (
             patch("services.dataset_service.current_user", _account()),
-            patch("services.dataset_service.redis_client", retry_flags),
+            patch("services.dataset_service.redis_client", retry_flags),pytest.raises(ValueError, match="being retried")
         ):
-            with pytest.raises(ValueError, match="being retried"):
-                DocumentService.retry_document("dataset-1", documents, sqlite_session)
+            DocumentService.retry_document("dataset-1", documents, sqlite_session)
 
         assert retry_flags.values[first_retry_key] == "new-owner"
         assert retry_flags.values[second_retry_key] == "other-request"
@@ -1603,14 +1601,13 @@ class TestDocumentServiceTenantAndUpdateEdges:
             ),
         )
 
-        with patch.object(DatasetService, "check_dataset_model_setting"):
-            with pytest.raises(FileNotExistsError):
-                DocumentService.update_document_with_dataset_id(
-                    dataset,
-                    document_data,
-                    account_context,
-                    session=sqlite_session,
-                )
+        with patch.object(DatasetService, "check_dataset_model_setting"), pytest.raises(FileNotExistsError):
+            DocumentService.update_document_with_dataset_id(
+                dataset,
+                document_data,
+                account_context,
+                session=sqlite_session,
+            )
 
     def test_update_document_with_dataset_id_requires_notion_info_list(self, account_context, sqlite_session: Session):
         dataset = _dataset_row()

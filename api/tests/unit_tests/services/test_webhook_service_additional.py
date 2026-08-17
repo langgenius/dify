@@ -36,14 +36,16 @@ class TestWebhookServiceExtractionFallbacks:
     ) -> None:
         webhook_trigger = MagicMock()
 
-        with caplog.at_level(logging.WARNING, logger="services.trigger.webhook_service"):
-            with flask_app.test_request_context(
+        with (
+            caplog.at_level(logging.WARNING, logger="services.trigger.webhook_service"),
+            flask_app.test_request_context(
                 "/webhook",
                 method="POST",
                 headers={"Content-Type": "application/vnd.custom"},
                 data="plain content",
-            ):
-                result = WebhookService.extract_webhook_data(webhook_trigger)
+            ),
+        ):
+            result = WebhookService.extract_webhook_data(webhook_trigger)
 
             assert result["body"] == {"raw": "plain content"}
             assert any(r.levelno >= logging.WARNING for r in caplog.records)
@@ -55,9 +57,8 @@ class TestWebhookServiceExtractionFallbacks:
     ) -> None:
         monkeypatch.setattr(service_module.dify_config, "WEBHOOK_REQUEST_BODY_MAX_SIZE", 1)
 
-        with flask_app.test_request_context("/webhook", method="POST", data="ab"):
-            with pytest.raises(RequestEntityTooLarge):
-                WebhookService.extract_webhook_data(MagicMock())
+        with flask_app.test_request_context("/webhook", method="POST", data="ab"), pytest.raises(RequestEntityTooLarge):
+            WebhookService.extract_webhook_data(MagicMock())
 
     def test_extract_octet_stream_body_should_return_none_when_empty_payload(self, flask_app: Flask) -> None:
         webhook_trigger = MagicMock()

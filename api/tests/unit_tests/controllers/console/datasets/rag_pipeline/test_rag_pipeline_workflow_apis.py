@@ -297,10 +297,9 @@ class TestDraftWorkflowApi:
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
                 return_value=service,
-            ),
+            ),pytest.raises(DraftWorkflowNotExist)
         ):
-            with pytest.raises(DraftWorkflowNotExist):
-                method(api, pipeline)
+            method(api, pipeline)
 
     def test_sync_hash_not_match(self, app: Flask) -> None:
         api = DraftRagPipelineApi()
@@ -317,10 +316,9 @@ class TestDraftWorkflowApi:
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
                 return_value=service,
-            ),
+            ),pytest.raises(DraftWorkflowNotSync)
         ):
-            with pytest.raises(DraftWorkflowNotSync):
-                method(api, user, pipeline)
+            method(api, user, pipeline)
 
     def test_sync_invalid_text_plain(self, app: Flask) -> None:
         api = DraftRagPipelineApi()
@@ -376,10 +374,9 @@ class TestDraftWorkflowApi:
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
                 return_value=service,
-            ),
+            ),pytest.raises(NotFound)
         ):
-            with pytest.raises(NotFound):
-                method(api, user, pipeline, "published-workflow")
+            method(api, user, pipeline, "published-workflow")
 
     def test_restore_published_workflow_to_draft_returns_400_for_draft_source(self, app: Flask) -> None:
         api = RagPipelineDraftWorkflowRestoreApi()
@@ -398,10 +395,9 @@ class TestDraftWorkflowApi:
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
                 return_value=service,
-            ),
+            ),pytest.raises(HTTPException) as exc
         ):
-            with pytest.raises(HTTPException) as exc:
-                method(api, user, pipeline, "draft-workflow")
+            method(api, user, pipeline, "draft-workflow")
 
         assert exc.value.code == 400
         assert exc.value.description == "source workflow must be published"
@@ -483,10 +479,9 @@ class TestDraftNodeRun:
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
                 return_value=service,
-            ),
+            ),pytest.raises(ValueError)
         ):
-            with pytest.raises(ValueError):
-                method(api, NodeRunRequiredPayload(inputs={}), user, pipeline, "node")
+            method(api, NodeRunRequiredPayload(inputs={}), user, pipeline, "node")
 
 
 class TestPublishedPipelineApis:
@@ -590,9 +585,8 @@ class TestDefaultBlockConfigApi:
 
         pipeline = make_pipeline()
 
-        with app.test_request_context("/?q=bad-json"):
-            with pytest.raises(ValueError):
-                method(api, DefaultBlockConfigQuery(q="bad-json"), pipeline, "llm")
+        with app.test_request_context("/?q=bad-json"), pytest.raises(ValueError):
+            method(api, DefaultBlockConfigQuery(q="bad-json"), pipeline, "llm")
 
 
 class TestPublishedAllRagPipelineApi:
@@ -627,10 +621,9 @@ class TestPublishedAllRagPipelineApi:
         user = make_account(id="u1")
 
         with (
-            app.test_request_context("/?user_id=u2"),
+            app.test_request_context("/?user_id=u2"),pytest.raises(Forbidden)
         ):
-            with pytest.raises(Forbidden):
-                method(api, WorkflowListQuery(user_id="u2"), user, pipeline)
+            method(api, WorkflowListQuery(user_id="u2"), user, pipeline)
 
 
 class TestRagPipelineByIdApi:
@@ -786,10 +779,9 @@ class TestRagPipelineWorkflowLastRunApi:
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
                 return_value=service,
-            ),
+            ),pytest.raises(NotFound)
         ):
-            with pytest.raises(NotFound):
-                method(api, pipeline, "node1")
+            method(api, pipeline, "node1")
 
 
 class TestRagPipelineWorkflowRunNodeExecutionListApi:

@@ -109,9 +109,8 @@ class TestFileApiPost:
         api = FileApi()
         post_method = unwrap(api.post)
 
-        with app.test_request_context(method="POST", data={}):
-            with pytest.raises(NoFileUploadedError):
-                post_method(api, mock_account_context)
+        with app.test_request_context(method="POST", data={}), pytest.raises(NoFileUploadedError):
+            post_method(api, mock_account_context)
 
     def test_too_many_files(self, app: Flask, mock_account_context):
         api = FileApi()
@@ -138,9 +137,8 @@ class TestFileApiPost:
             "file": (io.BytesIO(b"abc"), ""),
         }
 
-        with app.test_request_context(method="POST", data=data):
-            with pytest.raises(FilenameNotExistsError):
-                post_method(api, mock_account_context)
+        with app.test_request_context(method="POST", data=data), pytest.raises(FilenameNotExistsError):
+            post_method(api, mock_account_context)
 
     def test_dataset_upload_without_permission(self, app: Flask, mock_current_user):
         mock_current_user.role = TenantAccountRole.NORMAL
@@ -153,9 +151,8 @@ class TestFileApiPost:
             "source": "datasets",
         }
 
-        with app.test_request_context(method="POST", data=data):
-            with pytest.raises(Forbidden):
-                post_method(api, mock_current_user)
+        with app.test_request_context(method="POST", data=data), pytest.raises(Forbidden):
+            post_method(api, mock_current_user)
 
     def test_successful_upload(self, app: Flask, mock_account_context, mock_file_service):
         api = FileApi()
@@ -289,9 +286,8 @@ class TestFileApiPost:
             "file": (io.BytesIO(b"x" * 1000000), "big.txt"),
         }
 
-        with app.test_request_context(method="POST", data=data):
-            with pytest.raises(FileTooLargeError):
-                post_method(api, mock_account_context)
+        with app.test_request_context(method="POST", data=data), pytest.raises(FileTooLargeError):
+            post_method(api, mock_account_context)
 
     def test_unsupported_file_type(self, app: Flask, mock_account_context, mock_file_service):
         api = FileApi()
@@ -306,9 +302,8 @@ class TestFileApiPost:
             "file": (io.BytesIO(b"x"), "bad.exe"),
         }
 
-        with app.test_request_context(method="POST", data=data):
-            with pytest.raises(UnsupportedFileTypeError):
-                post_method(api, mock_account_context)
+        with app.test_request_context(method="POST", data=data), pytest.raises(UnsupportedFileTypeError):
+            post_method(api, mock_account_context)
 
     def test_blocked_extension(self, app: Flask, mock_account_context, mock_file_service):
         api = FileApi()
@@ -323,9 +318,8 @@ class TestFileApiPost:
             "file": (io.BytesIO(b"x"), "blocked.txt"),
         }
 
-        with app.test_request_context(method="POST", data=data):
-            with pytest.raises(BlockedFileExtensionError):
-                post_method(api, mock_account_context)
+        with app.test_request_context(method="POST", data=data), pytest.raises(BlockedFileExtensionError):
+            post_method(api, mock_account_context)
 
 
 class TestFilePreviewApi:
