@@ -48,6 +48,7 @@ from fields.document_fields import (
     document_responses,
     normalize_enum,
 )
+from fields.document_response_prefetch import DocumentResponsePrefetch
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from libs.datetime_utils import naive_utc_now
@@ -123,16 +124,33 @@ class DocumentWithSegmentsResponse(DocumentResponse):
 class DocumentWithSegmentsSession(DocumentWithSession):
     @property
     def process_rule_dict(self) -> Any:
+        if self.prefetch is not None:
+            return self.prefetch.process_rule_dicts.get(str(self.document.id))
         process_rule = self.document.get_dataset_process_rule(session=self.session)
         return process_rule.to_dict() if process_rule else None
 
+    @property
+    def completed_segments(self) -> int | None:
+        if self.prefetch is not None and self.prefetch.include_segment_counts:
+            return self.prefetch.completed_segment_counts.get(str(self.document.id), 0)
+        return None
+
+    @property
+    def total_segments(self) -> int | None:
+        if self.prefetch is not None and self.prefetch.include_segment_counts:
+            return self.prefetch.total_segment_counts.get(str(self.document.id), 0)
+        return None
+
 
 def document_with_segments_responses(
-    documents: Sequence[Document], *, session: Session
+    documents: Sequence[Document],
+    *,
+    session: Session,
+    prefetch: DocumentResponsePrefetch | None = None,
 ) -> list[DocumentWithSegmentsResponse]:
     return [
         DocumentWithSegmentsResponse.model_validate(
-            DocumentWithSegmentsSession(document=document, session=session), from_attributes=True
+            DocumentWithSegmentsSession(document=document, session=session, prefetch=prefetch), from_attributes=True
         )
         for document in documents
     ]
@@ -494,31 +512,13 @@ class DatasetDocumentListApi(Resource):
             session=session,
         )
 
-        if fetch:
-            for document in documents:
-                completed_segments = (
-                    session.scalar(
-                        select(func.count(DocumentSegment.id)).where(
-                            DocumentSegment.completed_at.isnot(None),
-                            DocumentSegment.document_id == str(document.id),
-                            DocumentSegment.status != SegmentStatus.RE_SEGMENT,
-                        )
-                    )
-                    or 0
-                )
-                total_segments = (
-                    session.scalar(
-                        select(func.count(DocumentSegment.id)).where(
-                            DocumentSegment.document_id == str(document.id),
-                            DocumentSegment.status != SegmentStatus.RE_SEGMENT,
-                        )
-                    )
-                    or 0
-                )
-                document.completed_segments = completed_segments
-                document.total_segments = total_segments
+        response_prefetch = DocumentResponsePrefetch.load(
+            documents,
+            session=session,
+            include_segment_counts=fetch,
+        )
         response = {
-            "data": document_with_segments_responses(documents, session=session),
+            "data": document_with_segments_responses(documents, session=session, prefetch=response_prefetch),
             "has_more": len(documents) == limit,
             "limit": limit,
             "total": paginated_documents.total,

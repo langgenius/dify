@@ -61,8 +61,11 @@ from services.vector_space_admission_service import (
 def make_serializable_document(**overrides):
     attrs = {
         "id": "doc-1",
+        "tenant_id": "tenant-1",
+        "dataset_id": "ds-1",
         "position": 1,
         "data_source_type": "upload_file",
+        "data_source_info": '{"upload_file_id": "file-1"}',
         "data_source_info_dict": {"upload_file_id": "file-1"},
         "data_source_detail_dict": {},
         "dataset_process_rule_id": None,
@@ -81,7 +84,9 @@ def make_serializable_document(**overrides):
         "word_count": None,
         "hit_count": 0,
         "doc_form": "text_model",
+        "doc_metadata": None,
         "doc_metadata_details": None,
+        "updated_at": None,
         "summary_index_status": None,
         "need_summary": False,
         "process_rule_dict": None,
@@ -352,7 +357,7 @@ class TestDatasetDocumentListApi:
         doc = make_serializable_document()
         pagination = MagicMock(items=[doc], total=1)
         session = MagicMock()
-        session.scalar.return_value = 2
+        session.execute.return_value.all.return_value = [("doc-1", 2, 2, 2)]
         with (
             app.test_request_context("/?fetch=true"),
             patch("controllers.console.datasets.datasets_document.paginate_query", return_value=pagination),
@@ -408,10 +413,10 @@ class TestDatasetDocumentListApi:
         assert response["data"][0]["id"] == "doc-1"
         assert "completed_segments" not in response["data"][0]
         assert "total_segments" not in response["data"][0]
-        document.get_data_source_detail_dict.assert_called_once_with(session=session)
-        document.get_dataset_process_rule.assert_called_once_with(session=session)
-        document.get_doc_metadata_details.assert_called_once_with(session=session)
-        document.get_hit_count.assert_called_once_with(session=session)
+        document.get_data_source_detail_dict.assert_not_called()
+        document.get_dataset_process_rule.assert_not_called()
+        document.get_doc_metadata_details.assert_not_called()
+        document.get_hit_count.assert_not_called()
 
     def test_post_success(self, app: Flask, patch_tenant, patch_dataset, patch_permission):
         api = DatasetDocumentListApi()
