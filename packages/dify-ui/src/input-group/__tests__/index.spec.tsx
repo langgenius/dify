@@ -4,6 +4,13 @@ import { Button } from '../../button'
 import { Field, FieldLabel } from '../../field'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '../index'
 
+function InputGroupInputTypeExamples() {
+  // @ts-expect-error InputGroupInput requires a native input host
+  return <InputGroupInput render={<textarea />} />
+}
+
+void InputGroupInputTypeExamples
+
 describe('InputGroup', () => {
   it('should project Field state onto the grouped surface', async () => {
     const screen = await render(

@@ -52,7 +52,7 @@ function InputGroup({ className, onMouseDown, ...props }: InputGroupProps) {
   )
 }
 
-type InputGroupInputProps = Omit<BaseInputNS.Props, 'className' | 'size'> & {
+type InputGroupInputProps = Omit<BaseInputNS.Props, 'className' | 'render' | 'size'> & {
   className?: string
 }
 

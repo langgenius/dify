@@ -38,7 +38,7 @@ function InputGroupsDemo() {
             autoComplete="url"
             spellCheck={false}
           />
-          <InputGroupAddon>https://</InputGroupAddon>
+          <InputGroupAddon className="pe-0">https://</InputGroupAddon>
         </InputGroup>
         <FieldDescription>
           https:// is displayed as a fixed prefix and is not part of the input value.
@@ -107,6 +107,28 @@ function InputGroupActionDemo() {
   )
 }
 
+function InputGroupDecorativeIconDemo() {
+  return (
+    <Field name="resourceSearch" className="w-80">
+      <FieldLabel>Search resources</FieldLabel>
+      <InputGroup>
+        <InputGroupInput
+          type="search"
+          placeholder="Search resources"
+          autoComplete="off"
+          enterKeyHint="search"
+        />
+        <InputGroupAddon>
+          <span
+            aria-hidden="true"
+            className="i-ri-search-line size-4 text-components-input-text-placeholder"
+          />
+        </InputGroupAddon>
+      </InputGroup>
+    </Field>
+  )
+}
+
 export const Basic: Story = {
   render: () => <InputGroupsDemo />,
   play: async ({ canvas, userEvent }) => {
@@ -133,4 +155,8 @@ export const WithAction: Story = {
     await expect(writeText).toHaveBeenCalledWith('sk-test')
     await expect(canvas.getByRole('button', { name: 'Copied' })).toBeVisible()
   },
+}
+
+export const WithDecorativeIcon: Story = {
+  render: () => <InputGroupDecorativeIconDemo />,
 }
