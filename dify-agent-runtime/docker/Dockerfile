@@ -35,6 +35,7 @@ RUN apt-get update \
         curl \
         file \
         git \
+        iproute2 \
         jq \
         less \
         openssh-client \
