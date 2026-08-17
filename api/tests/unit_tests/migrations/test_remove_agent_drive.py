@@ -11,8 +11,7 @@ from alembic.migration import MigrationContext
 from alembic.operations import Operations
 
 _MIGRATION_PATH = (
-    Path(__file__).resolve().parents[3]
-    / "migrations/versions/2026_08_17_1740-89919253ca7a_remove_agent_drive.py"
+    Path(__file__).resolve().parents[3] / "migrations/versions/2026_08_17_1740-89919253ca7a_remove_agent_drive.py"
 )
 
 
@@ -85,10 +84,7 @@ def test_upgrade_removes_agent_drive_schema_and_legacy_json_fields() -> None:
                 {"id": table_name, "value": json.dumps(soul)},
             )
         connection.execute(
-            sa.text(
-                "INSERT INTO workflow_agent_node_bindings (id, node_job_config) "
-                "VALUES (:id, :value)"
-            ),
+            sa.text("INSERT INTO workflow_agent_node_bindings (id, node_job_config) VALUES (:id, :value)"),
             {"id": "binding-1", "value": json.dumps(node_job)},
         )
 

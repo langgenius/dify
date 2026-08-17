@@ -475,9 +475,7 @@ def test_clone_inline_binding_copies_soul() -> None:
     source_soul = AgentSoulConfig(
         config_note="source",
         config_skills=[AgentConfigSkillRefConfig(name="summarizer", file_id="skill-file-1")],
-        config_files=[
-            AgentConfigFileRefConfig(name="brief.pdf", file_kind="upload_file", file_id="config-file-1")
-        ],
+        config_files=[AgentConfigFileRefConfig(name="brief.pdf", file_kind="upload_file", file_id="config-file-1")],
     )
     source_snapshot = SimpleNamespace(config_snapshot_dict=source_soul.model_dump(mode="json"))
     workflow = SimpleNamespace(tenant_id="tenant-1", app_id="app-1", id="workflow-1")
