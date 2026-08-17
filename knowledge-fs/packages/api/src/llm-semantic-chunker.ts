@@ -2108,36 +2108,50 @@ function validateAndMaterializeWindowOutput({
       );
     }
 
-    const entities = candidate.entities.map((entity) => validateEntity(entity, chunkText));
+    const declaredEntityIds = new Set<string>();
     const entitiesById = new Map<string, LlmSemanticEntity>();
-    for (const entity of entities) {
-      if (entitiesById.has(entity.id)) {
+    for (const entity of candidate.entities) {
+      if (declaredEntityIds.has(entity.id)) {
         throw new Error("LLM semantic chunking entity ids must be unique within the same chunk");
       }
-      entitiesById.set(entity.id, entity);
+      declaredEntityIds.add(entity.id);
+      const grounded = groundEntity(entity, chunkText);
+      if (grounded) {
+        entitiesById.set(grounded.id, grounded);
+      }
     }
-    const relations = candidate.relations.map((relation) => {
-      const subject = entitiesById.get(relation.subjectEntityId);
-      const object = entitiesById.get(relation.objectEntityId);
-      if (!subject || !object) {
+    const relations: MaterializedSemanticRelation[] = [];
+    for (const relation of candidate.relations) {
+      if (
+        !declaredEntityIds.has(relation.subjectEntityId) ||
+        !declaredEntityIds.has(relation.objectEntityId)
+      ) {
         throw new Error(
           "LLM semantic chunking relation endpoint ids must reference entities in the same chunk",
         );
       }
-      return {
+      const subject = entitiesById.get(relation.subjectEntityId);
+      const object = entitiesById.get(relation.objectEntityId);
+      if (!subject || !object) {
+        // Entity text that cannot be grounded in the immutable chunk is untrusted. Discard every
+        // relation that depends on it rather than allowing hallucinated graph data to escape or
+        // failing an otherwise valid semantic boundary decision.
+        continue;
+      }
+      relations.push({
         confidence: relation.confidence,
         object: object.canonicalName ?? object.text,
         objectEntityId: object.id,
         subject: subject.canonicalName ?? subject.text,
         subjectEntityId: subject.id,
         type: relation.type,
-      };
-    });
+      });
+    }
     const sectionPath = resolveSemanticSectionPath(candidate.sectionPath, window.sectionPath);
     const kind = commonSpecialKind(chunkUnits) ?? "chunk";
     chunks.push({
       endUnitId: last.id,
-      entities,
+      entities: [...entitiesById.values()],
       kind,
       relations,
       sectionPath,
@@ -2168,10 +2182,10 @@ function validateAndMaterializeWindowOutput({
   return chunks.map((chunk) => ({ ...chunk, windowCommitEndUnitId: commitEndUnitId }));
 }
 
-function validateEntity(entity: LlmSemanticEntity, chunkText: string): LlmSemanticEntity {
+function groundEntity(entity: LlmSemanticEntity, chunkText: string): LlmSemanticEntity | undefined {
   const text = entity.text.trim();
   if (!chunkText.includes(text)) {
-    throw new Error("LLM semantic chunking entity text must be an exact chunk substring");
+    return undefined;
   }
   return {
     ...(entity.aliases

@@ -588,20 +588,6 @@ describe("LLM semantic chunker", () => {
       error: "relation endpoint ids must reference entities in the same chunk",
     },
     {
-      label: "hallucinated entity text",
-      response: ({ units }: PromptPayload) => ({
-        chunks: [
-          {
-            ...chunkRange(units[0]?.id, units.at(-1)?.id),
-            entities: [
-              { confidence: 1, id: "e-hallucination", text: "Hallucination", type: "term" },
-            ],
-          },
-        ],
-      }),
-      error: "entity text must be an exact chunk substring",
-    },
-    {
       label: "duplicate response-local entity ids",
       response: ({ units }: PromptPayload) => ({
         chunks: [
@@ -637,6 +623,146 @@ describe("LLM semantic chunker", () => {
         retrievalProfile: profile(),
       }),
     ).rejects.toThrow(error);
+  });
+
+  it("drops ungrounded image OCR entities and their relations without discarding the chunk", async () => {
+    const provider = new ScriptedProvider([
+      ({ units }) => ({
+        chunks: [
+          {
+            ...chunkRange(units[0]?.id, units.at(-1)?.id),
+            entities: [
+              {
+                confidence: 0.99,
+                id: "e-output",
+                text: "Output Probabilities",
+                type: "term",
+              },
+              {
+                confidence: 0.99,
+                id: "e-attention",
+                text: "Multi-Head Attention",
+                type: "term",
+              },
+              { confidence: 0.99, id: "e-softmax", text: "Softmax", type: "term" },
+              {
+                confidence: 0.99,
+                id: "e-masked-attention",
+                text: "Masked Multi-Head Attention",
+                type: "term",
+              },
+            ],
+            relations: [
+              {
+                confidence: 0.95,
+                objectEntityId: "e-attention",
+                subjectEntityId: "e-output",
+                type: "references",
+              },
+              {
+                confidence: 0.95,
+                objectEntityId: "e-attention",
+                subjectEntityId: "e-softmax",
+                type: "depends_on",
+              },
+              {
+                confidence: 0.95,
+                objectEntityId: "e-masked-attention",
+                subjectEntityId: "e-attention",
+                type: "references",
+              },
+            ],
+          },
+        ],
+      }),
+    ]);
+    const sourceText =
+      "Output Probabilities Add & Norm Feed Forward Add & Norm Multi-Head Attention";
+
+    const [node] = await createLlmSemanticChunker({
+      reasoningProviderFactory: () => provider,
+    }).chunk({
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      parseArtifact: artifact([
+        {
+          id: "transformer-architecture",
+          metadata: { caption: "Transformer architecture" },
+          pageNumber: 3,
+          sectionPath: ["3 Model Architecture"],
+          text: sourceText,
+          type: "image",
+        },
+      ]),
+      retrievalProfile: profile(),
+    });
+
+    expect(node?.text).toBe(sourceText);
+    expect(node?.kind).toBe("image");
+    expect(node?.metadata.extractedEntities).toMatchObject([
+      { text: "Output Probabilities" },
+      { text: "Multi-Head Attention" },
+    ]);
+    expect(node?.metadata.extractedRelations).toMatchObject([
+      { object: "Multi-Head Attention", subject: "Output Probabilities", type: "references" },
+    ]);
+    expect(node?.metadata.entityExtraction).toMatchObject({ completed: true, entityCount: 2 });
+    expect(node?.metadata.relationExtraction).toMatchObject({ completed: true, relationCount: 1 });
+    expect(node && hasValidLlmSemanticJointExtraction(node)).toBe(true);
+  });
+
+  it("replays a checkpoint whose ungrounded graph output degrades to an empty graph", async () => {
+    const checkpoints = createInMemoryDocumentSemanticWindowCheckpointRepository();
+    const sourceText = "Add & Norm Feed Forward";
+    const input = {
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      parseArtifact: artifact([
+        {
+          id: "noisy-diagram",
+          metadata: {},
+          pageNumber: 3,
+          sectionPath: ["Architecture"],
+          text: sourceText,
+          type: "image" as const,
+        },
+      ]),
+      publicationGenerationId: GENERATION_A,
+      retrievalProfile: profile(),
+      tenantId: "tenant-1",
+    };
+    const firstProvider = new ScriptedProvider([
+      ({ units }) => ({
+        chunks: [
+          {
+            ...chunkRange(units[0]?.id, units.at(-1)?.id),
+            entities: [{ confidence: 1, id: "e-softmax", text: "Softmax", type: "term" }],
+            relations: [],
+          },
+        ],
+      }),
+    ]);
+    const [first] = await createLlmSemanticChunker({
+      checkpoints,
+      now: () => "2026-08-17T07:00:00.000Z",
+      reasoningProviderFactory: () => firstProvider,
+    }).chunk(input);
+
+    const replayProvider = new ScriptedProvider([
+      () => {
+        throw new Error("checkpoint replay unexpectedly called the provider");
+      },
+    ]);
+    const [replay] = await createLlmSemanticChunker({
+      checkpoints,
+      now: () => "2026-08-17T07:00:00.000Z",
+      reasoningProviderFactory: () => replayProvider,
+    }).chunk(input);
+
+    expect(first?.text).toBe(sourceText);
+    expect(first?.metadata.extractedEntities).toEqual([]);
+    expect(first?.metadata.extractedRelations).toEqual([]);
+    expect(replay).toEqual(first);
+    expect(firstProvider.calls).toHaveLength(1);
+    expect(replayProvider.calls).toHaveLength(0);
   });
 
   it("rejects a model range over the Unicode-grapheme hard limit", async () => {
