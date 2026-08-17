@@ -675,7 +675,15 @@ def test_apply_skill_updates_maps_normalizer_failures(
     sqlite_session: Session,
 ) -> None:
     service = AgentConfigService()
-    tool_file = SimpleNamespace(name="alpha.zip", file_key="tool-files/alpha.zip")
+    tool_file = ToolFile(
+        user_id=USER,
+        tenant_id=TENANT,
+        conversation_id=None,
+        file_key="tool-files/alpha.zip",
+        mimetype="application/zip",
+        name="alpha.zip",
+        size=1,
+    )
 
     with (
         patch.object(service, "_require_tool_file_source", return_value=tool_file),

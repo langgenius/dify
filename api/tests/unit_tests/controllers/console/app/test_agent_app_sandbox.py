@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from inspect import unwrap
-from types import SimpleNamespace
+from inspect import getclosurevars, unwrap
+from types import FunctionType, SimpleNamespace
 
 import pytest
 from dify_agent.client import DifyAgentClientError, DifyAgentHTTPError, DifyAgentTimeoutError
 from dify_agent.protocol import BindingFileListResponse, BindingFileReadResponse
 
 from controllers.console import agent_app_sandbox as module
+from models.account import Account
 from models.model import App, AppMode, IconType
 from services.agent_app_sandbox_service import AgentSandboxDownload, AgentSandboxInfo, AgentSandboxInspectorError
 
@@ -139,6 +140,33 @@ def _app_model(app_id: str = "app-1") -> App:
     )
 
 
+def _account() -> Account:
+    account = Account(name="Sandbox Tester", email="sandbox-tester@example.com")
+    account.id = "account-1"
+    return account
+
+
+@pytest.mark.parametrize(
+    "method",
+    [
+        module.AgentAppSandboxInfoResource.get,
+        module.AgentAppSandboxListResource.get,
+        module.AgentAppSandboxReadResource.get,
+        module.AgentAppSandboxDownloadResource.post,
+        module.WorkflowAgentSandboxListResource.get,
+        module.WorkflowAgentSandboxReadResource.get,
+        module.WorkflowAgentSandboxDownloadResource.post,
+    ],
+)
+def test_sandbox_resources_require_app_view_layout(method: FunctionType) -> None:
+    rbac_wrapper = unwrap(method, stop=lambda wrapper: "rbac_permission_required" in wrapper.__code__.co_qualname)
+    config = getclosurevars(rbac_wrapper).nonlocals
+
+    assert config["resource_type"] == module.RBACResourceScope.APP
+    assert config["scene"] == module.RBACPermission.APP_VIEW_LAYOUT
+    assert config["resource_required"] is True
+
+
 def test_handle_maps_sandbox_and_agent_backend_errors() -> None:
     assert module._handle(AgentSandboxInspectorError("no_sandbox", "no sandbox", status_code=404)) == (
         {"code": "no_sandbox", "message": "no sandbox"},
@@ -166,7 +194,7 @@ def test_handle_maps_sandbox_and_agent_backend_errors() -> None:
 
 def test_agent_app_sandbox_resources_proxy_service(monkeypatch: pytest.MonkeyPatch) -> None:
     service = _AgentAppService()
-    account = SimpleNamespace(id="account-1")
+    account = _account()
     monkeypatch.setattr(module, "AgentAppSandboxService", lambda: service)
     monkeypatch.setattr(
         module,
@@ -205,7 +233,7 @@ def test_agent_app_sandbox_resource_returns_normalized_errors(monkeypatch: pytes
             raise AgentSandboxInspectorError("no_active_binding", "no active binding", status_code=404)
 
     monkeypatch.setattr(module, "AgentAppSandboxService", FailingService)
-    account = SimpleNamespace(id="account-1")
+    account = _account()
     monkeypatch.setattr(
         module,
         "query_params_from_request",
@@ -241,7 +269,7 @@ def test_workflow_agent_sandbox_resources_proxy_service(monkeypatch: pytest.Monk
     req_data = module.WorkflowAgentSandboxDownloadPayload.model_validate(
         {"node_execution_id": "execution-1", "path": "download.txt"}
     )
-    account = SimpleNamespace(id="account-1")
+    account = _account()
     download = unwrap(module.WorkflowAgentSandboxDownloadResource.post)(
         object(), req_data, "tenant-1", account, "app-1", "run-1", "agent-node"
     )

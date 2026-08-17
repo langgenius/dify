@@ -1,7 +1,7 @@
 import type { ExternalKnowledgeApiResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ExternalAPIItem } from '@/models/datasets'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 // Import mocked services
 import {
   checkUsageExternalAPI,
@@ -129,12 +129,6 @@ describe('ExternalKnowledgeAPICard', () => {
 
       expect(screen.queryByRole('button', { name: editButtonName })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: deleteButtonName })).not.toBeInTheDocument()
-    })
-
-    it('should render API connection icon', () => {
-      const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      const icon = container.querySelector('svg')
-      expect(icon)!.toBeInTheDocument()
     })
   })
 

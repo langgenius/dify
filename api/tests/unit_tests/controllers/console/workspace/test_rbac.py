@@ -16,7 +16,6 @@ changes.
 from __future__ import annotations
 
 import inspect
-from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -28,6 +27,7 @@ from configs import dify_config
 from controllers.console.workspace import rbac as rbac_mod
 from controllers.console.workspace.rbac import _RolesListQuery
 from enums import DeploymentEdition
+from models import Account
 
 
 @pytest.fixture
@@ -42,16 +42,22 @@ def _enabled(enabled: bool):
     return patch("controllers.console.workspace.rbac.dify_config.DEPLOYMENT_EDITION", deployment_edition)
 
 
+def _account() -> Account:
+    account = Account(name="RBAC User", email="rbac@example.com")
+    account.id = "acct-1"
+    return account
+
+
 class TestCurrentIds:
     def test_rejects_missing_tenant(self):
         with patch("controllers.console.workspace.rbac.current_account_with_tenant") as mock_user:
-            mock_user.return_value = (SimpleNamespace(id="acct-1"), None)
+            mock_user.return_value = (_account(), None)
             with pytest.raises(NotFound):
                 rbac_mod._current_ids()
 
     def test_returns_tuple(self):
         with patch("controllers.console.workspace.rbac.current_account_with_tenant") as mock_user:
-            mock_user.return_value = (SimpleNamespace(id="acct-1"), "tenant-1")
+            mock_user.return_value = (_account(), "tenant-1")
             assert rbac_mod._current_ids() == ("tenant-1", "acct-1")
 
 
@@ -553,7 +559,7 @@ class TestWorkspaceRbacGuards:
             patch("controllers.console.wraps.dify_config.RBAC_ENABLED", True),
             patch(
                 "controllers.common.wraps.current_account_with_tenant",
-                return_value=(SimpleNamespace(id="acct-1"), "tenant-1"),
+                return_value=(_account(), "tenant-1"),
             ),
             patch("controllers.common.wraps.RBACService.CheckAccess.check", return_value=False),
             patch("controllers.console.workspace.rbac.svc.RBACService.Roles.create") as mock_create,
@@ -574,7 +580,7 @@ class TestWorkspaceRbacGuards:
             patch("controllers.console.wraps.dify_config.RBAC_ENABLED", True),
             patch(
                 "controllers.common.wraps.current_account_with_tenant",
-                return_value=(SimpleNamespace(id="acct-1"), "tenant-1"),
+                return_value=(_account(), "tenant-1"),
             ),
             patch("controllers.common.wraps.RBACService.CheckAccess.check", return_value=False),
             patch("controllers.console.workspace.rbac.svc.RBACService.AccessPolicies.create") as mock_create,

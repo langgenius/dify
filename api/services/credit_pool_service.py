@@ -6,7 +6,7 @@ from piling up database transactions while preserving cross-tenant concurrency.
 """
 
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum, auto
 from typing import Any
@@ -347,6 +347,8 @@ class CreditPoolService:
         credits_required: int,
         pool_type: str | ProviderQuotaType = "trial",
         *,
+        request_id: str | None = None,
+        metadata: Mapping[str, str] | None = None,
         session: Session | None = None,
     ) -> int:
         """Deduct exactly the requested credits or raise without mutating the pool."""
@@ -357,14 +359,15 @@ class CreditPoolService:
         if cls._use_billing_quota():
             from services.billing_service import BillingService
 
-            request_id = str(uuid4())
+            resolved_request_id = request_id or str(uuid4())
+            billing_metadata = {"source": "credit_pool.check_and_deduct", **dict(metadata or {})}
             result = BillingService.quota_reserve(
                 tenant_id=tenant_id,
                 feature_key=FEATURE_KEY_CREDIT_POOL,
                 bucket=normalized_pool_type,
-                request_id=request_id,
+                request_id=resolved_request_id,
                 amount=credits_required,
-                meta={"source": "credit_pool.check_and_deduct"},
+                meta=billing_metadata,
             )
             reservation_id = result.get("reservation_id", "")
             if not reservation_id:
@@ -376,7 +379,7 @@ class CreditPoolService:
                     bucket=normalized_pool_type,
                     reservation_id=reservation_id,
                     actual_amount=credits_required,
-                    meta={"source": "credit_pool.check_and_deduct"},
+                    meta=billing_metadata,
                 )
             except Exception:
                 try:

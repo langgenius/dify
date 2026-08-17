@@ -18,8 +18,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
-from graphon.enums import BuiltinNodeTypes
 from models import Account
 from models.agent import (
     APP_BACKED_AGENT_SOURCES,
@@ -636,7 +636,7 @@ class AgentDslService:
 
 def is_agent_v2_graph(graph: Mapping[str, Any]) -> bool:
     return any(
-        node.get("data", {}).get("type") == BuiltinNodeTypes.AGENT and node.get("data", {}).get("version") == "2"
+        isinstance(node.get("data"), Mapping) and is_dify_agent_node_data(node["data"])
         for node in graph.get("nodes", [])
         if isinstance(node, Mapping)
     )

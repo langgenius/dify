@@ -4,7 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { AuthCategory } from '../../types'
 
 const mockNotify = vi.fn()
@@ -305,21 +305,44 @@ describe('OAuthClientSettings', () => {
     })
   })
 
-  it('should save and authorize on confirm button click', async () => {
-    const mockOnAuth = vi.fn().mockResolvedValue(undefined)
+  it('should request authorization after saving settings', async () => {
+    const user = userEvent.setup()
+    const mockOnRequestAuthorization = vi.fn().mockResolvedValue(undefined)
     render(
       <OAuthClientSettings
         pluginPayload={basePayload}
         schemas={defaultSchemas}
-        onAuth={mockOnAuth}
+        onRequestAuthorization={mockOnRequestAuthorization}
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'plugin.auth.saveAndAuth' }))
+    await user.click(screen.getByRole('button', { name: 'plugin.auth.saveAndAuth' }))
+
+    await waitFor(() => {
+      expect(mockSetPluginOAuthCustomClient).toHaveBeenCalled()
+      expect(mockOnRequestAuthorization).toHaveBeenCalledOnce()
+    })
+  })
+
+  it('should not request authorization when saving settings fails', async () => {
+    const user = userEvent.setup()
+    const mockOnRequestAuthorization = vi.fn()
+    mockSetPluginOAuthCustomClient.mockRejectedValueOnce(new Error('Save failed'))
+    render(
+      <OAuthClientSettings
+        pluginPayload={basePayload}
+        schemas={defaultSchemas}
+        onRequestAuthorization={mockOnRequestAuthorization}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'plugin.auth.saveAndAuth' }))
 
     await waitFor(() => {
       expect(mockSetPluginOAuthCustomClient).toHaveBeenCalled()
     })
+    expect(mockOnRequestAuthorization).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
   it('should remove custom client settings', async () => {

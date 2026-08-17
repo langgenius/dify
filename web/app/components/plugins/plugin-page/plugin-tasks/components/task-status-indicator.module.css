@@ -1,0 +1,22 @@
+@reference "../../../../../styles/globals.css";
+
+.indicator {
+  @apply relative overflow-visible bg-components-panel-bg p-2 shadow-none inset-ring-components-panel-border-subtle;
+
+  &[data-disabled] {
+    @apply cursor-default bg-components-panel-bg text-components-button-secondary-text shadow-none inset-ring-components-panel-border-subtle backdrop-blur-[5px];
+  }
+
+  &[data-menu-open] {
+    @apply bg-components-button-secondary-bg-hover shadow-xs shadow-shadow-shadow-3 inset-ring-components-button-secondary-border-hover backdrop-blur-[5px];
+  }
+
+  &[data-error] {
+    @apply cursor-pointer bg-state-destructive-hover text-components-button-destructive-secondary-text shadow-xs shadow-shadow-shadow-3 inset-ring-components-button-destructive-secondary-border-hover backdrop-blur-[5px];
+
+    &:hover,
+    &[data-menu-open] {
+      @apply bg-state-destructive-hover-alt;
+    }
+  }
+}

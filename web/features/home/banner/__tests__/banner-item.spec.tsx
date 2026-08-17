@@ -1,7 +1,7 @@
 import type { BannerResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { ComponentProps } from 'react'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { BannerItem } from '../banner-item'
 
 const mockTrackEvent = vi.fn()

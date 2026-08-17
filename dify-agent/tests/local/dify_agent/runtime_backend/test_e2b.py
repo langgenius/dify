@@ -23,6 +23,7 @@ from dify_agent.runtime_backend.e2b import (
     E2BExecutionBindingBackend,
     E2BHomeSnapshotBackend,
     E2BRuntimeLease,
+    E2BSDKControlPlane,
 )
 from dify_agent.runtime_backend.shellctl import ShellctlRuntimeLease
 
@@ -138,6 +139,36 @@ def _connected_backend(*, pause_error: Exception | None = None) -> tuple[E2BExec
         ),
         sandbox,
     )
+
+
+@pytest.mark.anyio
+async def test_e2b_sdk_create_disables_public_traffic(monkeypatch: pytest.MonkeyPatch) -> None:
+    from e2b import AsyncSandbox
+
+    sandbox = _Sandbox(sandbox_id="sandbox-1")
+    create_options: dict[str, object] = {}
+
+    async def create(
+        _cls: type[AsyncSandbox],
+        template: str,
+        **options: object,
+    ) -> _Sandbox:
+        assert template == "prepared-template"
+        create_options.update(options)
+        return sandbox
+
+    monkeypatch.setattr(AsyncSandbox, "create", classmethod(create))
+    control_plane = E2BSDKControlPlane(api_key="e2b-secret")
+
+    created = await control_plane.create(
+        "prepared-template",
+        timeout=120,
+        metadata={"dify.resource": "runtime-sandbox"},
+        on_timeout="pause",
+    )
+
+    assert created is sandbox
+    assert create_options["network"] == {"allow_public_traffic": False}
 
 
 @pytest.mark.anyio
@@ -299,11 +330,14 @@ async def test_e2b_checkpoint_uses_exact_source_runtime() -> None:
 async def test_e2b_acquire_retries_transient_shellctl_failures_until_ready(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setenv("SHELLCTL_AUTH_TOKEN", "ambient-shellctl-token")
     attempts = 0
 
     def handler(request: httpx.Request) -> httpx.Response:
         nonlocal attempts
         attempts += 1
+        assert request.headers["X-Access-Token"] == "traffic-token"
+        assert "Authorization" not in request.headers
         if attempts == 1:
             raise httpx.ReadTimeout("shellctl starting", request=request)
         if attempts == 2:
@@ -326,6 +360,26 @@ async def test_e2b_acquire_retries_transient_shellctl_failures_until_ready(
     assert not clients[0].is_closed
     await backend.release(lease)
     assert clients[0].is_closed
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("traffic_access_token", [None, ""])
+async def test_e2b_acquire_fails_closed_without_traffic_token(
+    monkeypatch: pytest.MonkeyPatch,
+    traffic_access_token: str | None,
+) -> None:
+    def handler(_request: httpx.Request) -> httpx.Response:
+        raise AssertionError("shellctl must not be called without an E2B traffic access token")
+
+    clients = _mock_http(monkeypatch, handler)
+    backend, sandbox = _connected_backend()
+    sandbox.traffic_access_token = traffic_access_token
+
+    with pytest.raises(BindingAcquireError, match="traffic access token"):
+        _ = await backend.acquire(sandbox.sandbox_id)
+
+    assert clients == []
+    assert sandbox.pauses == [True]
 
 
 @pytest.mark.anyio

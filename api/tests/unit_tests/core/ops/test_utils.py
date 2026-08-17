@@ -155,6 +155,30 @@ class TestValidateUrlWithPath:
         with pytest.raises(ValueError, match="URL must start with https:// or http://"):
             validate_url_with_path("example.com", "https://default.com")
 
+    def test_restricted_scheme_accepts_allowed_scheme(self):
+        """Test https-only validation keeps the path of an https URL"""
+        result = validate_url_with_path(
+            "https://langsmith.internal/api", "https://default.com", allowed_schemes=("https",)
+        )
+        assert result == "https://langsmith.internal/api"
+
+    def test_restricted_scheme_rejects_http(self):
+        """Test https-only validation rejects http and names only https in the error"""
+        with pytest.raises(ValueError) as excinfo:
+            validate_url_with_path("http://langsmith.internal/api", "https://default.com", allowed_schemes=("https",))
+        assert str(excinfo.value) == "URL must start with https://"
+
+    def test_default_schemes_keep_original_error_message(self):
+        """Test the two-scheme default keeps the exact message existing providers assert on"""
+        with pytest.raises(ValueError) as excinfo:
+            validate_url_with_path("ftp://example.com", "https://default.com")
+        assert str(excinfo.value) == "URL must start with https:// or http://"
+
+    def test_surrounding_whitespace_is_stripped(self):
+        """Test surrounding whitespace is removed while the path is preserved"""
+        result = validate_url_with_path("  https://example.com/api/v1  ", "https://default.com")
+        assert result == "https://example.com/api/v1"
+
 
 class TestValidateProjectName:
     """Test cases for validate_project_name function"""

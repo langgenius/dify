@@ -2,12 +2,12 @@
 import type { InputVarType } from '@/app/components/workflow/types'
 import type { InputVar } from '@/models/pipeline'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RiDeleteBinLine, RiDraggable, RiEditLine } from '@remixicon/react'
 import { useHover } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
 import InputVarTypeIcon from '@/app/components/workflow/nodes/_base/components/input-var-type-icon'
@@ -80,12 +80,22 @@ const FieldItem = ({ readonly, payload, index, onClickEdit, onRemove }: FieldIte
       </div>
       {isHovering && !readonly ? (
         <div className="flex shrink-0 items-center gap-x-1">
-          <ActionButton className="mr-1" onClick={handleOnClickEdit}>
-            <RiEditLine className="size-4 text-text-tertiary" />
-          </ActionButton>
-          <ActionButton onClick={handleRemove}>
-            <RiDeleteBinLine className="size-4 text-text-tertiary group-hover:text-text-destructive" />
-          </ActionButton>
+          <IconButton
+            aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
+            className="mr-1"
+            onClick={handleOnClickEdit}
+          >
+            <RiEditLine aria-hidden="true" className="size-4 text-text-tertiary" />
+          </IconButton>
+          <IconButton
+            aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
+            onClick={handleRemove}
+          >
+            <RiDeleteBinLine
+              aria-hidden="true"
+              className="size-4 text-text-tertiary group-hover:text-text-destructive"
+            />
+          </IconButton>
         </div>
       ) : (
         <div className="flex shrink-0 items-center gap-x-2">
