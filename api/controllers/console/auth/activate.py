@@ -1,7 +1,6 @@
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import select
 
 from configs import dify_config
 from constants.languages import supported_language
@@ -16,9 +15,9 @@ from libs.datetime_utils import naive_utc_now
 from libs.helper import EmailStr, timezone
 from libs.login import current_account_with_tenant
 from libs.token import extract_access_token
-from models import Account, AccountStatus, Tenant
-from models.account import TenantAccountJoin, TenantAccountRole
-from services.account_service import RegisterService, TenantService
+from models import AccountStatus
+from models.account import TenantAccountRole
+from services.account_service import AccountService, RegisterService, TenantService
 from services.billing_service import BillingService
 from services.enterprise.rbac_service import RBACService
 from services.errors.account import MemberNotInTenantError, NoPermissionError, WorkspaceMembersLimitExceededError
@@ -204,8 +203,8 @@ class ActivateApi(Resource):
             except (MemberNotInTenantError, NoPermissionError) as exc:
                 raise AlreadyActivateError() from exc
 
-            account = db.session.get(Account, account_id)
-            tenant = db.session.get(Tenant, tenant_id)
+            account = AccountService.get_account_by_id(account_id, session=db.session())
+            tenant = TenantService.get_tenant_by_id(tenant_id, session=db.session())
             if account is None or tenant is None:
                 raise AlreadyActivateError()
         else:
@@ -217,13 +216,7 @@ class ActivateApi(Resource):
             if not TenantAccountRole.is_non_owner_role(role):
                 role = TenantAccountRole.NORMAL
 
-            membership_id = db.session.scalar(
-                select(TenantAccountJoin.id).where(
-                    TenantAccountJoin.tenant_id == tenant.id,
-                    TenantAccountJoin.account_id == account.id,
-                )
-            )
-            if membership_id is None:
+            if not TenantService.account_belongs_to_tenant(account.id, str(tenant.id), session=db.session()):
                 TenantService.create_tenant_member(tenant, account, db.session(), role=role)
 
         if setup_fields:

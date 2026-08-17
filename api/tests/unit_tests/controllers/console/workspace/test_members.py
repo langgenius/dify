@@ -807,17 +807,18 @@ class TestOwnerTransferApi:
             current_tenant=tenant,
             current_tenant_id="tenant-1",
         )
-        session = MagicMock()
-        session.scalar.return_value = "new-owner@example.com"
         events: list[str] = []
+        member = SimpleNamespace(id="member-1", email="new-owner@example.com")
 
         with (
             app.test_request_context("/", json={"token": "token-1"}),
             patch("controllers.console.workspace.members.db"),
             patch(
                 "controllers.console.workspace.members.session_factory.create_session",
-                return_value=nullcontext(session),
+                return_value=nullcontext(),
             ),
+            patch("controllers.console.workspace.members.AccountService.get_account_by_id", return_value=member),
+            patch("controllers.console.workspace.members.TenantService.account_belongs_to_tenant", return_value=True),
             patch(
                 "controllers.console.workspace.members.AccountService.get_owner_transfer_data",
                 return_value={"email": "old-owner@example.com"},
@@ -880,16 +881,17 @@ class TestOwnerTransferApi:
             current_tenant=tenant,
             current_tenant_id="tenant-1",
         )
-        session = MagicMock()
-        session.scalar.return_value = "new-owner@example.com"
+        member = SimpleNamespace(id="member-1", email="new-owner@example.com")
 
         with (
             app.test_request_context("/", json={"token": "token-1"}),
             patch("controllers.console.workspace.members.db"),
             patch(
                 "controllers.console.workspace.members.session_factory.create_session",
-                return_value=nullcontext(session),
+                return_value=nullcontext(),
             ),
+            patch("controllers.console.workspace.members.AccountService.get_account_by_id", return_value=member),
+            patch("controllers.console.workspace.members.TenantService.account_belongs_to_tenant", return_value=True),
             patch(
                 "controllers.console.workspace.members.AccountService.get_owner_transfer_data",
                 return_value={"email": "old-owner@example.com"},

@@ -255,7 +255,6 @@ class TestRbacPermissionRequired:
 
     def test_resource_scoped_check_uses_resource_id(self):
         current_user = make_account("account-1")
-        engine = MagicMock()
         session_context = MagicMock()
         session = session_context.__enter__.return_value
 
@@ -269,8 +268,9 @@ class TestRbacPermissionRequired:
 
         with (
             patch("controllers.common.wraps.dify_config.RBAC_ENABLED", True),
-            patch("controllers.common.wraps.db", SimpleNamespace(engine=engine)),
-            patch("controllers.common.wraps.Session", return_value=session_context) as mock_session,
+            patch(
+                "controllers.common.wraps.session_factory.create_session", return_value=session_context
+            ) as mock_session,
             patch("controllers.common.wraps.current_account_with_tenant", return_value=(current_user, "tenant-1")),
             patch("controllers.common.wraps._extract_resource_id", return_value="app-123") as mock_extract,
             patch("controllers.common.wraps._is_resource_owned_by_current_user", return_value=False) as mock_owned,
@@ -278,7 +278,7 @@ class TestRbacPermissionRequired:
         ):
             assert protected_view(app_id="app-123") == "ok"
 
-        mock_session.assert_called_once_with(engine)
+        mock_session.assert_called_once_with()
         mock_extract.assert_called_once_with(RBACResourceScope.APP, "tenant-1", {"app_id": "app-123"}, session=session)
         mock_owned.assert_called_once_with("tenant-1", "account-1", "app", "app-123", session=session)
         mock_check.assert_called_once_with(
@@ -343,7 +343,6 @@ class TestRbacPermissionRequired:
 
     def test_resource_owned_app_skips_rbac_check(self):
         current_user = make_account("account-4")
-        engine = MagicMock()
         session_context = MagicMock()
 
         @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_DELETE)
@@ -352,8 +351,7 @@ class TestRbacPermissionRequired:
 
         with (
             patch("controllers.common.wraps.dify_config.RBAC_ENABLED", True),
-            patch("controllers.common.wraps.db", SimpleNamespace(engine=engine)),
-            patch("controllers.common.wraps.Session", return_value=session_context),
+            patch("controllers.common.wraps.session_factory.create_session", return_value=session_context),
             patch("controllers.common.wraps.current_account_with_tenant", return_value=(current_user, "tenant-4")),
             patch("controllers.common.wraps._extract_resource_id", return_value="app-123"),
             patch("controllers.common.wraps._is_resource_owned_by_current_user", return_value=True) as mock_owned,
@@ -369,7 +367,6 @@ class TestRbacPermissionRequired:
 
     def test_resource_owned_dataset_skips_rbac_check(self):
         current_user = make_account("account-5")
-        engine = MagicMock()
         session_context = MagicMock()
 
         @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
@@ -378,8 +375,7 @@ class TestRbacPermissionRequired:
 
         with (
             patch("controllers.common.wraps.dify_config.RBAC_ENABLED", True),
-            patch("controllers.common.wraps.db", SimpleNamespace(engine=engine)),
-            patch("controllers.common.wraps.Session", return_value=session_context),
+            patch("controllers.common.wraps.session_factory.create_session", return_value=session_context),
             patch("controllers.common.wraps.current_account_with_tenant", return_value=(current_user, "tenant-5")),
             patch("controllers.common.wraps._extract_resource_id", return_value="dataset-123"),
             patch("controllers.common.wraps._is_resource_owned_by_current_user", return_value=True) as mock_owned,

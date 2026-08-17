@@ -6,8 +6,8 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
+from core.db.session_factory import session_factory
 from core.rbac import RBACPermission, RBACResourceScope
-from extensions.ext_database import db
 from libs.login import current_account_with_tenant
 from models.dataset import Dataset
 from models.model import App
@@ -53,7 +53,7 @@ def enforce_rbac_access(
     check_resource_type = None if resource_type == RBACResourceScope.WORKSPACE else resource_type
     resource_id = None
     if resource_required and check_resource_type:
-        with Session(db.engine) as session:
+        with session_factory.create_session() as session:
             resource_id = _extract_resource_id(resource_type, tenant_id, path_args, session=session)
             is_owner = _is_resource_owned_by_current_user(
                 tenant_id, account_id, resource_type, resource_id, session=session

@@ -532,13 +532,10 @@ class OwnerTransfer(Resource):
 
         db.session.close()
         with session_factory.create_session() as session:
-            member_email = session.scalar(
-                select(Account.email)
-                .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
-                .where(Account.id == str(member_id), TenantAccountJoin.tenant_id == tenant_id)
-            )
-        if not member_email:
-            raise NotFound()
+            member = AccountService.get_account_by_id(str(member_id), session=session)
+            if member is None or not TenantService.account_belongs_to_tenant(member.id, tenant_id, session=session):
+                raise NotFound()
+            member_email = member.email
         try:
             TenantService.update_member_role(
                 tenant_id,
