@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from unittest.mock import MagicMock
 
 import pytest
@@ -23,10 +24,11 @@ def test_system_feature_model_requires_deployment_edition() -> None:
 )
 def test_get_system_features_uses_configured_deployment_edition(
     monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
     edition: DeploymentEdition,
 ) -> None:
     fulfill_from_enterprise = MagicMock()
-    monkeypatch.setattr("services.feature_service.dify_config.DEPLOYMENT_EDITION", edition)
+    config_overrides(DEPLOYMENT_EDITION=edition)
     monkeypatch.setattr(
         "services.feature_service.FeatureService._fulfill_params_from_enterprise",
         fulfill_from_enterprise,
