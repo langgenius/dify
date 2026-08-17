@@ -2,6 +2,7 @@ import type { PluginBanner } from '@dify/contracts/marketplace'
 import type { ActivePluginType } from '../constants'
 import type { HomeCatalogTabLabels } from './home-catalog-tabs'
 import ListWrapper from '../list/list-wrapper'
+import CatalogTagsFilter from './catalog-tags-filter'
 import HomeCatalogNavigation from './home-catalog-navigation'
 import HomeCatalogTabs from './home-catalog-tabs'
 import HomeHeader from './home-header'
@@ -53,6 +54,7 @@ const MarketplaceHome = ({
       navigation={
         <HomeCatalogNavigation
           catalogCategories={catalogCategories}
+          catalogLeading={<CatalogTagsFilter />}
           catalogTabs={
             <HomeCatalogTabs
               isMarketplacePlatform={isMarketplacePlatform}

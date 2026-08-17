@@ -13,10 +13,17 @@ import styles from './home-sticky.module.css'
 
 type HomeCatalogNavigationProps = {
   catalogCategories?: ReactNode
+  catalogLeading?: ReactNode
   catalogTabs: ReactNode
+  catalogTrailing?: ReactNode
 }
 
-function HomeCatalogNavigation({ catalogCategories, catalogTabs }: HomeCatalogNavigationProps) {
+function HomeCatalogNavigation({
+  catalogCategories,
+  catalogLeading,
+  catalogTabs,
+  catalogTrailing,
+}: HomeCatalogNavigationProps) {
   const { t } = useTranslation()
   const isPinned = useAtomValue(homeCatalogPinnedAtom)
   const setIsPinned = useSetAtom(homeCatalogPinnedAtom)
@@ -66,16 +73,25 @@ function HomeCatalogNavigation({ catalogCategories, catalogTabs }: HomeCatalogNa
       >
         <div className="w-full">
           <div className={cn('-ml-2', isPinned && styles.catalogTabsPinned)}>{catalogTabs}</div>
-          {catalogCategories ? (
-            <div className={cn('mt-4', isPinned && styles.categoriesPinned)}>
-              {catalogCategories}
+          <div
+            className={cn(
+              'mt-4 flex w-full items-center gap-2',
+              isPinned && styles.categoriesPinned,
+            )}
+          >
+            {catalogLeading && (
+              <>
+                <div className="shrink-0">{catalogLeading}</div>
+                <div aria-hidden className="shrink-0 px-1 system-md-regular text-text-tertiary">
+                  ·
+                </div>
+              </>
+            )}
+            <div className="min-w-0 flex-1 scrollbar-none overflow-x-auto">
+              {catalogCategories ?? <PluginTypeSwitch className={undefined} variant="home" />}
             </div>
-          ) : (
-            <PluginTypeSwitch
-              className={cn('mt-4', isPinned && styles.categoriesPinned)}
-              variant="home"
-            />
-          )}
+            {catalogTrailing && <div className="shrink-0">{catalogTrailing}</div>}
+          </div>
         </div>
       </section>
     </>

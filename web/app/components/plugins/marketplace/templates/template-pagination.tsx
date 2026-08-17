@@ -6,6 +6,7 @@ import { buildTemplatesHref, PAGE_LINK_CLASS, PAGE_LINK_DISABLED_CLASS } from '.
 // beyond the first page without any client-side state.
 export default function TemplatePagination({
   category,
+  languages,
   navigationLabel,
   nextLabel,
   page,
@@ -17,6 +18,7 @@ export default function TemplatePagination({
   view,
 }: {
   category: TemplateCategory
+  languages?: string[]
   navigationLabel: string
   nextLabel: string
   page: number
@@ -30,7 +32,15 @@ export default function TemplatePagination({
   if (pageCount <= 1) return null
 
   const buildHref = (targetPage: number) =>
-    buildTemplatesHref({ category, page: targetPage, query, sortBy, sortOrder, view })
+    buildTemplatesHref({
+      category,
+      languages,
+      page: targetPage,
+      query,
+      sortBy,
+      sortOrder,
+      view,
+    })
 
   return (
     <nav aria-label={navigationLabel} className="mt-6 flex items-center justify-center gap-3 pb-4">

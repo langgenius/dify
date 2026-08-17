@@ -7,6 +7,7 @@ export const PAGE_LINK_DISABLED_CLASS =
 
 export type TemplatesHrefOptions = {
   category: TemplateCategory
+  languages?: string[]
   page?: number
   query?: string
   sortBy?: string
@@ -16,6 +17,7 @@ export type TemplatesHrefOptions = {
 
 export function buildTemplatesHref({
   category,
+  languages,
   page = 1,
   query,
   sortBy,
@@ -27,6 +29,7 @@ export function buildTemplatesHref({
   if (sortBy) searchParams.set('sort_by', sortBy)
   if (sortOrder) searchParams.set('sort_order', sortOrder)
   if (view) searchParams.set('view', view)
+  if (languages?.length) searchParams.set('languages', languages.join(','))
   if (page > 1) searchParams.set('page', String(page))
   const queryString = searchParams.toString()
   const basePath = category === 'all' ? '/templates' : `/templates/${category}`

@@ -59,4 +59,25 @@ describe('MarketplaceLiveSearch', () => {
       expect(mockReplace).toHaveBeenLastCalledWith('/plugins/tool', { scroll: false })
     })
   })
+
+  it('preserves catalog filter params while the user types', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <MarketplaceLiveSearch
+        action="/templates/knowledge"
+        placeholder="Search templates"
+        query=""
+        preserveParams={{ languages: ['ja'] }}
+      />,
+    )
+
+    await user.type(screen.getByRole('searchbox'), 'legal')
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenLastCalledWith('/templates/knowledge?q=legal&languages=ja', {
+        scroll: false,
+      })
+    })
+  })
 })

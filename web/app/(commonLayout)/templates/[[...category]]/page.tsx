@@ -7,6 +7,7 @@ import { redirect } from '@/next/navigation'
 type TemplatesPageProps = {
   params: Promise<{ category?: string[] }>
   searchParams: Promise<{
+    languages?: string | string[]
     page?: string
     q?: string
     sort_by?: string
@@ -57,6 +58,7 @@ export default async function TemplatesPage({ params, searchParams }: TemplatesP
     >
       <EmbeddedTemplatesMarketplace
         category={category}
+        languages={resolvedSearchParams.languages}
         locale={locale}
         page={parsePage(resolvedSearchParams.page)}
         query={resolvedSearchParams.q ?? ''}
