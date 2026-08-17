@@ -1,5 +1,9 @@
-from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from typing import cast
+
+from sqlalchemy import event, select
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
+from sqlalchemy.sql.elements import ClauseElement
 
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
@@ -69,6 +73,33 @@ class TestResolveInvitation:
 
 
 class TestPersistActivation:
+    def test_locks_account_while_switching_current_workspace(
+        self,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        _persist_invitation_state(sqlite_session)
+        repository = SQLAlchemyAccountActivationRepository(sqlite_session_factory)
+        statements: list[ClauseElement] = []
+
+        def capture_statement(execute_state: ORMExecuteState) -> None:
+            statements.append(cast(ClauseElement, execute_state.statement))
+
+        event.listen(sqlite_session_factory.class_, "do_orm_execute", capture_statement)
+        try:
+            result = repository.activate(_invitation(), role="admin", setup=None)
+        finally:
+            event.remove(sqlite_session_factory.class_, "do_orm_execute", capture_statement)
+
+        assert result is not None
+        account_selects = [
+            str(statement.compile(dialect=postgresql.dialect()))
+            for statement in statements
+            if "FROM accounts" in str(statement.compile(dialect=postgresql.dialect()))
+        ]
+        assert len(account_selects) == 1
+        assert "FOR UPDATE" in account_selects[0]
+
     def test_creates_membership_initializes_account_and_switches_workspace(
         self,
         sqlite_session: Session,

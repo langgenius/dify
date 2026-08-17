@@ -1,4 +1,4 @@
-import type { MockedFunction } from 'vitest'
+import type { MockedFunction } from 'vite-plus/test'
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -107,9 +107,9 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({ defaultModel }: { defaultModel?: { provider: string; model: string } }) => (
+  ModelSelector: ({ value }: { value?: { provider: string; model: string } }) => (
     <div data-testid="model-selector">
-      {defaultModel ? `${defaultModel.provider}/${defaultModel.model}` : 'no-model'}
+      {value ? `${value.provider}/${value.model}` : 'no-model'}
     </div>
   ),
 }))

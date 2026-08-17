@@ -140,7 +140,10 @@ def test_publish_binding_replacement_returns_only_previous_inline_agent(
     sqlite_session: Session,
 ) -> None:
     draft_workflow = _workflow()
-    draft_workflow.graph = '{"nodes":[{"id":"agent-node","data":{"type":"agent","version":"2"}}],"edges":[]}'
+    draft_workflow.graph = (
+        '{"nodes":[{"id":"agent-node","data":{"type":"agent","version":"2",'
+        '"agent_node_kind":"dify_agent"}}],"edges":[]}'
+    )
     published_workflow = _workflow(workflow_id="published-new", version="published-new")
     app = App(
         id="app-1",

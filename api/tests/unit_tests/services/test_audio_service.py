@@ -254,6 +254,26 @@ class TestAudioServiceASR:
         mock_model_manager_class.assert_called_once_with(tenant_id=app.tenant_id, user_id="user-123")
 
     @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
+    def test_transcript_asr_accepts_x_m4a_mimetype(
+        self, mock_model_manager_class, factory: AudioServiceTestDataFactory
+    ):
+        """Test that the x-m4a MIME alias follows the normal m4a transcription flow."""
+        # Arrange
+        app_model_config = factory.create_app_model_config_mock(speech_to_text_dict={"enabled": True})
+        app = factory.create_app_mock(mode=AppMode.CHAT, app_model_config=app_model_config)
+        file = factory.create_file_storage_mock(filename="audio.m4a", mimetype="audio/x-m4a")
+        mock_model_instance = MagicMock()
+        mock_model_instance.invoke_speech2text.return_value = "M4A transcript"
+        mock_model_manager_class.return_value.get_default_model_instance.return_value = mock_model_instance
+
+        # Act
+        result = AudioService.transcript_asr(app_model=app, file=file, session=self.session)
+
+        # Assert
+        assert result == {"text": "M4A transcript"}
+        mock_model_instance.invoke_speech2text.assert_called_once()
+
+    @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
     def test_transcript_asr_success_advanced_chat_mode(
         self, mock_model_manager_class, factory: AudioServiceTestDataFactory
     ):

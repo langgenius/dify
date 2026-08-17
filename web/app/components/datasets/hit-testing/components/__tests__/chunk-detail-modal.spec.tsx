@@ -1,6 +1,6 @@
 import type { HitTesting } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import ChunkDetailModal from '../chunk-detail-modal'
 
 vi.mock('@/app/components/base/file-uploader/file-type-icon', () => ({

@@ -67,19 +67,18 @@ from models.model import MessageAgentThought
 
 
 @pytest.fixture(autouse=True)
-def bind_agent_db(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
-    """Bind the runner's ORM writes to the shared SQLite session."""
+def bind_agent_dependencies(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+    """Bind local runner dependencies without reaching external services."""
     monkeypatch.setattr(app_runner_module.db, "session", sqlite_session)
+    monkeypatch.setattr(
+        "core.app.apps.agent_app.runtime_request_builder.resolve_model_context_window",
+        lambda **_kwargs: None,
+    )
 
 
 def _thought_rows(session: Session) -> list[MessageAgentThought]:
     session.expire_all()
     return list(session.scalars(select(MessageAgentThought).order_by(MessageAgentThought.position)).all())
-
-
-class _FakeCredentialsProvider:
-    def fetch(self, provider_name: str, model_name: str) -> dict[str, Any]:
-        return {"openai_api_key": "sk-test"}
 
 
 class _NoToolsBuilder:
@@ -488,7 +487,6 @@ def _runner(
 ) -> AgentAppRunner:
     return AgentAppRunner(
         request_builder=AgentAppRuntimeRequestBuilder(
-            credentials_provider=_FakeCredentialsProvider(),
             dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         ),
         agent_backend_client=client,

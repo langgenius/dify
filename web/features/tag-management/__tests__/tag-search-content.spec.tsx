@@ -144,9 +144,13 @@ describe('TagSearchContent', () => {
     expect(input).toHaveValue('Back')
     vi.clearAllMocks()
 
-    await user.click(screen.getByRole('button', { name: i18n.operationClear }))
+    const clearButton = screen.getByRole('button', { name: i18n.operationClear })
+    await user.pointer({ keys: '[MouseLeft>]', target: clearButton })
+    expect(input).toHaveFocus()
+    await user.pointer({ keys: '[/MouseLeft]', target: clearButton })
 
     expect(input).toHaveValue('')
+    expect(input).toHaveFocus()
     expect(onValueChangeSpy).not.toHaveBeenCalled()
     expect(screen.getByRole('option', { name: /Frontend/i })).toHaveAttribute(
       'aria-selected',

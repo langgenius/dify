@@ -155,7 +155,7 @@ def test_sse_decoder_accepts_function_tool_result_part_alias(monkeypatch: pytest
     assert event is not None
     assert event.type == "pydantic_ai_event"
     assert event.data.event_kind == "function_tool_result"
-    assert event.data.result.tool_name == "shell_run"
+    assert event.data.part.tool_name == "shell_run"
 
 
 def test_function_tool_result_payload_normalization_supports_old_part_schema(
@@ -812,6 +812,26 @@ def test_async_stream_events_yields_terminal_event() -> None:
         await http_client.aclose()
 
     asyncio.run(scenario())
+
+
+def test_async_stream_events_enforces_total_timeout_before_connecting() -> None:
+    calls = 0
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, content="")
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
+            client = Client(base_url="http://testserver", async_http_client=http_client)
+
+            with pytest.raises(DifyAgentTimeoutError, match="exceeded its timeout"):
+                _ = [event async for event in client.stream_events("run-1", timeout_seconds=0)]
+
+    asyncio.run(scenario())
+
+    assert calls == 0
 
 
 def test_async_stream_events_does_not_reconnect_after_terminal_when_until_terminal_is_false() -> None:

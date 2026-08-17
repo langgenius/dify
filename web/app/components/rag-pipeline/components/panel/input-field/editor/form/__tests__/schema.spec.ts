@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { createInputFieldSchema, TEXT_MAX_LENGTH } from '../schema'
 

@@ -38,7 +38,7 @@
   "agentDetail.access.workflow.table.nodes": "ໂນດ",
   "agentDetail.access.workflow.table.version": "ເວີຊັນ",
   "agentDetail.access.workflow.title": "ການເຂົ້າເຖິງເວີກໂຟລ",
-  "agentDetail.configure.advancedSettings.description": "ສຳລັບຜູ້ໃຊ້ລະດັບສູງ: ຕົວປ່ຽນສະພາບແວດລ້ອມ, ແຊນບ໋ອກຊ໌ ແລະ ໜ່ວຍຄວາມຈຳ.",
+  "agentDetail.configure.advancedSettings.description": "ສຳລັບຜູ້ໃຊ້ລະດັບສູງ ເຊັ່ນ ຕົວປ່ຽນສະພາບແວດລ້ອມ.",
   "agentDetail.configure.advancedSettings.envEditor.add": "ເພີ່ມຕົວປ່ຽນສະພາບແວດລ້ອມ",
   "agentDetail.configure.advancedSettings.envEditor.deleteVariable": "ລຶບ {{key}}",
   "agentDetail.configure.advancedSettings.envEditor.hideValue": "ເຊື່ອງຄ່າ {{key}}",
@@ -156,6 +156,7 @@
   "agentDetail.configure.preview.empty.description": "ທົດລອງໃຊ້ຕົວແທນໃນຮູບແບບການສົນທະນາທີ່ສຳເລັດແລ້ວ ຄືກັນກັບທີ່ຜູ້ໃຊ້ຈະໄດ້ຮັບຮູ້ເມື່ອຖືກເຜີຍແຜ່.",
   "agentDetail.configure.preview.empty.title": "ເບິ່ງຕົວຢ່າງ {{name}}",
   "agentDetail.configure.preview.endUserAuth": "ການຢືນຢັນຕົວຕົນຜູ້ໃຊ້ປາຍທາງ",
+  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "ການເຮັດວຽກຂອງ Agent ນີ້ຖືກຢຸດຫຼັງຈາກຮອດຈຳນວນຄຳຮ້ອງຂໍໂມເດວສູງສຸດ. ລອງໃໝ່ ຫຼື ແບ່ງໜ້າວຽກເປັນຂັ້ນຕອນນ້ອຍລົງ.",
   "agentDetail.configure.preview.errors.agentRunLimitExceeded": "ການເຮັດວຽກຂອງ Agent ນີ້ຖືກຢຸດເພາະຮອດຂີດຈຳກັດເວລາ. ລອງໃໝ່ ຫຼື ແບ່ງໜ້າວຽກເປັນຂັ້ນຕອນນ້ອຍລົງ.",
   "agentDetail.configure.preview.inputPlaceholder": "ສົ່ງຂໍ້ຄວາມຫາ {{name}}",
   "agentDetail.configure.preview.restart": "ເລີ່ມຕົວຢ່າງໃໝ່",
@@ -425,6 +426,7 @@
   "roster.sort.lastModified": "ແກ້ໄຂຫຼ້າສຸດ",
   "roster.sort.optionsLabel": "ຕົວເລືອກການຈັດລຽງ",
   "roster.sort.recentlyCreated": "ສ້າງຫຼ້າສຸດ",
+  "roster.title": "ຕົວແທນ",
   "roster.updateSuccess": "ອັບເດດຕົວແທນສຳເລັດ.",
   "roster.usageStatus.draft": "ສະບັບຮ່າງ"
 }

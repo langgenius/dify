@@ -38,7 +38,7 @@
   "agentDetail.access.workflow.table.nodes": "नोड",
   "agentDetail.access.workflow.table.version": "संस्करण",
   "agentDetail.access.workflow.title": "वर्कफ़्लो एक्सेस",
-  "agentDetail.configure.advancedSettings.description": "उन्नत उपयोगकर्ताओं के लिए। पर्यावरण चर, सैंडबॉक्स और मेमोरी।",
+  "agentDetail.configure.advancedSettings.description": "उन्नत उपयोगकर्ताओं के लिए, जैसे पर्यावरण चर।",
   "agentDetail.configure.advancedSettings.envEditor.add": "पर्यावरण चर जोड़ें",
   "agentDetail.configure.advancedSettings.envEditor.deleteVariable": "{{key}} हटाएँ",
   "agentDetail.configure.advancedSettings.envEditor.hideValue": "{{key}} मान छुपाएँ",
@@ -156,6 +156,7 @@
   "agentDetail.configure.preview.empty.description": "एजेंट को तैयार चैट की तरह चलाएं, ठीक वैसे जैसे लोग प्रकाशित होने के बाद अनुभव करेंगे।",
   "agentDetail.configure.preview.empty.title": "{{name}} का पूर्वावलोकन",
   "agentDetail.configure.preview.endUserAuth": "अंतिम-उपयोगकर्ता प्रमाणीकरण",
+  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "मॉडल अनुरोधों की अधिकतम संख्या पूरी होने पर यह Agent रन रोक दिया गया। फिर से कोशिश करें या टास्क को छोटे चरणों में बाँटें।",
   "agentDetail.configure.preview.errors.agentRunLimitExceeded": "समय सीमा पूरी होने पर इस Agent रन को रोक दिया गया। फिर से कोशिश करें या टास्क को छोटे चरणों में बाँटें।",
   "agentDetail.configure.preview.inputPlaceholder": "{{name}} को संदेश भेजें",
   "agentDetail.configure.preview.restart": "नए सिरे से शुरू करें",
@@ -425,6 +426,7 @@
   "roster.sort.lastModified": "अंतिम संशोधन",
   "roster.sort.optionsLabel": "क्रमबद्ध विकल्प",
   "roster.sort.recentlyCreated": "हाल ही में बनाए गए",
+  "roster.title": "एजेंट",
   "roster.updateSuccess": "एजेंट अपडेट हो गया।",
   "roster.usageStatus.draft": "ड्राफ्ट"
 }

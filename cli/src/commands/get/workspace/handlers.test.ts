@@ -1,5 +1,5 @@
 import type { WorkspaceListResponse } from '@dify/contracts/api/openapi/types.gen'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { WorkspaceListOutput, WorkspaceRow } from './handlers'
 
 function env(): WorkspaceListResponse {

@@ -1,7 +1,7 @@
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 // Component Import (after mocks)
 import FireCrawl from '../index'
 

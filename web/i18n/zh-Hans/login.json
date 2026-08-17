@@ -49,6 +49,7 @@
   "join": "加入 ",
   "joinTipEnd": " 团队",
   "joinTipStart": "邀请你加入 ",
+  "joinWorkspace": "加入 {{workspaceName}}",
   "license.link": "开源协议",
   "license.tip": "启动 Dify 社区版之前，请阅读 GitHub 上的",
   "licenseExpired": "许可证已过期",

@@ -124,27 +124,20 @@ const PluginTasks = ({
     <div className={rootClassName}>
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
-          nativeButton={false}
-          render={(props, state) => (
-            <div
-              {...props}
-              className={cn('cursor-pointer data-disabled:cursor-default', props.className)}
-            >
-              <TaskStatusIndicator
-                tip={tip}
-                isInstalling={isInstalling}
-                isInstallingWithSuccess={isInstallingWithSuccess}
-                isInstallingWithError={isInstallingWithError}
-                isSuccess={isSuccess}
-                isFailed={isFailed}
-                isOpen={state.open}
-                successPluginsLength={successPluginsLength}
-                runningPluginsLength={runningPluginsLength}
-                totalPluginsLength={totalPluginsLength}
-                onClick={() => {}}
-              />
-            </div>
-          )}
+          render={
+            <TaskStatusIndicator
+              id="plugin-task-trigger"
+              tip={tip}
+              isInstalling={isInstalling}
+              isInstallingWithSuccess={isInstallingWithSuccess}
+              isInstallingWithError={isInstallingWithError}
+              isSuccess={isSuccess}
+              isFailed={isFailed}
+              successPluginsLength={successPluginsLength}
+              runningPluginsLength={runningPluginsLength}
+              data-menu-open={open ? '' : undefined}
+            />
+          }
           disabled={!canOpenMenu}
         />
         <DropdownMenuContent
