@@ -139,14 +139,7 @@ vi.mock('reactflow', () => ({
 vi.mock('@/app/components/workflow/collaboration/hooks/use-collaboration', () => ({
   useCollaboration: (...args: unknown[]) => {
     mockUseCollaboration(...args)
-    return {
-      startCursorTracking: collaborationRuntime.startCursorTracking,
-      stopCursorTracking: collaborationRuntime.stopCursorTracking,
-      onlineUsers: collaborationRuntime.onlineUsers,
-      cursors: collaborationRuntime.cursors,
-      isConnected: collaborationRuntime.isConnected,
-      isEnabled: collaborationRuntime.isEnabled,
-    }
+    return collaborationRuntime
   },
 }))
 

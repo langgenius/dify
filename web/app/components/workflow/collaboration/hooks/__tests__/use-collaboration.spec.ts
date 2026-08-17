@@ -155,32 +155,24 @@ describe('useCollaboration', () => {
     expect(mockDisconnect).toHaveBeenCalledWith('conn-1')
   })
 
-  it('does not connect or start cursor tracking when collaboration is disabled', async () => {
-    isCollaborationEnabled = false
-    const { result } = renderHookWithConsoleQuery(() => useCollaboration('app-1', true), {
-      systemFeatures: { enable_collaboration_mode: isCollaborationEnabled },
-    })
+  it.each([
+    [false, true],
+    [true, false],
+  ])(
+    'does not connect or track cursors when a collaboration gate is disabled',
+    async (featureEnabled, canEdit) => {
+      isCollaborationEnabled = featureEnabled
+      const { result } = renderHookWithConsoleQuery(() => useCollaboration('app-1', canEdit), {
+        systemFeatures: { enable_collaboration_mode: featureEnabled },
+      })
 
-    await waitFor(() => {
-      expect(mockConnect).not.toHaveBeenCalled()
-      expect(result.current.isEnabled).toBe(false)
-    })
+      await waitFor(() => {
+        expect(mockConnect).not.toHaveBeenCalled()
+        expect(result.current.isEnabled).toBe(false)
+      })
 
-    result.current.startCursorTracking({ current: document.createElement('div') })
-    expect(mockStartTracking).not.toHaveBeenCalled()
-  })
-
-  it('does not connect or start cursor tracking without edit access', async () => {
-    const { result } = renderHookWithConsoleQuery(() => useCollaboration('app-1', false), {
-      systemFeatures: { enable_collaboration_mode: true },
-    })
-
-    await waitFor(() => {
-      expect(mockConnect).not.toHaveBeenCalled()
-      expect(result.current.isEnabled).toBe(false)
-    })
-
-    result.current.startCursorTracking({ current: document.createElement('div') })
-    expect(mockStartTracking).not.toHaveBeenCalled()
-  })
+      result.current.startCursorTracking({ current: document.createElement('div') })
+      expect(mockStartTracking).not.toHaveBeenCalled()
+    },
+  )
 })

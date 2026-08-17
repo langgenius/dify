@@ -22,6 +22,13 @@ _TENANT_ID = "22222222-2222-4222-8222-222222222222"
 _CALLER_ID = "33333333-3333-4333-8333-333333333333"
 _OTHER_ACCOUNT_ID = "44444444-4444-4444-8444-444444444444"
 _PENDING_WORKFLOW_DSL = "version: 99.0.0\nkind: app\napp: {name: Test, mode: workflow}\n"
+_PENDING_DATA_JSON = PendingData(
+    tenant_id=_TENANT_ID,
+    account_id=_CALLER_ID,
+    import_mode="yaml-content",
+    yaml_content=_PENDING_WORKFLOW_DSL,
+    app_id=_OVERWRITE_APP_ID,
+).model_dump_json()
 
 
 def _persist_overwrite_target(session: Session, *, maintainer: str = _OTHER_ACCOUNT_ID) -> App:
@@ -210,14 +217,7 @@ def test_confirm_import_rechecks_overwrite_rbac_before_database_access(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     _persist_overwrite_target(sqlite_session)
-    pending = PendingData(
-        tenant_id=_TENANT_ID,
-        account_id=_CALLER_ID,
-        import_mode="yaml-content",
-        yaml_content=_PENDING_WORKFLOW_DSL,
-        app_id=_OVERWRITE_APP_ID,
-    )
-    monkeypatch.setattr("services.app_dsl_service.redis_client.get", Mock(return_value=pending.model_dump_json()))
+    monkeypatch.setattr("services.app_dsl_service.redis_client.get", Mock(return_value=_PENDING_DATA_JSON))
     redis_delete = Mock()
     monkeypatch.setattr("services.app_dsl_service.redis_client.delete", redis_delete)
     create_or_update = Mock()
@@ -252,14 +252,7 @@ def test_confirm_import_rechecks_overwrite_rbac_before_database_access(
 def test_confirm_import_does_not_create_when_overwrite_target_disappeared(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
-    pending = PendingData(
-        tenant_id=_TENANT_ID,
-        account_id=_CALLER_ID,
-        import_mode="yaml-content",
-        yaml_content=_PENDING_WORKFLOW_DSL,
-        app_id=_OVERWRITE_APP_ID,
-    )
-    monkeypatch.setattr("services.app_dsl_service.redis_client.get", Mock(return_value=pending.model_dump_json()))
+    monkeypatch.setattr("services.app_dsl_service.redis_client.get", Mock(return_value=_PENDING_DATA_JSON))
     monkeypatch.setattr("services.app_dsl_service.dify_config.RBAC_ENABLED", True)
     monkeypatch.setattr("services.app_dsl_service.RBACService.CheckAccess.check", Mock(return_value=True))
     redis_delete = Mock()

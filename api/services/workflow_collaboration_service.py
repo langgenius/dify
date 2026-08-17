@@ -155,9 +155,9 @@ class WorkflowCollaborationService:
         """Check tenant and app permission without relying on Flask's scoped session."""
         with session.begin():
             app = session.execute(
-                select(App.id, App.maintainer)
-                .where(App.id == workflow_id, App.tenant_id == tenant_id, App.status == "normal")
-                .limit(1)
+                select(App.id, App.maintainer).where(
+                    App.id == workflow_id, App.tenant_id == tenant_id, App.status == "normal"
+                )
             ).one_or_none()
         if app is None:
             return False
