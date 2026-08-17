@@ -15,6 +15,7 @@ from models.model import UploadFile
 from services.entities.knowledge_entities.rag_pipeline_entities import KnowledgeConfiguration
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
 from services.rag_pipeline.rag_pipeline_transform_service import RagPipelineTransformService
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def _dataset(**overrides: object) -> Dataset:
@@ -529,12 +530,9 @@ def _make_service():
 
 
 def test_deal_dependencies_skips_marketplace_when_disabled(
-    mocker: MockerFixture, caplog: pytest.LogCaptureFixture
+    mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
-    mocker.patch(
-        "services.rag_pipeline.rag_pipeline_transform_service.dify_config.MARKETPLACE_ENABLED",
-        False,
-    )
+    apply_config_overrides(monkeypatch, MARKETPLACE_ENABLED=False)
     installer = mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.PluginInstaller").return_value
     installer.list_plugins.return_value = []
     mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.PluginMigration")
@@ -559,11 +557,8 @@ def test_deal_dependencies_skips_marketplace_when_disabled(
     assert any("Marketplace disabled" in rec.message for rec in caplog.records)
 
 
-def test_deal_dependencies_installs_when_enabled(mocker: MockerFixture) -> None:
-    mocker.patch(
-        "services.rag_pipeline.rag_pipeline_transform_service.dify_config.MARKETPLACE_ENABLED",
-        True,
-    )
+def test_deal_dependencies_installs_when_enabled(mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(monkeypatch, MARKETPLACE_ENABLED=True)
     installer = mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.PluginInstaller").return_value
     installer.list_plugins.return_value = []
     migration = mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.PluginMigration").return_value

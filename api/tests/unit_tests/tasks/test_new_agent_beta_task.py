@@ -15,6 +15,7 @@ from tasks.new_agent_beta_task import (
     register_new_agent_beta_publish_after_commit,
     schedule_new_agent_beta_ensure,
 )
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 class _TaskWithQueue(Protocol):
@@ -22,9 +23,12 @@ class _TaskWithQueue(Protocol):
 
 
 def _configure_cloud_publish(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(task_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
-    monkeypatch.setattr(task_module.dify_config, "NEW_AGENT_BETA_ACTIVITY_START_AT", datetime(2026, 8, 12, tzinfo=UTC))
-    monkeypatch.setattr(task_module.dify_config, "NEW_AGENT_BETA_ACTIVITY_END_AT", datetime(2026, 8, 13, tzinfo=UTC))
+    apply_config_overrides(
+        monkeypatch,
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        NEW_AGENT_BETA_ACTIVITY_START_AT=datetime(2026, 8, 12, tzinfo=UTC),
+        NEW_AGENT_BETA_ACTIVITY_END_AT=datetime(2026, 8, 13, tzinfo=UTC),
+    )
 
 
 @pytest.mark.parametrize("sqlite_session", [(AgentConfigRevision,)], indirect=True)
@@ -91,7 +95,7 @@ def test_rolled_back_publish_is_never_dispatched(monkeypatch: pytest.MonkeyPatch
 
 
 def test_non_cloud_publish_skips_revision_lookup(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(task_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     session = MagicMock()
 
     register_new_agent_beta_publish_after_commit(
@@ -120,8 +124,11 @@ def test_publish_activity_window_is_inclusive_start_exclusive_end(
     published_at: datetime,
     expected: bool,
 ) -> None:
-    monkeypatch.setattr(task_module.dify_config, "NEW_AGENT_BETA_ACTIVITY_START_AT", start)
-    monkeypatch.setattr(task_module.dify_config, "NEW_AGENT_BETA_ACTIVITY_END_AT", end)
+    apply_config_overrides(
+        monkeypatch,
+        NEW_AGENT_BETA_ACTIVITY_START_AT=start,
+        NEW_AGENT_BETA_ACTIVITY_END_AT=end,
+    )
 
     assert task_module._is_publish_in_activity_window(published_at) is expected
 
