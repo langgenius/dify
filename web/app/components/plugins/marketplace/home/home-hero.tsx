@@ -3,6 +3,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from '#i18n'
 import Github from '@/app/components/base/icons/src/public/common/Github'
 import duckDuckGoIcon from './assets/duckduckgo.png'
+import gmailIcon from './assets/gmail.svg'
 
 type HomeHeroProps = {
   isMarketplacePlatform: boolean
@@ -13,10 +14,14 @@ type HomeHeroProps = {
 const heroDecorationIconFrameClassName =
   'absolute flex size-10 items-center justify-center overflow-hidden rounded-[10px] bg-components-panel-bg shadow-lg'
 
-// The DuckDuckGo mark stays a raster export from the design frame; the other
-// brand marks come from the shared iconify collections instead of inline SVG.
+// DuckDuckGo and Gmail stay file exports so their multi-color marks render.
+// Tailwind iconify classes mask to currentColor and would flatten or hide them.
 const DuckDuckGoIcon = () => (
   <img src={duckDuckGoIcon.src} alt="" className="size-10 object-cover" />
+)
+
+const GmailIcon = () => (
+  <img src={gmailIcon.src} alt="" className="size-10 object-cover" />
 )
 
 const HomeHero = ({ isMarketplacePlatform, subtitle, title }: HomeHeroProps) => {
@@ -41,7 +46,7 @@ const HomeHero = ({ isMarketplacePlatform, subtitle, title }: HomeHeroProps) => 
             <Github className="size-10" />
           </span>
           <span className={heroDecorationIconFrameClassName} style={{ left: 653, top: 68 }}>
-            <span className="i-custom-public-common-gmail size-10" />
+            <GmailIcon />
           </span>
         </div>
         <div className="flex flex-col items-center gap-2 text-center">

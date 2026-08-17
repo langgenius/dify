@@ -25,4 +25,12 @@ describe('HomeHero', () => {
     expect(screen.getByText('Start faster with ready-to-use workflows.')).toBeInTheDocument()
     expect(screen.queryByText('marketplace.home.heroTitle')).not.toBeInTheDocument()
   })
+
+  it('renders the Gmail mark as an image instead of a blank iconify mask', () => {
+    const { container } = render(<HomeHero isMarketplacePlatform />)
+    const gmail = container.querySelector('img[src*="gmail"]')
+
+    expect(gmail).not.toBeNull()
+    expect(container.querySelector('.i-custom-public-common-gmail')).toBeNull()
+  })
 })
