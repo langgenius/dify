@@ -626,7 +626,7 @@ function UnconfiguredProvider({
     )
 
   return (
-    <div className="flex flex-col items-start gap-2.5 rounded-xl bg-background-section p-4">
+    <div className="flex min-h-44 flex-col items-start gap-2.5 rounded-xl bg-background-section p-4">
       <span className="flex size-9 items-center justify-center rounded-lg border border-divider-subtle bg-background-default">
         <SourceProviderIcon
           fallbackIcon={providerOption.fallbackIcon}
@@ -649,6 +649,7 @@ function UnconfiguredProvider({
         })}
       </p>
       <Button
+        className="mt-auto"
         variant="primary"
         onClick={() => (difyManaged ? onConfigureManagedProvider() : setConfiguring(true))}
       >
