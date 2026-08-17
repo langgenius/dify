@@ -48,7 +48,6 @@ class TestMemberInviteEmailApi:
         mock_invite_member.return_value = "token-abc"
 
         tenant = SimpleNamespace(id="tenant-1", name="Test Tenant")
-        inviter = SimpleNamespace(email="Owner@Example.com", current_tenant=tenant, status="active")
 
         with (
             patch("controllers.console.workspace.members.dify_config.RBAC_ENABLED", False),
@@ -72,11 +71,11 @@ class TestMemberInviteEmailApi:
 
         assert mock_invite_member.call_count == 1
         call_args = mock_invite_member.call_args
-        assert call_args.kwargs["tenant"] == tenant
+        assert call_args.kwargs["tenant_id"] == "tenant-1"
         assert call_args.kwargs["email"] == "user@example.com"
         assert call_args.kwargs["language"] == "en-US"
-        assert call_args.kwargs["role"] == TenantAccountRole.EDITOR
-        assert call_args.kwargs["inviter"] == account
+        assert call_args.kwargs["role"] == TenantAccountRole.EDITOR.value
+        assert call_args.kwargs["inviter_id"] == str(account.id)
         mock_csrf.assert_called_once_with(ANY, account.id)
 
     @patch("controllers.console.workspace.members.FeatureService.get_features")

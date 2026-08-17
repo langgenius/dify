@@ -140,7 +140,6 @@ def _replace_member_role(
         account_id=operator_account_id,
         member_account_id=member_account_id,
         role_ids=[role_id],
-        session=session,
     )
     return member_account_id
 

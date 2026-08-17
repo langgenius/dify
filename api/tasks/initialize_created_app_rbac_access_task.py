@@ -5,7 +5,6 @@ import logging
 from celery import shared_task
 
 from configs import dify_config
-from extensions.ext_database import db
 from services.account_service import TenantService
 from services.enterprise import rbac_service as enterprise_rbac_service
 
@@ -30,11 +29,7 @@ def initialize_created_app_rbac_access_task(
         return
 
     try:
-        for account_ids in TenantService.iter_member_account_id_batches(
-            tenant_id,
-            APP_RBAC_ACCOUNT_POLICY_BATCH_SIZE,
-            session=db.session(),
-        ):
+        for account_ids in TenantService.iter_member_account_id_batches(tenant_id, APP_RBAC_ACCOUNT_POLICY_BATCH_SIZE):
             if app_id is not None:
                 enterprise_rbac_service.RBACService.AppAccess.replace_user_access_policies(
                     tenant_id=tenant_id,

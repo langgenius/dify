@@ -8,7 +8,7 @@ from constants.languages import supported_language
 from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.auth.error import InvitationAccountMismatchError
-from controllers.console.error import AccountInFreezeError, AlreadyActivateError
+from controllers.console.error import AccountInFreezeError, AlreadyActivateError, WorkspaceMembersLimitExceeded
 from controllers.console.wraps import model_validate
 from enums import DeploymentEdition
 from extensions.ext_database import db
@@ -16,10 +16,12 @@ from libs.datetime_utils import naive_utc_now
 from libs.helper import EmailStr, timezone
 from libs.login import current_account_with_tenant
 from libs.token import extract_access_token
-from models import AccountStatus
+from models import Account, AccountStatus, Tenant
 from models.account import TenantAccountJoin, TenantAccountRole
 from services.account_service import RegisterService, TenantService
 from services.billing_service import BillingService
+from services.enterprise.rbac_service import RBACService
+from services.errors.account import MemberNotInTenantError, NoPermissionError, WorkspaceMembersLimitExceededError
 
 
 class ActivateCheckQuery(BaseModel):
@@ -168,20 +170,8 @@ class ActivateApi(Resource):
             raise AccountInFreezeError()
 
         tenant = invitation["tenant"]
-        raw_role = invitation["data"].get("role")
-        try:
-            role = TenantAccountRole(raw_role) if raw_role else TenantAccountRole.NORMAL
-        except ValueError:
-            role = TenantAccountRole.NORMAL
-        if not TenantAccountRole.is_non_owner_role(role):
-            role = TenantAccountRole.NORMAL
-
-        membership_id = db.session.scalar(
-            select(TenantAccountJoin.id).where(
-                TenantAccountJoin.tenant_id == tenant.id,
-                TenantAccountJoin.account_id == account.id,
-            )
-        )
+        tenant_id = str(tenant.id)
+        account_id = str(account.id)
 
         requires_setup = invitation["data"].get("requires_setup")
         if requires_setup is None:
@@ -193,10 +183,48 @@ class ActivateApi(Resource):
                 raise AlreadyActivateError()
             setup_fields = (req_data.name, req_data.interface_language, req_data.timezone)
 
-        RegisterService.revoke_token(req_data.workspace_id, normalized_request_email, req_data.token)
+        rbac_role_id = invitation["data"].get("rbac_role_id")
+        inviter_id = invitation["data"].get("inviter_id")
+        if dify_config.RBAC_ENABLED and (not rbac_role_id or not inviter_id):
+            raise AlreadyActivateError()
 
-        if membership_id is None:
-            TenantService.create_tenant_member(tenant, account, db.session(), role=role)
+        if dify_config.RBAC_ENABLED:
+            assert rbac_role_id is not None
+            assert inviter_id is not None
+            db.session.close()
+            try:
+                RBACService.MemberRoles.assign_invited_member(
+                    tenant_id,
+                    inviter_id,
+                    account_id,
+                    rbac_role_id,
+                )
+            except WorkspaceMembersLimitExceededError as exc:
+                raise WorkspaceMembersLimitExceeded() from exc
+            except (MemberNotInTenantError, NoPermissionError) as exc:
+                raise AlreadyActivateError() from exc
+
+            account = db.session.get(Account, account_id)
+            tenant = db.session.get(Tenant, tenant_id)
+            if account is None or tenant is None:
+                raise AlreadyActivateError()
+        else:
+            raw_role = invitation["data"].get("role")
+            try:
+                role = TenantAccountRole(raw_role) if raw_role else TenantAccountRole.NORMAL
+            except ValueError:
+                role = TenantAccountRole.NORMAL
+            if not TenantAccountRole.is_non_owner_role(role):
+                role = TenantAccountRole.NORMAL
+
+            membership_id = db.session.scalar(
+                select(TenantAccountJoin.id).where(
+                    TenantAccountJoin.tenant_id == tenant.id,
+                    TenantAccountJoin.account_id == account.id,
+                )
+            )
+            if membership_id is None:
+                TenantService.create_tenant_member(tenant, account, db.session(), role=role)
 
         if setup_fields:
             account.name = setup_fields[0]
@@ -207,5 +235,6 @@ class ActivateApi(Resource):
             account.initialized_at = naive_utc_now()
 
         TenantService.switch_tenant(account, tenant.id, session=db.session())
+        RegisterService.revoke_token(req_data.workspace_id, normalized_request_email, req_data.token)
 
         return {"result": "success"}

@@ -24,7 +24,7 @@ from core.rbac import RBACResourceWhitelistScope
 from enums import DeploymentEdition
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
-from models import Account
+from models import Account, TenantAccountJoin
 from services.enterprise import rbac_service as svc
 from services.errors.account import (
     CannotOperateSelfError,
@@ -128,14 +128,16 @@ def _dump(model: BaseModel) -> dict[str, Any]:
     return model.model_dump(mode="json")
 
 
-def _account_names_by_ids(account_ids: list[str]) -> dict[str, dict[str, str]]:
+def _account_names_by_ids(tenant_id: str, account_ids: list[str]) -> dict[str, dict[str, str]]:
     ids = sorted({account_id.strip() for account_id in account_ids if account_id and account_id.strip()})
     if not ids:
         return {}
 
     with session_factory.create_session() as session:
         rows = session.execute(
-            select(Account.id, Account.name, Account.avatar, Account.email).where(Account.id.in_(ids))
+            select(Account.id, Account.name, Account.avatar, Account.email)
+            .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
+            .where(TenantAccountJoin.tenant_id == tenant_id, Account.id.in_(ids))
         ).all()
 
     return {
@@ -148,35 +150,49 @@ def _account_names_by_ids(account_ids: list[str]) -> dict[str, dict[str, str]]:
     }
 
 
-def _hydrate_access_matrix_account_names(items: list[svc.AccessMatrixItem]) -> None:
-    account_ids: list[str] = []
-    for item in items:
-        for account in item.accounts:
-            account_id = account.account_id
-            if account_id and not account.account_name:
-                account_ids.append(account_id)
-
-    account_names = _account_names_by_ids(account_ids)
-    if not account_names:
-        return
+def _hydrate_access_matrix_account_names(tenant_id: str, items: list[svc.AccessMatrixItem]) -> None:
+    account_names = _account_names_by_ids(
+        tenant_id,
+        [account.account_id for item in items for account in item.accounts],
+    )
 
     for item in items:
+        item.accounts = [account for account in item.accounts if account.account_id in account_names]
         for account in item.accounts:
-            account_id = str(account.account_id or "").strip()
-            if account_id and not account.account_name:
-                account.account_name = account_names.get(account_id, {}).get("name", "")
-            account.avatar = account_names.get(account_id, {}).get("avatar", "")
-            account.email = account_names.get(account_id, {}).get("email", "")
+            account_data = account_names[account.account_id]
+            account.account_name = account_data["name"]
+            account.avatar = account_data["avatar"]
+            account.email = account_data["email"]
 
 
-def _hydrate_resource_user_account_names(items: list[svc.ResourceUserAccessPolicies]) -> None:
-    account_names = _account_names_by_ids([item.account.account_id for item in items])
+def _hydrate_resource_user_account_names(tenant_id: str, items: list[svc.ResourceUserAccessPolicies]) -> None:
+    account_names = _account_names_by_ids(tenant_id, [item.account.account_id for item in items])
+    items[:] = [item for item in items if item.account.account_id in account_names]
     for item in items:
         account_id = item.account.account_id
-        if account_id and not item.account.account_name:
-            item.account.account_name = account_names.get(account_id, {}).get("name", "")
-            item.account.avatar = account_names.get(account_id, {}).get("avatar", "")
-            item.account.email = account_names.get(account_id, {}).get("email", "")
+        account_data = account_names[account_id]
+        item.account.account_name = account_data["name"]
+        item.account.avatar = account_data["avatar"]
+        item.account.email = account_data["email"]
+
+
+def _filter_resource_whitelist(tenant_id: str, whitelist: svc.ResourceWhitelist) -> None:
+    tenant_account_ids = _account_names_by_ids(tenant_id, whitelist.account_ids)
+    whitelist.account_ids = [account_id for account_id in whitelist.account_ids if account_id in tenant_account_ids]
+
+
+def _hydrate_member_bindings(tenant_id: str, bindings: svc.MemberBindingsResponse) -> None:
+    account_names = _account_names_by_ids(tenant_id, [binding.account_id for binding in bindings.data])
+    bindings.data = [binding for binding in bindings.data if binding.account_id in account_names]
+    for binding in bindings.data:
+        binding.account_name = account_names[binding.account_id]["name"]
+
+
+def _hydrate_role_members(tenant_id: str, members: svc.Paginated[svc.MembersInRole]) -> None:
+    account_names = _account_names_by_ids(tenant_id, [member.account_id for member in members.data])
+    members.data = [member for member in members.data if member.account_id in account_names]
+    for member in members.data:
+        member.account_name = account_names[member.account_id]["name"]
 
 
 class _PaginationQuery(BaseModel):
@@ -526,6 +542,19 @@ class _ReplaceBindingsRequest(BaseModel):
         return value
 
 
+class _ReplaceUserAccessPoliciesPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    access_policy_ids: list[str] = Field(default_factory=list)
+
+    @field_validator("access_policy_ids", mode="before")
+    @classmethod
+    def _coerce_access_policy_ids(cls, value: Any) -> list[str]:
+        if value is None:
+            return []
+        return value
+
+
 class _DeleteMemberBindingsRequest(BaseModel):
     account_ids: list[str] = Field(default_factory=list)
 
@@ -545,9 +574,9 @@ register_schema_models(
     console_ns,
     _ResourceAccessScopeRequest,
     _ReplaceBindingsRequest,
+    _ReplaceUserAccessPoliciesPayload,
     _DeleteMemberBindingsRequest,
     _AccessControlLanguageQuery,
-    svc.ReplaceUserAccessPolicies,
 )
 
 
@@ -575,7 +604,7 @@ class RBACAppMatrixApi(_AppAccessConfigResource):
     def get(self, app_id):
         tenant_id, account_id = _current_ids()
         result = svc.RBACService.AppAccess.matrix(tenant_id, account_id, str(app_id))
-        _hydrate_access_matrix_account_names(result.items)
+        _hydrate_access_matrix_account_names(tenant_id, result.items)
         return _dump(result)
 
 
@@ -584,7 +613,9 @@ class RBACAppWhitelistApi(_AppAccessConfigResource):
     @console_ns.response(200, "Success", console_ns.models[svc.ResourceWhitelist.__name__])
     def get(self, app_id):
         tenant_id, account_id = _current_ids()
-        return _dump(svc.RBACService.AppAccess.whitelist(tenant_id, account_id, str(app_id)))
+        result = svc.RBACService.AppAccess.whitelist(tenant_id, account_id, str(app_id))
+        _filter_resource_whitelist(tenant_id, result)
+        return _dump(result)
 
     @console_ns.expect(console_ns.models[_ResourceAccessScopeRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[svc.ResourceWhitelist.__name__])
@@ -599,6 +630,7 @@ class RBACAppWhitelistApi(_AppAccessConfigResource):
         )
         if dify_config.RBAC_ENABLED and request.scope is RBACResourceWhitelistScope.ALL:
             initialize_created_app_rbac_access_task.delay(tenant_id, account_id, str(app_id))
+        _filter_resource_whitelist(tenant_id, result)
         return _dump(result)
 
 
@@ -609,26 +641,28 @@ class RBACAppUserAccessPoliciesApi(_AppAccessConfigResource):
     def get(self, app_id):
         tenant_id, account_id = _current_ids()
         result = svc.RBACService.AppAccess.user_access_policies(tenant_id, account_id, str(app_id))
-        _hydrate_resource_user_account_names(result.data)
+        _hydrate_resource_user_account_names(tenant_id, result.data)
         return _dump(result)
 
 
 @console_ns.route("/workspaces/current/rbac/apps/<uuid:app_id>/users/<uuid:target_account_id>/access-policies")
 class RBACAppUserAccessPolicyAssignmentApi(_AppAccessConfigResource):
-    @console_ns.expect(console_ns.models[svc.ReplaceUserAccessPolicies.__name__])
+    @console_ns.expect(console_ns.models[_ReplaceUserAccessPoliciesPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[svc.ReplaceUserAccessPoliciesResponse.__name__])
     def put(self, app_id, target_account_id):
         tenant_id, account_id = _current_ids()
-        payload = _payload(svc.ReplaceUserAccessPolicies)
-        return _dump(
-            svc.RBACService.AppAccess.replace_user_access_policies(
+        request = _payload(_ReplaceUserAccessPoliciesPayload)
+        try:
+            result = svc.RBACService.AppAccess.replace_user_access_policies(
                 tenant_id,
                 account_id,
                 app_id,
                 target_account_id,
-                payload,
+                svc.ReplaceUserAccessPolicies(access_policy_ids=request.access_policy_ids),
             )
-        )
+        except MemberNotInTenantError as exc:
+            raise NotFound(str(exc)) from exc
+        return _dump(result)
 
 
 @console_ns.route("/workspaces/current/rbac/apps/<uuid:app_id>/access-policies/<uuid:policy_id>/role-bindings")
@@ -644,7 +678,9 @@ class RBACAppMemberBindingsApi(_AppAccessConfigResource):
     @console_ns.response(200, "Success", console_ns.models[svc.MemberBindingsResponse.__name__])
     def get(self, app_id, policy_id):
         tenant_id, account_id = _current_ids()
-        return _dump(svc.RBACService.AppAccess.list_member_bindings(tenant_id, account_id, str(app_id), str(policy_id)))
+        result = svc.RBACService.AppAccess.list_member_bindings(tenant_id, account_id, str(app_id), str(policy_id))
+        _hydrate_member_bindings(tenant_id, result)
+        return _dump(result)
 
     @console_ns.expect(console_ns.models[_DeleteMemberBindingsRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[svc.MemberBindingsResponse.__name__])
@@ -682,7 +718,7 @@ class RBACDatasetMatrixApi(_DatasetAccessConfigResource):
     def get(self, dataset_id):
         tenant_id, account_id = _current_ids()
         result = svc.RBACService.DatasetAccess.matrix(tenant_id, account_id, str(dataset_id))
-        _hydrate_access_matrix_account_names(result.items)
+        _hydrate_access_matrix_account_names(tenant_id, result.items)
         return _dump(result)
 
 
@@ -691,7 +727,9 @@ class RBACDatasetWhitelistApi(_DatasetAccessConfigResource):
     @console_ns.response(200, "Success", console_ns.models[svc.ResourceWhitelist.__name__])
     def get(self, dataset_id):
         tenant_id, account_id = _current_ids()
-        return _dump(svc.RBACService.DatasetAccess.whitelist(tenant_id, account_id, str(dataset_id)))
+        result = svc.RBACService.DatasetAccess.whitelist(tenant_id, account_id, str(dataset_id))
+        _filter_resource_whitelist(tenant_id, result)
+        return _dump(result)
 
     @console_ns.expect(console_ns.models[_ResourceAccessScopeRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[svc.ResourceWhitelist.__name__])
@@ -708,6 +746,7 @@ class RBACDatasetWhitelistApi(_DatasetAccessConfigResource):
         # before they can reach the dataset, same as the app whitelist route above.
         if dify_config.RBAC_ENABLED and request.scope is RBACResourceWhitelistScope.ALL:
             initialize_created_app_rbac_access_task.delay(tenant_id, account_id, dataset_id=str(dataset_id))
+        _filter_resource_whitelist(tenant_id, result)
         return _dump(result)
 
 
@@ -718,26 +757,28 @@ class RBACDatasetUserAccessPoliciesApi(_DatasetAccessConfigResource):
     def get(self, dataset_id):
         tenant_id, account_id = _current_ids()
         result = svc.RBACService.DatasetAccess.user_access_policies(tenant_id, account_id, str(dataset_id))
-        _hydrate_resource_user_account_names(result.data)
+        _hydrate_resource_user_account_names(tenant_id, result.data)
         return _dump(result)
 
 
 @console_ns.route("/workspaces/current/rbac/datasets/<uuid:dataset_id>/users/<uuid:target_account_id>/access-policies")
 class RBACDatasetUserAccessPolicyAssignmentApi(_DatasetAccessConfigResource):
-    @console_ns.expect(console_ns.models[svc.ReplaceUserAccessPolicies.__name__])
+    @console_ns.expect(console_ns.models[_ReplaceUserAccessPoliciesPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[svc.ReplaceUserAccessPoliciesResponse.__name__])
     def put(self, dataset_id, target_account_id):
         tenant_id, account_id = _current_ids()
-        payload = _payload(svc.ReplaceUserAccessPolicies)
-        return _dump(
-            svc.RBACService.DatasetAccess.replace_user_access_policies(
+        request = _payload(_ReplaceUserAccessPoliciesPayload)
+        try:
+            result = svc.RBACService.DatasetAccess.replace_user_access_policies(
                 tenant_id,
                 account_id,
                 str(dataset_id),
                 str(target_account_id),
-                payload,
+                svc.ReplaceUserAccessPolicies(access_policy_ids=request.access_policy_ids),
             )
-        )
+        except MemberNotInTenantError as exc:
+            raise NotFound(str(exc)) from exc
+        return _dump(result)
 
 
 @console_ns.route("/workspaces/current/rbac/datasets/<uuid:dataset_id>/access-policies/<uuid:policy_id>/role-bindings")
@@ -757,9 +798,11 @@ class RBACDatasetMemberBindingsApi(_DatasetAccessConfigResource):
     @console_ns.response(200, "Success", console_ns.models[svc.MemberBindingsResponse.__name__])
     def get(self, dataset_id, policy_id):
         tenant_id, account_id = _current_ids()
-        return _dump(
-            svc.RBACService.DatasetAccess.list_member_bindings(tenant_id, account_id, str(dataset_id), str(policy_id))
+        result = svc.RBACService.DatasetAccess.list_member_bindings(
+            tenant_id, account_id, str(dataset_id), str(policy_id)
         )
+        _hydrate_member_bindings(tenant_id, result)
+        return _dump(result)
 
     @console_ns.expect(console_ns.models[_DeleteMemberBindingsRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[svc.MemberBindingsResponse.__name__])
@@ -783,7 +826,7 @@ class RBACWorkspaceAppMatrixApi(_WorkspaceRoleManageResource):
         tenant_id, account_id = _current_ids()
         options = _pagination_options()
         result = svc.RBACService.WorkspaceAccess.app_matrix(tenant_id, account_id, options=options)
-        _hydrate_access_matrix_account_names(result.items)
+        _hydrate_access_matrix_account_names(tenant_id, result.items)
         return _dump(result)
 
 
@@ -802,14 +845,17 @@ class RBACWorkspaceAppBindingsApi(_WorkspaceRoleManageResource):
     def put(self, policy_id):
         tenant_id, account_id = _current_ids()
         request = _payload(_ReplaceBindingsRequest)
-        return _dump(
-            svc.RBACService.WorkspaceAccess.replace_app_bindings(
+        try:
+            result = svc.RBACService.WorkspaceAccess.replace_app_bindings(
                 tenant_id,
                 account_id,
                 str(policy_id),
                 svc.ReplaceBindings(role_ids=list(request.role_ids), account_ids=list(request.account_ids)),
             )
-        )
+        except MemberNotInTenantError as exc:
+            raise BadRequest(str(exc)) from exc
+        _hydrate_access_matrix_account_names(tenant_id, [result])
+        return _dump(result)
 
 
 @console_ns.route("/workspaces/current/rbac/workspace/apps/access-policies/<uuid:policy_id>/member-bindings")
@@ -817,7 +863,9 @@ class RBACWorkspaceAppMemberBindingsApi(_WorkspaceRoleManageResource):
     @console_ns.response(200, "Success", console_ns.models[svc.MemberBindingsResponse.__name__])
     def get(self, policy_id):
         tenant_id, account_id = _current_ids()
-        return _dump(svc.RBACService.WorkspaceAccess.list_app_member_bindings(tenant_id, account_id, str(policy_id)))
+        result = svc.RBACService.WorkspaceAccess.list_app_member_bindings(tenant_id, account_id, str(policy_id))
+        _hydrate_member_bindings(tenant_id, result)
+        return _dump(result)
 
 
 @console_ns.route("/workspaces/current/rbac/workspace/datasets/access-policy")
@@ -827,7 +875,7 @@ class RBACWorkspaceDatasetMatrixApi(_WorkspaceRoleManageResource):
         tenant_id, account_id = _current_ids()
         options = _pagination_options()
         result = svc.RBACService.WorkspaceAccess.dataset_matrix(tenant_id, account_id, options=options)
-        _hydrate_access_matrix_account_names(result.items)
+        _hydrate_access_matrix_account_names(tenant_id, result.items)
         return _dump(result)
 
 
@@ -846,14 +894,17 @@ class RBACWorkspaceDatasetBindingsApi(_WorkspaceRoleManageResource):
     def put(self, policy_id):
         tenant_id, account_id = _current_ids()
         request = _payload(_ReplaceBindingsRequest)
-        return _dump(
-            svc.RBACService.WorkspaceAccess.replace_dataset_bindings(
+        try:
+            result = svc.RBACService.WorkspaceAccess.replace_dataset_bindings(
                 tenant_id,
                 account_id,
                 str(policy_id),
                 svc.ReplaceBindings(role_ids=list(request.role_ids), account_ids=list(request.account_ids)),
             )
-        )
+        except MemberNotInTenantError as exc:
+            raise BadRequest(str(exc)) from exc
+        _hydrate_access_matrix_account_names(tenant_id, [result])
+        return _dump(result)
 
 
 @console_ns.route("/workspaces/current/rbac/workspace/datasets/access-policies/<uuid:policy_id>/member-bindings")
@@ -861,9 +912,9 @@ class RBACWorkspaceDatasetMemberBindingsApi(_WorkspaceRoleManageResource):
     @console_ns.response(200, "Success", console_ns.models[svc.MemberBindingsResponse.__name__])
     def get(self, policy_id):
         tenant_id, account_id = _current_ids()
-        return _dump(
-            svc.RBACService.WorkspaceAccess.list_dataset_member_bindings(tenant_id, account_id, str(policy_id))
-        )
+        result = svc.RBACService.WorkspaceAccess.list_dataset_member_bindings(tenant_id, account_id, str(policy_id))
+        _hydrate_member_bindings(tenant_id, result)
+        return _dump(result)
 
 
 # ---------------------------------------------------------------------------
@@ -891,7 +942,11 @@ class RBACMemberRolesApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[svc.MemberRolesResponse.__name__])
     def get(self, member_id):
         tenant_id, account_id = _current_ids()
-        return _dump(svc.RBACService.MemberRoles.get(tenant_id, account_id, str(member_id), session=db.session()))
+        try:
+            result = svc.RBACService.MemberRoles.get(tenant_id, account_id, str(member_id), session=db.session())
+        except MemberNotInTenantError as exc:
+            raise NotFound(str(exc)) from exc
+        return _dump(result)
 
     @login_required
     @is_admin_or_owner_required
@@ -906,12 +961,11 @@ class RBACMemberRolesApi(Resource):
         tenant_id, account_id = _current_ids()
         request = _payload(_ReplaceMemberRolesRequest)
         try:
-            result = svc.RBACService.MemberRoles.replace(
+            result = svc.RBACService.MemberRoles.replace_user_roles(
                 tenant_id,
                 account_id,
                 str(member_id),
                 role_ids=list(request.role_ids),
-                session=db.session(),
             )
         except (CannotOperateSelfError, RoleAlreadyAssignedError) as exc:
             raise BadRequest(str(exc)) from exc
@@ -933,4 +987,5 @@ class ListMembersByRole(_WorkspaceRoleManageResource):
             str(role_id),
             options=_pagination_options(),
         )
+        _hydrate_role_members(tenant_id, result)
         return _dump(result)

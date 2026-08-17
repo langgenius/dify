@@ -9,10 +9,9 @@ from uuid import uuid4
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import HTTPException
+from werkzeug.exceptions import NotFound
 
 import services
-from controllers.console.auth.error import MemberNotInTenantError
 from controllers.console.workspace import members as members_module
 from controllers.console.workspace.members import MemberCancelInviteApi, MemberUpdateRoleApi, OwnerTransfer
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
@@ -132,21 +131,19 @@ class TestMemberCancelInviteApiWithContainers:
 
         assert status == 200
         assert result["result"] == "success"
-        mock_remove_member.assert_called_once()
-        called_tenant, called_member, called_current_user = mock_remove_member.call_args.args
-        assert called_tenant.id == tenant.id
-        assert called_member.id == member.id
-        assert called_current_user.id == current_user.id
+        mock_remove_member.assert_called_once_with(str(tenant.id), str(member.id), str(current_user.id))
 
     def test_cancel_not_found(self, flask_app_with_containers: Flask, db_session_with_containers: Session) -> None:
         api = MemberCancelInviteApi()
-        method = unwrap_raises(api.delete)
+        method = unwrap_status_response(api.delete)
         factory = WorkspaceMembersIntegrationFactory
-        tenant, current_user = factory.create_owner_workspace(db_session_with_containers)
+        _, current_user = factory.create_owner_workspace(db_session_with_containers)
 
         with flask_app_with_containers.test_request_context("/"):
-            with pytest.raises(HTTPException):
-                method(api, current_user, str(uuid4()))
+            result, status = method(api, current_user, str(uuid4()))
+
+        assert status == 404
+        assert result["code"] == "member-not-found"
 
     def test_cancel_cannot_operate_self(
         self, flask_app_with_containers: Flask, db_session_with_containers: Session
@@ -226,13 +223,21 @@ class TestMemberUpdateRoleApiWithContainers:
             role=TenantAccountRole.EDITOR,
         )
 
-        with flask_app_with_containers.test_request_context("/", json={"role": "normal"}):
+        with (
+            flask_app_with_containers.test_request_context("/", json={"role": "normal"}),
+            patch.object(
+                members_module.TenantService,
+                "update_member_role",
+                wraps=members_module.TenantService.update_member_role,
+            ) as mock_update_role,
+        ):
             result = method(api, current_user, member.id)
 
         if isinstance(result, tuple):
             result = result[0]
 
         assert result["result"] == "success"
+        mock_update_role.assert_called_once_with(str(tenant.id), str(member.id), "normal", str(current_user.id))
         assert (
             factory.get_join(db_session_with_containers, tenant=tenant, account=member).role == TenantAccountRole.NORMAL
         )
@@ -241,13 +246,15 @@ class TestMemberUpdateRoleApiWithContainers:
         self, flask_app_with_containers: Flask, db_session_with_containers: Session
     ) -> None:
         api = MemberUpdateRoleApi()
-        method = unwrap_raises(api.put)
+        method = unwrap_status_response(api.put)
         factory = WorkspaceMembersIntegrationFactory
-        tenant, current_user = factory.create_owner_workspace(db_session_with_containers)
+        _, current_user = factory.create_owner_workspace(db_session_with_containers)
 
         with flask_app_with_containers.test_request_context("/", json={"role": "normal"}):
-            with pytest.raises(HTTPException):
-                method(api, current_user, str(uuid4()))
+            result, status = method(api, current_user, str(uuid4()))
+
+        assert status == 404
+        assert result["code"] == "member-not-found"
 
 
 class TestOwnerTransferApiWithContainers:
@@ -260,8 +267,10 @@ class TestOwnerTransferApiWithContainers:
         token = factory.create_owner_transfer_token(current_user)
 
         with flask_app_with_containers.test_request_context("/", json={"token": token}):
-            with pytest.raises(MemberNotInTenantError):
+            with pytest.raises(NotFound):
                 method(api, current_user, member.id)
+
+        assert members_module.AccountService.get_owner_transfer_data(token) is not None
 
     def test_member_not_found(self, flask_app_with_containers: Flask, db_session_with_containers: Session) -> None:
         api = OwnerTransfer()
@@ -271,8 +280,10 @@ class TestOwnerTransferApiWithContainers:
         token = factory.create_owner_transfer_token(current_user)
 
         with flask_app_with_containers.test_request_context("/", json={"token": token}):
-            with pytest.raises(HTTPException):
+            with pytest.raises(NotFound):
                 method(api, current_user, str(uuid4()))
+
+        assert members_module.AccountService.get_owner_transfer_data(token) is not None
 
     def test_transfer_success(self, flask_app_with_containers: Flask, db_session_with_containers: Session) -> None:
         api = OwnerTransfer()
@@ -289,12 +300,24 @@ class TestOwnerTransferApiWithContainers:
 
         with (
             flask_app_with_containers.test_request_context("/", json={"token": token}),
+            patch.object(
+                members_module.TenantService,
+                "update_member_role",
+                wraps=members_module.TenantService.update_member_role,
+            ) as mock_update_role,
             patch.object(members_module.AccountService, "send_new_owner_transfer_notify_email") as mock_new_owner_email,
             patch.object(members_module.AccountService, "send_old_owner_transfer_notify_email") as mock_old_owner_email,
         ):
             result = method(api, current_user, member.id)
 
         assert result["result"] == "success"
+        mock_update_role.assert_called_once_with(
+            str(tenant.id),
+            str(member.id),
+            "owner",
+            str(current_user.id),
+            allow_owner_transfer=True,
+        )
         assert (
             factory.get_join(db_session_with_containers, tenant=tenant, account=member).role == TenantAccountRole.OWNER
         )
@@ -302,5 +325,6 @@ class TestOwnerTransferApiWithContainers:
             factory.get_join(db_session_with_containers, tenant=tenant, account=current_user).role
             == TenantAccountRole.ADMIN
         )
+        assert members_module.AccountService.get_owner_transfer_data(token) is None
         mock_new_owner_email.assert_called_once()
         mock_old_owner_email.assert_called_once()

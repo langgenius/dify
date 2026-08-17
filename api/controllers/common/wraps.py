@@ -2,6 +2,7 @@ from collections.abc import Callable
 from functools import wraps
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
@@ -52,8 +53,12 @@ def enforce_rbac_access(
     check_resource_type = None if resource_type == RBACResourceScope.WORKSPACE else resource_type
     resource_id = None
     if resource_required and check_resource_type:
-        resource_id = _extract_resource_id(resource_type, tenant_id, path_args)
-        if _is_resource_owned_by_current_user(tenant_id, account_id, resource_type, resource_id):
+        with Session(db.engine) as session:
+            resource_id = _extract_resource_id(resource_type, tenant_id, path_args, session=session)
+            is_owner = _is_resource_owned_by_current_user(
+                tenant_id, account_id, resource_type, resource_id, session=session
+            )
+        if is_owner:
             return
     allowed = RBACService.CheckAccess.check(
         tenant_id,
@@ -108,10 +113,15 @@ def rbac_permission_required[**P, R](
 
 
 def _is_resource_owned_by_current_user(
-    tenant_id: str, account_id: str, resource_type: RBACResourceScope, resource_id: str
+    tenant_id: str,
+    account_id: str,
+    resource_type: RBACResourceScope,
+    resource_id: str,
+    *,
+    session: Session,
 ) -> bool:
     if resource_type == RBACResourceScope.APP:
-        maintainer = db.session.scalar(
+        maintainer = session.scalar(
             select(App.maintainer).where(
                 App.id == resource_id,
                 App.tenant_id == tenant_id,
@@ -121,7 +131,7 @@ def _is_resource_owned_by_current_user(
         return maintainer == account_id
 
     if resource_type == RBACResourceScope.DATASET:
-        maintainer = db.session.scalar(
+        maintainer = session.scalar(
             select(Dataset.maintainer).where(
                 Dataset.id == resource_id,
                 Dataset.tenant_id == tenant_id,
@@ -133,7 +143,11 @@ def _is_resource_owned_by_current_user(
 
 
 def _extract_resource_id(
-    resource_type: RBACResourceScope, tenant_id: str, path_args: dict[str, object] | None = None
+    resource_type: RBACResourceScope,
+    tenant_id: str,
+    path_args: dict[str, object] | None = None,
+    *,
+    session: Session,
 ) -> str:
     """Extract the resource ID from matched path arguments.
 
@@ -156,7 +170,7 @@ def _extract_resource_id(
 
         agent_id = matched_args.get("agent_id")
         if agent_id:
-            authz_app_id = AgentRosterService(db.session).peek_authz_app_id(tenant_id=tenant_id, agent_id=str(agent_id))
+            authz_app_id = AgentRosterService(session).peek_authz_app_id(tenant_id=tenant_id, agent_id=str(agent_id))
             return authz_app_id or str(agent_id)
 
         resource_id = matched_args.get("resource_id")
@@ -171,7 +185,7 @@ def _extract_resource_id(
 
         pipeline_id = matched_args.get("pipeline_id")
         if pipeline_id:
-            dataset = db.session.scalar(
+            dataset = session.scalar(
                 select(Dataset).where(Dataset.pipeline_id == str(pipeline_id), Dataset.tenant_id == tenant_id)
             )
             if not dataset:

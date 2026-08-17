@@ -36,7 +36,9 @@ from controllers.openapi._models import (
     WorkspaceSummaryResponse,
 )
 from controllers.openapi.auth.composition import auth_router
-from controllers.openapi.auth.data import AuthData
+from controllers.openapi.auth.data import AuthData, RBACRequirement
+from core.rbac import RBACPermission, RBACResourceScope
+from enums import DeploymentEdition
 from libs.oauth_bearer import Scope, TokenType
 from models import Account, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole, TenantStatus
@@ -50,6 +52,7 @@ from services.errors.account import (
     NoPermissionError,
     RoleAlreadyAssignedError,
     SeatsLimitExceededError,
+    WorkspaceMembersLimitExceededError,
 )
 from services.feature_service import FeatureService
 
@@ -174,24 +177,27 @@ class WorkspaceMembersApi(Resource):
         scope=Scope.WORKSPACE_WRITE,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
         allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN}),
+        rbac=RBACRequirement(
+            resource_type=RBACResourceScope.WORKSPACE,
+            scene=RBACPermission.WORKSPACE_MEMBER_MANAGE,
+            resource_required=False,
+        ),
     )
     @returns(201, MemberInviteResponse, description="Member invited")
     @accepts(body=MemberInvitePayload)
     @with_session
     def post(self, session: Session, workspace_id: str, *, auth_data: AuthData, body: MemberInvitePayload):
-        inviter = _load_account(session, auth_data.account_id)
-        tenant = _load_tenant(session, workspace_id)
-
-        _check_member_invite_quota(str(tenant.id))
+        assert auth_data.account_id is not None
+        inviter_id = str(auth_data.account_id)
+        _check_member_invite_quota(workspace_id)
 
         try:
             token = RegisterService.invite_new_member(
-                tenant=tenant,
+                tenant_id=workspace_id,
                 email=body.email,
                 language=None,
                 role=body.role,
-                inviter=inviter,
-                session=session,
+                inviter_id=inviter_id,
             )
         except AccountAlreadyInTenantError as exc:
             raise BadRequest(str(exc))
@@ -199,6 +205,10 @@ class WorkspaceMembersApi(Resource):
             raise BadRequest(str(exc))
         except SeatsLimitExceededError:
             raise BadRequest("licensed seats limit exceeded")
+        except WorkspaceMembersLimitExceededError as exc:
+            if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
+                raise MemberLicenseExceeded() from exc
+            raise MemberLimitExceeded() from exc
         except AccountRegisterError as exc:
             raise BadRequest(str(exc))
 
@@ -215,7 +225,7 @@ class WorkspaceMembersApi(Resource):
             role=body.role,
             member_id=str(member.id),
             invite_url=invite_url,
-            tenant_id=str(tenant.id),
+            tenant_id=workspace_id,
         )
 
 
@@ -233,18 +243,17 @@ class WorkspaceMemberApi(Resource):
         scope=Scope.WORKSPACE_WRITE,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
         allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN}),
+        rbac=RBACRequirement(
+            resource_type=RBACResourceScope.WORKSPACE,
+            scene=RBACPermission.WORKSPACE_MEMBER_MANAGE,
+            resource_required=False,
+        ),
     )
     @returns(200, MemberActionResponse, description="Member removed")
-    @with_session
-    def delete(self, session: Session, workspace_id: str, member_id: str, *, auth_data: AuthData):
-        operator = _load_account(session, auth_data.account_id)
-        tenant = _load_tenant(session, workspace_id)
-        member = AccountService.get_account_by_id(member_id, session=session)
-        if member is None:
-            raise NotFound("member not found")
-
+    def delete(self, workspace_id: str, member_id: str, *, auth_data: AuthData):
+        assert auth_data.account_id is not None
         try:
-            TenantService.remove_member_from_tenant(tenant, member, operator, session=session)
+            TenantService.remove_member_from_tenant(workspace_id, member_id, str(auth_data.account_id))
         except CannotOperateSelfError as exc:
             raise BadRequest(str(exc))
         except NoPermissionError as exc:
@@ -258,27 +267,25 @@ class WorkspaceMemberApi(Resource):
         scope=Scope.WORKSPACE_WRITE,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
         allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN}),
+        rbac=RBACRequirement(
+            resource_type=RBACResourceScope.WORKSPACE,
+            scene=RBACPermission.WORKSPACE_ROLE_MANAGE,
+            resource_required=False,
+        ),
     )
     @returns(200, MemberActionResponse, description="Role updated")
     @accepts(body=MemberRoleUpdatePayload)
-    @with_session
     def patch(
         self,
-        session: Session,
         workspace_id: str,
         member_id: str,
         *,
         auth_data: AuthData,
         body: MemberRoleUpdatePayload,
     ):
-        operator = _load_account(session, auth_data.account_id)
-        tenant = _load_tenant(session, workspace_id)
-        member = AccountService.get_account_by_id(member_id, session=session)
-        if member is None:
-            raise NotFound("member not found")
-
+        assert auth_data.account_id is not None
         try:
-            TenantService.update_member_role(tenant, member, body.role, operator, session=session)
+            TenantService.update_member_role(workspace_id, member_id, body.role, str(auth_data.account_id))
         except CannotOperateSelfError as exc:
             raise BadRequest(str(exc))
         except NoPermissionError as exc:

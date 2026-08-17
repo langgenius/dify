@@ -19,7 +19,7 @@ def test_initialize_created_app_rbac_access_task_batches_workspace_members(monke
     monkeypatch.setattr(
         task_module.TenantService,
         "iter_member_account_id_batches",
-        lambda tenant_id, batch_size, session: iter([["acct-1", "acct-2"], ["acct-3"]]),
+        lambda tenant_id, batch_size: iter([["acct-1", "acct-2"], ["acct-3"]]),
     )
     replace_whitelist = MagicMock()
     replace_user_access_policies = MagicMock()
@@ -52,7 +52,7 @@ def test_initialize_created_app_rbac_access_task_retries_on_failure(monkeypatch:
     monkeypatch.setattr(
         task_module.TenantService,
         "iter_member_account_id_batches",
-        lambda tenant_id, batch_size, session: iter([["acct-1"]]),
+        lambda tenant_id, batch_size: iter([["acct-1"]]),
     )
     monkeypatch.setattr(
         task_module.enterprise_rbac_service.RBACService.AppAccess,

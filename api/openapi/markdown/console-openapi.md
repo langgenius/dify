@@ -11599,7 +11599,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [ReplaceUserAccessPolicies](#replaceuseraccesspolicies)<br> |
+|  Yes | **application/json**: [_ReplaceUserAccessPoliciesPayload](#_replaceuseraccesspoliciespayload)<br> |
 
 #### Responses
 
@@ -11727,7 +11727,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [ReplaceUserAccessPolicies](#replaceuseraccesspolicies)<br> |
+|  Yes | **application/json**: [_ReplaceUserAccessPoliciesPayload](#_replaceuseraccesspoliciespayload)<br> |
 
 #### Responses
 
@@ -21348,13 +21348,6 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | ---- | ---- | ----------- | -------- |
 | url | string | URL to fetch | Yes |
 
-#### ReplaceUserAccessPolicies
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| access_policy_ids | [ string ] |  | No |
-| account_ids | [ string ] |  | No |
-
 #### ReplaceUserAccessPoliciesResponse
 
 | Name | Type | Description | Required |
@@ -24609,6 +24602,12 @@ Workflow tool configuration
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | role_ids | [ string ], <br>**Default:**  |  | No |
+
+#### _ReplaceUserAccessPoliciesPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_policy_ids | [ string ] |  | No |
 
 #### _ResourceAccessScopeRequest
 

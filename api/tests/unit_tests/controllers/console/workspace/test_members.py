@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 from flask_restx import Resource
+from werkzeug.exceptions import ServiceUnavailable
 
 from controllers.console.auth.error import (
     CannotTransferOwnerToSelfError,
@@ -22,6 +23,7 @@ from controllers.console.error import EmailSendIpLimitError, SeatsLimitExceeded,
 from controllers.console.workspace.error import InvalidMemberRoleError
 from controllers.console.workspace.members import (
     DatasetOperatorMemberListApi,
+    MemberCancelInviteApi,
     MemberInviteEmailApi,
     MemberInviteErrorResponse,
     MemberListApi,
@@ -34,7 +36,8 @@ from controllers.console.workspace.members import (
 from enums import DeploymentEdition
 from libs.external_api import ExternalApi
 from machinery.context import RequestContext
-from services.errors.account import AccountAlreadyInTenantError, SeatsLimitExceededError
+from services.errors.account import AccountAlreadyInTenantError, NoPermissionError, SeatsLimitExceededError
+from services.errors.enterprise import EnterpriseAPIError
 from services.workspace_member_query_service import (
     WorkspaceMemberQueryService,
     WorkspaceMemberRole,
@@ -132,8 +135,8 @@ class TestMemberInviteEmailApi:
         api = MemberInviteEmailApi()
         method = unwrap(api.post)
 
-        tenant = MagicMock(id="t1")
-        user = MagicMock(current_tenant=tenant)
+        tenant = SimpleNamespace(id="t1")
+        user = SimpleNamespace(id="actor-1", current_tenant=tenant)
         features = MagicMock()
         features.workspace_members.enabled = False
         features.workspace_members.is_available.return_value = True
@@ -160,8 +163,13 @@ class TestMemberInviteEmailApi:
         assert result["result"] == "success"
         assert result["invitation_results"][0]["email"] == "a@test.com"
         mock_count.assert_not_called()
-        mock_invite.assert_called_once()
-        assert mock_invite.call_args.kwargs["email"] == "a@test.com"
+        mock_invite.assert_called_once_with(
+            tenant_id="t1",
+            email="a@test.com",
+            language="en-US",
+            role="normal",
+            inviter_id="actor-1",
+        )
 
     def test_invite_limit_exceeded(self, app: Flask):
         api = MemberInviteEmailApi()
@@ -498,14 +506,18 @@ class TestCountNewMemberInvites:
         existing_account_not_in_tenant = SimpleNamespace(id="account-2")
         existing_account_in_tenant = SimpleNamespace(id="account-3")
 
+        session = MagicMock()
         with (
             patch(
                 "controllers.console.workspace.members.AccountService.get_account_by_email_with_case_fallback",
                 side_effect=[new_account, existing_account_not_in_tenant, existing_account_in_tenant],
             ) as mock_get_account,
-            patch("controllers.console.workspace.members.db.session") as mock_session,
+            patch(
+                "controllers.console.workspace.members.session_factory.create_session",
+                return_value=nullcontext(session),
+            ),
         ):
-            mock_session.scalar.side_effect = [None, "join-id"]
+            session.scalar.side_effect = [None, "join-id"]
             result = _count_new_member_invites(
                 "tenant-1",
                 ["new@test.com", "existing@test.com", "member@test.com"],
@@ -513,7 +525,27 @@ class TestCountNewMemberInvites:
 
         assert result == (2, 1)
         assert mock_get_account.call_count == 3
-        assert mock_session.scalar.call_count == 2
+        assert all(call.kwargs["session"] is session for call in mock_get_account.call_args_list)
+        assert session.scalar.call_count == 2
+
+
+class TestMemberCancelInviteApi:
+    def test_remove_uses_ids(self, app: Flask):
+        api = MemberCancelInviteApi()
+        method = unwrap(api.delete)
+        user = SimpleNamespace(id="actor-1", current_tenant_id="tenant-1")
+
+        with (
+            app.test_request_context("/"),
+            patch("controllers.console.workspace.members.db") as mock_db,
+            patch("controllers.console.workspace.members.TenantService.remove_member_from_tenant") as remove,
+        ):
+            result, status = method(api, user, "member-1")
+
+        assert status == HTTPStatus.OK
+        assert result == {"result": "success", "tenant_id": "tenant-1"}
+        mock_db.session.close.assert_called_once_with()
+        remove.assert_called_once_with("tenant-1", "member-1", "actor-1")
 
 
 class TestMemberUpdateRoleApi:
@@ -527,6 +559,23 @@ class TestMemberUpdateRoleApi:
             result, status = method(api, MagicMock(), "id")
 
         assert status == 400
+
+    def test_update_uses_ids(self, app: Flask):
+        api = MemberUpdateRoleApi()
+        method = unwrap(api.put)
+        user = SimpleNamespace(id="actor-1", current_tenant_id="tenant-1")
+
+        with (
+            app.test_request_context("/", json={"role": "editor"}),
+            patch("controllers.console.workspace.members.db") as mock_db,
+            patch("controllers.console.workspace.members._is_role_enabled", return_value=True),
+            patch("controllers.console.workspace.members.TenantService.update_member_role") as update,
+        ):
+            result = method(api, user, "member-1")
+
+        assert result == {"result": "success"}
+        mock_db.session.close.assert_called_once_with()
+        update.assert_called_once_with("tenant-1", "member-1", "editor", "actor-1")
 
 
 class TestDatasetOperatorMemberListApi:
@@ -747,3 +796,119 @@ class TestOwnerTransferApi:
         ):
             with pytest.raises(InvalidTokenError):
                 method(api, user, "2")
+
+    def test_transfer_updates_before_revoking_and_notifying(self, app: Flask):
+        api = OwnerTransfer()
+        method = unwrap(api.post)
+        tenant = SimpleNamespace(id="tenant-1", name="Workspace")
+        user = SimpleNamespace(
+            id="actor-1",
+            email="old-owner@example.com",
+            current_tenant=tenant,
+            current_tenant_id="tenant-1",
+        )
+        session = MagicMock()
+        session.scalar.return_value = "new-owner@example.com"
+        events: list[str] = []
+
+        with (
+            app.test_request_context("/", json={"token": "token-1"}),
+            patch("controllers.console.workspace.members.db"),
+            patch(
+                "controllers.console.workspace.members.session_factory.create_session",
+                return_value=nullcontext(session),
+            ),
+            patch(
+                "controllers.console.workspace.members.AccountService.get_owner_transfer_data",
+                return_value={"email": "old-owner@example.com"},
+            ),
+            patch(
+                "controllers.console.workspace.members.TenantService.update_member_role",
+                side_effect=lambda *_args, **_kwargs: events.append("update"),
+            ) as update,
+            patch(
+                "controllers.console.workspace.members.AccountService.revoke_owner_transfer_token",
+                side_effect=lambda _token: events.append("revoke"),
+            ) as revoke,
+            patch(
+                "controllers.console.workspace.members.AccountService.send_new_owner_transfer_notify_email",
+                side_effect=lambda **_kwargs: events.append("notify-new"),
+            ) as notify_new,
+            patch(
+                "controllers.console.workspace.members.AccountService.send_old_owner_transfer_notify_email",
+                side_effect=lambda **_kwargs: events.append("notify-old"),
+            ) as notify_old,
+        ):
+            result = method(api, user, "member-1")
+
+        assert result == {"result": "success"}
+        assert events == ["update", "revoke", "notify-new", "notify-old"]
+        update.assert_called_once_with(
+            "tenant-1",
+            "member-1",
+            "owner",
+            "actor-1",
+            allow_owner_transfer=True,
+        )
+        revoke.assert_called_once_with("token-1")
+        notify_new.assert_called_once_with(email="new-owner@example.com", workspace_name="Workspace")
+        notify_old.assert_called_once_with(
+            email="old-owner@example.com",
+            workspace_name="Workspace",
+            new_owner_email="new-owner@example.com",
+        )
+
+    @pytest.mark.parametrize(
+        ("error", "expected_error"),
+        [
+            (NoPermissionError("not owner"), NotOwnerError),
+            (EnterpriseAPIError("atomic transfer unavailable", status_code=503), ServiceUnavailable),
+        ],
+    )
+    def test_failed_transfer_does_not_consume_token_or_notify(
+        self,
+        app: Flask,
+        error: Exception,
+        expected_error: type[Exception],
+    ):
+        api = OwnerTransfer()
+        method = unwrap(api.post)
+        tenant = SimpleNamespace(id="tenant-1", name="Workspace")
+        user = SimpleNamespace(
+            id="actor-1",
+            email="old-owner@example.com",
+            current_tenant=tenant,
+            current_tenant_id="tenant-1",
+        )
+        session = MagicMock()
+        session.scalar.return_value = "new-owner@example.com"
+
+        with (
+            app.test_request_context("/", json={"token": "token-1"}),
+            patch("controllers.console.workspace.members.db"),
+            patch(
+                "controllers.console.workspace.members.session_factory.create_session",
+                return_value=nullcontext(session),
+            ),
+            patch(
+                "controllers.console.workspace.members.AccountService.get_owner_transfer_data",
+                return_value={"email": "old-owner@example.com"},
+            ),
+            patch(
+                "controllers.console.workspace.members.TenantService.update_member_role",
+                side_effect=error,
+            ),
+            patch("controllers.console.workspace.members.AccountService.revoke_owner_transfer_token") as revoke,
+            patch(
+                "controllers.console.workspace.members.AccountService.send_new_owner_transfer_notify_email"
+            ) as notify_new,
+            patch(
+                "controllers.console.workspace.members.AccountService.send_old_owner_transfer_notify_email"
+            ) as notify_old,
+            pytest.raises(expected_error),
+        ):
+            method(api, user, "member-1")
+
+        revoke.assert_not_called()
+        notify_new.assert_not_called()
+        notify_old.assert_not_called()

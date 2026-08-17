@@ -1901,9 +1901,7 @@ class TestTenantService:
         ):
             mock_sync.return_value = True
 
-            TenantService.remove_member_from_tenant(
-                tenant, member_account, owner_account, session=db_session_with_containers
-            )
+            TenantService.remove_member_from_tenant(str(tenant.id), str(member_account.id), str(owner_account.id))
 
             # Verify sync was called
             mock_sync.assert_called_once_with(
@@ -1955,7 +1953,7 @@ class TestTenantService:
 
         # Try to remove self
         with pytest.raises(Exception, match="Cannot operate self"):
-            TenantService.remove_member_from_tenant(tenant, account, account, session=db_session_with_containers)
+            TenantService.remove_member_from_tenant(str(tenant.id), str(account.id), str(account.id))
 
     def test_remove_member_from_tenant_not_member(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -1996,9 +1994,7 @@ class TestTenantService:
 
         # Try to remove non-member
         with pytest.raises(Exception, match="Member not in tenant"):
-            TenantService.remove_member_from_tenant(
-                tenant, non_member_account, owner_account, session=db_session_with_containers
-            )
+            TenantService.remove_member_from_tenant(str(tenant.id), str(non_member_account.id), str(owner_account.id))
 
     def test_update_member_role_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
@@ -2037,9 +2033,7 @@ class TestTenantService:
         TenantService.create_tenant_member(tenant, member_account, db_session_with_containers, role="normal")
 
         # Update member role
-        TenantService.update_member_role(
-            tenant, member_account, "admin", owner_account, session=db_session_with_containers
-        )
+        TenantService.update_member_role(str(tenant.id), str(member_account.id), "admin", str(owner_account.id))
 
         # Verify role was updated
         from models.account import TenantAccountJoin
@@ -2089,7 +2083,11 @@ class TestTenantService:
 
         # Update member role to owner
         TenantService.update_member_role(
-            tenant, member_account, "owner", owner_account, session=db_session_with_containers
+            str(tenant.id),
+            str(member_account.id),
+            "owner",
+            str(owner_account.id),
+            allow_owner_transfer=True,
         )
 
         # Verify roles were updated correctly
@@ -2148,9 +2146,7 @@ class TestTenantService:
 
         # Try to update member role to already assigned role
         with pytest.raises(Exception, match="The provided role is already assigned to the member"):
-            TenantService.update_member_role(
-                tenant, member_account, "admin", owner_account, session=db_session_with_containers
-            )
+            TenantService.update_member_role(str(tenant.id), str(member_account.id), "admin", str(owner_account.id))
 
     def test_get_tenant_count_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
@@ -2832,12 +2828,11 @@ class TestRegisterService:
 
             # Execute invitation
             token = RegisterService.invite_new_member(
-                tenant=tenant,
+                tenant_id=str(tenant.id),
                 email=new_member_email,
                 language=language,
                 role="normal",
-                inviter=inviter,
-                session=db_session_with_containers,
+                inviter_id=str(inviter.id),
             )
 
             # Verify token was generated
@@ -2908,12 +2903,11 @@ class TestRegisterService:
             mock_send_mail.delay.return_value = None
 
             token = RegisterService.invite_new_member(
-                tenant=tenant,
+                tenant_id=str(tenant.id),
                 email=existing_member_email,
                 language=language,
                 role="admin",
-                inviter=inviter,
-                session=db_session_with_containers,
+                inviter_id=str(inviter.id),
             )
 
             assert token is not None
@@ -2989,12 +2983,11 @@ class TestRegisterService:
 
             # Execute invitation (should resend email for pending member)
             token = RegisterService.invite_new_member(
-                tenant=tenant,
+                tenant_id=str(tenant.id),
                 email=existing_pending_member_email,
                 language=language,
                 role="normal",
-                inviter=inviter,
-                session=db_session_with_containers,
+                inviter_id=str(inviter.id),
             )
 
             # Verify token was generated
@@ -3024,12 +3017,11 @@ class TestRegisterService:
         # Execute invitation without inviter (should fail)
         with pytest.raises(ValueError, match="Inviter is required"):
             RegisterService.invite_new_member(
-                tenant=tenant,
+                tenant_id=str(tenant.id),
                 email=new_member_email,
                 language=language,
                 role="normal",
-                inviter=None,
-                session=db_session_with_containers,
+                inviter_id=None,
             )
 
     def test_invite_new_member_account_already_in_tenant(
@@ -3080,12 +3072,11 @@ class TestRegisterService:
         # Execute invitation (should fail for active member)
         with pytest.raises(AccountAlreadyInTenantError, match="Account already in tenant."):
             RegisterService.invite_new_member(
-                tenant=tenant,
+                tenant_id=str(tenant.id),
                 email=already_in_tenant_email,
                 language=language,
                 role="normal",
-                inviter=inviter,
-                session=db_session_with_containers,
+                inviter_id=str(inviter.id),
             )
 
     def test_generate_invite_token_success(
@@ -3114,7 +3105,9 @@ class TestRegisterService:
         )
 
         # Execute token generation
-        token = RegisterService.generate_invite_token(tenant, account)
+        token = RegisterService.generate_invite_token(
+            tenant_id=str(tenant.id), account_id=str(account.id), email=account.email
+        )
 
         # Verify token was generated
         assert token is not None
@@ -3159,7 +3152,9 @@ class TestRegisterService:
         )
 
         # Generate a real token
-        token = RegisterService.generate_invite_token(tenant, account)
+        token = RegisterService.generate_invite_token(
+            tenant_id=str(tenant.id), account_id=str(account.id), email=account.email
+        )
 
         # Execute validation
         is_valid = RegisterService.is_valid_invite_token(token)
@@ -3207,7 +3202,9 @@ class TestRegisterService:
         )
 
         # Generate a real token
-        token = RegisterService.generate_invite_token(tenant, account)
+        token = RegisterService.generate_invite_token(
+            tenant_id=str(tenant.id), account_id=str(account.id), email=account.email
+        )
 
         # Verify token exists in Redis before revocation
         from extensions.ext_redis import redis_client
@@ -3251,7 +3248,9 @@ class TestRegisterService:
         )
 
         # Generate a real token
-        token = RegisterService.generate_invite_token(tenant, account)
+        token = RegisterService.generate_invite_token(
+            tenant_id=str(tenant.id), account_id=str(account.id), email=account.email
+        )
 
         # Verify token exists in Redis before revocation
         from extensions.ext_redis import redis_client
@@ -3296,7 +3295,9 @@ class TestRegisterService:
         TenantService.create_tenant_member(tenant, account, db_session_with_containers, role="normal")
 
         # Generate a real token
-        token = RegisterService.generate_invite_token(tenant, account)
+        token = RegisterService.generate_invite_token(
+            tenant_id=str(tenant.id), account_id=str(account.id), email=account.email
+        )
 
         email_hash = sha256(account.email.encode()).hexdigest()
         cache_key = f"member_invite_token:{tenant.id}, {email_hash}:{token}"

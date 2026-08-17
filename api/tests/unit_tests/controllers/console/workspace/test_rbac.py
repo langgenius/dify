@@ -29,7 +29,7 @@ from configs import dify_config
 from controllers.console.workspace import rbac as rbac_mod
 from controllers.console.workspace.rbac import _RolesListQuery
 from enums import DeploymentEdition
-from models import Account
+from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 
 
 @pytest.fixture
@@ -89,19 +89,24 @@ class TestAccessMatrixAccountNames:
         items = [
             rbac_mod.svc.AccessMatrixItem(
                 accounts=[
-                    {"account_id": "acct-1", "account_name": "Alice", "binding_id": "binding-1"},
+                    {"account_id": "acct-1", "account_name": "forged", "binding_id": "binding-1"},
                     {"account_id": "acct-2", "account_name": "", "binding_id": "binding-2"},
+                    {"account_id": "foreign", "account_name": "Foreign", "binding_id": "binding-3"},
                 ]
             )
         ]
 
         with patch(
             "controllers.console.workspace.rbac._account_names_by_ids",
-            return_value={"acct-2": {"name": "Bob", "avatar": "ava"}},
+            return_value={
+                "acct-1": {"name": "Alice", "avatar": "", "email": "alice@example.com"},
+                "acct-2": {"name": "Bob", "avatar": "ava", "email": "bob@example.com"},
+            },
         ) as mock_names:
-            rbac_mod._hydrate_access_matrix_account_names(items)
+            rbac_mod._hydrate_access_matrix_account_names("tenant-1", items)
 
-        mock_names.assert_called_once_with(["acct-2"])
+        mock_names.assert_called_once_with("tenant-1", ["acct-1", "acct-2", "foreign"])
+        assert [account.account_id for account in items[0].accounts] == ["acct-1", "acct-2"]
         assert items[0].accounts[0].account_id == "acct-1"
         assert items[0].accounts[0].account_name == "Alice"
         assert items[0].accounts[1].account_id == "acct-2"
@@ -119,11 +124,41 @@ class TestAccessMatrixAccountNames:
 
         with patch(
             "controllers.console.workspace.rbac._account_names_by_ids",
-            return_value={"acct-1": {"name": "Alice", "avatar": ""}},
+            return_value={"acct-1": {"name": "Alice", "avatar": "", "email": "alice@example.com"}},
         ):
-            rbac_mod._hydrate_resource_user_account_names(items)
+            rbac_mod._hydrate_resource_user_account_names("tenant-1", items)
 
         assert items[0].account.account_name == "Alice"
+
+    def test_account_names_are_scoped_to_tenant(self, sqlite_session):
+        current_tenant = Tenant(name="Current")
+        foreign_tenant = Tenant(name="Foreign")
+        current_account = Account(name="Current", email="current@example.com")
+        foreign_account = Account(name="Foreign", email="foreign@example.com")
+        sqlite_session.add_all([current_tenant, foreign_tenant, current_account, foreign_account])
+        sqlite_session.flush()
+        sqlite_session.add_all(
+            [
+                TenantAccountJoin(
+                    tenant_id=current_tenant.id,
+                    account_id=current_account.id,
+                    role=TenantAccountRole.NORMAL,
+                ),
+                TenantAccountJoin(
+                    tenant_id=foreign_tenant.id,
+                    account_id=foreign_account.id,
+                    role=TenantAccountRole.NORMAL,
+                ),
+            ]
+        )
+        sqlite_session.commit()
+
+        result = rbac_mod._account_names_by_ids(
+            current_tenant.id,
+            [current_account.id, foreign_account.id],
+        )
+
+        assert set(result) == {current_account.id}
 
 
 class TestPydanticModels:
@@ -181,6 +216,12 @@ class TestPydanticModels:
     def test_replace_bindings_keeps_role_binding_contract(self):
         parsed = rbac_mod._ReplaceBindingsRequest.model_validate({"role_ids": None})
         assert parsed.role_ids == []
+
+    def test_user_access_policy_payload_rejects_batch_account_ids(self):
+        with pytest.raises(ValidationError):
+            rbac_mod._ReplaceUserAccessPoliciesPayload.model_validate(
+                {"access_policy_ids": ["policy-1"], "account_ids": ["foreign-account"]}
+            )
 
     def test_replace_member_roles_coerce_null_list(self):
         parsed = rbac_mod._ReplaceMemberRolesRequest.model_validate({"role_ids": None})
@@ -680,7 +721,7 @@ class TestWorkspaceRbacGuards:
                 return_value=(_account(), "tenant-1"),
             ),
             patch("controllers.common.wraps.RBACService.CheckAccess.check", return_value=False),
-            patch("controllers.console.workspace.rbac.svc.RBACService.MemberRoles.replace") as mock_replace,
+            patch("controllers.console.workspace.rbac.svc.RBACService.MemberRoles.replace_user_roles") as mock_replace,
         ):
             with pytest.raises(Forbidden):
                 rbac_mod.RBACMemberRolesApi().put("00000000-0000-0000-0000-000000000002")
@@ -705,6 +746,7 @@ class TestWorkspaceRbacGuards:
                 member_id="00000000-0000-0000-0000-000000000002",
             )
 
+        assert isinstance(result, dict)
         assert result["account_id"] == "acct-2"
         mock_get.assert_called_once()
         mock_check.assert_not_called()
@@ -727,7 +769,7 @@ class TestWorkspaceRbacGuards:
             ),
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
             patch(
-                "controllers.console.workspace.rbac.svc.RBACService.MemberRoles.replace",
+                "controllers.console.workspace.rbac.svc.RBACService.MemberRoles.replace_user_roles",
                 side_effect=error,
             ),
         ):

@@ -13,9 +13,12 @@ from sqlalchemy.orm import Session, scoped_session
 from controllers.console.auth import activate as activate_module
 from controllers.console.auth.activate import ActivateApi, ActivateCheckApi
 from controllers.console.auth.error import InvitationAccountMismatchError
-from controllers.console.error import AccountInFreezeError, AlreadyActivateError
+from controllers.console.error import AccountInFreezeError, AlreadyActivateError, WorkspaceMembersLimitExceeded
 from enums import DeploymentEdition
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
+from services.errors.account import WorkspaceMembersLimitExceededError
+
+_RBAC_ROLE_ID = "00000000-0000-0000-0000-000000000101"
 
 
 @pytest.fixture
@@ -65,6 +68,31 @@ def _setup_payload(**overrides: object) -> dict[str, object]:
     }
     payload.update(overrides)
     return payload
+
+
+def _enable_rbac_invitation(
+    invitation: dict[str, object],
+    session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[Account, Tenant]:
+    account = invitation["account"]
+    tenant = invitation["tenant"]
+    data = invitation["data"]
+    assert isinstance(account, Account)
+    assert isinstance(tenant, Tenant)
+    assert isinstance(data, dict)
+    account.status = AccountStatus.ACTIVE
+    data.update(
+        {
+            "role": TenantAccountRole.ADMIN.value,
+            "requires_setup": False,
+            "rbac_role_id": _RBAC_ROLE_ID,
+            "inviter_id": "inviter-123",
+        }
+    )
+    session.commit()
+    monkeypatch.setattr(activate_module.dify_config, "RBAC_ENABLED", True)
+    return account, tenant
 
 
 class TestActivateCheckApi:
@@ -204,13 +232,27 @@ class TestActivateApi:
         account_id = invited_account.id
         tenant_id = invited_tenant.id
 
+        def assert_membership_is_current(*_: object) -> None:
+            membership = sqlite_session.scalar(
+                select(TenantAccountJoin).where(
+                    TenantAccountJoin.account_id == account_id,
+                    TenantAccountJoin.tenant_id == tenant_id,
+                )
+            )
+            assert membership is not None
+            assert membership.current is True
+
         with (
             patch.object(
                 activate_module.RegisterService,
                 "get_invitation_with_case_fallback",
                 return_value=invitation,
             ),
-            patch.object(activate_module.RegisterService, "revoke_token") as revoke_token,
+            patch.object(
+                activate_module.RegisterService,
+                "revoke_token",
+                side_effect=assert_membership_is_current,
+            ) as revoke_token,
         ):
             response = _post(app, _setup_payload())
 
@@ -409,6 +451,207 @@ class TestActivateApi:
             (other_tenant.id, TenantAccountRole.NORMAL),
             (tenant.id, TenantAccountRole.ADMIN),
         }
+
+    def test_rbac_active_account_receives_role_on_acceptance(
+        self,
+        sqlite_session: Session,
+        app: Flask,
+        invitation: dict[str, object],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        account, tenant = _enable_rbac_invitation(invitation, sqlite_session, monkeypatch)
+
+        with (
+            patch.object(
+                activate_module.RegisterService,
+                "get_invitation_with_case_fallback",
+                return_value=invitation,
+            ),
+            patch.object(activate_module.RBACService.MemberRoles, "_replace_user_roles_locked") as replace_roles,
+            patch.object(activate_module.RegisterService, "revoke_token") as revoke_token,
+        ):
+            assert _post(
+                app,
+                {"workspace_id": tenant.id, "email": account.email, "token": "valid_token"},
+            ) == {"result": "success"}
+
+        membership = sqlite_session.scalar(
+            select(TenantAccountJoin).where(
+                TenantAccountJoin.tenant_id == tenant.id,
+                TenantAccountJoin.account_id == account.id,
+            )
+        )
+        assert membership is not None
+        assert membership.role == TenantAccountRole.NORMAL
+        replace_roles.assert_called_once_with(
+            str(tenant.id),
+            "inviter-123",
+            str(account.id),
+            [_RBAC_ROLE_ID],
+        )
+        revoke_token.assert_called_once_with(str(tenant.id), account.email, "valid_token")
+
+    def test_rbac_existing_role_is_idempotent(
+        self,
+        sqlite_session: Session,
+        app: Flask,
+        invitation: dict[str, object],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        account, tenant = _enable_rbac_invitation(invitation, sqlite_session, monkeypatch)
+        sqlite_session.add(
+            TenantAccountJoin(
+                tenant_id=tenant.id,
+                account_id=account.id,
+                role=TenantAccountRole.NORMAL,
+            )
+        )
+        sqlite_session.commit()
+
+        with (
+            patch.object(
+                activate_module.RegisterService,
+                "get_invitation_with_case_fallback",
+                return_value=invitation,
+            ),
+            patch.object(
+                activate_module.RBACService.MemberRoles,
+                "get",
+                return_value=SimpleNamespace(roles=[SimpleNamespace(id=_RBAC_ROLE_ID)]),
+            ),
+            patch("services.enterprise.rbac_service.require_tenant_members"),
+            patch(
+                "services.account_service.AccountService.get_workspace_permission_keys",
+                return_value={"workspace.role.manage"},
+            ),
+            patch.object(activate_module.RBACService.MemberRoles, "_replace_user_roles_locked") as replace_roles,
+            patch.object(activate_module.RegisterService, "revoke_token") as revoke_token,
+        ):
+            assert _post(
+                app,
+                {"workspace_id": tenant.id, "email": account.email, "token": "valid_token"},
+            ) == {"result": "success"}
+
+        assert sqlite_session.scalar(select(func.count(TenantAccountJoin.id))) == 1
+        replace_roles.assert_not_called()
+        revoke_token.assert_called_once_with(str(tenant.id), account.email, "valid_token")
+
+    def test_rbac_stale_role_token_is_rejected_without_replacing_role(
+        self,
+        sqlite_session: Session,
+        app: Flask,
+        invitation: dict[str, object],
+        switch_tenant: Mock,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        account, tenant = _enable_rbac_invitation(invitation, sqlite_session, monkeypatch)
+        sqlite_session.add(
+            TenantAccountJoin(
+                tenant_id=tenant.id,
+                account_id=account.id,
+                role=TenantAccountRole.NORMAL,
+            )
+        )
+        sqlite_session.commit()
+
+        with (
+            patch.object(
+                activate_module.RegisterService,
+                "get_invitation_with_case_fallback",
+                return_value=invitation,
+            ),
+            patch.object(
+                activate_module.RBACService.MemberRoles,
+                "get",
+                return_value=SimpleNamespace(roles=[SimpleNamespace(id="00000000-0000-0000-0000-000000000202")]),
+            ),
+            patch("services.enterprise.rbac_service.require_tenant_members"),
+            patch(
+                "services.account_service.AccountService.get_workspace_permission_keys",
+                return_value={"workspace.role.manage"},
+            ),
+            patch.object(activate_module.RBACService.MemberRoles, "_replace_user_roles_locked") as replace_roles,
+            patch.object(activate_module.RegisterService, "revoke_token") as revoke_token,
+            pytest.raises(AlreadyActivateError),
+        ):
+            _post(
+                app,
+                {"workspace_id": tenant.id, "email": account.email, "token": "valid_token"},
+            )
+
+        assert sqlite_session.scalar(select(func.count(TenantAccountJoin.id))) == 1
+        replace_roles.assert_not_called()
+        revoke_token.assert_not_called()
+        switch_tenant.assert_not_called()
+
+    def test_rbac_role_failure_keeps_token_and_removes_new_membership(
+        self,
+        sqlite_session: Session,
+        app: Flask,
+        invitation: dict[str, object],
+        switch_tenant: Mock,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        account, tenant = _enable_rbac_invitation(invitation, sqlite_session, monkeypatch)
+        sqlite_session.commit()
+
+        with (
+            patch.object(
+                activate_module.RegisterService,
+                "get_invitation_with_case_fallback",
+                return_value=invitation,
+            ),
+            patch.object(
+                activate_module.RBACService.MemberRoles,
+                "_replace_user_roles_locked",
+                side_effect=RuntimeError("rbac unavailable"),
+            ),
+            patch.object(activate_module.RegisterService, "revoke_token") as revoke_token,
+            pytest.raises(RuntimeError, match="rbac unavailable"),
+        ):
+            _post(
+                app,
+                {"workspace_id": tenant.id, "email": account.email, "token": "valid_token"},
+            )
+
+        assert sqlite_session.scalar(select(func.count(TenantAccountJoin.id))) == 0
+        revoke_token.assert_not_called()
+        switch_tenant.assert_not_called()
+
+    def test_rbac_capacity_failure_keeps_token_and_membership_absent(
+        self,
+        sqlite_session: Session,
+        app: Flask,
+        invitation: dict[str, object],
+        switch_tenant: Mock,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        account, tenant = _enable_rbac_invitation(invitation, sqlite_session, monkeypatch)
+
+        with (
+            patch.object(
+                activate_module.RegisterService,
+                "get_invitation_with_case_fallback",
+                return_value=invitation,
+            ),
+            patch.object(
+                activate_module.TenantService,
+                "ensure_member_capacity",
+                side_effect=WorkspaceMembersLimitExceededError("limit reached"),
+            ),
+            patch.object(activate_module.RBACService.MemberRoles, "_replace_user_roles_locked") as replace_roles,
+            patch.object(activate_module.RegisterService, "revoke_token") as revoke_token,
+            pytest.raises(WorkspaceMembersLimitExceeded),
+        ):
+            _post(
+                app,
+                {"workspace_id": tenant.id, "email": account.email, "token": "valid_token"},
+            )
+
+        assert sqlite_session.scalar(select(func.count(TenantAccountJoin.id))) == 0
+        replace_roles.assert_not_called()
+        revoke_token.assert_not_called()
+        switch_tenant.assert_not_called()
 
     def test_existing_membership_is_not_duplicated(
         self,
