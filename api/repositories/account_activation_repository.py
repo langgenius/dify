@@ -67,10 +67,12 @@ class SQLAlchemyAccountActivationRepository(AccountActivationRepository):
                 )
             )
             account = session.scalar(
-                select(Account).where(
+                select(Account)
+                .where(
                     Account.id == invitation.account_id,
                     Account.email == invitation.account_email,
-                ).with_for_update()
+                )
+                .with_for_update()
             )
             if tenant_id is None or account is None:
                 return None
