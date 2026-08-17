@@ -27,6 +27,7 @@ import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-q
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
+import Tag from '@/app/components/base/tag'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { newKnowledgeQualityPath, newKnowledgeRetrievalTestPath } from '../routes'
@@ -536,12 +537,9 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                 />
                 <div className="flex min-w-0 gap-1 overflow-hidden">
                   {visibleTags(item.tags).map((tag) => (
-                    <span
-                      key={tag}
-                      className="h-4 shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 system-2xs-medium text-text-tertiary"
-                    >
+                    <Tag key={tag} color="gray" bordered className="max-w-full min-w-0 truncate">
                       {tag}
-                    </span>
+                    </Tag>
                   ))}
                 </div>
                 <Popover>
