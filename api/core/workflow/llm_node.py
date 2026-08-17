@@ -1,9 +1,10 @@
 from collections.abc import Callable, Generator, Sequence
 from typing import Any, override
 
+from graphon.file import File
 from graphon.model_runtime.entities.llm_entities import LLMStructuredOutput
 from graphon.model_runtime.entities.message_entities import PromptMessage
-from graphon.node_events.base import NodeEventBase
+from graphon.node_events import NodeEventPayload
 from graphon.nodes.llm.node import LLMNode
 from graphon.nodes.llm.runtime_protocols import LLMPollingCapableProtocol
 
@@ -30,12 +31,14 @@ class DifyLLMNode(LLMNode):
     def _invoke_llm_with_polling(
         self,
         *,
+        file_outputs: list[File],
         polling_model: LLMPollingCapableProtocol,
         prompt_messages: Sequence[PromptMessage],
         stop: Sequence[str] | None,
-    ) -> Generator[NodeEventBase | LLMStructuredOutput, None, None]:
+    ) -> Generator[NodeEventPayload | LLMStructuredOutput, None, None]:
         try:
             yield from super()._invoke_llm_with_polling(
+                file_outputs=file_outputs,
                 polling_model=polling_model,
                 prompt_messages=prompt_messages,
                 stop=stop,
