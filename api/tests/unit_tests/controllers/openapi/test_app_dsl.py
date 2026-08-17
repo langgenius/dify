@@ -38,8 +38,7 @@ def test_permission_denial_maps_to_forbidden(
     service_method: str,
     kwargs: dict[str, object],
 ) -> None:
-    service = Mock()
-    getattr(service, service_method).side_effect = NoPermissionError("denied")
+    service = Mock(**{f"{service_method}.side_effect": NoPermissionError("denied")})
     monkeypatch.setattr(app_dsl_module, "AppDslService", Mock(return_value=service))
     monkeypatch.setattr(app_dsl_module, "db", SimpleNamespace(engine=sqlite_engine))
 
