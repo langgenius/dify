@@ -54,8 +54,8 @@ class RunStore(RunEventSink, Protocol):
         """Return the accepted cancellation intent, if one exists."""
         ...
 
-    async def wait_for_cancellation(self, run_id: str) -> RunCancellationIntent | None:
-        """Wait for a cancellation intent or a different terminal state."""
+    async def wait_for_cancellation(self, run_id: str) -> RunCancellationIntent:
+        """Wait for an accepted cancellation intent."""
         ...
 
     async def finalize_cancellation(
@@ -209,15 +209,12 @@ class RunScheduler:
                             )
                     raise
 
-                if intent is not None:
-                    await cancel_runner_and_wait()
-                    _ = await self.store.finalize_cancellation(
-                        record.run_id,
-                        intent,
-                        session_snapshot=runner.terminal_session_snapshot,
-                    )
-                else:
-                    await runner_task
+                await cancel_runner_and_wait()
+                _ = await self.store.finalize_cancellation(
+                    record.run_id,
+                    intent,
+                    session_snapshot=runner.terminal_session_snapshot,
+                )
             else:
                 runner_error: Exception | None = None
                 try:

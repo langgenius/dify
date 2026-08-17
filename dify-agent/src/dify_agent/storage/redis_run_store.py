@@ -272,44 +272,14 @@ class RedisRunStore(RunEventSink):
             return None
         return self._decode_cancellation_intent(entries[0][1])
 
-    async def wait_for_cancellation(self, run_id: str) -> RunCancellationIntent | None:
-        """Wait until cancellation intent or another terminal state wins.
-
-        The stream cursor is captured before reading the record so a terminal
-        transition cannot fall between the initial status check and blocking
-        stream read.
-        """
-        events_key = run_events_key(self.prefix, run_id)
-        latest_events = await self.redis.xrevrange(events_key, count=1)
-        cursor = _decode_redis_text(latest_events[0][0]) if latest_events else "0-0"
-        record = await self.get_run(run_id)
-        if record.status != "running":
-            return None
-
-        intent = await self.get_cancellation_intent(run_id)
-        if intent is not None:
-            return intent
-
-        while True:
-            response = await self.redis.xread(
-                {
-                    run_cancel_intent_key(self.prefix, run_id): "0-0",
-                    events_key: cursor,
-                },
-                block=0,
-                count=100,
-            )
-            for stream_name, entries in response:
-                if _decode_redis_text(stream_name) == run_cancel_intent_key(self.prefix, run_id):
-                    return self._decode_cancellation_intent(entries[0][1])
-                for raw_id, fields in entries:
-                    event = self._decode_event(run_id, raw_id, fields)
-                    if event.id is not None:
-                        cursor = event.id
-                    if event.type == "run_cancelled":
-                        return None
-                    if event.type in {"run_succeeded", "run_failed"}:
-                        return None
+    async def wait_for_cancellation(self, run_id: str) -> RunCancellationIntent:
+        """Wait until the first accepted private cancellation intent is available."""
+        response = await self.redis.xread(
+            {run_cancel_intent_key(self.prefix, run_id): "0-0"},
+            block=0,
+            count=1,
+        )
+        return self._decode_cancellation_intent(response[0][1][0][1])
 
     async def finalize_cancellation(
         self,
