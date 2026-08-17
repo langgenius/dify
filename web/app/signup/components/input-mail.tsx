@@ -46,6 +46,7 @@ export default function Form({ onSuccess }: Props) {
 
   return (
     <form
+      noValidate
       onSubmit={(e) => {
         e.preventDefault()
         handleSubmit()
