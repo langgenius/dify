@@ -279,26 +279,29 @@ run as failed with `error_type: "agent_run_limit_exceeded"`.
 
 During FastAPI shutdown the scheduler rejects new runs, waits up to
 `DIFY_AGENT_SHUTDOWN_GRACE_SECONDS` for active tasks, then cancels remaining tasks
-and attempts to finalize them as failed. Success, failure, cancellation, and this
-shutdown path all use one atomic Redis transition: only the first transition from
-`running` appends a terminal event and updates the run record. A later terminal
-attempt leaves both the record and event stream unchanged. A hard process crash
-can still leave active runs stuck as `running`; there is no in-service recovery
-or worker handoff.
+and attempts to finalize them as failed. Success and failure use an atomic Redis
+transition. Cancellation first atomically records a private intent; after the
+owner exits the runner, a second atomic transition appends `run_cancelled`,
+updates the run record, and deletes the intent. The first accepted success,
+failure, or cancellation intent wins. A hard process crash can still leave
+active runs, including runs with accepted cancellation intent, stuck as
+`running`; there is no in-service recovery or worker handoff.
 
 Horizontal scaling is possible by running multiple API processes against the same
 Redis prefix, but each process executes only the runs it accepted. Redis provides
 shared status/event visibility, not load balancing or queued-job recovery. The
 cancel endpoint can atomically accept a running run on any process. The process
-that owns the runner observes the shared `run_cancelled` event, then cancels and
-cleans up its local task. The HTTP response confirms that logical cancellation is
-durable; local runner cleanup may still be in progress. Retrying a cancellation
-after the run is already `cancelled` is idempotent.
+that owns the runner observes the private cancellation-intent stream, cancels
+and cleans up its local task, and only then emits `run_cancelled`. The HTTP
+response confirms that cancellation intent is durable; `GET /runs/{run_id}` may
+still report `running` until cleanup finishes. Retrying an accepted or completed
+cancellation is idempotent.
 
 Atomic terminal finalization currently assumes the configured Redis URL targets
-one Redis deployment that can execute both run keys in a Lua script. The existing
-record and event key names are unchanged and do not contain a shared Redis
-Cluster hash tag, so Redis Cluster is not supported for this transition. During
+one Redis deployment that can execute all run-coordination keys in a Lua script.
+The record and event key names are unchanged, and cancellation adds a private
+cancel-intent key. These keys do not contain a shared Redis Cluster hash tag, so
+Redis Cluster is not supported for this transition. During
 a rolling upgrade, older processes can still use the former split event/status
 writes; treat the single-terminal invariant as active only after those processes
 have exited. Deploy atomic terminal finalization everywhere first, then ensure
@@ -336,8 +339,10 @@ effective prompts are rejected during create-run validation before the run is
 persisted or scheduled.
 
 There is no Pydantic AI history layer. To resume Agenton layer state, pass the
-`session_snapshot` from a previous `run_succeeded.data` payload together with a
-composition that has the same layer names and order.
+`session_snapshot` from a previous terminal event together with a composition
+that has the same layer names and order. Success always contains a snapshot.
+Failure and cancellation contain one only when compositor entry succeeded and
+layer exit completed; otherwise callers should retain their previous snapshot.
 
 ## Observing runs
 
@@ -349,8 +354,11 @@ progress:
   Failed records can also expose a stable machine-readable `error_type` alongside
   the diagnostic `error` text.
 - `POST /runs/{run_id}/cancel` atomically accepts cancellation on any API process
-  and emits `run_cancelled`; it returns `409` only when a success/failure terminal
-  already won. Runner cleanup continues asynchronously on the owner process.
+  and returns immediately. `CancelRunResponse.status == "cancelled"` acknowledges
+  a durably accepted cancellation intent, not completed runner cleanup. Callers
+  that require cleanup-complete state or its session snapshot must await the
+  public `run_cancelled` event or use `cancel_run_and_wait`. The endpoint returns
+  `409` only when a success/failure terminal already won.
 - `GET /runs/{run_id}/events` polls the Redis Stream event log with `after` and
   `next_cursor` cursors.
 - `GET /runs/{run_id}/events/sse` replays and streams events over SSE. The SSE
@@ -366,12 +374,15 @@ end with `run_cancelled`. Each run can append at most one of these terminal
 events. Event envelopes retain `id`, `run_id`, `type`, `data`, and `created_at`;
 `data` is typed per event type,
 including Pydantic AI's `AgentStreamEvent` payload for `pydantic_ai_event` and a
-terminal `run_succeeded.data` object containing a `CompositorSessionSnapshot` for
-resumption. A successful run has exactly one active result branch: JSON-safe
+terminal event may contain a `CompositorSessionSnapshot` for resumption.
+`run_succeeded` always contains it; `run_failed` and `run_cancelled` contain it
+only when compositor entry succeeded, layer exit completed, and a post-exit
+snapshot was actually produced. A successful run has exactly one active result branch: JSON-safe
 `output` for final answers, or `deferred_tool_call` when a layer such as
 `dify.ask_human` ends the current agent run with an external deferred tool call.
 Failed event payloads contain the diagnostic `error`, optional source-specific
-`reason`, and optional stable `error_type`. Pydantic AI request/step budget
+`reason`, optional stable `error_type`, and optional `session_snapshot`.
+Cancelled payloads likewise may contain `session_snapshot`. Pydantic AI request/step budget
 exhaustion enforced by Dify Agent is reported as
 `error_type: "agent_run_limit_exceeded"`; consumers should branch on that value
 rather than parsing the error text. The Dify Agent-owned wall-clock run deadline

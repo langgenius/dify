@@ -66,7 +66,7 @@ from dify_agent.protocol.schemas import (
     RunLayerSpec,
     RunSucceededEvent,
 )
-from dify_agent.runtime.event_sink import InMemoryRunEventSink, emit_run_cancelled
+from dify_agent.runtime.event_sink import InMemoryRunEventSink
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
 from dify_agent.runtime.runner import (
     AgentRunRunner,
@@ -223,7 +223,7 @@ def test_run_failed_error_payload_classifies_usage_limit() -> None:
     assert reason is None
 
 
-def test_cancelled_runner_does_not_overwrite_cancelled_status_with_late_failure(
+def test_cancelled_runner_does_not_emit_late_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     async def scenario() -> None:
@@ -242,20 +242,13 @@ def test_cancelled_runner_does_not_overwrite_cancelled_status_with_late_failure(
             async def fail_after_cancel() -> RunSuccessOutcome:
                 nonlocal cancelled
                 cancelled = True
-                _ = await emit_run_cancelled(
-                    sink,
-                    run_id="run-cancelled",
-                    reason="workflow_aborted",
-                    message="workflow stopped",
-                )
                 raise RuntimeError("late model failure")
 
             monkeypatch.setattr(runner, "_run_agent", fail_after_cancel)
             await runner.run()
 
-        assert sink.statuses["run-cancelled"] == "cancelled"
-        assert sink.errors["run-cancelled"] == "workflow stopped"
-        assert [event.type for event in sink.events["run-cancelled"]] == ["run_started", "run_cancelled"]
+        assert "run-cancelled" not in sink.statuses
+        assert [event.type for event in sink.events["run-cancelled"]] == ["run_started"]
 
     asyncio.run(scenario())
 
@@ -825,6 +818,44 @@ def test_runner_does_not_classify_nested_timeout_as_agent_limit(monkeypatch: pyt
     assert terminal.data.error == "provider timed out"
     assert terminal.data.error_type is None
     assert sink.statuses["run-provider-timeout"] == "failed"
+
+
+def test_runner_captures_post_exit_snapshot_when_task_is_cancelled(monkeypatch: pytest.MonkeyPatch) -> None:
+    started = asyncio.Event()
+
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
+        return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
+
+    class FakeAgent:
+        async def run(self, *_args: object, **_kwargs: object) -> None:
+            started.set()
+            await asyncio.Event().wait()
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    monkeypatch.setattr("dify_agent.runtime.runner.create_agent", lambda *_args, **_kwargs: FakeAgent())
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> AgentRunRunner:
+        async with httpx.AsyncClient() as client:
+            runner = AgentRunRunner(
+                sink=sink,
+                request=_request(),
+                run_id="run-cancel-snapshot",
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+            )
+            task = asyncio.create_task(runner.run())
+            await asyncio.wait_for(started.wait(), timeout=1)
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+            return runner
+
+    runner = asyncio.run(scenario())
+
+    assert runner.terminal_session_snapshot is not None
+    assert all(layer.lifecycle_state is LifecycleState.SUSPENDED for layer in runner.terminal_session_snapshot.layers)
+    assert [event.type for event in sink.events["run-cancel-snapshot"]] == ["run_started"]
 
 
 def test_runner_emits_deferred_tool_call_and_persists_pending_history(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -2102,7 +2133,7 @@ def test_runner_with_empty_history_layer_still_sends_system_prompt_and_saves_onl
     assert all(not any(isinstance(part, SystemPromptPart) for part in message.parts) for message in saved_history)
 
 
-def test_runner_failure_with_history_layer_emits_failed_terminal_event_without_success_snapshot(
+def test_runner_failure_with_history_layer_emits_post_exit_snapshot_without_new_history(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     model = RecordingTestModel(failure=RuntimeError("boom"))
@@ -2135,6 +2166,10 @@ def test_runner_failure_with_history_layer_emits_failed_terminal_event_without_s
 
     assert [event.type for event in sink.events["run-history-failure"]] == ["run_started", "run_failed"]
     assert sink.statuses["run-history-failure"] == "failed"
+    terminal = sink.events["run-history-failure"][-1]
+    assert isinstance(terminal, RunFailedEvent)
+    assert terminal.data.session_snapshot is not None
+    assert _history_messages_from_snapshot(terminal.data.session_snapshot) == stored_history
     assert request.session_snapshot is not None
     assert _history_messages_from_snapshot(request.session_snapshot) == stored_history
 
@@ -2911,6 +2946,10 @@ def test_runner_rejects_closed_session_snapshot_as_validation_error() -> None:
 
     assert [event.type for event in sink.events["run-closed-snapshot"]] == ["run_started", "run_failed"]
     assert sink.statuses["run-closed-snapshot"] == "failed"
+    terminal = sink.events["run-closed-snapshot"][-1]
+    assert isinstance(terminal, RunFailedEvent)
+    assert request.session_snapshot is not None
+    assert terminal.data.session_snapshot is None
 
 
 def test_runner_treats_missing_runtime_dependency_as_validation_error() -> None:

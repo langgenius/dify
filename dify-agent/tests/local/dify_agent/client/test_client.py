@@ -34,6 +34,7 @@ from dify_agent.protocol import (
     DestroyExecutionBindingRequest,
     RUN_EVENT_ADAPTER,
     RunCancelledEvent,
+    RunCancelledEventData,
     RunEvent,
     RunEventsResponse,
     RunFailedEvent,
@@ -240,6 +241,109 @@ def test_async_methods_and_wait_run_parse_protocol_dtos() -> None:
         assert created.run_id == "run-1"
         assert events.events == []
         assert terminal.status == "succeeded"
+        await http_client.aclose()
+
+    asyncio.run(scenario())
+
+
+def test_cancel_run_and_wait_sync_resumes_after_cursor_and_returns_cancelled_snapshot() -> None:
+    snapshot = CompositorSessionSnapshot(layers=[])
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            return httpx.Response(202, json={"run_id": "run-1", "status": "cancelled"})
+        if request.url.path == "/runs/run-1":
+            return httpx.Response(
+                200,
+                json={
+                    "run_id": "run-1",
+                    "status": "running",
+                    "created_at": "2026-08-17T00:00:00Z",
+                    "updated_at": "2026-08-17T00:00:00Z",
+                },
+            )
+        assert request.url.params["after"] == "3-0"
+        event = RunCancelledEvent(
+            id="4-0",
+            run_id="run-1",
+            data=RunCancelledEventData(reason="stopped", session_snapshot=snapshot),
+        )
+        return httpx.Response(200, content=_event_frame(event))
+
+    client = Client(
+        base_url="http://testserver",
+        sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    event = client.cancel_run_and_wait_sync(
+        "run-1",
+        CancelRunRequest(reason="stopped"),
+        after="3-0",
+    )
+
+    assert event.data.session_snapshot == snapshot
+
+
+def test_cancel_run_and_wait_sync_replays_when_cursor_already_points_to_cancelled_event() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            return httpx.Response(202, json={"run_id": "run-1", "status": "cancelled"})
+        if request.url.path == "/runs/run-1":
+            return httpx.Response(
+                200,
+                json={
+                    "run_id": "run-1",
+                    "status": "cancelled",
+                    "created_at": "2026-08-17T00:00:00Z",
+                    "updated_at": "2026-08-17T00:00:01Z",
+                },
+            )
+        assert request.url.params["after"] == "0-0"
+        return httpx.Response(200, content=_event_frame(RunCancelledEvent(id="4-0", run_id="run-1")))
+
+    client = Client(
+        base_url="http://testserver",
+        sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    event = client.cancel_run_and_wait_sync("run-1", after="4-0")
+
+    assert event.id == "4-0"
+
+
+def test_cancel_run_and_wait_async_returns_cancelled_terminal() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            return httpx.Response(202, json={"run_id": "run-1", "status": "cancelled"})
+        if request.url.path == "/runs/run-1":
+            return httpx.Response(200, json=_run_status_json("running"))
+        assert request.url.params["after"] == "1-0"
+        return httpx.Response(200, content=_event_frame(RunCancelledEvent(id="2-0", run_id="run-1")))
+
+    async def scenario() -> None:
+        http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        client = Client(base_url="http://testserver", async_http_client=http_client)
+        event = await client.cancel_run_and_wait("run-1", after="1-0")
+        assert event.type == "run_cancelled"
+        await http_client.aclose()
+
+    asyncio.run(scenario())
+
+
+def test_cancel_run_and_wait_async_replays_when_cursor_already_points_to_cancelled_event() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            return httpx.Response(202, json={"run_id": "run-1", "status": "cancelled"})
+        if request.url.path == "/runs/run-1":
+            return httpx.Response(200, json=_run_status_json("cancelled"))
+        assert request.url.params["after"] == "0-0"
+        return httpx.Response(200, content=_event_frame(RunCancelledEvent(id="4-0", run_id="run-1")))
+
+    async def scenario() -> None:
+        http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        client = Client(base_url="http://testserver", async_http_client=http_client)
+        event = await client.cancel_run_and_wait("run-1", after="4-0")
+        assert event.id == "4-0"
         await http_client.aclose()
 
     asyncio.run(scenario())

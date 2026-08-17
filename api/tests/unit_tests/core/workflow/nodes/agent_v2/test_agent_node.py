@@ -12,7 +12,11 @@ from dify_agent.protocol import (
     CancelRunRequest,
     CancelRunResponse,
     PydanticAIStreamRunEvent,
+    RunCancelledEvent,
+    RunCancelledEventData,
     RunEvent,
+    RunFailedEvent,
+    RunFailedEventData,
     RunStartedEvent,
     RunSucceededEvent,
     RunSucceededEventData,
@@ -21,6 +25,7 @@ from pydantic_ai.messages import PartDeltaEvent, TextPartDelta
 
 from clients.agent_backend import (
     AgentBackendInternalEventType,
+    AgentBackendRunCancelledInternalEvent,
     AgentBackendRunEventAdapter,
     AgentBackendStreamError,
     AgentBackendStreamInternalEvent,
@@ -197,6 +202,25 @@ class FakeSessionStore:
         self.saved.append((scope, binding_id, snapshot, pending_form_id, pending_tool_call_id))
 
 
+class ExplodingSessionStore(FakeSessionStore):
+    def __init__(self, snapshot: CompositorSessionSnapshot | None = None) -> None:
+        super().__init__(snapshot=snapshot)
+        self.save_attempts: list[CompositorSessionSnapshot | None] = []
+
+    def save_active_snapshot(
+        self,
+        *,
+        scope: WorkflowAgentSessionScope,
+        binding_id: str,
+        snapshot: CompositorSessionSnapshot | None,
+        pending_form_id: str | None = None,
+        pending_tool_call_id: str | None = None,
+    ) -> None:
+        del scope, binding_id, pending_form_id, pending_tool_call_id
+        self.save_attempts.append(snapshot)
+        raise RuntimeError("simulated DB failure")
+
+
 class FileOutputBackendClient(FakeAgentBackendRunClient):
     output_payload: dict[str, object]
 
@@ -251,6 +275,7 @@ class FailingStreamBackendClient(FakeAgentBackendRunClient):
     def __init__(self) -> None:
         super().__init__()
         self.cancel_requests: list[CancelRunRequest | None] = []
+        self.cancel_after: list[str | None] = []
 
     def stream_events(
         self,
@@ -266,6 +291,50 @@ class FailingStreamBackendClient(FakeAgentBackendRunClient):
     def cancel_run(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
         self.cancel_requests.append(request)
         return CancelRunResponse(run_id=run_id, status="cancelled")
+
+    def cancel_run_and_wait(
+        self,
+        run_id: str,
+        request: CancelRunRequest | None = None,
+        *,
+        after: str | None = None,
+    ) -> RunCancelledEvent:
+        self.cancel_after.append(after)
+        return super().cancel_run_and_wait(run_id, request=request, after=after)
+
+
+class FailingAfterStartedStreamBackendClient(FailingStreamBackendClient):
+    def stream_events(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
+        del after, should_stop
+        yield RunStartedEvent(id="cursor-1", run_id=run_id)
+        raise AgentBackendStreamError("stream failed after started")
+
+
+class TerminalWithoutSnapshotBackendClient(FakeAgentBackendRunClient):
+    def __init__(self, *, terminal_type: str) -> None:
+        super().__init__()
+        self.terminal_type = terminal_type
+
+    def _events(self, run_id: str):
+        if self.terminal_type == "failed":
+            terminal: RunEvent = RunFailedEvent(
+                id="2-0",
+                run_id=run_id,
+                data=RunFailedEventData(error="failed without snapshot"),
+            )
+        else:
+            terminal = RunCancelledEvent(
+                id="2-0",
+                run_id=run_id,
+                data=RunCancelledEventData(reason="cancelled without snapshot"),
+            )
+        return (RunStartedEvent(id="1-0", run_id=run_id), terminal)
 
 
 class EmptyStreamBackendClient(FailingStreamBackendClient):
@@ -593,13 +662,15 @@ def test_agent_node_run_normalizes_declared_array_file_output_with_canonical_map
 
 
 def test_agent_node_run_maps_failed_agent_backend_run_to_node_result():
-    events = list(_node(scenario=FakeAgentBackendScenario.FAILED)._run())
+    store = FakeSessionStore()
+    events = list(_node(scenario=FakeAgentBackendScenario.FAILED, session_store=store)._run())
 
     assert len(events) == 1
     result = cast(StreamCompletedEvent, events[0]).node_run_result
     assert result.status == WorkflowNodeExecutionStatus.FAILED
     assert result.error == "fake failure"
     assert result.error_type == "unit_test"
+    assert store.saved[0][2] == CompositorSessionSnapshot(layers=[])
 
 
 def test_agent_node_saves_success_snapshot_and_reuses_existing_snapshot():
@@ -628,12 +699,7 @@ def test_agent_node_run_when_session_store_save_raises_records_persist_error_in_
     ``session_snapshot_persist_error`` in the agent_backend metadata so the
     incident is observable from the workflow_node_executions record."""
 
-    class _ExplodingSessionStore(FakeSessionStore):
-        def save_active_snapshot(self, **kwargs):  # type: ignore[override]
-            del kwargs
-            raise RuntimeError("simulated DB failure")
-
-    store = _ExplodingSessionStore()
+    store = ExplodingSessionStore()
     events = list(_node(session_store=store)._run())
 
     assert len(events) == 1
@@ -642,6 +708,46 @@ def test_agent_node_run_when_session_store_save_raises_records_persist_error_in_
     agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
     assert agent_backend["session_snapshot_persisted"] is False
     assert agent_backend["session_snapshot_persist_error"] == "workflow_agent_workspace_store_error"
+
+
+@pytest.mark.parametrize("failure_kind", ["backend", "transport"])
+def test_agent_node_snapshot_save_failure_preserves_original_failure(failure_kind: str) -> None:
+    store = ExplodingSessionStore()
+    client = (
+        FakeAgentBackendRunClient(scenario=FakeAgentBackendScenario.FAILED)
+        if failure_kind == "backend"
+        else FailingStreamBackendClient()
+    )
+
+    events = list(_node(agent_backend_client=client, session_store=store)._run())
+
+    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    if failure_kind == "backend":
+        assert (result.error, result.error_type) == ("fake failure", "unit_test")
+    else:
+        assert result.error == "stream reconnect attempts exhausted"
+        assert result.error_type == "agent_backend_stream_error"
+    agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
+    assert agent_backend["session_snapshot_persisted"] is False
+    assert agent_backend["session_snapshot_persist_error"] == "workflow_agent_workspace_store_error"
+    assert store.save_attempts == [CompositorSessionSnapshot(layers=[])]
+
+
+@pytest.mark.parametrize("terminal_type", ["failed", "cancelled"])
+def test_agent_node_terminal_without_snapshot_preserves_prior_session_without_write(terminal_type: str) -> None:
+    store = FakeSessionStore()
+
+    events = list(
+        _node(
+            agent_backend_client=TerminalWithoutSnapshotBackendClient(terminal_type=terminal_type),
+            session_store=store,
+        )._run()
+    )
+
+    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    assert store.saved == []
 
 
 def test_agent_node_paused_run_requests_workflow_pause_and_persists_snapshot():
@@ -811,12 +917,29 @@ def test_agent_node_cancels_backend_run_when_stream_fails():
         metadata={"agent_backend": {}},
     )
 
-    assert terminal is None
+    assert isinstance(terminal, AgentBackendRunCancelledInternalEvent)
     assert failure is not None
     assert failure.node_run_result.process_data == {"workflow_agent_binding_id": "binding-1"}
     assert len(client.cancel_requests) == 1
     assert client.cancel_requests[0] is not None
     assert client.cancel_requests[0].reason == "event_stream_failed"
+
+
+def test_agent_node_forwards_last_stream_cursor_when_cancelling_after_failure() -> None:
+    client = FailingAfterStartedStreamBackendClient()
+    node = _node(agent_backend_client=client)
+
+    terminal, failure = node._consume_event_stream(
+        "run-1",
+        inputs={},
+        process_data={"workflow_agent_binding_id": "binding-1"},
+        metadata={"agent_backend": {}},
+    )
+
+    assert isinstance(terminal, AgentBackendRunCancelledInternalEvent)
+    assert failure is not None
+    assert failure.node_run_result.error == "stream failed after started"
+    assert client.cancel_after == ["cursor-1"]
 
 
 def test_agent_node_cancels_backend_run_when_stream_ends_without_terminal_event():
@@ -830,7 +953,7 @@ def test_agent_node_cancels_backend_run_when_stream_ends_without_terminal_event(
         metadata={"agent_backend": {}},
     )
 
-    assert terminal is None
+    assert isinstance(terminal, AgentBackendRunCancelledInternalEvent)
     assert failure is None
     assert client.cancel_requests[0] is not None
     assert client.cancel_requests[0].reason == "stream_ended_without_terminal_event"
@@ -847,7 +970,7 @@ def test_agent_node_cancels_backend_run_when_stream_raises_unexpected_error():
         metadata={"agent_backend": {}},
     )
 
-    assert terminal is None
+    assert isinstance(terminal, AgentBackendRunCancelledInternalEvent)
     assert failure is not None
     assert failure.node_run_result.error == "unexpected stream failure"
     assert failure.node_run_result.process_data == {"workflow_agent_binding_id": "binding-1"}
@@ -869,16 +992,18 @@ def test_agent_node_uses_graph_abort_reason_when_cancel_request_fails(caplog):
 
     assert terminal is None
     assert failure is not None
+    assert failure.node_run_result.error == "stream reconnect attempts exhausted"
+    assert failure.node_run_result.error_type == "agent_backend_stream_error"
     assert client.cancel_requests[0] is not None
     assert client.cancel_requests[0].reason == "workflow_graph_aborted"
-    assert "Failed to cancel Workflow Agent backend run" in caplog.text
+    assert "Failed to finish cancelling Workflow Agent backend run" in caplog.text
 
 
 def test_agent_node_cancels_backend_run_for_unexpected_internal_event():
     client = FakeAgentBackendRunClient()
     node = _node(agent_backend_client=client)
-    node._agent_backend_client.cancel_run = MagicMock(  # type: ignore[method-assign]
-        return_value=CancelRunResponse(run_id="run-1", status="cancelled")
+    node._agent_backend_client.cancel_run_and_wait = MagicMock(  # type: ignore[method-assign]
+        return_value=RunCancelledEvent(run_id="run-1")
     )
     node._event_adapter.adapt = MagicMock(  # type: ignore[method-assign]
         return_value=[SimpleNamespace(type=AgentBackendInternalEventType.RUN_FAILED)]
@@ -897,7 +1022,7 @@ def test_agent_node_cancels_backend_run_for_unexpected_internal_event():
         "Unexpected internal event type <AgentBackendInternalEventType.RUN_FAILED: 'run_failed'>"
     )
     assert failure.node_run_result.process_data == {"workflow_agent_binding_id": "binding-1"}
-    node._agent_backend_client.cancel_run.assert_called_once()
+    node._agent_backend_client.cancel_run_and_wait.assert_called_once()
 
 
 def test_agent_node_records_stream_usage_metadata():
