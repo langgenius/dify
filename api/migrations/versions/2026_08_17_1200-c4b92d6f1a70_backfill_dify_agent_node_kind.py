@@ -24,6 +24,9 @@ _BATCH_SIZE = 200
 
 
 def upgrade() -> None:
+    if op.get_context().as_sql:
+        return
+
     connection = op.get_bind()
     workflows = sa.table(
         "workflows",

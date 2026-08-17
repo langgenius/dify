@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import json
 from collections.abc import Callable
+from io import StringIO
 from pathlib import Path
 from typing import Protocol, cast
 
@@ -108,3 +109,20 @@ def test_upgrade_only_marks_bound_dify_agent_nodes() -> None:
     assert node_data(_BOUND_WORKFLOW_ID)["agent_node_kind"] == "dify_agent"
     assert node_data(_MARKED_WORKFLOW_ID)["agent_node_kind"] == "dify_agent"
     assert "agent_node_kind" not in node_data(_VERSION_ONE_WORKFLOW_ID)
+
+
+def test_upgrade_is_safe_during_offline_sql_generation() -> None:
+    output = StringIO()
+    context = MigrationContext.configure(
+        dialect_name="postgresql",
+        opts={"as_sql": True, "output_buffer": output},
+    )
+    module = _load_migration_module()
+    original_op = module.op
+    module.op = Operations(context)
+    try:
+        module.upgrade()
+    finally:
+        module.op = original_op
+
+    assert output.getvalue() == ""

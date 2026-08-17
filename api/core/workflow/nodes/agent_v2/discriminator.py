@@ -16,9 +16,10 @@ def is_dify_agent_node_data(node_data: Mapping[str, Any] | BaseNodeData) -> bool
         node_version = node_data.get("version")
         agent_node_kind = node_data.get("agent_node_kind")
     else:
-        node_type = node_data.type
-        node_version = node_data.version
-        agent_node_kind = getattr(node_data, "agent_node_kind", None)
+        serialized_node_data = node_data.model_dump(mode="python")
+        node_type = serialized_node_data.get("type")
+        node_version = serialized_node_data.get("version")
+        agent_node_kind = serialized_node_data.get("agent_node_kind")
 
     return (
         node_type == BuiltinNodeTypes.AGENT
