@@ -10,6 +10,10 @@ type MarketplaceLiveSearchProps = {
   className?: string
   language?: string
   placeholder: string
+  preserveParams?: {
+    tags?: string[]
+    languages?: string[]
+  }
   query: string
 }
 
@@ -18,6 +22,7 @@ export default function MarketplaceLiveSearch({
   className,
   language,
   placeholder,
+  preserveParams,
   query,
 }: MarketplaceLiveSearchProps) {
   const router = useRouter()
@@ -29,11 +34,14 @@ export default function MarketplaceLiveSearch({
       const searchParams = new URLSearchParams()
       if (nextQuery) searchParams.set('q', nextQuery)
       if (language) searchParams.set('language', language)
+      if (preserveParams?.tags?.length) searchParams.set('tags', preserveParams.tags.join(','))
+      if (preserveParams?.languages?.length)
+        searchParams.set('languages', preserveParams.languages.join(','))
       const queryString = searchParams.toString()
 
       router.replace(`${action}${queryString ? `?${queryString}` : ''}`, { scroll: false })
     },
-    [action, language, router],
+    [action, language, preserveParams, router],
   )
 
   useEffect(() => {

@@ -382,6 +382,7 @@ const templateSearchContract = base
         sort_by: string
         sort_order: string
         categories?: string[]
+        languages?: string[]
       }
     }>(),
   )

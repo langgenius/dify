@@ -10,11 +10,13 @@ export default function TemplateCategoryNavigation({
   activeCategory,
   ariaLabel,
   labels,
+  languages,
   query,
 }: {
   activeCategory: TemplateCategory
   ariaLabel: string
   labels: TemplateCategoryLabels
+  languages: string[]
   query: string
 }) {
   return (
@@ -25,6 +27,7 @@ export default function TemplateCategoryNavigation({
       {TEMPLATE_CATEGORIES.map((category) => {
         const searchParams = new URLSearchParams()
         if (query) searchParams.set('q', query)
+        if (languages.length) searchParams.set('languages', languages.join(','))
         const queryString = searchParams.toString()
         const href = `/templates/${category}${queryString ? `?${queryString}` : ''}`
 
