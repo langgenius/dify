@@ -20,8 +20,10 @@ const MarketplacePage = async ({ searchParams }: MarketplacePageProps) => {
       id={MARKETPLACE_CONTAINER_ID}
       className="flex h-full min-h-0 flex-col overflow-y-auto bg-background-default"
     >
-      <MarketplaceInstallPermissionProvider>
-        <HydrateQueryClient searchParams={searchParams}>
+      {/* Client providers must not wrap this async server boundary; Flight then
+          double-resolves the streamed children (`reason.enqueueModel`). */}
+      <HydrateQueryClient searchParams={searchParams}>
+        <MarketplaceInstallPermissionProvider>
           <EmbeddedMarketplace
             initialBanners={initialBanners}
             initialLocale={initialLocale}
@@ -33,8 +35,8 @@ const MarketplacePage = async ({ searchParams }: MarketplacePageProps) => {
               </div>
             }
           />
-        </HydrateQueryClient>
-      </MarketplaceInstallPermissionProvider>
+        </MarketplaceInstallPermissionProvider>
+      </HydrateQueryClient>
     </div>
   )
 }
