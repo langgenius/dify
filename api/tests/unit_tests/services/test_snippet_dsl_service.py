@@ -533,12 +533,18 @@ def test_create_or_update_snippet_updates_existing_snippet_and_syncs_workflow(mo
     monkeypatch.setattr("services.snippet_dsl_service.SnippetService", lambda *_args, **_kwargs: snippet_service)
     monkeypatch.setattr(
         "services.snippet_dsl_service.WorkflowAgentPublishService.sync_agent_bindings_for_draft",
-        Mock(return_value=set()),
+        Mock(return_value={"retired-agent"}),
     )
     monkeypatch.setattr(
         "services.snippet_dsl_service.WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync",
         Mock(),
     )
+    monkeypatch.setattr(
+        "services.snippet_dsl_service.WorkflowAgentRetirementService.retire_unowned",
+        Mock(return_value=(["binding-1"], ["home-1"], ["retired-agent"])),
+    )
+    enqueue_collection = Mock()
+    monkeypatch.setattr("services.snippet_dsl_service.enqueue_agent_resource_collection", enqueue_collection)
 
     result = service._create_or_update_snippet(
         snippet=snippet,
@@ -561,6 +567,12 @@ def test_create_or_update_snippet_updates_existing_snippet_and_syncs_workflow(mo
     assert snippet.icon_info == {"icon": "x"}
     snippet_service.sync_draft_workflow.assert_called_once()
     session.commit.assert_called_once()
+    enqueue_collection.assert_called_once_with(
+        tenant_id="tenant-1",
+        binding_ids=["binding-1"],
+        home_snapshot_ids=["home-1"],
+        purge_agent_ids=["retired-agent"],
+    )
 
 
 def test_create_or_update_snippet_creates_new_snippet_and_flushes(monkeypatch: pytest.MonkeyPatch):

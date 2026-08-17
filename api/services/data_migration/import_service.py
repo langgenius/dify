@@ -723,7 +723,7 @@ class MigrationImportService:
             app_in_session.workflow_id = workflow.id
             app_in_session.updated_by = account.id
             app_in_session.updated_at = naive_utc_now()
-        binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+        binding_ids, home_snapshot_ids, purge_agent_ids = WorkflowAgentRetirementService.retire_unowned(
             tenant_id=target.tenant_id,
             agent_ids=retirement_candidates,
             account_id=account.id,
@@ -732,6 +732,7 @@ class MigrationImportService:
             tenant_id=target.tenant_id,
             binding_ids=binding_ids,
             home_snapshot_ids=home_snapshot_ids,
+            purge_agent_ids=purge_agent_ids,
         )
 
     def _import_mcp_tools(

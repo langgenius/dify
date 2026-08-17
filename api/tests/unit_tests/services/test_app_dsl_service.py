@@ -301,6 +301,61 @@ def test_create_or_update_app_flushes_new_model_config_before_signal(
     assert sqlite_session.in_transaction()
 
 
+def test_create_or_update_app_forwards_imported_agent_purge_ids(monkeypatch: pytest.MonkeyPatch) -> None:
+    session = SimpleNamespace(add=Mock(), flush=Mock(), commit=Mock(), get=Mock())
+    service = AppDslService(session=session)
+    app = SimpleNamespace(
+        id="app-1",
+        tenant_id="tenant-1",
+        name="Workflow",
+        description="",
+        icon_type=IconType.EMOJI,
+        icon="robot",
+        icon_background="#FFFFFF",
+    )
+    workflow = SimpleNamespace(id="workflow-1")
+    workflow_service = SimpleNamespace(
+        get_draft_workflow=Mock(return_value=None),
+        sync_draft_workflow=Mock(return_value=workflow),
+    )
+    monkeypatch.setattr("services.app_dsl_service.WorkflowService", Mock(return_value=workflow_service))
+    monkeypatch.setattr(
+        "services.app_dsl_service.AgentDslService.graph_without_package_bindings",
+        Mock(return_value={"nodes": [], "edges": []}),
+    )
+    monkeypatch.setattr(
+        "services.app_dsl_service.AgentDslService.import_workflow_packages",
+        Mock(return_value=(workflow, [], {"retired-agent"})),
+    )
+    monkeypatch.setattr(
+        "services.app_dsl_service.WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync",
+        Mock(),
+    )
+    monkeypatch.setattr(
+        "services.app_dsl_service.WorkflowAgentRetirementService.retire_unowned",
+        Mock(return_value=(["binding-1"], ["home-1"], ["retired-agent"])),
+    )
+    enqueue_collection = Mock()
+    monkeypatch.setattr("services.app_dsl_service.enqueue_agent_resource_collection", enqueue_collection)
+
+    service._create_or_update_app(
+        app=cast(App, app),
+        data={
+            "app": {"mode": AppMode.WORKFLOW.value},
+            "workflow": {"graph": {"nodes": [], "edges": []}},
+            "agent_packages": {"package-1": {}},
+        },
+        account=Mock(id="account-1"),
+    )
+
+    enqueue_collection.assert_called_once_with(
+        tenant_id="tenant-1",
+        binding_ids=["binding-1"],
+        home_snapshot_ids=["home-1"],
+        purge_agent_ids=["retired-agent"],
+    )
+
+
 def test_export_dsl_loads_model_config_and_annotation_reply_with_request_session(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],

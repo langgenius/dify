@@ -583,7 +583,7 @@ class AppDslService:
                         draft_workflow=draft_workflow,
                     )
                     self._session.commit()
-                    binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+                    binding_ids, home_snapshot_ids, purge_agent_ids = WorkflowAgentRetirementService.retire_unowned(
                         tenant_id=app.tenant_id,
                         agent_ids=retirement_candidates,
                         account_id=account.id,
@@ -592,6 +592,7 @@ class AppDslService:
                         tenant_id=app.tenant_id,
                         binding_ids=binding_ids,
                         home_snapshot_ids=home_snapshot_ids,
+                        purge_agent_ids=purge_agent_ids,
                     )
             case AppMode.CHAT | AppMode.AGENT_CHAT | AppMode.COMPLETION:
                 # Initialize model config

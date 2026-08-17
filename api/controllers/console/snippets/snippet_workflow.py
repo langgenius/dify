@@ -310,7 +310,7 @@ class SnippetPublishedWorkflowApi(Resource):
             except ValueError as e:
                 return {"message": str(e)}, 400
 
-        binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+        binding_ids, home_snapshot_ids, purge_agent_ids = WorkflowAgentRetirementService.retire_unowned(
             tenant_id=tenant_id,
             agent_ids=retirement_candidates,
             account_id=current_user.id,
@@ -319,6 +319,7 @@ class SnippetPublishedWorkflowApi(Resource):
             tenant_id=tenant_id,
             binding_ids=binding_ids,
             home_snapshot_ids=home_snapshot_ids,
+            purge_agent_ids=purge_agent_ids,
         )
         return {
             "result": "success",

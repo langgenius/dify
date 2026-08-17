@@ -5,11 +5,12 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from models.agent import Agent, WorkflowAgentBindingType, WorkflowAgentNodeBinding
+from models.agent import Agent, AgentScope, WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.enums import AppStatus
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
 from services.agent.dsl_service import AgentDslService
+from services.agent.roster_service import AgentRosterService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService, _InlineAgentOwnershipError
 
 
@@ -56,6 +57,7 @@ def test_inline_binding_from_another_node_is_cloned(monkeypatch: pytest.MonkeyPa
         },
         existing_binding=None,
         account_id="account-1",
+        locked_roster_agents={},
     )
 
     clone.assert_called_once()
@@ -66,7 +68,40 @@ def test_inline_binding_from_another_node_is_cloned(monkeypatch: pytest.MonkeyPa
     assert binding.node_job_config.workflow_prompt == "Summarize the input"
 
 
-def test_restore_replaces_bindings_and_returns_only_replaced_inline_agent() -> None:
+def test_draft_sync_locks_roster_agents_in_sorted_order(monkeypatch: pytest.MonkeyPatch) -> None:
+    draft_workflow = _workflow()
+    draft_workflow.graph = (
+        '{"nodes":['
+        '{"id":"node-b","data":{"type":"agent","version":"2","agent_node_kind":"dify_agent",'
+        '"agent_binding":{"binding_type":"roster_agent","agent_id":"agent-b"}}},'
+        '{"id":"node-a","data":{"type":"agent","version":"2","agent_node_kind":"dify_agent",'
+        '"agent_binding":{"binding_type":"roster_agent","agent_id":"agent-a"}}}'
+        '],"edges":[]}'
+    )
+    session = Mock()
+    session.scalars.return_value = SimpleNamespace(all=lambda: [])
+    agents = {
+        agent_id: SimpleNamespace(
+            id=agent_id,
+            scope=AgentScope.ROSTER,
+            active_config_snapshot_id=f"{agent_id}-snapshot",
+        )
+        for agent_id in ("agent-a", "agent-b")
+    }
+    lock_agent = Mock(side_effect=lambda **kwargs: agents[kwargs["agent_id"]])
+    monkeypatch.setattr(AgentRosterService, "lock_workflow_bindable_roster_agent", lock_agent)
+
+    WorkflowAgentPublishService.sync_agent_bindings_for_draft(
+        session=session,
+        draft_workflow=draft_workflow,
+        account_id="account-1",
+    )
+
+    assert [call.kwargs["agent_id"] for call in lock_agent.call_args_list] == ["agent-a", "agent-b"]
+    assert {call.args[0].agent_id for call in session.add.call_args_list} == {"agent-a", "agent-b"}
+
+
+def test_restore_replaces_bindings_and_returns_only_replaced_inline_agent(monkeypatch: pytest.MonkeyPatch) -> None:
     existing_inline = WorkflowAgentNodeBinding(
         tenant_id="tenant-1",
         app_id="app-1",
@@ -108,6 +143,15 @@ def test_restore_replaces_bindings_and_returns_only_replaced_inline_agent() -> N
         SimpleNamespace(all=lambda: [existing_inline, existing_roster]),
         SimpleNamespace(all=lambda: [source]),
     ]
+    events: list[str] = []
+    session.delete.side_effect = lambda _binding: events.append("delete")
+
+    def lock_roster_agent(**_kwargs: object) -> SimpleNamespace:
+        events.append("lock")
+        return SimpleNamespace(id="roster-agent")
+
+    lock_agent = Mock(side_effect=lock_roster_agent)
+    monkeypatch.setattr(AgentRosterService, "lock_workflow_bindable_roster_agent", lock_agent)
     retirement_candidates = WorkflowAgentPublishService.restore_agent_node_bindings_to_draft(
         session=session,
         source_workflow=_workflow(workflow_id="published-workflow", version="2026-07-13 00:00:00"),
@@ -126,8 +170,85 @@ def test_restore_replaces_bindings_and_returns_only_replaced_inline_agent() -> N
     assert restored.agent_id == "roster-agent"
     assert restored.current_snapshot_id == "published-snapshot"
     assert restored.node_job_config.workflow_prompt == "Use the roster agent"
-    session.flush.assert_called_once()
+    assert events.index("lock") < events.index("delete")
     assert retirement_candidates == {"old-inline-agent"}
+    lock_agent.assert_called_once_with(session=session, tenant_id="tenant-1", agent_id="roster-agent")
+
+
+def test_restore_locks_roster_agents_in_sorted_order(monkeypatch: pytest.MonkeyPatch) -> None:
+    source_bindings = [
+        WorkflowAgentNodeBinding(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            workflow_id="published-workflow",
+            workflow_version="published",
+            node_id=f"node-{suffix}",
+            binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+            agent_id=f"agent-{suffix}",
+            current_snapshot_id=f"snapshot-{suffix}",
+            node_job_config={},
+            created_by="account-1",
+        )
+        for suffix in ("b", "a")
+    ]
+    session = Mock()
+    session.scalars.side_effect = [
+        SimpleNamespace(all=lambda: []),
+        SimpleNamespace(all=lambda: source_bindings),
+    ]
+    lock_agent = Mock(side_effect=lambda **kwargs: SimpleNamespace(id=kwargs["agent_id"]))
+    monkeypatch.setattr(AgentRosterService, "lock_workflow_bindable_roster_agent", lock_agent)
+
+    WorkflowAgentPublishService.restore_agent_node_bindings_to_draft(
+        session=session,
+        source_workflow=_workflow(workflow_id="published-workflow", version="published"),
+        draft_workflow=_workflow(workflow_id="draft-workflow"),
+        account_id="account-2",
+    )
+
+    assert [call.kwargs["agent_id"] for call in lock_agent.call_args_list] == ["agent-a", "agent-b"]
+    assert {call.args[0].agent_id for call in session.add.call_args_list} == {"agent-a", "agent-b"}
+
+
+def test_publish_copy_locks_roster_agent_before_creating_binding(monkeypatch: pytest.MonkeyPatch) -> None:
+    draft_workflow = _workflow()
+    draft_workflow.graph = (
+        '{"nodes":[{"id":"agent-node","data":{"type":"agent","version":"2",'
+        '"agent_node_kind":"dify_agent"}}],"edges":[]}'
+    )
+    published_workflow = _workflow(workflow_id="published", version="published")
+    binding = WorkflowAgentNodeBinding(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        workflow_version=Workflow.VERSION_DRAFT,
+        node_id="agent-node",
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+        agent_id="roster-agent",
+        current_snapshot_id="old-snapshot",
+        node_job_config={},
+        created_by="account-1",
+    )
+    session = Mock()
+    session.scalar.return_value = None
+    session.scalars.side_effect = [
+        SimpleNamespace(all=lambda: [binding]),
+        SimpleNamespace(all=lambda: []),
+    ]
+    locked_agent = SimpleNamespace(id="roster-agent", active_config_snapshot_id="active-snapshot")
+    lock_agent = Mock(return_value=locked_agent)
+    monkeypatch.setattr(AgentRosterService, "lock_workflow_bindable_roster_agent", lock_agent)
+
+    WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
+        session=session,
+        draft_workflow=draft_workflow,
+        published_workflow=published_workflow,
+    )
+
+    lock_agent.assert_called_once_with(session=session, tenant_id="tenant-1", agent_id="roster-agent")
+    copied = session.add.call_args.args[0]
+    assert copied.agent_id == "roster-agent"
+    assert copied.current_snapshot_id == "active-snapshot"
 
 
 @pytest.mark.parametrize(
@@ -257,6 +378,7 @@ def test_inline_binding_reuses_existing_node_owned_agent(monkeypatch: pytest.Mon
         },
         existing_binding=existing_binding,
         account_id="account-1",
+        locked_roster_agents={},
     )
 
     assert existing_binding.agent_id == "existing-agent"
@@ -304,16 +426,26 @@ def test_resolve_existing_inline_binding_agent_returns_valid_agent_or_none(monke
 
 
 def test_resolve_roster_binding_rejects_unpublished_agent() -> None:
+    with pytest.raises(ValueError, match="unavailable or unpublished roster agent"):
+        WorkflowAgentPublishService._resolve_roster_agent_graph_binding(
+            node_id="agent-node",
+            agent_id="agent-1",
+            locked_roster_agents={},
+        )
+
+
+def test_lock_workflow_bindable_roster_agent_uses_row_lock() -> None:
     session = Mock()
     session.scalar.return_value = None
 
-    with pytest.raises(ValueError, match="unavailable or unpublished roster agent"):
-        WorkflowAgentPublishService._resolve_roster_agent_graph_binding(
-            session=session,
-            draft_workflow=_workflow(),
-            node_id="agent-node",
-            agent_id="agent-1",
-        )
+    AgentRosterService.lock_workflow_bindable_roster_agent(
+        session=session,
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+    )
+
+    statement = session.scalar.call_args.args[0]
+    assert statement._for_update_arg is not None
 
 
 def test_clone_inline_graph_binding_for_node_clones_source(monkeypatch: pytest.MonkeyPatch) -> None:

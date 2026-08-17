@@ -419,7 +419,18 @@ class TestWorkflowService:
         graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
         features = {"file_upload": {"enabled": False}}
 
-        with patch("services.workflow_service.app_draft_workflow_was_synced"):
+        with (
+            patch("services.workflow_service.app_draft_workflow_was_synced"),
+            patch(
+                "services.agent.workflow_publish_service.WorkflowAgentPublishService.sync_agent_bindings_for_draft",
+                return_value={"retired-agent"},
+            ),
+            patch(
+                "services.workflow_service.WorkflowAgentRetirementService.retire_unowned",
+                return_value=(["binding-1"], ["home-1"], ["retired-agent"]),
+            ),
+            patch("services.workflow_service.enqueue_agent_resource_collection") as enqueue_collection,
+        ):
             result = workflow_service.sync_draft_workflow(
                 app_model=app,
                 graph=graph,
@@ -435,6 +446,12 @@ class TestWorkflowService:
         assert persisted_workflow is result
         assert result.graph_dict == graph
         assert result.features_dict == features
+        enqueue_collection.assert_called_once_with(
+            tenant_id=app.tenant_id,
+            binding_ids=["binding-1"],
+            home_snapshot_ids=["home-1"],
+            purge_agent_ids=["retired-agent"],
+        )
 
     def test_sync_draft_workflow_updates_existing_draft(
         self, workflow_service: WorkflowService, sqlite_session: Session
@@ -759,7 +776,18 @@ class TestWorkflowService:
         sqlite_session.add_all([source_workflow, draft_workflow])
         sqlite_session.commit()
 
-        with patch("services.workflow_service.app_draft_workflow_was_synced"):
+        with (
+            patch("services.workflow_service.app_draft_workflow_was_synced"),
+            patch(
+                "services.agent.workflow_publish_service.WorkflowAgentPublishService.restore_agent_node_bindings_to_draft",
+                return_value={"retired-agent"},
+            ),
+            patch(
+                "services.workflow_service.WorkflowAgentRetirementService.retire_unowned",
+                return_value=(["binding-1"], ["home-1"], ["retired-agent"]),
+            ),
+            patch("services.workflow_service.enqueue_agent_resource_collection") as enqueue_collection,
+        ):
             result = workflow_service.restore_published_workflow_to_draft(
                 app_model=app,
                 workflow_id=source_workflow.id,
@@ -772,6 +800,12 @@ class TestWorkflowService:
         assert draft_workflow.serialized_features == json.dumps(legacy_features)
         sqlite_session.refresh(draft_workflow)
         assert draft_workflow.serialized_features == json.dumps(legacy_features)
+        enqueue_collection.assert_called_once_with(
+            tenant_id=app.tenant_id,
+            binding_ids=["binding-1"],
+            home_snapshot_ids=["home-1"],
+            purge_agent_ids=["retired-agent"],
+        )
 
     # ==================== Workflow Validation Tests ====================
     # These tests verify graph structure and feature configuration validation

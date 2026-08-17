@@ -37,12 +37,17 @@ class WorkflowAgentRetirementService:
         tenant_id: str,
         agent_ids: Iterable[str],
         account_id: str | None,
-    ) -> tuple[list[str], list[str]]:
-        """Re-check ownership, archive orphans, and commit their resource retirement."""
+    ) -> tuple[list[str], list[str], list[str]]:
+        """Re-check ownership, archive orphans, and commit resource retirement.
+
+        Returns ``(binding_ids, home_snapshot_ids, purge_agent_ids)`` for the
+        resources and complete Agent aggregates made eligible by the committed
+        retirement transaction.
+        """
 
         candidates = tuple(sorted({agent_id for agent_id in agent_ids if agent_id}))
         if not candidates:
-            return [], []
+            return [], [], []
         retired_bindings: list[str] = []
         retired_snapshots: list[str] = []
         try:
@@ -58,17 +63,16 @@ class WorkflowAgentRetirementService:
                         select(AgentWorkspaceBinding).where(
                             AgentWorkspaceBinding.tenant_id == tenant_id,
                             AgentWorkspaceBinding.agent_id == agent_id,
-                            AgentWorkspaceBinding.status == AgentWorkingResourceStatus.ACTIVE,
                         )
                     ).all()
                     for binding in bindings:
-                        binding_id = AgentWorkspaceService.retire_binding(
-                            session=session,
-                            tenant_id=tenant_id,
-                            binding_id=binding.id,
-                        )
-                        if binding_id is not None:
-                            retired_bindings.append(binding_id)
+                        if binding.status == AgentWorkingResourceStatus.ACTIVE:
+                            AgentWorkspaceService.retire_binding(
+                                session=session,
+                                tenant_id=tenant_id,
+                                binding_id=binding.id,
+                            )
+                        retired_bindings.append(binding.id)
                     retired_snapshots.extend(
                         AgentHomeSnapshotService.retire_all_for_agent(
                             session=session,
@@ -85,8 +89,8 @@ class WorkflowAgentRetirementService:
                     "agent_ids": candidates,
                 },
             )
-            return [], []
-        return retired_bindings, retired_snapshots
+            raise
+        return retired_bindings, retired_snapshots, retired_agent_ids
 
     @classmethod
     def archive_unowned(
@@ -97,7 +101,7 @@ class WorkflowAgentRetirementService:
         agent_ids: Iterable[str],
         account_id: str | None,
     ) -> list[str]:
-        """Archive active orphans and return every orphan eligible for Home cleanup."""
+        """Archive active orphans and return complete aggregate purge candidates."""
         candidates = tuple(sorted({agent_id for agent_id in agent_ids if agent_id}))
         if not candidates:
             return []
@@ -109,7 +113,7 @@ class WorkflowAgentRetirementService:
                 Agent.status.in_((AgentStatus.ACTIVE, AgentStatus.ARCHIVED)),
             )
         ).all()
-        effective_agent_ids = cls._effective_agent_ids(
+        effective_agent_ids = cls.effective_agent_ids(
             session=session,
             tenant_id=tenant_id,
             agent_ids=[agent.id for agent in agents],
@@ -130,7 +134,7 @@ class WorkflowAgentRetirementService:
         return cleanup_candidates
 
     @staticmethod
-    def _effective_agent_ids(
+    def effective_agent_ids(
         *,
         session: Session,
         tenant_id: str,

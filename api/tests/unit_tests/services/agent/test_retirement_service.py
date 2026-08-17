@@ -31,7 +31,9 @@ from services.agent.workspace_service import AgentWorkspaceService
 def test_retire_unowned_commits_resource_retirement(monkeypatch: pytest.MonkeyPatch) -> None:
     context = MagicMock()
     session = context.__enter__.return_value
-    session.scalars.return_value.all.return_value = [SimpleNamespace(id="binding-1")]
+    session.scalars.return_value.all.return_value = [
+        SimpleNamespace(id="binding-1", status=AgentWorkingResourceStatus.ACTIVE)
+    ]
     monkeypatch.setattr(
         "services.agent.retirement_service.session_factory.create_session",
         lambda: context,
@@ -58,8 +60,31 @@ def test_retire_unowned_commits_resource_retirement(monkeypatch: pytest.MonkeyPa
         account_id="account-1",
     )
 
-    assert result == (["binding-1"], ["home-1"])
+    assert result == (["binding-1"], ["home-1"], ["agent-1"])
     session.commit.assert_called_once_with()
+
+
+def test_retire_unowned_failure_propagates(monkeypatch: pytest.MonkeyPatch) -> None:
+    context = MagicMock()
+    error = RuntimeError("retirement failed")
+    monkeypatch.setattr(
+        "services.agent.retirement_service.session_factory.create_session",
+        lambda: context,
+    )
+    monkeypatch.setattr(
+        WorkflowAgentRetirementService,
+        "archive_unowned",
+        MagicMock(side_effect=error),
+    )
+
+    with pytest.raises(RuntimeError) as exc_info:
+        WorkflowAgentRetirementService.retire_unowned(
+            tenant_id="tenant-1",
+            agent_ids=["agent-1"],
+            account_id="account-1",
+        )
+
+    assert exc_info.value is error
 
 
 def _workflow_only_agent() -> Agent:
@@ -131,7 +156,7 @@ def test_retire_unowned_keeps_effectively_owned_agent_active(
         account_id="account-1",
     )
 
-    assert result == ([], [])
+    assert result == ([], [], [])
     stored_agent = sqlite_session.get(Agent, agent.id)
     assert stored_agent is not None
     assert stored_agent.status is AgentStatus.ACTIVE
@@ -190,7 +215,7 @@ def test_retire_unowned_archives_orphan_and_retires_resources(
         account_id="account-1",
     )
 
-    assert result == ([binding.id], [home.id])
+    assert result == ([binding.id], [home.id], [agent.id])
     stored_agent = sqlite_session.get(Agent, agent.id)
     stored_binding = sqlite_session.get(AgentWorkspaceBinding, binding.id)
     stored_workspace = sqlite_session.get(AgentWorkspace, workspace.id)

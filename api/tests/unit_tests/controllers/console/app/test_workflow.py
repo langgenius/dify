@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import inspect
 import json
+from contextlib import nullcontext
 from datetime import datetime
 from types import SimpleNamespace
 from typing import cast
@@ -77,6 +78,50 @@ def _make_workflow(**overrides):
     for key, value in overrides.items():
         setattr(workflow, key, value)
     return workflow
+
+
+def test_publish_workflow_forwards_retired_agent_purge_ids(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    current_user = SimpleNamespace(id="account-1")
+    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    workflow = SimpleNamespace(id="published-workflow", created_at=datetime(2026, 8, 17, 12, 0, 0))
+    session = Mock()
+    session.get.return_value = app_model
+    monkeypatch.setattr(
+        workflow_module,
+        "WorkflowService",
+        Mock(return_value=SimpleNamespace(publish_workflow=Mock(return_value=(workflow, {"retired-agent"})))),
+    )
+    monkeypatch.setattr(
+        workflow_module,
+        "sessionmaker",
+        lambda _engine: SimpleNamespace(begin=lambda: nullcontext(session)),
+    )
+    monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
+    monkeypatch.setattr(
+        workflow_module.WorkflowAgentRetirementService,
+        "retire_unowned",
+        Mock(return_value=(["binding-1"], ["home-1"], ["retired-agent"])),
+    )
+    enqueue_collection = Mock()
+    monkeypatch.setattr(workflow_module, "enqueue_agent_resource_collection", enqueue_collection)
+
+    with app.test_request_context("/apps/app-1/workflows/publish", method="POST", json={}):
+        response = inspect.unwrap(workflow_module.PublishedWorkflowApi.post)(
+            workflow_module.PublishedWorkflowApi(),
+            current_user,
+            app_model,
+        )
+
+    assert response["result"] == "success"
+    enqueue_collection.assert_called_once_with(
+        tenant_id="tenant-1",
+        binding_ids=["binding-1"],
+        home_snapshot_ids=["home-1"],
+        purge_agent_ids=["retired-agent"],
+    )
 
 
 def test_parse_file_no_config(monkeypatch: pytest.MonkeyPatch) -> None:

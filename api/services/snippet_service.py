@@ -9,6 +9,7 @@ from sqlalchemy import delete, event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from core.db.session_factory import session_factory
 from core.workflow.node_factory import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from enums import DeploymentEdition
 from graphon.enums import BuiltinNodeTypes, NodeType
@@ -377,34 +378,52 @@ class SnippetService:
                 Agent.status == AgentStatus.ACTIVE,
             )
         ).all()
-        now = datetime.now(UTC).replace(tzinfo=None)
-        backing_app_ids = {agent.backing_app_id for agent in owned_agents if agent.backing_app_id}
-        for agent in owned_agents:
-            agent.status = AgentStatus.ARCHIVED
-            agent.archived_by = account_id
-            agent.archived_at = now
-            agent.updated_by = account_id or agent.updated_by
-            agent.updated_at = now
-
-        if backing_app_ids:
-            session.execute(
-                delete(App)
-                .where(
-                    App.tenant_id == snippet.tenant_id,
-                    App.id.in_(backing_app_ids),
-                    App.mode == AppMode.AGENT,
-                )
-                .execution_options(synchronize_session=False)
-            )
+        if owned_agents:
             tenant_id = snippet.tenant_id
+            candidate_agent_ids = [agent.id for agent in owned_agents]
 
-            def cleanup_backing_apps(_session: Session) -> None:
-                from tasks.remove_app_and_related_data_task import remove_app_and_related_data_task
+            def collect_agent_resources(_session: Session) -> None:
+                binding_ids, home_snapshot_ids, purge_agent_ids = WorkflowAgentRetirementService.retire_unowned(
+                    tenant_id=tenant_id,
+                    agent_ids=candidate_agent_ids,
+                    account_id=account_id,
+                )
+                if not purge_agent_ids:
+                    return
+                with session_factory.create_session() as cleanup_session:
+                    backing_app_ids = {
+                        app_id
+                        for app_id in cleanup_session.scalars(
+                            select(Agent.backing_app_id).where(
+                                Agent.tenant_id == tenant_id,
+                                Agent.id.in_(purge_agent_ids),
+                                Agent.backing_app_id.is_not(None),
+                            )
+                        ).all()
+                        if app_id
+                    }
+                    if backing_app_ids:
+                        cleanup_session.execute(
+                            delete(App).where(
+                                App.tenant_id == tenant_id,
+                                App.id.in_(backing_app_ids),
+                                App.mode == AppMode.AGENT,
+                            )
+                        )
+                        cleanup_session.commit()
+                enqueue_agent_resource_collection(
+                    tenant_id=tenant_id,
+                    binding_ids=binding_ids,
+                    home_snapshot_ids=home_snapshot_ids,
+                    purge_agent_ids=purge_agent_ids,
+                )
+                if backing_app_ids:
+                    from tasks.remove_app_and_related_data_task import remove_app_and_related_data_task
 
-                for app_id in backing_app_ids:
-                    remove_app_and_related_data_task.delay(tenant_id=tenant_id, app_id=app_id)
+                    for app_id in backing_app_ids:
+                        remove_app_and_related_data_task.delay(tenant_id=tenant_id, app_id=app_id)
 
-            event.listen(session, "after_commit", cleanup_backing_apps, once=True)
+            event.listen(session, "after_commit", collect_agent_resources, once=True)
 
         session.execute(
             delete(WorkflowAgentNodeBinding)
@@ -620,7 +639,7 @@ class SnippetService:
                 )
             self._commit_if_owned(session)
         if self._session is None:
-            binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+            binding_ids, home_snapshot_ids, purge_agent_ids = WorkflowAgentRetirementService.retire_unowned(
                 tenant_id=snippet.tenant_id,
                 agent_ids=retirement_candidates,
                 account_id=account.id,
@@ -629,6 +648,7 @@ class SnippetService:
                 tenant_id=snippet.tenant_id,
                 binding_ids=binding_ids,
                 home_snapshot_ids=home_snapshot_ids,
+                purge_agent_ids=purge_agent_ids,
             )
         return workflow
 
@@ -679,7 +699,7 @@ class SnippetService:
             )
             self._commit_if_owned(session)
         if self._session is None:
-            binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+            binding_ids, home_snapshot_ids, purge_agent_ids = WorkflowAgentRetirementService.retire_unowned(
                 tenant_id=snippet.tenant_id,
                 agent_ids=retirement_candidates,
                 account_id=account.id,
@@ -688,6 +708,7 @@ class SnippetService:
                 tenant_id=snippet.tenant_id,
                 binding_ids=binding_ids,
                 home_snapshot_ids=home_snapshot_ids,
+                purge_agent_ids=purge_agent_ids,
             )
         return draft_workflow
 

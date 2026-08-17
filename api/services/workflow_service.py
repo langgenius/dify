@@ -491,7 +491,7 @@ class WorkflowService:
         # commit db session changes
         if commit:
             session.commit()
-            binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+            binding_ids, home_snapshot_ids, purge_agent_ids = WorkflowAgentRetirementService.retire_unowned(
                 tenant_id=app_model.tenant_id,
                 agent_ids=retirement_candidates,
                 account_id=account.id,
@@ -500,6 +500,7 @@ class WorkflowService:
                 tenant_id=app_model.tenant_id,
                 binding_ids=binding_ids,
                 home_snapshot_ids=home_snapshot_ids,
+                purge_agent_ids=purge_agent_ids,
             )
 
         # trigger app workflow events
@@ -656,7 +657,7 @@ class WorkflowService:
         )
 
         session.commit()
-        binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+        binding_ids, home_snapshot_ids, purge_agent_ids = WorkflowAgentRetirementService.retire_unowned(
             tenant_id=app_model.tenant_id,
             agent_ids=retirement_candidates,
             account_id=account.id,
@@ -665,6 +666,7 @@ class WorkflowService:
             tenant_id=app_model.tenant_id,
             binding_ids=binding_ids,
             home_snapshot_ids=home_snapshot_ids,
+            purge_agent_ids=purge_agent_ids,
         )
         app_draft_workflow_was_synced.send(app_model, synced_draft_workflow=draft_workflow)
 

@@ -13,9 +13,16 @@ from enums import DeploymentEdition
 from extensions.storage.storage_type import StorageType
 from graphon.variables.segments import StringSegment
 from graphon.variables.types import SegmentType
-from models.agent import Agent, AgentScope, AgentSource, AgentStatus
-from models.enums import CreatorUserRole
-from models.model import UploadFile
+from models.agent import (
+    Agent,
+    AgentScope,
+    AgentSource,
+    AgentStatus,
+    WorkflowAgentBindingType,
+    WorkflowAgentNodeBinding,
+)
+from models.enums import AppStatus, CreatorUserRole
+from models.model import App, AppMode, UploadFile
 from models.snippet import CustomizedSnippet, SnippetType
 from models.workflow import (
     Workflow,
@@ -207,6 +214,16 @@ def test_sync_draft_workflow_creates_draft_and_updates_input_fields(
 ) -> None:
     service = SnippetService(session_maker=sqlite_session_factory)
     monkeypatch.setattr(service, "get_draft_workflow", Mock(return_value=None))
+    monkeypatch.setattr(
+        "services.agent.workflow_publish_service.WorkflowAgentPublishService.sync_agent_bindings_for_draft",
+        Mock(return_value={"retired-agent"}),
+    )
+    monkeypatch.setattr(
+        "services.snippet_service.WorkflowAgentRetirementService.retire_unowned",
+        Mock(return_value=(["binding-1"], ["home-1"], ["retired-agent"])),
+    )
+    enqueue_collection = Mock()
+    monkeypatch.setattr("services.snippet_service.enqueue_agent_resource_collection", enqueue_collection)
     snippet = _snippet()
     account = SimpleNamespace(id="account-1")
 
@@ -227,6 +244,12 @@ def test_sync_draft_workflow_creates_draft_and_updates_input_fields(
     assert stored_workflow is not None
     assert stored_snippet is not None
     assert stored_snippet.input_fields_list == [{"variable": "query"}]
+    enqueue_collection.assert_called_once_with(
+        tenant_id=snippet.tenant_id,
+        binding_ids=["binding-1"],
+        home_snapshot_ids=["home-1"],
+        purge_agent_ids=["retired-agent"],
+    )
 
 
 def test_sync_draft_workflow_raises_when_hash_mismatches(
@@ -394,6 +417,16 @@ def test_restore_published_snippet_workflow_to_draft_copies_source_snapshot(
 
     monkeypatch.setattr(service, "get_published_workflow_by_id", Mock(return_value=source_workflow))
     monkeypatch.setattr(service, "get_draft_workflow", Mock(return_value=draft_workflow))
+    monkeypatch.setattr(
+        "services.agent.workflow_publish_service.WorkflowAgentPublishService.restore_agent_node_bindings_to_draft",
+        Mock(return_value={"retired-agent"}),
+    )
+    monkeypatch.setattr(
+        "services.snippet_service.WorkflowAgentRetirementService.retire_unowned",
+        Mock(return_value=(["binding-1"], ["home-1"], ["retired-agent"])),
+    )
+    enqueue_collection = Mock()
+    monkeypatch.setattr("services.snippet_service.enqueue_agent_resource_collection", enqueue_collection)
 
     result = service.restore_published_workflow_to_draft(
         snippet=snippet,
@@ -409,6 +442,12 @@ def test_restore_published_snippet_workflow_to_draft_copies_source_snapshot(
     stored = sqlite_session.get(Workflow, draft_workflow.id)
     assert stored is not None
     assert stored.graph_dict == source_graph
+    enqueue_collection.assert_called_once_with(
+        tenant_id=snippet.tenant_id,
+        binding_ids=["binding-1"],
+        home_snapshot_ids=["home-1"],
+        purge_agent_ids=["retired-agent"],
+    )
 
 
 def test_restore_published_snippet_workflow_to_draft_raises_when_source_missing(
@@ -629,7 +668,9 @@ def test_delete_snippet_archives_owned_agents_and_schedules_backing_app_cleanup(
     sqlite_session.add_all([snippet, agent])
     sqlite_session.flush()
     cleanup_delay = Mock()
+    enqueue_collection = Mock()
     monkeypatch.setattr("tasks.remove_app_and_related_data_task.remove_app_and_related_data_task.delay", cleanup_delay)
+    monkeypatch.setattr("services.snippet_service.enqueue_agent_resource_collection", enqueue_collection)
 
     result = SnippetService.delete_snippet(
         session=sqlite_session,
@@ -638,13 +679,89 @@ def test_delete_snippet_archives_owned_agents_and_schedules_backing_app_cleanup(
     )
 
     assert result is True
-    assert agent.status == "archived"
-    assert agent.archived_by == "account-1"
-    assert agent.archived_at is not None
-    assert agent.updated_by == "account-1"
+    assert agent.status == AgentStatus.ACTIVE
     sqlite_session.commit()
-    assert sqlite_session.get(Agent, agent.id).status == AgentStatus.ARCHIVED
+    sqlite_session.expire_all()
+    stored_agent = sqlite_session.get(Agent, agent.id)
+    assert stored_agent is not None
+    assert stored_agent.status == AgentStatus.ARCHIVED
+    assert stored_agent.archived_by == "account-1"
+    assert stored_agent.archived_at is not None
+    assert stored_agent.updated_by == "account-1"
     cleanup_delay.assert_called_once_with(tenant_id=snippet.tenant_id, app_id="backing-app-1")
+    enqueue_collection.assert_called_once_with(
+        tenant_id=snippet.tenant_id,
+        binding_ids=[],
+        home_snapshot_ids=[],
+        purge_agent_ids=[agent.id],
+    )
+
+
+def test_delete_snippet_keeps_agent_with_effective_external_owner(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    snippet = _snippet()
+    agent = Agent(
+        id="agent-1",
+        tenant_id=snippet.tenant_id,
+        name="Shared workflow Agent",
+        description="",
+        role="",
+        scope=AgentScope.WORKFLOW_ONLY,
+        source=AgentSource.WORKFLOW,
+        app_id=snippet.id,
+        backing_app_id="backing-app-1",
+        status=AgentStatus.ACTIVE,
+    )
+    workflow_app = App(
+        id="app-1",
+        tenant_id=snippet.tenant_id,
+        name="Workflow",
+        mode=AppMode.WORKFLOW,
+        status=AppStatus.NORMAL,
+        enable_site=True,
+        enable_api=True,
+    )
+    workflow = Workflow(
+        id="workflow-1",
+        tenant_id=snippet.tenant_id,
+        app_id=workflow_app.id,
+        type=WorkflowType.WORKFLOW,
+        version=Workflow.VERSION_DRAFT,
+        graph="{}",
+        features="{}",
+        created_by="account-1",
+        environment_variables=[],
+        conversation_variables=[],
+        rag_pipeline_variables=[],
+    )
+    external_binding = WorkflowAgentNodeBinding(
+        tenant_id=snippet.tenant_id,
+        app_id=workflow_app.id,
+        workflow_id=workflow.id,
+        workflow_version=workflow.version,
+        node_id="agent-node",
+        binding_type=WorkflowAgentBindingType.INLINE_AGENT,
+        agent_id=agent.id,
+        current_snapshot_id="snapshot-1",
+        node_job_config={},
+    )
+    sqlite_session.add_all([snippet, agent, workflow_app, workflow, external_binding])
+    sqlite_session.flush()
+    enqueue_collection = Mock()
+    cleanup_delay = Mock()
+    monkeypatch.setattr("services.snippet_service.enqueue_agent_resource_collection", enqueue_collection)
+    monkeypatch.setattr("tasks.remove_app_and_related_data_task.remove_app_and_related_data_task.delay", cleanup_delay)
+
+    SnippetService.delete_snippet(session=sqlite_session, snippet=snippet, account_id="account-1")
+    sqlite_session.commit()
+    sqlite_session.expire_all()
+
+    assert sqlite_session.get(Agent, agent.id).status == AgentStatus.ACTIVE  # type: ignore[union-attr]
+    assert sqlite_session.get(WorkflowAgentNodeBinding, external_binding.id) is not None
+    enqueue_collection.assert_not_called()
+    cleanup_delay.assert_not_called()
 
 
 def test_delete_draft_variable_files_removes_storage_objects(

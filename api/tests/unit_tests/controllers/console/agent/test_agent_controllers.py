@@ -3,12 +3,14 @@ from inspect import getsource, unwrap
 from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import MagicMock, Mock, call
+from uuid import UUID
 
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError, NotFound
 
+from controllers.console import bp as console_bp
 from controllers.console import console_ns
 from controllers.console.agent import composer as composer_controller
 from controllers.console.agent import roster as roster_controller
@@ -74,6 +76,7 @@ from services.entities.agent_entities import (
     WorkflowAgentComposerQuery,
     WorkflowComposerCopyFromRosterPayload,
 )
+from services.agent.errors import AgentWorkflowReferenceConflictError
 
 
 def _persist_conversation_message(
@@ -616,6 +619,41 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
     deleted, status = unwrap(AgentAppApi.delete)(AgentAppApi(), session, tenant_id, agent_id)
     assert (deleted, status) == ("", 204)
     assert captured["delete"] is app_model
+
+
+def test_agent_app_delete_reference_conflict_returns_http_409(monkeypatch: pytest.MonkeyPatch) -> None:
+    http_app = Flask(__name__)
+    http_app.config["TESTING"] = True
+    http_app.register_blueprint(console_bp)
+    agent_id = "00000000-0000-0000-0000-000000000001"
+    app_model = _app_detail_obj(id="app-1", tenant_id="tenant-1")
+    monkeypatch.setattr(roster_controller, "_resolve_agent_app_model", lambda *_args, **_kwargs: app_model)
+
+    class FakeAppService:
+        def delete_app(self, _app_model: object, *, session: object) -> None:
+            raise AgentWorkflowReferenceConflictError(2)
+
+    monkeypatch.setattr(roster_controller, "AppService", FakeAppService)
+    delete_agent = unwrap(AgentAppApi.delete)
+
+    def delete_through_registered_resource(self: AgentAppApi, agent_id: UUID) -> tuple[str, int]:
+        return delete_agent(
+            self,
+            MagicMock(),
+            "tenant-1",
+            agent_id,
+        )
+
+    monkeypatch.setattr(AgentAppApi, "delete", delete_through_registered_resource)
+
+    response = http_app.test_client().delete(f"/console/api/agent/{agent_id}")
+
+    assert response.status_code == 409
+    assert response.get_json() == {
+        "code": "agent_workflow_reference_conflict",
+        "message": "Agent is still referenced by 2 active workflow app(s).",
+        "status": 409,
+    }
 
 
 def test_agent_app_copy_uses_agent_id_and_returns_agent_detail(

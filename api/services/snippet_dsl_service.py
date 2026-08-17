@@ -491,7 +491,7 @@ class SnippetDslService:
 
         self._session.commit()
         if workflow_data:
-            binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+            binding_ids, home_snapshot_ids, purge_agent_ids = WorkflowAgentRetirementService.retire_unowned(
                 tenant_id=snippet.tenant_id,
                 agent_ids=retirement_candidates,
                 account_id=account.id,
@@ -500,6 +500,7 @@ class SnippetDslService:
                 tenant_id=snippet.tenant_id,
                 binding_ids=binding_ids,
                 home_snapshot_ids=home_snapshot_ids,
+                purge_agent_ids=purge_agent_ids,
             )
         return snippet
 

@@ -19,6 +19,15 @@ class AgentArchivedError(Conflict):
     description = "Archived agent cannot be modified."
 
 
+class AgentWorkflowReferenceConflictError(BaseHTTPException):
+    error_code = "agent_workflow_reference_conflict"
+    description = "Agent is still referenced by an active workflow."
+    code = 409
+
+    def __init__(self, reference_count: int):
+        super().__init__(description=f"Agent is still referenced by {reference_count} active workflow app(s).")
+
+
 class AgentVersionConflictError(Conflict):
     description = "Agent config version changed. Please reload and try again."
 

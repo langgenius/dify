@@ -41,6 +41,7 @@ from services.agent.errors import (
     AgentNameConflictError,
     AgentNotFoundError,
     AgentVersionNotFoundError,
+    AgentWorkflowReferenceConflictError,
 )
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService, WorkspaceOwnerScope
@@ -1262,7 +1263,20 @@ class AgentRosterService:
         return self.get_roster_agent_detail(tenant_id=tenant_id, agent_id=agent_id)
 
     def archive_roster_agent(self, *, tenant_id: str, agent_id: str, account_id: str) -> None:
-        agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
+        agent = self._session.scalar(
+            select(Agent)
+            .where(
+                Agent.tenant_id == tenant_id,
+                Agent.id == agent_id,
+                Agent.scope == AgentScope.ROSTER,
+            )
+            .with_for_update()
+        )
+        if agent is None:
+            raise AgentNotFoundError()
+        reference_count = self.count_effective_workflow_references(tenant_id=tenant_id, agent_id=agent_id)
+        if reference_count:
+            raise AgentWorkflowReferenceConflictError(reference_count)
         retired_binding_ids: list[str] = []
         if agent.status != AgentStatus.ARCHIVED:
             agent.status = AgentStatus.ARCHIVED
@@ -1273,17 +1287,16 @@ class AgentRosterService:
             select(AgentWorkspaceBinding).where(
                 AgentWorkspaceBinding.tenant_id == tenant_id,
                 AgentWorkspaceBinding.agent_id == agent_id,
-                AgentWorkspaceBinding.status == AgentWorkingResourceStatus.ACTIVE,
             )
         ).all()
         for binding in bindings:
-            retired_id = AgentWorkspaceService.retire_binding(
-                session=self._session,
-                tenant_id=tenant_id,
-                binding_id=binding.id,
-            )
-            if retired_id is not None:
-                retired_binding_ids.append(retired_id)
+            if binding.status == AgentWorkingResourceStatus.ACTIVE:
+                AgentWorkspaceService.retire_binding(
+                    session=self._session,
+                    tenant_id=tenant_id,
+                    binding_id=binding.id,
+                )
+            retired_binding_ids.append(binding.id)
         retired_snapshot_ids = AgentHomeSnapshotService.retire_all_for_agent(
             session=self._session,
             tenant_id=tenant_id,
@@ -1294,6 +1307,7 @@ class AgentRosterService:
             tenant_id=tenant_id,
             binding_ids=retired_binding_ids,
             home_snapshot_ids=retired_snapshot_ids,
+            purge_agent_ids=[agent_id],
         )
 
     @staticmethod
@@ -1654,6 +1668,34 @@ class AgentRosterService:
             referenced_app_ids_by_agent_id.setdefault(binding.agent_id, set()).add(binding.app_id)
 
         return {agent_id: len(app_ids) for agent_id, app_ids in referenced_app_ids_by_agent_id.items()}
+
+    def count_effective_workflow_references(self, *, tenant_id: str, agent_id: str) -> int:
+        """Count normal Apps whose current draft or published Workflow references an Agent."""
+
+        return self._load_reference_counts_by_agent_id(tenant_id=tenant_id, agent_ids=[agent_id]).get(agent_id, 0)
+
+    @staticmethod
+    def lock_workflow_bindable_roster_agent(*, session: Any, tenant_id: str, agent_id: str) -> Agent | None:
+        """Lock one callable roster Agent under the binding-write protocol.
+
+        Every write that establishes or replaces a binding to an existing roster
+        Agent must first acquire this row lock and retain it until its transaction
+        ends. This serializes binding writes with direct and App-backed Agent
+        deletion. Operations touching multiple Agents must acquire these locks in
+        sorted Agent-ID order to avoid inverse-order deadlocks.
+        """
+
+        return session.scalar(
+            select(Agent)
+            .where(
+                Agent.tenant_id == tenant_id,
+                Agent.id == agent_id,
+                Agent.scope == AgentScope.ROSTER,
+                Agent.status == AgentStatus.ACTIVE,
+                workflow_callable_active_snapshot_filter(),
+            )
+            .with_for_update()
+        )
 
     def _load_versions_by_id(self, version_ids: list[str]) -> dict[str, AgentConfigSnapshot]:
         if not version_ids:

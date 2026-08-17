@@ -197,6 +197,46 @@ def test_published_workflow_post_returns_400_when_publish_fails(
     assert snippet.name == "Snippet"
 
 
+@pytest.mark.parametrize("sqlite_session", [(CustomizedSnippet,)], indirect=True)
+def test_published_workflow_post_forwards_retired_agent_purge_ids(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_engine: Engine,
+    sqlite_session: Session,
+) -> None:
+    user = _account("account-1")
+    snippet = _snippet()
+    sqlite_session.add(snippet)
+    sqlite_session.commit()
+    workflow = SimpleNamespace(created_at=datetime(2026, 8, 17, 12, 0, 0))
+    monkeypatch.setattr(snippet_workflow_module, "db", SimpleNamespace(engine=sqlite_engine))
+    monkeypatch.setattr(
+        snippet_workflow_module,
+        "_snippet_service",
+        lambda: SimpleNamespace(publish_workflow=Mock(return_value=(workflow, {"retired-agent"}))),
+    )
+    monkeypatch.setattr(
+        snippet_workflow_module.WorkflowAgentRetirementService,
+        "retire_unowned",
+        Mock(return_value=(["binding-1"], ["home-1"], ["retired-agent"])),
+    )
+    enqueue_collection = Mock()
+    monkeypatch.setattr(snippet_workflow_module, "enqueue_agent_resource_collection", enqueue_collection)
+
+    api = snippet_workflow_module.SnippetPublishedWorkflowApi()
+    handler = unwrap(api.post)
+    with app.test_request_context("/snippets/snippet-1/workflows/publish", method="POST", json={}):
+        response = handler(api, user, snippet)
+
+    assert response["result"] == "success"
+    enqueue_collection.assert_called_once_with(
+        tenant_id="tenant-1",
+        binding_ids=["binding-1"],
+        home_snapshot_ids=["home-1"],
+        purge_agent_ids=["retired-agent"],
+    )
+
+
 def test_default_block_configs_delegates_to_service(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     get_default_block_configs = Mock(return_value=[{"type": "llm"}])
     monkeypatch.setattr(

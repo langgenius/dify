@@ -8,7 +8,6 @@ from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.agent.publish_visibility import workflow_callable_active_snapshot_filter
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidationError, WorkflowAgentNodeValidator
 from models.agent import (
     Agent,
@@ -31,6 +30,7 @@ from services.agent.prompt_mentions import (
     extract_workflow_node_output_selectors,
     workflow_previous_node_output_refs_from_selectors,
 )
+from services.agent.roster_service import AgentRosterService
 from services.entities.agent_entities import (
     ComposerSavePayload,
     ComposerSaveStrategy,
@@ -222,6 +222,23 @@ class WorkflowAgentPublishService:
         account_id: str,
     ) -> set[str]:
         agent_nodes = dict(WorkflowAgentNodeValidator.iter_agent_v2_nodes(draft_workflow.graph_dict))
+        roster_agent_ids: set[str] = set()
+        for node_data in agent_nodes.values():
+            binding_payload = node_data.get(cls._AGENT_BINDING_KEY)
+            if not isinstance(binding_payload, Mapping):
+                continue
+            agent_id = binding_payload.get("agent_id")
+            if (
+                binding_payload.get("binding_type") == WorkflowAgentBindingType.ROSTER_AGENT.value
+                and isinstance(agent_id, str)
+                and agent_id
+            ):
+                roster_agent_ids.add(agent_id)
+        locked_roster_agents = cls._lock_workflow_bindable_roster_agents(
+            session=session,
+            tenant_id=draft_workflow.tenant_id,
+            agent_ids=roster_agent_ids,
+        )
         existing_bindings = list(
             session.scalars(
                 select(WorkflowAgentNodeBinding).where(
@@ -267,6 +284,7 @@ class WorkflowAgentPublishService:
                 node_binding=binding_payload,
                 existing_binding=existing_binding,
                 account_id=account_id,
+                locked_roster_agents=locked_roster_agents,
             )
             if (
                 replaced_inline_agent_id
@@ -305,6 +323,7 @@ class WorkflowAgentPublishService:
         node_binding: Mapping[str, Any],
         existing_binding: WorkflowAgentNodeBinding | None,
         account_id: str,
+        locked_roster_agents: Mapping[str, Agent],
     ) -> None:
         binding_type = node_binding.get("binding_type")
         agent_id = node_binding.get("agent_id")
@@ -318,10 +337,9 @@ class WorkflowAgentPublishService:
 
         if binding_type == WorkflowAgentBindingType.ROSTER_AGENT.value:
             agent, current_snapshot_id = cls._resolve_roster_agent_graph_binding(
-                session=session,
-                draft_workflow=draft_workflow,
                 node_id=node_id,
                 agent_id=agent_id,
+                locked_roster_agents=locked_roster_agents,
             )
             resolved_binding_type = WorkflowAgentBindingType.ROSTER_AGENT
         elif binding_type == WorkflowAgentBindingType.INLINE_AGENT.value:
@@ -457,24 +475,13 @@ class WorkflowAgentPublishService:
     def _resolve_roster_agent_graph_binding(
         cls,
         *,
-        session: Session,
-        draft_workflow: Workflow,
         node_id: str,
         agent_id: str,
+        locked_roster_agents: Mapping[str, Agent],
     ) -> tuple[Agent, str]:
         """Resolve an active roster Agent whose published snapshot is callable."""
 
-        agent = session.scalar(
-            select(Agent)
-            .where(
-                Agent.tenant_id == draft_workflow.tenant_id,
-                Agent.id == agent_id,
-                Agent.scope == AgentScope.ROSTER,
-                Agent.status == AgentStatus.ACTIVE,
-                workflow_callable_active_snapshot_filter(),
-            )
-            .limit(1)
-        )
+        agent = locked_roster_agents.get(agent_id)
         if agent is None:
             raise ValueError(f"Workflow Agent node {node_id} references an unavailable or unpublished roster agent.")
         if agent.scope != AgentScope.ROSTER:
@@ -482,6 +489,25 @@ class WorkflowAgentPublishService:
         if not agent.active_config_snapshot_id:
             raise ValueError(f"Workflow Agent node {node_id} roster agent has no active config snapshot.")
         return agent, agent.active_config_snapshot_id
+
+    @staticmethod
+    def _lock_workflow_bindable_roster_agents(
+        *,
+        session: Session,
+        tenant_id: str,
+        agent_ids: set[str],
+    ) -> dict[str, Agent]:
+        """Acquire and retain roster binding-write locks in sorted Agent-ID order."""
+        locked_agents: dict[str, Agent] = {}
+        for agent_id in sorted(agent_ids):
+            agent = AgentRosterService.lock_workflow_bindable_roster_agent(
+                session=session,
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+            )
+            if agent is not None:
+                locked_agents[agent_id] = agent
+        return locked_agents
 
     @classmethod
     def _resolve_inline_agent_graph_binding(
@@ -614,6 +640,21 @@ class WorkflowAgentPublishService:
         if not bindings:
             return retirement_candidates
 
+        roster_agent_ids = {
+            binding.agent_id
+            for binding in bindings
+            if binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT and binding.agent_id
+        }
+        locked_roster_agents = cls._lock_workflow_bindable_roster_agents(
+            session=session,
+            tenant_id=draft_workflow.tenant_id,
+            agent_ids=roster_agent_ids,
+        )
+        unavailable_roster_agent_ids = roster_agent_ids - locked_roster_agents.keys()
+        if unavailable_roster_agent_ids:
+            agent_id = min(unavailable_roster_agent_ids)
+            raise ValueError(f"Published Workflow references unavailable roster Agent {agent_id}.")
+
         agents_by_id = {
             agent.id: agent
             for agent in session.scalars(
@@ -623,6 +664,7 @@ class WorkflowAgentPublishService:
                 )
             ).all()
         }
+        agents_by_id.update(locked_roster_agents)
 
         for binding in bindings:
             agent = agents_by_id.get(binding.agent_id) if binding.agent_id else None
@@ -671,9 +713,6 @@ class WorkflowAgentPublishService:
             for binding in existing
             if binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT and binding.agent_id
         }
-        for binding in existing:
-            session.delete(binding)
-
         source_bindings = session.scalars(
             select(WorkflowAgentNodeBinding).where(
                 WorkflowAgentNodeBinding.tenant_id == source_workflow.tenant_id,
@@ -682,6 +721,25 @@ class WorkflowAgentPublishService:
                 WorkflowAgentNodeBinding.workflow_version == source_workflow.version,
             )
         ).all()
+        roster_agent_ids = {
+            source.agent_id
+            for source in source_bindings
+            if source.binding_type == WorkflowAgentBindingType.ROSTER_AGENT and source.agent_id
+        }
+        locked_roster_agents = cls._lock_workflow_bindable_roster_agents(
+            session=session,
+            tenant_id=draft_workflow.tenant_id,
+            agent_ids=roster_agent_ids,
+        )
+        unavailable_roster_agent_ids = roster_agent_ids - locked_roster_agents.keys()
+        if unavailable_roster_agent_ids:
+            agent_id = min(unavailable_roster_agent_ids)
+            raise ValueError(f"Published Workflow references unavailable roster Agent {agent_id}.")
+
+        for binding in existing:
+            session.delete(binding)
+        session.flush()
+
         for source in source_bindings:
             agent_id = source.agent_id
             snapshot_id = source.current_snapshot_id

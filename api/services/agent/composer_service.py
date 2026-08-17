@@ -279,7 +279,7 @@ class AgentComposerService:
         )
         state["validation"] = cls.collect_validation_findings(payload=payload)
         session.commit()
-        binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+        binding_ids, home_snapshot_ids, purge_agent_ids = WorkflowAgentRetirementService.retire_unowned(
             tenant_id=tenant_id,
             agent_ids=retirement_candidates,
             account_id=account_id,
@@ -288,6 +288,7 @@ class AgentComposerService:
             tenant_id=tenant_id,
             binding_ids=binding_ids,
             home_snapshot_ids=home_snapshot_ids,
+            purge_agent_ids=purge_agent_ids,
         )
         return state
 

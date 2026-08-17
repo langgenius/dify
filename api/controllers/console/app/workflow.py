@@ -1320,7 +1320,7 @@ class PublishedWorkflowApi(Resource):
 
             workflow_created_at = TimestampField().format(workflow.created_at)
 
-        binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+        binding_ids, home_snapshot_ids, purge_agent_ids = WorkflowAgentRetirementService.retire_unowned(
             tenant_id=app_model.tenant_id,
             agent_ids=retirement_candidates,
             account_id=current_user.id,
@@ -1329,6 +1329,7 @@ class PublishedWorkflowApi(Resource):
             tenant_id=app_model.tenant_id,
             binding_ids=binding_ids,
             home_snapshot_ids=home_snapshot_ids,
+            purge_agent_ids=purge_agent_ids,
         )
         return {
             "result": "success",

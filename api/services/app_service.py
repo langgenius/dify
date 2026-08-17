@@ -39,7 +39,7 @@ from models.agent import (
 )
 from models.model import App, AppMode, AppModelConfig, IconType, Site, load_annotation_reply_config
 from models.workflow import Workflow
-from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
+from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError, AgentWorkflowReferenceConflictError
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.workspace_service import AgentWorkspaceService
@@ -745,13 +745,15 @@ class AppService:
         if app.mode != AppMode.AGENT:
             return None
         return session.scalar(
-            select(Agent).where(
+            select(Agent)
+            .where(
                 Agent.tenant_id == app.tenant_id,
                 Agent.app_id == app.id,
                 Agent.scope == AgentScope.ROSTER,
                 Agent.source.in_(APP_BACKED_AGENT_SOURCES),
                 Agent.status == AgentStatus.ACTIVE,
             )
+            .with_for_update()
         )
 
     @staticmethod
@@ -992,9 +994,19 @@ class AppService:
         Delete app
         :param app: App instance
         """
+        backing_agent = self._get_backing_agent_for_update(app, session=session)
+        if backing_agent is not None:
+            from services.agent.roster_service import AgentRosterService
+
+            reference_count = AgentRosterService(session).count_effective_workflow_references(
+                tenant_id=app.tenant_id,
+                agent_id=backing_agent.id,
+            )
+            if reference_count:
+                raise AgentWorkflowReferenceConflictError(reference_count)
+
         app_was_deleted.send(app)
 
-        backing_agent = self._get_backing_agent_for_update(app, session=session)
         workflow_agent_ids = session.scalars(
             select(Agent.id).where(
                 Agent.tenant_id == app.tenant_id,
@@ -1019,17 +1031,16 @@ class AppService:
                 select(AgentWorkspaceBinding).where(
                     AgentWorkspaceBinding.tenant_id == app.tenant_id,
                     AgentWorkspaceBinding.agent_id == backing_agent.id,
-                    AgentWorkspaceBinding.status == AgentWorkingResourceStatus.ACTIVE,
                 )
             ).all()
             for binding in bindings:
-                binding_id = AgentWorkspaceService.retire_binding(
-                    session=session,
-                    tenant_id=app.tenant_id,
-                    binding_id=binding.id,
-                )
-                if binding_id is not None:
-                    retired_binding_ids.append(binding_id)
+                if binding.status == AgentWorkingResourceStatus.ACTIVE:
+                    AgentWorkspaceService.retire_binding(
+                        session=session,
+                        tenant_id=app.tenant_id,
+                        binding_id=binding.id,
+                    )
+                retired_binding_ids.append(binding.id)
             retired_snapshot_ids = AgentHomeSnapshotService.retire_all_for_agent(
                 session=session,
                 tenant_id=app.tenant_id,
@@ -1044,16 +1055,22 @@ class AppService:
         session.delete(app)
         session.commit()
 
-        workflow_binding_ids, workflow_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
-            tenant_id=app.tenant_id,
-            agent_ids=workflow_agent_ids,
-            account_id=account_id,
+        workflow_binding_ids, workflow_snapshot_ids, workflow_purge_agent_ids = (
+            WorkflowAgentRetirementService.retire_unowned(
+                tenant_id=app.tenant_id,
+                agent_ids=workflow_agent_ids,
+                account_id=account_id,
+            )
         )
         enqueue_agent_resource_collection(
             tenant_id=app.tenant_id,
             workspace_ids=retired_workspace_ids,
             binding_ids=[*retired_binding_ids, *workflow_binding_ids],
             home_snapshot_ids=[*retired_snapshot_ids, *workflow_snapshot_ids],
+            purge_agent_ids=[
+                *([backing_agent.id] if backing_agent is not None else []),
+                *workflow_purge_agent_ids,
+            ],
         )
 
         # clean up web app settings

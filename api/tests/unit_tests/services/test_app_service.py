@@ -14,9 +14,22 @@ from enums import DeploymentEdition
 from graphon.model_runtime.entities.model_entities import ModelType
 from models import Account, Tenant
 from models.account import TenantAccountJoin, TenantAccountRole
-from models.agent import Agent, AgentIconType, AgentScope, AgentSource, AgentStatus
+from models.agent import (
+    Agent,
+    AgentConfigVersionKind,
+    AgentHomeSnapshot,
+    AgentIconType,
+    AgentScope,
+    AgentSource,
+    AgentStatus,
+    AgentWorkingResourceStatus,
+    AgentWorkspaceBinding,
+    WorkflowAgentBindingType,
+    WorkflowAgentNodeBinding,
+)
 from models.model import App, AppMode, AppModelConfig, IconType
-from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
+from models.workflow import Workflow, WorkflowType
+from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError, AgentWorkflowReferenceConflictError
 from services.app_service import AppListParams, AppService, CreateAppParams
 
 
@@ -493,6 +506,15 @@ class TestAgentAppType:
         )
         assert app.bound_agent_id is None
 
+    def test_backing_agent_delete_lookup_locks_agent_row(self) -> None:
+        app = SimpleNamespace(mode=AppMode.AGENT, tenant_id="tenant-1", id="app-1")
+        session = MagicMock()
+
+        AppService._get_backing_agent_for_update(app, session=session)
+
+        statement = session.scalar.call_args.args[0]
+        assert statement._for_update_arg is not None
+
     def test_update_agent_app_syncs_backing_agent_identity(self, sqlite_session: Session):
         app, backing_agent = _persist_agent_app(sqlite_session)
         account_id = str(uuid4())
@@ -654,7 +676,8 @@ class TestAgentAppType:
             patch(
                 "services.app_service.WorkflowAgentRetirementService.retire_unowned",
                 side_effect=lambda **_kwargs: (
-                    events.append("retire-workflow-agents") or (["workflow-binding-1"], ["workflow-home-1"])
+                    events.append("retire-workflow-agents")
+                    or (["workflow-binding-1"], ["workflow-home-1"], ["workflow-agent-1"])
                 ),
             ) as mock_workflow_retirement,
             patch(
@@ -692,7 +715,73 @@ class TestAgentAppType:
             workspace_ids=["workspace-1"],
             binding_ids=["workflow-binding-1"],
             home_snapshot_ids=["home-1", "workflow-home-1"],
+            purge_agent_ids=[backing_agent.id, "workflow-agent-1"],
         )
+
+    def test_delete_agent_app_rejects_effective_workflow_reference(self, sqlite_session: Session) -> None:
+        agent_app, backing_agent = _persist_agent_app(sqlite_session)
+        workflow_app = _persist_app(sqlite_session, tenant_id=agent_app.tenant_id, name="Workflow")
+        workflow_app.mode = AppMode.WORKFLOW
+        workflow = Workflow.new(
+            tenant_id=agent_app.tenant_id,
+            app_id=workflow_app.id,
+            type=WorkflowType.WORKFLOW.value,
+            version=Workflow.VERSION_DRAFT,
+            graph="{}",
+            features="{}",
+            created_by="account-1",
+            environment_variables=[],
+            conversation_variables=[],
+            rag_pipeline_variables=[],
+        )
+        binding = WorkflowAgentNodeBinding(
+            tenant_id=agent_app.tenant_id,
+            app_id=workflow_app.id,
+            workflow_id=workflow.id,
+            workflow_version=workflow.version,
+            node_id="agent-node",
+            binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+            agent_id=backing_agent.id,
+            current_snapshot_id="snapshot-1",
+            node_job_config={},
+        )
+        workspace_binding = AgentWorkspaceBinding(
+            id="workspace-binding-1",
+            tenant_id=agent_app.tenant_id,
+            app_id=agent_app.id,
+            workspace_id="workspace-1",
+            agent_id=backing_agent.id,
+            agent_config_version_id="snapshot-1",
+            agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+            backend_binding_ref="backend-binding-1",
+            status=AgentWorkingResourceStatus.ACTIVE,
+        )
+        home = AgentHomeSnapshot(
+            id="home-1",
+            tenant_id=agent_app.tenant_id,
+            agent_id=backing_agent.id,
+            snapshot_ref="home-ref-1",
+            status=AgentWorkingResourceStatus.ACTIVE,
+        )
+        sqlite_session.add_all([workflow, binding, workspace_binding, home])
+        sqlite_session.commit()
+
+        with (
+            patch("services.app_service.app_was_deleted.send") as deleted_signal,
+            patch("services.app_service.enqueue_agent_resource_collection") as enqueue_collection,
+            pytest.raises(AgentWorkflowReferenceConflictError, match="1 active workflow app"),
+        ):
+            AppService().delete_app(agent_app, session=sqlite_session)
+
+        assert sqlite_session.get(App, agent_app.id) is not None
+        assert sqlite_session.get(Agent, backing_agent.id).status == AgentStatus.ACTIVE  # type: ignore[union-attr]
+        assert (
+            sqlite_session.get(AgentWorkspaceBinding, workspace_binding.id).status  # type: ignore[union-attr]
+            == AgentWorkingResourceStatus.ACTIVE
+        )
+        assert sqlite_session.get(AgentHomeSnapshot, home.id).status == AgentWorkingResourceStatus.ACTIVE  # type: ignore[union-attr]
+        deleted_signal.assert_not_called()
+        enqueue_collection.assert_not_called()
 
     def test_delete_app_commit_failure_does_not_retire_workflow_agents_or_enqueue(self, sqlite_session: Session):
         app = _persist_app(sqlite_session, tenant_id=str(uuid4()))
