@@ -158,7 +158,7 @@ export function NewKnowledgeList({
                 render={<Link href="/datasets/new/create" />}
                 variant="primary"
                 size="medium"
-                className="w-24 gap-0.5 overflow-hidden border-[0.5px]! border-components-button-primary-border-hover! bg-components-button-primary-bg-hover! p-2! shadow-xs"
+                className="w-24 gap-0.5 overflow-hidden p-2!"
               >
                 <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
                 <span className="pl-1">{createLabel}</span>
