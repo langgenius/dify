@@ -71,10 +71,18 @@ function retrievalModeFromProfile(modelProfile: unknown) {
 const knowledgeSpacePageTitle = (
   pathname: string,
   t: ReturnType<typeof useTranslation<'dataset'>>['t'],
+  tCommon: ReturnType<typeof useTranslation<'common'>>['t'],
 ) => {
-  if (pathname.includes('/sources/new')) return t(($) => $['newKnowledge.addSource'])
-  if (pathname.includes('/sources')) return t(($) => $['newKnowledge.sources'])
-  if (pathname.includes('/documents')) return t(($) => $['newKnowledge.documents'])
+  const [, root, view, , section, detail] = pathname.split('/')
+  if (root !== 'datasets' || view !== 'new') return t(($) => $.knowledge)
+
+  if (!section) return t(($) => $['newKnowledge.overviewTitle'])
+  if (section === 'sources' && detail === 'new') return t(($) => $['newKnowledge.addSource'])
+  if (section === 'sources') return t(($) => $['newKnowledge.sources'])
+  if (section === 'documents') return t(($) => $['newKnowledge.documents'])
+  if (section === 'retrieval') return t(($) => $['newKnowledge.retrievalTest.title'])
+  if (section === 'quality') return t(($) => $['newKnowledge.quality'])
+  if (section === 'settings') return tCommon(($) => $['datasetMenus.settings'])
 
   return t(($) => $.knowledge)
 }
@@ -133,7 +141,7 @@ export function KnowledgeSpaceShell({
     knowledgeSpaceQuery.data?.technical_summary?.name ?? t(($) => $.knowledge)
   const modelProfile = knowledgeSpaceQuery.data?.technical_summary?.model_profile
   const retrievalMode = retrievalModeFromProfile(modelProfile)
-  const pageTitle = knowledgeSpacePageTitle(pathname, t)
+  const pageTitle = knowledgeSpacePageTitle(pathname, t, tCommon)
   const documentTitle = `${pageTitle} · ${knowledgeSpaceName}`
   const documentTitleOwnedByChild =
     isDocumentDetailPath(pathname) &&

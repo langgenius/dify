@@ -7,6 +7,7 @@ from controllers.console.auth.oauth_server import (
     OAuthProviderAppResponse,
     OAuthProviderRequest,
     OAuthServerAppApi,
+    OAuthServerUserAccountApi,
     OAuthServerUserAuthorizeApi,
 )
 from models import Account
@@ -50,6 +51,16 @@ def test_oauth_authorize_uses_injected_current_user() -> None:
 
     sign_oauth_authorization_code.assert_called_once_with("client-1", "account-1")
     assert response == {"code": "authorization-code"}
+
+
+def test_oauth_account_returns_stable_account_id() -> None:
+    api = OAuthServerUserAccountApi()
+    method = unwrap(api.post)
+    account = _make_account()
+
+    response = method(api, _make_oauth_provider_app(), account)
+
+    assert response["id"] == "account-1"
 
 
 def test_oauth_provider_app_response_requires_auto_authorize() -> None:

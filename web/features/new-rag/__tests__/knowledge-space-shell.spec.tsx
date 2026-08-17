@@ -115,9 +115,13 @@ describe('KnowledgeSpaceShell', () => {
   })
 
   it.each([
+    ['/datasets/new/space-1', 'dataset.newKnowledge.overviewTitle'],
     ['/datasets/new/space-1/sources', 'dataset.newKnowledge.sources'],
     ['/datasets/new/space-1/sources/new', 'dataset.newKnowledge.addSource'],
     ['/datasets/new/space-1/documents', 'dataset.newKnowledge.documents'],
+    ['/datasets/new/space-1/retrieval', 'dataset.newKnowledge.retrievalTest.title'],
+    ['/datasets/new/space-1/quality', 'dataset.newKnowledge.quality'],
+    ['/datasets/new/space-1/settings', 'common.datasetMenus.settings'],
   ])('identifies the current detail page for %s', async (pathname, pageTitle) => {
     pathnameMock.value = pathname
     queryMock.data = {
