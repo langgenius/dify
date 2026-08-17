@@ -1504,25 +1504,18 @@ function InventoryPanel({
 function Onboarding({
   canConnectSource,
   canUpload,
-  failedTask,
   indexingTask,
   indexingSourceName,
   knowledgeSpaceId,
-  onRetryTask,
 }: {
   canConnectSource: boolean
   canUpload: boolean
-  failedTask?: KnowledgeFsBackgroundTaskResponse
   indexingTask?: KnowledgeFsBackgroundTaskResponse
   indexingSourceName?: string
   knowledgeSpaceId: string
-  onRetryTask: () => Promise<unknown>
 }) {
   const { t } = useTranslation('dataset')
   const [pendingAction, setPendingAction] = useState<'source' | 'upload'>()
-  const retryTaskMutation = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.retry.post.mutationOptions(),
-  )
   const actionCount = Number(canConnectSource) + Number(canUpload)
   const description = canConnectSource
     ? canUpload
@@ -1531,27 +1524,6 @@ function Onboarding({
     : canUpload
       ? t(($) => $['newKnowledge.uploadFilesDescription'])
       : t(($) => $['newKnowledge.overview.readOnlyDescription'])
-  const failedTaskDescription =
-    failedTask?.operation === 'document_upload' || failedTask?.operation === 'document_processing'
-      ? t(($) => $['newKnowledge.documentUploadFailed'])
-      : t(($) => $['newKnowledge.addSourceFailed'])
-  const retryFailedTask = async () => {
-    if (!failedTask?.can_retry || retryTaskMutation.isPending) return
-
-    try {
-      await retryTaskMutation.mutateAsync({
-        params: {
-          control_space_id: knowledgeSpaceId,
-          task_id: failedTask.id,
-          task_kind: failedTask.task_kind,
-        },
-      })
-      await onRetryTask()
-    } catch {
-      // Mutation state keeps the retry feedback visible.
-    }
-  }
-
   if (indexingTask) {
     const progressKnown = indexingTask.progress_total > 0
     return (
@@ -1595,7 +1567,7 @@ function Onboarding({
     <section
       className={cn(
         'h-auto min-w-0 rounded-xl bg-background-section p-4',
-        actionCount > 0 && !failedTask && 'md:h-54.75',
+        actionCount > 0 && 'md:h-54.75',
       )}
     >
       <div aria-hidden className="flex h-4 items-center gap-1.5 text-text-tertiary">
@@ -1606,34 +1578,11 @@ function Onboarding({
         <span className="i-custom-public-common-confluence size-4" />
         <span className="i-ri-more-fill size-4" />
       </div>
-      <div className={cn('mt-3', failedTask ? 'min-h-10.5' : 'h-10.5')}>
+      <div className="mt-3 h-10.5">
         <h2 className="title-2xl-semi-bold text-text-primary">
           {t(($) => $['newKnowledge.overview.noSources'])}
         </h2>
-        {failedTask ? (
-          <div
-            role="alert"
-            className="mt-1 flex min-h-6 items-center justify-between gap-3 text-text-destructive"
-          >
-            <p className="body-xs-regular">
-              {retryTaskMutation.isError
-                ? t(($) => $['newKnowledge.detailErrorDescription'])
-                : failedTaskDescription}
-            </p>
-            {failedTask.can_retry && (
-              <Button
-                size="small"
-                variant="secondary"
-                loading={retryTaskMutation.isPending}
-                onClick={() => void retryFailedTask()}
-              >
-                {t(($) => $['newKnowledge.retryTask'])}
-              </Button>
-            )}
-          </div>
-        ) : (
-          <p className="mt-1 body-xs-regular text-text-tertiary">{description}</p>
-        )}
+        <p className="mt-1 body-xs-regular text-text-tertiary">{description}</p>
       </div>
       {actionCount > 0 && (
         <div
@@ -1732,6 +1681,65 @@ function Onboarding({
         </div>
       )}
     </section>
+  )
+}
+
+function FirstSourceTaskFailureBanner({
+  failedTask,
+  knowledgeSpaceId,
+  onRetryTask,
+}: {
+  failedTask: KnowledgeFsBackgroundTaskResponse
+  knowledgeSpaceId: string
+  onRetryTask: () => Promise<unknown>
+}) {
+  const { t } = useTranslation('dataset')
+  const retryTaskMutation = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.retry.post.mutationOptions(),
+  )
+  const description =
+    failedTask.operation === 'document_upload' || failedTask.operation === 'document_processing'
+      ? t(($) => $['newKnowledge.documentUploadFailed'])
+      : t(($) => $['newKnowledge.addSourceFailed'])
+  const retryFailedTask = async () => {
+    if (!failedTask.can_retry || retryTaskMutation.isPending) return
+
+    try {
+      await retryTaskMutation.mutateAsync({
+        params: {
+          control_space_id: knowledgeSpaceId,
+          task_id: failedTask.id,
+          task_kind: failedTask.task_kind,
+        },
+      })
+      await onRetryTask()
+    } catch {
+      // Mutation state keeps the retry feedback visible.
+    }
+  }
+
+  return (
+    <div
+      className="mt-4 flex items-center gap-2.5 overflow-hidden rounded-lg bg-state-destructive-hover px-3.5 py-2.5"
+      role="alert"
+    >
+      <span aria-hidden className="i-ri-error-warning-fill size-4 shrink-0 text-text-destructive" />
+      <p className="min-w-0 flex-1 system-sm-regular text-text-secondary">
+        {retryTaskMutation.isError
+          ? t(($) => $['newKnowledge.detailErrorDescription'])
+          : description}
+      </p>
+      {failedTask.can_retry && (
+        <Button
+          size="small"
+          variant="secondary"
+          loading={retryTaskMutation.isPending}
+          onClick={() => void retryFailedTask()}
+        >
+          {t(($) => $['newKnowledge.retryTask'])}
+        </Button>
+      )}
+    </div>
   )
 }
 
@@ -1958,6 +1966,13 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
             </SegmentedControl>
           )}
         </header>
+        {!pageLoading && failedTask && (
+          <FirstSourceTaskFailureBanner
+            failedTask={failedTask}
+            knowledgeSpaceId={knowledgeSpaceId}
+            onRetryTask={tasksQuery.refetch}
+          />
+        )}
         <KnowledgeModelReadinessBanner
           capability="query"
           className="mt-4"
@@ -1989,11 +2004,9 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
             <Onboarding
               canConnectSource={canConnectSource}
               canUpload={canUpload}
-              failedTask={failedTask}
               knowledgeSpaceId={knowledgeSpaceId}
               indexingTask={indexingTask}
               indexingSourceName={indexingSourceQuery.data?.name}
-              onRetryTask={tasksQuery.refetch}
             />
           </div>
         )}
@@ -2002,9 +2015,7 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
             <Onboarding
               canConnectSource={canConnectSource}
               canUpload={canUpload}
-              failedTask={failedTask}
               knowledgeSpaceId={knowledgeSpaceId}
-              onRetryTask={tasksQuery.refetch}
             />
           </div>
         )}

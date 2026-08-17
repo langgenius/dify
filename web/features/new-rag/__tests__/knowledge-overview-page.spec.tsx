@@ -803,7 +803,7 @@ describe('KnowledgeOverviewPage', () => {
     expect(uploadFiles).toHaveAttribute('aria-disabled', 'true')
   })
 
-  it('keeps failed first-source onboarding visible and retries the real task', async () => {
+  it('shows a failed first-source task above onboarding and retries the real task', async () => {
     const user = userEvent.setup()
     queryData.stats.source_count = 0
     queryData.stats.documents = 0
@@ -813,7 +813,23 @@ describe('KnowledgeOverviewPage', () => {
 
     renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
 
-    expect(screen.getByRole('alert')).toHaveTextContent('dataset.newKnowledge.documentUploadFailed')
+    const overviewTitle = screen.getByRole('heading', {
+      name: 'dataset.newKnowledge.overviewTitle',
+    })
+    const alert = screen.getByRole('alert')
+    const onboardingTitle = screen.getByRole('heading', {
+      name: 'dataset.newKnowledge.overview.noSources',
+    })
+    const onboarding = onboardingTitle.closest('section')
+
+    expect(alert).toHaveTextContent('dataset.newKnowledge.documentUploadFailed')
+    expect(overviewTitle.compareDocumentPosition(alert)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(alert.compareDocumentPosition(onboardingTitle)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(onboarding).not.toBeNull()
+    expect(within(onboarding!).queryByRole('alert')).not.toBeInTheDocument()
+    expect(
+      within(onboarding!).getByText('dataset.newKnowledge.overview.noSourcesDescription'),
+    ).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }))
 
     expect(retryTaskMutationState.mutateAsync).toHaveBeenCalledWith({
@@ -824,9 +840,6 @@ describe('KnowledgeOverviewPage', () => {
       },
     })
     expect(tasksQueryState.refetch).toHaveBeenCalledOnce()
-    expect(
-      screen.getByRole('heading', { name: 'dataset.newKnowledge.overview.noSources' }),
-    ).toBeInTheDocument()
   })
 
   it('hides write-only onboarding actions for a read-only user', () => {
