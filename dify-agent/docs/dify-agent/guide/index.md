@@ -42,7 +42,7 @@ also reads `.env` and `dify-agent/.env` when present.
 | `DIFY_AGENT_PLUGIN_DAEMON_API_KEY` | empty | API key sent to the Dify plugin daemon. |
 | `DIFY_AGENT_INNER_API_URL` | `http://localhost:5001` | Dify API service root used when dify-agent calls `/inner/api/...` endpoints. |
 | `DIFY_AGENT_INNER_API_KEY` | empty | API key sent to Dify API inner plugin endpoints. Set this to Dify API `INNER_API_KEY_FOR_PLUGIN` (Docker: `PLUGIN_DIFY_INNER_API_KEY`). |
-| `DIFY_AGENT_RUNTIME_BACKEND` | `local` | Selects one coherent `local`, `enterprise`, or `e2b` Home Snapshot + Execution Binding backend profile. |
+| `DIFY_AGENT_RUNTIME_BACKEND` | `local` | Selects one coherent `local`, `enterprise`, `e2b`, or `openshell` Home Snapshot + Execution Binding backend profile. |
 | `DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT` | empty | Local shellctl data-plane URL. With the default Local selection, leaving it empty disables `dify.runtime` and resource endpoints. |
 | `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN` | empty | Optional bearer token sent to Local shellctl. |
 | `DIFY_AGENT_LOCAL_SANDBOX_MATERIALIZED_HOME_ROOT` | `/home/dify` | Root directory, on the Local shellctl filesystem, for per-Binding materialized Homes. |
@@ -56,6 +56,20 @@ also reads `.env` and `dify-agent/.env` when present.
 | `DIFY_AGENT_E2B_TEMPLATE` | `difys-default-team/dify-agent-local-sandbox` | Prepared E2B template containing shellctl and the deployment-default Home environment. |
 | `DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS` | `3600` | Maximum continuous active time for the RuntimeLease spanning one complete Agent run. Its default intentionally matches `DIFY_AGENT_RUN_TIMEOUT_SECONDS`, but the settings are independently configurable. Binding resources pause on timeout; this setting does not own the run terminal state and is not a retention TTL. |
 | `DIFY_AGENT_E2B_SHELLCTL_PORT` | `5004` | shellctl port exposed by the E2B template. |
+| `DIFY_AGENT_OPENSHELL_GATEWAY_ENDPOINT` | empty | OpenShell gateway gRPC endpoint as `host:port` (no scheme); required for OpenShell. Prefer `localhost` over an IPv6 literal when the gateway listens on loopback. |
+| `DIFY_AGENT_OPENSHELL_WORKSPACE` | `default` | OpenShell workspace that owns the sandboxes. Production multi-tenant deployments must use one workspace and one dedicated shared volume per tenant. |
+| `DIFY_AGENT_OPENSHELL_BEARER_TOKEN` | empty | Static OIDC bearer token sent to the gateway. Combines with the mTLS bundle. The token is not refreshed in-process; restart `agent_backend` or switch to a long-lived token when it expires. |
+| `DIFY_AGENT_OPENSHELL_TLS_CA_PATH` | empty | Custom gateway CA certificate path. Empty uses the system trust store. |
+| `DIFY_AGENT_OPENSHELL_TLS_CLIENT_CERT_PATH` | empty | mTLS client certificate path; set together with the key path. |
+| `DIFY_AGENT_OPENSHELL_TLS_CLIENT_KEY_PATH` | empty | mTLS client key path; set together with the certificate path. |
+| `DIFY_AGENT_OPENSHELL_INSECURE` | `false` | Use a plaintext gRPC channel. Local development only. |
+| `DIFY_AGENT_OPENSHELL_SANDBOX_IMAGE` | `langgenius/dify-agent-local-sandbox:latest` | Sandbox OCI image containing shellctl; must include `iproute2` for the OpenShell supervisor. |
+| `DIFY_AGENT_OPENSHELL_DRIVER_CONFIG` | empty | JSON `SandboxTemplate.driver_config`; required for OpenShell and must be a non-empty object. Must mount the shared Home Snapshot volume at the shared mount path in every sandbox. |
+| `DIFY_AGENT_OPENSHELL_SHARED_MOUNT_PATH` | `/mnt/dify-agent-shared` | In-sandbox mount path of the shared volume; Home Snapshots live under `home-snapshots/<tenant-digest>/`. |
+| `DIFY_AGENT_OPENSHELL_SHELLCTL_AUTH_TOKEN` | empty | Required bearer token the exec-bootstrapped shellctl expects on its data plane. Empty is rejected at startup. |
+| `DIFY_AGENT_OPENSHELL_SHELLCTL_PORT` | `5004` | Sandbox-loopback port shellctl listens on; reached through the gateway `ForwardTcp` tunnel. |
+| `DIFY_AGENT_OPENSHELL_READY_TIMEOUT_SECONDS` | `300` | Maximum wait for a sandbox to reach the READY phase. |
+| `DIFY_AGENT_OPENSHELL_EXEC_TIMEOUT_SECONDS` | `120` | Timeout for gateway exec calls (bootstrap and maintenance scripts). |
 | `DIFY_AGENT_SHELL_REDACT_PATTERNS` | empty | JSON array of additional regex patterns redacted from Shell output. |
 | `DIFY_AGENT_STUB_API_BASE_URL` | empty | HTTP(S) Agent Stub API base URL reachable from the Sandbox. It may be the service root or `/agent-stub`. Enables `DIFY_AGENT_STUB_*` env injection for user `shell.run` jobs. |
 | `DIFY_AGENT_SANDBOX_FILES_BASE_URL` | empty | Dify API base URL reachable from the Sandbox for signed `/files/*` upload/download bytes, including Config file and skill pulls. Required when Agent Stub file operations are enabled. May include an ingress path prefix, but not a query or fragment. |
@@ -222,6 +236,200 @@ provider `RuntimeError` observed first becomes a tool observation. In contrast,
 run-deadline cancellation propagates through the Shell boundary; only the Dify
 Agent run deadline owns the terminal `agent_run_limit_exceeded` failure.
 
+## Deploy with the OpenShell backend
+
+The OpenShell backend runs each Binding in its own sandbox on a self-hosted
+[NVIDIA OpenShell](https://github.com/NVIDIA/OpenShell) gateway. Dify Agent
+only talks to the gateway gRPC API: it creates sandboxes from the configured
+image, bootstraps shellctl through gateway exec, and reaches the shellctl data
+plane through an authenticated `ForwardTcp` tunnel. Released Bindings stop
+their sandbox; the next acquire starts it again.
+
+Backend selection lives in `docker/.env`; create it from the template first if
+this deployment does not have one yet (`cp docker/.env.example docker/.env`).
+
+Deployment prerequisites:
+
+1. An OpenShell gateway reachable from `agent_backend` at
+   `DIFY_AGENT_OPENSHELL_GATEWAY_ENDPOINT`, with credentials via
+   `DIFY_AGENT_OPENSHELL_BEARER_TOKEN` or the mTLS bundle paths. Prefer
+   `localhost:17670` when the gateway listens on loopback. Sandboxes reconnect
+   to the gateway through `host.openshell.internal`; on macOS local development
+   bind the gateway to `127.0.0.1:17670` so that alias can reach it.
+2. Sandboxes must reach `DIFY_AGENT_STUB_API_BASE_URL` and
+   `DIFY_AGENT_SANDBOX_FILES_BASE_URL`. When the gateway runs outside this
+   Compose stack, set both to externally reachable URLs and allow them in the
+   OpenShell egress policy; compose-internal hostnames are not resolvable
+   from OpenShell sandboxes. Example allow-list:
+
+   ```text
+   allow https://agent.example.com/agent-stub
+   allow https://dify.example.com/files
+   deny *
+   ```
+
+3. A sandbox image that bundles shellctl and `iproute2`
+   (`langgenius/dify-agent-local-sandbox` since iproute2 was added).
+4. A required `DIFY_AGENT_OPENSHELL_SHELLCTL_AUTH_TOKEN`. shellctl is
+   bootstrapped with `SHELLCTL_ENABLE_PATH_ISOLATION=false` because the
+   sandbox Landlock policy is authoritative; stacking both would require
+   re-granting every device path twice. The token still authenticates the
+   in-sandbox command plane.
+5. A shared Home Snapshot volume mounted into every sandbox via
+   `DIFY_AGENT_OPENSHELL_DRIVER_CONFIG`. Production multi-tenant deployments
+   must use one OpenShell workspace and one dedicated volume per tenant:
+   Landlock is best-effort and every sandbox runs as the same image UID, so a
+   shared volume is a shared trust boundary. Snapshots are stored under
+   `home-snapshots/<tenant-digest>/`; the sandbox policy grants only that
+   tenant directory.
+
+Initialize the volume once. It is operator-owned and shared with the OpenShell
+gateway, so create it with these commands rather than declaring it in a compose
+file — `docker compose down -v` on a managing stack would delete every Home
+Snapshot. Docker named volume (single-tenant local development; `1777` is not
+a multi-tenant control):
+
+```bash
+docker volume create dify-agent-shared
+docker run --rm -v dify-agent-shared:/mnt busybox \
+  sh -c "mkdir -p /mnt/home-snapshots && chmod 1777 /mnt /mnt/home-snapshots"
+```
+
+Kubernetes: provision one ReadWriteMany PVC per tenant trust zone and mount
+it read-write at `DIFY_AGENT_OPENSHELL_SHARED_MOUNT_PATH` through that
+driver's `driver_config` (shape is driver-specific; the Docker example
+above is the local-dev analogue). Initialize the volume with an
+initContainer or `fsGroup` so the sandbox UID can write
+`home-snapshots/` — do not rely on `chmod 1777` as isolation.
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: dify-agent-shared-tenant-a
+spec:
+  accessModes: ["ReadWriteMany"]
+  resources:
+    requests:
+      storage: 20Gi
+```
+
+Configure the backend in `docker/.env`, the same place the E2B variables live.
+The `DIFY_AGENT_OPENSHELL_*` block in `docker/.env.example` lists every
+variable; values placed only in the `envs/core-services/dify-agent.env`
+env_file are masked by the agent_backend `environment:` block, so `docker/.env`
+is the one place to set them, and variables exported in the invoking shell
+override it during Compose interpolation — unset leftover
+`DIFY_AGENT_OPENSHELL_*` exports before running Compose. These lines are
+`.env` file content, not shell commands — values are taken verbatim, so the
+`driver_config` JSON needs no quoting:
+
+```ini
+# docker/.env
+DIFY_AGENT_RUNTIME_BACKEND=openshell
+DIFY_AGENT_OPENSHELL_GATEWAY_ENDPOINT=gateway.example.com:17670
+DIFY_AGENT_OPENSHELL_BEARER_TOKEN=replace-with-gateway-token
+DIFY_AGENT_OPENSHELL_DRIVER_CONFIG={"docker":{"mounts":[{"type":"volume","source":"dify-agent-shared","target":"/mnt/dify-agent-shared","read_only":false}]}}
+DIFY_AGENT_OPENSHELL_SHELLCTL_AUTH_TOKEN=replace-with-shellctl-token
+```
+
+Then start the stack normally:
+
+```bash
+docker compose -f docker/docker-compose.yaml up -d
+```
+
+The Local backend's `local_sandbox` container and its dedicated SSRF proxy
+stay in the stack unused, exactly as they do in an E2B deployment. The
+`docker-compose.openshell.yaml` overlay is a branch-validation tool, not part
+of a normal deployment — see the next section.
+
+Home Snapshots are directory copies under
+`<shared mount>/home-snapshots/<tenant-digest>/`; snapshot deletion runs a
+short-lived maintenance sandbox granted only that tenant's snapshot root
+(unlinking the snapshot directory itself requires write on its parent).
+
+## Validate the OpenShell Compose deployment
+
+Released images predate the OpenShell backend, so validating a branch needs
+the `docker-compose.openshell.yaml` overlay (the `docker-compose.e2b.yaml`
+counterpart): it builds
+`dify-api:openshell-local` and `dify-agent-backend:openshell-local` from the
+current checkout, keeps the unused Local sandbox services out of the stack,
+and starts from an isolated PostgreSQL data volume. The agent-backend image
+must be built on a glibc ≥ 2.39 base (the `openshell` wheel bundles a Rust
+CLI binary and only ships `manylinux_2_39` wheels); `dify-agent/Dockerfile`
+uses `python:3.12-slim-trixie` for this reason.
+
+Prerequisites on top of the deployment section above:
+
+1. A gateway reachable from containers. For a gateway on the Compose host,
+   set `DIFY_AGENT_OPENSHELL_GATEWAY_ENDPOINT=host.docker.internal:17670`;
+   OpenShell's generated server certificate includes `host.docker.internal`
+   in its SANs, so mTLS hostname verification passes. Docker Desktop provides
+   that alias implicitly; Linux Docker does not, so the overlay maps it
+   explicitly with `extra_hosts`. The gateway must also listen on an address
+   the *sandbox* network can reach: sandboxes resolve
+   `host.openshell.internal` to the gateway of their own bridge network, so a
+   gateway published only on `127.0.0.1` is unreachable from them.
+   OpenShell's out-of-the-box default is exactly that loopback bind, so a
+   host gateway needs `bind_address = "0.0.0.0:17670"` (or another
+   container-reachable address) in its `gateway.toml` before either
+   `agent_backend` or the sandboxes can connect.
+2. The gateway mTLS bundle mounted into `agent_backend`: set
+   `DIFY_AGENT_OPENSHELL_TLS_BUNDLE_DIR` to the host directory holding
+   `ca.crt`/`tls.crt`/`tls.key` and point the `DIFY_AGENT_OPENSHELL_TLS_*`
+   variables at `/etc/openshell-mtls/<file>` (the overlay's mount point).
+   The variable defaults to `docker/volumes/openshell-mtls`, so copying the
+   bundle there needs no variable at all. Skip both when authenticating with
+   a bearer token. On Linux, bind mounts
+   keep host ownership and the `agent_backend` image runs as UID 1001
+   (`dify`), so the bundle directory and its files must be readable by that
+   UID — `openshell gateway add` stores its copy mode `0700`, which the
+   container cannot traverse. Copy the bundle to a dedicated directory rather
+   than pointing at `~/.config/openshell/gateways/<name>/mtls` directly.
+3. A sandbox image built from the checkout (the released one predates the
+   `iproute2` requirement):
+
+   ```bash
+   docker build -f dify-agent-runtime/docker/Dockerfile \
+     -t dify-agent-local-sandbox:openshell-local dify-agent-runtime
+   ```
+
+   Set `DIFY_AGENT_OPENSHELL_SANDBOX_IMAGE=dify-agent-local-sandbox:openshell-local`.
+
+Then, from the repository root:
+
+```bash
+docker compose \
+  --env-file docker/.env \
+  -f docker/docker-compose.yaml \
+  -f docker/docker-compose.openshell.yaml \
+  up -d --build
+```
+
+Smoke-test the branch code end to end through the agent_backend control
+plane, which is exposed on port 15050. `$DIFY_AGENT_API_TOKEN` is the
+`DIFY_AGENT_API_TOKEN` value from `docker/.env`:
+
+```bash
+export DIFY_AGENT_API_TOKEN="$(grep '^DIFY_AGENT_API_TOKEN=' docker/.env | cut -d= -f2-)"
+curl -s -w '\n%{http_code}\n' -X POST http://localhost:15050/execution-bindings \
+  -H "Authorization: Bearer $DIFY_AGENT_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"tenant_id":"smoke-tenant","agent_id":"smoke-agent","binding_id":"smoke-binding-1","workspace_id":"smoke-ws-1"}'
+# → {"binding_ref":"dify-<digest>","workspace_ref":"dify-<digest>"} then 201
+curl -s -w '\n%{http_code}\n' -X POST http://localhost:15050/execution-bindings/destroy \
+  -H "Authorization: Bearer $DIFY_AGENT_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"binding_ref":"<binding_ref>","destroy_workspace":true,"workspace_ref":"<binding_ref>"}'
+# → 204
+```
+
+A created ref proves the whole chain: branch adapter code inside the
+container, mTLS to the gateway, sandbox creation from the configured image,
+and the shared-volume policy grant.
+
 ## Run runtime-backend integration contracts
 
 Run the disposable Local contract from the `dify-agent` directory. The script
@@ -256,9 +464,25 @@ DIFY_AGENT_TEST_E2B_TEMPLATE=difys-default-team/dify-agent-local-sandbox \
   -k e2b -q -rs
 ```
 
+Run the real OpenShell contract against a reachable gateway. The driver config
+must mount an initialized shared Home Snapshot volume (see the OpenShell
+deployment section above); pass the gateway credential through the bearer-token
+or mTLS-path variables that match your gateway:
+
+```bash
+cd dify-agent
+DIFY_AGENT_TEST_OPENSHELL_GATEWAY_ENDPOINT=gateway.example.com:17670 \
+DIFY_AGENT_TEST_OPENSHELL_SANDBOX_IMAGE=langgenius/dify-agent-local-sandbox:latest \
+DIFY_AGENT_TEST_OPENSHELL_DRIVER_CONFIG='{"docker":{"mounts":[{"type":"volume","source":"dify-agent-shared","target":"/mnt/dify-agent-shared","read_only":false}]}}' \
+DIFY_AGENT_TEST_OPENSHELL_BEARER_TOKEN=replace-with-gateway-token \
+  pdm run pytest --import-mode=importlib \
+  tests/integration/dify_agent/runtime_backend/test_working_environment.py \
+  -k openshell -q -rs
+```
+
 The Local auth token is optional when shellctl has authentication disabled.
 The E2B contract uses the one-hour `E2B_MAX_ACTIVE_TIMEOUT_SECONDS` RuntimeLease
-limit. This is continuous active test time, not a post-test retention TTL. Both
+limit. This is continuous active test time, not a post-test retention TTL. All
 contracts create unique resources and perform explicit cleanup in `finally`
 blocks.
 
