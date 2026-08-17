@@ -3,7 +3,8 @@
 import type { Role } from '@/models/access-control'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Input } from '@langgenius/dify-ui/input'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { RadioControl, RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
 import {
   ScrollArea,
@@ -209,28 +210,28 @@ const WorkspaceRoleCheckboxList = ({
   return (
     <>
       <div className="shrink-0 px-6 pt-3 pb-2">
-        <div className="relative">
-          <span
-            aria-hidden
-            className="pointer-events-none absolute top-1/2 left-3 i-ri-search-line size-4 -translate-y-1/2 text-text-tertiary"
-          />
-          <Input
+        <InputGroup>
+          <InputGroupAddon className="ps-2.75 pe-1.25">
+            <span aria-hidden className="i-ri-search-line size-4 text-text-tertiary" />
+          </InputGroupAddon>
+          <InputGroupInput
             value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
+            onValueChange={setKeyword}
             placeholder={t(($) => $['role.searchPlaceholder'], { ns: 'permission' })}
-            className="pr-8 pl-8"
           />
           {keyword && (
-            <button
-              type="button"
-              className="absolute top-1/2 right-2 flex size-5 -translate-y-1/2 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-components-input-border-active"
-              aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-              onClick={() => setKeyword('')}
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </button>
+            <InputGroupAddon align="inline-end" className="ps-1.25 pe-1.75">
+              <IconButton
+                size="sm"
+                className="text-text-tertiary"
+                aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
+                onClick={() => setKeyword('')}
+              >
+                <span aria-hidden className="i-ri-close-line size-4" />
+              </IconButton>
+            </InputGroupAddon>
           )}
-        </div>
+        </InputGroup>
       </div>
 
       <ScrollArea className="min-h-0 flex-1">

@@ -3,7 +3,8 @@
 import type { SnippetPublishStatus } from './components/snippet-publish-status-filter'
 import type { SnippetListItem } from '@/types/snippet'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Input } from '@langgenius/dify-ui/input'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -182,28 +183,31 @@ const SnippetList = () => {
               onChange={setTagIDs}
               onOpenTagManagement={() => setShowTagManagementModal(true)}
             />
-            <div className="relative w-50">
-              <span
-                aria-hidden
-                className="pointer-events-none absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder"
-              />
-              <Input
-                className={cn('pl-6.5', keywords && 'pr-6.5')}
+            <InputGroup className="w-50">
+              <InputGroupAddon className="ps-1.75 pe-0.75">
+                <span
+                  aria-hidden
+                  className="i-ri-search-line size-4 text-components-input-text-placeholder"
+                />
+              </InputGroupAddon>
+              <InputGroupInput
                 value={keywords}
-                onChange={(e) => setKeywords(e.target.value)}
+                onValueChange={(nextKeywords) => setKeywords(nextKeywords)}
                 placeholder={t(($) => $['tabs.searchSnippets'], { ns: 'workflow' })}
               />
               {!!keywords && (
-                <button
-                  type="button"
-                  aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-                  className="absolute top-1/2 right-2 flex size-4 -translate-y-1/2 items-center justify-center text-components-input-text-placeholder hover:text-components-input-text-filled"
-                  onClick={() => setKeywords('')}
-                >
-                  <span aria-hidden className="i-ri-close-circle-fill size-4" />
-                </button>
+                <InputGroupAddon align="inline-end" className="ps-0.75 pe-1.75">
+                  <IconButton
+                    size="xs"
+                    aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
+                    className="text-components-input-text-placeholder hover:bg-transparent hover:text-components-input-text-filled focus-visible:ring-inset"
+                    onClick={() => setKeywords('')}
+                  >
+                    <span aria-hidden className="i-ri-close-circle-fill size-4" />
+                  </IconButton>
+                </InputGroupAddon>
               )}
-            </div>
+            </InputGroup>
           </div>
           <SnippetCreateButton />
         </div>

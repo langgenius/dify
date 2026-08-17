@@ -2,7 +2,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Input } from '@langgenius/dify-ui/input'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
@@ -93,20 +93,21 @@ const SnippetTagsFilter = ({ embedded = false, value, onChange }: SnippetTagsFil
       >
         <PopoverTitle className="sr-only">{triggerLabel}</PopoverTitle>
         <div className="p-2 pb-1">
-          <div className="relative">
-            <span
-              className="absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder"
-              aria-hidden="true"
-            />
-            <Input
+          <InputGroup>
+            <InputGroupAddon className="ps-1.75 pe-0.75">
+              <span
+                className="i-ri-search-line size-4 text-components-input-text-placeholder"
+                aria-hidden="true"
+              />
+            </InputGroupAddon>
+            <InputGroupInput
               aria-label={t(($) => $.searchTags, { ns: 'pluginTags' }) || ''}
               autoComplete="off"
-              className="pl-6.5"
               value={searchText}
-              onChange={(event) => setSearchText(event.target.value)}
+              onValueChange={setSearchText}
               placeholder={t(($) => $.searchTags, { ns: 'pluginTags' }) || ''}
             />
-          </div>
+          </InputGroup>
         </div>
         <CheckboxGroup
           aria-label={t(($) => $.allTags, { ns: 'pluginTags' })}

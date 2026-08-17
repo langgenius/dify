@@ -1,7 +1,8 @@
 import type { Member } from '@/models/common'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Input } from '@langgenius/dify-ui/input'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RadioGroup } from '@langgenius/dify-ui/radio'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -229,34 +230,34 @@ const PermissionSelector = ({
           {isPartialMembers && (
             <div className="max-h-90 overflow-y-auto border-t border-divider-regular pr-1 pb-1 pl-1">
               <div className="sticky top-0 left-0 z-10 bg-components-panel-on-panel-item-bg p-2 pb-1">
-                <div className="relative w-full">
-                  <span
-                    aria-hidden="true"
-                    className="absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder"
-                  />
-                  <Input
+                <InputGroup>
+                  <InputGroupAddon className="ps-1.75 pe-0.75">
+                    <span
+                      aria-hidden="true"
+                      className="i-ri-search-line size-4 text-components-input-text-placeholder"
+                    />
+                  </InputGroupAddon>
+                  <InputGroupInput
                     aria-label={t(($) => $['operation.search'], { ns: 'common' })}
                     name="member-search"
                     autoComplete="off"
-                    className={cn('w-full pl-6.5', keywords && 'pr-6.5')}
                     value={keywords}
                     placeholder={t(($) => $['operation.search'], { ns: 'common' }) || ''}
-                    onChange={(event) => handleKeywordsChange(event.target.value)}
+                    onValueChange={handleKeywordsChange}
                   />
                   {!!keywords && (
-                    <button
-                      type="button"
-                      aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-                      className="group absolute top-1/2 right-2 -translate-y-1/2 cursor-pointer touch-manipulation border-none bg-transparent p-px focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                      onClick={() => handleKeywordsChange('')}
-                    >
-                      <span
-                        aria-hidden="true"
-                        className="i-ri-close-circle-fill size-3.5 text-text-quaternary group-hover:text-text-tertiary"
-                      />
-                    </button>
+                    <InputGroupAddon align="inline-end" className="ps-0.75 pe-1.75">
+                      <IconButton
+                        size="xs"
+                        aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
+                        className="text-text-quaternary hover:bg-transparent hover:text-text-tertiary focus-visible:ring-inset"
+                        onClick={() => handleKeywordsChange('')}
+                      >
+                        <span aria-hidden="true" className="i-ri-close-circle-fill size-3.5" />
+                      </IconButton>
+                    </InputGroupAddon>
                   )}
-                </div>
+                </InputGroup>
               </div>
               <div className="flex flex-col p-1">
                 {showMe && (
