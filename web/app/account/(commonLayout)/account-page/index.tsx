@@ -10,7 +10,7 @@ import { Input } from '@langgenius/dify-ui/input'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import PremiumBadge from '@/app/components/base/premium-badge'
@@ -35,6 +35,7 @@ type AccountAppItem = AppPartial & IItem
 
 export default function AccountPage() {
   const { t } = useTranslation()
+  const editNameInputId = useId()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: appList } = useQuery(
     consoleQuery.apps.get.queryOptions({
@@ -269,8 +270,15 @@ export default function AccountPage() {
           <div className="mb-6 title-2xl-semi-bold text-text-primary">
             {t(($) => $['account.editName'], { ns: 'common' })}
           </div>
-          <div className={titleClassName}>{t(($) => $['account.name'], { ns: 'common' })}</div>
-          <Input className="mt-2" value={editName} onChange={(e) => setEditName(e.target.value)} />
+          <label htmlFor={editNameInputId} className={`block ${titleClassName}`}>
+            {t(($) => $['account.name'], { ns: 'common' })}
+          </label>
+          <Input
+            id={editNameInputId}
+            className="mt-2"
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+          />
           <div className="mt-10 flex justify-end">
             <Button className="mr-2" onClick={() => setEditNameModalVisible(false)}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

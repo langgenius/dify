@@ -3303,11 +3303,6 @@
       "count": 6
     }
   },
-  "web/app/components/snippets/create-snippet-dialog.tsx": {
-    "jsx-a11y/no-autofocus": {
-      "count": 1
-    }
-  },
   "web/app/components/snippets/hooks/use-snippet-run.ts": {
     "no-restricted-imports": {
       "count": 2
