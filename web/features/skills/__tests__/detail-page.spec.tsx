@@ -4144,7 +4144,10 @@ describe('SkillDetailPage', () => {
 
     await openRootCreateMenu(user)
     await user.click(await screen.findByText('skill.skillManagement.detail.createFileMenu'))
-    await user.type(await screen.findByPlaceholderText('File name'), 'notes.md{Enter}')
+    await user.type(
+      await screen.findByPlaceholderText('skill.skillManagement.detail.createFile'),
+      'notes.md{Enter}',
+    )
 
     expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(1)
 
@@ -4217,7 +4220,9 @@ describe('SkillDetailPage', () => {
     })
     await openRootCreateMenu(user)
     await user.click(await screen.findByText('skill.skillManagement.detail.createFolderMenu'))
-    const folderNameInput = await screen.findByPlaceholderText('Folder name')
+    const folderNameInput = await screen.findByPlaceholderText(
+      'skill.skillManagement.detail.createFolder',
+    )
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(folderNameInput).toHaveFocus()
@@ -4247,7 +4252,9 @@ describe('SkillDetailPage', () => {
     })
     await openRootCreateMenu(user)
     await user.click(await screen.findByText('skill.skillManagement.detail.createFileMenu'))
-    const fileNameInput = await screen.findByPlaceholderText('File name')
+    const fileNameInput = await screen.findByPlaceholderText(
+      'skill.skillManagement.detail.createFile',
+    )
 
     await user.type(fileNameInput, 'notes.md')
     await user.click(screen.getByTestId('skill-detail-sidebar-header'))
@@ -4291,7 +4298,9 @@ describe('SkillDetailPage', () => {
     })
     await openRootCreateMenu(user)
     await user.click(await screen.findByText('skill.skillManagement.detail.createFileMenu'))
-    const fileNameInput = await screen.findByPlaceholderText('File name')
+    const fileNameInput = await screen.findByPlaceholderText(
+      'skill.skillManagement.detail.createFile',
+    )
 
     await user.type(fileNameInput, 'notes.md')
     await user.click(screen.getByTestId('skill-detail-sidebar-header'))
@@ -4311,7 +4320,9 @@ describe('SkillDetailPage', () => {
     })
     await openRootCreateMenu(user)
     await user.click(await screen.findByText('skill.skillManagement.detail.createFileMenu'))
-    const fileNameInput = await screen.findByPlaceholderText('File name')
+    const fileNameInput = await screen.findByPlaceholderText(
+      'skill.skillManagement.detail.createFile',
+    )
 
     await user.type(fileNameInput, 'tool.schema.json')
     await user.click(screen.getByTestId('skill-detail-sidebar-header'))
@@ -4392,7 +4403,9 @@ describe('SkillDetailPage', () => {
     })
     await openRootCreateMenu(user)
     await user.click(await screen.findByText('skill.skillManagement.detail.createFileMenu'))
-    const fileNameInput = await screen.findByPlaceholderText('File name')
+    const fileNameInput = await screen.findByPlaceholderText(
+      'skill.skillManagement.detail.createFile',
+    )
 
     await user.click(screen.getByTestId('skill-detail-sidebar-header'))
 
@@ -4427,7 +4440,9 @@ describe('SkillDetailPage', () => {
     })
     await openFileTreeActions(user, 'scripts')
     await user.click(await screen.findByText('skill.skillManagement.detail.createFileMenu'))
-    const fileNameInput = await screen.findByPlaceholderText('File name')
+    const fileNameInput = await screen.findByPlaceholderText(
+      'skill.skillManagement.detail.createFile',
+    )
 
     expect(fileNameInput.closest('ul')).toContainElement(getFileTreeItem('scripts/example.ts'))
     await user.type(fileNameInput, 'helper.ts{Enter}')
@@ -4470,7 +4485,9 @@ describe('SkillDetailPage', () => {
     })
     await openFileTreeActions(user, 'scripts')
     await user.click(await screen.findByText('skill.skillManagement.detail.createFolderMenu'))
-    const folderNameInput = await screen.findByPlaceholderText('Folder name')
+    const folderNameInput = await screen.findByPlaceholderText(
+      'skill.skillManagement.detail.createFolder',
+    )
 
     expect(folderNameInput.closest('ul')).toContainElement(getFileTreeItem('scripts/example.ts'))
     await user.type(folderNameInput, 'helpers{Enter}')
@@ -4624,7 +4641,10 @@ describe('SkillDetailPage', () => {
     })
     await openRootCreateMenu(user)
     await user.click(await screen.findByText('skill.skillManagement.detail.createFileMenu'))
-    await user.type(await screen.findByPlaceholderText('File name'), 'broken.md{Enter}')
+    await user.type(
+      await screen.findByPlaceholderText('skill.skillManagement.detail.createFile'),
+      'broken.md{Enter}',
+    )
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('backend exploded')
@@ -5076,7 +5096,10 @@ describe('SkillDetailPage', () => {
       clientY: 520,
     })
     await user.click(await screen.findByText('skill.skillManagement.detail.createFileMenu'))
-    await user.type(await screen.findByPlaceholderText('File name'), 'from-context.md{Enter}')
+    await user.type(
+      await screen.findByPlaceholderText('skill.skillManagement.detail.createFile'),
+      'from-context.md{Enter}',
+    )
 
     await waitFor(() => {
       expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
