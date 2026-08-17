@@ -258,16 +258,16 @@ def test_list_comments_serializes_response_model(app: Flask, monkeypatch: pytest
         position_y=2.5,
         content="hello",
         created_by="account-123",
-        created_by_account=comment_author,
+        created_by_account=MagicMock(return_value=comment_author),
         created_at=1_700_000_000,
         updated_at=1_700_000_001,
         resolved=False,
         resolved_at=None,
         resolved_by=None,
-        resolved_by_account=None,
+        resolved_by_account=MagicMock(return_value=None),
         reply_count=0,
         mention_count=0,
-        participants=[comment_author],
+        participants=MagicMock(return_value=[comment_author]),
     )
     get_comments_mock = MagicMock(return_value=[comment])
     monkeypatch.setattr(workflow_comment_module.WorkflowCommentService, "get_comments", get_comments_mock)
@@ -335,26 +335,26 @@ def test_get_comment_serializes_detail_response_model(app: Flask, monkeypatch: p
         position_y=2.5,
         content="hello",
         created_by="account-123",
-        created_by_account=comment_author,
+        created_by_account=MagicMock(return_value=comment_author),
         created_at=JAN_1_2024_NOON,
         updated_at=JAN_1_2024_1201,
         resolved=True,
         resolved_at=JAN_1_2024_1202,
         resolved_by="account-123",
-        resolved_by_account=comment_author,
+        resolved_by_account=MagicMock(return_value=comment_author),
         replies=[
             SimpleNamespace(
                 id="reply-1",
                 content="reply",
                 created_by="account-456",
-                created_by_account=mentioned_user,
+                created_by_account=MagicMock(return_value=mentioned_user),
                 created_at=JAN_1_2024_1203,
             )
         ],
         mentions=[
             SimpleNamespace(
                 mentioned_user_id="account-456",
-                mentioned_user_account=mentioned_user,
+                mentioned_user_account=MagicMock(return_value=mentioned_user),
                 reply_id="reply-1",
             )
         ],
