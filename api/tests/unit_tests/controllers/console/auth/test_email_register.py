@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -22,6 +23,11 @@ from services.errors.account import (
 from services.errors.account import (
     EmailDomainSuspendedError as EmailDomainSuspendedRegistrationError,
 )
+
+
+@pytest.fixture(autouse=True)
+def _cloud_edition(config_overrides: Callable[..., None]) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
 
 
 class TestEmailRegisterSendEmailApi:
@@ -50,8 +56,6 @@ class TestEmailRegisterSendEmailApi:
             is_allow_register=True,
         )
         with (
-            patch("controllers.console.auth.email_register.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
         ):
             with app.test_request_context(
@@ -138,7 +142,6 @@ class TestEmailRegisterCheckApi:
             is_allow_register=True,
         )
         with (
-            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
         ):
             with app.test_request_context(
@@ -212,7 +215,6 @@ class TestEmailRegisterResetApi:
             is_allow_register=True,
         )
         with (
-            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
         ):
             with app.test_request_context(
@@ -265,7 +267,6 @@ class TestEmailRegisterResetApi:
             is_allow_register=True,
         )
         with (
-            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
         ):
             with app.test_request_context(
@@ -323,7 +324,6 @@ class TestEmailRegisterResetApi:
             is_allow_register=True,
         )
         with (
-            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
         ):
             with app.test_request_context(
