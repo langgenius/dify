@@ -35,6 +35,7 @@ _TABLES = {
 }
 
 _FORBIDDEN_DEPENDENCIES = ("datasets", "documents", "dataset_permissions", "api_tokens")
+_LATER_COLUMNS_BY_TABLE = {"knowledge_fs_control_spaces": {"icon_background"}}
 
 _MODELS_BY_TABLE = {
     model.__tablename__: model
@@ -82,7 +83,9 @@ def test_upgrade_creates_only_independent_knowledge_fs_control_plane_tables() ->
     assert set(inspector.get_table_names()) >= _TABLES
     for table_name in _TABLES:
         migrated_columns = {column["name"] for column in inspector.get_columns(table_name)}
-        assert migrated_columns == set(_MODELS_BY_TABLE[table_name].__table__.columns.keys())
+        assert migrated_columns == (
+            set(_MODELS_BY_TABLE[table_name].__table__.columns.keys()) - _LATER_COLUMNS_BY_TABLE.get(table_name, set())
+        )
         dependency_text = " ".join(
             [
                 table_name,

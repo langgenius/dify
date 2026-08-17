@@ -1,7 +1,7 @@
 """add KnowledgeFS legacy Dataset upgrade jobs
 
 Revision ID: f3a8c1d7e920
-Revises: 9d4e6f8a1b2c
+Revises: 4f8b2c7d9e10
 Create Date: 2026-08-17 12:00:00.000000
 
 """
@@ -12,7 +12,7 @@ from alembic import op
 import models
 
 revision = "f3a8c1d7e920"
-down_revision = "9d4e6f8a1b2c"
+down_revision = "4f8b2c7d9e10"
 branch_labels = None
 depends_on = None
 
