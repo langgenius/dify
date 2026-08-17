@@ -28,6 +28,52 @@ from services.errors.audio import (
 )
 from services.workflow_service import WorkflowService
 
+
+def _sniff_audio_mime_type(audio: bytes | Generator[bytes, None, None] | io.IOBase) -> str:
+    """Return the real audio MIME type from the first bytes of the payload.
+
+    The proxy used to hard-code `audio/mpeg` here, which made the browser
+    attempt to decode a real WAV file as MP3 and fail. Sniff the first
+    bytes of the payload instead. Falls back to `audio/mpeg` if the
+    payload is empty (e.g. TTS returned nothing) or starts with a
+    non-magic-byte marker — preserves the previous behaviour in those
+    edge cases. Regression for #40012.
+    """
+    head: bytes
+    if isinstance(audio, (bytes, bytearray)):
+        head = bytes(audio[:12])
+    elif isinstance(audio, io.IOBase):
+        try:
+            pos = audio.tell()
+        except (OSError, AttributeError):
+            pos = 0
+        head = audio.read(12) or b""
+        try:
+            audio.seek(pos)
+        except (OSError, AttributeError):
+            pass
+    else:
+        # Generator — peek without consuming by spinning up a small
+        # tee buffer. The first 12 bytes are enough to identify every
+        # common audio container.
+        head = b""
+        for chunk in audio:
+            if not chunk:
+                continue
+            head = chunk[:12]
+            break
+    if head.startswith(b"RIFF") and head[8:12] == b"WAVE":
+        return "audio/wav"
+    if head.startswith(b"ID3") or (len(head) >= 2 and head[0] == 0xFF and (head[1] & 0xE0) == 0xE0):
+        return "audio/mpeg"
+    if head.startswith(b"OggS"):
+        return "audio/ogg"
+    if head.startswith(b"fLaC"):
+        return "audio/flac"
+    if head.startswith(b"\x1a\x45\xdf\xa3"):
+        return "audio/webm"
+    return "audio/mpeg"
+
 FILE_SIZE = 30
 FILE_SIZE_LIMIT = FILE_SIZE * 1024 * 1024
 
@@ -224,15 +270,19 @@ class AudioService:
             else:
                 response = invoke_tts(text_content=message.answer, app_model=app_model, voice=voice, is_draft=is_draft)
                 if isinstance(response, Generator):
-                    return Response(stream_with_context(response), content_type="audio/mpeg")  # type: ignore
-                return response
+                    return Response(
+                        stream_with_context(response), content_type=_sniff_audio_mime_type(response)
+                    )  # type: ignore
+                return Response(response, content_type=_sniff_audio_mime_type(response))
         else:
             if text is None:
                 raise ValueError("Text is required")
             response = invoke_tts(text_content=text, app_model=app_model, voice=voice, is_draft=is_draft)
             if isinstance(response, Generator):
-                return Response(stream_with_context(response), content_type="audio/mpeg")  # type: ignore
-            return response
+                return Response(
+                    stream_with_context(response), content_type=_sniff_audio_mime_type(response)
+                )  # type: ignore
+            return Response(response, content_type=_sniff_audio_mime_type(response))
 
     @classmethod
     def transcript_tts_voices(cls, tenant_id: str, language: str):

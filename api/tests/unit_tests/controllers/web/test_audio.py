@@ -163,3 +163,62 @@ class TestTextApi:
         with app.test_request_context("/text-to-audio", method="POST"):
             with pytest.raises(CompletionRequestError):
                 TextApi().post(_app_model(), _end_user())
+
+
+class TestAudioMimeTypeSniffing:
+    """Regression for #40012: the proxy used to hard-code Content-Type
+    audio/mpeg, which made the browser fail to decode a real WAV file
+    served as MP3. The endpoint now sniffs the first 12 bytes."""
+
+    @patch("controllers.web.audio.AudioService.transcript_tts", return_value=b"RIFF\x24\x00\x00\x00WAVEfmt ")
+    @patch("controllers.web.audio.web_ns")
+    def test_wav_content_type_for_riff_wave(
+        self, mock_ns: MagicMock, mock_tts: MagicMock, app: Flask
+    ) -> None:
+        mock_ns.payload = {"text": "hello", "voice": "alloy"}
+        with app.test_request_context("/text-to-audio", method="POST"):
+            result = TextApi().post(_app_model(), _end_user())
+
+        assert result.mimetype == "audio/wav"
+
+    @patch(
+        "controllers.web.audio.AudioService.transcript_tts",
+        return_value=b"ID3\x04\x00\x00\x00\x00\x00\x00\xff",
+    )
+    @patch("controllers.web.audio.web_ns")
+    def test_mpeg_content_type_for_id3_tag(
+        self, mock_ns: MagicMock, mock_tts: MagicMock, app: Flask
+    ) -> None:
+        mock_ns.payload = {"text": "hello", "voice": "alloy"}
+        with app.test_request_context("/text-to-audio", method="POST"):
+            result = TextApi().post(_app_model(), _end_user())
+
+        assert result.mimetype == "audio/mpeg"
+
+    @patch(
+        "controllers.web.audio.AudioService.transcript_tts",
+        return_value=b"OggS\x00\x02\x00\x00\x00\x00\x00\x00",
+    )
+    @patch("controllers.web.audio.web_ns")
+    def test_ogg_content_type(
+        self, mock_ns: MagicMock, mock_tts: MagicMock, app: Flask
+    ) -> None:
+        mock_ns.payload = {"text": "hello", "voice": "alloy"}
+        with app.test_request_context("/text-to-audio", method="POST"):
+            result = TextApi().post(_app_model(), _end_user())
+
+        assert result.mimetype == "audio/ogg"
+
+    @patch("controllers.web.audio.AudioService.transcript_tts", return_value=b"")
+    @patch("controllers.web.audio.web_ns")
+    def test_empty_bytes_falls_back_to_mpeg(
+        self, mock_ns: MagicMock, mock_tts: MagicMock, app: Flask
+    ) -> None:
+        mock_ns.payload = {"text": "hello", "voice": "alloy"}
+        with app.test_request_context("/text-to-audio", method="POST"):
+            result = TextApi().post(_app_model(), _end_user())
+
+        # Empty bytes are an edge case — preserve the previous behaviour
+        # (audio/mpeg fallback) so we don't accidentally switch the
+        # declared MIME type to a default that surprises clients.
+        assert result.mimetype == "audio/mpeg"
