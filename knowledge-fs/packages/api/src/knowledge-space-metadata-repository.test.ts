@@ -8,6 +8,7 @@ import type {
 import { describe, expect, it } from "vitest";
 
 import {
+  KnowledgeSpaceMetadataNotFoundError,
   KnowledgeSpaceMetadataValidationError,
   createDatabaseKnowledgeSpaceMetadataRepository,
 } from "./knowledge-space-metadata-repository";
@@ -21,6 +22,105 @@ const now = "2026-08-10T12:00:00.000Z";
 describe.each(["postgres", "tidb"] as const)(
   "database knowledge-space metadata repository (%s)",
   (dialect) => {
+    it("admits metadata writes through the canonical knowledge-space deletion gate", async () => {
+      const calls: DatabaseExecuteInput[] = [];
+      let inserted = false;
+      const database = testDatabase(dialect, async (input) => {
+        calls.push(input);
+        if (input.tableName === "knowledge_spaces") {
+          return {
+            rows: [
+              {
+                deletion_job_id: null,
+                id: knowledgeSpaceId,
+                lifecycle_state: "active",
+              },
+            ],
+            rowsAffected: 1,
+          };
+        }
+        if (input.tableName === "deletion_jobs") {
+          return { rows: [], rowsAffected: 0 };
+        }
+        if (input.operation === "insert") {
+          inserted = true;
+          return { rows: [], rowsAffected: 1 };
+        }
+        if (input.sql.includes("COUNT(*)")) {
+          return { rows: [{ field_count: 0 }], rowsAffected: 1 };
+        }
+        if (input.sql.includes("name") && input.sql.includes("LIMIT 1")) {
+          return { rows: [], rowsAffected: 0 };
+        }
+        return {
+          rows: inserted ? [fieldRow({ binding_count: 0 })] : [],
+          rowsAffected: inserted ? 1 : 0,
+        };
+      });
+      const repository = createDatabaseKnowledgeSpaceMetadataRepository({
+        database,
+        generateFieldId: () => fieldId,
+        maxListLimit: 100,
+      });
+
+      await expect(
+        repository.create({
+          knowledgeSpaceId,
+          name: "priority",
+          now,
+          subjectId: "account:1",
+          tenantId,
+          type: "string",
+        }),
+      ).resolves.toMatchObject({ id: fieldId });
+
+      const spaceAdmission = calls.find((call) => call.tableName === "knowledge_spaces");
+      expect(spaceAdmission?.sql).toContain("lifecycle_state");
+      expect(spaceAdmission?.sql).toContain("deletion_job_id");
+      expect(spaceAdmission?.sql).not.toMatch(/["`]state["`]/u);
+      expect(calls.some((call) => call.tableName === "deletion_jobs")).toBe(true);
+    });
+
+    it("rejects metadata writes while a durable deletion job is active", async () => {
+      const calls: DatabaseExecuteInput[] = [];
+      const database = testDatabase(dialect, async (input) => {
+        calls.push(input);
+        if (input.tableName === "knowledge_spaces") {
+          return {
+            rows: [
+              {
+                deletion_job_id: null,
+                id: knowledgeSpaceId,
+                lifecycle_state: "active",
+              },
+            ],
+            rowsAffected: 1,
+          };
+        }
+        if (input.tableName === "deletion_jobs") {
+          return { rows: [{ id: "active-deletion-job" }], rowsAffected: 1 };
+        }
+        return { rows: [], rowsAffected: 0 };
+      });
+      const repository = createDatabaseKnowledgeSpaceMetadataRepository({
+        database,
+        generateFieldId: () => fieldId,
+        maxListLimit: 100,
+      });
+
+      await expect(
+        repository.create({
+          knowledgeSpaceId,
+          name: "priority",
+          now,
+          subjectId: "account:1",
+          tenantId,
+          type: "string",
+        }),
+      ).rejects.toBeInstanceOf(KnowledgeSpaceMetadataNotFoundError);
+      expect(calls.some((call) => call.operation === "insert")).toBe(false);
+    });
+
     it("lists a bounded field catalog with binding counts and tenant-space keyset scope", async () => {
       let select: DatabaseExecuteInput | undefined;
       const database = testDatabase(dialect, async (input) => {
@@ -60,7 +160,10 @@ describe.each(["postgres", "tidb"] as const)(
       const database = testDatabase(dialect, async (input) => {
         calls.push(input);
         if (input.tableName === "knowledge_spaces") {
-          return { rows: [{ id: knowledgeSpaceId }], rowsAffected: 1 };
+          return { rows: [activeSpaceRow()], rowsAffected: 1 };
+        }
+        if (input.tableName === "deletion_jobs") {
+          return { rows: [], rowsAffected: 0 };
         }
         if (input.operation === "insert") {
           inserted = true;
@@ -200,7 +303,10 @@ describe.each(["postgres", "tidb"] as const)(
       const database = testDatabase(dialect, async (input) => {
         calls.push(input);
         if (input.tableName === "knowledge_spaces") {
-          return { rows: [{ id: knowledgeSpaceId }], rowsAffected: 1 };
+          return { rows: [activeSpaceRow()], rowsAffected: 1 };
+        }
+        if (input.tableName === "deletion_jobs") {
+          return { rows: [], rowsAffected: 0 };
         }
         if (input.tableName === "knowledge_space_metadata_fields" && input.operation === "select") {
           if (input.sql.includes("LIMIT 1")) return { rows: [], rowsAffected: 0 };
@@ -286,6 +392,14 @@ function fieldRow(overrides: DatabaseRow = {}): DatabaseRow {
     updated_at: now,
     updated_by_subject_id: null,
     ...overrides,
+  };
+}
+
+function activeSpaceRow(): DatabaseRow {
+  return {
+    deletion_job_id: null,
+    id: knowledgeSpaceId,
+    lifecycle_state: "active",
   };
 }
 
