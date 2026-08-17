@@ -317,6 +317,8 @@ def _map_model_request_to_prompt_messages(message: ModelRequest) -> list[PromptM
 
     for part in message.parts:
         if isinstance(part, SystemPromptPart):
+            if not part.content.strip():
+                continue
             prompt_messages.append(SystemPromptMessage(content=part.content))
         elif isinstance(part, UserPromptPart):
             prompt_messages.append(UserPromptMessage(content=_map_user_prompt_content(part.content)))
@@ -546,7 +548,7 @@ def _map_tool_definitions_to_prompt_tools(
     return [
         PromptMessageTool(
             name=tool_definition.name,
-            description=tool_definition.description or "",
+            description=tool_definition.description or tool_definition.name,
             parameters=cast(dict[str, object], tool_definition.parameters_json_schema),
         )
         for tool_definition in tool_definitions

@@ -762,3 +762,83 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
                 )
 
         self.assertEqual(str(context.exception), "missing endpoint config")
+
+    async def test_request_filters_blank_system_prompt_parts(self) -> None:
+        """Empty/whitespace-only SystemPromptParts must be dropped before dispatch.
+
+        Bedrock and other strict providers reject requests that contain an empty
+        text content block.  Unreferenced skills contribute empty SystemPromptParts,
+        so _map_model_request_to_prompt_messages must skip them (mirrors the guard
+        already present in _map_messages_to_prompt_messages for InstructionParts).
+        """
+        sent_prompt_messages: list[object] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            payload = json.loads(request.content.decode("utf-8"))
+            sent_prompt_messages.extend(payload["data"]["prompt_messages"])
+            return build_stream_response(single_text_chunk("ok"))
+
+        async with self.mock_daemon_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(user_id="user-1"),
+                model_provider="openai",
+                credentials={"api_key": "secret"},
+            )
+            await adapter.request(
+                [
+                    ModelRequest(
+                        parts=[
+                            SystemPromptPart("real system prompt"),
+                            SystemPromptPart(""),  # empty — must be dropped
+                            SystemPromptPart("   \t\n"),  # whitespace-only — must be dropped
+                            UserPromptPart("hello"),
+                        ]
+                    )
+                ],
+                model_settings=None,
+                model_request_parameters=ModelRequestParameters(),
+            )
+
+        system_messages = [m for m in sent_prompt_messages if m.get("role") == "system"]
+        self.assertEqual(len(system_messages), 1)
+        self.assertEqual(system_messages[0]["content"], "real system prompt")
+
+    async def test_request_uses_tool_name_when_description_is_missing(self) -> None:
+        """Tool definitions with no description must not send an empty string.
+
+        Bedrock's Converse API rejects toolSpec.description == ''.  When a tool
+        definition carries no description, _map_tool_definitions_to_prompt_tools
+        must fall back to the tool name, which is always non-empty.
+        """
+        sent_tools: list[object] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            payload = json.loads(request.content.decode("utf-8"))
+            sent_tools.extend(payload["data"].get("tools", []))
+            return build_stream_response(single_text_chunk("ok"))
+
+        async with self.mock_daemon_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(user_id="user-1"),
+                model_provider="openai",
+                credentials={"api_key": "secret"},
+            )
+            await adapter.request(
+                [ModelRequest(parts=[UserPromptPart("hello")])],
+                model_settings=None,
+                model_request_parameters=ModelRequestParameters(
+                    function_tools=[
+                        ToolDefinition(
+                            name="my_tool",
+                            description="",  # empty — must fall back to name
+                            parameters_json_schema={"type": "object", "properties": {}},
+                        )
+                    ],
+                ),
+            )
+
+        self.assertEqual(len(sent_tools), 1)
+        self.assertNotEqual(sent_tools[0]["description"], "")
+        self.assertEqual(sent_tools[0]["description"], "my_tool")
