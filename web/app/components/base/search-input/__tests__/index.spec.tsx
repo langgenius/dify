@@ -27,6 +27,11 @@ describe('SearchInput', () => {
       expect(screen.getByRole('searchbox', { name: 'Search providers' })).toBeInTheDocument()
     })
 
+    it('uses a custom form name', () => {
+      render(<SearchInput name="provider-query" value="" onValueChange={() => {}} />)
+      expect(screen.getByRole('searchbox')).toHaveAttribute('name', 'provider-query')
+    })
+
     it('exposes the input element through its ref', () => {
       const ref = createRef<HTMLInputElement>()
       render(<SearchInput ref={ref} value="" onValueChange={() => {}} />)

@@ -3,12 +3,11 @@
 import type { SnippetPublishStatus } from './components/snippet-publish-status-filter'
 import type { SnippetListItem } from '@/types/snippet'
 import { cn } from '@langgenius/dify-ui/cn'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { SearchInput } from '@/app/components/base/search-input'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
@@ -75,7 +74,6 @@ const SnippetList = () => {
   const debouncedKeywords = useDebounce(keywords, { wait: SNIPPET_LIST_SEARCH_DEBOUNCE_MS })
   const containerRef = useRef<HTMLDivElement>(null)
   const anchorRef = useRef<HTMLDivElement>(null)
-  const searchInputRef = useRef<HTMLInputElement>(null)
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const [publishStatus, setPublishStatus] = useState<SnippetPublishStatus>('all')
 
@@ -184,41 +182,14 @@ const SnippetList = () => {
               onChange={setTagIDs}
               onOpenTagManagement={() => setShowTagManagementModal(true)}
             />
-            <InputGroup className="w-50">
-              <InputGroupInput
-                ref={searchInputRef}
-                type="search"
-                name="snippet-query"
-                autoComplete="off"
-                enterKeyHint="search"
-                aria-label={t(($) => $['tabs.searchSnippets'], { ns: 'workflow' })}
-                className="[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
-                value={keywords}
-                onValueChange={(nextKeywords) => setKeywords(nextKeywords)}
-                placeholder={t(($) => $['tabs.searchSnippets'], { ns: 'workflow' })}
-              />
-              <InputGroupAddon className="ps-1.75 pe-0.75">
-                <span
-                  aria-hidden
-                  className="i-ri-search-line size-4 text-components-input-text-placeholder"
-                />
-              </InputGroupAddon>
-              {!!keywords && (
-                <InputGroupAddon align="inline-end" className="ps-0.75 pe-1.75">
-                  <IconButton
-                    size="xs"
-                    aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-                    className="text-components-input-text-placeholder hover:bg-transparent hover:text-components-input-text-filled focus-visible:ring-inset"
-                    onClick={() => {
-                      setKeywords('')
-                      searchInputRef.current?.focus()
-                    }}
-                  >
-                    <span aria-hidden className="i-ri-close-circle-fill size-4" />
-                  </IconButton>
-                </InputGroupAddon>
-              )}
-            </InputGroup>
+            <SearchInput
+              name="snippet-query"
+              className="w-50"
+              value={keywords}
+              onValueChange={setKeywords}
+              placeholder={t(($) => $['tabs.searchSnippets'], { ns: 'workflow' })}
+              aria-label={t(($) => $['tabs.searchSnippets'], { ns: 'workflow' })}
+            />
           </div>
           <SnippetCreateButton />
         </div>

@@ -3,8 +3,6 @@
 import type { Role } from '@/models/access-control'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { RadioControl, RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
 import {
   ScrollArea,
@@ -15,6 +13,7 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { SearchInput } from '@/app/components/base/search-input'
 import { useLocale } from '@/context/i18n'
 import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
 import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
@@ -75,7 +74,6 @@ const WorkspaceRoleCheckboxList = ({
   const [keyword, setKeyword] = useState('')
   const containerRef = useRef<HTMLDivElement>(null)
   const anchorRef = useRef<HTMLDivElement>(null)
-  const searchInputRef = useRef<HTMLInputElement>(null)
   const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
 
   const {
@@ -211,38 +209,13 @@ const WorkspaceRoleCheckboxList = ({
   return (
     <>
       <div className="shrink-0 px-6 pt-3 pb-2">
-        <InputGroup>
-          <InputGroupInput
-            ref={searchInputRef}
-            type="search"
-            name="workspace-role-query"
-            autoComplete="off"
-            enterKeyHint="search"
-            aria-label={t(($) => $['role.searchPlaceholder'], { ns: 'permission' })}
-            className="[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
-            value={keyword}
-            onValueChange={setKeyword}
-            placeholder={t(($) => $['role.searchPlaceholder'], { ns: 'permission' })}
-          />
-          <InputGroupAddon className="ps-2.75 pe-1.25">
-            <span aria-hidden className="i-ri-search-line size-4 text-text-tertiary" />
-          </InputGroupAddon>
-          {keyword && (
-            <InputGroupAddon align="inline-end" className="ps-1.25 pe-1.75">
-              <IconButton
-                size="sm"
-                className="text-text-tertiary focus-visible:ring-inset"
-                aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-                onClick={() => {
-                  setKeyword('')
-                  searchInputRef.current?.focus()
-                }}
-              >
-                <span aria-hidden className="i-ri-close-line size-4" />
-              </IconButton>
-            </InputGroupAddon>
-          )}
-        </InputGroup>
+        <SearchInput
+          name="workspace-role-query"
+          value={keyword}
+          onValueChange={setKeyword}
+          placeholder={t(($) => $['role.searchPlaceholder'], { ns: 'permission' })}
+          aria-label={t(($) => $['role.searchPlaceholder'], { ns: 'permission' })}
+        />
       </div>
 
       <ScrollArea className="min-h-0 flex-1">

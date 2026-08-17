@@ -1,14 +1,13 @@
 import type { Member } from '@/models/common'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RadioGroup } from '@langgenius/dify-ui/radio'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { SearchInput } from '@/app/components/base/search-input'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { DatasetPermission } from '@/models/datasets'
@@ -43,7 +42,6 @@ const PermissionSelector = ({
   })
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
-  const searchInputRef = useRef<HTMLInputElement>(null)
   const { run: handleSearch } = useDebounceFn(
     (nextKeywords: string) => {
       setSearchKeywords(nextKeywords)
@@ -231,41 +229,12 @@ const PermissionSelector = ({
           {isPartialMembers && (
             <div className="max-h-90 overflow-y-auto border-t border-divider-regular pr-1 pb-1 pl-1">
               <div className="sticky top-0 left-0 z-10 bg-components-panel-on-panel-item-bg p-2 pb-1">
-                <InputGroup>
-                  <InputGroupInput
-                    ref={searchInputRef}
-                    type="search"
-                    aria-label={t(($) => $['operation.search'], { ns: 'common' })}
-                    name="member-search"
-                    autoComplete="off"
-                    enterKeyHint="search"
-                    className="[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
-                    value={keywords}
-                    placeholder={t(($) => $['operation.search'], { ns: 'common' }) || ''}
-                    onValueChange={handleKeywordsChange}
-                  />
-                  <InputGroupAddon className="ps-1.75 pe-0.75">
-                    <span
-                      aria-hidden="true"
-                      className="i-ri-search-line size-4 text-components-input-text-placeholder"
-                    />
-                  </InputGroupAddon>
-                  {!!keywords && (
-                    <InputGroupAddon align="inline-end" className="ps-0.75 pe-1.75">
-                      <IconButton
-                        size="xs"
-                        aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-                        className="text-text-quaternary hover:bg-transparent hover:text-text-tertiary focus-visible:ring-inset"
-                        onClick={() => {
-                          handleKeywordsChange('')
-                          searchInputRef.current?.focus()
-                        }}
-                      >
-                        <span aria-hidden="true" className="i-ri-close-circle-fill size-3.5" />
-                      </IconButton>
-                    </InputGroupAddon>
-                  )}
-                </InputGroup>
+                <SearchInput
+                  name="member-search"
+                  value={keywords}
+                  placeholder={t(($) => $['operation.search'], { ns: 'common' }) || ''}
+                  onValueChange={handleKeywordsChange}
+                />
               </div>
               <div className="flex flex-col p-1">
                 {showMe && (

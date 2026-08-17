@@ -11,7 +11,10 @@ type SearchInputProps = {
   onValueChange: (value: string) => void
   placeholder?: string
   className?: string
-} & Pick<InputGroupInputProps, 'aria-describedby' | 'aria-label' | 'autoFocus' | 'disabled'>
+} & Pick<
+  InputGroupInputProps,
+  'aria-describedby' | 'aria-label' | 'autoFocus' | 'disabled' | 'name'
+>
 
 export function SearchInput({
   ref,
@@ -19,6 +22,7 @@ export function SearchInput({
   className,
   value,
   onValueChange,
+  name = 'query',
   autoFocus,
   disabled,
   'aria-describedby': ariaDescribedBy,
@@ -45,7 +49,7 @@ export function SearchInput({
       <InputGroupInput
         ref={inputRef}
         type="search"
-        name="query"
+        name={name}
         aria-describedby={ariaDescribedBy}
         aria-label={ariaLabel ?? t(($) => $['operation.search'], { ns: 'common' })}
         className="[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
