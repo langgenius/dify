@@ -156,7 +156,7 @@
   "agentDetail.configure.preview.empty.description": "ທົດລອງໃຊ້ຕົວແທນໃນຮູບແບບການສົນທະນາທີ່ສຳເລັດແລ້ວ ຄືກັນກັບທີ່ຜູ້ໃຊ້ຈະໄດ້ຮັບຮູ້ເມື່ອຖືກເຜີຍແຜ່.",
   "agentDetail.configure.preview.empty.title": "ເບິ່ງຕົວຢ່າງ {{name}}",
   "agentDetail.configure.preview.endUserAuth": "ການຢືນຢັນຕົວຕົນຜູ້ໃຊ້ປາຍທາງ",
-  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "ການເຮັດວຽກຂອງ Agent ນີ້ຖືກຢຸດຫຼັງຈາກຮອດຈຳນວນຄຳຮ້ອງຂໍໂມເດວສູງສຸດ. ລອງໃໝ່ ຫຼື ແບ່ງໜ້າວຽກເປັນຂັ້ນຕອນນ້ອຍລົງ.",
+  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "ການເຮັດວຽກຂອງ Agent ນີ້ຖືກຢຸດເພາະຮອດຂີດຈຳກັດຄຳຮ້ອງຂໍໂມເດວ. ລອງໃໝ່ ຫຼື ແບ່ງໜ້າວຽກເປັນຂັ້ນຕອນນ້ອຍລົງ.",
   "agentDetail.configure.preview.errors.agentRunLimitExceeded": "ການເຮັດວຽກຂອງ Agent ນີ້ຖືກຢຸດເພາະຮອດຂີດຈຳກັດເວລາ. ລອງໃໝ່ ຫຼື ແບ່ງໜ້າວຽກເປັນຂັ້ນຕອນນ້ອຍລົງ.",
   "agentDetail.configure.preview.inputPlaceholder": "ສົ່ງຂໍ້ຄວາມຫາ {{name}}",
   "agentDetail.configure.preview.restart": "ເລີ່ມຕົວຢ່າງໃໝ່",

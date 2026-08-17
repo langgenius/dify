@@ -156,7 +156,7 @@
   "agentDetail.configure.preview.empty.description": "Zaženite agenta kot dokončan klepet, natanko tako, kot ga bodo uporabniki doživeli po objavi.",
   "agentDetail.configure.preview.empty.title": "Predogled {{name}}",
   "agentDetail.configure.preview.endUserAuth": "Preverjanje pristnosti končnega uporabnika",
-  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "Ta zagon agenta je bil ustavljen, ker je dosegel največje dovoljeno število zahtev modelu. Poskusite znova ali razdelite opravilo na manjše korake.",
+  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "Ta zagon agenta je bil ustavljen, ker je dosegel omejitev zahtev modelu. Poskusite znova ali razdelite opravilo na manjše korake.",
   "agentDetail.configure.preview.errors.agentRunLimitExceeded": "Ta zagon agenta je bil ustavljen, ker je dosegel časovno omejitev. Poskusite znova ali razdelite opravilo na manjše korake.",
   "agentDetail.configure.preview.inputPlaceholder": "Pošlji sporočilo za {{name}}",
   "agentDetail.configure.preview.restart": "Začni znova",

@@ -156,7 +156,7 @@
   "agentDetail.configure.preview.empty.description": "Ejecuta el agente como un chat terminado, exactamente como lo verán las personas cuando se publique.",
   "agentDetail.configure.preview.empty.title": "Vista previa de {{name}}",
   "agentDetail.configure.preview.endUserAuth": "Autenticación de usuario final",
-  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "Esta ejecución del agente se detuvo al alcanzar el número máximo de solicitudes al modelo. Inténtalo de nuevo o divide la tarea en pasos más pequeños.",
+  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "Esta ejecución del agente se detuvo al alcanzar el límite de solicitudes al modelo. Inténtalo de nuevo o divide la tarea en pasos más pequeños.",
   "agentDetail.configure.preview.errors.agentRunLimitExceeded": "Esta ejecución del agente se detuvo al alcanzar el límite de tiempo. Inténtalo de nuevo o divide la tarea en pasos más pequeños.",
   "agentDetail.configure.preview.inputPlaceholder": "Enviar mensaje a {{name}}",
   "agentDetail.configure.preview.restart": "Empezar de nuevo",
