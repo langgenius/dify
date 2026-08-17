@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { useRouter } from '@/next/navigation'
+import { usePathname, useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 
 type AgentDetailLayoutProps = {
@@ -17,6 +17,7 @@ const isNotFoundResponse = (error: unknown) => error instanceof Response && erro
 
 export function AgentDetailLayout({ agentId, children }: AgentDetailLayoutProps) {
   const { t } = useTranslation('agentV2')
+  const pathname = usePathname()
   const router = useRouter()
   const agentQuery = useQuery(
     consoleQuery.agent.byAgentId.get.queryOptions({
@@ -28,8 +29,17 @@ export function AgentDetailLayout({ agentId, children }: AgentDetailLayoutProps)
     }),
   )
   const shouldRedirectToRoster = isNotFoundResponse(agentQuery.error)
+  const section = pathname.endsWith('/access')
+    ? 'access'
+    : pathname.endsWith('/logs')
+      ? 'logs'
+      : pathname.endsWith('/monitoring')
+        ? 'monitoring'
+        : 'configure'
+  const sectionTitle = t(($) => $[`agentDetail.sections.${section}`])
+  const agentTitle = agentQuery.data?.name ?? t(($) => $['agentDetail.documentTitle'])
 
-  useDocumentTitle(agentQuery.data?.name ?? t(($) => $['agentDetail.documentTitle']))
+  useDocumentTitle(`${sectionTitle} · ${agentTitle}`)
 
   useEffect(() => {
     if (shouldRedirectToRoster) router.replace('/agents')

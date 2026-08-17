@@ -4,7 +4,7 @@ import type { HumanInputV2NodeType } from '@/app/components/workflow/nodes/human
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { EnvironmentVariable, Node, PromptItem } from '@/app/components/workflow/types'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
 import {
   BlockEnum,

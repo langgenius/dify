@@ -1,6 +1,6 @@
 import type { ServerVersionResponse } from '@dify/contracts/api/openapi/types.gen'
 import type { CompatStore } from '@/cache/compat-store'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { ErrorCode } from '@/errors/codes'
 import { enforceDifyVersion } from './enforce'
 

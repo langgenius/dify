@@ -86,12 +86,12 @@ describe('ApiSecretKeyButton', () => {
     ).toBeDisabled()
   })
 
-  it('keeps the current count visible without management permission', () => {
+  it('does not request API keys without management permission', () => {
     render(<ApiSecretKeyButton appId="app-1" canManage={false} />)
 
     expect(
       screen.getByRole('button', {
-        name: 'appApi.apiKeyModal.apiSecretKey 2',
+        name: 'appApi.apiKeyModal.apiSecretKey 0',
       }),
     ).toBeDisabled()
   })

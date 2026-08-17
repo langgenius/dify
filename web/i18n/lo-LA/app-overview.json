@@ -95,6 +95,7 @@
   "overview.appInfo.settings.more.privacyPolicy": "ນະໂຍບາຍຄວາມເປັນສ່ວນຕົວ",
   "overview.appInfo.settings.more.privacyPolicyPlaceholder": "ປ້ອນລິ້ງນະໂຍບາຍຄວາມເປັນສ່ວນຕົວ",
   "overview.appInfo.settings.more.privacyPolicyTip": "ຊ່ວຍໃຫ້ຜູ້ເຂົ້າຊົມເຂົ້າໃຈຂໍ້ມູນທີ່ແອັບພລິເຄຊັນເກັບກຳ, ເບິ່ງ <privacyPolicyLink>ນະໂຍບາຍຄວາມເປັນສ່ວນຕົວ</privacyPolicyLink> ຂອງ Dify.",
+  "overview.appInfo.settings.multiEnvironmentNotice": "ການຕັ້ງຄ່າ Web App ຈະນຳໃຊ້ກັບທຸກສະພາບແວດລ້ອມ.",
   "overview.appInfo.settings.sso.description": "ຜູ້ໃຊ້ທັງໝົດຕ້ອງເຂົ້າສູ່ລະບົບດ້ວຍ SSO ກ່ອນໃຊ້ Web App",
   "overview.appInfo.settings.sso.label": "ການບັງຄັບໃຊ້ SSO",
   "overview.appInfo.settings.sso.title": "Web App SSO",

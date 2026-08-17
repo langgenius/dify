@@ -29,6 +29,7 @@ from dify_agent.runtime.event_sink import (
     terminal_event_status_fields,
 )
 from dify_agent.runtime.run_scheduler import RunCancellationConflictError, RunScheduler, SchedulerStoppingError
+from dify_agent.runtime.runner import AgentRunRunner
 from dify_agent.server.schemas import RunRecord
 
 
@@ -57,7 +58,6 @@ def _request(
                 plugin_id="langgenius/openai",
                 model_provider="openai",
                 model="demo-model",
-                credentials={"api_key": "secret"},
             ),
         ),
     ]
@@ -380,6 +380,26 @@ class FinalizeSuccessOnCancellationRunner:
                 session_snapshot=CompositorSessionSnapshot(layers=[]),
             )
             assert result.applied is True
+
+
+def test_default_runner_factory_passes_run_timeout_to_runner() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        record = await store.create_run()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+                run_timeout_seconds=17,
+            )
+
+            runner = scheduler._default_runner_factory(record, _request(), is_cancelled=lambda: False)
+
+        assert isinstance(runner, AgentRunRunner)
+        assert runner.run_timeout_seconds == 17
+
+    asyncio.run(scenario())
 
 
 def test_create_run_starts_background_task_and_returns_running() -> None:

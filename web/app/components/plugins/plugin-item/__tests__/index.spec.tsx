@@ -1,17 +1,12 @@
 import type { ReactElement } from 'react'
 import type { PluginDeclaration, PluginDetail } from '../../types'
 import { fireEvent, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { PluginCategoryEnum, PluginSource } from '../../types'
 import PluginItem from '../index'
 
 const mockEnableMarketplace = vi.fn(() => true)
-
-const render = (ui: ReactElement) =>
-  renderWithConsoleQuery(ui, {
-    systemFeatures: { enable_marketplace: mockEnableMarketplace() },
-  })
 
 const mockTheme = vi.fn(() => 'light')
 vi.mock('@/hooks/use-theme', () => ({
@@ -70,12 +65,13 @@ const createLangGeniusVersionInfo = (currentVersion: string) => ({
   version: '',
 })
 
-vi.mock('@/context/version-state', async () => {
-  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createVersionStateModuleMock(() => ({
-    langGeniusVersionInfo: mockLangGeniusVersionInfo(),
-  }))
-})
+const render = (ui: ReactElement) =>
+  renderWithConsoleQuery(ui, {
+    accountProfileMeta: {
+      currentVersion: mockLangGeniusVersionInfo().current_version,
+    },
+    systemFeatures: { enable_marketplace: mockEnableMarketplace() },
+  })
 
 vi.mock('../action', () => ({
   default: ({ onDelete, pluginName }: { onDelete: () => void; pluginName: string }) => (

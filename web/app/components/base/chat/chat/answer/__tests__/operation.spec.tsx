@@ -794,7 +794,10 @@ describe('Operation', () => {
         }),
       ).toBeInTheDocument()
       expect(
-        screen.getByRole('button', { name: 'table.header.adminRate: operation.remove' }),
+        screen.getByRole('button', {
+          name: 'table.header.adminRate: detail.operation.dislike',
+          pressed: true,
+        }),
       ).toBeInTheDocument()
     })
 
@@ -881,21 +884,6 @@ describe('Operation', () => {
       expect(
         screen.getByTestId('operation-bar').querySelectorAll('.i-ri-thumb-up-line').length,
       ).toBe(0)
-    })
-
-    it('should render action buttons with Default state when feedback rating is undefined', () => {
-      // Setting a malformed feedback object with no rating but triggers the wrapper to see undefined fallbacks
-      const item = {
-        ...baseItem,
-        feedback: {} as unknown as Record<string, unknown>,
-        adminFeedback: {} as unknown as Record<string, unknown>,
-      } as ChatItem
-      renderOperation({ ...baseProps, item })
-      // Since it renders the 'else' block for hasAdminFeedback (which is false due to !)
-      // the like/dislike regular ActionButtons should hit the Default state
-      // Since it renders the 'else' block for hasAdminFeedback (which is false due to !)
-      // the like/dislike regular ActionButtons should hit the Default state
-      expect(screen.getByTestId('operation-bar'))!.toBeInTheDocument()
     })
   })
 

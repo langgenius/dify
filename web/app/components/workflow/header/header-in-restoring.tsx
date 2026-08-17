@@ -6,7 +6,6 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
-import { Plan } from '@/app/components/billing/type'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -49,7 +48,7 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
   const canRestore =
     !!currentVersion?.id && !!configsMap?.flowId && currentVersion.version !== WorkflowVersion.Draft
-  const canUseWorkflowVersionAction = !enableBilling || plan.type !== Plan.sandbox
+  const canUseWorkflowVersionAction = !enableBilling || plan.type !== 'sandbox'
   const canEmitCollaborationEvents = configsMap?.flowType === FlowType.appFlow
 
   const handleCancelRestore = useCallback(() => {

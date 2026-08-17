@@ -213,12 +213,12 @@ export function EnvironmentWebAppCard({
           showQrCode
           showRegenerate
           openLabel={t(($) => $['studio.accessPoint.open'], { ns: 'deployments' })}
+          openUrl={webAppUrl}
           regenerateLabel={t(($) => $['overview.appInfo.regenerate'], {
             ns: 'appOverview',
           })}
           regenerateDisabled={!canManage}
           regenerating={resetAccessTokenMutation.isPending}
-          onOpen={() => window.open(webAppUrl, '_blank')}
           onRegenerate={() => setShowRegenerate(true)}
         />
         {systemFeatures.webapp_auth.enabled && (

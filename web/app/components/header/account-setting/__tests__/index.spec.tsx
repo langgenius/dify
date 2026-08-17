@@ -2,7 +2,6 @@ import type { AccountSettingTab } from '../constants'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { fireEvent, screen } from '@testing-library/react'
 import { useState } from 'react'
-import { Plan } from '@/app/components/billing/type'
 import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -42,11 +41,6 @@ vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState.current ?? {})
 })
-vi.mock('@/context/version-state', async () => {
-  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createVersionStateModuleMock(() => mockConsoleState.current ?? {})
-})
-
 vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(() => ({
     push: vi.fn(),
@@ -168,7 +162,7 @@ const baseConsoleState: ConsoleStateFixture = {
   currentWorkspace: {
     id: '1',
     name: 'Workspace',
-    plan: '',
+    plan: null,
     role: 'owner',
   },
   isCurrentWorkspaceManager: true,
@@ -176,13 +170,6 @@ const baseConsoleState: ConsoleStateFixture = {
   isCurrentWorkspaceEditor: true,
   isCurrentWorkspaceDatasetOperator: false,
   refreshCurrentWorkspace: vi.fn(),
-  langGeniusVersionInfo: {
-    current_env: 'testing',
-    current_version: '0.1.0',
-    latest_version: '0.1.0',
-    release_notes: '',
-    version: '0.1.0',
-  },
   isLoadingCurrentWorkspace: false,
   workspacePermissionKeys: [
     'workspace.member.manage',
@@ -521,18 +508,8 @@ describe('AccountSetting', () => {
       ).not.toBeInTheDocument()
     })
 
-    it('should hide the IM platform entry for enterprise-plan workspaces', () => {
-      vi.mocked(useProviderContext).mockReturnValue({
-        ...baseProviderContextValue,
-        enableBilling: true,
-        enableReplaceWebAppLogo: true,
-        plan: {
-          ...baseProviderContextValue.plan,
-          type: Plan.enterprise,
-        },
-      })
-
-      renderAccountSetting()
+    it('should hide the IM platform entry for enterprise edition', () => {
+      renderAccountSetting({ deploymentEdition: 'ENTERPRISE' })
 
       expect(
         screen.queryByRole('button', { name: 'contacts.imPlatform.title' }),
@@ -549,16 +526,11 @@ describe('AccountSetting', () => {
       ).not.toBeInTheDocument()
     })
 
-    it('should reject an enterprise-plan IM platform deep link', () => {
-      vi.mocked(useProviderContext).mockReturnValue({
-        ...baseProviderContextValue,
-        plan: {
-          ...baseProviderContextValue.plan,
-          type: Plan.enterprise,
-        },
+    it('should reject an enterprise-edition IM platform deep link', () => {
+      renderAccountSetting({
+        initialTab: ACCOUNT_SETTING_TAB.IM_PLATFORM,
+        deploymentEdition: 'ENTERPRISE',
       })
-
-      renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.IM_PLATFORM })
 
       expect(screen.queryByTestId('contacts-im-platform-page')).not.toBeInTheDocument()
       expect(screen.getAllByText('common.settings.members').length).toBeGreaterThan(0)

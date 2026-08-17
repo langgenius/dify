@@ -1,9 +1,10 @@
 'use client'
 
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { useTranslation } from 'react-i18next'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import ShareQRCode from '@/app/components/base/qrcode'
-import ActionButton from '../../../base/action-button'
 import { AccessPointEndpoint } from './access-point-card'
 
 type AccessPointUrlProps = {
@@ -17,7 +18,7 @@ type AccessPointUrlProps = {
   showOpen?: boolean
   showQrCode?: boolean
   showRegenerate?: boolean
-  onOpen?: () => void
+  openUrl?: string
   onRegenerate?: () => void
   openLabel?: string
   regenerateLabel?: string
@@ -30,9 +31,9 @@ export function AccessPointUrl({
   label,
   loading = false,
   copyDisabled = false,
-  onOpen,
   onRegenerate,
   openLabel,
+  openUrl,
   regenerateDisabled = false,
   regenerateLabel,
   regenerating = false,
@@ -43,6 +44,7 @@ export function AccessPointUrl({
   unavailableLabel,
   value,
 }: AccessPointUrlProps) {
+  const { t } = useTranslation()
   const detailsAvailable = !loading && !unavailable
 
   const disabledActions = (
@@ -90,9 +92,8 @@ export function AccessPointUrl({
           <ShareQRCode content={value} />
         ))}
       {showRegenerate && (
-        <ActionButton
-          className="size-6 px-0"
-          aria-label={regenerateLabel}
+        <IconButton
+          aria-label={regenerateLabel || t(($) => $['operation.regenerate'], { ns: 'common' })}
           disabled={regenerateDisabled || regenerating}
           onClick={onRegenerate}
         >
@@ -100,21 +101,31 @@ export function AccessPointUrl({
             aria-hidden
             className={`i-ri-loop-left-line size-4 ${regenerating ? 'animate-spin' : ''}`}
           />
-        </ActionButton>
+        </IconButton>
       )}
       {showOpen && (
         <>
           <span className="mx-1 h-3.5 w-px bg-divider-regular" />
-          <Button
-            variant="secondary"
-            size="small"
-            className="h-6 gap-1 px-1.5"
-            disabled={!enabled}
-            onClick={onOpen}
-          >
-            <span aria-hidden className="i-ri-external-link-line size-3.5" />
-            {openLabel}
-          </Button>
+          {enabled && openUrl ? (
+            <a
+              href={openUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={buttonVariants({
+                variant: 'secondary',
+                size: 'small',
+                className: 'h-6 gap-1 px-1.5',
+              })}
+            >
+              <span aria-hidden className="i-ri-external-link-line size-3.5" />
+              {openLabel}
+            </a>
+          ) : (
+            <Button variant="secondary" size="small" className="h-6 gap-1 px-1.5" disabled>
+              <span aria-hidden className="i-ri-external-link-line size-3.5" />
+              {openLabel}
+            </Button>
+          )}
         </>
       )}
     </div>

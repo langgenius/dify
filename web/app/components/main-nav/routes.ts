@@ -4,7 +4,6 @@ type MainNavRouteVisibility = (options: MainNavRouteVisibilityOptions) => boolea
 
 const DATASET_COLLECTION_ROUTES = new Set(['create', 'create-from-pipeline', 'connect'])
 const DATASET_DOCUMENT_CREATION_ROUTES = new Set(['create', 'create-from-pipeline'])
-const DEPLOYMENT_COLLECTION_ROUTES = new Set(['create'])
 
 export type MainNavRouteConfig = {
   key: string
@@ -19,7 +18,6 @@ export type MainNavRouteConfig = {
 export type MainNavRouteVisibilityOptions = {
   agentV2Enabled: boolean
   canManageAgents: boolean
-  canUseAppDeploy: boolean
   canViewContacts: boolean
   contactsEnabled: boolean
   isCurrentWorkspaceDatasetOperator: boolean
@@ -28,7 +26,7 @@ export type MainNavRouteVisibilityOptions = {
 
 export type DetailSidebarVisibilityOptions = Pick<
   MainNavRouteVisibilityOptions,
-  'agentV2Enabled' | 'canUseAppDeploy' | 'isCurrentWorkspaceDatasetOperator'
+  'agentV2Enabled' | 'isCurrentWorkspaceDatasetOperator'
 >
 
 const VISIBLE_TO_ALL: MainNavRouteVisibility = () => true
@@ -162,14 +160,6 @@ function isAgentDetailPathname(pathname: string) {
   return section === 'agents' && !!agentId
 }
 
-function isDeploymentDetailPathname(pathname: string) {
-  const [section, appInstanceId] = pathname.split('/').filter(Boolean)
-
-  return (
-    section === 'deployments' && !!appInstanceId && !DEPLOYMENT_COLLECTION_ROUTES.has(appInstanceId)
-  )
-}
-
 function isSnippetDetailPathname(pathname: string) {
   const [section, snippetId] = pathname.split('/').filter(Boolean)
 
@@ -183,7 +173,5 @@ export function shouldUseDetailSidebar(pathname: string, options: DetailSidebarV
 
   if (isAppDetailPathname(pathname)) return true
 
-  if (options.agentV2Enabled && isAgentDetailPathname(pathname)) return true
-
-  return options.canUseAppDeploy && isDeploymentDetailPathname(pathname)
+  return options.agentV2Enabled && isAgentDetailPathname(pathname)
 }

@@ -17,9 +17,7 @@ vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
   }) =>
     isShow ? (
       <div data-testid="secret-key-modal">
-        <span data-testid="modal-app-id">
-          {`Modal for ${scope.type === 'dataset' ? 'no-app' : scope.appId}`}
-        </span>
+        <span>{`Modal for ${scope.type === 'dataset' ? 'no-app' : scope.appId}`}</span>
         <span data-testid="modal-can-manage">{String(canManage)}</span>
         <button onClick={onClose} data-testid="close-modal">
           Close

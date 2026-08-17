@@ -14,9 +14,9 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import Loading from '@/app/components/base/loading'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -155,12 +155,12 @@ export function SecretKeyModalView({
                     <div className="flex grow space-x-2 px-3">
                       <CopyFeedback content={api.token} />
                       {canManage && (
-                        <ActionButton
+                        <IconButton
                           aria-label={`${t(($) => $['operation.delete'], { ns: 'common' })} ${generateToken(api.token)}`}
                           onClick={() => setDeleteKeyId(api.id)}
                         >
                           <span aria-hidden className="i-ri-delete-bin-line size-4" />
-                        </ActionButton>
+                        </IconButton>
                       )}
                     </div>
                   </div>

@@ -18,11 +18,10 @@ import { getDaysUntilEndOfMonth } from '@/utils/time'
 import Loading from '../../base/icons/src/public/thought/Loading'
 import { NUM_INFINITE } from '../config'
 import { useEducationDiscount } from '../hooks/use-education-discount'
-import { Plan, SelfHostedPlan } from '../type'
 import UpgradeBtn from '../upgrade-btn'
 import AppsInfo from '../usage-info/apps-info'
 import VectorSpaceInfo from '../usage-info/vector-space-info'
-import { Enterprise, Professional, Sandbox, Team } from './assets'
+import { Professional, Sandbox, Team } from './assets'
 
 type Props = Readonly<{
   loc: string
@@ -50,17 +49,16 @@ const PlanComp: FC<Props> = ({ loc }) => {
   )
   const { isAboutToExpire = false, isEducationAccount = false } = educationStatus ?? {}
   const { type } = plan
-  const isEnterprisePlan = String(type) === SelfHostedPlan.enterprise
 
   const { usage, total, reset } = plan
   const triggerEventsResetInDays =
-    type === Plan.professional && total.triggerEvents !== NUM_INFINITE
+    type === 'professional' && total.triggerEvents !== NUM_INFINITE
       ? (reset.triggerEvents ?? undefined)
       : undefined
   const apiRateLimitResetInDays = (() => {
     if (total.apiRateLimit === NUM_INFINITE) return undefined
     if (typeof reset.apiRateLimit === 'number') return reset.apiRateLimit
-    if (type === Plan.sandbox) return getDaysUntilEndOfMonth()
+    if (type === 'sandbox') return getDaysUntilEndOfMonth()
     return undefined
   })()
 
@@ -68,10 +66,9 @@ const PlanComp: FC<Props> = ({ loc }) => {
   return (
     <div className="relative rounded-2xl border-[0.5px] border-effects-highlight-lightmode-off bg-background-section-burn">
       <div className="p-6 pb-2">
-        {plan.type === Plan.sandbox && <Sandbox />}
-        {plan.type === Plan.professional && <Professional />}
-        {plan.type === Plan.team && <Team />}
-        {isEnterprisePlan && <Enterprise />}
+        {plan.type === 'sandbox' && <Sandbox />}
+        {plan.type === 'professional' && <Professional />}
+        {plan.type === 'team' && <Team />}
         <div className="mt-1 flex items-center">
           <div className="grow">
             <div className="mb-1 flex items-center gap-1">
@@ -93,7 +90,7 @@ const PlanComp: FC<Props> = ({ loc }) => {
             {isCloudEdition &&
               enableEducationPlan &&
               isEducationAccount &&
-              type === Plan.sandbox &&
+              type === 'sandbox' &&
               isCurrentWorkspaceManager && (
                 <Button
                   variant="ghost"
@@ -105,8 +102,8 @@ const PlanComp: FC<Props> = ({ loc }) => {
                   {isEducationDiscountLoading && <Loading className="animate-spin-slow" />}
                 </Button>
               )}
-            {isCloudEdition && !isEnterprisePlan && (
-              <UpgradeBtn className="shrink-0" isPlain={type === Plan.team} isShort loc={loc} />
+            {isCloudEdition && (
+              <UpgradeBtn className="shrink-0" isPlain={type === 'team'} isShort loc={loc} />
             )}
           </div>
         </div>

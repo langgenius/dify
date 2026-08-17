@@ -1,6 +1,5 @@
 import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { createStore } from 'jotai'
-import type { LangGeniusVersionInfo } from '@/context/app-context-types'
 import { atom } from 'jotai'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 
@@ -25,13 +24,12 @@ export type ConsoleStateFixture = {
   knowledgeFsEnabled?: boolean
   deploymentEdition?: 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD'
   brandingEnabled?: boolean
-  langGeniusVersionInfo?: Partial<LangGeniusVersionInfo>
   refreshCurrentWorkspace?: () => void
 }
 
 type ConsoleStateFixtureResolver = () => ConsoleStateFixture
 type JotaiStore = ReturnType<typeof createStore>
-type ConsoleStateOwner = 'workspace' | 'permission' | 'systemFeatures' | 'version'
+type ConsoleStateOwner = 'workspace' | 'permission' | 'systemFeatures'
 
 const defaultCurrentWorkspace = {
   id: 'workspace-1',
@@ -40,14 +38,6 @@ const defaultCurrentWorkspace = {
   credits: null,
   role: 'owner',
 } satisfies GetWorkspacesCurrentSummaryResponse
-
-const defaultLangGeniusVersionInfo = {
-  current_env: 'CLOUD',
-  current_version: '',
-  latest_version: '',
-  version: '',
-  release_notes: '',
-} satisfies LangGeniusVersionInfo
 
 const currentWorkspaceAtom = atom<GetWorkspacesCurrentSummaryResponse>(defaultCurrentWorkspace)
 const currentWorkspaceIdAtom = atom((get) => get(currentWorkspaceAtom).id)
@@ -67,9 +57,6 @@ const workspacePermissionKeysLoadingAtom = atom(false)
 const systemFeaturesAtom = atom(createSystemFeaturesFixture())
 const deploymentEditionAtom = atom((get) => get(systemFeaturesAtom).deployment_edition)
 const brandingEnabledAtom = atom((get) => get(systemFeaturesAtom).branding.enabled)
-
-const langGeniusVersionInfoAtom = atom<LangGeniusVersionInfo>(defaultLangGeniusVersionInfo)
-const langGeniusCurrentVersionAtom = atom((get) => get(langGeniusVersionInfoAtom).current_version)
 
 const consoleStateFixtureResolvers: Partial<
   Record<ConsoleStateOwner, ConsoleStateFixtureResolver>
@@ -109,10 +96,6 @@ export const seedRegisteredConsoleStateFixture = (store: JotaiStore) => {
       },
     }),
   )
-  store.set(langGeniusVersionInfoAtom, {
-    ...defaultLangGeniusVersionInfo,
-    ...state.langGeniusVersionInfo,
-  })
   store.set(refreshCurrentWorkspaceCallbackAtom, {
     callback: state.refreshCurrentWorkspace ?? (() => {}),
   })
@@ -167,15 +150,5 @@ export const createSystemFeaturesStateModuleMock = (getState: ConsoleStateFixtur
   return {
     deploymentEditionAtom,
     brandingEnabledAtom,
-  }
-}
-
-export const createVersionStateModuleMock = (getState: ConsoleStateFixtureResolver) => {
-  registerConsoleStateFixture('version', () => ({
-    langGeniusVersionInfo: getState().langGeniusVersionInfo,
-  }))
-  return {
-    langGeniusVersionInfoAtom,
-    langGeniusCurrentVersionAtom,
   }
 }
