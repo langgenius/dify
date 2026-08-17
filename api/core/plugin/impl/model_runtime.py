@@ -32,7 +32,7 @@ from graphon.model_runtime.entities.rerank_entities import MultimodalRerankInput
 from graphon.model_runtime.entities.text_embedding_entities import EmbeddingInputType, EmbeddingResult
 from graphon.model_runtime.model_providers.base.large_language_model import normalize_non_stream_runtime_result
 from graphon.model_runtime.protocols.runtime import ModelRuntime
-from graphon.model_runtime.protocols.tts_runtime import TTSModelVoice
+from graphon.model_runtime.protocols.tts_runtime import TTSChunk, TTSModelVoice
 from models.provider_ids import ModelProviderID
 
 logger = logging.getLogger(__name__)
@@ -638,10 +638,10 @@ class PluginModelRuntime(ModelRuntime):
         content_text: str,
         voice: str,
         request_metadata: Mapping[str, object] | None = None,
-    ) -> Iterable[bytes]:
+    ) -> Iterable[TTSChunk]:
         del request_metadata
         plugin_id, provider_name = self._split_provider(provider)
-        return self.client.invoke_tts(
+        chunks = self.client.invoke_tts(
             tenant_id=self.tenant_id,
             user_id=self.user_id,
             plugin_id=plugin_id,
@@ -651,6 +651,8 @@ class PluginModelRuntime(ModelRuntime):
             content_text=content_text,
             voice=voice,
         )
+        # ponytail: the current Dify client exposes bytes; preserve MIME metadata when its TTS response model does.
+        return (TTSChunk(data=chunk, mime_type=None) for chunk in chunks)
 
     @override
     def get_tts_model_voices(
