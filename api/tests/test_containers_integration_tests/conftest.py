@@ -10,9 +10,9 @@ more reliable and realistic test scenarios.
 import logging
 import os
 from collections.abc import Generator
-from contextlib import contextmanager
+from contextlib import ExitStack, closing
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol
 
 import psycopg2
 import pytest
@@ -32,259 +32,204 @@ from extensions.ext_database import db
 # Configure logging for test containers
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
-_TEST_SANDBOX_IMAGE = os.getenv("TEST_SANDBOX_IMAGE", "langgenius/dify-sandbox:0.2.12")
 
 DEFAULT_SANDBOX_TEST_IMAGE = "langgenius/dify-sandbox:0.2.14"
 SANDBOX_TEST_IMAGE_ENV = "DIFY_SANDBOX_TEST_IMAGE"
-
-
-class _CloserProtocol(Protocol):
-    """_Closer is any type which implement the close() method."""
-
-    def close(self) -> None:
-        """close the current object, release any external resouece (file, transaction, connection etc.)
-        associated with it.
-        """
-        pass
-
-
-@contextmanager
-def _auto_close[T: _CloserProtocol](closer: T) -> Generator[T, None, None]:
-    yield closer
-    closer.close()
 
 
 def _wait_for_log_message(message: str, timeout: int) -> LogMessageWaitStrategy:
     return LogMessageWaitStrategy(message).with_startup_timeout(timeout)
 
 
-class DifyTestContainers:
-    """
-    Manages all test containers required for Dify integration tests.
+@dataclass(frozen=True, slots=True)
+class DifyTestContainerEnvironment:
+    postgres: PostgresContainer
+    redis: RedisContainer
+    dify_sandbox: DockerContainer
+    dify_plugin_daemon: DockerContainer | None
 
-    This class provides a centralized way to manage multiple containers
-    needed for comprehensive integration testing, including databases,
-    caches, and search engines.
-    """
 
-    def __init__(self) -> None:
-        """Initialize container management with default configurations."""
-        self.network: Network | None = None
-        self.postgres: PostgresContainer | None = None
-        self.redis: RedisContainer | None = None
-        self.dify_sandbox: DockerContainer | None = None
-        self.dify_plugin_daemon: DockerContainer | None = None
-        self._containers_started = False
-        logger.info("DifyTestContainers initialized - ready to manage test containers")
+@pytest.fixture(scope="session")
+def testcontainers_network() -> Generator[Network, None, None]:
+    """Provide the shared network after all dependent containers have stopped."""
+    logger.info("Creating Docker network for test container communication")
+    with Network() as network:
+        logger.info("Docker network created successfully with name: %s", network.name)
+        yield network
 
-    def start_containers_with_env(self) -> None:
-        """
-        Start all required containers for integration testing.
 
-        This method initializes and starts PostgreSQL, Redis
-        containers with appropriate configurations for Dify testing. Containers
-        are started in dependency order to ensure proper initialization.
-        """
-        if self._containers_started:
-            logger.info("Containers already started - skipping container startup")
-            return
+@pytest.fixture(scope="session")
+def postgres_container(testcontainers_network: Network) -> Generator[PostgresContainer, None, None]:
+    """Provide PostgreSQL and clean it up if any later setup step fails."""
+    postgres = PostgresContainer(image="postgres:14-alpine").with_network(testcontainers_network)
+    postgres.waiting_for(_wait_for_log_message("is ready to accept connections", 30))
 
-        logger.info("Starting test containers for Dify integration tests...")
+    with ExitStack() as stack:
+        postgres = stack.enter_context(postgres)
+        environment = stack.enter_context(pytest.MonkeyPatch.context())
+        db_host = postgres.get_container_host_ip()
+        db_port = postgres.get_exposed_port(5432)
+        environment.setenv("DB_HOST", db_host)
+        environment.setenv("DB_PORT", str(db_port))
+        environment.setenv("DB_USERNAME", postgres.username)
+        environment.setenv("DB_PASSWORD", postgres.password)
+        environment.setenv("DB_DATABASE", postgres.dbname)
 
-        # Create Docker network for container communication
-        logger.info("Creating Docker network for container communication...")
-        self.network = Network()
-        self.network.create()
-        logger.info("Docker network created successfully with name: %s", self.network.name)
-
-        # Start PostgreSQL container for main application database
-        # PostgreSQL is used for storing user data, workflows, and application state
-        logger.info("Initializing PostgreSQL container...")
-        self.postgres = PostgresContainer(
-            image="postgres:14-alpine",
-        ).with_network(self.network)
-        self.postgres.waiting_for(_wait_for_log_message("is ready to accept connections", 30))
-        self.postgres.start()
-        db_host = self.postgres.get_container_host_ip()
-        db_port = self.postgres.get_exposed_port(5432)
-        os.environ["DB_HOST"] = db_host
-        os.environ["DB_PORT"] = str(db_port)
-        os.environ["DB_USERNAME"] = self.postgres.username
-        os.environ["DB_PASSWORD"] = self.postgres.password
-        os.environ["DB_DATABASE"] = self.postgres.dbname
         logger.info(
             "PostgreSQL container started successfully - Host: %s, Port: %s User: %s, Database: %s",
             db_host,
             db_port,
-            self.postgres.username,
-            self.postgres.dbname,
+            postgres.username,
+            postgres.dbname,
         )
 
-        logger.info("PostgreSQL container is ready and accepting connections")
-
-        conn = psycopg2.connect(
+        connection = psycopg2.connect(
             host=db_host,
             port=db_port,
-            user=self.postgres.username,
-            password=self.postgres.password,
-            database=self.postgres.dbname,
+            user=postgres.username,
+            password=postgres.password,
+            database=postgres.dbname,
         )
-        conn.autocommit = True
-        with _auto_close(conn):
-            with conn.cursor() as cursor:
-                # Install uuid-ossp extension for UUID generation
-                logger.info("Installing uuid-ossp extension...")
+        connection.autocommit = True
+        with closing(connection):
+            with connection.cursor() as cursor:
                 cursor.execute('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";')
-            logger.info("uuid-ossp extension installed successfully")
 
-            # NOTE: We cannot use `with conn.cursor() as cursor:` as it will wrap the statement
-            # inside a transaction. However, the `CREATE DATABASE` statement cannot run inside a transaction block.
-            with _auto_close(conn.cursor()) as cursor:
-                # Create plugin database for dify-plugin-daemon
-                logger.info("Creating plugin database...")
+            # CREATE DATABASE cannot run inside a transaction block.
+            with closing(connection.cursor()) as cursor:
                 cursor.execute("CREATE DATABASE dify_plugin;")
-            logger.info("Plugin database created successfully")
 
-        # Set up storage environment variables
-        os.environ.setdefault("STORAGE_TYPE", "opendal")
-        os.environ.setdefault("OPENDAL_SCHEME", "fs")
-        os.environ.setdefault("OPENDAL_FS_ROOT", "/tmp/dify-storage")
+        yield postgres
 
-        # Start Redis container for caching and session management
-        # Redis is used for storing session data, cache entries, and temporary data
-        logger.info("Initializing Redis container...")
-        self.redis = RedisContainer(image="redis:6-alpine", port=6379).with_network(self.network)
-        self.redis.waiting_for(_wait_for_log_message("Ready to accept connections", 30))
-        self.redis.start()
-        redis_host = self.redis.get_container_host_ip()
-        redis_port = self.redis.get_exposed_port(6379)
-        os.environ["REDIS_HOST"] = redis_host
-        os.environ["REDIS_PORT"] = str(redis_port)
+
+@pytest.fixture(scope="session")
+def redis_container(testcontainers_network: Network) -> Generator[RedisContainer, None, None]:
+    """Provide Redis with its process environment scoped to the fixture."""
+    redis = RedisContainer(image="redis:6-alpine", port=6379).with_network(testcontainers_network)
+    redis.waiting_for(_wait_for_log_message("Ready to accept connections", 30))
+
+    with ExitStack() as stack:
+        redis = stack.enter_context(redis)
+        environment = stack.enter_context(pytest.MonkeyPatch.context())
+        redis_host = redis.get_container_host_ip()
+        redis_port = redis.get_exposed_port(6379)
+        environment.setenv("REDIS_HOST", redis_host)
+        environment.setenv("REDIS_PORT", str(redis_port))
+        environment.setenv("REDIS_USERNAME", "")
+        environment.setenv("REDIS_PASSWORD", "")
         logger.info("Redis container started successfully - Host: %s, Port: %s", redis_host, redis_port)
+        yield redis
 
-        logger.info("Redis container is ready and accepting connections")
 
-        # Start Dify Sandbox container for code execution environment.
-        # Default to the production-pinned image while allowing local overrides for debugging.
-        logger.info("Initializing Dify Sandbox container...")
-        sandbox_image = os.getenv(SANDBOX_TEST_IMAGE_ENV, DEFAULT_SANDBOX_TEST_IMAGE)
-        self.dify_sandbox = DockerContainer(image=sandbox_image).with_network(self.network)
-        self.dify_sandbox.with_exposed_ports(8194)
-        self.dify_sandbox.waiting_for(_wait_for_log_message("config init success", 60))
-        self.dify_sandbox.env = {
-            "API_KEY": "test_api_key",
-        }
-        self.dify_sandbox.start()
-        sandbox_host = self.dify_sandbox.get_container_host_ip()
-        sandbox_port = self.dify_sandbox.get_exposed_port(8194)
-        os.environ["CODE_EXECUTION_ENDPOINT"] = f"http://{sandbox_host}:{sandbox_port}"
-        os.environ["CODE_EXECUTION_API_KEY"] = "test_api_key"
+@pytest.fixture(scope="session")
+def dify_sandbox_container(testcontainers_network: Network) -> Generator[DockerContainer, None, None]:
+    """Provide Dify Sandbox with its endpoint environment."""
+    sandbox_image = os.getenv(SANDBOX_TEST_IMAGE_ENV, DEFAULT_SANDBOX_TEST_IMAGE)
+    sandbox = DockerContainer(image=sandbox_image).with_network(testcontainers_network)
+    sandbox.with_exposed_ports(8194)
+    sandbox.waiting_for(_wait_for_log_message("config init success", 60))
+    sandbox.env = {"API_KEY": "test_api_key"}
+
+    with ExitStack() as stack:
+        sandbox = stack.enter_context(sandbox)
+        environment = stack.enter_context(pytest.MonkeyPatch.context())
+        sandbox_host = sandbox.get_container_host_ip()
+        sandbox_port = sandbox.get_exposed_port(8194)
+        environment.setenv("CODE_EXECUTION_ENDPOINT", f"http://{sandbox_host}:{sandbox_port}")
+        environment.setenv("CODE_EXECUTION_API_KEY", "test_api_key")
         logger.info(
             "Dify Sandbox container started successfully - Image: %s Host: %s, Port: %s",
             sandbox_image,
             sandbox_host,
             sandbox_port,
         )
+        yield sandbox
 
-        logger.info("Dify Sandbox container is ready and accepting connections")
 
-        # Start Dify Plugin Daemon container for plugin management
-        # Dify Plugin Daemon provides plugin lifecycle management and execution
-        logger.info("Initializing Dify Plugin Daemon container...")
-        self.dify_plugin_daemon = DockerContainer(image="langgenius/dify-plugin-daemon:0.5.3-local").with_network(
-            self.network
+@pytest.fixture(scope="session")
+def dify_plugin_daemon_container(
+    testcontainers_network: Network,
+    postgres_container: PostgresContainer,
+    redis_container: RedisContainer,
+) -> Generator[DockerContainer | None, None, None]:
+    """Provide the optional plugin daemon without swallowing consumer failures."""
+    postgres_container_name = postgres_container.get_wrapped_container().name
+    redis_container_name = redis_container.get_wrapped_container().name
+    assert postgres_container_name is not None
+    assert redis_container_name is not None
+
+    plugin_daemon = DockerContainer(image="langgenius/dify-plugin-daemon:0.5.3-local").with_network(
+        testcontainers_network
+    )
+    plugin_daemon.with_exposed_ports(5002)
+    plugin_daemon.waiting_for(_wait_for_log_message("start plugin manager daemon", 60))
+    plugin_daemon.env = {
+        "DB_HOST": postgres_container_name,
+        "DB_PORT": "5432",
+        "DB_USERNAME": postgres_container.username,
+        "DB_PASSWORD": postgres_container.password,
+        "DB_DATABASE": "dify_plugin",
+        "REDIS_HOST": redis_container_name,
+        "REDIS_PORT": "6379",
+        "REDIS_PASSWORD": "",
+        "SERVER_PORT": "5002",
+        "SERVER_KEY": "test_plugin_daemon_key",
+        "MAX_PLUGIN_PACKAGE_SIZE": "52428800",
+        "PPROF_ENABLED": "false",
+        "DIFY_INNER_API_URL": f"http://{postgres_container_name}:5001",
+        "DIFY_INNER_API_KEY": "test_inner_api_key",
+        "PLUGIN_REMOTE_INSTALLING_HOST": "0.0.0.0",
+        "PLUGIN_REMOTE_INSTALLING_PORT": "5003",
+        "PLUGIN_WORKING_PATH": "/app/storage/cwd",
+        "FORCE_VERIFYING_SIGNATURE": "false",
+        "PYTHON_ENV_INIT_TIMEOUT": "120",
+        "PLUGIN_MAX_EXECUTION_TIMEOUT": "600",
+        "PLUGIN_STDIO_BUFFER_SIZE": "1024",
+        "PLUGIN_STDIO_MAX_BUFFER_SIZE": "5242880",
+        "PLUGIN_STORAGE_TYPE": "local",
+        "PLUGIN_STORAGE_LOCAL_ROOT": "/app/storage",
+        "PLUGIN_INSTALLED_PATH": "plugin",
+        "PLUGIN_PACKAGE_CACHE_PATH": "plugin_packages",
+        "PLUGIN_MEDIA_CACHE_PATH": "assets",
+    }
+
+    stack = ExitStack()
+    try:
+        plugin_daemon = stack.enter_context(plugin_daemon)
+        plugin_daemon_host = plugin_daemon.get_container_host_ip()
+        plugin_daemon_port = plugin_daemon.get_exposed_port(5002)
+    except Exception:
+        logger.exception("Failed to start Dify Plugin Daemon container")
+        stack.close()
+        logger.info("Continuing without plugin daemon - some tests may be limited")
+        yield None
+        return
+
+    with stack:
+        environment = stack.enter_context(pytest.MonkeyPatch.context())
+        environment.setenv("PLUGIN_DAEMON_URL", f"http://{plugin_daemon_host}:{plugin_daemon_port}")
+        environment.setenv("PLUGIN_DAEMON_KEY", "test_plugin_daemon_key")
+        logger.info(
+            "Dify Plugin Daemon container started successfully - Host: %s, Port: %s",
+            plugin_daemon_host,
+            plugin_daemon_port,
         )
-        self.dify_plugin_daemon.with_exposed_ports(5002)
-        self.dify_plugin_daemon.waiting_for(_wait_for_log_message("start plugin manager daemon", 60))
-        # Get container internal network addresses
-        postgres_container_name = self.postgres.get_wrapped_container().name
-        redis_container_name = self.redis.get_wrapped_container().name
-        assert postgres_container_name is not None
-        assert redis_container_name is not None
-
-        self.dify_plugin_daemon.env = {
-            "DB_HOST": postgres_container_name,  # Use container name for internal network communication
-            "DB_PORT": "5432",  # Use internal port
-            "DB_USERNAME": self.postgres.username,
-            "DB_PASSWORD": self.postgres.password,
-            "DB_DATABASE": "dify_plugin",
-            "REDIS_HOST": redis_container_name,  # Use container name for internal network communication
-            "REDIS_PORT": "6379",  # Use internal port
-            "REDIS_PASSWORD": "",
-            "SERVER_PORT": "5002",
-            "SERVER_KEY": "test_plugin_daemon_key",
-            "MAX_PLUGIN_PACKAGE_SIZE": "52428800",
-            "PPROF_ENABLED": "false",
-            "DIFY_INNER_API_URL": f"http://{postgres_container_name}:5001",
-            "DIFY_INNER_API_KEY": "test_inner_api_key",
-            "PLUGIN_REMOTE_INSTALLING_HOST": "0.0.0.0",
-            "PLUGIN_REMOTE_INSTALLING_PORT": "5003",
-            "PLUGIN_WORKING_PATH": "/app/storage/cwd",
-            "FORCE_VERIFYING_SIGNATURE": "false",
-            "PYTHON_ENV_INIT_TIMEOUT": "120",
-            "PLUGIN_MAX_EXECUTION_TIMEOUT": "600",
-            "PLUGIN_STDIO_BUFFER_SIZE": "1024",
-            "PLUGIN_STDIO_MAX_BUFFER_SIZE": "5242880",
-            "PLUGIN_STORAGE_TYPE": "local",
-            "PLUGIN_STORAGE_LOCAL_ROOT": "/app/storage",
-            "PLUGIN_INSTALLED_PATH": "plugin",
-            "PLUGIN_PACKAGE_CACHE_PATH": "plugin_packages",
-            "PLUGIN_MEDIA_CACHE_PATH": "assets",
-        }
-
-        try:
-            self.dify_plugin_daemon.start()
-            plugin_daemon_host = self.dify_plugin_daemon.get_container_host_ip()
-            plugin_daemon_port = self.dify_plugin_daemon.get_exposed_port(5002)
-            os.environ["PLUGIN_DAEMON_URL"] = f"http://{plugin_daemon_host}:{plugin_daemon_port}"
-            os.environ["PLUGIN_DAEMON_KEY"] = "test_plugin_daemon_key"
-            logger.info(
-                "Dify Plugin Daemon container started successfully - Host: %s, Port: %s",
-                plugin_daemon_host,
-                plugin_daemon_port,
-            )
-
-            logger.info("Dify Plugin Daemon container is ready and accepting connections")
-        except Exception as e:
-            logger.warning("Failed to start Dify Plugin Daemon container: %s", e)
-            logger.info("Continuing without plugin daemon - some tests may be limited")
-            self.dify_plugin_daemon = None
-
-        self._containers_started = True
-        logger.info("All test containers started successfully")
-
-    def stop_containers(self) -> None:
-        """
-        Stop and clean up all test containers.
-
-        This method ensures proper cleanup of all containers to prevent
-        resource leaks and conflicts between test runs.
-        """
-        if not self._containers_started:
-            logger.info("No containers to stop - containers were not started")
-            return
-
-        logger.info("Stopping and cleaning up test containers...")
-        containers = [self.redis, self.postgres, self.dify_sandbox, self.dify_plugin_daemon]
-        for container in containers:
-            if container:
-                container_name = container.image
-                logger.info("Stopping container: %s", container_name)
-                container.stop()
-                logger.info("Successfully stopped container: %s", container_name)
-
-        # Stop and remove the network
-        if self.network:
-            logger.info("Removing Docker network...")
-            self.network.remove()
-            logger.info("Successfully removed Docker network")
-
-        self._containers_started = False
-        logger.info("All test containers stopped and cleaned up successfully")
+        yield plugin_daemon
 
 
-# Global container manager instance
-_container_manager = DifyTestContainers()
+@pytest.fixture(scope="session")
+def storage_environment() -> Generator[None, None, None]:
+    """Provide default storage settings without overwriting caller overrides."""
+    defaults = {
+        "STORAGE_TYPE": "opendal",
+        "OPENDAL_SCHEME": "fs",
+        "OPENDAL_FS_ROOT": "/tmp/dify-storage",
+    }
+    with pytest.MonkeyPatch.context() as environment:
+        for name, value in defaults.items():
+            if name not in os.environ:
+                environment.setenv(name, value)
+        yield
 
 
 def _get_migration_dir() -> Path:
@@ -355,9 +300,6 @@ def _create_app_with_containers() -> Flask:
     from extensions import ext_redis
 
     ext_redis.redis_client._client = None
-    os.environ["REDIS_USERNAME"] = ""
-    os.environ["REDIS_PASSWORD"] = ""
-
     # Re-create the config after environment variables have been set
     from configs import dify_config
 
@@ -390,28 +332,34 @@ def _create_app_with_containers() -> Flask:
 
 
 @pytest.fixture(scope="session")
-def set_up_containers_and_env() -> Generator[DifyTestContainers, None, None]:
+def set_up_containers_and_env(
+    postgres_container: PostgresContainer,
+    redis_container: RedisContainer,
+    dify_sandbox_container: DockerContainer,
+    dify_plugin_daemon_container: DockerContainer | None,
+    storage_environment: None,
+) -> DifyTestContainerEnvironment:
     """
-    Session-scoped fixture to manage test containers.
+    Compose the independently managed test container fixtures.
 
-    This fixture ensures containers are started once per test session
-    and properly cleaned up when all tests are complete. This approach
-    improves test performance by reusing containers across multiple tests.
+    Pytest owns the dependency graph and finalizes every resource fixture in
+    reverse order, including when a later fixture fails during setup.
 
-    Yields:
-        DifyTestContainers: Container manager instance
+    Returns:
+        DifyTestContainerEnvironment: Handles for the started containers
     """
-    logger.info("=== Starting test session container management ===")
-    _container_manager.start_containers_with_env()
+    assert storage_environment is None
     logger.info("Test containers ready for session")
-    yield _container_manager
-    logger.info("=== Cleaning up test session containers ===")
-    _container_manager.stop_containers()
-    logger.info("Test session container cleanup completed")
+    return DifyTestContainerEnvironment(
+        postgres=postgres_container,
+        redis=redis_container,
+        dify_sandbox=dify_sandbox_container,
+        dify_plugin_daemon=dify_plugin_daemon_container,
+    )
 
 
 @pytest.fixture(scope="session")
-def flask_app_with_containers(set_up_containers_and_env: DifyTestContainers) -> Flask:
+def flask_app_with_containers(set_up_containers_and_env: DifyTestContainerEnvironment) -> Flask:
     """
     Session-scoped Flask application fixture using test containers.
 
@@ -419,12 +367,12 @@ def flask_app_with_containers(set_up_containers_and_env: DifyTestContainers) -> 
     to use the test containers for all database and service connections.
 
     Args:
-        containers: Container manager fixture
+        set_up_containers_and_env: Composed test container environment
 
     Returns:
         Flask: Configured Flask application
     """
-    assert set_up_containers_and_env is _container_manager
+    assert set_up_containers_and_env.postgres is not None
     logger.info("=== Creating session-scoped Flask application ===")
     app = _create_app_with_containers()
     logger.info("Session-scoped Flask application created successfully")
