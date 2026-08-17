@@ -66,6 +66,7 @@ describe('fetchPluginBanners', () => {
                   badges: ['verified', 'partner', 'unknown'],
                   link: '/plugins/langgenius/first',
                   card_position: 0,
+                  auto_batch_id: '11111111-1111-4111-8111-111111111111',
                 },
                 {
                   item_type: 'plugin',
@@ -147,6 +148,7 @@ describe('fetchPluginBanners', () => {
       expect(recommend.content.cards[0]).toMatchObject({
         creator: 'langgenius',
         badges: ['verified', 'partner'],
+        auto_batch_id: '11111111-1111-4111-8111-111111111111',
       })
     }
 

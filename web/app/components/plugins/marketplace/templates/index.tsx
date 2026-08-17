@@ -190,6 +190,7 @@ export async function EmbeddedTemplatesMarketplace({
     <HomeShell
       banners={banners}
       isMarketplacePlatform={false}
+      page="templates"
       header={
         <HomeHeader
           activeTab="templates"

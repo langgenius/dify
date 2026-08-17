@@ -214,6 +214,7 @@ export type BannerRecommendCard = {
   badges?: Array<'partner' | 'verified'>
   link: string
   card_position: number
+  auto_batch_id?: string | null
 }
 
 export type BannerRecommend = BannerBase & {

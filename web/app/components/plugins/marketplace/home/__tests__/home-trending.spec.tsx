@@ -1,8 +1,13 @@
 import type { PluginBanner } from '@dify/contracts/marketplace'
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { trackEvent } from '@/app/components/base/amplitude'
 import HomeTrending from '../home-trending'
+
+vi.mock('@/app/components/base/amplitude', () => ({
+  trackEvent: vi.fn(),
+}))
 
 vi.mock('#i18n', async () => {
   const { withSelectorKey } = await import('@/test/i18n-mock')
@@ -47,6 +52,7 @@ const banners: PluginBanner[] = [
           badges: ['partner', 'verified'],
           link: '/plugins/langgenius/dropbox',
           card_position: 0,
+          auto_batch_id: '11111111-1111-4111-8111-111111111111',
         },
         {
           item_type: 'plugin',
@@ -103,6 +109,12 @@ const banners: PluginBanner[] = [
   },
 ]
 
+const mockTrackEvent = vi.mocked(trackEvent)
+
+beforeEach(() => {
+  vi.clearAllMocks()
+})
+
 afterEach(() => {
   vi.unstubAllGlobals()
 })
@@ -111,7 +123,7 @@ describe('HomeTrending', () => {
   it('renders and switches between the three API-backed banner layouts', async () => {
     const user = userEvent.setup()
 
-    render(<HomeTrending banners={banners} isMarketplacePlatform />)
+    render(<HomeTrending banners={banners} isMarketplacePlatform page="plugins" />)
 
     expect(screen.getByRole('heading', { name: 'Popular plugins' })).toBeInTheDocument()
     const recommendationSlide = screen.getByRole('group', { name: 'Trending' })
@@ -145,7 +157,7 @@ describe('HomeTrending', () => {
   it('switches to the selected slide from the pagination with the keyboard', async () => {
     const user = userEvent.setup()
 
-    render(<HomeTrending banners={banners} isMarketplacePlatform />)
+    render(<HomeTrending banners={banners} isMarketplacePlatform page="plugins" />)
 
     const duckDuckGoButton = screen.getByRole('button', { name: 'Duck Duck Go' })
 
@@ -163,7 +175,7 @@ describe('HomeTrending', () => {
   it('toggles the carousel between paused and playing states', async () => {
     const user = userEvent.setup()
 
-    render(<HomeTrending banners={banners} isMarketplacePlatform />)
+    render(<HomeTrending banners={banners} isMarketplacePlatform page="plugins" />)
 
     const carousel = document.querySelector('[data-home-trending-carousel-root]')!
     const liveTrack = carousel.querySelector('[aria-live]')!
@@ -204,7 +216,7 @@ describe('HomeTrending', () => {
       dispatchEvent: vi.fn(),
     })
 
-    render(<HomeTrending banners={banners} isMarketplacePlatform />)
+    render(<HomeTrending banners={banners} isMarketplacePlatform page="plugins" />)
 
     expect(
       screen.getByRole('button', {
@@ -273,9 +285,12 @@ describe('HomeTrending', () => {
     marketplaceContainer.id = 'marketplace-container'
     document.body.appendChild(marketplaceContainer)
 
-    const { unmount } = render(<HomeTrending banners={banners} isMarketplacePlatform={false} />, {
-      container: marketplaceContainer,
-    })
+    const { unmount } = render(
+      <HomeTrending banners={banners} isMarketplacePlatform={false} page="plugins" />,
+      {
+        container: marketplaceContainer,
+      },
+    )
     const carouselRoot = marketplaceContainer.querySelector('[data-home-trending-carousel-root]')!
     const viewportObserver = intersectionObservers.find(
       (observer) => observer.options?.threshold === 0.25,
@@ -386,7 +401,7 @@ describe('HomeTrending', () => {
     })
     const user = userEvent.setup()
 
-    render(<HomeTrending banners={banners} isMarketplacePlatform />)
+    render(<HomeTrending banners={banners} isMarketplacePlatform page="plugins" />)
 
     const toggleButton = screen.getByRole('button', {
       name: 'plugin.marketplace.home.trendingPause',
@@ -452,7 +467,13 @@ describe('HomeTrending', () => {
       },
     }
 
-    render(<HomeTrending banners={[bannerWithMixedLinks]} isMarketplacePlatform={false} />)
+    render(
+      <HomeTrending
+        banners={[bannerWithMixedLinks]}
+        isMarketplacePlatform={false}
+        page="plugins"
+      />,
+    )
 
     expect(screen.getByRole('link', { name: 'Dropbox' })).toHaveAttribute(
       'href',
@@ -470,12 +491,64 @@ describe('HomeTrending', () => {
   })
 
   it('renders no carousel when the API returns no banners', () => {
-    render(<HomeTrending banners={[]} isMarketplacePlatform />)
+    render(<HomeTrending banners={[]} isMarketplacePlatform page="plugins" />)
 
     expect(
       screen.queryByRole('region', {
         name: 'plugin.marketplace.home.trendingTitle',
       }),
     ).not.toBeInTheDocument()
+  })
+
+  it('tracks recommend card clicks as item clicks without a frame click', async () => {
+    const user = userEvent.setup()
+
+    render(<HomeTrending banners={banners} isMarketplacePlatform page="templates" />)
+
+    await user.click(screen.getByRole('link', { name: 'Dropbox' }))
+
+    expect(mockTrackEvent).toHaveBeenCalledWith('marketplace_banner_item_click', {
+      banner_id: 'recommend',
+      sort: 0,
+      page: 'templates',
+      language: 'en',
+      style_type: 'recommend',
+      item_type: 'plugin',
+      item_id: 'langgenius/dropbox',
+      card_position: 0,
+      theme_type: 'hottest',
+      auto_batch_id: '11111111-1111-4111-8111-111111111111',
+    })
+    expect(mockTrackEvent).not.toHaveBeenCalledWith('marketplace_banner_click', expect.anything())
+  })
+
+  it('tracks whole-slide blog and event links as frame clicks', async () => {
+    const user = userEvent.setup()
+
+    render(<HomeTrending banners={banners} isMarketplacePlatform page="plugins" />)
+
+    await user.click(screen.getByRole('button', { name: 'Dify Updates' }))
+    await user.click(
+      screen.getByRole('link', { name: 'plugin.marketplace.home.trendingReadMoreAbout' }),
+    )
+
+    expect(mockTrackEvent).toHaveBeenCalledWith('marketplace_banner_click', {
+      banner_id: 'blog',
+      sort: 1,
+      page: 'plugins',
+      language: 'en',
+      style_type: 'blog',
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Duck Duck Go' }))
+    await user.click(screen.getByRole('link', { name: 'DuckDuckGo plugin' }))
+
+    expect(mockTrackEvent).toHaveBeenCalledWith('marketplace_banner_click', {
+      banner_id: 'event',
+      sort: 2,
+      page: 'plugins',
+      language: 'en',
+      style_type: 'event',
+    })
   })
 })

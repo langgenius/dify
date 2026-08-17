@@ -39,6 +39,7 @@ const MarketplaceHome = ({
     <HomeShell
       banners={banners}
       isMarketplacePlatform={isMarketplacePlatform}
+      page="plugins"
       header={
         <HomeHeader
           actions={actions}
