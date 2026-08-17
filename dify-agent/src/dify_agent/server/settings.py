@@ -77,6 +77,12 @@ class ServerSettings(BaseSettings):
         default=None,
         validation_alias="DIFY_AGENT_SANDBOX_FILES_BASE_URL",
     )
+    stub_upload_file_size_limit: int = Field(
+        default=50,
+        ge=0,
+        description="Maximum Agent Stub upload size in MiB",
+        validation_alias="DIFY_AGENT_STUB_UPLOAD_FILE_SIZE_LIMIT",
+    )
     server_secret_key: str | None = None
     api_token: str | None = None
     shell_redact_patterns: str = ""
@@ -222,6 +228,7 @@ class ServerSettings(BaseSettings):
             inner_api_url=self.inner_api_url,
             inner_api_key=self.inner_api_key,
             sandbox_files_base_url=self.sandbox_files_base_url,
+            max_upload_size_bytes=self.stub_upload_file_size_limit * 1024 * 1024,
             timeout=self.create_outbound_http_timeout(),
         )
 
