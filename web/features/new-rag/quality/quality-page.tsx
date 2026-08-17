@@ -552,7 +552,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                     render={
                       <button
                         type="button"
-                        className="block min-w-0 truncate text-left system-xs-regular text-text-secondary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                        className="block w-fit max-w-full min-w-0 truncate text-left system-xs-regular text-text-secondary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                       >
                         {item.annotation}
                       </button>
