@@ -55,15 +55,9 @@ The Human Input v2 Node MUST perform external work only through its injected HIT
 - **WHEN** the callback loads or creates a form, reads recipient snapshots or evaluates frozen lifecycle state
 - **THEN** those capabilities MUST be supplied through injected protocols whose implementations are selected by the composition root
 
-#### Scenario: Optional production capability is not wired
-
-- **WHEN** a persisted node requires `all_workspace_contacts` but the production workspace-contact snapshot port is unavailable
-- **THEN** the runtime MUST fail closed with a stable capability-unavailable error
-- **AND** it MUST NOT silently treat the marker as an empty recipient set
-
 ### Requirement: V2 callback reload MUST be create-once for one node execution
 
-For one workspace, workflow run and workflow node execution, the v2 callback MUST atomically load or create one runtime form graph. Re-entry or concurrent execution MUST reuse the winning form and MUST NOT recreate grants, endpoints, endpoint capabilities or initial delivery attempts.
+For one tenant, workflow run and workflow node execution, the v2 callback MUST atomically load or create one runtime form graph. Re-entry or concurrent execution MUST reuse the winning form and MUST NOT recreate grants, endpoints, endpoint capabilities or initial delivery attempts.
 
 #### Scenario: Waiting callback is entered again
 
@@ -77,9 +71,20 @@ For one workspace, workflow run and workflow node execution, the v2 callback MUS
 - **THEN** exactly one form graph MUST be committed
 - **AND** both invocations MUST resolve to the same form identity
 
-### Requirement: Frozen v2 lifecycle state MUST expose a timeout callback entry
+### Requirement: Frozen v2 lifecycle state MUST determine the callback outcome
 
-The v2 callback contract MUST decide waiting, node-timeout and global-expiry outcomes from the persisted frozen runtime form state. Both frozen timeout outcomes MUST be representable as the `__timeout` branch without re-reading authoring recipients, endpoints or form blocks. This change does not require production scheduling or resume-task wiring that invokes the entry.
+The v2 callback contract MUST decide waiting, submitted and node-timeout outcomes from persisted frozen runtime facts and an injected clock without re-reading authoring recipients, form blocks, actions or endpoints. A waiting form MUST request pause with the same form-backed session identity. A submitted form MUST construct its completion decision only from persisted `selected_action_id`, `input_snapshot`, `canonical_values` and the frozen form definition. A node timeout MUST select the `__timeout` branch. A globally expired form MUST NOT resume through the node-timeout branch; global-expiry orchestration MUST terminate the workflow outside the callback, and callback re-entry for a globally expired form MUST be rejected as an invalid resume state. This change does not require production controller, scheduler, workflow-stop or resume-task wiring that invokes these entries.
+
+#### Scenario: Frozen waiting form is reloaded
+
+- **WHEN** the injected runtime port returns a v2 form that remains waiting
+- **THEN** the callback MUST return `PauseRequested` with the same form-backed session identity
+
+#### Scenario: Frozen submitted outcome is reloaded
+
+- **WHEN** the injected runtime port returns a committed submission outcome
+- **THEN** the callback MUST return `Completed` using persisted `selected_action_id`, `input_snapshot`, `canonical_values` and the frozen form definition
+- **AND** it MUST NOT resolve current authoring configuration to rebuild that outcome
 
 #### Scenario: Frozen node timeout is reloaded
 
@@ -89,10 +94,11 @@ The v2 callback contract MUST decide waiting, node-timeout and global-expiry out
 #### Scenario: Frozen global expiry is reloaded
 
 - **WHEN** the injected runtime port returns a v2 form whose frozen global expiry has elapsed
-- **THEN** the callback MUST return the timeout decision with selected handle `__timeout`
+- **THEN** the callback MUST reject re-entry as an invalid resume state
+- **AND** it MUST NOT return `Expired`, select `__timeout` or produce any other branch selection
 
-#### Scenario: Timeout production trigger is absent
+#### Scenario: Production trigger is absent
 
-- **WHEN** this change is validated without a scheduler or workflow resume-task adapter
-- **THEN** callback tests MUST exercise the timeout entry through an injected fake runtime port
+- **WHEN** this change is validated without controller, scheduler, workflow-stop or workflow resume-task adapters
+- **THEN** callback tests MUST exercise submitted, node-timeout and invalid global-expiry re-entry through an injected fake runtime port
 - **AND** production trigger wiring MUST remain an explicit follow-up

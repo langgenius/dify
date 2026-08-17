@@ -13,18 +13,17 @@ Human Input v2 已有 `HumanInputNodeData`、`ResolvedForm`、`RecipientResolver
 - 让 v2 Node 与 HITL callback 的全部外部读写只通过注入接口发生。
 - 以 `workflow_run_id + workflow_node_execution_id` 标识 v2 runtime form owner。
 - 保证 callback 重入及并发 create 不产生重复 form graph 或 delivery attempt。
-- 完成 `all_workspace_contacts` 的纯 runtime expansion 和去重逻辑，并保留 production provider wiring seam。
-- 固定 frozen timeout/global-expiry state 到 `__timeout__` 的 callback entry contract。
-- 移除 `display_in_ui` 对 v2 aggregate/projection 的反向业务控制。
+- 通过 persisted workflow owner 与 workflow pause reason 建立 submission/resume correlation，不让 form 反向持有 pause ID。
+- 固定 frozen waiting、submitted 和 node-timeout state 的 callback entry contract；node timeout 进入 `__timeout`，global expiry 不恢复 workflow，callback re-entry 必须作为 invalid resume 拒绝。
 
 ### Non-Goals
 
 - 不实现或修改 public Web、Console、Service API、OpenAPI 或 IM controller。
-- 不修改 OTP proof、submission authorization、submission persistence 或 resume enqueue。
-- 不实现 production workspace-contact database adapter，也不在 production composition 中启用 `all_workspace_contacts`。
+- 不修改 OTP proof、submission authorization、submission persistence、commit-before-enqueue ordering 或 resume task payload；只替换内部可信 workflow correlation。
+- 不实现 `all_workspace_contacts` runtime expansion、workspace-contact snapshot port 或 production database adapter；该 marker 继续沿用既有 `UnsupportedRecipientSpecificationError` fail-closed path。
 - 不实现 timeout scanner、global-expiry scheduler 或 workflow resume task wiring。
 - 不修改 notification producer、Email/IM provider adapter 或 delivery worker。
-- 不修改对外 SSE/pause payload shape；derived `display_in_ui` 的 consumer wiring 延后。
+- 不修改 v2 aggregate/read projection 的既有 `display_in_ui` 字段、业务语义或对外 SSE/pause payload shape。
 
 ## Decisions
 
@@ -63,11 +62,10 @@ v2 runtime application 至少通过接口获得以下外部能力：
 
 - 按 runtime owner load/create-once form lifecycle state
 - 读取 request-scoped Contact directory、initiator 和 delivery capability snapshot
-- 读取 `all_workspace_contacts` 所需的 current workspace Contact snapshot
 - 提供 clock 和 identifier generation
 - 以一个原子 use case 持久化 form、grant、endpoint 和 initial attempt
 
-production composition root 负责 adapter wiring。当前 change 只 wiring 已有 form/runtime capability；`all_workspace_contacts` production snapshot provider 保留为后续显式 wiring 点。
+production composition root 负责 adapter wiring，并复用既有 form creation、notification producer 和 publisher capability。本 change 拥有 `NodeFactory -> v2 runtime application` 的 handoff，但不修改 producer、publisher 或 worker 的内部行为。
 
 ### 4. Runtime form owner 使用 workflow run 与 workflow node execution
 
@@ -85,7 +83,7 @@ v2 `HumanInputForm` 删除 `workflow_pause_id`，runtime form 必须保存：
 
 ### 5. Callback creation 是按 runtime owner 的原子 create-once
 
-callback 第一次执行时使用 `(workspace_id, workflow_run_id, workflow_node_execution_id)` 调用 runtime form port：
+callback 第一次执行时使用 `(tenant_id, workflow_run_id, workflow_node_execution_id)` 调用 runtime form port：
 
 - owner 尚无 form：原子创建 form、grants、endpoints 和 initial attempts
 - owner 已有 waiting form：返回现有 form 并再次请求 pause
@@ -95,41 +93,35 @@ callback 不采用 `load` 后无约束 `create` 的 check-then-act。重入不�
 
 Graphon `session_id` 继续携带 form ID，workflow pause repository 在 callback 返回后照常保存多个 reason；form 不反向关联 pause ID。
 
-### 6. `all_workspace_contacts` 在 runtime resolution 中展开
+### 6. Submission/resume correlation 不由 form 持有
 
-workflow adapter 将 marker 转成 typed runtime recipient specification，而不是 fail-closed。runtime application 通过 `WorkspaceContactSnapshotPort` 一类窄接口取得 current-workspace-scoped candidate snapshot；每个 candidate 同时携带 canonical Contact snapshot 与其 workspace-relative `WORKSPACE` / `PLATFORM` / `EXTERNAL` classification。runtime core 而不是 adapter 负责：
+`HumanInputForm` 删除 `workflow_pause_id` 后，submission handler 和 resume adapter 不再用 caller-supplied pause ID 与 form 字段做相等性校验。可信 correlation 从持久化关系重建：
 
-- 只选择分类为 `WORKSPACE` 且 available 的 Contacts
-- 排除 `PLATFORM` 和 `EXTERNAL` Contacts
-- 返回 immutable request-scoped snapshot
+- form 提供 `tenant_id + form_id + workflow_run_id + workflow_node_execution_id`
+- owning `workflow_node_executions` row 必须属于同一个 workflow run
+- active `WorkflowPause` 必须属于同一个 workflow run
+- 该 pause 必须存在 `form_id` 匹配当前 form 的 `WorkflowPauseReason`
 
-resolver 按稳定 Contact ID 顺序展开 marker，并为 expanded Contact 保留 `ALL_WORKSPACE_CONTACTS` matched-source fact。所有 recipient 随后进入既有 canonical subject dedup：同一个 Contact 同时来自 marker 和显式 Contact 时只产生一个 approver，并保留两个 matched sources；同一 canonical endpoint 只产生一次 delivery。Contact 与同 Email 的独立 `EmailAddress` recipient 仍是不同 subject，不因本规则合并。
-
-本 change 使用 fake/in-memory port 完成 domain/application tests；SQLAlchemy adapter 和 production injection 由后续 change 实现。
+submission handler 必须在 authorized submission commit 前验证这些 persisted facts，并把验证后的 immutable resume identity 用于 commit 后 enqueue。HTTP/controller DTO、authorization proof、submission transaction 和 commit-before-enqueue ordering 不因该调整改变。
 
 ### 7. Frozen lifecycle state 决定 callback 重入结果
 
-callback reload 不重新解释 authoring recipients、form blocks 或 interaction surfaces。它读取 runtime port 返回的 frozen state：
+callback 读取 runtime port 返回的 frozen state：
 
 - waiting -> 返回同一 form ID 的 `PauseRequested`
-- node timeout -> 进入 `Expired(selected_handle="__timeout__")`
-- global expiry -> 进入 `Expired(selected_handle="__timeout__")`
-- submitted outcome -> 预留从 frozen submission outcome 恢复的入口
+- node timeout -> 进入 `Expired(selected_handle="__timeout")`
+- global expiry -> 拒绝 callback re-entry，不产生 branch selection
+- submitted -> 仅使用 persisted `selected_action_id`、`input_snapshot`、`canonical_values` 和 frozen form definition 返回 `Completed`
 
-本 change 为 timeout/global-expiry 两种状态添加 callback entry tests，但不实现触发 callback reload 的 scheduler、resume task 或 controller wiring。
-
-### 8. `display_in_ui` 只允许作为 derived compatibility projection
-
-v2 `HumanInputForm` 和 `FormDefinitionProjection` 不再保存或消费 authoritative `display_in_ui`。交互能力只来自 resolved endpoint plans 和 persisted endpoints。
-
-既有 SSE/pause response 字段暂时保留，必须按请求 surface 从 `WebEndpoint` / `ConsoleEndpoint` 等 capability 派生。derived 字段不能反向创建、删除或改变 endpoint。由于本 change 不做对外 response wiring，只添加 derivation contract 和测试入口。
+callback reload 不重新解释 authoring recipients、form blocks、actions 或 interaction surfaces。node-timeout scheduler 负责把 form 转成 timeout state 并触发 workflow resume；global-expiry orchestration 负责终止 workflow，而不是恢复 node。本 change 为 submitted、node-timeout 和 invalid global-expiry re-entry 添加 injected callback entry tests，但不实现 controller、scheduler 或 resume task wiring。
 
 ## Risks / Trade-offs
 
 - runtime owner 约束必须由 domain、ORM model、mapper 和 repository 一致表达；风险通过 mapper round-trip 和多 form owner tests 控制。
 - create-once 跨越 form graph 与 initial attempts，repository port 必须拥有事务边界；callback 不自行重试部分写入。
-- `all_workspace_contacts` 在 production provider wiring 完成前不能真实运行。runtime core 和接口先合并，rollout 继续 fail closed，不允许静默返回空 recipient 集合。
-- 对外 `display_in_ui` 暂不删除，避免无关 API breaking change；其 derived wiring 由后续 change 完成。
+- pause correlation 跨越 form owner、workflow node execution、active pause 和 pause reason；resume resolver 必须一次性验证完整 owner chain，不能信任 caller-supplied pause identity。
+- submitted callback decision 必须来自 persisted submission facts 与 frozen form definition，不能在 reload 时重新读取 authoring node data。
+- `all_workspace_contacts` 与 `display_in_ui` 保持既有行为，避免把独立 recipient/projection policy 混入本 change。
 
 ## Validation
 
@@ -137,15 +129,17 @@ v2 `HumanInputForm` 和 `FormDefinitionProjection` 不再保存或消费 authori
 - registry 证明 v1/v2 分别解析到不同 node class，unknown version 不走 `latest`。
 - callback fake-port tests 证明首次创建、waiting reload、并发 create-once 和初始副作用只发生一次。
 - 一个 workflow run 中两个并行 v2 Human Input node executions 创建两个 forms，并可进入同一个 workflow pause。
-- `all_workspace_contacts` 只展开 Workspace Contacts，稳定排序，并与显式 Contact 去重。
-- frozen node timeout/global expiry 均从 callback test entry 走 `__timeout__`。
+- submission/resume correlation 在 form 不持有 pause ID 时仍能通过 persisted owner chain 找到 matching active pause，并拒绝跨 run/form mismatch。
+- frozen submitted state 从 persisted `selected_action_id`、`input_snapshot`、`canonical_values` 与 form definition 返回 `Completed`，不重新解释 authoring configuration。
+- frozen node timeout 从 callback test entry 走 `__timeout`；global expiry callback re-entry 被拒绝且不产生 branch selection。
 - architecture tests 证明 v2 node/callback 不 import infrastructure 或 transport modules。
+- scope regression 证明 `all_workspace_contacts` 继续 fail closed，既有 `display_in_ui` aggregate/projection round-trip 不变。
 - v1 published/debug/pause behavior regression 保持不变。
 
 ## Deferred Wiring
 
-- production workspace-contact snapshot adapter 与 NodeFactory composition
-- timeout/global-expiry reload trigger 与 workflow resume task
-- submitted outcome 到 graph outputs 的完整 production resume wiring
-- SSE/pause derived `display_in_ui` consumer
+- `all_workspace_contacts` runtime expansion、production snapshot adapter 与 NodeFactory composition
+- node-timeout reload trigger、workflow resume task 与 global-expiry workflow-stop orchestration
+- submitted outcome 的 controller/resume-task trigger
+- endpoint-derived `display_in_ui` aggregate cleanup 与 SSE/pause consumer
 - public/console/service/IM read and submit controllers
