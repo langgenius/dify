@@ -489,6 +489,7 @@ export function AgentSkills() {
   const agentSkillBindingsQuery = useQuery({
     ...agentSkillBindingsQueryOptions,
   })
+  const hasLoadedAgentSkillBindings = agentSkillBindingsQuery.data !== undefined
   const { isPending: isReplacingAgentSkillBindings, mutate: replaceAgentSkillBindings } =
     useMutation(consoleQuery.workspaces.current.agents.byAgentId.skills.put.mutationOptions())
   const workspaceSkills = agentSkillBindingsQuery.data?.data ?? []
@@ -510,7 +511,7 @@ export function AgentSkills() {
 
   const replaceWorkspaceSkillBindings = useCallback(
     (skillIds: string[], onSuccess?: () => void) => {
-      if (isViewingVersion) return
+      if (isViewingVersion || !hasLoadedAgentSkillBindings) return
 
       replaceAgentSkillBindings(
         {
@@ -560,11 +561,13 @@ export function AgentSkills() {
     },
     [
       apiContext.agentId,
+      hasLoadedAgentSkillBindings,
       invalidateAgentSkillBindings,
       isViewingVersion,
       queryClient,
       replaceAgentSkillBindings,
       t,
+      tSkill,
     ],
   )
 
@@ -614,7 +617,12 @@ export function AgentSkills() {
 
   const handleSelectWorkspaceSkill = useCallback(
     (skill: SkillResponse) => {
-      if (!skill.latest_published_version_id || boundSkillIds.includes(skill.id)) return
+      if (
+        !hasLoadedAgentSkillBindings ||
+        !skill.latest_published_version_id ||
+        boundSkillIds.includes(skill.id)
+      )
+        return
       if (boundSkillIds.length >= MAX_AGENT_LIBRARY_SKILLS) {
         toast.error(t(($) => $['agentDetail.configure.skills.workspaceSelector.limitReached']))
         return
@@ -631,7 +639,7 @@ export function AgentSkills() {
         setAddMenuView('menu')
       })
     },
-    [boundSkillIds, replaceWorkspaceSkillBindings, t],
+    [boundSkillIds, hasLoadedAgentSkillBindings, replaceWorkspaceSkillBindings, t],
   )
 
   const handleUploadOpenChange = useCallback((open: boolean) => {
@@ -748,7 +756,7 @@ export function AgentSkills() {
                 ) : (
                   <WorkspaceSkillSelector
                     boundSkillIds={boundSkillIds}
-                    isBindingPending={isReplacingAgentSkillBindings}
+                    isBindingPending={!hasLoadedAgentSkillBindings || isReplacingAgentSkillBindings}
                     onSelect={handleSelectWorkspaceSkill}
                   />
                 )}

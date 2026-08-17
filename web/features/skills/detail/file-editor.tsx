@@ -590,7 +590,7 @@ export function FileEditor({
     if (!canEdit) return
     if (draftContent === lastSavedContentRef.current) return
     if (draftContent === saveConflictContentRef.current) return
-    if (saveStatus === 'saving') return
+    if (saveStatus === 'saving' || saveStatus === 'error') return
 
     const timer = window.setTimeout(() => {
       void saveDraftContent(draftContent)
