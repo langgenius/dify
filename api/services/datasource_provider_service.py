@@ -21,6 +21,7 @@ from core.plugin.plugin_service import PluginService
 from core.tools.utils.encryption import ProviderConfigCache, ProviderConfigEncrypter, create_provider_encrypter
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from flask import request
 from graphon.model_runtime.entities.provider_entities import FormType
 from models.enums import PermissionEnum
 from models.oauth import DatasourceOauthParamConfig, DatasourceOauthTenantParamConfig, DatasourceProvider
@@ -43,6 +44,19 @@ def get_current_user():
     if not isinstance(user_object, (Account, EndUser)):
         raise TypeError(f"current_user must be Account or EndUser, got {type(user_object).__name__}")
     return current_user
+
+
+def _build_plugin_oauth_redirect_uri(datasource_provider_id: DatasourceProviderID) -> str:
+    """Build the plugin OAuth callback URL.
+
+    Falls back to the current request host when CONSOLE_API_URL is not set, so the callback
+    is an absolute URL instead of a relative path, which OAuth providers like Notion reject
+    with "Missing or invalid redirect_uri".
+    """
+    base_url = dify_config.CONSOLE_API_URL
+    if not base_url:
+        base_url = request.host_url.rstrip("/")
+    return f"{base_url}/console/api/oauth/plugin/{datasource_provider_id}/datasource/callback"
 
 
 class DatasourceProviderService:
@@ -90,9 +104,7 @@ class DatasourceProviderService:
             plugin_id=plugin_id,
             provider=provider,
         )
-        redirect_uri = (
-            f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{datasource_provider_id}/datasource/callback"
-        )
+        redirect_uri = _build_plugin_oauth_redirect_uri(datasource_provider_id)
         system_credentials = self.get_oauth_client(tenant_id, datasource_provider_id)
         try:
             refreshed_credentials = OAuthHandler().refresh_credentials(
@@ -923,9 +935,7 @@ class DatasourceProviderService:
                 user=user,
                 session=session,
             )
-            redirect_uri = (
-                f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{datasource_provider_id}/datasource/callback"
-            )
+            redirect_uri = _build_plugin_oauth_redirect_uri(datasource_provider_id)
             datasource_credentials.append(
                 {
                     "provider": datasource.provider,
@@ -992,9 +1002,7 @@ class DatasourceProviderService:
                     user=user,
                     session=session,
                 )
-                redirect_uri = "{}/console/api/oauth/plugin/{}/datasource/callback".format(
-                    dify_config.CONSOLE_API_URL, datasource_provider_id
-                )
+                redirect_uri = _build_plugin_oauth_redirect_uri(datasource_provider_id)
                 datasource_credentials.append(
                     {
                         "provider": datasource.provider,
