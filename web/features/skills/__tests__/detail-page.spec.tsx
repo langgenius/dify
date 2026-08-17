@@ -1783,9 +1783,9 @@ describe('SkillDetailPage', () => {
     expect(screen.getByText(/skill\.skillManagement\.detail\.saveFailed/)).toBeInTheDocument()
   })
 
-  it('shows a save failure for non-conflict autosave errors', async () => {
+  it('stops autosaving unchanged content after a non-conflict save failure', async () => {
     const user = userEvent.setup()
-    mocks.saveDraftFileMutationFn.mockRejectedValueOnce(new Error('save failed'))
+    mocks.saveDraftFileMutationFn.mockRejectedValue(new Error('save failed'))
 
     renderSkillDetailPage()
 
@@ -1803,7 +1803,20 @@ describe('SkillDetailPage', () => {
       { timeout: 4000 },
     )
     expect(screen.getByText(/skill\.skillManagement\.detail\.saveFailed/)).toBeInTheDocument()
-  })
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 2200))
+    })
+    expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(1)
+
+    await user.type(getSourceEditor(), '\nRetry after another edit')
+    await waitFor(
+      () => {
+        expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledTimes(2)
+      },
+      { timeout: 2500 },
+    )
+  }, 10000)
 
   it('does not expose display-name editing in the SKILL.md metadata editor before publishing', async () => {
     const user = userEvent.setup()
