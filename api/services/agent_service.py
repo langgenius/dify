@@ -95,16 +95,16 @@ class AgentService:
         for agent_thought in agent_thoughts:
             tools = agent_thought.tools
             tool_labels = agent_thought.tool_labels
-            tool_meta = agent_thought.tool_meta
-            tool_inputs = agent_thought.tool_inputs_dict
-            tool_outputs = agent_thought.tool_outputs_dict or {}
+            # one entry per call, in call order, so a tool called twice in a turn
+            # gets a log entry per call instead of one call's data twice
+            tool_inputs = agent_thought.tool_inputs_per_call
+            tool_outputs = agent_thought.tool_outputs_per_call
+            tool_metas = agent_thought.tool_metas_per_call
             tool_calls = []
-            for tool in tools:
-                tool_name = tool
+            for tool_name, tool_input, tool_output, tool_meta_data in zip(
+                tools, tool_inputs, tool_outputs, tool_metas, strict=True
+            ):
                 tool_label = tool_labels.get(tool_name, tool_name)
-                tool_input = tool_inputs.get(tool_name, {})
-                tool_output = tool_outputs.get(tool_name, {})
-                tool_meta_data = tool_meta.get(tool_name, {})
                 tool_config = tool_meta_data.get("tool_config", {})
                 tool_provider_type = tool_config.get("tool_provider_type", "")
                 tool_provider_id = tool_config.get("tool_provider", "")

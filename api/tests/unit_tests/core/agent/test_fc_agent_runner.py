@@ -574,3 +574,133 @@ class TestRunMethod:
 
         with pytest.raises(AgentMaxIterationError):
             list(runner.run(runner.session, message, "query"))
+
+
+# ==============================
+# Repeated Tool Calls In One Turn
+# ==============================
+
+
+def _make_tool_call(call_id: str, name: str, arguments: dict[str, Any]) -> MagicMock:
+    tool_call = MagicMock()
+    tool_call.id = call_id
+    tool_call.function.name = name
+    tool_call.function.arguments = json.dumps(arguments)
+    return tool_call
+
+
+def _run_one_turn(runner: FunctionCallAgentRunner, mocker: MockerFixture, tool_calls, responses, metas=None):
+    """Drive one tool-calling iteration followed by a plain answer."""
+    result = DummyResult(message=DummyMessage(content="", tool_calls=tool_calls), usage=build_usage())
+    final_result = DummyResult(message=DummyMessage(content="done", tool_calls=[]), usage=build_usage())
+    runner.model_instance.invoke_llm.side_effect = [result, final_result]
+
+    names = {tool_call.function.name for tool_call in tool_calls}
+    prompt_tools = []
+    instances = {}
+    for name in names:
+        prompt_tool = MagicMock()
+        prompt_tool.name = name
+        prompt_tools.append(prompt_tool)
+        instances[name] = MagicMock()
+    runner._init_prompt_tools.return_value = (instances, prompt_tools)
+
+    invoke_metas = []
+    for meta in metas or [{"ok": True} for _ in responses]:
+        tool_invoke_meta = MagicMock()
+        tool_invoke_meta.to_dict.return_value = meta
+        invoke_metas.append(tool_invoke_meta)
+    mocker.patch(
+        "core.agent.fc_agent_runner.ToolEngine.agent_invoke",
+        side_effect=[
+            (response, [], tool_invoke_meta) for response, tool_invoke_meta in zip(responses, invoke_metas, strict=True)
+        ],
+    )
+
+    list(runner.run(runner.session, MagicMock(id="m1"), "query"))
+
+
+def _saved_tool_input(runner: FunctionCallAgentRunner) -> dict[str, Any]:
+    for call in runner.save_agent_thought.call_args_list:
+        if call.kwargs.get("tool_name"):
+            return json.loads(call.kwargs["tool_input"])
+    raise AssertionError("no agent thought was saved with tool input")
+
+
+def _saved_observation(runner: FunctionCallAgentRunner) -> dict[str, Any]:
+    for call in runner.save_agent_thought.call_args_list:
+        observation = call.kwargs.get("observation")
+        if observation:
+            return observation
+    raise AssertionError("no agent thought was saved with an observation")
+
+
+def _saved_tool_invoke_meta(runner: FunctionCallAgentRunner) -> dict[str, Any]:
+    for call in runner.save_agent_thought.call_args_list:
+        tool_invoke_meta = call.kwargs.get("tool_invoke_meta")
+        if tool_invoke_meta:
+            return tool_invoke_meta
+    raise AssertionError("no agent thought was saved with tool invoke meta")
+
+
+class TestRepeatedToolCalls:
+    def test_repeated_tool_keeps_every_input_and_observation(
+        self, runner: FunctionCallAgentRunner, mocker: MockerFixture
+    ):
+        _run_one_turn(
+            runner,
+            mocker,
+            tool_calls=[
+                _make_tool_call("1", "search", {"q": "first"}),
+                _make_tool_call("2", "search", {"q": "second"}),
+            ],
+            responses=["first result", "second result"],
+        )
+
+        assert _saved_tool_input(runner) == {"search": [{"q": "first"}, {"q": "second"}]}
+        assert _saved_observation(runner) == {"search": ["first result", "second result"]}
+
+    def test_repeated_tool_keeps_every_invoke_meta(self, runner: FunctionCallAgentRunner, mocker: MockerFixture):
+        # the agent log reads a provider, a duration and an error out of the meta
+        # for each call it displays, so a repeated tool needs one meta per call
+        _run_one_turn(
+            runner,
+            mocker,
+            tool_calls=[
+                _make_tool_call("1", "search", {"q": "first"}),
+                _make_tool_call("2", "search", {"q": "second"}),
+            ],
+            responses=["first result", "second result"],
+            metas=[{"time_cost": 1}, {"time_cost": 2}],
+        )
+
+        assert _saved_tool_invoke_meta(runner) == {"search": [{"time_cost": 1}, {"time_cost": 2}]}
+
+    def test_single_call_keeps_the_legacy_shape(self, runner: FunctionCallAgentRunner, mocker: MockerFixture):
+        _run_one_turn(
+            runner,
+            mocker,
+            tool_calls=[_make_tool_call("1", "search", {"q": "only"})],
+            responses=["only result"],
+            metas=[{"time_cost": 1}],
+        )
+
+        assert _saved_tool_input(runner) == {"search": {"q": "only"}}
+        assert _saved_observation(runner) == {"search": "only result"}
+        assert _saved_tool_invoke_meta(runner) == {"search": {"time_cost": 1}}
+
+    def test_distinct_tools_keep_the_legacy_shape(self, runner: FunctionCallAgentRunner, mocker: MockerFixture):
+        _run_one_turn(
+            runner,
+            mocker,
+            tool_calls=[
+                _make_tool_call("1", "search", {"q": "a"}),
+                _make_tool_call("2", "calculator", {"expr": "1+1"}),
+            ],
+            responses=["search result", "2"],
+            metas=[{"time_cost": 1}, {"time_cost": 2}],
+        )
+
+        assert _saved_tool_input(runner) == {"search": {"q": "a"}, "calculator": {"expr": "1+1"}}
+        assert _saved_observation(runner) == {"search": "search result", "calculator": "2"}
+        assert _saved_tool_invoke_meta(runner) == {"search": {"time_cost": 1}, "calculator": {"time_cost": 2}}
