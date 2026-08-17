@@ -635,7 +635,7 @@ docs = [
 requires-dist = [
     { name = "e2b", marker = "extra == 'server'", specifier = ">=2.34.0,<3.0.0" },
     { name = "fastapi", marker = "extra == 'server'", specifier = "==0.136.0" },
-    { name = "graphon", marker = "extra == 'server'", git = "https://github.com/langgenius/graphon?rev=a6b49de3f09153edacbdbe629643fb5ed59555e4" },
+    { name = "graphon", marker = "extra == 'server'", git = "https://github.com/langgenius/graphon?rev=8c4a904b439d0be48efb8247a90de9f47c286841" },
     { name = "httpx", specifier = "==0.28.1" },
     { name = "httpx2", specifier = ">=2.5.0,<3.0.0" },
     { name = "jsonschema", marker = "extra == 'server'", specifier = ">=4.23.0,<5.0.0" },
@@ -866,7 +866,7 @@ wheels = [
 [[package]]
 name = "graphon"
 version = "0.7.0"
-source = { git = "https://github.com/langgenius/graphon?rev=a6b49de3f09153edacbdbe629643fb5ed59555e4#a6b49de3f09153edacbdbe629643fb5ed59555e4" }
+source = { git = "https://github.com/langgenius/graphon?rev=8c4a904b439d0be48efb8247a90de9f47c286841#8c4a904b439d0be48efb8247a90de9f47c286841" }
 dependencies = [
     { name = "charset-normalizer" },
     { name = "defusedxml" },
