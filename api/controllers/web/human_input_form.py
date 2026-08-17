@@ -262,7 +262,7 @@ class HumanInputFormApi(Resource):
             raise NotFoundError("Form not found")
 
         if (recipient_type := form.recipient_type) is None:
-            logger.warning("Recipient type is None for form, form_id=%", form.id)
+            logger.warning("Recipient type is None for form, form_id=%s", form.id)
             raise AssertionError("Recipient type is None")
 
         try:
