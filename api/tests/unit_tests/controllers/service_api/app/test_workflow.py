@@ -404,9 +404,8 @@ class TestWorkflowRunDetailApi:
         handler = unwrap(api.get)
         app_model = _make_app_model(mode=AppMode.CHAT)
 
-        with app.test_request_context("/workflows/run/1", method="GET"):
-            with pytest.raises(NotWorkflowAppError):
-                handler(api, app_model=app_model, workflow_run_id="run")
+        with app.test_request_context("/workflows/run/1", method="GET"), pytest.raises(NotWorkflowAppError):
+            handler(api, app_model=app_model, workflow_run_id="run")
 
     @pytest.mark.parametrize("sqlite_session", [(WorkflowRun,)], indirect=True)
     def test_success(
@@ -438,9 +437,11 @@ class TestWorkflowRunApi:
         app_model = _make_app_model(mode=AppMode.CHAT)
         end_user = _make_end_user()
 
-        with app.test_request_context("/workflows/run", method="POST", json={"inputs": {}}):
-            with pytest.raises(NotWorkflowAppError):
-                handler(api, session=sqlite_session, app_model=app_model, end_user=end_user)
+        with (
+            app.test_request_context("/workflows/run", method="POST", json={"inputs": {}}),
+            pytest.raises(NotWorkflowAppError),
+        ):
+            handler(api, session=sqlite_session, app_model=app_model, end_user=end_user)
 
     @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
     @pytest.mark.parametrize("api_class", [WorkflowRunApi, WorkflowRunByIdApi])
@@ -478,11 +479,11 @@ class TestWorkflowRunApi:
         end_user = _make_end_user()
         kwargs: dict[str, str] = {"workflow_id": str(uuid.uuid4())} if isinstance(api, WorkflowRunByIdApi) else {}
 
-        with app.test_request_context(
-            "/workflows/run", method="POST", json={"inputs": {}, "response_mode": "blocking"}
+        with (
+            app.test_request_context("/workflows/run", method="POST", json={"inputs": {}, "response_mode": "blocking"}),
+            pytest.raises(http_error) as exc_info,
         ):
-            with pytest.raises(http_error) as exc_info:
-                handler(api, session=sqlite_session, app_model=app_model, end_user=end_user, **kwargs)
+            handler(api, session=sqlite_session, app_model=app_model, end_user=end_user, **kwargs)
 
         generate.assert_called_once()
         assert exc_info.value.code == status_code
@@ -503,14 +504,16 @@ class TestWorkflowRunApi:
         api = WorkflowRunApi()
         handler = unwrap(api.post)
 
-        with app.test_request_context("/workflows/run", method="POST", json={"inputs": {}}):
-            with pytest.raises(TriggerWorkflowServiceModeUnavailableError) as exc_info:
-                handler(
-                    api,
-                    session=sqlite_session,
-                    app_model=_make_app_model(),
-                    end_user=_make_end_user(),
-                )
+        with (
+            app.test_request_context("/workflows/run", method="POST", json={"inputs": {}}),
+            pytest.raises(TriggerWorkflowServiceModeUnavailableError) as exc_info,
+        ):
+            handler(
+                api,
+                session=sqlite_session,
+                app_model=_make_app_model(),
+                end_user=_make_end_user(),
+            )
 
         assert exc_info.value.code == 403
         assert exc_info.value.error_code == "trigger_workflow_service_mode_unavailable"
@@ -561,15 +564,17 @@ class TestWorkflowRunByIdApi:
         api = WorkflowRunByIdApi()
         handler = unwrap(api.post)
 
-        with app.test_request_context("/workflows/w1/run", method="POST", json={"inputs": {}}):
-            with pytest.raises(TriggerWorkflowServiceModeUnavailableError) as exc_info:
-                handler(
-                    api,
-                    session=sqlite_session,
-                    app_model=_make_app_model(),
-                    end_user=_make_end_user(),
-                    workflow_id=str(uuid.uuid4()),
-                )
+        with (
+            app.test_request_context("/workflows/w1/run", method="POST", json={"inputs": {}}),
+            pytest.raises(TriggerWorkflowServiceModeUnavailableError) as exc_info,
+        ):
+            handler(
+                api,
+                session=sqlite_session,
+                app_model=_make_app_model(),
+                end_user=_make_end_user(),
+                workflow_id=str(uuid.uuid4()),
+            )
 
         assert exc_info.value.code == 403
         assert exc_info.value.error_code == "trigger_workflow_service_mode_unavailable"
@@ -593,15 +598,17 @@ class TestWorkflowRunByIdApi:
         handler = unwrap(api.post)
         app_model = _make_app_model()
 
-        with app.test_request_context("/workflows/w1/run", method="POST", json={"inputs": {}}):
-            with pytest.raises(WorkflowVersionExecutionNotAllowedError) as exc_info:
-                handler(
-                    api,
-                    session=sqlite_session,
-                    app_model=app_model,
-                    end_user=_make_end_user(),
-                    workflow_id="w1",
-                )
+        with (
+            app.test_request_context("/workflows/w1/run", method="POST", json={"inputs": {}}),
+            pytest.raises(WorkflowVersionExecutionNotAllowedError) as exc_info,
+        ):
+            handler(
+                api,
+                session=sqlite_session,
+                app_model=app_model,
+                end_user=_make_end_user(),
+                workflow_id="w1",
+            )
 
         billing_get_info.assert_called_once_with(app_model.tenant_id, exclude_vector_space=True)
         generate.assert_not_called()
@@ -681,9 +688,11 @@ class TestWorkflowRunByIdApi:
         app_model = _make_app_model()
         end_user = _make_end_user()
 
-        with app.test_request_context("/workflows/1/run", method="POST", json={"inputs": {}}):
-            with pytest.raises(NotFound):
-                handler(api, session=sqlite_session, app_model=app_model, end_user=end_user, workflow_id="w1")
+        with (
+            app.test_request_context("/workflows/1/run", method="POST", json={"inputs": {}}),
+            pytest.raises(NotFound),
+        ):
+            handler(api, session=sqlite_session, app_model=app_model, end_user=end_user, workflow_id="w1")
 
     @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
     def test_draft_workflow(
@@ -706,9 +715,11 @@ class TestWorkflowRunByIdApi:
         app_model = _make_app_model()
         end_user = _make_end_user()
 
-        with app.test_request_context("/workflows/1/run", method="POST", json={"inputs": {}}):
-            with pytest.raises(BadRequest):
-                handler(api, session=sqlite_session, app_model=app_model, end_user=end_user, workflow_id="w1")
+        with (
+            app.test_request_context("/workflows/1/run", method="POST", json={"inputs": {}}),
+            pytest.raises(BadRequest),
+        ):
+            handler(api, session=sqlite_session, app_model=app_model, end_user=end_user, workflow_id="w1")
 
 
 class TestWorkflowTaskStopApi:
@@ -719,9 +730,11 @@ class TestWorkflowTaskStopApi:
         app_model = _make_app_model(mode=mode)
         end_user = _make_end_user()
 
-        with app.test_request_context("/workflows/tasks/1/stop", method="POST"):
-            with pytest.raises(NotWorkflowAppError):
-                handler(api, app_model=app_model, end_user=end_user, task_id="t1")
+        with (
+            app.test_request_context("/workflows/tasks/1/stop", method="POST"),
+            pytest.raises(NotWorkflowAppError),
+        ):
+            handler(api, app_model=app_model, end_user=end_user, task_id="t1")
 
     def test_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         stop_mock = Mock()

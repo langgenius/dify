@@ -843,46 +843,54 @@ class TestErrorHandling:
     def test_plugin_not_found_error(self, plugin_installer):
         """Test handling of plugin not found error."""
         # Arrange: Mock plugin daemon not found error
-        with patch.object(
-            plugin_installer,
-            "_request_with_plugin_daemon_response",
-            side_effect=PluginDaemonNotFoundError("Plugin not found"),
+        # Act & Assert: Verify error is raised
+        with (
+            patch.object(
+                plugin_installer,
+                "_request_with_plugin_daemon_response",
+                side_effect=PluginDaemonNotFoundError("Plugin not found"),
+            ),
+            pytest.raises(PluginDaemonNotFoundError),
         ):
-            # Act & Assert: Verify error is raised
-            with pytest.raises(PluginDaemonNotFoundError):
-                plugin_installer.fetch_plugin_manifest("test-tenant", "non-existent/plugin/1.0.0")
+            plugin_installer.fetch_plugin_manifest("test-tenant", "non-existent/plugin/1.0.0")
 
     def test_plugin_bad_request_error(self, plugin_installer):
         """Test handling of bad request error."""
         # Arrange: Mock bad request error
-        with patch.object(
-            plugin_installer,
-            "_request_with_plugin_daemon_response",
-            side_effect=PluginDaemonBadRequestError("Invalid request"),
+        # Act & Assert: Verify error is raised
+        with (
+            patch.object(
+                plugin_installer,
+                "_request_with_plugin_daemon_response",
+                side_effect=PluginDaemonBadRequestError("Invalid request"),
+            ),
+            pytest.raises(PluginDaemonBadRequestError),
         ):
-            # Act & Assert: Verify error is raised
-            with pytest.raises(PluginDaemonBadRequestError):
-                plugin_installer.install_from_identifiers("test-tenant", [], PluginInstallationSource.Marketplace, [])
+            plugin_installer.install_from_identifiers("test-tenant", [], PluginInstallationSource.Marketplace, [])
 
     def test_plugin_internal_server_error(self, plugin_installer):
         """Test handling of internal server error."""
         # Arrange: Mock internal server error
-        with patch.object(
-            plugin_installer,
-            "_request_with_plugin_daemon_response",
-            side_effect=PluginDaemonInternalServerError("Internal error"),
+        # Act & Assert: Verify error is raised
+        with (
+            patch.object(
+                plugin_installer,
+                "_request_with_plugin_daemon_response",
+                side_effect=PluginDaemonInternalServerError("Internal error"),
+            ),
+            pytest.raises(PluginDaemonInternalServerError),
         ):
-            # Act & Assert: Verify error is raised
-            with pytest.raises(PluginDaemonInternalServerError):
-                plugin_installer.list_plugins("test-tenant")
+            plugin_installer.list_plugins("test-tenant")
 
     def test_http_error_handling(self, plugin_installer):
         """Test handling of HTTP errors during requests."""
         # Arrange: Mock HTTP error
-        with patch.object(plugin_installer, "_request", side_effect=httpx.RequestError("Connection failed")):
-            # Act & Assert: Verify appropriate error handling
-            with pytest.raises(httpx.RequestError):
-                plugin_installer._request("GET", "test/path")
+        # Act & Assert: Verify appropriate error handling
+        with (
+            patch.object(plugin_installer, "_request", side_effect=httpx.RequestError("Connection failed")),
+            pytest.raises(httpx.RequestError),
+        ):
+            plugin_installer._request("GET", "test/path")
 
 
 class TestPluginCategoryDetection:

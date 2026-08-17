@@ -307,9 +307,8 @@ class TestDecodeJwtToken:
         mock_features.return_value = False
         mock_extract.return_value = None
 
-        with app.test_request_context("/", headers={"X-App-Code": "code1"}):
-            with pytest.raises(Unauthorized):
-                decode_jwt_token()
+        with app.test_request_context("/", headers={"X-App-Code": "code1"}), pytest.raises(Unauthorized):
+            decode_jwt_token()
 
     @patch("controllers.web.wraps.SystemFeatureService.is_webapp_auth_enabled")
     @patch("controllers.web.wraps.PassportService")
@@ -330,9 +329,8 @@ class TestDecodeJwtToken:
         }
         mock_features.return_value = False
 
-        with app.test_request_context("/", headers={"X-App-Code": "code1"}):
-            with pytest.raises(NotFound):
-                decode_jwt_token()
+        with app.test_request_context("/", headers={"X-App-Code": "code1"}), pytest.raises(NotFound):
+            decode_jwt_token()
 
     @patch("controllers.web.wraps.SystemFeatureService.is_webapp_auth_enabled")
     @patch("controllers.web.wraps.PassportService")
@@ -355,9 +353,11 @@ class TestDecodeJwtToken:
         }
         mock_features.return_value = False
 
-        with app.test_request_context("/", headers={"X-App-Code": site.code}):
-            with pytest.raises(BadRequest, match="Site is disabled"):
-                decode_jwt_token()
+        with (
+            app.test_request_context("/", headers={"X-App-Code": site.code}),
+            pytest.raises(BadRequest, match="Site is disabled"),
+        ):
+            decode_jwt_token()
 
     @patch("controllers.web.wraps.SystemFeatureService.is_webapp_auth_enabled")
     @patch("controllers.web.wraps.PassportService")
@@ -381,9 +381,8 @@ class TestDecodeJwtToken:
         }
         mock_features.return_value = False
 
-        with app.test_request_context("/", headers={"X-App-Code": site.code}):
-            with pytest.raises(NotFound):
-                decode_jwt_token()
+        with app.test_request_context("/", headers={"X-App-Code": site.code}), pytest.raises(NotFound):
+            decode_jwt_token()
 
     @patch("controllers.web.wraps.SystemFeatureService.is_webapp_auth_enabled")
     @patch("controllers.web.wraps.PassportService")
@@ -406,6 +405,8 @@ class TestDecodeJwtToken:
         }
         mock_features.return_value = False
 
-        with app.test_request_context("/", headers={"X-App-Code": site.code}):
-            with pytest.raises(Unauthorized, match="expired"):
-                decode_jwt_token(user_id="different-user")
+        with (
+            app.test_request_context("/", headers={"X-App-Code": site.code}),
+            pytest.raises(Unauthorized, match="expired"),
+        ):
+            decode_jwt_token(user_id="different-user")

@@ -268,9 +268,8 @@ class TestGetUserTenant:
             return "success"
 
         # Act & Assert - Pydantic validates payload before manual check
-        with app.test_request_context(json={"user_id": "user456"}):
-            with pytest.raises(ValidationError):
-                protected_view()
+        with app.test_request_context(json={"user_id": "user456"}), pytest.raises(ValidationError):
+            protected_view()
 
     def test_should_raise_error_when_tenant_not_found(self, sqlite_plugin_engine: Engine, app: Flask):
         """Test that ValueError is raised when tenant is not found"""
@@ -280,9 +279,11 @@ class TestGetUserTenant:
         def protected_view(tenant_model, user_model, **kwargs):
             return "success"
 
-        with app.test_request_context(json={"tenant_id": "nonexistent", "user_id": "user456"}):
-            with pytest.raises(ValueError, match="tenant not found"):
-                protected_view()
+        with (
+            app.test_request_context(json={"tenant_id": "nonexistent", "user_id": "user456"}),
+            pytest.raises(ValueError, match="tenant not found"),
+        ):
+            protected_view()
 
     def test_should_use_default_session_id_when_user_id_empty(
         self,

@@ -55,15 +55,15 @@ def test_plugin_tool_invoke_and_fork_runtime(sqlite_session: Session):
             text='data: {"code": 0, "message": "", "data": {"type": "text", "message": {"text": "ok"}}}\n\n',
         )
 
-    with httpx.Client(transport=httpx.MockTransport(handle_request)) as client:
-        with (
-            patch.object(plugin_client_module, "_httpx_client", client),
-            patch(
-                "core.tools.plugin_tool.tool.convert_parameters_to_plugin_format",
-                return_value={"converted": 1},
-            ),
-        ):
-            messages = list(tool.invoke(session=sqlite_session, user_id="user-1", tool_parameters={"raw": 1}))
+    with (
+        httpx.Client(transport=httpx.MockTransport(handle_request)) as client,
+        patch.object(plugin_client_module, "_httpx_client", client),
+        patch(
+            "core.tools.plugin_tool.tool.convert_parameters_to_plugin_format",
+            return_value={"converted": 1},
+        ),
+    ):
+        messages = list(tool.invoke(session=sqlite_session, user_id="user-1", tool_parameters={"raw": 1}))
 
     assert [m.message.text for m in messages] == ["ok"]
     assert len(requests) == 1
@@ -108,9 +108,11 @@ def test_plugin_tool_get_runtime_parameters_branches():
         payload = {"code": 0, "message": "", "data": {"parameters": [returned[0].model_dump(mode="json")]}}
         return httpx.Response(200, text=f"data: {json.dumps(payload)}\n\n")
 
-    with httpx.Client(transport=httpx.MockTransport(handle_request)) as client:
-        with patch.object(plugin_client_module, "_httpx_client", client):
-            assert tool.get_runtime_parameters(conversation_id="c1", app_id="a1", message_id="m1") == returned
+    with (
+        httpx.Client(transport=httpx.MockTransport(handle_request)) as client,
+        patch.object(plugin_client_module, "_httpx_client", client),
+    ):
+        assert tool.get_runtime_parameters(conversation_id="c1", app_id="a1", message_id="m1") == returned
     assert tool.runtime_parameters == returned
     assert len(requests) == 1
     request_data = json.loads(requests[0].content)

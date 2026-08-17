@@ -187,9 +187,9 @@ class TestDatasourcePluginOAuthAuthorizationUrl:
                 "get_oauth_client",
                 return_value=None,
             ),
+            pytest.raises(ValueError),
         ):
-            with pytest.raises(ValueError):
-                method(api, "tenant-1", user, "notion")
+            method(api, "tenant-1", user, "notion")
 
     def test_get_without_credential_id_sets_cookie(self, app: Flask):
         api = DatasourcePluginOAuthAuthorizationUrl()
@@ -286,9 +286,8 @@ class TestDatasourceOAuthCallback:
         api = DatasourceOAuthCallback()
         method = inspect.unwrap(api.get)
 
-        with app.test_request_context("/"):
-            with pytest.raises(Forbidden):
-                method(api, "notion")
+        with app.test_request_context("/"), pytest.raises(Forbidden):
+            method(api, "notion")
 
     def test_callback_invalid_context(self, app: Flask):
         api = DatasourceOAuthCallback()
@@ -301,9 +300,9 @@ class TestDatasourceOAuthCallback:
                 "use_proxy_context",
                 return_value=None,
             ),
+            pytest.raises(Forbidden),
         ):
-            with pytest.raises(Forbidden):
-                method(api, "notion")
+            method(api, "notion")
 
     def test_callback_oauth_config_not_found(self, app: Flask):
         api = DatasourceOAuthCallback()
@@ -323,9 +322,9 @@ class TestDatasourceOAuthCallback:
                 "get_oauth_client",
                 return_value=None,
             ),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                method(api, "notion")
+            method(api, "notion")
 
     def test_callback_reauthorize_existing_credential(self, app: Flask):
         api = DatasourceOAuthCallback()
@@ -465,9 +464,9 @@ class TestDatasourceAuth:
                 "add_datasource_api_key_provider",
                 side_effect=CredentialsValidateFailedError("invalid"),
             ),
+            pytest.raises(ValueError),
         ):
-            with pytest.raises(ValueError):
-                method(api, DatasourceCredentialPayload.model_validate(payload), "tenant-1", "notion")
+            method(api, DatasourceCredentialPayload.model_validate(payload), "tenant-1", "notion")
 
     def test_get_success(self, app: Flask):
         api = DatasourceAuth()
@@ -496,9 +495,9 @@ class TestDatasourceAuth:
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
+            pytest.raises(ValueError),
         ):
-            with pytest.raises(ValueError):
-                method(api, DatasourceCredentialPayload.model_validate(payload), "tenant-1", "notion")
+            method(api, DatasourceCredentialPayload.model_validate(payload), "tenant-1", "notion")
 
     def test_get_empty_list(self, app: Flask):
         api = DatasourceAuth()
@@ -557,9 +556,9 @@ class TestDatasourceAuthDeleteApi:
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
+            pytest.raises(ValueError),
         ):
-            with pytest.raises(ValueError):
-                method(api, DatasourceCredentialDeletePayload.model_validate(payload), "tenant-1", "notion")
+            method(api, DatasourceCredentialDeletePayload.model_validate(payload), "tenant-1", "notion")
 
 
 class TestDatasourceAuthUpdateApi:
@@ -879,9 +878,9 @@ class TestDatasourceAuthDefaultApi:
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
+            pytest.raises(ValueError),
         ):
-            with pytest.raises(ValueError):
-                method(api, DatasourceDefaultPayload.model_validate(payload), "tenant-1", "notion")
+            method(api, DatasourceDefaultPayload.model_validate(payload), "tenant-1", "notion")
 
 
 class TestDatasourceUpdateProviderNameApi:
@@ -923,9 +922,9 @@ class TestDatasourceUpdateProviderNameApi:
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
+            pytest.raises(ValueError),
         ):
-            with pytest.raises(ValueError):
-                method(api, DatasourceUpdateNamePayload.model_validate(payload), "tenant-1", "notion")
+            method(api, DatasourceUpdateNamePayload.model_validate(payload), "tenant-1", "notion")
 
     def test_update_name_missing_credential_id(self, app: Flask):
         api = DatasourceUpdateProviderNameApi()
@@ -936,6 +935,6 @@ class TestDatasourceUpdateProviderNameApi:
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
+            pytest.raises(ValueError),
         ):
-            with pytest.raises(ValueError):
-                method(api, DatasourceUpdateNamePayload.model_validate(payload), "tenant-1", "notion")
+            method(api, DatasourceUpdateNamePayload.model_validate(payload), "tenant-1", "notion")

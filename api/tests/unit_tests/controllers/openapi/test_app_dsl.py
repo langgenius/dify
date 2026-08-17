@@ -90,9 +90,11 @@ def test_permission_denial_maps_to_forbidden(
     monkeypatch.setattr(app_query_services.apps.imports, "confirm_import", denied)
     context = RequestContext("request-1", None, "account-1", "workspace-1")
 
-    with app.test_request_context("/openapi/v1/workspaces/workspace-1/apps/imports", method="POST"):
-        with pytest.raises(ForbiddenError, match="denied") as exc_info:
-            cast(_EndpointView, api.post).__handler__(api, context, **kwargs)
+    with (
+        app.test_request_context("/openapi/v1/workspaces/workspace-1/apps/imports", method="POST"),
+        pytest.raises(ForbiddenError, match="denied") as exc_info,
+    ):
+        cast(_EndpointView, api.post).__handler__(api, context, **kwargs)
 
     assert isinstance(exc_info.value.__cause__, NoPermissionError)
     assert exc_info.value.code == 403

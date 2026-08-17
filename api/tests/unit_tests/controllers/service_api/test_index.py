@@ -13,10 +13,12 @@ from controllers.service_api.index import IndexApi
 
 
 def _get_index_response(app: Flask, version: str) -> dict[str, str]:
-    with patch.object(index_module.dify_config.project, "version", version):
-        with app.test_request_context("/", method="GET"):
-            index_api = IndexApi()
-            return index_api.get()
+    with (
+        patch.object(index_module.dify_config.project, "version", version),
+        app.test_request_context("/", method="GET"),
+    ):
+        index_api = IndexApi()
+        return index_api.get()
 
 
 class TestIndexApi:

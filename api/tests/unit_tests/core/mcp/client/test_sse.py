@@ -118,9 +118,8 @@ def test_sse_client_error_handling(install_sse_response):
     """Translate real HTTP status errors to the MCP error contract."""
     for status, error in ((401, MCPAuthError), (500, MCPConnectionError)):
         install_sse_response(httpx.Response(status, headers={"WWW-Authenticate": 'Bearer realm="example"'}))
-        with pytest.raises(error):
-            with sse_client("http://test.example/sse"):
-                pytest.fail("An HTTP error must prevent connection establishment")
+        with pytest.raises(error), sse_client("http://test.example/sse"):
+            pytest.fail("An HTTP error must prevent connection establishment")
 
 
 @pytest.mark.parametrize(
@@ -147,9 +146,8 @@ def test_sse_client_wraps_transport_errors(transport_error: httpx.RequestError):
     ):
         mock_sse_connect.side_effect = transport_error
 
-        with pytest.raises(MCPConnectionError) as exc_info:
-            with sse_client(test_url):
-                pass
+        with pytest.raises(MCPConnectionError) as exc_info, sse_client(test_url):
+            pass
 
     # The underlying reason must survive so the user can act on it.
     assert str(transport_error) in str(exc_info.value)

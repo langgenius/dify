@@ -809,15 +809,14 @@ class TestDocumentApiGet:
             method="GET",
         ):
             api = DocumentApi()
-            with patch.object(api, "get_dataset", return_value=mock_dataset):
-                with pytest.raises(NotFound):
-                    inspect.unwrap(type(api).get)(
-                        api,
-                        session,
-                        tenant_id=mock_tenant,
-                        dataset_id=dataset_id,
-                        document_id="nonexistent",
-                    )
+            with patch.object(api, "get_dataset", return_value=mock_dataset), pytest.raises(NotFound):
+                inspect.unwrap(type(api).get)(
+                    api,
+                    session,
+                    tenant_id=mock_tenant,
+                    dataset_id=dataset_id,
+                    document_id="nonexistent",
+                )
 
     @patch("controllers.service_api.dataset.document.DocumentService")
     def test_get_document_forbidden_wrong_tenant(
@@ -845,15 +844,14 @@ class TestDocumentApiGet:
             method="GET",
         ):
             api = DocumentApi()
-            with patch.object(api, "get_dataset", return_value=mock_dataset):
-                with pytest.raises(Forbidden):
-                    inspect.unwrap(type(api).get)(
-                        api,
-                        session,
-                        tenant_id=mock_tenant,
-                        dataset_id=dataset_id,
-                        document_id=mock_doc_detail.id,
-                    )
+            with patch.object(api, "get_dataset", return_value=mock_dataset), pytest.raises(Forbidden):
+                inspect.unwrap(type(api).get)(
+                    api,
+                    session,
+                    tenant_id=mock_tenant,
+                    dataset_id=dataset_id,
+                    document_id=mock_doc_detail.id,
+                )
 
     @patch("controllers.service_api.dataset.document.DocumentService")
     def test_get_document_metadata_only(
@@ -999,15 +997,14 @@ class TestDocumentApiGet:
             method="GET",
         ):
             api = DocumentApi()
-            with patch.object(api, "get_dataset", return_value=mock_dataset):
-                with pytest.raises(InvalidMetadataError):
-                    inspect.unwrap(type(api).get)(
-                        api,
-                        session,
-                        tenant_id=mock_tenant,
-                        dataset_id=dataset_id,
-                        document_id=mock_doc_detail.id,
-                    )
+            with patch.object(api, "get_dataset", return_value=mock_dataset), pytest.raises(InvalidMetadataError):
+                inspect.unwrap(type(api).get)(
+                    api,
+                    session,
+                    tenant_id=mock_tenant,
+                    dataset_id=dataset_id,
+                    document_id=mock_doc_detail.id,
+                )
 
 
 class SQLiteControllerTest:

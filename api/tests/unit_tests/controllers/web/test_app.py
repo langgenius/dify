@@ -124,9 +124,8 @@ class TestAppParameterApi:
             get_public_parameters,
         )
 
-        with app.test_request_context("/parameters"):
-            with pytest.raises(http_error):
-                AppParameterApi().get(_make_app(), _make_end_user())
+        with app.test_request_context("/parameters"), pytest.raises(http_error):
+            AppParameterApi().get(_make_app(), _make_end_user())
 
 
 # ---------------------------------------------------------------------------
@@ -166,9 +165,8 @@ class TestAppMeta:
 
         monkeypatch.setattr(real_application_services.app_definitions, "get_tool_icons", get_tool_icons)
 
-        with app.test_request_context("/meta"):
-            with pytest.raises(AppUnavailableError) as raised:
-                AppMeta().get(_make_app(), _make_end_user())
+        with app.test_request_context("/meta"), pytest.raises(AppUnavailableError) as raised:
+            AppMeta().get(_make_app(), _make_end_user())
 
         assert raised.value.data == {
             "code": "app_unavailable",
@@ -243,9 +241,11 @@ class TestAppAccessMode:
 
         monkeypatch.setattr(real_application_services.webapp_access, "get_access_mode", get_access_mode)
 
-        with app.test_request_context("/webapp/access-mode?appCode=code-1"):
-            with pytest.raises(http_error) as raised:
-                AppAccessMode().get()
+        with (
+            app.test_request_context("/webapp/access-mode?appCode=code-1"),
+            pytest.raises(http_error) as raised,
+        ):
+            AppAccessMode().get()
 
         assert raised.value.data == expected_data
 
@@ -364,9 +364,11 @@ class TestAppWebAuthPermission:
                 "extract_webapp_passport",
                 lambda app_code, request: passport,
             )
-            with app.test_request_context("/webapp/permission?appId=app-1", headers={"X-App-Code": "code1"}):
-                with pytest.raises(WebAppAuthRequiredError):
-                    AppWebAuthPermission().get()
+            with (
+                app.test_request_context("/webapp/permission?appId=app-1", headers={"X-App-Code": "code1"}),
+                pytest.raises(WebAppAuthRequiredError),
+            ):
+                AppWebAuthPermission().get()
 
         assert access_checks == []
 
@@ -488,9 +490,11 @@ class TestAppWebAuthPermission:
                 lambda app_code, request: passport,
             )
 
-            with app.test_request_context("/webapp/permission?appId=app-1", headers={"X-App-Code": "code1"}):
-                with pytest.raises(WebAppAuthRequiredError) as raised:
-                    AppWebAuthPermission().get()
+            with (
+                app.test_request_context("/webapp/permission?appId=app-1", headers={"X-App-Code": "code1"}),
+                pytest.raises(WebAppAuthRequiredError) as raised,
+            ):
+                AppWebAuthPermission().get()
 
         assert raised.value.data == {
             "code": "web_sso_auth_required",
@@ -521,6 +525,5 @@ class TestAppWebAuthPermission:
             "application_services",
             unexpected_application_services,
         )
-        with app.test_request_context(path, headers=headers):
-            with pytest.raises(ValueError, match="appId"):
-                AppWebAuthPermission().get()
+        with app.test_request_context(path, headers=headers), pytest.raises(ValueError, match="appId"):
+            AppWebAuthPermission().get()

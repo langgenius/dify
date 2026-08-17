@@ -59,12 +59,11 @@ def test_build_upload_files_zip_tempfile_sanitizes_and_dedupes_names(monkeypatch
 
     monkeypatch.setattr(file_service_module.storage, "load", _load)
 
-    with FileService.build_upload_files_zip_tempfile(upload_files=upload_files) as tmp:
-        with ZipFile(tmp, mode="r") as zf:
-            assert zf.namelist() == ["b.txt", "b (1).txt", "b (2).txt"]
-            assert zf.read("b.txt") == b"one"
-            assert zf.read("b (1).txt") == b"two"
-            assert zf.read("b (2).txt") == b"three"
+    with FileService.build_upload_files_zip_tempfile(upload_files=upload_files) as tmp, ZipFile(tmp, mode="r") as zf:
+        assert zf.namelist() == ["b.txt", "b (1).txt", "b (2).txt"]
+        assert zf.read("b.txt") == b"one"
+        assert zf.read("b (1).txt") == b"two"
+        assert zf.read("b (2).txt") == b"three"
 
 
 def test_get_upload_files_by_ids_returns_empty_when_no_ids(db_session_with_containers: Session) -> None:

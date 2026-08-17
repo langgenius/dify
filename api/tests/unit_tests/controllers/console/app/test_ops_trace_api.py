@@ -385,14 +385,13 @@ def test_trace_app_config_maps_missing_app_to_404(
         else ops_trace_module.TraceConfigPayload(tracing_provider=PROVIDER, tracing_config={})
     )
 
-    with app.test_request_context("/"):
-        with pytest.raises(AppNotFoundError) as exc_info:
-            _original(_CONTROLLER_METHODS[method_name])(
-                ops_trace_module.TraceAppConfigApi(),
-                query_or_payload,
-                _request_context(),
-                UUID(APP_ID),
-            )
+    with app.test_request_context("/"), pytest.raises(AppNotFoundError) as exc_info:
+        _original(_CONTROLLER_METHODS[method_name])(
+            ops_trace_module.TraceAppConfigApi(),
+            query_or_payload,
+            _request_context(),
+            UUID(APP_ID),
+        )
 
     assert exc_info.value.code == 404
     assert exc_info.value.error_code == "app_not_found"
@@ -564,14 +563,13 @@ def test_trace_app_config_maps_application_errors_at_the_controller_boundary(
         else ops_trace_module.TraceConfigPayload(tracing_provider=PROVIDER, tracing_config={})
     )
 
-    with app.test_request_context("/"):
-        with pytest.raises(expected_http_error) as exc_info:
-            _original(_CONTROLLER_METHODS[method_name])(
-                ops_trace_module.TraceAppConfigApi(),
-                query_or_payload,
-                _request_context(),
-                UUID(APP_ID),
-            )
+    with app.test_request_context("/"), pytest.raises(expected_http_error) as exc_info:
+        _original(_CONTROLLER_METHODS[method_name])(
+            ops_trace_module.TraceAppConfigApi(),
+            query_or_payload,
+            _request_context(),
+            UUID(APP_ID),
+        )
 
     assert exc_info.value.code == expected_status
     assert exc_info.value.error_code == expected_code

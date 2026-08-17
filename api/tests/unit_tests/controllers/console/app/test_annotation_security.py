@@ -286,17 +286,19 @@ class TestAnnotationImportServiceValidation:
         with patch("services.annotation_service.current_account_with_tenant") as mock_auth:
             mock_auth.return_value = (_account(), "tenant_id")
 
-            with patch("services.annotation_service.FeatureService") as mock_features:
-                with patch("services.annotation_service.batch_import_annotations_task") as mock_task:
-                    with patch("services.annotation_service.redis_client"):
-                        result = AppAnnotationService.batch_import_app_annotations("app_id", file, sqlite_session)
+            with (
+                patch("services.annotation_service.FeatureService") as mock_features,
+                patch("services.annotation_service.batch_import_annotations_task") as mock_task,
+                patch("services.annotation_service.redis_client"),
+            ):
+                result = AppAnnotationService.batch_import_app_annotations("app_id", file, sqlite_session)
 
-                        # Should return success response
-                        assert "job_id" in result
-                        assert "job_status" in result
-                        assert result["job_status"] == "waiting"
-                        assert "record_count" in result
-                        assert result["record_count"] == 2
+                # Should return success response
+                assert "job_id" in result
+                assert "job_status" in result
+                assert result["job_status"] == "waiting"
+                assert "record_count" in result
+                assert result["record_count"] == 2
 
 
 class TestAnnotationImportTaskOptimization:
