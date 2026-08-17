@@ -1824,7 +1824,7 @@ class TenantService:
                 )
                 if not ta:
                     raise MemberNotInTenantError("Member not in tenant.")
-                owner_id = session.scalar(
+                legacy_owner_id = session.scalar(
                     select(TenantAccountJoin.account_id)
                     .where(
                         TenantAccountJoin.tenant_id == tenant_id,
@@ -1832,7 +1832,7 @@ class TenantService:
                     )
                     .limit(1)
                 )
-                if owner_id is None:
+                if legacy_owner_id is None:
                     raise ValueError(f"Workspace owner not found for tenant {tenant_id}.")
                 account_email = account.email
                 deleted_pending_account = TenantService._delete_member_records(
@@ -1840,7 +1840,7 @@ class TenantService:
                     tenant_id=tenant_id,
                     account=account,
                     membership=ta,
-                    owner_id=owner_id,
+                    owner_id=legacy_owner_id,
                 )
 
         if deleted_pending_account:
@@ -2304,7 +2304,8 @@ class RegisterService:
             "requires_setup": requires_setup,
         }
         if rbac_role_id and inviter_id:
-            invitation_data.update(rbac_role_id=rbac_role_id, inviter_id=inviter_id)
+            invitation_data["rbac_role_id"] = rbac_role_id
+            invitation_data["inviter_id"] = inviter_id
         expiry_hours = dify_config.INVITE_EXPIRY_HOURS
         redis_client.setex(cls._get_invitation_token_key(token), expiry_hours * 60 * 60, json.dumps(invitation_data))
         return token

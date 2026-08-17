@@ -203,10 +203,12 @@ class ActivateApi(Resource):
             except (MemberNotInTenantError, NoPermissionError) as exc:
                 raise AlreadyActivateError() from exc
 
-            account = AccountService.get_account_by_id(account_id, session=db.session())
-            tenant = TenantService.get_tenant_by_id(tenant_id, session=db.session())
-            if account is None or tenant is None:
+            reloaded_account = AccountService.get_account_by_id(account_id, session=db.session())
+            reloaded_tenant = TenantService.get_tenant_by_id(tenant_id, session=db.session())
+            if reloaded_account is None or reloaded_tenant is None:
                 raise AlreadyActivateError()
+            account = reloaded_account
+            tenant = reloaded_tenant
         else:
             raw_role = invitation["data"].get("role")
             try:
