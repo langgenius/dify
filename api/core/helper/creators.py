@@ -32,7 +32,7 @@ def upload_dsl(dsl_file_bytes: bytes, filename: str = "template.yaml") -> str:
 def get_redirect_url(user_account_id: str, claim_code: str) -> str:
     base_url = str(dify_config.CREATORS_PLATFORM_API_URL).rstrip("/")
     params: dict[str, str] = {"dsl_claim_code": claim_code}
-    client_id = str(dify_config.CREATORS_PLATFORM_OAUTH_CLIENT_ID or "")
+    client_id = dify_config.CREATORS_PLATFORM_OAUTH_CLIENT_ID or ""
     if client_id:
         from services.oauth_server import OAuthServerService
 

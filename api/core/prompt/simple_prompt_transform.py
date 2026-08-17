@@ -58,7 +58,7 @@ class SimplePromptTransform(PromptTransform):
         image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
         context_files: list["File"] | None = None,
     ) -> tuple[list[PromptMessage], list[str] | None]:
-        inputs = {key: str(value) for key, value in inputs.items()}
+        inputs = dict(inputs)
 
         model_mode = ModelMode(model_config.mode)
         if model_mode == ModelMode.CHAT:

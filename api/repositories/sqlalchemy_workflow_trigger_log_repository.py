@@ -141,4 +141,4 @@ class SQLAlchemyWorkflowTriggerLogRepository(WorkflowTriggerLogRepository):
         count = self.session.scalar(
             select(func.count()).select_from(WorkflowTriggerLog).where(WorkflowTriggerLog.workflow_run_id.in_(run_ids))
         )
-        return int(count or 0)
+        return count or 0

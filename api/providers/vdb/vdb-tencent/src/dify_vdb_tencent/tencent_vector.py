@@ -105,10 +105,8 @@ class TencentVector(BaseVector):
         return result
 
     def _has_collection(self) -> bool:
-        return bool(
-            self._client.exists_collection(
-                database_name=self._client_config.database, collection_name=self.collection_name
-            )
+        return self._client.exists_collection(
+            database_name=self._client_config.database, collection_name=self.collection_name
         )
 
     def _create_collection(self, dimension: int):

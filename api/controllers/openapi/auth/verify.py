@@ -35,7 +35,7 @@ def check_workspace_mismatch(data: AuthData) -> None:
     if data.tenant is None:
         return
     request_workspace_id = data.path_params.get("workspace_id") or request.args.get("workspace_id")
-    if request_workspace_id and request_workspace_id != str(data.tenant.id):
+    if request_workspace_id and request_workspace_id != data.tenant.id:
         raise UnprocessableEntity("workspace_id does not match app's workspace")
 
 
@@ -63,7 +63,7 @@ def check_rbac_permission(data: AuthData) -> None:
     if data.account_id is None or data.tenant is None:
         raise Forbidden("rbac context missing")
     enforce_rbac_access(
-        tenant_id=str(data.tenant.id),
+        tenant_id=data.tenant.id,
         account_id=str(data.account_id),
         resource_type=req.resource_type,
         scene=req.scene,
@@ -128,4 +128,4 @@ def _resolve_user_id(data: AuthData) -> str | None:
     if data.external_identity is None:
         return None
     account = AccountService.get_account_by_email(data.external_identity.email, session=db.session())
-    return str(account.id) if account is not None else None
+    return account.id if account is not None else None

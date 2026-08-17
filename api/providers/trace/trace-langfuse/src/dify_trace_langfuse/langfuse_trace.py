@@ -337,7 +337,7 @@ class LangFuseDataTrace(BaseTraceInstance):
             output=trace_info.outputs,
             metadata=metadata,
             session_id=message_data.conversation_id,
-            tags=["message", str(trace_info.conversation_mode)],
+            tags=["message", trace_info.conversation_mode],
             version=None,
             release=None,
             public=None,

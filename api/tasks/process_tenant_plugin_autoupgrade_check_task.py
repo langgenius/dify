@@ -82,7 +82,7 @@ def _normalize_category(category: PluginCategory | str | None) -> str | None:
         return None
     if isinstance(category, PluginCategory):
         return category.value
-    return str(category)
+    return category
 
 
 def _plugin_matches_category(plugin: PluginInstallation, category: str | None) -> bool:

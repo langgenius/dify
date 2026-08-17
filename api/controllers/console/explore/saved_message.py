@@ -39,7 +39,7 @@ class SavedMessageListApi(InstalledAppResource):
         args = SavedMessageListQuery.model_validate(request.args.to_dict())
 
         pagination = SavedMessageService.pagination_by_last_id(
-            app_model, current_user, str(args.last_id) if args.last_id else None, args.limit, session=session
+            app_model, current_user, args.last_id or None, args.limit, session=session
         )
         adapter = TypeAdapter(SavedMessageItem)
         items = [
@@ -64,7 +64,7 @@ class SavedMessageListApi(InstalledAppResource):
             raise NotCompletionAppError()
 
         try:
-            SavedMessageService.save(app_model, current_user, str(req_data.message_id), session=db.session())
+            SavedMessageService.save(app_model, current_user, req_data.message_id, session=db.session())
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
 

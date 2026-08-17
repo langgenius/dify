@@ -359,7 +359,7 @@ def _resolve_current_user_agent_debug_conversation_id(
     roster_service = AgentRosterService(session)
     resolved_agent_id = agent_id
     if not resolved_agent_id:
-        agent = roster_service.get_app_backing_agent(tenant_id=current_tenant_id, app_id=str(app_model.id))
+        agent = roster_service.get_app_backing_agent(tenant_id=current_tenant_id, app_id=app_model.id)
         if agent is None:
             raise AgentNotFoundError()
         resolved_agent_id = agent.id
