@@ -1,0 +1,21 @@
+.iconLight {
+  display: block;
+}
+
+.iconDark {
+  display: none;
+}
+
+:global(html[data-theme='dark']) .iconLight {
+  display: none;
+}
+
+:global(html[data-theme='dark']) .iconDark {
+  display: block;
+}
+
+@media (max-width: 879px) {
+  .decorations {
+    display: none;
+  }
+}

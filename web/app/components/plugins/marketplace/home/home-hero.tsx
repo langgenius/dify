@@ -1,9 +1,15 @@
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from '#i18n'
-import Github from '@/app/components/base/icons/src/public/common/Github'
-import duckDuckGoIcon from './assets/duckduckgo.png'
-import gmailIcon from './assets/gmail.svg'
+import dropboxDarkIcon from './assets/dropbox-dark.svg'
+import dropboxLightIcon from './assets/dropbox-light.svg'
+import duckDuckGoDarkIcon from './assets/duckduckgo-dark.svg'
+import duckDuckGoLightIcon from './assets/duckduckgo-light.svg'
+import githubDarkIcon from './assets/github-dark.svg'
+import githubLightIcon from './assets/github-light.svg'
+import googleDarkIcon from './assets/google-dark.svg'
+import googleLightIcon from './assets/google-light.svg'
+import styles from './home-hero.module.css'
 
 type HomeHeroProps = {
   isMarketplacePlatform: boolean
@@ -14,14 +20,29 @@ type HomeHeroProps = {
 const heroDecorationIconFrameClassName =
   'absolute flex size-10 items-center justify-center overflow-hidden rounded-[10px] bg-components-panel-bg shadow-lg'
 
-// DuckDuckGo and Gmail stay file exports so their multi-color marks render.
-// Tailwind iconify classes mask to currentColor and would flatten or hide them.
-const DuckDuckGoIcon = () => (
-  <img src={duckDuckGoIcon.src} alt="" className="size-10 object-cover" />
-)
-
-const GmailIcon = () => (
-  <img src={gmailIcon.src} alt="" className="size-10 object-cover" />
+// Brand marks stay file exports so multi-color logos render. Tailwind iconify
+// classes mask to currentColor and would flatten or hide them.
+const ThemeIcon = ({
+  darkSrc,
+  lightSrc,
+}: {
+  darkSrc: string
+  lightSrc: string
+}) => (
+  <>
+    <img
+      alt=""
+      aria-hidden
+      className={cn('size-10 object-cover', styles.iconLight)}
+      src={lightSrc}
+    />
+    <img
+      alt=""
+      aria-hidden
+      className={cn('size-10 object-cover', styles.iconDark)}
+      src={darkSrc}
+    />
+  </>
 )
 
 const HomeHero = ({ isMarketplacePlatform, subtitle, title }: HomeHeroProps) => {
@@ -35,18 +56,18 @@ const HomeHero = ({ isMarketplacePlatform, subtitle, title }: HomeHeroProps) => 
       )}
     >
       <div className="relative flex h-[162px] w-full max-w-[726px] flex-col items-center pt-[41px]">
-        <div aria-hidden className="pointer-events-none absolute inset-0 max-[879px]:hidden">
+        <div aria-hidden className={cn('pointer-events-none absolute inset-0', styles.decorations)}>
           <span className={heroDecorationIconFrameClassName} style={{ left: 99, top: 26 }}>
-            <span className="i-custom-public-common-dropbox size-10" />
+            <ThemeIcon darkSrc={dropboxDarkIcon.src} lightSrc={dropboxLightIcon.src} />
           </span>
           <span className={heroDecorationIconFrameClassName} style={{ left: 12, top: 89 }}>
-            <DuckDuckGoIcon />
+            <ThemeIcon darkSrc={duckDuckGoDarkIcon.src} lightSrc={duckDuckGoLightIcon.src} />
           </span>
           <span className={heroDecorationIconFrameClassName} style={{ left: 589, top: 4 }}>
-            <Github className="size-10" />
+            <ThemeIcon darkSrc={githubDarkIcon.src} lightSrc={githubLightIcon.src} />
           </span>
           <span className={heroDecorationIconFrameClassName} style={{ left: 653, top: 68 }}>
-            <GmailIcon />
+            <ThemeIcon darkSrc={googleDarkIcon.src} lightSrc={googleLightIcon.src} />
           </span>
         </div>
         <div className="flex flex-col items-center gap-2 text-center">
