@@ -1139,9 +1139,9 @@ class TestTenantService:
                 TenantAccountRole.OWNER,
             )
             service_session.flush()
-            tenant_id = str(tenant.id)
-            member_id = str(member.id)
-            operator_id = str(operator.id)
+            tenant_id = tenant.id
+            member_id = member.id
+            operator_id = operator.id
             target_join_id = target_join.id
             service_session.commit()
 
@@ -1198,9 +1198,9 @@ class TestTenantService:
             )
             self._add_tenant_account_join(service_session, tenant, mock_operator.id, TenantAccountRole.ADMIN)
             service_session.flush()
-            tenant_id = str(tenant.id)
-            member_id = str(mock_member.id)
-            operator_id = str(mock_operator.id)
+            tenant_id = tenant.id
+            member_id = mock_member.id
+            operator_id = mock_operator.id
             target_join_id = target_join.id
             service_session.commit()
 
@@ -1223,7 +1223,7 @@ class TestTenantService:
         sqlite_session.commit()
 
         with pytest.raises(NoPermissionError):
-            TenantService.update_member_role(str(tenant.id), str(mock_member.id), "editor", str(mock_operator.id))
+            TenantService.update_member_role(tenant.id, mock_member.id, "editor", mock_operator.id)
 
     def test_admin_cannot_promote_member_to_owner(self, sqlite_session: Session) -> None:
         """Test admin cannot promote a non-owner member to owner."""
@@ -1237,7 +1237,7 @@ class TestTenantService:
         sqlite_session.commit()
 
         with pytest.raises(NoPermissionError):
-            TenantService.update_member_role(str(tenant.id), str(mock_member.id), "owner", str(mock_operator.id))
+            TenantService.update_member_role(tenant.id, mock_member.id, "owner", mock_operator.id)
 
     def test_rbac_update_resolves_requested_role(self, sqlite_session: Session) -> None:
         tenant = Tenant(name="Test Workspace")
@@ -1258,15 +1258,15 @@ class TestTenantService:
             ) as mock_resolve,
             patch("services.account_service.RBACService.MemberRoles.replace_user_roles") as mock_replace,
         ):
-            TenantService.update_member_role(str(tenant.id), member.id, "editor", operator.id)
+            TenantService.update_member_role(tenant.id, member.id, "editor", operator.id)
 
         mock_resolve.assert_called_once_with(
-            tenant_id=str(tenant.id),
+            tenant_id=tenant.id,
             account_id=operator.id,
             role=TenantAccountRole.EDITOR,
         )
         mock_replace.assert_called_once_with(
-            tenant_id=str(tenant.id),
+            tenant_id=tenant.id,
             account_id=operator.id,
             member_account_id=member.id,
             role_ids=["editor-role"],
