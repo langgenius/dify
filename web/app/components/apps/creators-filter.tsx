@@ -168,6 +168,7 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
               className="pointer-events-none absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder"
             />
             <Input
+              aria-label={t(($) => $['studio.filters.searchCreators'], { ns: 'app' })}
               className={cn('pl-6.5', keywords && 'pr-6.5')}
               value={keywords}
               onChange={(e) => setKeywords(e.target.value)}

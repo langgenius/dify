@@ -195,6 +195,7 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
           </div>
           <div className="relative w-full flex-1">
             <Input
+              aria-label={t(($) => $['newAppFromTemplate.searchAllTemplate'], { ns: 'app' })}
               className="w-full border-transparent bg-transparent pr-7 hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent focus:shadow-none"
               placeholder={t(($) => $['newAppFromTemplate.searchAllTemplate'], { ns: 'app' })}
               value={keywords}
