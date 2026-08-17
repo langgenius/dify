@@ -158,6 +158,7 @@ export function SourceProviderIcon({
 export function SourceProviderSelector({
   appearance = 'page',
   disabled = false,
+  layout = 'grid-three',
   onMoreProviders,
   options,
   providerKey,
@@ -165,6 +166,7 @@ export function SourceProviderSelector({
 }: {
   appearance?: 'embedded' | 'page'
   disabled?: boolean
+  layout?: 'grid-four' | 'grid-three'
   onMoreProviders: () => void
   options: SourceProviderOption[]
   providerKey: string
@@ -187,7 +189,10 @@ export function SourceProviderSelector({
           type="button"
           variant="ghost-accent"
           size="small"
-          className={cn('gap-0.5', appearance === 'embedded' ? 'h-6 px-0' : 'px-2.75')}
+          className={cn(
+            'gap-0.5',
+            appearance === 'embedded' ? 'h-6 px-0' : 'px-2.25 text-[13px] leading-4 font-normal',
+          )}
           disabled={disabled}
           onClick={onMoreProviders}
         >
@@ -198,7 +203,7 @@ export function SourceProviderSelector({
       <SourceProviderRadioGroup
         value={providerKey}
         disabled={disabled}
-        layout="wrap"
+        layout={layout}
         options={options.map((option) => ({
           icon: (
             <SourceProviderIcon
@@ -213,7 +218,8 @@ export function SourceProviderSelector({
           label: option.label,
           value: option.key,
         }))}
-        size="small"
+        size="medium"
+        surface="default"
         onChange={onChange}
       />
     </Fieldset>

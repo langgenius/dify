@@ -1269,6 +1269,7 @@ export function AddSourcePage({
             <>
               <SourceProviderSelector
                 disabled={websiteSetupLocked}
+                layout="grid-four"
                 options={websiteProviderOptions}
                 providerKey={websiteProviderOption?.key ?? ''}
                 onMoreProviders={() =>
