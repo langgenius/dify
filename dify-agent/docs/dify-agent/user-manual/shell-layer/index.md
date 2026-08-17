@@ -93,6 +93,7 @@ topology.
 ```env
 DIFY_AGENT_STUB_API_BASE_URL=https://agent.example.com/agent-stub
 DIFY_AGENT_SANDBOX_FILES_BASE_URL=https://dify.example.com
+DIFY_AGENT_STUB_UPLOAD_FILE_SIZE_LIMIT=50
 DIFY_AGENT_SERVER_SECRET_KEY=replace-with-unpadded-base64url-for-32-random-bytes
 ```
 
@@ -100,6 +101,11 @@ HTTP URLs may be either the service root or the explicit `/agent-stub` root.
 The server normalizes a service root and rejects unrelated paths. The separate
 Sandbox file base must point to the Dify API ingress serving `/files/*`; it is
 used for CLI upload/download bytes, including Config file and skill pulls.
+`DIFY_AGENT_STUB_UPLOAD_FILE_SIZE_LIMIT` belongs to the Agent service, is in
+MiB, and defaults to `50`. The Agent service converts it to the signed upload
+URL's byte limit. Any ingress or proxy in front of `/files/*` must allow that
+file limit plus multipart framing and header overhead; its request-body limit
+does not need to be numerically identical.
 
 After `dify-agent file upload <path>` succeeds, the CLI prints JSON such as:
 
