@@ -432,6 +432,7 @@ class AccountService:
         interface_theme: str = "light",
         is_setup: bool | None = False,
         timezone: str | None = None,
+        ip_address: str | None = None,
         *,
         session: Session,
     ) -> Account:
@@ -484,6 +485,7 @@ class AccountService:
             interface_language=interface_language,
             interface_theme=interface_theme,
             timezone=resolved_timezone,
+            last_login_ip=ip_address,
         )
 
         session.add(account)
@@ -497,6 +499,7 @@ class AccountService:
         interface_language: str,
         password: str | None = None,
         timezone: str | None = None,
+        ip_address: str | None = None,
         *,
         session: Session,
     ) -> Account:
@@ -507,6 +510,7 @@ class AccountService:
             interface_language=interface_language,
             password=password,
             timezone=timezone,
+            ip_address=ip_address,
             session=session,
         )
 
@@ -1946,10 +1950,10 @@ class RegisterService:
                 interface_language=get_valid_language(language),
                 password=password,
                 is_setup=True,
+                ip_address=ip_address,
                 session=session,
             )
 
-            account.last_login_ip = ip_address
             account.initialized_at = naive_utc_now()
 
             TenantService.create_owner_tenant_if_not_exist(account=account, is_setup=True, session=session)
@@ -1985,6 +1989,7 @@ class RegisterService:
         is_setup: bool | None = False,
         create_workspace_required: bool | None = True,
         timezone: str | None = None,
+        ip_address: str | None = None,
         *,
         session: Session,
     ) -> Account:
@@ -1999,6 +2004,7 @@ class RegisterService:
                 password=password,
                 is_setup=is_setup,
                 timezone=timezone,
+                ip_address=ip_address,
                 session=session,
             )
             account.status = status or AccountStatus.ACTIVE

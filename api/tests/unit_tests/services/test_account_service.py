@@ -253,6 +253,7 @@ class TestAccountService:
             interface_language="en-US",
             password="password123",
             interface_theme="light",
+            ip_address="203.0.113.10",
             session=sqlite_session,
         )
 
@@ -264,6 +265,7 @@ class TestAccountService:
         assert result.password is not None
         assert result.password_salt is not None
         assert result.timezone == "America/New_York"
+        assert result.last_login_ip == "203.0.113.10"
 
         persisted_account = sqlite_session.scalar(select(Account).where(Account.email == "test@example.com"))
         assert persisted_account is result
@@ -344,9 +346,29 @@ class TestAccountService:
         assert result.password is None
         assert result.password_salt is None
         assert result.timezone is not None
+        assert result.last_login_ip is None
 
         persisted_account = sqlite_session.scalar(select(Account).where(Account.email == "test@example.com"))
         assert persisted_account is result
+
+    def test_update_login_info_overwrites_initial_registration_ip(
+        self, sqlite_session: Session, mock_external_service_dependencies
+    ) -> None:
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
+
+        account = AccountService.create_account(
+            email="test@example.com",
+            name="Test User",
+            interface_language="en-US",
+            ip_address="203.0.113.10",
+            session=sqlite_session,
+        )
+
+        AccountService.update_login_info(account, sqlite_session, ip_address="203.0.113.11")
+
+        assert account.last_login_ip == "203.0.113.11"
+        assert account.last_login_at is not None
 
     # ==================== Password Management Tests ====================
 
@@ -1309,6 +1331,7 @@ class TestRegisterService:
                     interface_language="en-US",
                     password="password123",
                     is_setup=True,
+                    ip_address="192.168.1.1",
                     session=sqlite_session,
                 )
                 mock_create_tenant.assert_called_once_with(account=mock_account, is_setup=True, session=sqlite_session)
@@ -1397,10 +1420,20 @@ class TestRegisterService:
                 name="Test User",
                 interface_language="en-US",
                 password=None,
+                ip_address="203.0.113.10",
                 session=sqlite_session,
             )
 
             assert result == mock_account
+            mock_create_account.assert_called_once_with(
+                email="test@example.com",
+                name="Test User",
+                interface_language="en-US",
+                password=None,
+                timezone=None,
+                ip_address="203.0.113.10",
+                session=sqlite_session,
+            )
             mock_create_workspace.assert_called_once_with(account=mock_account, session=sqlite_session)
             mock_join_default_workspace.assert_called_once_with(str(mock_account.id))
 
@@ -1492,6 +1525,7 @@ class TestRegisterService:
                     name="Test User",
                     password="password123",
                     language="en-US",
+                    ip_address="203.0.113.10",
                     session=sqlite_session,
                 )
 
@@ -1506,6 +1540,7 @@ class TestRegisterService:
                     password="password123",
                     is_setup=False,
                     timezone=None,
+                    ip_address="203.0.113.10",
                     session=sqlite_session,
                 )
                 mock_create_owner_tenant.assert_called_once_with(mock_account, session=sqlite_session)

@@ -181,13 +181,15 @@ class EmailRegisterResetApi(Resource):
         if account:
             raise EmailAlreadyInUseError()
 
+        ip_address = extract_remote_ip(request)
         account = self._create_new_account(
             email=normalized_email,
             password=args.password_confirm,
             timezone=args.timezone,
             language=args.language,
+            ip_address=ip_address,
         )
-        token_pair = AccountService.login(account=account, session=db.session(), ip_address=extract_remote_ip(request))
+        token_pair = AccountService.login(account=account, session=db.session(), ip_address=ip_address)
         AccountService.reset_login_error_rate_limit(normalized_email)
 
         return {"result": "success", "data": token_pair.model_dump()}
@@ -198,6 +200,7 @@ class EmailRegisterResetApi(Resource):
         password: str,
         timezone: str | None = None,
         language: str | None = None,
+        ip_address: str | None = None,
     ) -> Account:
         try:
             return AccountService.create_account_and_tenant(
@@ -206,6 +209,7 @@ class EmailRegisterResetApi(Resource):
                 password=password,
                 interface_language=get_valid_language(language),
                 timezone=timezone,
+                ip_address=ip_address,
                 session=db.session(),
             )
         except SeatsLimitExceededError:
