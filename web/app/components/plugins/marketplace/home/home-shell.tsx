@@ -1,5 +1,6 @@
 import type { PluginBanner } from '@dify/contracts/marketplace'
 import type { ReactNode } from 'react'
+import type { MarketplaceBannerPage } from './banners'
 import { HomeStickyStateProvider } from './home-sticky-state-provider'
 import HomeTrending from './home-trending'
 
@@ -10,6 +11,7 @@ type HomeShellProps = {
   hero: ReactNode
   isMarketplacePlatform: boolean
   navigation: ReactNode
+  page: MarketplaceBannerPage
   search: ReactNode
 }
 
@@ -26,6 +28,7 @@ export function HomeShell({
   hero,
   isMarketplacePlatform,
   navigation,
+  page,
   search,
 }: HomeShellProps) {
   return (
@@ -38,7 +41,11 @@ export function HomeShell({
           {banners.length > 0 && (
             <>
               <div aria-hidden="true" className="h-12 shrink-0" />
-              <HomeTrending banners={banners} isMarketplacePlatform={isMarketplacePlatform} />
+              <HomeTrending
+                banners={banners}
+                isMarketplacePlatform={isMarketplacePlatform}
+                page={page}
+              />
             </>
           )}
           {navigation}

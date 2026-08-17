@@ -18,6 +18,7 @@ export const TEMPLATE_SEARCH_PAGE_SIZE = 40
 
 type SearchMarketplaceTemplatesOptions = {
   category: string
+  languages?: string[]
   page?: number
   query: string
   sortBy?: string
@@ -109,6 +110,7 @@ export async function getMarketplaceTemplateCollectionsAndTemplates(): Promise<M
 
 export async function searchMarketplaceTemplates({
   category,
+  languages,
   page = 1,
   query,
   sortBy = 'usage_count',
@@ -123,6 +125,7 @@ export async function searchMarketplaceTemplates({
         sort_by: sortBy,
         sort_order: sortOrder,
         ...(category === 'all' ? {} : { categories: [category] }),
+        ...(languages?.length ? { languages } : {}),
       },
     })
 

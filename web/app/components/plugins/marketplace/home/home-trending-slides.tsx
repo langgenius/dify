@@ -8,8 +8,10 @@ import type {
   BannerRecommendCard,
   PluginBanner,
 } from '@dify/contracts/marketplace'
+import type { MarketplaceBannerPage } from './banners'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from '#i18n'
+import { trackEvent } from '@/app/components/base/amplitude'
 import Partner from '@/app/components/plugins/base/badges/partner'
 import Verified from '@/app/components/plugins/base/badges/verified'
 import { MARKETPLACE_API_PREFIX } from '@/config'
@@ -66,6 +68,14 @@ const getCardCreator = (card: BannerRecommendCard) => {
   return card.item_id.split('/')[0] || ''
 }
 
+const getBannerFrameProps = (banner: PluginBanner, page: MarketplaceBannerPage) => ({
+  banner_id: banner.id,
+  sort: banner.sort,
+  page,
+  language: banner.language,
+  style_type: banner.style_type,
+})
+
 function TrendingCopy({
   banner,
   isMarketplacePlatform,
@@ -104,11 +114,15 @@ function TrendingCopy({
 }
 
 function TrendingCard({
+  banner,
   card,
   isMarketplacePlatform,
+  page,
 }: {
+  banner: BannerRecommend
   card: BannerRecommendCard
   isMarketplacePlatform: boolean
+  page: MarketplaceBannerPage
 }) {
   const { t } = useTranslation('plugin')
   const iconURL = getMarketplaceAssetURL(card.icon_url)
@@ -124,6 +138,16 @@ function TrendingCard({
       target={opensInNewTab ? '_blank' : undefined}
       rel={opensInNewTab ? 'noopener noreferrer' : undefined}
       aria-label={card.display_name}
+      onClick={() => {
+        trackEvent('marketplace_banner_item_click', {
+          ...getBannerFrameProps(banner, page),
+          item_type: card.item_type,
+          item_id: card.item_id,
+          card_position: card.card_position,
+          theme_type: banner.content.theme_type,
+          auto_batch_id: card.auto_batch_id ?? null,
+        })
+      }}
       className={cn(
         styles.card,
         'flex h-[116px] shrink-0 flex-col items-start justify-between overflow-hidden rounded-lg bg-background-default-dodge p-3.5 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
@@ -185,9 +209,11 @@ function TrendingCard({
 function TrendingRecommendationSlide({
   banner,
   isMarketplacePlatform,
+  page,
 }: {
   banner: BannerRecommend
   isMarketplacePlatform: boolean
+  page: MarketplaceBannerPage
 }) {
   return (
     <div
@@ -217,8 +243,10 @@ function TrendingRecommendationSlide({
           {banner.content.cards.map((card) => (
             <TrendingCard
               key={`${card.item_type}:${card.item_id}`}
+              banner={banner}
               card={card}
               isMarketplacePlatform={isMarketplacePlatform}
+              page={page}
             />
           ))}
         </div>
@@ -227,7 +255,7 @@ function TrendingRecommendationSlide({
   )
 }
 
-function BlogBannerSlide({ banner }: { banner: BannerBlog }) {
+function BlogBannerSlide({ banner, page }: { banner: BannerBlog; page: MarketplaceBannerPage }) {
   const { t } = useTranslation('plugin')
   const opensInNewTab = /^https?:\/\//.test(banner.content.link)
 
@@ -236,6 +264,9 @@ function BlogBannerSlide({ banner }: { banner: BannerBlog }) {
       href={banner.content.link}
       target={opensInNewTab ? '_blank' : undefined}
       rel={opensInNewTab ? 'noopener noreferrer' : undefined}
+      onClick={() => {
+        trackEvent('marketplace_banner_click', getBannerFrameProps(banner, page))
+      }}
       aria-label={t(($) => $['marketplace.home.trendingReadMoreAbout'], {
         title: banner.content.blog_title,
       })}
@@ -284,7 +315,13 @@ function BlogBannerSlide({ banner }: { banner: BannerBlog }) {
   )
 }
 
-function ImageBannerSlide({ banner }: { banner: BannerEvent | BannerAd }) {
+function ImageBannerSlide({
+  banner,
+  page,
+}: {
+  banner: BannerEvent | BannerAd
+  page: MarketplaceBannerPage
+}) {
   const desktopImage = getMarketplaceAssetURL(banner.content.images.desktop)
   const tabletImage = getMarketplaceAssetURL(banner.content.images.tablet)
   const mobileImage = getMarketplaceAssetURL(banner.content.images.mobile)
@@ -294,6 +331,9 @@ function ImageBannerSlide({ banner }: { banner: BannerEvent | BannerAd }) {
       href={banner.content.link}
       target="_blank"
       rel="noopener noreferrer"
+      onClick={() => {
+        trackEvent('marketplace_banner_click', getBannerFrameProps(banner, page))
+      }}
       aria-label={banner.content.alt_text || banner.title}
       className="block h-[200px] w-full overflow-hidden rounded-2xl outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
     >
@@ -316,16 +356,22 @@ function ImageBannerSlide({ banner }: { banner: BannerEvent | BannerAd }) {
 export function HomeBannerSlide({
   banner,
   isMarketplacePlatform,
+  page,
 }: {
   banner: PluginBanner
   isMarketplacePlatform: boolean
+  page: MarketplaceBannerPage
 }) {
-  if (banner.style_type === 'blog') return <BlogBannerSlide banner={banner} />
+  if (banner.style_type === 'blog') return <BlogBannerSlide banner={banner} page={page} />
 
   if (banner.style_type === 'event' || banner.style_type === 'ad')
-    return <ImageBannerSlide banner={banner} />
+    return <ImageBannerSlide banner={banner} page={page} />
 
   return (
-    <TrendingRecommendationSlide banner={banner} isMarketplacePlatform={isMarketplacePlatform} />
+    <TrendingRecommendationSlide
+      banner={banner}
+      isMarketplacePlatform={isMarketplacePlatform}
+      page={page}
+    />
   )
 }

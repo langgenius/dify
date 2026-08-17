@@ -122,6 +122,23 @@ describe('HomeCatalogNavigation', () => {
     expect(screen.queryByTestId('plugin-type-switch')).not.toBeInTheDocument()
   })
 
+  it('renders a leading tag filter before categories and a trailing slot after them', () => {
+    render(
+      <HomeStickyStateProvider>
+        <HomeCatalogNavigation
+          catalogTabs={<HomeCatalogTabs isMarketplacePlatform />}
+          catalogLeading={<div>Tags</div>}
+          catalogTrailing={<div>Languages</div>}
+          catalogCategories={<nav aria-label="Plugin categories">Categories</nav>}
+        />
+      </HomeStickyStateProvider>,
+    )
+    // Categories sit in the flex-1 scroller; the row is one level up.
+    const row = screen.getByRole('navigation', { name: 'Plugin categories' }).parentElement
+      ?.parentElement
+    expect(row?.textContent).toMatch(/Tags[^\n\r\xb7\u2028\u2029]*\xb7.*Categories.*Languages/)
+  })
+
   it('keeps Dify catalog navigation on the current origin', () => {
     renderNavigation(false)
 
@@ -158,7 +175,9 @@ describe('HomeCatalogNavigation', () => {
     expect(
       screen.getByRole('navigation', { name: 'common.mainNav.marketplace' }).parentElement,
     ).toHaveClass(styles.catalogTabsPinned!)
-    expect(screen.getByTestId('plugin-type-switch')).toHaveClass(styles.categoriesPinned!)
+    expect(screen.getByTestId('plugin-type-switch').parentElement?.parentElement).toHaveClass(
+      styles.categoriesPinned!,
+    )
     expect(screen.getByTestId('header-catalog-tabs')).toBeInTheDocument()
 
     triggerRect.mockReturnValue(new DOMRect(0, 49, 100, 100))

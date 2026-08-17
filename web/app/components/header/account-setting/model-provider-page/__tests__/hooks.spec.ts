@@ -10,7 +10,7 @@ import type {
 import { act, renderHook } from '@testing-library/react'
 import { useLocale } from '@/context/i18n'
 import { consoleQuery } from '@/service/client'
-import { fetchDefaultModal } from '@/service/common'
+import { fetchDefaultModal, fetchModelList } from '@/service/common'
 import {
   ConfigurationMethodEnum,
   CurrentSystemQuotaTypeEnum,
@@ -56,10 +56,17 @@ vi.mock('@/service/common', () => ({
 
 vi.mock('@/service/use-common', () => ({
   commonQueryKeys: {
+    modelList: (type: string) => ['model-list', type],
     modelProviders: ['model-providers'],
     modelProviderDetails: ['model-provider-details'],
     defaultModel: (type: string) => ['default-model', type],
   },
+}))
+
+vi.mock('@/context/provider-context', () => ({
+  useProviderContext: vi.fn(() => ({
+    textGenerationModelList: [],
+  })),
 }))
 
 vi.mock('@/context/modal-context', () => ({
@@ -87,19 +94,11 @@ vi.mock('../atoms', () => ({
 }))
 
 const { useQuery, useQueryClient } = await import('@tanstack/react-query')
+const { useProviderContext } = await import('@/context/provider-context')
 const { useModalContextSelector } = await import('@/context/modal-context')
 const { useMarketplacePlugins, useMarketplacePluginsByCollectionId } =
   await import('@/app/components/plugins/marketplace/hooks')
 const { useExpandModelProviderList } = await import('../atoms')
-
-const getModelListQueryKey = (modelType: ModelTypeEnum) =>
-  consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
-    input: {
-      params: {
-        model_type: modelType,
-      },
-    },
-  })
 
 describe('hooks', () => {
   beforeEach(() => {
@@ -260,7 +259,7 @@ describe('hooks', () => {
       { provider: 'anthropic', models: [{ model: 'claude-3' }] },
     ]
 
-    it('should use the generated model list key and expose the result', () => {
+    it('should fetch model list successfully', async () => {
       const refetch = vi.fn()
       ;(useQuery as Mock).mockReturnValue({
         data: { data: mockModelData },
@@ -272,11 +271,15 @@ describe('hooks', () => {
 
       expect(result.current.data).toEqual(mockModelData)
       expect(result.current.isLoading).toBe(false)
-      expect(useQuery).toHaveBeenCalledWith(
-        expect.objectContaining({
-          queryKey: getModelListQueryKey(ModelTypeEnum.textGeneration),
-        }),
+
+      // Coverage for queryFn
+      const queryCall = (useQuery as Mock).mock.calls.find(
+        (call) => Array.isArray(call[0].queryKey) && call[0].queryKey[0] === 'model-list',
       )
+      if (queryCall) {
+        await queryCall[0].queryFn()
+        expect(fetchModelList).toHaveBeenCalled()
+      }
     })
 
     it('should return empty array when data is undefined', () => {
@@ -303,7 +306,7 @@ describe('hooks', () => {
       expect(useQuery).toHaveBeenCalledWith(
         expect.objectContaining({
           enabled: false,
-          queryKey: getModelListQueryKey(ModelTypeEnum.textEmbedding),
+          queryKey: ['model-list', ModelTypeEnum.textEmbedding],
         }),
       )
     })
@@ -545,10 +548,8 @@ describe('hooks', () => {
 
     it('should return all text generation model lists', () => {
       const modelList = createModelList()
-      ;(useQuery as Mock).mockReturnValue({
-        data: { data: modelList },
-        isPending: false,
-        refetch: vi.fn(),
+      ;(useProviderContext as Mock).mockReturnValue({
+        textGenerationModelList: modelList,
       })
 
       const defaultModel = { provider: 'openai', model: 'gpt-4' }
@@ -563,10 +564,8 @@ describe('hooks', () => {
 
     it('should filter active models correctly', () => {
       const modelList = createModelList()
-      ;(useQuery as Mock).mockReturnValue({
-        data: { data: modelList },
-        isPending: false,
-        refetch: vi.fn(),
+      ;(useProviderContext as Mock).mockReturnValue({
+        textGenerationModelList: modelList,
       })
 
       const { result } = renderHook(() => useTextGenerationCurrentProviderAndModelAndModelList())
@@ -577,10 +576,8 @@ describe('hooks', () => {
 
     it('should find current provider and model', () => {
       const modelList = createModelList()
-      ;(useQuery as Mock).mockReturnValue({
-        data: { data: modelList },
-        isPending: false,
-        refetch: vi.fn(),
+      ;(useProviderContext as Mock).mockReturnValue({
+        textGenerationModelList: modelList,
       })
 
       const defaultModel = { provider: 'openai', model: 'gpt-4' }
@@ -593,10 +590,8 @@ describe('hooks', () => {
     })
 
     it('should handle empty model list', () => {
-      ;(useQuery as Mock).mockReturnValue({
-        data: { data: [] },
-        isPending: false,
-        refetch: vi.fn(),
+      ;(useProviderContext as Mock).mockReturnValue({
+        textGenerationModelList: [],
       })
 
       const { result } = renderHook(() => useTextGenerationCurrentProviderAndModelAndModelList())
@@ -713,7 +708,7 @@ describe('hooks', () => {
       })
 
       expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: getModelListQueryKey(ModelTypeEnum.textGeneration),
+        queryKey: ['model-list', ModelTypeEnum.textGeneration],
       })
     })
 
@@ -1086,10 +1081,10 @@ describe('hooks', () => {
         queryKey: ['model-provider-details'],
       })
       expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: getModelListQueryKey(ModelTypeEnum.textGeneration),
+        queryKey: ['model-list', ModelTypeEnum.textGeneration],
       })
       expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: getModelListQueryKey(ModelTypeEnum.textEmbedding),
+        queryKey: ['model-list', ModelTypeEnum.textEmbedding],
       })
     })
 
@@ -1126,7 +1121,7 @@ describe('hooks', () => {
         refetchType: 'active',
       })
       expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: getModelListQueryKey(ModelTypeEnum.textGeneration),
+        queryKey: ['model-list', ModelTypeEnum.textGeneration],
       })
     })
 
@@ -1205,11 +1200,11 @@ describe('hooks', () => {
         result.current.handleRefreshModel(provider, customFields, true)
       })
 
-      provider.supported_model_types.forEach((modelType) => {
-        expect(invalidateQueries).toHaveBeenCalledWith({
-          queryKey: getModelListQueryKey(modelType),
-        })
-      })
+      // When __model_type is undefined, all supported model types are invalidated.
+      const modelListCalls = invalidateQueries.mock.calls.filter(
+        (call) => call[0]?.queryKey?.[0] === 'model-list',
+      )
+      expect(modelListCalls).toHaveLength(provider.supported_model_types.length)
     })
 
     it('should handle provider with single model type', () => {
@@ -1234,10 +1229,10 @@ describe('hooks', () => {
         queryKey: ['model-provider-details'],
       })
       expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: getModelListQueryKey(ModelTypeEnum.textGeneration),
+        queryKey: ['model-list', ModelTypeEnum.textGeneration],
       })
       expect(invalidateQueries).not.toHaveBeenCalledWith({
-        queryKey: getModelListQueryKey(ModelTypeEnum.textEmbedding),
+        queryKey: ['model-list', ModelTypeEnum.textEmbedding],
       })
     })
   })

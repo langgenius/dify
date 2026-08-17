@@ -1,5 +1,22 @@
 import type { MarketplaceTemplate } from '@dify/contracts/marketplace'
 
+export const LANGUAGE_OPTIONS = [
+  { value: 'en', label: 'English', nativeLabel: 'English' },
+  { value: 'zh-Hans', label: 'Simplified Chinese', nativeLabel: '中文' },
+  { value: 'ja', label: 'Japanese', nativeLabel: '日本語' },
+  { value: 'other', label: 'Other', nativeLabel: 'Other' },
+] as const
+
+export function parseListParam(value?: string | string[]) {
+  if (!value) return []
+  const parts = Array.isArray(value) ? value : value.split(',')
+  return parts.map((part) => part.trim()).filter(Boolean)
+}
+
+export function hasManualTemplateLanguages(languages: string[]) {
+  return languages.length > 0
+}
+
 const getLanguagePrefix = (locale: string) => locale.toLowerCase().split(/[-_]/)[0] ?? ''
 
 /**

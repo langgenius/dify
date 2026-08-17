@@ -62,7 +62,7 @@ describe('MarketplaceDetailDialog', () => {
       // the embedded detail page receives light/dark rather than "system".
       'about:blank?plugin=dify/plugin-a&installed=true&language=en-US&source=http://localhost:3000&theme=light&view=modal',
     )
-    expect(document.querySelector('.bg-linear-to-t')).toBeNull()
+    expect(document.querySelector('.bg-linear-to-t')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
     expect(onOpenChange).toHaveBeenCalledWith(false)

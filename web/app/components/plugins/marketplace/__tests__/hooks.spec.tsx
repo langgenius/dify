@@ -17,36 +17,18 @@ vi.mock('../utils', () => ({
   getMarketplacePluginsByCollectionId,
 }))
 
-const createWrapper = (
-  queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  }),
-) => {
+const createWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+    },
+  })
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
 
   return { Wrapper, queryClient }
 }
-
-const createPlugin = (pluginID: string, category: PluginCategoryEnum) =>
-  ({
-    plugin_id: pluginID,
-    type: 'plugin',
-    category,
-  }) as Plugin
-
-const createInfiniteData = (plugin: Plugin, pageSize: number) => ({
-  pages: [
-    {
-      plugins: [plugin],
-      total: 1,
-      page: 1,
-      page_size: pageSize,
-    },
-  ],
-  pageParams: [1],
-})
 
 describe('useMarketplacePluginsByCollectionId', () => {
   beforeEach(() => {
@@ -170,6 +152,30 @@ describe('useMarketplaceCollectionsAndPlugins', () => {
   })
 })
 
+const createPlugin = (pluginID: string, category: PluginCategoryEnum) =>
+  ({
+    plugin_id: pluginID,
+    type: 'plugin',
+    category,
+  }) as Plugin
+
+const createInfiniteData = (plugin: Plugin, pageSize: number) => ({
+  pages: [
+    {
+      plugins: [plugin],
+      total: 1,
+      page: 1,
+      page_size: pageSize,
+    },
+  ],
+  pageParams: [1],
+})
+
+const createWrapperWithQueryClient = (queryClient: QueryClient) =>
+  function Wrapper({ children }: { children: ReactNode }) {
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  }
+
 describe('useMarketplacePlugins', () => {
   it('should reset local query params without removing marketplace plugin caches', async () => {
     const queryClient = new QueryClient({
@@ -200,8 +206,9 @@ describe('useMarketplacePlugins', () => {
     queryClient.setQueryData(modelQueryKey, modelQueryData)
 
     const { useMarketplacePlugins } = await import('../hooks')
-    const { Wrapper } = createWrapper(queryClient)
-    const { result } = renderHook(() => useMarketplacePlugins(), { wrapper: Wrapper })
+    const { result } = renderHook(() => useMarketplacePlugins(), {
+      wrapper: createWrapperWithQueryClient(queryClient),
+    })
 
     act(() => {
       result.current.queryPlugins(toolParams)

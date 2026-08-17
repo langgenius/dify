@@ -22,6 +22,9 @@ export function useActivePluginType() {
 export function useFilterPluginTags() {
   return useQueryState('tags', marketplaceSearchParamsParsers.tags)
 }
+export function useFilterTemplateLanguages() {
+  return useQueryState('languages', marketplaceSearchParamsParsers.languages)
+}
 
 /**
  * Not all categories have collections, so we need to

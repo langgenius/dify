@@ -11,6 +11,7 @@ import {
   TEMPLATE_SEARCH_PAGE_SIZE,
 } from '@/service/marketplace-template-discovery'
 import { fetchPluginBanners } from '../home/banners'
+import CatalogLanguagesFilter from '../home/catalog-languages-filter'
 import HomeCatalogNavigation from '../home/home-catalog-navigation'
 import HomeCatalogTabs from '../home/home-catalog-tabs'
 import HomeHeader from '../home/home-header'
@@ -23,12 +24,13 @@ import { GRID_CLASS } from '../list/collection-constants'
 import TemplateCard from './template-card'
 import TemplateCategoryNavigation from './template-category-navigation'
 import TemplateCollectionList from './template-collection-list'
-import { filterTemplatesForLocale } from './template-language'
+import { filterTemplatesForLocale, parseListParam } from './template-language'
 import { buildTemplatesHref, PAGE_LINK_CLASS } from './template-links'
 import TemplatePagination from './template-pagination'
 
 type EmbeddedTemplatesMarketplaceProps = {
   category: TemplateCategory
+  languages?: string | string[]
   locale: Locale
   page?: number
   query: string
@@ -84,6 +86,7 @@ function LoadErrorState({
 
 export async function EmbeddedTemplatesMarketplace({
   category,
+  languages,
   locale,
   page = 1,
   query,
@@ -92,7 +95,9 @@ export async function EmbeddedTemplatesMarketplace({
   view,
 }: EmbeddedTemplatesMarketplaceProps) {
   const normalizedQuery = query.trim()
-  const showCollections = category === 'all' && !normalizedQuery && view !== 'search'
+  const selectedLanguages = parseListParam(languages)
+  const showCollections =
+    category === 'all' && !normalizedQuery && view !== 'search' && selectedLanguages.length === 0
   const [
     { t: tPlugin },
     { t: tApp },
@@ -117,8 +122,9 @@ export async function EmbeddedTemplatesMarketplace({
           query: normalizedQuery,
           sortBy,
           sortOrder,
+          ...(selectedLanguages.length ? { languages: selectedLanguages } : {}),
         }),
-    fetchPluginBanners(locale).catch(() => []),
+    fetchPluginBanners(locale, 'templates').catch(() => []),
   ])
   const categoryLabels = {
     all: tPlugin(($) => $['category.all'], { ns: 'plugin' }),
@@ -138,6 +144,7 @@ export async function EmbeddedTemplatesMarketplace({
     redirect(
       buildTemplatesHref({
         category,
+        languages: selectedLanguages,
         page: pageCount,
         query: normalizedQuery,
         sortBy,
@@ -147,7 +154,10 @@ export async function EmbeddedTemplatesMarketplace({
     )
   }
 
-  const templates = filterTemplatesForLocale(searchResult?.templates ?? [], locale)
+  const templates =
+    selectedLanguages.length === 0
+      ? filterTemplatesForLocale(searchResult?.templates ?? [], locale)
+      : (searchResult?.templates ?? [])
   // The locale filter runs once here; the collection list receives templates
   // that are already scoped to the request locale.
   const visibleTemplatesByCollection = Object.fromEntries(
@@ -172,6 +182,7 @@ export async function EmbeddedTemplatesMarketplace({
       : false
   const currentHref = buildTemplatesHref({
     category,
+    languages: selectedLanguages,
     page,
     query: normalizedQuery,
     sortBy,
@@ -190,6 +201,7 @@ export async function EmbeddedTemplatesMarketplace({
     <HomeShell
       banners={banners}
       isMarketplacePlatform={false}
+      page="templates"
       header={
         <HomeHeader
           activeTab="templates"
@@ -215,6 +227,7 @@ export async function EmbeddedTemplatesMarketplace({
             action={category === 'all' ? '/templates' : `/templates/${category}`}
             className="w-full"
             placeholder={tApp(($) => $['newAppFromTemplate.searchAllTemplate'], { ns: 'app' })}
+            preserveParams={selectedLanguages.length ? { languages: selectedLanguages } : undefined}
             query={query}
           />
         </HomeSearch>
@@ -233,9 +246,11 @@ export async function EmbeddedTemplatesMarketplace({
               activeCategory={category}
               ariaLabel={tPlugin(($) => $.allCategories, { ns: 'plugin' })}
               labels={categoryLabels}
+              languages={selectedLanguages}
               query={query}
             />
           }
+          catalogTrailing={<CatalogLanguagesFilter />}
         />
       }
     >
@@ -279,6 +294,7 @@ export async function EmbeddedTemplatesMarketplace({
             )}
             <TemplatePagination
               category={category}
+              languages={selectedLanguages}
               navigationLabel={tCommon(($) => $['pagination.pageNumber'], { ns: 'common' })}
               nextLabel={tCommon(($) => $['pagination.next'], { ns: 'common' })}
               page={page}

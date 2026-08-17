@@ -13,6 +13,7 @@ export const marketplaceSearchParamsParsers = {
     .withOptions({ history: 'replace', clearOnDefault: false, scroll: false }),
   q: parseAsString.withDefault('').withOptions({ history: 'replace' }),
   tags: parseAsArrayOf(parseAsString).withDefault([]).withOptions({ history: 'replace' }),
+  languages: parseAsArrayOf(parseAsString).withDefault([]).withOptions({ history: 'replace' }),
 }
 
 export type MarketplaceSearchParams = inferParserType<typeof marketplaceSearchParamsParsers>

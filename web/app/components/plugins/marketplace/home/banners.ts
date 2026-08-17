@@ -43,6 +43,7 @@ const recommendCardSchema = z.object({
     .optional(),
   link: z.string().catch(''),
   card_position: z.number().catch(0),
+  auto_batch_id: z.union([z.string(), z.null()]).optional().catch(undefined),
 })
 
 const recommendContentSchema = z.object({
@@ -136,10 +137,15 @@ const normalizePluginBanners = (response: unknown): PluginBanner[] => {
     .sort((a, b) => a.sort - b.sort)
 }
 
-export const fetchPluginBanners = async (language: string): Promise<PluginBanner[]> => {
+export type MarketplaceBannerPage = 'plugins' | 'templates'
+
+export const fetchPluginBanners = async (
+  language: string,
+  page: MarketplaceBannerPage = 'plugins',
+): Promise<PluginBanner[]> => {
   const response = await marketplaceClient.banners.list({
     query: {
-      page: 'plugins',
+      page,
       language,
     },
   })

@@ -152,16 +152,12 @@ export function AgentOrchestratePanel({
                 className="overscroll-contain"
                 role="region"
               >
-                <ScrollAreaContent
-                  className={cn('min-h-full px-4 py-3', hasBottomAction && 'pb-20')}
-                >
+                <ScrollAreaContent className={cn('min-h-full px-4 py-3', hasBottomAction && 'pb-20')}>
                   <AgentConfigApiContextProvider value={configApiContext}>
                     <AgentOrchestrateAddActionsProvider>
                       <AgentBuildDraftChangedKeysProvider
                         changedKeys={
-                          isBuildDraftActive
-                            ? buildDraftChangedKeys
-                            : EMPTY_BUILD_DRAFT_CHANGED_KEYS
+                          isBuildDraftActive ? buildDraftChangedKeys : EMPTY_BUILD_DRAFT_CHANGED_KEYS
                         }
                       >
                         <AgentModelField

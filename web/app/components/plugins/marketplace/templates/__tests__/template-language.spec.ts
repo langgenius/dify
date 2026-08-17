@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vite-plus/test'
-import { filterTemplatesForLocale, getTemplateCollectionText } from '../template-language'
+import {
+  filterTemplatesForLocale,
+  getTemplateCollectionText,
+  hasManualTemplateLanguages,
+  parseListParam,
+} from '../template-language'
 
 const template = (id: string, preferredLanguages?: string[]) => ({
   id,
@@ -83,5 +88,20 @@ describe('getTemplateCollectionText', () => {
   it('falls back to the first available translation when English is missing', () => {
     expect(getTemplateCollectionText({ ja_JP: '注目' }, 'de-DE')).toBe('注目')
     expect(getTemplateCollectionText({}, 'de-DE')).toBe('')
+  })
+})
+
+describe('parseListParam', () => {
+  it('normalizes undefined, comma-separated, and array language values', () => {
+    expect(parseListParam(undefined)).toEqual([])
+    expect(parseListParam('en,zh-Hans')).toEqual(['en', 'zh-Hans'])
+    expect(parseListParam(['ja', ' other '])).toEqual(['ja', 'other'])
+  })
+})
+
+describe('hasManualTemplateLanguages', () => {
+  it('is true only when at least one language is selected', () => {
+    expect(hasManualTemplateLanguages([])).toBe(false)
+    expect(hasManualTemplateLanguages(['en'])).toBe(true)
   })
 })
