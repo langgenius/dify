@@ -67,9 +67,13 @@ from models.model import MessageAgentThought
 
 
 @pytest.fixture(autouse=True)
-def bind_agent_db(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
-    """Bind the runner's ORM writes to the shared SQLite session."""
+def bind_agent_dependencies(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+    """Bind local runner dependencies without reaching external services."""
     monkeypatch.setattr(app_runner_module.db, "session", sqlite_session)
+    monkeypatch.setattr(
+        "core.app.apps.agent_app.runtime_request_builder.resolve_model_context_window",
+        lambda **_kwargs: None,
+    )
 
 
 def _thought_rows(session: Session) -> list[MessageAgentThought]:

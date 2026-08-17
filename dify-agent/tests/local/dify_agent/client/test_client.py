@@ -155,7 +155,7 @@ def test_sse_decoder_accepts_function_tool_result_part_alias(monkeypatch: pytest
     assert event is not None
     assert event.type == "pydantic_ai_event"
     assert event.data.event_kind == "function_tool_result"
-    assert event.data.result.tool_name == "shell_run"
+    assert event.data.part.tool_name == "shell_run"
 
 
 def test_function_tool_result_payload_normalization_supports_old_part_schema(

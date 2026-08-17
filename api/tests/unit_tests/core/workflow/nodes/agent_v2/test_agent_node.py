@@ -62,6 +62,14 @@ from models.agent_config_entities import (
 from services.agent.workspace_service import AgentWorkspaceNotFoundError
 
 
+@pytest.fixture(autouse=True)
+def _stub_model_context_window(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.runtime_request_builder.resolve_model_context_window",
+        lambda **_kwargs: None,
+    )
+
+
 def _restored_file(*, transfer_method: FileTransferMethod, reference: str) -> File:
     return File(
         type=FileType.DOCUMENT,
