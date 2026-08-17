@@ -399,11 +399,10 @@ export const zDeleteMemberBindingsRequest = z.object({
 })
 
 /**
- * ReplaceUserAccessPolicies
+ * _ReplaceUserAccessPoliciesPayload
  */
-export const zReplaceUserAccessPolicies = z.object({
+export const zReplaceUserAccessPoliciesPayload = z.object({
   access_policy_ids: z.array(z.string()).optional(),
-  account_ids: z.array(z.string()).optional(),
 })
 
 /**
@@ -4509,7 +4508,7 @@ export const zGetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesResponse =
   zResourceUserAccessPoliciesResponse
 
 export const zPutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPoliciesBody =
-  zReplaceUserAccessPolicies
+  zReplaceUserAccessPoliciesPayload
 
 export const zPutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPoliciesPath =
   z.object({
@@ -4610,7 +4609,7 @@ export const zGetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesRespo
   zResourceUserAccessPoliciesResponse
 
 export const zPutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAccessPoliciesBody =
-  zReplaceUserAccessPolicies
+  zReplaceUserAccessPoliciesPayload
 
 export const zPutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAccessPoliciesPath =
   z.object({

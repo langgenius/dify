@@ -563,9 +563,8 @@ export type ResourceUserAccessPoliciesResponse = {
   scope: RbacResourceWhitelistScope
 }
 
-export type ReplaceUserAccessPolicies = {
+export type ReplaceUserAccessPoliciesPayload = {
   access_policy_ids?: Array<string>
-  account_ids?: Array<string>
 }
 
 export type ReplaceUserAccessPoliciesResponse = {
@@ -4220,7 +4219,7 @@ export type GetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesResponse =
   GetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesResponses[keyof GetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesResponses]
 
 export type PutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPoliciesData = {
-  body: ReplaceUserAccessPolicies
+  body: ReplaceUserAccessPoliciesPayload
   path: {
     app_id: string
     target_account_id: string
@@ -4361,7 +4360,7 @@ export type GetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesRespons
   GetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesResponses[keyof GetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesResponses]
 
 export type PutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAccessPoliciesData = {
-  body: ReplaceUserAccessPolicies
+  body: ReplaceUserAccessPoliciesPayload
   path: {
     dataset_id: string
     target_account_id: string
