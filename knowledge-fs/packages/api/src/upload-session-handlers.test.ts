@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { DifyCapabilityV2SanitizedGrant } from "./dify-capability-v2";
 import { createKnowledgeGatewayApp } from "./gateway-app";
+import { LegacySpacePublicationBootstrapAdmissionError } from "./legacy-space-publication-bootstrap";
 import { StorageQuotaExceededError } from "./storage-quota";
 import type { UploadSession, UploadSessionService } from "./upload-session";
 import {
@@ -266,6 +267,29 @@ describe("upload session handlers", () => {
     expect(response.status).toBe(422);
     await expect(response.json()).resolves.toEqual({
       error: "Uploaded object does not match the reserved size and checksum",
+    });
+  });
+
+  it("returns a bounded conflict when publication bootstrap fences completion", async () => {
+    const fixture = handlerFixture({
+      completeError: new LegacySpacePublicationBootstrapAdmissionError(SPACE_ID),
+      grant: capabilityGrant({
+        action: "upload_sessions.complete",
+        id: SESSION_ID,
+        parentId: SPACE_ID,
+        type: "upload_session",
+      }),
+    });
+
+    const response = await fixture.app.request(`/upload-sessions/${SESSION_ID}/complete`, {
+      body: JSON.stringify({ knowledgeSpaceId: SPACE_ID }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    });
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "Knowledge space publication bootstrap is active",
     });
   });
 

@@ -2,6 +2,7 @@ import type { OpenAPIHono } from "@hono/zod-openapi";
 
 import type { DifyCapabilityV2SanitizedGrant } from "./dify-capability-v2";
 import type { KnowledgeGatewayEnv } from "./gateway-openapi-contracts";
+import { LegacySpacePublicationBootstrapAdmissionError } from "./legacy-space-publication-bootstrap";
 import { StorageQuotaExceededError } from "./storage-quota";
 import {
   DirectUploadUnavailableError,
@@ -240,6 +241,9 @@ function uploadSessionError(
   }
   if (error instanceof UploadSessionConflictError) {
     return context.json({ error: error.message }, 409);
+  }
+  if (error instanceof LegacySpacePublicationBootstrapAdmissionError) {
+    return context.json({ error: "Knowledge space publication bootstrap is active" }, 409);
   }
   if (error instanceof StorageQuotaExceededError) {
     return context.json({ error: error.message }, 413);
