@@ -312,11 +312,7 @@ export default function AccountPage() {
                     })}
                     onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                   >
-                    {showCurrentPassword ? (
-                      <span className="i-ri-eye-off-line size-4" aria-hidden="true" />
-                    ) : (
-                      <span className="i-ri-eye-line size-4" aria-hidden="true" />
-                    )}
+                    <span aria-hidden="true">{showCurrentPassword ? '👀' : '😝'}</span>
                   </IconButton>
                 </InputGroupAddon>
               </InputGroup>
@@ -344,11 +340,7 @@ export default function AccountPage() {
                   })}
                   onClick={() => setShowPassword(!showPassword)}
                 >
-                  {showPassword ? (
-                    <span className="i-ri-eye-off-line size-4" aria-hidden="true" />
-                  ) : (
-                    <span className="i-ri-eye-line size-4" aria-hidden="true" />
-                  )}
+                  <span aria-hidden="true">{showPassword ? '👀' : '😝'}</span>
                 </IconButton>
               </InputGroupAddon>
             </InputGroup>
@@ -373,11 +365,7 @@ export default function AccountPage() {
                   })}
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 >
-                  {showConfirmPassword ? (
-                    <span className="i-ri-eye-off-line size-4" aria-hidden="true" />
-                  ) : (
-                    <span className="i-ri-eye-line size-4" aria-hidden="true" />
-                  )}
+                  <span aria-hidden="true">{showConfirmPassword ? '👀' : '😝'}</span>
                 </IconButton>
               </InputGroupAddon>
             </InputGroup>
