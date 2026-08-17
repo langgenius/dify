@@ -300,7 +300,7 @@ export default function AccountPage() {
               : t(($) => $['account.setPassword'], { ns: 'common' })}
           </div>
           {userProfile.is_password_set && (
-            <Field name="current-password">
+            <Field name="current-password" className="gap-0">
               <FieldLabel className="py-0 system-sm-semibold text-text-secondary">
                 {t(($) => $['account.currentPassword'], { ns: 'common' })}
               </FieldLabel>
@@ -314,7 +314,7 @@ export default function AccountPage() {
                 />
                 <InputGroupAddon align="inline-end">
                   <IconButton
-                    size="md"
+                    size="lg"
                     aria-label={t(($) => $[showCurrentPassword ? 'hidePassword' : 'showPassword'], {
                       ns: 'login',
                     })}
@@ -326,7 +326,7 @@ export default function AccountPage() {
               </InputGroup>
             </Field>
           )}
-          <Field name="new-password" className="mt-8">
+          <Field name="new-password" className="mt-8 gap-0">
             <FieldLabel className="py-0 system-sm-semibold text-text-secondary">
               {userProfile.is_password_set
                 ? t(($) => $['account.newPassword'], { ns: 'common' })
@@ -342,7 +342,7 @@ export default function AccountPage() {
               />
               <InputGroupAddon align="inline-end">
                 <IconButton
-                  size="md"
+                  size="lg"
                   aria-label={t(($) => $[showPassword ? 'hidePassword' : 'showPassword'], {
                     ns: 'login',
                   })}
@@ -353,7 +353,7 @@ export default function AccountPage() {
               </InputGroupAddon>
             </InputGroup>
           </Field>
-          <Field name="confirm-password" className="mt-8">
+          <Field name="confirm-password" className="mt-8 gap-0">
             <FieldLabel className="py-0 system-sm-semibold text-text-secondary">
               {t(($) => $['account.confirmPassword'], { ns: 'common' })}
             </FieldLabel>
@@ -367,7 +367,7 @@ export default function AccountPage() {
               />
               <InputGroupAddon align="inline-end">
                 <IconButton
-                  size="md"
+                  size="lg"
                   aria-label={t(($) => $[showConfirmPassword ? 'hidePassword' : 'showPassword'], {
                     ns: 'login',
                   })}

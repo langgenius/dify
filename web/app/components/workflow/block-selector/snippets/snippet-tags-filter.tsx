@@ -95,8 +95,12 @@ const SnippetTagsFilter = ({ embedded = false, value, onChange }: SnippetTagsFil
         <div className="p-2 pb-1">
           <InputGroup>
             <InputGroupInput
+              type="search"
+              name="tag-query"
               aria-label={t(($) => $.searchTags, { ns: 'pluginTags' }) || ''}
               autoComplete="off"
+              enterKeyHint="search"
+              className="[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
               value={searchText}
               onValueChange={setSearchText}
               placeholder={t(($) => $.searchTags, { ns: 'pluginTags' }) || ''}

@@ -233,9 +233,12 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({
                     </span>
                   </FieldLabel>
                   <Input
+                    // oxlint-disable-next-line jsx-a11y/no-autofocus -- The dialog opens from an explicit install command, and the repository URL is its primary field.
                     autoFocus
                     type="text"
                     inputMode="url"
+                    autoComplete="off"
+                    spellCheck={false}
                     value={state.repoUrl}
                     onValueChange={(value) =>
                       setState((prevState) => ({ ...prevState, repoUrl: value }))

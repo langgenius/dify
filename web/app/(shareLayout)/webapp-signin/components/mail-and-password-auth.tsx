@@ -152,7 +152,7 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
           />
           <InputGroupAddon align="inline-end">
             <IconButton
-              size="md"
+              size="lg"
               variant="ghost"
               aria-label={t(($) => $[showPassword ? 'hidePassword' : 'showPassword'], {
                 ns: 'login',

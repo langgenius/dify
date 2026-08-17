@@ -187,7 +187,12 @@ const SnippetList = () => {
             <InputGroup className="w-50">
               <InputGroupInput
                 ref={searchInputRef}
+                type="search"
+                name="snippet-query"
+                autoComplete="off"
+                enterKeyHint="search"
                 aria-label={t(($) => $['tabs.searchSnippets'], { ns: 'workflow' })}
+                className="[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
                 value={keywords}
                 onValueChange={(nextKeywords) => setKeywords(nextKeywords)}
                 placeholder={t(($) => $['tabs.searchSnippets'], { ns: 'workflow' })}

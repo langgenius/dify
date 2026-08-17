@@ -251,6 +251,7 @@ const InputField: React.FC<InputFieldProps> = ({
             onChange={(e) => {
               setTempPayload((prev) => ({ ...prev, output_variable_name: e.target.value }))
             }}
+            // oxlint-disable-next-line jsx-a11y/no-autofocus -- The field appears in a dialog opened by an explicit edit action and is the primary editing target.
             autoFocus
           />
           {tempPayload.output_variable_name && variableNameError && (

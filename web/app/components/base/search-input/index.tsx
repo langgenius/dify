@@ -1,4 +1,4 @@
-import type { InputProps } from '@langgenius/dify-ui/input'
+import type { InputGroupInputProps } from '@langgenius/dify-ui/input-group'
 import type { Ref } from 'react'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
@@ -11,7 +11,7 @@ type SearchInputProps = {
   onValueChange: (value: string) => void
   placeholder?: string
   className?: string
-} & Pick<InputProps, 'aria-describedby' | 'aria-label' | 'autoFocus' | 'disabled'>
+} & Pick<InputGroupInputProps, 'aria-describedby' | 'aria-label' | 'autoFocus' | 'disabled'>
 
 export function SearchInput({
   ref,

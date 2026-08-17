@@ -104,7 +104,7 @@ export function OutputEditCard({
                 placeholder={t(($) => $['nodes.agent.outputVars.namePlaceholder'], {
                   ns: 'workflow',
                 })}
-                className="h-6 w-24 rounded-md px-1.5 py-0 system-xs-regular"
+                className="h-6 w-24 rounded-md px-1.5 py-0 code-sm-semibold"
                 onChange={(event) => updateDraft({ name: event.currentTarget.value })}
               />
             </Field>

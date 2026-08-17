@@ -370,7 +370,7 @@ describe('SnippetList', () => {
   it('updates the search query state from the search input', () => {
     renderList()
 
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'summary' } })
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'summary' } })
 
     expect(mockSetKeywords).toHaveBeenCalledWith('summary')
   })
@@ -381,7 +381,7 @@ describe('SnippetList', () => {
 
     renderList()
 
-    const searchInput = screen.getByRole('textbox', { name: 'workflow.tabs.searchSnippets' })
+    const searchInput = screen.getByRole('searchbox', { name: 'workflow.tabs.searchSnippets' })
     await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
     expect(mockSetKeywords).toHaveBeenCalledWith('')

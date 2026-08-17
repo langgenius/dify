@@ -91,7 +91,7 @@ describe('WorkspaceRoleCheckboxList', () => {
       />,
     )
 
-    const searchInput = screen.getByRole('textbox', {
+    const searchInput = screen.getByRole('searchbox', {
       name: 'permission.role.searchPlaceholder',
     })
     await user.type(searchInput, 'First')

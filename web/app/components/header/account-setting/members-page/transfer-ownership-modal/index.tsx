@@ -183,6 +183,9 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
               </label>
               <Input
                 id={verificationCodeInputId}
+                name="verification-code"
+                inputMode="numeric"
+                autoComplete="one-time-code"
                 className="w-full!"
                 placeholder={t(($) => $['members.transferModal.codePlaceholder'], { ns: 'common' })}
                 value={code}

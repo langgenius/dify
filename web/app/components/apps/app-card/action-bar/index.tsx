@@ -528,7 +528,7 @@ export const AppCardActionBar = memo(
                       value={confirmDeleteInput}
                       onValueChange={setConfirmDeleteInput}
                     />
-                    <InputGroupAddon align="inline-end">
+                    <InputGroupAddon align="inline-end" className="min-w-20 justify-end pe-1.75">
                       <Button
                         variant="tertiary"
                         size="small"

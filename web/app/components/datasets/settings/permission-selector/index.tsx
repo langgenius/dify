@@ -234,9 +234,12 @@ const PermissionSelector = ({
                 <InputGroup>
                   <InputGroupInput
                     ref={searchInputRef}
+                    type="search"
                     aria-label={t(($) => $['operation.search'], { ns: 'common' })}
                     name="member-search"
                     autoComplete="off"
+                    enterKeyHint="search"
+                    className="[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
                     value={keywords}
                     placeholder={t(($) => $['operation.search'], { ns: 'common' }) || ''}
                     onValueChange={handleKeywordsChange}

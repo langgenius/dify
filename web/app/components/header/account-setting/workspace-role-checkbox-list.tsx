@@ -214,7 +214,12 @@ const WorkspaceRoleCheckboxList = ({
         <InputGroup>
           <InputGroupInput
             ref={searchInputRef}
+            type="search"
+            name="workspace-role-query"
+            autoComplete="off"
+            enterKeyHint="search"
             aria-label={t(($) => $['role.searchPlaceholder'], { ns: 'permission' })}
+            className="[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
             value={keyword}
             onValueChange={setKeyword}
             placeholder={t(($) => $['role.searchPlaceholder'], { ns: 'permission' })}
@@ -226,7 +231,7 @@ const WorkspaceRoleCheckboxList = ({
             <InputGroupAddon align="inline-end" className="ps-1.25 pe-1.75">
               <IconButton
                 size="sm"
-                className="text-text-tertiary"
+                className="text-text-tertiary focus-visible:ring-inset"
                 aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
                 onClick={() => {
                   setKeyword('')

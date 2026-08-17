@@ -148,7 +148,7 @@ const AppInfoModals = ({
               <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
                 {t(($) => $.deleteAppConfirmContent, { ns: 'app' })}
               </AlertDialogDescription>
-              <Field name="confirm-app-name" className="mt-2">
+              <Field name="confirm-app-name" className="mt-2 gap-0">
                 <FieldLabel className="mb-1 block py-0 system-sm-regular text-text-secondary">
                   <Trans
                     i18nKey={($) => $.deleteAppConfirmInputLabel}

@@ -56,7 +56,9 @@ function TagsFilter({ tags, onTagsChange, usedInMarketplace = false }: TagsFilte
                 type="search"
                 name="tag-query"
                 autoComplete="off"
+                enterKeyHint="search"
                 aria-label={t(($) => $.searchTags, { ns: 'pluginTags' }) || ''}
+                className="[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
                 value={searchText}
                 onValueChange={setSearchText}
                 placeholder={t(($) => $.searchTags, { ns: 'pluginTags' }) || ''}
