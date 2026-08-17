@@ -175,7 +175,7 @@ const AppInfoModals = ({
                       variant="tertiary"
                       size="small"
                       onClick={() => setConfirmDeleteInput(appDetail.name)}
-                      className="rounded-full bg-black/6 px-2.5 py-1 system-xs-medium text-text-secondary hover:bg-black/10"
+                      className="rounded-full px-2.5"
                     >
                       {t(($) => $['operation.fill'], { ns: 'common' })}
                     </Button>
