@@ -49,6 +49,7 @@ from core.db.session_factory import session_factory
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.file_reference import build_file_reference, is_canonical_file_reference
 from extensions.ext_database import db
+from factories import file_factory
 from models import Account, App, AppModelConfig, Conversation, EndUser, Message, MessageAnnotation
 from models.agent import (
     APP_BACKED_AGENT_SOURCES,
@@ -152,6 +153,17 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         inputs = args["inputs"]
         prompt_file_mappings = args.get("files") or []
 
+        # The agent backend fetches the files itself via the prompt locators
+        # (``prompt_file_mappings``), but the File entities must still be built
+        # so the chat pipeline persists MessageFile records — otherwise uploads
+        # vanish from the conversation history UI (#40874).
+        with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
+            file_objs = file_factory.build_from_mappings(
+                mappings=[mapping for mapping in prompt_file_mappings if isinstance(mapping, Mapping)],
+                tenant_id=app_model.tenant_id,
+                access_controller=self._file_access_controller,
+            )
+
         conversation = None
         conversation_id = args.get("conversation_id")
         if conversation_id:
@@ -199,7 +211,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 user_inputs=inputs, variables=app_config.variables, tenant_id=app_model.tenant_id
             ),
             query=query,
-            files=[],
+            files=list(file_objs),
             prompt_file_mappings=prompt_file_mappings,
             parent_message_id=(
                 args.get("parent_message_id")
