@@ -68,7 +68,9 @@ export function useDocumentReindex({
   })
   const { latestTask, taskIsActive } = taskStatus
   const latestTaskRef = useRef(latestTask)
-  latestTaskRef.current = latestTask
+  useEffect(() => {
+    latestTaskRef.current = latestTask
+  }, [latestTask])
   const submittedTaskObserved = Boolean(
     latestTask &&
     submittedReindex &&

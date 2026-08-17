@@ -19,6 +19,7 @@ from dify_agent.runtime_backend import (
 )
 from dify_agent.runtime_backend import e2b as e2b_module
 from dify_agent.runtime_backend.e2b import (
+    E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
     E2BExecutionBindingBackend,
     E2BHomeSnapshotBackend,
     E2BRuntimeLease,
@@ -133,7 +134,7 @@ def _connected_backend(*, pause_error: Exception | None = None) -> tuple[E2BExec
         E2BExecutionBindingBackend(
             control_plane=control,  # pyright: ignore[reportArgumentType]
             template="prepared-template",
-            active_timeout_seconds=3600,
+            active_timeout_seconds=E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
         ),
         sandbox,
     )
@@ -148,7 +149,7 @@ async def test_e2b_binding_uses_default_template_or_exact_snapshot_and_couples_r
     bindings = E2BExecutionBindingBackend(
         control_plane=control,  # pyright: ignore[reportArgumentType]
         template="prepared-template",
-        active_timeout_seconds=3600,
+        active_timeout_seconds=E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
     )
 
     default_allocation = await bindings.create_binding(
@@ -199,7 +200,7 @@ async def test_e2b_rejects_shared_workspace_and_binding_only_destroy() -> None:
     backend = E2BExecutionBindingBackend(
         control_plane=control,  # pyright: ignore[reportArgumentType]
         template="prepared-template",
-        active_timeout_seconds=3600,
+        active_timeout_seconds=E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
     )
     spec = ExecutionBindingCreateSpec(
         tenant_id="tenant-1",
@@ -224,7 +225,7 @@ async def test_e2b_binding_create_kills_sandbox_when_initialization_fails() -> N
     backend = E2BExecutionBindingBackend(
         control_plane=control,  # pyright: ignore[reportArgumentType]
         template="prepared-template",
-        active_timeout_seconds=3600,
+        active_timeout_seconds=E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
     )
 
     with pytest.raises(BindingCreateError, match="pause failed"):
@@ -255,7 +256,7 @@ async def test_e2b_missing_explicit_snapshot_does_not_fall_back_to_template() ->
     backend = E2BExecutionBindingBackend(
         control_plane=control,  # pyright: ignore[reportArgumentType]
         template="prepared-template",
-        active_timeout_seconds=3600,
+        active_timeout_seconds=E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
     )
 
     with pytest.raises(BindingCreateError, match="snapshot unavailable"):

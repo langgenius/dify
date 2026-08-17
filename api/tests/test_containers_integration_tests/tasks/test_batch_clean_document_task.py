@@ -19,7 +19,7 @@ from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
-from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
+from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from models.model import UploadFile
 from tasks.batch_clean_document_task import batch_clean_document_task
 
@@ -206,8 +206,6 @@ class TestBatchCleanDocumentTask:
             UploadFile: Created upload file instance
         """
         fake = Faker()
-
-        from models.enums import CreatorUserRole
 
         upload_file = UploadFile(
             tenant_id=account.current_tenant.id,

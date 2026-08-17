@@ -64,9 +64,11 @@ export function useAgentConfigureSync({
   const explicitlySavingDraftKeysRef = useRef(new Set<string>())
   const publishInFlightRef = useRef(false)
 
-  baseConfigRef.current = baseConfig
-  currentModelRef.current = currentModel
-  enabledRef.current = enabled
+  useEffect(() => {
+    baseConfigRef.current = baseConfig
+    currentModelRef.current = currentModel
+    enabledRef.current = enabled
+  }, [baseConfig, currentModel, enabled])
 
   const getAgentSoulDraft = useCallback(
     () =>
@@ -168,9 +170,21 @@ export function useAgentConfigureSync({
           },
           body: {},
         })
-        await queryClient.invalidateQueries({
-          queryKey: consoleQuery.agent.byAgentId.versions.get.key(),
-        })
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: consoleQuery.agent.byAgentId.versions.get.key(),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: consoleQuery.agent.byAgentId.get.queryKey({
+              input: { params: { agent_id: agentId } },
+            }),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: consoleQuery.agent.byAgentId.apiAccess.get.queryKey({
+              input: { params: { agent_id: agentId } },
+            }),
+          }),
+        ])
       }
 
       return true
@@ -234,14 +248,16 @@ export function useAgentConfigureSync({
   )
 
   const latestDraftSaveRef = useRef<() => void>(() => undefined)
-  latestDraftSaveRef.current = () => {
-    const draft = store.get(agentComposerDraftAtom)
+  useEffect(() => {
+    latestDraftSaveRef.current = () => {
+      const draft = store.get(agentComposerDraftAtom)
 
-    void saveComposer({
-      configSnapshot: getAgentSoulDraft(),
-      draftBaseline: draft,
-    })
-  }
+      void saveComposer({
+        configSnapshot: getAgentSoulDraft(),
+        draftBaseline: draft,
+      })
+    }
+  }, [getAgentSoulDraft, saveComposer, store])
 
   const debouncedSaveDraft = useMemo(
     () =>

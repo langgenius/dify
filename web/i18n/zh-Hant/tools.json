@@ -162,7 +162,7 @@
   "mcp.server.modal.parametersPlaceholder": "參數的目的和約束",
   "mcp.server.modal.parametersTip": "為每個參數新增描述，以幫助 LLM 理解其目的和約束。",
   "mcp.server.publishTip": "應用程式尚未發布。請先發布應用程式。",
-  "mcp.server.reGen": "您想要重新生成伺服器 URL 嗎？",
+  "mcp.server.reGen": "您想要重新生成伺服器 URL 嗎？目前的 URL 將立即失效。",
   "mcp.server.title": "MCP 伺服器",
   "mcp.server.url": "伺服器 URL",
   "mcp.toolItem.noDescription": "無描述",

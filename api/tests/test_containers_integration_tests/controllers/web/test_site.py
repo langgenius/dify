@@ -11,11 +11,12 @@ from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.web.site import AppSiteApi, WebAppSiteResponse, WebModelConfigResponse
+from enums import DeploymentEdition
 from extensions.storage.storage_type import StorageType
 from models import Tenant, TenantStatus
 from models.account import TenantCustomConfigDict
 from models.model import App, AppMode, AppModelConfig, CustomizeTokenStrategy, EndUser, Site
-from services.feature_service import FeatureModel
+from services.entities.feature_entities import FeatureModel
 
 
 @pytest.fixture
@@ -120,7 +121,7 @@ class TestAppSiteApi:
         mock_get_icon_url.return_value = "https://s3.example.com/icon.png?signature=test"
 
         with (
-            patch.object(dify_config, "EDITION", "CLOUD"),
+            patch.object(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             patch.object(dify_config, "STORAGE_TYPE", StorageType.S3),
             app.test_request_context("/site"),
         ):

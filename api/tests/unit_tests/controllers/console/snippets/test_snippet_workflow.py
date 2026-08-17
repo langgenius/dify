@@ -132,7 +132,14 @@ def test_draft_workflow_post_returns_400_for_invalid_graph(app: Flask, monkeypat
         method="POST",
         json={"graph": {"nodes": [], "edges": []}, "hash": "hash-1"},
     ):
-        response, status_code = handler(api, user, snippet)
+        response, status_code = handler(
+            api,
+            snippet_workflow_module.SnippetDraftSyncPayload.model_validate(
+                {"graph": {"nodes": [], "edges": []}, "hash": "hash-1"}
+            ),
+            user,
+            snippet,
+        )
 
     assert status_code == 400
     assert response == {"message": "invalid graph"}
@@ -244,7 +251,11 @@ def test_list_published_snippet_workflows_includes_input_fields(
     handler = unwrap(api.get)
 
     with app.test_request_context("/snippets/snippet-1/workflows?page=1&limit=20"):
-        response = handler(api, snippet=snippet)
+        response = handler(
+            api,
+            snippet_workflow_module.SnippetWorkflowListQuery.model_validate({"page": 1, "limit": 20}),
+            snippet=snippet,
+        )
 
     assert response["items"][0]["input_fields"] == input_fields
 
@@ -411,7 +422,15 @@ def test_update_published_snippet_workflow_returns_updated_workflow(
         method="PATCH",
         json={"marked_name": "v1", "marked_comment": "first version"},
     ):
-        response = handler(api, user, snippet, workflow_id="workflow-1")
+        response = handler(
+            api,
+            snippet_workflow_module.WorkflowUpdatePayload.model_validate(
+                {"marked_name": "v1", "marked_comment": "first version"}
+            ),
+            user,
+            snippet,
+            workflow_id="workflow-1",
+        )
 
     update_workflow.assert_called_once()
     update_call = update_workflow.call_args.kwargs
@@ -432,7 +451,13 @@ def test_update_published_snippet_workflow_returns_400_when_no_fields(app: Flask
     handler = unwrap(api.patch)
 
     with app.test_request_context("/snippets/snippet-1/workflows/workflow-1", method="PATCH", json={}):
-        response, status_code = handler(api, _account("account-1"), _snippet(), workflow_id="workflow-1")
+        response, status_code = handler(
+            api,
+            snippet_workflow_module.WorkflowUpdatePayload(),
+            _account("account-1"),
+            _snippet(),
+            workflow_id="workflow-1",
+        )
 
     assert status_code == 400
     assert response == {"message": "No valid fields to update"}
@@ -468,7 +493,13 @@ def test_update_published_snippet_workflow_raises_not_found(
         json={"marked_name": "v1"},
     ):
         with pytest.raises(NotFound, match="Workflow not found"):
-            handler(api, user, snippet, workflow_id="missing-workflow")
+            handler(
+                api,
+                snippet_workflow_module.WorkflowUpdatePayload.model_validate({"marked_name": "v1"}),
+                user,
+                snippet,
+                workflow_id="missing-workflow",
+            )
 
     sqlite_session.refresh(snippet)
     assert snippet.name == "Snippet"

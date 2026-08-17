@@ -11,14 +11,15 @@ import json
 import threading
 import time
 from copy import deepcopy
-from typing import Any, cast
-from unittest.mock import MagicMock
+from typing import Any, cast, override
+from unittest.mock import MagicMock, patch
 
 import pytest
 from jinja2 import Template
 
 from configs import dify_config
-from core.workflow.generator.runner import WorkflowGenerator
+from core.workflow.generator.runner import WorkflowGenerator, _find_planned_tool_entry
+from core.workflow.generator.tool_catalogue import ToolCatalogueEntry
 from core.workflow.generator.types import GraphDict
 
 
@@ -96,6 +97,303 @@ class _GraphFixtureModel:
         for shared_key in ("type", "title", "desc", "selected"):
             data.pop(shared_key, None)
         return _llm_result(json.dumps({"config": data}))
+
+
+class _RoutingGraphFixtureModel(_GraphFixtureModel):
+    """Graph fixture model with a dedicated response for the optional tool router."""
+
+    def __init__(self, planner: str, graph: str, router_response: str) -> None:
+        self.router_response = router_response
+        self.router_calls: list[dict[str, Any]] = []
+        super().__init__(planner, graph)
+
+    @override
+    def _invoke(self, *, prompt_messages, model_parameters, stream):
+        system_prompt = str(prompt_messages[0].content)
+        if "route workflow requirements" in system_prompt.lower():
+            self.router_calls.append(
+                {
+                    "prompt_messages": list(prompt_messages),
+                    "model_parameters": dict(model_parameters),
+                }
+            )
+            return _llm_result(self.router_response)
+        return super()._invoke(
+            prompt_messages=prompt_messages,
+            model_parameters=model_parameters,
+            stream=stream,
+        )
+
+
+def _tool_entry(provider: str, tool: str, *, label: str = "", description: str = "") -> ToolCatalogueEntry:
+    return ToolCatalogueEntry(
+        provider_name=provider,
+        provider_type="builtin",
+        plugin_id="",
+        tool_name=tool,
+        tool_label=label,
+        description=description,
+    )
+
+
+class TestDynamicToolRouting:
+    def test_small_catalogue_is_injected_without_router_call(self):
+        model = MagicMock()
+        entries = [_tool_entry("provider", f"tool_{index:02d}") for index in range(24)]
+
+        text = WorkflowGenerator._resolve_prompt_tool_catalogue(
+            model_instance=model,
+            model_parameters={"temperature": 0.8},
+            instruction="Do something",
+            ideal_output="",
+            tool_catalogue_text="",
+            tool_catalogue_entries=entries,
+            current_graph=None,
+        )
+
+        assert len(text.splitlines()) == 24
+        model.invoke_llm.assert_not_called()
+
+    def test_large_catalogue_routes_chinese_instruction_to_relevant_english_tool(self):
+        model = MagicMock()
+        model.invoke_llm.return_value = _llm_result(
+            json.dumps(
+                {
+                    "needs_tools": True,
+                    "queries": [
+                        {
+                            "capability": "web search",
+                            "keywords": ["internet", "current", "results"],
+                        }
+                    ],
+                }
+            )
+        )
+        entries = [
+            *[
+                _tool_entry(f"provider_{index}", "records", description="Manage stored records.")
+                for index in range(499)
+            ],
+            _tool_entry(
+                "langgenius/google/google",
+                "search",
+                label="Google Search",
+                description="Search the current web and return internet results.",
+            ),
+        ]
+
+        text = WorkflowGenerator._resolve_prompt_tool_catalogue(
+            model_instance=model,
+            model_parameters={"temperature": 0.9, "max_tokens": 4096},
+            instruction="搜索今天的人工智能新闻",
+            ideal_output="包含来源链接",
+            tool_catalogue_text="",
+            tool_catalogue_entries=entries,
+            current_graph=None,
+        )
+
+        assert "langgenius/google/google/search" in text
+        assert "provider_0/records" not in text
+        call_kwargs = model.invoke_llm.call_args.kwargs
+        assert call_kwargs["model_parameters"] == {"temperature": 0.1, "max_tokens": 256}
+        assert "搜索今天的人工智能新闻" in str(call_kwargs["prompt_messages"][1].content)
+
+    def test_router_needs_no_tools_but_keeps_existing_refine_tool(self):
+        model = MagicMock()
+        model.invoke_llm.return_value = _llm_result(json.dumps({"needs_tools": False, "queries": []}))
+        entries = [
+            *[_tool_entry(f"provider_{index}", "generic") for index in range(30)],
+            _tool_entry("langgenius/time/time", "current_time", label="Current Time"),
+        ]
+        current_graph = {
+            "nodes": [
+                {
+                    "id": "time-node",
+                    "data": {
+                        "type": "tool",
+                        "provider_id": "langgenius/time/time",
+                        "tool_name": "current_time",
+                    },
+                }
+            ]
+        }
+
+        text = WorkflowGenerator._resolve_prompt_tool_catalogue(
+            model_instance=model,
+            model_parameters={},
+            instruction="Only rename the app",
+            ideal_output="",
+            tool_catalogue_text="",
+            tool_catalogue_entries=entries,
+            current_graph=current_graph,
+        )
+
+        assert text.count("\n") == 0
+        assert "langgenius/time/time/current_time" in text
+
+    def test_invalid_router_response_falls_back_to_legacy_80_tool_prompt(self):
+        model = MagicMock()
+        model.invoke_llm.return_value = _llm_result("not a json object")
+        entries = [_tool_entry("provider", f"tool_{index:03d}") for index in range(100)]
+
+        text = WorkflowGenerator._resolve_prompt_tool_catalogue(
+            model_instance=model,
+            model_parameters={},
+            instruction="Use an external capability",
+            ideal_output="",
+            tool_catalogue_text="",
+            tool_catalogue_entries=entries,
+            current_graph=None,
+        )
+
+        assert len(text.splitlines()) == 80
+        assert model.invoke_llm.call_count == 1
+
+    def test_router_json_parser_exception_falls_back_to_legacy_prompt(self):
+        model = MagicMock()
+        model.invoke_llm.return_value = _llm_result("invalid")
+        entries = [_tool_entry("provider", f"tool_{index:03d}") for index in range(100)]
+
+        with patch("core.workflow.generator.runner.json_repair.loads", side_effect=ValueError("bad JSON")):
+            text = WorkflowGenerator._resolve_prompt_tool_catalogue(
+                model_instance=model,
+                model_parameters={},
+                instruction="Use an external capability",
+                ideal_output="",
+                tool_catalogue_text="",
+                tool_catalogue_entries=entries,
+                current_graph=None,
+            )
+
+        assert len(text.splitlines()) == 80
+        assert model.invoke_llm.call_count == 1
+
+    @pytest.mark.parametrize(
+        "router_payload",
+        [
+            {"needs_tools": "yes", "queries": []},
+            {"needs_tools": True, "queries": "not-an-array"},
+            {"needs_tools": True, "queries": [None]},
+            {"needs_tools": True, "queries": [{"capability": ["not", "a", "string"]}]},
+        ],
+    )
+    def test_invalid_router_query_schema_falls_back_to_legacy_prompt(self, router_payload: dict[str, Any]):
+        model = MagicMock()
+        model.invoke_llm.return_value = _llm_result(json.dumps(router_payload))
+        entries = [_tool_entry("provider", f"tool_{index:03d}") for index in range(100)]
+
+        text = WorkflowGenerator._resolve_prompt_tool_catalogue(
+            model_instance=model,
+            model_parameters={},
+            instruction="Use an external capability",
+            ideal_output="",
+            tool_catalogue_text="",
+            tool_catalogue_entries=entries,
+            current_graph=None,
+        )
+
+        assert len(text.splitlines()) == 80
+        assert model.invoke_llm.call_count == 1
+
+    def test_router_exception_falls_back_without_blocking_generation(self):
+        model = MagicMock()
+        model.invoke_llm.side_effect = RuntimeError("router unavailable")
+        entries = [_tool_entry("provider", f"tool_{index:03d}") for index in range(100)]
+
+        text = WorkflowGenerator._resolve_prompt_tool_catalogue(
+            model_instance=model,
+            model_parameters={},
+            instruction="Use an external capability",
+            ideal_output="",
+            tool_catalogue_text="",
+            tool_catalogue_entries=entries,
+            current_graph=None,
+        )
+
+        assert len(text.splitlines()) == 80
+        assert model.invoke_llm.call_count == 1
+
+    def test_unmatched_router_query_falls_back_to_legacy_prompt(self, caplog: pytest.LogCaptureFixture):
+        model = MagicMock()
+        model.invoke_llm.return_value = _llm_result(
+            json.dumps(
+                {
+                    "needs_tools": True,
+                    "queries": [{"capability": "quantum melody", "keywords": ["qubits", "music"]}],
+                }
+            )
+        )
+        entries = [_tool_entry("provider", f"tool_{index:03d}", description="Manage records.") for index in range(100)]
+
+        text = WorkflowGenerator._resolve_prompt_tool_catalogue(
+            model_instance=model,
+            model_parameters={},
+            instruction="Create something external",
+            ideal_output="",
+            tool_catalogue_text="",
+            tool_catalogue_entries=entries,
+            current_graph=None,
+        )
+
+        assert len(text.splitlines()) == 80
+        assert "reason=unmatched_query" in caplog.text
+        assert "candidates=80" in caplog.text
+
+    def test_router_failure_does_not_surface_as_model_error(self):
+        planner = json.dumps(
+            {
+                "title": "Summary",
+                "description": "Summarize text.",
+                "nodes": [
+                    {"id": "node1", "label": "Start", "node_type": "start", "purpose": "Receive text."},
+                    {"id": "node2", "label": "Summarize", "node_type": "llm", "purpose": "Summarize text."},
+                    {"id": "node3", "label": "End", "node_type": "end", "purpose": "Return summary."},
+                ],
+                "edges": [
+                    {"source": "node1", "target": "node2"},
+                    {"source": "node2", "target": "node3"},
+                ],
+            }
+        )
+        graph = json.dumps(
+            {
+                "nodes": [
+                    {"id": "node1", "data": {"type": "start", "title": "Start", "variables": []}},
+                    {
+                        "id": "node2",
+                        "data": {
+                            "type": "llm",
+                            "title": "Summarize",
+                            "model": {"provider": "openai", "name": "gpt-4o", "mode": "chat"},
+                            "prompt_template": [],
+                        },
+                    },
+                    {"id": "node3", "data": {"type": "end", "title": "End", "outputs": []}},
+                ],
+                "edges": [
+                    {"id": "a", "source": "node1", "target": "node2", "type": "custom"},
+                    {"id": "b", "source": "node2", "target": "node3", "type": "custom"},
+                ],
+                "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+            }
+        )
+        model = _RoutingGraphFixtureModel(planner, graph, "not a json object")
+        entries = [_tool_entry("provider", f"tool_{index:03d}") for index in range(100)]
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="Summarize text",
+            tool_catalogue_entries=entries,
+            installed_tools={(entry["provider_name"], entry["tool_name"]) for entry in entries},
+        )
+
+        assert "MODEL_ERROR" not in [error["code"] for error in result["errors"]]
+        assert result["error"] == ""
 
 
 class _ParallelBuilderModel:
@@ -1502,6 +1800,192 @@ class TestWorkflowGeneratorEdgeCases:
 
         joined = "\n".join(all_prompts)
         assert joined.count("- google/search — Search.") == 2
+
+    def test_structured_tool_selection_hydrates_trusted_installed_metadata(self):
+        entry = cast(
+            ToolCatalogueEntry,
+            {
+                "provider_name": "langgenius/google/google",
+                "provider_type": "builtin",
+                "plugin_id": "langgenius/google",
+                "plugin_unique_identifier": "langgenius/google:1.0@checksum",
+                "tool_name": "search",
+                "tool_label": "Google Search",
+                "description": "Search the web.",
+                "parameters": [
+                    {
+                        "name": "query",
+                        "type": "string",
+                        "form": "llm",
+                        "required": True,
+                        "default": None,
+                        "options": [],
+                    },
+                    {
+                        "name": "safe_search",
+                        "type": "select",
+                        "form": "form",
+                        "required": False,
+                        "default": "moderate",
+                        "options": [{"value": "moderate"}],
+                    },
+                ],
+                "output_schema": {"type": "object", "properties": {"text": {"type": "string"}}},
+            },
+        )
+        plan_nodes = [
+            {
+                "id": "node2",
+                "node_type": "tool",
+                "purpose": "Search using langgenius/google/google/search.",
+                "tool": {"provider_id": "langgenius/google/google", "tool_name": "search"},
+            }
+        ]
+        graph = cast(
+            GraphDict,
+            {
+                "nodes": [
+                    {
+                        "id": "node2",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {
+                            "type": "tool",
+                            "provider_id": "hallucinated",
+                            "provider_type": "plugin",
+                            "tool_name": "fake",
+                            "tool_parameters": {
+                                "query": {"type": "mixed", "value": "{{#node1.query#}}"},
+                                "invented": {"type": "constant", "value": "wrong"},
+                            },
+                            "tool_configurations": {
+                                "safe_search": {"type": "constant", "value": "strict"},
+                                "invented": {"type": "constant", "value": "wrong"},
+                            },
+                            "params": {"invented": ""},
+                        },
+                    }
+                ],
+                "edges": [],
+                "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+            },
+        )
+
+        WorkflowGenerator._hydrate_tool_nodes(
+            graph=graph,
+            plan_nodes=plan_nodes,
+            tool_catalogue_entries=[entry],
+        )
+
+        data = graph["nodes"][0]["data"]
+        assert data["provider_id"] == "langgenius/google/google"
+        assert data["provider_type"] == "builtin"
+        assert data["plugin_id"] == "langgenius/google"
+        assert data["tool_name"] == "search"
+        assert data["tool_parameters"]["query"]["value"] == "{{#node1.query#}}"
+        assert "invented" not in data["tool_parameters"]
+        assert data["tool_configurations"] == {"safe_search": {"type": "constant", "value": "strict"}}
+        assert data["params"] == {"query": "", "safe_search": ""}
+        assert data["paramSchemas"][0]["name"] == "query"
+        assert data["output_schema"]["properties"]["text"]["type"] == "string"
+
+    def test_tool_selection_falls_back_to_exact_identifier_in_purpose(self):
+        entry = cast(
+            ToolCatalogueEntry,
+            {
+                "provider_name": "langgenius/google/google",
+                "provider_type": "builtin",
+                "plugin_id": "langgenius/google",
+                "tool_name": "search",
+                "tool_label": "Google Search",
+                "description": "Search the web.",
+            },
+        )
+
+        selected = _find_planned_tool_entry(
+            {
+                "purpose": "Search using langgenius/google/google/search.",
+                "tool": {"provider_id": "wrong/provider", "tool_name": "search"},
+            },
+            [entry],
+        )
+
+        assert selected == entry
+
+    def test_purpose_fallback_does_not_select_a_prefix_tool(self):
+        short_entry = _tool_entry("provider", "search")
+        exact_entry = _tool_entry("provider", "search-web")
+
+        selected = _find_planned_tool_entry(
+            {"purpose": "Search using provider/search-web."},
+            [short_entry, exact_entry],
+        )
+
+        assert selected == exact_entry
+
+    def test_tool_hydration_skips_unrelated_nodes_and_can_resolve_from_graph_data(self):
+        entry = cast(
+            ToolCatalogueEntry,
+            {
+                "provider_name": "time",
+                "provider_type": "builtin",
+                "plugin_id": "",
+                "tool_name": "current_time",
+                "tool_label": "Current Time",
+                "description": "Return the current time.",
+                "parameters": [],
+            },
+        )
+        plan_nodes = [
+            {"id": "no-data", "node_type": "tool", "purpose": "Broken data."},
+            {"id": "from-data", "node_type": "tool", "purpose": "Return the time."},
+            {"id": "not-installed", "node_type": "tool", "purpose": "Use missing/tool."},
+        ]
+        graph = cast(
+            GraphDict,
+            {
+                "nodes": [
+                    {"id": "unplanned", "data": {"type": "tool"}},
+                    {"id": "no-data", "data": "invalid"},
+                    {
+                        "id": "from-data",
+                        "data": {
+                            "type": "tool",
+                            "provider_id": "time",
+                            "tool_name": "current_time",
+                            "plugin_id": "stale/plugin",
+                            "plugin_unique_identifier": "stale/plugin:1.0@checksum",
+                            "tool_parameters": ["invalid"],
+                            "tool_configurations": None,
+                            "params": {"stale": ""},
+                            "output_schema": {"stale": True},
+                        },
+                    },
+                    {
+                        "id": "not-installed",
+                        "data": {"type": "tool", "provider_id": "missing", "tool_name": "tool"},
+                    },
+                ],
+                "edges": [],
+                "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+            },
+        )
+
+        WorkflowGenerator._hydrate_tool_nodes(
+            graph=graph,
+            plan_nodes=plan_nodes,
+            tool_catalogue_entries=[entry],
+        )
+
+        hydrated = graph["nodes"][2]["data"]
+        assert hydrated["provider_id"] == "time"
+        assert "plugin_id" not in hydrated
+        assert "plugin_unique_identifier" not in hydrated
+        assert hydrated["tool_parameters"] == {}
+        assert hydrated["tool_configurations"] == {}
+        assert hydrated["params"] == {}
+        assert hydrated["output_schema"] == {}
+        assert graph["nodes"][3]["data"]["provider_id"] == "missing"
 
     def test_postprocess_lays_out_nodes_left_to_right_regardless_of_input(self):
         # The LLM often returns wildly overlapping positions. The postprocess

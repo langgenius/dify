@@ -4,11 +4,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 from packaging.version import Version
-from pydantic import ValidationError
+from pydantic import SecretStr, ValidationError
 from yarl import URL
 
 from configs.app_config import DifyConfig
 from configs.extra.public_storage_config import parse_public_storage_policy_settings
+from enums import DeploymentEdition
 from extensions.storage.storage_type import StorageType
 
 
@@ -82,7 +83,7 @@ def test_dify_config(monkeypatch: pytest.MonkeyPatch):
     assert config.COMMIT_SHA == ""
 
     # default values
-    assert config.EDITION == "SELF_HOSTED"
+    assert config.DEPLOYMENT_EDITION is DeploymentEdition.COMMUNITY
     assert config.API_COMPRESSION_ENABLED is False
     assert config.AGENT_SHELL_ENABLED is True
     assert config.SENTRY_TRACES_SAMPLE_RATE == 1.0
@@ -97,6 +98,44 @@ def test_dify_config(monkeypatch: pytest.MonkeyPatch):
 
     # values from pyproject.toml
     assert Version(config.project.version) >= Version("1.0.0")
+
+
+@pytest.mark.parametrize(
+    ("environment_value", "expected"),
+    [
+        pytest.param(None, "", id="unset"),
+        pytest.param("", "", id="empty"),
+        pytest.param("expected", "expected", id="ascii"),
+        pytest.param("pässwörd-🔐", "pässwörd-🔐", id="unicode"),
+    ],
+)
+def test_init_password_defaults_to_empty_and_preserves_environment_value(
+    monkeypatch: pytest.MonkeyPatch,
+    environment_value: str | None,
+    expected: str,
+) -> None:
+    _set_basic_config_env(monkeypatch)
+    if environment_value is None:
+        monkeypatch.delenv("INIT_PASSWORD", raising=False)
+    else:
+        monkeypatch.setenv("INIT_PASSWORD", environment_value)
+
+    config = DifyConfig(_env_file=None)
+
+    assert expected == config.INIT_PASSWORD
+
+
+@pytest.mark.parametrize("edition", list(DeploymentEdition))
+def test_deployment_edition_is_loaded_from_environment(
+    monkeypatch: pytest.MonkeyPatch,
+    edition: DeploymentEdition,
+) -> None:
+    _set_basic_config_env(monkeypatch)
+    monkeypatch.setenv("DEPLOYMENT_EDITION", edition.value)
+
+    config = DifyConfig(_env_file=None)
+
+    assert config.DEPLOYMENT_EDITION is edition
 
 
 def test_new_user_default_plugin_ids_are_parsed_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -208,6 +247,18 @@ def test_public_storage_policy_rejects_invalid_cloudflare_waf_hmac_base_url(
 
     with pytest.raises(ValidationError, match=r"must be an HTTP\(S\) URL without a query or fragment"):
         DifyConfig(_env_file=None)
+
+
+def test_turnstile_config_is_parsed_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    _set_basic_config_env(monkeypatch)
+    monkeypatch.setenv("TURNSTILE_SECRET_KEY", " test-secret ")
+    monkeypatch.setenv("TURNSTILE_ALLOWED_HOSTNAMES", "dify.dev, Login.Example.COM. ")
+
+    config = DifyConfig(_env_file=None)
+
+    assert isinstance(config.TURNSTILE_SECRET_KEY, SecretStr)
+    assert config.TURNSTILE_SECRET_KEY.get_secret_value() == "test-secret"
+    assert frozenset({"dify.dev", "login.example.com"}) == config.TURNSTILE_ALLOWED_HOSTNAME_SET
 
 
 def test_plugin_remote_install_port_rejects_host_port_spec(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -338,7 +389,7 @@ def test_flask_configs(monkeypatch: pytest.MonkeyPatch):
     # configs read from pydantic-settings
     assert config["LOG_LEVEL"] == "INFO"
     assert config["COMMIT_SHA"] == ""
-    assert config["EDITION"] == "SELF_HOSTED"
+    assert config["DEPLOYMENT_EDITION"] is DeploymentEdition.COMMUNITY
     assert config["API_COMPRESSION_ENABLED"] is False
     assert config["SENTRY_TRACES_SAMPLE_RATE"] == 1.0
 

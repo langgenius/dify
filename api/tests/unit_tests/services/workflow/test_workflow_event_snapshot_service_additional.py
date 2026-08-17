@@ -362,6 +362,7 @@ class TestBuildWorkflowEventStream:
     def test_build_workflow_event_stream_should_emit_ping_and_terminal_snapshot_event(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        message_session_maker: sessionmaker[Session],
     ) -> None:
         workflow_run = _build_workflow_run(status=WorkflowExecutionStatus.PAUSED)
         topic = _Topic(_StaticSubscription())
@@ -409,7 +410,7 @@ class TestBuildWorkflowEventStream:
                 workflow_run=workflow_run,
                 tenant_id="tenant-1",
                 app_id="app-1",
-                session_maker=MagicMock(),
+                session_maker=message_session_maker,
             )
         )
 
@@ -424,6 +425,7 @@ class TestBuildWorkflowEventStream:
     def test_build_workflow_event_stream_should_emit_periodic_ping_and_stop_after_idle_timeout(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        message_session_maker: sessionmaker[Session],
     ) -> None:
         workflow_run = _build_workflow_run(status=WorkflowExecutionStatus.RUNNING)
         topic = _Topic(_StaticSubscription())
@@ -463,7 +465,7 @@ class TestBuildWorkflowEventStream:
                 workflow_run=workflow_run,
                 tenant_id="tenant-1",
                 app_id="app-1",
-                session_maker=MagicMock(),
+                session_maker=message_session_maker,
                 idle_timeout=20.0,
                 ping_interval=5.0,
             )
@@ -475,6 +477,7 @@ class TestBuildWorkflowEventStream:
     def test_build_workflow_event_stream_should_exit_when_buffer_done_and_empty(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        message_session_maker: sessionmaker[Session],
     ) -> None:
         workflow_run = _build_workflow_run(status=WorkflowExecutionStatus.RUNNING)
         topic = _Topic(_StaticSubscription())
@@ -505,7 +508,7 @@ class TestBuildWorkflowEventStream:
                 workflow_run=workflow_run,
                 tenant_id="tenant-1",
                 app_id="app-1",
-                session_maker=MagicMock(),
+                session_maker=message_session_maker,
             )
         )
 
@@ -515,6 +518,7 @@ class TestBuildWorkflowEventStream:
     def test_build_workflow_event_stream_should_continue_when_pause_loading_fails(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        message_session_maker: sessionmaker[Session],
     ) -> None:
         workflow_run = _build_workflow_run(status=WorkflowExecutionStatus.PAUSED)
         topic = _Topic(_StaticSubscription())
@@ -545,7 +549,7 @@ class TestBuildWorkflowEventStream:
                 workflow_run=workflow_run,
                 tenant_id="tenant-1",
                 app_id="app-1",
-                session_maker=MagicMock(),
+                session_maker=message_session_maker,
             )
         )
 

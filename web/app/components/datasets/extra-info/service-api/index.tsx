@@ -70,6 +70,7 @@ const ServiceApi = ({ apiBaseUrl }: ServiceApiProps) => {
         isShow={isSecretKeyModalVisible}
         onClose={handleCloseSecretKeyModal}
         canManage={canManageSecretKey}
+        scope={{ type: 'dataset' }}
       />
     </div>
   )

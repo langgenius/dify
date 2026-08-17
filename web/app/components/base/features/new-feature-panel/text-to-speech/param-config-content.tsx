@@ -10,6 +10,7 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useTranslation } from 'react-i18next'
 import { replace } from 'string-ts'
@@ -18,7 +19,7 @@ import { useFeatures, useFeaturesStore } from '@/app/components/base/features/ho
 import { Infotip } from '@/app/components/base/infotip'
 import { languages } from '@/i18n-config/language'
 import { usePathname } from '@/next/navigation'
-import { useAppVoices } from '@/service/use-apps'
+import { consoleQuery } from '@/service/client'
 import { TtsAutoPlay } from '@/types/app'
 
 type SelectOption = {
@@ -51,7 +52,16 @@ const VoiceParamConfig = ({ onClose, onChange }: VoiceParamConfigProps) => {
     languageItem?.name || t(($) => $['placeholder.select'], { ns: 'common' })
 
   const language = languageItem?.value
-  const { data: voiceItems } = useAppVoices(appId, language)
+  const { data: voiceItems } = useQuery(
+    consoleQuery.apps.byAppId.textToAudio.voices.get.queryOptions({
+      input: appId
+        ? {
+            params: { app_id: appId },
+            query: { language: language || 'en-US' },
+          }
+        : skipToken,
+    }),
+  )
   let voiceItem = voiceItems?.find((item) => item.value === text2speech?.voice)
   if (voiceItems && !voiceItem) voiceItem = voiceItems[0]
   const localVoicePlaceholder =

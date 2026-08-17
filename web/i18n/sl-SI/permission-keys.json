@@ -4,6 +4,7 @@
   "app.access_config": "Konfiguracija dovoljenj za dostop do aplikacije",
   "app.acl.access_config": "Konfiguracija dovoljenj za dostop do aplikacije",
   "app.acl.delete": "Izbriši aplikacijo",
+  "app.acl.deploy": "Uvedi aplikacijo",
   "app.acl.edit": "Uredi in orkestriraj aplikacijo",
   "app.acl.import_export_dsl": "Uvozi / izvozi DSL",
   "app.acl.log_and_annotation": "Dostop do dnevnikov in opomb",

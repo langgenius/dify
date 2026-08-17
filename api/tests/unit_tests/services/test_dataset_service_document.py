@@ -332,19 +332,34 @@ class TestDocumentServiceMutations:
         retry_task.delay.assert_not_called()
 
     def test_sync_website_document_raises_when_sync_flag_exists(self):
-        document = DatasetServiceUnitDataFactory.create_document_mock(document_id="doc-1")
+        dataset = DatasetServiceUnitDataFactory.create_dataset_mock(dataset_id="dataset-1")
+        document = DatasetServiceUnitDataFactory.create_document_mock(document_id="doc-1", dataset_id=dataset.id)
         session = MagicMock()
 
         with patch("services.dataset_service.redis_client") as mock_redis:
             mock_redis.get.return_value = "1"
 
             with pytest.raises(ValueError, match="being synced"):
-                DocumentService.sync_website_document("dataset-1", document, session)
+                DocumentService.sync_website_document(dataset, document, session)
+
+    def test_sync_website_document_rejects_document_outside_dataset(self):
+        dataset = DatasetServiceUnitDataFactory.create_dataset_mock(dataset_id="dataset-1")
+        document = DatasetServiceUnitDataFactory.create_document_mock(document_id="doc-1", dataset_id="dataset-2")
+
+        with (
+            pytest.raises(ValueError, match="Document not found"),
+            patch("services.dataset_service.redis_client") as mock_redis,
+        ):
+            DocumentService.sync_website_document(dataset, document, MagicMock())
+
+        mock_redis.get.assert_not_called()
 
     def test_sync_website_document_updates_status_sets_cache_and_dispatches_task(self):
         session = MagicMock()
+        dataset = DatasetServiceUnitDataFactory.create_dataset_mock(dataset_id="dataset-1")
         document = DatasetServiceUnitDataFactory.create_document_mock(
             document_id="doc-1",
+            dataset_id=dataset.id,
             data_source_info_dict={"mode": "crawl"},
         )
 
@@ -354,14 +369,14 @@ class TestDocumentServiceMutations:
         ):
             mock_redis.get.return_value = None
 
-            DocumentService.sync_website_document("dataset-1", document, session)
+            DocumentService.sync_website_document(dataset, document, session)
 
         assert document.indexing_status == "waiting"
         assert '"mode": "scrape"' in document.data_source_info
         session.add.assert_called_once_with(document)
         session.commit.assert_called_once()
         mock_redis.setex.assert_called_once_with("document_doc-1_is_sync", 600, 1)
-        sync_task.delay.assert_called_once_with("dataset-1", "doc-1")
+        sync_task.delay.assert_called_once_with(dataset.id, document.id)
 
 
 class TestDocumentServiceSaveDocumentWithoutDatasetId:

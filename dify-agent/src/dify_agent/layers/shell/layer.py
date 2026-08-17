@@ -6,9 +6,8 @@ from collections.abc import Sequence
 import json
 import logging
 import re
-import time
 from dataclasses import dataclass, field
-from typing import ClassVar, Literal, NotRequired, Protocol, TypedDict, runtime_checkable
+from typing import ClassVar, NotRequired, Protocol, TypedDict, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, field_validator, model_validator
 from pydantic_ai import Tool
@@ -35,6 +34,7 @@ from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.runtime.layer import DifyRuntimeLayer
 from dify_agent.layers.shell.configs import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
 from dify_agent.layers.shell.output_text import normalized_output_text, utf8_prefix, utf8_suffix
+from dify_agent.runtime.command_runner import execute_complete_with_commands
 from dify_agent.runtime_backend import RuntimeLease
 
 
@@ -48,7 +48,7 @@ class _HasErrorCode(Protocol):
 
 DEFAULT_TIMEOUT_SECONDS = 30.0
 DEFAULT_TERMINATE_GRACE_SECONDS = 10.0
-_SHELL_OUTPUT_PROMPT_EDGE_BYTES = 8 * 1024
+_SHELL_OUTPUT_PROMPT_EDGE_BYTES = 4 * 1024
 _SHELLCTL_OUTPUT_LIMIT_BYTES = 2 * _SHELL_OUTPUT_PROMPT_EDGE_BYTES
 _REMOTE_COMPLETE_OUTPUT_MAX_BYTES = 1024 * 1024
 _REMOTE_COMMAND_TIMEOUT_SECONDS = 60.0
@@ -106,13 +106,11 @@ Installed CLI:
 - Use the generated `dify-agent ... --help` output in the config prompt for exact command syntax.
 - Do not install or recreate the `dify-agent` CLI.
 
-Workspace persistence rules:
+Filesystem spaces:
 
-- The current workspace cwd is stable across runs for the current product session.
-- Workspace files are working data, not Agent configuration, and are removed when that product session ends.
-- In build mode, config changes persist only after you run the matching `dify-agent config ...` mutation command.
-- Shell file edits alone do not save Agent config files, skills, env, or notes.
-- In non-build modes, local shell changes are not a persistence mechanism for Agent configuration.
+- `$HOME` is the system space.
+- The current working directory (`cwd`) is the temporary working space. Relative paths resolve from here.
+- Store temporary files under `<cwd>/.tmp` (normally `./.tmp`). Do not use `/tmp`.
 
 shell_run script rules:
 
@@ -153,6 +151,14 @@ from rich import print
 response = httpx.get("https://example.com", timeout=10)
 print(f"[green]status:[/green] {response.status_code}")
 [end script]"""
+_BUILD_DRAFT_WORKING_LOCATION_PROMPT = """Working location:
+
+- Prefer `$HOME` for work and changes intended for the system space.
+- Use `cwd` for scratch files, intermediate results, and other temporary work."""
+_DEFAULT_WORKING_LOCATION_PROMPT = """Working location:
+
+- Prefer `cwd` for your work.
+- Changes in `$HOME` or `cwd` do not update the saved Agent state."""
 _SHELL_LAYER_SUFFIX_PROMPT = """Environment variables may contain API keys, tokens, or credentials.
 You may refer to environment variable names when needed."""
 
@@ -239,7 +245,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
     @property
     @override
     def prefix_prompts(self) -> Sequence[PydanticAIPrompt[object]]:
-        return [_shell_layer_prefix_prompt]
+        return [self._build_prefix_prompt]
 
     @property
     @override
@@ -255,6 +261,16 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             Tool(self._tool_input, name="shell_input"),
             Tool(self._tool_interrupt, name="shell_interrupt"),
         ]
+
+    def _build_prefix_prompt(self) -> str:
+        execution_context = self.deps.execution_context
+        is_build_draft = (
+            execution_context is not None and execution_context.config.agent_config_version_kind == "build_draft"
+        )
+        working_location_prompt = (
+            _BUILD_DRAFT_WORKING_LOCATION_PROMPT if is_build_draft else _DEFAULT_WORKING_LOCATION_PROMPT
+        )
+        return f"{_SHELL_LAYER_PREFIX_PROMPT}\n\n{working_location_prompt}"
 
     @override
     async def on_context_create(self) -> None:
@@ -545,77 +561,6 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         return text
 
 
-async def execute_complete_with_commands(
-    commands: ShellCommandProtocol,
-    script: str,
-    *,
-    cwd: str | None,
-    env: dict[str, str] | None,
-    timeout: float,
-    max_output_bytes: int,
-) -> CompleteShellCommandResult:
-    deadline = time.monotonic() + timeout
-    job_id: str | None = None
-    result: ShellCommandResult | None = None
-    output_parts: list[str] = []
-    captured_bytes = 0
-    incomplete_reason: Literal["output_limit", "timeout"] | None = None
-    try:
-        result = await commands.run(script, cwd=cwd, env=env, timeout=_remaining_time(deadline))
-        job_id = result.job_id
-        while True:
-            remaining_bytes = max(max_output_bytes - captured_bytes, 0)
-            limited_output = utf8_prefix(result.output, remaining_bytes)
-            output_parts.append(limited_output)
-            captured_bytes += len(limited_output.encode("utf-8"))
-            if limited_output != result.output:
-                incomplete_reason = "output_limit"
-                break
-            if captured_bytes >= max_output_bytes and (result.truncated or not result.done):
-                incomplete_reason = "output_limit"
-                break
-            if result.truncated:
-                result = await commands.read_output(result.job_id, offset=result.offset)
-                continue
-            if result.done:
-                break
-            remaining_time = _remaining_time(deadline)
-            if remaining_time <= 0.0:
-                incomplete_reason = "timeout"
-                break
-            result = await commands.wait(result.job_id, offset=result.offset, timeout=remaining_time)
-
-        assert result is not None
-        final_status = result.status
-        final_done = result.done
-        final_exit_code = result.exit_code
-        final_offset = result.offset
-        final_output_path = result.output_path
-        if incomplete_reason is not None and not result.done:
-            terminal_status = await commands.interrupt(result.job_id, grace_seconds=DEFAULT_TERMINATE_GRACE_SECONDS)
-            final_status = terminal_status.status
-            final_done = terminal_status.done
-            final_exit_code = terminal_status.exit_code
-            final_offset = terminal_status.offset
-        return CompleteShellCommandResult(
-            job_id=result.job_id,
-            status=final_status,
-            done=final_done,
-            exit_code=final_exit_code,
-            output="".join(output_parts),
-            output_complete=incomplete_reason is None,
-            incomplete_reason=incomplete_reason,
-            offset=final_offset,
-            output_path=final_output_path,
-        )
-    finally:
-        if job_id is not None:
-            try:
-                await commands.delete(job_id, force=True)
-            except RuntimeError as exc:
-                logger.warning("Failed to delete transient shell job %s: %s", job_id, exc)
-
-
 async def render_prompt_observation_from_result(
     commands: ShellCommandProtocol,
     result: ShellCommandResult,
@@ -645,10 +590,6 @@ async def render_prompt_observation_from_result(
         truncated_in_middle=result.truncated or output_exceeds_edge_budget,
     )
     return ShellPromptObservation(text=text, output_path=output_path, offset=offset)
-
-
-def _shell_layer_prefix_prompt() -> str:
-    return _SHELL_LAYER_PREFIX_PROMPT
 
 
 def _shell_layer_suffix_prompt() -> str:
@@ -765,10 +706,6 @@ def _tagged_shell_observation(metadata: dict[str, object], output: str) -> str:
     return f"<metadata>\n{compact_metadata}\n</metadata>\n\n<output>\n{output}\n</output>"
 
 
-def _remaining_time(deadline: float) -> float:
-    return max(0.0, deadline - time.monotonic())
-
-
 __all__ = [
     "CompleteRemoteCommandResult",
     "DifyShellLayer",
@@ -776,6 +713,5 @@ __all__ = [
     "DifyShellRuntimeState",
     "DEFAULT_TERMINATE_GRACE_SECONDS",
     "DEFAULT_TIMEOUT_SECONDS",
-    "execute_complete_with_commands",
     "render_prompt_observation_from_result",
 ]

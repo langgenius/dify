@@ -1,6 +1,6 @@
 import type { ExternalKnowledgeApiResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import ExternalAPIPanel from '../index'
 
 vi.mock('@/context/i18n', () => ({
@@ -105,10 +105,8 @@ describe('ExternalAPIPanel', () => {
     })
 
     it('should render close button', () => {
-      const { container } = render(<ExternalAPIPanel {...defaultProps} />)
-      const closeButton =
-        container.querySelector('[class*="action-button"]') || screen.getAllByRole('button')[0]
-      expect(closeButton)!.toBeInTheDocument()
+      render(<ExternalAPIPanel {...defaultProps} />)
+      expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
     })
   })
 
@@ -171,11 +169,7 @@ describe('ExternalAPIPanel', () => {
     it('should call onClose when close button is clicked', () => {
       const onClose = vi.fn()
       render(<ExternalAPIPanel canManageExternalKnowledgeApi={true} onClose={onClose} />)
-      // Find the close button (ActionButton with close icon)
-      const buttons = screen.getAllByRole('button')
-      const closeButton =
-        buttons.find((btn) => btn.querySelector('svg[class*="ri-close"]')) || buttons[0]
-      fireEvent.click(closeButton!)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
       expect(onClose).toHaveBeenCalledTimes(1)
     })
 

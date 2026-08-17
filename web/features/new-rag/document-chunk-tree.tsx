@@ -72,7 +72,9 @@ export function DocumentChunkTreePanel({
     },
   })
   const rowVirtualizerRef = useRef(rowVirtualizer)
-  rowVirtualizerRef.current = rowVirtualizer
+  useEffect(() => {
+    rowVirtualizerRef.current = rowVirtualizer
+  }, [rowVirtualizer])
   const virtualRows = rowVirtualizer.getVirtualItems()
 
   const toggleExpanded = (chunkId: string) => {

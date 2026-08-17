@@ -44,7 +44,7 @@ from models.enums import CollectionBindingType, DatasetRuntimeMode
 from models.workflow import Workflow, WorkflowType
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.dsl_version import check_version_compatibility
-from services.entities.dsl_entities import CheckDependenciesResult, ImportMode, ImportStatus
+from services.entities.dsl_entities import CheckDependenciesResult, ImportMode, ImportStatus, PendingImportOwner
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     IconInfo,
     KnowledgeConfiguration,
@@ -70,7 +70,7 @@ class RagPipelineImportInfo(BaseModel):
     dataset_id: str | None = None
 
 
-class RagPipelinePendingData(BaseModel):
+class RagPipelinePendingData(PendingImportOwner):
     import_mode: str
     yaml_content: str
     pipeline_id: str | None
@@ -222,6 +222,8 @@ class RagPipelineDslService:
             # If major version mismatch, store import info in Redis
             if status == ImportStatus.PENDING:
                 pending_data = RagPipelinePendingData(
+                    tenant_id=account.current_tenant_id,
+                    account_id=account.id,
                     import_mode=import_mode,
                     yaml_content=content,
                     pipeline_id=pipeline_id,
@@ -384,6 +386,15 @@ class RagPipelineDslService:
                     error="Invalid import information",
                 )
             pending_data = RagPipelinePendingData.model_validate_json(pending_data)
+            if not pending_data.is_accessible_by(
+                tenant_id=account.current_tenant_id,
+                account_id=account.id,
+            ):
+                return RagPipelineImportInfo(
+                    id=import_id,
+                    status=ImportStatus.FAILED,
+                    error="Import information expired or does not exist",
+                )
             data = yaml.safe_load(pending_data.yaml_content)
 
             pipeline = None

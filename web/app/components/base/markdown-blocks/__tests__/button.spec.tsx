@@ -4,7 +4,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 // markdown-button.spec.tsx
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChatContextProvider } from '@/app/components/base/chat/chat/context-provider'
 import MarkdownButton from '../button'
 

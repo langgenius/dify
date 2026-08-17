@@ -12,6 +12,7 @@ from dify_agent.agent_stub.protocol.agent_stub import (
     AgentStubDriveCommitRequest,
     AgentStubDriveFileRef,
     AgentStubDriveManifestResponse,
+    AgentStubConfigDownloadSource,
     AgentStubFileDownloadRequest,
     AgentStubFileMapping,
     agent_stub_connections_url,
@@ -21,7 +22,6 @@ from dify_agent.agent_stub.protocol.agent_stub import (
     agent_stub_file_download_request_url,
     agent_stub_file_upload_request_url,
     normalize_agent_stub_api_base_url,
-    parse_agent_stub_endpoint,
 )
 
 
@@ -101,29 +101,14 @@ def test_normalize_agent_stub_api_base_url_accepts_service_root_or_agent_stub_ro
 
 
 def test_parse_agent_stub_endpoint_rejects_invalid_schemes_and_missing_host() -> None:
-    with pytest.raises(ValueError, match="http, https, or grpc"):
+    with pytest.raises(ValueError, match="http or https"):
         _ = normalize_agent_stub_api_base_url("not-a-url")
 
-    with pytest.raises(ValueError, match="http, https, or grpc"):
+    with pytest.raises(ValueError, match="http or https"):
         _ = normalize_agent_stub_api_base_url("ftp://agent.example.com/agent-stub")
 
     with pytest.raises(ValueError, match="include a host"):
         _ = normalize_agent_stub_api_base_url("https:///agent-stub")
-
-
-def test_parse_agent_stub_endpoint_accepts_grpc_host_and_port() -> None:
-    endpoint = parse_agent_stub_endpoint("grpc://agent.example.com:9091")
-
-    assert endpoint.url == "grpc://agent.example.com:9091"
-    assert endpoint.is_grpc is True
-    assert endpoint.host == "agent.example.com"
-    assert endpoint.port == 9091
-
-
-@pytest.mark.parametrize("invalid_url", ["grpc://agent.example.com", "grpc://agent.example.com:9091/path"])
-def test_parse_agent_stub_endpoint_rejects_invalid_grpc_urls(invalid_url: str) -> None:
-    with pytest.raises(ValueError):
-        _ = parse_agent_stub_endpoint(invalid_url)
 
 
 def test_agent_stub_file_mapping_validates_reference_and_url_by_transfer_method() -> None:
@@ -159,11 +144,50 @@ def test_agent_stub_file_download_request_accepts_legacy_http_audience_alias() -
     assert request.for_frontend is False
     assert request.model_dump() == {
         "file": {"transfer_method": "tool_file", "reference": _reference("tool-file-1"), "url": None},
+        "config": None,
         "for_frontend": False,
     }
 
     with pytest.raises(ValidationError):
         _ = AgentStubFileDownloadRequest.model_validate({"file": mapping, "for_frontend": True, "for_external": False})
+
+
+def test_agent_stub_file_download_request_accepts_exactly_one_sandbox_config_source() -> None:
+    request = AgentStubFileDownloadRequest(
+        config=AgentStubConfigDownloadSource(kind="skill", name="alpha"),
+        for_frontend=False,
+    )
+
+    assert request.config == AgentStubConfigDownloadSource(kind="skill", name="alpha")
+    with pytest.raises(ValidationError, match="exactly one"):
+        _ = AgentStubFileDownloadRequest(for_frontend=False)
+    with pytest.raises(ValidationError, match="exactly one"):
+        _ = AgentStubFileDownloadRequest(
+            file=AgentStubFileMapping(transfer_method="tool_file", reference=_reference("tool-file-1")),
+            config=AgentStubConfigDownloadSource(kind="file", name="guide.txt"),
+            for_frontend=False,
+        )
+    with pytest.raises(ValidationError, match="Sandbox data plane"):
+        _ = AgentStubFileDownloadRequest(
+            config=AgentStubConfigDownloadSource(kind="file", name="guide.txt"),
+            for_frontend=True,
+        )
+
+
+@pytest.mark.parametrize(
+    ("source", "message"),
+    [
+        ({"kind": "file", "name": "../guide.txt"}, "safe path segment"),
+        ({"kind": "skill", "name": "Alpha"}, "skill name is invalid"),
+        ({"kind": "file", "name": "guide.txt", "tenant_id": "tenant-1"}, "extra_forbidden"),
+    ],
+)
+def test_agent_stub_config_download_source_rejects_invalid_names_and_identity_fields(
+    source: dict[str, object],
+    message: str,
+) -> None:
+    with pytest.raises(ValidationError, match=message):
+        _ = AgentStubConfigDownloadSource.model_validate(source)
 
 
 def test_agent_stub_drive_commit_request_validates_file_refs() -> None:

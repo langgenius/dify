@@ -5,8 +5,8 @@ streams. HTTP event cursors are Redis stream ids; ``0-0`` means replay from the
 beginning for polling and SSE. Records and streams share one retention window
 that is refreshed when status or event data is written. Execution is scheduled
 in-process by ``dify_agent.runtime.run_scheduler``; Redis is not a job queue, and
-create-run payloads are never persisted because layer config may include model
-credentials.
+create-run payloads are never persisted because layer config may include
+sensitive runtime configuration.
 """
 
 from collections.abc import AsyncIterator, Awaitable
@@ -20,11 +20,13 @@ from dify_agent.runtime.event_sink import (
     RunEventSink,
     RunFinalizationResult,
     TerminalRunEvent,
-    terminal_event_status_and_error,
+    terminal_event_status_fields,
 )
 from dify_agent.server.schemas import RunRecord, new_run_id
 from dify_agent.server.settings import DEFAULT_RUN_RETENTION_SECONDS
 from dify_agent.storage.redis_keys import run_events_key, run_record_key
+
+_TERMINAL_RUN_EVENT_TYPES = {"run_succeeded", "run_failed", "run_cancelled"}
 
 
 class RunNotFoundError(LookupError):
@@ -49,10 +51,15 @@ if ARGV[3] == "1" then
 else
     record.error = cjson.null
 end
+if ARGV[5] == "1" then
+    record.error_type = ARGV[6]
+else
+    record.error_type = cjson.null
+end
 
-local ttl = tonumber(ARGV[6])
+local ttl = tonumber(ARGV[8])
 local updated_record_json = cjson.encode(record)
-local event_id = redis.call("XADD", KEYS[2], "*", "payload", ARGV[5])
+local event_id = redis.call("XADD", KEYS[2], "*", "payload", ARGV[7])
 redis.call("EXPIRE", KEYS[2], ttl)
 redis.call("SET", KEYS[1], updated_record_json, "EX", ttl)
 return {1, ARGV[1], event_id}
@@ -124,7 +131,7 @@ class RedisRunStore(RunEventSink):
 
     async def finalize_run(self, event: TerminalRunEvent) -> RunFinalizationResult:
         """Atomically append the first terminal event and update its run record."""
-        status, error = terminal_event_status_and_error(event)
+        status, error, error_type = terminal_event_status_fields(event)
         payload = RUN_EVENT_ADAPTER.dump_json(event, exclude={"id"}).decode()
         evaluation = cast(
             Awaitable[object],
@@ -137,6 +144,8 @@ class RedisRunStore(RunEventSink):
                 event.created_at.isoformat(),
                 "1" if error is not None else "0",
                 error or "",
+                "1" if error_type is not None else "0",
+                error_type.value if error_type is not None else "",
                 payload,
                 str(self.run_retention_seconds),
             ),
@@ -190,7 +199,7 @@ class RedisRunStore(RunEventSink):
         return RunEventsResponse(run_id=run_id, events=events, next_cursor=next_cursor)
 
     async def iter_events(self, run_id: str, *, after: str = "0-0") -> AsyncIterator[RunEvent]:
-        """Yield replayed and future events for SSE clients."""
+        """Yield replayed and future events through the first terminal event."""
         await self.get_run(run_id)
         cursor = after
         while True:
@@ -199,6 +208,8 @@ class RedisRunStore(RunEventSink):
                 if event.id is not None:
                     cursor = event.id
                 yield event
+                if event.type in _TERMINAL_RUN_EVENT_TYPES:
+                    return
             if not page.events:
                 break
         while True:
@@ -211,6 +222,8 @@ class RedisRunStore(RunEventSink):
                     if event.id is not None:
                         cursor = event.id
                     yield event
+                    if event.type in _TERMINAL_RUN_EVENT_TYPES:
+                        return
 
     @staticmethod
     def _decode_event(run_id: str, raw_id: object, fields: dict[object, object]) -> RunEvent:

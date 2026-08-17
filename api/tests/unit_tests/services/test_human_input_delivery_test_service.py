@@ -22,7 +22,7 @@ from graphon.runtime import VariablePool
 from models.account import Account, TenantAccountJoin
 from models.engine import db
 from services import human_input_delivery_test_service as service_module
-from services.feature_service import FeatureModel
+from services.entities.feature_entities import FeatureModel
 from services.human_input_delivery_test_service import (
     DeliveryTestContext,
     DeliveryTestEmailRecipient,

@@ -1,6 +1,6 @@
 import type { ExternalKnowledgeBaseHitTesting } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import ResultItemExternal from '../result-item-external'
 
 let mockIsShowDetailModal = false

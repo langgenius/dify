@@ -66,8 +66,10 @@ export type LicenseLimitationModel = {
 
 export type SubscriptionModel = {
   interval: string
-  plan: string
+  plan: CloudPlan
 }
+
+export type CloudPlan = 'professional' | 'sandbox' | 'team'
 
 export type GetFeaturesData = {
   body?: never

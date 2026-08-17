@@ -1,7 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { WorkflowVersionFilterOptions } from '../../../../types'
-import FilterItem from '../filter-item'
 import FilterSwitch from '../filter-switch'
 import Filter from '../index'
 
@@ -29,32 +28,6 @@ describe('VersionHistory Filter Components', () => {
     })
   })
 
-  // Filter items should show the current selection and forward the option key.
-  describe('FilterItem', () => {
-    it('should call onClick with the selected filter key', async () => {
-      const user = userEvent.setup()
-      const onClick = vi.fn()
-
-      const { container } = render(
-        <FilterItem
-          item={{
-            key: WorkflowVersionFilterOptions.onlyYours,
-            name: 'Only Yours',
-          }}
-          isSelected
-          onClick={onClick}
-        />,
-      )
-
-      expect(screen.getByText('Only Yours')).toBeInTheDocument()
-      expect(container.querySelector('svg')).toBeInTheDocument()
-
-      await user.click(screen.getByText('Only Yours'))
-
-      expect(onClick).toHaveBeenCalledWith(WorkflowVersionFilterOptions.onlyYours)
-    })
-  })
-
   // The composed filter popover should open, list options, and delegate actions.
   describe('Filter', () => {
     it('should open the menu and forward option and switch actions', async () => {
@@ -79,7 +52,9 @@ describe('VersionHistory Filter Components', () => {
       expect(screen.getByText('workflow.versionHistory.filter.all')).toBeInTheDocument()
       expect(screen.getByText('workflow.versionHistory.filter.onlyYours')).toBeInTheDocument()
 
-      await user.click(screen.getByText('workflow.versionHistory.filter.onlyYours'))
+      await user.click(
+        screen.getByRole('button', { name: 'workflow.versionHistory.filter.onlyYours' }),
+      )
       expect(onClickFilterItem).toHaveBeenCalledWith(WorkflowVersionFilterOptions.onlyYours)
 
       fireEvent.click(screen.getByRole('switch'))

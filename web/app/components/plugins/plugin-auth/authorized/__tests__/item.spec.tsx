@@ -1,17 +1,10 @@
 import type { Credential } from '../../types'
 import { cleanup, fireEvent, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render } from '@/test/console/render'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { CredentialTypeEnum } from '../../types'
 import Item from '../item'
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({
-    userProfile: { id: 'test-user' },
-    workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
-  }))
-})
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => ({

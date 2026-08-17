@@ -1,11 +1,10 @@
 'use client'
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiCheckLine, RiDeleteBinLine, RiWebhookLine } from '@remixicon/react'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import { Infotip } from '@/app/components/base/infotip'
 import { CreateSubscriptionButton } from './create'
 import { CreateButtonType } from './create/types'
@@ -61,11 +60,15 @@ export const SubscriptionSelectorView: React.FC<SubscriptionSelectorProps> = ({
             >
               <div className="flex items-center">
                 {selectedId === subscription.id && (
-                  <RiCheckLine className="mr-2 size-4 shrink-0 text-text-accent" />
+                  <span
+                    aria-hidden
+                    className="mr-2 i-ri-check-line size-4 shrink-0 text-text-accent"
+                  />
                 )}
-                <RiWebhookLine
+                <span
+                  aria-hidden
                   className={cn(
-                    'mr-1.5 size-3.5 text-text-secondary',
+                    'mr-1.5 i-ri-webhook-line size-3.5 text-text-secondary',
                     selectedId !== subscription.id && 'ml-6',
                   )}
                 />
@@ -74,15 +77,17 @@ export const SubscriptionSelectorView: React.FC<SubscriptionSelectorProps> = ({
                 </span>
               </div>
             </button>
-            <ActionButton
+            <IconButton
+              aria-label={t(($) => $['operation.delete'], { ns: 'common' })}
+              tone="destructive"
               onClick={(e) => {
                 e.stopPropagation()
                 setDeletedSubscription(subscription)
               }}
-              className="subscription-delete-btn hidden shrink-0 text-text-tertiary group-hover:flex hover:bg-state-destructive-hover hover:text-text-destructive"
+              className="subscription-delete-btn hidden shrink-0 group-hover:flex"
             >
-              <RiDeleteBinLine className="size-4" />
-            </ActionButton>
+              <span aria-hidden="true" className="i-ri-delete-bin-line size-4" />
+            </IconButton>
           </div>
         ))}
       </div>

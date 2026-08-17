@@ -162,7 +162,7 @@
   "mcp.server.modal.parametersPlaceholder": "الغرض من المعلمة والقيود",
   "mcp.server.modal.parametersTip": "أضف أوصافًا لكل معلمة لمساعدة LLM على فهم الغرض منها والقيود المفروضة عليها.",
   "mcp.server.publishTip": "التطبيق غير منشور. يرجى نشر التطبيق أولاً.",
-  "mcp.server.reGen": "هل تريد إعادة إنشاء عنوان URL للخادم؟",
+  "mcp.server.reGen": "هل تريد إعادة إنشاء عنوان URL للخادم؟ سيتوقف عنوان URL الحالي عن العمل فورًا.",
   "mcp.server.title": "خادم MCP",
   "mcp.server.url": "عنوان URL للخادم",
   "mcp.toolItem.noDescription": "لا يوجد وصف",

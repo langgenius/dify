@@ -20,14 +20,15 @@ from sqlalchemy.orm import Session
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginVerification
 from core.plugin.plugin_service import PluginService
+from enums import DeploymentEdition
 from models import ProviderType
 from models.engine import db
 from models.provider import Provider, ProviderCredential, TenantPreferredModelProvider
-from services.errors.plugin import PluginInstallationForbiddenError
-from services.feature_service import (
+from services.entities.feature_entities import (
     PluginInstallationPermissionModel,
     PluginInstallationScope,
 )
+from services.errors.plugin import PluginInstallationForbiddenError
 
 
 def _make_permission(
@@ -516,7 +517,7 @@ class TestUninstall:
         installer.uninstall.return_value = True
 
         with patch("core.plugin.plugin_service.dify_config") as mock_config:
-            mock_config.ENTERPRISE_ENABLED = False
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
             result = PluginService.uninstall(tenant_id, "install-1")
 
         assert result is True
@@ -579,7 +580,7 @@ class TestUninstall:
         installer.uninstall.return_value = True
 
         with patch("core.plugin.plugin_service.dify_config") as mock_config:
-            mock_config.ENTERPRISE_ENABLED = False
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
             result = PluginService.uninstall(tenant_id, "install-1", preserve_credentials=True)
 
         assert result is True
@@ -609,7 +610,7 @@ class TestUninstall:
         installer.uninstall.return_value = False
 
         with patch("core.plugin.plugin_service.dify_config") as mock_config:
-            mock_config.ENTERPRISE_ENABLED = False
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
             result = PluginService.uninstall(tenant_id, "install-1")
 
         assert result is False

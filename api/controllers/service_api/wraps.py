@@ -22,7 +22,7 @@ from controllers.service_api.schema import (
     USER_QUERY_PARAM,
     USER_REQUIRED_ATTR,
 )
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.login import current_user
@@ -186,7 +186,7 @@ def cloud_edition_billing_resource_check[**P, R](
         def decorated(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token(api_token_type)
             if resource == "vector_space":
-                if not dify_config.BILLING_ENABLED:
+                if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
                     return view(*args, **kwargs)
 
                 vector_space = FeatureService.get_vector_space(api_token.tenant_id)

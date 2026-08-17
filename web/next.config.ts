@@ -36,19 +36,14 @@ const nextConfig: NextConfig = {
       {
         source: '/explore/apps',
         destination: '/',
-        permanent: false,
+        permanent: true,
       },
-    ]
-  },
-  // Deny framing on device-flow routes — no trusted embedder exists.
-  async headers() {
-    const antiFrame = [
-      { key: 'X-Frame-Options', value: 'DENY' },
-      { key: 'Content-Security-Policy', value: "frame-ancestors 'none'" },
-    ]
-    return [
-      { source: '/device', headers: antiFrame },
-      { source: '/device/:path*', headers: antiFrame },
+      {
+        // TODO(2026-11-11): Remove after external education CTAs and active campaign links use the canonical route.
+        source: '/education-apply',
+        destination: '/education/apply',
+        permanent: true,
+      },
     ]
   },
   output: 'standalone',
