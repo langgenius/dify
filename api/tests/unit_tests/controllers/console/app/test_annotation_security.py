@@ -6,16 +6,43 @@ security features added to prevent DoS attacks on the annotation import endpoint
 """
 
 import io
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from pandas.errors import ParserError
+from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 
 from configs import dify_config
 from controllers.console.wraps import annotation_import_concurrency_limit, annotation_import_rate_limit
+from models.account import Account
+from models.model import App, AppMode, IconType
 from services.annotation_service import AppAnnotationService
 from tasks.annotation.batch_import_annotations_task import batch_import_annotations_task
+
+
+def _account() -> Account:
+    account = Account(name="Annotation Tester", email="annotation-tester@example.com")
+    account.id = "user_id"
+    return account
+
+
+def _persist_app(session: Session) -> App:
+    app = App(
+        id="app_id",
+        tenant_id="tenant_id",
+        name="Annotation App",
+        description="",
+        mode=AppMode.CHAT,
+        icon_type=IconType.EMOJI,
+        icon="chat",
+        icon_background="#ffffff",
+        enable_site=False,
+        enable_api=False,
+    )
+    session.add(app)
+    session.commit()
+    return app
 
 
 class TestAnnotationImportRateLimiting:
@@ -31,7 +58,7 @@ class TestAnnotationImportRateLimiting:
     def mock_current_account(self):
         """Mock current account with tenant."""
         with patch("controllers.console.wraps.current_account_with_tenant") as mock:
-            mock.return_value = (MagicMock(id="user_id"), "test_tenant_id")
+            mock.return_value = (_account(), "test_tenant_id")
             yield mock
 
     def test_rate_limit_per_minute_enforced(self, mock_redis, mock_current_account):
@@ -104,7 +131,7 @@ class TestAnnotationImportConcurrencyControl:
     def mock_current_account(self):
         """Mock current account with tenant."""
         with patch("controllers.console.wraps.current_account_with_tenant") as mock:
-            mock.return_value = (MagicMock(id="user_id"), "test_tenant_id")
+            mock.return_value = (_account(), "test_tenant_id")
             yield mock
 
     def test_concurrency_limit_enforced(self, mock_redis, mock_current_account):
@@ -181,22 +208,11 @@ class TestAnnotationImportFileValidation:
         # This would be tested in integration tests
 
 
+@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
 class TestAnnotationImportServiceValidation:
     """Test service layer validation for annotation import."""
 
-    @pytest.fixture
-    def mock_app(self):
-        """Mock application object."""
-        app = MagicMock()
-        app.id = "app_id"
-        return app
-
-    @pytest.fixture
-    def mock_db_session(self):
-        """Mock database session."""
-        return MagicMock()
-
-    def test_max_records_limit_enforced(self, mock_app, mock_db_session):
+    def test_max_records_limit_enforced(self, sqlite_session: Session):
         """Test that files with too many records are rejected."""
 
         # Create CSV with too many records
@@ -207,19 +223,20 @@ class TestAnnotationImportServiceValidation:
 
         file = FileStorage(stream=io.BytesIO(csv_content.encode()), filename="test.csv", content_type="text/csv")
 
+        _persist_app(sqlite_session)
         with patch("services.annotation_service.current_account_with_tenant") as mock_auth:
-            mock_auth.return_value = (MagicMock(id="user_id"), "tenant_id")
+            mock_auth.return_value = (_account(), "tenant_id")
 
             with patch("services.annotation_service.FeatureService") as mock_features:
                 mock_features.get_features.return_value.billing.enabled = False
 
-                result = AppAnnotationService.batch_import_app_annotations("app_id", file, mock_db_session)
+                result = AppAnnotationService.batch_import_app_annotations("app_id", file, sqlite_session)
 
                 # Should return error about too many records
                 assert "error_msg" in result
                 assert "too many" in result["error_msg"].lower() or "maximum" in result["error_msg"].lower()
 
-    def test_min_records_limit_enforced(self, mock_app, mock_db_session):
+    def test_min_records_limit_enforced(self, sqlite_session: Session):
         """Test that files with too few valid records are rejected."""
 
         # Create CSV with only header (no data rows)
@@ -227,34 +244,36 @@ class TestAnnotationImportServiceValidation:
 
         file = FileStorage(stream=io.BytesIO(csv_content.encode()), filename="test.csv", content_type="text/csv")
 
+        _persist_app(sqlite_session)
         with patch("services.annotation_service.current_account_with_tenant") as mock_auth:
-            mock_auth.return_value = (MagicMock(id="user_id"), "tenant_id")
+            mock_auth.return_value = (_account(), "tenant_id")
 
-            result = AppAnnotationService.batch_import_app_annotations("app_id", file, mock_db_session)
+            result = AppAnnotationService.batch_import_app_annotations("app_id", file, sqlite_session)
 
             # Should return error about insufficient records
             assert "error_msg" in result
             assert "at least" in result["error_msg"].lower() or "minimum" in result["error_msg"].lower()
 
-    def test_invalid_csv_format_handled(self, mock_app, mock_db_session):
+    def test_invalid_csv_format_handled(self, sqlite_session: Session):
         """Test that invalid CSV format is handled gracefully."""
 
         # Any content is fine once we force ParserError
         csv_content = 'invalid,csv,format\nwith,unbalanced,quotes,and"stuff'
         file = FileStorage(stream=io.BytesIO(csv_content.encode()), filename="test.csv", content_type="text/csv")
 
+        _persist_app(sqlite_session)
         with (
             patch("services.annotation_service.current_account_with_tenant") as mock_auth,
             patch("services.annotation_service.pd.read_csv", side_effect=ParserError("malformed CSV")),
         ):
-            mock_auth.return_value = (MagicMock(id="user_id"), "tenant_id")
+            mock_auth.return_value = (_account(), "tenant_id")
 
-            result = AppAnnotationService.batch_import_app_annotations("app_id", file, mock_db_session)
+            result = AppAnnotationService.batch_import_app_annotations("app_id", file, sqlite_session)
 
             assert "error_msg" in result
             assert "malformed" in result["error_msg"].lower()
 
-    def test_valid_import_succeeds(self, mock_app, mock_db_session):
+    def test_valid_import_succeeds(self, sqlite_session: Session):
         """Test that valid import request succeeds."""
 
         # Create valid CSV
@@ -262,15 +281,16 @@ class TestAnnotationImportServiceValidation:
 
         file = FileStorage(stream=io.BytesIO(csv_content.encode()), filename="test.csv", content_type="text/csv")
 
+        _persist_app(sqlite_session)
         with patch("services.annotation_service.current_account_with_tenant") as mock_auth:
-            mock_auth.return_value = (MagicMock(id="user_id"), "tenant_id")
+            mock_auth.return_value = (_account(), "tenant_id")
 
             with patch("services.annotation_service.FeatureService") as mock_features:
                 mock_features.get_features.return_value.billing.enabled = False
 
                 with patch("services.annotation_service.batch_import_annotations_task") as mock_task:
                     with patch("services.annotation_service.redis_client"):
-                        result = AppAnnotationService.batch_import_app_annotations("app_id", file, mock_db_session)
+                        result = AppAnnotationService.batch_import_app_annotations("app_id", file, sqlite_session)
 
                         # Should return success response
                         assert "job_id" in result

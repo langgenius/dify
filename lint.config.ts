@@ -138,7 +138,8 @@ export const lintConfig = {
     'dify-agent/**',
     'docker/**',
     'docs/**',
-    'scripts/**',
+    'scripts/**/*',
+    '!scripts/check-web-production-unused-after-knip-fix.mjs',
     'sdks/php-client/**',
     'sdks/python-client/**',
     '**/.next/**',
@@ -777,7 +778,7 @@ export const lintConfig = {
           'error',
           {
             allowConstantExport: true,
-            allowExportNames: ['viewport'],
+            allowExportNames: ['generateMetadata', 'viewport'],
           },
         ],
       },

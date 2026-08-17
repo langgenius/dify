@@ -1,8 +1,9 @@
-from unittest.mock import MagicMock, patch
+from types import SimpleNamespace
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, scoped_session
 from werkzeug.exceptions import Forbidden, NotFound
 
 import controllers.console.explore.wraps as wraps_module
@@ -20,14 +21,20 @@ from controllers.console.explore.wraps import (
     trial_feature_enable,
     user_allowed_to_access_app,
 )
-from models import AccountTrialAppRecord, App, AppMode, InstalledApp, TrialApp
+from models import Account, AccountTrialAppRecord, App, AppMode, InstalledApp, TrialApp
 
 
 def _bind_database(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
-    session_proxy = MagicMock(wraps=sqlite_session)
-    session_proxy.return_value = sqlite_session
-    monkeypatch.setattr(wraps_module.db, "session", session_proxy)
-    monkeypatch.setattr(model_module.db, "session", session_proxy)
+    session_registry = scoped_session(lambda: sqlite_session)
+    monkeypatch.setattr(wraps_module.db, "session", session_registry)
+    monkeypatch.setattr(model_module.db, "session", session_registry)
+
+
+def _account(*, account_id: str | None = None) -> Account:
+    account = Account(name="Explore user", email="user@example.com")
+    if account_id is not None:
+        account.id = account_id
+    return account
 
 
 def _app() -> App:
@@ -67,7 +74,7 @@ def test_installed_app_required_not_found(
 
     with patch(
         "controllers.console.explore.wraps.current_account_with_tenant",
-        return_value=(MagicMock(), tenant_id),
+        return_value=(_account(), tenant_id),
     ):
         with pytest.raises(NotFound):
             view(str(uuid4()))
@@ -91,7 +98,7 @@ def test_installed_app_required_app_deleted(
 
     with patch(
         "controllers.console.explore.wraps.current_account_with_tenant",
-        return_value=(MagicMock(), tenant_id),
+        return_value=(_account(), tenant_id),
     ):
         with pytest.raises(NotFound):
             view(installed_app_id)
@@ -116,7 +123,7 @@ def test_installed_app_required_success(
 
     with patch(
         "controllers.console.explore.wraps.current_account_with_tenant",
-        return_value=(MagicMock(), app.tenant_id),
+        return_value=(_account(), app.tenant_id),
     ):
         result = view(installed_app.id)
 
@@ -126,19 +133,18 @@ def test_installed_app_required_success(
 
 
 def test_user_allowed_to_access_app_denied():
-    installed_app = MagicMock(app_id="app-1")
+    installed_app = _installed_app(app_id="app-1", tenant_id="tenant-1")
 
     @user_allowed_to_access_app
     def view(installed_app):
         return "ok"
 
-    feature = MagicMock()
-    feature.webapp_auth.enabled = True
+    feature = SimpleNamespace(webapp_auth=SimpleNamespace(enabled=True))
 
     with (
         patch(
             "controllers.console.explore.wraps.current_account_with_tenant",
-            return_value=(MagicMock(id="user-1"), None),
+            return_value=(_account(account_id="user-1"), None),
         ),
         patch(
             "controllers.console.explore.wraps.FeatureService.get_system_features",
@@ -154,19 +160,18 @@ def test_user_allowed_to_access_app_denied():
 
 
 def test_user_allowed_to_access_app_success():
-    installed_app = MagicMock(app_id="app-1")
+    installed_app = _installed_app(app_id="app-1", tenant_id="tenant-1")
 
     @user_allowed_to_access_app
     def view(installed_app):
         return "ok"
 
-    feature = MagicMock()
-    feature.webapp_auth.enabled = True
+    feature = SimpleNamespace(webapp_auth=SimpleNamespace(enabled=True))
 
     with (
         patch(
             "controllers.console.explore.wraps.current_account_with_tenant",
-            return_value=(MagicMock(id="user-1"), None),
+            return_value=(_account(account_id="user-1"), None),
         ),
         patch(
             "controllers.console.explore.wraps.FeatureService.get_system_features",
@@ -193,7 +198,7 @@ def test_trial_app_required_not_allowed(
 
     with patch(
         "controllers.console.explore.wraps.current_account_with_tenant",
-        return_value=(MagicMock(id=str(uuid4())), None),
+        return_value=(_account(account_id=str(uuid4())), None),
     ):
         with pytest.raises(TrialAppNotAllowed):
             view(str(uuid4()))
@@ -218,7 +223,7 @@ def test_trial_app_required_limit_exceeded(
 
     with patch(
         "controllers.console.explore.wraps.current_account_with_tenant",
-        return_value=(MagicMock(id=account_id), None),
+        return_value=(_account(account_id=account_id), None),
     ):
         with pytest.raises(TrialAppLimitExceeded):
             view(app.id)
@@ -243,7 +248,7 @@ def test_trial_app_required_success(
 
     with patch(
         "controllers.console.explore.wraps.current_account_with_tenant",
-        return_value=(MagicMock(id=account_id), None),
+        return_value=(_account(account_id=account_id), None),
     ):
         result = view(app.id)
 

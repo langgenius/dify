@@ -1154,6 +1154,10 @@ class OAuthProviderApp(TypeBase):
         server_default=sa.text("'read:name read:email read:avatar read:interface_language read:timezone'"),
         default="read:name read:email read:avatar read:interface_language read:timezone",
     )
+    # First-party apps (e.g. the Dify Marketplace) skip the consent screen.
+    # Default false: self-hosted / EE / newly registered apps keep the
+    # consent-screen behavior.
+    auto_authorize: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false(), default=False)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
@@ -1182,6 +1186,12 @@ class Conversation(Base):
             "app_id",
             sa.text("updated_at DESC"),
             postgresql_where=sa.text("is_deleted IS false"),
+        ),
+        sa.Index(
+            "conversation_is_deleted_updated_at_idx",
+            "is_deleted",
+            "updated_at",
+            postgresql_where=sa.text("is_deleted IS true"),
         ),
     )
 
@@ -2306,9 +2316,15 @@ class Site(Base):
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     icon_type: Mapped[IconType | None] = mapped_column(EnumText(IconType, length=255), nullable=True)
+<<<<<<< HEAD
     icon: Mapped[str] = mapped_column(String(255))
     icon_background: Mapped[str] = mapped_column(String(255))
     description: Mapped[str] = mapped_column(LongText)
+=======
+    icon: Mapped[str | None] = mapped_column(String(255))
+    icon_background = mapped_column(String(255))
+    description = mapped_column(LongText)
+>>>>>>> origin/main
     default_language: Mapped[str] = mapped_column(String(255), nullable=False)
     chat_color_theme: Mapped[str] = mapped_column(String(255))
     chat_color_theme_inverted: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))

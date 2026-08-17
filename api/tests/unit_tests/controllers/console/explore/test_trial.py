@@ -30,6 +30,7 @@ from controllers.console.explore.error import (
 )
 from controllers.console.explore.trial import ChatRequest, CompletionRequest, TextToSpeechRequest, WorkflowRunRequest
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
+from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
     ProviderTokenNotInitError,
@@ -107,23 +108,6 @@ def trial_app_workflow() -> MagicMock:
     app.id = "a-workflow"
     app.mode = AppMode.WORKFLOW
     return app
-
-
-@pytest.fixture
-def valid_parameters() -> dict[str, object]:
-    return {
-        "user_input_form": [],
-        "system_parameters": {},
-        "suggested_questions": {},
-        "suggested_questions_after_answer": {},
-        "speech_to_text": {},
-        "text_to_speech": {},
-        "retriever_resource": {},
-        "annotation_reply": {},
-        "more_like_this": {},
-        "sensitive_word_avoidance": {},
-        "file_upload": {},
-    }
 
 
 def test_trial_workflow_uses_trial_scoped_simple_account_model() -> None:
@@ -888,63 +872,33 @@ class TestTrialAppParameterApi:
         with pytest.raises(AppUnavailableError):
             method(api, unbound_session, None)
 
-    def test_success_non_workflow(self, valid_parameters: dict[str, object], unbound_session: Session) -> None:
+    def test_success(self, unbound_session: Session) -> None:
         api = module.TrialAppParameterApi()
         method = unwrap(api.get)
+        parameters = get_parameters_from_feature_dict(features_dict={}, user_input_form=[])
+        expected = module.ParametersResponse.model_validate(parameters).model_dump(mode="json")
+        app_definitions = MagicMock()
+        app_definitions.get_parameters.return_value = parameters
+        services = SimpleNamespace(app_definitions=app_definitions)
 
-        app_model_config = MagicMock(app_id="app-1")
-        app_model_config.to_dict.return_value = {"user_input_form": []}
-        app_model = SimpleNamespace(
-            mode=AppMode.CHAT,
-            app_model_config_with_session=MagicMock(return_value=app_model_config),
-        )
-        annotation_reply = {"enabled": False}
+        with patch.object(module, "application_services", return_value=services):
+            result = method(api, unbound_session, SimpleNamespace(id="app-1"))
 
-        with (
-            patch.object(
-                module, "load_annotation_reply_config", return_value=annotation_reply
-            ) as load_annotation_reply,
-            patch.object(
-                module,
-                "get_parameters_from_feature_dict",
-                return_value=valid_parameters,
-            ),
-            patch.object(
-                module.ParametersResponse,
-                "model_validate",
-                return_value=MagicMock(model_dump=lambda mode=None: {"ok": True}),
-            ),
-        ):
-            result = method(api, unbound_session, app_model)
+        assert result == expected
+        app_definitions.get_parameters.assert_called_once_with("app-1")
 
-        assert result == {"ok": True}
-        app_model.app_model_config_with_session.assert_called_once_with(session=unbound_session)
-        load_annotation_reply.assert_called_once_with(unbound_session, "app-1")
-        app_model_config.to_dict.assert_called_once_with(annotation_reply=annotation_reply)
-
-    def test_success_workflow(self, valid_parameters: dict[str, object], unbound_session: Session) -> None:
+    def test_unavailable_parameters(self, unbound_session: Session) -> None:
         api = module.TrialAppParameterApi()
         method = unwrap(api.get)
+        app_definitions = MagicMock()
+        app_definitions.get_parameters.side_effect = module.AppDefinitionUnavailableError
+        services = SimpleNamespace(app_definitions=app_definitions)
 
-        workflow = MagicMock(features_dict={})
-        workflow.user_input_form.return_value = []
-        app_model = SimpleNamespace(
-            mode=AppMode.WORKFLOW,
-            workflow_with_session=MagicMock(return_value=workflow),
-        )
         with (
-            patch.object(module, "get_parameters_from_feature_dict", return_value=valid_parameters),
-            patch.object(
-                module.ParametersResponse,
-                "model_validate",
-                return_value=MagicMock(model_dump=lambda mode=None: {"ok": True}),
-            ),
+            patch.object(module, "application_services", return_value=services),
+            pytest.raises(AppUnavailableError),
         ):
-            result = method(api, unbound_session, app_model)
-
-        assert result == {"ok": True}
-        app_model.workflow_with_session.assert_called_once_with(session=unbound_session)
-        workflow.user_input_form.assert_called_once_with(to_old_structure=True)
+            method(api, unbound_session, SimpleNamespace(id="app-1"))
 
 
 class TestTrialChatAudioApi:

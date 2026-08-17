@@ -40,6 +40,21 @@ from models.agent_config_entities import (
 )
 
 
+@pytest.fixture(autouse=True)
+def model_context_window_calls(monkeypatch: pytest.MonkeyPatch) -> list[tuple[object, str, str]]:
+    calls: list[tuple[object, str, str]] = []
+
+    def resolve(*, run_context: object, provider_name: str, model_name: str) -> int:
+        calls.append((run_context, provider_name, model_name))
+        return 32_768
+
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.runtime_request_builder.resolve_model_context_window",
+        resolve,
+    )
+    return calls
+
+
 def test_agent_soul_round_trip_preserves_existing_app_feature_fields():
     config = AgentSoulConfig.model_validate(
         {
@@ -147,7 +162,7 @@ def _context() -> WorkflowAgentRuntimeBuildContext:
             prompt={"system_prompt": "You are careful."},
             model=AgentSoulModelConfig(
                 plugin_id="langgenius/openai",
-                model_provider="openai",
+                model_provider="langgenius/openai/openai",
                 model="gpt-test",
                 model_settings={"temperature": 0},
             ),
@@ -220,8 +235,11 @@ def _uploaded_workflow_files_prompt_payload(result) -> object:
     raise AssertionError("missing prompt payload for sys.files")
 
 
-def test_builds_create_run_request_from_agent_soul_and_node_job():
-    result = WorkflowAgentRuntimeRequestBuilder().build(_context())
+def test_builds_create_run_request_from_agent_soul_and_node_job(
+    model_context_window_calls: list[tuple[object, str, str]],
+):
+    context = _context()
+    result = WorkflowAgentRuntimeRequestBuilder().build(context)
 
     dumped = result.request.model_dump(mode="json")
     layers = {layer["name"]: layer for layer in dumped["composition"]["layers"]}
@@ -238,6 +256,9 @@ def test_builds_create_run_request_from_agent_soul_and_node_job():
     assert "Previous node outputs:" not in dumped["composition"]["layers"][2]["config"]["user"]
     assert dumped["composition"]["layers"][-1]["config"]["json_schema"]["properties"]["summary"]["type"] == "string"
     assert DIFY_AGENT_HISTORY_LAYER_ID in layers
+    assert layers[DIFY_AGENT_MODEL_LAYER_ID]["config"]["model_provider"] == "openai"
+    assert layers[DIFY_AGENT_MODEL_LAYER_ID]["config"]["context_window_tokens"] == 32_768
+    assert model_context_window_calls == [(context.dify_context, "langgenius/openai/openai", "gpt-test")]
     redacted_layers = {layer["name"]: layer for layer in result.redacted_request["composition"]["layers"]}
     assert "credentials" not in redacted_layers[DIFY_AGENT_MODEL_LAYER_ID]["config"]
 

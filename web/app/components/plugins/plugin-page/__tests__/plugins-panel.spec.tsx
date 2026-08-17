@@ -1,7 +1,7 @@
 import type { PluginDetail } from '../../types'
 import type { Collection } from '@/app/components/tools/types'
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import {
   getStepByStepTourTargetSelector,
   STEP_BY_STEP_TOUR_TARGETS,
@@ -17,6 +17,9 @@ const mockState = vi.hoisted(() => ({
   },
   currentPluginID: undefined as string | undefined,
 }))
+const mockSystemFeatures = vi.hoisted(() => ({
+  enableMarketplace: true,
+}))
 
 const mockSetFilters = vi.fn()
 const mockSetCurrentPluginID = vi.fn()
@@ -31,7 +34,7 @@ const mockDisconnect = vi.fn()
 
 vi.mock('@tanstack/react-query', () => ({
   queryOptions: (options: unknown) => options,
-  useSuspenseQuery: () => ({ data: true }),
+  useSuspenseQuery: () => ({ data: mockSystemFeatures.enableMarketplace }),
 }))
 vi.mock('@/i18n-config', () => ({
   renderI18nObject: (value: Record<string, string>, locale: string) => value[locale] || '',
@@ -192,6 +195,41 @@ vi.mock('@/app/components/tools/marketplace', () => ({
   ),
 }))
 
+vi.mock('../category-marketplace-panel', () => ({
+  default: ({
+    category,
+    searchText,
+    tags,
+  }: {
+    category: PluginCategoryEnum
+    searchText: string
+    tags: string[]
+  }) => (
+    <div
+      data-category={category}
+      data-search-text={searchText}
+      data-tags={tags.join(',')}
+      data-testid="category-marketplace"
+    />
+  ),
+}))
+
+vi.mock('../category-empty-state', () => ({
+  default: ({
+    category,
+    showMarketplaceLink,
+  }: {
+    category: PluginCategoryEnum
+    showMarketplaceLink: boolean
+  }) => (
+    <div
+      data-category={category}
+      data-show-marketplace-link={showMarketplaceLink ? 'true' : 'false'}
+      data-testid="category-empty-state"
+    />
+  ),
+}))
+
 vi.mock('@/app/components/tools/provider/detail', () => ({
   default: ({ collection, onHide }: { collection: Collection; onHide: () => void }) => (
     <div data-testid="builtin-tool-detail">
@@ -270,6 +308,7 @@ const createBuiltinTool = (id: string, label: string, labels: string[] = []): Co
 
 describe('PluginsPanel', () => {
   beforeEach(() => {
+    mockSystemFeatures.enableMarketplace = true
     vi.clearAllMocks()
     vi.useFakeTimers()
     intersectionObserverCallbacks.length = 0
@@ -543,6 +582,49 @@ describe('PluginsPanel', () => {
     ).toBeTruthy()
   })
 
+  it.each([PluginCategoryEnum.trigger, PluginCategoryEnum.agent, PluginCategoryEnum.extension])(
+    'keeps the scoped %s marketplace below installed plugins',
+    (category) => {
+      mockState.filters.searchQuery = 'calendar'
+      mockPluginListWithLatestVersion.mockReturnValue([
+        createPlugin(`${category}-calendar`, `${category} Calendar`, [], category),
+      ])
+
+      render(<PluginsPanel contentInset="compact" fixedCategory={category} />)
+
+      const marketplace = screen.getByTestId('category-marketplace')
+      expect(marketplace).toHaveAttribute('data-category', category)
+      expect(marketplace).toHaveAttribute('data-search-text', 'calendar')
+      expect(
+        screen.getByTestId('plugin-list').compareDocumentPosition(marketplace) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+    },
+  )
+
+  it('passes tag filters to the trigger marketplace only', () => {
+    mockState.filters.tags = ['search']
+
+    render(<PluginsPanel contentInset="compact" fixedCategory={PluginCategoryEnum.trigger} />)
+
+    expect(screen.getByTestId('category-marketplace')).toHaveAttribute('data-tags', 'search')
+  })
+
+  it.each([PluginCategoryEnum.trigger, PluginCategoryEnum.agent, PluginCategoryEnum.extension])(
+    'hides the scoped %s marketplace when marketplace is disabled',
+    (category) => {
+      mockSystemFeatures.enableMarketplace = false
+
+      render(<PluginsPanel contentInset="compact" fixedCategory={category} />)
+
+      expect(screen.queryByTestId('category-marketplace')).not.toBeInTheDocument()
+      expect(screen.getByTestId('category-empty-state')).toHaveAttribute(
+        'data-show-marketplace-link',
+        'false',
+      )
+    },
+  )
+
   it('uses the Figma trigger toolbar frame and renders the toolbar action', () => {
     render(
       <PluginsPanel
@@ -598,13 +680,13 @@ describe('PluginsPanel', () => {
     )
     expect(screen.getByTestId('filter-management')).toHaveAttribute('data-hide-tag-filter', 'true')
     expect(screen.getByText('update setting')).toBeInTheDocument()
-    expect(screen.getByTestId('empty-state')).toHaveAttribute(
-      'data-variant',
-      'integrationsAgentStrategy',
+    expect(screen.getByTestId('category-empty-state')).toHaveAttribute(
+      'data-category',
+      PluginCategoryEnum.agent,
     )
   })
 
-  it('passes install permission to the integration category empty state', () => {
+  it('keeps the integration category empty state browsable without install permission', () => {
     render(
       <PluginsPanel
         canInstall={false}
@@ -613,7 +695,11 @@ describe('PluginsPanel', () => {
       />,
     )
 
-    expect(screen.getByTestId('empty-state')).toHaveAttribute('data-can-install', 'false')
+    expect(screen.getByTestId('category-empty-state')).toHaveAttribute(
+      'data-show-marketplace-link',
+      'true',
+    )
+    expect(screen.getByTestId('category-marketplace')).toBeInTheDocument()
   })
 
   it('uses the Figma extension toolbar frame and renders the extension empty state', () => {
@@ -642,13 +728,13 @@ describe('PluginsPanel', () => {
     )
     expect(screen.getByTestId('filter-management')).toHaveAttribute('data-hide-tag-filter', 'true')
     expect(screen.getByText('update setting')).toBeInTheDocument()
-    expect(screen.getByTestId('empty-state')).toHaveAttribute(
-      'data-variant',
-      'integrationsExtension',
+    expect(screen.getByTestId('category-empty-state')).toHaveAttribute(
+      'data-category',
+      PluginCategoryEnum.extension,
     )
   })
 
-  it('passes the marketplace action to the empty state', () => {
+  it('uses the embedded marketplace link instead of the external marketplace action', () => {
     const onSwitchToMarketplace = vi.fn()
 
     render(
@@ -659,7 +745,11 @@ describe('PluginsPanel', () => {
       />,
     )
 
-    expect(screen.getByTestId('empty-state')).toHaveAttribute('data-has-marketplace-action', 'true')
+    expect(screen.getByTestId('category-empty-state')).toHaveAttribute(
+      'data-show-marketplace-link',
+      'true',
+    )
+    expect(onSwitchToMarketplace).not.toHaveBeenCalled()
   })
 
   it('ignores hidden tag filters within the fixed extension integrations category', () => {

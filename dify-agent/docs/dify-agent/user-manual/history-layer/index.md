@@ -34,6 +34,24 @@ history_layer = RunLayerSpec(
 Include this layer in the same composition as your prompt, plugin, and LLM
 layers.
 
+## Compaction and persistence
+
+When the LLM layer supplies `context_window_tokens`, Dify Agent sets the Harness
+target to `min(floor(window * 0.8), window - max_tokens)` for a positive
+`model_settings.max_tokens`; otherwise it uses `floor(window * 0.8)`. A target
+that is not positive rejects the run before model invocation.
+
+Harness estimates and, when needed, rewrites history immediately before model
+requests. It clears older tool results first, retaining the latest three
+tool-call/result pairs and their inputs. If the history is still over target, the
+same current model incrementally summarizes older messages while retaining the
+latest twenty messages and the first user message.
+
+With a history layer, a successful run replaces its stored messages with the
+rewritten complete history in the returned session snapshot. Without this layer,
+compaction affects only the current run. Failed runs do not write a resumable
+success snapshot, so their history rewrites do not persist across runs.
+
 ## Resume a conversation
 
 Successful runs return a terminal event with both final output and a resumable
@@ -65,12 +83,13 @@ terminal snapshot resumable. Keep that default for normal memory flows.
 
 Dify Agent handles memory conservatively:
 
-1. Current system prompts are rendered into temporary `message_history` before
-   stored history.
-2. Stored history is then sent to the model.
-3. Current user prompts are sent after the stored history.
-4. Only newly produced pydantic-ai messages are appended after a successful run.
-5. Current system prompts are not persisted into the history layer.
+1. Current system prompts are passed as run-level pydantic-ai instructions.
+2. Stored history is sent to the model before the current user prompt.
+3. When the LLM layer includes `context_window_tokens`, Harness may rewrite
+   over-target history immediately before a model request as described above.
+4. After a successful run, the complete possibly compacted history is written
+   back to the layer.
+5. Run-level system instructions are removed before history is persisted.
 6. Failed runs emit `run_failed` and do not return a success snapshot to resume.
 
 ## Persist snapshots outside the client process
