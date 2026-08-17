@@ -22,6 +22,7 @@ depends_on = None
 
 
 def _rewrite_json_rows(table_name: str, column_name: str, transform) -> None:
+    # Offline SQL generation cannot run this read-modify-write cleanup.
     if op.get_context().as_sql:
         return
 
