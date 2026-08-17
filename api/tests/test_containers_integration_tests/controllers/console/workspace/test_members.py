@@ -122,16 +122,19 @@ class TestMemberCancelInviteApiWithContainers:
         factory = WorkspaceMembersIntegrationFactory
         tenant, current_user = factory.create_owner_workspace(db_session_with_containers)
         member = factory.create_account(db_session_with_containers, email_prefix="member")
+        tenant_id = str(tenant.id)
+        current_user_id = str(current_user.id)
+        member_id = str(member.id)
 
         with (
             flask_app_with_containers.test_request_context("/"),
             patch.object(members_module.TenantService, "remove_member_from_tenant") as mock_remove_member,
         ):
-            result, status = method(api, current_user, member.id)
+            result, status = method(api, current_user, member_id)
 
         assert status == 200
         assert result["result"] == "success"
-        mock_remove_member.assert_called_once_with(str(tenant.id), str(member.id), str(current_user.id))
+        mock_remove_member.assert_called_once_with(tenant_id, member_id, current_user_id)
 
     def test_cancel_not_found(self, flask_app_with_containers: Flask, db_session_with_containers: Session) -> None:
         api = MemberCancelInviteApi()

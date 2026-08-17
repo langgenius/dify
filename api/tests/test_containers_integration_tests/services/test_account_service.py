@@ -2447,6 +2447,7 @@ class TestRegisterService:
             mock_feature_service.is_workspace_creation_allowed.return_value = True
             mock_feature_service.get_license.return_value.workspaces.is_available.return_value = True
             mock_feature_service.get_license.return_value.seats.is_available.return_value = True
+            mock_feature_service.get_license.return_value.seats.enabled = False
             mock_billing_service.is_email_in_freeze.return_value = False
             mock_passport_service.return_value.issue.return_value = "mock_jwt_token"
 
