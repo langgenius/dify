@@ -124,6 +124,22 @@ the same streaming ToolFile upload but skips the download-request step and
 prints only `transfer_method` plus the canonical `reference`. The regular
 `file upload` command keeps the link-producing behavior shown above.
 
+If the upload succeeds but creating the public URL fails, the command still
+prints the canonical mapping and exits with an error containing an exact
+`dify-agent file public-url <reference>` retry command. Run that command from a
+new shell tool call to create the public URL without uploading the file again.
+On success, `file public-url` prints the complete JSON mapping containing
+`transfer_method`, `reference`, and `public_download_url`.
+
+The Agent Stub authorization injected into a shell job is valid for five
+minutes. It does not refresh inside an already-running process. If a command
+reports that the authorization expired, start a new shell tool call and retry
+the command (or its reported `file public-url` recovery command).
+
+The injected JWE is masked as `***` in model-facing `shell_run`, `shell_wait`,
+and `shell_input` observations. Raw shellctl output and files referenced by
+`output_path` remain unchanged.
+
 ## Request graph
 
 A shell-enabled run contains Execution Context, Runtime, and Shell layers:
