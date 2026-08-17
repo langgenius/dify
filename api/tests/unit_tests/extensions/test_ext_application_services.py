@@ -11,6 +11,7 @@ from extensions import ext_application_services
 from extensions.ext_redis import RedisClientWrapper
 from models.model import DifySetup
 from services.init_validation_service import InvalidInitializationPasswordError
+from services.tag_application_service import TagApplicationService
 
 
 @pytest.mark.parametrize(
@@ -134,3 +135,16 @@ def test_build_application_services_does_not_construct_schema_manager(
         )
 
     schema_manager.assert_not_called()
+
+
+def test_build_application_services_wires_tag_boundary(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert isinstance(services.tags, TagApplicationService)

@@ -15,6 +15,7 @@ from extensions.ext_redis import RedisClientWrapper, redis_client
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.installation_state_repository import InstallationStateRepository
+from repositories.tag_repository import TagRepository
 from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
 from repositories.workspace_query_repository import WorkspaceQueryRepository
 from services.app_definition_query_service import AppDefinitionQueryService
@@ -26,6 +27,7 @@ from services.init_validation_service import InitValidationService
 from services.schema_definition_service import SchemaDefinitionService
 from services.setup_adapters import RedisSetupLock, RegisterServiceAccountProvisioner
 from services.setup_service import SetupService
+from services.tag_application_service import TagApplicationService
 from services.workspace_member_query_service import WorkspaceMemberQueryService
 from services.workspace_member_role_resolver import DeploymentWorkspaceMemberRoleResolver
 from services.workspace_plan_gateway import DeploymentWorkspacePlanGateway
@@ -44,6 +46,7 @@ class ApplicationServices:
     init_validation: InitValidationService
     workspace_queries: WorkspaceQueryService
     workspace_member_queries: WorkspaceMemberQueryService
+    tags: TagApplicationService
 
 
 def build_application_services(
@@ -93,6 +96,9 @@ def build_application_services(
                 session_factory=database_client,
             ),
             roles=DeploymentWorkspaceMemberRoleResolver(),
+        ),
+        tags=TagApplicationService(
+            tags=TagRepository(session_factory=database_client),
         ),
     )
 
