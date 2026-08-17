@@ -1,6 +1,6 @@
 import type { TemplateCategory } from './categories'
 import { cn } from '@langgenius/dify-ui/cn'
-import Link from '@/next/link'
+import MarketplaceFilterTrackLink from '../filter-track-link'
 import pluginTypeStyles from '../plugin-type-switch.module.css'
 import { TEMPLATE_CATEGORIES } from './categories'
 
@@ -32,11 +32,15 @@ export default function TemplateCategoryNavigation({
         const href = `/templates/${category}${queryString ? `?${queryString}` : ''}`
 
         return (
-          <Link
+          <MarketplaceFilterTrackLink
             key={category}
             href={href}
             scroll={false}
             aria-current={category === activeCategory ? 'page' : undefined}
+            filterType="category"
+            filterValue={category}
+            selectedValues={[category]}
+            trackFilter={category !== activeCategory}
             className={cn(
               'flex h-8 min-w-12 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-transparent px-2.5 system-md-medium whitespace-nowrap text-text-tertiary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
               pluginTypeStyles.homeItem,
@@ -44,7 +48,7 @@ export default function TemplateCategoryNavigation({
             )}
           >
             {labels[category]}
-          </Link>
+          </MarketplaceFilterTrackLink>
         )
       })}
     </nav>

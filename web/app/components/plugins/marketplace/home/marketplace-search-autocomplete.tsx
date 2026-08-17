@@ -21,6 +21,7 @@ import { useTranslation } from '#i18n'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 import { renderI18nObject } from '@/i18n-config/index'
 import { marketplaceQuery } from '@/service/client'
+import { markMarketplaceSiteSearch } from '@/utils/marketplace-site-track'
 import { getPluginIconInMarketplace } from '../utils'
 
 type MarketplaceSearchScope = 'all' | 'plugins' | 'templates'
@@ -294,7 +295,13 @@ export function MarketplaceSearchForm({
   const [value, setValue] = useState(query)
 
   return (
-    <form action={action} className={cn('relative shrink-0', className)}>
+    <form
+      action={action}
+      className={cn('relative shrink-0', className)}
+      onSubmit={() => {
+        markMarketplaceSiteSearch(value)
+      }}
+    >
       <MarketplaceSearchAutocomplete
         category={category}
         inputName="q"

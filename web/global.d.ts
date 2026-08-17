@@ -20,5 +20,21 @@ declare global {
   interface Window {
     gtag?: Gtag
     dataLayer?: unknown[]
+    __marketplaceTracking__?: {
+      track: (eventName: string, properties?: Record<string, unknown>) => void
+      rememberReferrer: (
+        itemId: string,
+        section: 'banner' | 'search' | 'list' | 'direct',
+      ) => void
+      markSearch: (query: string) => void
+      flushSearch: (resultCount: number) => void
+      markFilter: (filter: {
+        filter_type: 'type_tab' | 'category' | 'language'
+        selection_mode: 'single' | 'multi'
+        filter_value: string
+        selected_values: string[]
+      }) => void
+      flushFilter: (resultCount: number) => void
+    }
   }
 }

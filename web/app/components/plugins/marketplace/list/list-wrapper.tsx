@@ -1,8 +1,15 @@
 'use client'
 import type { ActivePluginType } from '../constants'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useEffect, useRef } from 'react'
 import { useTranslation } from '#i18n'
 import Loading from '@/app/components/base/loading'
+import {
+  flushMarketplaceSiteFilter,
+  flushMarketplaceSiteSearch,
+  markMarketplaceSiteSearch,
+} from '@/utils/marketplace-site-track'
+import { useSearchPluginText } from '../atoms'
 import SortDropdown from '../sort-dropdown'
 import { useMarketplaceData } from '../state'
 import List from './index'
@@ -32,6 +39,30 @@ const ListWrapper = ({
     isFetchingNextPage,
     page,
   } = useMarketplaceData(activePluginType)
+  const [searchPluginText] = useSearchPluginText()
+  const previousSearchRef = useRef(searchPluginText)
+  const isFirstSearchRender = useRef(true)
+
+  useEffect(() => {
+    if (isFirstSearchRender.current) {
+      isFirstSearchRender.current = false
+      previousSearchRef.current = searchPluginText
+      return
+    }
+
+    if (searchPluginText && searchPluginText !== previousSearchRef.current)
+      markMarketplaceSiteSearch(searchPluginText)
+
+    previousSearchRef.current = searchPluginText
+  }, [searchPluginText])
+
+  useEffect(() => {
+    if (isLoading || pluginsTotal === undefined)
+      return
+
+    flushMarketplaceSiteSearch(pluginsTotal)
+    flushMarketplaceSiteFilter(pluginsTotal)
+  }, [isLoading, pluginsTotal])
 
   return (
     <div
@@ -62,6 +93,7 @@ const ListWrapper = ({
             deferOffscreenCollections={deferOffscreenCollections}
             showInstallButton={showInstallButton}
             linkToMarketplaceDetail={linkToMarketplaceDetail}
+            cardSection={searchPluginText ? 'search' : 'list'}
           />
         )}
       </div>
