@@ -4,12 +4,12 @@ Unit tests for Service API wraps (authentication decorators)
 
 import uuid
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from flask import Flask
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, scoped_session
 from werkzeug.exceptions import Forbidden, NotFound, ServiceUnavailable, Unauthorized
 
 from controllers.service_api.wraps import (
@@ -36,11 +36,9 @@ def _configure_current_app_mock(mock_current_app):
     mock_current_app._get_current_object = Mock(return_value=Mock())
 
 
-def _session_proxy(session: Session) -> MagicMock:
-    """Emulate Flask-SQLAlchemy's callable scoped-session proxy around a test session."""
-    proxy = MagicMock(wraps=session)
-    proxy.return_value = session
-    return proxy
+def _session_proxy(session: Session) -> scoped_session[Session]:
+    """Expose the real SQLite session through Flask-SQLAlchemy's callable shape."""
+    return scoped_session(lambda: session)
 
 
 def _api_token(*, tenant_id: str, app_id: str | None = None, token_type: ApiTokenType) -> ApiToken:
