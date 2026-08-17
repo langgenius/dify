@@ -1939,7 +1939,7 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
 
   return (
     <main className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-components-panel-bg">
-      <div className="mx-auto w-full max-w-332 px-5 pt-3 pb-6 sm:px-8">
+      <div className="mx-auto w-full max-w-332 px-6 pt-3 pb-6">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="title-3xl-bold text-text-primary">
             {t(($) => $['newKnowledge.overviewTitle'])}

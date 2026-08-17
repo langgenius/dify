@@ -2587,7 +2587,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       <section
         ref={documentsSectionRef}
         className={cn(
-          'relative flex min-h-full w-full flex-col gap-4 px-4 pt-3 sm:px-8',
+          'relative flex min-h-full w-full flex-col gap-4 px-6 pt-3',
           bulkActionsVisible ? 'pb-[calc(7rem+env(safe-area-inset-bottom,0px))]' : 'pb-6',
         )}
         onDragEnter={(event) => {

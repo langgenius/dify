@@ -195,7 +195,6 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
   const badCases = (badCaseQuery.data?.pages.flatMap((page) => page.data) ?? []).filter(
     (item) => item.status !== 'dismissed',
   )
-  const unresolvedBadCases = badCases.filter((item) => item.status !== 'fixed').length
   const allSelected = goldenQuestions.length > 0 && selected.size === goldenQuestions.length
   const partiallySelected = selected.size > 0 && !allSelected
   const setTab = (tab: 'bad' | 'golden') => {
@@ -437,7 +436,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
     })
 
   return (
-    <main className="relative min-h-full min-w-0 flex-1 px-8 pt-3 pb-20">
+    <main className="relative min-h-full min-w-0 flex-1 px-6 pt-3 pb-20">
       <header>
         <h1 className="system-xl-semibold text-text-primary">
           {t(($) => $['newKnowledge.qualityPage.title'])}
@@ -462,9 +461,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             )}
             onClick={() => setTab('golden')}
           >
-            {t(($) => $['newKnowledge.qualityPage.goldenTab'], {
-              count: goldenQuestions.length,
-            })}
+            {t(($) => $['newKnowledge.qualityPage.goldenTab'])}
           </button>
           <button
             type="button"
@@ -476,9 +473,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             )}
             onClick={() => setTab('bad')}
           >
-            {t(($) => $['newKnowledge.qualityPage.badCasesTab'], {
-              count: unresolvedBadCases,
-            })}
+            {t(($) => $['newKnowledge.qualityPage.badCasesTab'])}
           </button>
         </div>
         {activeTab === 'golden' && goldenQuestions.length > 0 && (

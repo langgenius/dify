@@ -1834,7 +1834,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
   }
 
   return (
-    <main className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-components-panel-bg px-5 pt-3 pb-5">
+    <main className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-components-panel-bg px-6 pt-3 pb-5">
       <header className="shrink-0">
         <h1 className="title-xl-semi-bold leading-6 text-text-primary">
           {t(($) => $['newKnowledge.retrievalTest.title'])}
