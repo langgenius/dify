@@ -118,6 +118,14 @@ func newFileCommand() *cobra.Command {
 		false,
 		"Skip creating a public download link after upload.",
 	)
+	publicURL := &cobra.Command{
+		Use:   "public-url REFERENCE",
+		Short: "Create a browser-visible download URL for an existing ToolFile reference.",
+		Args:  cobra.ExactArgs(1),
+		RunE: withEnv(func(env *agentcli.Environment, args []string, _ *cobra.Command) error {
+			return agentcli.RunFilePublicURL(env, args[0])
+		}),
+	}
 
 	var downloadTo string
 	download := &cobra.Command{
@@ -130,7 +138,7 @@ func newFileCommand() *cobra.Command {
 	}
 	download.Flags().StringVar(&downloadTo, "to", "", "Local directory for the downloaded file.")
 
-	cmd.AddCommand(upload, download)
+	cmd.AddCommand(upload, download, publicURL)
 	return cmd
 }
 
