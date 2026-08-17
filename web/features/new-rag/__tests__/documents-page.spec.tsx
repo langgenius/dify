@@ -993,12 +993,11 @@ describe('DocumentsPage', () => {
     expect(rowActions).toBeEnabled()
     await user.click(rowActions)
     const rowMenuItems = await screen.findAllByRole('menuitem')
-    expect(rowMenuItems).toHaveLength(5)
+    expect(rowMenuItems).toHaveLength(4)
     expect(rowMenuItems.map((item) => item.textContent)).toEqual([
       'common.operation.rename',
       'dataset.newKnowledge.retryTask',
       'dataset.newKnowledge.downloadDocuments',
-      'dataset.newKnowledge.disableSource',
       'dataset.newKnowledge.removeSource',
     ])
     expect(rowMenuItems[2]).not.toHaveAttribute('aria-disabled', 'true')
@@ -1402,6 +1401,44 @@ describe('DocumentsPage', () => {
     )
   })
 
+  it.each([
+    ['queued', 'queued'],
+    ['processing', 'running'],
+  ] as const)(
+    'locks re-index, download, and availability actions while a document is %s',
+    async (_status, taskState) => {
+      const user = userEvent.setup()
+      documentsQuery.data = {
+        pages: [{ items: [document({ id: 'one', title: 'One.pdf' })] }],
+      }
+      tasksQuery.data = {
+        pages: [{ items: [task({ documentId: 'one', state: taskState })] }],
+      }
+
+      render(<DocumentsPage knowledgeSpaceId="space-1" />)
+      await user.click(
+        screen.getByRole('button', {
+          name: /dataset\.newKnowledge\.documentActions/,
+        }),
+      )
+
+      expect(
+        await screen.findByRole('menuitem', {
+          name: 'dataset.newKnowledge.reindexDocument',
+        }),
+      ).toHaveAttribute('aria-disabled', 'true')
+      expect(
+        screen.getByRole('menuitem', { name: 'dataset.newKnowledge.downloadDocuments' }),
+      ).toHaveAttribute('aria-disabled', 'true')
+      expect(
+        screen.getByRole('menuitem', { name: 'dataset.newKnowledge.disableSource' }),
+      ).toHaveAttribute('aria-disabled', 'true')
+      expect(reindexMutation.mutateAsync).not.toHaveBeenCalled()
+      expect(downloadDocumentMutation).not.toHaveBeenCalled()
+      expect(updateLogicalDocumentMutation).not.toHaveBeenCalled()
+    },
+  )
+
   it('reports a row re-index that loses availability before the request runs', async () => {
     const user = userEvent.setup()
     documentsQuery.data = {
@@ -1457,6 +1494,9 @@ describe('DocumentsPage', () => {
     const retry = await screen.findByRole('menuitem', {
       name: 'dataset.newKnowledge.retryTask',
     })
+    expect(
+      screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.disableSource' }),
+    ).not.toBeInTheDocument()
     expect(retry).toBeEnabled()
     expect(retry).not.toHaveAttribute('aria-disabled', 'true')
     await user.click(retry)
@@ -3242,6 +3282,60 @@ describe('DocumentsPage', () => {
     await waitFor(() =>
       expect(screen.getByRole('heading', { name: 'dataset.newKnowledge.documents' })).toHaveFocus(),
     )
+  })
+
+  it.each([
+    ['queued', 'queued'],
+    ['processing', 'running'],
+  ] as const)(
+    'locks bulk re-index, download, and availability actions for a %s document',
+    async (_status, taskState) => {
+      const user = userEvent.setup()
+      documentsQuery.data = {
+        pages: [{ items: [document({ id: 'one', title: 'One.pdf' })] }],
+      }
+      tasksQuery.data = {
+        pages: [{ items: [task({ documentId: 'one', state: taskState })] }],
+      }
+
+      render(<DocumentsPage knowledgeSpaceId="space-1" />)
+      await user.click(screen.getByRole('checkbox', { name: 'One.pdf' }))
+      const actions = screen.getByRole('group', {
+        name: 'dataset.newKnowledge.bulkDocumentActions',
+      })
+
+      expect(
+        within(actions).getByRole('button', { name: 'dataset.newKnowledge.reindexDocuments' }),
+      ).toBeDisabled()
+      expect(
+        within(actions).getByRole('button', { name: 'dataset.newKnowledge.downloadDocuments' }),
+      ).toBeDisabled()
+      expect(
+        within(actions).getByRole('button', { name: 'dataset.newKnowledge.disableSource' }),
+      ).toBeDisabled()
+      expect(within(actions).getByRole('button', { name: 'common.operation.remove' })).toBeEnabled()
+    },
+  )
+
+  it('does not offer a bulk availability action for failed documents', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [{ items: [document({ id: 'failed', status: 'failed', title: 'Failed.pdf' })] }],
+    }
+    tasksQuery.data = {
+      pages: [{ items: [task({ documentId: 'failed', state: 'failed' })] }],
+    }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('checkbox', { name: 'Failed.pdf' }))
+    const actions = screen.getByRole('group', {
+      name: 'dataset.newKnowledge.bulkDocumentActions',
+    })
+
+    expect(
+      within(actions).queryByRole('button', { name: 'dataset.newKnowledge.disableSource' }),
+    ).not.toBeInTheDocument()
+    expect(within(actions).getByRole('button', { name: 'common.operation.remove' })).toBeEnabled()
   })
 
   it('disables selected documents through the bulk availability API', async () => {

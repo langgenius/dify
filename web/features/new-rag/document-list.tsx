@@ -38,7 +38,13 @@ import { SearchInput } from '@/app/components/base/search-input'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { DocumentActionsDropdown } from './document-actions-dropdown'
-import { sourceName } from './document-model'
+import {
+  documentCanDownload,
+  documentCanReindex,
+  documentCanToggleAvailability,
+  documentShowsAvailabilityAction,
+  sourceName,
+} from './document-model'
 
 export type DocumentFilter = DocumentDisplayStatus | 'all'
 
@@ -289,7 +295,7 @@ const DocumentRow = memo(
             canEdit={!selectionDisabled}
             documentEnabled={document.enabled}
             documentTitle={document.title}
-            downloadDisabled={!document.active}
+            downloadDisabled={!document.active || !documentCanDownload(status)}
             onDownload={() => onDownload(document.id)}
             onRemove={() => onRemove(document.id)}
             onRename={(title) => onRename(document.id, title)}
@@ -298,10 +304,15 @@ const DocumentRow = memo(
             onToggleAvailability={() => onToggleAvailability(document.id)}
             pendingAction={pendingAction}
             removeDisabled={document.status === 'deleting'}
-            reindexDisabled={selectionDisabled || status === 'disabled'}
+            reindexDisabled={selectionDisabled || !documentCanReindex(status)}
             retryDisabled={selectionDisabled || !retryable}
+            showAvailabilityAction={documentShowsAvailabilityAction(status)}
             showRetry={status === 'failed'}
-            toggleAvailabilityDisabled={selectionDisabled || document.status === 'deleting'}
+            toggleAvailabilityDisabled={
+              selectionDisabled ||
+              document.status === 'deleting' ||
+              !documentCanToggleAvailability(status)
+            }
             unavailableReasonId={`${titleId}-actions-unavailable`}
           />
         </td>
@@ -760,6 +771,7 @@ export function DocumentBulkActions({
   onUpdateAvailability,
   reindexDisabled,
   selectedCount,
+  showAvailabilityAction,
 }: {
   actionPending?: 'availability' | 'download' | 'reindex' | 'remove'
   availabilityDisabled: boolean
@@ -776,6 +788,7 @@ export function DocumentBulkActions({
   onUpdateAvailability: () => void
   reindexDisabled: boolean
   selectedCount: number
+  showAvailabilityAction: boolean
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
@@ -829,15 +842,17 @@ export function DocumentBulkActions({
           >
             {t(($) => $['newKnowledge.downloadDocuments'])}
           </Button>
-          <Button
-            className="shrink-0"
-            disabled={disabled || availabilityDisabled || busy}
-            size="small"
-            loading={actionPending === 'availability'}
-            onClick={onUpdateAvailability}
-          >
-            {t(($) => (availabilityTargetEnabled ? $.enable : $['newKnowledge.disableSource']))}
-          </Button>
+          {showAvailabilityAction && (
+            <Button
+              className="shrink-0"
+              disabled={disabled || availabilityDisabled || busy}
+              size="small"
+              loading={actionPending === 'availability'}
+              onClick={onUpdateAvailability}
+            >
+              {t(($) => (availabilityTargetEnabled ? $.enable : $['newKnowledge.disableSource']))}
+            </Button>
+          )}
           <Button
             className="shrink-0"
             disabled={disabled || busy}

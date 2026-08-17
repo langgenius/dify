@@ -42,6 +42,7 @@ export function DocumentActionsDropdown({
   removeDisabled,
   reindexDisabled,
   retryDisabled,
+  showAvailabilityAction,
   showRetry,
   toggleAvailabilityDisabled,
   unavailableReasonId,
@@ -62,6 +63,7 @@ export function DocumentActionsDropdown({
   removeDisabled: boolean
   reindexDisabled: boolean
   retryDisabled: boolean
+  showAvailabilityAction: boolean
   showRetry: boolean
   toggleAvailabilityDisabled: boolean
   unavailableReasonId: string
@@ -143,21 +145,23 @@ export function DocumentActionsDropdown({
             <span aria-hidden className="i-ri-download-line size-4" />
             {t(($) => $['newKnowledge.downloadDocuments'])}
           </DropdownMenuItem>
-          <DropdownMenuItem
-            aria-describedby={toggleAvailabilityDisabled ? unavailableReasonId : undefined}
-            className="mb-px h-7 gap-2 px-2 system-sm-medium"
-            disabled={!canEdit || busy || toggleAvailabilityDisabled}
-            onClick={() => void onToggleAvailability()}
-          >
-            <span
-              aria-hidden
-              className={cn(
-                'size-4',
-                documentEnabled ? 'i-ri-indeterminate-circle-line' : 'i-ri-checkbox-circle-line',
-              )}
-            />
-            {documentEnabled ? t(($) => $['newKnowledge.disableSource']) : t(($) => $.enable)}
-          </DropdownMenuItem>
+          {showAvailabilityAction && (
+            <DropdownMenuItem
+              aria-describedby={toggleAvailabilityDisabled ? unavailableReasonId : undefined}
+              className="mb-px h-7 gap-2 px-2 system-sm-medium"
+              disabled={!canEdit || busy || toggleAvailabilityDisabled}
+              onClick={() => void onToggleAvailability()}
+            >
+              <span
+                aria-hidden
+                className={cn(
+                  'size-4',
+                  documentEnabled ? 'i-ri-indeterminate-circle-line' : 'i-ri-checkbox-circle-line',
+                )}
+              />
+              {documentEnabled ? t(($) => $['newKnowledge.disableSource']) : t(($) => $.enable)}
+            </DropdownMenuItem>
+          )}
           <DropdownMenuSeparator className="my-px" />
           <DropdownMenuItem
             aria-describedby={removeDisabled ? unavailableReasonId : undefined}
