@@ -23,8 +23,7 @@ def _build_due_filter(now_ts: int):
     """Build SQLAlchemy filter for due credential or subscription refresh."""
     credential_due: ColumnElement[bool] = and_(
         TriggerSubscription.credential_expires_at != -1,
-        TriggerSubscription.credential_expires_at
-        <= now_ts + dify_config.TRIGGER_PROVIDER_CREDENTIAL_THRESHOLD_SECONDS,
+        TriggerSubscription.credential_expires_at <= now_ts + dify_config.TRIGGER_PROVIDER_CREDENTIAL_THRESHOLD_SECONDS,
     )
     subscription_due: ColumnElement[bool] = and_(
         TriggerSubscription.expires_at != -1,
