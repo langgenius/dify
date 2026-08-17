@@ -15,7 +15,7 @@ import {
   DialogViewport,
 } from '.'
 import { Button } from '../button'
-import { Field, FieldControl, FieldDescription, FieldError, FieldLabel } from '../field'
+import { Field, FieldDescription, FieldError, FieldLabel } from '../field'
 import { Form } from '../form'
 import { Input } from '../input'
 import {
@@ -273,12 +273,12 @@ const FormDialogDemo = () => {
         >
           <Field name="name">
             <FieldLabel>Name</FieldLabel>
-            <FieldControl required placeholder="Production API" />
+            <Input required placeholder="Production API" />
             <FieldError match="valueMissing">Name is required.</FieldError>
           </Field>
           <Field name="endpoint">
             <FieldLabel>Endpoint</FieldLabel>
-            <FieldControl type="url" required placeholder="https://api.example.com" />
+            <Input type="url" required placeholder="https://api.example.com" />
             <FieldDescription>
               <a
                 href="https://docs.dify.ai/use-dify/workspace/api-extension/api-extension"
@@ -302,7 +302,7 @@ const FormDialogDemo = () => {
             }}
           >
             <FieldLabel>API key</FieldLabel>
-            <FieldControl required placeholder="sk-..." />
+            <Input required placeholder="sk-..." />
             <FieldError match="valueMissing">API key is required.</FieldError>
             <FieldError match="customError" />
           </Field>
