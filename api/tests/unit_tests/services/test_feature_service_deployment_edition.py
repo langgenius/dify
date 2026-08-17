@@ -57,12 +57,11 @@ def test_get_system_features_uses_configured_deployment_edition(
     ],
 )
 def test_trial_app_policy_is_cloud_only(
-    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
     edition: DeploymentEdition,
     feature_enabled: bool,
     expected: bool,
 ) -> None:
-    monkeypatch.setattr("services.feature_service.dify_config.DEPLOYMENT_EDITION", edition)
-    monkeypatch.setattr("services.feature_service.dify_config.ENABLE_TRIAL_APP", feature_enabled)
+    config_overrides(DEPLOYMENT_EDITION=edition, ENABLE_TRIAL_APP=feature_enabled)
 
     assert FeatureService.is_trial_app_enabled() is expected

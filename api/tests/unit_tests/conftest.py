@@ -100,17 +100,9 @@ def reset_redis_mock() -> None:
 
 
 @pytest.fixture(autouse=True)
-def reset_secret_key() -> Iterator[None]:
+def reset_secret_key(monkeypatch: pytest.MonkeyPatch) -> None:
     """Ensure SECRET_KEY-dependent logic sees an empty config value by default."""
-
-    from configs import dify_config
-
-    original = dify_config.SECRET_KEY
-    dify_config.SECRET_KEY = ""
-    try:
-        yield
-    finally:
-        dify_config.SECRET_KEY = original
+    apply_config_overrides(monkeypatch, SECRET_KEY="")
 
 
 @pytest.fixture

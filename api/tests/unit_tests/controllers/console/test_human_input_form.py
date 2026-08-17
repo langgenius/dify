@@ -28,6 +28,7 @@ from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import RecipientType
 from models.model import App, AppMode
 from models.workflow import WorkflowRun
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 @pytest.fixture(autouse=True)
@@ -256,7 +257,7 @@ def test_post_form_decorated_success_validates_request_body(app: Flask, monkeypa
         "controllers.console.wraps.current_account_with_tenant",
         lambda: (current_user, "tenant-1"),
     )
-    monkeypatch.setattr("libs.login.dify_config.LOGIN_DISABLED", True)
+    apply_config_overrides(monkeypatch, LOGIN_DISABLED=True)
 
     with app.test_request_context(
         "/console/api/form/human_input/token",
