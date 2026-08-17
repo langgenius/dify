@@ -1004,6 +1004,7 @@ class TestAppDslService:
                     "data": {
                         "type": BuiltinNodeTypes.AGENT,
                         "version": "2",
+                        "agent_node_kind": "dify_agent",
                         "agent_binding": {
                             "binding_type": WorkflowAgentBindingType.ROSTER_AGENT.value,
                             AGENT_PACKAGE_REF_KEY: "agent_1",
@@ -1015,6 +1016,7 @@ class TestAppDslService:
                     "data": {
                         "type": BuiltinNodeTypes.AGENT,
                         "version": "2",
+                        "agent_node_kind": "dify_agent",
                         "agent_binding": {
                             "binding_type": WorkflowAgentBindingType.INLINE_AGENT.value,
                             AGENT_PACKAGE_REF_KEY: "agent_1",

@@ -89,7 +89,7 @@ def _execution(
 def _agent_v2_node(*, node_id: str = "agent-node-1", title: str = "My Agent") -> dict[str, Any]:
     return {
         "id": node_id,
-        "data": {"type": "agent", "version": "2", "title": title},
+        "data": {"type": "agent", "version": "2", "agent_node_kind": "dify_agent", "title": title},
     }
 
 
@@ -157,6 +157,19 @@ def test_snapshot_accepts_published_run_d1_lifted():
     snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=session)
     assert snapshot.workflow_run_id == "run-1"
     assert [n.node_id for n in snapshot.node_outputs] == ["agent-1"]
+
+
+def test_historical_agent_version_two_uses_inferred_outputs() -> None:
+    resolver = MagicMock()
+    service = NodeOutputInspectorService(binding_resolver=resolver)
+    run = _workflow_run(nodes=[{"id": "legacy-agent", "data": {"type": "agent", "version": "2", "title": "Legacy"}}])
+    execution = _execution(node_id="legacy-agent", outputs={"text": "legacy output"})
+    session = _mock_session(workflow_run=run, executions=[execution])
+
+    snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=session)
+
+    assert [(output.name, output.type) for output in snapshot.node_outputs[0].outputs] == [("text", None)]
+    resolver.resolve.assert_not_called()
 
 
 def test_snapshot_accepts_webhook_triggered_run():
