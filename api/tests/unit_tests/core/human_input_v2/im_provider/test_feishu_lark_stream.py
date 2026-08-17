@@ -4,10 +4,11 @@ import asyncio
 import json
 import threading
 from collections.abc import Callable, Mapping
+from dataclasses import fields
 from datetime import datetime
 
 import pytest
-from lark_oapi.api.im.v1.model.p2_im_message_receive_v1 import P2ImMessageReceiveV1
+from lark_oapi.core.exception import EventException
 from lark_oapi.event.callback.model.p2_card_action_trigger import P2CardActionTrigger
 
 from core.human_input_v2.entities import IMProvider
@@ -28,7 +29,16 @@ from core.human_input_v2.im_provider import (
 
 _LEGACY_STREAM_PAYLOAD_KEY = "__dify_feishu_lark.stream"
 _CARD_ACTION_TRIGGER_OBJECT_TYPE = "lark_oapi.event.callback.model.p2_card_action_trigger.P2CardActionTrigger"
-_MESSAGE_RECEIVE_OBJECT_TYPE = "lark_oapi.api.im.v1.model.p2_im_message_receive_v1.P2ImMessageReceiveV1"
+
+
+def test_sdk_event_envelope_contains_only_delivery_data() -> None:
+    assert {field.name for field in fields(adapter_module._SDKEventEnvelope)} == {
+        "native_payload",
+        "provider_tenant_id",
+        "event_id",
+        "event_type",
+        "occurred_at",
+    }
 
 
 class _UnusedGateway:
@@ -305,12 +315,10 @@ def _sdk_transport_envelope(event: Mapping[str, object]) -> adapter_module._SDKE
     assert isinstance(tenant_key, str)
     return adapter_module._SDKEventEnvelope(
         native_payload=json.dumps(event, ensure_ascii=False, separators=(",", ":")),
-        object_type=_CARD_ACTION_TRIGGER_OBJECT_TYPE,
         provider_tenant_id=tenant_key,
         event_id=event_id,
         event_type=event_type,
         occurred_at=adapter_module._webhook_occurred_at(create_time),
-        is_card_action=True,
     )
 
 
@@ -499,7 +507,6 @@ def test_private_sdk_dispatcher_seam_keeps_consumer_acceptance_as_ack_boundary()
 
     assert len(observed) == 1
     observed_envelope = observed[0]
-    assert observed_envelope.object_type == _CARD_ACTION_TRIGGER_OBJECT_TYPE
     native_payload = observed_envelope.native_payload
     assert json.loads(native_payload) == {
         "schema": "2.0",
@@ -545,12 +552,10 @@ def test_sdk_event_envelope_preserves_native_payload_without_parsing(
 
     assert adapter_module._sdk_event_envelope(sdk_event) == adapter_module._SDKEventEnvelope(
         native_payload=native_payload,
-        object_type=_CARD_ACTION_TRIGGER_OBJECT_TYPE,
         provider_tenant_id="tenant_sanitized",
         event_id="evt_sanitized_event",
         event_type="card.action.trigger",
         occurred_at=datetime(2026, 8, 6, 2, 0),
-        is_card_action=True,
     )
 
 
@@ -593,40 +598,32 @@ def test_card_dispatcher_preserves_native_payload_without_event_stream_parsing(
     assert _CARD_ACTION_TRIGGER_OBJECT_TYPE not in event.payload
 
 
-def test_message_dispatcher_delivers_and_acks_without_card_wrapper(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    payload_mapping = _message_event_payload()
-    payload = json.dumps(payload_mapping, ensure_ascii=False, separators=(",", ":")).encode()
-    expected_native_payload = adapter_module.lark.JSON.marshal(P2ImMessageReceiveV1(payload_mapping))
-    assert isinstance(expected_native_payload, str)
-    clients: list[_DispatcherStreamClient] = []
+def test_message_dispatcher_rejects_unregistered_message_event() -> None:
+    observed: list[adapter_module._SDKEventEnvelope] = []
+    credentials = FeishuIMIntegrationCredentials(
+        provider=IMProvider.FEISHU,
+        app_id="cli_sanitized_app",
+        app_secret="sanitized-app-secret",
+        verification_token="sanitized-verification-token",
+        encrypt_key="sanitized-encrypt-key",
+    )
 
-    def create_client(credentials, domain: str, callback):
-        client = _DispatcherStreamClient(credentials, domain, callback, payload)
-        clients.append(client)
-        return client
+    def accept(event: adapter_module._SDKEventEnvelope, acknowledge: Callable[[], None]) -> None:
+        observed.append(event)
+        acknowledge()
 
-    monkeypatch.setattr(adapter_module, "_create_sdk_stream_client", create_client)
-    consumer = _RecordingConsumer([])
-    adapter = _adapter(monkeypatch, IMProvider.FEISHU)
-    stream = adapter.create_stream_handler(consumer)
+    channel = adapter_module._SynchronousEventChannel(
+        credentials=credentials,
+        domain="https://open.feishu.cn",
+        callback=accept,
+    )
+    payload = json.dumps(_message_event_payload(), ensure_ascii=False, separators=(",", ":")).encode()
 
-    try:
-        stream.start()
-        stream.stop()
-    finally:
-        adapter.close()
+    with pytest.raises(EventException) as exc_info:
+        channel._build_dispatcher()._do_without_validation(payload)
 
-    assert clients[0].dispatch_returned is True
-    assert len(consumer.events) == 1
-    event = consumer.events[0]
-    assert event.provider_tenant_id == "tenant_sanitized"
-    assert event.event_id == "evt_sanitized_message"
-    assert event.event_type == "im.message.receive_v1"
-    assert event.ingress_kind is IMEventIngressKind.STREAM
-    assert event.payload == expected_native_payload
-    assert _LEGACY_STREAM_PAYLOAD_KEY not in event.payload
+    assert exc_info.value.msg == "processor not found, type: im.message.receive_v1"
+    assert observed == []
 
 
 def test_private_sdk_write_seam_tracks_wire_ack_completion() -> None:
@@ -780,36 +777,6 @@ def test_consumer_exception_is_contained_without_ack_or_replay(monkeypatch: pyte
 
     assert consumer.attempts == 1
     assert "ack" not in trace
-    assert clients[0].stop_calls == 1
-
-
-def test_malformed_callback_is_contained_and_stream_remains_usable(monkeypatch: pytest.MonkeyPatch) -> None:
-    trace: list[str] = []
-    clients: list[_FakeStreamClient] = []
-    monkeypatch.setattr(
-        adapter_module,
-        "_create_sdk_stream_client",
-        lambda _credentials, _domain, callback: clients.append(_FakeStreamClient(callback, trace)) or clients[-1],
-    )
-    consumer = _RecordingConsumer(trace)
-    stream = _adapter(monkeypatch, IMProvider.FEISHU).create_stream_handler(consumer)
-    stream.start()
-
-    malformed_event = adapter_module._SDKEventEnvelope(
-        native_payload="{}",
-        object_type="unexpected.sdk.Event",
-        provider_tenant_id="tenant_sanitized",
-        event_id=None,
-        event_type="card.action.trigger",
-        occurred_at=None,
-        is_card_action=True,
-    )
-    clients[0]._callback(malformed_event, lambda: trace.append("ack"))
-    clients[0].emit(_event_payload())
-    stream.stop()
-
-    assert len(consumer.events) == 1
-    assert trace.count("ack") == 1
     assert clients[0].stop_calls == 1
 
 
