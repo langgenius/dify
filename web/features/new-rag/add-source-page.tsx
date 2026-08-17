@@ -1245,7 +1245,7 @@ export function AddSourcePage({
 
   return (
     <>
-      <main className="h-full min-h-0 w-full min-w-0 flex-1 overflow-y-auto px-4 py-6 sm:px-8 sm:py-8">
+      <main className="h-full min-h-0 w-full min-w-0 flex-1 overflow-y-auto px-4 pt-3 pb-6 sm:px-8 sm:pb-8">
         <header>
           <h2 className="system-xl-semibold text-text-primary">
             {t(($) => $['newKnowledge.addSource'])}
