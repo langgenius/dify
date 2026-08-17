@@ -118,7 +118,7 @@ export async function EmbeddedTemplatesMarketplace({
           sortBy,
           sortOrder,
         }),
-    fetchPluginBanners(locale).catch(() => []),
+    fetchPluginBanners(locale, 'templates').catch(() => []),
   ])
   const categoryLabels = {
     all: tPlugin(($) => $['category.all'], { ns: 'plugin' }),

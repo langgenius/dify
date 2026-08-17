@@ -197,4 +197,20 @@ describe('fetchPluginBanners', () => {
     await expect(fetchPluginBanners('en-US')).resolves.toEqual([])
     await expect(fetchPluginBanners('en-US')).resolves.toEqual([])
   })
+
+  it('requests templates banners when fetching for the templates page', async () => {
+    mockedListBanners.mockResolvedValue({
+      data: {
+        banners: [],
+      },
+    })
+
+    await expect(fetchPluginBanners('en-US', 'templates')).resolves.toEqual([])
+    expect(mockedListBanners).toHaveBeenCalledWith({
+      query: {
+        page: 'templates',
+        language: 'en-US',
+      },
+    })
+  })
 })

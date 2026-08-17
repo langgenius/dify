@@ -272,7 +272,7 @@ const bannerListContract = base
   .input(
     type<{
       query: {
-        page: 'plugins'
+        page: 'plugins' | 'templates'
         language: string
       }
     }>(),

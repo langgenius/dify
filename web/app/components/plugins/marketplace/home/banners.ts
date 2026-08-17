@@ -136,10 +136,13 @@ const normalizePluginBanners = (response: unknown): PluginBanner[] => {
     .sort((a, b) => a.sort - b.sort)
 }
 
-export const fetchPluginBanners = async (language: string): Promise<PluginBanner[]> => {
+export const fetchPluginBanners = async (
+  language: string,
+  page: 'plugins' | 'templates' = 'plugins',
+): Promise<PluginBanner[]> => {
   const response = await marketplaceClient.banners.list({
     query: {
-      page: 'plugins',
+      page,
       language,
     },
   })
