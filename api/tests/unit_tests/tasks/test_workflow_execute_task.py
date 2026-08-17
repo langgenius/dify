@@ -852,6 +852,108 @@ def test_resume_app_execution_returns_early_when_advanced_chat_missing_conversat
     resume_advanced_chat.assert_not_called()
 
 
+def test_resume_app_execution_clears_stale_cancellation_signals_before_resuming(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_engine: Engine,
+    sqlite_session_factory: sessionmaker[Session],
+):
+    """A resumed run reuses the paused task ID, so it must not inherit its cancellation signals.
+
+    Regression test for #40878: a stop flag or queued AbortCommand left over from
+    an earlier attempt of the same task aborted the resumed run, which then
+    finished as "Stopped by user".
+    """
+    workflow_run_id = "run-id"
+    _persist_resumption_models(sqlite_session_factory, workflow_run_id=workflow_run_id)
+
+    monkeypatch.setattr("tasks.app_generate.workflow_execute_task.db", SimpleNamespace(engine=sqlite_engine))
+
+    pause_entity = MagicMock()
+    pause_entity.get_state.return_value = b"state"
+
+    workflow_run_repo = MagicMock()
+    workflow_run_repo.get_workflow_pause.return_value = pause_entity
+    monkeypatch.setattr(
+        "tasks.app_generate.workflow_execute_task.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
+        lambda *_args, **_kwargs: workflow_run_repo,
+    )
+
+    generate_entity = _build_workflow_generate_entity(stream=False)
+    resumption_context = MagicMock()
+    resumption_context.serialized_graph_runtime_state = "{}"
+    resumption_context.get_generate_entity.return_value = generate_entity
+    monkeypatch.setattr(
+        "tasks.app_generate.workflow_execute_task.WorkflowResumptionContext.loads",
+        lambda *_args, **_kwargs: resumption_context,
+    )
+    monkeypatch.setattr(
+        "tasks.app_generate.workflow_execute_task.GraphRuntimeState.from_snapshot",
+        lambda *_args, **_kwargs: MagicMock(),
+    )
+    monkeypatch.setattr(
+        "tasks.app_generate.workflow_execute_task._resolve_user_for_run", lambda *_args, **_kwargs: MagicMock()
+    )
+
+    calls: list[str] = []
+    clear_signals = MagicMock(side_effect=lambda task_id: calls.append(f"clear:{task_id}"))
+    resume_workflow = MagicMock(side_effect=lambda **_kwargs: calls.append("resume"))
+    monkeypatch.setattr("tasks.app_generate.workflow_execute_task.clear_app_task_cancellation_signals", clear_signals)
+    monkeypatch.setattr("tasks.app_generate.workflow_execute_task._resume_workflow", resume_workflow)
+
+    _resume_app_execution({"workflow_run_id": workflow_run_id})
+
+    clear_signals.assert_called_once_with(generate_entity.task_id)
+    # Clearing after the engine started would let it observe the stale abort first.
+    assert calls == [f"clear:{generate_entity.task_id}", "resume"]
+
+
+def test_resume_app_execution_keeps_cancellation_signals_when_resume_is_abandoned(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_engine: Engine,
+    sqlite_session_factory: sessionmaker[Session],
+):
+    """No attempt is starting, so nothing may clear the signals guarding this task."""
+    workflow_run_id = "run-id"
+    _persist_resumption_models(sqlite_session_factory, workflow_run_id=workflow_run_id)
+
+    monkeypatch.setattr("tasks.app_generate.workflow_execute_task.db", SimpleNamespace(engine=sqlite_engine))
+
+    pause_entity = MagicMock()
+    pause_entity.get_state.return_value = b"state"
+
+    workflow_run_repo = MagicMock()
+    workflow_run_repo.get_workflow_pause.return_value = pause_entity
+    monkeypatch.setattr(
+        "tasks.app_generate.workflow_execute_task.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
+        lambda *_args, **_kwargs: workflow_run_repo,
+    )
+
+    # Missing conversation id makes the advanced-chat resume bail out before running.
+    generate_entity = _build_advanced_chat_generate_entity(conversation_id=None)
+    resumption_context = MagicMock()
+    resumption_context.serialized_graph_runtime_state = "{}"
+    resumption_context.get_generate_entity.return_value = generate_entity
+    monkeypatch.setattr(
+        "tasks.app_generate.workflow_execute_task.WorkflowResumptionContext.loads",
+        lambda *_args, **_kwargs: resumption_context,
+    )
+    monkeypatch.setattr(
+        "tasks.app_generate.workflow_execute_task.GraphRuntimeState.from_snapshot",
+        lambda *_args, **_kwargs: MagicMock(),
+    )
+    monkeypatch.setattr(
+        "tasks.app_generate.workflow_execute_task._resolve_user_for_run", lambda *_args, **_kwargs: MagicMock()
+    )
+
+    clear_signals = MagicMock()
+    monkeypatch.setattr("tasks.app_generate.workflow_execute_task.clear_app_task_cancellation_signals", clear_signals)
+    monkeypatch.setattr("tasks.app_generate.workflow_execute_task._resume_advanced_chat", MagicMock())
+
+    _resume_app_execution({"workflow_run_id": workflow_run_id})
+
+    clear_signals.assert_not_called()
+
+
 def test_resume_advanced_chat_publishes_events_for_originally_blocking_runs(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
