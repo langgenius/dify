@@ -190,6 +190,18 @@ describe('QualityPage', () => {
     })
   })
 
+  it('renders tab labels without item counts', async () => {
+    renderPage()
+
+    await screen.findByText('What is the refund policy?')
+    expect(
+      screen.getByRole('tab', { name: 'dataset.newKnowledge.qualityPage.goldenTab' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('tab', { name: 'dataset.newKnowledge.qualityPage.badCasesTab' }),
+    ).toBeInTheDocument()
+  })
+
   it('renders persisted quality data and creates a golden question through the API', async () => {
     const user = userEvent.setup()
     renderPage()
