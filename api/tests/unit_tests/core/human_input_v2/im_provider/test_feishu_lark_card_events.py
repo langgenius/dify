@@ -28,6 +28,7 @@ from core.human_input_v2.im_provider import (
     EventAcceptance,
     IMCardEvent,
     IMCardEventDecodingError,
+    IMEventIngressKind,
     ProviderUserId,
     UnrecognizedIMEvent,
     WebhookRequest,
@@ -40,8 +41,8 @@ _RECEIVED_AT = datetime(2026, 8, 12, 10, 0, 0)
 _DIFY_ACTION_MARKER = "__dify.human_input.action"
 _WEBHOOK_VERIFICATION_TOKEN = "verification_test_only"
 _WEBHOOK_ENCRYPT_KEY = "encrypt_key_test_only"
-_WEBHOOK_PAYLOAD_KEY = "__dify_feishu_lark.webhook"
-_STREAM_PAYLOAD_KEY = "__dify_feishu_lark.stream"
+_WEBHOOK_PROVENANCE_PAYLOAD_KEY = "__dify_feishu_lark.webhook"
+_STREAM_PROVENANCE_PAYLOAD_KEY = "__dify_feishu_lark.stream"
 
 
 class _WebhookGateway:
@@ -137,13 +138,7 @@ def _replay_sanitized_webhook(monkeypatch: pytest.MonkeyPatch) -> AuthenticatedI
     assert consumer.event.event_type == authenticated_event["event_type"]
     assert consumer.event.occurred_at == datetime.fromisoformat(authenticated_event["occurred_at"])
     assert consumer.event.received_at == datetime.fromisoformat(authenticated_event["received_at"])
-    transport_envelope = json.loads(consumer.event.payload)
-    assert isinstance(transport_envelope, dict)
-    webhook_payload = transport_envelope[_WEBHOOK_PAYLOAD_KEY]
-    assert isinstance(webhook_payload, dict)
-    assert webhook_payload["encrypted"] is True
-    native_payload = webhook_payload["native_payload"]
-    assert isinstance(native_payload, str)
+    assert consumer.event.ingress_kind is IMEventIngressKind.WEBHOOK
     encrypted_envelope = json.loads(request["body"])
     assert isinstance(encrypted_envelope, dict)
     encrypted_payload = encrypted_envelope["encrypt"]
@@ -152,8 +147,9 @@ def _replay_sanitized_webhook(monkeypatch: pytest.MonkeyPatch) -> AuthenticatedI
         encrypted_payload,
         _WEBHOOK_ENCRYPT_KEY,
     ).decode()
-    assert native_payload == expected_native_payload
-    assert json.loads(native_payload) == authenticated_event["payload"]
+    assert consumer.event.payload == expected_native_payload
+    assert json.loads(consumer.event.payload) == authenticated_event["payload"]
+    assert _WEBHOOK_PROVENANCE_PAYLOAD_KEY not in consumer.event.payload
     return consumer.event
 
 
@@ -231,14 +227,11 @@ def _deliver_sanitized_stream(monkeypatch: pytest.MonkeyPatch) -> AuthenticatedI
     assert consumer.event.event_id == authenticated_event["event_id"]
     assert consumer.event.event_type == authenticated_event["event_type"]
     assert consumer.event.occurred_at == datetime.fromisoformat(authenticated_event["occurred_at"])
-    transport_envelope = json.loads(consumer.event.payload)
-    assert isinstance(transport_envelope, dict)
-    stream_payload = transport_envelope[_STREAM_PAYLOAD_KEY]
-    assert isinstance(stream_payload, dict)
-    assert stream_payload["object_type"] == stream_evidence["object_type"]
-    native_payload = stream_payload["native_payload"]
-    assert isinstance(native_payload, str)
-    assert json.loads(native_payload) == authenticated_event["payload"]
+    assert consumer.event.ingress_kind is IMEventIngressKind.STREAM
+    assert json.loads(consumer.event.payload) == sdk_event_mapping
+    assert json.loads(consumer.event.payload) == authenticated_event["payload"]
+    assert _STREAM_PROVENANCE_PAYLOAD_KEY not in consumer.event.payload
+    assert stream_evidence["object_type"] not in consumer.event.payload
     return consumer.event
 
 
@@ -247,21 +240,13 @@ def _event(
     *,
     provider: IMProvider = IMProvider.FEISHU,
     event_type: str | None = "card.action.trigger",
+    ingress_kind: IMEventIngressKind = IMEventIngressKind.WEBHOOK,
     payload: str | None = None,
 ) -> AuthenticatedIMEvent:
     serialized_payload = payload
     if serialized_payload is None:
-        native_payload = json.dumps(
-            callback if callback is not None else _synthetic_marked_callback(), ensure_ascii=False
-        )
         serialized_payload = json.dumps(
-            {
-                _WEBHOOK_PAYLOAD_KEY: {
-                    "encrypted": True,
-                    "native_payload": native_payload,
-                }
-            },
-            ensure_ascii=False,
+            callback if callback is not None else _synthetic_marked_callback(), ensure_ascii=False
         )
     return AuthenticatedIMEvent(
         provider=provider,
@@ -270,6 +255,7 @@ def _event(
         event_type=event_type,
         occurred_at=None,
         received_at=_RECEIVED_AT,
+        ingress_kind=ingress_kind,
         payload=serialized_payload,
     )
 
@@ -590,22 +576,6 @@ def test_non_object_foreign_action_value_is_unrecognized() -> None:
     assert isinstance(result, UnrecognizedIMEvent)
 
 
-def test_decoder_rejects_bare_callback_that_bypasses_transport_envelope() -> None:
-    callback = _synthetic_marked_callback()
-    event = AuthenticatedIMEvent(
-        provider=IMProvider.FEISHU,
-        provider_tenant_id="tenant_test_only",
-        event_id="evt_test_only",
-        event_type="card.action.trigger",
-        occurred_at=None,
-        received_at=_RECEIVED_AT,
-        payload=json.dumps(callback, ensure_ascii=False),
-    )
-
-    with pytest.raises(IMCardEventDecodingError, match="envelope is invalid"):
-        feishu_lark._MSFeishuLarkCardCodec().decode(event)
-
-
 def test_sanitized_real_webhook_envelope_authenticates_before_card_decoding(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -667,6 +637,7 @@ def test_sanitized_real_callbacks_converge_for_both_provider_discriminators(
                 event_type=event.event_type,
                 occurred_at=event.occurred_at,
                 received_at=event.received_at,
+                ingress_kind=event.ingress_kind,
                 payload=event.payload,
             )
         )

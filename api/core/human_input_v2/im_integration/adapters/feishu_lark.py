@@ -30,7 +30,6 @@ import lark_oapi as lark
 from cryptography.hazmat.primitives import padding as symmetric_padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from lark_oapi.api import contact, im, tenant
-from lark_oapi.api.im.v1.model.p2_im_message_receive_v1 import P2ImMessageReceiveV1
 from lark_oapi.channel import FeishuChannel, TransportConfig
 from lark_oapi.event.callback.model.p2_card_action_trigger import P2CardActionTrigger, P2CardActionTriggerResponse
 from lark_oapi.ws import client as sdk_ws_client_module
@@ -62,6 +61,7 @@ from core.human_input_v2.im_provider import (
     IMDirectory,
     IMDynamicCardMessaging,
     IMEventConsumer,
+    IMEventIngressKind,
     IMMessaging,
     IMStreamStartError,
     IMStreamStopError,
@@ -107,9 +107,6 @@ _MICROSECONDS_PER_SECOND = 1_000_000
 _MILLISECOND_TIMESTAMP_DIGITS = 13
 _MICROSECOND_TIMESTAMP_DIGITS = 16
 _COMMONMARK_PARSER = MarkdownIt("commonmark", {"html": False})
-_AUTHENTICATED_WEBHOOK_PAYLOAD_KEY = "__dify_feishu_lark.webhook"
-_AUTHENTICATED_STREAM_PAYLOAD_KEY = "__dify_feishu_lark.stream"
-_CARD_ACTION_TRIGGER_OBJECT_TYPE = "lark_oapi.event.callback.model.p2_card_action_trigger.P2CardActionTrigger"
 
 
 def _log_safe_error(message: str, *, extra: Mapping[str, object] | None = None) -> None:
@@ -174,12 +171,10 @@ class _SDKGateway(Protocol):
 @dataclass(frozen=True, slots=True)
 class _SDKEventEnvelope:
     native_payload: str
-    object_type: str
     provider_tenant_id: str
     event_id: str | None
     event_type: str | None
     occurred_at: datetime | None
-    is_card_action: bool
 
 
 type _StreamDeliveryCallback = Callable[[_SDKEventEnvelope, Callable[[], None]], None]
@@ -534,20 +529,13 @@ class _SynchronousEventChannel(FeishuChannel):
             self._dify_credentials.verification_token or "",
             lark.LogLevel.ERROR,
         )
-        return (
-            builder.register_p2_im_message_receive_v1(self._on_message)
-            .register_p2_card_action_trigger(self._on_card_action)
-            .build()
-        )
-
-    def _on_message(self, event: P2ImMessageReceiveV1) -> None:
-        self._dispatch(event)
+        return builder.register_p2_card_action_trigger(self._on_card_action).build()
 
     def _on_card_action(self, event: P2CardActionTrigger) -> P2CardActionTriggerResponse:
         self._dispatch(event)
         return P2CardActionTriggerResponse({})
 
-    def _dispatch(self, event: P2CardActionTrigger | P2ImMessageReceiveV1) -> None:
+    def _dispatch(self, event: P2CardActionTrigger) -> None:
         if self._wire_ack_tracking_enabled:
             self._wire_ack_hook_installed.wait()
             delivery = threading.Event()
@@ -866,13 +854,7 @@ class _MSFeishuLarkCardCodec(IMCardEventDecoder):
         if event.provider not in self._SUPPORTED_PROVIDERS or event.event_type != self._CALLBACK_EVENT_TYPE:
             return UnrecognizedIMEvent()
 
-        transport_envelope = self._decode_json_object(event.payload)
-        if transport_envelope is None:
-            raise IMCardEventDecodingError("Feishu/Lark card event payload is invalid.")
-        serialized_callback = self._unwrap_transport_envelope(transport_envelope)
-        if serialized_callback is None:
-            raise IMCardEventDecodingError("Feishu/Lark card event envelope is invalid.")
-        callback = self._decode_json_object(serialized_callback)
+        callback = self._decode_ingress_callback(event.ingress_kind, event.payload)
         if callback is None:
             raise IMCardEventDecodingError("Feishu/Lark card event payload is invalid.")
         action_value = self._recognition_action_value(callback)
@@ -909,25 +891,15 @@ class _MSFeishuLarkCardCodec(IMCardEventDecoder):
             return None
 
     @classmethod
-    def _unwrap_transport_envelope(cls, envelope: dict[str, JsonValue]) -> str | None:
-        if set(envelope) == {_AUTHENTICATED_WEBHOOK_PAYLOAD_KEY}:
-            webhook = envelope[_AUTHENTICATED_WEBHOOK_PAYLOAD_KEY]
-            if not isinstance(webhook, dict) or set(webhook) != {"encrypted", "native_payload"}:
-                return None
-            encrypted = webhook["encrypted"]
-            native_payload = webhook["native_payload"]
-            if not isinstance(encrypted, bool) or not isinstance(native_payload, str):
-                return None
-            return native_payload
-        if set(envelope) == {_AUTHENTICATED_STREAM_PAYLOAD_KEY}:
-            stream = envelope[_AUTHENTICATED_STREAM_PAYLOAD_KEY]
-            if not isinstance(stream, dict) or set(stream) != {"native_payload", "object_type"}:
-                return None
-            native_payload = stream["native_payload"]
-            object_type = stream["object_type"]
-            if not isinstance(native_payload, str) or object_type != _CARD_ACTION_TRIGGER_OBJECT_TYPE:
-                return None
-            return native_payload
+    def _decode_ingress_callback(
+        cls,
+        ingress_kind: IMEventIngressKind,
+        serialized_callback: str,
+    ) -> dict[str, JsonValue] | None:
+        if ingress_kind is IMEventIngressKind.WEBHOOK:
+            return cls._decode_json_object(serialized_callback)
+        if ingress_kind is IMEventIngressKind.STREAM:
+            return cls._decode_json_object(serialized_callback)
         return None
 
     @classmethod
@@ -1398,7 +1370,6 @@ class _FeishuLarkWebhookHandler(IMWebhookHandler):
             return _webhook_response(503, {"code": 1})
         if provider_tenant_id != envelope.header.tenant_key:
             return _webhook_response(401, {"code": 1})
-        serialized_payload = _authenticated_webhook_payload(native_payload, encrypted=encrypted)
         event = AuthenticatedIMEvent(
             provider=self._provider,
             provider_tenant_id=provider_tenant_id,
@@ -1406,7 +1377,8 @@ class _FeishuLarkWebhookHandler(IMWebhookHandler):
             event_type=_optional_string(envelope.header.event_type),
             occurred_at=_webhook_occurred_at(envelope.header.create_time),
             received_at=request.received_at,
-            payload=serialized_payload,
+            ingress_kind=IMEventIngressKind.WEBHOOK,
+            payload=native_payload,
         )
         if replay_identity is not None and not self._claim_delivery(replay_identity):
             return _webhook_response(409, {"code": 1})
@@ -1618,15 +1590,6 @@ class _FeishuLarkEventStream:
                 return
             self._in_flight_callbacks += 1
         try:
-            if sdk_event.is_card_action:
-                if sdk_event.object_type != _CARD_ACTION_TRIGGER_OBJECT_TYPE:
-                    raise ValueError("SDK card event type is unsupported")
-                serialized_payload = _authenticated_stream_payload(
-                    sdk_event.native_payload,
-                    object_type=sdk_event.object_type,
-                )
-            else:
-                serialized_payload = sdk_event.native_payload
             event = AuthenticatedIMEvent(
                 provider=self._provider,
                 provider_tenant_id=sdk_event.provider_tenant_id,
@@ -1634,7 +1597,8 @@ class _FeishuLarkEventStream:
                 event_type=sdk_event.event_type,
                 occurred_at=sdk_event.occurred_at,
                 received_at=datetime.now(tz=UTC).replace(tzinfo=None),
-                payload=serialized_payload,
+                ingress_kind=IMEventIngressKind.STREAM,
+                payload=sdk_event.native_payload,
             )
             acceptance = self._consumer.accept(event)
             if acceptance is EventAcceptance.ACCEPTED:
@@ -1938,7 +1902,7 @@ def _sdk_event_mapping(event: object) -> Mapping[str, object]:
     return decoded
 
 
-def _sdk_event_envelope(event: P2CardActionTrigger | P2ImMessageReceiveV1) -> _SDKEventEnvelope:
+def _sdk_event_envelope(event: P2CardActionTrigger) -> _SDKEventEnvelope:
     serialized = lark.JSON.marshal(event)
     if serialized is None:
         raise ValueError("SDK event is empty")
@@ -1948,52 +1912,12 @@ def _sdk_event_envelope(event: P2CardActionTrigger | P2ImMessageReceiveV1) -> _S
     provider_tenant_id = _optional_string(header.tenant_key)
     if provider_tenant_id is None:
         raise ValueError("SDK event tenant identifier is empty")
-    is_card_action = isinstance(event, P2CardActionTrigger)
-    if not is_card_action and not isinstance(event, P2ImMessageReceiveV1):
-        raise ValueError("SDK event type is unsupported")
-    object_type = f"{type(event).__module__}.{type(event).__qualname__}"
-    if is_card_action and object_type != _CARD_ACTION_TRIGGER_OBJECT_TYPE:
-        raise ValueError("SDK card event type is unsupported")
     return _SDKEventEnvelope(
         native_payload=serialized,
-        object_type=object_type,
         provider_tenant_id=provider_tenant_id,
         event_id=_optional_string(header.event_id),
         event_type=_optional_string(header.event_type),
         occurred_at=_webhook_occurred_at(header.create_time),
-        is_card_action=is_card_action,
-    )
-
-
-def _authenticated_webhook_payload(native_payload: str, *, encrypted: bool) -> str:
-    # The wrapper persists transport provenance while leaving the authenticated
-    # decrypted Provider JSON byte-for-byte unchanged for codec-owned parsing.
-    return json.dumps(
-        {
-            _AUTHENTICATED_WEBHOOK_PAYLOAD_KEY: {
-                "encrypted": encrypted,
-                "native_payload": native_payload,
-            }
-        },
-        ensure_ascii=False,
-        sort_keys=True,
-        separators=(",", ":"),
-    )
-
-
-def _authenticated_stream_payload(native_payload: str, *, object_type: str) -> str:
-    # The SDK object type and exact marshal output are transport evidence; only
-    # the codec may parse the nested callback into transport-neutral facts.
-    return json.dumps(
-        {
-            _AUTHENTICATED_STREAM_PAYLOAD_KEY: {
-                "native_payload": native_payload,
-                "object_type": object_type,
-            }
-        },
-        ensure_ascii=False,
-        sort_keys=True,
-        separators=(",", ":"),
     )
 
 

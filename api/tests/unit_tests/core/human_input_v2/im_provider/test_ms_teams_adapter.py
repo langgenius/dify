@@ -44,6 +44,7 @@ from core.human_input_v2.im_provider import (
     DirectoryReadFailure,
     DynamicCardMessagingError,
     EventAcceptance,
+    IMEventIngressKind,
     MessageAccepted,
     MessageLocator,
     MessageSendingError,
@@ -1264,6 +1265,7 @@ def test_webhook_authenticates_tenant_and_preserves_the_complete_activity_payloa
     assert event.event_type == "invoke"
     assert event.occurred_at == datetime(2026, 8, 6, 7, 59, 58)
     assert event.received_at == _RECEIVED_AT
+    assert event.ingress_kind is IMEventIngressKind.WEBHOOK
     assert json.loads(event.payload) == activity_body
     authenticate_request.assert_awaited_once()
     authenticated_activity, authorization, _, _ = authenticate_request.call_args.args

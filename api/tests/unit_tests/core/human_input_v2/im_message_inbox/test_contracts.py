@@ -14,7 +14,7 @@ from core.human_input_v2.im_message_inbox import (
     InboxProcessingStatus,
     LostLease,
 )
-from core.human_input_v2.im_provider import AuthenticatedIMEvent, EventAcceptance
+from core.human_input_v2.im_provider import AuthenticatedIMEvent, EventAcceptance, IMEventIngressKind
 from core.human_input_v2.shared import IntegrationId
 
 
@@ -26,6 +26,7 @@ def _event() -> AuthenticatedIMEvent:
         occurred_at=datetime(2026, 8, 2, 8),
         received_at=datetime(2026, 8, 2, 8, 0, 1),
         event_type="card.action",
+        ingress_kind=IMEventIngressKind.WEBHOOK,
         payload=' {"token":"secret","nested":[1,true]}\n',
     )
 
@@ -39,6 +40,7 @@ def test_authenticated_event_and_delivery_preserve_payload_verbatim() -> None:
         occurred_at=None,
         received_at=datetime(2026, 8, 2, 8),
         event_type=None,
+        ingress_kind=IMEventIngressKind.WEBHOOK,
         payload=payload,
     )
     delivery = IMInboxDelivery(

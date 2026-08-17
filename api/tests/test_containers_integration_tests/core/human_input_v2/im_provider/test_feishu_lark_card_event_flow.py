@@ -28,6 +28,7 @@ from core.human_input_v2.im_provider import (
     EventAcceptance,
     IMCardEvent,
     IMCardEventDecodingError,
+    IMEventIngressKind,
     MessageAccepted,
     ProviderUserId,
     StaticCardIntent,
@@ -40,8 +41,8 @@ _WEBHOOK_FIXTURE = _FIXTURE_DIRECTORY / "feishu_lark_card_action_webhook.json"
 _STREAM_FIXTURE = _FIXTURE_DIRECTORY / "feishu_lark_card_action_stream.json"
 _RECEIVED_AT = datetime(2026, 8, 12, 10, 0, 0)
 _DIFY_ACTION_MARKER = "__dify.human_input.action"
-_WEBHOOK_PAYLOAD_KEY = "__dify_feishu_lark.webhook"
-_STREAM_PAYLOAD_KEY = "__dify_feishu_lark.stream"
+_LEGACY_WEBHOOK_PAYLOAD_KEY = "__dify_feishu_lark.webhook"
+_LEGACY_STREAM_PAYLOAD_KEY = "__dify_feishu_lark.stream"
 
 
 class _RecordingGateway:
@@ -309,20 +310,12 @@ def _event(
     callback: Mapping[str, object],
     provider: IMProvider = IMProvider.FEISHU,
     *,
+    ingress_kind: IMEventIngressKind = IMEventIngressKind.WEBHOOK,
     payload: str | None = None,
 ) -> AuthenticatedIMEvent:
     serialized_payload = payload
     if serialized_payload is None:
-        native_payload = json.dumps(callback, ensure_ascii=False)
-        serialized_payload = json.dumps(
-            {
-                _WEBHOOK_PAYLOAD_KEY: {
-                    "encrypted": True,
-                    "native_payload": native_payload,
-                }
-            },
-            ensure_ascii=False,
-        )
+        serialized_payload = json.dumps(callback, ensure_ascii=False)
     return AuthenticatedIMEvent(
         provider=provider,
         provider_tenant_id="tenant_test_only",
@@ -330,6 +323,7 @@ def _event(
         event_type="card.action.trigger",
         occurred_at=None,
         received_at=_RECEIVED_AT,
+        ingress_kind=ingress_kind,
         payload=serialized_payload,
     )
 
@@ -392,18 +386,14 @@ def test_webhook_transport_preserves_exact_decrypted_payload_until_decode(
 
     try:
         authenticated_event = _replay_webhook(adapter, fixture)
-        envelope = json.loads(authenticated_event.payload)
         decoded = FeishuIMProviderAdapter.card_event_decoder().decode(authenticated_event)
     finally:
         adapter.close()
 
-    assert envelope == {
-        _WEBHOOK_PAYLOAD_KEY: {
-            "encrypted": True,
-            "native_payload": native_payload,
-        }
-    }
+    assert authenticated_event.ingress_kind is IMEventIngressKind.WEBHOOK
+    assert authenticated_event.payload == native_payload
     assert json.loads(native_payload) == _fixture_payload(fixture)
+    assert _LEGACY_WEBHOOK_PAYLOAD_KEY not in authenticated_event.payload
     assert isinstance(decoded, IMCardEvent)
 
 
@@ -424,17 +414,14 @@ def test_stream_transport_preserves_exact_sdk_payload_until_decode(
 
     try:
         authenticated_event = _replay_stream(monkeypatch, adapter, fixture)
-        envelope = json.loads(authenticated_event.payload)
         decoded = FeishuIMProviderAdapter.card_event_decoder().decode(authenticated_event)
     finally:
         adapter.close()
 
-    assert envelope == {
-        _STREAM_PAYLOAD_KEY: {
-            "native_payload": native_payload,
-            "object_type": object_type,
-        }
-    }
+    assert authenticated_event.ingress_kind is IMEventIngressKind.STREAM
+    assert authenticated_event.payload == native_payload
+    assert _LEGACY_STREAM_PAYLOAD_KEY not in authenticated_event.payload
+    assert object_type not in authenticated_event.payload
     assert isinstance(decoded, IMCardEvent)
 
 
@@ -593,30 +580,30 @@ def test_protocol_failure_and_routing_boundaries_remain_distinct() -> None:
                     "event": {},
                 }
             ),
-            "Feishu/Lark card event envelope is invalid.",
-            id="bare-callback",
+            "Feishu/Lark card event schema is invalid.",
+            id="malformed-direct-callback",
         ),
         pytest.param(
-            json.dumps({_WEBHOOK_PAYLOAD_KEY: {"encrypted": True}}),
-            "Feishu/Lark card event envelope is invalid.",
+            json.dumps({_LEGACY_WEBHOOK_PAYLOAD_KEY: {"encrypted": True}}),
+            "Feishu/Lark card event payload is invalid.",
             id="malformed-webhook-wrapper",
         ),
         pytest.param(
             json.dumps(
                 {
-                    _STREAM_PAYLOAD_KEY: {
+                    _LEGACY_STREAM_PAYLOAD_KEY: {
                         "native_payload": "{}",
                         "object_type": "unexpected.sdk.Event",
                     }
                 }
             ),
-            "Feishu/Lark card event envelope is invalid.",
+            "Feishu/Lark card event payload is invalid.",
             id="wrong-stream-object-type",
         ),
         pytest.param(
             json.dumps(
                 {
-                    _WEBHOOK_PAYLOAD_KEY: {
+                    _LEGACY_WEBHOOK_PAYLOAD_KEY: {
                         "encrypted": True,
                         "native_payload": "not-json",
                     }
@@ -627,7 +614,7 @@ def test_protocol_failure_and_routing_boundaries_remain_distinct() -> None:
         ),
     ],
 )
-def test_transport_envelope_protocol_rejects_bypass_and_malformed_wrappers(
+def test_direct_payload_protocol_rejects_obsolete_wrappers_and_malformed_callbacks(
     payload: str,
     expected_message: str,
 ) -> None:

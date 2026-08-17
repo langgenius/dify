@@ -79,6 +79,7 @@ from core.human_input_v2.im_integration.change_log import (
     IMReconciliationSubjectKind as _IMReconciliationSubjectKind,
 )
 from core.human_input_v2.im_message_inbox import IM_INBOX_PROVIDER_METADATA_MAX_LENGTH, InboxProcessingStatus
+from core.human_input_v2.im_provider import IMEventIngressKind as _IMEventIngressKind
 from graphon.file.enums import FileTransferMethod, FileType
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
@@ -833,7 +834,13 @@ class IMMessageInbox(_IMMessageInboxDefaultFieldsMixin, TypeBase):
         kw_only=True,
         comment="Provider-owned event discriminator.",
     )
-    raw_payload: Mapped[str] = mapped_column(
+    ingress_kind: Mapped[_IMEventIngressKind] = mapped_column(
+        EnumText(_IMEventIngressKind),
+        nullable=False,
+        kw_only=True,
+        comment="Ingress contract used to construct the Provider payload snapshot.",
+    )
+    payload: Mapped[str] = mapped_column(
         LongText, nullable=False, kw_only=True, comment="Authenticated Provider-native payload."
     )
     status: Mapped[InboxProcessingStatus] = mapped_column(

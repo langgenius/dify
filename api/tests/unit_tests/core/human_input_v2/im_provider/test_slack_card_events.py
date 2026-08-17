@@ -19,6 +19,7 @@ from core.human_input_v2.im_provider import (
     CorrelationToken,
     IMCardEvent,
     IMCardEventDecodingError,
+    IMEventIngressKind,
     ProviderUserId,
     UnrecognizedIMEvent,
 )
@@ -43,6 +44,7 @@ def _event(
     *,
     provider: IMProvider = IMProvider.SLACK,
     event_type: str = "block_actions",
+    ingress_kind: IMEventIngressKind = IMEventIngressKind.WEBHOOK,
 ) -> AuthenticatedIMEvent:
     return AuthenticatedIMEvent(
         provider=provider,
@@ -51,6 +53,7 @@ def _event(
         event_type=event_type,
         occurred_at=None,
         received_at=_RECEIVED_AT,
+        ingress_kind=ingress_kind,
         payload=json.dumps(callback, ensure_ascii=False, sort_keys=True),
     )
 
@@ -100,6 +103,7 @@ def _event_with_raw_json_extra(raw_json_value: str) -> AuthenticatedIMEvent:
         event_type="block_actions",
         occurred_at=None,
         received_at=_RECEIVED_AT,
+        ingress_kind=IMEventIngressKind.WEBHOOK,
         payload=f'{serialized_callback[:-1]},"ignored_extra":{raw_json_value}}}',
     )
 
@@ -176,7 +180,7 @@ def test_webhook_and_socket_mode_callbacks_converge_with_exact_unicode_round_tri
     decoder = SlackIMProviderAdapter.card_event_decoder()
 
     webhook_result = decoder.decode(_event(_fixture(_WEBHOOK_FIXTURE)))
-    socket_result = decoder.decode(_event(_fixture(_SOCKET_MODE_FIXTURE)))
+    socket_result = decoder.decode(_event(_fixture(_SOCKET_MODE_FIXTURE), ingress_kind=IMEventIngressKind.STREAM))
 
     expected = IMCardEvent(
         provider_user_id=ProviderUserId("U012SANITIZED"),
@@ -188,10 +192,29 @@ def test_webhook_and_socket_mode_callbacks_converge_with_exact_unicode_round_tri
     assert socket_result == expected
 
 
+@pytest.mark.parametrize(
+    ("fixture_path", "declared_ingress_kind"),
+    [
+        pytest.param(_SOCKET_MODE_FIXTURE, IMEventIngressKind.WEBHOOK, id="socket-envelope-as-webhook"),
+        pytest.param(_WEBHOOK_FIXTURE, IMEventIngressKind.STREAM, id="webhook-root-as-stream"),
+    ],
+)
+def test_decoder_rejects_declared_ingress_payload_mismatch(
+    fixture_path: Path,
+    declared_ingress_kind: IMEventIngressKind,
+) -> None:
+    event = _event(_fixture(fixture_path), ingress_kind=declared_ingress_kind)
+
+    with pytest.raises(IMCardEventDecodingError):
+        SlackIMProviderAdapter.card_event_decoder().decode(event)
+
+
 def test_real_socket_mode_callback_capture_decodes_with_exact_unicode_round_trip() -> None:
     assert _LIVE_CAPTURE_SOCKET_MODE_FIXTURE.exists()
 
-    decoded = _SlackCardCodec().decode(_event(_fixture(_LIVE_CAPTURE_SOCKET_MODE_FIXTURE)))
+    decoded = _SlackCardCodec().decode(
+        _event(_fixture(_LIVE_CAPTURE_SOCKET_MODE_FIXTURE), ingress_kind=IMEventIngressKind.STREAM)
+    )
 
     assert decoded == IMCardEvent(
         provider_user_id=ProviderUserId("U012SANITIZED"),
@@ -222,14 +245,19 @@ def test_real_socket_mode_callback_capture_sanitizes_provider_generated_block_id
 
 
 @pytest.mark.parametrize(
-    "fixture_path",
+    ("fixture_path", "ingress_kind"),
     [
-        pytest.param(_STATIC_SELECT_INTERACTION_FIXTURE, id="static-select"),
-        pytest.param(_RADIO_BUTTONS_INTERACTION_FIXTURE, id="radio-buttons"),
+        pytest.param(_STATIC_SELECT_INTERACTION_FIXTURE, IMEventIngressKind.STREAM, id="static-select"),
+        pytest.param(_RADIO_BUTTONS_INTERACTION_FIXTURE, IMEventIngressKind.WEBHOOK, id="radio-buttons"),
     ],
 )
-def test_selection_change_block_actions_are_unrecognized(fixture_path: Path) -> None:
-    result = SlackIMProviderAdapter.card_event_decoder().decode(_event(_fixture(fixture_path)))
+def test_selection_change_block_actions_are_unrecognized(
+    fixture_path: Path,
+    ingress_kind: IMEventIngressKind,
+) -> None:
+    result = SlackIMProviderAdapter.card_event_decoder().decode(
+        _event(_fixture(fixture_path), ingress_kind=ingress_kind)
+    )
 
     assert isinstance(result, UnrecognizedIMEvent)
 
@@ -581,6 +609,7 @@ def test_authenticated_non_card_events_are_unrecognized(provider: IMProvider, ev
         event_type=event_type,
         occurred_at=None,
         received_at=_RECEIVED_AT,
+        ingress_kind=IMEventIngressKind.WEBHOOK,
         payload="not parsed for non-card events",
     )
 
@@ -598,6 +627,7 @@ def test_recognized_card_with_invalid_json_raises_safe_error() -> None:
         event_type="block_actions",
         occurred_at=None,
         received_at=_RECEIVED_AT,
+        ingress_kind=IMEventIngressKind.WEBHOOK,
         payload=f'{{"submitted":"{sensitive_marker}"',
     )
 
@@ -613,18 +643,19 @@ def test_recognized_card_with_invalid_json_raises_safe_error() -> None:
 
 
 @pytest.mark.parametrize(
-    ("fixture_path", "non_finite_value"),
+    ("fixture_path", "ingress_kind", "non_finite_value"),
     [
-        pytest.param(_WEBHOOK_FIXTURE, float("nan"), id="webhook-nan"),
-        pytest.param(_WEBHOOK_FIXTURE, float("inf"), id="webhook-infinity"),
-        pytest.param(_WEBHOOK_FIXTURE, float("-inf"), id="webhook-negative-infinity"),
-        pytest.param(_SOCKET_MODE_FIXTURE, float("nan"), id="socket-nan"),
-        pytest.param(_SOCKET_MODE_FIXTURE, float("inf"), id="socket-infinity"),
-        pytest.param(_SOCKET_MODE_FIXTURE, float("-inf"), id="socket-negative-infinity"),
+        pytest.param(_WEBHOOK_FIXTURE, IMEventIngressKind.WEBHOOK, float("nan"), id="webhook-nan"),
+        pytest.param(_WEBHOOK_FIXTURE, IMEventIngressKind.WEBHOOK, float("inf"), id="webhook-infinity"),
+        pytest.param(_WEBHOOK_FIXTURE, IMEventIngressKind.WEBHOOK, float("-inf"), id="webhook-negative-infinity"),
+        pytest.param(_SOCKET_MODE_FIXTURE, IMEventIngressKind.STREAM, float("nan"), id="socket-nan"),
+        pytest.param(_SOCKET_MODE_FIXTURE, IMEventIngressKind.STREAM, float("inf"), id="socket-infinity"),
+        pytest.param(_SOCKET_MODE_FIXTURE, IMEventIngressKind.STREAM, float("-inf"), id="socket-negative-infinity"),
     ],
 )
 def test_recognized_card_rejects_non_finite_json_constants(
     fixture_path: Path,
+    ingress_kind: IMEventIngressKind,
     non_finite_value: float,
 ) -> None:
     sensitive_marker = "non-finite-sensitive-marker"
@@ -632,7 +663,7 @@ def test_recognized_card_rejects_non_finite_json_constants(
     callback["ignored_extra"] = {"number": non_finite_value, "marker": sensitive_marker}
 
     with pytest.raises(IMCardEventDecodingError) as captured:
-        SlackIMProviderAdapter.card_event_decoder().decode(_event(callback))
+        SlackIMProviderAdapter.card_event_decoder().decode(_event(callback, ingress_kind=ingress_kind))
 
     assert sensitive_marker not in str(captured.value)
     assert sensitive_marker not in repr(captured.value)
@@ -822,4 +853,28 @@ def test_decoder_rejects_malformed_socket_mode_envelope() -> None:
     callback["payload"] = "wrong-type"
 
     with pytest.raises(IMCardEventDecodingError):
-        SlackIMProviderAdapter.card_event_decoder().decode(_event(callback))
+        SlackIMProviderAdapter.card_event_decoder().decode(_event(callback, ingress_kind=IMEventIngressKind.STREAM))
+
+
+def test_decoder_rejects_socket_mode_envelope_without_envelope_id() -> None:
+    callback = _fixture(_SOCKET_MODE_FIXTURE)
+    del callback["envelope_id"]
+
+    with pytest.raises(IMCardEventDecodingError):
+        SlackIMProviderAdapter.card_event_decoder().decode(_event(callback, ingress_kind=IMEventIngressKind.STREAM))
+
+
+@pytest.mark.parametrize(
+    "invalid_envelope_id",
+    [
+        pytest.param(None, id="null"),
+        pytest.param("", id="empty-string"),
+        pytest.param(0, id="integer"),
+    ],
+)
+def test_decoder_rejects_socket_mode_envelope_with_invalid_envelope_id(invalid_envelope_id: object) -> None:
+    callback = _fixture(_SOCKET_MODE_FIXTURE)
+    callback["envelope_id"] = invalid_envelope_id
+
+    with pytest.raises(IMCardEventDecodingError):
+        SlackIMProviderAdapter.card_event_decoder().decode(_event(callback, ingress_kind=IMEventIngressKind.STREAM))

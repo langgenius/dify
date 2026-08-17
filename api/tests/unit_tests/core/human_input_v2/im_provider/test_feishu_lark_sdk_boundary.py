@@ -52,6 +52,7 @@ from core.human_input_v2.im_provider import (
     DirectoryReadFailure,
     DynamicCardMessagingError,
     EventAcceptance,
+    IMEventIngressKind,
     IMStreamStartError,
     IMStreamStopError,
     MessageAccepted,
@@ -514,33 +515,18 @@ def _event_payload() -> dict[str, object]:
 
 def _sdk_transport_envelope(event: Mapping[str, object]) -> adapter_module._SDKEventEnvelope:
     header = event.get("header")
-    if not isinstance(header, Mapping):
-        return adapter_module._SDKEventEnvelope(
-            native_payload=json.dumps(event, ensure_ascii=False, separators=(",", ":")),
-            object_type="unexpected.sdk.Event",
-            provider_tenant_id="tenant_sanitized",
-            event_id=None,
-            event_type=None,
-            occurred_at=None,
-            is_card_action=True,
-        )
+    assert isinstance(header, Mapping)
     tenant_key = header.get("tenant_key")
     event_id = header.get("event_id")
     event_type = header.get("event_type")
     create_time = header.get("create_time")
-    is_valid_card_event = event_type == "card.action.trigger" and isinstance(tenant_key, str)
+    assert isinstance(tenant_key, str)
     return adapter_module._SDKEventEnvelope(
         native_payload=json.dumps(event, ensure_ascii=False, separators=(",", ":")),
-        object_type=(
-            "lark_oapi.event.callback.model.p2_card_action_trigger.P2CardActionTrigger"
-            if is_valid_card_event
-            else "unexpected.sdk.Event"
-        ),
-        provider_tenant_id=tenant_key if isinstance(tenant_key, str) else "tenant_sanitized",
+        provider_tenant_id=tenant_key,
         event_id=event_id if isinstance(event_id, str) else None,
         event_type=event_type if isinstance(event_type, str) else None,
         occurred_at=adapter_module._webhook_occurred_at(create_time if isinstance(create_time, str) else None),
-        is_card_action=True,
     )
 
 
@@ -984,12 +970,8 @@ def test_webhook_crypto_challenge_replay_and_ack_over_official_tenant_boundary(
     assert response.status_code == 200
     assert replay.status_code == 409
     assert len(consumer.events) == 1
-    assert json.loads(consumer.events[0].payload) == {
-        "__dify_feishu_lark.webhook": {
-            "encrypted": True,
-            "native_payload": plaintext.decode(),
-        }
-    }
+    assert consumer.events[0].ingress_kind is IMEventIngressKind.WEBHOOK
+    assert json.loads(consumer.events[0].payload) == json.loads(plaintext)
 
     challenge_consumer = _Consumer()
     challenge_credentials = FeishuIMIntegrationCredentials(
@@ -1922,7 +1904,6 @@ def test_stream_failure_stop_and_late_callback_boundaries_are_one_shot(
     consumer = _Consumer(EventAcceptance.NOT_ACCEPTED)
     running_stream = adapter.create_stream_handler(consumer)
     running_stream.start()
-    assert clients[1].emit({"header": {}}) == 0
     assert clients[1].emit(_event_payload()) == 0
     with pytest.raises(IMStreamStopError, match="could not be stopped"):
         running_stream.stop()

@@ -177,7 +177,7 @@ def test_slack_webhook_commits_only_authenticated_business_events_before_success
         assert stored.provider is IMProvider.SLACK
         assert stored.provider_tenant_id == _PROVIDER_TENANT_ID
         assert stored.provider_event_id == "sanitized-webhook-event"
-        assert json.loads(stored.raw_payload) == json.loads(event_body)
+        assert json.loads(stored.payload) == json.loads(event_body)
 
 
 def test_slack_webhook_maps_inbox_commit_failure_to_retryable_response(sqlite_engine: Engine) -> None:
@@ -314,6 +314,7 @@ def test_slack_webhook_and_stream_share_inbox_deduplication_without_expanding_ev
         "event_type",
         "occurred_at",
         "received_at",
+        "ingress_kind",
         "payload",
     }
     with session_maker() as session:
@@ -321,7 +322,12 @@ def test_slack_webhook_and_stream_share_inbox_deduplication_without_expanding_ev
         assert len(records) == 1
         assert records[0].integration_id == str(_INTEGRATION_ID)
         assert records[0].claim_token is None
-        assert json.loads(records[0].raw_payload) == json.loads(event_body)
+        assert consumer.events[0].ingress_kind.value == "webhook"
+        assert consumer.events[1].ingress_kind.value == "stream"
+        assert json.loads(consumer.events[1].payload) == stream_request.to_dict()
+        assert records[0].ingress_kind is consumer.events[0].ingress_kind
+        assert records[0].payload == consumer.events[0].payload
+        assert json.loads(records[0].payload) == json.loads(event_body)
 
     stream.stop()
 

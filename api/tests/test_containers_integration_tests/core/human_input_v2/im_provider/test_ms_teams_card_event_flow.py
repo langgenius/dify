@@ -16,6 +16,7 @@ from core.human_input_v2.im_provider import (
     DynamicCardMessagingError,
     IMCardEvent,
     IMCardEventDecodingError,
+    IMEventIngressKind,
     ProviderUserId,
     UnrecognizedIMEvent,
 )
@@ -47,6 +48,7 @@ def _event(callback: Mapping[str, object], *, event_type: str = "message") -> Au
         event_type=event_type,
         occurred_at=None,
         received_at=_RECEIVED_AT,
+        ingress_kind=IMEventIngressKind.WEBHOOK,
         payload=json.dumps(callback, ensure_ascii=False, separators=(",", ":")),
     )
 
@@ -125,6 +127,7 @@ def test_ms_teams_codec_routes_foreign_and_invalid_transport_events() -> None:
         event_type="conversationUpdate",
         occurred_at=None,
         received_at=_RECEIVED_AT,
+        ingress_kind=IMEventIngressKind.WEBHOOK,
         payload="not-json",
     )
     assert isinstance(decoder.decode(non_card_event), UnrecognizedIMEvent)
@@ -153,6 +156,7 @@ def test_ms_teams_codec_routes_foreign_and_invalid_transport_events() -> None:
         event_type="message",
         occurred_at=None,
         received_at=_RECEIVED_AT,
+        ingress_kind=IMEventIngressKind.WEBHOOK,
         payload="not-json",
     )
     with pytest.raises(IMCardEventDecodingError):
@@ -166,6 +170,7 @@ def test_ms_teams_codec_routes_foreign_and_invalid_transport_events() -> None:
                 event_type="message",
                 occurred_at=None,
                 received_at=_RECEIVED_AT,
+                ingress_kind=IMEventIngressKind.WEBHOOK,
                 payload="[]",
             )
         )

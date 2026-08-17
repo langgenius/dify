@@ -31,7 +31,12 @@ from core.human_input_v2.im_message_inbox import (
     RetryScheduled,
     TransitionApplied,
 )
-from core.human_input_v2.im_provider import AuthenticatedIMEvent, SlackIMIntegrationCredentials, WebhookRequest
+from core.human_input_v2.im_provider import (
+    AuthenticatedIMEvent,
+    IMEventIngressKind,
+    SlackIMIntegrationCredentials,
+    WebhookRequest,
+)
 from core.human_input_v2.shared import IntegrationId
 from models.human_input_v2 import IMMessageInbox
 from repositories.human_input_v2.im_message_inbox.repository import SQLAlchemyIMMessageInboxRepository
@@ -104,6 +109,8 @@ def _event(
     *,
     tenant_id: str = "tenant-1",
     event_type: str | None = None,
+    ingress_kind: IMEventIngressKind = IMEventIngressKind.WEBHOOK,
+    payload: str = ' {"secret":"must-not-log"}\n',
 ) -> AuthenticatedIMEvent:
     return AuthenticatedIMEvent(
         provider=IMProvider.FEISHU,
@@ -112,7 +119,8 @@ def _event(
         event_type=event_type,
         occurred_at=None,
         received_at=_RECEIVED_AT,
-        payload=' {"secret":"must-not-log"}\n',
+        ingress_kind=ingress_kind,
+        payload=payload,
     )
 
 
@@ -152,7 +160,8 @@ def _insert_then_rollback(session_maker: sessionmaker[Session]) -> None:
                 provider_tenant_id="tenant-1",
                 provider_event_id="rolled-back",
                 received_at=_RECEIVED_AT,
-                raw_payload="{}",
+                ingress_kind=IMEventIngressKind.WEBHOOK,
+                payload="{}",
             )
         )
         session.flush()
@@ -263,7 +272,8 @@ def test_postgres_schema_rejects_oversized_provider_metadata(
                 provider_event_id=event_id,
                 received_at=_RECEIVED_AT,
                 provider_event_type=event_type,
-                raw_payload="{}",
+                ingress_kind=IMEventIngressKind.WEBHOOK,
+                payload="{}",
             )
         )
 

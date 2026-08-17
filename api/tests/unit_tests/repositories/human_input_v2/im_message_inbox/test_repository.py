@@ -28,7 +28,7 @@ from core.human_input_v2.im_message_inbox import (
     RetryScheduled,
     TransitionApplied,
 )
-from core.human_input_v2.im_provider import AuthenticatedIMEvent
+from core.human_input_v2.im_provider import AuthenticatedIMEvent, IMEventIngressKind
 from core.human_input_v2.shared import IntegrationId
 from models.human_input_v2 import IMMessageInbox
 from repositories.human_input_v2.im_message_inbox.repository import SQLAlchemyIMMessageInboxRepository
@@ -57,6 +57,8 @@ def _event(
     provider: IMProvider = IMProvider.FEISHU,
     tenant_id: str = "tenant-1",
     event_type: str | None = "card.action",
+    ingress_kind: IMEventIngressKind = IMEventIngressKind.WEBHOOK,
+    payload: str = _PAYLOAD,
 ) -> AuthenticatedIMEvent:
     return AuthenticatedIMEvent(
         provider=provider,
@@ -65,7 +67,8 @@ def _event(
         occurred_at=datetime(2026, 8, 2, 7, 59),
         received_at=datetime(2026, 8, 2, 8),
         event_type=event_type,
-        payload=_PAYLOAD,
+        ingress_kind=ingress_kind,
+        payload=payload,
     )
 
 
@@ -122,9 +125,19 @@ def test_empty_backlog_rejects_naive_now_at_persistence_boundary(sqlite_engine: 
 
 def test_insert_resolves_identified_duplicate_without_mutating_existing_record(sqlite_engine: Engine) -> None:
     repository, session_maker = _repository(sqlite_engine)
-    first = repository.insert_or_resolve(IntegrationId("integration-1"), _event(), now=_NOW)
+    webhook_payload = '{"type":"card.action","source":"webhook"}'
+    stream_payload = '{"type":"callback","event":{"source":"stream"}}'
+    first = repository.insert_or_resolve(
+        IntegrationId("integration-1"),
+        _event(ingress_kind=IMEventIngressKind.WEBHOOK, payload=webhook_payload),
+        now=_NOW,
+    )
 
-    duplicate = repository.insert_or_resolve(IntegrationId("integration-2"), _event(), now=_NOW)
+    duplicate = repository.insert_or_resolve(
+        IntegrationId("integration-2"),
+        _event(ingress_kind=IMEventIngressKind.STREAM, payload=stream_payload),
+        now=_NOW,
+    )
 
     assert first.kind is AcceptanceKind.NEW
     assert duplicate.kind is AcceptanceKind.DUPLICATE
@@ -134,6 +147,29 @@ def test_insert_resolves_identified_duplicate_without_mutating_existing_record(s
     assert len(records) == 1
     assert records[0].integration_id == "integration-1"
     assert records[0].attempt_count == 0
+    assert records[0].ingress_kind is IMEventIngressKind.WEBHOOK
+    assert records[0].payload == webhook_payload
+
+
+def test_ingress_kind_and_payload_round_trip_and_remain_immutable_through_processing(
+    sqlite_engine: Engine,
+) -> None:
+    repository, session_maker = _repository(sqlite_engine)
+    payload = '{"type":"interactive","envelope_id":"envelope-1","payload":{"nested":[1,null,true]}}'
+    event = _event(ingress_kind=IMEventIngressKind.STREAM, payload=payload)
+    accepted = repository.insert_or_resolve(IntegrationId("integration-1"), event, now=_NOW)
+
+    delivery = repository.claim_by_id(accepted.record_id, now=_NOW)
+    assert isinstance(delivery, IMInboxDelivery)
+    assert delivery.event == event
+    repository.succeed(delivery.record_id, delivery.claim_token, now=_NOW + timedelta(seconds=1))
+
+    with session_maker() as session:
+        stored = session.get_one(IMMessageInbox, str(delivery.record_id))
+        assert stored.ingress_kind is IMEventIngressKind.STREAM
+        assert stored.payload == payload
+        assert stored.status is InboxProcessingStatus.SUCCEEDED
+        assert not hasattr(stored, "raw_payload")
 
 
 def test_absent_event_id_and_distinct_provider_identity_create_independent_records(sqlite_engine: Engine) -> None:
@@ -167,7 +203,7 @@ def test_blank_event_id_is_persisted_as_absent_without_deduplication(
         records = list(session.scalars(select(IMMessageInbox).order_by(IMMessageInbox.id)))
     assert len(records) == 2
     assert all(record.provider_event_id is None for record in records)
-    assert all(record.raw_payload == _PAYLOAD for record in records)
+    assert all(record.payload == _PAYLOAD for record in records)
 
 
 def test_nonblank_event_id_is_preserved_verbatim_and_deduplicated(sqlite_engine: Engine) -> None:
@@ -261,7 +297,7 @@ def test_claim_reconstructs_event_and_renews_only_current_token(sqlite_engine: E
     with session_maker() as session:
         stored = session.get_one(IMMessageInbox, str(delivery.record_id))
         assert stored.status is InboxProcessingStatus.PROCESSING
-        assert stored.raw_payload == _PAYLOAD
+        assert stored.payload == _PAYLOAD
 
 
 def test_renew_uses_repository_owned_lease_duration(sqlite_engine: Engine) -> None:

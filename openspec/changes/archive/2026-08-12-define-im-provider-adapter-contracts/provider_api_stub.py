@@ -307,6 +307,13 @@ class WebhookResponse:
     body: bytes
 
 
+class IMEventIngressKind(StrEnum):
+    """Ingress contract used to construct the Provider payload snapshot."""
+
+    WEBHOOK = "webhook"
+    STREAM = "stream"
+
+
 @dataclass(frozen=True, slots=True)
 class AuthenticatedIMEvent:
     """Authenticated Provider evidence before consumer-specific decoding.
@@ -336,6 +343,9 @@ class AuthenticatedIMEvent:
 
     # Trusted local time at which Dify received the delivery.
     received_at: NaiveDatetime
+
+    # Actual ingress contract used to construct this payload snapshot.
+    ingress_kind: IMEventIngressKind
 
     # For Webhook transports, the JSON serialization of the complete JSON object
     # obtained from the Provider HTTP request body after authentication and

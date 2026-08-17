@@ -63,6 +63,7 @@ from core.human_input_v2.im_provider import (
     IMDirectory,
     IMDynamicCardMessaging,
     IMEventConsumer,
+    IMEventIngressKind,
     IMEventStream,
     IMMessaging,
     IMStreamStartError,
@@ -173,6 +174,7 @@ class _SlackCardCodec(IMCardEventDecoder):
 
     class _SocketModeEnvelope(_CallbackModel):
         type: Literal["interactive"]
+        envelope_id: str = Field(min_length=1)
         payload: dict[str, JsonValue]
 
     class _CallbackUser(_CallbackModel):
@@ -432,7 +434,7 @@ class _SlackCardCodec(IMCardEventDecoder):
         callback = self._decode_json_object(event.payload)
         if callback is None:
             raise IMCardEventDecodingError("Slack card event payload is invalid.")
-        callback_payload = self._unwrap_callback_payload(callback)
+        callback_payload = self._callback_payload(event.ingress_kind, callback)
         if callback_payload is None:
             raise IMCardEventDecodingError("Slack card event envelope is invalid.")
 
@@ -474,13 +476,21 @@ class _SlackCardCodec(IMCardEventDecoder):
             return None
 
     @classmethod
-    def _unwrap_callback_payload(cls, callback: dict[str, JsonValue]) -> dict[str, JsonValue] | None:
-        if callback.get("type") != "interactive":
+    def _callback_payload(
+        cls,
+        ingress_kind: IMEventIngressKind,
+        callback: dict[str, JsonValue],
+    ) -> dict[str, JsonValue] | None:
+        if ingress_kind is IMEventIngressKind.WEBHOOK:
+            if callback.get("type") == "interactive":
+                return None
             return callback
-        try:
-            return cls._SocketModeEnvelope.model_validate(callback).payload
-        except ValidationError:
-            return None
+        if ingress_kind is IMEventIngressKind.STREAM:
+            try:
+                return cls._SocketModeEnvelope.model_validate(callback).payload
+            except ValidationError:
+                return None
+        return None
 
     @classmethod
     def _recognize_submission(cls, callback_payload: dict[str, JsonValue]) -> _RecognitionPayload | None:
@@ -857,7 +867,7 @@ class _SlackWebhookHandler(IMWebhookHandler):
                 return _webhook_response(400, b"invalid Slack challenge")
             response_body = json.dumps({"challenge": challenge}, separators=(",", ":")).encode()
             return WebhookResponse(200, (("Content-Type", "application/json"),), response_body)
-        event = _authenticated_event(body, request.received_at)
+        event = _authenticated_event(body, request.received_at, ingress_kind=IMEventIngressKind.WEBHOOK)
         if event is None:
             return _webhook_response(400, b"invalid Slack event")
         try:
@@ -1036,6 +1046,7 @@ class _SlackEventStream(IMEventStream):
             event = _authenticated_event(
                 event_body,
                 datetime.now(tz=UTC).replace(tzinfo=None),
+                ingress_kind=IMEventIngressKind.STREAM,
                 serialized_body=serialized_request,
             )
             if event is None:
@@ -1235,6 +1246,7 @@ def _authenticated_event(
     body: Mapping[str, JsonValue],
     received_at: datetime,
     *,
+    ingress_kind: IMEventIngressKind,
     serialized_body: Mapping[str, JsonValue] | None = None,
 ) -> AuthenticatedIMEvent | None:
     provider_tenant_id = _provider_tenant_id(body)
@@ -1267,6 +1279,7 @@ def _authenticated_event(
         event_type=event_type,
         occurred_at=occurred_at,
         received_at=received_at,
+        ingress_kind=ingress_kind,
         payload=serialized,
     )
 

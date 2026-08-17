@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_message_inbox import IMInboxRecordId, InboxEventValidationError, InboxProcessingPolicy
-from core.human_input_v2.im_provider import AuthenticatedIMEvent, EventAcceptance, IMEventConsumer
+from core.human_input_v2.im_provider import AuthenticatedIMEvent, EventAcceptance, IMEventConsumer, IMEventIngressKind
 from core.human_input_v2.shared import IntegrationId
 from models.human_input_v2 import IMMessageInbox
 from repositories.human_input_v2.im_message_inbox.repository import SQLAlchemyIMMessageInboxRepository
@@ -100,6 +100,7 @@ def _event(
         event_type=event_type,
         occurred_at=None,
         received_at=datetime(2026, 8, 2, 8),
+        ingress_kind=IMEventIngressKind.WEBHOOK,
         payload=_PAYLOAD,
     )
 
@@ -153,7 +154,7 @@ def test_sink_returns_accepted_only_after_commit_and_publishes_only_record_id(sq
     with session_maker() as session:
         stored = session.get_one(IMMessageInbox, str(wakeup.record_ids[0]))
         assert stored.integration_id == "integration-1"
-        assert stored.raw_payload == _PAYLOAD
+        assert stored.payload == _PAYLOAD
 
 
 def test_sink_publish_observes_the_committed_record(sqlite_engine: Engine) -> None:
@@ -244,7 +245,7 @@ def test_sink_canonicalizes_oversized_blank_event_id_before_validation(sqlite_en
         stored = session.scalar(sa.select(IMMessageInbox))
         assert stored is not None
         assert stored.provider_event_id is None
-        assert stored.raw_payload == _PAYLOAD
+        assert stored.payload == _PAYLOAD
 
 
 def test_sink_preserves_nonblank_event_id_verbatim(sqlite_engine: Engine) -> None:
