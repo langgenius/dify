@@ -178,6 +178,7 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.workflow_run_archive_download_tasks",  # workflow-run archive download preparation
         "tasks.knowledge_fs_initial_source_preview_tasks",  # datasource previews use the standard dataset queue
         "tasks.knowledge_fs_failed_retrieval_tasks",  # best-effort Workflow quality capture uses dataset workers
+        "tasks.knowledge_fs_upgrade_tasks",  # legacy Dataset upgrades use a dedicated queue and worker
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 
@@ -194,6 +195,10 @@ def init_app(app: DifyApp) -> Celery:
         }
         beat_schedule["knowledge_fs_staged_upload_cleanup"] = {
             "task": "tasks.knowledge_fs_lifecycle_tasks.cleanup_knowledge_fs_staged_uploads",
+            "schedule": timedelta(seconds=dify_config.KNOWLEDGE_FS_LIFECYCLE_POLL_INTERVAL_SECONDS),
+        }
+        beat_schedule["knowledge_fs_upgrade_file_cleanup"] = {
+            "task": "tasks.knowledge_fs_upgrade_tasks.cleanup_deferred_knowledge_fs_upgrade_files",
             "schedule": timedelta(seconds=dify_config.KNOWLEDGE_FS_LIFECYCLE_POLL_INTERVAL_SECONDS),
         }
     if dify_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK:

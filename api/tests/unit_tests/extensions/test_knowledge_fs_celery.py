@@ -59,6 +59,10 @@ def test_celery_registers_initial_source_task_when_knowledge_fs_lifecycle_is_rea
         "task": "tasks.knowledge_fs_lifecycle_tasks.cleanup_knowledge_fs_staged_uploads",
         "schedule": timedelta(seconds=2),
     }
+    assert celery_app.conf["beat_schedule"]["knowledge_fs_upgrade_file_cleanup"] == {
+        "task": "tasks.knowledge_fs_upgrade_tasks.cleanup_deferred_knowledge_fs_upgrade_files",
+        "schedule": timedelta(seconds=2),
+    }
 
     with (
         patch("extensions.ext_celery.dify_config", config),

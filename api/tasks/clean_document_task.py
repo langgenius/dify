@@ -11,6 +11,7 @@ from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_storage import storage
 from models.dataset import Dataset, DatasetMetadataBinding, DocumentSegment, SegmentAttachmentBinding
 from models.model import UploadFile
+from services.knowledge_fs.upgrade_file_lease import reserve_upgrade_file_cleanup
 from tasks.refresh_billing_vector_space_task import schedule_billing_vector_space_refresh
 
 logger = logging.getLogger(__name__)
@@ -125,6 +126,14 @@ def clean_document_task(
             )
 
     with session_factory.create_session() as session, session.begin():
+        if file_id:
+            if file_id in reserve_upgrade_file_cleanup(session, [file_id]):
+                logger.info(
+                    "Keep source file while KnowledgeFS upgrade lease is active, file_id=%s, document_id=%s",
+                    file_id,
+                    document_id,
+                )
+                file_id = None
         if file_id:
             file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
             if file:

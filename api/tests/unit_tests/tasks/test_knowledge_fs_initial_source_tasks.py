@@ -17,6 +17,7 @@ from tasks.knowledge_fs_initial_source_tasks import (
     import_initial_website_source,
     start_initial_source_import,
     start_initial_website_source_import,
+    submit_initial_source_for_upgrade,
 )
 
 _DEFAULT_CREDENTIAL = object()
@@ -794,3 +795,37 @@ def test_initial_source_task_does_not_retry_authoritative_missing_resource() -> 
         )
 
     retry.assert_not_called()
+
+
+def test_upgrade_source_submission_succeeds_when_first_import_submission_fails() -> None:
+    facade = _facade()
+    facade.create_source.return_value = SimpleNamespace(
+        connection_id="connection-1",
+        id="source-1",
+        metadata={"clientRequestId": "initial-website-source:operation-1", "preview": True},
+        status="disabled",
+        version=1,
+    )
+    facade.update_source.return_value = SimpleNamespace(
+        connection_id="connection-1",
+        id="source-1",
+        metadata={"clientRequestId": "initial-website-source:operation-1", "preview": False},
+        status="active",
+        version=2,
+    )
+    facade.import_selected_source_crawl.side_effect = RuntimeError("crawl queue unavailable")
+
+    with _runtime(facade):
+        result = submit_initial_source_for_upgrade(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-1",
+            operation_id="operation-1",
+            payload=_payload(sync_policy="manual"),
+        )
+
+    assert result.connection_id == "connection-1"
+    assert result.source_id == "source-1"
+    assert result.workflow_id is None
+    assert result.workflow_error == "RuntimeError"
+    facade.update_source_sync_policy.assert_called_once()

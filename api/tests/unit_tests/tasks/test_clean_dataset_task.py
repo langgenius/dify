@@ -14,7 +14,7 @@ This module tests the dataset cleanup task functionality including:
 import json
 import uuid
 from collections.abc import Iterator
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -36,6 +36,7 @@ from models.dataset import (
     SegmentAttachmentBinding,
 )
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
+from models.knowledge_fs import KnowledgeFSUpgradeFileLease, KnowledgeFSUpgradeJob
 from models.model import UploadFile
 from models.workflow import Workflow, WorkflowType
 from tasks.clean_dataset_task import clean_dataset_task
@@ -579,3 +580,77 @@ class TestIndexProcessorParameters:
             )
 
         schedule_refresh.assert_not_called()
+
+
+def test_dataset_cleanup_keeps_a_leased_legacy_source_file(
+    dataset_id: str,
+    tenant_id: str,
+    collection_binding_id: str,
+    orm_session_maker: sessionmaker[Session],
+    mock_storage: MagicMock,
+    mock_index_processor_factory: dict[str, MagicMock],
+    mock_get_image_upload_file_ids: MagicMock,
+) -> None:
+    del mock_index_processor_factory, mock_get_image_upload_file_ids
+    account_id = str(uuid.uuid4())
+    now = datetime.now(UTC).replace(tzinfo=None)
+    upload_file = UploadFile(
+        tenant_id=tenant_id,
+        storage_type=StorageType.LOCAL,
+        key=f"upload_files/{tenant_id}/dataset-source.txt",
+        name="dataset-source.txt",
+        size=10,
+        extension="txt",
+        mime_type="text/plain",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=account_id,
+        created_at=now,
+        used=False,
+    )
+    document = Document(
+        id=str(uuid.uuid4()),
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        position=1,
+        data_source_type=DataSourceType.UPLOAD_FILE,
+        data_source_info=json.dumps({"upload_file_id": upload_file.id}),
+        batch="batch",
+        name="dataset-source.txt",
+        created_from=DocumentCreatedFrom.WEB,
+        created_by=account_id,
+        indexing_status=IndexingStatus.COMPLETED,
+        doc_form=IndexStructureType.PARAGRAPH_INDEX,
+    )
+    job = KnowledgeFSUpgradeJob(
+        tenant_id=tenant_id,
+        old_dataset_id=dataset_id,
+        requested_by_account_id=account_id,
+        owner_account_id=account_id,
+        idempotency_key="dataset-cleanup-lease-test",
+        snapshot_at=now,
+        config_snapshot={},
+        permission_snapshot={},
+        app_binding_snapshot=[],
+        tag_ids_snapshot=[],
+    )
+    with orm_session_maker.begin() as session:
+        session.add_all([upload_file, document, job])
+        session.flush()
+        session.add(
+            KnowledgeFSUpgradeFileLease(
+                job_id=job.id,
+                old_upload_file_id=upload_file.id,
+                expires_at=now + timedelta(hours=1),
+            )
+        )
+
+    _run_clean_dataset(
+        dataset_id=dataset_id,
+        tenant_id=tenant_id,
+        collection_binding_id=collection_binding_id,
+    )
+
+    with orm_session_maker() as session:
+        assert session.get(Document, document.id) is None
+        assert session.get(UploadFile, upload_file.id) is not None
+    mock_storage.delete.assert_not_called()

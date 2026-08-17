@@ -211,6 +211,36 @@ class KnowledgeFSStagedUploadStatus(StrEnum):
     EXPIRED = "expired"
 
 
+class KnowledgeFSUpgradeJobStatus(StrEnum):
+    QUEUED = "queued"
+    RUNNING = "running"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+
+
+class KnowledgeFSUpgradeStage(StrEnum):
+    VALIDATING = "validating"
+    WAITING_FOR_SPACE = "waiting_for_space"
+    CREATING_SOURCES = "creating_sources"
+    SUBMITTING_DOCUMENTS = "submitting_documents"
+    MIGRATING_ACCESS = "migrating_access"
+    FINALIZING = "finalizing"
+    COMPLETED = "completed"
+
+
+class KnowledgeFSUpgradeItemStatus(StrEnum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+
+
+class KnowledgeFSUpgradeFileLeaseStatus(StrEnum):
+    ACTIVE = "active"
+    RELEASED = "released"
+    EXPIRED = "expired"
+
+
 class KnowledgeFSControlSpace(DefaultFieldsDCMixin, TypeBase):
     """Dify product resource registered to at most one KnowledgeFS Space."""
 
@@ -807,6 +837,183 @@ class KnowledgeFSLifecycleOutbox(DefaultFieldsDCMixin, TypeBase):
     retain_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
 
 
+class KnowledgeFSUpgradeJob(DefaultFieldsDCMixin, TypeBase):
+    """Immutable legacy Dataset snapshot and resumable upgrade progress."""
+
+    __tablename__ = "knowledge_fs_upgrade_jobs"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="kfs_upgrade_job_pkey"),
+        UniqueConstraint("tenant_id", "idempotency_key", name="kfs_upgrade_job_idempotency_uq"),
+        sa.ForeignKeyConstraint(
+            ["tenant_id"],
+            ["tenants.id"],
+            name="kfs_upgrade_job_workspace_fk",
+            ondelete="RESTRICT",
+        ),
+        sa.ForeignKeyConstraint(
+            ["tenant_id", "new_control_space_id"],
+            ["knowledge_fs_control_spaces.tenant_id", "knowledge_fs_control_spaces.id"],
+            name="kfs_upgrade_job_space_fk",
+            ondelete="RESTRICT",
+        ),
+        Index("kfs_upgrade_job_dataset_created_idx", "tenant_id", "old_dataset_id", "created_at"),
+        Index("kfs_upgrade_job_status_updated_idx", "status", "updated_at"),
+        sa.CheckConstraint("total_documents >= 0", name=sa.schema.conv("kfs_upgrade_job_document_total_ck")),
+        sa.CheckConstraint("completed_documents >= 0", name=sa.schema.conv("kfs_upgrade_job_document_done_ck")),
+        sa.CheckConstraint("total_sources >= 0", name=sa.schema.conv("kfs_upgrade_job_source_total_ck")),
+        sa.CheckConstraint("completed_sources >= 0", name=sa.schema.conv("kfs_upgrade_job_source_done_ck")),
+        sa.CheckConstraint("attempt_count >= 0", name=sa.schema.conv("kfs_upgrade_job_attempt_count_ck")),
+    )
+
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    old_dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    requested_by_account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    owner_account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    snapshot_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    config_snapshot: Mapped[dict[str, object]] = mapped_column(sa.JSON, nullable=False)
+    permission_snapshot: Mapped[dict[str, object]] = mapped_column(sa.JSON, nullable=False)
+    app_binding_snapshot: Mapped[list[dict[str, object]]] = mapped_column(sa.JSON, nullable=False)
+    tag_ids_snapshot: Mapped[list[str]] = mapped_column(sa.JSON, nullable=False)
+    status: Mapped[KnowledgeFSUpgradeJobStatus] = mapped_column(
+        EnumText(KnowledgeFSUpgradeJobStatus, length=16),
+        nullable=False,
+        server_default=sa.text("'queued'"),
+        default=KnowledgeFSUpgradeJobStatus.QUEUED,
+    )
+    stage: Mapped[KnowledgeFSUpgradeStage] = mapped_column(
+        EnumText(KnowledgeFSUpgradeStage, length=32),
+        nullable=False,
+        server_default=sa.text("'validating'"),
+        default=KnowledgeFSUpgradeStage.VALIDATING,
+    )
+    new_control_space_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    resolved_configuration: Mapped[dict[str, object] | None] = mapped_column(sa.JSON, nullable=True, default=None)
+    total_documents: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0, server_default=sa.text("0"))
+    completed_documents: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0, server_default=sa.text("0"))
+    total_sources: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0, server_default=sa.text("0"))
+    completed_sources: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0, server_default=sa.text("0"))
+    attempt_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0, server_default=sa.text("0"))
+    celery_task_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    last_error_code: Mapped[str | None] = mapped_column(String(128), nullable=True, default=None)
+    last_error_message: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+
+
+class KnowledgeFSUpgradeDocument(DefaultFieldsDCMixin, TypeBase):
+    """One legacy document captured at click time, independent of later Dataset updates."""
+
+    __tablename__ = "knowledge_fs_upgrade_documents"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="kfs_upgrade_document_pkey"),
+        UniqueConstraint("job_id", "old_document_id", name="kfs_upgrade_document_identity_uq"),
+        sa.ForeignKeyConstraint(
+            ["job_id"],
+            ["knowledge_fs_upgrade_jobs.id"],
+            name="kfs_upgrade_document_job_fk",
+            ondelete="CASCADE",
+        ),
+        Index("kfs_upgrade_document_dispatch_idx", "job_id", "status", "id"),
+        sa.CheckConstraint(
+            "state_reconcile_attempt_count >= 0",
+            name=sa.schema.conv("kfs_upgrade_document_reconcile_attempt_ck"),
+        ),
+    )
+
+    job_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    old_document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    data_source_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    data_source_info: Mapped[dict[str, object]] = mapped_column(sa.JSON, nullable=False)
+    metadata_snapshot: Mapped[dict[str, object]] = mapped_column(sa.JSON, nullable=False)
+    desired_enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False)
+    legacy_archived: Mapped[bool] = mapped_column(sa.Boolean, nullable=False)
+    legacy_indexing_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    legacy_display_status: Mapped[str | None] = mapped_column(String(32), nullable=True, default=None)
+    old_upload_file_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    source_key: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    status: Mapped[KnowledgeFSUpgradeItemStatus] = mapped_column(
+        EnumText(KnowledgeFSUpgradeItemStatus, length=16),
+        nullable=False,
+        server_default=sa.text("'pending'"),
+        default=KnowledgeFSUpgradeItemStatus.PENDING,
+    )
+    staged_upload_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    new_document_asset_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    new_logical_document_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    compilation_job_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    state_reconcile_attempt_count: Mapped[int] = mapped_column(
+        sa.Integer, nullable=False, server_default=sa.text("0"), default=0
+    )
+    state_reconciled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+    state_reconcile_error: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    last_error_code: Mapped[str | None] = mapped_column(String(128), nullable=True, default=None)
+    last_error_message: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+
+
+class KnowledgeFSUpgradeSource(DefaultFieldsDCMixin, TypeBase):
+    """One deduplicated Source definition derived from the Dataset snapshot."""
+
+    __tablename__ = "knowledge_fs_upgrade_sources"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="kfs_upgrade_source_pkey"),
+        UniqueConstraint("job_id", "source_key", name="kfs_upgrade_source_identity_uq"),
+        sa.ForeignKeyConstraint(
+            ["job_id"],
+            ["knowledge_fs_upgrade_jobs.id"],
+            name="kfs_upgrade_source_job_fk",
+            ondelete="CASCADE",
+        ),
+        Index("kfs_upgrade_source_dispatch_idx", "job_id", "status", "id"),
+    )
+
+    job_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    source_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    payload_snapshot: Mapped[dict[str, object]] = mapped_column(sa.JSON, nullable=False)
+    status: Mapped[KnowledgeFSUpgradeItemStatus] = mapped_column(
+        EnumText(KnowledgeFSUpgradeItemStatus, length=16),
+        nullable=False,
+        server_default=sa.text("'pending'"),
+        default=KnowledgeFSUpgradeItemStatus.PENDING,
+    )
+    new_connection_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    new_source_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    initial_sync_task_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    last_error_code: Mapped[str | None] = mapped_column(String(128), nullable=True, default=None)
+    last_error_message: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+
+
+class KnowledgeFSUpgradeFileLease(DefaultFieldsDCMixin, TypeBase):
+    """Temporary physical-retention lease for a legacy uploaded source file."""
+
+    __tablename__ = "knowledge_fs_upgrade_file_leases"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="kfs_upgrade_file_lease_pkey"),
+        UniqueConstraint("job_id", "old_upload_file_id", name="kfs_upgrade_file_lease_identity_uq"),
+        sa.ForeignKeyConstraint(
+            ["job_id"],
+            ["knowledge_fs_upgrade_jobs.id"],
+            name="kfs_upgrade_file_lease_job_fk",
+            ondelete="CASCADE",
+        ),
+        Index("kfs_upgrade_file_lease_active_idx", "old_upload_file_id", "status", "expires_at"),
+    )
+
+    job_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    old_upload_file_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    status: Mapped[KnowledgeFSUpgradeFileLeaseStatus] = mapped_column(
+        EnumText(KnowledgeFSUpgradeFileLeaseStatus, length=16),
+        nullable=False,
+        server_default=sa.text("'active'"),
+        default=KnowledgeFSUpgradeFileLeaseStatus.ACTIVE,
+    )
+    released_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+    cleanup_requested_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+
+
 __all__ = [
     "AppKnowledgeFSSpaceJoin",
     "KnowledgeFSAllowedActions",
@@ -844,4 +1051,12 @@ __all__ = [
     "KnowledgeFSScoreThresholdIntentPayload",
     "KnowledgeFSStagedUpload",
     "KnowledgeFSStagedUploadStatus",
+    "KnowledgeFSUpgradeDocument",
+    "KnowledgeFSUpgradeFileLease",
+    "KnowledgeFSUpgradeFileLeaseStatus",
+    "KnowledgeFSUpgradeItemStatus",
+    "KnowledgeFSUpgradeJob",
+    "KnowledgeFSUpgradeJobStatus",
+    "KnowledgeFSUpgradeSource",
+    "KnowledgeFSUpgradeStage",
 ]
