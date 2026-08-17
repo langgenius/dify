@@ -1,3 +1,4 @@
+import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { Button } from '../../button'
 import { Field, FieldLabel } from '../../field'
@@ -48,5 +49,26 @@ describe('InputGroup', () => {
     await expect.element(copyButton).toHaveFocus()
     await expect.poll(() => getComputedStyle(group.element()).boxShadow).toBe(restingBoxShadow)
     expect(onCopy).toHaveBeenCalledTimes(1)
+  })
+
+  it('should keep a visually leading interactive add-on after the input in focus order', async () => {
+    const screen = await render(
+      <InputGroup>
+        <InputGroupInput aria-label="Amount" />
+        <InputGroupAddon>
+          <Button size="small" variant="tertiary">
+            Currency
+          </Button>
+        </InputGroupAddon>
+      </InputGroup>,
+    )
+
+    const input = screen.getByRole('textbox', { name: 'Amount' })
+    const addonButton = screen.getByRole('button', { name: 'Currency' })
+    input.element().focus()
+
+    await userEvent.keyboard('{Tab}')
+
+    await expect.element(addonButton).toHaveFocus()
   })
 })

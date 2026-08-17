@@ -4,4 +4,6 @@ Use `InputGroup` when one text input shares a visual surface with a prefix, suff
 
 Compose exactly one direct `InputGroupInput` with direct `InputGroupAddon` children. `InputGroup` owns the shared border, background, and focus state; `InputGroupInput` owns the native input and its value; addons only own layout. Put interactive content in a semantic `Button`, `IconButton`, or link instead of adding interaction to the addon.
 
+Place `InputGroupInput` before every `InputGroupAddon` in the DOM. The input is the primary control and addons are read or reached after it. Use `align="inline-start"` or `align="inline-end"` to choose visual placement without changing that semantic and focus order.
+
 The initial contract supports the default input size. If another size is needed, add it to `InputGroup`, which owns the shared surface and addon layout.

@@ -126,7 +126,7 @@ Use `Form` for the submit boundary. It renders a native `<form>`, preserves Ente
 
 Use `Field` for each standalone named field. A field must have a stable `name`, a label relationship, and a control that participates in the same Base UI field context. Prefer a visible label for normal form rows; when the surrounding UI already supplies the visible text, use the matching label primitive visually hidden or put `aria-label` on the actual interactive control. `FieldDescription` and `FieldError` provide the message relationships that screen readers need, while the Dify wrapper adds the default Form Input Set styling from the design system.
 
-`Input` is the standalone Dify UI text-input control; `Field` owns its name, label, validation, and messages. For a prefix, suffix, or action, compose one direct `InputGroupInput` and direct `InputGroupAddon` children in an `InputGroup`. The group owns the shared visual surface, `InputGroupInput` owns the native grouped control, and buttons and links keep their own semantics and focus.
+`Input` is the standalone Dify UI text-input control; `Field` owns its name, label, validation, and messages. For a prefix, suffix, or action, use the [Input Group composition contract].
 
 Choose the label primitive by the control semantics. Text-like inputs, `Textarea`, input-based `Combobox` / `Autocomplete`, single `Checkbox` / `Radio`, `Switch`, and `NumberField` use `FieldLabel`. Trigger-based `Select` fields use `SelectLabel`; `Slider` fields use `SliderLabel`, with per-thumb `aria-label` only when the thumbs need distinct names. `SelectGroupLabel` and `AutocompleteGroupLabel` only label grouped options inside their popup content; they are not field labels.
 
@@ -328,6 +328,7 @@ See [component authoring rules] for:
 [Base UI docs index]: https://base-ui.com/llms.txt
 [Base UI forms handbook]: https://base-ui.com/react/handbook/forms
 [Base UI]: https://base-ui.com/react
+[Input Group composition contract]: ./src/input-group/README.md
 [Overlay & portal contract]: #overlay--portal-contract
 [component authoring rules]: ./AGENTS.md
 [web overlay guide]: ../../web/docs/overlay.md

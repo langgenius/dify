@@ -14,7 +14,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'A compound text-input surface for a prefix, suffix, or action. Compose one direct InputGroupInput with direct InputGroupAddon children; interactive add-ons keep their own semantics and focus.',
+          'A compound text-input surface for a prefix, suffix, or action. Place the direct InputGroupInput before direct InputGroupAddon children in the DOM, and use align for visual placement; interactive add-ons keep their own semantics and focus.',
       },
     },
   },
