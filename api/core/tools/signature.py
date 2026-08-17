@@ -81,8 +81,10 @@ def verify_tool_file_signature(file_id: str, timestamp: str, nonce: str, sign: s
     recalculated_sign = hmac.new(_secret_key(), data_to_sign.encode(), hashlib.sha256).digest()
     recalculated_encoded_sign = base64.urlsafe_b64encode(recalculated_sign).decode()
 
-    # verify signature
-    if sign != recalculated_encoded_sign:
+    # Compare in constant time. The signature arrives from the query string, so the comparison runs
+    # on the encoded bytes: hmac.compare_digest rejects str carrying non-ASCII characters, and a
+    # caller can put anything in there.
+    if not hmac.compare_digest(sign.encode(), recalculated_encoded_sign.encode()):
         return False
 
     current_time = int(time.time())
@@ -161,7 +163,7 @@ def verify_plugin_file_signature(
     recalculated_sign = hmac.new(_secret_key(), data_to_sign.encode(), hashlib.sha256).digest()
     recalculated_encoded_sign = base64.urlsafe_b64encode(recalculated_sign).decode()
 
-    if sign != recalculated_encoded_sign:
+    if not hmac.compare_digest(sign.encode(), recalculated_encoded_sign.encode()):
         return False
 
     current_time = int(time.time())
