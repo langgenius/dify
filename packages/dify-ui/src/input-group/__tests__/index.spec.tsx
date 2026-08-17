@@ -23,6 +23,48 @@ describe('InputGroup', () => {
     expect(getComputedStyle(input.element()).backgroundColor).toBe('rgba(0, 0, 0, 0)')
   })
 
+  it('should extend the input pointer surface through a static add-on', async () => {
+    const screen = await render(
+      <InputGroup>
+        <InputGroupInput aria-label="Repository URL" />
+        <InputGroupAddon>https://</InputGroupAddon>
+      </InputGroup>,
+    )
+
+    await screen.getByText('https://').click()
+
+    await expect.element(screen.getByRole('textbox', { name: 'Repository URL' })).toHaveFocus()
+  })
+
+  it('should let consumers cancel input pointer-surface behavior', async () => {
+    const screen = await render(
+      <InputGroup onMouseDown={(event) => event.preventDefault()}>
+        <InputGroupInput aria-label="Repository URL" />
+        <InputGroupAddon>https://</InputGroupAddon>
+      </InputGroup>,
+    )
+
+    await screen.getByText('https://').click()
+
+    await expect.element(screen.getByRole('textbox', { name: 'Repository URL' })).not.toHaveFocus()
+  })
+
+  it('should show keyboard focus on a read-only input', async () => {
+    const screen = await render(
+      <InputGroup data-testid="group">
+        <InputGroupInput aria-label="API key" defaultValue="sk-test" readOnly />
+      </InputGroup>,
+    )
+    const group = screen.getByTestId('group')
+    const input = screen.getByRole('textbox', { name: 'API key' })
+    const restingBoxShadow = getComputedStyle(group.element()).boxShadow
+
+    await userEvent.keyboard('{Tab}')
+
+    await expect.element(input).toHaveFocus()
+    await expect.poll(() => getComputedStyle(group.element()).boxShadow).not.toBe(restingBoxShadow)
+  })
+
   it('should preserve an interactive add-on as the focus owner', async () => {
     const onCopy = vi.fn()
     const screen = await render(

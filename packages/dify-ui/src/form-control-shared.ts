@@ -3,3 +3,6 @@ export const formLabelClassName =
 
 export const textControlFocusClassName =
   'focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'
+
+export const textControlCompoundInputFocusClassName =
+  'has-[input:focus]:border-components-input-border-active has-[input:focus]:bg-components-input-bg-active has-[input:focus]:shadow-xs has-[textarea:focus]:border-components-input-border-active has-[textarea:focus]:bg-components-input-bg-active has-[textarea:focus]:shadow-xs'
