@@ -770,6 +770,81 @@ describe('AgentSkills', () => {
     expect(toast.success).not.toHaveBeenCalled()
   })
 
+  it('should not replace existing workspace skill bindings before they finish loading', async () => {
+    const user = userEvent.setup()
+    let resolveBindings:
+      | ((value: { agent_id: string; skill_ids: string[]; data: never[] }) => void)
+      | undefined
+    mocks.agentSkillBindingsQueryOptions.mockImplementation((options) => {
+      const { input } = options as { input: { params: { agent_id: string } } }
+
+      return {
+        queryKey: ['workspace-agent-skills', input],
+        queryFn: () =>
+          new Promise<{ agent_id: string; skill_ids: string[]; data: never[] }>((resolve) => {
+            resolveBindings = resolve
+          }),
+      }
+    })
+    mocks.workspaceSkillsInfiniteOptions.mockImplementation((options) => {
+      const { input, getNextPageParam, initialPageParam } = options as {
+        input: (pageParam: number) => { query?: { limit?: number } }
+        getNextPageParam: (lastPage: { has_more?: boolean; page?: number }) => number | undefined
+        initialPageParam: number
+      }
+
+      return {
+        queryKey: ['workspace-skills', input(initialPageParam)],
+        queryFn: async ({ pageParam = initialPageParam }: { pageParam?: number }) => ({
+          data: [createWorkspaceSkill()],
+          has_more: false,
+          limit: input(pageParam).query?.limit ?? 20,
+          page: pageParam,
+          total: 1,
+        }),
+        getNextPageParam,
+        initialPageParam,
+      }
+    })
+    renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
+
+    await user.click(
+      screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: /agentV2\.agentDetail\.configure\.skills\.addMenu\.workspace\.label/i,
+      }),
+    )
+
+    const workspaceSkillButton = await screen.findByRole('button', { name: /Refund approval/ })
+    expect(workspaceSkillButton).toHaveAttribute('aria-disabled', 'true')
+    await user.click(workspaceSkillButton)
+
+    expect(mocks.replaceAgentSkillBindingsMutationFn).not.toHaveBeenCalled()
+
+    resolveBindings?.({
+      agent_id: 'agent-1',
+      skill_ids: ['existing-skill'],
+      data: [],
+    })
+    await waitFor(() => {
+      expect(workspaceSkillButton).toHaveAttribute('aria-disabled', 'false')
+    })
+    await user.click(workspaceSkillButton)
+
+    await waitFor(() => {
+      expect(mocks.replaceAgentSkillBindingsMutationFn.mock.calls[0]?.[0]).toEqual({
+        params: {
+          agent_id: 'agent-1',
+        },
+        body: {
+          skill_ids: ['existing-skill', 'workspace-skill-1'],
+        },
+      })
+    })
+  })
+
   it('explains when an agent has reached the library skill limit', async () => {
     const user = userEvent.setup()
     mocks.replaceAgentSkillBindingsMutationFn.mockRejectedValueOnce({
