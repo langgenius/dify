@@ -5,8 +5,9 @@ import type { InstallState } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent } from '@langgenius/dify-ui/dialog'
-import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
+import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -231,7 +232,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({
                       {t(($) => $['installFromGitHub.gitHubRepo'], { ns: 'plugin' })}
                     </span>
                   </FieldLabel>
-                  <FieldControl
+                  <Input
                     autoFocus
                     type="text"
                     inputMode="url"
