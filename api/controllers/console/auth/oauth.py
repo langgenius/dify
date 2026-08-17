@@ -232,7 +232,13 @@ class OAuthCallback(Resource):
             return _redirect_with_console_session(account, target_url)
 
         try:
-            account, oauth_new_user = _generate_account(provider, user_info, timezone=timezone, language=language)
+            account, oauth_new_user = _generate_account(
+                provider,
+                user_info,
+                timezone=timezone,
+                language=language,
+                ip_address=extract_remote_ip(request),
+            )
         except AccountNotFoundError:
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Account not found.")
         except (WorkSpaceNotFoundError, WorkSpaceNotAllowedCreateError):
@@ -284,6 +290,7 @@ def _generate_account(
     user_info: OAuthUserInfo,
     timezone: str | None = None,
     language: str | None = None,
+    ip_address: str | None = None,
 ) -> tuple[Account, bool]:
     # Get account by openid or email.
     account = _get_account_by_openid_or_email(provider, user_info)
@@ -319,6 +326,7 @@ def _generate_account(
             provider=provider,
             language=interface_language,
             timezone=timezone,
+            ip_address=ip_address,
             session=db.session(),
         )
 
