@@ -39,10 +39,6 @@ class _RBACRoleList(svc.Paginated[svc.RBACRole]):
     pass
 
 
-class _RBACRoleAccountList(svc.Paginated[svc.RBACRoleAccount]):
-    pass
-
-
 class _MembersInRoleList(svc.Paginated[svc.MembersInRole]):
     pass
 
@@ -56,7 +52,6 @@ register_response_schema_models(
     svc.PermissionCatalogResponse,
     svc.RBACRole,
     _RBACRoleList,
-    _RBACRoleAccountList,
     _MembersInRoleList,
     svc.AccessPolicy,
     _AccessPolicyList,

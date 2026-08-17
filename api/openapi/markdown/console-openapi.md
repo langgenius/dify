@@ -24590,13 +24590,6 @@ Workflow tool configuration
 | data | [ [MembersInRole](#membersinrole) ] |  | No |
 | pagination | [Pagination](#pagination) |  | No |
 
-#### _RBACRoleAccountList
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| data | [ [RBACRoleAccount](#rbacroleaccount) ] |  | No |
-| pagination | [Pagination](#pagination) |  | No |
-
 #### _RBACRoleList
 
 | Name | Type | Description | Required |

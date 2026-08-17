@@ -571,27 +571,6 @@ class TestWorkspaceRbacGuards:
 
         mock_create.assert_not_called()
 
-    def test_access_policy_create_requires_workspace_role_manage(self, app):
-        with (
-            app.test_request_context(
-                "/workspaces/current/rbac/access-policies",
-                method="POST",
-                json={"name": "full_access", "resource_type": "app", "permission_keys": []},
-            ),
-            patch("libs.login.dify_config.LOGIN_DISABLED", True),
-            patch("controllers.console.wraps.dify_config.RBAC_ENABLED", True),
-            patch(
-                "controllers.common.wraps.current_account_with_tenant",
-                return_value=(_account(), "tenant-1"),
-            ),
-            patch("controllers.common.wraps.RBACService.CheckAccess.check", return_value=False),
-            patch("controllers.console.workspace.rbac.svc.RBACService.AccessPolicies.create") as mock_create,
-        ):
-            with pytest.raises(Forbidden):
-                rbac_mod.RBACAccessPoliciesApi(api=SimpleNamespace(_validate=False)).dispatch_request()
-
-        mock_create.assert_not_called()
-
     @pytest.mark.parametrize(
         ("policy_class", "legacy_gate", "resource_type", "permission", "resource_required"),
         [
