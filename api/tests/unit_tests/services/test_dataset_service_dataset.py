@@ -7,6 +7,7 @@ external boundaries.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -240,18 +241,21 @@ class TestDatasetServiceValidation:
                 DatasetService.check_is_multimodal_model("tenant-1", "provider", "embedding-model")
 
     @pytest.mark.parametrize(
-        ("method_name", "error", "message"),
+        ("method", "error", "message"),
         [
-            ("check_embedding_model_setting", ProviderTokenNotInitError("provider setup"), "provider setup"),
-            ("check_reranking_model_setting", LLMBadRequestError(), "No Rerank Model available"),
+            (
+                DatasetService.check_embedding_model_setting,
+                ProviderTokenNotInitError("provider setup"),
+                "provider setup",
+            ),
+            (DatasetService.check_reranking_model_setting, LLMBadRequestError(), "No Rerank Model available"),
         ],
     )
     def test_direct_model_setting_checks_wrap_runtime_errors(
-        self, method_name: str, error: Exception, message: str
+        self, method: Callable[[str, str, str], None], error: Exception, message: str
     ) -> None:
         with patch("services.dataset_service.ModelManager") as model_manager_cls:
             model_manager_cls.for_tenant.return_value.get_model_instance.side_effect = error
-            method = getattr(DatasetService, method_name)
             with pytest.raises(ValueError, match=message):
                 method("tenant-1", "provider", "model")
 
