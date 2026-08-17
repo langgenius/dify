@@ -36,6 +36,13 @@ COPY packages/parsers packages/parsers
 
 RUN pnpm --filter @knowledge/api-app build:prod
 
+# sharp loads a platform-specific native module at runtime. The API bundle keeps
+# sharp external, so copy its resolved production dependency closure instead of
+# assuming esbuild can embed the native .node and libvips artifacts.
+RUN sharp_runtime_source="$(dirname "$(realpath apps/api/node_modules/sharp)")" \
+    && mkdir -p /runtime/node_modules \
+    && cp -LR "${sharp_runtime_source}/." /runtime/node_modules/
+
 FROM node:22-bookworm-slim
 
 ENV NODE_ENV=production
@@ -44,6 +51,11 @@ WORKDIR /workspace
 
 COPY --from=builder /workspace/apps/api/dist/server.mjs ./server.mjs
 COPY --from=builder /workspace/apps/api/dist/migrate.mjs ./migrate.mjs
+COPY --from=builder /runtime/node_modules ./node_modules
+
+# Fail the image build if the target platform's sharp binary or libvips payload
+# is absent. Importing the JavaScript wrapper alone is not sufficient.
+RUN node --input-type=module --eval "const sharp = (await import('sharp')).default; const { data, info } = await sharp({ create: { width: 1, height: 1, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).png().toBuffer({ resolveWithObject: true }); if (data.byteLength < 1 || info.format !== 'png' || info.width !== 1 || info.height !== 1) throw new Error('sharp native runtime smoke failed')"
 
 EXPOSE 8787
 
