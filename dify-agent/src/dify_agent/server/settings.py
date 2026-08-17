@@ -71,7 +71,6 @@ class ServerSettings(BaseSettings):
         ge=1,
         le=E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
     )
-    e2b_shellctl_auth_token: str = ""
     e2b_shellctl_port: int = Field(default=5004, ge=1, le=65535)
     agent_stub_api_base_url: str | None = Field(default=None, validation_alias="DIFY_AGENT_STUB_API_BASE_URL")
     sandbox_files_base_url: str | None = Field(
@@ -205,7 +204,6 @@ class ServerSettings(BaseSettings):
                 e2b_api_key=self.e2b_api_key,
                 e2b_template=self.e2b_template,
                 e2b_active_timeout_seconds=self.e2b_active_timeout_seconds,
-                e2b_shellctl_auth_token=self.e2b_shellctl_auth_token,
                 e2b_shellctl_port=self.e2b_shellctl_port,
             )
         )

@@ -77,8 +77,11 @@ DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN=replace-with-shellctl-token
 # DIFY_AGENT_LOCAL_SANDBOX_HOME_SNAPSHOT_ROOT=/tmp/dify-agent/home-snapshots
 ```
 
-The auth token may be empty when shellctl authentication is disabled. E2B uses
-`DIFY_AGENT_E2B_API_KEY`, the prepared template, and its shellctl settings.
+The auth token may be empty when shellctl authentication is disabled. Dify-created
+E2B Sandboxes disable public traffic at creation and access shellctl through the
+E2B port proxy with its `traffic_access_token`. Acquiring a RuntimeLease fails if
+E2B does not provide a non-empty token. This policy applies only to newly created
+Sandboxes and does not retrofit existing ones.
 
 To let shell jobs call the Agent Stub with `dify-agent ...`, configure a
 Sandbox-reachable Agent Stub URL and a unique production secret. Remote
