@@ -1,7 +1,7 @@
 'use client'
 
 import type { CSSProperties, ReactNode } from 'react'
-import type { IntegrationSection } from '@/app/components/integrations/routes'
+import type { IntegrationSection } from './routes'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
@@ -21,6 +21,7 @@ import {
   toolCategoryBySection,
 } from '@/app/components/integrations/routes'
 import { useDocLink } from '@/context/i18n'
+import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { getMarketplaceUrl } from '@/utils/var'
@@ -40,6 +41,13 @@ type IntegrationsPageProps = {
   onSectionChange?: (section: IntegrationSection) => void
   onSwitchToMarketplace?: (path: string) => void
   section?: IntegrationSection
+  syncDocumentTitle?: boolean
+}
+
+const IntegrationsDocumentTitle = ({ title }: { title: string }) => {
+  useDocumentTitle(title)
+
+  return null
 }
 
 const headerDescriptionDocPaths = {
@@ -115,6 +123,7 @@ export default function IntegrationsPage({
   onSectionChange,
   onSwitchToMarketplace,
   section: routeSection,
+  syncDocumentTitle = false,
 }: IntegrationsPageProps) {
   const { t } = useTranslation()
   const docLink = useDocLink()
@@ -145,6 +154,8 @@ export default function IntegrationsPage({
     secondaryItems,
     toolItems,
   } = useIntegrationNav(section)
+  const integrationsTitle = t(($) => $['mainNav.integrations'], { ns: 'common' })
+  const sectionTitle = integrationHeader?.title ?? activeItem?.label ?? integrationsTitle
   const isToolSection = Boolean(toolCategoryBySection[section])
   const [isToolsExpanded, setIsToolsExpanded] = useState(isToolSection)
   useEffect(() => {
@@ -160,7 +171,7 @@ export default function IntegrationsPage({
     section === 'custom-endpoint' ||
     isToolSection ||
     isPluginCategory
-  const scrollAreaLabel = integrationHeader?.title ?? activeItem?.label
+  const scrollAreaLabel = sectionTitle
   const sidebarWidthStyle = {
     '--integrations-sidebar-width': '200px',
     '--model-provider-warning-left': 'calc(240px + 200px)',
@@ -239,6 +250,9 @@ export default function IntegrationsPage({
       className="flex h-full min-h-0 w-full flex-1 bg-components-panel-bg"
       style={sidebarWidthStyle}
     >
+      {syncDocumentTitle && (
+        <IntegrationsDocumentTitle title={`${sectionTitle} · ${integrationsTitle}`} />
+      )}
       <aside
         className={cn(
           'flex shrink-0 flex-col border-r border-divider-burn bg-components-panel-bg px-2 py-2 transition-[width]',

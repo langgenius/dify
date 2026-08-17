@@ -474,6 +474,8 @@ class DatasourceAuthOauthCustomClient(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @with_current_tenant_id
     def delete(self, current_tenant_id: str, provider_id: str):

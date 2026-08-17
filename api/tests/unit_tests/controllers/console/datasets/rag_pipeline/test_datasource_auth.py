@@ -27,10 +27,17 @@ from controllers.console.datasets.rag_pipeline.datasource_auth import (
 )
 from core.plugin.impl.oauth import OAuthHandler
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
+from models.account import Account
 from services.datasource_provider_service import DatasourceProviderService
 from services.plugin.oauth_service import OAuthProxyService
 
 _PROVIDER_ID = "langgenius/notion_datasource/notion"
+
+
+def _account() -> Account:
+    account = Account(name="Datasource Auth Tester", email="datasource-auth@example.com")
+    account.id = "user-1"
+    return account
 
 
 def _i18n(text: str) -> dict[str, str]:
@@ -106,7 +113,7 @@ class TestDatasourcePluginOAuthAuthorizationUrl:
         api = DatasourcePluginOAuthAuthorizationUrl()
         method = inspect.unwrap(api.get)
 
-        user = MagicMock(id="user-1")
+        user = _account()
         oauth_client = {"client_id": "abc", "client_secret": "shh", "scopes": ["read", "write"]}
         auth_url_payload = {
             "authorization_url": "https://auth.example.com/oauth?client_id=abc&state=xyz",
@@ -156,7 +163,7 @@ class TestDatasourcePluginOAuthAuthorizationUrl:
     def test_get_no_oauth_config(self, app: Flask):
         api = DatasourcePluginOAuthAuthorizationUrl()
         method = inspect.unwrap(api.get)
-        user = MagicMock(id="user-1")
+        user = _account()
 
         with (
             app.test_request_context("/"),
@@ -173,7 +180,7 @@ class TestDatasourcePluginOAuthAuthorizationUrl:
         api = DatasourcePluginOAuthAuthorizationUrl()
         method = inspect.unwrap(api.get)
 
-        user = MagicMock(id="user-1")
+        user = _account()
 
         with (
             app.test_request_context("/"),
@@ -450,7 +457,7 @@ class TestDatasourceAuth:
     def test_get_success(self, app: Flask):
         api = DatasourceAuth()
         method = inspect.unwrap(api.get)
-        user = MagicMock(id="user-1")
+        user = _account()
 
         with (
             app.test_request_context("/"),
@@ -481,7 +488,7 @@ class TestDatasourceAuth:
     def test_get_empty_list(self, app: Flask):
         api = DatasourceAuth()
         method = inspect.unwrap(api.get)
-        user = MagicMock(id="user-1")
+        user = _account()
 
         with (
             app.test_request_context("/"),

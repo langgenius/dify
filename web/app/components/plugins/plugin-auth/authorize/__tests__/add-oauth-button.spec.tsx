@@ -3,7 +3,7 @@ import type { FormSchema } from '@/app/components/base/form/types'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithAccountProfile } from '@/test/console/account-profile'
 import { AuthCategory } from '../../types'
 

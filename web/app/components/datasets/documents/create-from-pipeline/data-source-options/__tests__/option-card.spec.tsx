@@ -1,6 +1,6 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import OptionCard from '../option-card'
 
 const TEST_ICON_URL = 'https://example.com/test-icon.png'

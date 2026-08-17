@@ -1344,6 +1344,18 @@ class CeleryBeatConfig(BaseSettings):
 
 
 class CeleryScheduleTasksConfig(BaseSettings):
+    ENABLE_CONVERSATION_CLEANUP_TASK: bool = Field(
+        description="Enable periodic recovery of soft-deleted conversation cleanup",
+        default=True,
+    )
+    CONVERSATION_CLEANUP_TASK_INTERVAL: PositiveInt = Field(
+        description="Soft-deleted conversation cleanup recovery interval in minutes",
+        default=5,
+    )
+    CONVERSATION_CLEANUP_BATCH_SIZE: PositiveInt = Field(
+        description="Maximum soft-deleted conversations dispatched per cleanup sweep",
+        default=100,
+    )
     ENABLE_CLEAN_EMBEDDING_CACHE_TASK: bool = Field(
         description="Enable clean embedding cache task",
         default=False,

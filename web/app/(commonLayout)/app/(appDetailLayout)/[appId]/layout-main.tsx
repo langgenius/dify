@@ -32,6 +32,23 @@ type IAppDetailLayoutProps = {
 const isNotFoundError = (error: unknown) =>
   typeof error === 'object' && error !== null && 'status' in error && error.status === 404
 
+const appDetailPageTitle = (pathname: string, t: ReturnType<typeof useTranslation>['t']) => {
+  if (pathname.endsWith('/workflow') || pathname.endsWith('/configuration'))
+    return t(($) => $['appMenus.promptEng'], { ns: 'common' })
+  if (pathname.endsWith('/access-point'))
+    return t(($) => $['appMenus.accessPoint'], { ns: 'common' })
+  if (pathname.endsWith('/develop')) return t(($) => $['appMenus.apiAccess'], { ns: 'common' })
+  if (pathname.endsWith('/deploy')) return t(($) => $['appMenus.deploy'], { ns: 'common' })
+  if (pathname.endsWith('/logs')) return t(($) => $['appMenus.logs'], { ns: 'common' })
+  if (pathname.endsWith('/annotations'))
+    return t(($) => $['appMenus.annotations'], { ns: 'common' })
+  if (pathname.endsWith('/overview')) return t(($) => $['appMenus.overview'], { ns: 'common' })
+  if (pathname.endsWith('/access-config'))
+    return t(($) => $['settings.resourceAccess'], { ns: 'common' })
+
+  return t(($) => $['menus.appDetail'], { ns: 'common' })
+}
+
 const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const {
     children,
@@ -58,9 +75,12 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   )
   const [isLoadingAppDetail, setIsLoadingAppDetail] = useState(false)
   const [appDetailRes, setAppDetailRes] = useState<App | null>(null)
-  const routeAppDetail = appDetailRes ?? (appDetail?.id === appId ? appDetail : null)
+  const routeAppDetail =
+    appDetail?.id === appId ? appDetail : appDetailRes?.id === appId ? appDetailRes : null
+  const pageTitle = appDetailPageTitle(pathname, t)
+  const appName = routeAppDetail?.id === appId ? routeAppDetail.name : undefined
 
-  useDocumentTitle(appDetail?.name || t(($) => $['menus.appDetail'], { ns: 'common' }))
+  useDocumentTitle(`${pageTitle} · ${appName || t(($) => $['menus.appDetail'], { ns: 'common' })}`)
 
   useEffect(() => {
     let ignore = false

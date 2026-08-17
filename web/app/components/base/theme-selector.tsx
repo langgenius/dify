@@ -27,11 +27,11 @@ export default function ThemeSelector() {
   const getCurrentIcon = () => {
     switch (theme) {
       case 'light':
-        return <span className="i-ri-sun-line size-4 text-text-tertiary" />
+        return <span aria-hidden className="i-ri-sun-line size-4 text-text-tertiary" />
       case 'dark':
-        return <span className="i-ri-moon-line size-4 text-text-tertiary" />
+        return <span aria-hidden className="i-ri-moon-line size-4 text-text-tertiary" />
       default:
-        return <span className="i-ri-computer-line size-4 text-text-tertiary" />
+        return <span aria-hidden className="i-ri-computer-line size-4 text-text-tertiary" />
     }
   }
 

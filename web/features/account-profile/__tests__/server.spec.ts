@@ -1,6 +1,6 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import { QueryClient } from '@tanstack/react-query'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { resolveServerConsoleApiUrl } from '@/service/server'
 import { userProfileQueryOptions } from '../client'
 

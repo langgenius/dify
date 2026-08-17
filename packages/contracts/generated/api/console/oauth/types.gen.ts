@@ -30,6 +30,7 @@ export type OAuthProviderAppResponse = {
   app_label: {
     [key: string]: unknown
   }
+  auto_authorize: boolean
   scope: string
 }
 
