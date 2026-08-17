@@ -872,7 +872,7 @@ class WorkflowRunBundleArchiveMaintenance:
         live_records: dict[str, list[dict[str, Any]]],
     ) -> None:
         """Require every live row in the bundle scope to exist unchanged in the validated archive."""
-        manifest_run_ids = {str(run_id) for run_id in manifest["run_ids"]}
+        manifest_run_ids = {run_id for run_id in manifest["run_ids"]}
         if len(manifest_run_ids) != len(manifest["run_ids"]):
             raise ValueError("archive manifest contains duplicate workflow run IDs")
 

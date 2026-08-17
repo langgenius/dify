@@ -697,7 +697,7 @@ class DifyNodeFactory(NodeFactory):
                 metadata = item.get("metadata")
                 if not isinstance(metadata, Mapping):
                     continue
-                if metadata.get("_source") == "knowledge" and str(metadata.get("segment_id")) == str(segment_id):
+                if metadata.get("_source") == "knowledge" and str(metadata.get("segment_id")) == segment_id:
                     return True
             return False
 
