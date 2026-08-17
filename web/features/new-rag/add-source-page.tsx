@@ -1273,9 +1273,6 @@ export function AddSourcePage({
                 layout="grid-four"
                 options={websiteProviderOptions}
                 providerKey={websiteProviderOption?.key ?? ''}
-                onMoreProviders={() =>
-                  globalThis.open(websiteProviderIntegrationPath(), '_blank', 'noopener,noreferrer')
-                }
                 onChange={(providerKey) => {
                   const nextProvider = websiteProviderOptions.find(
                     (option) => option.key === providerKey,

@@ -3,12 +3,14 @@
 import type { ReactNode } from 'react'
 import type { NewKnowledgeSourceDraft, NewKnowledgeSourceType } from './routes'
 import type { InstalledSourceProviderOption, SourceProviderOption } from './source-provider-options'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
 import { useTranslation } from 'react-i18next'
+import { buildIntegrationPath } from '@/app/components/integrations/routes'
+import Link from '@/next/link'
 import { NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH } from './routes'
 import { SyncPolicyField } from './sync-policy-field'
 
@@ -159,7 +161,6 @@ export function SourceProviderSelector({
   appearance = 'page',
   disabled = false,
   layout = 'grid-three',
-  onMoreProviders,
   options,
   providerKey,
   onChange,
@@ -167,7 +168,6 @@ export function SourceProviderSelector({
   appearance?: 'embedded' | 'page'
   disabled?: boolean
   layout?: 'grid-four' | 'grid-three'
-  onMoreProviders: () => void
   options: SourceProviderOption[]
   providerKey: string
   onChange: (providerKey: string) => void
@@ -185,20 +185,22 @@ export function SourceProviderSelector({
         <FieldsetLegend className="py-0 system-xs-medium">
           {t(($) => $['newKnowledge.providerLabel'])}
         </FieldsetLegend>
-        <Button
-          type="button"
-          variant="ghost-accent"
-          size="small"
+        <Link
+          aria-disabled={disabled || undefined}
           className={cn(
-            'gap-0.5',
-            appearance === 'embedded' ? 'h-6 px-0' : 'px-2.25 text-[13px] leading-4 font-normal',
+            buttonVariants({ variant: 'ghost-accent', size: 'small' }),
+            'gap-1 pr-1.5 pl-2.25 text-[13px] leading-4 font-normal active:bg-state-accent-active',
           )}
-          disabled={disabled}
-          onClick={onMoreProviders}
+          data-disabled={disabled ? '' : undefined}
+          href={buildIntegrationPath('data-source')}
+          rel="noopener noreferrer"
+          tabIndex={disabled ? -1 : undefined}
+          target="_blank"
+          onClick={disabled ? (event) => event.preventDefault() : undefined}
         >
           {t(($) => $['newKnowledge.moreProviders'])}
           <span aria-hidden className="i-ri-arrow-right-up-line size-3.5" />
-        </Button>
+        </Link>
       </div>
       <SourceProviderRadioGroup
         value={providerKey}

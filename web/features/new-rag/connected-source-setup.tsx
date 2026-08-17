@@ -1869,9 +1869,6 @@ export function ConnectedSourceSetup({
         options={providerOptions}
         providerKey={providerOption?.key ?? ''}
         onChange={selectProvider}
-        onMoreProviders={() =>
-          globalThis.open(buildIntegrationPath('data-source'), '_blank', 'noopener,noreferrer')
-        }
       />
       <ConnectedSourceSyncPolicyField draft={draft} onDraftChange={onDraftChange} />
       {providersQuery.isPending ||
