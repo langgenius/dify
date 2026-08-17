@@ -5,13 +5,14 @@ Revises: 56124e050600
 Create Date: 2026-08-17 17:40:52.081816
 
 """
+
 import json
 
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import mysql
 
-import models
+from models.types import StringUUID
 
 # revision identifiers, used by Alembic.
 revision = "89919253ca7a"
@@ -21,6 +22,9 @@ depends_on = None
 
 
 def _rewrite_json_rows(table_name: str, column_name: str, transform) -> None:
+    if op.get_context().as_sql:
+        return
+
     connection = op.get_bind()
     rows = connection.execute(sa.text(f"SELECT id, {column_name} FROM {table_name}"))
     for row_id, raw_value in rows:
@@ -79,19 +83,19 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.create_table(
         "agent_drive_files",
-        sa.Column("tenant_id", models.types.StringUUID(), nullable=False),
-        sa.Column("agent_id", models.types.StringUUID(), nullable=False),
+        sa.Column("tenant_id", StringUUID(), nullable=False),
+        sa.Column("agent_id", StringUUID(), nullable=False),
         sa.Column("key", sa.String(length=512), nullable=False),
         sa.Column("file_kind", sa.String(length=32), nullable=False),
-        sa.Column("file_id", models.types.StringUUID(), nullable=False),
+        sa.Column("file_id", StringUUID(), nullable=False),
         sa.Column("value_owned_by_drive", sa.Boolean(), server_default=sa.text("false"), nullable=False),
         sa.Column("is_skill", sa.Boolean(), server_default=sa.text("false"), nullable=False),
         sa.Column("skill_metadata", sa.Text().with_variant(mysql.LONGTEXT(), "mysql"), nullable=True),
         sa.Column("size", sa.BigInteger(), nullable=True),
         sa.Column("hash", sa.String(length=255), nullable=True),
         sa.Column("mime_type", sa.String(length=255), nullable=True),
-        sa.Column("created_by", models.types.StringUUID(), nullable=True),
-        sa.Column("id", models.types.StringUUID(), nullable=False),
+        sa.Column("created_by", StringUUID(), nullable=True),
+        sa.Column("id", StringUUID(), nullable=False),
         sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
         sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
         sa.PrimaryKeyConstraint("id", name="agent_drive_file_pkey"),

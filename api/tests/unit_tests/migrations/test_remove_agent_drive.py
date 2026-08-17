@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+from io import StringIO
 from pathlib import Path
 from types import ModuleType
 
@@ -44,14 +45,18 @@ def _create_pre_upgrade_schema(engine: sa.Engine) -> None:
 
 
 def _run_migration_step(module: ModuleType, engine: sa.Engine, step_name: str) -> None:
+    migration_step = module.__dict__[step_name]
+    if not callable(migration_step):
+        raise TypeError(f"migration step {step_name!r} is not callable")
+
     with engine.begin() as connection:
         operations = Operations(MigrationContext.configure(connection))
-        original_op = module.op
-        module.op = operations
+        original_op = module.__dict__["op"]
+        module.__dict__["op"] = operations
         try:
-            getattr(module, step_name)()
+            migration_step()
         finally:
-            module.op = original_op
+            module.__dict__["op"] = original_op
 
 
 def test_upgrade_removes_agent_drive_schema_and_legacy_json_fields() -> None:
@@ -126,6 +131,30 @@ def test_upgrade_removes_agent_drive_schema_and_legacy_json_fields() -> None:
     assert "agent_drive_files_tenant_agent_is_skill_key_idx" in {
         index["name"] for index in inspector.get_indexes("agent_drive_files")
     }
+
+
+def test_upgrade_supports_offline_sql_generation() -> None:
+    module = _load_migration_module()
+    output = StringIO()
+    migration_context = MigrationContext.configure(
+        dialect_name="postgresql",
+        opts={"as_sql": True, "output_buffer": output},
+    )
+    operations = Operations(migration_context)
+    migration_step = module.__dict__["upgrade"]
+    if not callable(migration_step):
+        raise TypeError("migration upgrade is not callable")
+
+    original_op = module.__dict__["op"]
+    module.__dict__["op"] = operations
+    try:
+        migration_step()
+    finally:
+        module.__dict__["op"] = original_op
+
+    generated_sql = output.getvalue()
+    assert "DROP TABLE agent_drive_files" in generated_sql
+    assert "SELECT id" not in generated_sql
 
 
 @pytest.mark.parametrize(
