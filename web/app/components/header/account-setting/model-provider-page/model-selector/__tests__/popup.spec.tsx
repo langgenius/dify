@@ -2,7 +2,7 @@ import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/w
 import type { ReactElement } from 'react'
 import type { Model, ModelItem } from '../../declarations'
 import type { PopupProps } from '../popup'
-import { Combobox, ComboboxContent, ComboboxTrigger } from '@langgenius/dify-ui/combobox'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
@@ -74,22 +74,18 @@ vi.mock('@/context/provider-context', () => ({
   }),
 }))
 
-type PopupTestProps = Omit<PopupProps, 'inputValue' | 'onInputValueChange'>
+type PopupTestProps = Omit<PopupProps, 'inputValue' | 'onInputValueChange' | 'onSelect'>
 
 function PopupHarness(props: PopupTestProps) {
   const [inputValue, setInputValue] = useState('')
 
   return (
-    <Combobox
-      filter={null}
+    <Popup
+      {...props}
       inputValue={inputValue}
-      open
-      onInputValueChange={(newInputValue, details) => {
-        if (details.reason !== 'item-press') setInputValue(newInputValue)
-      }}
-    >
-      <Popup {...props} inputValue={inputValue} onInputValueChange={setInputValue} />
-    </Combobox>
+      onInputValueChange={setInputValue}
+      onSelect={vi.fn()}
+    />
   )
 }
 
@@ -97,12 +93,18 @@ function PopupContentHarness(props: PopupTestProps) {
   const [inputValue, setInputValue] = useState('')
 
   return (
-    <Combobox filter={null} inputValue={inputValue} open>
-      <ComboboxTrigger aria-label="Selected model">Selected model</ComboboxTrigger>
-      <ComboboxContent popupProps={{ 'aria-label': 'Model selector' }}>
-        <Popup {...props} inputValue={inputValue} onInputValueChange={setInputValue} />
-      </ComboboxContent>
-    </Combobox>
+    <Popover open>
+      <PopoverTrigger>Selected model</PopoverTrigger>
+      <PopoverContent>
+        <PopoverTitle>Model selector</PopoverTitle>
+        <Popup
+          {...props}
+          inputValue={inputValue}
+          onInputValueChange={setInputValue}
+          onSelect={vi.fn()}
+        />
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -1104,7 +1106,7 @@ describe('Popup', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('should keep popup actions outside the model listbox and reachable by Tab', async () => {
+  it('should expose popup actions in the dialog tab sequence without a listbox', async () => {
     const user = userEvent.setup()
     const onConfigureEmptyState = vi.fn()
     const onOpenProviderSettings = vi.fn()
@@ -1123,7 +1125,7 @@ describe('Popup', () => {
 
     expect(await screen.findByRole('dialog', { name: 'Model selector' })).toBeInTheDocument()
 
-    const searchInput = screen.getByRole('combobox', {
+    const searchInput = screen.getByRole('searchbox', {
       name: 'datasetSettings.form.searchModel',
     })
     const configureButton = screen.getByRole('button', {
@@ -1132,10 +1134,7 @@ describe('Popup', () => {
     const providerSettingsButton = screen.getByRole('button', {
       name: /common\.modelProvider\.selector\.modelProviderSettings/,
     })
-    const listbox = screen.getByRole('listbox')
-
-    expect(listbox).not.toContainElement(configureButton)
-    expect(listbox).not.toContainElement(providerSettingsButton)
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
 
     await user.click(searchInput)
     await user.tab()

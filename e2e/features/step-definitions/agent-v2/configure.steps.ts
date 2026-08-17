@@ -42,10 +42,10 @@ async function fillAgentPromptEditor(page: Page, prompt: string) {
 }
 
 async function selectAgentModel(page: Page, modelName: string) {
-  await page.getByRole('combobox').first().click()
+  await page.getByRole('button', { name: 'Configure model' }).click()
   await page.getByPlaceholder('Search model').fill(modelName)
   const escapedModelName = modelName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  await page.getByRole('option', { name: new RegExp(`${escapedModelName}(?:\\s|$)`) }).click()
+  await page.getByRole('button', { name: new RegExp(`${escapedModelName}(?:\\s|$)`) }).click()
 }
 
 async function expectAgentComposerPrompt(world: DifyWorld, agentId: string, prompt: string) {

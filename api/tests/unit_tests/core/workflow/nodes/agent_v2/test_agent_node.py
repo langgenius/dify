@@ -343,7 +343,9 @@ def _node(
 
     node = DifyAgentNode(
         node_id="agent-node",
-        data=DifyAgentNodeData.model_validate({"type": BuiltinNodeTypes.AGENT, "version": "2"}),
+        data=DifyAgentNodeData.model_validate(
+            {"type": BuiltinNodeTypes.AGENT, "version": "2", "agent_node_kind": "dify_agent"}
+        ),
         graph_init_params=graph_init_params,
         graph_runtime_state=cast(
             GraphRuntimeState,

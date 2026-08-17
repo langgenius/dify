@@ -229,3 +229,32 @@ jobs:
           IMAGE_VERSION: ${{ steps.meta.outputs.version }}
         run: |
           docker buildx imagetools inspect "$IMAGE_NAME:$IMAGE_VERSION"
+
+  sync-e2b-template:
+    needs: create-manifest
+    runs-on: ubuntu-24.04
+    if: github.repository == 'langgenius/dify' && startsWith(github.ref, 'refs/tags/')
+    strategy:
+      matrix:
+        include:
+          - project: dev
+            api_key_secret: E2B_API_KEY_DEV
+          - project: prod
+            api_key_secret: E2B_API_KEY_PROD
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          username: ${{ env.DOCKERHUB_USER }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
+
+      - name: Sync E2B Template (${{ matrix.project }})
+        env:
+          E2B_API_KEY: ${{ secrets[matrix.api_key_secret] }}
+        run: ./dify-agent-runtime/docker/sync-e2b-template.sh
