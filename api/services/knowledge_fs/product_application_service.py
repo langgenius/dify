@@ -159,7 +159,7 @@ class KnowledgeFSProductApplicationService:
                 control_space_id=control_space_id,
                 visibility=payload.visibility,
             )
-        metadata = payload.model_copy(update={"visibility": None})
+        metadata = payload.model_copy(update={"icon_background": None, "visibility": None})
         if any(value is not None for value in (metadata.name, metadata.icon, metadata.description)):
             knowledge_space_id = authorized.control_space.knowledge_space_id
             if knowledge_space_id is None:
@@ -200,6 +200,13 @@ class KnowledgeFSProductApplicationService:
                 control_space_id=control_space_id,
                 knowledge_space_id=knowledge_space_id,
                 revision=revision,
+            )
+        if payload.icon_background is not None:
+            self._control_plane.update_icon_background(
+                tenant_id=tenant_id,
+                actor_account_id=account_id,
+                control_space_id=control_space_id,
+                icon_background=payload.icon_background,
             )
         return self.get_space(
             tenant_id=tenant_id,

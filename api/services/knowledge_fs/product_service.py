@@ -463,6 +463,8 @@ def _space_response(
     permission_keys: tuple[KnowledgeFSProductPermission, ...],
 ) -> KnowledgeFSSpaceDetailResponse:
     summary = summaries.get(space.knowledge_space_id or "")
+    if summary is not None:
+        summary = summary.model_copy(update={"icon_background": space.icon_background})
     technical_status: Literal["available", "not_ready", "unavailable"]
     if space.state is not KnowledgeFSControlSpaceState.ACTIVE or space.knowledge_space_id is None:
         technical_status = "not_ready"

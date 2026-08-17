@@ -270,6 +270,12 @@ class KnowledgeFSControlSpace(DefaultFieldsDCMixin, TypeBase):
         server_default=sa.text("'only_me'"),
         default=KnowledgeFSControlSpaceVisibility.ONLY_ME,
     )
+    icon_background: Mapped[str] = mapped_column(
+        String(7),
+        nullable=False,
+        server_default=sa.text("'#F0F9FF'"),
+        default="#F0F9FF",
+    )
     lifecycle_operation_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     state: Mapped[KnowledgeFSControlSpaceState] = mapped_column(
         EnumText(KnowledgeFSControlSpaceState, length=32),

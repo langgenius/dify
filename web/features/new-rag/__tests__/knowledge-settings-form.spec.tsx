@@ -146,7 +146,21 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
 }))
 
 vi.mock('@/app/components/base/app-icon-picker', () => ({
-  default: () => null,
+  default: ({
+    open,
+    onSelect,
+  }: {
+    open: boolean
+    onSelect?: (selection: { background: string; icon: string; type: 'emoji' }) => void
+  }) =>
+    open ? (
+      <button
+        type="button"
+        onClick={() => onSelect?.({ background: '#FCE7F6', icon: 'camera', type: 'emoji' })}
+      >
+        Select camera style
+      </button>
+    ) : null,
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -455,6 +469,55 @@ describe('KnowledgeSettingsForm', () => {
         expect.anything(),
       )
     })
+  })
+
+  it('saves the selected emoji background style with the knowledge icon', async () => {
+    const user = userEvent.setup()
+    renderForm()
+
+    const iconButton = screen.getByRole('button', {
+      name: 'datasetSettings.form.nameAndIcon',
+    })
+    await user.click(iconButton)
+    await user.click(screen.getByRole('button', { name: 'Select camera style' }))
+
+    expect(iconButton.firstElementChild).toHaveStyle({ background: '#FCE7F6' })
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.settings.saveChanges',
+      }),
+    )
+
+    await waitFor(() => {
+      expect(serviceMock.patchSpace).toHaveBeenCalledWith(
+        {
+          body: {
+            icon: 'camera',
+            icon_background: '#FCE7F6',
+          },
+          params: { control_space_id: 'space-1' },
+        },
+        expect.anything(),
+      )
+    })
+  })
+
+  it('restores a saved emoji background style from the space detail', () => {
+    renderForm({
+      space: {
+        ...space,
+        technical_summary: {
+          ...space.technical_summary,
+          icon_background: '#D3F8DF',
+        },
+      },
+    })
+
+    const iconButton = screen.getByRole('button', {
+      name: 'datasetSettings.form.nameAndIcon',
+    })
+    expect(iconButton.firstElementChild).toHaveStyle({ background: '#D3F8DF' })
   })
 
   it('accepts 2000 description characters and blocks 2001 with a field error', async () => {

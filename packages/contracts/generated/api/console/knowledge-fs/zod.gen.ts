@@ -804,6 +804,10 @@ export const zKnowledgeFsSpaceUpdatePayload = z.object({
     .max(72)
     .regex(/^(?:builtin:)?[+a-z0-9_-]{1,64}$/)
     .nullish(),
+  icon_background: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .nullish(),
   name: z.string().min(1).max(40).nullish(),
   visibility: zKnowledgeFsControlSpaceVisibility.nullish(),
 })
@@ -850,6 +854,10 @@ export const zKnowledgeFsTechnicalSummary = z.object({
   description: z.string().nullish(),
   document_count: z.int().gte(0).optional().default(0),
   icon: z.string().nullish(),
+  icon_background: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .nullish(),
   index_state: z.string().nullish(),
   knowledge_space_id: z.string(),
   last_job_state: z.string().nullish(),

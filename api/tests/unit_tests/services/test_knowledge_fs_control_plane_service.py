@@ -100,6 +100,47 @@ def test_remote_revision_advance_is_monotonic_and_bumps_resource_version(sqlite_
     assert persisted.resource_version == 4
 
 
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(KnowledgeFSControlSpace,)],
+    indirect=True,
+)
+def test_icon_background_update_persists_and_bumps_resource_version_once(
+    sqlite_session: Session,
+) -> None:
+    space = KnowledgeFSControlSpace(
+        tenant_id="tenant-1",
+        owner_account_id="owner-1",
+        provisioning_key="provision-icon-background",
+        knowledge_space_id="space-1",
+        resource_version=3,
+        state=KnowledgeFSControlSpaceState.ACTIVE,
+    )
+    sqlite_session.add(space)
+    sqlite_session.commit()
+    product = FakeProduct(space)
+    service = KnowledgeFSControlPlaneService(
+        sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False),
+        product=product,  # type: ignore[arg-type]
+        members=FakeMembers([]),
+    )
+
+    for _ in range(2):
+        service.update_icon_background(
+            tenant_id="tenant-1",
+            actor_account_id="owner-1",
+            control_space_id=space.id,
+            icon_background="#FCE7F6",
+        )
+
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get(KnowledgeFSControlSpace, space.id)
+    assert persisted is not None
+    assert persisted.icon_background == "#FCE7F6"
+    assert persisted.resource_version == 4
+    assert product.calls == [KnowledgeFSProductPermission.EDIT, KnowledgeFSProductPermission.EDIT]
+
+
 def _issuance_audit(
     *,
     control_space_id: str,

@@ -187,6 +187,7 @@ def test_list_filters_locally_then_fetches_one_explicit_authorized_batch(sqlite_
         key="owner",
         remote_id="space-owner",
     )
+    owner.icon_background = "#FCE7F6"
     all_team = _space(
         visibility=KnowledgeFSControlSpaceVisibility.ALL_TEAM_MEMBERS,
         key="all",
@@ -308,6 +309,9 @@ def test_list_filters_locally_then_fetches_one_explicit_authorized_batch(sqlite_
     assert statuses["space-owner"] == "available"
     assert statuses["space-all"] == "unavailable"
     assert statuses["space-partial"] == "unavailable"
+    owner_item = next(item for item in response.data if item.control_space_id == owner.id)
+    assert owner_item.technical_summary is not None
+    assert owner_item.technical_summary.icon_background == "#FCE7F6"
     permission_keys = {item.knowledge_space_id: set(item.permission_keys) for item in response.data}
     assert KnowledgeFSProductPermission.EDIT in permission_keys["space-owner"]
     assert permission_keys["space-all"] == {

@@ -291,6 +291,7 @@ export function KnowledgeSpaceShell({
               )}
             >
               <KnowledgeSpaceIcon
+                background={knowledgeSpaceQuery.data.technical_summary?.icon_background}
                 icon={knowledgeSpaceQuery.data.technical_summary?.icon}
                 size="medium"
               />

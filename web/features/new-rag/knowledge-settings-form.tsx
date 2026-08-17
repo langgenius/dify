@@ -39,7 +39,10 @@ import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { KnowledgeModelReadinessNotice } from './components/knowledge-model-readiness-notice'
 import { KnowledgeSettingsMembers } from './components/knowledge-settings-members'
-import { KnowledgeSpaceIcon } from './components/knowledge-space-icon'
+import {
+  DEFAULT_KNOWLEDGE_SPACE_ICON_BACKGROUND,
+  KnowledgeSpaceIcon,
+} from './components/knowledge-space-icon'
 import { RetrievalModeSegmentedControl } from './components/retrieval-mode-segmented-control'
 import { KNOWLEDGE_DESCRIPTION_MAX_LENGTH, KNOWLEDGE_NAME_MAX_LENGTH } from './constants'
 import { newKnowledgeListPath } from './routes'
@@ -232,6 +235,8 @@ export function KnowledgeSettingsForm({
   const initialName = space.technical_summary?.name ?? ''
   const initialDescription = space.technical_summary?.description ?? ''
   const initialIcon = space.technical_summary?.icon ?? '📙'
+  const initialIconBackground =
+    space.technical_summary?.icon_background ?? DEFAULT_KNOWLEDGE_SPACE_ICON_BACKGROUND
   const initialSelectedMemberIds = permissions
     .filter(
       (permission) =>
@@ -255,6 +260,7 @@ export function KnowledgeSettingsForm({
   const [name, setName] = useState(initialName)
   const [description, setDescription] = useState(initialDescription)
   const [icon, setIcon] = useState(initialIcon)
+  const [iconBackground, setIconBackground] = useState(initialIconBackground)
   const [visibility, setVisibility] = useState(space.visibility)
   const [selectedMemberIds, setSelectedMemberIds] = useState(initialSelectedMemberIds)
   const [apiEnabled, setApiEnabled] = useState(initialApiEnabled)
@@ -356,6 +362,7 @@ export function KnowledgeSettingsForm({
     name !== initialName ||
     description !== initialDescription ||
     icon !== initialIcon ||
+    iconBackground !== initialIconBackground ||
     visibility !== space.visibility
   const membersDirty = sortedIds(selectedMemberIds) !== sortedIds(initialSelectedMemberIds)
   const currentEmbeddingFingerprint = modelFingerprint(embeddingModel)
@@ -448,6 +455,7 @@ export function KnowledgeSettingsForm({
     setName(initialName)
     setDescription(initialDescription)
     setIcon(initialIcon)
+    setIconBackground(initialIconBackground)
     setVisibility(space.visibility)
     setSelectedMemberIds(initialSelectedMemberIds)
     setNameTouched(false)
@@ -557,6 +565,7 @@ export function KnowledgeSettingsForm({
         const body = {
           ...(description !== initialDescription ? { description } : {}),
           ...(icon !== initialIcon ? { icon } : {}),
+          ...(iconBackground !== initialIconBackground ? { icon_background: iconBackground } : {}),
           ...(name !== initialName ? { name: name.trim() } : {}),
           ...(visibility !== space.visibility ? { visibility } : {}),
         }
@@ -950,7 +959,7 @@ export function KnowledgeSettingsForm({
               className="shrink-0 rounded-lg outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed"
               onClick={() => setIconPickerOpen(true)}
             >
-              <KnowledgeSpaceIcon icon={icon} size="small" />
+              <KnowledgeSpaceIcon background={iconBackground} icon={icon} size="small" />
             </button>
             <div className="min-w-0 flex-1">
               <Input
@@ -1401,12 +1410,13 @@ export function KnowledgeSettingsForm({
       <AppIconPicker
         open={iconPickerOpen}
         enableImageUpload={false}
-        initialEmoji={{ icon }}
+        initialEmoji={{ background: iconBackground, icon }}
         onOpenChange={setIconPickerOpen}
         onSelect={(selection) => {
           if (selection.type === 'emoji') {
             startDraft()
             setIcon(selection.icon)
+            setIconBackground(selection.background)
           }
         }}
       />
