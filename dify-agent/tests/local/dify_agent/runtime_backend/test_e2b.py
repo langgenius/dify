@@ -279,7 +279,7 @@ async def test_e2b_checkpoint_uses_exact_source_runtime() -> None:
     control = _ControlPlane()
     source_sandbox = _Sandbox(sandbox_id="source")
     source = E2BRuntimeLease(
-        sandbox=source_sandbox,
+        sandbox=source_sandbox,  # pyright: ignore[reportArgumentType]
         data_plane=cast(ShellctlRuntimeLease, object()),
     )
     backend = E2BHomeSnapshotBackend(

@@ -150,6 +150,7 @@ class AgentBackendModelConfig(BaseModel):
     model_provider: str
     model: str
     model_settings: dict[str, JsonValue] = Field(default_factory=dict)
+    context_window_tokens: int | None = Field(default=None, gt=0)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -413,6 +414,7 @@ class AgentBackendRunRequestBuilder:
                     model_provider=run_input.model.model_provider,
                     model=run_input.model.model,
                     model_settings=_agent_model_settings(run_input.model.model_settings),
+                    context_window_tokens=run_input.model.context_window_tokens,
                 ),
             )
         )
@@ -605,6 +607,7 @@ class AgentBackendRunRequestBuilder:
                         model_provider=run_input.model.model_provider,
                         model=run_input.model.model,
                         model_settings=_agent_model_settings(run_input.model.model_settings),
+                        context_window_tokens=run_input.model.context_window_tokens,
                     ),
                 ),
             ]
