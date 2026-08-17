@@ -21,6 +21,8 @@ def test_celery_registers_initial_source_task_when_knowledge_fs_lifecycle_is_rea
     config.CELERY_TASK_ANNOTATIONS = {}
     config.CELERY_BEAT_SCHEDULER_TIME = 1
     config.KNOWLEDGE_FS_LIFECYCLE_POLL_INTERVAL_SECONDS = 2
+    config.ENABLE_CONVERSATION_CLEANUP_TASK = False
+    config.CONVERSATION_CLEANUP_TASK_INTERVAL = 5
     config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK = False
     config.ENABLE_CLEAN_UNUSED_DATASETS_TASK = False
     config.ENABLE_CREATE_TIDB_SERVERLESS_TASK = False

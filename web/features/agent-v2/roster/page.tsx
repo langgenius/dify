@@ -82,15 +82,15 @@ export default function RosterPage() {
   const publishedAgents = rosterItems.filter(isAgentPublished).length
   const draftAgents = Math.max(rosterItems.length - publishedAgents, 0)
   const filteredRosterItems = getFilteredRosterItems(rosterItems, rosterFilter)
-
-  useDocumentTitle('Agents')
+  const pageTitle = t(($) => $['roster.title'])
+  useDocumentTitle(pageTitle)
 
   return (
     <div className="flex h-0 min-w-0 grow flex-col overflow-hidden bg-background-body">
       <div className="shrink-0 bg-background-body px-8 pt-4 pb-2">
         <div className="flex h-6 min-w-0 items-center justify-between gap-4">
           <h1 className="min-w-0 flex-1 truncate text-[18px]/[21.6px] font-semibold text-text-primary">
-            Agents
+            {pageTitle}
           </h1>
           <a
             href={docLink('/use-dify/build/new-agent/overview')}

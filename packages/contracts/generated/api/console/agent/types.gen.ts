@@ -2039,6 +2039,7 @@ export type PostAgentData = {
 export type PostAgentErrors = {
   400: unknown
   403: unknown
+  409: unknown
 }
 
 export type PostAgentResponses = {

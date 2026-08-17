@@ -44,6 +44,7 @@ export const zOAuthProviderRequest = z.object({
 export const zOAuthProviderAppResponse = z.object({
   app_icon: z.string(),
   app_label: z.record(z.string(), z.unknown()),
+  auto_authorize: z.boolean(),
   scope: z.string(),
 })
 

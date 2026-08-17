@@ -58,6 +58,18 @@ const documentQuery = vi.hoisted(() => ({
   isPending: false,
   refetch: vi.fn(),
 }))
+
+const knowledgeSpaceQuery = vi.hoisted(() => ({
+  data: {
+    control_space_id: 'space-1',
+    technical_summary: { name: 'Support knowledge' },
+  } as { control_space_id: string; technical_summary: { name: string } } | undefined,
+  error: null as unknown,
+  isPending: false,
+}))
+
+const useDocumentTitleMock = vi.hoisted(() => vi.fn())
+
 const submittedJobQuery = vi.hoisted(() => ({
   data: undefined as
     | {
@@ -235,6 +247,9 @@ const documentOptions = vi.hoisted(() =>
     queryKey: ['knowledge-fs', 'document', 'space-1', 'document-1'],
     queryKind: 'document',
   })),
+)
+const knowledgeSpaceOptions = vi.hoisted(() =>
+  vi.fn((options: object) => ({ ...options, queryKind: 'knowledge-space' })),
 )
 const submittedJobOptions = vi.hoisted(() =>
   vi.fn((options: object) => ({
@@ -435,6 +450,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
           },
           refetch: settingsState.refetch,
         }
+      if (options.queryKind === 'knowledge-space') return knowledgeSpaceQuery
       if (options.queryKind === 'submitted-job') return submittedJobQuery
       return documentQuery
     },
@@ -466,6 +482,9 @@ vi.mock('@/service/client', () => ({
     knowledgeFs: {
       spaces: {
         byControlSpaceId: {
+          get: {
+            queryOptions: knowledgeSpaceOptions,
+          },
           backgroundTasks: {
             byTaskKind: {
               byTaskId: {
@@ -548,6 +567,10 @@ vi.mock('@/service/client', () => ({
       },
     },
   },
+}))
+
+vi.mock('@/hooks/use-document-title', () => ({
+  default: useDocumentTitleMock,
 }))
 
 const activeRevision = (overrides: Partial<Exclude<LogicalDocumentRevision, null>> = {}) => ({
@@ -676,6 +699,12 @@ describe('DocumentDetailPage', () => {
     documentQuery.data = logicalDocument()
     documentQuery.error = null
     documentQuery.isPending = false
+    knowledgeSpaceQuery.data = {
+      control_space_id: 'space-1',
+      technical_summary: { name: 'Support knowledge' },
+    }
+    knowledgeSpaceQuery.error = null
+    knowledgeSpaceQuery.isPending = false
     submittedJobQuery.data = undefined
     submittedJobQuery.error = null
     submittedJobQuery.isPending = false
@@ -761,6 +790,12 @@ describe('DocumentDetailPage', () => {
   afterEach(() => {
     globalThis.sessionStorage.clear()
     vi.unstubAllGlobals()
+  })
+
+  it('uses the document and knowledge names in the document title', () => {
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    expect(useDocumentTitleMock).toHaveBeenLastCalledWith('sso-enterprise.pdf · Support knowledge')
   })
 
   it('loads the document, revisions, chunks, and task status through generated contracts', async () => {

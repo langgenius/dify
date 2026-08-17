@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { sendEMailLoginCode } from './common'
 
 const mocks = vi.hoisted(() => ({

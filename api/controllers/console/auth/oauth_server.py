@@ -42,6 +42,7 @@ class OAuthProviderAppResponse(BaseModel):
     app_icon: str
     app_label: dict[str, Any]
     scope: str
+    auto_authorize: bool
 
 
 class OAuthProviderAuthorizeResponse(BaseModel):
@@ -166,6 +167,7 @@ class OAuthServerAppApi(Resource):
                 "app_icon": oauth_provider_app.app_icon,
                 "app_label": oauth_provider_app.app_label,
                 "scope": oauth_provider_app.scope,
+                "auto_authorize": oauth_provider_app.auto_authorize,
             }
         )
 

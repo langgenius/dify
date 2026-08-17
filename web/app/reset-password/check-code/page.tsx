@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import Countdown from '@/app/components/signin/countdown'
 import { useLocale } from '@/context/i18n'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendResetPasswordCode, verifyResetPasswordCode } from '@/service/common'
 
@@ -19,6 +20,8 @@ export default function CheckCode() {
   const [code, setVerifyCode] = useState('')
   const [loading, setIsLoading] = useState(false)
   const locale = useLocale()
+  const pageTitle = t(($) => $['checkCode.checkYourEmail'], { ns: 'login' })
+  useDocumentTitle(pageTitle)
 
   const verify = async () => {
     try {
@@ -63,9 +66,7 @@ export default function CheckCode() {
         <RiMailSendFill className="size-6 text-2xl" />
       </div>
       <div className="pt-2 pb-4">
-        <h1 className="title-4xl-semi-bold text-text-primary">
-          {t(($) => $['checkCode.checkYourEmail'], { ns: 'login' })}
-        </h1>
+        <h1 className="title-4xl-semi-bold text-text-primary">{pageTitle}</h1>
         <p className="mt-2 body-md-regular text-text-secondary">
           <span>
             {t(($) => $['checkCode.tipsPrefix'], { ns: 'login' })}

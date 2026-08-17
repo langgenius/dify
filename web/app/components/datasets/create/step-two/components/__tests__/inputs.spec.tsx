@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DelimiterInput, MaxLengthInput, OverlapInput } from '../inputs'
 
 // i18n mock returns namespaced keys like "datasetCreation.stepTwo.separator"

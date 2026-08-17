@@ -68,6 +68,13 @@ class TestAccountAssociatedDataFactory:
         return account
 
 
+def _tenant(session: Session | None = None) -> Tenant:
+    tenant = Tenant(name="Test Workspace")
+    if session is not None:
+        session.add(tenant)
+    return tenant
+
+
 class TestAccountService:
     """
     Comprehensive unit tests for AccountService methods.
@@ -1238,7 +1245,7 @@ class TestTenantService:
     def test_check_member_permission_operate_self(self, unbound_session: Session) -> None:
         """Test member permission check when operator tries to operate self."""
         # Setup test data
-        mock_tenant = MagicMock()
+        mock_tenant = _tenant()
         mock_tenant.id = "tenant-456"
         mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
 
@@ -1283,7 +1290,7 @@ class TestTenantService:
 
     def test_rbac_member_can_remove_non_owner_member(self, sqlite_session: Session) -> None:
         """Test RBAC workspace.member.manage allows removing a non-owner member."""
-        mock_tenant = MagicMock()
+        mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-456"
         mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
         mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
@@ -1302,7 +1309,7 @@ class TestTenantService:
 
     def test_rbac_member_cannot_remove_without_permission(self, sqlite_session: Session) -> None:
         """Test RBAC permission check rejects removal without workspace.member.manage."""
-        mock_tenant = MagicMock()
+        mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-456"
         mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
         mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
@@ -1321,7 +1328,7 @@ class TestTenantService:
 
     def test_rbac_member_cannot_remove_owner_member(self, sqlite_session: Session) -> None:
         """Test RBAC permission check rejects removing an owner member."""
-        mock_tenant = MagicMock()
+        mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-456"
         mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
         mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
@@ -1984,7 +1991,7 @@ class TestRegisterService:
     def test_invite_new_member_new_account(self, sqlite_session: Session) -> None:
         """Test inviting a new member who doesn't have an account."""
         # Setup test data
-        mock_tenant = MagicMock()
+        mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-456"
         mock_tenant.name = "Test Workspace"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-123", name="Inviter")
@@ -2036,7 +2043,7 @@ class TestRegisterService:
         self, sqlite_session: Session, mock_task_dependencies: MagicMock
     ) -> None:
         """Ensure inviting with mixed-case email normalizes before registering."""
-        mock_tenant = MagicMock()
+        mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-456"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-123", name="Inviter")
         mixed_email = "Invitee@Example.com"
@@ -2096,7 +2103,7 @@ class TestRegisterService:
     ) -> None:
         """Test inviting a pending account that is not in the tenant yet."""
         # Setup test data
-        mock_tenant = MagicMock()
+        mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-456"
         mock_tenant.name = "Test Workspace"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-123", name="Inviter")
@@ -2140,7 +2147,7 @@ class TestRegisterService:
         self, sqlite_session: Session, mock_task_dependencies: MagicMock
     ) -> None:
         """Existing active accounts outside the tenant receive an invite without immediate membership."""
-        mock_tenant = MagicMock()
+        mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-456"
         mock_tenant.name = "Test Workspace"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-123", name="Inviter")
@@ -2184,7 +2191,7 @@ class TestRegisterService:
     def test_invite_new_member_already_in_tenant(self, sqlite_session: Session) -> None:
         """Test inviting a member who is already in the tenant."""
         # Setup test data
-        mock_tenant = MagicMock()
+        mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-456"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-123", name="Inviter")
         mock_existing_account = TestAccountAssociatedDataFactory.create_account_mock(
@@ -2221,7 +2228,7 @@ class TestRegisterService:
     def test_invite_new_member_no_inviter(self, unbound_session: Session) -> None:
         """Test inviting a member without providing an inviter."""
         # Setup test data
-        mock_tenant = MagicMock()
+        mock_tenant = _tenant()
 
         # Execute test and verify exception
         with pytest.raises(ValueError):
@@ -2239,7 +2246,7 @@ class TestRegisterService:
     @pytest.mark.usefixtures("mock_task_dependencies")
     def test_invite_new_member_rbac_enabled_new_account(self, sqlite_session: Session) -> None:
         """When RBAC is enabled, create the member join and replace RBAC member roles."""
-        mock_tenant = MagicMock()
+        mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-789"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-456", name="Inviter")
 
@@ -2277,7 +2284,7 @@ class TestRegisterService:
                     mock_tenant, mock_new_account, sqlite_session, TenantAccountRole.NORMAL.value
                 )
                 mock_rbac_service.MemberRoles.replace.assert_called_once_with(
-                    tenant_id=str(mock_tenant.id),
+                    tenant_id=mock_tenant.id,
                     account_id=mock_inviter.id,
                     member_account_id=mock_new_account.id,
                     role_ids=["rbac-role-id-123"],
@@ -2287,7 +2294,7 @@ class TestRegisterService:
     @pytest.mark.usefixtures("mock_task_dependencies")
     def test_invite_new_member_rbac_enabled_existing_account(self, sqlite_session: Session) -> None:
         """When RBAC is enabled and account exists, create the member join and replace RBAC member roles."""
-        mock_tenant = MagicMock()
+        mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-789"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-456", name="Inviter")
         mock_existing_account = TestAccountAssociatedDataFactory.create_account_mock(
@@ -2324,7 +2331,7 @@ class TestRegisterService:
                     TenantAccountRole.NORMAL.value,
                 )
                 mock_rbac_service.MemberRoles.replace.assert_called_once_with(
-                    tenant_id=str(mock_tenant.id),
+                    tenant_id=mock_tenant.id,
                     account_id=mock_inviter.id,
                     member_account_id=mock_existing_account.id,
                     role_ids=["rbac-role-id-456"],
@@ -2335,7 +2342,7 @@ class TestRegisterService:
         self, sqlite_session: Session, mock_task_dependencies: MagicMock
     ) -> None:
         """Existing active accounts still need an RBAC membership before the API returns the signin URL."""
-        mock_tenant = MagicMock()
+        mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-789"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-456", name="Inviter")
         mock_existing_account = TestAccountAssociatedDataFactory.create_account_mock(
@@ -2371,7 +2378,7 @@ class TestRegisterService:
                     TenantAccountRole.NORMAL.value,
                 )
                 mock_rbac_service.MemberRoles.replace.assert_called_once_with(
-                    tenant_id=str(mock_tenant.id),
+                    tenant_id=mock_tenant.id,
                     account_id=mock_inviter.id,
                     member_account_id=mock_existing_account.id,
                     role_ids=["rbac-role-id-456"],
@@ -2382,7 +2389,7 @@ class TestRegisterService:
     @pytest.mark.usefixtures("mock_task_dependencies")
     def test_invite_new_member_rbac_disabled_uses_legacy_role(self, sqlite_session: Session) -> None:
         """When RBAC is disabled, create_tenant_member should be called and MemberRoles.replace should NOT."""
-        mock_tenant = MagicMock()
+        mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-legacy"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-789", name="Inviter")
 
@@ -2424,7 +2431,7 @@ class TestRegisterService:
     def test_generate_invite_token_success(self, mock_redis_dependencies: MagicMock) -> None:
         """Test successful invite token generation."""
         # Setup test data
-        mock_tenant = MagicMock()
+        mock_tenant = _tenant()
         mock_tenant.id = "tenant-456"
         mock_account = TestAccountAssociatedDataFactory.create_account_mock(
             account_id="user-123", email="test@example.com"

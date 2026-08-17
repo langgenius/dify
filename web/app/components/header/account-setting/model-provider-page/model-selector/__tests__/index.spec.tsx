@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react'
 import type { Model, ModelItem } from '../../declarations'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createConsoleQueryClient } from '@/test/console/query-data'
 import { ConfigurationMethodEnum, ModelStatusEnum, ModelTypeEnum } from '../../declarations'
 import { ModelSelector, SplitModelSelector } from '../index'
 
@@ -87,14 +88,6 @@ const makeModel = (overrides: Partial<Model> = {}): Model => ({
   status: ModelStatusEnum.active,
   ...overrides,
 })
-
-const createConsoleQueryClient = () =>
-  new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
-      mutations: { retry: false },
-    },
-  })
 
 const renderWithQueryClient = (node: ReactNode) => {
   const queryClient = createConsoleQueryClient()

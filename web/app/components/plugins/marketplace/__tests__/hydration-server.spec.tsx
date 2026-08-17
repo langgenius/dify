@@ -2,7 +2,7 @@ import type { DehydratedState } from '@tanstack/react-query'
 import type { ReactElement } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 vi.mock('@/config', () => ({
   API_PREFIX: '/api',

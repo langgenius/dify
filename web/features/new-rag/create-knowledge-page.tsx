@@ -43,6 +43,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { datasetDefaultPermissionKeysAtom } from '@/context/permission-state'
 import { knowledgeFsUploadEnabledAtom, rbacEnabledAtom } from '@/features/system-features/state'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
@@ -85,6 +86,7 @@ export function CreateKnowledgePage() {
   const { t: tCommon } = useTranslation('common')
   const { t: tDatasetCreation } = useTranslation('datasetCreation')
   const { t: tWorkflow } = useTranslation('workflow')
+  useDocumentTitle(t(($) => $['newKnowledge.createTitle']))
   const router = useRouter()
   const searchParams = useSearchParams()
   const queryClient = useQueryClient()

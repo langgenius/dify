@@ -196,6 +196,12 @@ def init_app(app: DifyApp) -> Celery:
             "task": "tasks.knowledge_fs_lifecycle_tasks.cleanup_knowledge_fs_staged_uploads",
             "schedule": timedelta(seconds=dify_config.KNOWLEDGE_FS_LIFECYCLE_POLL_INTERVAL_SECONDS),
         }
+    if dify_config.ENABLE_CONVERSATION_CLEANUP_TASK:
+        imports.append("tasks.delete_conversation_task")
+        beat_schedule["conversation_cleanup_sweeper"] = {
+            "task": "tasks.delete_conversation_task.sweep_deleted_conversations",
+            "schedule": timedelta(minutes=dify_config.CONVERSATION_CLEANUP_TASK_INTERVAL),
+        }
     if dify_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK:
         imports.append("schedule.clean_embedding_cache_task")
         beat_schedule["clean_embedding_cache_task"] = {
