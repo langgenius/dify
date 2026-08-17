@@ -33,7 +33,7 @@ def _mint_account_token(
         redis_client,
         subject_email=account.email,
         subject_issuer=None,
-        account_id=str(account.id),
+        account_id=account.id,
         client_id=client_id,
         device_label=device_label,
         prefix=PREFIX_OAUTH_ACCOUNT,

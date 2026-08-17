@@ -755,7 +755,7 @@ class TestRagPipelineWorkflowRunNodeExecutionListApi:
         user = make_account()
         pipeline = make_pipeline()
         run_id = uuid4()
-        node_exec = make_node_execution(workflow_run_id=str(run_id))
+        node_exec = make_node_execution(workflow_run_id=run_id)
 
         service = MagicMock()
         service.get_rag_pipeline_workflow_run_node_executions.return_value = [node_exec]
@@ -771,7 +771,7 @@ class TestRagPipelineWorkflowRunNodeExecutionListApi:
 
         service.get_rag_pipeline_workflow_run_node_executions.assert_called_once_with(
             pipeline=pipeline,
-            run_id=str(run_id),
+            run_id=run_id,
             user=user,
         )
         assert result["data"][0]["id"] == "node-exec-1"

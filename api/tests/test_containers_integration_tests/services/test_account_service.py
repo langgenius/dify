@@ -3131,7 +3131,7 @@ class TestRegisterService:
         import json
 
         invitation_data = json.loads(stored_data.decode("utf-8"))
-        assert invitation_data["account_id"] == str(account.id)
+        assert invitation_data["account_id"] == account.id
         assert invitation_data["email"] == account.email
         assert invitation_data["workspace_id"] == tenant.id
 
@@ -3316,7 +3316,7 @@ class TestRegisterService:
         assert result is not None
         assert result["account"].id == account.id
         assert result["tenant"].id == tenant.id
-        assert result["data"]["account_id"] == str(account.id)
+        assert result["data"]["account_id"] == account.id
         assert result["data"]["email"] == account.email
         assert result["data"]["workspace_id"] == tenant.id
 
@@ -3370,7 +3370,7 @@ class TestRegisterService:
         from extensions.ext_redis import redis_client
 
         invitation_data = {
-            "account_id": str(account.id),
+            "account_id": account.id,
             "email": account.email,
             "workspace_id": invalid_tenant_id,
         }
@@ -3481,7 +3481,7 @@ class TestRegisterService:
         from extensions.ext_redis import redis_client
 
         invitation_data = {
-            "account_id": str(account.id),
+            "account_id": account.id,
             "email": account.email,
             "workspace_id": tenant.id,
         }

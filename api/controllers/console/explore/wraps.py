@@ -24,7 +24,7 @@ def installed_app_required[**P, R](view: Callable[Concatenate[InstalledApp, P], 
             _, current_tenant_id = current_account_with_tenant()
             installed_app = db.session.scalar(
                 select(InstalledApp)
-                .where(InstalledApp.id == str(installed_app_id), InstalledApp.tenant_id == current_tenant_id)
+                .where(InstalledApp.id == installed_app_id, InstalledApp.tenant_id == current_tenant_id)
                 .limit(1)
             )
 
@@ -55,7 +55,7 @@ def user_allowed_to_access_app[**P, R](view: Callable[Concatenate[InstalledApp, 
             if feature.webapp_auth.enabled:
                 app_id = installed_app.app_id
                 res = EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(
-                    user_id=str(current_user.id),
+                    user_id=current_user.id,
                     app_id=app_id,
                 )
                 if not res:
@@ -77,7 +77,7 @@ def trial_app_required[**P, R](view: Callable[Concatenate[App, P], R] | None = N
             current_user, _ = current_account_with_tenant()
             session = db.session()
 
-            trial_app = session.scalar(select(TrialApp).where(TrialApp.app_id == str(app_id)).limit(1))
+            trial_app = session.scalar(select(TrialApp).where(TrialApp.app_id == app_id).limit(1))
 
             if trial_app is None:
                 raise TrialAppNotAllowed()

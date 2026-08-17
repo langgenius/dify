@@ -111,7 +111,7 @@ class FilePreviewApi(Resource):
         Provides secure file preview/download functionality.
         Files can only be accessed if they belong to messages within the requesting app's context.
         """
-        file_id_str = str(file_id)
+        file_id_str = file_id
 
         # Parse query parameters
         args = FilePreviewQuery.model_validate(request.args.to_dict())

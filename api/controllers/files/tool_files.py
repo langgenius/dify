@@ -47,7 +47,7 @@ class ToolFileApi(Resource):
         }
     )
     def get(self, file_id: UUID, extension: str):
-        file_id_str = str(file_id)
+        file_id_str = file_id
 
         args = ToolFileQuery.model_validate(request.args.to_dict())
         if not verify_tool_file_signature(

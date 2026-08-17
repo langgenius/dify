@@ -441,7 +441,7 @@ class DifyRetrieverAttachmentLoader(RetrieverAttachmentLoaderProtocol):
                 .where(SegmentAttachmentBinding.segment_id == segment_id)
             ).all()
 
-        grant_upload_file_access(str(upload_file.id) for _, upload_file in attachments_with_bindings)
+        grant_upload_file_access(upload_file.id for _, upload_file in attachments_with_bindings)
         return [
             self._file_reference_factory.build_from_mapping(
                 mapping={
@@ -452,7 +452,7 @@ class DifyRetrieverAttachmentLoader(RetrieverAttachmentLoaderProtocol):
                     "type": FileType.IMAGE,
                     "transfer_method": FileTransferMethod.LOCAL_FILE,
                     "remote_url": upload_file.source_url,
-                    "reference": build_file_reference(record_id=str(upload_file.id)),
+                    "reference": build_file_reference(record_id=upload_file.id),
                     "size": upload_file.size,
                 }
             )

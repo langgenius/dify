@@ -141,7 +141,7 @@ class BasePluginClient:
             else:
                 prepared_data = data
 
-        return str(url), prepared_headers, prepared_data, params, files
+        return url, prepared_headers, prepared_data, params, files
 
     def _inject_trace_headers(self, headers: dict[str, str]) -> None:
         """
@@ -278,7 +278,7 @@ class BasePluginClient:
             rep = PluginDaemonBasicResponse[type_].model_validate(json_response)  # type: ignore
         except Exception as e:
             msg = (
-                f"Failed to parse response from plugin daemon to PluginDaemonBasicResponse [{str(type_.__name__)}],"
+                f"Failed to parse response from plugin daemon to PluginDaemonBasicResponse [{(type_.__name__)}],"
                 f" url: {path}"
             )
             logger.exception(msg)

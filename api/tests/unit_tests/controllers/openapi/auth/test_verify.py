@@ -130,7 +130,7 @@ def test_check_rbac_enforces_for_account_caller():
         check_rbac_permission(data)
     mock_enforce.assert_called_once_with(
         tenant_id="t1",
-        account_id=str(account_id),
+        account_id=account_id,
         resource_type=RBACResourceScope.APP,
         scene=RBACPermission.APP_VIEW_LAYOUT,
         resource_required=True,

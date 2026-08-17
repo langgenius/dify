@@ -154,7 +154,7 @@ def _hydrate_access_matrix_account_names(items: list[svc.AccessMatrixItem]) -> N
 
     for item in items:
         for account in item.accounts:
-            account_id = str(account.account_id or "").strip()
+            account_id = (account.account_id or "").strip()
             if account_id and not account.account_name:
                 account.account_name = account_names.get(account_id, {}).get("name", "")
             account.avatar = account_names.get(account_id, {}).get("avatar", "")
@@ -602,7 +602,7 @@ class RBACAppMatrixApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[svc.AppAccessMatrix.__name__])
     def get(self, app_id):
         tenant_id, account_id = _current_ids()
-        result = svc.RBACService.AppAccess.matrix(tenant_id, account_id, str(app_id))
+        result = svc.RBACService.AppAccess.matrix(tenant_id, account_id, app_id)
         _hydrate_access_matrix_account_names(result.items)
         return _dump(result)
 
@@ -613,7 +613,7 @@ class RBACAppWhitelistApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[svc.ResourceWhitelist.__name__])
     def get(self, app_id):
         tenant_id, account_id = _current_ids()
-        return _dump(svc.RBACService.AppAccess.whitelist(tenant_id, account_id, str(app_id)))
+        return _dump(svc.RBACService.AppAccess.whitelist(tenant_id, account_id, app_id))
 
     @login_required
     @console_ns.expect(console_ns.models[_ResourceAccessScopeRequest.__name__])
@@ -624,11 +624,11 @@ class RBACAppWhitelistApi(Resource):
         result = svc.RBACService.AppAccess.replace_whitelist(
             tenant_id,
             account_id,
-            str(app_id),
+            app_id,
             svc.ReplaceMemberBindings(scope=request.scope.value),
         )
         if dify_config.RBAC_ENABLED and request.scope is RBACResourceWhitelistScope.ALL:
-            initialize_created_app_rbac_access_task.delay(tenant_id, account_id, str(app_id))
+            initialize_created_app_rbac_access_task.delay(tenant_id, account_id, app_id)
         return _dump(result)
 
 
@@ -639,7 +639,7 @@ class RBACAppUserAccessPoliciesApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[svc.ResourceUserAccessPoliciesResponse.__name__])
     def get(self, app_id):
         tenant_id, account_id = _current_ids()
-        result = svc.RBACService.AppAccess.user_access_policies(tenant_id, account_id, str(app_id))
+        result = svc.RBACService.AppAccess.user_access_policies(tenant_id, account_id, app_id)
         _hydrate_resource_user_account_names(result.data)
         return _dump(result)
 
@@ -669,7 +669,7 @@ class RBACAppRoleBindingsApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[svc.RoleBindingsResponse.__name__])
     def get(self, app_id, policy_id):
         tenant_id, account_id = _current_ids()
-        return _dump(svc.RBACService.AppAccess.list_role_bindings(tenant_id, account_id, str(app_id), str(policy_id)))
+        return _dump(svc.RBACService.AppAccess.list_role_bindings(tenant_id, account_id, app_id, str(policy_id)))
 
 
 @console_ns.route("/workspaces/current/rbac/apps/<uuid:app_id>/access-policies/<string:policy_id>/member-bindings")
@@ -678,7 +678,7 @@ class RBACAppMemberBindingsApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[svc.MemberBindingsResponse.__name__])
     def get(self, app_id, policy_id):
         tenant_id, account_id = _current_ids()
-        return _dump(svc.RBACService.AppAccess.list_member_bindings(tenant_id, account_id, str(app_id), str(policy_id)))
+        return _dump(svc.RBACService.AppAccess.list_member_bindings(tenant_id, account_id, app_id, str(policy_id)))
 
     @login_required
     @console_ns.expect(console_ns.models[_DeleteMemberBindingsRequest.__name__])
@@ -689,7 +689,7 @@ class RBACAppMemberBindingsApi(Resource):
         svc.RBACService.AppAccess.delete_member_bindings(
             tenant_id,
             account_id,
-            str(app_id),
+            app_id,
             str(policy_id),
             svc.DeleteMemberBindings(account_ids=request_body.account_ids),
         )

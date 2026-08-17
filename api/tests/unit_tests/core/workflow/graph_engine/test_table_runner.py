@@ -645,7 +645,7 @@ class TableTestRunner:
             for result in failed_results:
                 report.append(f"  - {result.test_case.description}")
                 if result.error:
-                    report.append(f"    Error: {str(result.error)}")
+                    report.append(f"    Error: {result.error}")
                 if result.validation_details:
                     report.append(f"    Validation: {result.validation_details}")
                 if result.event_mismatch_details:

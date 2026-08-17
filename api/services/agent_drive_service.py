@@ -610,7 +610,7 @@ class AgentDriveService:
         except Exception:
             logger.warning("drive skill inspect: malformed skill metadata for %s", skill_md_key, exc_info=True)
             return None
-        return [str(item) for item in (metadata.manifest_files or []) if str(item).strip()] or None
+        return [item for item in (metadata.manifest_files or []) if item.strip()] or None
 
     @classmethod
     def _skill_file_entries(

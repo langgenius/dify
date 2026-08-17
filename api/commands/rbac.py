@@ -111,7 +111,7 @@ def _iter_tenant_member_batches(
                 batches = []
                 batch = []
             current_tenant_id = workspace_id
-            account_id = str(row.account_id)
+            account_id = row.account_id
             role = str(row.role)
             if role == TenantAccountRole.OWNER.value:
                 owner_account_id = account_id
@@ -372,7 +372,7 @@ def migrate_dataset_permissions_to_rbac(
             if not dataset_rows:
                 break
 
-            dataset_ids = [str(row.id) for row in dataset_rows]
+            dataset_ids = [row.id for row in dataset_rows]
             partial_members_by_dataset_id: dict[str, list[str]] = {item: [] for item in dataset_ids}
             permission_rows = session.execute(
                 select(DatasetPermission.dataset_id, DatasetPermission.account_id).where(
@@ -380,11 +380,11 @@ def migrate_dataset_permissions_to_rbac(
                 )
             ).all()
             for row in permission_rows:
-                partial_members_by_dataset_id[str(row.dataset_id)].append(str(row.account_id))
+                partial_members_by_dataset_id[str(row.dataset_id)].append(row.account_id)
 
         for dataset in dataset_rows:
-            workspace_id = str(dataset.tenant_id)
-            current_dataset_id = str(dataset.id)
+            workspace_id = dataset.tenant_id
+            current_dataset_id = dataset.id
             operator_account_id = str(dataset.created_by)
             permission_value = _dataset_permission_enum(dataset.permission)
             scope = _rbac_dataset_scope_for_legacy_permission(permission_value)

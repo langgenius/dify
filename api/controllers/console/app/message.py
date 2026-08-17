@@ -505,7 +505,7 @@ def _update_message_feedback(*, session: Session, current_user: Account, app_mod
 
 
 def _get_message_suggested_questions(*, session: Session, current_user: Account, app_model: App, message_id: UUID):
-    message_id_str = str(message_id)
+    message_id_str = message_id
 
     try:
         questions = MessageService.get_suggested_questions_after_answer(
@@ -537,7 +537,7 @@ def _get_message_suggested_questions(*, session: Session, current_user: Account,
 
 
 def _get_message_detail(*, session: Session, app_model: App, message_id: UUID):
-    message_id_str = str(message_id)
+    message_id_str = message_id
 
     message = session.scalar(
         select(Message).where(Message.id == message_id_str, Message.app_id == app_model.id).limit(1)

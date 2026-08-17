@@ -442,7 +442,7 @@ class DataSourceNotionDocumentSyncApi(Resource):
     @with_session(write=False)
     def get(self, session: Session, dataset_id: UUID, document_id: UUID) -> tuple[dict[str, str], int]:
         dataset_id_str = str(dataset_id)
-        document_id_str = str(document_id)
+        document_id_str = document_id
         dataset = DatasetService.get_dataset(dataset_id_str, session)
         if dataset is None:
             raise NotFound("Dataset not found.")

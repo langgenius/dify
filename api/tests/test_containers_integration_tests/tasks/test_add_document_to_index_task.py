@@ -267,7 +267,7 @@ class TestAddDocumentToIndexTask:
         """
         # Arrange: Use non-existent document ID
         fake = Faker()
-        non_existent_id = str(fake.uuid4())
+        non_existent_id = fake.uuid4()
 
         # Act: Execute the task with non-existent document
         add_document_to_index_task(non_existent_id)
@@ -518,7 +518,7 @@ class TestAddDocumentToIndexTask:
                 dataset_id=dataset.id,
                 document_id=document.id,
             )
-            log_entry.id = str(fake.uuid4())
+            log_entry.id = fake.uuid4()
             db_session_with_containers.add(log_entry)
             auto_disable_logs.append(log_entry)
 

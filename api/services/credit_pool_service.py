@@ -17,7 +17,6 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.errors.error import QuotaExceededError
-from enums import DeploymentEdition
 from extensions.ext_redis import redis_client
 from models import TenantCreditPool
 from models.enums import ProviderQuotaType
@@ -121,11 +120,11 @@ class CreditPoolReservation:
 class CreditPoolService:
     @staticmethod
     def _normalize_pool_type(pool_type: str | ProviderQuotaType) -> str:
-        return pool_type.value if isinstance(pool_type, ProviderQuotaType) else str(pool_type)
+        return pool_type.value if isinstance(pool_type, ProviderQuotaType) else pool_type
 
     @staticmethod
     def _use_billing_quota() -> bool:
-        return bool(dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD)
+        return dify_config.BILLING_ENABLED
 
     @staticmethod
     def _require_session(session: Session | None) -> Session:

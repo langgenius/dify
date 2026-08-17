@@ -92,7 +92,7 @@ class AccountSessionsApi(Resource):
 
         items = [
             SessionRow(
-                id=str(r.id),
+                id=r.id,
                 prefix=r.prefix,
                 client_id=r.client_id,
                 device_label=r.device_label,
@@ -142,14 +142,14 @@ def _pick_default_workspace(memberships) -> str | None:
         return None
     for join, tenant in memberships:
         if getattr(join, "current", False):
-            return str(tenant.id)
+            return tenant.id
     return str(memberships[0][1].id)
 
 
 def _workspace_payload(row) -> WorkspacePayload:
     join, tenant = row
-    return WorkspacePayload(id=str(tenant.id), name=tenant.name, role=getattr(join, "role", ""))
+    return WorkspacePayload(id=tenant.id, name=tenant.name, role=getattr(join, "role", ""))
 
 
 def _account_payload(account) -> AccountPayload:
-    return AccountPayload(id=str(account.id), email=account.email, name=account.name)
+    return AccountPayload(id=account.id, email=account.email, name=account.name)

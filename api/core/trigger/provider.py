@@ -176,7 +176,7 @@ class PluginTriggerProviderController:
         response = manager.validate_provider_credentials(
             tenant_id=self.tenant_id,
             user_id=user_id,
-            provider=str(provider_id),
+            provider=provider_id,
             credentials=credentials,
         )
         if not response:
@@ -287,7 +287,7 @@ class PluginTriggerProviderController:
 
         response: TriggerDispatchResponse = manager.dispatch_event(
             tenant_id=self.tenant_id,
-            provider=str(provider_id),
+            provider=provider_id,
             subscription=subscription.model_dump(),
             request=request,
             credentials=credentials,
@@ -324,7 +324,7 @@ class PluginTriggerProviderController:
         return manager.invoke_trigger_event(
             tenant_id=self.tenant_id,
             user_id=user_id,
-            provider=str(provider_id),
+            provider=provider_id,
             event_name=event_name,
             credentials=credentials,
             credential_type=credential_type,
@@ -358,7 +358,7 @@ class PluginTriggerProviderController:
         response: TriggerSubscriptionResponse = manager.subscribe(
             tenant_id=self.tenant_id,
             user_id=user_id,
-            provider=str(provider_id),
+            provider=provider_id,
             endpoint=endpoint,
             parameters=parameters,
             credentials=credentials,
@@ -385,7 +385,7 @@ class PluginTriggerProviderController:
         response: TriggerSubscriptionResponse = manager.unsubscribe(
             tenant_id=self.tenant_id,
             user_id=user_id,
-            provider=str(provider_id),
+            provider=provider_id,
             subscription=subscription,
             credentials=credentials,
             credential_type=credential_type,
@@ -409,7 +409,7 @@ class PluginTriggerProviderController:
         response: TriggerSubscriptionResponse = manager.refresh(
             tenant_id=self.tenant_id,
             user_id="system",  # System refresh
-            provider=str(provider_id),
+            provider=provider_id,
             subscription=subscription,
             credentials=credentials,
             credential_type=credential_type,

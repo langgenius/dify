@@ -15,7 +15,6 @@ import logging
 from typing import TYPE_CHECKING
 
 from configs import dify_config
-from enums import DeploymentEdition
 
 if TYPE_CHECKING:
     from dify_app import DifyApp
@@ -27,9 +26,7 @@ _exporter: EnterpriseExporter | None = None
 
 
 def is_enabled() -> bool:
-    return bool(
-        dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE and dify_config.ENTERPRISE_TELEMETRY_ENABLED
-    )
+    return dify_config.ENTERPRISE_ENABLED and dify_config.ENTERPRISE_TELEMETRY_ENABLED
 
 
 def init_app(app: DifyApp) -> None:

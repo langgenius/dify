@@ -1757,7 +1757,7 @@ class TestWorkflowService:
 
         assert result.status == WorkflowNodeExecutionStatus.FAILED
         assert result.error is not None
-        assert "Test error message" in str(result.error)
+        assert "Test error message" in result.error
 
     def test_handle_node_run_result_continue_on_error(self, db_session_with_containers: Session):
         """

@@ -385,7 +385,7 @@ class TestShardedRedisBroadcastChannelClusterIntegration:
     @pytest.fixture(scope="class")
     def redis_cluster_client(self, redis_cluster_container: RedisContainer) -> RedisCluster:
         host = redis_cluster_container.get_container_host_ip()
-        port = int(redis_cluster_container.get_exposed_port(6379))
+        port = redis_cluster_container.get_exposed_port(6379)
         self._ensure_single_node_cluster(host, port)
         return RedisCluster(host=host, port=port, decode_responses=False)
 

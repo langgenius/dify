@@ -214,7 +214,7 @@ class AppMessageExportService:
             if not rows:
                 break
 
-            message_ids = [str(row.id) for row in rows]
+            message_ids = [row.id for row in rows]
             feedbacks_map = self._fetch_feedbacks(message_ids)
             yield [self._build_record(row, feedbacks_map) for row in rows]
 
@@ -277,7 +277,7 @@ class AppMessageExportService:
 
         result: dict[str, list[AppMessageExportFeedback]] = defaultdict(list)
         for feedback in feedbacks:
-            result[str(feedback.message_id)].append(AppMessageExportFeedback.model_validate(feedback.to_dict()))
+            result[feedback.message_id].append(AppMessageExportFeedback.model_validate(feedback.to_dict()))
         return result
 
     @staticmethod
@@ -292,7 +292,7 @@ class AppMessageExportService:
             except (json.JSONDecodeError, TypeError):
                 pass
 
-        message_id = str(row.id)
+        message_id = row.id
         return AppMessageExportRecord(
             conversation_id=str(row.conversation_id),
             message_id=message_id,

@@ -33,7 +33,7 @@ class ParsedResponse:
         """Convert response to string format for credential validation"""
         if isinstance(self.content, dict):
             return json.dumps(self.content, ensure_ascii=False)
-        return str(self.content)
+        return self.content
 
 
 class ApiTool(Tool):

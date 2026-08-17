@@ -304,7 +304,7 @@ def test_publish_streaming_response_coerces_string_uuid(mock_topic: MagicMock):
 
     _publish_streaming_response(
         response_stream,
-        str(workflow_run_id),
+        workflow_run_id,
         app_mode=AppMode.ADVANCED_CHAT,
         workflow_id="workflow-id",
         inputs={},

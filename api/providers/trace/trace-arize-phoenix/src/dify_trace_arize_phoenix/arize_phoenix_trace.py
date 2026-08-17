@@ -93,7 +93,7 @@ def _resolve_published_parent_span_context(parent_node_execution_id: str) -> dic
             f"parent_node_execution_id={parent_node_execution_id}"
         )
 
-    normalized_carrier = {str(key): str(value) for key, value in carrier.items()}
+    normalized_carrier = {str(key): value for key, value in carrier.items()}
     if not normalized_carrier:
         raise ValueError(
             f"Phoenix parent span context payload is empty: parent_node_execution_id={parent_node_execution_id}"

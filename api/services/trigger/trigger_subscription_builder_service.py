@@ -96,7 +96,7 @@ class TriggerSubscriptionBuilderService:
             endpoint_id=subscription_id,
             tenant_id=tenant_id,
             user_id=user_id,
-            provider_id=str(provider_id),
+            provider_id=provider_id,
             parameters=subscription_constructor.get_default_parameters() if subscription_constructor else {},
             properties=provider_controller.get_subscription_default_properties(),
             credentials={},

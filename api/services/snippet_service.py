@@ -894,7 +894,7 @@ class SnippetService:
         :param args: Request arguments (last_id, limit)
         :return: InfiniteScrollPagination result
         """
-        limit = int(args.get("limit", 20))
+        limit = args.get("limit", 20)
         last_id = args.get("last_id")
 
         triggered_from_values = [

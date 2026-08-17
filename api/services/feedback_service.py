@@ -96,7 +96,7 @@ class FeedbackService:
             feedback_record = {
                 "feedback_id": str(feedback.id),
                 "app_name": app.name,
-                "app_id": str(app.id),
+                "app_id": app.id,
                 "conversation_id": str(conversation.id),
                 "conversation_name": conversation.name or "",
                 "message_id": str(message.id),

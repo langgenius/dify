@@ -160,7 +160,7 @@ class TestPluginEndpointClientDelete:
                 )
 
             # Assert - the error message should not be "record not found"
-            assert "record not found" not in str(exc_info.value.description)
+            assert "record not found" not in exc_info.value.description
 
     def test_delete_endpoint_idempotent_case_insensitive(self, endpoint_client, mock_config):
         """Test idempotent delete behavior with case-insensitive error message.

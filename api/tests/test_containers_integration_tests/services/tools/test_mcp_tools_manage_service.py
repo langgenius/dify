@@ -112,9 +112,9 @@ class TestMCPToolManageService:
         mcp_provider = MCPToolProvider(
             tenant_id=tenant_id,
             name=fake.company(),
-            server_identifier=str(fake.uuid4()),
+            server_identifier=fake.uuid4(),
             server_url="encrypted_server_url",
-            server_url_hash=str(fake.sha256()),
+            server_url_hash=fake.sha256(),
             user_id=user_id,
             authed=False,
             tools="[]",
@@ -183,7 +183,7 @@ class TestMCPToolManageService:
             db_session_with_containers, mock_external_service_dependencies
         )
 
-        non_existent_id = str(fake.uuid4())
+        non_existent_id = fake.uuid4()
 
         # Act & Assert: Verify proper error handling
 
@@ -278,7 +278,7 @@ class TestMCPToolManageService:
             db_session_with_containers, mock_external_service_dependencies
         )
 
-        non_existent_identifier = str(fake.uuid4())
+        non_existent_identifier = fake.uuid4()
 
         # Act & Assert: Verify proper error handling
 
@@ -979,7 +979,7 @@ class TestMCPToolManageService:
             db_session_with_containers, mock_external_service_dependencies
         )
 
-        non_existent_id = str(fake.uuid4())
+        non_existent_id = fake.uuid4()
 
         # Act & Assert: Verify proper error handling
 

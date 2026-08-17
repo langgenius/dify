@@ -1209,7 +1209,7 @@ class RagPipelineService:
         :param app_model: app model
         :param args: request args
         """
-        limit = int(args.get("limit", 20))
+        limit = args.get("limit", 20)
         last_id = args.get("last_id")
 
         triggered_from_values = [

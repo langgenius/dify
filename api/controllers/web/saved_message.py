@@ -103,7 +103,7 @@ class SavedMessageApi(WebApiResource):
     )
     @web_ns.response(204, "Message removed successfully")
     def delete(self, app_model: App, end_user: EndUser, message_id: UUID):
-        message_id_str = str(message_id)
+        message_id_str = message_id
 
         if app_model.mode != "completion":
             raise NotCompletionAppError()

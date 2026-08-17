@@ -36,7 +36,7 @@ def _token(
     token = OAuthAccessToken(
         subject_email=subject_email,
         subject_issuer=subject_issuer,
-        account_id=str(account_id) if account_id is not None else None,
+        account_id=account_id if account_id is not None else None,
         client_id="difyctl",
         device_label="test-device",
         prefix="dfoa_" if account_id is not None else "dfoe_",
@@ -44,7 +44,7 @@ def _token(
         expires_at=expires_at or datetime.now(UTC) + timedelta(days=1),
         revoked_at=revoked_at,
     )
-    token.id = str(token_id)
+    token.id = token_id
     if created_at is not None:
         token.created_at = created_at
     return token
@@ -122,10 +122,10 @@ def test_revoke_oauth_token_invalidates_redis_cache_when_live_hash_seen(sqlite_s
 
     redis = MagicMock()
 
-    revoke_oauth_token(redis, str(TOKEN_ID), session=sqlite_session)
+    revoke_oauth_token(redis, token_id, session=sqlite_session)
 
     assert not sqlite_session.in_transaction()
-    persisted = sqlite_session.get(OAuthAccessToken, str(TOKEN_ID))
+    persisted = sqlite_session.get(OAuthAccessToken, token_id)
     assert persisted is not None
     assert persisted.token_hash is None
     assert persisted.revoked_at is not None
@@ -145,10 +145,10 @@ def test_revoke_oauth_token_is_idempotent_when_already_revoked(sqlite_session: S
 
     redis = MagicMock()
 
-    revoke_oauth_token(redis, str(TOKEN_ID), session=sqlite_session)
+    revoke_oauth_token(redis, token_id, session=sqlite_session)
 
     assert not sqlite_session.in_transaction()
-    persisted = sqlite_session.get(OAuthAccessToken, str(TOKEN_ID))
+    persisted = sqlite_session.get(OAuthAccessToken, token_id)
     assert persisted is not None
     assert persisted.token_hash is None
     assert persisted.revoked_at is not None
@@ -200,7 +200,7 @@ def test_list_active_sessions_returns_only_live_subject_tokens(sqlite_session: S
 
     out = list_active_sessions(_account_ctx(), now, session=sqlite_session)
 
-    assert [token.id for token in out] == [str(TOKEN_ID), str(OTHER_TOKEN_ID)]
+    assert [token.id for token in out] == [token_id, str(OTHER_TOKEN_ID)]
 
 
 @pytest.mark.parametrize("sqlite_session", [(OAuthAccessToken,)], indirect=True)
@@ -208,7 +208,7 @@ def test_token_belongs_to_subject_true_when_row_present(sqlite_session: Session)
     sqlite_session.add(_token())
     sqlite_session.commit()
 
-    assert token_belongs_to_subject(str(TOKEN_ID), _account_ctx(), session=sqlite_session) is True
+    assert token_belongs_to_subject(token_id, _account_ctx(), session=sqlite_session) is True
 
 
 @pytest.mark.parametrize("sqlite_session", [(OAuthAccessToken,)], indirect=True)
@@ -216,4 +216,4 @@ def test_token_belongs_to_subject_false_for_other_account(sqlite_session: Sessio
     sqlite_session.add(_token(account_id=OTHER_ACCOUNT_ID))
     sqlite_session.commit()
 
-    assert token_belongs_to_subject(str(TOKEN_ID), _account_ctx(), session=sqlite_session) is False
+    assert token_belongs_to_subject(token_id, _account_ctx(), session=sqlite_session) is False

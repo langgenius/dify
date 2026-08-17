@@ -382,7 +382,7 @@ class TestBuildDatasetToolImageContents:
         grant_access.assert_called_once()
         assert list(grant_access.call_args.args[0]) == ["890985e9-c2f1-484e-bc7b-62010a337e6d"]
         sign_preview.assert_called_once_with(upload_file.id, upload_file.extension)
-        build_reference.assert_called_once_with(record_id=str(upload_file.id))
+        build_reference.assert_called_once_with(record_id=upload_file.id)
         to_prompt_content.assert_called_once()
 
 

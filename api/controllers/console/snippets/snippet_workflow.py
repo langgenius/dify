@@ -528,7 +528,7 @@ class SnippetWorkflowRunDetailApi(Resource):
     @get_snippet
     def get(self, snippet: CustomizedSnippet, run_id):
         """Get workflow run detail for snippet."""
-        run_id = str(run_id)
+        run_id = run_id
 
         snippet_service = _snippet_service()
         workflow_run = snippet_service.get_snippet_workflow_run(snippet=snippet, run_id=run_id)
@@ -553,7 +553,7 @@ class SnippetWorkflowRunNodeExecutionsApi(Resource):
     @get_snippet
     def get(self, snippet: CustomizedSnippet, run_id):
         """List node executions for a workflow run."""
-        run_id = str(run_id)
+        run_id = run_id
 
         snippet_service = _snippet_service()
         node_executions = snippet_service.get_snippet_workflow_run_node_executions(

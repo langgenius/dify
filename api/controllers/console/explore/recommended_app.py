@@ -147,5 +147,5 @@ class RecommendedAppApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_id: UUID):
-        result = RecommendedAppService.get_recommend_app_detail(str(app_id), session=db.session())
+        result = RecommendedAppService.get_recommend_app_detail(app_id, session=db.session())
         return RecommendedAppDetailNullableResponse.model_validate(result).model_dump(mode="json")

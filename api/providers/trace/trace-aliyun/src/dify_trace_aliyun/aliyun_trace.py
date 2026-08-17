@@ -126,7 +126,7 @@ class AliyunDataTrace(BaseTraceInstance):
         """Extract app_id from trace_info, trying metadata first then message_data."""
         app_id = trace_info.metadata.get("app_id")
         if app_id:
-            return str(app_id)
+            return app_id
         message_data = getattr(trace_info, "message_data", None)
         if message_data is not None:
             return str(getattr(message_data, "app_id", ""))

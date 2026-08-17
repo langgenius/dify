@@ -338,7 +338,7 @@ class WorkflowBasedAppRunner:
 
         # Get node class
         node_type = target_node_config["data"].type
-        node_version = str(target_node_config["data"].version)
+        node_version = target_node_config["data"].version
         node_cls = resolve_workflow_node_class(node_type=node_type, node_version=node_version)
 
         # Use the variable pool from graph_runtime_state instead of creating a new one

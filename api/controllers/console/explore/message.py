@@ -127,7 +127,7 @@ class MessageFeedbackApi(InstalledAppResource):
         if app_model is None:
             raise AppUnavailableError()
 
-        message_id_str = str(message_id)
+        message_id_str = message_id
 
         try:
             MessageService.create_feedback(
@@ -160,7 +160,7 @@ class MessageMoreLikeThisApi(InstalledAppResource):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
-        message_id_str = str(message_id)
+        message_id_str = message_id
 
         args = MoreLikeThisQuery.model_validate(request.args.to_dict())
 
@@ -211,7 +211,7 @@ class MessageSuggestedQuestionApi(InstalledAppResource):
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        message_id_str = str(message_id)
+        message_id_str = message_id
 
         try:
             questions = MessageService.get_suggested_questions_after_answer(

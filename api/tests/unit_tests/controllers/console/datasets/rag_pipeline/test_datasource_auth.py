@@ -143,7 +143,7 @@ class TestDatasourcePluginOAuthAuthorizationUrl:
         assert response.get_json() == auth_url_payload
         assert "context_id=ctx-1" in response.headers.get("Set-Cookie")
         provider_id = get_oauth_client.call_args.kwargs["datasource_provider_id"]
-        assert str(provider_id) == _PROVIDER_ID
+        assert provider_id == _PROVIDER_ID
         get_oauth_client.assert_called_once()
         create_proxy_context.assert_called_once_with(
             user_id="user-1",

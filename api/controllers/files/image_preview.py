@@ -64,7 +64,7 @@ class ImagePreviewApi(Resource):
         }
     )
     def get(self, file_id: UUID):
-        file_id_str = str(file_id)
+        file_id_str = file_id
 
         args = FileSignatureQuery.model_validate(request.args.to_dict(flat=True))
         timestamp = args.timestamp
@@ -106,7 +106,7 @@ class FilePreviewApi(Resource):
         }
     )
     def get(self, file_id: UUID):
-        file_id_str = str(file_id)
+        file_id_str = file_id
 
         args = FilePreviewQuery.model_validate(request.args.to_dict(flat=True))
 
@@ -177,7 +177,7 @@ class WorkspaceWebappLogoApi(Resource):
         }
     )
     def get(self, workspace_id: UUID):
-        workspace_id_str = str(workspace_id)
+        workspace_id_str = workspace_id
 
         custom_config = TenantService.get_custom_config(workspace_id_str)
         webapp_logo_file_id = custom_config.get("replace_webapp_logo") if custom_config is not None else None

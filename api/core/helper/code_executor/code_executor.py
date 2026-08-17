@@ -100,7 +100,7 @@ class CodeExecutor:
 
         try:
             response = client.post(
-                str(url),
+                url,
                 json=data,
                 headers=headers,
                 timeout=timeout,

@@ -221,9 +221,9 @@ def test_stream_live_emits_snapshot_then_node_changed_then_completion(
     patch_service.node_detail.return_value = _node_view(node_id="agent-1")
 
     msgs = [
-        InspectorMessage(kind="node_changed", workflow_run_id=str(run_id), node_id="agent-1", status="running"),
-        InspectorMessage(kind="node_changed", workflow_run_id=str(run_id), node_id="agent-1", status="succeeded"),
-        InspectorMessage(kind="workflow_completed", workflow_run_id=str(run_id), node_id=None, status="succeeded"),
+        InspectorMessage(kind="node_changed", workflow_run_id=run_id, node_id="agent-1", status="running"),
+        InspectorMessage(kind="node_changed", workflow_run_id=run_id, node_id="agent-1", status="succeeded"),
+        InspectorMessage(kind="workflow_completed", workflow_run_id=run_id, node_id=None, status="succeeded"),
     ]
     patch_subscribe(msgs)
 
@@ -247,7 +247,7 @@ def test_stream_emits_heartbeat_after_n_idle_ticks(
         [
             None,
             None,
-            InspectorMessage(kind="workflow_completed", workflow_run_id=str(run_id), node_id=None, status="failed"),
+            InspectorMessage(kind="workflow_completed", workflow_run_id=run_id, node_id=None, status="failed"),
         ]
     )
     records = _drain(ctrl._stream_inspector_events(app_model, run_id))
@@ -277,8 +277,8 @@ def test_stream_skips_messages_with_missing_node_id(patch_service, patch_subscri
     patch_service.snapshot_workflow_run.return_value = _snapshot_view(status="running")
     patch_subscribe(
         [
-            InspectorMessage(kind="node_changed", workflow_run_id=str(run_id), node_id="", status="running"),
-            InspectorMessage(kind="workflow_completed", workflow_run_id=str(run_id), node_id=None, status="succeeded"),
+            InspectorMessage(kind="node_changed", workflow_run_id=run_id, node_id="", status="running"),
+            InspectorMessage(kind="workflow_completed", workflow_run_id=run_id, node_id=None, status="succeeded"),
         ]
     )
     events = [_parse(r)[0] for r in _drain(ctrl._stream_inspector_events(app_model, run_id))]
@@ -293,8 +293,8 @@ def test_stream_skips_node_detail_404_without_breaking_stream(patch_service, pat
     patch_service.node_detail.side_effect = NodeOutputInspectorError("node_not_in_workflow_run", "transient")
     patch_subscribe(
         [
-            InspectorMessage(kind="node_changed", workflow_run_id=str(run_id), node_id="agent-1", status="running"),
-            InspectorMessage(kind="workflow_completed", workflow_run_id=str(run_id), node_id=None, status="succeeded"),
+            InspectorMessage(kind="node_changed", workflow_run_id=run_id, node_id="agent-1", status="running"),
+            InspectorMessage(kind="workflow_completed", workflow_run_id=run_id, node_id=None, status="succeeded"),
         ]
     )
     events = [_parse(r)[0] for r in _drain(ctrl._stream_inspector_events(app_model, run_id))]
@@ -310,8 +310,8 @@ def test_stream_emits_error_event_on_node_detail_unexpected_exception(
     patch_service.node_detail.side_effect = RuntimeError("db gone")
     patch_subscribe(
         [
-            InspectorMessage(kind="node_changed", workflow_run_id=str(run_id), node_id="agent-1", status="running"),
-            InspectorMessage(kind="workflow_completed", workflow_run_id=str(run_id), node_id=None, status="succeeded"),
+            InspectorMessage(kind="node_changed", workflow_run_id=run_id, node_id="agent-1", status="running"),
+            InspectorMessage(kind="workflow_completed", workflow_run_id=run_id, node_id=None, status="succeeded"),
         ]
     )
     records = _drain(ctrl._stream_inspector_events(app_model, run_id))
@@ -329,9 +329,7 @@ def test_stream_workflow_completed_status_falls_back_to_unknown(patch_service, p
     payload still carries ``workflow_run_status`` with the ``unknown``
     sentinel so the frontend never sees a missing field."""
     patch_service.snapshot_workflow_run.return_value = _snapshot_view(status="running")
-    patch_subscribe(
-        [InspectorMessage(kind="workflow_completed", workflow_run_id=str(run_id), node_id=None, status=None)]
-    )
+    patch_subscribe([InspectorMessage(kind="workflow_completed", workflow_run_id=run_id, node_id=None, status=None)])
     records = _drain(ctrl._stream_inspector_events(app_model, run_id))
     e, d = _parse(records[-1])
     assert e == "workflow_run_completed"
@@ -382,7 +380,7 @@ def test_serve_snapshot_happy_path(patch_service, app_model, run_id):
     assert isinstance(result, dict)
     assert result["workflow_run_id"] == "00000000-0000-0000-0000-0000000000aa"
     patch_service.snapshot_workflow_run.assert_called_once_with(
-        app_model=app_model, workflow_run_id=str(run_id), session=ANY
+        app_model=app_model, workflow_run_id=run_id, session=ANY
     )
 
 
@@ -400,7 +398,7 @@ def test_serve_node_detail_happy_path(patch_service, app_model, run_id):
     result = ctrl._serve_node_detail(app_model, run_id, "agent-1")
     assert result["node_id"] == "agent-1"
     patch_service.node_detail.assert_called_once_with(
-        app_model=app_model, workflow_run_id=str(run_id), node_id="agent-1", session=ANY
+        app_model=app_model, workflow_run_id=run_id, node_id="agent-1", session=ANY
     )
 
 
@@ -429,7 +427,7 @@ def test_serve_output_preview_happy_path(patch_service, app_model, run_id):
     assert result["status"] == "ready"
     patch_service.output_preview.assert_called_once_with(
         app_model=app_model,
-        workflow_run_id=str(run_id),
+        workflow_run_id=run_id,
         node_id="agent-1",
         output_name="text",
         session=ANY,

@@ -1309,7 +1309,7 @@ def test_provider_models_processing_uses_same_plan_locking_and_transaction_entry
         assert session.get_bind() is sqlite_engine
         lock_rows_seen.append((current_phase["name"], lock_rows))
         return migration_module._ProviderModelGroupPlan(
-            group_row_ids=[str(candidate.row.id)],
+            group_row_ids=[candidate.row.id],
             winner=None,
             loser_rows=[],
         )
@@ -1428,7 +1428,7 @@ def test_process_load_balancing_model_config_row_logs_stacktrace_for_lock_timeou
     assert lines[0]["event"] == "lock_timeout_skipped"
     attrs = cast(dict[str, object], lines[0]["attrs"])
     assert attrs["table_name"] == "load_balancing_model_configs"
-    assert attrs["id"] == str(candidate.row.id)
+    assert attrs["id"] == candidate.row.id
     assert attrs["error"] == str(lock_timeout_exc)
     assert isinstance(attrs["stacktrace"], str)
     assert "OperationalError" in attrs["stacktrace"]

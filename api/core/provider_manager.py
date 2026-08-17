@@ -661,8 +661,8 @@ class ProviderManager:
         provider_name_list = list(provider_name_to_provider_records_dict.keys())
         for provider_name in provider_name_list:
             provider_id = ModelProviderID(provider_name)
-            if str(provider_id) not in provider_name_list:
-                provider_name_to_provider_records_dict[str(provider_id)] = provider_name_to_provider_records_dict[
+            if provider_id not in provider_name_list:
+                provider_name_to_provider_records_dict[provider_id] = provider_name_to_provider_records_dict[
                     provider_name
                 ]
 
@@ -670,8 +670,8 @@ class ProviderManager:
         provider_name_to_provider_model_records_dict = self._get_all_provider_models(tenant_id)
         for provider_name in list(provider_name_to_provider_model_records_dict.keys()):
             provider_id = ModelProviderID(provider_name)
-            if str(provider_id) not in provider_name_to_provider_model_records_dict:
-                provider_name_to_provider_model_records_dict[str(provider_id)] = (
+            if provider_id not in provider_name_to_provider_model_records_dict:
+                provider_name_to_provider_model_records_dict[provider_id] = (
                     provider_name_to_provider_model_records_dict[provider_name]
                 )
 
@@ -685,9 +685,9 @@ class ProviderManager:
         # are present in the dictionary to handle cases where either form might be used
         for provider_name in list(provider_name_to_preferred_model_provider_records_dict.keys()):
             provider_id = ModelProviderID(provider_name)
-            if str(provider_id) not in provider_name_to_preferred_model_provider_records_dict:
+            if provider_id not in provider_name_to_preferred_model_provider_records_dict:
                 # Add the ModelProviderID string representation if it's not already present
-                provider_name_to_preferred_model_provider_records_dict[str(provider_id)] = (
+                provider_name_to_preferred_model_provider_records_dict[provider_id] = (
                     provider_name_to_preferred_model_provider_records_dict[provider_name]
                 )
 

@@ -160,7 +160,7 @@ class MessageFeedbackApi(Resource):
 
         Allows users to rate messages as like/dislike and provide optional feedback content.
         """
-        message_id_str = str(message_id)
+        message_id_str = message_id
 
         payload = MessageFeedbackPayload.model_validate(service_api_ns.payload or {})
 
@@ -258,7 +258,7 @@ class MessageSuggestedApi(Resource):
 
         Returns AI-generated follow-up questions based on the message content.
         """
-        message_id_str = str(message_id)
+        message_id_str = message_id
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()

@@ -250,7 +250,7 @@ class DeviceApproveApi(Resource):
                 redis_client,
                 subject_email=account.email,
                 subject_issuer=ACCOUNT_ISSUER_SENTINEL,
-                account_id=str(account.id),
+                account_id=account.id,
                 client_id=state.client_id,
                 device_label=state.device_label,
                 prefix=profile.prefix,
@@ -263,7 +263,7 @@ class DeviceApproveApi(Resource):
                 store.approve(
                     device_code,
                     subject_email=account.email,
-                    account_id=str(account.id),
+                    account_id=account.id,
                     subject_issuer=ACCOUNT_ISSUER_SENTINEL,
                     minted_token=mint.token,
                     token_id=str(mint.token_id),
@@ -342,8 +342,8 @@ def _audit_cross_ip_if_needed(state) -> None:
 
 
 def _build_account_poll_payload(account, tenant, mint) -> PollPayload:
-    rows = TenantService.get_workspaces_for_account(str(account.id), session=db.session())
-    workspaces = [WorkspacePayload(id=str(t.id), name=t.name, role=getattr(m, "role", "")) for t, m in rows]
+    rows = TenantService.get_workspaces_for_account(account.id, session=db.session())
+    workspaces = [WorkspacePayload(id=t.id, name=t.name, role=getattr(m, "role", "")) for t, m in rows]
     # Prefer active session tenant → DB-flagged current join → first membership.
     default_ws_id = None
     if tenant and any(w.id == str(tenant) for w in workspaces):
@@ -360,7 +360,7 @@ def _build_account_poll_payload(account, tenant, mint) -> PollPayload:
         "token": mint.token,
         "expires_at": mint.expires_at.isoformat(),
         "subject_type": SubjectType.ACCOUNT,
-        "account": AccountPayload(id=str(account.id), email=account.email, name=account.name).model_dump(mode="json"),
+        "account": AccountPayload(id=account.id, email=account.email, name=account.name).model_dump(mode="json"),
         "workspaces": [w.model_dump(mode="json") for w in workspaces],
         "default_workspace_id": default_ws_id,
         "token_id": str(mint.token_id),
@@ -382,7 +382,7 @@ def _emit_approve_audit(state, account, tenant, mint) -> None:
             "token_id": str(mint.token_id),
             "subject_type": SubjectType.ACCOUNT,
             "subject_email": account.email,
-            "account_id": str(account.id),
+            "account_id": account.id,
             "tenant_id": tenant,
             "client_id": state.client_id,
             "device_label": state.device_label,

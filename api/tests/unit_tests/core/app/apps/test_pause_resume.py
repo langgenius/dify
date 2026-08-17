@@ -116,7 +116,7 @@ def _patch_tool_node(mocker: MockerFixture):
 
 def _node_data(node_type: NodeType, data: BaseNodeData) -> dict[str, object]:
     node_data = data.model_dump()
-    node_data["type"] = str(node_type)
+    node_data["type"] = node_type
     return node_data
 
 

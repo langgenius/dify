@@ -81,7 +81,7 @@ def auth_for(
     """
     return AuthData(
         token_type=TokenType.OAUTH_ACCOUNT,
-        account_id=uuid.UUID(str(account.id)),
+        account_id=uuid.UUID(account.id),
         token_hash="integration-test",
         token_id=token_id,
         scopes=frozenset({Scope.FULL}),
@@ -109,7 +109,7 @@ def account_auth_context(
         subject_type=SubjectType.ACCOUNT,
         subject_email=account.email,
         subject_issuer=None,
-        account_id=uuid.UUID(str(account.id)),
+        account_id=uuid.UUID(account.id),
         client_id=client_id,
         scopes=frozenset({Scope.FULL}),
         token_id=token_id,
