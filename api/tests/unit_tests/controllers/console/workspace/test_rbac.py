@@ -6,6 +6,7 @@ therefore focus on the Flask-layer concerns the service layer cannot exercise:
 
 * ``_current_ids`` raises 404 when the session has no tenant.
 * The pydantic request models accept / reject bodies as expected.
+* RBAC management routes carry the correct shared authorization policy.
 
 We explicitly avoid "happy-path" integration tests through the full
 decorator stack — those belong in e2e tests where a real Dify session is
@@ -16,6 +17,7 @@ changes.
 from __future__ import annotations
 
 import inspect
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -565,7 +567,7 @@ class TestWorkspaceRbacGuards:
             patch("controllers.console.workspace.rbac.svc.RBACService.Roles.create") as mock_create,
         ):
             with pytest.raises(Forbidden):
-                rbac_mod.RBACRolesApi().post()
+                rbac_mod.RBACRolesApi(api=SimpleNamespace(_validate=False)).dispatch_request()
 
         mock_create.assert_not_called()
 
@@ -586,9 +588,175 @@ class TestWorkspaceRbacGuards:
             patch("controllers.console.workspace.rbac.svc.RBACService.AccessPolicies.create") as mock_create,
         ):
             with pytest.raises(Forbidden):
-                rbac_mod.RBACAccessPoliciesApi().post()
+                rbac_mod.RBACAccessPoliciesApi(api=SimpleNamespace(_validate=False)).dispatch_request()
 
         mock_create.assert_not_called()
+
+    @pytest.mark.parametrize(
+        ("policy_class", "legacy_gate", "resource_type", "permission", "resource_required"),
+        [
+            (
+                rbac_mod._AppAccessConfigResource,
+                rbac_mod.edit_permission_required,
+                rbac_mod.RBACResourceScope.APP,
+                rbac_mod.RBACPermission.APP_ACCESS_CONFIG,
+                True,
+            ),
+            (
+                rbac_mod._DatasetAccessConfigResource,
+                rbac_mod.is_admin_or_owner_required,
+                rbac_mod.RBACResourceScope.DATASET,
+                rbac_mod.RBACPermission.DATASET_ACCESS_CONFIG,
+                True,
+            ),
+            (
+                rbac_mod._WorkspaceRoleManageResource,
+                rbac_mod.is_admin_or_owner_required,
+                rbac_mod.RBACResourceScope.WORKSPACE,
+                rbac_mod.RBACPermission.WORKSPACE_ROLE_MANAGE,
+                False,
+            ),
+        ],
+    )
+    def test_shared_management_policy(
+        self,
+        policy_class,
+        legacy_gate,
+        resource_type,
+        permission,
+        resource_required,
+    ):
+        permission_gate, actual_legacy_gate, auth_gate = policy_class.method_decorators
+        closure = inspect.getclosurevars(permission_gate).nonlocals
+
+        assert actual_legacy_gate is legacy_gate
+        assert auth_gate is rbac_mod.login_required
+        assert closure["resource_required"] is resource_required
+        assert closure["resource_type"] is resource_type
+        assert closure["scene"] is permission
+
+    @pytest.mark.parametrize(
+        ("policy_class", "resource_classes"),
+        [
+            (
+                rbac_mod._AppAccessConfigResource,
+                (
+                    rbac_mod.RBACAppMatrixApi,
+                    rbac_mod.RBACAppWhitelistApi,
+                    rbac_mod.RBACAppUserAccessPoliciesApi,
+                    rbac_mod.RBACAppUserAccessPolicyAssignmentApi,
+                    rbac_mod.RBACAppRoleBindingsApi,
+                    rbac_mod.RBACAppMemberBindingsApi,
+                ),
+            ),
+            (
+                rbac_mod._DatasetAccessConfigResource,
+                (
+                    rbac_mod.RBACDatasetMatrixApi,
+                    rbac_mod.RBACDatasetWhitelistApi,
+                    rbac_mod.RBACDatasetUserAccessPoliciesApi,
+                    rbac_mod.RBACDatasetUserAccessPolicyAssignmentApi,
+                    rbac_mod.RBACDatasetRoleBindingsApi,
+                    rbac_mod.RBACDatasetMemberBindingsApi,
+                ),
+            ),
+            (
+                rbac_mod._WorkspaceRoleManageResource,
+                (
+                    rbac_mod.RBACRolesApi,
+                    rbac_mod.RBACRoleItemApi,
+                    rbac_mod.RBACRoleCopyApi,
+                    rbac_mod.RBACAccessPoliciesApi,
+                    rbac_mod.RBACAccessPolicyItemApi,
+                    rbac_mod.RBACAccessPolicyCopyApi,
+                    rbac_mod.RBACAccessPolicyBindingLockApi,
+                    rbac_mod.RBACAccessPolicyBindingUnlockApi,
+                    rbac_mod.RBACWorkspaceAppMatrixApi,
+                    rbac_mod.RBACWorkspaceAppRoleBindingsApi,
+                    rbac_mod.RBACWorkspaceAppBindingsApi,
+                    rbac_mod.RBACWorkspaceAppMemberBindingsApi,
+                    rbac_mod.RBACWorkspaceDatasetMatrixApi,
+                    rbac_mod.RBACWorkspaceDatasetRoleBindingsApi,
+                    rbac_mod.RBACWorkspaceDatasetBindingsApi,
+                    rbac_mod.RBACWorkspaceDatasetMemberBindingsApi,
+                    rbac_mod.ListMembersByRole,
+                ),
+            ),
+        ],
+    )
+    def test_management_routes_share_policy(self, policy_class, resource_classes):
+        assert all(issubclass(resource_class, policy_class) for resource_class in resource_classes)
+
+    def test_member_role_update_requires_workspace_role_manage(self, app):
+        with (
+            app.test_request_context(
+                "/workspaces/current/rbac/members/00000000-0000-0000-0000-000000000002/rbac-roles",
+                method="PUT",
+                json={"role_ids": ["role-1"]},
+            ),
+            patch("libs.login.dify_config.LOGIN_DISABLED", True),
+            patch("controllers.console.wraps.dify_config.RBAC_ENABLED", True),
+            patch(
+                "controllers.common.wraps.current_account_with_tenant",
+                return_value=(_account(), "tenant-1"),
+            ),
+            patch("controllers.common.wraps.RBACService.CheckAccess.check", return_value=False),
+            patch("controllers.console.workspace.rbac.svc.RBACService.MemberRoles.replace") as mock_replace,
+        ):
+            with pytest.raises(Forbidden):
+                rbac_mod.RBACMemberRolesApi().put("00000000-0000-0000-0000-000000000002")
+
+        mock_replace.assert_not_called()
+
+    def test_member_role_read_remains_available_without_role_manage(self, app):
+        response = rbac_mod.svc.MemberRolesResponse(account_id="acct-2")
+        with (
+            app.test_request_context(
+                "/workspaces/current/rbac/members/00000000-0000-0000-0000-000000000002/rbac-roles"
+            ),
+            patch("libs.login.dify_config.LOGIN_DISABLED", True),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
+            patch(
+                "controllers.console.workspace.rbac.svc.RBACService.MemberRoles.get",
+                return_value=response,
+            ) as mock_get,
+            patch("controllers.common.wraps.RBACService.CheckAccess.check") as mock_check,
+        ):
+            result = rbac_mod.RBACMemberRolesApi(api=SimpleNamespace(_validate=False)).dispatch_request(
+                member_id="00000000-0000-0000-0000-000000000002",
+            )
+
+        assert result["account_id"] == "acct-2"
+        mock_get.assert_called_once()
+        mock_check.assert_not_called()
+
+    @pytest.mark.parametrize(
+        ("error", "http_error"),
+        [
+            (rbac_mod.CannotOperateSelfError("self"), rbac_mod.BadRequest),
+            (rbac_mod.RoleAlreadyAssignedError("assigned"), rbac_mod.BadRequest),
+            (rbac_mod.NoPermissionError("denied"), rbac_mod.Forbidden),
+            (rbac_mod.MemberNotInTenantError("missing"), rbac_mod.NotFound),
+        ],
+    )
+    def test_member_role_update_maps_service_errors(self, app, error, http_error):
+        with (
+            app.test_request_context(
+                "/workspaces/current/rbac/members/00000000-0000-0000-0000-000000000002/rbac-roles",
+                method="PUT",
+                json={"role_ids": ["role-1"]},
+            ),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
+            patch(
+                "controllers.console.workspace.rbac.svc.RBACService.MemberRoles.replace",
+                side_effect=error,
+            ),
+        ):
+            with pytest.raises(http_error):
+                inspect.unwrap(rbac_mod.RBACMemberRolesApi.put)(
+                    rbac_mod.RBACMemberRolesApi(),
+                    "00000000-0000-0000-0000-000000000002",
+                )
 
 
 class TestDumpHelper:

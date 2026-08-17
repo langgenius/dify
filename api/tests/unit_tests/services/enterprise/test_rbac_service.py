@@ -13,10 +13,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from models import TenantAccountJoin
+from models import Account, Tenant, TenantAccountJoin
 from services.enterprise import rbac_service as svc
 
 MODULE = "services.enterprise.rbac_service"
@@ -698,7 +697,6 @@ class TestMyPermissions:
         assert out.app.overrides[0].resource_id == "app-1"
 
 
-@pytest.mark.parametrize("sqlite_session", [(TenantAccountJoin,)], indirect=True)
 class TestMemberRoles:
     def test_get(self, mock_send: MagicMock, sqlite_session: Session):
         mock_send.return_value = {
@@ -762,57 +760,35 @@ class TestMemberRoles:
         assert call.params == {"account_id": "acct-2"}
         assert call.json == {"role_ids": ["workspace.owner", "workspace.editor"]}
 
-    def test_replace_commits_legacy_join_role_when_rbac_disabled(self, mock_send: MagicMock, sqlite_session: Session):
-        target_join = TenantAccountJoin(tenant_id="tenant-1", account_id="acct-2", role=svc.TenantAccountRole.NORMAL)
-        sqlite_session.add(target_join)
+    def test_replace_delegates_legacy_role_rules(self, mock_send: MagicMock, sqlite_session: Session):
+        tenant = Tenant(name="Test Workspace")
+        tenant.id = "tenant-1"
+        operator = Account(name="Operator", email="operator@example.com")
+        operator.id = "acct-1"
+        member = Account(name="Member", email="member@example.com")
+        member.id = "acct-2"
+        sqlite_session.add_all([tenant, operator, member])
         sqlite_session.commit()
-        target_join_id = target_join.id
-        engine = sqlite_session.get_bind()
 
-        with patch(f"{MODULE}.dify_config.RBAC_ENABLED", False):
+        with (
+            patch(f"{MODULE}.dify_config.RBAC_ENABLED", False),
+            patch("services.account_service.TenantService.update_member_role") as mock_update,
+        ):
             out = svc.RBACService.MemberRoles.replace(
                 "tenant-1", "acct-1", "acct-2", role_ids=["editor"], session=sqlite_session
             )
 
         mock_send.assert_not_called()
-        # Closing the writer rolls back any uncommitted update and prevents its identity map
-        # from satisfying the verification query.
-        sqlite_session.close()
-        with Session(engine) as verification_session:
-            persisted_join = verification_session.scalar(
-                select(TenantAccountJoin).where(TenantAccountJoin.id == target_join_id)
-            )
-            assert persisted_join is not None
-            assert persisted_join.role == svc.TenantAccountRole.EDITOR
+        mock_update.assert_called_once_with(
+            tenant,
+            member,
+            svc.TenantAccountRole.EDITOR,
+            operator,
+            session=sqlite_session,
+        )
         assert out.account_id == "acct-2"
         assert out.roles[0].id == "editor"
         assert "app.acl.preview" in out.roles[0].permission_keys
-
-    def test_replace_legacy_owner_demotes_current_owner_when_rbac_disabled(
-        self, mock_send: MagicMock, sqlite_session: Session
-    ):
-        target_join = TenantAccountJoin(tenant_id="tenant-1", account_id="acct-2", role=svc.TenantAccountRole.NORMAL)
-        owner_join = TenantAccountJoin(tenant_id="tenant-1", account_id="acct-owner", role=svc.TenantAccountRole.OWNER)
-        sqlite_session.add_all([target_join, owner_join])
-        sqlite_session.commit()
-
-        with patch(f"{MODULE}.dify_config.RBAC_ENABLED", False):
-            out = svc.RBACService.MemberRoles.replace(
-                "tenant-1", "acct-1", "acct-2", role_ids=["owner"], session=sqlite_session
-            )
-
-        mock_send.assert_not_called()
-        persisted_joins = {
-            join.account_id: join.role
-            for join in sqlite_session.scalars(
-                select(TenantAccountJoin).where(TenantAccountJoin.tenant_id == "tenant-1")
-            )
-        }
-        assert persisted_joins == {
-            "acct-2": svc.TenantAccountRole.OWNER,
-            "acct-owner": svc.TenantAccountRole.ADMIN,
-        }
-        assert out.roles[0].id == "owner"
 
     def test_batch_get(self, mock_send: MagicMock, sqlite_session: Session):
         mock_send.return_value = {

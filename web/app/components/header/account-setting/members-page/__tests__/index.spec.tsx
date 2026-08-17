@@ -226,7 +226,7 @@ describe('MembersPage', () => {
       currentWorkspace: { name: 'Test Workspace', role: 'owner' },
       isCurrentWorkspaceOwner: true,
       isCurrentWorkspaceManager: true,
-      workspacePermissionKeys: ['workspace.member.manage'],
+      workspacePermissionKeys: ['workspace.member.manage', 'workspace.role.manage'],
     } as unknown as ConsoleStateFixture)
 
     vi.mocked(useMembers).mockReturnValue({
@@ -655,6 +655,22 @@ describe('MembersPage', () => {
 
     renderMembersPage()
 
+    await user.click(getMemberDetailsButton('2'))
+
+    expect(screen.getByTestId('details-can-assign'))!.toHaveTextContent('false')
+  })
+
+  it('should require role management permission to assign roles', async () => {
+    const user = userEvent.setup()
+    setConsoleState({
+      userProfile: { email: 'owner@example.com' },
+      currentWorkspace: { name: 'Test Workspace', role: 'owner' },
+      isCurrentWorkspaceOwner: true,
+      isCurrentWorkspaceManager: true,
+      workspacePermissionKeys: ['workspace.member.manage'],
+    } as unknown as ConsoleStateFixture)
+
+    renderMembersPage()
     await user.click(getMemberDetailsButton('2'))
 
     expect(screen.getByTestId('details-can-assign'))!.toHaveTextContent('false')

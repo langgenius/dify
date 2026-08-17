@@ -57,6 +57,7 @@ const MembersPage = () => {
   const [detailsMember, setDetailsMember] = useState<Member | null>(null)
 
   const canManageMembers = hasPermission(workspacePermissionKeys, 'workspace.member.manage')
+  const canAssignRoles = hasPermission(workspacePermissionKeys, 'workspace.role.manage')
   const roleColumnLabel = systemFeatures.rbac_enabled
     ? t(($) => $['members.roles'], { ns: 'common' })
     : t(($) => $['members.role'], { ns: 'common' })
@@ -187,7 +188,8 @@ const MembersPage = () => {
                 member={account}
                 roles={account.roles}
                 isCurrentUser={userProfileEmail === account.email}
-                canManage={canManageMembers}
+                canAssignRoles={canAssignRoles}
+                canRemove={canManageMembers}
                 canTransferOwnership={isCurrentWorkspaceOwner && isAllowTransferWorkspace}
                 allowMultipleRoles={systemFeatures.rbac_enabled}
                 onOpenDetails={handleOpenDetails}
@@ -216,7 +218,7 @@ const MembersPage = () => {
         <MemberDetailsModal
           member={detailsMember}
           canAssignRoles={
-            canManageMembers &&
+            canAssignRoles &&
             detailsMember.role !== 'owner' &&
             userProfileEmail !== detailsMember.email
           }

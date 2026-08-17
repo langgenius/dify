@@ -15,7 +15,8 @@ type MemberRowProps = {
     name: string
   }>
   isCurrentUser: boolean
-  canManage: boolean
+  canAssignRoles: boolean
+  canRemove: boolean
   canTransferOwnership: boolean
   allowMultipleRoles: boolean
   onOpenDetails: (member: Member) => void
@@ -26,7 +27,8 @@ const MemberRow = ({
   member,
   roles,
   isCurrentUser,
-  canManage,
+  canAssignRoles,
+  canRemove,
   canTransferOwnership,
   allowMultipleRoles,
   onOpenDetails,
@@ -34,6 +36,7 @@ const MemberRow = ({
 }: MemberRowProps) => {
   const { t } = useTranslation()
   const { formatTimeFromNow } = useFormatTimeFromNow()
+  const canManage = canAssignRoles || canRemove || canTransferOwnership
 
   const roleNames = roles.map((role) => role.name)
 
@@ -90,6 +93,8 @@ const MemberRow = ({
           <MemberMenu
             member={member}
             isCurrentUser={isCurrentUser}
+            canAssignRoles={canAssignRoles}
+            canRemove={canRemove}
             canTransferOwnership={canTransferOwnership}
             allowMultipleRoles={allowMultipleRoles}
             onTransferOwnership={onTransferOwnership}

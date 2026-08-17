@@ -104,7 +104,13 @@ describe('MemberMenu', () => {
     const user = userEvent.setup()
 
     renderWithConsoleQuery(
-      <MemberMenu member={member} isCurrentUser={false} allowMultipleRoles={false} />,
+      <MemberMenu
+        member={member}
+        isCurrentUser={false}
+        canAssignRoles
+        canRemove
+        allowMultipleRoles={false}
+      />,
       {
         systemFeatures: {
           rbac_enabled: false,
@@ -128,7 +134,13 @@ describe('MemberMenu', () => {
     const user = userEvent.setup()
 
     renderWithConsoleQuery(
-      <MemberMenu member={member} isCurrentUser={false} allowMultipleRoles={false} />,
+      <MemberMenu
+        member={member}
+        isCurrentUser={false}
+        canAssignRoles
+        canRemove
+        allowMultipleRoles={false}
+      />,
       {
         systemFeatures: {
           rbac_enabled: false,
@@ -150,17 +162,61 @@ describe('MemberMenu', () => {
     )
   })
 
+  it('should allow assigning roles without member removal permission', async () => {
+    const user = userEvent.setup()
+
+    renderWithConsoleQuery(
+      <MemberMenu member={member} isCurrentUser={false} canAssignRoles canRemove={false} />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /members\.memberActions/i }))
+
+    expect(screen.getByRole('menuitem', { name: /members\.assignRoles/i })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('menuitem', { name: /members\.removeFromTeam/i }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('should close an open action when its permission is revoked', async () => {
+    const user = userEvent.setup()
+    const view = renderWithConsoleQuery(
+      <MemberMenu member={member} isCurrentUser={false} canAssignRoles canRemove />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /members\.memberActions/i }))
+    await user.click(screen.getByRole('menuitem', { name: /members\.assignRoles/i }))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+
+    view.rerender(
+      <MemberMenu member={member} isCurrentUser={false} canAssignRoles={false} canRemove />,
+    )
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /members\.memberActions/i }))
+    await user.click(screen.getByRole('menuitem', { name: /members\.removeFromTeam/i }))
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+
+    view.rerender(
+      <MemberMenu member={member} isCurrentUser={false} canAssignRoles canRemove={false} />,
+    )
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  })
+
   it('should require confirmation before removing a member', async () => {
     const user = userEvent.setup()
     const queryClient = createQueryClient()
     const membersQueryKey = [...commonQueryKeys.members, 'en-US']
     queryClient.setQueryData(membersQueryKey, { accounts: [member] })
 
-    renderWithConsoleQuery(<MemberMenu member={member} isCurrentUser={false} />, {
-      queryClient,
-    })
+    renderWithConsoleQuery(
+      <MemberMenu member={member} isCurrentUser={false} canAssignRoles={false} canRemove />,
+      { queryClient },
+    )
 
     await user.click(screen.getByRole('button', { name: /members\.memberActions/i }))
+    expect(
+      screen.queryByRole('menuitem', { name: /members\.assignRoles/i }),
+    ).not.toBeInTheDocument()
     await user.click(screen.getByRole('menuitem', { name: /members\.removeFromTeam/i }))
 
     const dialog = screen.getByRole('alertdialog', {

@@ -30,6 +30,8 @@ import AssignRolesModal from './assign-roles-modal'
 type MemberMenuProps = {
   member: Member
   isCurrentUser: boolean
+  canAssignRoles: boolean
+  canRemove: boolean
   canTransferOwnership?: boolean
   allowMultipleRoles?: boolean
   onTransferOwnership?: () => void
@@ -38,6 +40,8 @@ type MemberMenuProps = {
 const MemberMenu = ({
   member,
   isCurrentUser,
+  canAssignRoles,
+  canRemove,
   canTransferOwnership = false,
   allowMultipleRoles = true,
   onTransferOwnership,
@@ -50,8 +54,8 @@ const MemberMenu = ({
   const [removing, setRemoving] = useState(false)
 
   const isOwner = member.role === 'owner'
-  const canAssignRoles = !isOwner && !isCurrentUser
-  const canRemove = !isOwner && !isCurrentUser
+  const showAssignRoles = canAssignRoles && !isOwner && !isCurrentUser
+  const showRemove = canRemove && !isOwner && !isCurrentUser
   const showTransferOwnership = isOwner && canTransferOwnership
 
   const selectedRoles = member.roles || []
@@ -111,7 +115,7 @@ const MemberMenu = ({
     onTransferOwnership?.()
   }, [onTransferOwnership])
 
-  if (!canAssignRoles && !canRemove && !showTransferOwnership) return null
+  if (!showAssignRoles && !showRemove && !showTransferOwnership) return null
 
   return (
     <div role="presentation">
@@ -135,7 +139,7 @@ const MemberMenu = ({
           sideOffset={4}
           popupClassName="min-w-[180px] rounded-xl"
         >
-          {canAssignRoles && (
+          {showAssignRoles && (
             <DropdownMenuItem
               className="system-sm-medium text-text-secondary"
               onClick={handleOpenAssignRoles}
@@ -151,8 +155,8 @@ const MemberMenu = ({
               {t(($) => $['members.transferOwnership'], { ns: 'common' })}
             </DropdownMenuItem>
           )}
-          {(canAssignRoles || showTransferOwnership) && canRemove && <DropdownMenuSeparator />}
-          {canRemove && (
+          {(showAssignRoles || showTransferOwnership) && showRemove && <DropdownMenuSeparator />}
+          {showRemove && (
             <DropdownMenuItem
               variant="destructive"
               className="system-sm-medium"
@@ -164,7 +168,7 @@ const MemberMenu = ({
         </DropdownMenuContent>
       </DropdownMenu>
       <AlertDialog
-        open={removeConfirmOpen}
+        open={showRemove && removeConfirmOpen}
         onOpenChange={(open) => !open && setRemoveConfirmOpen(false)}
       >
         <AlertDialogContent backdropProps={{ forceRender: true }}>
@@ -186,7 +190,7 @@ const MemberMenu = ({
           </AlertDialogActions>
         </AlertDialogContent>
       </AlertDialog>
-      {assignModalOpen && (
+      {showAssignRoles && assignModalOpen && (
         <AssignRolesModal
           selectedRoles={selectedRoles}
           allowMultipleRoles={allowMultipleRoles}

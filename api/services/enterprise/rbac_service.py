@@ -852,26 +852,6 @@ class RBACService:
             )
 
         @staticmethod
-        def list_members_by_role(
-            tenant_id: str,
-            role_id: str | None = None,
-            *,
-            options: ListOption | None = None,
-        ) -> Paginated[MembersInRole]:
-            params = (options or ListOption()).to_params({"role_id": role_id})
-            data = _inner_call(
-                "GET",
-                f"{_INNER_PREFIX}/roles/members",
-                tenant_id=tenant_id,
-                params=params or None,
-            )
-            data = data or {}
-            return Paginated[MembersInRole](
-                data=[MembersInRole.model_validate(item) for item in data.get("data") or []],
-                pagination=Pagination.model_validate(data["pagination"]) if data.get("pagination") else None,
-            )
-
-        @staticmethod
         def get(tenant_id: str, account_id: str | None, role_id: str, billing_enabled: bool = True) -> RBACRole:
             data = _inner_call(
                 "GET",
@@ -935,7 +915,7 @@ class RBACService:
             role_id: str,
             *,
             options: ListOption | None = None,
-        ) -> Paginated[RBACRoleAccount]:
+        ) -> Paginated[MembersInRole]:
             params = (options or ListOption()).to_params({"role_id": role_id})
             data = _inner_call(
                 "GET",
@@ -945,8 +925,8 @@ class RBACService:
                 params=params,
             )
             data = data or {}
-            return Paginated[RBACRoleAccount](
-                data=[RBACRoleAccount.model_validate(item) for item in data.get("data") or []],
+            return Paginated[MembersInRole](
+                data=[MembersInRole.model_validate(item) for item in data.get("data") or []],
                 pagination=Pagination.model_validate(data["pagination"]) if data.get("pagination") else None,
             )
 
@@ -1650,29 +1630,17 @@ class RBACService:
                 if len(role_ids) != 1:
                     raise ValueError("Legacy workspace member role update requires exactly one role.")
 
+                from models import Account, Tenant
+                from services.account_service import TenantService
+
+                tenant = session.get(Tenant, tenant_id)
+                operator = session.get(Account, account_id) if account_id else None
+                member = session.get(Account, member_account_id)
+                if not tenant or not operator or not member:
+                    raise ValueError("Workspace member role context not found.")
+
                 tenant_role = TenantAccountRole(role_ids[0])
-                target_member_join = session.scalar(
-                    select(TenantAccountJoin).where(
-                        TenantAccountJoin.tenant_id == tenant_id,
-                        TenantAccountJoin.account_id == member_account_id,
-                    )
-                )
-                if not target_member_join:
-                    raise ValueError("Member not in tenant.")
-
-                if tenant_role == TenantAccountRole.OWNER:
-                    current_owner_join = session.scalar(
-                        select(TenantAccountJoin).where(
-                            TenantAccountJoin.tenant_id == tenant_id,
-                            TenantAccountJoin.role == TenantAccountRole.OWNER,
-                        )
-                    )
-                    if current_owner_join and current_owner_join.account_id != member_account_id:
-                        current_owner_join.role = TenantAccountRole.ADMIN
-
-                target_member_join.role = tenant_role
-                session.commit()
-
+                TenantService.update_member_role(tenant, member, tenant_role, operator, session=session)
                 return _legacy_member_roles_response(tenant_id, member_account_id, tenant_role)
 
             data = _inner_call(
