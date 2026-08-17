@@ -8,8 +8,8 @@ from sqlalchemy.exc import IntegrityError
 from enums import DeploymentEdition
 from models.account import Account, AccountStatus
 from models.onboarding import AccountStepByStepTourState
-from services import step_by_step_tour_service as service_module
 from services.step_by_step_tour_service import StepByStepTourService
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 class _ScalarResult:
@@ -79,8 +79,11 @@ def _state() -> AccountStepByStepTourState:
 
 
 def _set_tour_config(monkeypatch: pytest.MonkeyPatch, *, enabled: bool, rollout_started_at: datetime | None) -> None:
-    monkeypatch.setattr(service_module.dify_config, "ENABLE_STEP_BY_STEP_TOUR", enabled)
-    monkeypatch.setattr(service_module.dify_config, "STEP_BY_STEP_TOUR_ROLLOUT_STARTED_AT", rollout_started_at)
+    apply_config_overrides(
+        monkeypatch,
+        ENABLE_STEP_BY_STEP_TOUR=enabled,
+        STEP_BY_STEP_TOUR_ROLLOUT_STARTED_AT=rollout_started_at,
+    )
 
 
 def test_get_state_creates_state_and_records_first_workspace_for_eligible_account(
@@ -105,7 +108,7 @@ def test_get_state_creates_state_and_records_first_workspace_for_eligible_accoun
 
 def test_is_eligible_does_not_depend_on_cloud_edition(monkeypatch: pytest.MonkeyPatch) -> None:
     _set_tour_config(monkeypatch, enabled=True, rollout_started_at=datetime(2026, 6, 1))
-    monkeypatch.setattr(service_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
 
     result = StepByStepTourService.is_eligible(_account(initialized_at=datetime(2026, 6, 28)))
 

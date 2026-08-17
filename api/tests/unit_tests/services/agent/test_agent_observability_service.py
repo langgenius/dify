@@ -16,6 +16,7 @@ from models.enums import (
 )
 from services.agent import observability_service as observability_service_module
 from services.agent.observability_service import AgentLogQueryParams, AgentObservabilityService
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def test_resolve_source_accepts_frontend_aliases() -> None:
@@ -110,7 +111,7 @@ def test_statistics_workflow_chat_context_only_uses_chat_runs() -> None:
 
 
 def test_workflow_metadata_numeric_sql_supports_postgresql_and_mysql(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(observability_service_module, "dify_config", SimpleNamespace(DB_TYPE="postgresql"))
+    apply_config_overrides(monkeypatch, DB_TYPE="postgresql")
 
     postgres_sql = AgentObservabilityService._workflow_execution_metadata_numeric_sql(
         ("agent_log", "agent_backend", "usage", "total_tokens"), "BIGINT"
@@ -119,7 +120,7 @@ def test_workflow_metadata_numeric_sql_supports_postgresql_and_mysql(monkeypatch
     assert "CAST(wne.execution_metadata AS JSONB)" in postgres_sql
     assert "#>> '{agent_log,agent_backend,usage,total_tokens}'" in postgres_sql
 
-    monkeypatch.setattr(observability_service_module, "dify_config", SimpleNamespace(DB_TYPE="mysql"))
+    apply_config_overrides(monkeypatch, DB_TYPE="mysql")
 
     mysql_sql = AgentObservabilityService._workflow_execution_metadata_numeric_sql(("total_tokens",), "BIGINT")
 
@@ -163,7 +164,7 @@ def test_workflow_statistics_include_run_without_message(monkeypatch: pytest.Mon
                 )
             return FakeResult([])
 
-    monkeypatch.setattr(observability_service_module, "dify_config", SimpleNamespace(DB_TYPE="postgresql"))
+    apply_config_overrides(monkeypatch, DB_TYPE="postgresql")
     monkeypatch.setattr(
         observability_service_module,
         "convert_datetime_to_date",
