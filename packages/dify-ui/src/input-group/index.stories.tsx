@@ -1,7 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
-import { expect, spyOn } from 'storybook/test'
+import { expect, spyOn, within } from 'storybook/test'
 import { Button } from '../button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../dropdown-menu'
 import { Field, FieldDescription, FieldLabel } from '../field'
 import { IconButton } from '../icon-button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from './index'
@@ -129,6 +135,36 @@ function InputGroupDecorativeIconDemo() {
   )
 }
 
+function InputGroupDropdownDemo() {
+  return (
+    <Field name="fileName" className="w-80">
+      <FieldLabel>File name</FieldLabel>
+      <InputGroup>
+        <InputGroupInput defaultValue="report.md" />
+        <InputGroupAddon align="inline-end">
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <IconButton
+                  size="md"
+                  aria-label="File actions"
+                  className="text-text-tertiary data-popup-open:bg-state-base-hover-alt data-popup-open:text-text-secondary data-popup-open:hover:bg-state-base-hover-alt"
+                >
+                  <span aria-hidden="true" className="i-ri-more-fill size-4" />
+                </IconButton>
+              }
+            />
+            <DropdownMenuContent placement="bottom-end" sideOffset={8}>
+              <DropdownMenuItem>Settings</DropdownMenuItem>
+              <DropdownMenuItem>Copy path</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </InputGroupAddon>
+      </InputGroup>
+    </Field>
+  )
+}
+
 export const Basic: Story = {
   render: () => <InputGroupsDemo />,
   play: async ({ canvas, userEvent }) => {
@@ -159,4 +195,18 @@ export const WithAction: Story = {
 
 export const WithDecorativeIcon: Story = {
   render: () => <InputGroupDecorativeIconDemo />,
+}
+
+export const WithDropdownAction: Story = {
+  render: () => <InputGroupDropdownDemo />,
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const trigger = canvas.getByRole('button', { name: 'File actions' })
+    await userEvent.click(trigger)
+
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.click(await body.findByRole('menuitem', { name: 'Settings' }))
+
+    await expect(trigger).toHaveFocus()
+    await expect(body.queryByRole('menuitem', { name: 'Settings' })).not.toBeInTheDocument()
+  },
 }

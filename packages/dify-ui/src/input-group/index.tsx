@@ -37,7 +37,10 @@ function InputGroup({ className, onMouseDown, ...props }: InputGroupProps) {
         onMouseDown?.(event)
         if (event.defaultPrevented || event.button !== 0) return
 
-        const target = event.nativeEvent.composedPath()[0]
+        const eventPath = event.nativeEvent.composedPath()
+        if (!eventPath.includes(event.currentTarget)) return
+
+        const target = eventPath[0]
         const ElementConstructor = event.currentTarget.ownerDocument.defaultView?.Element
         if (!ElementConstructor || !(target instanceof ElementConstructor)) return
         if (target !== event.currentTarget && target.closest(interactiveElementSelector)) return

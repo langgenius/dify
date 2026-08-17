@@ -2,6 +2,7 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { Button } from '../../button'
 import { Field, FieldLabel } from '../../field'
+import { Popover, PopoverContent, PopoverTrigger } from '../../popover'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '../index'
 
 function InputGroupInputTypeExamples() {
@@ -98,6 +99,31 @@ describe('InputGroup', () => {
     await expect.element(copyButton).toHaveFocus()
     await expect.poll(() => getComputedStyle(group.element()).boxShadow).toBe(restingBoxShadow)
     expect(onCopy).toHaveBeenCalledTimes(1)
+  })
+
+  it('should not handle pointer events from portalled add-on content', async () => {
+    const screen = await render(
+      <InputGroup>
+        <InputGroupInput aria-label="File name" />
+        <InputGroupAddon align="inline-end">
+          <Popover>
+            <PopoverTrigger>More</PopoverTrigger>
+            <PopoverContent popupProps={{ 'aria-label': 'File actions' }}>
+              <span>File details</span>
+            </PopoverContent>
+          </Popover>
+        </InputGroupAddon>
+      </InputGroup>,
+    )
+
+    await screen.getByRole('button', { name: 'More' }).click()
+    const popup = screen.getByRole('dialog', { name: 'File actions' })
+    await expect.element(popup).toHaveFocus()
+
+    await screen.getByText('File details').click()
+
+    await expect.element(popup).toHaveFocus()
+    await expect.element(screen.getByRole('textbox', { name: 'File name' })).not.toHaveFocus()
   })
 
   it('should keep a visually leading interactive add-on after the input in focus order', async () => {
