@@ -4161,7 +4161,12 @@ class TestWorkflowAgentDraftBindingSync:
             version=Workflow.VERSION_DRAFT,
             graph=json.dumps(
                 {
-                    "nodes": [{"id": "agent-node", "data": {"type": "agent", "version": "2"}}],
+                    "nodes": [
+                        {
+                            "id": "agent-node",
+                            "data": {"type": "agent", "version": "2", "agent_node_kind": "dify_agent"},
+                        }
+                    ],
                     "edges": [],
                 }
             ),
@@ -4218,6 +4223,7 @@ class TestWorkflowAgentDraftBindingSync:
                             "data": {
                                 "type": "agent",
                                 "version": "2",
+                                "agent_node_kind": "dify_agent",
                                 "agent_task": agent_task,
                                 "agent_binding": {
                                     "binding_type": "roster_agent",
@@ -4352,6 +4358,7 @@ class TestWorkflowAgentDraftBindingSync:
                             "data": {
                                 "type": "agent",
                                 "version": "2",
+                                "agent_node_kind": "dify_agent",
                                 "agent_binding": {
                                     "binding_type": "roster_agent",
                                     "agent_id": "agent-1",
@@ -4431,6 +4438,7 @@ class TestWorkflowAgentDraftBindingSync:
                             "data": {
                                 "type": "agent",
                                 "version": "2",
+                                "agent_node_kind": "dify_agent",
                                 "agent_binding": {
                                     "binding_type": "inline_agent",
                                 },
@@ -4482,6 +4490,7 @@ class TestWorkflowAgentDraftBindingSync:
                             "data": {
                                 "type": "agent",
                                 "version": "2",
+                                "agent_node_kind": "dify_agent",
                                 "agent_binding": {
                                     "binding_type": "inline_agent",
                                 },
@@ -4528,6 +4537,7 @@ class TestWorkflowAgentDraftBindingSync:
                             "data": {
                                 "type": "agent",
                                 "version": "2",
+                                "agent_node_kind": "dify_agent",
                                 "agent_task": "Summarize the upstream result.",
                                 "agent_declared_outputs": [
                                     {
@@ -4619,6 +4629,7 @@ class TestWorkflowAgentDraftBindingSync:
                             "data": {
                                 "type": "agent",
                                 "version": "2",
+                                "agent_node_kind": "dify_agent",
                                 "agent_task": "Use the current node context.",
                                 "agent_binding": {
                                     "binding_type": "inline_agent",
@@ -4681,6 +4692,7 @@ class TestWorkflowAgentDraftBindingSync:
                             "data": {
                                 "type": "agent",
                                 "version": "2",
+                                "agent_node_kind": "dify_agent",
                                 "agent_binding": {
                                     "binding_type": "inline_agent",
                                 },
@@ -4727,6 +4739,7 @@ class TestWorkflowAgentDraftBindingSync:
                             "data": {
                                 "type": "agent",
                                 "version": "2",
+                                "agent_node_kind": "dify_agent",
                                 "agent_binding": {
                                     "binding_type": "inline_agent",
                                     "agent_id": "inline-agent-1",
@@ -4779,6 +4792,7 @@ class TestWorkflowAgentDraftBindingSync:
                             "data": {
                                 "type": "agent",
                                 "version": "2",
+                                "agent_node_kind": "dify_agent",
                                 "agent_binding": {
                                     "binding_type": "unknown",
                                     "agent_id": "agent-1",
@@ -4811,6 +4825,7 @@ class TestWorkflowAgentDraftBindingSync:
                             "data": {
                                 "type": "agent",
                                 "version": "2",
+                                "agent_node_kind": "dify_agent",
                                 "agent_binding": {
                                     "binding_type": "inline_agent",
                                     "agent_id": "inline-agent-1",
@@ -4848,6 +4863,7 @@ class TestWorkflowAgentDraftBindingSync:
                             "data": {
                                 "type": "agent",
                                 "version": "2",
+                                "agent_node_kind": "dify_agent",
                                 "agent_binding": {
                                     "binding_type": "inline_agent",
                                     "agent_id": "inline-agent-1",
@@ -4894,6 +4910,7 @@ class TestWorkflowAgentDraftBindingSync:
                             "data": {
                                 "type": "agent",
                                 "version": "2",
+                                "agent_node_kind": "dify_agent",
                                 "agent_task": "Use the latest tender context.",
                                 "agent_binding": {
                                     "binding_type": "roster_agent",
@@ -4959,6 +4976,7 @@ class TestWorkflowAgentDraftBindingSync:
                             "data": {
                                 "type": "agent",
                                 "version": "2",
+                                "agent_node_kind": "dify_agent",
                                 "agent_task": "Keep the prompt.",
                                 "agent_declared_outputs": [],
                                 "agent_binding": {

@@ -59,7 +59,7 @@ def _snapshot(*, snapshot_id: str = "snapshot-1", soul: AgentSoulConfig | None =
 
 
 def _agent_node(node_id: str, binding: object | None = None) -> dict:
-    data = {"type": BuiltinNodeTypes.AGENT, "version": "2"}
+    data = {"type": BuiltinNodeTypes.AGENT, "version": "2", "agent_node_kind": "dify_agent"}
     if binding is not None:
         data["agent_binding"] = binding
     return {"id": node_id, "data": data}
@@ -727,4 +727,17 @@ def test_require_helpers_and_graph_detection() -> None:
     assert AgentDslService._agent_icon_type(AgentIconType.EMOJI.value) == AgentIconType.EMOJI
     assert AgentDslService._agent_icon_type(None) is None
     assert is_agent_v2_graph({"nodes": [_agent_node("agent")]}) is True
+    assert is_agent_v2_graph({"nodes": [{"id": "legacy-agent", "data": {"type": "agent", "version": "2"}}]}) is False
     assert is_agent_v2_graph({"nodes": ["invalid", {"data": {"type": "start"}}]}) is False
+
+
+def test_export_workflow_packages_ignores_historical_agent_version_two() -> None:
+    session = Mock()
+    service = AgentDslService(session)
+    graph = {"nodes": [{"id": "legacy-agent", "data": {"type": "agent", "version": "2"}}]}
+
+    portable_graph, packages = service.export_workflow_packages(workflow=Mock(), graph=graph)
+
+    assert portable_graph == graph
+    assert packages == {}
+    session.scalars.assert_not_called()
