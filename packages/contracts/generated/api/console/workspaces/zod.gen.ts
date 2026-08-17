@@ -141,6 +141,17 @@ export const zRemoveContactsResponse = z.object({
 export const zDeleteImBindingResponse = z.record(z.string(), z.unknown())
 
 /**
+ * IMContactSyncErrorResponse
+ *
+ * Stable expected application failure returned by IM sync and binding routes.
+ */
+export const zImContactSyncErrorResponse = z.object({
+  code: z.string(),
+  message: z.string(),
+  status: z.int(),
+})
+
+/**
  * CreateIMBindingRequest
  *
  * Request body for setting one workspace-scoped IM override.
@@ -900,101 +911,6 @@ export const zAccountWithRoleListResponse = z.object({
 })
 
 /**
- * ChannelCapability
- */
-export const zChannelCapability = z.enum([
-  'configure',
-  'delete',
-  'provider_replacement',
-  'secret_retention',
-  'test',
-])
-
-/**
- * ChannelKind
- */
-export const zChannelKind = z.enum(['email', 'im'])
-
-/**
- * ChannelProvider
- */
-export const zChannelProvider = z.enum(['ding_talk', 'feishu', 'resend', 'slack'])
-
-/**
- * ChannelStatus
- */
-export const zChannelStatus = z.enum(['configured', 'connected', 'error', 'not_configured'])
-
-/**
- * ResendChannelSummaryResponse
- */
-export const zResendChannelSummaryResponse = z.object({
-  api_key_configured: z.boolean(),
-  provider: z.literal('resend').optional().default('resend'),
-  sender_email: z.string().nullable(),
-  sender_name: z.string().nullable(),
-})
-
-/**
- * IMChannelSummaryResponse
- */
-export const zImChannelSummaryResponse = z.object({
-  config_version: z.int().nullable(),
-  integration_id: z.string().nullable(),
-  provider: z.enum(['ding_talk', 'feishu', 'slack']),
-  provider_tenant_id: z.string().nullable(),
-})
-
-/**
- * ResendChannelCandidateRequest
- */
-export const zResendChannelCandidateRequest = z.object({
-  api_key: z.string().nullish(),
-  provider: z.literal('resend'),
-  sender_email: z.string(),
-  sender_name: z.string().max(255).optional().default(''),
-})
-
-/**
- * FeishuChannelCandidateRequest
- */
-export const zFeishuChannelCandidateRequest = z.object({
-  app_id: z.string().min(1),
-  app_secret: z.string().min(1),
-  encrypt_key: z.string().min(1).nullish(),
-  provider: z.literal('feishu'),
-  verification_token: z.string().min(1).nullish(),
-})
-
-/**
- * DingTalkChannelCandidateRequest
- */
-export const zDingTalkChannelCandidateRequest = z.object({
-  client_id: z.string().min(1),
-  client_secret: z.string().min(1),
-  corp_id: z.string().min(1),
-  provider: z.literal('ding_talk'),
-})
-
-/**
- * ResendChannelTestSummaryResponse
- */
-export const zResendChannelTestSummaryResponse = z.object({
-  provider: z.literal('resend').optional().default('resend'),
-  recipient_email: z.string(),
-  sender_email: z.string(),
-  sender_name: z.string(),
-})
-
-/**
- * IMChannelTestSummaryResponse
- */
-export const zImChannelTestSummaryResponse = z.object({
-  provider: z.enum(['ding_talk', 'feishu', 'slack']),
-  provider_tenant_id: z.string(),
-})
-
-/**
  * HumanInputContactSummary
  *
  * A trimmed version of `HumanInputContact` that only includes the fields needed for workflow orchestration.
@@ -1046,6 +962,7 @@ export const zNodeDataMigrationBlocker = z.object({
   code: z.enum([
     'configured-disabled-method',
     'conflicting-email-templates',
+    'invalid-default-value',
     'invalid-email',
     'invalid-email-configuration',
     'missing-recipients',
@@ -1910,115 +1827,6 @@ export const zSnippetDependencyCheckResponse = z.object({
 })
 
 /**
- * ChannelScopeKind
- */
-export const zChannelScopeKind = z.enum(['deployment', 'organization', 'workspace'])
-
-/**
- * ChannelScopeResponse
- */
-export const zChannelScopeResponse = z.object({
-  id: z.string(),
-  kind: zChannelScopeKind,
-})
-
-/**
- * ChannelViewResponse
- */
-export const zChannelViewResponse = z.object({
-  capabilities: z.array(zChannelCapability),
-  configured: z.boolean(),
-  kind: zChannelKind,
-  last_checked_at: z.string().nullish(),
-  provider: zChannelProvider,
-  safe_status_reason: z.string().nullish(),
-  scope: zChannelScopeResponse,
-  status: zChannelStatus,
-  summary: z.union([
-    z
-      .object({
-        provider: z.literal('resend'),
-      })
-      .and(zResendChannelSummaryResponse),
-    z
-      .object({
-        provider: z.union([z.literal('ding_talk'), z.literal('feishu'), z.literal('slack')]),
-      })
-      .and(zImChannelSummaryResponse),
-  ]),
-})
-
-/**
- * ChannelTestResultResponse
- */
-export const zChannelTestResultResponse = z.object({
-  checked_at: z.string(),
-  kind: zChannelKind,
-  provider: zChannelProvider,
-  safe_status_reason: z.string().nullish(),
-  scope: zChannelScopeResponse,
-  status: zChannelStatus,
-  summary: z.union([
-    z
-      .object({
-        provider: z.literal('resend'),
-      })
-      .and(zResendChannelTestSummaryResponse),
-    z
-      .object({
-        provider: z.union([z.literal('ding_talk'), z.literal('feishu'), z.literal('slack')]),
-      })
-      .and(zImChannelTestSummaryResponse),
-  ]),
-})
-
-/**
- * ChannelFailureCategory
- */
-export const zChannelFailureCategory = z.enum([
-  'channel_failure',
-  'conflict',
-  'not_configured',
-  'provider_failure',
-  'stale_configuration',
-  'unsupported_channel',
-  'unsupported_operation',
-  'validation_failure',
-])
-
-/**
- * ChannelFailureResponse
- */
-export const zChannelFailureResponse = z.object({
-  category: zChannelFailureCategory,
-  code: z.string().nullish(),
-})
-
-/**
- * ChannelErrorResponse
- */
-export const zChannelErrorResponse = z.object({
-  error: zChannelFailureResponse,
-})
-
-/**
- * ChannelCollectionFailureResponse
- */
-export const zChannelCollectionFailureResponse = z.object({
-  error: zChannelFailureResponse,
-  kind: zChannelKind,
-  provider: zChannelProvider,
-})
-
-/**
- * ChannelCollectionResponse
- */
-export const zChannelCollectionResponse = z.object({
-  channels: z.array(zChannelViewResponse),
-  failures: z.array(zChannelCollectionFailureResponse),
-})
-
-/**
  * HumanInputContactType
  *
  * Concrete contact classification resolved in one workspace.
@@ -2244,46 +2052,6 @@ export const zTestImIntegrationRequest = z.object({
     zDingTalkImIntegrationCredentials.extend({ provider: z.literal('ding_talk') }),
     zMsTeamsImIntegrationCredentials.extend({ provider: z.literal('ms_teams') }),
     zWeComImIntegrationCredentials.extend({ provider: z.literal('we_com') }),
-  ]),
-})
-
-export const zSlackSecretValue = z.union([z.string().min(1), zPreserveOriginalValue])
-
-/**
- * SlackChannelCandidateRequest
- */
-export const zSlackChannelCandidateRequest = z.object({
-  app_token: zSlackSecretValue,
-  bot_token: zSlackSecretValue,
-  client_id: z.string().min(1),
-  client_secret: zSlackSecretValue,
-  provider: z.literal('slack'),
-  signing_secret: zSlackSecretValue,
-})
-
-/**
- * SaveChannelRequest
- */
-export const zSaveChannelRequest = z.object({
-  candidate: z.discriminatedUnion('provider', [
-    zResendChannelCandidateRequest.extend({ provider: z.literal('resend') }),
-    zSlackChannelCandidateRequest.extend({ provider: z.literal('slack') }),
-    zFeishuChannelCandidateRequest.extend({ provider: z.literal('feishu') }),
-    zDingTalkChannelCandidateRequest.extend({ provider: z.literal('ding_talk') }),
-  ]),
-  expected_config_version: z.int().gte(1).nullish(),
-  expected_integration_id: z.string().min(1).nullish(),
-})
-
-/**
- * TestChannelRequest
- */
-export const zTestChannelRequest = z.object({
-  candidate: z.discriminatedUnion('provider', [
-    zResendChannelCandidateRequest.extend({ provider: z.literal('resend') }),
-    zSlackChannelCandidateRequest.extend({ provider: z.literal('slack') }),
-    zFeishuChannelCandidateRequest.extend({ provider: z.literal('feishu') }),
-    zDingTalkChannelCandidateRequest.extend({ provider: z.literal('ding_talk') }),
   ]),
 })
 
@@ -3281,6 +3049,8 @@ export const zListLatestImSyncRunResultsResponse = z.object({
   total: z.int(),
 })
 
+export const zJsonValue = z.unknown()
+
 /**
  * ErrorStrategy
  */
@@ -3298,13 +3068,9 @@ export const zRetryConfig = z.object({
 })
 
 /**
- * TimeoutUnit
- *
- * Timeout unit for form expiration.
+ * LegacyTimeoutUnit
  */
-export const zTimeoutUnit = z.enum(['day', 'hour'])
-
-export const zNodeType = z.string()
+export const zLegacyTimeoutUnit = z.enum(['day', 'hour'])
 
 /**
  * MessageTemplateConfig
@@ -3344,6 +3110,25 @@ export const zOnetimeEmail = z.object({
 export const zInitiator = z.object({
   type: z.literal('initiator').optional().default('initiator'),
 })
+
+/**
+ * AllWorkspaceContacts
+ *
+ * Migration marker preserving legacy whole-workspace recipient intent.
+ *
+ * Runtime expansion is deliberately owned by the recipient resolver rather
+ * than the node-data migration helper.
+ */
+export const zAllWorkspaceContacts = z.object({
+  type: z.literal('all_workspace_contacts').optional().default('all_workspace_contacts'),
+})
+
+/**
+ * TimeoutUnit
+ *
+ * Timeout unit for form expiration.
+ */
+export const zTimeoutUnit = z.enum(['day', 'hour'])
 
 /**
  * UnaddedModelConfiguration
@@ -3673,41 +3458,26 @@ export const zEndpointListResponse = z.object({
 })
 
 /**
- * DefaultValueType
+ * LegacyWebAppDeliveryConfig
+ *
+ * Historical WebApp delivery config, intentionally empty.
  */
-export const zDefaultValueType = z.enum([
-  'array[file]',
-  'array[number]',
-  'array[object]',
-  'array[string]',
-  'number',
-  'object',
-  'string',
-])
+export const zLegacyWebAppDeliveryConfig = z.record(z.string(), z.unknown())
 
 /**
- * DefaultValue
+ * LegacyWebAppDeliveryMethod
  */
-export const zDefaultValue = z.object({
-  key: z.string(),
-  type: zDefaultValueType,
-  value: z.unknown().optional(),
-})
-
-/**
- * _InteractiveSurfaceDeliveryConfig
- */
-export const zInteractiveSurfaceDeliveryConfig = z.record(z.string(), z.unknown())
-
-/**
- * InteractiveSurfaceDeliveryMethod
- */
-export const zInteractiveSurfaceDeliveryMethod = z.object({
-  config: zInteractiveSurfaceDeliveryConfig.optional(),
+export const zLegacyWebAppDeliveryMethod = z.object({
+  config: zLegacyWebAppDeliveryConfig.optional(),
   enabled: z.boolean().optional().default(true),
-  id: z.uuid().optional(),
+  id: z.uuid(),
   type: z.literal('webapp').optional().default('webapp'),
 })
+
+/**
+ * LegacyFormInputType
+ */
+export const zLegacyFormInputType = z.enum(['paragraph', 'text_input'])
 
 /**
  * ButtonStyle
@@ -3715,6 +3485,15 @@ export const zInteractiveSurfaceDeliveryMethod = z.object({
  * Button styles for user actions.
  */
 export const zButtonStyle = z.enum(['accent', 'default', 'ghost', 'primary'])
+
+/**
+ * LegacyUserAction
+ */
+export const zLegacyUserAction = z.object({
+  button_style: zButtonStyle.optional().default('default'),
+  id: z.string().max(20),
+  title: z.string().max(20),
+})
 
 /**
  * UserActionConfig
@@ -3746,6 +3525,28 @@ export const zChannel = z.enum([
 export const zDebugModeConfig = z.object({
   channels: z.array(zChannel),
   enabled: z.boolean().optional().default(false),
+})
+
+/**
+ * DefaultValueType
+ */
+export const zDefaultValueType = z.enum([
+  'array[file]',
+  'array[number]',
+  'array[object]',
+  'array[string]',
+  'number',
+  'object',
+  'string',
+])
+
+/**
+ * DefaultValue
+ */
+export const zDefaultValue = z.object({
+  key: z.string(),
+  type: zDefaultValueType,
+  value: z.unknown().optional(),
 })
 
 /**
@@ -4533,9 +4334,29 @@ export const zPluginListResponse = z.object({
 })
 
 /**
- * InstantMessageProvider
+ * LegacyPlaceholderType
  */
-export const zInstantMessageProvider = z.enum(['discord', 'slack', 'teams'])
+export const zLegacyPlaceholderType = z.enum(['constant', 'variable'])
+
+/**
+ * LegacyFormInputDefault
+ *
+ * Historical form default keeps both selector and constant value.
+ */
+export const zLegacyFormInputDefault = z.object({
+  selector: z.array(z.string()).optional(),
+  type: zLegacyPlaceholderType,
+  value: z.string().optional().default(''),
+})
+
+/**
+ * LegacyFormInput
+ */
+export const zLegacyFormInput = z.object({
+  default: zLegacyFormInputDefault.nullish(),
+  output_variable_name: z.string(),
+  type: zLegacyFormInputType,
+})
 
 /**
  * FileType
@@ -4576,26 +4397,25 @@ export const zFileListInputConfig = z.object({
 })
 
 /**
- * BoundRecipient
+ * LegacyMemberRecipient
  */
-export const zBoundRecipient = z.object({
-  reference_id: z.string(),
+export const zLegacyMemberRecipient = z.object({
   type: z.literal('member').optional().default('member'),
+  user_id: z.string(),
 })
 
 /**
- * ExternalRecipient
+ * LegacyExternalRecipient
  */
-export const zExternalRecipient = z.object({
+export const zLegacyExternalRecipient = z.object({
   email: z.string(),
   type: z.literal('external').optional().default('external'),
 })
 
 /**
- * EmailRecipients
+ * LegacyEmailRecipients
  */
-export const zEmailRecipients = z.object({
-  include_bound_group: z.boolean().optional().default(false),
+export const zLegacyEmailRecipients = z.object({
   items: z
     .array(
       z.union([
@@ -4603,92 +4423,90 @@ export const zEmailRecipients = z.object({
           .object({
             type: z.literal('member'),
           })
-          .and(zBoundRecipient),
+          .and(zLegacyMemberRecipient),
         z
           .object({
             type: z.literal('external'),
           })
-          .and(zExternalRecipient),
+          .and(zLegacyExternalRecipient),
       ]),
     )
     .optional(),
+  whole_workspace: z.boolean().optional().default(false),
 })
 
 /**
- * EmailDeliveryConfig
+ * LegacyEmailDeliveryConfig
  */
-export const zEmailDeliveryConfig = z.object({
+export const zLegacyEmailDeliveryConfig = z.object({
   body: z.string(),
   debug_mode: z.boolean().optional().default(false),
-  recipients: zEmailRecipients,
+  recipients: zLegacyEmailRecipients,
   subject: z.string(),
 })
 
 /**
- * EmailDeliveryMethod
+ * LegacyEmailDeliveryMethod
  */
-export const zEmailDeliveryMethod = z.object({
-  config: zEmailDeliveryConfig,
+export const zLegacyEmailDeliveryMethod = z.object({
+  config: zLegacyEmailDeliveryConfig,
   enabled: z.boolean().optional().default(true),
-  id: z.uuid().optional(),
+  id: z.uuid(),
   type: z.literal('email').optional().default('email'),
 })
 
 /**
- * InstantMessageChannelRecipient
+ * LegacyHITLv1NodeData
+ *
+ * HTTP compatibility DTO; raw delivery JSON stops at preflight.
  */
-export const zInstantMessageChannelRecipient = z.object({
-  channel_id: z.string(),
-  type: z.literal('channel').optional().default('channel'),
-})
-
-/**
- * InstantMessageUserRecipient
- */
-export const zInstantMessageUserRecipient = z.object({
-  type: z.literal('user').optional().default('user'),
-  user_id: z.string(),
-})
-
-/**
- * InstantMessageRecipients
- */
-export const zInstantMessageRecipients = z.object({
-  items: z
+export const zLegacyHitLv1NodeData = z.object({
+  default_value: zJsonValue.optional(),
+  delivery_methods: z
     .array(
       z.union([
         z
           .object({
-            type: z.literal('channel'),
+            type: z.literal('webapp'),
           })
-          .and(zInstantMessageChannelRecipient),
+          .and(zLegacyWebAppDeliveryMethod),
         z
           .object({
-            type: z.literal('user'),
+            type: z.literal('email'),
           })
-          .and(zInstantMessageUserRecipient),
+          .and(zLegacyEmailDeliveryMethod),
       ]),
     )
     .optional(),
+  desc: z.string().nullish(),
+  error_strategy: zErrorStrategy.nullish(),
+  form_content: z.string().optional().default(''),
+  inputs: z.array(zLegacyFormInput).optional(),
+  retry_config: zRetryConfig.optional(),
+  timeout: z.int().optional().default(36),
+  timeout_unit: zLegacyTimeoutUnit.optional().default('hour'),
+  title: z.string(),
+  user_actions: z.array(zLegacyUserAction).optional(),
+  version: z.literal('1').optional().default('1'),
 })
 
 /**
- * InstantMessageDeliveryConfig
+ * NodeDataMigrationInput
+ *
+ * One legacy node submitted through the frontend migration adapter boundary.
  */
-export const zInstantMessageDeliveryConfig = z.object({
-  message: z.string().nullish(),
-  provider: zInstantMessageProvider,
-  recipients: zInstantMessageRecipients.optional(),
+export const zNodeDataMigrationInput = z.object({
+  node_data: zLegacyHitLv1NodeData,
+  node_id: z.string(),
 })
 
 /**
- * InstantMessageDeliveryMethod
+ * NodeDataMigrationPayload
+ *
+ * Complete legacy-node batch submitted for one migration attempt.
  */
-export const zInstantMessageDeliveryMethod = z.object({
-  config: zInstantMessageDeliveryConfig,
-  enabled: z.boolean().optional().default(true),
-  id: z.uuid().optional(),
-  type: z.literal('im').optional().default('im'),
+export const zNodeDataMigrationPayload = z.object({
+  nodes: z.array(zNodeDataMigrationInput).min(1),
 })
 
 /**
@@ -4747,69 +4565,6 @@ export const zFormInputConfig = z.discriminatedUnion('type', [
 ])
 
 /**
- * LegacyHITLv1NodeData
- *
- * Legacy Human Input node data accepted by the v1-to-v2 migration helper.
- *
- * Missing versions use the historical v1 default. Any explicit value other
- * than the string ``"1"`` is rejected before migration.
- */
-export const zLegacyHitLv1NodeData = z.object({
-  default_value: z.array(zDefaultValue).nullish(),
-  delivery_methods: z
-    .array(
-      z.union([
-        z
-          .object({
-            type: z.literal('webapp'),
-          })
-          .and(zInteractiveSurfaceDeliveryMethod),
-        z
-          .object({
-            type: z.literal('email'),
-          })
-          .and(zEmailDeliveryMethod),
-        z
-          .object({
-            type: z.literal('im'),
-          })
-          .and(zInstantMessageDeliveryMethod),
-      ]),
-    )
-    .optional(),
-  desc: z.string().nullish(),
-  error_strategy: zErrorStrategy.nullish(),
-  form_content: z.string().optional().default(''),
-  inputs: z.array(zFormInputConfig).optional(),
-  retry_config: zRetryConfig.optional(),
-  timeout: z.int().optional().default(36),
-  timeout_unit: zTimeoutUnit.optional().default('hour'),
-  title: z.string().optional().default(''),
-  type: zNodeType.optional().default('human-input'),
-  user_actions: z.array(zUserActionConfig).optional(),
-  version: z.literal('1').optional().default('1'),
-})
-
-/**
- * NodeDataMigrationInput
- *
- * One legacy node submitted through the frontend migration adapter boundary.
- */
-export const zNodeDataMigrationInput = z.object({
-  node_data: zLegacyHitLv1NodeData,
-  node_id: z.string(),
-})
-
-/**
- * NodeDataMigrationPayload
- *
- * Complete legacy-node batch submitted for one migration attempt.
- */
-export const zNodeDataMigrationPayload = z.object({
-  nodes: z.array(zNodeDataMigrationInput).min(1),
-})
-
-/**
  * HumanInputNodeData
  *
  * Human Input node data.
@@ -4844,13 +4599,18 @@ export const zHumanInputNodeData = z.object({
           type: z.literal('initiator'),
         })
         .and(zInitiator),
+      z
+        .object({
+          type: z.literal('all_workspace_contacts'),
+        })
+        .and(zAllWorkspaceContacts),
     ]),
   ),
   retry_config: zRetryConfig.optional(),
   timeout: z.int().optional().default(36),
   timeout_unit: zTimeoutUnit.optional().default('hour'),
   title: z.string().optional().default(''),
-  type: zNodeType.optional().default('human-input'),
+  type: z.literal('human-input').optional().default('human-input'),
   user_actions: z.array(zUserActionConfig).optional(),
   version: z.string().optional().default('2'),
 })
@@ -4903,9 +4663,11 @@ export const zAccountWithRoleListResponseWritable = z.object({
 })
 
 /**
- * _InteractiveSurfaceDeliveryConfig
+ * LegacyWebAppDeliveryConfig
+ *
+ * Historical WebApp delivery config, intentionally empty.
  */
-export const zInteractiveSurfaceDeliveryConfigWritable = z.record(z.string(), z.unknown())
+export const zLegacyWebAppDeliveryConfigWritable = z.record(z.string(), z.unknown())
 
 /**
  * Success
@@ -5129,62 +4891,6 @@ export const zPatchWorkspacesCurrentEndpointsByIdPath = z.object({
  * Endpoint updated successfully
  */
 export const zPatchWorkspacesCurrentEndpointsByIdResponse = zSuccessResponse
-
-/**
- * Success
- */
-export const zGetWorkspacesCurrentHumanInputChannelsResponse = zChannelCollectionResponse
-
-export const zDeleteWorkspacesCurrentHumanInputChannelsByKindByProviderPath = z.object({
-  kind: z.string(),
-  provider: z.string(),
-})
-
-export const zDeleteWorkspacesCurrentHumanInputChannelsByKindByProviderQuery = z.object({
-  expected_config_version: z.int().gte(1).optional(),
-  expected_integration_id: z.string().min(1).optional(),
-})
-
-/**
- * Success
- */
-export const zDeleteWorkspacesCurrentHumanInputChannelsByKindByProviderResponse =
-  zChannelViewResponse
-
-export const zGetWorkspacesCurrentHumanInputChannelsByKindByProviderPath = z.object({
-  kind: z.string(),
-  provider: z.string(),
-})
-
-/**
- * Success
- */
-export const zGetWorkspacesCurrentHumanInputChannelsByKindByProviderResponse = zChannelViewResponse
-
-export const zPutWorkspacesCurrentHumanInputChannelsByKindByProviderBody = zSaveChannelRequest
-
-export const zPutWorkspacesCurrentHumanInputChannelsByKindByProviderPath = z.object({
-  kind: z.string(),
-  provider: z.string(),
-})
-
-/**
- * Success
- */
-export const zPutWorkspacesCurrentHumanInputChannelsByKindByProviderResponse = zChannelViewResponse
-
-export const zPostWorkspacesCurrentHumanInputChannelsByKindByProviderTestBody = zTestChannelRequest
-
-export const zPostWorkspacesCurrentHumanInputChannelsByKindByProviderTestPath = z.object({
-  kind: z.string(),
-  provider: z.string(),
-})
-
-/**
- * Success
- */
-export const zPostWorkspacesCurrentHumanInputChannelsByKindByProviderTestResponse =
-  zChannelTestResultResponse
 
 export const zGetWorkspacesCurrentHumanInputContactOptionsQuery = z.object({
   keyword: z.string().optional(),

@@ -146,83 +146,6 @@ export type EndpointUpdatePayload = {
   }
 }
 
-export type ChannelCollectionResponse = {
-  channels: Array<ChannelViewResponse>
-  failures: Array<ChannelCollectionFailureResponse>
-}
-
-export type ChannelViewResponse = {
-  capabilities: Array<ChannelCapability>
-  configured: boolean
-  kind: ChannelKind
-  last_checked_at?: string | null
-  provider: ChannelProvider
-  safe_status_reason?: string | null
-  scope: ChannelScopeResponse
-  status: ChannelStatus
-  summary:
-    | ({
-        provider: 'resend'
-      } & ResendChannelSummaryResponse)
-    | ({
-        provider: 'ding_talk' | 'feishu' | 'slack'
-      } & ImChannelSummaryResponse)
-}
-
-export type ChannelErrorResponse = {
-  error: ChannelFailureResponse
-}
-
-export type SaveChannelRequest = {
-  candidate:
-    | ({
-        provider: 'resend'
-      } & ResendChannelCandidateRequest)
-    | ({
-        provider: 'slack'
-      } & SlackChannelCandidateRequest)
-    | ({
-        provider: 'feishu'
-      } & FeishuChannelCandidateRequest)
-    | ({
-        provider: 'ding_talk'
-      } & DingTalkChannelCandidateRequest)
-  expected_config_version?: number | null
-  expected_integration_id?: string | null
-}
-
-export type TestChannelRequest = {
-  candidate:
-    | ({
-        provider: 'resend'
-      } & ResendChannelCandidateRequest)
-    | ({
-        provider: 'slack'
-      } & SlackChannelCandidateRequest)
-    | ({
-        provider: 'feishu'
-      } & FeishuChannelCandidateRequest)
-    | ({
-        provider: 'ding_talk'
-      } & DingTalkChannelCandidateRequest)
-}
-
-export type ChannelTestResultResponse = {
-  checked_at: string
-  kind: ChannelKind
-  provider: ChannelProvider
-  safe_status_reason?: string | null
-  scope: ChannelScopeResponse
-  status: ChannelStatus
-  summary:
-    | ({
-        provider: 'resend'
-      } & ResendChannelTestSummaryResponse)
-    | ({
-        provider: 'ding_talk' | 'feishu' | 'slack'
-      } & ImChannelTestSummaryResponse)
-}
-
 export type ListContactOptionsResponse = {
   data: Array<ContactOption>
   limit: number
@@ -287,6 +210,12 @@ export type GetContactResponse = {
 
 export type DeleteImBindingResponse = {
   [key: string]: unknown
+}
+
+export type ImContactSyncErrorResponse = {
+  code: string
+  message: string
+  status: number
 }
 
 export type CreateImBindingRequest = {
@@ -1436,92 +1365,6 @@ export type EndpointListItemResponse = {
   url: string
 }
 
-export type ChannelCollectionFailureResponse = {
-  error: ChannelFailureResponse
-  kind: ChannelKind
-  provider: ChannelProvider
-}
-
-export type ChannelCapability =
-  | 'configure'
-  | 'delete'
-  | 'provider_replacement'
-  | 'secret_retention'
-  | 'test'
-
-export type ChannelKind = 'email' | 'im'
-
-export type ChannelProvider = 'ding_talk' | 'feishu' | 'resend' | 'slack'
-
-export type ChannelScopeResponse = {
-  id: string
-  kind: ChannelScopeKind
-}
-
-export type ChannelStatus = 'configured' | 'connected' | 'error' | 'not_configured'
-
-export type ResendChannelSummaryResponse = {
-  api_key_configured: boolean
-  provider?: 'resend'
-  sender_email: string | null
-  sender_name: string | null
-}
-
-export type ImChannelSummaryResponse = {
-  config_version: number | null
-  integration_id: string | null
-  provider: 'ding_talk' | 'feishu' | 'slack'
-  provider_tenant_id: string | null
-}
-
-export type ChannelFailureResponse = {
-  category: ChannelFailureCategory
-  code?: string | null
-}
-
-export type ResendChannelCandidateRequest = {
-  api_key?: string | null
-  provider: 'resend'
-  sender_email: string
-  sender_name?: string
-}
-
-export type SlackChannelCandidateRequest = {
-  app_token: SlackSecretValue
-  bot_token: SlackSecretValue
-  client_id: string
-  client_secret: SlackSecretValue
-  provider: 'slack'
-  signing_secret: SlackSecretValue
-}
-
-export type FeishuChannelCandidateRequest = {
-  app_id: string
-  app_secret: string
-  encrypt_key?: string | null
-  provider: 'feishu'
-  verification_token?: string | null
-}
-
-export type DingTalkChannelCandidateRequest = {
-  client_id: string
-  client_secret: string
-  corp_id: string
-  provider: 'ding_talk'
-}
-
-export type ResendChannelTestSummaryResponse = {
-  provider?: 'resend'
-  recipient_email: string
-  sender_email: string
-  sender_name: string
-}
-
-export type ImChannelTestSummaryResponse = {
-  provider: 'ding_talk' | 'feishu' | 'slack'
-  provider_tenant_id: string
-}
-
 export type ContactOption = {
   avatar_url?: string | null
   id: string
@@ -1666,6 +1509,7 @@ export type NodeDataMigrationBlocker = {
   code:
     | 'configured-disabled-method'
     | 'conflicting-email-templates'
+    | 'invalid-default-value'
     | 'invalid-email'
     | 'invalid-email-configuration'
     | 'missing-recipients'
@@ -2268,20 +2112,6 @@ export type EndpointProviderDeclarationResponse = {
   settings?: Array<EndpointProviderConfigResponse>
 }
 
-export type ChannelScopeKind = 'deployment' | 'organization' | 'workspace'
-
-export type ChannelFailureCategory =
-  | 'channel_failure'
-  | 'conflict'
-  | 'not_configured'
-  | 'provider_failure'
-  | 'stale_configuration'
-  | 'unsupported_channel'
-  | 'unsupported_operation'
-  | 'validation_failure'
-
-export type SlackSecretValue = string | PreserveOriginalValue
-
 export type HumanInputContactType = 'external' | 'platform' | 'workspace'
 
 export type ImBinding = {
@@ -2339,28 +2169,24 @@ export type ImSyncResultSkipped = {
 }
 
 export type LegacyHitLv1NodeData = {
-  default_value?: Array<DefaultValue> | null
+  default_value?: JsonValue
   delivery_methods?: Array<
     | ({
         type: 'webapp'
-      } & InteractiveSurfaceDeliveryMethod)
+      } & LegacyWebAppDeliveryMethod)
     | ({
         type: 'email'
-      } & EmailDeliveryMethod)
-    | ({
-        type: 'im'
-      } & InstantMessageDeliveryMethod)
+      } & LegacyEmailDeliveryMethod)
   >
   desc?: string | null
   error_strategy?: ErrorStrategy | null
   form_content?: string
-  inputs?: Array<FormInputConfig>
+  inputs?: Array<LegacyFormInput>
   retry_config?: RetryConfig
   timeout?: number
-  timeout_unit?: TimeoutUnit
-  title?: string
-  type?: NodeType
-  user_actions?: Array<UserActionConfig>
+  timeout_unit?: LegacyTimeoutUnit
+  title: string
+  user_actions?: Array<LegacyUserAction>
   version?: '1'
 }
 
@@ -2385,12 +2211,15 @@ export type HumanInputNodeData = {
     | ({
         type: 'initiator'
       } & Initiator)
+    | ({
+        type: 'all_workspace_contacts'
+      } & AllWorkspaceContacts)
   >
   retry_config?: RetryConfig
   timeout?: number
   timeout_unit?: TimeoutUnit
   title?: string
-  type?: NodeType
+  type?: 'human-input'
   user_actions?: Array<UserActionConfig>
   version?: string
 }
@@ -2834,34 +2663,54 @@ export type ImSyncRemovalReason =
   | 'binding_replaced'
   | 'not_present_in_directory'
 
+export type JsonValue = unknown
+
+export type LegacyWebAppDeliveryMethod = {
+  config?: LegacyWebAppDeliveryConfig
+  enabled?: boolean
+  id: string
+  type?: 'webapp'
+}
+
+export type LegacyEmailDeliveryMethod = {
+  config: LegacyEmailDeliveryConfig
+  enabled?: boolean
+  id: string
+  type?: 'email'
+}
+
+export type ErrorStrategy = 'default-value' | 'fail-branch'
+
+export type LegacyFormInput = {
+  default?: LegacyFormInputDefault | null
+  output_variable_name: string
+  type: LegacyFormInputType
+}
+
+export type RetryConfig = {
+  max_retries?: number
+  retry_enabled?: boolean
+  retry_interval?: number
+}
+
+export type LegacyTimeoutUnit = 'day' | 'hour'
+
+export type LegacyUserAction = {
+  button_style?: ButtonStyle
+  id: string
+  title: string
+}
+
+export type DebugModeConfig = {
+  channels: Array<Channel>
+  enabled?: boolean
+}
+
 export type DefaultValue = {
   key: string
   type: DefaultValueType
   value?: unknown
 }
-
-export type InteractiveSurfaceDeliveryMethod = {
-  config?: InteractiveSurfaceDeliveryConfig
-  enabled?: boolean
-  id?: string
-  type?: 'webapp'
-}
-
-export type EmailDeliveryMethod = {
-  config: EmailDeliveryConfig
-  enabled?: boolean
-  id?: string
-  type?: 'email'
-}
-
-export type InstantMessageDeliveryMethod = {
-  config: InstantMessageDeliveryConfig
-  enabled?: boolean
-  id?: string
-  type?: 'im'
-}
-
-export type ErrorStrategy = 'default-value' | 'fail-branch'
 
 export type FormInputConfig =
   | ({
@@ -2876,27 +2725,6 @@ export type FormInputConfig =
   | ({
       type: 'file-list'
     } & FileListInputConfig)
-
-export type RetryConfig = {
-  max_retries?: number
-  retry_enabled?: boolean
-  retry_interval?: number
-}
-
-export type TimeoutUnit = 'day' | 'hour'
-
-export type NodeType = string
-
-export type UserActionConfig = {
-  button_style?: ButtonStyle
-  id: string
-  title: string
-}
-
-export type DebugModeConfig = {
-  channels: Array<Channel>
-  enabled?: boolean
-}
 
 export type MessageTemplateConfig = {
   body: string
@@ -2920,6 +2748,18 @@ export type OnetimeEmail = {
 
 export type Initiator = {
   type?: 'initiator'
+}
+
+export type AllWorkspaceContacts = {
+  type?: 'all_workspace_contacts'
+}
+
+export type TimeoutUnit = 'day' | 'hour'
+
+export type UserActionConfig = {
+  button_style?: ButtonStyle
+  id: string
+  title: string
 }
 
 export type UnaddedModelConfiguration = {
@@ -3141,6 +2981,29 @@ export type EndpointProviderConfigScope =
   | 'vision'
   | 'workflow'
 
+export type LegacyWebAppDeliveryConfig = {
+  [key: string]: unknown
+}
+
+export type LegacyEmailDeliveryConfig = {
+  body: string
+  debug_mode?: boolean
+  recipients: LegacyEmailRecipients
+  subject: string
+}
+
+export type LegacyFormInputDefault = {
+  selector?: Array<string>
+  type: LegacyPlaceholderType
+  value?: string
+}
+
+export type LegacyFormInputType = 'paragraph' | 'text_input'
+
+export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
+
+export type Channel = 'ding_talk' | 'email' | 'feishu' | 'lark' | 'ms_teams' | 'slack' | 'we_com'
+
 export type DefaultValueType =
   | 'array[file]'
   | 'array[number]'
@@ -3149,23 +3012,6 @@ export type DefaultValueType =
   | 'number'
   | 'object'
   | 'string'
-
-export type InteractiveSurfaceDeliveryConfig = {
-  [key: string]: unknown
-}
-
-export type EmailDeliveryConfig = {
-  body: string
-  debug_mode?: boolean
-  recipients: EmailRecipients
-  subject: string
-}
-
-export type InstantMessageDeliveryConfig = {
-  message?: string | null
-  provider: InstantMessageProvider
-  recipients?: InstantMessageRecipients
-}
 
 export type ParagraphInputConfig = {
   default?: StringSource | null
@@ -3195,10 +3041,6 @@ export type FileListInputConfig = {
   output_variable_name: string
   type?: 'file-list'
 }
-
-export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
-
-export type Channel = 'ding_talk' | 'email' | 'feishu' | 'lark' | 'ms_teams' | 'slack' | 'we_com'
 
 export type FormOption = {
   label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
@@ -3276,30 +3118,19 @@ export type Tool = {
 
 export type PluginParameterAutoGenerateType = 'prompt_instruction'
 
-export type EmailRecipients = {
-  include_bound_group?: boolean
+export type LegacyEmailRecipients = {
   items?: Array<
     | ({
         type: 'member'
-      } & BoundRecipient)
+      } & LegacyMemberRecipient)
     | ({
         type: 'external'
-      } & ExternalRecipient)
+      } & LegacyExternalRecipient)
   >
+  whole_workspace?: boolean
 }
 
-export type InstantMessageProvider = 'discord' | 'slack' | 'teams'
-
-export type InstantMessageRecipients = {
-  items?: Array<
-    | ({
-        type: 'channel'
-      } & InstantMessageChannelRecipient)
-    | ({
-        type: 'user'
-      } & InstantMessageUserRecipient)
-  >
-}
+export type LegacyPlaceholderType = 'constant' | 'variable'
 
 export type StringSource = {
   selector?: Array<string>
@@ -3317,24 +3148,14 @@ export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
 
 export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
 
-export type BoundRecipient = {
-  reference_id: string
+export type LegacyMemberRecipient = {
   type?: 'member'
+  user_id: string
 }
 
-export type ExternalRecipient = {
+export type LegacyExternalRecipient = {
   email: string
   type?: 'external'
-}
-
-export type InstantMessageChannelRecipient = {
-  channel_id: string
-  type?: 'channel'
-}
-
-export type InstantMessageUserRecipient = {
-  type?: 'user'
-  user_id: string
 }
 
 export type ValueSourceType = 'constant' | 'variable'
@@ -3362,7 +3183,7 @@ export type AccountWithRoleResponseWritable = {
   status: string
 }
 
-export type InteractiveSurfaceDeliveryConfigWritable = {
+export type LegacyWebAppDeliveryConfigWritable = {
   [key: string]: unknown
 }
 
@@ -3837,101 +3658,6 @@ export type PatchWorkspacesCurrentEndpointsByIdResponses = {
 export type PatchWorkspacesCurrentEndpointsByIdResponse =
   PatchWorkspacesCurrentEndpointsByIdResponses[keyof PatchWorkspacesCurrentEndpointsByIdResponses]
 
-export type GetWorkspacesCurrentHumanInputChannelsData = {
-  body?: never
-  path?: never
-  query?: never
-  url: '/workspaces/current/human-input/channels'
-}
-
-export type GetWorkspacesCurrentHumanInputChannelsResponses = {
-  200: ChannelCollectionResponse
-}
-
-export type GetWorkspacesCurrentHumanInputChannelsResponse =
-  GetWorkspacesCurrentHumanInputChannelsResponses[keyof GetWorkspacesCurrentHumanInputChannelsResponses]
-
-export type DeleteWorkspacesCurrentHumanInputChannelsByKindByProviderData = {
-  body?: never
-  path: {
-    kind: string
-    provider: string
-  }
-  query?: {
-    expected_config_version?: number
-    expected_integration_id?: string
-  }
-  url: '/workspaces/current/human-input/channels/{kind}/{provider}'
-}
-
-export type DeleteWorkspacesCurrentHumanInputChannelsByKindByProviderResponses = {
-  200: ChannelViewResponse
-}
-
-export type DeleteWorkspacesCurrentHumanInputChannelsByKindByProviderResponse =
-  DeleteWorkspacesCurrentHumanInputChannelsByKindByProviderResponses[keyof DeleteWorkspacesCurrentHumanInputChannelsByKindByProviderResponses]
-
-export type GetWorkspacesCurrentHumanInputChannelsByKindByProviderData = {
-  body?: never
-  path: {
-    kind: string
-    provider: string
-  }
-  query?: never
-  url: '/workspaces/current/human-input/channels/{kind}/{provider}'
-}
-
-export type GetWorkspacesCurrentHumanInputChannelsByKindByProviderErrors = {
-  400: ChannelErrorResponse
-  404: ChannelErrorResponse
-  409: ChannelErrorResponse
-  502: ChannelErrorResponse
-}
-
-export type GetWorkspacesCurrentHumanInputChannelsByKindByProviderError =
-  GetWorkspacesCurrentHumanInputChannelsByKindByProviderErrors[keyof GetWorkspacesCurrentHumanInputChannelsByKindByProviderErrors]
-
-export type GetWorkspacesCurrentHumanInputChannelsByKindByProviderResponses = {
-  200: ChannelViewResponse
-}
-
-export type GetWorkspacesCurrentHumanInputChannelsByKindByProviderResponse =
-  GetWorkspacesCurrentHumanInputChannelsByKindByProviderResponses[keyof GetWorkspacesCurrentHumanInputChannelsByKindByProviderResponses]
-
-export type PutWorkspacesCurrentHumanInputChannelsByKindByProviderData = {
-  body: SaveChannelRequest
-  path: {
-    kind: string
-    provider: string
-  }
-  query?: never
-  url: '/workspaces/current/human-input/channels/{kind}/{provider}'
-}
-
-export type PutWorkspacesCurrentHumanInputChannelsByKindByProviderResponses = {
-  200: ChannelViewResponse
-}
-
-export type PutWorkspacesCurrentHumanInputChannelsByKindByProviderResponse =
-  PutWorkspacesCurrentHumanInputChannelsByKindByProviderResponses[keyof PutWorkspacesCurrentHumanInputChannelsByKindByProviderResponses]
-
-export type PostWorkspacesCurrentHumanInputChannelsByKindByProviderTestData = {
-  body: TestChannelRequest
-  path: {
-    kind: string
-    provider: string
-  }
-  query?: never
-  url: '/workspaces/current/human-input/channels/{kind}/{provider}/test'
-}
-
-export type PostWorkspacesCurrentHumanInputChannelsByKindByProviderTestResponses = {
-  200: ChannelTestResultResponse
-}
-
-export type PostWorkspacesCurrentHumanInputChannelsByKindByProviderTestResponse =
-  PostWorkspacesCurrentHumanInputChannelsByKindByProviderTestResponses[keyof PostWorkspacesCurrentHumanInputChannelsByKindByProviderTestResponses]
-
 export type GetWorkspacesCurrentHumanInputContactOptionsData = {
   body?: never
   path?: never
@@ -4090,6 +3816,14 @@ export type DeleteWorkspacesCurrentHumanInputContactsByContactIdImBindingsData =
   url: '/workspaces/current/human-input/contacts/{contact_id}/im-bindings'
 }
 
+export type DeleteWorkspacesCurrentHumanInputContactsByContactIdImBindingsErrors = {
+  404: ImContactSyncErrorResponse
+  503: ImContactSyncErrorResponse
+}
+
+export type DeleteWorkspacesCurrentHumanInputContactsByContactIdImBindingsError =
+  DeleteWorkspacesCurrentHumanInputContactsByContactIdImBindingsErrors[keyof DeleteWorkspacesCurrentHumanInputContactsByContactIdImBindingsErrors]
+
 export type DeleteWorkspacesCurrentHumanInputContactsByContactIdImBindingsResponses = {
   200: DeleteImBindingResponse
 }
@@ -4105,6 +3839,15 @@ export type PutWorkspacesCurrentHumanInputContactsByContactIdImBindingsData = {
   query?: never
   url: '/workspaces/current/human-input/contacts/{contact_id}/im-bindings'
 }
+
+export type PutWorkspacesCurrentHumanInputContactsByContactIdImBindingsErrors = {
+  404: ImContactSyncErrorResponse
+  409: ImContactSyncErrorResponse
+  503: ImContactSyncErrorResponse
+}
+
+export type PutWorkspacesCurrentHumanInputContactsByContactIdImBindingsError =
+  PutWorkspacesCurrentHumanInputContactsByContactIdImBindingsErrors[keyof PutWorkspacesCurrentHumanInputContactsByContactIdImBindingsErrors]
 
 export type PutWorkspacesCurrentHumanInputContactsByContactIdImBindingsResponses = {
   200: CreateImBindingResponse
@@ -4122,6 +3865,15 @@ export type DeleteWorkspacesCurrentHumanInputContactsByContactIdImOverrideData =
   url: '/workspaces/current/human-input/contacts/{contact_id}/im-override'
 }
 
+export type DeleteWorkspacesCurrentHumanInputContactsByContactIdImOverrideErrors = {
+  404: ImContactSyncErrorResponse
+  422: ImContactSyncErrorResponse
+  503: ImContactSyncErrorResponse
+}
+
+export type DeleteWorkspacesCurrentHumanInputContactsByContactIdImOverrideError =
+  DeleteWorkspacesCurrentHumanInputContactsByContactIdImOverrideErrors[keyof DeleteWorkspacesCurrentHumanInputContactsByContactIdImOverrideErrors]
+
 export type DeleteWorkspacesCurrentHumanInputContactsByContactIdImOverrideResponses = {
   200: ResetContactImOverrideResponse
 }
@@ -4137,6 +3889,16 @@ export type PutWorkspacesCurrentHumanInputContactsByContactIdImOverrideData = {
   query?: never
   url: '/workspaces/current/human-input/contacts/{contact_id}/im-override'
 }
+
+export type PutWorkspacesCurrentHumanInputContactsByContactIdImOverrideErrors = {
+  404: ImContactSyncErrorResponse
+  409: ImContactSyncErrorResponse
+  422: ImContactSyncErrorResponse
+  503: ImContactSyncErrorResponse
+}
+
+export type PutWorkspacesCurrentHumanInputContactsByContactIdImOverrideError =
+  PutWorkspacesCurrentHumanInputContactsByContactIdImOverrideErrors[keyof PutWorkspacesCurrentHumanInputContactsByContactIdImOverrideErrors]
 
 export type PutWorkspacesCurrentHumanInputContactsByContactIdImOverrideResponses = {
   200: SetContactImOverrideResponse
@@ -4155,6 +3917,13 @@ export type GetWorkspacesCurrentHumanInputImIdentitiesData = {
   }
   url: '/workspaces/current/human-input/im-identities'
 }
+
+export type GetWorkspacesCurrentHumanInputImIdentitiesErrors = {
+  404: ImContactSyncErrorResponse
+}
+
+export type GetWorkspacesCurrentHumanInputImIdentitiesError =
+  GetWorkspacesCurrentHumanInputImIdentitiesErrors[keyof GetWorkspacesCurrentHumanInputImIdentitiesErrors]
 
 export type GetWorkspacesCurrentHumanInputImIdentitiesResponses = {
   200: ListImIdentitiesResponse
@@ -4229,6 +3998,15 @@ export type PostWorkspacesCurrentHumanInputImSyncRunsData = {
   url: '/workspaces/current/human-input/im-sync-runs'
 }
 
+export type PostWorkspacesCurrentHumanInputImSyncRunsErrors = {
+  404: ImContactSyncErrorResponse
+  409: ImContactSyncErrorResponse
+  503: ImContactSyncErrorResponse
+}
+
+export type PostWorkspacesCurrentHumanInputImSyncRunsError =
+  PostWorkspacesCurrentHumanInputImSyncRunsErrors[keyof PostWorkspacesCurrentHumanInputImSyncRunsErrors]
+
 export type PostWorkspacesCurrentHumanInputImSyncRunsResponses = {
   200: CreateImSyncRunResponse
 }
@@ -4242,6 +4020,13 @@ export type GetWorkspacesCurrentHumanInputImSyncRunsLatestData = {
   query?: never
   url: '/workspaces/current/human-input/im-sync-runs/latest'
 }
+
+export type GetWorkspacesCurrentHumanInputImSyncRunsLatestErrors = {
+  404: ImContactSyncErrorResponse
+}
+
+export type GetWorkspacesCurrentHumanInputImSyncRunsLatestError =
+  GetWorkspacesCurrentHumanInputImSyncRunsLatestErrors[keyof GetWorkspacesCurrentHumanInputImSyncRunsLatestErrors]
 
 export type GetWorkspacesCurrentHumanInputImSyncRunsLatestResponses = {
   200: GetLatestImSyncRunResponse
@@ -4260,6 +4045,13 @@ export type GetWorkspacesCurrentHumanInputImSyncRunsLatestResultsData = {
   }
   url: '/workspaces/current/human-input/im-sync-runs/latest/results'
 }
+
+export type GetWorkspacesCurrentHumanInputImSyncRunsLatestResultsErrors = {
+  404: ImContactSyncErrorResponse
+}
+
+export type GetWorkspacesCurrentHumanInputImSyncRunsLatestResultsError =
+  GetWorkspacesCurrentHumanInputImSyncRunsLatestResultsErrors[keyof GetWorkspacesCurrentHumanInputImSyncRunsLatestResultsErrors]
 
 export type GetWorkspacesCurrentHumanInputImSyncRunsLatestResultsResponses = {
   200: ListLatestImSyncRunResultsResponse

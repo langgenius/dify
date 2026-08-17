@@ -26,8 +26,6 @@
     "api/repositories/human_input_v2/im_integration/repository.py",
     "api/repositories/human_input_v2/im_integration/unit_of_work.py",
     "api/repositories/human_input_v2/organization_write_unit_of_work.py",
-    "api/services/human_input_channel_management_composition.py",
-    "api/services/human_input_im_channel_manager.py",
     "api/services/human_input_v2/im_contact_sync/__init__.py",
     "api/services/human_input_v2/im_contact_sync/binding_service.py",
     "api/services/human_input_v2/im_contact_sync/composition.py",

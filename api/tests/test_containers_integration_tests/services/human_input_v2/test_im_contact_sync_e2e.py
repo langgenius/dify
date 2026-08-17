@@ -11,16 +11,6 @@ import pytest
 from sqlalchemy import delete, event, func, select, text, update
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.human_input_v2.channel_management import (
-    ChannelKind,
-    ChannelProvider,
-    ChannelRef,
-    DeleteChannelCommand,
-    HumanInputChannelManagementContext,
-    NewSecret,
-    SaveIMChannelCommand,
-    SlackIMCandidate,
-)
 from core.human_input_v2.contact_directory import Contact
 from core.human_input_v2.entities import (
     IMBindingScope,
@@ -37,6 +27,7 @@ from core.human_input_v2.im_integration import (
     IMIdentity,
     IMIntegration,
     IMSyncRun,
+    IntegrationDeletion,
     IntegrationRevisionToken,
     ProviderTenantIdentity,
     ReconciliationPlan,
@@ -54,7 +45,6 @@ from core.human_input_v2.shared import (
     IMSyncResultId,
     IMSyncRunId,
     IntegrationId,
-    NormalizedEmail,
     TenantId,
     WorkspaceScope,
 )
@@ -79,7 +69,6 @@ from repositories.human_input_v2.im_integration.mappers import (
 )
 from repositories.human_input_v2.im_integration.repository import SQLAlchemyIMControlPlaneRepository
 from repositories.human_input_v2.im_integration.unit_of_work import SQLAlchemyOrganizationIMWriteUnitOfWork
-from services.human_input_im_channel_manager import ConfirmedIMConfiguration, HumanInputIMChannelManager
 from services.human_input_v2.im_contact_sync.composition import build_im_contact_sync_application
 from services.human_input_v2.im_contact_sync.locking import (
     OrganizationIMWriteLock,
@@ -100,7 +89,6 @@ _HISTORICAL_RESULT_ID = IMSyncResultId("00000000-0000-0000-0000-000000000601")
 _PRECONDITION_RUN_ID = IMSyncRunId("00000000-0000-0000-0000-000000000502")
 _WAITING_RUN_ID = IMSyncRunId("00000000-0000-0000-0000-000000000504")
 _REPLACEMENT_INTEGRATION_ID = IntegrationId("00000000-0000-0000-0000-000000000202")
-_SLACK_REF = ChannelRef(ChannelKind.IM, ChannelProvider.SLACK)
 
 
 class _Directory:
@@ -639,7 +627,7 @@ def test_waiting_integration_replacement_starts_sql_only_after_lock_release(
     assert db_session_with_containers.get(HumanInputIMIntegration, str(_REPLACEMENT_INTEGRATION_ID)) is not None
 
 
-def test_im_channel_manager_replaces_and_deletes_integration_through_the_organization_lock(
+def test_repository_replaces_and_deletes_integration_through_the_organization_lock(
     db_session_with_containers: Session,
 ) -> None:
     scope, actor_id = _seed_historical_state(db_session_with_containers)
@@ -649,69 +637,39 @@ def test_im_channel_manager_replaces_and_deletes_integration_through_the_organiz
         lambda organization_scope: _write_unit_of_work(sessions, organization_scope),
     )
 
-    class _SlackProviderPort:
-        def prepare(self, context, candidate, current):
-            del context, candidate, current
-            return ConfirmedIMConfiguration(
-                provider=IMProvider.SLACK,
-                provider_tenant_id="slack-workspace",
-                encrypted_credentials=EncryptedCredentials.from_mapping(
-                    {
-                        "client_id": "client-id",
-                        "encrypted_client_secret": "client-secret",
-                        "encrypted_signing_secret": "signing-secret",
-                        "encrypted_bot_token": "bot-token",
-                        "encrypted_app_token": "app-token",
-                    }
-                ),
-            )
-
-    manager = HumanInputIMChannelManager(
-        _SLACK_REF,
-        repository,
-        _SlackProviderPort(),
-        clock=lambda: _HISTORICAL_AT,
-        id_factory=lambda: str(_REPLACEMENT_INTEGRATION_ID),
-    )
-    context = HumanInputChannelManagementContext(
-        tenant_id=scope.id,
-        actor_account_id=actor_id,
-        actor_email=NormalizedEmail("existing-reviewer@example.com"),
-    )
-    candidate = SlackIMCandidate(
-        client_id="client-id",
-        client_secret=NewSecret("client-secret"),
-        signing_secret=NewSecret("signing-secret"),
-        bot_token=NewSecret("bot-token"),
-        app_token=NewSecret("app-token"),
-    )
-
-    replaced = manager.save(
-        context,
-        SaveIMChannelCommand(
-            ref=_SLACK_REF,
-            candidate=candidate,
-            expected_integration_id=str(_INTEGRATION_ID),
-            expected_config_version=1,
+    current = repository.load_current_integration(scope.id)
+    assert current is not None
+    transition = current.reconfigure(
+        expected_revision=current.revision,
+        provider_tenant=ProviderTenantIdentity(IMProvider.SLACK, "slack-workspace"),
+        encrypted_credentials=EncryptedCredentials.from_mapping(
+            {
+                "client_id": "client-id",
+                "encrypted_client_secret": "client-secret",
+                "encrypted_signing_secret": "signing-secret",
+                "encrypted_bot_token": "bot-token",
+                "encrypted_app_token": "app-token",
+            }
         ),
+        configured_by_account_id=actor_id,
+        callback_url=None,
+        now=_HISTORICAL_AT,
+        replacement_integration_id=_REPLACEMENT_INTEGRATION_ID,
     )
+    assert isinstance(transition, ConfigurationTransition)
+    replaced = repository.compare_and_swap_configuration(transition, organization_scope=scope)
 
-    assert replaced.view is not None
+    assert isinstance(replaced, IMIntegration)
     current = repository.load_current_integration(scope.id)
     assert current is not None
     assert current.id == _REPLACEMENT_INTEGRATION_ID
     assert current.provider_tenant.provider is IMProvider.SLACK
 
-    deleted = manager.delete(
-        context,
-        DeleteChannelCommand(
-            ref=_SLACK_REF,
-            expected_integration_id=str(current.id),
-            expected_config_version=current.config_version,
-        ),
-    )
+    deletion = current.plan_deletion(current.revision)
+    assert isinstance(deletion, IntegrationDeletion)
+    deleted = repository.compare_and_swap_delete(deletion, organization_scope=scope)
 
-    assert deleted.view is not None
+    assert deleted is None
     assert repository.load_current_integration(scope.id) is None
 
 

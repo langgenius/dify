@@ -4,15 +4,6 @@ from pathlib import Path
 import pytest
 
 from core.human_input_v2.channel_identity import ChannelKind, ChannelProvider, ChannelRef
-from core.human_input_v2.channel_management import (
-    ChannelKind as ManagementChannelKind,
-)
-from core.human_input_v2.channel_management import (
-    ChannelProvider as ManagementChannelProvider,
-)
-from core.human_input_v2.channel_management import (
-    ChannelRef as ManagementChannelRef,
-)
 from core.human_input_v2.delivery_runtime import (
     ConfigurationSnapshotIdentity,
     DeliveryOutcome,
@@ -121,12 +112,6 @@ def test_registry_rejects_duplicate_provider_and_runtime_owns_prepared_values() 
     prepared = runtime.prepare(_request())
 
     assert runtime.send(prepared) == DeliveryOutcome.accepted("message-1")
-
-
-def test_channel_management_uses_shared_channel_identity_compatibility_exports() -> None:
-    assert ManagementChannelKind is ChannelKind
-    assert ManagementChannelProvider is ChannelProvider
-    assert ManagementChannelRef is ChannelRef
 
 
 def test_runtime_core_has_no_framework_persistence_or_provider_sdk_imports() -> None:

@@ -28,15 +28,7 @@ from core.human_input_v2 import (
     ResolvedFormContent,
     SelectInput,
 )
-from core.human_input_v2.channel_management import (
-    FeishuIMCandidate,
-    HumanInputChannelManagementContext,
-    NewSecret,
-    PreserveSlackSecret,
-    SlackIMCandidate,
-)
-from core.human_input_v2.entities import IMIntegrationStatus, IMProvider
-from core.human_input_v2.im_integration import EncryptedCredentials, IMIntegration, ProviderTenantIdentity
+from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import slack as slack_adapter_module
 from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter
 from core.human_input_v2.im_provider import (
@@ -60,13 +52,6 @@ from core.human_input_v2.im_provider import (
     SlackIMIntegrationCredentials,
     StaticCardIntent,
     WebhookRequest,
-)
-from core.human_input_v2.shared import AccountId, IntegrationId, NormalizedEmail, TenantId
-from services import human_input_slack_channel as slack_service_module
-from services.human_input_im_channel_manager import IMProviderConfigurationError
-from services.human_input_slack_channel import (
-    SlackIMCredentialProtector,
-    SlackIMProviderConfigurationPort,
 )
 
 _SIGNING_SECRET = "sanitized-signing-material"
@@ -204,16 +189,6 @@ def _credentials() -> SlackIMIntegrationCredentials:
         signing_secret=_SIGNING_SECRET,
         bot_token="xoxb-sanitized-placeholder",
         app_token="xapp-sanitized-placeholder",
-    )
-
-
-def _candidate(*, preserve_app_token: bool = False) -> SlackIMCandidate:
-    return SlackIMCandidate(
-        client_id="sanitized-client-id",
-        client_secret=NewSecret("sanitized-client-secret"),
-        signing_secret=NewSecret(_SIGNING_SECRET),
-        bot_token=NewSecret("xoxb-sanitized-placeholder"),
-        app_token=PreserveSlackSecret() if preserve_app_token else NewSecret("xapp-sanitized-placeholder"),
     )
 
 
@@ -1257,166 +1232,3 @@ def test_socket_start_waits_for_connection_readiness_and_accepts_sdk_callback(
     assert not owner_thread.is_alive()
     assert transport.closed is True
     assert lifecycle_errors == []
-
-
-def test_service_port_uses_real_adapter_boundary_and_protects_all_secrets(
-    monkeypatch: pytest.MonkeyPatch,
-    slack_api_server: _SlackApiServer,
-) -> None:
-    monkeypatch.setattr(
-        slack_service_module.encrypter,
-        "encrypt_token",
-        lambda owner, secret: f"cipher:{owner}:{secret}",
-    )
-    monkeypatch.setattr(
-        slack_service_module.encrypter,
-        "decrypt_token",
-        lambda owner, ciphertext: ciphertext.removeprefix(f"cipher:{owner}:"),
-    )
-    adapter, _ = _adapter(monkeypatch, slack_api_server)
-    del adapter
-    for _ in range(3):
-        slack_api_server.state.enqueue(
-            "auth.test",
-            {"ok": True, "team_id": "sanitized-team"},
-            headers=(("X-OAuth-Scopes", "chat:write,users:read,users:read.email"),),
-        )
-        slack_api_server.state.enqueue(
-            "apps.connections.open",
-            {"ok": True, "url": "wss://sanitized.invalid/socket"},
-        )
-    context = HumanInputChannelManagementContext(
-        tenant_id=TenantId("sanitized-workspace"),
-        actor_account_id=AccountId("sanitized-account"),
-        actor_email=NormalizedEmail("operator@example.com"),
-    )
-    protector = SlackIMCredentialProtector()
-    port = SlackIMProviderConfigurationPort(
-        protector,
-        adapter_factory=SlackIMProviderAdapter,
-        clock=lambda: datetime(2026, 8, 6, 8),
-    )
-
-    confirmed = port.prepare(context, _candidate(), None)
-    tested = port.test(context, _candidate(), None)
-    current = IMIntegration.create(
-        integration_id=IntegrationId("sanitized-integration"),
-        tenant_id=context.tenant_id,
-        provider_tenant=ProviderTenantIdentity(IMProvider.SLACK, confirmed.provider_tenant_id),
-        encrypted_credentials=confirmed.encrypted_credentials,
-        configured_by_account_id=context.actor_account_id,
-        callback_url=None,
-        now=datetime(2026, 8, 6, 8),
-    )
-    preserved = port.prepare(context, _candidate(preserve_app_token=True), current)
-
-    assert tested.status is IMIntegrationStatus.CONNECTED
-    assert tested.provider_tenant_id == "sanitized-team"
-    assert preserved.provider_tenant_id == "sanitized-team"
-    encrypted = confirmed.encrypted_credentials.to_mapping()
-    assert encrypted["encrypted_client_secret"] == "cipher:sanitized-workspace:sanitized-client-secret"
-    assert encrypted["encrypted_app_token"] == "cipher:sanitized-workspace:xapp-sanitized-placeholder"
-
-
-def test_service_port_maps_real_provider_rejection_without_provider_details(
-    monkeypatch: pytest.MonkeyPatch,
-    slack_api_server: _SlackApiServer,
-) -> None:
-    adapter, _ = _adapter(monkeypatch, slack_api_server)
-    del adapter
-    slack_api_server.state.enqueue("auth.test", {"ok": False, "error": "invalid_auth"})
-    context = HumanInputChannelManagementContext(
-        tenant_id=TenantId("sanitized-workspace"),
-        actor_account_id=AccountId("sanitized-account"),
-        actor_email=NormalizedEmail("operator@example.com"),
-    )
-    port = SlackIMProviderConfigurationPort(SlackIMCredentialProtector(), adapter_factory=SlackIMProviderAdapter)
-
-    with pytest.raises(IMProviderConfigurationError) as raised:
-        port.test(context, _candidate(), None)
-
-    assert raised.value.code == "slack_authentication_rejected"
-    assert raised.value.provider_failure is True
-
-
-def test_service_port_rejects_candidate_mismatch_and_unresolvable_preserve(
-    monkeypatch: pytest.MonkeyPatch,
-    slack_api_server: _SlackApiServer,
-) -> None:
-    adapter, _ = _adapter(monkeypatch, slack_api_server)
-    del adapter
-    context = HumanInputChannelManagementContext(
-        tenant_id=TenantId("sanitized-workspace"),
-        actor_account_id=AccountId("sanitized-account"),
-        actor_email=NormalizedEmail("operator@example.com"),
-    )
-    port = SlackIMProviderConfigurationPort(SlackIMCredentialProtector(), adapter_factory=SlackIMProviderAdapter)
-
-    with pytest.raises(IMProviderConfigurationError) as mismatch:
-        port.test(
-            context,
-            FeishuIMCandidate(
-                app_id="sanitized-app-id",
-                app_secret=NewSecret("sanitized-app-secret"),
-            ),
-            None,
-        )
-    with pytest.raises(IMProviderConfigurationError) as unavailable:
-        port.test(context, _candidate(preserve_app_token=True), None)
-
-    assert mismatch.value.code == "channel_candidate_mismatch"
-    assert unavailable.value.code == "slack_preserved_secret_unavailable"
-    assert slack_api_server.state.requests == []
-
-
-def test_service_port_normalizes_protection_and_reveal_failures(
-    monkeypatch: pytest.MonkeyPatch,
-    slack_api_server: _SlackApiServer,
-) -> None:
-    state = slack_api_server.state
-    state.enqueue(
-        "auth.test",
-        {"ok": True, "team_id": "sanitized-team"},
-        headers=(("X-OAuth-Scopes", "chat:write,users:read,users:read.email"),),
-    )
-    state.enqueue("apps.connections.open", {"ok": True, "url": "wss://sanitized.invalid/socket"})
-    adapter, _ = _adapter(monkeypatch, slack_api_server)
-    del adapter
-    context = HumanInputChannelManagementContext(
-        tenant_id=TenantId("sanitized-workspace"),
-        actor_account_id=AccountId("sanitized-account"),
-        actor_email=NormalizedEmail("operator@example.com"),
-    )
-    port = SlackIMProviderConfigurationPort(SlackIMCredentialProtector(), adapter_factory=SlackIMProviderAdapter)
-
-    def _fail_secret_operation(owner_key: str, secret: str) -> str:
-        del owner_key, secret
-        raise RuntimeError("sanitized crypto details")
-
-    monkeypatch.setattr(slack_service_module.encrypter, "encrypt_token", _fail_secret_operation)
-    with pytest.raises(IMProviderConfigurationError) as protection_failure:
-        port.prepare(context, _candidate(), None)
-
-    current = IMIntegration.create(
-        integration_id=IntegrationId("sanitized-integration"),
-        tenant_id=context.tenant_id,
-        provider_tenant=ProviderTenantIdentity(IMProvider.SLACK, "sanitized-team"),
-        encrypted_credentials=EncryptedCredentials.from_mapping(
-            {
-                "client_id": "sanitized-client-id",
-                "encrypted_client_secret": "sanitized-client-ciphertext",
-                "encrypted_signing_secret": "sanitized-signing-ciphertext",
-                "encrypted_bot_token": "sanitized-bot-ciphertext",
-                "encrypted_app_token": "sanitized-app-ciphertext",
-            }
-        ),
-        configured_by_account_id=context.actor_account_id,
-        callback_url=None,
-        now=datetime(2026, 8, 6, 8),
-    )
-    monkeypatch.setattr(slack_service_module.encrypter, "decrypt_token", _fail_secret_operation)
-    with pytest.raises(IMProviderConfigurationError) as reveal_failure:
-        port.test(context, _candidate(preserve_app_token=True), current)
-
-    assert protection_failure.value.code == "slack_credential_protection_failed"
-    assert reveal_failure.value.code == "slack_credential_reveal_failed"

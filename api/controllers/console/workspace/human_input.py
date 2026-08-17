@@ -6,29 +6,7 @@ from http import HTTPStatus
 
 from flask import abort, request
 from flask_restx import Resource
-from pydantic import ValidationError
-from werkzeug.exceptions import BadRequest, UnsupportedMediaType
 
-from configs import dify_config
-from controllers.common.human_input_channel_management import (
-    ChannelCollectionResponse,
-    ChannelErrorResponse,
-    ChannelRequestMappingError,
-    ChannelTestResultResponse,
-    ChannelViewResponse,
-    DeleteChannelQuery,
-    SaveChannelRequest,
-    TestChannelRequest,
-    channel_collection_response,
-    channel_error_response,
-    channel_ref_from_path,
-    delete_channel_command,
-    get_channel_command,
-    require_test_result,
-    require_view,
-    save_channel_command,
-    test_channel_command,
-)
 from controllers.common.human_input_v2_contracts import (
     AddPlatformContactsRequest,
     AddPlatformContactsResponse,
@@ -88,7 +66,7 @@ from controllers.common.schema import (
     register_response_schema_models,
     register_schema_models,
 )
-from controllers.console import bp, console_ns
+from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
@@ -96,15 +74,6 @@ from controllers.console.wraps import (
     setup_required,
     with_current_tenant_id,
     with_current_user,
-)
-from core.human_input_v2.channel_management import (
-    ChannelCapability,
-    ChannelFailure,
-    ChannelFailureCategory,
-    ChannelKind,
-    ChannelProvider,
-    ChannelScopeKind,
-    ChannelStatus,
 )
 from core.human_input_v2.im_integration import (
     ContactIMBindingView,
@@ -115,15 +84,10 @@ from core.human_input_v2.im_integration import (
     SyncResultFact,
 )
 from core.human_input_v2.shared import AccountId, ContactId, IMBindingId, IMIdentityId, TenantId, WorkspaceScope
-from enums.deployment_edition import DeploymentEdition
 from graphon.file import helpers as file_helpers
 from libs.helper import dump_response, to_timestamp
 from libs.login import login_required
 from models.account import Account
-from services.human_input_channel_management_composition import (
-    build_human_input_channel_management_context,
-    build_human_input_channel_management_service,
-)
 from services.human_input_v2.composition import build_human_input_node_data_migration_service
 from services.human_input_v2.im_contact_sync.composition import build_im_contact_sync_application
 from services.human_input_v2.im_contact_sync.errors import IMWriteUnavailableError
@@ -142,11 +106,6 @@ register_enum_models(
     IMSyncRunStatus,
     IMSyncResultType,
     IMProvider,
-    ChannelKind,
-    ChannelProvider,
-    ChannelScopeKind,
-    ChannelStatus,
-    ChannelCapability,
 )
 register_schema_models(
     console_ns,
@@ -166,9 +125,6 @@ register_schema_models(
     SetContactIMOverrideRequest,
     CreateIMBindingRequest,
     NodeDataMigrationPayload,
-    SaveChannelRequest,
-    TestChannelRequest,
-    DeleteChannelQuery,
 )
 register_response_schema_models(
     console_ns,
@@ -198,26 +154,7 @@ register_response_schema_models(
     BatchGetContactsResponse,
     NodeDataMigrationResponse,
     NodeDataMigrationFailureResponse,
-    ChannelViewResponse,
-    ChannelTestResultResponse,
-    ChannelCollectionResponse,
-    ChannelErrorResponse,
 )
-
-_CHANNEL_MANAGEMENT_PATH_PREFIX = "/console/api/workspaces/current/human-input/channels"
-
-
-@bp.before_app_request
-def _reject_enterprise_channel_management() -> None:
-    if request.path != _CHANNEL_MANAGEMENT_PATH_PREFIX and not request.path.startswith(
-        f"{_CHANNEL_MANAGEMENT_PATH_PREFIX}/"
-    ):
-        return
-    if dify_config.DEPLOYMENT_EDITION is DeploymentEdition.ENTERPRISE:
-        abort(
-            HTTPStatus.NOT_IMPLEMENTED,
-            "Human Input channel management is not implemented for Enterprise deployments.",
-        )
 
 
 def _raise_stub_not_implemented() -> None:
@@ -893,175 +830,3 @@ class NodeDataMigrationAPI(Resource):
                 HTTPStatus.BAD_REQUEST,
             )
         return dump_response(NodeDataMigrationResponse, outcome)
-
-
-_CHANNEL_FAILURE_STATUS = {
-    ChannelFailureCategory.UNSUPPORTED_CHANNEL: HTTPStatus.NOT_FOUND,
-    ChannelFailureCategory.UNSUPPORTED_OPERATION: HTTPStatus.METHOD_NOT_ALLOWED,
-    ChannelFailureCategory.VALIDATION_FAILURE: HTTPStatus.BAD_REQUEST,
-    ChannelFailureCategory.NOT_CONFIGURED: HTTPStatus.CONFLICT,
-    ChannelFailureCategory.CONFLICT: HTTPStatus.CONFLICT,
-    ChannelFailureCategory.STALE_CONFIGURATION: HTTPStatus.CONFLICT,
-    ChannelFailureCategory.PROVIDER_FAILURE: HTTPStatus.BAD_GATEWAY,
-    ChannelFailureCategory.CHANNEL_FAILURE: HTTPStatus.INTERNAL_SERVER_ERROR,
-}
-
-
-def _management_context(tenant_id: str, current_user: Account):
-    return build_human_input_channel_management_context(
-        workspace_id=tenant_id,
-        actor_account_id=current_user.id,
-        actor_email=current_user.email,
-    )
-
-
-def _error_response(error: ChannelRequestMappingError):
-    response = channel_error_response(error.failure)
-    return response.model_dump(mode="json"), _CHANNEL_FAILURE_STATUS[error.failure.category]
-
-
-def _unexpected_channel_error_response():
-    response = channel_error_response(
-        ChannelFailure(
-            ChannelFailureCategory.CHANNEL_FAILURE,
-            "channel_management_failure",
-        )
-    )
-    return response.model_dump(mode="json"), HTTPStatus.INTERNAL_SERVER_ERROR
-
-
-def _validate_request[T](model: type[T], raw: object) -> T:
-    try:
-        return model.model_validate(raw)  # type: ignore[attr-defined, no-any-return]
-    except ValidationError as error:
-        raise ChannelRequestMappingError(
-            ChannelFailureCategory.VALIDATION_FAILURE,
-            "invalid_request",
-        ) from error
-
-
-def _channel_request_payload() -> object:
-    try:
-        return console_ns.payload
-    except (BadRequest, UnsupportedMediaType) as error:
-        raise ChannelRequestMappingError(
-            ChannelFailureCategory.VALIDATION_FAILURE,
-            "invalid_request",
-        ) from error
-
-
-@console_ns.route("/workspaces/current/human-input/channels")
-class WorkspaceHumanInputChannelsApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[ChannelCollectionResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @is_admin_or_owner_required
-    @with_current_user
-    @with_current_tenant_id
-    def get(self, tenant_id: str, current_user: Account):
-        try:
-            context = _management_context(tenant_id, current_user)
-            result = build_human_input_channel_management_service().list_channels(context)
-            return channel_collection_response(result).model_dump(mode="json")
-        except Exception:
-            return _unexpected_channel_error_response()
-
-
-@console_ns.route("/workspaces/current/human-input/channels/<string:kind>/<string:provider>")
-class WorkspaceHumanInputChannelApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[ChannelViewResponse.__name__])
-    @console_ns.response(400, "Invalid channel request", console_ns.models[ChannelErrorResponse.__name__])
-    @console_ns.response(404, "Unsupported channel", console_ns.models[ChannelErrorResponse.__name__])
-    @console_ns.response(409, "Channel configuration conflict", console_ns.models[ChannelErrorResponse.__name__])
-    @console_ns.response(502, "Channel provider failure", console_ns.models[ChannelErrorResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @is_admin_or_owner_required
-    @with_current_user
-    @with_current_tenant_id
-    def get(self, tenant_id: str, current_user: Account, kind: str, provider: str):
-        try:
-            ref = channel_ref_from_path(kind, provider)
-            result = build_human_input_channel_management_service().get_channel(
-                _management_context(tenant_id, current_user),
-                get_channel_command(ref),
-            )
-            return require_view(result).model_dump(mode="json")
-        except ChannelRequestMappingError as error:
-            return _error_response(error)
-        except Exception:
-            return _unexpected_channel_error_response()
-
-    @console_ns.expect(console_ns.models[SaveChannelRequest.__name__])
-    @console_ns.response(200, "Success", console_ns.models[ChannelViewResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @is_admin_or_owner_required
-    @with_current_user
-    @with_current_tenant_id
-    def put(self, tenant_id: str, current_user: Account, kind: str, provider: str):
-        try:
-            ref = channel_ref_from_path(kind, provider)
-            payload = _validate_request(SaveChannelRequest, _channel_request_payload() or {})
-            command = save_channel_command(ref, payload)
-            result = build_human_input_channel_management_service().save_channel(
-                _management_context(tenant_id, current_user),
-                command,
-            )
-            return require_view(result).model_dump(mode="json")
-        except ChannelRequestMappingError as error:
-            return _error_response(error)
-        except Exception:
-            return _unexpected_channel_error_response()
-
-    @console_ns.doc(params=query_params_from_model(DeleteChannelQuery))
-    @console_ns.response(200, "Success", console_ns.models[ChannelViewResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @is_admin_or_owner_required
-    @with_current_user
-    @with_current_tenant_id
-    def delete(self, tenant_id: str, current_user: Account, kind: str, provider: str):
-        try:
-            ref = channel_ref_from_path(kind, provider)
-            query = _validate_request(DeleteChannelQuery, request.args.to_dict(flat=True))
-            command = delete_channel_command(ref, query)
-            result = build_human_input_channel_management_service().delete_channel(
-                _management_context(tenant_id, current_user),
-                command,
-            )
-            return require_view(result).model_dump(mode="json")
-        except ChannelRequestMappingError as error:
-            return _error_response(error)
-        except Exception:
-            return _unexpected_channel_error_response()
-
-
-@console_ns.route("/workspaces/current/human-input/channels/<string:kind>/<string:provider>/test")
-class WorkspaceHumanInputChannelTestApi(Resource):
-    @console_ns.expect(console_ns.models[TestChannelRequest.__name__])
-    @console_ns.response(200, "Success", console_ns.models[ChannelTestResultResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @is_admin_or_owner_required
-    @with_current_user
-    @with_current_tenant_id
-    def post(self, tenant_id: str, current_user: Account, kind: str, provider: str):
-        try:
-            ref = channel_ref_from_path(kind, provider)
-            payload = _validate_request(TestChannelRequest, _channel_request_payload() or {})
-            command = test_channel_command(ref, payload)
-            result = build_human_input_channel_management_service().test_channel(
-                _management_context(tenant_id, current_user),
-                command,
-            )
-            return require_test_result(result).model_dump(mode="json")
-        except ChannelRequestMappingError as error:
-            return _error_response(error)
-        except Exception:
-            return _unexpected_channel_error_response()

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from core.helper import encrypter
 from core.human_input_v2.channel_identity import ChannelKind, ChannelProvider, ChannelRef
 from core.human_input_v2.delivery_runtime import (
     ConfigurationSnapshotIdentity,
@@ -9,9 +10,23 @@ from core.human_input_v2.delivery_runtime import (
     ProviderCredential,
     ResolvedEmailChannelSnapshot,
 )
-from core.human_input_v2.email_channel import EmailChannelRepository, EmailCredentialProtector
+from core.human_input_v2.email_channel import (
+    EmailChannelRepository,
+    EmailCredentialProtector,
+    ProtectedAPIKey,
+)
 from core.human_input_v2.entities import EmailProviderType
 from core.human_input_v2.shared import TenantId
+
+
+class DifyEmailCredentialProtector:
+    """Tenant RSA adapter implementing the Email credential protection port."""
+
+    def protect(self, tenant_id: TenantId, api_key: str) -> ProtectedAPIKey:
+        return ProtectedAPIKey(encrypter.encrypt_token(str(tenant_id), api_key))
+
+    def reveal(self, tenant_id: TenantId, protected_api_key: ProtectedAPIKey) -> str:
+        return encrypter.decrypt_token(str(tenant_id), protected_api_key.value)
 
 
 class TenantEmailConfigurationSnapshotResolver:
@@ -53,4 +68,4 @@ class TenantEmailConfigurationSnapshotResolver:
         )
 
 
-__all__ = ["TenantEmailConfigurationSnapshotResolver"]
+__all__ = ["DifyEmailCredentialProtector", "TenantEmailConfigurationSnapshotResolver"]
