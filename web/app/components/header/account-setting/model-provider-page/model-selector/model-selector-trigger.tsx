@@ -1,6 +1,6 @@
 import type { ModelSelectorModel, ModelSelectorProvider, ModelSelectorValue } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { ComboboxTrigger } from '@langgenius/dify-ui/combobox'
+import { PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -12,7 +12,7 @@ import {
 } from '../derive-model-status'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
-import { useCredentialPanelState } from '../provider-added-card/use-credential-panel-state'
+import { useCredentialPanelState as useCredentialPanelInfo } from '../provider-added-card/use-credential-panel-state'
 
 type ModelSelectorTriggerProps = {
   currentProvider?: ModelSelectorProvider
@@ -52,7 +52,7 @@ function ModelSelectorTrigger({
     enabled: !!providerId,
     select: ({ data }) => data.find((provider) => provider.provider === providerId),
   })
-  const credentialPanel = useCredentialPanelState(resolvedProvider)
+  const credentialPanel = useCredentialPanelInfo(resolvedProvider)
 
   const status = deriveModelStatus(
     isSelected ? currentModel?.model : defaultModel?.model,
@@ -93,26 +93,33 @@ function ModelSelectorTrigger({
       <TooltipTrigger
         disabled={!triggerTooltipLabel || disabled}
         render={
-          <ComboboxTrigger
-            aria-label={t(($) => $['detailPanel.configureModel'], { ns: 'plugin' })}
-            data-deprecated={isDeprecated ? '' : undefined}
-            data-model-status={status}
-            data-shape={shape}
-            data-size={size}
-            data-surface={surface}
+          <PopoverTrigger
             disabled={disabled}
-            icon={!disabled && shape !== 'split' && (isActive || isEmpty) ? undefined : false}
-            size={size}
-            className={cn(
-              'data-[size=small]:h-6 data-[size=small]:gap-px data-[size=small]:rounded-md data-[size=small]:p-0.5',
-              'data-[size=medium]:h-8 data-[size=medium]:gap-0.5 data-[size=medium]:rounded-lg data-[size=medium]:p-1',
-              'data-[surface=workflow]:bg-workflow-block-parma-bg data-[surface=workflow]:hover:bg-workflow-block-parma-bg data-[surface=workflow]:data-popup-open:bg-workflow-block-parma-bg',
-              'data-[model-status=api-key-unavailable]:bg-components-input-bg-disabled data-[model-status=configure-required]:bg-components-input-bg-disabled data-[model-status=credits-exhausted]:bg-components-input-bg-disabled data-[model-status=disabled]:bg-components-input-bg-disabled data-[model-status=incompatible]:bg-components-input-bg-disabled',
-              'data-disabled:data-[model-status=active]:bg-components-input-bg-normal! data-disabled:data-[model-status=empty]:bg-components-input-bg-normal! data-disabled:data-[surface=workflow]:bg-workflow-block-parma-bg!',
-              'data-[shape=split]:relative data-[shape=split]:min-w-0 data-[shape=split]:flex-1 data-[shape=split]:rounded-l-lg! data-[shape=split]:rounded-r-none! data-[shape=split]:focus-visible:z-1',
-              'data-[surface=workflow]:data-deprecated:[&>span]:opacity-50',
-              className,
-            )}
+            render={
+              <button
+                type="button"
+                aria-label={t(($) => $['detailPanel.configureModel'], { ns: 'plugin' })}
+                data-deprecated={isDeprecated ? '' : undefined}
+                data-model-status={status}
+                data-shape={shape}
+                data-size={size}
+                data-surface={surface}
+                disabled={disabled}
+                className={cn(
+                  'group/model-selector-trigger flex w-full min-w-0 items-center border-0 bg-components-input-bg-normal text-left text-components-input-text-filled outline-hidden transition-colors',
+                  'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover-alt',
+                  'disabled:cursor-not-allowed disabled:text-components-input-text-filled-disabled motion-reduce:transition-none',
+                  'data-[size=small]:h-6 data-[size=small]:gap-px data-[size=small]:rounded-md data-[size=small]:p-0.5',
+                  'data-[size=medium]:h-8 data-[size=medium]:gap-0.5 data-[size=medium]:rounded-lg data-[size=medium]:p-1',
+                  'data-[surface=workflow]:bg-workflow-block-parma-bg data-[surface=workflow]:hover:bg-workflow-block-parma-bg data-[surface=workflow]:data-popup-open:bg-workflow-block-parma-bg',
+                  'data-[model-status=api-key-unavailable]:bg-components-input-bg-disabled data-[model-status=configure-required]:bg-components-input-bg-disabled data-[model-status=credits-exhausted]:bg-components-input-bg-disabled data-[model-status=disabled]:bg-components-input-bg-disabled data-[model-status=incompatible]:bg-components-input-bg-disabled',
+                  'disabled:data-[model-status=active]:bg-components-input-bg-normal! disabled:data-[model-status=empty]:bg-components-input-bg-normal! disabled:data-[surface=workflow]:bg-workflow-block-parma-bg!',
+                  'data-[shape=split]:relative data-[shape=split]:min-w-0 data-[shape=split]:flex-1 data-[shape=split]:rounded-l-lg! data-[shape=split]:rounded-r-none! data-[shape=split]:focus-visible:z-1',
+                  'data-[surface=workflow]:data-deprecated:[&>span]:opacity-50',
+                  className,
+                )}
+              />
+            }
           >
             <span className="flex min-w-0 grow items-center gap-0.5">
               {isEmpty ? (
@@ -123,7 +130,10 @@ function ModelSelectorTrigger({
                   )}
                 >
                   <span className="flex h-5 w-5 items-center justify-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle">
-                    <span className="i-ri-brain-2-line size-3.5 text-text-quaternary" />
+                    <span
+                      aria-hidden="true"
+                      className="i-ri-brain-2-line size-3.5 text-text-quaternary"
+                    />
                   </span>
                 </span>
               ) : (
@@ -186,7 +196,13 @@ function ModelSelectorTrigger({
                 )}
               </span>
             </span>
-          </ComboboxTrigger>
+            {!disabled && shape !== 'split' && (isActive || isEmpty) && (
+              <span
+                aria-hidden="true"
+                className="i-ri-arrow-down-s-line size-4 shrink-0 text-text-quaternary transition-colors group-hover/model-selector-trigger:text-text-secondary group-data-popup-open/model-selector-trigger:text-text-secondary"
+              />
+            )}
+          </PopoverTrigger>
         }
       />
       {triggerTooltipLabel && (
