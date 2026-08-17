@@ -2,12 +2,13 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
+from tests.unit_tests.config_override import apply_config_overrides
+
 APP_RBAC_QUEUE = "app_rbac"
 
 
 def test_initialize_created_app_rbac_access_task_uses_rbac_queue():
-    from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
-
     assert initialize_created_app_rbac_access_task.queue == APP_RBAC_QUEUE
 
 
@@ -21,7 +22,7 @@ def test_initialize_created_app_rbac_access_task_batches_workspace_members(monke
     import tasks.initialize_created_app_rbac_access_task as task_module
     from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
-    monkeypatch.setattr(task_module.dify_config, "RBAC_ENABLED", True)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
     monkeypatch.setattr(
         task_module.TenantService,
         "iter_member_account_id_batches",
@@ -54,7 +55,7 @@ def test_initialize_created_app_rbac_access_task_retries_on_failure(monkeypatch:
     import tasks.initialize_created_app_rbac_access_task as task_module
     from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
-    monkeypatch.setattr(task_module.dify_config, "RBAC_ENABLED", True)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
     monkeypatch.setattr(
         task_module.TenantService,
         "iter_member_account_id_batches",
