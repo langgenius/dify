@@ -1,5 +1,6 @@
 import datetime
 import json
+from collections.abc import Callable
 from contextlib import ExitStack
 from inspect import unwrap
 from types import SimpleNamespace
@@ -255,7 +256,10 @@ class TestDatasetList:
         assert status == 200
         assert resp["data"][0]["permission_keys"] == ["dataset.acl.readonly", "dataset.acl.edit"]
 
-    def test_get_limits_to_own_datasets_without_default_read_permission(self, app: Flask):
+    def test_get_limits_to_own_datasets_without_default_read_permission(
+        self, app: Flask, config_overrides: Callable[..., None]
+    ):
+        config_overrides(RBAC_ENABLED=True)
         api = DatasetListApi()
         method = unwrap(api.get)
         current_user = self._mock_user()
@@ -266,7 +270,6 @@ class TestDatasetList:
         )
         with app.test_request_context("/datasets"):
             with (
-                patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", True),
                 patch.object(DatasetService, "get_datasets", return_value=([], 0)) as get_datasets,
                 patch(
                     "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.MyPermissions.get",
@@ -282,7 +285,8 @@ class TestDatasetList:
         assert get_datasets.call_args.kwargs["accessible_dataset_ids"] == []
         assert get_datasets.call_args.kwargs["include_own_datasets"] is True
 
-    def test_get_workspace_owner_bypasses_dataset_whitelist(self, app: Flask):
+    def test_get_workspace_owner_bypasses_dataset_whitelist(self, app: Flask, config_overrides: Callable[..., None]):
+        config_overrides(RBAC_ENABLED=True)
         api = DatasetListApi()
         method = unwrap(api.get)
         current_user = self._mock_user()
@@ -291,7 +295,6 @@ class TestDatasetList:
         )
         with app.test_request_context("/datasets"):
             with (
-                patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", True),
                 patch.object(DatasetService, "get_datasets", return_value=([], 0)) as get_datasets,
                 patch(
                     "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.MyPermissions.get",
@@ -306,7 +309,8 @@ class TestDatasetList:
                 method(api, MagicMock(), "tenant-1", current_user)
         assert get_datasets.call_args.kwargs["accessible_dataset_ids"] is None
 
-    def test_get_limits_to_dataset_read_overrides(self, app: Flask):
+    def test_get_limits_to_dataset_read_overrides(self, app: Flask, config_overrides: Callable[..., None]):
+        config_overrides(RBAC_ENABLED=True)
         api = DatasetListApi()
         method = unwrap(api.get)
         current_user = self._mock_user()
@@ -328,7 +332,6 @@ class TestDatasetList:
         )
         with app.test_request_context("/datasets"):
             with (
-                patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", True),
                 patch.object(DatasetService, "get_datasets", return_value=([], 0)) as get_datasets,
                 patch(
                     "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.MyPermissions.get",
@@ -351,14 +354,14 @@ class TestDatasetList:
         ]
         assert get_datasets.call_args.kwargs["include_own_datasets"] is False
 
-    def test_get_with_ids_applies_dataset_visibility(self, app: Flask):
+    def test_get_with_ids_applies_dataset_visibility(self, app: Flask, config_overrides: Callable[..., None]):
+        config_overrides(RBAC_ENABLED=True)
         api = DatasetListApi()
         method = unwrap(api.get)
         current_user = self._mock_user()
         permissions = enterprise_rbac_service.MyPermissionsResponse()
         with app.test_request_context("/datasets?ids=dataset-1"):
             with (
-                patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", True),
                 patch.object(DatasetService, "get_datasets_by_ids", return_value=([], 0)) as get_datasets_by_ids,
                 patch(
                     "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.MyPermissions.get",
@@ -563,7 +566,8 @@ class TestDatasetApiGet:
         assert status == 200
         assert data["embedding_available"] is True
 
-    def test_get_attaches_permission_keys_when_rbac_enabled(self, app: Flask):
+    def test_get_attaches_permission_keys_when_rbac_enabled(self, app: Flask, config_overrides: Callable[..., None]):
+        config_overrides(RBAC_ENABLED=True)
         api = DatasetApi()
         method = unwrap(api.get)
         dataset_id = "123e4567-e89b-12d3-a456-426614174000"
@@ -572,7 +576,6 @@ class TestDatasetApiGet:
         dataset = make_dataset(id=dataset_id)
         with (
             app.test_request_context(f"/datasets/{dataset_id}"),
-            patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", True),
             patch.object(DatasetService, "get_dataset", return_value=dataset),
             patch.object(DatasetService, "check_dataset_permission", return_value=None),
             patch(
@@ -833,14 +836,14 @@ class TestDatasetUseCheckApi:
         check_permission.assert_called_once_with(dataset, current_user, session)
         dataset_use_check.assert_called_once_with(DatasetRef("tenant-1", dataset_id), session)
 
-    def test_get_use_check_relies_on_rbac_in_rbac_mode(self, app: Flask):
+    def test_get_use_check_relies_on_rbac_in_rbac_mode(self, app: Flask, config_overrides: Callable[..., None]):
+        config_overrides(RBAC_ENABLED=True)
         api = DatasetUseCheckApi()
         method = unwrap(api.get)
         dataset = make_dataset(id="dataset-id")
         session = MagicMock()
         with (
             app.test_request_context("/datasets/dataset-id/use-check"),
-            patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", True),
             patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset),
             patch.object(DatasetService, "check_dataset_permission") as check_permission,
             patch.object(DatasetService, "dataset_use_check", return_value=False),
@@ -1490,44 +1493,44 @@ class TestDatasetEnableApiApi:
 
 
 class TestDatasetApiBaseUrlApi:
-    def test_get_api_base_url_from_config(self, app: Flask):
+    def test_get_api_base_url_from_config(self, app: Flask, config_overrides: Callable[..., None]):
+        config_overrides(SERVICE_API_URL="https://example.com")
         api = DatasetApiBaseUrlApi()
         method = unwrap(api.get)
         with (
             app.test_request_context("/"),
-            patch("controllers.console.datasets.datasets.dify_config.SERVICE_API_URL", "https://example.com"),
         ):
             response = method(api)
         assert response["api_base_url"] == "https://example.com/v1"
 
-    def test_get_api_base_url_from_request(self, app: Flask):
+    def test_get_api_base_url_from_request(self, app: Flask, config_overrides: Callable[..., None]):
+        config_overrides(SERVICE_API_URL=None)
         api = DatasetApiBaseUrlApi()
         method = unwrap(api.get)
         with (
             app.test_request_context("http://localhost:5000/"),
-            patch("controllers.console.datasets.datasets.dify_config.SERVICE_API_URL", None),
         ):
             response = method(api)
         assert response["api_base_url"] == "http://localhost:5000/v1"
 
-    def test_get_api_base_url_no_double_v1(self, app: Flask):
+    def test_get_api_base_url_no_double_v1(self, app: Flask, config_overrides: Callable[..., None]):
+        config_overrides(SERVICE_API_URL="https://example.com/v1")
         api = DatasetApiBaseUrlApi()
         method = unwrap(api.get)
         with (
             app.test_request_context("/"),
-            patch("controllers.console.datasets.datasets.dify_config.SERVICE_API_URL", "https://example.com/v1"),
         ):
             response = method(api)
         assert response["api_base_url"] == "https://example.com/v1"
 
 
 class TestDatasetRetrievalSettingApi:
-    def test_get_success(self, app: Flask):
+    def test_get_success(self, app: Flask, config_overrides: Callable[..., None]):
+        config_overrides(VECTOR_STORE="qdrant")
         api = DatasetRetrievalSettingApi()
         method = unwrap(api.get)
         with (
             app.test_request_context("/"),
-            patch("controllers.console.datasets.datasets.dify_config.VECTOR_STORE", "qdrant"),
             patch(
                 "controllers.console.datasets.datasets._get_retrieval_methods_by_vector_type",
                 return_value={"retrieval_method": ["semantic", "hybrid"]},
@@ -1536,21 +1539,15 @@ class TestDatasetRetrievalSettingApi:
             response = method(api)
         assert "retrieval_method" in response
 
-    def test_tidb_vector_returns_semantic_only_when_fulltext_disabled(self):
-        with patch(
-            "controllers.console.datasets.datasets.dify_config.TIDB_VECTOR_ENABLE_FULLTEXT_SEARCH",
-            False,
-        ):
-            response = _get_retrieval_methods_by_vector_type(VectorType.TIDB_VECTOR)
+    def test_tidb_vector_returns_semantic_only_when_fulltext_disabled(self, config_overrides: Callable[..., None]):
+        config_overrides(TIDB_VECTOR_ENABLE_FULLTEXT_SEARCH=False)
+        response = _get_retrieval_methods_by_vector_type(VectorType.TIDB_VECTOR)
 
         assert response["retrieval_method"] == [RetrievalMethod.SEMANTIC_SEARCH.value]
 
-    def test_tidb_vector_returns_full_methods_when_fulltext_enabled(self):
-        with patch(
-            "controllers.console.datasets.datasets.dify_config.TIDB_VECTOR_ENABLE_FULLTEXT_SEARCH",
-            True,
-        ):
-            response = _get_retrieval_methods_by_vector_type(VectorType.TIDB_VECTOR)
+    def test_tidb_vector_returns_full_methods_when_fulltext_enabled(self, config_overrides: Callable[..., None]):
+        config_overrides(TIDB_VECTOR_ENABLE_FULLTEXT_SEARCH=True)
+        response = _get_retrieval_methods_by_vector_type(VectorType.TIDB_VECTOR)
 
         assert response["retrieval_method"] == [
             RetrievalMethod.SEMANTIC_SEARCH.value,
