@@ -1,16 +1,17 @@
 ## 1. Contact/Binding 契约测试
 
 - [ ] 1.1 盘点当前 Workspace Contact detail/options stubs、lifecycle-owned availability predicates、synchronized identity search、`ContactIMBindingService`、binding/override routes，以及 controller 中的 repository access。
-- [ ] 1.2 添加失败的 Contact query tests，覆盖 `WORKSPACE`、`PLATFORM`、`EXTERNAL` resolution，`ABSENT`/unavailable Contact 的 omit/not-found，以及 read-time initialization/repair 不存在。
+- [ ] 1.2 添加失败的 Contact query tests，覆盖 `WORKSPACE`、`PLATFORM`、`EXTERNAL` resolution，`ABSENT`/unavailable Contact 的 omit/not-found，过滤后 `total` 与 `page / limit`，以及 read-time initialization/repair 不存在。
 - [ ] 1.3 添加失败的 DTO allow-list 与 authorization tests，区分 admin Contact detail 和 editor-safe contact options，禁止 binding/management metadata 进入 option results。
 - [ ] 1.4 添加失败的 controller-delegation tests，覆盖 Organization binding create/delete、workspace override set/reset、stable error mapping，以及不存在直接 repository/lock/owner-predicate orchestration。
 
 ## 2. Current Contact Query Services
 
-- [ ] 2.1 基于 lifecycle-owned workspace resolution/current availability，实现 transport-neutral Contact detail、options list 与 options batch application queries。
+- [ ] 2.1 实现 Contact detail 与 contact-options batch queries，只加载目标 Contact 或请求中的 `contact_ids` 及其 resolution facts，并省略 missing/unavailable Contacts。
 - [ ] 2.2 定义独立的 admin-safe detail 与 editor-safe option result types；options 仅允许 `id`、`type`、`name`、`avatar_url` 和 nullable `email`。
-- [ ] 2.3 完成 query 所需的 repository projections 与 pagination/filtering，保持 workspace isolation，并对 unavailable detail read 返回 not found。
-- [ ] 2.4 添加 architecture tests，证明 Contact query paths 不能调用 initialization、backfill、lifecycle repair、provider I/O 或 binding mutation。
+- [ ] 2.3 实现 contact-options list repository query，在 database query 中先应用 workspace availability 与 `keyword` filters，再计算 `total` 并执行 `page / limit`；禁止物化 workspace-wide `ContactDirectorySnapshot` 或分页后过滤。
+- [ ] 2.4 添加 query/policy parity tests，证明 repository filters 与 `ContactDirectoryPolicy.resolve_for_workspace` 对 `WORKSPACE / PLATFORM / EXTERNAL / ABSENT` 的判断一致。
+- [ ] 2.5 添加 architecture tests，证明 Contact query paths 不能调用 initialization、backfill、lifecycle repair、provider I/O 或 binding mutation。
 
 ## 3. Synchronized Identity Selection
 

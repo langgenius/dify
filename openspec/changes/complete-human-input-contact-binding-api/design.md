@@ -23,9 +23,11 @@ Contact Directory main spec 已定义 current workspace projection、editor-safe
 
 ## Decisions
 
-### 1. Current Contact reads consume the lifecycle owner's projection
+### 1. Contact option filtering and pagination stay in the query repository
 
-Contact detail/options queries 调用独立 Contact query application boundary，并使用 lifecycle owner 提供的 workspace-scoped resolution/availability。`ABSENT`、hard-deleted 或 unavailable Contact 在 list/options 中省略，detail 返回 not found；query path 不执行 ensure、backfill 或 repair。
+Contact detail query 只加载目标 Contact 及其 current Account、membership 和 Platform allow-list facts。Contact-options batch 只加载请求中的 `contact_ids` 及其对应 facts。Contact-options list 由 query repository 在 database query 中应用 workspace availability 与 `keyword` predicates，并对过滤后的结果执行 count 和 `page / limit`。
+
+List query 不物化 workspace-wide `ContactDirectorySnapshot`，也不先分页再过滤 unavailable Contacts。Repository query 与 `ContactDirectoryPolicy.resolve_for_workspace` 必须通过 parity tests 保持 `WORKSPACE / PLATFORM / EXTERNAL / ABSENT` 语义一致。Query application service 隐藏 database joins、count 与 pagination，并且不依赖 Contact initialization 或 periodic reconciliation。
 
 ### 2. Admin detail and editor options remain different abstractions
 
