@@ -21,6 +21,7 @@ type ListProps = {
   emptyClassName?: string
   onCollectionMoreClick?: (searchParams?: SearchParamsFromCollection) => void
   deferOffscreenCollections?: boolean
+  cardSection?: string
 }
 const List = ({
   marketplaceCollections,
@@ -33,6 +34,7 @@ const List = ({
   emptyClassName,
   onCollectionMoreClick,
   deferOffscreenCollections,
+  cardSection = 'list',
 }: ListProps) => {
   const { canInstallPlugin } = useOptionalPluginInstallPermission()
   const pluginIds = useMemo(() => {
@@ -86,6 +88,7 @@ const List = ({
                 showInstallButton={showInstallButton}
                 isInstalled={installedPluginIds.has(plugin.plugin_id)}
                 linkToMarketplaceDetail={linkToMarketplaceDetail}
+                section={cardSection}
               />
             )
           })}

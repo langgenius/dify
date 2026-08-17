@@ -9,6 +9,7 @@ import { Input } from '@langgenius/dify-ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from '#i18n'
+import { markMarketplaceSiteFilter } from '@/utils/marketplace-site-track'
 import { useFilterTemplateLanguages } from '../atoms'
 import { LANGUAGE_OPTIONS } from '../templates/template-language'
 
@@ -40,6 +41,14 @@ export default function CatalogLanguagesFilter() {
   }, [selectedCount])
 
   const handleLanguagesChange = (next: string[]) => {
+    const addedLanguage = next.find(language => !languages.includes(language))
+    const removedLanguage = languages.find(language => !next.includes(language))
+    markMarketplaceSiteFilter({
+      filter_type: 'language',
+      selection_mode: 'multi',
+      filter_value: addedLanguage ?? removedLanguage ?? next.at(-1) ?? '',
+      selected_values: next,
+    })
     // Server-rendered template results read `languages` from the URL, so this
     // update must notify the App Router instead of only rewriting history.
     setLanguages(next.length ? next : null, { shallow: false })

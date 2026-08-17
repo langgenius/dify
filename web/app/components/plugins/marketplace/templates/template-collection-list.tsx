@@ -7,6 +7,7 @@ import type {
 import { cn } from '@langgenius/dify-ui/cn'
 import Link from '@/next/link'
 import Carousel from '../list/carousel'
+import { trackMarketplaceSiteEvent } from '@/utils/marketplace-site-track'
 import {
   BECOME_PARTNER_URL,
   GRID_CLASS,
@@ -74,6 +75,11 @@ export default function TemplateCollectionList({
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-x-0.5 text-text-accent hover:underline"
+                    onClick={() => {
+                      trackMarketplaceSiteEvent('marketplace_creator_partner_click', {
+                        click_target: 'Become a Partner',
+                      })
+                    }}
                   >
                     <span>{becomePartnerText}</span>
                     <span aria-hidden className="i-ri-external-link-line size-3" />

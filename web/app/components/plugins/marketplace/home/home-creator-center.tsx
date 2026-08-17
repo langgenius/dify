@@ -5,6 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from '#i18n'
 import { MARKETPLACE_URL_PREFIX } from '@/config'
 import Link from '@/next/link'
+import { trackMarketplaceSiteEvent } from '@/utils/marketplace-site-track'
 import { useCreatorCenterUrl } from '../creator-center-url'
 
 export default function HomeCreatorCenter() {
@@ -17,6 +18,11 @@ export default function HomeCreatorCenter() {
       href={creatorCenterUrl}
       target="_blank"
       rel="noopener noreferrer"
+      onClick={() => {
+        trackMarketplaceSiteEvent('marketplace_creator_partner_click', {
+          click_target: 'creator_center',
+        })
+      }}
       // The visible text is hidden below the lg breakpoint, so the link needs
       // an explicit accessible name to avoid becoming an icon-only mystery.
       aria-label={label}

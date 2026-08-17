@@ -13,18 +13,21 @@ import InstallFromMarketplace from '@/app/components/plugins/install-plugin/inst
 import Link from '@/next/link'
 import MarketplaceDetailDialog from '../detail-dialog'
 import { getPluginDetailLinkInMarketplace } from '../utils'
+import { trackMarketplaceSiteCardClick } from '@/utils/marketplace-site-track'
 
 type CardWrapperProps = {
   plugin: Plugin
   showInstallButton?: boolean
   isInstalled?: boolean
   linkToMarketplaceDetail?: boolean
+  section?: string
 }
 const CardWrapperComponent = ({
   plugin,
   showInstallButton,
   isInstalled = false,
   linkToMarketplaceDetail = false,
+  section = 'list',
 }: CardWrapperProps) => {
   const { t } = useTranslation()
   const [
@@ -123,10 +126,19 @@ const CardWrapperComponent = ({
 
   if (!linkToMarketplaceDetail) return card
 
+  const itemId = `${plugin.org}/${plugin.name}`
+
   return (
     <Link
       href={getPluginDetailLinkInMarketplace(plugin)}
       className="block rounded-xl focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+      onClick={() => {
+        trackMarketplaceSiteCardClick({
+          itemId,
+          itemType: 'plugin',
+          section,
+        })
+      }}
     >
       {card}
     </Link>

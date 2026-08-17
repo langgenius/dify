@@ -4,6 +4,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useDebounce } from 'ahooks'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from '@/next/navigation'
+import { markMarketplaceSiteSearch } from '@/utils/marketplace-site-track'
 
 type MarketplaceLiveSearchProps = {
   action: string
@@ -31,6 +32,7 @@ export default function MarketplaceLiveSearch({
   const routedSearchRef = useRef(query.trim())
   const navigate = useCallback(
     (nextQuery: string) => {
+      if (nextQuery) markMarketplaceSiteSearch(nextQuery)
       const searchParams = new URLSearchParams()
       if (nextQuery) searchParams.set('q', nextQuery)
       if (language) searchParams.set('language', language)

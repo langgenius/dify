@@ -11,6 +11,7 @@ import { MARKETPLACE_CONTAINER_ID } from '../constants'
 import { buildCarouselPages } from '../utils'
 import CardWrapper from './card-wrapper'
 import Carousel from './carousel'
+import { trackMarketplaceSiteEvent } from '@/utils/marketplace-site-track'
 import { BECOME_PARTNER_URL, GRID_CLASS, PARTNER_COLLECTION_NAMES } from './collection-constants'
 import { useCarouselItemsPerPage } from './use-carousel-items-per-page'
 
@@ -36,6 +37,7 @@ type PluginCardProps = {
   cardRender?: (plugin: Plugin) => React.JSX.Element | null
   isInstalled?: boolean
   linkToMarketplaceDetail?: boolean
+  section?: string
 }
 
 const PluginCard = ({
@@ -44,6 +46,7 @@ const PluginCard = ({
   cardRender,
   isInstalled,
   linkToMarketplaceDetail,
+  section,
 }: PluginCardProps) => {
   if (cardRender) return cardRender(plugin)
 
@@ -53,6 +56,7 @@ const PluginCard = ({
       showInstallButton={showInstallButton}
       isInstalled={isInstalled}
       linkToMarketplaceDetail={linkToMarketplaceDetail}
+      section={section}
     />
   )
 }
@@ -156,6 +160,7 @@ const CollectionSection = ({
                   linkToMarketplaceDetail={linkToMarketplaceDetail}
                   cardRender={cardRender}
                   isInstalled={installedPluginIds?.has(plugin.plugin_id)}
+                  section={collection.name}
                 />
               </div>
             ))}
@@ -191,6 +196,11 @@ const CollectionSection = ({
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-x-0.5 text-text-accent hover:underline"
+                  onClick={() => {
+                    trackMarketplaceSiteEvent('marketplace_creator_partner_click', {
+                      click_target: 'Become a Partner',
+                    })
+                  }}
                 >
                   <span>{t(($) => $['marketplace.becomePartner'], { ns: 'plugin' })}</span>
                   <span aria-hidden className="i-ri-external-link-line size-3" />
@@ -237,6 +247,7 @@ const CollectionSection = ({
               linkToMarketplaceDetail={linkToMarketplaceDetail}
               cardRender={cardRender}
               isInstalled={installedPluginIds?.has(plugin.plugin_id)}
+              section={collection.name}
             />
           ))}
         </div>
