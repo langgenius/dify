@@ -4,7 +4,10 @@ import type { IItem } from '@/app/components/header/account-setting/collapse'
 import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -289,64 +292,96 @@ export default function AccountPage() {
               : t(($) => $['account.setPassword'], { ns: 'common' })}
           </div>
           {userProfile.is_password_set && (
-            <>
-              <div className={titleClassName}>
+            <Field name="current-password">
+              <FieldLabel className="py-0 system-sm-semibold text-text-secondary">
                 {t(($) => $['account.currentPassword'], { ns: 'common' })}
-              </div>
-              <div className="relative mt-2">
-                <Input
+              </FieldLabel>
+              <InputGroup className="mt-2">
+                <InputGroupInput
                   type={showCurrentPassword ? 'text' : 'password'}
                   value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  onValueChange={setCurrentPassword}
+                  autoComplete="current-password"
+                  spellCheck={false}
                 />
-                <div className="absolute inset-y-0 right-0 flex items-center">
-                  <Button
-                    type="button"
-                    variant="ghost"
+                <InputGroupAddon align="inline-end">
+                  <IconButton
+                    size="md"
+                    aria-label={t(($) => $[showCurrentPassword ? 'hidePassword' : 'showPassword'], {
+                      ns: 'login',
+                    })}
                     onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                   >
-                    {showCurrentPassword ? '👀' : '😝'}
-                  </Button>
-                </div>
-              </div>
-            </>
+                    {showCurrentPassword ? (
+                      <span className="i-ri-eye-off-line size-4" aria-hidden="true" />
+                    ) : (
+                      <span className="i-ri-eye-line size-4" aria-hidden="true" />
+                    )}
+                  </IconButton>
+                </InputGroupAddon>
+              </InputGroup>
+            </Field>
           )}
-          <div className="mt-8 system-sm-semibold text-text-secondary">
-            {userProfile.is_password_set
-              ? t(($) => $['account.newPassword'], { ns: 'common' })
-              : t(($) => $['account.password'], { ns: 'common' })}
-          </div>
-          <div className="relative mt-2">
-            <Input
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <div className="absolute inset-y-0 right-0 flex items-center">
-              <Button type="button" variant="ghost" onClick={() => setShowPassword(!showPassword)}>
-                {showPassword ? '👀' : '😝'}
-              </Button>
-            </div>
-          </div>
-          <div className="mt-8 system-sm-semibold text-text-secondary">
-            {t(($) => $['account.confirmPassword'], { ns: 'common' })}
-          </div>
-          <div className="relative mt-2">
-            <Input
-              type={showConfirmPassword ? 'text' : 'password'}
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-            />
-            <div className="absolute inset-y-0 right-0 flex items-center">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              >
-                {showConfirmPassword ? '👀' : '😝'}
-              </Button>
-            </div>
-          </div>
+          <Field name="new-password" className="mt-8">
+            <FieldLabel className="py-0 system-sm-semibold text-text-secondary">
+              {userProfile.is_password_set
+                ? t(($) => $['account.newPassword'], { ns: 'common' })
+                : t(($) => $['account.password'], { ns: 'common' })}
+            </FieldLabel>
+            <InputGroup className="mt-2">
+              <InputGroupInput
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onValueChange={setPassword}
+                autoComplete="new-password"
+                spellCheck={false}
+              />
+              <InputGroupAddon align="inline-end">
+                <IconButton
+                  size="md"
+                  aria-label={t(($) => $[showPassword ? 'hidePassword' : 'showPassword'], {
+                    ns: 'login',
+                  })}
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <span className="i-ri-eye-off-line size-4" aria-hidden="true" />
+                  ) : (
+                    <span className="i-ri-eye-line size-4" aria-hidden="true" />
+                  )}
+                </IconButton>
+              </InputGroupAddon>
+            </InputGroup>
+          </Field>
+          <Field name="confirm-password" className="mt-8">
+            <FieldLabel className="py-0 system-sm-semibold text-text-secondary">
+              {t(($) => $['account.confirmPassword'], { ns: 'common' })}
+            </FieldLabel>
+            <InputGroup className="mt-2">
+              <InputGroupInput
+                type={showConfirmPassword ? 'text' : 'password'}
+                value={confirmPassword}
+                onValueChange={setConfirmPassword}
+                autoComplete="new-password"
+                spellCheck={false}
+              />
+              <InputGroupAddon align="inline-end">
+                <IconButton
+                  size="md"
+                  aria-label={t(($) => $[showConfirmPassword ? 'hidePassword' : 'showPassword'], {
+                    ns: 'login',
+                  })}
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? (
+                    <span className="i-ri-eye-off-line size-4" aria-hidden="true" />
+                  ) : (
+                    <span className="i-ri-eye-line size-4" aria-hidden="true" />
+                  )}
+                </IconButton>
+              </InputGroupAddon>
+            </InputGroup>
+          </Field>
           <div className="mt-10 flex justify-end">
             <Button
               className="mr-2"
