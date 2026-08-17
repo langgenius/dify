@@ -191,14 +191,14 @@ class TestAccountGetByOpenId(_DBTrackingTestBase):
         db_session_with_containers.flush()
         self._tracked.append(integrate)
 
-        result = Account.get_by_openid(provider, open_id)
+        result = Account.get_by_openid(provider, open_id, session=db_session_with_containers)
 
         assert result is not None
         assert result.id == account.id
 
-    def test_get_by_openid_returns_none_when_no_integrate_exists(self) -> None:
+    def test_get_by_openid_returns_none_when_no_integrate_exists(self, db_session_with_containers: Session) -> None:
         """get_by_openid returns None when no AccountIntegrate row matches."""
-        result = Account.get_by_openid("github", f"github_{uuid4()}")
+        result = Account.get_by_openid("github", f"github_{uuid4()}", session=db_session_with_containers)
 
         assert result is None
 

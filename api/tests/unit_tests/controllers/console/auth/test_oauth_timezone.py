@@ -56,7 +56,7 @@ def test_generate_account_registers_with_browser_timezone(
     user_info = OAuthUserInfo(id="github-123", name="Test User", email="User@Example.com")
 
     with app.test_request_context(headers={"Accept-Language": "zh-Hans,zh;q=0.9"}):
-        result, oauth_new_user = _generate_account("github", user_info, timezone="Asia/Shanghai")
+        result, oauth_new_user = _generate_account("github", user_info, timezone="Asia/Shanghai", session=MagicMock())
 
     assert result is account
     assert oauth_new_user is True
@@ -90,7 +90,7 @@ def test_generate_account_prefers_state_language_over_accept_language(
     user_info = OAuthUserInfo(id="github-123", name="Test User", email="User@Example.com")
 
     with app.test_request_context(headers={"Accept-Language": "en-US,en;q=0.9"}):
-        _generate_account("github", user_info, language="zh-Hans")
+        _generate_account("github", user_info, language="zh-Hans", session=MagicMock())
 
     mock_register_service.register.assert_called_once_with(
         email="user@example.com",
@@ -122,6 +122,6 @@ def test_generate_account_rejects_new_user_when_registration_disabled(
 
     with app.test_request_context(headers={"Accept-Language": "en-US,en;q=0.9"}):
         with pytest.raises(AccountRegisterError):
-            _generate_account("github", user_info)
+            _generate_account("github", user_info, session=MagicMock())
 
     mock_register_service.register.assert_not_called()
