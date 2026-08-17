@@ -281,9 +281,11 @@ def test_remote_file_upload_raises_when_fallback_get_still_not_ok(app: Flask, mo
     )
     monkeypatch.setattr(remote_files_module.remote_fetcher, "make_request", make_request)
 
-    with app.test_request_context(method="POST", json={"url": url}):
-        with pytest.raises(RemoteFileUploadError, match=f"Failed to fetch file from {url}: bad gateway"):
-            handler(api, _make_account())
+    with (
+        app.test_request_context(method="POST", json={"url": url}),
+        pytest.raises(RemoteFileUploadError, match=f"Failed to fetch file from {url}: bad gateway"),
+    ):
+        handler(api, _make_account())
 
 
 def test_remote_file_upload_raises_on_httpx_request_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -295,9 +297,11 @@ def test_remote_file_upload_raises_on_httpx_request_error(app: Flask, monkeypatc
     make_request = MagicMock(side_effect=httpx.RequestError("network down", request=request))
     monkeypatch.setattr(remote_files_module.remote_fetcher, "make_request", make_request)
 
-    with app.test_request_context(method="POST", json={"url": url}):
-        with pytest.raises(RemoteFileUploadError, match=f"Failed to fetch file from {url}: network down"):
-            handler(api, _make_account())
+    with (
+        app.test_request_context(method="POST", json={"url": url}),
+        pytest.raises(RemoteFileUploadError, match=f"Failed to fetch file from {url}: network down"),
+    ):
+        handler(api, _make_account())
 
 
 def test_remote_file_upload_rejects_oversized_file(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -310,9 +314,8 @@ def test_remote_file_upload_rejects_oversized_file(app: Flask, monkeypatch: pyte
 
     _, current_user = _mock_upload_dependencies(monkeypatch, file_size_within_limit=False)
 
-    with app.test_request_context(method="POST", json={"url": url}):
-        with pytest.raises(FileTooLargeError):
-            handler(api, current_user)
+    with app.test_request_context(method="POST", json={"url": url}), pytest.raises(FileTooLargeError):
+        handler(api, current_user)
 
 
 def test_remote_file_upload_translates_service_file_too_large_error(
@@ -327,9 +330,11 @@ def test_remote_file_upload_translates_service_file_too_large_error(
     file_service_cls, current_user = _mock_upload_dependencies(monkeypatch)
     file_service_cls.return_value.upload_file.side_effect = ServiceFileTooLargeError("size exceeded")
 
-    with app.test_request_context(method="POST", json={"url": url}):
-        with pytest.raises(FileTooLargeError, match="size exceeded"):
-            handler(api, current_user)
+    with (
+        app.test_request_context(method="POST", json={"url": url}),
+        pytest.raises(FileTooLargeError, match="size exceeded"),
+    ):
+        handler(api, current_user)
 
 
 def test_remote_file_upload_translates_service_unsupported_type_error(
@@ -344,6 +349,5 @@ def test_remote_file_upload_translates_service_unsupported_type_error(
     file_service_cls, current_user = _mock_upload_dependencies(monkeypatch)
     file_service_cls.return_value.upload_file.side_effect = ServiceUnsupportedFileTypeError()
 
-    with app.test_request_context(method="POST", json={"url": url}):
-        with pytest.raises(UnsupportedFileTypeError):
-            handler(api, current_user)
+    with app.test_request_context(method="POST", json={"url": url}), pytest.raises(UnsupportedFileTypeError):
+        handler(api, current_user)

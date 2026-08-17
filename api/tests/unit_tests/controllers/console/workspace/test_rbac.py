@@ -655,9 +655,9 @@ class TestWorkspaceRbacGuards:
             ),
             patch("controllers.common.wraps.RBACService.CheckAccess.check", return_value=False),
             patch("controllers.console.workspace.rbac.svc.RBACService.Roles.create") as mock_create,
+            pytest.raises(Forbidden),
         ):
-            with pytest.raises(Forbidden):
-                rbac_mod.RBACRolesApi().post()
+            rbac_mod.RBACRolesApi().post()
 
         mock_create.assert_not_called()
 
@@ -674,9 +674,9 @@ class TestWorkspaceRbacGuards:
             ),
             patch("controllers.common.wraps.RBACService.CheckAccess.check", return_value=False),
             patch("controllers.console.workspace.rbac.svc.RBACService.AccessPolicies.create") as mock_create,
+            pytest.raises(Forbidden),
         ):
-            with pytest.raises(Forbidden):
-                rbac_mod.RBACAccessPoliciesApi().post()
+            rbac_mod.RBACAccessPoliciesApi().post()
 
         mock_create.assert_not_called()
 

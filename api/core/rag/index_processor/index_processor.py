@@ -236,17 +236,16 @@ class IndexProcessor:
             def generate_summary_for_chunk(preview_item: PreviewItem) -> None:
                 """Generate summary for a single chunk."""
                 if flask_app:
-                    with flask_app.app_context():
-                        with session_factory.create_session() as worker_session:
-                            summary, _ = ParagraphIndexProcessor.generate_summary(
-                                tenant_id=tenant_id,
-                                text=preview_item.content if preview_item.content is not None else "",
-                                summary_index_setting=summary_index_setting,
-                                document_language=doc_language,
-                                session=worker_session,
-                            )
-                            if summary:
-                                preview_item.summary = summary
+                    with flask_app.app_context(), session_factory.create_session() as worker_session:
+                        summary, _ = ParagraphIndexProcessor.generate_summary(
+                            tenant_id=tenant_id,
+                            text=preview_item.content if preview_item.content is not None else "",
+                            summary_index_setting=summary_index_setting,
+                            document_language=doc_language,
+                            session=worker_session,
+                        )
+                        if summary:
+                            preview_item.summary = summary
 
             # Generate summaries concurrently using ThreadPoolExecutor
             # Set a reasonable timeout to prevent hanging (60 seconds per chunk, max 5 minutes total)

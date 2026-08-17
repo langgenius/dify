@@ -202,56 +202,60 @@ class TestOAuthDiscovery:
 
     def test_discover_oauth_metadata_with_resource_discovery(self):
         """Test OAuth metadata discovery with resource discovery support."""
-        with patch("core.mcp.auth.auth_flow.discover_protected_resource_metadata") as mock_prm:
-            with patch("core.mcp.auth.auth_flow.discover_oauth_authorization_server_metadata") as mock_asm:
-                # Mock protected resource metadata with auth server URL
-                mock_prm.return_value = ProtectedResourceMetadata(
-                    resource="https://api.example.com",
-                    authorization_servers=["https://auth.example.com"],
-                )
+        with (
+            patch("core.mcp.auth.auth_flow.discover_protected_resource_metadata") as mock_prm,
+            patch("core.mcp.auth.auth_flow.discover_oauth_authorization_server_metadata") as mock_asm,
+        ):
+            # Mock protected resource metadata with auth server URL
+            mock_prm.return_value = ProtectedResourceMetadata(
+                resource="https://api.example.com",
+                authorization_servers=["https://auth.example.com"],
+            )
 
-                # Mock OAuth authorization server metadata
-                mock_asm.return_value = OAuthMetadata(
-                    authorization_endpoint="https://auth.example.com/authorize",
-                    token_endpoint="https://auth.example.com/token",
-                    response_types_supported=["code"],
-                )
+            # Mock OAuth authorization server metadata
+            mock_asm.return_value = OAuthMetadata(
+                authorization_endpoint="https://auth.example.com/authorize",
+                token_endpoint="https://auth.example.com/token",
+                response_types_supported=["code"],
+            )
 
-                oauth_metadata, prm, scope = discover_oauth_metadata("https://api.example.com")
+            oauth_metadata, prm, scope = discover_oauth_metadata("https://api.example.com")
 
-                assert oauth_metadata is not None
-                assert oauth_metadata.authorization_endpoint == "https://auth.example.com/authorize"
-                assert oauth_metadata.token_endpoint == "https://auth.example.com/token"
-                assert prm is not None
-                assert prm.authorization_servers == ["https://auth.example.com"]
+            assert oauth_metadata is not None
+            assert oauth_metadata.authorization_endpoint == "https://auth.example.com/authorize"
+            assert oauth_metadata.token_endpoint == "https://auth.example.com/token"
+            assert prm is not None
+            assert prm.authorization_servers == ["https://auth.example.com"]
 
-                # Verify the discovery functions were called
-                mock_prm.assert_called_once()
-                mock_asm.assert_called_once()
+            # Verify the discovery functions were called
+            mock_prm.assert_called_once()
+            mock_asm.assert_called_once()
 
     def test_discover_oauth_metadata_without_resource_discovery(self):
         """Test OAuth metadata discovery without resource discovery."""
-        with patch("core.mcp.auth.auth_flow.discover_protected_resource_metadata") as mock_prm:
-            with patch("core.mcp.auth.auth_flow.discover_oauth_authorization_server_metadata") as mock_asm:
-                # Mock no protected resource metadata
-                mock_prm.return_value = None
+        with (
+            patch("core.mcp.auth.auth_flow.discover_protected_resource_metadata") as mock_prm,
+            patch("core.mcp.auth.auth_flow.discover_oauth_authorization_server_metadata") as mock_asm,
+        ):
+            # Mock no protected resource metadata
+            mock_prm.return_value = None
 
-                # Mock OAuth authorization server metadata
-                mock_asm.return_value = OAuthMetadata(
-                    authorization_endpoint="https://api.example.com/oauth/authorize",
-                    token_endpoint="https://api.example.com/oauth/token",
-                    response_types_supported=["code"],
-                )
+            # Mock OAuth authorization server metadata
+            mock_asm.return_value = OAuthMetadata(
+                authorization_endpoint="https://api.example.com/oauth/authorize",
+                token_endpoint="https://api.example.com/oauth/token",
+                response_types_supported=["code"],
+            )
 
-                oauth_metadata, prm, scope = discover_oauth_metadata("https://api.example.com")
+            oauth_metadata, prm, scope = discover_oauth_metadata("https://api.example.com")
 
-                assert oauth_metadata is not None
-                assert oauth_metadata.authorization_endpoint == "https://api.example.com/oauth/authorize"
-                assert prm is None
+            assert oauth_metadata is not None
+            assert oauth_metadata.authorization_endpoint == "https://api.example.com/oauth/authorize"
+            assert prm is None
 
-                # Verify the discovery functions were called
-                mock_prm.assert_called_once()
-                mock_asm.assert_called_once()
+            # Verify the discovery functions were called
+            mock_prm.assert_called_once()
+            mock_asm.assert_called_once()
 
     @patch("core.helper.ssrf_proxy.get")
     def test_discover_oauth_metadata_not_found(self, mock_get):
@@ -1033,17 +1037,19 @@ class TestAuthOrchestration:
         assert supported is False
 
     def test_discover_oauth_metadata(self):
-        with patch("core.mcp.auth.auth_flow.discover_protected_resource_metadata") as mock_prm:
-            with patch("core.mcp.auth.auth_flow.discover_oauth_authorization_server_metadata") as mock_asm:
-                mock_prm.return_value = ProtectedResourceMetadata(
-                    resource="https://api", authorization_servers=["https://auth"]
-                )
-                mock_asm.return_value = Mock(spec=OAuthMetadata)
+        with (
+            patch("core.mcp.auth.auth_flow.discover_protected_resource_metadata") as mock_prm,
+            patch("core.mcp.auth.auth_flow.discover_oauth_authorization_server_metadata") as mock_asm,
+        ):
+            mock_prm.return_value = ProtectedResourceMetadata(
+                resource="https://api", authorization_servers=["https://auth"]
+            )
+            mock_asm.return_value = Mock(spec=OAuthMetadata)
 
-                asm, prm, hint = discover_oauth_metadata("https://api")
-                assert asm == mock_asm.return_value
-                assert prm == mock_prm.return_value
-                mock_asm.assert_called_with("https://auth", "https://api", None)
+            asm, prm, hint = discover_oauth_metadata("https://api")
+            assert asm == mock_asm.return_value
+            assert prm == mock_prm.return_value
+            mock_asm.assert_called_with("https://auth", "https://api", None)
 
     def test_start_authorization(self):
         metadata = OAuthMetadata(

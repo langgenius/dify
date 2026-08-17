@@ -66,9 +66,8 @@ def test_acquire_propagates_distributed_lock_failure(error: Exception) -> None:
     redis.lock.return_value = lock_context
     lock = RedisSetupLock(client=redis)
 
-    with pytest.raises(type(error), match=str(error)) as raised:
-        with lock.acquire():
-            pytest.fail("lock body must not run")
+    with pytest.raises(type(error), match=str(error)) as raised, lock.acquire():
+        pytest.fail("lock body must not run")
 
     assert raised.value is error
     lock_context.__exit__.assert_not_called()

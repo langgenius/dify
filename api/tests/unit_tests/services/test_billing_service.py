@@ -344,44 +344,52 @@ class TestBillingServicePortalRequest:
         send_request.assert_called_once_with("GET", "/test", params=params)
 
     def test_invalid_response_shape_is_invalid_upstream_response(self) -> None:
-        with patch.object(BillingService, "_send_request", return_value={}):
-            with pytest.raises(BillingUpstreamInvalidResponseError):
-                BillingService._send_billing_portal_request("/test", params={})
+        with (
+            patch.object(BillingService, "_send_request", return_value={}),
+            pytest.raises(BillingUpstreamInvalidResponseError),
+        ):
+            BillingService._send_billing_portal_request("/test", params={})
 
     @pytest.mark.parametrize(
         "status_code",
         [httpx.codes.BAD_REQUEST, httpx.codes.UNAUTHORIZED, httpx.codes.NOT_FOUND],
     )
     def test_terminal_http_response_is_invalid_upstream_response(self, status_code: int) -> None:
-        with patch.object(
-            BillingService,
-            "_send_request",
-            side_effect=_BillingHTTPStatusError("request failed", status_code),
+        with (
+            patch.object(
+                BillingService,
+                "_send_request",
+                side_effect=_BillingHTTPStatusError("request failed", status_code),
+            ),
+            pytest.raises(BillingUpstreamInvalidResponseError),
         ):
-            with pytest.raises(BillingUpstreamInvalidResponseError):
-                BillingService._send_billing_portal_request("/test", params={})
+            BillingService._send_billing_portal_request("/test", params={})
 
     @pytest.mark.parametrize(
         "status_code",
         [httpx.codes.REQUEST_TIMEOUT, httpx.codes.TOO_MANY_REQUESTS, httpx.codes.INTERNAL_SERVER_ERROR],
     )
     def test_retryable_http_response_is_unavailable(self, status_code: int) -> None:
-        with patch.object(
-            BillingService,
-            "_send_request",
-            side_effect=_BillingHTTPStatusError("request failed", status_code),
+        with (
+            patch.object(
+                BillingService,
+                "_send_request",
+                side_effect=_BillingHTTPStatusError("request failed", status_code),
+            ),
+            pytest.raises(BillingUpstreamUnavailableError),
         ):
-            with pytest.raises(BillingUpstreamUnavailableError):
-                BillingService._send_billing_portal_request("/test", params={})
+            BillingService._send_billing_portal_request("/test", params={})
 
     def test_transport_failure_is_unavailable(self) -> None:
-        with patch.object(
-            BillingService,
-            "_send_request",
-            side_effect=httpx.RequestError("network error"),
+        with (
+            patch.object(
+                BillingService,
+                "_send_request",
+                side_effect=httpx.RequestError("network error"),
+            ),
+            pytest.raises(BillingUpstreamUnavailableError),
         ):
-            with pytest.raises(BillingUpstreamUnavailableError):
-                BillingService._send_billing_portal_request("/test", params={})
+            BillingService._send_billing_portal_request("/test", params={})
 
     @pytest.mark.parametrize(
         "decode_error",
@@ -391,20 +399,26 @@ class TestBillingServicePortalRequest:
         ],
     )
     def test_invalid_payload_is_invalid_upstream_response(self, decode_error: Exception) -> None:
-        with patch.object(BillingService, "_send_request", side_effect=decode_error):
-            with pytest.raises(BillingUpstreamInvalidResponseError):
-                BillingService._send_billing_portal_request("/test", params={})
+        with (
+            patch.object(BillingService, "_send_request", side_effect=decode_error),
+            pytest.raises(BillingUpstreamInvalidResponseError),
+        ):
+            BillingService._send_billing_portal_request("/test", params={})
 
     def test_unknown_error_is_not_reclassified(self) -> None:
-        with patch.object(BillingService, "_send_request", side_effect=RuntimeError("programming error")):
-            with pytest.raises(RuntimeError, match="programming error"):
-                BillingService._send_billing_portal_request("/test", params={})
+        with (
+            patch.object(BillingService, "_send_request", side_effect=RuntimeError("programming error")),
+            pytest.raises(RuntimeError, match="programming error"),
+        ):
+            BillingService._send_billing_portal_request("/test", params={})
 
     def test_unknown_value_error_is_not_exposed_as_invalid_request(self) -> None:
         original_error = ValueError("programming error")
-        with patch.object(BillingService, "_send_request", side_effect=original_error):
-            with pytest.raises(RuntimeError, match="Unexpected billing service value error") as exc_info:
-                BillingService._send_billing_portal_request("/test", params={})
+        with (
+            patch.object(BillingService, "_send_request", side_effect=original_error),
+            pytest.raises(RuntimeError, match="Unexpected billing service value error") as exc_info,
+        ):
+            BillingService._send_billing_portal_request("/test", params={})
 
         assert exc_info.value.__cause__ is original_error
 

@@ -217,9 +217,8 @@ class TestDeleteDraftVariableOffloadData:
 
         mock_storage.delete.side_effect = [Exception("Storage error"), None]
 
-        with caplog.at_level(logging.ERROR):
-            with session_factory.create_session() as session, session.begin():
-                result = _delete_draft_variable_offload_data(session, file_ids)
+        with caplog.at_level(logging.ERROR), session_factory.create_session() as session, session.begin():
+            result = _delete_draft_variable_offload_data(session, file_ids)
 
         assert result == 1
         assert f"Failed to delete storage object {storage_keys[0]}" in caplog.text

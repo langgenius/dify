@@ -256,9 +256,9 @@ class TestDatasetDocumentSegmentListApi(SQLiteControllerTest):
         with (
             app.test_request_context("/"),
             patch("controllers.console.datasets.datasets_segments.DatasetService.get_dataset", return_value=None),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                method(api, self.session, "tenant-1", user, "ds-1", "doc-1")
+            method(api, self.session, "tenant-1", user, "ds-1", "doc-1")
 
     def test_get_permission_denied(self, app: Flask):
         api = DatasetDocumentSegmentListApi()
@@ -272,9 +272,9 @@ class TestDatasetDocumentSegmentListApi(SQLiteControllerTest):
                 "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
                 side_effect=services.errors.account.NoPermissionError("no access"),
             ),
+            pytest.raises(Forbidden),
         ):
-            with pytest.raises(Forbidden):
-                method(api, self.session, "tenant-1", user, "ds-1", "doc-1")
+            method(api, self.session, "tenant-1", user, "ds-1", "doc-1")
 
 
 class TestDatasetDocumentSegmentApi(SQLiteControllerTest):
@@ -321,9 +321,9 @@ class TestDatasetDocumentSegmentApi(SQLiteControllerTest):
                 return_value=None,
             ),
             patch("controllers.console.datasets.datasets_segments.redis_client.get", return_value=b"running"),
+            pytest.raises(InvalidActionError),
         ):
-            with pytest.raises(InvalidActionError):
-                method(api, self.session, "tenant-1", user, "ds-1", "doc-1", "disable")
+            method(api, self.session, "tenant-1", user, "ds-1", "doc-1", "disable")
 
     def test_patch_llm_bad_request(self, app: Flask):
         api = DatasetDocumentSegmentApi()
@@ -349,9 +349,9 @@ class TestDatasetDocumentSegmentApi(SQLiteControllerTest):
                 "controllers.console.datasets.datasets_segments.ModelManager.get_model_instance",
                 side_effect=LLMBadRequestError(),
             ),
+            pytest.raises(ProviderNotInitializeError),
         ):
-            with pytest.raises(ProviderNotInitializeError):
-                method(api, self.session, "tenant-1", user, "ds-1", "doc-1", "enable")
+            method(api, self.session, "tenant-1", user, "ds-1", "doc-1", "enable")
 
     def test_patch_provider_token_not_init(self, app: Flask):
         api = DatasetDocumentSegmentApi()
@@ -377,9 +377,9 @@ class TestDatasetDocumentSegmentApi(SQLiteControllerTest):
                 "controllers.console.datasets.datasets_segments.ModelManager.get_model_instance",
                 side_effect=ProviderTokenNotInitError("token missing"),
             ),
+            pytest.raises(ProviderNotInitializeError),
         ):
-            with pytest.raises(ProviderNotInitializeError):
-                method(api, self.session, "tenant-1", user, "ds-1", "doc-1", "enable")
+            method(api, self.session, "tenant-1", user, "ds-1", "doc-1", "enable")
 
 
 class TestDatasetDocumentSegmentAddApi(SQLiteControllerTest):
@@ -434,11 +434,9 @@ class TestDatasetDocumentSegmentAddApi(SQLiteControllerTest):
                 "controllers.console.datasets.datasets_segments.ModelManager.get_model_instance",
                 side_effect=LLMBadRequestError(),
             ),
+            pytest.raises(ProviderNotInitializeError),
         ):
-            with pytest.raises(ProviderNotInitializeError):
-                method(
-                    api, SegmentCreatePayload(content="test content"), self.session, "tenant-1", user, "ds-1", "doc-1"
-                )
+            method(api, SegmentCreatePayload(content="test content"), self.session, "tenant-1", user, "ds-1", "doc-1")
 
     def test_post_provider_token_not_init(self, app: Flask):
         api = DatasetDocumentSegmentAddApi()
@@ -458,11 +456,9 @@ class TestDatasetDocumentSegmentAddApi(SQLiteControllerTest):
                 "controllers.console.datasets.datasets_segments.ModelManager.get_model_instance",
                 side_effect=ProviderTokenNotInitError("token missing"),
             ),
+            pytest.raises(ProviderNotInitializeError),
         ):
-            with pytest.raises(ProviderNotInitializeError):
-                method(
-                    api, SegmentCreatePayload(content="test content"), self.session, "tenant-1", user, "ds-1", "doc-1"
-                )
+            method(api, SegmentCreatePayload(content="test content"), self.session, "tenant-1", user, "ds-1", "doc-1")
 
 
 class TestDatasetDocumentSegmentUpdateApi(SQLiteControllerTest):
@@ -529,18 +525,18 @@ class TestDatasetDocumentSegmentUpdateApi(SQLiteControllerTest):
                 "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
                 return_value=None,
             ),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                method(
-                    api,
-                    SegmentUpdatePayload(content="test content"),
-                    self.session,
-                    "tenant-1",
-                    user,
-                    "ds-1",
-                    "doc-1",
-                    "seg-1",
-                )
+            method(
+                api,
+                SegmentUpdatePayload(content="test content"),
+                self.session,
+                "tenant-1",
+                user,
+                "ds-1",
+                "doc-1",
+                "seg-1",
+            )
 
     def test_patch_segment_not_found(self, app: Flask):
         api = DatasetDocumentSegmentUpdateApi()
@@ -565,18 +561,18 @@ class TestDatasetDocumentSegmentUpdateApi(SQLiteControllerTest):
             patch(
                 "controllers.console.datasets.datasets_segments.SegmentService.get_segment_by_ref", return_value=None
             ),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                method(
-                    api,
-                    SegmentUpdatePayload(content="test content"),
-                    self.session,
-                    "tenant-1",
-                    user,
-                    "ds-1",
-                    "doc-1",
-                    "seg-1",
-                )
+            method(
+                api,
+                SegmentUpdatePayload(content="test content"),
+                self.session,
+                "tenant-1",
+                user,
+                "ds-1",
+                "doc-1",
+                "seg-1",
+            )
 
     def test_patch_llm_bad_request(self, app: Flask):
         api = DatasetDocumentSegmentUpdateApi()
@@ -604,18 +600,18 @@ class TestDatasetDocumentSegmentUpdateApi(SQLiteControllerTest):
                 "controllers.console.datasets.datasets_segments.ModelManager.get_model_instance",
                 side_effect=LLMBadRequestError(),
             ),
+            pytest.raises(ProviderNotInitializeError),
         ):
-            with pytest.raises(ProviderNotInitializeError):
-                method(
-                    api,
-                    SegmentUpdatePayload(content="test content"),
-                    self.session,
-                    "tenant-1",
-                    user,
-                    "ds-1",
-                    "doc-1",
-                    "seg-1",
-                )
+            method(
+                api,
+                SegmentUpdatePayload(content="test content"),
+                self.session,
+                "tenant-1",
+                user,
+                "ds-1",
+                "doc-1",
+                "seg-1",
+            )
 
 
 class TestDatasetDocumentSegmentBatchImportApi(SQLiteControllerTest):
@@ -675,17 +671,17 @@ class TestDatasetDocumentSegmentBatchImportApi(SQLiteControllerTest):
                 "controllers.console.datasets.datasets_segments.DatasetService.get_dataset_for_tenant",
                 return_value=None,
             ),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                method(
-                    api,
-                    BatchImportPayload(upload_file_id="test-file-id"),
-                    self.session,
-                    "tenant-1",
-                    user,
-                    "ds-1",
-                    "doc-1",
-                )
+            method(
+                api,
+                BatchImportPayload(upload_file_id="test-file-id"),
+                self.session,
+                "tenant-1",
+                user,
+                "ds-1",
+                "doc-1",
+            )
 
     def test_post_document_not_found(self, app: Flask):
         api = DatasetDocumentSegmentBatchImportApi()
@@ -703,17 +699,17 @@ class TestDatasetDocumentSegmentBatchImportApi(SQLiteControllerTest):
                 "controllers.console.datasets.datasets_segments.DatasetRefService.get_document_by_ref",
                 return_value=None,
             ),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                method(
-                    api,
-                    BatchImportPayload(upload_file_id="test-file-id"),
-                    self.session,
-                    "tenant-1",
-                    user,
-                    "ds-1",
-                    "doc-1",
-                )
+            method(
+                api,
+                BatchImportPayload(upload_file_id="test-file-id"),
+                self.session,
+                "tenant-1",
+                user,
+                "ds-1",
+                "doc-1",
+            )
 
     def test_post_upload_file_not_found(self, app: Flask):
         api = DatasetDocumentSegmentBatchImportApi()
@@ -731,17 +727,17 @@ class TestDatasetDocumentSegmentBatchImportApi(SQLiteControllerTest):
                 "controllers.console.datasets.datasets_segments.DatasetRefService.get_document_by_ref",
                 return_value=_document(),
             ),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                method(
-                    api,
-                    BatchImportPayload(upload_file_id="test-file-id"),
-                    self.session,
-                    "tenant-1",
-                    user,
-                    "ds-1",
-                    "doc-1",
-                )
+            method(
+                api,
+                BatchImportPayload(upload_file_id="test-file-id"),
+                self.session,
+                "tenant-1",
+                user,
+                "ds-1",
+                "doc-1",
+            )
 
     def test_post_invalid_file_type(self, app: Flask):
         api = DatasetDocumentSegmentBatchImportApi()
@@ -762,17 +758,17 @@ class TestDatasetDocumentSegmentBatchImportApi(SQLiteControllerTest):
                 "controllers.console.datasets.datasets_segments.DatasetRefService.get_document_by_ref",
                 return_value=_document(),
             ),
+            pytest.raises(ValueError),
         ):
-            with pytest.raises(ValueError):
-                method(
-                    api,
-                    BatchImportPayload(upload_file_id="test-file-id"),
-                    self.session,
-                    "tenant-1",
-                    user,
-                    "ds-1",
-                    "doc-1",
-                )
+            method(
+                api,
+                BatchImportPayload(upload_file_id="test-file-id"),
+                self.session,
+                "tenant-1",
+                user,
+                "ds-1",
+                "doc-1",
+            )
 
     def test_post_async_task_failure(self, app: Flask):
         api = DatasetDocumentSegmentBatchImportApi()
@@ -815,9 +811,9 @@ class TestDatasetDocumentSegmentBatchImportApi(SQLiteControllerTest):
         with (
             app.test_request_context("/"),
             patch("controllers.console.datasets.datasets_segments.redis_client.get", return_value=None),
+            pytest.raises(ValueError),
         ):
-            with pytest.raises(ValueError):
-                method(api, job_id="job-1")
+            method(api, job_id="job-1")
 
 
 class TestChildChunkAddApi(SQLiteControllerTest):
@@ -921,18 +917,18 @@ class TestChildChunkAddApi(SQLiteControllerTest):
                 "controllers.console.datasets.datasets_segments.SegmentService.create_child_chunk",
                 side_effect=ChildChunkIndexingServiceError("fail"),
             ),
+            pytest.raises(ChildChunkIndexingError),
         ):
-            with pytest.raises(ChildChunkIndexingError):
-                method(
-                    api,
-                    ChildChunkCreatePayload(content="child"),
-                    self.session,
-                    "tenant-1",
-                    user,
-                    "ds-1",
-                    "doc-1",
-                    "seg-1",
-                )
+            method(
+                api,
+                ChildChunkCreatePayload(content="child"),
+                self.session,
+                "tenant-1",
+                user,
+                "ds-1",
+                "doc-1",
+                "seg-1",
+            )
 
     def test_post_permission_denied(self, app: Flask):
         api = ChildChunkAddApi()
@@ -950,18 +946,18 @@ class TestChildChunkAddApi(SQLiteControllerTest):
                 "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
                 side_effect=services.errors.account.NoPermissionError("no access"),
             ),
+            pytest.raises(Forbidden),
         ):
-            with pytest.raises(Forbidden):
-                method(
-                    api,
-                    ChildChunkCreatePayload(content="child"),
-                    self.session,
-                    "tenant-1",
-                    user,
-                    "ds-1",
-                    "doc-1",
-                    "seg-1",
-                )
+            method(
+                api,
+                ChildChunkCreatePayload(content="child"),
+                self.session,
+                "tenant-1",
+                user,
+                "ds-1",
+                "doc-1",
+                "seg-1",
+            )
 
 
 class TestChildChunkUpdateApi(SQLiteControllerTest):
@@ -1023,9 +1019,9 @@ class TestChildChunkUpdateApi(SQLiteControllerTest):
                 "controllers.console.datasets.datasets_segments.SegmentService.delete_child_chunk",
                 side_effect=ChildChunkDeleteIndexServiceError("fail"),
             ),
+            pytest.raises(ChildChunkDeleteIndexError),
         ):
-            with pytest.raises(ChildChunkDeleteIndexError):
-                method(api, self.session, "tenant-1", user, "ds-1", "doc-1", "seg-1", "cc-1")
+            method(api, self.session, "tenant-1", user, "ds-1", "doc-1", "seg-1", "cc-1")
 
     def test_delete_child_chunk_not_found(self, app: Flask):
         api = ChildChunkUpdateApi()
@@ -1049,9 +1045,9 @@ class TestChildChunkUpdateApi(SQLiteControllerTest):
                 "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
                 return_value=None,
             ),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                method(api, self.session, "tenant-1", user, "ds-1", "doc-1", "seg-1", "cc-1")
+            method(api, self.session, "tenant-1", user, "ds-1", "doc-1", "seg-1", "cc-1")
 
     def test_patch_child_chunk_not_found(self, app: Flask):
         api = ChildChunkUpdateApi()
@@ -1077,19 +1073,19 @@ class TestChildChunkUpdateApi(SQLiteControllerTest):
                 "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
                 return_value=None,
             ),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                method(
-                    api,
-                    ChildChunkUpdatePayload(content="updated child"),
-                    self.session,
-                    "tenant-1",
-                    user,
-                    "ds-1",
-                    "doc-1",
-                    "seg-1",
-                    "cc-1",
-                )
+            method(
+                api,
+                ChildChunkUpdatePayload(content="updated child"),
+                self.session,
+                "tenant-1",
+                user,
+                "ds-1",
+                "doc-1",
+                "seg-1",
+                "cc-1",
+            )
 
 
 class TestSegmentListAdvancedCases(SQLiteControllerTest):
@@ -1171,9 +1167,9 @@ class TestSegmentListAdvancedCases(SQLiteControllerTest):
                 "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
                 side_effect=services.errors.account.NoPermissionError("No permission"),
             ),
+            pytest.raises(Forbidden),
         ):
-            with pytest.raises(Forbidden):
-                method(api, self.session, "tenant-1", user, "ds-1", "doc-1")
+            method(api, self.session, "tenant-1", user, "ds-1", "doc-1")
 
     def test_segment_list_dataset_not_found(self, app: Flask):
         """Test segment list with dataset not found"""
@@ -1183,9 +1179,9 @@ class TestSegmentListAdvancedCases(SQLiteControllerTest):
         with (
             app.test_request_context("/"),
             patch("controllers.console.datasets.datasets_segments.DatasetService.get_dataset", return_value=None),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                method(api, self.session, "tenant-1", user, "ds-1", "doc-1")
+            method(api, self.session, "tenant-1", user, "ds-1", "doc-1")
 
 
 class TestSegmentOperationCases(SQLiteControllerTest):
@@ -1210,17 +1206,17 @@ class TestSegmentOperationCases(SQLiteControllerTest):
                 "controllers.console.datasets.datasets_segments.SegmentService.create_segment",
                 side_effect=ProviderTokenNotInitError("Token not init"),
             ),
+            pytest.raises(ProviderTokenNotInitError),
         ):
-            with pytest.raises(ProviderTokenNotInitError):
-                method(
-                    api,
-                    SegmentCreatePayload(content="test content"),
-                    self.session,
-                    "tenant-1",
-                    user,
-                    "ds-1",
-                    "doc-1",
-                )
+            method(
+                api,
+                SegmentCreatePayload(content="test content"),
+                self.session,
+                "tenant-1",
+                user,
+                "ds-1",
+                "doc-1",
+            )
 
     def test_batch_import_with_document_not_found(self, app: Flask):
         """Test batch import with document not found"""
@@ -1240,17 +1236,17 @@ class TestSegmentOperationCases(SQLiteControllerTest):
                 "controllers.console.datasets.datasets_segments.DatasetRefService.get_document_by_ref",
                 return_value=None,
             ),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                method(
-                    api,
-                    BatchImportPayload(upload_file_id="test-file-id"),
-                    self.session,
-                    "tenant-1",
-                    user,
-                    "ds-1",
-                    "doc-1",
-                )
+            method(
+                api,
+                BatchImportPayload(upload_file_id="test-file-id"),
+                self.session,
+                "tenant-1",
+                user,
+                "ds-1",
+                "doc-1",
+            )
 
     def test_batch_import_with_invalid_file(self, app: Flask):
         """Test batch import with invalid file type"""
@@ -1271,17 +1267,17 @@ class TestSegmentOperationCases(SQLiteControllerTest):
                 "controllers.console.datasets.datasets_segments.DatasetRefService.get_document_by_ref",
                 return_value=document,
             ),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                method(
-                    api,
-                    BatchImportPayload(upload_file_id="test-file-id"),
-                    self.session,
-                    "tenant-1",
-                    user,
-                    "ds-1",
-                    "doc-1",
-                )
+            method(
+                api,
+                BatchImportPayload(upload_file_id="test-file-id"),
+                self.session,
+                "tenant-1",
+                user,
+                "ds-1",
+                "doc-1",
+            )
 
     def test_batch_import_with_async_task_failure(self, app: Flask):
         api = DatasetDocumentSegmentBatchImportApi()
@@ -1327,6 +1323,6 @@ class TestSegmentOperationCases(SQLiteControllerTest):
         with (
             app.test_request_context("/?job_id=invalid-job"),
             patch("controllers.console.datasets.datasets_segments.redis_client.get", return_value=None),
+            pytest.raises(ValueError),
         ):
-            with pytest.raises(ValueError):
-                method(api, "invalid-job")
+            method(api, "invalid-job")

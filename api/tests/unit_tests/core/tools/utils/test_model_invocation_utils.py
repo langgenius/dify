@@ -83,9 +83,11 @@ def test_get_max_llm_context_tokens_branches(model_instance, expected, error_mat
 def test_calculate_tokens_handles_missing_model():
     manager = Mock()
     manager.get_default_model_instance.return_value = None
-    with patch("core.tools.utils.model_invocation_utils.ModelManager.for_tenant", return_value=manager) as mock_factory:
-        with pytest.raises(InvokeModelError, match="Model not found"):
-            ModelInvocationUtils.calculate_tokens("tenant", [])
+    with (
+        patch("core.tools.utils.model_invocation_utils.ModelManager.for_tenant", return_value=manager) as mock_factory,
+        pytest.raises(InvokeModelError, match="Model not found"),
+    ):
+        ModelInvocationUtils.calculate_tokens("tenant", [])
     mock_factory.assert_called_once_with(tenant_id="tenant", user_id=None)
 
 
@@ -180,15 +182,15 @@ def test_invoke_error_mappings(exc, expected, sqlite_session: Session):
     with (
         patch("core.tools.utils.model_invocation_utils.ModelManager.for_tenant", return_value=manager) as mock_factory,
         patch("core.tools.utils.model_invocation_utils.db", database),
+        pytest.raises(InvokeModelError, match=expected),
     ):
-        with pytest.raises(InvokeModelError, match=expected):
-            ModelInvocationUtils.invoke(
-                user_id=USER_ID,
-                tenant_id=TENANT_ID,
-                tool_type=ToolProviderType.BUILT_IN,
-                tool_name="tool-a",
-                prompt_messages=[],
-            )
+        ModelInvocationUtils.invoke(
+            user_id=USER_ID,
+            tenant_id=TENANT_ID,
+            tool_type=ToolProviderType.BUILT_IN,
+            tool_name="tool-a",
+            prompt_messages=[],
+        )
     assert not sqlite_session.in_transaction()
     persisted = sqlite_session.scalar(select(ToolModelInvoke))
     assert persisted is not None

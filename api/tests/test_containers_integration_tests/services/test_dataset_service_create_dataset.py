@@ -53,10 +53,12 @@ class TestDatasetServiceCreateRagPipelineDataset:
         tenant, _ = self._create_tenant_and_account(db_session_with_containers)
 
         mock_user = Mock(id=None)
-        with patch("services.dataset_service.current_user", mock_user):
-            with pytest.raises(ValueError, match="Current user or current user id not found"):
-                DatasetService.create_empty_rag_pipeline_dataset(
-                    tenant_id=tenant.id,
-                    rag_pipeline_dataset_create_entity=self._build_entity(),
-                    session=db_session_with_containers,
-                )
+        with (
+            patch("services.dataset_service.current_user", mock_user),
+            pytest.raises(ValueError, match="Current user or current user id not found"),
+        ):
+            DatasetService.create_empty_rag_pipeline_dataset(
+                tenant_id=tenant.id,
+                rag_pipeline_dataset_create_entity=self._build_entity(),
+                session=db_session_with_containers,
+            )

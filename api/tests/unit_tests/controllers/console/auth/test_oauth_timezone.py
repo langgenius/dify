@@ -124,8 +124,7 @@ def test_generate_account_rejects_new_user_when_registration_disabled(
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     user_info = OAuthUserInfo(id="github-123", name="Test User", email="user@example.com")
 
-    with app.test_request_context(headers={"Accept-Language": "en-US,en;q=0.9"}):
-        with pytest.raises(AccountRegisterError):
-            _generate_account("github", user_info)
+    with app.test_request_context(headers={"Accept-Language": "en-US,en;q=0.9"}), pytest.raises(AccountRegisterError):
+        _generate_account("github", user_info)
 
     mock_register_service.register.assert_not_called()

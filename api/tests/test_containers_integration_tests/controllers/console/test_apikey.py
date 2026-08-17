@@ -181,6 +181,6 @@ class TestAppApiKeyResource:
         with (
             flask_app_with_containers.test_request_context("/"),
             patch("controllers.console.apikey._get_resource"),
+            pytest.raises(Forbidden),
         ):
-            with pytest.raises(Forbidden):
-                BaseApiKeyResource.delete(resource, "rid", "kid", "tenant-id", non_admin)
+            BaseApiKeyResource.delete(resource, "rid", "kid", "tenant-id", non_admin)

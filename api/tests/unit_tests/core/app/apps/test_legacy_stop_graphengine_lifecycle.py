@@ -54,6 +54,5 @@ def test_workflow_queue_does_not_read_legacy_stop_flag() -> None:
 def test_message_queue_keeps_legacy_stop_for_non_graphengine_chat() -> None:
     manager = _message_queue_manager(AppMode.CHAT.value)
 
-    with patch.object(manager, "_is_stopped", return_value=True):
-        with pytest.raises(GenerateTaskStoppedError):
-            manager.publish(QueueTextChunkEvent(text="chunk"), PublishFrom.APPLICATION_MANAGER)
+    with patch.object(manager, "_is_stopped", return_value=True), pytest.raises(GenerateTaskStoppedError):
+        manager.publish(QueueTextChunkEvent(text="chunk"), PublishFrom.APPLICATION_MANAGER)

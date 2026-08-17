@@ -186,11 +186,13 @@ class TestRemoteFileUploadApi:
             filename="big.zip", extension="zip", mimetype="application/zip", size=999999999
         )
 
-        with app.test_request_context(
-            "/remote-files/upload", method="POST", json={"url": "https://example.com/big.zip"}
+        with (
+            app.test_request_context(
+                "/remote-files/upload", method="POST", json={"url": "https://example.com/big.zip"}
+            ),
+            pytest.raises(FileTooLargeError),
         ):
-            with pytest.raises(FileTooLargeError):
-                RemoteFileUploadApi().post(_app_model(), _end_user())
+            RemoteFileUploadApi().post(_app_model(), _end_user())
 
     @patch("controllers.web.remote_files.remote_fetcher")
     def test_fetch_failure_raises(self, mock_proxy: MagicMock, app: Flask) -> None:
@@ -198,6 +200,8 @@ class TestRemoteFileUploadApi:
 
         mock_proxy.make_request.side_effect = httpx.RequestError("connection failed")
 
-        with app.test_request_context("/remote-files/upload", method="POST", json={"url": "https://example.com/bad"}):
-            with pytest.raises(RemoteFileUploadError):
-                RemoteFileUploadApi().post(_app_model(), _end_user())
+        with (
+            app.test_request_context("/remote-files/upload", method="POST", json={"url": "https://example.com/bad"}),
+            pytest.raises(RemoteFileUploadError),
+        ):
+            RemoteFileUploadApi().post(_app_model(), _end_user())

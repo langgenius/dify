@@ -156,14 +156,16 @@ def test_daily_message_statistic_with_invalid_time_range(app: Flask, monkeypatch
     monkeypatch.setattr(statistic_module, "parse_time_range", mock_parse)
     monkeypatch.setattr(statistic_module, "convert_datetime_to_date", lambda field: field)
 
-    with app.test_request_context("/console/api/apps/app-1/statistics/daily-messages", method="GET"):
-        with pytest.raises(BadRequest):
-            method(
-                api,
-                SimpleNamespace(start=None, end=None),
-                _account(),
-                app_model=_app_model(),
-            )
+    with (
+        app.test_request_context("/console/api/apps/app-1/statistics/daily-messages", method="GET"),
+        pytest.raises(BadRequest),
+    ):
+        method(
+            api,
+            SimpleNamespace(start=None, end=None),
+            _account(),
+            app_model=_app_model(),
+        )
 
 
 def test_daily_message_statistic_multiple_rows(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

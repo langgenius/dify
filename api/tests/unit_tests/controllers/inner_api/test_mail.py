@@ -109,22 +109,25 @@ class TestBaseMail:
 
 def test_disabled_inner_api_returns_not_found_before_setup(app: Flask, config_overrides: Callable[..., None]) -> None:
     config_overrides(INNER_API=False)
-    with patch(
-        "controllers.console.wraps._is_setup_completed",
-        side_effect=AssertionError("setup must not run before Inner API authentication"),
+    with (
+        patch(
+            "controllers.console.wraps._is_setup_completed",
+            side_effect=AssertionError("setup must not run before Inner API authentication"),
+        ),
+        app.test_request_context(),
+        pytest.raises(NotFound),
     ):
-        with app.test_request_context(), pytest.raises(NotFound):
-            EnterpriseMail().post()
+        EnterpriseMail().post()
 
 
 def test_invalid_inner_api_key_is_rejected_before_setup(app: Flask, config_overrides: Callable[..., None]) -> None:
     config_overrides(INNER_API=True, INNER_API_KEY="valid-key")
-    with patch(
-        "controllers.console.wraps._is_setup_completed",
-        side_effect=AssertionError("setup must not run before Inner API authentication"),
+    with (
+        patch(
+            "controllers.console.wraps._is_setup_completed",
+            side_effect=AssertionError("setup must not run before Inner API authentication"),
+        ),
+        app.test_request_context(headers={"X-Inner-Api-Key": "invalid-key"}),
+        pytest.raises(InnerApiUnauthorizedError),
     ):
-        with (
-            app.test_request_context(headers={"X-Inner-Api-Key": "invalid-key"}),
-            pytest.raises(InnerApiUnauthorizedError),
-        ):
-            EnterpriseMail().post()
+        EnterpriseMail().post()

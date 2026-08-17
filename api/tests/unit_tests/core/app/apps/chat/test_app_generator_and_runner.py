@@ -157,15 +157,15 @@ class TestChatAppGenerator:
                 "core.app.apps.chat.app_generator.ChatAppConfigManager.get_app_config",
                 side_effect=RuntimeError("stop after app config"),
             ) as get_app_config,
+            pytest.raises(RuntimeError, match="stop after app config"),
         ):
-            with pytest.raises(RuntimeError, match="stop after app config"):
-                generator.generate(
-                    app_model,
-                    user,
-                    {"query": "hi", "inputs": {}},
-                    InvokeFrom.WEB_APP,
-                    session=unbound_session,
-                )
+            generator.generate(
+                app_model,
+                user,
+                {"query": "hi", "inputs": {}},
+                InvokeFrom.WEB_APP,
+                session=unbound_session,
+            )
 
         load_annotation_reply_config.assert_called_once_with(unbound_session, "app-1")
         app_model_config.to_dict.assert_called_once_with(annotation_reply=annotation_reply)
@@ -173,20 +173,18 @@ class TestChatAppGenerator:
 
     def test_generate_rejects_model_config_override_for_non_debugger(self, unbound_session: Session):
         generator = ChatAppGenerator()
-        with pytest.raises(ValueError):
-            with (
-                patch.object(
-                    ChatAppGenerator, "_get_app_model_config", return_value=SimpleNamespace(to_dict=lambda: {})
-                ),
-            ):
-                generator.generate(
-                    session=unbound_session,
-                    app_model=SimpleNamespace(tenant_id="t1", id="a1", mode=AppMode.CHAT.value),
-                    user=SimpleNamespace(id="u1", session_id="s1"),
-                    args={"query": "hi", "inputs": {}, "model_config": {"foo": "bar"}},
-                    invoke_from=InvokeFrom.SERVICE_API,
-                    streaming=False,
-                )
+        with (
+            pytest.raises(ValueError),
+            patch.object(ChatAppGenerator, "_get_app_model_config", return_value=SimpleNamespace(to_dict=lambda: {})),
+        ):
+            generator.generate(
+                session=unbound_session,
+                app_model=SimpleNamespace(tenant_id="t1", id="a1", mode=AppMode.CHAT.value),
+                user=SimpleNamespace(id="u1", session_id="s1"),
+                args={"query": "hi", "inputs": {}, "model_config": {"foo": "bar"}},
+                invoke_from=InvokeFrom.SERVICE_API,
+                streaming=False,
+            )
 
     def test_generate_worker_handles_exceptions(self, unbound_session_factory: sessionmaker[Session]):
         generator = ChatAppGenerator()
@@ -251,15 +249,14 @@ class TestChatAppRunner:
             invoke_from=InvokeFrom.SERVICE_API,
         )
 
-        with patched_create_session(sqlite_session_factory):
-            with pytest.raises(ValueError):
-                runner.run(
-                    app_generate_entity,
-                    DummyQueueManager(),
-                    SimpleNamespace(),
-                    SimpleNamespace(id="m1"),
-                    unbound_session,
-                )
+        with patched_create_session(sqlite_session_factory), pytest.raises(ValueError):
+            runner.run(
+                app_generate_entity,
+                DummyQueueManager(),
+                SimpleNamespace(),
+                SimpleNamespace(id="m1"),
+                unbound_session,
+            )
 
     def test_run_moderation_error_direct_output(
         self, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]

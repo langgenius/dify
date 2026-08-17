@@ -83,9 +83,8 @@ class TestTagListApi:
             def get(self, req_data: TagListQueryParam) -> TagListQueryParam:
                 return req_data
 
-        with app.test_request_context(url, method="GET"):
-            with pytest.raises(UnprocessableEntity):
-                Handler().get()
+        with app.test_request_context(url, method="GET"), pytest.raises(UnprocessableEntity):
+            Handler().get()
 
     def test_get_uses_application_service(
         self, app: Flask, request_context: RequestContext, tags_service: MagicMock
@@ -189,13 +188,13 @@ class TestTagListApi:
             app.test_request_context("/"),
             config_overrides_context(RBAC_ENABLED=False),
             patch.object(module, "current_account_with_tenant", return_value=(readonly, "tenant-1")),
+            pytest.raises(Forbidden),
         ):
-            with pytest.raises(Forbidden):
-                unwrap(TagListApi().post)(
-                    TagListApi(),
-                    TagBasePayload(name="Tag", type=TagType.KNOWLEDGE),
-                    request_context,
-                )
+            unwrap(TagListApi().post)(
+                TagListApi(),
+                TagBasePayload(name="Tag", type=TagType.KNOWLEDGE),
+                request_context,
+            )
 
     def test_post_maps_name_conflict_to_legacy_value_error(
         self, app: Flask, request_context: RequestContext, tags_service: MagicMock
@@ -207,13 +206,13 @@ class TestTagListApi:
             app.test_request_context("/"),
             config_overrides_context(RBAC_ENABLED=False),
             patch.object(module, "current_account_with_tenant", return_value=(owner, "tenant-1")),
+            pytest.raises(ValueError, match="Tag name already exists") as exc_info,
         ):
-            with pytest.raises(ValueError, match="Tag name already exists") as exc_info:
-                unwrap(TagListApi().post)(
-                    TagListApi(),
-                    TagBasePayload(name="Tag", type=TagType.KNOWLEDGE),
-                    request_context,
-                )
+            unwrap(TagListApi().post)(
+                TagListApi(),
+                TagBasePayload(name="Tag", type=TagType.KNOWLEDGE),
+                request_context,
+            )
 
         assert exc_info.value.__cause__ is None
         assert exc_info.value.__suppress_context__ is True
@@ -228,13 +227,13 @@ class TestTagListApi:
             app.test_request_context("/"),
             config_overrides_context(RBAC_ENABLED=False),
             patch.object(module, "current_account_with_tenant", return_value=(owner, "tenant-1")),
+            pytest.raises(TagApplicationError, match="unexpected"),
         ):
-            with pytest.raises(TagApplicationError, match="unexpected"):
-                unwrap(TagListApi().post)(
-                    TagListApi(),
-                    TagBasePayload(name="Tag", type=TagType.KNOWLEDGE),
-                    request_context,
-                )
+            unwrap(TagListApi().post)(
+                TagListApi(),
+                TagBasePayload(name="Tag", type=TagType.KNOWLEDGE),
+                request_context,
+            )
 
 
 class TestTagUpdateDeleteApi:
@@ -276,14 +275,14 @@ class TestTagUpdateDeleteApi:
             app.test_request_context("/"),
             config_overrides_context(RBAC_ENABLED=False),
             patch.object(module, "current_account_with_tenant", return_value=(readonly, "tenant-1")),
+            pytest.raises(Forbidden),
         ):
-            with pytest.raises(Forbidden):
-                unwrap(TagUpdateDeleteApi().patch)(
-                    TagUpdateDeleteApi(),
-                    TagUpdateRequestPayload(name="Updated"),
-                    request_context,
-                    "tag-1",
-                )
+            unwrap(TagUpdateDeleteApi().patch)(
+                TagUpdateDeleteApi(),
+                TagUpdateRequestPayload(name="Updated"),
+                request_context,
+                "tag-1",
+            )
 
     def test_patch_maps_missing_tag_to_not_found(
         self, app: Flask, request_context: RequestContext, tags_service: MagicMock
@@ -295,14 +294,14 @@ class TestTagUpdateDeleteApi:
             app.test_request_context("/"),
             config_overrides_context(RBAC_ENABLED=False),
             patch.object(module, "current_account_with_tenant", return_value=(owner, "tenant-1")),
+            pytest.raises(NotFound, match="Tag not found") as exc_info,
         ):
-            with pytest.raises(NotFound, match="Tag not found") as exc_info:
-                unwrap(TagUpdateDeleteApi().patch)(
-                    TagUpdateDeleteApi(),
-                    TagUpdateRequestPayload(name="Updated"),
-                    request_context,
-                    "tag-1",
-                )
+            unwrap(TagUpdateDeleteApi().patch)(
+                TagUpdateDeleteApi(),
+                TagUpdateRequestPayload(name="Updated"),
+                request_context,
+                "tag-1",
+            )
 
         assert exc_info.value.__cause__ is None
         assert exc_info.value.__suppress_context__ is True
@@ -316,9 +315,9 @@ class TestTagUpdateDeleteApi:
             app.test_request_context("/"),
             config_overrides_context(RBAC_ENABLED=False),
             patch.object(module, "current_account_with_tenant", return_value=(dataset_operator, "tenant-1")),
+            pytest.raises(Forbidden),
         ):
-            with pytest.raises(Forbidden):
-                unwrap(TagUpdateDeleteApi().delete)(TagUpdateDeleteApi(), request_context, "tag-1")
+            unwrap(TagUpdateDeleteApi().delete)(TagUpdateDeleteApi(), request_context, "tag-1")
 
     def test_delete_calls_application_service(
         self, app: Flask, request_context: RequestContext, tags_service: MagicMock
@@ -364,9 +363,9 @@ class TestTagUpdateDeleteApi:
             config_overrides_context(RBAC_ENABLED=True),
             patch.object(module, "current_account_with_tenant", return_value=(owner, "tenant-1")),
             patch.object(module, "enforce_rbac_access") as enforce_rbac_access,
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                unwrap(TagUpdateDeleteApi().delete)(TagUpdateDeleteApi(), request_context, "tag-1")
+            unwrap(TagUpdateDeleteApi().delete)(TagUpdateDeleteApi(), request_context, "tag-1")
 
         enforce_rbac_access.assert_not_called()
 
@@ -425,9 +424,9 @@ class TestTagBindings:
             app.test_request_context("/"),
             config_overrides_context(RBAC_ENABLED=False),
             patch.object(module, "current_account_with_tenant", return_value=(owner, "tenant-1")),
+            pytest.raises(NotFound, match="App not found") as exc_info,
         ):
-            with pytest.raises(NotFound, match="App not found") as exc_info:
-                unwrap(TagBindingCollectionApi().post)(TagBindingCollectionApi(), payload, request_context)
+            unwrap(TagBindingCollectionApi().post)(TagBindingCollectionApi(), payload, request_context)
 
         assert exc_info.value.__cause__ is None
         assert exc_info.value.__suppress_context__ is True
@@ -440,9 +439,9 @@ class TestTagBindings:
             app.test_request_context("/"),
             config_overrides_context(RBAC_ENABLED=False),
             patch.object(module, "current_account_with_tenant", return_value=(readonly, "tenant-1")),
+            pytest.raises(Forbidden),
         ):
-            with pytest.raises(Forbidden):
-                unwrap(TagBindingCollectionApi().post)(TagBindingCollectionApi(), payload, request_context)
+            unwrap(TagBindingCollectionApi().post)(TagBindingCollectionApi(), payload, request_context)
 
     def test_remove_passes_stable_binding_input(
         self, app: Flask, request_context: RequestContext, tags_service: MagicMock
@@ -478,9 +477,9 @@ class TestTagBindings:
             app.test_request_context("/"),
             config_overrides_context(RBAC_ENABLED=False),
             patch.object(module, "current_account_with_tenant", return_value=(owner, "tenant-1")),
+            pytest.raises(NotFound, match="Dataset not found") as exc_info,
         ):
-            with pytest.raises(NotFound, match="Dataset not found") as exc_info:
-                unwrap(TagBindingRemoveApi().post)(TagBindingRemoveApi(), payload, request_context)
+            unwrap(TagBindingRemoveApi().post)(TagBindingRemoveApi(), payload, request_context)
 
         assert exc_info.value.__cause__ is None
         assert exc_info.value.__suppress_context__ is True
@@ -493,9 +492,9 @@ class TestTagBindings:
             app.test_request_context("/"),
             config_overrides_context(RBAC_ENABLED=False),
             patch.object(module, "current_account_with_tenant", return_value=(readonly, "tenant-1")),
+            pytest.raises(Forbidden),
         ):
-            with pytest.raises(Forbidden):
-                unwrap(TagBindingRemoveApi().post)(TagBindingRemoveApi(), payload, request_context)
+            unwrap(TagBindingRemoveApi().post)(TagBindingRemoveApi(), payload, request_context)
 
 
 class TestTagResponseAndRoutes:

@@ -417,14 +417,16 @@ class TestMessageListApi:
 
         # @model_validate parses ahead of the app-mode guard, so the id has to be well-formed to
         # reach the branch this test is about.
-        with app.test_request_context("/messages?conversation_id=00000000-0000-0000-0000-000000000001", method="GET"):
-            with pytest.raises(NotChatAppError):
-                handler(
-                    api,
-                    MessageListQuery.model_validate(request.args.to_dict(flat=True)),
-                    app_model=app_model,
-                    end_user=end_user,
-                )
+        with (
+            app.test_request_context("/messages?conversation_id=00000000-0000-0000-0000-000000000001", method="GET"),
+            pytest.raises(NotChatAppError),
+        ):
+            handler(
+                api,
+                MessageListQuery.model_validate(request.args.to_dict(flat=True)),
+                app_model=app_model,
+                end_user=end_user,
+            )
 
     def test_conversation_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
@@ -438,17 +440,19 @@ class TestMessageListApi:
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
         end_user = SimpleNamespace()
 
-        with app.test_request_context(
-            "/messages?conversation_id=00000000-0000-0000-0000-000000000001",
-            method="GET",
+        with (
+            app.test_request_context(
+                "/messages?conversation_id=00000000-0000-0000-0000-000000000001",
+                method="GET",
+            ),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                handler(
-                    api,
-                    MessageListQuery.model_validate(request.args.to_dict(flat=True)),
-                    app_model=app_model,
-                    end_user=end_user,
-                )
+            handler(
+                api,
+                MessageListQuery.model_validate(request.args.to_dict(flat=True)),
+                app_model=app_model,
+                end_user=end_user,
+            )
 
     def test_first_message_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
@@ -462,17 +466,19 @@ class TestMessageListApi:
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
         end_user = SimpleNamespace()
 
-        with app.test_request_context(
-            "/messages?conversation_id=00000000-0000-0000-0000-000000000001&first_id=00000000-0000-0000-0000-000000000002",
-            method="GET",
+        with (
+            app.test_request_context(
+                "/messages?conversation_id=00000000-0000-0000-0000-000000000001&first_id=00000000-0000-0000-0000-000000000002",
+                method="GET",
+            ),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                handler(
-                    api,
-                    MessageListQuery.model_validate(request.args.to_dict(flat=True)),
-                    app_model=app_model,
-                    end_user=end_user,
-                )
+            handler(
+                api,
+                MessageListQuery.model_validate(request.args.to_dict(flat=True)),
+                app_model=app_model,
+                end_user=end_user,
+            )
 
 
 class TestMessageFeedbackApi:
@@ -534,9 +540,8 @@ class TestMessageSuggestedApi:
         app_model = SimpleNamespace(mode=AppMode.COMPLETION.value)
         end_user = SimpleNamespace()
 
-        with app.test_request_context("/messages/m1/suggested", method="GET"):
-            with pytest.raises(NotChatAppError):
-                handler(api, app_model=app_model, end_user=end_user, message_id="m1")
+        with app.test_request_context("/messages/m1/suggested", method="GET"), pytest.raises(NotChatAppError):
+            handler(api, app_model=app_model, end_user=end_user, message_id="m1")
 
     def test_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
@@ -550,9 +555,8 @@ class TestMessageSuggestedApi:
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
         end_user = SimpleNamespace()
 
-        with app.test_request_context("/messages/m1/suggested", method="GET"):
-            with pytest.raises(NotFound):
-                handler(api, app_model=app_model, end_user=end_user, message_id="m1")
+        with app.test_request_context("/messages/m1/suggested", method="GET"), pytest.raises(NotFound):
+            handler(api, app_model=app_model, end_user=end_user, message_id="m1")
 
     def test_disabled(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
@@ -566,9 +570,8 @@ class TestMessageSuggestedApi:
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
         end_user = SimpleNamespace()
 
-        with app.test_request_context("/messages/m1/suggested", method="GET"):
-            with pytest.raises(BadRequest):
-                handler(api, app_model=app_model, end_user=end_user, message_id="m1")
+        with app.test_request_context("/messages/m1/suggested", method="GET"), pytest.raises(BadRequest):
+            handler(api, app_model=app_model, end_user=end_user, message_id="m1")
 
     def test_internal_error(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
@@ -582,9 +585,8 @@ class TestMessageSuggestedApi:
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
         end_user = SimpleNamespace()
 
-        with app.test_request_context("/messages/m1/suggested", method="GET"):
-            with pytest.raises(InternalServerError):
-                handler(api, app_model=app_model, end_user=end_user, message_id="m1")
+        with app.test_request_context("/messages/m1/suggested", method="GET"), pytest.raises(InternalServerError):
+            handler(api, app_model=app_model, end_user=end_user, message_id="m1")
 
     def test_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(

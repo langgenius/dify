@@ -392,14 +392,16 @@ class TestAccountService:
             "billing_service"
         ].get_email_freeze_type.return_value = "email_domain_suspended"
 
-        with config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD):
-            with pytest.raises(EmailDomainSuspendedError):
-                AccountService.create_account(
-                    email="user@suspended.example",
-                    name="Test User",
-                    interface_language="en-US",
-                    session=unbound_session,
-                )
+        with (
+            config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD),
+            pytest.raises(EmailDomainSuspendedError),
+        ):
+            AccountService.create_account(
+                email="user@suspended.example",
+                name="Test User",
+                interface_language="en-US",
+                session=unbound_session,
+            )
 
     def test_get_user_through_email_rejects_suspended_email_domain(
         self, unbound_session: Session, mock_external_service_dependencies: _MockDependencies
@@ -409,9 +411,11 @@ class TestAccountService:
             "billing_service"
         ].get_email_freeze_type.return_value = "email_domain_suspended"
 
-        with config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD):
-            with pytest.raises(EmailDomainSuspendedError):
-                AccountService.get_user_through_email("user@suspended.example", session=unbound_session)
+        with (
+            config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD),
+            pytest.raises(EmailDomainSuspendedError),
+        ):
+            AccountService.get_user_through_email("user@suspended.example", session=unbound_session)
 
     def test_get_account_freeze_type_is_enabled_only_for_cloud(
         self, mock_external_service_dependencies: _MockDependencies
@@ -639,9 +643,11 @@ class TestAccountService:
         account_id = account.id
         tenant_id = tenant.id
 
-        with Session(sqlite_session.get_bind()) as expiring_session:
-            with patch.object(AccountService, "_refresh_account_last_active"):
-                result = AccountService.load_user(account_id, expiring_session)
+        with (
+            Session(sqlite_session.get_bind()) as expiring_session,
+            patch.object(AccountService, "_refresh_account_last_active"),
+        ):
+            result = AccountService.load_user(account_id, expiring_session)
 
         assert result is not None
         assert result.current_tenant_id == tenant_id
@@ -919,14 +925,14 @@ class TestTenantService:
         with (
             patch("services.credit_pool_service.CreditPoolService.create_default_pool"),
             patch("services.account_service.tenant_was_created.send") as mock_tenant_was_created,
+            sqlite_session_factory() as service_session,
         ):
-            with sqlite_session_factory() as service_session:
-                TenantService.create_owner_tenant_if_not_exist(mock_account, session=service_session)
-                tenant = service_session.scalar(select(Tenant).where(Tenant.name == "Test User's Workspace"))
-                assert tenant is not None
-                tenant_id = tenant.id
-                assert mock_account.current_tenant_id == tenant.id
-                mock_tenant_was_created.assert_called_once_with(tenant)
+            TenantService.create_owner_tenant_if_not_exist(mock_account, session=service_session)
+            tenant = service_session.scalar(select(Tenant).where(Tenant.name == "Test User's Workspace"))
+            assert tenant is not None
+            tenant_id = tenant.id
+            assert mock_account.current_tenant_id == tenant.id
+            mock_tenant_was_created.assert_called_once_with(tenant)
 
         mock_rsa_dependencies.assert_called_once_with(tenant_id)
 
@@ -1593,11 +1599,11 @@ class TestTenantService:
 
         with (
             patch("services.account_service.RBACService.MyPermissions.get", return_value=mock_permissions),
+            pytest.raises(NoPermissionError),
         ):
-            with pytest.raises(NoPermissionError):
-                TenantService.check_member_permission(
-                    mock_tenant, mock_operator, mock_member, "remove", session=sqlite_session
-                )
+            TenantService.check_member_permission(
+                mock_tenant, mock_operator, mock_member, "remove", session=sqlite_session
+            )
 
     def test_rbac_member_cannot_remove_owner_member(
         self, sqlite_session: Session, config_overrides: Callable[..., None]
@@ -1615,11 +1621,11 @@ class TestTenantService:
         with (
             patch("services.account_service.RBACService.MyPermissions.get", return_value=mock_permissions),
             patch("services.account_service.AccountService.is_rbac_workspace_owner", return_value=True),
+            pytest.raises(NoPermissionError),
         ):
-            with pytest.raises(NoPermissionError):
-                TenantService.check_member_permission(
-                    mock_tenant, mock_operator, mock_member, "remove", session=sqlite_session
-                )
+            TenantService.check_member_permission(
+                mock_tenant, mock_operator, mock_member, "remove", session=sqlite_session
+            )
 
     def test_get_rbac_workspace_owner_account_id(self, sqlite_session: Session) -> None:
         mock_roles = Paginated[MembersInRole](data=[MembersInRole(account_id="owner-account")])
@@ -1710,32 +1716,32 @@ class TestRegisterService:
             with (
                 patch("services.account_service.TenantService.create_owner_tenant_if_not_exist") as mock_create_tenant,
                 patch("services.account_service.CommunityTelemetryService.report_install") as mock_report_install,
+                sqlite_session_factory() as service_session,
             ):
-                with sqlite_session_factory() as service_session:
-                    RegisterService.setup(
-                        "admin@example.com",
-                        "Admin User",
-                        "password123",
-                        "192.168.1.1",
-                        "en-US",
-                        session=service_session,
-                    )
+                RegisterService.setup(
+                    "admin@example.com",
+                    "Admin User",
+                    "password123",
+                    "192.168.1.1",
+                    "en-US",
+                    session=service_session,
+                )
 
-                    mock_create_account.assert_called_once_with(
-                        email="admin@example.com",
-                        name="Admin User",
-                        interface_language="en-US",
-                        password="password123",
-                        is_setup=True,
-                        ip_address="192.168.1.1",
-                        session=service_session,
-                    )
-                    mock_create_tenant.assert_called_once_with(
-                        account=mock_account,
-                        is_setup=True,
-                        session=service_session,
-                    )
-                    mock_report_install.assert_called_once_with(session=service_session)
+                mock_create_account.assert_called_once_with(
+                    email="admin@example.com",
+                    name="Admin User",
+                    interface_language="en-US",
+                    password="password123",
+                    is_setup=True,
+                    ip_address="192.168.1.1",
+                    session=service_session,
+                )
+                mock_create_tenant.assert_called_once_with(
+                    account=mock_account,
+                    is_setup=True,
+                    session=service_session,
+                )
+                mock_report_install.assert_called_once_with(session=service_session)
 
         with sqlite_session_factory() as assertion_session:
             dify_setup = assertion_session.scalar(select(DifySetup))
@@ -1761,16 +1767,16 @@ class TestRegisterService:
                 "services.account_service.CommunityTelemetryService.report_install",
                 side_effect=RuntimeError("telemetry unavailable"),
             ),
+            sqlite_session_factory() as service_session,
         ):
-            with sqlite_session_factory() as service_session:
-                RegisterService.setup(
-                    "admin@example.com",
-                    "Admin User",
-                    "password123",
-                    "192.168.1.1",
-                    "en-US",
-                    session=service_session,
-                )
+            RegisterService.setup(
+                "admin@example.com",
+                "Admin User",
+                "password123",
+                "192.168.1.1",
+                "en-US",
+                session=service_session,
+            )
 
         with sqlite_session_factory() as assertion_session:
             assert assertion_session.scalar(select(DifySetup)) is not None
@@ -1786,20 +1792,22 @@ class TestRegisterService:
         ].get_license.return_value.seats.is_available.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
-        with patch(
-            "services.account_service.TenantService.create_owner_tenant_if_not_exist",
-            side_effect=RuntimeError("tenant creation failed"),
+        with (
+            patch(
+                "services.account_service.TenantService.create_owner_tenant_if_not_exist",
+                side_effect=RuntimeError("tenant creation failed"),
+            ),
+            sqlite_session_factory() as service_session,
+            pytest.raises(ValueError, match="Setup failed: tenant creation failed"),
         ):
-            with sqlite_session_factory() as service_session:
-                with pytest.raises(ValueError, match="Setup failed: tenant creation failed"):
-                    RegisterService.setup(
-                        "admin@example.com",
-                        "Admin User",
-                        "password123",
-                        "192.168.1.1",
-                        "en-US",
-                        session=service_session,
-                    )
+            RegisterService.setup(
+                "admin@example.com",
+                "Admin User",
+                "password123",
+                "192.168.1.1",
+                "en-US",
+                session=service_session,
+            )
 
         with sqlite_session_factory() as assertion_session:
             assert assertion_session.scalar(select(Account).where(Account.email == "admin@example.com")) is None

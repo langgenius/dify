@@ -122,18 +122,20 @@ def test_registration_gateway_translates_account_provisioning_errors(
 ) -> None:
     gateway = AccountServiceRegistrationGateway(session_factory=sqlite_session_factory)
 
-    with patch(
-        "services.account_email_registration_adapters.AccountService.create_account_and_tenant",
-        side_effect=service_error,
+    with (
+        patch(
+            "services.account_email_registration_adapters.AccountService.create_account_and_tenant",
+            side_effect=service_error,
+        ),
+        pytest.raises(application_error),
     ):
-        with pytest.raises(application_error):
-            gateway.create(
-                email="user@example.com",
-                password="ValidPass123!",
-                interface_language="en-US",
-                timezone=None,
-                ip_address="127.0.0.1",
-            )
+        gateway.create(
+            email="user@example.com",
+            password="ValidPass123!",
+            interface_language="en-US",
+            timezone=None,
+            ip_address="127.0.0.1",
+        )
 
 
 def test_registration_gateway_owns_short_lived_sessions(

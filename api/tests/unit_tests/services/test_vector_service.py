@@ -786,11 +786,10 @@ def test_update_multimodel_vector_rolls_back_and_reraises_on_error(
     monkeypatch.setattr(sqlite_session, "flush", MagicMock(side_effect=RuntimeError("boom")))
 
     with caplog.at_level(logging.ERROR, logger="services.vector_service"):
-        with sqlite_session.no_autoflush:
-            with pytest.raises(RuntimeError, match="boom"):
-                VectorService.update_multimodel_vector(
-                    session=sqlite_session, segment=segment, attachment_ids=["file-1"], dataset=dataset
-                )
+        with sqlite_session.no_autoflush, pytest.raises(RuntimeError, match="boom"):
+            VectorService.update_multimodel_vector(
+                session=sqlite_session, segment=segment, attachment_ids=["file-1"], dataset=dataset
+            )
 
         assert any(r.levelno >= logging.ERROR for r in caplog.records)
     assert rollback_events == ["rollback"]

@@ -247,13 +247,13 @@ class TestWebhookServiceUnit:
                 "services.trigger.webhook_service.AsyncWorkflowService.trigger_workflow_async",
                 side_effect=quota_error,
             ) as mock_trigger_workflow_async,
+            pytest.raises(QuotaExceededError) as exc_info,
         ):
-            with pytest.raises(QuotaExceededError) as exc_info:
-                WebhookService.trigger_workflow_execution(
-                    webhook_trigger,
-                    {"body": {}, "headers": {}, "query_params": {}, "files": {}, "method": "POST"},
-                    workflow,
-                )
+            WebhookService.trigger_workflow_execution(
+                webhook_trigger,
+                {"body": {}, "headers": {}, "query_params": {}, "files": {}, "method": "POST"},
+                workflow,
+            )
 
         assert exc_info.value is quota_error
         quota_charge.refund.assert_called_once_with()
@@ -308,13 +308,15 @@ class TestWebhookServiceUnit:
         workflow = _workflow()
         webhook_data = {"method": "POST", "headers": {}, "query_params": {}, "body": {}, "files": {}}
 
-        with patch.object(
-            webhook_service_module.EndUserService,
-            "get_or_create_end_user_by_type",
-            side_effect=ValueError("Failed to create end user"),
+        with (
+            patch.object(
+                webhook_service_module.EndUserService,
+                "get_or_create_end_user_by_type",
+                side_effect=ValueError("Failed to create end user"),
+            ),
+            pytest.raises(ValueError, match="Failed to create end user"),
         ):
-            with pytest.raises(ValueError, match="Failed to create end user"):
-                WebhookService.trigger_workflow_execution(webhook_trigger, webhook_data, workflow)
+            WebhookService.trigger_workflow_execution(webhook_trigger, webhook_data, workflow)
 
     def test_extract_webhook_data_json(self):
         """Test webhook data extraction from JSON request."""

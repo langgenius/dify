@@ -716,73 +716,19 @@ class IndexingRunner:
 
     @staticmethod
     def _process_keyword_index(flask_app: Flask, dataset_id: str, document_id: str, documents: list[Document]):
-        with flask_app.app_context():
-            with session_factory.create_session() as session:
-                dataset = session.get(Dataset, dataset_id)
-                if not dataset:
-                    raise ValueError("no dataset found")
-                keyword = Keyword(dataset)
-                keyword.create(documents, session)
-                if dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY:
-                    document_ids = [document.metadata["doc_id"] for document in documents]
-                    session.execute(
-                        update(DocumentSegment)
-                        .where(
-                            DocumentSegment.document_id == document_id,
-                            DocumentSegment.dataset_id == dataset_id,
-                            DocumentSegment.index_node_id.in_(document_ids),
-                            DocumentSegment.status == SegmentStatus.INDEXING,
-                        )
-                        .values(
-                            status=SegmentStatus.COMPLETED,
-                            enabled=True,
-                            completed_at=naive_utc_now(),
-                        )
-                    )
-                session.commit()
-
-    def _process_chunk(
-        self,
-        flask_app: Flask,
-        index_type: str,
-        chunk_documents: list[Document],
-        dataset_id: str,
-        dataset_document_id: str,
-    ) -> None:
-        with flask_app.app_context():
-            with session_factory.create_session() as session:
-                dataset = session.get(Dataset, dataset_id)
-                if not dataset:
-                    raise ValueError("no dataset found")
-
-                dataset_document = session.get(DatasetDocument, dataset_document_id)
-                if not dataset_document:
-                    raise ValueError("no document found")
-
-                # check document is paused
-                self._check_document_paused_status(dataset_document.id)
-
-                multimodal_documents = []
-                for document in chunk_documents:
-                    if document.attachments and dataset.is_multimodal:
-                        multimodal_documents.extend(document.attachments)
-
-                # load index
-                index_processor = IndexProcessorFactory(index_type).init_index_processor()
-                index_processor.load(
-                    dataset,
-                    chunk_documents,
-                    multimodal_documents=multimodal_documents,
-                    with_keywords=False,
-                    session=session,
-                )
-
-                document_ids = [document.metadata["doc_id"] for document in chunk_documents]
+        with flask_app.app_context(), session_factory.create_session() as session:
+            dataset = session.get(Dataset, dataset_id)
+            if not dataset:
+                raise ValueError("no dataset found")
+            keyword = Keyword(dataset)
+            keyword.create(documents, session)
+            if dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY:
+                document_ids = [document.metadata["doc_id"] for document in documents]
                 session.execute(
                     update(DocumentSegment)
                     .where(
-                        DocumentSegment.document_id == dataset_document.id,
-                        DocumentSegment.dataset_id == dataset.id,
+                        DocumentSegment.document_id == document_id,
+                        DocumentSegment.dataset_id == dataset_id,
                         DocumentSegment.index_node_id.in_(document_ids),
                         DocumentSegment.status == SegmentStatus.INDEXING,
                     )
@@ -792,8 +738,60 @@ class IndexingRunner:
                         completed_at=naive_utc_now(),
                     )
                 )
+            session.commit()
 
-                session.commit()
+    def _process_chunk(
+        self,
+        flask_app: Flask,
+        index_type: str,
+        chunk_documents: list[Document],
+        dataset_id: str,
+        dataset_document_id: str,
+    ) -> None:
+        with flask_app.app_context(), session_factory.create_session() as session:
+            dataset = session.get(Dataset, dataset_id)
+            if not dataset:
+                raise ValueError("no dataset found")
+
+            dataset_document = session.get(DatasetDocument, dataset_document_id)
+            if not dataset_document:
+                raise ValueError("no document found")
+
+            # check document is paused
+            self._check_document_paused_status(dataset_document.id)
+
+            multimodal_documents = []
+            for document in chunk_documents:
+                if document.attachments and dataset.is_multimodal:
+                    multimodal_documents.extend(document.attachments)
+
+            # load index
+            index_processor = IndexProcessorFactory(index_type).init_index_processor()
+            index_processor.load(
+                dataset,
+                chunk_documents,
+                multimodal_documents=multimodal_documents,
+                with_keywords=False,
+                session=session,
+            )
+
+            document_ids = [document.metadata["doc_id"] for document in chunk_documents]
+            session.execute(
+                update(DocumentSegment)
+                .where(
+                    DocumentSegment.document_id == dataset_document.id,
+                    DocumentSegment.dataset_id == dataset.id,
+                    DocumentSegment.index_node_id.in_(document_ids),
+                    DocumentSegment.status == SegmentStatus.INDEXING,
+                )
+                .values(
+                    status=SegmentStatus.COMPLETED,
+                    enabled=True,
+                    completed_at=naive_utc_now(),
+                )
+            )
+
+            session.commit()
 
     @staticmethod
     def _check_document_paused_status(document_id: str):

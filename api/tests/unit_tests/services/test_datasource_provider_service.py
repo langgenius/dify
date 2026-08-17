@@ -502,9 +502,11 @@ class TestDatasourceProviderService:
     def test_should_raise_value_error_when_oauth_schema_missing(self, service):
         pm = MagicMock()
         pm.declaration.oauth_schema = None
-        with patch.object(service.provider_manager, "fetch_datasource_provider", return_value=pm):
-            with pytest.raises(ValueError, match="oauth schema not found"):
-                service.get_oauth_encrypter("t1", make_id())
+        with (
+            patch.object(service.provider_manager, "fetch_datasource_provider", return_value=pm),
+            pytest.raises(ValueError, match="oauth schema not found"),
+        ):
+            service.get_oauth_encrypter("t1", make_id())
 
     def test_should_return_encrypter_when_oauth_schema_exists(self, service):
         schema_item = MagicMock()
@@ -592,9 +594,9 @@ class TestDatasourceProviderService:
         with (
             patch.object(service.provider_manager, "fetch_datasource_provider"),
             patch("services.datasource_provider_service.PluginService.is_plugin_verified", return_value=False),
+            pytest.raises(ValueError, match="Please configure oauth client params"),
         ):
-            with pytest.raises(ValueError, match="Please configure oauth client params"):
-                service.get_oauth_client("t1", make_id())
+            service.get_oauth_client("t1", make_id())
 
     # -----------------------------------------------------------------------
     # add_datasource_oauth_provider (lines 539-607)
@@ -656,9 +658,11 @@ class TestDatasourceProviderService:
     # -----------------------------------------------------------------------
 
     def test_should_raise_value_error_when_credential_id_not_found_on_reauth(self, service, sqlite_session):
-        with patch.object(service, "extract_secret_variables", return_value=[]):
-            with pytest.raises(ValueError, match="not found"):
-                service.reauthorize_datasource_oauth_provider("n", "t1", make_id(), "u", 1, {}, "bad-id")
+        with (
+            patch.object(service, "extract_secret_variables", return_value=[]),
+            pytest.raises(ValueError, match="not found"),
+        ):
+            service.reauthorize_datasource_oauth_provider("n", "t1", make_id(), "u", 1, {}, "bad-id")
 
     def test_should_reauthorize_and_commit_when_credential_found(self, service, sqlite_session):
         p = make_provider(
@@ -734,18 +738,20 @@ class TestDatasourceProviderService:
             sqlite_session,
             make_provider(name="clash", provider="provider", plugin_id="org/plugin"),
         )
-        with patch("services.datasource_provider_service.get_current_user", return_value=mock_user):
-            with pytest.raises(ValueError, match="already exists"):
-                service.add_datasource_api_key_provider("clash", "t1", make_id(), {"sk": "v"})
+        with (
+            patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
+            pytest.raises(ValueError, match="already exists"),
+        ):
+            service.add_datasource_api_key_provider("clash", "t1", make_id(), {"sk": "v"})
 
     def test_should_raise_value_error_when_credentials_validation_fails(self, service, sqlite_session, mock_user):
         with (
             patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
             patch.object(service.provider_manager, "validate_provider_credentials", side_effect=Exception("bad cred")),
             patch.object(service, "extract_secret_variables", return_value=[]),
+            pytest.raises(ValueError, match="Failed to validate"),
         ):
-            with pytest.raises(ValueError, match="Failed to validate"):
-                service.add_datasource_api_key_provider("nm", "t1", make_id(), {"k": "v"})
+            service.add_datasource_api_key_provider("nm", "t1", make_id(), {"k": "v"})
 
     def test_should_add_api_key_provider_and_commit_when_valid(self, service, sqlite_session, mock_user):
         with (
@@ -796,9 +802,11 @@ class TestDatasourceProviderService:
 
     def test_should_raise_value_error_when_credential_type_is_invalid(self, service):
         pm = MagicMock()
-        with patch.object(service.provider_manager, "fetch_datasource_provider", return_value=pm):
-            with pytest.raises(ValueError, match="Invalid credential type"):
-                service.extract_secret_variables("t1", "org/plug/prov", CredentialType.UNAUTHORIZED)
+        with (
+            patch.object(service.provider_manager, "fetch_datasource_provider", return_value=pm),
+            pytest.raises(ValueError, match="Invalid credential type"),
+        ):
+            service.extract_secret_variables("t1", "org/plug/prov", CredentialType.UNAUTHORIZED)
 
     # -----------------------------------------------------------------------
     # list_datasource_credentials (lines 721-754)
@@ -877,17 +885,21 @@ class TestDatasourceProviderService:
     # -----------------------------------------------------------------------
 
     def test_should_raise_value_error_when_credential_not_found_on_update(self, service, sqlite_session, mock_user):
-        with patch("services.datasource_provider_service.get_current_user", return_value=mock_user):
-            with pytest.raises(ValueError, match="not found"):
-                service.update_datasource_credentials("t1", "id", "prov", "org/plug", {}, "name")
+        with (
+            patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
+            pytest.raises(ValueError, match="not found"),
+        ):
+            service.update_datasource_credentials("t1", "id", "prov", "org/plug", {}, "name")
 
     def test_should_raise_value_error_when_new_name_already_used_on_update(self, service, sqlite_session, mock_user):
         p = make_provider(credential_id="id", name="old_name", encrypted_credentials={"sk": "e"})
         conflict = make_provider(credential_id="conflict-id", name="new_name")
         persist(sqlite_session, p, conflict)
-        with patch("services.datasource_provider_service.get_current_user", return_value=mock_user):
-            with pytest.raises(ValueError, match="already exists"):
-                service.update_datasource_credentials("t1", "id", "prov", "org/plug", {}, "new_name")
+        with (
+            patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
+            pytest.raises(ValueError, match="already exists"),
+        ):
+            service.update_datasource_credentials("t1", "id", "prov", "org/plug", {}, "new_name")
 
     def test_should_raise_value_error_when_credential_validation_fails_on_update(
         self, service, sqlite_session, mock_user
@@ -898,9 +910,9 @@ class TestDatasourceProviderService:
             patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
             patch.object(service, "extract_secret_variables", return_value=["sk"]),
             patch.object(service.provider_manager, "validate_provider_credentials", side_effect=Exception("bad")),
+            pytest.raises(ValueError, match="Failed to validate"),
         ):
-            with pytest.raises(ValueError, match="Failed to validate"):
-                service.update_datasource_credentials("t1", "id", "prov", "org/plug", {"sk": "v"}, "name")
+            service.update_datasource_credentials("t1", "id", "prov", "org/plug", {"sk": "v"}, "name")
 
     def test_should_encrypt_credentials_and_commit_when_update_succeeds(self, service, sqlite_session, mock_user):
         """Verifies that encrypted_credentials is reassigned with encrypted value and commit is called."""

@@ -719,9 +719,11 @@ def test_setup_tracer_phoenix(mock_provider, mock_exporter):
 
 def test_setup_tracer_exception():
     config = ArizeConfig(endpoint="http://a.com", project="p")
-    with patch("dify_trace_arize_phoenix.arize_phoenix_trace.urlparse", side_effect=Exception("boom")):
-        with pytest.raises(Exception, match="boom"):
-            setup_tracer(config)
+    with (
+        patch("dify_trace_arize_phoenix.arize_phoenix_trace.urlparse", side_effect=Exception("boom")),
+        pytest.raises(Exception, match="boom"),
+    ):
+        setup_tracer(config)
 
 
 # --- ArizePhoenixDataTrace Class Tests ---
@@ -785,9 +787,8 @@ def test_trace_dispatch(trace_instance):
 
 
 def test_trace_exception(trace_instance):
-    with patch.object(trace_instance, "workflow_trace", side_effect=RuntimeError("fail")):
-        with pytest.raises(RuntimeError):
-            trace_instance.trace(_make_workflow_info())
+    with patch.object(trace_instance, "workflow_trace", side_effect=RuntimeError("fail")), pytest.raises(RuntimeError):
+        trace_instance.trace(_make_workflow_info())
 
 
 @patch("dify_trace_arize_phoenix.arize_phoenix_trace.DifyCoreRepositoryFactory")

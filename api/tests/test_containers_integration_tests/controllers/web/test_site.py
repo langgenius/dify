@@ -103,9 +103,8 @@ class TestAppSiteApi:
         app_model = _create_app(db_session_with_containers, tenant.id)
         end_user = _end_user(tenant.id, app_model.id)
 
-        with app.test_request_context("/site"):
-            with pytest.raises(Forbidden):
-                AppSiteApi().get(app_model, end_user)
+        with app.test_request_context("/site"), pytest.raises(Forbidden):
+            AppSiteApi().get(app_model, end_user)
 
     def test_archived_tenant_raises_forbidden(self, app: Flask, db_session_with_containers: Session) -> None:
         app.config["RESTX_MASK_HEADER"] = "X-Fields"
@@ -114,9 +113,8 @@ class TestAppSiteApi:
         _create_site(db_session_with_containers, app_model.id)
         end_user = _end_user(tenant.id, app_model.id)
 
-        with app.test_request_context("/site"):
-            with pytest.raises(Forbidden):
-                AppSiteApi().get(app_model, end_user)
+        with app.test_request_context("/site"), pytest.raises(Forbidden):
+            AppSiteApi().get(app_model, end_user)
 
 
 def _tenant_model(*, plan: str = "basic", custom_config: TenantCustomConfigDict | None = None) -> Tenant:

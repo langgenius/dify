@@ -190,9 +190,8 @@ def test_proxy_options_hides_unregistered_operations(
 def test_proxy_is_hidden_when_knowledge_fs_is_disabled(app: Flask, config_overrides: Callable[..., None]) -> None:
     config_overrides(KNOWLEDGE_FS_ENABLED=False)
 
-    with app.test_request_context("/console/api/knowledge-fs/knowledge-spaces", method="GET"):
-        with pytest.raises(NotFound):
-            _proxy_request("GET", "knowledge-spaces")
+    with app.test_request_context("/console/api/knowledge-fs/knowledge-spaces", method="GET"), pytest.raises(NotFound):
+        _proxy_request("GET", "knowledge-spaces")
 
 
 @pytest.mark.parametrize(
@@ -233,12 +232,14 @@ def test_generic_get_hides_unregistered_methods(
     monkeypatch.setattr("controllers.console.knowledge_fs_proxy._proxy_request", proxy)
     route = unwrap(proxy_knowledge_fs_get)
 
-    with app.test_request_context(
-        "/console/api/knowledge-fs/knowledge-spaces",
-        method=method,
+    with (
+        app.test_request_context(
+            "/console/api/knowledge-fs/knowledge-spaces",
+            method=method,
+        ),
+        pytest.raises(NotFound),
     ):
-        with pytest.raises(NotFound):
-            route("knowledge-spaces")
+        route("knowledge-spaces")
 
     proxy.assert_not_called()
 
@@ -356,14 +357,16 @@ def test_denied_write_does_not_consume_the_workspace_rate_limit(
     monkeypatch.setattr("services.knowledge_fs_proxy.ssrf_proxy.make_request", upstream_request)
     route = unwrap(proxy_knowledge_fs_write)
 
-    with app.test_request_context(
-        "/console/api/knowledge-fs/knowledge-spaces",
-        method="POST",
-        data=b"{}",
-        content_type="application/json",
+    with (
+        app.test_request_context(
+            "/console/api/knowledge-fs/knowledge-spaces",
+            method="POST",
+            data=b"{}",
+            content_type="application/json",
+        ),
+        pytest.raises(Forbidden),
     ):
-        with pytest.raises(Forbidden):
-            route("knowledge-spaces")
+        route("knowledge-spaces")
 
     zadd.assert_not_called()
     upstream_request.assert_not_called()
@@ -618,9 +621,8 @@ def test_authorized_service_denial_is_exposed_as_forbidden(
     _set_current_workspace(monkeypatch)
     route = unwrap(proxy_knowledge_fs_get)
 
-    with app.test_request_context("/console/api/knowledge-fs/knowledge-spaces"):
-        with pytest.raises(Forbidden):
-            route("knowledge-spaces")
+    with app.test_request_context("/console/api/knowledge-fs/knowledge-spaces"), pytest.raises(Forbidden):
+        route("knowledge-spaces")
 
 
 def test_generic_post_rejects_oversized_body(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -635,14 +637,16 @@ def test_generic_post_rejects_oversized_body(app: Flask, monkeypatch: pytest.Mon
 
     monkeypatch.setattr("controllers.console.knowledge_fs_proxy._MAX_PROXY_BODY_BYTES", 8)
 
-    with app.test_request_context(
-        "/console/api/knowledge-fs/knowledge-spaces",
-        method="POST",
-        data=b"x" * 9,
-        content_type="application/json",
+    with (
+        app.test_request_context(
+            "/console/api/knowledge-fs/knowledge-spaces",
+            method="POST",
+            data=b"x" * 9,
+            content_type="application/json",
+        ),
+        pytest.raises(RequestEntityTooLarge),
     ):
-        with pytest.raises(RequestEntityTooLarge):
-            route("knowledge-spaces")
+        route("knowledge-spaces")
 
     forward.assert_not_called()
 
@@ -666,9 +670,11 @@ def test_server_credential_rejection_is_not_exposed_as_browser_auth_failure(
     _set_current_workspace(monkeypatch)
     route = unwrap(proxy_knowledge_fs_get)
 
-    with app.test_request_context("/console/api/knowledge-fs/knowledge-spaces"):
-        with pytest.raises(BadGateway, match="authentication failed"):
-            route("knowledge-spaces")
+    with (
+        app.test_request_context("/console/api/knowledge-fs/knowledge-spaces"),
+        pytest.raises(BadGateway, match="authentication failed"),
+    ):
+        route("knowledge-spaces")
 
 
 def test_resource_authorization_rejection_is_exposed_as_forbidden(
@@ -690,9 +696,8 @@ def test_resource_authorization_rejection_is_exposed_as_forbidden(
     _set_current_workspace(monkeypatch)
     route = unwrap(proxy_knowledge_fs_get)
 
-    with app.test_request_context("/console/api/knowledge-fs/knowledge-spaces"):
-        with pytest.raises(Forbidden):
-            route("knowledge-spaces")
+    with app.test_request_context("/console/api/knowledge-fs/knowledge-spaces"), pytest.raises(Forbidden):
+        route("knowledge-spaces")
 
 
 def test_proxy_response_applies_operation_specific_error_status_mapping() -> None:
@@ -762,9 +767,11 @@ def test_configuration_error_is_reported_as_unavailable(app: Flask, monkeypatch:
     _set_current_workspace(monkeypatch)
     route = unwrap(proxy_knowledge_fs_get)
 
-    with app.test_request_context("/console/api/knowledge-fs/knowledge-spaces"):
-        with pytest.raises(ServiceUnavailable, match="misconfigured"):
-            route("knowledge-spaces")
+    with (
+        app.test_request_context("/console/api/knowledge-fs/knowledge-spaces"),
+        pytest.raises(ServiceUnavailable, match="misconfigured"),
+    ):
+        route("knowledge-spaces")
 
 
 def test_disallowed_kfs_route_is_hidden_as_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -775,9 +782,8 @@ def test_disallowed_kfs_route_is_hidden_as_not_found(app: Flask, monkeypatch: py
     _set_current_workspace(monkeypatch)
     route = unwrap(proxy_knowledge_fs_get)
 
-    with app.test_request_context("/console/api/knowledge-fs/openapi.json"):
-        with pytest.raises(NotFound):
-            route("openapi.json")
+    with app.test_request_context("/console/api/knowledge-fs/openapi.json"), pytest.raises(NotFound):
+        route("openapi.json")
 
 
 @pytest.mark.parametrize("method", ["PATCH", "POST"])
@@ -789,9 +795,8 @@ def test_disallowed_non_get_route_is_hidden_as_not_found(
     _set_current_workspace(monkeypatch)
     route = unwrap(proxy_knowledge_fs_write)
 
-    with app.test_request_context("/console/api/knowledge-fs/not-a-route", method=method):
-        with pytest.raises(NotFound):
-            route("not-a-route")
+    with app.test_request_context("/console/api/knowledge-fs/not-a-route", method=method), pytest.raises(NotFound):
+        route("not-a-route")
 
 
 def test_raw_route_uses_console_json_error_handler(app: Flask) -> None:

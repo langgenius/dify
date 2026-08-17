@@ -263,9 +263,11 @@ class TestAnnotationListApi:
         api = AnnotationListApi()
         # The parse moved into @model_validate, so build the query the way the decorator does and
         # assert it is what rejects the input, before the view is ever reached.
-        with app.test_request_context(f"/apps/annotations?{query_string}", method="GET"):
-            with pytest.raises(ValidationError):
-                AnnotationListQuery.model_validate(request.args.to_dict(flat=True))
+        with (
+            app.test_request_context(f"/apps/annotations?{query_string}", method="GET"),
+            pytest.raises(ValidationError),
+        ):
+            AnnotationListQuery.model_validate(request.args.to_dict(flat=True))
         assert unwrap(api.get) is not api.get
         get_mock.assert_not_called()
 

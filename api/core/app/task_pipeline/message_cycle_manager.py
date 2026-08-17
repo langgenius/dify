@@ -120,45 +120,42 @@ class MessageCycleManager:
         query: str,
         message_id: str | None = None,
     ):
-        with flask_app.app_context():
-            with session_factory.create_session() as session:
-                # get conversation and message
-                stmt = select(Conversation).where(Conversation.id == conversation_id)
-                conversation = session.scalar(stmt)
+        with flask_app.app_context(), session_factory.create_session() as session:
+            # get conversation and message
+            stmt = select(Conversation).where(Conversation.id == conversation_id)
+            conversation = session.scalar(stmt)
 
-                if not conversation:
+            if not conversation:
+                return
+
+            if conversation.mode != AppMode.COMPLETION:
+                app_model = session.get(App, conversation.app_id)
+                if not app_model:
                     return
 
-                if conversation.mode != AppMode.COMPLETION:
-                    app_model = session.get(App, conversation.app_id)
-                    if not app_model:
-                        return
+                # generate conversation name
+                query_hash = hashlib.md5(query.encode()).hexdigest()[:16]
+                cache_key = f"conv_name:{conversation_id}:{query_hash}"
 
-                    # generate conversation name
-                    query_hash = hashlib.md5(query.encode()).hexdigest()[:16]
-                    cache_key = f"conv_name:{conversation_id}:{query_hash}"
-
-                    cached_name = redis_client.get(cache_key)
-                    if cached_name:
-                        name = cached_name.decode("utf-8")
-                    else:
-                        try:
-                            name = LLMGenerator.generate_conversation_name(
-                                app_model.tenant_id,
-                                query,
-                                conversation_id,
-                                conversation.app_id,
-                                message_id=message_id,
-                            )
-                            redis_client.setex(cache_key, 3600, name)
-                        except Exception:
-                            if dify_config.DEBUG:
-                                logger.exception(
-                                    "generate conversation name failed, conversation_id: %s", conversation_id
-                                )
-                            name = query[:47] + "..." if len(query) > 50 else query
-                    conversation.name = name
-                    session.commit()
+                cached_name = redis_client.get(cache_key)
+                if cached_name:
+                    name = cached_name.decode("utf-8")
+                else:
+                    try:
+                        name = LLMGenerator.generate_conversation_name(
+                            app_model.tenant_id,
+                            query,
+                            conversation_id,
+                            conversation.app_id,
+                            message_id=message_id,
+                        )
+                        redis_client.setex(cache_key, 3600, name)
+                    except Exception:
+                        if dify_config.DEBUG:
+                            logger.exception("generate conversation name failed, conversation_id: %s", conversation_id)
+                        name = query[:47] + "..." if len(query) > 50 else query
+                conversation.name = name
+                session.commit()
 
     def handle_annotation_reply(self, event: QueueAnnotationReplyEvent, session: Session) -> MessageAnnotation | None:
         """

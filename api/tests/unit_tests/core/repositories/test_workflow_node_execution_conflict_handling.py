@@ -170,9 +170,11 @@ class TestWorkflowNodeExecutionConflictHandling:
     ) -> None:
         execution = _execution(execution_id="test-id")
 
-        with _fail_inserts(conflict_database.engine, failure_count=3, duplicate=True) as conflicts:
-            with pytest.raises(IntegrityError):
-                repository.save(execution)
+        with (
+            _fail_inserts(conflict_database.engine, failure_count=3, duplicate=True) as conflicts,
+            pytest.raises(IntegrityError),
+        ):
+            repository.save(execution)
 
         assert len(conflicts.insert_attempts) == 3
         assert len(conflicts.rollbacks) == 3
@@ -185,9 +187,11 @@ class TestWorkflowNodeExecutionConflictHandling:
     ) -> None:
         execution = _execution(execution_id="test-id")
 
-        with _fail_inserts(conflict_database.engine, failure_count=1, duplicate=False) as conflicts:
-            with pytest.raises(IntegrityError):
-                repository.save(execution)
+        with (
+            _fail_inserts(conflict_database.engine, failure_count=1, duplicate=False) as conflicts,
+            pytest.raises(IntegrityError),
+        ):
+            repository.save(execution)
 
         assert len(conflicts.insert_attempts) == 1
         assert len(conflicts.rollbacks) == 1
