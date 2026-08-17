@@ -1822,8 +1822,8 @@ import { WorkflowVersionApiUpgradeNotice } from '../workflow-version-api-upgrade
     <Properties>
       <Property name='file' type='file' key='file'>
         语音文件。
-        支持格式：`['mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'wav', 'webm']`
-        文件大小限制：15MB
+        支持格式：`['mp3', 'm4a', 'wav', 'amr', 'mpga']`
+        文件大小限制：30MB
       </Property>
       <Property name='user' type='string' key='user'>
         用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
@@ -1841,7 +1841,7 @@ import { WorkflowVersionApiUpgradeNotice } from '../workflow-version-api-upgrade
       label="/audio-to-text"
       targetCode={`curl -X POST '${props.appDetail.api_base_url}/audio-to-text' \\
 --header 'Authorization: Bearer {api_key}' \\
---form 'file=@localfile;type=audio/[mp3|mp4|mpeg|mpga|m4a|wav|webm]'`}
+--form 'file=@localfile;type=audio/[mp3|m4a|wav|amr|mpga]'`}
     />
 
     <CodeGroup title="Response">
