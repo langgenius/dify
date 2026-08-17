@@ -29,7 +29,7 @@ from core.human_input_v2.shared import (
     DeliveryAttemptId,
     EmailProviderId,
     NormalizedEmail,
-    WorkspaceId,
+    TenantId,
 )
 
 _NOW = datetime(2026, 7, 31, 8)
@@ -39,7 +39,7 @@ _CHANNEL = ChannelRef(ChannelKind.EMAIL, ChannelProvider.RESEND)
 def _request() -> RenderedEmailDeliveryRequest:
     delivery_id = DeliveryAttemptId("attempt-1")
     return RenderedEmailDeliveryRequest(
-        workspace_id=WorkspaceId("workspace-1"),
+        tenant_id=TenantId("workspace-1"),
         channel=_CHANNEL,
         delivery_id=delivery_id,
         recipient=NormalizedEmail("Reviewer@Example.com"),
@@ -77,7 +77,7 @@ def test_rendered_request_and_snapshot_representations_are_secret_safe() -> None
 def test_rendered_request_rejects_non_email_and_incomplete_content() -> None:
     with pytest.raises(ValueError, match="Email channel"):
         RenderedEmailDeliveryRequest(
-            workspace_id=WorkspaceId("workspace-1"),
+            tenant_id=TenantId("workspace-1"),
             channel=ChannelRef(ChannelKind.IM, ChannelProvider.SLACK),
             delivery_id=DeliveryAttemptId("attempt-1"),
             recipient=NormalizedEmail("reviewer@example.com"),
@@ -88,7 +88,7 @@ def test_rendered_request_rejects_non_email_and_incomplete_content() -> None:
 
     with pytest.raises(ValueError, match="subject"):
         RenderedEmailDeliveryRequest(
-            workspace_id=WorkspaceId("workspace-1"),
+            tenant_id=TenantId("workspace-1"),
             channel=_CHANNEL,
             delivery_id=DeliveryAttemptId("attempt-1"),
             recipient=NormalizedEmail("reviewer@example.com"),
@@ -100,8 +100,8 @@ def test_rendered_request_rejects_non_email_and_incomplete_content() -> None:
 
 def test_registry_rejects_duplicate_provider_and_runtime_owns_prepared_values() -> None:
     class Resolver:
-        def resolve(self, workspace_id, channel, *, expected=None):
-            assert workspace_id == WorkspaceId("workspace-1")
+        def resolve(self, tenant_id, channel, *, expected=None):
+            assert tenant_id == TenantId("workspace-1")
             assert channel == _CHANNEL
             assert expected is None
             return _snapshot()

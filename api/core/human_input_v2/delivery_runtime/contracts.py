@@ -14,7 +14,7 @@ from core.human_input_v2.shared import (
     DeliveryAttemptId,
     EmailProviderId,
     NormalizedEmail,
-    WorkspaceId,
+    TenantId,
 )
 
 
@@ -45,7 +45,7 @@ class ConfigurationSnapshotIdentity:
 class RenderedEmailDeliveryRequest:
     """Complete provider-ready content for exactly one logical attempt."""
 
-    workspace_id: WorkspaceId
+    tenant_id: TenantId
     channel: ChannelRef
     delivery_id: DeliveryAttemptId
     recipient: NormalizedEmail = field(repr=False)

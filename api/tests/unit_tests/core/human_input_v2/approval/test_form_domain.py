@@ -42,13 +42,13 @@ from core.human_input_v2.shared import (
     DeliveryEndpointId,
     FormId,
     NormalizedEmail,
+    TenantId,
     UploadCapabilityId,
     UploadFileAssociationId,
-    WorkspaceId,
 )
 
 _NOW = datetime(2026, 7, 25, 8)
-_FORM_REF = FormRef(WorkspaceId("workspace-1"), FormId("form-1"))
+_FORM_REF = FormRef(TenantId("workspace-1"), FormId("form-1"))
 
 
 class _SequentialIdentifierFactory(FormSnapshotIdentifierFactory):

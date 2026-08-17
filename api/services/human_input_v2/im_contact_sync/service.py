@@ -21,7 +21,7 @@ from core.human_input_v2.shared import (
     DeploymentScope,
     DirectoryScope,
     IMSyncRunId,
-    WorkspaceId,
+    TenantId,
     WorkspaceScope,
 )
 from libs.datetime_utils import naive_utc_now
@@ -151,16 +151,16 @@ class IMSyncService:
         )
 
     def _require_current_integration(self, organization_scope: DirectoryScope) -> IMIntegration:
-        workspace_id = _workspace_id(organization_scope)
-        integration = self._repository.load_current_integration(workspace_id)
+        tenant_id = _tenant_id(organization_scope)
+        integration = self._repository.load_current_integration(tenant_id)
         if integration is None:
             raise IMIntegrationNotConfiguredError("Organization has no IM Integration")
         return integration
 
 
-def _workspace_id(organization_scope: DirectoryScope) -> WorkspaceId | None:
+def _tenant_id(organization_scope: DirectoryScope) -> TenantId | None:
     if isinstance(organization_scope, WorkspaceScope):
-        return organization_scope.workspace_id
+        return organization_scope.id
     if isinstance(organization_scope, DeploymentScope):
         return None
     raise TypeError("unsupported Organization scope")

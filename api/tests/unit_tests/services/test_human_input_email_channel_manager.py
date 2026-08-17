@@ -38,7 +38,7 @@ from core.human_input_v2.shared import (
     AccountId,
     EmailProviderId,
     NormalizedEmail,
-    WorkspaceId,
+    TenantId,
 )
 from services.human_input_email_channel_manager import (
     DifyEmailCredentialProtector,
@@ -49,7 +49,7 @@ _NOW = datetime(2026, 7, 28, 8)
 _LATER = datetime(2026, 7, 28, 9)
 _REF = ChannelRef(ChannelKind.EMAIL, ChannelProvider.RESEND)
 _CONTEXT = HumanInputChannelManagementContext(
-    WorkspaceId("workspace-1"),
+    TenantId("workspace-1"),
     AccountId("account-1"),
     NormalizedEmail("operator@example.com"),
 )
@@ -61,9 +61,9 @@ class FakeRepository:
         self.load_calls = 0
         self.writes: list[str] = []
 
-    def load(self, workspace_id):
+    def load(self, tenant_id):
         self.load_calls += 1
-        return self.current if self.current is None or self.current.workspace_id == workspace_id else None
+        return self.current if self.current is None or self.current.tenant_id == tenant_id else None
 
     def create(self, configuration):
         self.writes.append("create")
@@ -79,7 +79,7 @@ class FakeRepository:
         self.current = replace(configuration, updated_at=now)
         return UpdateEmailConfigurationResult(UpdateEmailConfigurationStatus.UPDATED, self.current)
 
-    def delete(self, _workspace_id):
+    def delete(self, _tenant_id):
         self.writes.append("delete")
         if self.current is None:
             return DeleteEmailConfigurationResult(DeleteEmailConfigurationStatus.NOT_CONFIGURED)
@@ -105,16 +105,16 @@ class FakeValidator:
 
 class FakeProtector:
     def __init__(self) -> None:
-        self.protect_calls: list[tuple[WorkspaceId, str]] = []
-        self.reveal_calls: list[tuple[WorkspaceId, ProtectedAPIKey]] = []
+        self.protect_calls: list[tuple[TenantId, str]] = []
+        self.reveal_calls: list[tuple[TenantId, ProtectedAPIKey]] = []
 
-    def protect(self, workspace_id, api_key):
-        self.protect_calls.append((workspace_id, api_key))
-        return ProtectedAPIKey(f"{workspace_id}:protected:{api_key}")
+    def protect(self, tenant_id, api_key):
+        self.protect_calls.append((tenant_id, api_key))
+        return ProtectedAPIKey(f"{tenant_id}:protected:{api_key}")
 
-    def reveal(self, workspace_id, protected_api_key):
-        self.reveal_calls.append((workspace_id, protected_api_key))
-        prefix = f"{workspace_id}:protected:"
+    def reveal(self, tenant_id, protected_api_key):
+        self.reveal_calls.append((tenant_id, protected_api_key))
+        prefix = f"{tenant_id}:protected:"
         if not protected_api_key.value.startswith(prefix):
             raise ValueError("wrong workspace")
         return protected_api_key.value.removeprefix(prefix)
@@ -123,10 +123,10 @@ class FakeProtector:
 def _configuration(api_key: str = "old-key") -> EmailChannelConfiguration:
     return EmailChannelConfiguration(
         EmailProviderId("email-1"),
-        _CONTEXT.workspace_id,
+        _CONTEXT.tenant_id,
         NormalizedEmail("old@example.com"),
         "Old Sender",
-        FakeProtector().protect(_CONTEXT.workspace_id, api_key),
+        FakeProtector().protect(_CONTEXT.tenant_id, api_key),
         _CONTEXT.actor_account_id,
         _NOW,
         _NOW,
@@ -252,7 +252,7 @@ def test_retained_key_is_revealed_for_validation_and_preserved_on_update() -> No
 
     assert result.view is not None
     assert validator.calls == [("validate", "old-key", None)]
-    assert protector.reveal_calls == [(_CONTEXT.workspace_id, current.protected_api_key)]
+    assert protector.reveal_calls == [(_CONTEXT.tenant_id, current.protected_api_key)]
     assert protector.protect_calls == []
     assert repository.current is not None
     assert repository.current.protected_api_key == current.protected_api_key
@@ -295,7 +295,7 @@ def test_replacement_key_is_protected_and_replaces_previous_credential() -> None
     )
 
     assert result.view is not None
-    assert protector.protect_calls == [(_CONTEXT.workspace_id, "replacement-key")]
+    assert protector.protect_calls == [(_CONTEXT.tenant_id, "replacement-key")]
     assert protector.reveal_calls == []
     assert repository.current is not None
     assert repository.current.protected_api_key != current.protected_api_key
@@ -307,7 +307,7 @@ def test_credential_protection_failure_is_sanitized(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     class FailingProtector(FakeProtector):
-        def protect(self, _workspace_id, api_key):
+        def protect(self, _tenant_id, api_key):
             raise RuntimeError(f"failed to protect {api_key}")
 
     repository = FakeRepository()
@@ -421,10 +421,10 @@ def test_dify_credential_protector_always_passes_workspace_scope(monkeypatch) ->
     monkeypatch.setattr("services.human_input_email_channel_manager.encrypter.decrypt_token", decrypt_token)
     protector = DifyEmailCredentialProtector()
 
-    protected = protector.protect(_CONTEXT.workspace_id, "plaintext")
-    revealed = protector.reveal(_CONTEXT.workspace_id, protected)
+    protected = protector.protect(_CONTEXT.tenant_id, "plaintext")
+    revealed = protector.reveal(_CONTEXT.tenant_id, protected)
     with pytest.raises(ValueError, match="another workspace"):
-        protector.reveal(WorkspaceId("workspace-2"), protected)
+        protector.reveal(TenantId("workspace-2"), protected)
 
     assert revealed == "plaintext"
     assert calls == [

@@ -15,7 +15,7 @@ from core.human_input_v2.shared import (
     DeliveryAttemptId,
     EmailProviderId,
     NormalizedEmail,
-    WorkspaceId,
+    TenantId,
 )
 from services.human_input_v2.resend_delivery import (
     HttpxResendTransport,
@@ -31,7 +31,7 @@ _CHANNEL = ChannelRef(ChannelKind.EMAIL, ChannelProvider.RESEND)
 def _prepared(token: object) -> PreparedRenderedEmailDelivery:
     delivery_id = DeliveryAttemptId("attempt-1")
     request = RenderedEmailDeliveryRequest(
-        workspace_id=WorkspaceId("workspace-1"),
+        tenant_id=TenantId("workspace-1"),
         channel=_CHANNEL,
         delivery_id=delivery_id,
         recipient=NormalizedEmail("reviewer@example.com"),

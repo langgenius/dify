@@ -44,7 +44,7 @@ from core.human_input_v2.email_channel import (
     RetainExistingAPIKey,
     UpdateEmailConfigurationStatus,
 )
-from core.human_input_v2.shared import EmailProviderId, NormalizedEmail, WorkspaceId
+from core.human_input_v2.shared import EmailProviderId, NormalizedEmail, TenantId
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 
@@ -52,11 +52,11 @@ from libs.uuid_utils import uuidv7
 class DifyEmailCredentialProtector:
     """Tenant RSA adapter implementing the Email credential protection port."""
 
-    def protect(self, workspace_id: WorkspaceId, api_key: str) -> ProtectedAPIKey:
-        return ProtectedAPIKey(encrypter.encrypt_token(str(workspace_id), api_key))
+    def protect(self, tenant_id: TenantId, api_key: str) -> ProtectedAPIKey:
+        return ProtectedAPIKey(encrypter.encrypt_token(str(tenant_id), api_key))
 
-    def reveal(self, workspace_id: WorkspaceId, protected_api_key: ProtectedAPIKey) -> str:
-        return encrypter.decrypt_token(str(workspace_id), protected_api_key.value)
+    def reveal(self, tenant_id: TenantId, protected_api_key: ProtectedAPIKey) -> str:
+        return encrypter.decrypt_token(str(tenant_id), protected_api_key.value)
 
 
 class HumanInputEmailChannelManager:
@@ -88,7 +88,7 @@ class HumanInputEmailChannelManager:
         self._id_factory = id_factory
 
     def get(self, context: HumanInputChannelManagementContext) -> ChannelOperationResult:
-        return ChannelOperationResult.success(self._view(context, self._repository.load(context.workspace_id)))
+        return ChannelOperationResult.success(self._view(context, self._repository.load(context.tenant_id)))
 
     def test(
         self,
@@ -100,8 +100,8 @@ class HumanInputEmailChannelManager:
                 ChannelFailureCategory.VALIDATION_FAILURE,
                 "channel_candidate_mismatch",
             )
-        current = self._repository.load(context.workspace_id)
-        settings_or_failure = self._provider_settings(context.workspace_id, command.candidate, current)
+        current = self._repository.load(context.tenant_id)
+        settings_or_failure = self._provider_settings(context.tenant_id, command.candidate, current)
         if isinstance(settings_or_failure, ChannelOperationResult):
             return settings_or_failure
         validation_failure = self._validate(settings_or_failure, send_to=context.actor_email)
@@ -110,7 +110,7 @@ class HumanInputEmailChannelManager:
         return ChannelOperationResult.tested(
             ChannelTestResult(
                 ref=self.ref,
-                scope=ChannelScope(ChannelScopeKind.WORKSPACE, str(context.workspace_id)),
+                scope=ChannelScope(ChannelScopeKind.WORKSPACE, str(context.tenant_id)),
                 status=ChannelStatus.CONNECTED,
                 summary=ResendChannelTestSummary(
                     recipient_email=context.actor_email,
@@ -131,8 +131,8 @@ class HumanInputEmailChannelManager:
                 ChannelFailureCategory.VALIDATION_FAILURE,
                 "channel_candidate_mismatch",
             )
-        current = self._repository.load(context.workspace_id)
-        settings_or_failure = self._provider_settings(context.workspace_id, command.candidate, current)
+        current = self._repository.load(context.tenant_id)
+        settings_or_failure = self._provider_settings(context.tenant_id, command.candidate, current)
         if isinstance(settings_or_failure, ChannelOperationResult):
             return settings_or_failure
         validation_failure = self._validate(settings_or_failure)
@@ -143,7 +143,7 @@ class HumanInputEmailChannelManager:
             protected_key = (
                 current.protected_api_key
                 if isinstance(command.candidate.api_key, RetainExistingAPIKey) and current is not None
-                else self._protector.protect(context.workspace_id, settings_or_failure.api_key)
+                else self._protector.protect(context.tenant_id, settings_or_failure.api_key)
             )
         except Exception:
             return ChannelOperationResult.failed(ChannelFailureCategory.CHANNEL_FAILURE, "credential_protection_failed")
@@ -152,7 +152,7 @@ class HumanInputEmailChannelManager:
         if current is None:
             configuration = EmailChannelConfiguration(
                 id=EmailProviderId(self._id_factory()),
-                workspace_id=context.workspace_id,
+                tenant_id=context.tenant_id,
                 sender_email=command.candidate.sender_email,
                 sender_name=command.candidate.sender_name,
                 protected_api_key=protected_key,
@@ -187,14 +187,14 @@ class HumanInputEmailChannelManager:
                 ChannelFailureCategory.VALIDATION_FAILURE,
                 "channel_candidate_mismatch",
             )
-        result = self._repository.delete(context.workspace_id)
+        result = self._repository.delete(context.tenant_id)
         if result.status is DeleteEmailConfigurationStatus.NOT_CONFIGURED:
             return ChannelOperationResult.failed(ChannelFailureCategory.NOT_CONFIGURED)
         return ChannelOperationResult.success(self._view(context, None))
 
     def _provider_settings(
         self,
-        workspace_id: WorkspaceId,
+        tenant_id: TenantId,
         candidate: ResendCandidate,
         current: EmailChannelConfiguration | None,
     ) -> ResendProviderSettings | ChannelOperationResult:
@@ -207,7 +207,7 @@ class HumanInputEmailChannelManager:
                     "cannot_retain_missing_api_key",
                 )
             try:
-                api_key = self._protector.reveal(workspace_id, current.protected_api_key)
+                api_key = self._protector.reveal(tenant_id, current.protected_api_key)
             except Exception:
                 return ChannelOperationResult.failed(
                     ChannelFailureCategory.CHANNEL_FAILURE,
@@ -240,7 +240,7 @@ class HumanInputEmailChannelManager:
     ) -> ChannelView:
         return ChannelView(
             ref=self.ref,
-            scope=ChannelScope(ChannelScopeKind.WORKSPACE, str(context.workspace_id)),
+            scope=ChannelScope(ChannelScopeKind.WORKSPACE, str(context.tenant_id)),
             configured=configuration is not None,
             status=ChannelStatus.CONFIGURED if configuration is not None else ChannelStatus.NOT_CONFIGURED,
             capabilities=self.capabilities,

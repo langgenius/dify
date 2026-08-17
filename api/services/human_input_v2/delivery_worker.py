@@ -61,11 +61,11 @@ class HumanInputV2DeliveryWorker:
                 now=now,
             )
             return
-        workspace_id = claim.attempt.endpoint_ref.form_ref.workspace_id
+        tenant_id = claim.attempt.endpoint_ref.form_ref.tenant_id
         try:
-            serialized = self._protector.reveal(workspace_id, claim.data.protected_request)
+            serialized = self._protector.reveal(tenant_id, claim.data.protected_request)
             request = deserialize_rendered_email_request(serialized)
-            if request.workspace_id != workspace_id or request.delivery_id != claim.attempt.id:
+            if request.tenant_id != tenant_id or request.delivery_id != claim.attempt.id:
                 raise ValueError("protected delivery ownership does not match")
             if fingerprint_rendered_email(request) != claim.data.payload_fingerprint:
                 raise ValueError("protected delivery payload fingerprint does not match")

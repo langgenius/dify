@@ -6,6 +6,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
+from core.human_input_v2.shared import TenantId
 from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData
 from core.workflow.nodes.human_input_v2.migration import (
     LegacyDeliveryParseIssue,
@@ -23,7 +24,7 @@ from core.workflow.nodes.human_input_v2.migration import (
 class WorkspaceMemberEmailLookup(Protocol):
     """Read the currently usable Account Emails for one workspace scope."""
 
-    def find_member_emails(self, workspace_id: str, account_ids: Sequence[str]) -> MemberEmailSnapshot: ...
+    def find_member_emails(self, tenant_id: TenantId, account_ids: Sequence[str]) -> MemberEmailSnapshot: ...
 
 
 type NodeDataConverter = Callable[
@@ -100,9 +101,9 @@ class HumanInputNodeDataMigrationService:
         self._member_email_lookup = member_email_lookup
         self._converter = converter
 
-    def migrate(self, *, workspace_id: str, nodes: Sequence[MigrationNode]) -> NodeDataMigrationOutcome:
+    def migrate(self, *, tenant_id: TenantId, nodes: Sequence[MigrationNode]) -> NodeDataMigrationOutcome:
         member_ids = self._collect_member_ids(nodes)
-        member_email_snapshot = self._member_email_lookup.find_member_emails(workspace_id, member_ids)
+        member_email_snapshot = self._member_email_lookup.find_member_emails(tenant_id, member_ids)
 
         migrated_nodes: list[MigratedNode] = []
         blockers: list[NodeDataMigrationBlocker] = []

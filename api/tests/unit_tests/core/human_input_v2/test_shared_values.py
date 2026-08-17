@@ -25,9 +25,9 @@ from core.human_input_v2.shared import (
     OTPChallengeId,
     PlatformEntryId,
     SubmissionId,
+    TenantId,
     UploadCapabilityId,
     UploadFileAssociationId,
-    WorkspaceId,
     WorkspaceScope,
 )
 
@@ -61,7 +61,7 @@ class _StringNewType(Protocol):
         SubmissionId,
         UploadCapabilityId,
         UploadFileAssociationId,
-        WorkspaceId,
+        TenantId,
     ],
 )
 def test_typed_ids_are_direct_string_newtypes(identifier_type: _StringNewType) -> None:
@@ -95,12 +95,12 @@ def test_normalized_email_rejects_invalid_values(invalid_email: str) -> None:
 
 
 def test_owner_scopes_are_explicit_and_immutable() -> None:
-    workspace_id = WorkspaceId("workspace-1")
+    tenant_id = TenantId("workspace-1")
 
     assert DeploymentScope().to_primitive() == {"kind": "deployment"}
-    assert WorkspaceScope(workspace_id).to_primitive() == {
+    assert WorkspaceScope(id=tenant_id).to_primitive() == {
         "kind": "workspace",
-        "workspace_id": "workspace-1",
+        "id": "workspace-1",
     }
     with pytest.raises(AttributeError):
-        WorkspaceScope(workspace_id).workspace_id = WorkspaceId("workspace-2")  # type: ignore[misc]
+        WorkspaceScope(id=tenant_id).id = TenantId("workspace-2")  # type: ignore[misc]

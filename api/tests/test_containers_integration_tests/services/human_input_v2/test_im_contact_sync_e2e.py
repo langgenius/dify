@@ -55,7 +55,7 @@ from core.human_input_v2.shared import (
     IMSyncRunId,
     IntegrationId,
     NormalizedEmail,
-    WorkspaceId,
+    TenantId,
     WorkspaceScope,
 )
 from extensions.ext_redis import redis_client
@@ -147,7 +147,7 @@ def _seed_historical_state(session: Session) -> tuple[WorkspaceScope, AccountId]
     new_account = _account("New Reviewer", "new-reviewer@example.com")
     session.add_all((tenant, existing_account, new_account))
     session.flush()
-    workspace_id = WorkspaceId(tenant.id)
+    tenant_id = TenantId(tenant.id)
     session.add_all(
         (
             TenantAccountJoin(
@@ -166,7 +166,7 @@ def _seed_historical_state(session: Session) -> tuple[WorkspaceScope, AccountId]
     )
     existing_contact = Contact.workspace_member(
         contact_id=_EXISTING_CONTACT_ID,
-        workspace_id=workspace_id,
+        tenant_id=tenant_id,
         account_id=AccountId(existing_account.id),
         name=existing_account.name,
         email=existing_account.email,
@@ -174,7 +174,7 @@ def _seed_historical_state(session: Session) -> tuple[WorkspaceScope, AccountId]
     )
     new_contact = Contact.workspace_member(
         contact_id=_NEW_CONTACT_ID,
-        workspace_id=workspace_id,
+        tenant_id=tenant_id,
         account_id=AccountId(new_account.id),
         name=new_account.name,
         email=new_account.email,
@@ -182,7 +182,7 @@ def _seed_historical_state(session: Session) -> tuple[WorkspaceScope, AccountId]
     )
     integration = IMIntegration.create(
         integration_id=_INTEGRATION_ID,
-        workspace_id=workspace_id,
+        tenant_id=tenant_id,
         provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, "provider-tenant-1"),
         encrypted_credentials=EncryptedCredentials.from_mapping(
             {"app_id": "app-1", "encrypted_app_secret": "ciphertext"}
@@ -280,7 +280,7 @@ def _seed_historical_state(session: Session) -> tuple[WorkspaceScope, AccountId]
         {"snapshot": legacy_snapshot, "result_id": str(historical_result.id)},
     )
     session.commit()
-    return WorkspaceScope(workspace_id), AccountId(existing_account.id)
+    return WorkspaceScope(id=tenant_id), AccountId(existing_account.id)
 
 
 def test_existing_state_remains_readable_and_new_run_starts_forward_only_history(
@@ -320,7 +320,7 @@ def test_existing_state_remains_readable_and_new_run_starts_forward_only_history
     assert db_session_with_containers.scalar(select(func.count(HumanInputIMReconciliationChange.id))) == 0
 
     new_run = application.sync_service.create_or_get_active_run(scope, actor_id)
-    assert dispatched == [((str(new_run.id), "workspace", str(scope.workspace_id)), "human_input_contact_sync")]
+    assert dispatched == [((str(new_run.id), "workspace", str(scope.id)), "human_input_contact_sync")]
 
     executed_statements: list[str] = []
 
@@ -498,7 +498,7 @@ def test_apply_rejects_a_changed_automatic_contact_target(
     elif precondition_change == "membership":
         db_session_with_containers.execute(
             delete(TenantAccountJoin).where(
-                TenantAccountJoin.tenant_id == str(scope.workspace_id),
+                TenantAccountJoin.tenant_id == str(scope.id),
                 TenantAccountJoin.account_id == target_contact.account_id,
             )
         )
@@ -523,7 +523,7 @@ def test_real_redis_lock_has_bounded_acquisition_and_explicit_ttl_extension(
     flask_app_with_containers,
 ) -> None:
     del flask_app_with_containers
-    lock_scope = OrganizationIMWriteScope.for_workspace(WorkspaceId("lock-contract-workspace"))
+    lock_scope = OrganizationIMWriteScope.for_workspace(TenantId("lock-contract-workspace"))
     write_lock = OrganizationIMWriteLock(
         redis_client,
         lock_scope,
@@ -555,7 +555,7 @@ def test_redis_ownership_loss_rolls_back_the_postgresql_transaction(
 ) -> None:
     scope, actor_id = _seed_historical_state(db_session_with_containers)
     sessions = sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
-    lock_scope = OrganizationIMWriteScope.for_workspace(scope.workspace_id)
+    lock_scope = OrganizationIMWriteScope.for_workspace(scope.id)
 
     def write_then_lose_ownership() -> None:
         with _write_unit_of_work(sessions, scope) as protected_repository:
@@ -674,7 +674,7 @@ def test_im_channel_manager_replaces_and_deletes_integration_through_the_organiz
         id_factory=lambda: str(_REPLACEMENT_INTEGRATION_ID),
     )
     context = HumanInputChannelManagementContext(
-        workspace_id=scope.workspace_id,
+        tenant_id=scope.id,
         actor_account_id=actor_id,
         actor_email=NormalizedEmail("existing-reviewer@example.com"),
     )
@@ -697,7 +697,7 @@ def test_im_channel_manager_replaces_and_deletes_integration_through_the_organiz
     )
 
     assert replaced.view is not None
-    current = repository.load_current_integration(scope.workspace_id)
+    current = repository.load_current_integration(scope.id)
     assert current is not None
     assert current.id == _REPLACEMENT_INTEGRATION_ID
     assert current.provider_tenant.provider is IMProvider.SLACK
@@ -712,7 +712,7 @@ def test_im_channel_manager_replaces_and_deletes_integration_through_the_organiz
     )
 
     assert deleted.view is not None
-    assert repository.load_current_integration(scope.workspace_id) is None
+    assert repository.load_current_integration(scope.id) is None
 
 
 def test_concurrent_workers_commit_one_reconciliation_fact_set(
@@ -762,7 +762,7 @@ def test_concurrent_workers_commit_one_reconciliation_fact_set(
 def _replacement_transition(scope: WorkspaceScope, actor_id: AccountId) -> ConfigurationTransition:
     current = IMIntegration.create(
         integration_id=_INTEGRATION_ID,
-        workspace_id=scope.workspace_id,
+        tenant_id=scope.id,
         provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, "provider-tenant-1"),
         encrypted_credentials=EncryptedCredentials.from_mapping(
             {"app_id": "app-1", "encrypted_app_secret": "ciphertext"}
@@ -794,7 +794,7 @@ def _write_unit_of_work(
         sessions,
         OrganizationIMWriteLock(
             redis_client,
-            OrganizationIMWriteScope.for_workspace(scope.workspace_id),
+            OrganizationIMWriteScope.for_workspace(scope.id),
             acquisition_timeout_seconds=1,
             lease_seconds=10,
         ),

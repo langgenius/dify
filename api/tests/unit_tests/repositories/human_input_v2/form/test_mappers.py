@@ -61,9 +61,9 @@ from core.human_input_v2.shared import (
     IMIdentityId,
     IntegrationId,
     NormalizedEmail,
+    TenantId,
     UploadCapabilityId,
     UploadFileAssociationId,
-    WorkspaceId,
 )
 from graphon.file.enums import FileTransferMethod, FileType
 from models.human_input_v2 import HumanInputV2FormApproverGrant, HumanInputV2FormDeliveryEndpoint
@@ -85,7 +85,7 @@ from repositories.human_input_v2.form.mappers import (
 )
 
 _NOW = datetime(2026, 7, 25, 8)
-_FORM_REF = FormRef(WorkspaceId("workspace-1"), FormId("form-1"))
+_FORM_REF = FormRef(TenantId("workspace-1"), FormId("form-1"))
 
 
 def _resolved_form() -> ResolvedForm:
@@ -242,7 +242,7 @@ def test_delivery_attempt_provider_and_upload_values_round_trip() -> None:
     )
     provider = EmailProviderConfiguration(
         id=EmailProviderId("provider-1"),
-        workspace_id=WorkspaceId("workspace-1"),
+        tenant_id=TenantId("workspace-1"),
         provider=EmailProviderType.RESEND,
         sender_email=NormalizedEmail("Sender@Example.com"),
         sender_name="Dify",
@@ -286,7 +286,7 @@ def test_delivery_attempt_provider_and_upload_values_round_trip() -> None:
 def test_email_provider_mapper_strictly_validates_credentials(credentials: dict[str, str]) -> None:
     provider = EmailProviderConfiguration(
         id=EmailProviderId("provider-1"),
-        workspace_id=WorkspaceId("workspace-1"),
+        tenant_id=TenantId("workspace-1"),
         provider=EmailProviderType.RESEND,
         sender_email=NormalizedEmail("sender@example.com"),
         sender_name="Dify",
@@ -533,7 +533,7 @@ def test_optional_mapper_values_round_trip_when_absent() -> None:
     )
     provider = EmailProviderConfiguration(
         id=EmailProviderId("provider-1"),
-        workspace_id=WorkspaceId("workspace-1"),
+        tenant_id=TenantId("workspace-1"),
         provider=EmailProviderType.RESEND,
         sender_email=NormalizedEmail("sender@example.com"),
         sender_name="Dify",

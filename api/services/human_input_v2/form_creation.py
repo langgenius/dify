@@ -20,7 +20,7 @@ from core.human_input_v2.shared import (
     AppId,
     ApproverGrantId,
     DeliveryEndpointId,
-    WorkspaceId,
+    TenantId,
 )
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
@@ -82,7 +82,7 @@ class HumanInputV2FormCreationService:
         request: HumanInputV2FormCreationRequest,
         *,
         render_template: Callable[[str], str],
-        build_form_url: Callable[[WorkspaceId, str], str],
+        build_form_url: Callable[[TenantId, str], str],
     ) -> HumanInputV2FormCreationResult:
         creation = HumanInputForm.create_from_plan(
             ref=request.form_ref,

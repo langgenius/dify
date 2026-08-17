@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from core.human_input_v2.shared import WorkspaceId
+from core.human_input_v2.shared import TenantId
 from services.human_input_v2.im_contact_sync.locking import (
     OrganizationIMWriteLock,
     OrganizationIMWriteLockLostError,
@@ -71,7 +71,7 @@ def _write_lock(lock: _RedisLockDouble | None = None) -> tuple[OrganizationIMWri
     return (
         OrganizationIMWriteLock(
             redis_client,
-            OrganizationIMWriteScope.for_workspace(WorkspaceId("workspace-1")),
+            OrganizationIMWriteScope.for_workspace(TenantId("workspace-1")),
             acquisition_timeout_seconds=0.25,
             lease_seconds=5,
         ),
@@ -86,7 +86,7 @@ def _lose_lock_ownership(write_lock: OrganizationIMWriteLock, redis_client: _Red
 
 
 def test_workspace_and_deployment_scopes_have_stable_distinct_keys() -> None:
-    assert OrganizationIMWriteScope.for_workspace(WorkspaceId("workspace-1")).redis_key == (
+    assert OrganizationIMWriteScope.for_workspace(TenantId("workspace-1")).redis_key == (
         "human-input-v2:organization-im-write:workspace:workspace-1"
     )
     assert OrganizationIMWriteScope.for_deployment().redis_key == ("human-input-v2:organization-im-write:deployment")

@@ -23,7 +23,7 @@ from core.human_input_v2.shared import (
     AccountId,
     IMSyncRunId,
     IntegrationId,
-    WorkspaceId,
+    TenantId,
     WorkspaceScope,
 )
 from services.human_input_v2.im_contact_sync.errors import IMWriteUnavailableError
@@ -37,14 +37,14 @@ from services.human_input_v2.im_contact_sync.service import (
 )
 
 _NOW = datetime(2026, 8, 11, 8)
-_WORKSPACE_ID = WorkspaceId("workspace-1")
-_SCOPE = WorkspaceScope(_WORKSPACE_ID)
+_TENANT_ID = TenantId("workspace-1")
+_SCOPE = WorkspaceScope(id=_TENANT_ID)
 
 
 def _integration() -> IMIntegration:
     return IMIntegration.create(
         integration_id=IntegrationId("integration-1"),
-        workspace_id=_WORKSPACE_ID,
+        tenant_id=_TENANT_ID,
         provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, "provider-tenant-1"),
         encrypted_credentials=EncryptedCredentials.from_mapping(
             {"app_id": "app-1", "encrypted_app_secret": "ciphertext"}
@@ -75,8 +75,8 @@ class _Repository:
         self.identity_page = object()
         self.identity_request: tuple[IntegrationId, IMProvider, str | None, int, int] | None = None
 
-    def load_current_integration(self, workspace_id: WorkspaceId | None) -> IMIntegration | None:
-        assert workspace_id == _WORKSPACE_ID
+    def load_current_integration(self, tenant_id: TenantId | None) -> IMIntegration | None:
+        assert tenant_id == _TENANT_ID
         return self.integration
 
     def create_or_get_active_run(

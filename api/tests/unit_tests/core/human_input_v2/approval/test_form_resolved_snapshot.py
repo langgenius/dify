@@ -20,7 +20,7 @@ from core.human_input_v2.approval import (
     SubjectSnapshot,
 )
 from core.human_input_v2.entities import HumanInputV2FormKind, HumanInputV2FormStatus
-from core.human_input_v2.shared import AppId, ApproverGrantId, FormId, NormalizedEmail, WorkspaceId
+from core.human_input_v2.shared import AppId, ApproverGrantId, FormId, NormalizedEmail, TenantId
 
 _NOW = datetime(2026, 8, 10, 8)
 
@@ -35,7 +35,7 @@ def _resolved_form() -> ResolvedForm:
 
 
 def _form() -> HumanInputForm:
-    form_ref = FormRef(WorkspaceId("workspace-1"), FormId("form-1"))
+    form_ref = FormRef(TenantId("workspace-1"), FormId("form-1"))
     email = NormalizedEmail("reviewer@example.com")
     grant = ApproverGrant.from_resolved_approver(
         grant_id=ApproverGrantId("grant-1"),

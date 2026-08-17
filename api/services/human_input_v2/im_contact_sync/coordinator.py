@@ -26,7 +26,7 @@ from core.human_input_v2.shared import (
     DeploymentScope,
     DirectoryScope,
     IMSyncRunId,
-    WorkspaceId,
+    TenantId,
     WorkspaceScope,
 )
 from libs.datetime_utils import naive_utc_now
@@ -113,7 +113,7 @@ class IMContactSyncCoordinator:
         run = self._require_run(sync_run_id)
         if not run.is_active:
             return run
-        integration = self._repository.load_current_integration(_workspace_id(organization_scope))
+        integration = self._repository.load_current_integration(_tenant_id(organization_scope))
         if (
             integration is None
             or integration.revision != run.integration_revision
@@ -254,9 +254,9 @@ class IMContactSyncCoordinator:
             )
 
 
-def _workspace_id(organization_scope: DirectoryScope) -> WorkspaceId | None:
+def _tenant_id(organization_scope: DirectoryScope) -> TenantId | None:
     if isinstance(organization_scope, WorkspaceScope):
-        return organization_scope.workspace_id
+        return organization_scope.id
     if isinstance(organization_scope, DeploymentScope):
         return None
     raise TypeError("unsupported Organization scope")

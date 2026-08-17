@@ -36,7 +36,7 @@ from core.human_input_v2.shared import (
     DeploymentScope,
     DirectoryScope,
     PlatformEntryId,
-    WorkspaceId,
+    TenantId,
     WorkspaceScope,
 )
 from libs.datetime_utils import naive_utc_now
@@ -70,13 +70,13 @@ class SQLAlchemyContactDirectoryRepository:
         self._session_maker = session_maker
         self._write_unit_of_work_factory = write_unit_of_work_factory
 
-    def load_snapshot(self, workspace_id: WorkspaceId) -> ContactDirectorySnapshot:
+    def load_snapshot(self, tenant_id: TenantId) -> ContactDirectorySnapshot:
         """Load one coherent contacts, membership, allow-list, and Account view."""
 
         try:
             with self._session_maker() as session, session.begin():
                 self._configure_snapshot_transaction(session)
-                return self._load_snapshot(session, workspace_id)
+                return self._load_snapshot(session, tenant_id)
         except ContactDirectoryError:
             raise
         except SQLAlchemyError as error:
@@ -110,10 +110,7 @@ class SQLAlchemyContactDirectoryRepository:
 
         if not isinstance(contact.owner, WorkspaceMemberOwner):
             raise self._domain_error(ContactRejectionCode.INVALID_OWNER)
-        if (
-            not isinstance(organization_scope, WorkspaceScope)
-            or organization_scope.workspace_id != contact.owner.workspace_id
-        ):
+        if not isinstance(organization_scope, WorkspaceScope) or organization_scope.id != contact.owner.tenant_id:
             raise ValueError("Organization write scope does not match Contact owner")
         return self._save_account_backed_contact(
             contact,
@@ -155,7 +152,7 @@ class SQLAlchemyContactDirectoryRepository:
         except SQLAlchemyError as error:
             raise self._persistence_error() from error
 
-    def admit_external(self, workspace_id: WorkspaceId, *, name: str, email: str) -> Contact:
+    def admit_external(self, tenant_id: TenantId, *, name: str, email: str) -> Contact:
         """Atomically validate and create a new External Contact.
 
         External and Organization Email claims share the deployment lock when
@@ -168,7 +165,7 @@ class SQLAlchemyContactDirectoryRepository:
         try:
             with self._session_maker() as session, session.begin():
                 self._lock_deployment_owner(session, require_setup_row=False)
-                snapshot = self._load_snapshot(session, workspace_id)
+                snapshot = self._load_snapshot(session, tenant_id)
                 contact = ContactDirectoryPolicy.admit_external(
                     snapshot,
                     contact_id=ContactId(str(uuidv7())),
@@ -190,7 +187,7 @@ class SQLAlchemyContactDirectoryRepository:
 
     def set_platform_availability(
         self,
-        workspace_id: WorkspaceId,
+        tenant_id: TenantId,
         contact_id: ContactId,
         *,
         added_by_account_id: AccountId,
@@ -205,7 +202,7 @@ class SQLAlchemyContactDirectoryRepository:
                         HumanInputContact.id == str(contact_id),
                         or_(
                             HumanInputContact.tenant_id.is_(None),
-                            HumanInputContact.tenant_id == str(workspace_id),
+                            HumanInputContact.tenant_id == str(tenant_id),
                         ),
                     )
                 )
@@ -223,7 +220,7 @@ class SQLAlchemyContactDirectoryRepository:
                         session,
                         PlatformWorkspaceEntry(
                             id=PlatformEntryId(str(uuidv7())),
-                            workspace_id=workspace_id,
+                            tenant_id=tenant_id,
                             contact_id=contact_id,
                             added_by_account_id=added_by_account_id,
                             created_at=now,
@@ -233,7 +230,7 @@ class SQLAlchemyContactDirectoryRepository:
                 else:
                     session.execute(
                         sa.delete(HumanInputPlatformContactWorkspaceEntry).where(
-                            HumanInputPlatformContactWorkspaceEntry.tenant_id == str(workspace_id),
+                            HumanInputPlatformContactWorkspaceEntry.tenant_id == str(tenant_id),
                             HumanInputPlatformContactWorkspaceEntry.contact_id == str(contact_id),
                         )
                     )
@@ -245,15 +242,15 @@ class SQLAlchemyContactDirectoryRepository:
         except SQLAlchemyError as error:
             raise self._persistence_error() from error
 
-    def hard_delete_external(self, workspace_id: WorkspaceId, contact_id: ContactId) -> None:
+    def hard_delete_external(self, tenant_id: TenantId, contact_id: ContactId) -> None:
         """Hard-delete an External Contact and every referencing IM binding atomically."""
 
         try:
-            with self._write_unit_of_work_factory(WorkspaceScope(workspace_id)) as session:
+            with self._write_unit_of_work_factory(WorkspaceScope(id=tenant_id)) as session:
                 record = session.scalar(
                     select(HumanInputContact).where(
                         HumanInputContact.id == str(contact_id),
-                        HumanInputContact.tenant_id == str(workspace_id),
+                        HumanInputContact.tenant_id == str(tenant_id),
                         HumanInputContact.identity_source == HumanInputContactIdentitySource.EXTERNAL,
                     )
                 )
@@ -267,20 +264,20 @@ class SQLAlchemyContactDirectoryRepository:
         except SQLAlchemyError as error:
             raise self._persistence_error() from error
 
-    def _load_snapshot(self, session: Session, workspace_id: WorkspaceId) -> ContactDirectorySnapshot:
+    def _load_snapshot(self, session: Session, tenant_id: TenantId) -> ContactDirectorySnapshot:
         contact_records = session.scalars(
             select(HumanInputContact)
             .options(
                 selectinload(
                     HumanInputContact.platform_workspace_entries.and_(
-                        HumanInputPlatformContactWorkspaceEntry.tenant_id == str(workspace_id)
+                        HumanInputPlatformContactWorkspaceEntry.tenant_id == str(tenant_id)
                     )
                 )
             )
             .where(
                 or_(
                     HumanInputContact.tenant_id.is_(None),
-                    HumanInputContact.tenant_id == str(workspace_id),
+                    HumanInputContact.tenant_id == str(tenant_id),
                 )
             )
             .order_by(HumanInputContact.id)
@@ -289,7 +286,7 @@ class SQLAlchemyContactDirectoryRepository:
         member_account_ids = frozenset(
             AccountId(account_id)
             for account_id in session.scalars(
-                select(TenantAccountJoin.account_id).where(TenantAccountJoin.tenant_id == str(workspace_id))
+                select(TenantAccountJoin.account_id).where(TenantAccountJoin.tenant_id == str(tenant_id))
             ).all()
         )
         contact_account_ids = {contact.account_id for contact in contacts if contact.account_id is not None}
@@ -306,7 +303,7 @@ class SQLAlchemyContactDirectoryRepository:
             ContactId(record.id) for record in contact_records if record.platform_workspace_entries
         )
         return ContactDirectorySnapshot(
-            workspace_id=workspace_id,
+            tenant_id=tenant_id,
             contacts=contacts,
             member_account_ids=member_account_ids,
             platform_contact_ids=platform_contact_ids,
@@ -338,7 +335,7 @@ class SQLAlchemyContactDirectoryRepository:
         membership_id = session.scalar(
             select(TenantAccountJoin.id)
             .where(
-                TenantAccountJoin.tenant_id == str(owner.workspace_id),
+                TenantAccountJoin.tenant_id == str(owner.tenant_id),
                 TenantAccountJoin.account_id == str(owner.account_id),
             )
             .with_for_update()
@@ -392,13 +389,13 @@ class SQLAlchemyContactDirectoryRepository:
             )
         if isinstance(contact.owner, ExternalContactOwner):
             return or_(
-                HumanInputContact.tenant_id == str(contact.owner.workspace_id),
+                HumanInputContact.tenant_id == str(contact.owner.tenant_id),
                 sa.and_(
                     HumanInputContact.tenant_id.is_(None),
                     HumanInputContact.identity_source == HumanInputContactIdentitySource.ORGANIZATION_ACCOUNT,
                 ),
             )
-        return HumanInputContact.tenant_id == str(contact.owner.workspace_id)
+        return HumanInputContact.tenant_id == str(contact.owner.tenant_id)
 
     @staticmethod
     def _insert_platform_entry_idempotently(session: Session, entry: PlatformWorkspaceEntry) -> None:
@@ -439,7 +436,7 @@ class SQLAlchemyContactDirectoryRepository:
     def _owner_predicate(contact: Contact) -> sa.ColumnElement[bool]:
         if isinstance(contact.owner, OrganizationAccountOwner):
             return HumanInputContact.tenant_id.is_(None)
-        return HumanInputContact.tenant_id == str(contact.owner.workspace_id)
+        return HumanInputContact.tenant_id == str(contact.owner.tenant_id)
 
     @staticmethod
     def _record_has_same_identity(record: HumanInputContact, contact: Contact) -> bool:

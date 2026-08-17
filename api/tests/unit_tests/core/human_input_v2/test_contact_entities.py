@@ -19,7 +19,7 @@ from core.human_input_v2.shared import (
     ContactId,
     DeploymentScope,
     NormalizedEmail,
-    WorkspaceId,
+    TenantId,
     WorkspaceScope,
 )
 
@@ -44,7 +44,7 @@ def test_organization_account_contact_has_deployment_owner() -> None:
 def test_workspace_member_contact_has_workspace_and_account_owner() -> None:
     contact = Contact.workspace_member(
         contact_id=ContactId("contact-1"),
-        workspace_id=WorkspaceId("workspace-1"),
+        tenant_id=TenantId("workspace-1"),
         account_id=AccountId("account-1"),
         name="Ada",
         email=None,
@@ -52,30 +52,30 @@ def test_workspace_member_contact_has_workspace_and_account_owner() -> None:
     )
 
     assert contact.identity_source is ContactIdentitySource.WORKSPACE_MEMBER
-    assert contact.owner == WorkspaceMemberOwner(WorkspaceId("workspace-1"), AccountId("account-1"))
+    assert contact.owner == WorkspaceMemberOwner(TenantId("workspace-1"), AccountId("account-1"))
 
 
 def test_external_contact_requires_workspace_and_email() -> None:
     contact = Contact.external(
         contact_id=ContactId("contact-1"),
-        workspace_id=WorkspaceId("workspace-1"),
+        tenant_id=TenantId("workspace-1"),
         name="Reviewer",
         email="reviewer@example.com",
         now=_NOW,
     )
 
     assert contact.identity_source is ContactIdentitySource.EXTERNAL
-    assert contact.owner == ExternalContactOwner(WorkspaceId("workspace-1"))
+    assert contact.owner == ExternalContactOwner(TenantId("workspace-1"))
 
 
 @pytest.mark.parametrize(
     ("identity_source", "owner"),
     [
-        (ContactIdentitySource.ORGANIZATION_ACCOUNT, ExternalContactOwner(WorkspaceId("workspace-1"))),
+        (ContactIdentitySource.ORGANIZATION_ACCOUNT, ExternalContactOwner(TenantId("workspace-1"))),
         (ContactIdentitySource.WORKSPACE_MEMBER, OrganizationAccountOwner(AccountId("account-1"))),
         (
             ContactIdentitySource.EXTERNAL,
-            WorkspaceMemberOwner(WorkspaceId("workspace-1"), AccountId("account-1")),
+            WorkspaceMemberOwner(TenantId("workspace-1"), AccountId("account-1")),
         ),
     ],
 )
@@ -98,7 +98,7 @@ def test_external_contact_without_email_is_rejected() -> None:
         Contact.create(
             contact_id=ContactId("contact-1"),
             identity_source=ContactIdentitySource.EXTERNAL,
-            owner=ExternalContactOwner(WorkspaceId("workspace-1")),
+            owner=ExternalContactOwner(TenantId("workspace-1")),
             name="Reviewer",
             email=None,
             now=_NOW,
@@ -133,14 +133,14 @@ def test_contact_directory_scope_is_derived_from_immutable_owner() -> None:
     )
     external = Contact.external(
         contact_id=ContactId("external"),
-        workspace_id=WorkspaceId("workspace-1"),
+        tenant_id=TenantId("workspace-1"),
         name="Reviewer",
         email="reviewer@example.com",
         now=_NOW,
     )
 
     assert organization.directory_scope == DeploymentScope()
-    assert external.directory_scope == WorkspaceScope(WorkspaceId("workspace-1"))
+    assert external.directory_scope == WorkspaceScope(id=TenantId("workspace-1"))
 
 
 def test_contact_rejects_blank_name_and_inconsistent_email_values() -> None:

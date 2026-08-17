@@ -30,7 +30,7 @@ from core.human_input_v2.shared import (
     EmailProviderId,
     FormId,
     NormalizedEmail,
-    WorkspaceId,
+    TenantId,
 )
 from services.human_input_v2.delivery_worker import HumanInputV2DeliveryWorker
 from services.human_input_v2.notification_producer import serialize_rendered_email_request
@@ -42,7 +42,7 @@ _CHANNEL = ChannelRef(ChannelKind.EMAIL, ChannelProvider.RESEND)
 def _request() -> RenderedEmailDeliveryRequest:
     delivery_id = DeliveryAttemptId("attempt-1")
     return RenderedEmailDeliveryRequest(
-        workspace_id=WorkspaceId("workspace-1"),
+        tenant_id=TenantId("workspace-1"),
         channel=_CHANNEL,
         delivery_id=delivery_id,
         recipient=NormalizedEmail("reviewer@example.com"),
@@ -56,7 +56,7 @@ def _claim() -> ClaimedDeliveryAttempt:
     request = _request()
     endpoint_ref = DeliveryEndpointRef(
         ApproverGrantRef(
-            FormRef(WorkspaceId("workspace-1"), FormId("form-1")),
+            FormRef(TenantId("workspace-1"), FormId("form-1")),
             ApproverGrantId("grant-1"),
         ),
         DeliveryEndpointId("endpoint-1"),
@@ -113,15 +113,15 @@ class Repository:
 
 
 class Protector:
-    def reveal(self, workspace_id, protected):
-        del workspace_id
+    def reveal(self, tenant_id, protected):
+        del tenant_id
         assert protected == ProtectedRenderedEmailRequest("ciphertext")
         return serialize_rendered_email_request(_request())
 
 
 class Resolver:
-    def resolve(self, workspace_id, channel, *, expected=None):
-        del workspace_id, channel, expected
+    def resolve(self, tenant_id, channel, *, expected=None):
+        del tenant_id, channel, expected
         return ResolvedEmailChannelSnapshot(
             ConfigurationSnapshotIdentity(EmailProviderId("configuration-1"), _NOW),
             _CHANNEL,

@@ -11,7 +11,7 @@ from enum import StrEnum
 
 from pydantic import NaiveDatetime
 
-from core.human_input_v2.shared import AccountId, ContactId, NormalizedEmail, WorkspaceId
+from core.human_input_v2.shared import AccountId, ContactId, NormalizedEmail, TenantId
 
 from .entities import Contact, ExternalContactOwner, OrganizationAccountOwner, WorkspaceMemberOwner
 from .errors import ContactRejectionCode, reject
@@ -34,7 +34,7 @@ class ContactDirectorySnapshot:
     current facts must load a new snapshot in their own operation.
     """
 
-    workspace_id: WorkspaceId
+    tenant_id: TenantId
     contacts: tuple[Contact, ...] = ()
     member_account_ids: frozenset[AccountId] = frozenset()
     platform_contact_ids: frozenset[ContactId] = frozenset()
@@ -55,10 +55,10 @@ class ContactDirectoryPolicy:
 
         owner = contact.owner
         if isinstance(owner, ExternalContactOwner):
-            if owner.workspace_id != snapshot.workspace_id:
+            if owner.tenant_id != snapshot.tenant_id:
                 raise reject(ContactRejectionCode.CROSS_ORGANIZATION)
             return ContactResolution.EXTERNAL
-        if isinstance(owner, WorkspaceMemberOwner) and owner.workspace_id != snapshot.workspace_id:
+        if isinstance(owner, WorkspaceMemberOwner) and owner.tenant_id != snapshot.tenant_id:
             raise reject(ContactRejectionCode.CROSS_ORGANIZATION)
 
         account_id = contact.account_id
@@ -88,7 +88,7 @@ class ContactDirectoryPolicy:
             raise reject(ContactRejectionCode.CONFLICTING_IDENTITY)
         return Contact.external(
             contact_id=contact_id,
-            workspace_id=snapshot.workspace_id,
+            tenant_id=snapshot.tenant_id,
             name=name,
             email=email,
             now=now,
@@ -96,8 +96,8 @@ class ContactDirectoryPolicy:
         )
 
     @staticmethod
-    def ensure_external_deletable(contact: Contact, workspace_id: WorkspaceId) -> None:
+    def ensure_external_deletable(contact: Contact, tenant_id: TenantId) -> None:
         if not isinstance(contact.owner, ExternalContactOwner):
             raise reject(ContactRejectionCode.INVALID_OWNER)
-        if contact.owner.workspace_id != workspace_id:
+        if contact.owner.tenant_id != tenant_id:
             raise reject(ContactRejectionCode.CROSS_ORGANIZATION)

@@ -26,7 +26,7 @@ from core.human_input_v2.shared import (
     FormId,
     NormalizedEmail,
     OTPChallengeId,
-    WorkspaceId,
+    TenantId,
 )
 
 _ISSUED_AT = datetime(2026, 7, 25, 8)
@@ -36,7 +36,7 @@ _RAW_CODE = "123456"
 _ENCODED_HASH = "test-sha256$8d969eef6ecad3c29a3a629280e686cff8ca4a8d"
 _TOKEN_HASH = "a" * 64
 _EMAIL = NormalizedEmail("Reviewer@Example.com")
-_FORM_REF = FormRef(WorkspaceId("workspace-1"), FormId("form-1"))
+_FORM_REF = FormRef(TenantId("workspace-1"), FormId("form-1"))
 _GRANT_REF = _FORM_REF.grant(ApproverGrantId("grant-1"))
 _SUBJECT = ContactOTPSubject(ContactId("contact-1"))
 

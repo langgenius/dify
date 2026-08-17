@@ -114,7 +114,7 @@ from core.human_input_v2.im_integration import (
     SyncContactSnapshot,
     SyncResultFact,
 )
-from core.human_input_v2.shared import AccountId, ContactId, IMBindingId, IMIdentityId, WorkspaceId, WorkspaceScope
+from core.human_input_v2.shared import AccountId, ContactId, IMBindingId, IMIdentityId, TenantId, WorkspaceScope
 from enums.deployment_edition import DeploymentEdition
 from graphon.file import helpers as file_helpers
 from libs.helper import dump_response, to_timestamp
@@ -235,7 +235,7 @@ _IM_BINDING_ERROR_STATUS = {
 
 
 def _workspace_scope(tenant_id: str) -> WorkspaceScope:
-    return WorkspaceScope(WorkspaceId(tenant_id))
+    return WorkspaceScope(id=TenantId(tenant_id))
 
 
 type _IMApplicationError = (
@@ -699,11 +699,11 @@ class WorkspaceContactIMOverrideApi(Resource):
     @with_current_tenant_id
     def put(self, tenant_id: str, current_user: Account, contact_id: str):
         request_body = SetContactIMOverrideRequest.model_validate(console_ns.payload or {})
-        workspace_id = WorkspaceId(tenant_id)
+        tenant_id = TenantId(tenant_id)
         try:
             contact = build_im_contact_sync_application().binding_service.set_workspace_override(
-                organization_scope=WorkspaceScope(workspace_id),
-                workspace_id=workspace_id,
+                organization_scope=WorkspaceScope(id=tenant_id),
+                tenant_id=tenant_id,
                 contact_id=ContactId(contact_id),
                 identity_id=IMIdentityId(request_body.identity_id),
                 bound_by_account_id=AccountId(current_user.id),
@@ -728,11 +728,11 @@ class WorkspaceContactIMOverrideApi(Resource):
     @is_admin_or_owner_required
     @with_current_tenant_id
     def delete(self, tenant_id: str, contact_id: str):
-        workspace_id = WorkspaceId(tenant_id)
+        tenant_id = TenantId(tenant_id)
         try:
             contact = build_im_contact_sync_application().binding_service.reset_workspace_override(
-                organization_scope=WorkspaceScope(workspace_id),
-                workspace_id=workspace_id,
+                organization_scope=WorkspaceScope(id=tenant_id),
+                tenant_id=tenant_id,
                 contact_id=ContactId(contact_id),
             )
         except (IMBindingCommandError, IMWriteUnavailableError) as error:
@@ -766,11 +766,11 @@ class WorkspaceContactIMBindingsApi(Resource):
     @with_current_tenant_id
     def put(self, tenant_id: str, current_user: Account, contact_id: str):
         request_body = CreateIMBindingRequest.model_validate(console_ns.payload or {})
-        workspace_id = WorkspaceId(tenant_id)
+        tenant_id = TenantId(tenant_id)
         try:
             contact = build_im_contact_sync_application().binding_service.create_organization_binding(
-                organization_scope=WorkspaceScope(workspace_id),
-                workspace_id=workspace_id,
+                organization_scope=WorkspaceScope(id=tenant_id),
+                tenant_id=tenant_id,
                 contact_id=ContactId(contact_id),
                 identity_id=IMIdentityId(request_body.identity_id),
                 bound_by_account_id=AccountId(current_user.id),
@@ -872,7 +872,7 @@ class NodeDataMigrationAPI(Resource):
     def post(self, tenant_id: str):
         request_body = NodeDataMigrationPayload.model_validate(console_ns.payload or {})
         outcome = build_human_input_node_data_migration_service().migrate(
-            workspace_id=tenant_id,
+            tenant_id=TenantId(tenant_id),
             nodes=tuple(
                 MigrationNode.from_preflight(
                     node.node_id,

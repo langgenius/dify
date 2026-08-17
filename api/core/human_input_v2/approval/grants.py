@@ -17,7 +17,7 @@ from core.human_input_v2.shared import (
     DeliveryEndpointId,
     FormId,
     OTPChallengeId,
-    WorkspaceId,
+    TenantId,
 )
 
 from .recipient_resolution import (
@@ -48,7 +48,7 @@ def _subject_key(subject: ApprovalSubject) -> CanonicalSubjectKey:
 class FormRef:
     """Workspace-owned root reference; authorization still requires scoped queries."""
 
-    workspace_id: WorkspaceId
+    tenant_id: TenantId
     form_id: FormId
 
     def grant(self, grant_id: ApproverGrantId) -> ApproverGrantRef:

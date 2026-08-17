@@ -63,7 +63,7 @@ from core.human_input_v2.im_provider import (
     StaticCardIntent,
     WebhookRequest,
 )
-from core.human_input_v2.shared import AccountId, IntegrationId, NormalizedEmail, WorkspaceId
+from core.human_input_v2.shared import AccountId, IntegrationId, NormalizedEmail, TenantId
 from services.human_input_im_channel_manager import IMProviderConfigurationError
 from services.human_input_slack_channel import SlackIMProviderConfigurationPort
 
@@ -332,7 +332,7 @@ def test_save_channel_resolves_each_preserved_slack_secret_from_current_integrat
     assert isinstance(command, SaveIMChannelCommand)
     current = IMIntegration.create(
         integration_id=IntegrationId("sanitized-integration"),
-        workspace_id=WorkspaceId("sanitized-workspace"),
+        tenant_id=TenantId("sanitized-workspace"),
         provider_tenant=ProviderTenantIdentity(IMProvider.SLACK, "sanitized-team"),
         encrypted_credentials=EncryptedCredentials.from_mapping(
             {
@@ -382,7 +382,7 @@ def test_save_channel_resolves_each_preserved_slack_secret_from_current_integrat
 
     port = SlackIMProviderConfigurationPort(_Protector(), adapter_factory=_SuccessfulAdapter)
     context = HumanInputChannelManagementContext(
-        workspace_id=WorkspaceId("sanitized-workspace"),
+        tenant_id=TenantId("sanitized-workspace"),
         actor_account_id=AccountId("sanitized-account"),
         actor_email=NormalizedEmail("operator@example.com"),
     )
@@ -405,7 +405,7 @@ def test_save_channel_resolves_each_preserved_slack_secret_from_current_integrat
 
     non_slack_current = IMIntegration.create(
         integration_id=IntegrationId("sanitized-non-slack-integration"),
-        workspace_id=WorkspaceId("sanitized-workspace"),
+        tenant_id=TenantId("sanitized-workspace"),
         provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, "sanitized-feishu-tenant"),
         encrypted_credentials=EncryptedCredentials.from_mapping(
             {
@@ -450,13 +450,13 @@ def test_provider_port_fails_closed_for_candidate_and_secret_boundary_errors() -
             return None
 
     context = HumanInputChannelManagementContext(
-        workspace_id=WorkspaceId("sanitized-workspace"),
+        tenant_id=TenantId("sanitized-workspace"),
         actor_account_id=AccountId("sanitized-account"),
         actor_email=NormalizedEmail("operator@example.com"),
     )
     current = IMIntegration.create(
         integration_id=IntegrationId("sanitized-integration"),
-        workspace_id=context.workspace_id,
+        tenant_id=context.tenant_id,
         provider_tenant=ProviderTenantIdentity(IMProvider.SLACK, "sanitized-team"),
         encrypted_credentials=EncryptedCredentials.from_mapping(
             {
@@ -980,9 +980,7 @@ def test_static_replacement_rejects_public_text_reference_without_mutation(mocke
     accepted = adapter.messaging.send_text(ProviderUserId("sanitized-user"), "Sanitized message")
     assert isinstance(accepted, MessageAccepted)
     client.reset_mock()
-    client.chat_update.return_value = _SlackResponse(
-        {"ok": True, "channel": "sanitized-channel", "ts": "1000.000001"}
-    )
+    client.chat_update.return_value = _SlackResponse({"ok": True, "channel": "sanitized-channel", "ts": "1000.000001"})
 
     result = adapter.dynamic_card_messaging.replace_with_static(
         accepted.locator,

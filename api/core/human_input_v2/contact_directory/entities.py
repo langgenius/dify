@@ -19,7 +19,7 @@ from core.human_input_v2.shared import (
     DirectoryScope,
     NormalizedEmail,
     PlatformEntryId,
-    WorkspaceId,
+    TenantId,
     WorkspaceScope,
 )
 
@@ -45,7 +45,7 @@ class OrganizationAccountOwner:
 class WorkspaceMemberOwner:
     """Workspace owner reference backed by one current or historical Account."""
 
-    workspace_id: WorkspaceId
+    tenant_id: TenantId
     account_id: AccountId
 
 
@@ -53,7 +53,7 @@ class WorkspaceMemberOwner:
 class ExternalContactOwner:
     """Workspace owner reference for an address managed by administrators."""
 
-    workspace_id: WorkspaceId
+    tenant_id: TenantId
 
 
 type ContactOwner = OrganizationAccountOwner | WorkspaceMemberOwner | ExternalContactOwner
@@ -161,7 +161,7 @@ class Contact:
         cls,
         *,
         contact_id: ContactId,
-        workspace_id: WorkspaceId,
+        tenant_id: TenantId,
         account_id: AccountId,
         name: str,
         email: str | None,
@@ -170,7 +170,7 @@ class Contact:
         return cls.create(
             contact_id=contact_id,
             identity_source=ContactIdentitySource.WORKSPACE_MEMBER,
-            owner=WorkspaceMemberOwner(workspace_id, account_id),
+            owner=WorkspaceMemberOwner(tenant_id, account_id),
             name=name,
             email=email,
             now=now,
@@ -181,7 +181,7 @@ class Contact:
         cls,
         *,
         contact_id: ContactId,
-        workspace_id: WorkspaceId,
+        tenant_id: TenantId,
         name: str,
         email: str,
         now: NaiveDatetime,
@@ -190,7 +190,7 @@ class Contact:
         return cls.create(
             contact_id=contact_id,
             identity_source=ContactIdentitySource.EXTERNAL,
-            owner=ExternalContactOwner(workspace_id),
+            owner=ExternalContactOwner(tenant_id),
             name=name,
             email=email,
             now=now,
@@ -207,7 +207,7 @@ class Contact:
     def directory_scope(self) -> DirectoryScope:
         if isinstance(self.owner, OrganizationAccountOwner):
             return DeploymentScope()
-        return WorkspaceScope(self.owner.workspace_id)
+        return WorkspaceScope(id=self.owner.tenant_id)
 
 
 @dataclass(frozen=True, slots=True)
@@ -223,7 +223,7 @@ class PlatformWorkspaceEntry:
     """One workspace allow-list fact for an Organization Account Contact."""
 
     id: PlatformEntryId
-    workspace_id: WorkspaceId
+    tenant_id: TenantId
     contact_id: ContactId
     added_by_account_id: AccountId
     created_at: NaiveDatetime

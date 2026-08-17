@@ -11,7 +11,7 @@ from core.human_input_v2.delivery_runtime import (
 )
 from core.human_input_v2.email_channel import EmailChannelRepository, EmailCredentialProtector
 from core.human_input_v2.entities import EmailProviderType
-from core.human_input_v2.shared import WorkspaceId
+from core.human_input_v2.shared import TenantId
 
 
 class TenantEmailConfigurationSnapshotResolver:
@@ -23,17 +23,17 @@ class TenantEmailConfigurationSnapshotResolver:
 
     def resolve(
         self,
-        workspace_id: WorkspaceId,
+        tenant_id: TenantId,
         channel: ChannelRef,
         *,
         expected: ConfigurationSnapshotIdentity | None = None,
     ) -> ResolvedEmailChannelSnapshot:
         if channel != ChannelRef(ChannelKind.EMAIL, ChannelProvider.RESEND):
             raise DeliveryPreparationError("unsupported_email_channel")
-        configuration = self._repository.load(workspace_id)
+        configuration = self._repository.load(tenant_id)
         if configuration is None:
             raise DeliveryPreparationError("provider_not_configured")
-        if configuration.workspace_id != workspace_id:
+        if configuration.tenant_id != tenant_id:
             raise DeliveryPreparationError("provider_configuration_scope_mismatch")
         if configuration.provider is not EmailProviderType.RESEND:
             raise DeliveryPreparationError("provider_configuration_mismatch")
@@ -41,7 +41,7 @@ class TenantEmailConfigurationSnapshotResolver:
         if expected is not None and identity != expected:
             raise DeliveryPreparationError("provider_configuration_changed")
         try:
-            api_key = self._protector.reveal(workspace_id, configuration.protected_api_key)
+            api_key = self._protector.reveal(tenant_id, configuration.protected_api_key)
         except Exception as error:
             raise DeliveryPreparationError("provider_credential_unavailable") from error
         return ResolvedEmailChannelSnapshot(

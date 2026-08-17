@@ -54,13 +54,13 @@ from core.human_input_v2.shared import (
     IMIdentityId,
     IntegrationId,
     NormalizedEmail,
+    TenantId,
     UploadCapabilityId,
     UploadFileAssociationId,
-    WorkspaceId,
 )
 
 _NOW = datetime(2026, 7, 25, 8)
-_FORM_REF = FormRef(WorkspaceId("workspace-1"), FormId("form-1"))
+_FORM_REF = FormRef(TenantId("workspace-1"), FormId("form-1"))
 
 
 def _email_approver(email: str = "reviewer@example.com") -> ResolvedApprover:
@@ -412,7 +412,7 @@ def test_form_and_creation_reject_invalid_owner_and_collection_shapes() -> None:
     )
     assert delivery_test.kind is HumanInputV2FormKind.DELIVERY_TEST
 
-    other_ref = FormRef(WorkspaceId("workspace-2"), FormId("form-2"))
+    other_ref = FormRef(TenantId("workspace-2"), FormId("form-2"))
     with pytest.raises(ValueError, match="another owner"):
         _form(grants=(_grant(form_ref=other_ref),))
     with pytest.raises(ValueError, match="unique"):

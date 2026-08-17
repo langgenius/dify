@@ -24,7 +24,7 @@ from core.human_input_v2.im_provider import (
     SlackIMIntegrationCredentials,
     WeComIMIntegrationCredentials,
 )
-from core.human_input_v2.shared import DeploymentScope, IntegrationId, WorkspaceId, WorkspaceScope
+from core.human_input_v2.shared import DeploymentScope, IntegrationId, TenantId, WorkspaceScope
 from models.model import DifySetup
 from repositories.human_input_v2.im_integration import SQLAlchemyOrganizationIMWriteUnitOfWork
 from services.human_input_v2.im_contact_sync import (
@@ -45,7 +45,7 @@ class _SlackAdapter:
 def test_slack_adapter_factory_uses_workspace_owner_and_reveals_every_secret() -> None:
     integration = IMIntegration.create(
         integration_id=IntegrationId("integration-1"),
-        workspace_id=WorkspaceId("workspace-1"),
+        tenant_id=TenantId("workspace-1"),
         provider_tenant=ProviderTenantIdentity(IMProvider.SLACK, "provider-team-1"),
         encrypted_credentials=EncryptedCredentials.from_mapping(
             {
@@ -163,7 +163,7 @@ def test_adapter_factory_supports_every_non_slack_provider_with_deployment_owned
     for provider, encrypted_credentials in encrypted_credentials_by_provider.items():
         integration = IMIntegration.create(
             integration_id=IntegrationId(f"integration-{provider.value}"),
-            workspace_id=None,
+            tenant_id=None,
             provider_tenant=ProviderTenantIdentity(provider, "provider-tenant-1"),
             encrypted_credentials=EncryptedCredentials.from_mapping(encrypted_credentials),
             configured_by_account_id=None,
@@ -243,10 +243,10 @@ def test_composition_builders_resolve_organization_scopes_and_deployment_owner(s
     assert isinstance(worker, IMContactSyncWorker)
     assert isinstance(sync_service, IMSyncService)
     assert isinstance(
-        write_unit_of_work_factory(WorkspaceScope(WorkspaceId("workspace-1"))),
+        write_unit_of_work_factory(WorkspaceScope(id=TenantId("workspace-1"))),
         SQLAlchemyOrganizationIMWriteUnitOfWork,
     )
     assert isinstance(write_unit_of_work_factory(DeploymentScope()), SQLAlchemyOrganizationIMWriteUnitOfWork)
     assert composition._load_deployment_owner_key(sessions) == "deployment-1"
-    assert composition._scope_payload(WorkspaceScope(WorkspaceId("workspace-1"))) == ("workspace", "workspace-1")
+    assert composition._scope_payload(WorkspaceScope(id=TenantId("workspace-1"))) == ("workspace", "workspace-1")
     assert composition._scope_payload(DeploymentScope()) == ("deployment", None)

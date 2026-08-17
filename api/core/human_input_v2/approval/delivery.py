@@ -34,9 +34,9 @@ from core.human_input_v2.shared import (
     IMIdentityId,
     IntegrationId,
     NormalizedEmail,
+    TenantId,
     UploadCapabilityId,
     UploadFileAssociationId,
-    WorkspaceId,
 )
 from libs.datetime_utils import ensure_naive_utc
 
@@ -386,7 +386,7 @@ class EmailProviderConfiguration:
     """Workspace provider configuration kept outside the form domain lifecycle."""
 
     id: EmailProviderId
-    workspace_id: WorkspaceId
+    tenant_id: TenantId
     provider: EmailProviderType
     sender_email: NormalizedEmail
     sender_name: str

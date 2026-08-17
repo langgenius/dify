@@ -9,7 +9,7 @@ AccountId = NewType("AccountId", str)
 ContactId = NewType("ContactId", str)
 EndUserId = NewType("EndUserId", str)
 PlatformEntryId = NewType("PlatformEntryId", str)
-WorkspaceId = NewType("WorkspaceId", str)
+TenantId = NewType("TenantId", str)
 AppId = NewType("AppId", str)
 FormId = NewType("FormId", str)
 ApproverGrantId = NewType("ApproverGrantId", str)
@@ -62,12 +62,12 @@ class DeploymentScope:
 
 @dataclass(frozen=True, slots=True)
 class WorkspaceScope:
-    """Owner scope for workspace-owned contacts and directory operations."""
+    """Workspace scope whose id is the corresponding Dify Tenant.id."""
 
-    workspace_id: WorkspaceId
+    id: TenantId
 
     def to_primitive(self) -> dict[str, str]:
-        return {"kind": "workspace", "workspace_id": self.workspace_id}
+        return {"kind": "workspace", "id": self.id}
 
 
 type DirectoryScope = DeploymentScope | WorkspaceScope

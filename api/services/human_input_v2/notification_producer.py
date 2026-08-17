@@ -31,11 +31,24 @@ from core.human_input_v2.delivery_runtime import (
     fingerprint_rendered_email,
 )
 from core.human_input_v2.entities import HumanInputDeliveryAttemptStatus
-from core.human_input_v2.shared import DeliveryAttemptId, NormalizedEmail, WorkspaceId
+from core.human_input_v2.shared import DeliveryAttemptId, NormalizedEmail, TenantId
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 
 _RESEND_EMAIL_CHANNEL = ChannelRef(ChannelKind.EMAIL, ChannelProvider.RESEND)
+_RENDERED_EMAIL_REQUEST_FIELDS = frozenset(
+    {
+        "schema_version",
+        "tenant_id",
+        "channel",
+        "delivery_id",
+        "recipient",
+        "subject",
+        "html",
+        "text",
+        "idempotency_key",
+    }
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,11 +77,11 @@ class EndpointAccessTokenIssuer:
 class DifyRenderedEmailRequestProtector:
     """Use the workspace hybrid key to protect arbitrary rendered payload size."""
 
-    def protect(self, workspace_id: WorkspaceId, serialized_request: str) -> ProtectedRenderedEmailRequest:
-        return ProtectedRenderedEmailRequest(encrypter.encrypt_token(str(workspace_id), serialized_request))
+    def protect(self, tenant_id: TenantId, serialized_request: str) -> ProtectedRenderedEmailRequest:
+        return ProtectedRenderedEmailRequest(encrypter.encrypt_token(str(tenant_id), serialized_request))
 
-    def reveal(self, workspace_id: WorkspaceId, protected: ProtectedRenderedEmailRequest) -> str:
-        return encrypter.decrypt_token(str(workspace_id), protected.ciphertext)
+    def reveal(self, tenant_id: TenantId, protected: ProtectedRenderedEmailRequest) -> str:
+        return encrypter.decrypt_token(str(tenant_id), protected.ciphertext)
 
 
 @dataclass(frozen=True, slots=True)
@@ -102,9 +115,9 @@ class HumanInputV2NotificationProducer:
         subject_template: str,
         body_template: str,
         render_template: Callable[[str], str],
-        build_form_url: Callable[[WorkspaceId, str], str],
+        build_form_url: Callable[[TenantId, str], str],
     ) -> ProducedHumanInputV2Form:
-        workspace_id = creation.form.ref.workspace_id
+        tenant_id = creation.form.ref.tenant_id
 
         endpoints: list[DeliveryEndpoint] = []
         attempts: list[DeliveryAttempt] = []
@@ -121,16 +134,16 @@ class HumanInputV2NotificationProducer:
                 rendered_body = render_template(body_template)
                 if not rendered_subject:
                     raise ValueError("rendered Email subject must not be blank")
-                form_url = build_form_url(workspace_id, issued.plaintext_token)
+                form_url = build_form_url(tenant_id, issued.plaintext_token)
                 request = self._render_request(
-                    workspace_id=workspace_id,
+                    tenant_id=tenant_id,
                     endpoint=endpoint,
                     delivery_id=delivery_id,
                     subject=rendered_subject,
                     body=rendered_body,
                     form_url=form_url,
                 )
-                protected = self._protector.protect(workspace_id, serialize_rendered_email_request(request))
+                protected = self._protector.protect(tenant_id, serialize_rendered_email_request(request))
                 data = DeliveryAttemptData(
                     protected_request=protected,
                     selected_channel=request.channel,
@@ -187,7 +200,7 @@ class HumanInputV2NotificationProducer:
     def _render_request(
         self,
         *,
-        workspace_id: WorkspaceId,
+        tenant_id: TenantId,
         endpoint: DeliveryEndpoint,
         delivery_id: DeliveryAttemptId,
         subject: str,
@@ -200,7 +213,7 @@ class HumanInputV2NotificationProducer:
         html_body = _render_standard_email_html(body, form_url)
         text_body = _render_standard_email_text(body, form_url)
         return RenderedEmailDeliveryRequest(
-            workspace_id=workspace_id,
+            tenant_id=tenant_id,
             channel=_RESEND_EMAIL_CHANNEL,
             delivery_id=delivery_id,
             recipient=configuration.email_address,
@@ -215,7 +228,7 @@ def serialize_rendered_email_request(request: RenderedEmailDeliveryRequest) -> s
     return json.dumps(
         {
             "schema_version": 1,
-            "workspace_id": str(request.workspace_id),
+            "tenant_id": str(request.tenant_id),
             "channel": {
                 "kind": request.channel.kind.value,
                 "provider": request.channel.provider.value,
@@ -236,11 +249,13 @@ def serialize_rendered_email_request(request: RenderedEmailDeliveryRequest) -> s
 def deserialize_rendered_email_request(serialized: str) -> RenderedEmailDeliveryRequest:
     try:
         value = json.loads(serialized)
+        if not isinstance(value, dict) or set(value) != _RENDERED_EMAIL_REQUEST_FIELDS:
+            raise ValueError
         channel = value["channel"]
         if value["schema_version"] != 1 or not isinstance(channel, dict):
             raise ValueError
         return RenderedEmailDeliveryRequest(
-            workspace_id=WorkspaceId(value["workspace_id"]),
+            tenant_id=TenantId(value["tenant_id"]),
             channel=ChannelRef(ChannelKind(channel["kind"]), ChannelProvider(channel["provider"])),
             delivery_id=DeliveryAttemptId(value["delivery_id"]),
             recipient=NormalizedEmail(value["recipient"]),

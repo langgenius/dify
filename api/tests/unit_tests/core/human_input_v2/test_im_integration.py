@@ -23,7 +23,7 @@ from core.human_input_v2.shared import (
     IMBindingId,
     IMIdentityId,
     IntegrationId,
-    WorkspaceId,
+    TenantId,
 )
 
 _NOW = datetime(2026, 7, 25, 8)
@@ -37,7 +37,7 @@ def _credentials(secret: str) -> EncryptedCredentials:
 def _integration() -> IMIntegration:
     return IMIntegration.create(
         integration_id=IntegrationId("integration-1"),
-        workspace_id=WorkspaceId("workspace-1"),
+        tenant_id=TenantId("workspace-1"),
         provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, "provider-tenant-1"),
         encrypted_credentials=_credentials("ciphertext-1"),
         configured_by_account_id=AccountId("account-1"),

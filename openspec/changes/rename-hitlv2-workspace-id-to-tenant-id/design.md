@@ -70,6 +70,14 @@ Rendered Email request 保持现有 `schema_version`，只将 owner key 改为 `
 3. 运行 HITLv2 目标单元测试、lint 和 type check，并通过限定范围的残留搜索审计遗漏与 allowlist。
 4. 若需要回退，直接回退整个代码 change；不存在需要转换或保留的 HITLv2 数据与队列状态。
 
+## Observability Impact
+
+HITLv2 submission failure/retry 日志中的 Dify owner label 从 `workspace_id` 改为 `tenant_id`；依赖旧 label 的日志查询、告警与 dashboard 需要同步更新。IM Provider 边界的 `provider_tenant_id` label 保持不变，provider-native `tenant_id` 也不纳入该 label 重命名。
+
+## CI Verification
+
+Docker-backed transaction/isolation 验证仍由 CI 负责。相关范围包括 `api/tests/integration_tests/repositories/human_input_v2/` 下的四个 repository concurrency 模块、`api/tests/test_containers_integration_tests/repositories/human_input_v2/` 下的 Contact Directory 与 Email repository PostgreSQL contract，以及 `api/tests/test_containers_integration_tests/services/human_input_v2/` 下的 IM contact-sync/control-plane contract。
+
 ## Open Questions
 
 无。

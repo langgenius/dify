@@ -22,7 +22,7 @@ from core.human_input_v2.im_provider import (
     CredentialTestSuccess,
     SlackIMIntegrationCredentials,
 )
-from core.human_input_v2.shared import AccountId, IntegrationId, NormalizedEmail, WorkspaceId
+from core.human_input_v2.shared import AccountId, IntegrationId, NormalizedEmail, TenantId
 from services.human_input_im_channel_manager import IMProviderConfigurationError
 from services.human_input_slack_channel import (
     SlackIMCredentialProtector,
@@ -30,7 +30,7 @@ from services.human_input_slack_channel import (
 )
 
 _CONTEXT = HumanInputChannelManagementContext(
-    workspace_id=WorkspaceId("workspace-1"),
+    tenant_id=TenantId("workspace-1"),
     actor_account_id=AccountId("account-1"),
     actor_email=NormalizedEmail("operator@example.com"),
 )
@@ -50,7 +50,7 @@ def _candidate() -> SlackIMCandidate:
 def _current_integration() -> IMIntegration:
     return IMIntegration.create(
         integration_id=IntegrationId("integration-1"),
-        workspace_id=WorkspaceId("workspace-1"),
+        tenant_id=TenantId("workspace-1"),
         provider_tenant=ProviderTenantIdentity(IMProvider.SLACK, "team-1"),
         encrypted_credentials=EncryptedCredentials.from_mapping(
             {

@@ -38,8 +38,9 @@ from core.human_input_v2.shared import (
     IMSyncRunId,
     IntegrationId,
     NormalizedEmail,
-    WorkspaceId,
+    TenantId,
 )
+from models.human_input_v2 import MSTeamsIMIntegrationEncryptedCredentials
 from repositories.human_input_v2.im_integration.mappers import (
     binding_from_record,
     binding_to_record,
@@ -62,7 +63,7 @@ _INTEGRATION_ID = IntegrationId("integration-1")
 def _integration() -> IMIntegration:
     return IMIntegration.create(
         integration_id=_INTEGRATION_ID,
-        workspace_id=WorkspaceId("workspace-1"),
+        tenant_id=TenantId("workspace-1"),
         provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, "provider-tenant-1"),
         encrypted_credentials=EncryptedCredentials.from_mapping(
             {"app_id": "app-1", "encrypted_app_secret": "ciphertext"}
@@ -155,6 +156,33 @@ def test_integration_mapping_round_trips_without_leaking_orm_identity() -> None:
     record = integration_to_record(integration)
 
     assert record.encrypted_credentials.provider is IMProvider.FEISHU
+    assert integration_from_record(record) == integration
+
+
+def test_dify_owner_provider_namespace_and_native_tenant_id_remain_independent() -> None:
+    provider_native_tenant_id = "11111111-1111-1111-1111-111111111111"
+    integration = IMIntegration.create(
+        integration_id=_INTEGRATION_ID,
+        tenant_id=TenantId("dify-tenant-1"),
+        provider_tenant=ProviderTenantIdentity(IMProvider.MS_TEAMS, "provider-tenant-1"),
+        encrypted_credentials=EncryptedCredentials.from_mapping(
+            {
+                "tenant_id": provider_native_tenant_id,
+                "client_id": "22222222-2222-2222-2222-222222222222",
+                "encrypted_client_secret": "ciphertext",
+            }
+        ),
+        configured_by_account_id=AccountId("account-1"),
+        callback_url="https://example.com/callback",
+        now=_NOW,
+    )
+
+    record = integration_to_record(integration)
+
+    assert record.tenant_id == "dify-tenant-1"
+    assert record.provider_tenant_id == "provider-tenant-1"
+    assert isinstance(record.encrypted_credentials, MSTeamsIMIntegrationEncryptedCredentials)
+    assert record.encrypted_credentials.tenant_id == provider_native_tenant_id
     assert integration_from_record(record) == integration
 
 

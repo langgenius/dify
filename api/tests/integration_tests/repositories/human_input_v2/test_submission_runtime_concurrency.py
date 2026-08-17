@@ -65,7 +65,7 @@ from core.human_input_v2.shared import (
     NormalizedEmail,
     OTPChallengeId,
     SubmissionId,
-    WorkspaceId,
+    TenantId,
 )
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
@@ -98,7 +98,7 @@ from services.human_input_v2.submission import (
 
 @dataclass(frozen=True, slots=True)
 class _SeededScenario:
-    workspace_id: WorkspaceId
+    tenant_id: TenantId
     account_id: AccountId
     contact_id: ContactId
     form_ref: FormRef
@@ -249,10 +249,10 @@ def _set_record_identity(record: _TimestampedRecord, record_id: str, now: NaiveD
 
 def _seed_scenario(session_maker: sessionmaker[Session]) -> _SeededScenario:
     now = naive_utc_now()
-    workspace_id = WorkspaceId(str(uuidv7()))
+    tenant_id = TenantId(str(uuidv7()))
     account_id = AccountId(str(uuidv7()))
     contact_id = ContactId(str(uuidv7()))
-    form_ref = FormRef(workspace_id, FormId(str(uuidv7())))
+    form_ref = FormRef(tenant_id, FormId(str(uuidv7())))
     grant_id = ApproverGrantId(str(uuidv7()))
     email_endpoint_id = DeliveryEndpointId(str(uuidv7()))
     im_endpoint_id = DeliveryEndpointId(str(uuidv7()))
@@ -318,11 +318,11 @@ def _seed_scenario(session_maker: sessionmaker[Session]) -> _SeededScenario:
         updated_at=now,
     )
     tenant = Tenant(name="Submission Runtime Concurrency")
-    tenant.id = str(workspace_id)
+    tenant.id = str(tenant_id)
     account = Account(name="Concurrent Reviewer", email=str(normalized_email), status=AccountStatus.ACTIVE)
     account.id = str(account_id)
     membership = TenantAccountJoin(
-        tenant_id=str(workspace_id),
+        tenant_id=str(tenant_id),
         account_id=str(account_id),
         current=False,
         role=TenantAccountRole.NORMAL,
@@ -348,7 +348,7 @@ def _seed_scenario(session_maker: sessionmaker[Session]) -> _SeededScenario:
             encrypted_bot_token="encrypted-bot-token",
             encrypted_app_token="encrypted-app-token",
         ),
-        tenant_id=str(workspace_id),
+        tenant_id=str(tenant_id),
         provider_tenant_id=provider_tenant_id,
         status=IMIntegrationStatus.CONNECTED,
         config_version=1,
@@ -374,7 +374,7 @@ def _seed_scenario(session_maker: sessionmaker[Session]) -> _SeededScenario:
     binding = HumanInputIMBinding(
         integration_id=str(integration_id),
         scope=IMBindingScope.WORKSPACE,
-        scope_id=str(workspace_id),
+        scope_id=str(tenant_id),
         contact_id=str(contact_id),
         im_identity_id=str(identity_id),
         provider=IMProvider.SLACK,
@@ -398,7 +398,7 @@ def _seed_scenario(session_maker: sessionmaker[Session]) -> _SeededScenario:
             ]
         )
     return _SeededScenario(
-        workspace_id=workspace_id,
+        tenant_id=tenant_id,
         account_id=account_id,
         contact_id=contact_id,
         form_ref=form_ref,
@@ -440,12 +440,12 @@ def _cleanup_scenario(session_maker: sessionmaker[Session], scenario: _SeededSce
         session.execute(sa.delete(HumanInputContact).where(HumanInputContact.id == str(scenario.contact_id)))
         session.execute(
             sa.delete(TenantAccountJoin).where(
-                TenantAccountJoin.tenant_id == str(scenario.workspace_id),
+                TenantAccountJoin.tenant_id == str(scenario.tenant_id),
                 TenantAccountJoin.account_id == str(scenario.account_id),
             )
         )
         session.execute(sa.delete(Account).where(Account.id == str(scenario.account_id)))
-        session.execute(sa.delete(Tenant).where(Tenant.id == str(scenario.workspace_id)))
+        session.execute(sa.delete(Tenant).where(Tenant.id == str(scenario.tenant_id)))
 
 
 def _email_proof(scenario: _SeededScenario) -> VerifiedEmailOTPProof:
@@ -479,7 +479,7 @@ def _command(scenario: _SeededScenario, *, proof: object, endpoint_id: DeliveryE
         authorization_audit_event_id=AuditEventId(str(uuidv7())),
         rejection_audit_event_id=AuditEventId(str(uuidv7())),
         resume_identity=WorkflowResumeIdentity(
-            workspace_id=scenario.form_ref.workspace_id,
+            tenant_id=scenario.form_ref.tenant_id,
             form_id=scenario.form_ref.form_id,
             workflow_pause_id=scenario.workflow_pause_id,
             node_execution_id=scenario.node_execution_id,
@@ -531,7 +531,7 @@ def test_context_load_uses_one_snapshot_across_contact_membership_and_im_queries
             with session_maker.begin() as mutation_session:
                 mutation_session.execute(
                     sa.delete(TenantAccountJoin).where(
-                        TenantAccountJoin.tenant_id == str(scenario.workspace_id),
+                        TenantAccountJoin.tenant_id == str(scenario.tenant_id),
                         TenantAccountJoin.account_id == str(scenario.account_id),
                     )
                 )

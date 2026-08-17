@@ -31,7 +31,7 @@ from core.human_input_v2.shared import (
     DeploymentScope,
     DirectoryScope,
     PlatformEntryId,
-    WorkspaceId,
+    TenantId,
     WorkspaceScope,
 )
 from models.account import Account, AccountStatus, TenantAccountJoin, TenantAccountRole
@@ -41,8 +41,8 @@ from repositories.human_input_v2.contact_directory.repository import SQLAlchemyC
 from repositories.human_input_v2.organization_write_unit_of_work import SQLAlchemyOrganizationWriteUnitOfWork
 
 _NOW = datetime(2026, 7, 25)
-_WORKSPACE_ID = WorkspaceId("workspace-1")
-_OTHER_WORKSPACE_ID = WorkspaceId("workspace-2")
+_TENANT_ID = TenantId("workspace-1")
+_OTHER_TENANT_ID = TenantId("workspace-2")
 
 
 class _RecordingOwnedWriteLock:
@@ -111,10 +111,10 @@ def _organization_contact(contact_id: str, account_id: str, email: str | None) -
     )
 
 
-def _workspace_member_contact(contact_id: str, workspace_id: WorkspaceId, account_id: str) -> Contact:
+def _workspace_member_contact(contact_id: str, tenant_id: TenantId, account_id: str) -> Contact:
     return Contact.workspace_member(
         contact_id=ContactId(contact_id),
-        workspace_id=workspace_id,
+        tenant_id=tenant_id,
         account_id=AccountId(account_id),
         name=account_id,
         email=f"{account_id}@example.com",
@@ -131,7 +131,7 @@ def _save_workspace_member_contact(repository: SQLAlchemyContactDirectoryReposit
         raise TypeError("test Contact owner does not have a workspace scope")
     return repository.save_workspace_member_contact(
         contact,
-        organization_scope=WorkspaceScope(contact.owner.workspace_id),
+        organization_scope=WorkspaceScope(id=contact.owner.tenant_id),
     )
 
 
@@ -149,7 +149,7 @@ def test_account_backed_writes_enter_the_explicit_owner_guard_before_sql(sqlite_
         session.add_all([_account("organization-account"), _account("workspace-account")])
         session.add(
             TenantAccountJoin(
-                tenant_id=str(_WORKSPACE_ID),
+                tenant_id=str(_TENANT_ID),
                 account_id="workspace-account",
                 role=TenantAccountRole.NORMAL,
             )
@@ -168,12 +168,12 @@ def test_account_backed_writes_enter_the_explicit_owner_guard_before_sql(sqlite_
         )
         _save_workspace_member_contact(
             repository,
-            _workspace_member_contact("workspace", _WORKSPACE_ID, "workspace-account"),
+            _workspace_member_contact("workspace", _TENANT_ID, "workspace-account"),
         )
     finally:
         event.remove(sqlite_engine, "before_cursor_execute", assert_guarded)
 
-    assert write_unit_of_work_factory.scopes == [DeploymentScope(), WorkspaceScope(_WORKSPACE_ID)]
+    assert write_unit_of_work_factory.scopes == [DeploymentScope(), WorkspaceScope(id=_TENANT_ID)]
 
 
 def test_snapshot_is_owner_scoped_and_contains_coherent_resolution_facts(repository_context) -> None:
@@ -183,17 +183,17 @@ def test_snapshot_is_owner_scoped_and_contains_coherent_resolution_facts(reposit
         session.add_all(
             [
                 TenantAccountJoin(
-                    tenant_id=str(_WORKSPACE_ID),
+                    tenant_id=str(_TENANT_ID),
                     account_id="account-1",
                     role=TenantAccountRole.NORMAL,
                 ),
                 TenantAccountJoin(
-                    tenant_id=str(_WORKSPACE_ID),
+                    tenant_id=str(_TENANT_ID),
                     account_id="account-2",
                     role=TenantAccountRole.NORMAL,
                 ),
                 TenantAccountJoin(
-                    tenant_id=str(_OTHER_WORKSPACE_ID),
+                    tenant_id=str(_OTHER_TENANT_ID),
                     account_id="account-3",
                     role=TenantAccountRole.NORMAL,
                 ),
@@ -202,18 +202,16 @@ def test_snapshot_is_owner_scoped_and_contains_coherent_resolution_facts(reposit
     organization = _save_organization_contact(
         repository, _organization_contact("organization", "account-1", "ada@example.com")
     )
-    member = _save_workspace_member_contact(repository, _workspace_member_contact("member", _WORKSPACE_ID, "account-2"))
-    _save_workspace_member_contact(
-        repository, _workspace_member_contact("other-member", _OTHER_WORKSPACE_ID, "account-3")
-    )
+    member = _save_workspace_member_contact(repository, _workspace_member_contact("member", _TENANT_ID, "account-2"))
+    _save_workspace_member_contact(repository, _workspace_member_contact("other-member", _OTHER_TENANT_ID, "account-3"))
     repository.set_platform_availability(
-        _WORKSPACE_ID,
+        _TENANT_ID,
         organization.id,
         added_by_account_id=AccountId("account-2"),
         enabled=True,
     )
 
-    snapshot = repository.load_snapshot(_WORKSPACE_ID)
+    snapshot = repository.load_snapshot(_TENANT_ID)
 
     assert {contact.id for contact in snapshot.contacts} == {organization.id, member.id}
     assert snapshot.member_account_ids == frozenset({AccountId("account-1"), AccountId("account-2")})
@@ -229,13 +227,13 @@ def test_snapshot_scopes_eager_platform_entries_in_sql(repository_context) -> No
         repository, _organization_contact("organization", "account-1", "ada@example.com")
     )
     repository.set_platform_availability(
-        _WORKSPACE_ID,
+        _TENANT_ID,
         organization.id,
         added_by_account_id=AccountId("admin"),
         enabled=True,
     )
     repository.set_platform_availability(
-        _OTHER_WORKSPACE_ID,
+        _OTHER_TENANT_ID,
         organization.id,
         added_by_account_id=AccountId("admin"),
         enabled=True,
@@ -247,7 +245,7 @@ def test_snapshot_scopes_eager_platform_entries_in_sql(repository_context) -> No
 
     event.listen(session_maker.kw["bind"], "before_cursor_execute", record_statement)
     try:
-        snapshot = repository.load_snapshot(_WORKSPACE_ID)
+        snapshot = repository.load_snapshot(_TENANT_ID)
     finally:
         event.remove(session_maker.kw["bind"], "before_cursor_execute", record_statement)
 
@@ -267,7 +265,7 @@ def test_disabled_account_is_unavailable_without_deleting_contact(repository_con
         session.add(_account("disabled"))
         session.add(
             TenantAccountJoin(
-                tenant_id=str(_WORKSPACE_ID),
+                tenant_id=str(_TENANT_ID),
                 account_id="disabled",
                 role=TenantAccountRole.NORMAL,
             )
@@ -279,7 +277,7 @@ def test_disabled_account_is_unavailable_without_deleting_contact(repository_con
         account = session.get_one(Account, "disabled")
         account.status = AccountStatus.BANNED
 
-    snapshot = repository.load_snapshot(_WORKSPACE_ID)
+    snapshot = repository.load_snapshot(_TENANT_ID)
 
     assert contact.id in {item.id for item in snapshot.contacts}
     assert snapshot.unavailable_account_ids == frozenset({AccountId("disabled")})
@@ -288,24 +286,22 @@ def test_disabled_account_is_unavailable_without_deleting_contact(repository_con
 
 def test_external_admission_rolls_back_normalized_email_collision(repository_context) -> None:
     repository, session_maker = repository_context
-    first = repository.admit_external(_WORKSPACE_ID, name="Reviewer", email="reviewer@example.com")
+    first = repository.admit_external(_TENANT_ID, name="Reviewer", email="reviewer@example.com")
 
     with pytest.raises(ContactDirectoryError) as error:
-        repository.admit_external(_WORKSPACE_ID, name="Duplicate", email=" REVIEWER@EXAMPLE.COM ")
+        repository.admit_external(_TENANT_ID, name="Duplicate", email=" REVIEWER@EXAMPLE.COM ")
 
     assert error.value.code is ContactRejectionCode.CONFLICTING_IDENTITY
     with session_maker() as session:
-        records = session.scalars(
-            select(HumanInputContact).where(HumanInputContact.tenant_id == str(_WORKSPACE_ID))
-        ).all()
+        records = session.scalars(select(HumanInputContact).where(HumanInputContact.tenant_id == str(_TENANT_ID))).all()
     assert [record.id for record in records] == [str(first.id)]
 
 
 def test_external_admission_preserves_cross_workspace_email_isolation(repository_context) -> None:
     repository, _ = repository_context
 
-    first = repository.admit_external(_WORKSPACE_ID, name="First Reviewer", email="reviewer@example.com")
-    second = repository.admit_external(_OTHER_WORKSPACE_ID, name="Second Reviewer", email=" REVIEWER@EXAMPLE.COM ")
+    first = repository.admit_external(_TENANT_ID, name="First Reviewer", email="reviewer@example.com")
+    second = repository.admit_external(_OTHER_TENANT_ID, name="Second Reviewer", email=" REVIEWER@EXAMPLE.COM ")
 
     assert first.id != second.id
 
@@ -315,13 +311,13 @@ def test_external_admission_succeeds_without_deployment_setup_row(repository_con
     with session_maker.begin() as session:
         session.execute(sa.delete(DifySetup))
 
-    contact = repository.admit_external(_WORKSPACE_ID, name="Reviewer", email="reviewer@example.com")
+    contact = repository.admit_external(_TENANT_ID, name="Reviewer", email="reviewer@example.com")
 
     assert isinstance(contact.owner, ExternalContactOwner)
-    assert contact.owner.workspace_id == _WORKSPACE_ID
+    assert contact.owner.tenant_id == _TENANT_ID
     with session_maker() as session:
         stored_contact = session.get_one(HumanInputContact, str(contact.id))
-    assert stored_contact.tenant_id == str(_WORKSPACE_ID)
+    assert stored_contact.tenant_id == str(_TENANT_ID)
 
 
 def test_external_admission_without_setup_still_rejects_existing_organization_email(repository_context) -> None:
@@ -333,7 +329,7 @@ def test_external_admission_without_setup_still_rejects_existing_organization_em
         session.execute(sa.delete(DifySetup))
 
     with pytest.raises(ContactDirectoryError) as error:
-        repository.admit_external(_WORKSPACE_ID, name="Reviewer", email=" REVIEWER@EXAMPLE.COM ")
+        repository.admit_external(_TENANT_ID, name="Reviewer", email=" REVIEWER@EXAMPLE.COM ")
 
     assert error.value.code is ContactRejectionCode.CONFLICTING_IDENTITY
 
@@ -346,21 +342,21 @@ def test_external_admission_rejects_visible_organization_contact_email(repositor
         repository, _organization_contact("organization", "account-1", "reviewer@example.com")
     )
     repository.set_platform_availability(
-        _WORKSPACE_ID,
+        _TENANT_ID,
         organization.id,
         added_by_account_id=AccountId("admin"),
         enabled=True,
     )
 
     with pytest.raises(ContactDirectoryError) as error:
-        repository.admit_external(_WORKSPACE_ID, name="Duplicate", email=" REVIEWER@EXAMPLE.COM ")
+        repository.admit_external(_TENANT_ID, name="Duplicate", email=" REVIEWER@EXAMPLE.COM ")
 
     assert error.value.code is ContactRejectionCode.CONFLICTING_IDENTITY
 
 
 def test_organization_contact_write_rejects_existing_external_email(repository_context) -> None:
     repository, session_maker = repository_context
-    repository.admit_external(_WORKSPACE_ID, name="Reviewer", email="reviewer@example.com")
+    repository.admit_external(_TENANT_ID, name="Reviewer", email="reviewer@example.com")
     with session_maker.begin() as session:
         session.add(_account("account-1"))
 
@@ -376,7 +372,7 @@ def test_source_specific_contact_writes_reject_external_bypass(repository_contex
     repository, _ = repository_context
     external = Contact.external(
         contact_id=ContactId("external-contact"),
-        workspace_id=_WORKSPACE_ID,
+        tenant_id=_TENANT_ID,
         name="Reviewer",
         email="reviewer@example.com",
         now=_NOW,
@@ -393,17 +389,17 @@ def test_source_specific_contact_writes_reject_external_bypass(repository_contex
 
 def test_external_hard_delete_allows_same_email_recreation_with_new_id(repository_context) -> None:
     repository, _ = repository_context
-    original = repository.admit_external(_WORKSPACE_ID, name="Reviewer", email="reviewer@example.com")
+    original = repository.admit_external(_TENANT_ID, name="Reviewer", email="reviewer@example.com")
 
-    repository.hard_delete_external(_WORKSPACE_ID, original.id)
-    recreated = repository.admit_external(_WORKSPACE_ID, name="Reviewer", email="reviewer@example.com")
+    repository.hard_delete_external(_TENANT_ID, original.id)
+    recreated = repository.admit_external(_TENANT_ID, name="Reviewer", email="reviewer@example.com")
 
     assert recreated.id != original.id
 
 
 def test_external_hard_delete_removes_every_referencing_im_binding(repository_context) -> None:
     repository, session_maker = repository_context
-    external = repository.admit_external(_WORKSPACE_ID, name="Reviewer", email="reviewer@example.com")
+    external = repository.admit_external(_TENANT_ID, name="Reviewer", email="reviewer@example.com")
     with session_maker.begin() as session:
         session.add_all(
             (
@@ -418,13 +414,13 @@ def test_external_hard_delete_removes_every_referencing_im_binding(repository_co
                     binding_id="binding-workspace",
                     contact_id=external.id,
                     scope=IMBindingScope.WORKSPACE,
-                    scope_id=str(_WORKSPACE_ID),
+                    scope_id=str(_TENANT_ID),
                     identity_id="identity-workspace",
                 ),
             )
         )
 
-    repository.hard_delete_external(_WORKSPACE_ID, external.id)
+    repository.hard_delete_external(_TENANT_ID, external.id)
 
     with session_maker() as session:
         assert session.get(HumanInputContact, str(external.id)) is None
@@ -433,14 +429,14 @@ def test_external_hard_delete_removes_every_referencing_im_binding(repository_co
 
 def test_external_hard_delete_acquires_workspace_guard_before_related_sql(sqlite_engine: Engine) -> None:
     repository, session_maker, write_unit_of_work_factory = _guarded_external_repository(sqlite_engine)
-    external = repository.admit_external(_WORKSPACE_ID, name="Reviewer", email="reviewer@example.com")
+    external = repository.admit_external(_TENANT_ID, name="Reviewer", email="reviewer@example.com")
     with session_maker.begin() as session:
         session.add(
             _im_binding(
                 binding_id="binding-workspace",
                 contact_id=external.id,
                 scope=IMBindingScope.WORKSPACE,
-                scope_id=str(_WORKSPACE_ID),
+                scope_id=str(_TENANT_ID),
                 identity_id="identity-workspace",
             )
         )
@@ -450,23 +446,23 @@ def test_external_hard_delete_acquires_workspace_guard_before_related_sql(sqlite
 
     event.listen(sqlite_engine, "before_cursor_execute", assert_guarded)
     try:
-        repository.hard_delete_external(_WORKSPACE_ID, external.id)
+        repository.hard_delete_external(_TENANT_ID, external.id)
     finally:
         event.remove(sqlite_engine, "before_cursor_execute", assert_guarded)
 
-    assert write_unit_of_work_factory.scopes == [WorkspaceScope(_WORKSPACE_ID)]
+    assert write_unit_of_work_factory.scopes == [WorkspaceScope(id=_TENANT_ID)]
 
 
 def test_external_hard_delete_rolls_back_binding_cleanup_when_contact_delete_fails(sqlite_engine: Engine) -> None:
     repository, session_maker, _write_unit_of_work_factory = _guarded_external_repository(sqlite_engine)
-    external = repository.admit_external(_WORKSPACE_ID, name="Reviewer", email="reviewer@example.com")
+    external = repository.admit_external(_TENANT_ID, name="Reviewer", email="reviewer@example.com")
     with session_maker.begin() as session:
         session.add(
             _im_binding(
                 binding_id="binding-workspace",
                 contact_id=external.id,
                 scope=IMBindingScope.WORKSPACE,
-                scope_id=str(_WORKSPACE_ID),
+                scope_id=str(_TENANT_ID),
                 identity_id="identity-workspace",
             )
         )
@@ -483,7 +479,7 @@ def test_external_hard_delete_rolls_back_binding_cleanup_when_contact_delete_fai
     event.listen(sqlite_engine, "before_cursor_execute", fail_contact_delete)
     try:
         with pytest.raises(RuntimeError, match="injected contact delete failure"):
-            repository.hard_delete_external(_WORKSPACE_ID, external.id)
+            repository.hard_delete_external(_TENANT_ID, external.id)
     finally:
         event.remove(sqlite_engine, "before_cursor_execute", fail_contact_delete)
 
@@ -495,10 +491,10 @@ def test_external_hard_delete_rolls_back_binding_cleanup_when_contact_delete_fai
 
 def test_external_hard_delete_rejects_cross_workspace_owner(repository_context) -> None:
     repository, _ = repository_context
-    contact = repository.admit_external(_OTHER_WORKSPACE_ID, name="Reviewer", email="reviewer@example.com")
+    contact = repository.admit_external(_OTHER_TENANT_ID, name="Reviewer", email="reviewer@example.com")
 
     with pytest.raises(ContactDirectoryError) as error:
-        repository.hard_delete_external(_WORKSPACE_ID, contact.id)
+        repository.hard_delete_external(_TENANT_ID, contact.id)
     assert error.value.code is ContactRejectionCode.CONTACT_NOT_FOUND
 
 
@@ -509,16 +505,16 @@ def test_platform_mutation_is_idempotent_and_restricted_to_organization_contacts
     organization = _save_organization_contact(
         repository, _organization_contact("organization", "account-1", "ada@example.com")
     )
-    external = repository.admit_external(_WORKSPACE_ID, name="Reviewer", email="reviewer@example.com")
+    external = repository.admit_external(_TENANT_ID, name="Reviewer", email="reviewer@example.com")
 
     repository.set_platform_availability(
-        _WORKSPACE_ID,
+        _TENANT_ID,
         organization.id,
         added_by_account_id=AccountId("admin"),
         enabled=True,
     )
     repository.set_platform_availability(
-        _WORKSPACE_ID,
+        _TENANT_ID,
         organization.id,
         added_by_account_id=AccountId("admin"),
         enabled=True,
@@ -528,7 +524,7 @@ def test_platform_mutation_is_idempotent_and_restricted_to_organization_contacts
 
     with pytest.raises(ContactDirectoryError) as error:
         repository.set_platform_availability(
-            _WORKSPACE_ID,
+            _TENANT_ID,
             external.id,
             added_by_account_id=AccountId("admin"),
             enabled=True,
@@ -536,13 +532,13 @@ def test_platform_mutation_is_idempotent_and_restricted_to_organization_contacts
     assert error.value.code is ContactRejectionCode.INVALID_OWNER
 
     repository.set_platform_availability(
-        _WORKSPACE_ID,
+        _TENANT_ID,
         organization.id,
         added_by_account_id=AccountId("admin"),
         enabled=False,
     )
     repository.set_platform_availability(
-        _WORKSPACE_ID,
+        _TENANT_ID,
         organization.id,
         added_by_account_id=AccountId("admin"),
         enabled=False,
@@ -559,7 +555,7 @@ def test_snapshot_uses_explicit_bounded_queries_and_returns_only_domain_values(r
         repository, _organization_contact("organization", "account-1", "ada@example.com")
     )
     repository.set_platform_availability(
-        _WORKSPACE_ID,
+        _TENANT_ID,
         organization.id,
         added_by_account_id=AccountId("account-1"),
         enabled=True,
@@ -571,7 +567,7 @@ def test_snapshot_uses_explicit_bounded_queries_and_returns_only_domain_values(r
 
     event.listen(session_maker.kw["bind"], "before_cursor_execute", record_statement)
     try:
-        snapshot = repository.load_snapshot(_WORKSPACE_ID)
+        snapshot = repository.load_snapshot(_TENANT_ID)
     finally:
         event.remove(session_maker.kw["bind"], "before_cursor_execute", record_statement)
 
@@ -686,7 +682,7 @@ def test_workspace_member_write_requires_current_membership(repository_context) 
 
     with pytest.raises(ContactDirectoryError) as error:
         _save_workspace_member_contact(
-            repository, _workspace_member_contact("workspace-contact", _WORKSPACE_ID, "account-1")
+            repository, _workspace_member_contact("workspace-contact", _TENANT_ID, "account-1")
         )
 
     assert error.value.code is ContactRejectionCode.INVALID_OWNER
@@ -708,7 +704,7 @@ def test_platform_mutation_rejects_unknown_contact(repository_context) -> None:
 
     with pytest.raises(ContactDirectoryError) as error:
         repository.set_platform_availability(
-            _WORKSPACE_ID,
+            _TENANT_ID,
             ContactId("missing"),
             added_by_account_id=AccountId("admin"),
             enabled=True,
@@ -724,7 +720,7 @@ def test_mysql_platform_enable_statement_uses_idempotent_duplicate_key_update() 
         session,
         PlatformWorkspaceEntry(
             id=PlatformEntryId("entry-1"),
-            workspace_id=_WORKSPACE_ID,
+            tenant_id=_TENANT_ID,
             contact_id=ContactId("contact-1"),
             added_by_account_id=AccountId("account-1"),
             created_at=_NOW,
@@ -745,7 +741,7 @@ def test_postgresql_platform_enable_statement_uses_named_idempotency_constraint(
         session,
         PlatformWorkspaceEntry(
             id=PlatformEntryId("entry-1"),
-            workspace_id=_WORKSPACE_ID,
+            tenant_id=_TENANT_ID,
             contact_id=ContactId("contact-1"),
             added_by_account_id=AccountId("account-1"),
             created_at=_NOW,
@@ -767,7 +763,7 @@ def test_platform_enable_rejects_unsupported_database_dialect() -> None:
             session,
             PlatformWorkspaceEntry(
                 id=PlatformEntryId("entry-1"),
-                workspace_id=_WORKSPACE_ID,
+                tenant_id=_TENANT_ID,
                 contact_id=ContactId("contact-1"),
                 added_by_account_id=AccountId("account-1"),
                 created_at=_NOW,

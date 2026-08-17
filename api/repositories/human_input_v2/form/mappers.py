@@ -57,9 +57,9 @@ from core.human_input_v2.shared import (
     IMIdentityId,
     IntegrationId,
     NormalizedEmail,
+    TenantId,
     UploadCapabilityId,
     UploadFileAssociationId,
-    WorkspaceId,
 )
 from libs.datetime_utils import ensure_naive_utc
 from models.base import DefaultFieldsDCMixin
@@ -269,7 +269,7 @@ def form_to_record(form: HumanInputForm) -> HumanInputV2Form:
     """Map one form root into a detached record without child side effects."""
 
     record = HumanInputV2Form(
-        tenant_id=str(form.ref.workspace_id),
+        tenant_id=str(form.ref.tenant_id),
         app_id=str(form.app_id),
         form_definition=_resolved_form_to_record_value(form.resolved_form, display_in_ui=form.display_in_ui),
         rendered_content=form.resolved_form.legacy_form_content,
@@ -295,7 +295,7 @@ def form_from_record(
 ) -> HumanInputForm:
     """Rebuild one lifecycle-ready aggregate from an explicitly loaded grant graph."""
 
-    form_ref = FormRef(WorkspaceId(record.tenant_id), FormId(record.id))
+    form_ref = FormRef(TenantId(record.tenant_id), FormId(record.id))
     grants = tuple(grant_from_record(grant_record) for grant_record in grant_records)
     if any(grant.ref.form_ref != form_ref for grant in grants):
         raise ValueError("loaded grant does not belong to the form record")
@@ -338,7 +338,7 @@ def grant_to_record(grant: ApproverGrant) -> HumanInputV2FormApproverGrant:
         case _:
             assert_never(grant.subject)
     record = HumanInputV2FormApproverGrant(
-        tenant_id=str(grant.ref.form_ref.workspace_id),
+        tenant_id=str(grant.ref.form_ref.tenant_id),
         form_id=str(grant.ref.form_ref.form_id),
         subject_type=subject_type,
         subject_key=grant.subject_key.value,
@@ -382,7 +382,7 @@ def grant_from_record(record: HumanInputV2FormApproverGrant) -> ApproverGrant:
                 raise ValueError("email grant record is missing normalized_email")
             subject = EmailAddressApprovalSubject(NormalizedEmail(record.normalized_email))
     return ApproverGrant(
-        ref=FormRef(WorkspaceId(record.tenant_id), FormId(record.form_id)).grant(ApproverGrantId(record.id)),
+        ref=FormRef(TenantId(record.tenant_id), FormId(record.form_id)).grant(ApproverGrantId(record.id)),
         subject=subject,
         subject_key=CanonicalSubjectKey(record.subject_key),
         matched_sources=tuple(
@@ -430,7 +430,7 @@ def endpoint_to_record(endpoint: DeliveryEndpoint) -> HumanInputV2FormDeliveryEn
         case _:
             assert_never(endpoint.configuration)
     record = HumanInputV2FormDeliveryEndpoint(
-        tenant_id=str(endpoint.ref.form_ref.workspace_id),
+        tenant_id=str(endpoint.ref.form_ref.tenant_id),
         form_id=str(endpoint.ref.form_ref.form_id),
         approver_grant_id=str(endpoint.ref.grant_ref.grant_id),
         channel=endpoint.channel,
@@ -454,7 +454,7 @@ def endpoint_from_record(record: HumanInputV2FormDeliveryEndpoint) -> DeliveryEn
     """Reject malformed discriminated endpoint records instead of leaking nulls."""
 
     endpoint_ref = (
-        FormRef(WorkspaceId(record.tenant_id), FormId(record.form_id))
+        FormRef(TenantId(record.tenant_id), FormId(record.form_id))
         .grant(ApproverGrantId(record.approver_grant_id))
         .endpoint(DeliveryEndpointId(record.id))
     )
@@ -532,7 +532,7 @@ def delivery_attempt_to_record(attempt: DeliveryAttempt) -> HumanInputV2FormDeli
         else None
     )
     record = HumanInputV2FormDeliveryAttempt(
-        tenant_id=str(attempt.endpoint_ref.form_ref.workspace_id),
+        tenant_id=str(attempt.endpoint_ref.form_ref.tenant_id),
         form_id=str(attempt.endpoint_ref.form_ref.form_id),
         endpoint_id=str(attempt.endpoint_ref.endpoint_id),
         attempt_number=attempt.attempt_number,
@@ -557,7 +557,7 @@ def delivery_attempt_from_record(
 ) -> DeliveryAttempt:
     endpoint = endpoint_from_record(endpoint_record)
     if (
-        endpoint.ref.form_ref.workspace_id != WorkspaceId(record.tenant_id)
+        endpoint.ref.form_ref.tenant_id != TenantId(record.tenant_id)
         or endpoint.ref.form_ref.form_id != FormId(record.form_id)
         or endpoint.id != DeliveryEndpointId(record.endpoint_id)
     ):
@@ -581,7 +581,7 @@ def delivery_attempt_from_record(
 
 def upload_capability_to_record(capability: UploadCapability) -> HumanInputV2FormUploadToken:
     record = HumanInputV2FormUploadToken(
-        tenant_id=str(capability.endpoint_ref.form_ref.workspace_id),
+        tenant_id=str(capability.endpoint_ref.form_ref.tenant_id),
         app_id=str(capability.app_id),
         form_id=str(capability.endpoint_ref.form_ref.form_id),
         endpoint_id=str(capability.endpoint_ref.endpoint_id),
@@ -599,7 +599,7 @@ def upload_capability_from_record(
 ) -> UploadCapability:
     endpoint = endpoint_from_record(endpoint_record)
     if (
-        endpoint.ref.form_ref.workspace_id != WorkspaceId(record.tenant_id)
+        endpoint.ref.form_ref.tenant_id != TenantId(record.tenant_id)
         or endpoint.ref.form_ref.form_id != FormId(record.form_id)
         or endpoint.id != DeliveryEndpointId(record.endpoint_id)
     ):
@@ -617,7 +617,7 @@ def upload_capability_from_record(
 def upload_file_to_record(association: UploadFileAssociation) -> HumanInputV2FormUploadFile:
     endpoint_ref = association.capability_ref.endpoint_ref
     record = HumanInputV2FormUploadFile(
-        tenant_id=str(endpoint_ref.form_ref.workspace_id),
+        tenant_id=str(endpoint_ref.form_ref.tenant_id),
         app_id=str(association.capability_ref.app_id),
         form_id=str(endpoint_ref.form_ref.form_id),
         endpoint_id=str(endpoint_ref.endpoint_id),
@@ -641,7 +641,7 @@ def upload_file_from_record(
     capability = upload_capability_from_record(capability_record, endpoint_record)
     if (
         capability.id != UploadCapabilityId(record.upload_token_id)
-        or capability.endpoint_ref.form_ref.workspace_id != WorkspaceId(record.tenant_id)
+        or capability.endpoint_ref.form_ref.tenant_id != TenantId(record.tenant_id)
         or capability.endpoint_ref.form_ref.form_id != FormId(record.form_id)
         or capability.endpoint_ref.endpoint_id != DeliveryEndpointId(record.endpoint_id)
         or capability.app_id != AppId(record.app_id)

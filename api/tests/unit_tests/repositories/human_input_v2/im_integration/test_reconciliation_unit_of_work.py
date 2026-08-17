@@ -48,7 +48,7 @@ from core.human_input_v2.shared import (
     IMSyncRunId,
     IntegrationId,
     NormalizedEmail,
-    WorkspaceId,
+    TenantId,
     WorkspaceScope,
 )
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
@@ -74,7 +74,7 @@ from repositories.human_input_v2.im_integration.unit_of_work import SQLAlchemyOr
 _NOW = datetime(2026, 8, 11, 8)
 _LATER = datetime(2026, 8, 11, 9)
 _INTEGRATION_ID = IntegrationId("integration-1")
-_WORKSPACE_ID = WorkspaceId("workspace-1")
+_TENANT_ID = TenantId("workspace-1")
 
 
 class _OwnedWriteLock:
@@ -115,13 +115,13 @@ def write_context(sqlite_engine: Engine) -> tuple[sessionmaker[Session], _OwnedW
     lock = _OwnedWriteLock()
     with session_maker.begin() as session:
         tenant = Tenant(name="IM reconciliation unit tests")
-        tenant.id = str(_WORKSPACE_ID)
+        tenant.id = str(_TENANT_ID)
         integration = HumanInputIMIntegration(
             provider=IMProvider.FEISHU,
             encrypted_credentials=FeishuIMIntegrationEncryptedCredentials(
                 app_id="app-1", encrypted_app_secret="ciphertext"
             ),
-            tenant_id=str(_WORKSPACE_ID),
+            tenant_id=str(_TENANT_ID),
             provider_tenant_id="provider-tenant-1",
             status=IMIntegrationStatus.CONFIGURED,
             config_version=1,
@@ -170,7 +170,7 @@ def _workspace_contact(
     account.id = str(account_id)
     contact = Contact.workspace_member(
         contact_id=contact_id,
-        workspace_id=_WORKSPACE_ID,
+        tenant_id=_TENANT_ID,
         account_id=account_id,
         name=name,
         email=email,
@@ -181,7 +181,7 @@ def _workspace_contact(
             (
                 account,
                 TenantAccountJoin(
-                    tenant_id=str(_WORKSPACE_ID),
+                    tenant_id=str(_TENANT_ID),
                     account_id=str(account_id),
                     current=True,
                     role=TenantAccountRole.NORMAL,
@@ -242,14 +242,14 @@ def test_active_run_creation_is_available_only_through_guarded_repository(write_
     with SQLAlchemyOrganizationIMWriteUnitOfWork(session_maker, lock) as repository:
         created = repository.create_or_get_active_run(
             IntegrationRevisionToken(_INTEGRATION_ID, 1),
-            organization_scope=WorkspaceScope(_WORKSPACE_ID),
+            organization_scope=WorkspaceScope(id=_TENANT_ID),
             sync_run_id=IMSyncRunId("run-created"),
             started_by_account_id=AccountId("account-1"),
             now=_NOW,
         )
         existing = repository.create_or_get_active_run(
             IntegrationRevisionToken(_INTEGRATION_ID, 1),
-            organization_scope=WorkspaceScope(_WORKSPACE_ID),
+            organization_scope=WorkspaceScope(id=_TENANT_ID),
             sync_run_id=IMSyncRunId("run-duplicate"),
             started_by_account_id=AccountId("account-2"),
             now=_LATER,
@@ -280,7 +280,7 @@ def test_configuration_rotation_is_available_only_through_guarded_repository(wri
     with SQLAlchemyOrganizationIMWriteUnitOfWork(session_maker, lock) as repository:
         updated = repository.compare_and_swap_configuration(
             transition,
-            organization_scope=WorkspaceScope(_WORKSPACE_ID),
+            organization_scope=WorkspaceScope(id=_TENANT_ID),
         )
 
     assert isinstance(updated, IMIntegration)
@@ -342,7 +342,7 @@ def test_provider_replacement_invalidates_current_children_inside_guarded_transa
     with SQLAlchemyOrganizationIMWriteUnitOfWork(session_maker, lock) as repository:
         replacement = repository.compare_and_swap_configuration(
             transition,
-            organization_scope=WorkspaceScope(_WORKSPACE_ID),
+            organization_scope=WorkspaceScope(id=_TENANT_ID),
         )
 
     assert isinstance(replacement, IMIntegration)
@@ -360,7 +360,7 @@ def test_integration_creation_is_available_only_through_guarded_repository(write
         session.delete(session.get_one(HumanInputIMIntegration, str(_INTEGRATION_ID)))
     integration = IMIntegration.create(
         integration_id=IntegrationId("integration-created"),
-        workspace_id=_WORKSPACE_ID,
+        tenant_id=_TENANT_ID,
         provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, "provider-tenant-created"),
         encrypted_credentials=EncryptedCredentials.from_mapping(
             {"app_id": "app-created", "encrypted_app_secret": "ciphertext"}
@@ -373,7 +373,7 @@ def test_integration_creation_is_available_only_through_guarded_repository(write
     with SQLAlchemyOrganizationIMWriteUnitOfWork(session_maker, lock) as repository:
         created = repository.create_integration(
             integration,
-            organization_scope=WorkspaceScope(_WORKSPACE_ID),
+            organization_scope=WorkspaceScope(id=_TENANT_ID),
         )
 
     assert created == integration
@@ -413,7 +413,7 @@ def test_integration_deletion_invalidates_current_children_inside_guarded_transa
     with SQLAlchemyOrganizationIMWriteUnitOfWork(session_maker, lock) as repository:
         deleted = repository.compare_and_swap_delete(
             IntegrationDeletion(IntegrationRevisionToken(_INTEGRATION_ID, 1)),
-            organization_scope=WorkspaceScope(_WORKSPACE_ID),
+            organization_scope=WorkspaceScope(id=_TENANT_ID),
         )
 
     assert deleted is None

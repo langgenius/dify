@@ -27,9 +27,9 @@ from .values import (
     OTPChallengeId,
     PlatformEntryId,
     SubmissionId,
+    TenantId,
     UploadCapabilityId,
     UploadFileAssociationId,
-    WorkspaceId,
     WorkspaceScope,
 )
 
@@ -56,8 +56,8 @@ __all__ = [
     "OTPChallengeId",
     "PlatformEntryId",
     "SubmissionId",
+    "TenantId",
     "UploadCapabilityId",
     "UploadFileAssociationId",
-    "WorkspaceId",
     "WorkspaceScope",
 ]

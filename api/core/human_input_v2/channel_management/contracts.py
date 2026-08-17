@@ -9,7 +9,7 @@ from pydantic import NaiveDatetime
 
 from core.human_input_v2 import channel_identity as _channel_identity
 from core.human_input_v2.channel_identity import ChannelKind, ChannelRef
-from core.human_input_v2.shared import AccountId, IntegrationId, NormalizedEmail, WorkspaceId
+from core.human_input_v2.shared import AccountId, IntegrationId, NormalizedEmail, TenantId
 
 ChannelProvider = _channel_identity.ChannelProvider
 
@@ -154,7 +154,7 @@ class ChannelTestResult:
 class HumanInputChannelManagementContext:
     """Server-derived ownership and actor facts used by every handler."""
 
-    workspace_id: WorkspaceId
+    tenant_id: TenantId
     actor_account_id: AccountId
     actor_email: NormalizedEmail
     organization_id: str | None = None

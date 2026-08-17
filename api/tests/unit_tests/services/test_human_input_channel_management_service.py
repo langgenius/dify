@@ -30,12 +30,12 @@ from core.human_input_v2.channel_management import (
 )
 from core.human_input_v2.channel_management import TestEmailChannelCommand as EmailTestCommand
 from core.human_input_v2.email_channel import NewAPIKey, ResendCandidate
-from core.human_input_v2.shared import AccountId, IntegrationId, NormalizedEmail, WorkspaceId
+from core.human_input_v2.shared import AccountId, IntegrationId, NormalizedEmail, TenantId
 from libs.datetime_utils import naive_utc_now
 from services.human_input_channel_management_service import HumanInputChannelManagementService
 
 _CONTEXT = HumanInputChannelManagementContext(
-    workspace_id=WorkspaceId("workspace-1"),
+    tenant_id=TenantId("workspace-1"),
     actor_account_id=AccountId("account-1"),
     actor_email=NormalizedEmail("operator@example.com"),
 )
@@ -71,7 +71,7 @@ class FakeHandler:
         return ChannelOperationResult.success(
             ChannelView(
                 ref=self.ref,
-                scope=ChannelScope(ChannelScopeKind.WORKSPACE, str(context.workspace_id)),
+                scope=ChannelScope(ChannelScopeKind.WORKSPACE, str(context.tenant_id)),
                 configured=self.configured,
                 status=ChannelStatus.CONFIGURED if self.configured else ChannelStatus.NOT_CONFIGURED,
                 capabilities=self.capabilities,
@@ -100,7 +100,7 @@ class FakeHandler:
         return ChannelOperationResult.tested(
             ChannelTestResult(
                 ref=self.ref,
-                scope=ChannelScope(ChannelScopeKind.WORKSPACE, str(context.workspace_id)),
+                scope=ChannelScope(ChannelScopeKind.WORKSPACE, str(context.tenant_id)),
                 status=ChannelStatus.CONNECTED,
                 summary=summary,
                 checked_at=naive_utc_now(),

@@ -7,7 +7,7 @@ from collections.abc import Callable, Sequence
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.human_input_v2.shared.values import NormalizedEmail
+from core.human_input_v2.shared.values import NormalizedEmail, TenantId
 from core.workflow.nodes.human_input_v2.migration import MemberEmailSnapshot, ResolvedMemberEmail
 from models.account import Account, AccountStatus, TenantAccountJoin
 
@@ -18,7 +18,7 @@ class SQLAlchemyWorkspaceMemberEmailLookup:
     def __init__(self, session_factory: Callable[[], Session]) -> None:
         self._session_factory = session_factory
 
-    def find_member_emails(self, workspace_id: str, account_ids: Sequence[str]) -> MemberEmailSnapshot:
+    def find_member_emails(self, tenant_id: TenantId, account_ids: Sequence[str]) -> MemberEmailSnapshot:
         if not account_ids:
             return MemberEmailSnapshot()
 
@@ -26,7 +26,7 @@ class SQLAlchemyWorkspaceMemberEmailLookup:
             select(Account.id, Account.email)
             .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
             .where(
-                TenantAccountJoin.tenant_id == workspace_id,
+                TenantAccountJoin.tenant_id == tenant_id,
                 Account.id.in_(account_ids),
                 Account.status == AccountStatus.ACTIVE,
             )

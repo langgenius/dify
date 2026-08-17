@@ -17,7 +17,7 @@ from core.human_input_v2.shared import (
     IMBindingId,
     IMIdentityId,
     IntegrationId,
-    WorkspaceId,
+    TenantId,
 )
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
@@ -54,7 +54,7 @@ class _ProtectedIMBindingWriter(Protocol):
         self,
         *,
         organization_scope: DirectoryScope,
-        workspace_id: WorkspaceId,
+        tenant_id: TenantId,
         integration_id: IntegrationId,
         contact_id: ContactId,
         identity_id: IMIdentityId,
@@ -67,7 +67,7 @@ class _ProtectedIMBindingWriter(Protocol):
         self,
         *,
         organization_scope: DirectoryScope,
-        workspace_id: WorkspaceId,
+        tenant_id: TenantId,
         integration_id: IntegrationId,
         contact_id: ContactId,
     ) -> None: ...
@@ -75,7 +75,7 @@ class _ProtectedIMBindingWriter(Protocol):
     def load_contact_im_binding_view(
         self,
         *,
-        workspace_id: WorkspaceId,
+        tenant_id: TenantId,
         integration_id: IntegrationId,
         contact_id: ContactId,
     ) -> ContactIMBindingView: ...
@@ -114,7 +114,7 @@ class ContactIMBindingService:
         self,
         *,
         organization_scope: DirectoryScope,
-        workspace_id: WorkspaceId,
+        tenant_id: TenantId,
         contact_id: ContactId,
         identity_id: IMIdentityId,
         bound_by_account_id: AccountId | None,
@@ -131,7 +131,7 @@ class ContactIMBindingService:
                 now=self._clock(),
             )
             return repository.load_contact_im_binding_view(
-                workspace_id=workspace_id,
+                tenant_id=tenant_id,
                 integration_id=integration.id,
                 contact_id=contact_id,
             )
@@ -156,7 +156,7 @@ class ContactIMBindingService:
         self,
         *,
         organization_scope: DirectoryScope,
-        workspace_id: WorkspaceId,
+        tenant_id: TenantId,
         contact_id: ContactId,
         identity_id: IMIdentityId,
         bound_by_account_id: AccountId | None,
@@ -165,7 +165,7 @@ class ContactIMBindingService:
             integration = repository.require_current_integration(organization_scope)
             repository.set_workspace_override(
                 organization_scope=organization_scope,
-                workspace_id=workspace_id,
+                tenant_id=tenant_id,
                 integration_id=integration.id,
                 contact_id=contact_id,
                 identity_id=identity_id,
@@ -174,7 +174,7 @@ class ContactIMBindingService:
                 now=self._clock(),
             )
             return repository.load_contact_im_binding_view(
-                workspace_id=workspace_id,
+                tenant_id=tenant_id,
                 integration_id=integration.id,
                 contact_id=contact_id,
             )
@@ -183,19 +183,19 @@ class ContactIMBindingService:
         self,
         *,
         organization_scope: DirectoryScope,
-        workspace_id: WorkspaceId,
+        tenant_id: TenantId,
         contact_id: ContactId,
     ) -> ContactIMBindingView:
         with self._protected_repository(organization_scope) as repository:
             integration = repository.require_current_integration(organization_scope)
             repository.reset_workspace_override(
                 organization_scope=organization_scope,
-                workspace_id=workspace_id,
+                tenant_id=tenant_id,
                 integration_id=integration.id,
                 contact_id=contact_id,
             )
             return repository.load_contact_im_binding_view(
-                workspace_id=workspace_id,
+                tenant_id=tenant_id,
                 integration_id=integration.id,
                 contact_id=contact_id,
             )

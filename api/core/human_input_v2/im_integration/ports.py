@@ -19,7 +19,7 @@ from core.human_input_v2.shared import (
     IMIdentityId,
     IMSyncRunId,
     IntegrationId,
-    WorkspaceId,
+    TenantId,
 )
 
 from .binding_resolution import BindingResolutionResult
@@ -99,7 +99,7 @@ class ApplyReconciliationResult:
 class IMSyncRepository(Protocol):
     """Transport-neutral command and query persistence required by IM sync."""
 
-    def load_current_integration(self, workspace_id: WorkspaceId | None) -> IMIntegration | None:
+    def load_current_integration(self, tenant_id: TenantId | None) -> IMIntegration | None:
         """Load the exact tenant or deployment-owned current configuration."""
         ...
 
@@ -182,7 +182,7 @@ class IMControlPlaneRepository(IMSyncRepository, Protocol):
         *,
         integration_id: IntegrationId,
         provider: IMProvider,
-        workspace_id: WorkspaceId,
+        tenant_id: TenantId,
         contact_id: ContactId,
     ) -> BindingResolutionResult:
         """Load and resolve one credential-free effective binding snapshot."""

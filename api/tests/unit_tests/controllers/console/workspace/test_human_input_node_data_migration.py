@@ -12,7 +12,7 @@ from pydantic import ValidationError
 from werkzeug.exceptions import Forbidden
 
 from controllers.console.workspace.human_input import NodeDataMigrationAPI
-from core.human_input_v2.shared.values import NormalizedEmail
+from core.human_input_v2.shared.values import NormalizedEmail, TenantId
 from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData
 from core.workflow.nodes.human_input_v2.migration import (
     LegacyHumanInputNodeData,
@@ -36,8 +36,8 @@ _OMITTED_METHOD_ID = object()
 
 
 class _StaticMemberEmailLookup:
-    def find_member_emails(self, workspace_id: str, account_ids: Sequence[str]) -> MemberEmailSnapshot:
-        del workspace_id
+    def find_member_emails(self, tenant_id: TenantId, account_ids: Sequence[str]) -> MemberEmailSnapshot:
+        del tenant_id
         return MemberEmailSnapshot(
             tuple(
                 ResolvedMemberEmail(account_id, NormalizedEmail(f"{account_id}@example.com"))
@@ -65,8 +65,8 @@ def test_controller_returns_typed_ordered_success_data(app: Flask, monkeypatch: 
     migrated_node_data = _migrated_webapp_node()
 
     class Service:
-        def migrate(self, *, workspace_id: str, nodes: Sequence[MigrationNode]) -> NodeDataMigrationSuccess:
-            assert workspace_id == "workspace-1"
+        def migrate(self, *, tenant_id: TenantId, nodes: Sequence[MigrationNode]) -> NodeDataMigrationSuccess:
+            assert tenant_id == "workspace-1"
             assert [(node.node_id, node.node_data.title) for node in nodes] == [("node-1", "Approval")]
             return NodeDataMigrationSuccess((MigratedNode("node-1", migrated_node_data),))
 
@@ -379,8 +379,8 @@ def test_controller_maps_blocked_batch_without_partial_data(app: Flask, monkeypa
     )
 
     class Service:
-        def migrate(self, *, workspace_id: str, nodes: Sequence[MigrationNode]) -> NodeDataMigrationFailure:
-            del workspace_id, nodes
+        def migrate(self, *, tenant_id: TenantId, nodes: Sequence[MigrationNode]) -> NodeDataMigrationFailure:
+            del tenant_id, nodes
             return NodeDataMigrationFailure((blocker,))
 
     monkeypatch.setattr(_CONTROLLER_MODULE, "build_human_input_node_data_migration_service", Service)
@@ -424,8 +424,8 @@ def test_controller_validates_request_before_building_service(app: Flask, monkey
 
 def test_controller_does_not_disguise_unexpected_service_errors(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     class Service:
-        def migrate(self, *, workspace_id: str, nodes: Sequence[MigrationNode]) -> Never:
-            del workspace_id, nodes
+        def migrate(self, *, tenant_id: TenantId, nodes: Sequence[MigrationNode]) -> Never:
+            del tenant_id, nodes
             raise RuntimeError("unexpected")
 
     monkeypatch.setattr(_CONTROLLER_MODULE, "build_human_input_node_data_migration_service", Service)

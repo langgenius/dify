@@ -24,7 +24,7 @@ from core.human_input_v2.approval import (
     UploadCapability,
     UploadFileAssociation,
 )
-from core.human_input_v2.shared import WorkspaceId
+from core.human_input_v2.shared import TenantId
 from models.human_input_v2 import (
     HumanInputV2Form,
     HumanInputV2FormApproverGrant,
@@ -84,7 +84,7 @@ class SQLAlchemyFormRepository:
                     select(HumanInputV2Form)
                     .options(selectinload(HumanInputV2Form.grants))
                     .where(
-                        HumanInputV2Form.tenant_id == str(form_ref.workspace_id),
+                        HumanInputV2Form.tenant_id == str(form_ref.tenant_id),
                         HumanInputV2Form.id == str(form_ref.form_id),
                     )
                 )
@@ -116,7 +116,7 @@ class SQLAlchemyFormRepository:
     def load_definition_by_endpoint_token(
         self,
         *,
-        workspace_id: WorkspaceId,
+        tenant_id: TenantId,
         token_hash: str,
     ) -> FormDefinitionProjection | None:
         """Resolve a token to a read model without returning grant authority."""
@@ -125,7 +125,7 @@ class SQLAlchemyFormRepository:
             with self._session_maker() as session, session.begin():
                 row = session.execute(
                     self._endpoint_graph_base().where(
-                        HumanInputV2FormDeliveryEndpoint.tenant_id == str(workspace_id),
+                        HumanInputV2FormDeliveryEndpoint.tenant_id == str(tenant_id),
                         HumanInputV2FormDeliveryEndpoint.access_token_hash == token_hash,
                     )
                 ).one_or_none()
@@ -209,7 +209,7 @@ class SQLAlchemyFormRepository:
                     )
                     .where(
                         HumanInputV2FormUploadToken.id == str(capability_ref.capability_id),
-                        HumanInputV2FormUploadToken.tenant_id == str(endpoint_ref.form_ref.workspace_id),
+                        HumanInputV2FormUploadToken.tenant_id == str(endpoint_ref.form_ref.tenant_id),
                         HumanInputV2FormUploadToken.app_id == str(capability_ref.app_id),
                         HumanInputV2FormUploadToken.form_id == str(endpoint_ref.form_ref.form_id),
                         HumanInputV2FormUploadToken.endpoint_id == str(endpoint_ref.endpoint_id),
@@ -221,7 +221,7 @@ class SQLAlchemyFormRepository:
                 upload_file_id = session.scalar(
                     select(UploadFile.id).where(
                         UploadFile.id == association.upload_file_id,
-                        UploadFile.tenant_id == str(endpoint_ref.form_ref.workspace_id),
+                        UploadFile.tenant_id == str(endpoint_ref.form_ref.tenant_id),
                     )
                 )
                 if upload_file_id is None:
@@ -264,7 +264,7 @@ class SQLAlchemyFormRepository:
         endpoint_ref: DeliveryEndpointRef,
     ) -> sa.Select[tuple[HumanInputV2FormDeliveryEndpoint, HumanInputV2FormApproverGrant, HumanInputV2Form]]:
         return cls._endpoint_graph_base().where(
-            HumanInputV2FormDeliveryEndpoint.tenant_id == str(endpoint_ref.form_ref.workspace_id),
+            HumanInputV2FormDeliveryEndpoint.tenant_id == str(endpoint_ref.form_ref.tenant_id),
             HumanInputV2FormDeliveryEndpoint.form_id == str(endpoint_ref.form_ref.form_id),
             HumanInputV2FormDeliveryEndpoint.approver_grant_id == str(endpoint_ref.grant_ref.grant_id),
             HumanInputV2FormDeliveryEndpoint.id == str(endpoint_ref.endpoint_id),

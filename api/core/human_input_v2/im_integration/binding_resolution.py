@@ -13,7 +13,7 @@ from core.human_input_v2.shared import (
     IMBindingId,
     IMIdentityId,
     IntegrationId,
-    WorkspaceId,
+    TenantId,
 )
 
 from .integration import IntegrationRevisionToken, ProviderTenantIdentity
@@ -62,7 +62,7 @@ class EffectiveBindingResolver:
         *,
         integration_revision: IntegrationRevisionToken,
         provider_tenant: ProviderTenantIdentity,
-        workspace_id: WorkspaceId,
+        tenant_id: TenantId,
         contact: ContactSnapshot,
         identities: tuple[IMIdentity, ...],
         bindings: tuple[IMBinding, ...],
@@ -73,7 +73,7 @@ class EffectiveBindingResolver:
             (
                 binding
                 for binding in candidates
-                if binding.scope is IMBindingScope.WORKSPACE and binding.scope_id == str(workspace_id)
+                if binding.scope is IMBindingScope.WORKSPACE and binding.scope_id == str(tenant_id)
             ),
             None,
         )

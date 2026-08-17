@@ -21,7 +21,7 @@ from core.human_input_v2.shared import (
     DirectoryScope,
     IMSyncRunId,
     IntegrationId,
-    WorkspaceId,
+    TenantId,
     WorkspaceScope,
 )
 from models.human_input_v2 import HumanInputIMIntegration
@@ -29,7 +29,7 @@ from repositories.human_input_v2.im_integration.repository import SQLAlchemyIMCo
 from repositories.human_input_v2.im_integration.unit_of_work import SQLAlchemyOrganizationIMWriteUnitOfWork
 
 _NOW = datetime(2026, 8, 11, 8)
-_WORKSPACE_ID = WorkspaceId("workspace-1")
+_TENANT_ID = TenantId("workspace-1")
 
 
 def test_account_and_membership_writes_are_outside_the_im_write_lock_boundary() -> None:
@@ -73,7 +73,7 @@ class _RecordingUnitOfWorkFactory:
 def _integration() -> IMIntegration:
     return IMIntegration.create(
         integration_id=IntegrationId("integration-1"),
-        workspace_id=_WORKSPACE_ID,
+        tenant_id=_TENANT_ID,
         provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, "provider-tenant-1"),
         encrypted_credentials=EncryptedCredentials.from_mapping(
             {"app_id": "app-1", "encrypted_app_secret": "ciphertext"}
@@ -89,10 +89,10 @@ def test_control_plane_write_uses_explicit_scope_while_read_remains_unlocked(sql
     session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     unit_of_work_factory = _RecordingUnitOfWorkFactory(session_maker)
     repository = SQLAlchemyIMControlPlaneRepository(session_maker, unit_of_work_factory)
-    organization_scope = WorkspaceScope(_WORKSPACE_ID)
+    organization_scope = WorkspaceScope(id=_TENANT_ID)
 
     created = repository.create_integration(_integration(), organization_scope=organization_scope)
-    loaded = repository.load_current_integration(_WORKSPACE_ID)
+    loaded = repository.load_current_integration(_TENANT_ID)
 
     assert created == loaded
     assert unit_of_work_factory.scopes == [organization_scope]
@@ -103,7 +103,7 @@ def test_configuration_run_and_delete_writes_reuse_the_explicit_organization_sco
     session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     unit_of_work_factory = _RecordingUnitOfWorkFactory(session_maker)
     repository = SQLAlchemyIMControlPlaneRepository(session_maker, unit_of_work_factory)
-    organization_scope = WorkspaceScope(_WORKSPACE_ID)
+    organization_scope = WorkspaceScope(id=_TENANT_ID)
     current = repository.create_integration(_integration(), organization_scope=organization_scope)
     transition = current.reconfigure(
         expected_revision=current.revision,

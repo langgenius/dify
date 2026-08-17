@@ -35,7 +35,7 @@ from core.human_input_v2.shared import (
     ContactId,
     FormId,
     SubmissionId,
-    WorkspaceId,
+    TenantId,
 )
 from services.human_input_v2.submission import (
     SubmitFormCommand,
@@ -46,13 +46,13 @@ from services.human_input_v2.submission import (
 )
 
 _NOW = datetime(2026, 7, 25, 8)
-_FORM_REF = FormRef(WorkspaceId("workspace-1"), FormId("form-1"))
+_FORM_REF = FormRef(TenantId("workspace-1"), FormId("form-1"))
 _GRANT_ID = ApproverGrantId("grant-1")
 _ACCOUNT_ID = AccountId("account-1")
 _CONTACT_ID = ContactId("contact-1")
 _SCOPE = SubmissionAttemptScope(_FORM_REF, _GRANT_ID, None)
 _RESUME_IDENTITY = WorkflowResumeIdentity(
-    workspace_id=_FORM_REF.workspace_id,
+    tenant_id=_FORM_REF.tenant_id,
     form_id=_FORM_REF.form_id,
     workflow_pause_id="pause-1",
     node_execution_id="node-execution-1",
@@ -283,8 +283,8 @@ def test_missing_runtime_resume_identity_rejects_delivery_test_before_repository
 @pytest.mark.parametrize(
     "identity",
     [
-        WorkflowResumeIdentity(WorkspaceId("workspace-2"), _FORM_REF.form_id, "pause-1", "node-execution-1"),
-        WorkflowResumeIdentity(_FORM_REF.workspace_id, FormId("form-2"), "pause-1", "node-execution-1"),
+        WorkflowResumeIdentity(TenantId("workspace-2"), _FORM_REF.form_id, "pause-1", "node-execution-1"),
+        WorkflowResumeIdentity(_FORM_REF.tenant_id, FormId("form-2"), "pause-1", "node-execution-1"),
     ],
 )
 def test_resume_identity_owner_mismatch_is_rejected_before_repository_access(identity: WorkflowResumeIdentity) -> None:
@@ -314,7 +314,7 @@ def test_loaded_runtime_form_must_match_prevalidated_resume_identity() -> None:
     events: list[str] = []
     handler = SubmitHumanInputFormHandler(_RecordingRepository(events), _IdempotentRecordingResumePort(events))
     identity = WorkflowResumeIdentity(
-        _FORM_REF.workspace_id,
+        _FORM_REF.tenant_id,
         _FORM_REF.form_id,
         "pause-other",
         "node-execution-other",
@@ -333,7 +333,7 @@ def test_loaded_runtime_form_must_match_prevalidated_resume_identity() -> None:
 def test_resume_identity_values_must_not_be_blank(workflow_pause_id: str, node_execution_id: str) -> None:
     with pytest.raises(ValueError, match="must not be blank"):
         WorkflowResumeIdentity(
-            _FORM_REF.workspace_id,
+            _FORM_REF.tenant_id,
             _FORM_REF.form_id,
             workflow_pause_id,
             node_execution_id,
@@ -454,7 +454,7 @@ def test_resume_identity_is_duplicate_safe_through_the_port_contract() -> None:
     assert events.count("resume_enqueue") == 1
     assert resume_port.dispatched == {
         WorkflowResumeIdentity(
-            workspace_id=WorkspaceId("workspace-1"),
+            tenant_id=TenantId("workspace-1"),
             form_id=FormId("form-1"),
             workflow_pause_id="pause-1",
             node_execution_id="node-execution-1",

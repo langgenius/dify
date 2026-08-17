@@ -29,7 +29,7 @@ from core.human_input_v2.shared import (
     ContactId,
     FormId,
     OTPChallengeId,
-    WorkspaceId,
+    TenantId,
 )
 from models.human_input_v2 import (
     FormApproverGrantMatchedSources,
@@ -48,8 +48,8 @@ from repositories.human_input_v2.approval.repository import (
 )
 
 _NOW = datetime(2026, 7, 25, 8)
-_WORKSPACE_ID = WorkspaceId("workspace-1")
-_FORM_REF = FormRef(_WORKSPACE_ID, FormId("form-1"))
+_TENANT_ID = TenantId("workspace-1")
+_FORM_REF = FormRef(_TENANT_ID, FormId("form-1"))
 _GRANT_REF = _FORM_REF.grant(ApproverGrantId("grant-1"))
 _RAW_CODE = "123456"
 _AUDIT_METADATA = sa.MetaData()
@@ -427,7 +427,7 @@ def test_verification_rejects_changed_deleted_and_same_email_recreated_contact(
 def test_owner_mismatch_fails_closed_without_loading_or_mutating_challenge(repository_context) -> None:
     repository, session_maker, _clock, _hasher = repository_context
     challenge = _issue_initial(repository)
-    wrong_ref = FormRef(WorkspaceId("other-workspace"), FormId("form-1")).grant(ApproverGrantId("grant-1"))
+    wrong_ref = FormRef(TenantId("other-workspace"), FormId("form-1")).grant(ApproverGrantId("grant-1"))
 
     assert repository.load(wrong_ref.challenge(challenge.ref.challenge_id)) is None
     with pytest.raises(ValueError, match="grant scope"):

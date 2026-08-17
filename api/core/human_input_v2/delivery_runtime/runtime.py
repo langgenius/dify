@@ -39,7 +39,7 @@ class HumanInputRenderedEmailDeliveryRuntime:
         expected_snapshot: ConfigurationSnapshotIdentity | None = None,
     ) -> PreparedRenderedEmailDelivery:
         snapshot = self._resolver.resolve(
-            request.workspace_id,
+            request.tenant_id,
             request.channel,
             expected=expected_snapshot,
         )
