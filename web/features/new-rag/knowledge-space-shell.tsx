@@ -326,7 +326,7 @@ export function KnowledgeSpaceShell({
                   : 'text-text-secondary',
               )}
             >
-              {navIcon('i-ri-layout-grid-line')}
+              {navIcon(overviewActive ? 'i-ri-layout-grid-fill' : 'i-ri-layout-grid-line')}
               {sidebarExpanded && t(($) => $['newKnowledge.overviewTitle'])}
             </Link>
             <Link
@@ -341,7 +341,7 @@ export function KnowledgeSpaceShell({
                   : 'text-text-secondary',
               )}
             >
-              {navIcon('i-ri-book-open-line')}
+              {navIcon(sourcesActive ? 'i-ri-book-open-fill' : 'i-ri-book-open-line')}
               {sidebarExpanded && t(($) => $['newKnowledge.sourceColumn'])}
             </Link>
             <Link
@@ -356,7 +356,7 @@ export function KnowledgeSpaceShell({
                   : 'text-text-secondary',
               )}
             >
-              {navIcon('i-ri-file-text-line')}
+              {navIcon(documentsActive ? 'i-ri-file-text-fill' : 'i-ri-file-text-line')}
               {sidebarExpanded && t(($) => $['newKnowledge.documentColumn'])}
             </Link>
             <Link
@@ -371,7 +371,7 @@ export function KnowledgeSpaceShell({
                   : 'text-text-secondary',
               )}
             >
-              {navIcon('i-ri-search-eye-line')}
+              {navIcon(retrievalTestActive ? 'i-ri-search-eye-fill' : 'i-ri-search-eye-line')}
               {sidebarExpanded && t(($) => $['newKnowledge.retrievalTest.title'])}
             </Link>
             <Link
@@ -386,7 +386,7 @@ export function KnowledgeSpaceShell({
                   : 'text-text-secondary',
               )}
             >
-              {navIcon('i-ri-shield-check-line')}
+              {navIcon(qualityActive ? 'i-ri-shield-check-fill' : 'i-ri-shield-check-line')}
               {sidebarExpanded && t(($) => $['newKnowledge.quality'])}
             </Link>
             <Link
@@ -401,7 +401,7 @@ export function KnowledgeSpaceShell({
                   : 'text-text-secondary',
               )}
             >
-              {navIcon('i-ri-equalizer-2-line')}
+              {navIcon(settingsActive ? 'i-ri-equalizer-2-fill' : 'i-ri-equalizer-2-line')}
               {sidebarExpanded && tCommon(($) => $['datasetMenus.settings'])}
             </Link>
           </nav>
