@@ -181,7 +181,6 @@
     "@typescript/native": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "@vitejs/plugin-rsc": "catalog:",
-    "@vitest/browser": "catalog:",
     "@vitest/browser-playwright": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "agentation": "catalog:",

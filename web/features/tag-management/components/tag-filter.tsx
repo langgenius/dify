@@ -1,7 +1,14 @@
 import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
-import type { ComboboxContentProps, ComboboxProps } from '@langgenius/dify-ui/combobox'
+import type { ComboboxPortalProps, ComboboxProps } from '@langgenius/dify-ui/combobox'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Combobox, ComboboxContent, ComboboxTrigger } from '@langgenius/dify-ui/combobox'
+import {
+  Combobox,
+  ComboboxPopup,
+  ComboboxPortal,
+  ComboboxPositioner,
+  ComboboxTrigger,
+} from '@langgenius/dify-ui/combobox'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -10,7 +17,7 @@ import { consoleQuery } from '@/service/client'
 import { TagSearchContent } from './tag-search-content'
 
 const tagFilterComboboxFilter: NonNullable<ComboboxProps<Tag, true>['filter']> = (tag, query) =>
-  tag.name.includes(query)
+  tag.name.toLocaleLowerCase().includes(query.toLocaleLowerCase())
 const tagToString = (tag: Tag) => tag.name
 const isSameTag = (item: Tag, value: Tag) => item.id === value.id
 
@@ -20,7 +27,7 @@ type TagFilterProps = {
   value: string[]
   onChange: (v: string[]) => void
   onOpenTagManagement?: () => void
-  portalProps?: ComboboxContentProps['portalProps']
+  portalProps?: ComboboxPortalProps
   showTagManagement?: boolean
   showLeadingIcon?: boolean
   triggerClassName?: string
@@ -137,10 +144,10 @@ export const TagFilter = ({
           )}
         </ComboboxTrigger>
         {!!value.length && !iconOnly && (
-          <button
-            type="button"
+          <IconButton
+            size="xs"
             aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-            className="group/clear absolute top-1/2 right-2 -translate-y-1/2 rounded-md border-none bg-transparent p-px focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            className="group/clear absolute top-1/2 right-2 -translate-y-1/2"
             onClick={(event) => {
               event.stopPropagation()
               onChange([])
@@ -150,24 +157,26 @@ export const TagFilter = ({
               className="size-3.5 text-text-tertiary group-hover/clear:text-text-secondary"
               aria-hidden="true"
             />
-          </button>
+          </IconButton>
         )}
-        <ComboboxContent
-          placement="bottom-start"
-          sideOffset={4}
-          portalProps={portalProps}
-          popupClassName="w-[240px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]"
-        >
-          <TagSearchContent
-            type={type}
-            inputValue={inputValue}
-            onInputValueChange={setInputValue}
-            canBindOrUnbindTags
-            onOpenTagManagement={onOpenTagManagement}
-            showTagManagement={showTagManagement}
-            onClose={() => setOpen(false)}
-          />
-        </ComboboxContent>
+        <ComboboxPortal {...portalProps}>
+          <ComboboxPositioner placement="bottom-start" sideOffset={4}>
+            <ComboboxPopup
+              aria-label={triggerLabel}
+              className="w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]"
+            >
+              <TagSearchContent
+                type={type}
+                inputValue={inputValue}
+                onInputValueChange={setInputValue}
+                canBindOrUnbindTags
+                onOpenTagManagement={onOpenTagManagement}
+                showTagManagement={showTagManagement}
+                onClose={() => setOpen(false)}
+              />
+            </ComboboxPopup>
+          </ComboboxPositioner>
+        </ComboboxPortal>
       </div>
     </Combobox>
   )

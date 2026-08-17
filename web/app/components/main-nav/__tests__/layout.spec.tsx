@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { fireEvent, screen } from '@testing-library/react'
 import { useStore as useAppStore } from '@/app/components/app/store'

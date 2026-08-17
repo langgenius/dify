@@ -5,7 +5,6 @@ export type LoginRedirectTarget =
 type ResolveLoginRedirectOptions = {
   currentOrigin?: string
   allowSameOriginAbsolute?: boolean
-  allowedAbsoluteOrigins?: readonly string[]
 }
 
 const INTERNAL_URL_BASE = 'https://login-redirect.invalid'
@@ -145,11 +144,6 @@ function validateLoginRedirectTarget(
   const currentOrigin = getHTTPOrigin(options.currentOrigin)
   if (options.allowSameOriginAbsolute && currentOrigin && url.origin === currentOrigin)
     return { kind: 'absolute', href: url.href }
-
-  const isAllowedAbsoluteOrigin = options.allowedAbsoluteOrigins?.some(
-    (origin) => getHTTPOrigin(origin) === url.origin,
-  )
-  if (isAllowedAbsoluteOrigin) return { kind: 'absolute', href: url.href }
 
   if (url.protocol !== 'https:' || url.port !== '' || !isTrustedDifyHostname(url.hostname))
     return null

@@ -5,40 +5,28 @@ import type {
   MarketplaceTemplateCollection,
 } from '@dify/contracts/marketplace'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useSyncExternalStore } from 'react'
 import Link from '@/next/link'
 import Carousel from '../list/carousel'
-import { CAROUSEL_BREAKPOINTS, CAROUSEL_PAGE_SIZE, GRID_CLASS } from '../list/collection-constants'
+import {
+  BECOME_PARTNER_URL,
+  GRID_CLASS,
+  PARTNER_COLLECTION_NAMES,
+} from '../list/collection-constants'
+import { useCarouselItemsPerPage } from '../list/use-carousel-items-per-page'
 import TemplateCard from './template-card'
-import { filterTemplatesForLocale, getTemplateCollectionText } from './template-language'
-
-const BECOME_PARTNER_URL = 'https://share-na2.hsforms.com/1NiS4r9lsSqGcuNBB77DeEQ40s9fk'
-const PARTNER_COLLECTION_NAMES = new Set(['partners', 'partner-template', 'Partner Template'])
+import { getTemplateCollectionText } from './template-language'
 
 type TemplateCollectionListProps = {
   becomePartnerText: string
   collections: MarketplaceTemplateCollection[]
   locale: string
   partnerText: string
+  /**
+   * Templates per collection, already filtered for the request locale by the
+   * caller; this component only renders what it receives.
+   */
   templatesByCollection: Record<string, MarketplaceTemplate[]>
   viewMoreText: string
-}
-
-function subscribeToViewport(onStoreChange: () => void) {
-  globalThis.window?.addEventListener('resize', onStoreChange)
-
-  return () => globalThis.window?.removeEventListener('resize', onStoreChange)
-}
-
-const getViewportWidth = () => globalThis.window?.innerWidth ?? CAROUSEL_BREAKPOINTS.xl
-const getServerViewportWidth = () => CAROUSEL_BREAKPOINTS.xl
-
-function getCarouselItemsPerPage(viewportWidth: number) {
-  if (viewportWidth >= CAROUSEL_BREAKPOINTS.xl) return CAROUSEL_PAGE_SIZE.xl
-  if (viewportWidth >= CAROUSEL_BREAKPOINTS.lg) return CAROUSEL_PAGE_SIZE.lg
-  if (viewportWidth >= CAROUSEL_BREAKPOINTS.sm) return CAROUSEL_PAGE_SIZE.sm
-
-  return CAROUSEL_PAGE_SIZE.base
 }
 
 function getViewMoreHref(collection: MarketplaceTemplateCollection) {
@@ -60,40 +48,13 @@ export default function TemplateCollectionList({
   templatesByCollection,
   viewMoreText,
 }: TemplateCollectionListProps) {
-  const viewportWidth = useSyncExternalStore(
-    subscribeToViewport,
-    getViewportWidth,
-    getServerViewportWidth,
-  )
-  const itemsPerPage = getCarouselItemsPerPage(viewportWidth)
+  const itemsPerPage = useCarouselItemsPerPage()
 
   return collections.map((collection) => {
-    const templates = filterTemplatesForLocale(templatesByCollection[collection.name] ?? [], locale)
+    const templates = templatesByCollection[collection.name] ?? []
 
     if (!templates.length) return null
 
-    const carouselPages = Array.from(
-      { length: Math.ceil(templates.length / itemsPerPage) },
-      (_, pageIndex) => {
-        const pageTemplates = templates.slice(
-          pageIndex * itemsPerPage,
-          (pageIndex + 1) * itemsPerPage,
-        )
-
-        return {
-          id: `${collection.name}-${itemsPerPage}-${pageIndex}`,
-          content: (
-            <div className={cn(GRID_CLASS)}>
-              {pageTemplates.map((template) => (
-                <div key={template.id} className="min-w-0 *:w-full">
-                  <TemplateCard partnerText={partnerText} template={template} />
-                </div>
-              ))}
-            </div>
-          ),
-        }
-      },
-    )
     const isPartnerCollection = PARTNER_COLLECTION_NAMES.has(collection.name)
 
     return (
@@ -139,7 +100,29 @@ export default function TemplateCollectionList({
           </div>
         ) : (
           <Carousel
-            pages={carouselPages}
+            pages={Array.from(
+              { length: Math.ceil(templates.length / itemsPerPage) },
+              (_, pageIndex) => {
+                const pageTemplates = templates.slice(
+                  pageIndex * itemsPerPage,
+                  (pageIndex + 1) * itemsPerPage,
+                )
+
+                return {
+                  id: `${collection.name}-${itemsPerPage}-${pageIndex}`,
+                  content: (
+                    <div className={cn(GRID_CLASS)}>
+                      {pageTemplates.map((template) => (
+                        <div key={template.id} className="min-w-0 *:w-full">
+                          <TemplateCard partnerText={partnerText} template={template} />
+                        </div>
+                      ))}
+                    </div>
+                  ),
+                }
+              },
+            )}
+            ariaLabel={getTemplateCollectionText(collection.label, locale)}
             showNavigation
             showPagination
             autoPlay

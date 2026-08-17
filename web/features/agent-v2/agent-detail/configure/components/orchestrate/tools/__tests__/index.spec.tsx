@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
@@ -110,18 +110,21 @@ vi.mock('@/utils/get-icon', () => ({
 
 vi.mock('@/app/components/plugins/plugin-auth/authorize/add-oauth-button', () => ({
   default: ({ buttonText, onUpdate, renderTrigger }: AddOAuthButtonProps) => {
-    if (renderTrigger) {
-      return renderTrigger({
-        isConfigured: false,
-        onClick: () => onUpdate?.(),
-      })
-    }
-
-    return (
+    const trigger = (
       <button type="button" onClick={onUpdate}>
         {buttonText}
       </button>
     )
+
+    if (renderTrigger) {
+      return renderTrigger({
+        isConfigured: false,
+        onClick: () => onUpdate?.(),
+        trigger,
+      })
+    }
+
+    return trigger
   },
 }))
 

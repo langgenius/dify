@@ -18,6 +18,7 @@ from controllers.console.apikey import (
     AppApiKeyListResource,
     BaseApiKeyListResource,
     BaseApiKeyResource,
+    DatasetApiKeyListResource,
 )
 from controllers.console.datasets.datasets import DatasetApiKeyApi
 from core.rbac import RBACPermission, RBACResourceScope
@@ -268,6 +269,10 @@ def test_api_key_lists_require_matching_rbac_permission() -> None:
             lambda: DatasetApiKeyApi().get(),
             [(RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE, False)],
         ),
+        (
+            lambda: DatasetApiKeyListResource().get(resource_id=api_id),
+            [(RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE, True)],
+        ),
     ]
 
     with (
@@ -316,6 +321,7 @@ def test_api_key_lists_reject_legacy_read_only_members() -> None:
             lambda: AppApiKeyListResource().get(resource_id=api_id),
             lambda: AgentApiKeyListApi().get(agent_id=api_id),
             lambda: DatasetApiKeyApi().get(),
+            lambda: DatasetApiKeyListResource().get(resource_id=api_id),
         ):
             with pytest.raises(Forbidden):
                 invoke()

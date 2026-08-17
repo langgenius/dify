@@ -8,13 +8,14 @@ controller's request parsing + error mapping, not auth (tested separately).
 from __future__ import annotations
 
 import inspect
-from types import SimpleNamespace
 from unittest.mock import ANY, patch
 
 import pytest
 from flask import Flask
 
 from controllers.inner_api.plugin.agent_drive import AgentDriveCommitApi, AgentDriveManifestApi, AgentDriveSkillsApi
+from models.enums import EndUserType
+from models.model import EndUser
 from services.agent_drive_service import AgentDriveError
 
 _MOD = "controllers.inner_api.plugin.agent_drive"
@@ -23,6 +24,15 @@ app = Flask(__name__)
 
 def _raw(method):
     return inspect.unwrap(method)
+
+
+def _end_user(user_id: str) -> EndUser:
+    return EndUser(
+        id=user_id,
+        tenant_id="tenant-1",
+        type=EndUserType.SERVICE_API,
+        session_id="session-1",
+    )
 
 
 def test_manifest_parses_query_and_returns_items():
@@ -101,7 +111,7 @@ def test_commit_parses_body_and_returns_items():
     }
     with app.test_request_context("/", method="POST", json=payload):
         with (
-            patch(f"{_MOD}.get_user", return_value=SimpleNamespace(id="user-1")) as get_user,
+            patch(f"{_MOD}.get_user", return_value=_end_user("user-1")) as get_user,
             patch(f"{_MOD}.AgentDriveService") as svc,
         ):
             svc.return_value.commit.return_value = [{"key": "a.txt"}]
@@ -121,7 +131,7 @@ def test_commit_canonicalizes_user_before_service_call():
     }
     with app.test_request_context("/", method="POST", json=payload):
         with (
-            patch(f"{_MOD}.get_user", return_value=SimpleNamespace(id="end-user-1")),
+            patch(f"{_MOD}.get_user", return_value=_end_user("end-user-1")),
             patch(f"{_MOD}.AgentDriveService") as svc,
         ):
             svc.return_value.commit.return_value = [{"key": "a.txt"}]
@@ -148,7 +158,7 @@ def test_commit_maps_service_error():
     }
     with app.test_request_context("/", method="POST", json=payload):
         with (
-            patch(f"{_MOD}.get_user", return_value=SimpleNamespace(id="user-1")),
+            patch(f"{_MOD}.get_user", return_value=_end_user("user-1")),
             patch(f"{_MOD}.AgentDriveService") as svc,
         ):
             svc.return_value.commit.side_effect = AgentDriveError("source_not_found", "nope", status_code=404)

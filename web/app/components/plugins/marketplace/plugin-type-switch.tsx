@@ -97,7 +97,9 @@ const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchPr
         className,
       )}
       role="group"
-      aria-label={t(($) => $['marketplace.allPlugins'], { ns: 'plugin' })}
+      // Labels the filter group itself; "All integrations" is already the
+      // first option's text and would read as a duplicate.
+      aria-label={t(($) => $.allCategories, { ns: 'plugin' })}
     >
       {options.map((option, index) => {
         const isActive = activePluginType === option.value

@@ -1,10 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { resolvePostLoginRedirect, setPostLoginRedirect } from '../post-login-redirect'
-
-vi.mock('@/config', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/config')>()),
-  MARKETPLACE_URL_PREFIX: 'http://localhost:3000',
-}))
 
 describe('post-login redirect utilities', () => {
   beforeEach(() => {
@@ -53,20 +48,9 @@ describe('post-login redirect utilities', () => {
     ).toEqual({ kind: 'absolute', href: redirectUrl })
   })
 
-  it('should allow an absolute target on the configured Marketplace origin', () => {
-    const redirectUrl = 'http://localhost:3000/plugin/langgenius/openai?tab=reviews#rating'
-    const searchParams = new URLSearchParams({ redirect_url: redirectUrl })
-
-    expect(
-      resolvePostLoginRedirect(
-        searchParams as unknown as Parameters<typeof resolvePostLoginRedirect>[0],
-      ),
-    ).toEqual({ kind: 'absolute', href: redirectUrl })
-  })
-
-  it('should reject a target that only resembles the configured Marketplace origin', () => {
+  it('should reject a Marketplace origin that is not a trusted Dify login target', () => {
     const searchParams = new URLSearchParams({
-      redirect_url: 'http://localhost:3002/plugin/langgenius/openai',
+      redirect_url: 'http://localhost:3001/plugin/langgenius/openai?tab=reviews#rating',
     })
 
     expect(
@@ -140,12 +124,12 @@ describe('post-login redirect utilities', () => {
 
   it('should preserve every Marketplace OAuth authorize parameter across signin', () => {
     setPostLoginRedirect(
-      '/account/oauth/authorize?client_id=marketplace-client&redirect_uri=https%3A%2F%2Fapi.marketplace.dify.ai%2Fapi%2Fv1%2Fauth%2Fcallback%2Fdify&state=oauth-state&response_type=code&flow=marketplace',
+      '/account/oauth/authorize?client_id=marketplace-client&redirect_uri=https%3A%2F%2Fapi.marketplace.dify.ai%2Fapi%2Fv1%2Fauth%2Fcallback%2Fdify&state=oauth-state&response_type=code',
     )
 
     expect(resolvePostLoginRedirect()).toEqual({
       kind: 'internal',
-      href: '/account/oauth/authorize?client_id=marketplace-client&redirect_uri=https%3A%2F%2Fapi.marketplace.dify.ai%2Fapi%2Fv1%2Fauth%2Fcallback%2Fdify&state=oauth-state&response_type=code&flow=marketplace',
+      href: '/account/oauth/authorize?client_id=marketplace-client&redirect_uri=https%3A%2F%2Fapi.marketplace.dify.ai%2Fapi%2Fv1%2Fauth%2Fcallback%2Fdify&state=oauth-state&response_type=code',
     })
   })
 })

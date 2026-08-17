@@ -3,13 +3,17 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { MARKETPLACE_API_PREFIX } from '@/config'
 import {
   MarketplaceSearchAutocomplete,
   MarketplaceSearchForm,
 } from '../marketplace-search-autocomplete'
 
-const { mockPluginSearch, mockTemplateSearch } = vi.hoisted(() => ({
+const { debounceState, mockPluginSearch, mockTemplateSearch } = vi.hoisted(() => ({
+  // Most tests bypass the debounce for simplicity; the debounce-window test
+  // flips this on to exercise the real 300ms lag.
+  debounceState: { useRealDebounce: false },
   mockPluginSearch: vi.fn(),
   mockTemplateSearch: vi.fn(),
 }))
@@ -19,20 +23,20 @@ vi.mock('ahooks', async (importOriginal) => {
 
   return {
     ...original,
-    useDebounce: <T,>(value: T) => value,
+    useDebounce: <T,>(value: T, options?: { wait?: number }) =>
+      debounceState.useRealDebounce ? original.useDebounce(value, options) : value,
   }
 })
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) =>
-      ({
-        'gotoAnything.searching': 'Searching...',
-        'marketplace.noPluginFound': 'No integration found',
-        'newApp.noTemplateFound': 'No templates found',
-      })[key] ?? key,
-  }),
-}))
+vi.mock('react-i18next', async () => {
+  const { createReactI18nextMock } = await import('@/test/i18n-mock')
+
+  return createReactI18nextMock({
+    clearSearch: 'Clear search',
+    'marketplace.noPluginFound': 'No integration found',
+    'newApp.noTemplateFound': 'No templates found',
+  })
+})
 
 vi.mock('@/service/client', () => ({
   marketplaceQuery: {
@@ -60,6 +64,7 @@ function Wrapper({ children }: { children: ReactNode }) {
 describe('MarketplaceSearchAutocomplete', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    debounceState.useRealDebounce = false
     queryClient = new QueryClient({
       defaultOptions: {
         queries: {
@@ -113,6 +118,8 @@ describe('MarketplaceSearchAutocomplete', () => {
 
     await user.type(screen.getByRole('combobox'), 'legal')
     expect(screen.queryByText('Legal Research Agent')).not.toBeInTheDocument()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
     resolveTemplateSearch(templateSearchResponse)
 
     expect(await screen.findByText('Legal Research Agent')).toBeInTheDocument()
@@ -120,7 +127,7 @@ describe('MarketplaceSearchAutocomplete', () => {
     expect(container.querySelector('form')).toHaveAttribute('action', '/templates/knowledge')
     expect(container.querySelector('input[role="combobox"]')).toHaveAttribute('name', 'q')
     expect(container.querySelector('input[role="combobox"]')).toHaveAttribute('type', 'text')
-    expect(container.querySelectorAll('button[aria-label="clearSearch"]')).toHaveLength(1)
+    expect(container.querySelectorAll('button[aria-label="Clear search"]')).toHaveLength(1)
     expect(container.querySelector('input[type="hidden"]')).toHaveValue('en-US')
     expect(mockPluginSearch).not.toHaveBeenCalled()
   })
@@ -167,7 +174,149 @@ describe('MarketplaceSearchAutocomplete', () => {
 
     expect(await screen.findByText('Google Search')).toBeInTheDocument()
     expect(screen.getByText('Search the web from your workflow.')).toBeInTheDocument()
+    expect(screen.getByRole('listbox').querySelector('img')).toHaveAttribute(
+      'src',
+      `${MARKETPLACE_API_PREFIX}/plugins/langgenius/google-search/icon`,
+    )
     expect(onValueChange).toHaveBeenLastCalledWith('google')
     expect(mockTemplateSearch).not.toHaveBeenCalled()
+  })
+
+  it('submits the route search form when a suggestion is chosen', async () => {
+    mockPluginSearch.mockResolvedValue({
+      data: {
+        plugins: [
+          {
+            type: 'plugin',
+            org: 'langgenius',
+            name: 'google-search',
+            label: { en_US: 'Google Search' },
+            brief: { en_US: 'Search the web from your workflow.' },
+            category: 'tool',
+          },
+        ],
+        total: 1,
+      },
+    })
+    const user = userEvent.setup()
+    const handleSubmit = vi.fn((event: Event) => {
+      event.preventDefault()
+    })
+
+    const { container } = render(
+      <MarketplaceSearchForm
+        action="/plugins"
+        locale="en-US"
+        placeholder="Search plugins"
+        query=""
+        scope="plugins"
+      />,
+      { wrapper: Wrapper },
+    )
+
+    container.querySelector('form')?.addEventListener('submit', handleSubmit)
+
+    await user.type(screen.getByRole('combobox'), 'google')
+    await user.click(await screen.findByText('Google Search'))
+
+    expect(handleSubmit).toHaveBeenCalledOnce()
+  })
+
+  it('does not offer the previous term suggestions while a new search is pending', async () => {
+    const googleResponse = {
+      data: {
+        plugins: [
+          {
+            type: 'plugin',
+            org: 'langgenius',
+            name: 'google-search',
+            label: { en_US: 'Google Search' },
+            brief: { en_US: 'Search the web from your workflow.' },
+            category: 'tool',
+          },
+        ],
+        total: 1,
+      },
+    }
+    mockPluginSearch.mockImplementation((input: { body: { query: string } }) => {
+      if (input.body.query === 'google') return Promise.resolve(googleResponse)
+      // Keep the follow-up term pending so stale suggestions would be visible
+      // if the query still returned placeholder data.
+      return new Promise(() => {})
+    })
+    const user = userEvent.setup()
+
+    const ControlledSearch = () => {
+      const [value, setValue] = useState('')
+
+      return (
+        <MarketplaceSearchAutocomplete
+          locale="en-US"
+          onValueChange={setValue}
+          placeholder="Search plugins"
+          scope="plugins"
+          value={value}
+        />
+      )
+    }
+
+    render(<ControlledSearch />, { wrapper: Wrapper })
+
+    await user.type(screen.getByRole('combobox'), 'google')
+    expect(await screen.findByText('Google Search')).toBeInTheDocument()
+
+    await user.type(screen.getByRole('combobox'), ' drive')
+
+    expect(screen.queryByText('Google Search')).not.toBeInTheDocument()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+  })
+
+  it('clears suggestions while the edited value is still debouncing', async () => {
+    debounceState.useRealDebounce = true
+    mockPluginSearch.mockResolvedValue({
+      data: {
+        plugins: [
+          {
+            type: 'plugin',
+            org: 'langgenius',
+            name: 'google-search',
+            label: { en_US: 'Google Search' },
+            brief: { en_US: 'Search the web from your workflow.' },
+            category: 'tool',
+          },
+        ],
+        total: 1,
+      },
+    })
+    const user = userEvent.setup()
+
+    const ControlledSearch = () => {
+      const [value, setValue] = useState('')
+
+      return (
+        <MarketplaceSearchAutocomplete
+          locale="en-US"
+          onValueChange={setValue}
+          placeholder="Search plugins"
+          scope="plugins"
+          value={value}
+        />
+      )
+    }
+
+    render(<ControlledSearch />, { wrapper: Wrapper })
+
+    // Suggestions only appear once the real 300ms debounce has elapsed.
+    await user.type(screen.getByRole('combobox'), 'google')
+    expect(await screen.findByText('Google Search')).toBeInTheDocument()
+
+    // For the first 300ms after editing, the debounced term still points at
+    // the old query; the previous suggestions must already be gone.
+    await user.type(screen.getByRole('combobox'), ' drive')
+
+    expect(screen.queryByText('Google Search')).not.toBeInTheDocument()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
   })
 })

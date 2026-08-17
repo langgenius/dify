@@ -7,27 +7,16 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocale, useTranslation } from '#i18n'
 import { getLanguage } from '@/i18n-config/language'
 import { useMarketplaceMoreClick } from '../atoms'
+import { MARKETPLACE_CONTAINER_ID } from '../constants'
 import { buildCarouselPages } from '../utils'
 import CardWrapper from './card-wrapper'
 import Carousel from './carousel'
-import { CAROUSEL_BREAKPOINTS, CAROUSEL_PAGE_SIZE, GRID_CLASS } from './collection-constants'
+import { BECOME_PARTNER_URL, GRID_CLASS, PARTNER_COLLECTION_NAMES } from './collection-constants'
+import { useCarouselItemsPerPage } from './use-carousel-items-per-page'
 
-const BECOME_PARTNER_URL = 'https://share-na2.hsforms.com/1NiS4r9lsSqGcuNBB77DeEQ40s9fk'
-const PARTNERS_COLLECTION_NAMES = new Set(['partners', 'partner-template', 'Partner Template'])
 const COLLECTION_PRELOAD_MARGIN = '320px 0px'
 const COLLECTION_INTERSECTION_THRESHOLD = 0.01
 const MAX_PLACEHOLDER_CARDS = 8
-
-const getViewportWidth = () =>
-  typeof window === 'undefined' ? CAROUSEL_BREAKPOINTS.xl : window.innerWidth
-
-const getCarouselItemsPerPage = (viewportWidth: number) => {
-  if (viewportWidth >= CAROUSEL_BREAKPOINTS.xl) return CAROUSEL_PAGE_SIZE.xl
-  if (viewportWidth >= CAROUSEL_BREAKPOINTS.lg) return CAROUSEL_PAGE_SIZE.lg
-  if (viewportWidth >= CAROUSEL_BREAKPOINTS.sm) return CAROUSEL_PAGE_SIZE.sm
-
-  return CAROUSEL_PAGE_SIZE.base
-}
 
 type ListWithCollectionProps = {
   marketplaceCollections: MarketplaceCollection[]
@@ -120,7 +109,7 @@ const CollectionSection = ({
   const [isMounted, setIsMounted] = useState(!deferMount)
   const pages = useMemo(() => buildCarouselPages(plugins, itemsPerPage), [itemsPerPage, plugins])
   const hasMultiplePages = pages.length > 1
-  const isPartnersCollection = PARTNERS_COLLECTION_NAMES.has(collection.name)
+  const isPartnersCollection = PARTNER_COLLECTION_NAMES.has(collection.name)
 
   useEffect(() => {
     if (!deferMount || isMounted) return
@@ -142,7 +131,7 @@ const CollectionSection = ({
         observer.disconnect()
       },
       {
-        root: document.getElementById('marketplace-container'),
+        root: document.getElementById(MARKETPLACE_CONTAINER_ID),
         rootMargin: COLLECTION_PRELOAD_MARGIN,
         threshold: COLLECTION_INTERSECTION_THRESHOLD,
       },
@@ -229,6 +218,7 @@ const CollectionSection = ({
       ) : hasMultiplePages ? (
         <Carousel
           pages={carouselPages}
+          ariaLabel={collection.label[getLanguage(locale)]}
           className="mt-2"
           showNavigation
           showPagination
@@ -268,20 +258,11 @@ const ListWithCollection = ({
 }: ListWithCollectionProps) => {
   const defaultOnMoreClick = useMarketplaceMoreClick()
   const handleMoreClick = onCollectionMoreClick ?? defaultOnMoreClick
-  const [viewportWidth, setViewportWidth] = useState(getViewportWidth)
-  const itemsPerPage = useMemo(() => getCarouselItemsPerPage(viewportWidth), [viewportWidth])
-
-  useEffect(() => {
-    const handleResize = () => setViewportWidth(window.innerWidth)
-
-    window.addEventListener('resize', handleResize)
-
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
+  const itemsPerPage = useCarouselItemsPerPage()
 
   return marketplaceCollections
     .filter((collection) => marketplaceCollectionPluginsMap[collection.name]?.length)
-    .map((collection) => (
+    .map((collection, index) => (
       <CollectionSection
         key={collection.name}
         collection={collection}
@@ -293,7 +274,11 @@ const ListWithCollection = ({
         cardRender={cardRender}
         onMoreClick={handleMoreClick}
         installedPluginIds={installedPluginIds}
-        deferMount={deferOffscreenCollections}
+        // The first collection is above-the-fold content: it must render its
+        // cards in the server-rendered HTML so a direct visit shows real
+        // content without waiting for client-side JS. Only collections below
+        // it defer to the IntersectionObserver.
+        deferMount={deferOffscreenCollections && index > 0}
       />
     ))
 }

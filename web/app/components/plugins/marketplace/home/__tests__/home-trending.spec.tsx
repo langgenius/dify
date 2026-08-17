@@ -1,4 +1,4 @@
-import type { PluginBanner } from '../banners'
+import type { PluginBanner } from '@dify/contracts/marketplace'
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -19,6 +19,11 @@ vi.mock('@/app/components/plugins/base/badges/partner', () => ({
 
 vi.mock('@/app/components/plugins/base/badges/verified', () => ({
   default: () => <span data-testid="verified-badge" />,
+}))
+
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  MARKETPLACE_URL_PREFIX: 'https://marketplace.example.com',
 }))
 
 const banners: PluginBanner[] = [
@@ -119,11 +124,15 @@ describe('HomeTrending', () => {
     await user.click(screen.getByRole('button', { name: 'Dify Updates' }))
 
     expect(screen.getByRole('heading', { name: 'Dify v1.9 new launch' })).toBeInTheDocument()
+    const blogSlide = screen.getByRole('group', { name: 'Dify Updates' })
+    const blogLink = within(blogSlide).getByRole('link', {
+      name: 'plugin.marketplace.home.trendingReadMoreAbout',
+    })
+    expect(blogLink).toHaveAttribute('href', 'https://dify.ai/blog')
+    expect(within(blogSlide).getAllByRole('link')).toHaveLength(1)
     expect(
-      screen.getByRole('link', {
-        name: 'Read more about Dify v1.9 new launch',
-      }),
-    ).toHaveAttribute('href', 'https://dify.ai/blog')
+      within(blogLink).getByRole('heading', { name: 'Dify v1.9 new launch' }),
+    ).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Duck Duck Go' }))
 
@@ -156,12 +165,18 @@ describe('HomeTrending', () => {
 
     render(<HomeTrending banners={banners} isMarketplacePlatform />)
 
+    const carousel = document.querySelector('[data-home-trending-carousel-root]')!
+    const liveTrack = carousel.querySelector('[aria-live]')!
+    expect(liveTrack).toHaveAttribute('aria-live', 'off')
+
     const pauseButton = screen.getByRole('button', {
       name: 'plugin.marketplace.home.trendingPause',
     })
 
     pauseButton.focus()
     await user.keyboard('{Enter}')
+
+    expect(liveTrack).toHaveAttribute('aria-live', 'polite')
 
     const playButton = screen.getByRole('button', {
       name: 'plugin.marketplace.home.trendingPlay',
@@ -301,6 +316,17 @@ describe('HomeTrending', () => {
     fireEvent.focusOut(focusTarget, { relatedTarget: null })
     expect(play.mock.calls.length).toBeGreaterThan(playsBeforeFocus)
 
+    // Navigation controls sit inside the pause boundary, so focusing them
+    // also stops the rotation.
+    const playsBeforeControlFocus = play.mock.calls.length
+    const paginationButton = screen.getByRole('button', { name: 'Dify Updates' })
+    fireEvent.focusIn(paginationButton)
+    setIntersectionRatio(0)
+    setIntersectionRatio(0.25)
+    expect(play).toHaveBeenCalledTimes(playsBeforeControlFocus)
+    fireEvent.focusOut(paginationButton, { relatedTarget: null })
+    expect(play.mock.calls.length).toBeGreaterThan(playsBeforeControlFocus)
+
     const playsBeforeUserPause = play.mock.calls.length
     fireEvent.click(screen.getByRole('button', { name: 'plugin.marketplace.home.trendingPause' }))
     setIntersectionRatio(0)
@@ -342,6 +368,105 @@ describe('HomeTrending', () => {
       configurable: true,
       value: originalAnimate,
     })
+  })
+
+  it('resumes autoplay when Play is activated without moving keyboard focus', async () => {
+    const pause = vi.fn()
+    const play = vi.fn()
+    const progressAnimation = {
+      cancel: vi.fn(),
+      onfinish: null,
+      pause,
+      play,
+    } as unknown as Animation
+    const originalAnimate = Element.prototype.animate
+    Object.defineProperty(Element.prototype, 'animate', {
+      configurable: true,
+      value: vi.fn(() => progressAnimation),
+    })
+    const user = userEvent.setup()
+
+    render(<HomeTrending banners={banners} isMarketplacePlatform />)
+
+    const toggleButton = screen.getByRole('button', {
+      name: 'plugin.marketplace.home.trendingPause',
+    })
+
+    // Focusing the toggle adds the implicit focus pause reason, then Enter
+    // adds the explicit user pause.
+    toggleButton.focus()
+    await user.keyboard('{Enter}')
+    expect(pause).toHaveBeenCalled()
+
+    // Play must resume the rotation even though the button is still focused
+    // (and would normally keep the focus pause reason active).
+    const playsBeforePlay = play.mock.calls.length
+    await user.keyboard('{Enter}')
+
+    expect(play.mock.calls.length).toBeGreaterThan(playsBeforePlay)
+    expect(document.activeElement).toBe(toggleButton)
+    expect(
+      screen.getByRole('button', { name: 'plugin.marketplace.home.trendingPause' }),
+    ).toBeInTheDocument()
+
+    Object.defineProperty(Element.prototype, 'animate', {
+      configurable: true,
+      value: originalAnimate,
+    })
+  })
+
+  it('sends embedded cards without a delivery link to the marketplace site', () => {
+    const bannerWithMixedLinks: PluginBanner = {
+      id: 'recommend-mixed',
+      style_type: 'recommend',
+      title: 'Trending',
+      sort: 0,
+      language: 'en',
+      content: {
+        theme_type: 'hottest',
+        cards: [
+          {
+            item_type: 'plugin',
+            item_id: 'langgenius/dropbox',
+            display_name: 'Dropbox',
+            link: 'https://external.example.com/dropbox',
+            card_position: 0,
+          },
+          {
+            // The console has no local /plugin route, so a card without a
+            // delivery-provided link must open the marketplace detail page.
+            item_type: 'plugin',
+            item_id: 'langgenius/notion',
+            display_name: 'Notion',
+            link: '',
+            card_position: 1,
+          },
+          {
+            item_type: 'template',
+            item_id: 'tpl-1',
+            display_name: 'Support Bot',
+            link: '',
+            card_position: 2,
+          },
+        ],
+      },
+    }
+
+    render(<HomeTrending banners={[bannerWithMixedLinks]} isMarketplacePlatform={false} />)
+
+    expect(screen.getByRole('link', { name: 'Dropbox' })).toHaveAttribute(
+      'href',
+      'https://external.example.com/dropbox',
+    )
+    const marketplaceFallbackLink = screen.getByRole('link', { name: 'Notion' })
+    expect(marketplaceFallbackLink.getAttribute('href')).toMatch(
+      /^https:\/\/marketplace\.example\.com\/plugins\/langgenius\/notion/,
+    )
+    expect(marketplaceFallbackLink).toHaveAttribute('target', '_blank')
+    expect(screen.getByRole('link', { name: 'Support Bot' })).toHaveAttribute(
+      'href',
+      '/templates?tid=tpl-1',
+    )
   })
 
   it('renders no carousel when the API returns no banners', () => {

@@ -1,5 +1,5 @@
+import type { PluginBanner } from '@dify/contracts/marketplace'
 import type { ReactNode } from 'react'
-import type { PluginBanner } from '../home/banners'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -97,12 +97,50 @@ describe('EmbeddedMarketplace', () => {
     const { EmbeddedMarketplace } = await import('../embedded')
 
     render(
-      <EmbeddedMarketplace initialBanners={initialBanners} showInstallButton variant="home" />,
+      <EmbeddedMarketplace
+        initialBanners={initialBanners}
+        initialLocale="zh-Hans"
+        showInstallButton
+        variant="home"
+      />,
       { wrapper: Wrapper },
     )
 
     expect(screen.getByText('Trending banners: 1')).toBeInTheDocument()
     expect(mockFetchPluginBanners).not.toHaveBeenCalled()
+  })
+
+  it('refetches banners when the client locale differs from the server-rendered locale', async () => {
+    const initialBanners = [
+      {
+        id: 'banner-en',
+        title: 'Trending',
+        sort: 1,
+        language: 'en-US',
+        style_type: 'blog',
+        content: {
+          blog_title: 'Dify update',
+          link: 'https://dify.ai/blog',
+          link_target_type: 'blog',
+        },
+      },
+    ] satisfies PluginBanner[]
+    mockFetchPluginBanners.mockResolvedValue([])
+
+    const { EmbeddedMarketplace } = await import('../embedded')
+
+    render(
+      <EmbeddedMarketplace
+        initialBanners={initialBanners}
+        initialLocale="en-US"
+        showInstallButton
+        variant="home"
+      />,
+      { wrapper: Wrapper },
+    )
+
+    expect(await screen.findByText('Trending banners: 0')).toBeInTheDocument()
+    expect(mockFetchPluginBanners).toHaveBeenCalledWith('zh-Hans')
   })
 
   it('does not request homepage banners for the default catalog variant', async () => {

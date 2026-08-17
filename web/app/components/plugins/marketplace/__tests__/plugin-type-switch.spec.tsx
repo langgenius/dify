@@ -2,7 +2,7 @@ import type { ComponentProps, ReactNode } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Provider as JotaiProvider } from 'jotai'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import PluginTypeSwitch from '../plugin-type-switch'
 import styles from '../plugin-type-switch.module.css'
@@ -61,7 +61,7 @@ describe('PluginTypeSwitch', () => {
   it('exposes the selected category and updates the URL in the home variant', async () => {
     const user = userEvent.setup()
     const { onUrlUpdate } = renderSwitch('?category=all', { variant: 'home' })
-    const categoryGroup = screen.getByRole('group', { name: 'marketplace.allPlugins' })
+    const categoryGroup = screen.getByRole('group', { name: 'allCategories' })
 
     expect(categoryGroup).toHaveClass('w-full', 'justify-start', 'gap-1')
     const activeCategory = screen.getByRole('button', { name: 'category.all' })

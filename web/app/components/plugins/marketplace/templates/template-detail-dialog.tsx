@@ -24,12 +24,14 @@ export default function TemplateDetailDialog({
 }: TemplateDetailDialogProps) {
   const { t } = useTranslation()
   const locale = useLocale()
-  const { theme } = useTheme()
+  // resolvedTheme maps the "system" preference to the concrete light/dark
+  // value the marketplace page expects.
+  const { resolvedTheme } = useTheme()
   const detailLabel = t(($) => $['detailPanel.operation.detail'], { ns: 'plugin' })
   const detailURL = getTemplateLinkInMarketplace(template, {
     language: locale,
     source: globalThis.location?.origin,
-    theme,
+    theme: resolvedTheme,
     view: 'modal',
   })
   const handleMessage = useCallback(

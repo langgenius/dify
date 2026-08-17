@@ -12,20 +12,22 @@ import {
   AutocompleteItemIndicator,
   AutocompleteItemText,
   AutocompleteList,
-  AutocompleteStatus,
 } from '@langgenius/dify-ui/autocomplete'
 import { cn } from '@langgenius/dify-ui/cn'
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
+import { MARKETPLACE_API_PREFIX } from '@/config'
 import { renderI18nObject } from '@/i18n-config/index'
 import { marketplaceQuery } from '@/service/client'
+import { getPluginIconInMarketplace } from '../utils'
 
-export type MarketplaceSearchScope = 'all' | 'plugins' | 'templates'
+type MarketplaceSearchScope = 'all' | 'plugins' | 'templates'
 
 type MarketplaceSuggestion = {
   description: string
+  iconUrl?: string
   id: string
   kind: 'plugin' | 'template'
   label: string
@@ -52,6 +54,9 @@ const getPluginText = (
 
 const toTemplateSuggestion = (template: MarketplaceTemplate): MarketplaceSuggestion => ({
   description: template.overview,
+  iconUrl: template.icon_file_key
+    ? `${MARKETPLACE_API_PREFIX}/templates/${template.id}/icon`
+    : undefined,
   id: `template:${template.id}`,
   kind: 'template',
   label: template.template_name,
@@ -60,6 +65,7 @@ const toTemplateSuggestion = (template: MarketplaceTemplate): MarketplaceSuggest
 
 const toPluginSuggestion = (plugin: MarketplacePlugin, locale: string): MarketplaceSuggestion => ({
   description: getPluginText(plugin.brief, locale),
+  iconUrl: getPluginIconInMarketplace(plugin),
   id: `plugin:${plugin.org}/${plugin.name}`,
   kind: 'plugin',
   label: getPluginText(plugin.label, locale) || plugin.name,
@@ -77,10 +83,8 @@ export function MarketplaceSearchAutocomplete({
 }: MarketplaceSearchAutocompleteProps) {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
-  const translate = t as (key: string, options?: Record<string, unknown>) => string
   const debouncedSearch = useDebounce(value.trim(), { wait: 300 })
   const hasQuery = Boolean(debouncedSearch)
-  const showDropdown = isOpen && hasQuery
   const searchesPlugins = scope === 'all' || scope === 'plugins'
   const searchesTemplates = scope === 'all' || scope === 'templates'
   const isBundleSearch = category === 'bundle'
@@ -99,8 +103,9 @@ export function MarketplaceSearchAutocomplete({
       },
       retry: false,
     }),
+    // No placeholderData here: showing the previous term's suggestions would
+    // leave stale items keyboard-selectable while the new request is pending.
     enabled: hasQuery && searchesPlugins,
-    placeholderData: keepPreviousData,
     staleTime: 60_000,
   })
   const templateQuery = useQuery({
@@ -118,23 +123,37 @@ export function MarketplaceSearchAutocomplete({
       retry: false,
     }),
     enabled: hasQuery && searchesTemplates,
-    placeholderData: keepPreviousData,
     staleTime: 60_000,
   })
-  const pluginSuggestions = searchesPlugins
-    ? (pluginQuery.data?.data.bundles ?? pluginQuery.data?.data.plugins ?? []).map((plugin) =>
-        toPluginSuggestion(plugin, locale),
-      )
-    : []
-  const templateSuggestions = searchesTemplates
-    ? (templateQuery.data?.data?.templates ?? []).map(toTemplateSuggestion)
-    : []
+  // While the edited value is still debouncing, the queries above still hold
+  // the previous term's data; gate the suggestions until both agree so stale
+  // options are never visible or keyboard-selectable.
+  const isDebouncing = value.trim() !== debouncedSearch
+  const pluginSuggestions =
+    !isDebouncing && searchesPlugins
+      ? (pluginQuery.data?.data.bundles ?? pluginQuery.data?.data.plugins ?? []).map((plugin) =>
+          toPluginSuggestion(plugin, locale),
+        )
+      : []
+  const templateSuggestions =
+    !isDebouncing && searchesTemplates
+      ? (templateQuery.data?.data?.templates ?? []).map(toTemplateSuggestion)
+      : []
   const suggestions = [...templateSuggestions, ...pluginSuggestions]
-  const isSearching = pluginQuery.isFetching || templateQuery.isFetching
-  const emptyText =
-    scope === 'templates'
-      ? translate('newApp.noTemplateFound', { ns: 'app' })
-      : translate('marketplace.noPluginFound', { ns: 'plugin' })
+  const isSearching = isDebouncing || pluginQuery.isFetching || templateQuery.isFetching
+  // Open only when there is something to show; do not flash a searching status.
+  const showDropdown = isOpen && hasQuery && (!isSearching || suggestions.length > 0)
+  // A failed request must not read as "nothing matched"; when every source in
+  // scope errored and nothing is displayable, surface a load failure instead.
+  const hasLoadError =
+    !isDebouncing &&
+    suggestions.length === 0 &&
+    ((searchesPlugins && pluginQuery.isError) || (searchesTemplates && templateQuery.isError))
+  const emptyText = hasLoadError
+    ? t(($) => $['marketplace.loadError'], { ns: 'plugin' })
+    : scope === 'templates'
+      ? t(($) => $['newApp.noTemplateFound'], { ns: 'app' })
+      : t(($) => $['marketplace.noPluginFound'], { ns: 'plugin' })
 
   return (
     <Autocomplete
@@ -170,7 +189,7 @@ export function MarketplaceSearchAutocomplete({
         />
         {!!value && (
           <AutocompleteClear
-            aria-label={translate('clearSearch', { ns: 'plugin', label: placeholder })}
+            aria-label={t(($) => $.clearSearch, { ns: 'plugin', label: placeholder })}
             size="large"
           />
         )}
@@ -181,21 +200,27 @@ export function MarketplaceSearchAutocomplete({
         popupClassName="max-w-[420px]"
         popupProps={{ 'aria-busy': isSearching || undefined }}
       >
-        {isSearching && suggestions.length === 0 && (
-          <AutocompleteStatus>
-            {translate('gotoAnything.searching', { ns: 'app' })}
-          </AutocompleteStatus>
-        )}
         <AutocompleteList<MarketplaceSuggestion>>
           {(item) => (
             <AutocompleteItem key={item.id} value={item} className="items-start py-2">
-              <span
-                aria-hidden
-                className={cn(
-                  'mt-0.5 size-4 shrink-0 text-text-tertiary',
-                  item.kind === 'template' ? 'i-ri-layout-grid-line' : 'i-ri-puzzle-2-line',
-                )}
-              />
+              {item.iconUrl ? (
+                <img
+                  alt=""
+                  className="mt-0.5 size-6 shrink-0 rounded-md object-contain"
+                  src={item.iconUrl}
+                  onError={({ currentTarget }) => {
+                    currentTarget.style.display = 'none'
+                  }}
+                />
+              ) : (
+                <span
+                  aria-hidden
+                  className={cn(
+                    'mt-0.5 size-4 shrink-0 text-text-tertiary',
+                    item.kind === 'template' ? 'i-ri-layout-grid-line' : 'i-ri-puzzle-2-line',
+                  )}
+                />
+              )}
               <span className="flex min-w-0 grow flex-col gap-0.5">
                 <AutocompleteItemText className="px-0 text-text-primary">
                   {item.label}

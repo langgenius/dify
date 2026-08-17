@@ -9,7 +9,13 @@ import type { TagComboboxItem } from '@/features/tag-management/components/tag-c
 import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Combobox, ComboboxContent, ComboboxTrigger } from '@langgenius/dify-ui/combobox'
+import {
+  Combobox,
+  ComboboxPopup,
+  ComboboxPortal,
+  ComboboxPositioner,
+  ComboboxTrigger,
+} from '@langgenius/dify-ui/combobox'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
@@ -204,21 +210,24 @@ export function SkillTagsEditor({
                 {tags.length === 0 && t(($) => $['skillManagement.detail.addTag'])}
               </span>
             </ComboboxTrigger>
-            <ComboboxContent
-              placement="bottom-start"
-              sideOffset={4}
-              popupClassName="w-(--anchor-width) min-w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]"
-            >
-              <TagSearchContentView
-                type="skill"
-                inputValue={tagSearch}
-                onInputValueChange={setTagSearch}
-                canBindOrUnbindTags
-                canManageTags
-                onOpenTagManagement={() => setShowTagManagement(true)}
-                onClose={() => handleOpenChange(false)}
-              />
-            </ComboboxContent>
+            <ComboboxPortal>
+              <ComboboxPositioner placement="bottom-start" sideOffset={4}>
+                <ComboboxPopup
+                  aria-label={t(($) => $['skillManagement.detail.addTag'])}
+                  className="w-(--anchor-width) min-w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]"
+                >
+                  <TagSearchContentView
+                    type="skill"
+                    inputValue={tagSearch}
+                    onInputValueChange={setTagSearch}
+                    canBindOrUnbindTags
+                    canManageTags
+                    onOpenTagManagement={() => setShowTagManagement(true)}
+                    onClose={() => handleOpenChange(false)}
+                  />
+                </ComboboxPopup>
+              </ComboboxPositioner>
+            </ComboboxPortal>
           </Combobox>
         )}
         {readonly && tags.length === 0 && (

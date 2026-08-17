@@ -1,6 +1,5 @@
 import { fileURLToPath } from 'node:url'
-import { defineConfig, lazyPlugins } from 'vite-plus'
-import { configDefaults } from 'vitest/config'
+import { configDefaults, defineConfig, lazyPlugins } from 'vite-plus'
 import {
   createCodeInspectorPlugin,
   createForceInspectorClientInjectionPlugin,

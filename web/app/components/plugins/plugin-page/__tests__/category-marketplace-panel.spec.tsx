@@ -1,6 +1,6 @@
 import type { PluginCategoryEnum } from '../../types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum as Category } from '../../types'
 import { getCategoryMarketplaceId } from '../category-marketplace'
 import CategoryMarketplacePanel from '../category-marketplace-panel'

@@ -1,7 +1,7 @@
 import type { Plugin } from '../types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { ThemeProvider } from 'next-themes'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import ProviderCard from '../provider-card'
 import { PluginCategoryEnum } from '../types'
 

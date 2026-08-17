@@ -192,6 +192,78 @@ export type TemplateSearchResponse = {
 
 export type DownloadPluginResponse = Blob
 
+// Banner payload shapes shared by the standalone marketplace and the embedded
+// console. The banners endpoint output stays `unknown` in the contract because
+// the delivery format is normalized and runtime-validated in
+// `web/app/components/plugins/marketplace/home/banners.ts`.
+export type BannerBase = {
+  id: string
+  title: string
+  sort: number
+  language: string
+}
+
+export type BannerRecommendCard = {
+  item_type: 'plugin' | 'template'
+  item_id: string
+  display_name: string
+  icon_url?: string
+  icon?: string
+  icon_background?: string
+  creator?: string
+  badges?: Array<'partner' | 'verified'>
+  link: string
+  card_position: number
+}
+
+export type BannerRecommend = BannerBase & {
+  style_type: 'recommend'
+  content: {
+    theme_type: 'newest' | 'hottest' | 'partner'
+    heading?: string
+    subheadings?: string[]
+    description?: string
+    cards: BannerRecommendCard[]
+  }
+}
+
+export type BannerBlog = BannerBase & {
+  style_type: 'blog'
+  content: {
+    blog_title: string
+    subtitle?: string
+    description?: string
+    link: string
+    link_target_type: 'blog' | 'github'
+  }
+}
+
+export type BannerImageContent = {
+  images: {
+    desktop: string
+    tablet?: string
+    mobile?: string
+  }
+  link: string
+  alt_text?: string
+  activity_id?: string
+}
+
+export type BannerEvent = BannerBase & {
+  style_type: 'event'
+  content: BannerImageContent
+}
+
+export type BannerAd = BannerBase & {
+  style_type: 'ad'
+  content: BannerImageContent & {
+    partner_id?: string
+    campaign_id?: string
+  }
+}
+
+export type PluginBanner = BannerRecommend | BannerBlog | BannerEvent | BannerAd
+
 const bannerListContract = base
   .route({
     path: '/banners',

@@ -26,14 +26,16 @@ function MarketplaceDetailDialog({
 }: MarketplaceDetailDialogProps) {
   const { t } = useTranslation()
   const locale = useLocale()
-  const { theme } = useTheme()
+  // resolvedTheme maps the "system" preference to the concrete light/dark
+  // value the marketplace page expects.
+  const { resolvedTheme } = useTheme()
   const pluginLabel = plugin.label[locale] ?? plugin.label['en-US'] ?? plugin.name
   const detailLabel = t(($) => $['detailPanel.operation.detail'], { ns: 'plugin' })
   const detailURL = getPluginLinkInMarketplace(plugin, {
     installed: String(isInstalled),
     language: locale,
     source: globalThis.location?.origin,
-    theme,
+    theme: resolvedTheme,
     view: 'modal',
   })
 

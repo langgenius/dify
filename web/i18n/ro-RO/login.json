@@ -49,6 +49,7 @@
   "join": "Alătură-te",
   "joinTipEnd": "pe Dify",
   "joinTipStart": "Te invităm să te alături echipei",
+  "joinWorkspace": "Alătură-te spațiului de lucru {{workspaceName}}",
   "license.link": "Licența open-source de pe GitHub",
   "license.tip": "Înainte de a începe Dify Community Edition, citește",
   "licenseExpired": "Licență expirată",

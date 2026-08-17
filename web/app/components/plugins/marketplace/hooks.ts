@@ -9,7 +9,7 @@ import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useCallback, useEffect, useState } from 'react'
 import { postMarketplace } from '@/service/base'
-import { SCROLL_BOTTOM_THRESHOLD } from './constants'
+import { MARKETPLACE_CONTAINER_ID, SCROLL_BOTTOM_THRESHOLD } from './constants'
 import {
   getFormattedPlugin,
   getMarketplaceCollectionsAndPlugins,
@@ -207,7 +207,7 @@ export const useMarketplacePlugins = (enabled = true) => {
 
 export const useMarketplaceContainerScroll = (
   callback: () => void,
-  scrollContainerId = 'marketplace-container',
+  scrollContainerId = MARKETPLACE_CONTAINER_ID,
 ) => {
   const handleScroll = useCallback(
     (e: Event) => {

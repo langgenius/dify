@@ -1,6 +1,6 @@
-.header {
-  height: 48px;
-}
+/* The header height and the sticky top offset of the catalog navigation are
+   inline styles driven by HOME_HEADER_HEIGHT_PX in home-constants.ts, so the
+   two values cannot drift apart. */
 
 .headerCatalogTabs {
   display: flex;
@@ -42,15 +42,13 @@
 
 .catalogNavigation {
   position: sticky;
-  top: 48px;
   z-index: 40;
   padding: 24px 36px 16px;
 }
 
 .catalogNavigationPinned {
-  border-bottom: 1px solid var(--color-divider-regular);
   padding-top: 16px;
-  padding-bottom: 15px;
+  padding-bottom: 16px;
   background-color: var(--color-background-default);
 }
 
