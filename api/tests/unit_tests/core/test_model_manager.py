@@ -21,6 +21,8 @@ from extensions.ext_redis import redis_client
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.model_providers.base.tts_model import TTSModel
+from graphon.model_runtime.protocols.tts_runtime import TTSChunk
 from models.provider import ProviderType
 
 
@@ -433,6 +435,21 @@ def test_quota_managed_tts_commits_before_first_chunk() -> None:
     assert events == ["provider", "commit", "delivered"]
     reservation.commit.assert_called_once_with()
     reservation.release.assert_called_once_with()
+
+
+def test_model_instance_adapts_tts_chunks_to_audio_bytes() -> None:
+    manager, bundle = _build_model_manager_bundle(
+        provider_type=ProviderType.CUSTOM,
+        restrict_models=[],
+        model_type=ModelType.TTS,
+    )
+    tts_model = MagicMock(spec=TTSModel)
+    tts_model.model_type = ModelType.TTS
+    tts_model.invoke.return_value = iter([TTSChunk(data=b"audio", mime_type="audio/wav")])
+    bundle.model_type_instance = tts_model
+    model_instance = manager.get_model_instance("tenant-1", "openai", ModelType.TTS, "tts-model")
+
+    assert list(model_instance.invoke_tts(content_text="hello", voice="voice")) == [b"audio"]
 
 
 def test_quota_managed_tts_releases_when_provider_fails_before_first_chunk() -> None:
