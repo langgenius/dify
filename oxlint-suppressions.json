@@ -2441,14 +2441,6 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/list/dataset-card/components/operations-dropdown.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/metadata/edit-metadata-batch/add-row.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -2504,11 +2496,6 @@
   "web/app/components/datasets/metadata/types.ts": {
     "erasable-syntax-only/enums": {
       "count": 2
-    }
-  },
-  "web/app/components/datasets/rename-modal/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/datasets/settings/chunk-structure/types.ts": {

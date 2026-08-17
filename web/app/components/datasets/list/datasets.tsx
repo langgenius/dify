@@ -1,13 +1,13 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { useDatasetList } from '@/service/knowledge/use-dataset'
+import type { useDatasetList } from './use-dataset-list'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import DatasetCard from './dataset-card'
 import DatasetCardSkeleton from './dataset-card-skeleton'
+import { useInvalidDatasetList } from './use-dataset-list'
 
 type Props = Readonly<{
   datasetList: ReturnType<typeof useDatasetList>['data'] | null

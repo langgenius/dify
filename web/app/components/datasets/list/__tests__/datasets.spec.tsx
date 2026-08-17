@@ -1,5 +1,5 @@
+import type { useDatasetList } from '../use-dataset-list'
 import type { DataSet, DataSetListResponse } from '@/models/datasets'
-import type { useDatasetList } from '@/service/knowledge/use-dataset'
 import { render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
@@ -27,25 +27,7 @@ vi.mock('@/hooks/use-knowledge', () => ({
 const mockFetchNextPage = vi.fn()
 const mockInvalidDatasetList = vi.fn()
 
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useDatasetList: vi.fn(() => ({
-    data: {
-      pages: [
-        {
-          data: [
-            createMockDataset({ id: 'dataset-1', name: 'Dataset 1' }),
-            createMockDataset({ id: 'dataset-2', name: 'Dataset 2' }),
-          ],
-        },
-      ],
-    },
-    fetchNextPage: mockFetchNextPage,
-    hasNextPage: false,
-    isFetching: false,
-    isFetchingNextPage: false,
-    isLoading: false,
-    isPlaceholderData: false,
-  })),
+vi.mock('../use-dataset-list', () => ({
   useInvalidDatasetList: () => mockInvalidDatasetList,
 }))
 

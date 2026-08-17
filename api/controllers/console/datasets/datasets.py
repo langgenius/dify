@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import Annotated, Any
 from uuid import UUID
 
 from flask import request
@@ -172,6 +172,11 @@ class ConsoleDatasetListQuery(BaseModel):
     include_all: bool = Field(default=False, description="Include all datasets")
     ids: list[str] = Field(default_factory=list, description="Filter by dataset IDs")
     tag_ids: list[str] = Field(default_factory=list, description="Filter by tag IDs")
+    creator_ids: list[Annotated[str, Field(min_length=1, max_length=255)]] = Field(
+        default_factory=list,
+        max_length=100,
+        description="Filter by creator account IDs",
+    )
 
 
 class DatasetListItemResponse(DatasetDetailResponse):
@@ -448,11 +453,13 @@ class DatasetListApi(Resource):
     def get(self, session: Session, current_tenant_id: str, current_user: Account):
         # Convert query parameters to dict, handling list parameters correctly
         query_params: dict[str, str | list[str]] = dict(request.args.to_dict())
-        # Handle ids and tag_ids as lists (Flask request.args.getlist returns list even for single value)
+        # Handle list fields explicitly (Flask request.args.getlist returns a list even for one value).
         if "ids" in request.args:
             query_params["ids"] = request.args.getlist("ids")
         if "tag_ids" in request.args:
             query_params["tag_ids"] = request.args.getlist("tag_ids")
+        if "creator_ids" in request.args:
+            query_params["creator_ids"] = request.args.getlist("creator_ids")
         query = ConsoleDatasetListQuery.model_validate(query_params)
 
         permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
@@ -509,6 +516,7 @@ class DatasetListApi(Resource):
                 query.keyword,
                 query.tag_ids,
                 query.include_all,
+                creator_ids=query.creator_ids,
                 accessible_dataset_ids=accessible_dataset_ids,
                 include_own_datasets=include_own_datasets,
             )

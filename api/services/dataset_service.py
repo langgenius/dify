@@ -257,6 +257,7 @@ class DatasetService:
         include_all=False,
         accessible_dataset_ids: list[str] | None = None,
         include_own_datasets: bool = False,
+        creator_ids: list[str] | None = None,
     ):
         """Return visible datasets for a tenant, using the injected session for auxiliary permission lookups."""
         query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc(), Dataset.id)
@@ -333,6 +334,9 @@ class DatasetService:
         if search:
             escaped_search = helper.escape_like_pattern(search)
             query = query.where(Dataset.name.ilike(f"%{escaped_search}%", escape="\\"))
+
+        if creator_ids:
+            query = query.where(Dataset.created_by.in_(creator_ids))
 
         # Check if tag_ids is not empty to avoid WHERE false condition
         if tag_ids and len(tag_ids) > 0:

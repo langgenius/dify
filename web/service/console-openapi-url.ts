@@ -12,7 +12,7 @@ const repeatedQueryArrayRules: readonly QueryArrayCompatibilityRule[] = [
   { path: /\/agent\/[^/]+\/logs\/[^/]+\/messages$/, fields: ['sources', 'statuses'] },
   { path: /\/apps$/, fields: ['tag_ids', 'creator_ids'] },
   { path: /\/apps\/starred$/, fields: ['tag_ids', 'creator_ids'] },
-  { path: /\/datasets$/, fields: ['ids', 'tag_ids'] },
+  { path: /\/datasets$/, fields: ['ids', 'tag_ids', 'creator_ids'] },
   { path: /\/datasets\/[^/]+\/documents\/[^/]+\/segment\/[^/]+$/, fields: ['segment_id'] },
   { path: /\/datasets\/[^/]+\/documents\/[^/]+\/segments$/, fields: ['segment_id', 'status'] },
   { path: /\/knowledge-fs\/spaces$/, fields: ['creator_ids', 'tag_ids'] },

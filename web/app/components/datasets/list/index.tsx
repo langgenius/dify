@@ -25,18 +25,16 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
-import {
-  useDatasetApiBaseUrl,
-  useDatasetList,
-  useInvalidDatasetList,
-} from '@/service/knowledge/use-dataset'
+import { useDatasetApiBaseUrl } from '@/service/knowledge/use-dataset'
 import { hasPermission } from '@/utils/permission'
 // Components
 import FilterEmptyState from '../../base/filter-empty-state'
+import { creatorIdsParser } from '../creator-filter-query'
 import ExternalAPIPanel from '../external-api/external-api-panel'
 import Datasets from './datasets'
 import DatasetFirstEmptyState from './first-empty-state'
 import DatasetListHeader from './header'
+import { useDatasetList, useInvalidDatasetList } from './use-dataset-list'
 
 const knowledgeViewParser = parseAsStringLiteral(['legacy', 'new']).withDefault('legacy')
 
@@ -68,6 +66,7 @@ function LegacyList({
   }
   const [tagFilterValue, setTagFilterValue] = useState<string[]>([])
   const [tagIDs, setTagIDs] = useState<string[]>([])
+  const [creatorIDs, setCreatorIDs] = useQueryState('creator_ids', creatorIdsParser)
   const { run: handleTagsUpdate } = useDebounceFn(
     () => {
       setTagIDs(tagFilterValue)
@@ -87,17 +86,17 @@ function LegacyList({
   )
   const { data: apiBaseInfo } = useDatasetApiBaseUrl()
   const datasetListQuery = useDatasetList({
-    initialPage: 1,
-    tag_ids: tagIDs,
-    limit: 30,
-    include_all: includeAll,
+    creatorIds: creatorIDs,
+    includeAll,
     keyword: searchKeywords,
+    tagIds: tagIDs,
   })
   const pages = datasetListQuery.data?.pages ?? []
   const hasResolvedFirstPage = pages.length > 0
   const hasAnyDataset = (pages[0]?.total ?? 0) > 0
   const hasActiveFilters =
     tagIDs.length > 0 ||
+    creatorIDs.length > 0 ||
     keywords.trim().length > 0 ||
     searchKeywords.trim().length > 0 ||
     includeAll
@@ -145,6 +144,7 @@ function LegacyList({
         apiBaseUrl={apiBaseInfo?.api_base_url ?? ''}
         canConnectExternalDataset={canConnectExternalDataset}
         canCreateDataset={canCreateDataset}
+        creatorFilterValue={creatorIDs}
         includeAll={includeAll}
         isCurrentWorkspaceOwner={isCurrentWorkspaceOwner}
         keywords={keywords}
@@ -153,6 +153,7 @@ function LegacyList({
         onCreateFromPipeline={() => push('/datasets/create-from-pipeline')}
         onConnectDataset={() => push('/datasets/connect')}
         onExternalApiClick={() => setShowExternalApiPanel(true)}
+        onCreatorsChange={(value) => void setCreatorIDs(value)}
         onIncludeAllChange={toggleIncludeAll}
         onKeywordsChange={handleKeywordsChange}
         onOpenTagManagement={() => setShowTagManagementModal(true)}

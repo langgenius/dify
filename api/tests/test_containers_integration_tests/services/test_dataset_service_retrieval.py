@@ -204,6 +204,7 @@ class TestDatasetServiceGetDatasets:
     - Pagination
     - Search functionality
     - Tag filtering
+    - Creator filtering
     - Permission-based filtering (ONLY_ME, ALL_TEAM, PARTIAL_TEAM)
     - Role-based filtering (OWNER, DATASET_OPERATOR, NORMAL)
     - include_all flag
@@ -339,6 +340,57 @@ class TestDatasetServiceGetDatasets:
         # When tag_ids is empty, tag filtering is skipped, so normal query results are returned
         assert len(datasets) == 3
         assert total == 3
+
+    def test_get_datasets_combines_creator_tag_and_search_filters(self, db_session_with_containers: Session):
+        """Test creator, tag, and search filters are combined."""
+        creator, tenant = DatasetRetrievalTestDataFactory.create_account_with_tenant(db_session_with_containers)
+        other_creator = DatasetRetrievalTestDataFactory.create_account_in_tenant(db_session_with_containers, tenant)
+        matching_dataset = DatasetRetrievalTestDataFactory.create_dataset(
+            db_session_with_containers,
+            tenant_id=tenant.id,
+            created_by=creator.id,
+            name="Support Handbook",
+            permission=DatasetPermissionEnum.ALL_TEAM,
+        )
+        other_creator_dataset = DatasetRetrievalTestDataFactory.create_dataset(
+            db_session_with_containers,
+            tenant_id=tenant.id,
+            created_by=other_creator.id,
+            name="Support Handbook Archive",
+            permission=DatasetPermissionEnum.ALL_TEAM,
+        )
+        DatasetRetrievalTestDataFactory.create_dataset(
+            db_session_with_containers,
+            tenant_id=tenant.id,
+            created_by=creator.id,
+            name="Engineering Handbook",
+            permission=DatasetPermissionEnum.ALL_TEAM,
+        )
+        tag = DatasetRetrievalTestDataFactory.create_tag_binding(
+            db_session_with_containers, tenant.id, creator.id, matching_dataset.id
+        )
+        db_session_with_containers.add(
+            TagBinding(
+                tenant_id=tenant.id,
+                tag_id=tag.id,
+                target_id=other_creator_dataset.id,
+                created_by=creator.id,
+            )
+        )
+        db_session_with_containers.commit()
+
+        datasets, total = DatasetService.get_datasets(
+            page=1,
+            per_page=20,
+            session=db_session_with_containers,
+            tenant_id=tenant.id,
+            search="Support",
+            tag_ids=[tag.id],
+            creator_ids=[creator.id],
+        )
+
+        assert [dataset.id for dataset in datasets] == [matching_dataset.id]
+        assert total == 1
 
     # ==================== Permission-Based Filtering Tests ====================
 

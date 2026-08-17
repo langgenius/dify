@@ -16,7 +16,7 @@ const knowledgeFsInfiniteOptionsMock = vi.hoisted(() => vi.fn(() => ({})))
 const systemFeaturesQueryKey = ['console', 'systemFeatures', 'get'] as const
 const useInfiniteQueryMock = vi.hoisted(() =>
   vi.fn(() => ({
-    data: { pageParams: [null], pages: [{ items: [] }] },
+    data: { pageParams: [null], pages: [{ data: [] }] },
     error: null,
     fetchNextPage: vi.fn(),
     hasNextPage: false,
@@ -53,8 +53,11 @@ vi.mock('@/service/client', async (importOriginal) => {
       },
       knowledgeFs: {
         ...original.consoleQuery.knowledgeFs,
-        listKnowledgeSpaces: {
-          infiniteOptions: knowledgeFsInfiniteOptionsMock,
+        spaces: {
+          ...original.consoleQuery.knowledgeFs.spaces,
+          get: {
+            infiniteOptions: knowledgeFsInfiniteOptionsMock,
+          },
         },
       },
     },
@@ -141,6 +144,13 @@ vi.mock('@/hooks/use-knowledge', () => ({
 }))
 
 vi.mock('@/service/knowledge/use-dataset', () => ({
+  useDatasetApiBaseUrl: () => ({
+    data: { api_base_url: 'https://api.example.com' },
+  }),
+}))
+
+vi.mock('../use-dataset-list', () => ({
+  useInvalidDatasetList: () => vi.fn(),
   useDatasetList: vi.fn(() => ({
     data: { pages: [{ data: [], total: 1 }] },
     fetchNextPage: vi.fn(),
@@ -148,10 +158,6 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
     isFetching: false,
     isFetchingNextPage: false,
   })),
-  useInvalidDatasetList: () => vi.fn(),
-  useDatasetApiBaseUrl: () => ({
-    data: { api_base_url: 'https://api.example.com' },
-  }),
 }))
 
 // Mock Datasets component
@@ -213,29 +219,40 @@ vi.mock('@/features/tag-management/components/tag-filter', () => ({
     onOpenTagManagement: () => void
   }) => (
     <div data-testid="tag-filter">
-      <button onClick={() => onChange(['tag-1', 'tag-2'])}>Select Tags</button>
-      <button onClick={onOpenTagManagement}>Manage Tags</button>
+      <button type="button" onClick={() => onChange(['tag-1', 'tag-2'])}>
+        Select Tags
+      </button>
+      <button type="button" onClick={onOpenTagManagement}>
+        Manage Tags
+      </button>
     </div>
   ),
 }))
 
-// Mock CheckboxWithLabel
+vi.mock('@/app/components/datasets/creator-filter', () => ({
+  CreatorFilter: ({ onChange }: { onChange: (value: string[]) => void }) => (
+    <button type="button" onClick={() => onChange(['creator-1', 'creator-2'])}>
+      Select Creators
+    </button>
+  ),
+}))
+
 vi.mock('@/app/components/datasets/create/website/base/checkbox-with-label', () => ({
   default: ({
     isChecked,
-    onChange,
     label,
+    onChange,
   }: {
     isChecked: boolean
-    onChange: () => void
     label: string
+    onChange: () => void
   }) => (
     <label>
       <input
         type="checkbox"
         checked={isChecked}
-        onChange={onChange}
         data-testid="include-all-checkbox"
+        onChange={onChange}
       />
       {label}
     </label>
@@ -253,7 +270,7 @@ describe('List', () => {
       knowledgeFsEnabled: false,
       workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
     }
-    const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+    const { useDatasetList } = await import('../use-dataset-list')
     vi.mocked(useDatasetList).mockReturnValue({
       data: { pages: [{ data: [], total: 1 }] },
       fetchNextPage: vi.fn(),
@@ -301,7 +318,7 @@ describe('List', () => {
       expect(knowledgeFsInfiniteOptionsMock).not.toHaveBeenCalled()
       expect(useInfiniteQueryMock).not.toHaveBeenCalled()
 
-      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+      const { useDatasetList } = await import('../use-dataset-list')
       expect(useDatasetList).toHaveBeenCalled()
     })
 
@@ -442,20 +459,20 @@ describe('List', () => {
   })
 
   describe('Props', () => {
-    it('should query datasets with includeAll disabled initially', async () => {
-      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+    it('should query datasets with empty creators initially', async () => {
+      const { useDatasetList } = await import('../use-dataset-list')
 
       render(<List />)
 
       expect(useDatasetList).toHaveBeenCalledWith(
         expect.objectContaining({
-          include_all: false,
+          creatorIds: [],
         }),
       )
     })
 
     it('should query datasets with empty keywords initially', async () => {
-      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+      const { useDatasetList } = await import('../use-dataset-list')
 
       render(<List />)
 
@@ -467,13 +484,25 @@ describe('List', () => {
     })
 
     it('should query datasets with empty tags initially', async () => {
-      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+      const { useDatasetList } = await import('../use-dataset-list')
 
       render(<List />)
 
       expect(useDatasetList).toHaveBeenCalledWith(
         expect.objectContaining({
-          tag_ids: [],
+          tagIds: [],
+        }),
+      )
+    })
+
+    it('should restore creators from the URL', async () => {
+      const { useDatasetList } = await import('../use-dataset-list')
+
+      renderWithNuqs(<List />, { searchParams: '?creator_ids=creator-1;creator-2' })
+
+      expect(useDatasetList).toHaveBeenCalledWith(
+        expect.objectContaining({
+          creatorIds: ['creator-1', 'creator-2'],
         }),
       )
     })
@@ -498,20 +527,59 @@ describe('List', () => {
       expect(input).toHaveValue('test search')
     })
 
-    it('should trigger tag filter change', () => {
+    it('should combine creator, tag, and search filters in the dataset query', async () => {
+      const { useDatasetList } = await import('../use-dataset-list')
+
+      renderWithNuqs(<List />, { searchParams: '?creator_ids=creator-1;creator-2' })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Select Tags' }))
+      fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'handbook' } })
+
+      await waitFor(() => {
+        expect(useDatasetList).toHaveBeenLastCalledWith({
+          tagIds: ['tag-1', 'tag-2'],
+          creatorIds: ['creator-1', 'creator-2'],
+          includeAll: false,
+          keyword: 'handbook',
+        })
+      })
+    })
+
+    it('should persist creator selections in the URL', async () => {
+      const { onUrlUpdate } = renderWithNuqs(<List />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'Select Creators' }))
+
+      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+      expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('creator_ids')).toBe(
+        'creator-1;creator-2',
+      )
+    })
+
+    it('should include all accessible datasets when an owner enables all knowledge', async () => {
+      const { useDatasetList } = await import('../use-dataset-list')
       render(<List />)
-      // Tag filter is rendered and interactive
-      const selectTagsBtn = screen.getByText('Select Tags')
-      expect(selectTagsBtn).toBeInTheDocument()
-      fireEvent.click(selectTagsBtn)
-      // The onChange callback was triggered (debounced)
+
+      fireEvent.click(screen.getByTestId('include-all-checkbox'))
+
+      expect(useDatasetList).toHaveBeenLastCalledWith(expect.objectContaining({ includeAll: true }))
     })
   })
 
   describe('Conditional Rendering', () => {
-    it('should show include all checkbox for workspace owner', () => {
+    it('should render creator and all-knowledge filters for workspace owners', () => {
       render(<List />)
+      expect(screen.getByRole('button', { name: 'Select Creators' })).toBeInTheDocument()
       expect(screen.getByTestId('include-all-checkbox')).toBeInTheDocument()
+    })
+
+    it('should hide only the all-knowledge filter from non-owners', () => {
+      mockConsoleState.isCurrentWorkspaceOwner = false
+
+      render(<List />)
+
+      expect(screen.getByRole('button', { name: 'Select Creators' })).toBeInTheDocument()
+      expect(screen.queryByTestId('include-all-checkbox')).not.toBeInTheDocument()
     })
   })
 
@@ -523,7 +591,7 @@ describe('List', () => {
     })
 
     it('should render first empty state when there are no datasets and no active filters', async () => {
-      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+      const { useDatasetList } = await import('../use-dataset-list')
       vi.mocked(useDatasetList).mockReturnValue({
         data: { pages: [{ data: [], total: 0 }] },
         fetchNextPage: vi.fn(),
@@ -546,7 +614,7 @@ describe('List', () => {
         knowledgeFsEnabled: false,
         workspacePermissionKeys: ['dataset.create_and_management'],
       }
-      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+      const { useDatasetList } = await import('../use-dataset-list')
       vi.mocked(useDatasetList).mockReturnValue({
         data: { pages: [{ data: [], total: 0 }] },
         fetchNextPage: vi.fn(),
@@ -571,7 +639,7 @@ describe('List', () => {
         knowledgeFsEnabled: false,
         workspacePermissionKeys: [],
       }
-      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+      const { useDatasetList } = await import('../use-dataset-list')
       vi.mocked(useDatasetList).mockReturnValue({
         data: { pages: [{ data: [], total: 0 }] },
         fetchNextPage: vi.fn(),
@@ -588,7 +656,7 @@ describe('List', () => {
     })
 
     it('should not render first empty state before the first dataset page resolves', async () => {
-      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+      const { useDatasetList } = await import('../use-dataset-list')
       vi.mocked(useDatasetList).mockReturnValue({
         data: { pages: [] },
         fetchNextPage: vi.fn(),
@@ -604,11 +672,11 @@ describe('List', () => {
     })
 
     it('should keep the regular list for empty filtered results', async () => {
-      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+      const { useDatasetList } = await import('../use-dataset-list')
       vi.mocked(useDatasetList).mockImplementation(
         (params) =>
           ({
-            data: { pages: [{ data: [], total: params.include_all ? 0 : 1 }] },
+            data: { pages: [{ data: [], total: params.creatorIds.length ? 0 : 1 }] },
             fetchNextPage: vi.fn(),
             hasNextPage: false,
             isFetching: false,
@@ -618,7 +686,7 @@ describe('List', () => {
 
       render(<List />)
 
-      fireEvent.click(screen.getByTestId('include-all-checkbox'))
+      fireEvent.click(screen.getByRole('button', { name: 'Select Creators' }))
 
       expect(screen.getByTestId('datasets-component')).toBeInTheDocument()
       expect(screen.getByText('dataset.filterEmpty.noKnowledge')).toBeInTheDocument()
@@ -671,23 +739,6 @@ describe('List', () => {
       fireEvent.click(screen.getByText('Manage Tags'))
 
       expect(screen.getByTestId('tag-management-modal')).toBeInTheDocument()
-    })
-
-    it('should not show include all checkbox when not workspace owner', async () => {
-      mockConsoleState = {
-        isCurrentWorkspaceEditor: true,
-        isCurrentWorkspaceManager: true,
-        isCurrentWorkspaceOwner: false,
-        knowledgeFsEnabled: false,
-        workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
-      }
-
-      vi.resetModules()
-      const { default: ListComponent } = await import('../index')
-
-      render(<ListComponent />)
-
-      expect(screen.queryByTestId('include-all-checkbox')).not.toBeInTheDocument()
     })
   })
 })
