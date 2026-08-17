@@ -8,27 +8,18 @@ import {
 import { createPageIndexSummaryRepairRuntime } from "./page-index-summary-repair-runtime";
 
 describe("PageIndex summary repair runtime", () => {
-  it("starts one new compilation after the source attempt is terminal and copies authorization", async () => {
+  it("repairs only the outline-summary component after the source attempt is terminal", async () => {
     const repository = createInMemoryPageIndexFindabilityRepository({ maxEvaluations: 10 });
     await repository.persist(evaluation());
-    const start = vi.fn(async () => ({
-      createdAt: 0,
-      documentAssetId: uuid(3),
-      id: uuid(20),
-      knowledgeSpaceId: uuid(2),
-      stage: "queued" as const,
-      tenantId: "tenant-1",
-      updatedAt: 0,
-      version: 1,
-    }));
+    const repair = vi.fn(async () => undefined);
     const runtime = createPageIndexSummaryRepairRuntime({
       attempts: { get: async () => attempt("succeeded") },
-      compilationJobs: { start },
       intervalMs: 1_000,
       leaseMs: 10_000,
       maxAttempts: 3,
       maxBatchSize: 10,
       repository,
+      repair,
       retryBaseMs: 1_000,
       retryMaxMs: 10_000,
       workerId: "repair-worker",
@@ -38,12 +29,9 @@ describe("PageIndex summary repair runtime", () => {
     const result = await runtime.tick();
 
     expect(result).toEqual({ claimed: 1, dispatched: 1, failed: 0, requeued: 0 });
-    expect(start).toHaveBeenCalledWith({
-      capabilityGrantId: uuid(10),
-      documentAssetId: uuid(3),
-      knowledgeSpaceId: uuid(2),
-      tenantId: "tenant-1",
-      version: 1,
+    expect(repair).toHaveBeenCalledWith({
+      evaluation: expect.objectContaining({ outlineId: uuid(4) }),
+      source: expect.objectContaining({ id: uuid(6), publicationGenerationId: uuid(13) }),
     });
     expect(await runtime.tick()).toEqual({ claimed: 0, dispatched: 0, failed: 0, requeued: 0 });
   });
@@ -51,15 +39,15 @@ describe("PageIndex summary repair runtime", () => {
   it("requeues while the publication attempt is still active", async () => {
     const repository = createInMemoryPageIndexFindabilityRepository({ maxEvaluations: 10 });
     await repository.persist(evaluation());
-    const start = vi.fn();
+    const repair = vi.fn();
     const runtime = createPageIndexSummaryRepairRuntime({
       attempts: { get: async () => attempt("running") },
-      compilationJobs: { start },
       intervalMs: 1_000,
       leaseMs: 10_000,
       maxAttempts: 3,
       maxBatchSize: 10,
       repository,
+      repair,
       retryBaseMs: 1_000,
       retryMaxMs: 10_000,
       workerId: "repair-worker",
@@ -67,13 +55,13 @@ describe("PageIndex summary repair runtime", () => {
     });
 
     expect(await runtime.tick()).toEqual({ claimed: 1, dispatched: 0, failed: 0, requeued: 1 });
-    expect(start).not.toHaveBeenCalled();
+    expect(repair).not.toHaveBeenCalled();
   });
 
   it("validates bounded worker settings", () => {
     const base = runtimeOptions({
       attempts: { get: async () => null },
-      compilationJobs: { start: vi.fn() },
+      repair: vi.fn(),
       repository: createInMemoryPageIndexFindabilityRepository({ maxEvaluations: 10 }),
     });
     for (const override of [
@@ -104,7 +92,7 @@ describe("PageIndex summary repair runtime", () => {
     const runtime = createPageIndexSummaryRepairRuntime({
       ...runtimeOptions({
         attempts: { get: async () => attempt("succeeded") },
-        compilationJobs: { start: vi.fn().mockRejectedValue("provider unavailable") },
+        repair: vi.fn().mockRejectedValue("provider unavailable"),
         repository,
       }),
       maxAttempts: 2,
@@ -129,7 +117,7 @@ describe("PageIndex summary repair runtime", () => {
     const runtime = createPageIndexSummaryRepairRuntime({
       ...runtimeOptions({
         attempts: { get: async () => null },
-        compilationJobs: { start: vi.fn() },
+        repair: vi.fn(),
         repository: {
           claimSummaryRepairs: claim,
           completeSummaryRepair: vi.fn(),
@@ -153,21 +141,21 @@ describe("PageIndex summary repair runtime", () => {
 
 function runtimeOptions({
   attempts,
-  compilationJobs,
+  repair,
   repository,
 }: Pick<
   Parameters<typeof createPageIndexSummaryRepairRuntime>[0],
-  "attempts" | "compilationJobs" | "repository"
+  "attempts" | "repair" | "repository"
 >): Parameters<typeof createPageIndexSummaryRepairRuntime>[0] {
   return {
     attempts,
-    compilationJobs,
     intervalMs: 1_000,
     leaseMs: 10_000,
     maxAttempts: 3,
     maxBatchSize: 10,
     now: () => Date.parse("2026-08-06T00:00:00.000Z"),
     repository,
+    repair,
     retryBaseMs: 1_000,
     retryMaxMs: 10_000,
     workerId: "repair-worker",

@@ -52,6 +52,7 @@ describe("createDocumentCompilationOutboxDispatcher", () => {
     expect(enqueued[0]).toEqual({
       idempotencyKey: `document.compile:${attemptId}`,
       payload: { attemptId },
+      priority: "high",
       type: "document.compile",
     });
     expect(Object.keys((enqueued[0]?.payload ?? {}) as object)).toEqual(["attemptId"]);

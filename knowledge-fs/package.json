@@ -10,6 +10,7 @@
     }
   },
   "scripts": {
+    "benchmark:ingestion": "node --import tsx scripts/benchmark-ingestion-model-optimizations.mjs",
     "build": "turbo run build",
     "capability:export": "node --import tsx scripts/export-capability-v2-operations.mjs",
     "check": "pnpm typecheck && pnpm test && pnpm openapi:export:test && pnpm test:coverage:ci && pnpm eval:regression && pnpm eval:phase4 && pnpm swagger:test && pnpm db:migrations:check && pnpm p9:bundle:test && pnpm ci:workflow:test && pnpm compose:middleware:config && pnpm compose:config && pnpm dify:compose:config && pnpm compose:middleware:test && pnpm compose:apps:test && pnpm docker:context:test && pnpm local:happy-path:test && pnpm semantic:rollout:test && pnpm docker:api:bundle-smoke:test && pnpm docker:admin:http-smoke:test && pnpm docker:apps:smoke:test",

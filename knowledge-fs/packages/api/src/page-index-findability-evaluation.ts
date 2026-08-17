@@ -6,6 +6,11 @@ import type {
 } from "@knowledge/core";
 
 import {
+  type IngestionModelCallOperationalMetrics,
+  ingestionModelUsageFromMetadata,
+  recordIngestionModelCallMetric,
+} from "./ingestion-model-observability";
+import {
   PageIndexLayeredTreePromptVersion,
   type PageIndexLayeredTreeSearch,
   PageIndexLayeredTreeSearchContractError,
@@ -30,11 +35,14 @@ export interface PageIndexFindabilityEvaluatorOptions {
   readonly evaluatorVersion: string;
   readonly layeredTreeSearch: PageIndexLayeredTreeSearch;
   readonly maxQuestions: number;
+  readonly maxConsecutiveModelFailures?: number | undefined;
   readonly maxTreeDepth: number;
   readonly minMeanReciprocalRank: number;
   readonly minPathRecallAtK: number;
   readonly minQuestions: number;
   readonly minRecallAtK: number;
+  readonly metrics?: IngestionModelCallOperationalMetrics | undefined;
+  readonly now?: (() => number) | undefined;
   readonly summaryRepair?: PageIndexFindabilitySummaryRepairQueue | undefined;
   readonly topK: number;
 }
@@ -76,11 +84,14 @@ export function createPageIndexFindabilityEvaluator({
   evaluatorVersion,
   layeredTreeSearch,
   maxQuestions,
+  maxConsecutiveModelFailures = 3,
   maxTreeDepth,
   minMeanReciprocalRank,
   minPathRecallAtK,
   minQuestions,
   minRecallAtK,
+  metrics,
+  now = Date.now,
   summaryRepair,
   topK,
 }: PageIndexFindabilityEvaluatorOptions): PageIndexFindabilityEvaluator {
@@ -89,6 +100,7 @@ export function createPageIndexFindabilityEvaluator({
     throw new Error("PageIndex findability evaluatorVersion is required");
   }
   validatePositiveInteger(maxQuestions, "maxQuestions");
+  validatePositiveInteger(maxConsecutiveModelFailures, "maxConsecutiveModelFailures");
   validatePositiveInteger(maxTreeDepth, "maxTreeDepth");
   validatePositiveInteger(minQuestions, "minQuestions");
   validatePositiveInteger(topK, "topK");
@@ -101,6 +113,7 @@ export function createPageIndexFindabilityEvaluator({
 
   return {
     evaluate: async (input) => {
+      const startedAt = now();
       const evidenceToNode = mapExpectedEvidenceToOutlineNodes({
         evidenceRanges: input.evidenceRanges,
         outline: input.outline,
@@ -118,6 +131,15 @@ export function createPageIndexFindabilityEvaluator({
         .sort((left, right) => left.question.id.localeCompare(right.question.id))
         .slice(0, maxQuestions);
       if (samples.length < minQuestions) {
+        recordIngestionModelCallMetric(metrics, {
+          cacheHits: 0,
+          durationMs: Math.max(0, now() - startedAt),
+          itemCount: samples.length,
+          outcome: "succeeded",
+          providerCalls: 0,
+          retries: 0,
+          stage: "findability",
+        });
         return result({
           abstentionRate: 0,
           evaluatorVersion: normalizedVersion,
@@ -138,6 +160,16 @@ export function createPageIndexFindabilityEvaluator({
       let exactHits = 0;
       let pathHits = 0;
       let reciprocalRankTotal = 0;
+      let consecutiveModelFailures = 0;
+      let evaluatedSamples = 0;
+      let providerCalls = 0;
+      let inputTokens = 0;
+      let outputTokens = 0;
+      let totalTokens = 0;
+      let inputTokensObserved = false;
+      let outputTokensObserved = false;
+      let totalTokensObserved = false;
+      let circuitBroken = false;
       for (const sample of samples) {
         let selectedNodeIds: readonly string[] = [];
         try {
@@ -146,15 +178,28 @@ export function createPageIndexFindabilityEvaluator({
             query: sample.question.question,
           });
           while (!checkpoint.completed && checkpoint.depth < maxTreeDepth) {
-            checkpoint = (
-              await layeredTreeSearch.step({
-                checkpoint,
-                outline: input.outline,
-                query: sample.question.question,
-                reasoningModel: input.reasoningModel,
-                tenantId: input.tenantId,
-              })
-            ).checkpoint;
+            providerCalls += 1;
+            const step = await layeredTreeSearch.step({
+              checkpoint,
+              outline: input.outline,
+              query: sample.question.question,
+              reasoningModel: input.reasoningModel,
+              tenantId: input.tenantId,
+            });
+            checkpoint = step.checkpoint;
+            const usage = ingestionModelUsageFromMetadata(step.providerMetadata);
+            if (usage.inputTokens !== undefined) {
+              inputTokens += usage.inputTokens;
+              inputTokensObserved = true;
+            }
+            if (usage.outputTokens !== undefined) {
+              outputTokens += usage.outputTokens;
+              outputTokensObserved = true;
+            }
+            if (usage.totalTokens !== undefined) {
+              totalTokens += usage.totalTokens;
+              totalTokensObserved = true;
+            }
           }
           selectedNodeIds = [...checkpoint.openSelections]
             .sort(
@@ -169,12 +214,19 @@ export function createPageIndexFindabilityEvaluator({
           ) {
             throw error;
           }
+          consecutiveModelFailures += 1;
+          if (consecutiveModelFailures >= maxConsecutiveModelFailures) {
+            circuitBroken = true;
+          }
           selectedNodeIds = [];
         }
+        evaluatedSamples += 1;
         if (selectedNodeIds.length === 0) {
           abstentions += 1;
+          if (circuitBroken) break;
           continue;
         }
+        consecutiveModelFailures = 0;
         const firstExactRank = selectedNodeIds.findIndex((nodeId) =>
           sample.expectedNodeIds.has(nodeId),
         );
@@ -193,7 +245,35 @@ export function createPageIndexFindabilityEvaluator({
         }
       }
 
-      const sampleCount = samples.length;
+      if (circuitBroken) {
+        recordIngestionModelCallMetric(metrics, {
+          cacheHits: 0,
+          durationMs: Math.max(0, now() - startedAt),
+          itemCount: evaluatedSamples,
+          outcome: "failed",
+          providerCalls,
+          retries: 0,
+          stage: "findability",
+          ...(inputTokensObserved ? { inputTokens } : {}),
+          ...(outputTokensObserved ? { outputTokens } : {}),
+          ...(totalTokensObserved ? { totalTokens } : {}),
+        });
+        return result({
+          abstentionRate: evaluatedSamples === 0 ? 0 : abstentions / evaluatedSamples,
+          evaluatorVersion: normalizedVersion,
+          meanReciprocalRank: 0,
+          model: input.reasoningModel,
+          pathRecallAtK: 0,
+          recallAtK: 0,
+          recommendedRoute: "unchanged",
+          sampleCount: evaluatedSamples,
+          status: "not-evaluated",
+          summaryRepairRequested: false,
+          topK,
+        });
+      }
+
+      const sampleCount = evaluatedSamples;
       const recallAtK = exactHits / sampleCount;
       const meanReciprocalRank = reciprocalRankTotal / sampleCount;
       const pathRecallAtK = pathHits / sampleCount;
@@ -210,6 +290,18 @@ export function createPageIndexFindabilityEvaluator({
         });
         summaryRepairRequested = true;
       }
+      recordIngestionModelCallMetric(metrics, {
+        cacheHits: 0,
+        durationMs: Math.max(0, now() - startedAt),
+        itemCount: sampleCount,
+        outcome: "succeeded",
+        providerCalls,
+        retries: 0,
+        stage: "findability",
+        ...(inputTokensObserved ? { inputTokens } : {}),
+        ...(outputTokensObserved ? { outputTokens } : {}),
+        ...(totalTokensObserved ? { totalTokens } : {}),
+      });
       return result({
         abstentionRate,
         evaluatorVersion: normalizedVersion,

@@ -857,9 +857,9 @@ describe("parser adapters", () => {
         expect(parsedRequest.body).toBeTruthy();
         const form = await parsedRequest.formData();
         expect(form.get("coordinates")).toBe("true");
-        expect(form.get("strategy")).toBe("hi_res");
-        expect(form.getAll("extract_image_block_types")).toEqual(["Image"]);
-        expect(form.get("extract_image_block_to_payload")).toBe("true");
+        expect(form.get("strategy")).toBe("auto");
+        expect(form.getAll("extract_image_block_types")).toEqual([]);
+        expect(form.get("extract_image_block_to_payload")).toBeNull();
         expect(form.get("files")).toBeInstanceOf(File);
 
         return new Response(
@@ -991,40 +991,75 @@ describe("parser adapters", () => {
     ["handbook.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
     ["briefing.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"],
     ["forecast.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],
-  ])("requests embedded image blocks when parsing %s", async (filename, mimeType) => {
-    const parser = createUnstructuredParserClient({
-      endpoint: "https://unstructured.example.test",
-      fetch: async (request) => {
-        const parsedRequest = request instanceof Request ? request : new Request(request);
-        const form = await parsedRequest.formData();
+  ])(
+    "uses local image extraction and adaptive strategy when parsing %s",
+    async (filename, mimeType) => {
+      const parser = createUnstructuredParserClient({
+        endpoint: "https://unstructured.example.test",
+        fetch: async (request) => {
+          const parsedRequest = request instanceof Request ? request : new Request(request);
+          const form = await parsedRequest.formData();
 
-        expect(form.get("strategy")).toBe("hi_res");
-        expect(form.getAll("extract_image_block_types")).toEqual(["Image"]);
-        expect(form.get("extract_image_block_to_payload")).toBe("true");
-        expect((form.get("files") as File).name).toBe(filename);
+          expect(form.get("strategy")).toBe("auto");
+          expect(form.getAll("extract_image_block_types")).toEqual([]);
+          expect(form.get("extract_image_block_to_payload")).toBeNull();
+          expect((form.get("files") as File).name).toBe(filename);
 
-        return new Response("[]", {
-          headers: { "content-type": "application/json" },
-          status: 200,
-        });
-      },
-      generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2c51",
-      now: () => createdAt,
-    });
+          return new Response("[]", {
+            headers: { "content-type": "application/json" },
+            status: 200,
+          });
+        },
+        generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2c51",
+        now: () => createdAt,
+      });
 
-    await expect(
-      parser.parse({
+      await expect(
+        parser.parse({
+          body: new Uint8Array([1, 2, 3]),
+          documentAssetId,
+          filename,
+          mimeType,
+          version: 1,
+        }),
+      ).resolves.toMatchObject({
+        metadata: { filename, mimeType, parserVersion: "unstructured@4" },
+        parser: "unstructured",
+      });
+    },
+  );
+
+  it.each([
+    [{ layoutComplexity: "simple" as const }, "fast", false],
+    [{ requiresOcr: true }, "hi_res", false],
+    [{ requiresTables: true }, "hi_res", false],
+    [{ requiresImages: true }, "hi_res", true],
+  ])(
+    "selects %s parsing hints without forcing hi_res for every document",
+    async (parserHints, expectedStrategy, expectedImages) => {
+      const parser = createUnstructuredParserClient({
+        endpoint: "https://unstructured.example.test",
+        fetch: async (request) => {
+          const form = await (request instanceof Request
+            ? request
+            : new Request(request)
+          ).formData();
+          expect(form.get("strategy")).toBe(expectedStrategy);
+          expect(form.getAll("extract_image_block_types")).toEqual(expectedImages ? ["Image"] : []);
+          return new Response("[]", { status: 200 });
+        },
+      });
+
+      await parser.parse({
         body: new Uint8Array([1, 2, 3]),
         documentAssetId,
-        filename,
-        mimeType,
+        filename: "message.eml",
+        mimeType: "message/rfc822",
+        parserHints,
         version: 1,
-      }),
-    ).resolves.toMatchObject({
-      metadata: { filename, mimeType, parserVersion: "unstructured@4" },
-      parser: "unstructured",
-    });
-  });
+      });
+    },
+  );
 
   it.each([
     [

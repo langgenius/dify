@@ -159,6 +159,7 @@ const embeddingOptions = createApiEmbeddingOptions(
 );
 const parser = createApiDocumentParser();
 const visualEmbeddingOptions = createApiVisualEmbeddingOptions({
+  modelRequestGate: ingestionModelRuntimeOptions.modelRequestGate,
   objectStorage: adapter.objectStorage,
 });
 const multimodalOptions = createApiMultimodalOptions();
@@ -170,6 +171,7 @@ const multimodalEnrichmentOptions = createApiMultimodalEnrichmentOptions({
 });
 const rerankerOptions = createApiRerankerOptions();
 const semanticEntityExtractionOptions = createApiSemanticEntityExtractionOptions(process.env, {
+  metrics: operationalMetrics.ingestionModelCalls,
   modelRequestGate: ingestionModelRuntimeOptions.modelRequestGate,
 });
 const profileReasoningCapability = createApiProfileReasoningCapability();
@@ -178,6 +180,7 @@ const pageIndexSemanticTreeSearch = createPageIndexSemanticTreeSearch({
   maxConcurrentBatches: 4,
   maxOutputTokens: profileReasoningCapability.maxOutputTokens,
   maxTextCharsPerCandidate: 1_500,
+  modelRequestGate: ingestionModelRuntimeOptions.modelRequestGate,
   providerFactory: profileReasoningCapability.providerFactory,
   timeoutMs: 20_000,
 });
@@ -190,18 +193,21 @@ const pageIndexLayeredTreeSearch = createPageIndexLayeredTreeSearch({
   maxSummaryChars: 600,
   maxTitleChars: 200,
   maxTreeNodes: 10_000,
+  modelRequestGate: ingestionModelRuntimeOptions.modelRequestGate,
   providerFactory: profileReasoningCapability.providerFactory,
   timeoutMs: 20_000,
 });
 const pageIndexFindabilityEvaluator = createPageIndexFindabilityEvaluator({
   evaluatorVersion: "pageindex-layered-findability-v1",
   layeredTreeSearch: pageIndexLayeredTreeSearch,
-  maxQuestions: 100,
+  maxConsecutiveModelFailures: 3,
+  maxQuestions: 20,
   maxTreeDepth: 8,
   minMeanReciprocalRank: 0.5,
   minPathRecallAtK: 0.8,
   minQuestions: 3,
   minRecallAtK: 0.7,
+  metrics: operationalMetrics.ingestionModelCalls,
   topK: 5,
 });
 const pageIndexWholeTreeSelector = createPageIndexWholeTreeSelector({
@@ -213,6 +219,7 @@ const pageIndexWholeTreeSelector = createPageIndexWholeTreeSelector({
   maxTitleChars: 200,
   maxTreeNodes: 2_000,
   minimumSummaryCoverage: 0.5,
+  modelRequestGate: ingestionModelRuntimeOptions.modelRequestGate,
   providerFactory: profileReasoningCapability.providerFactory,
   timeoutMs: 20_000,
 });
@@ -431,11 +438,17 @@ const documentOutlineSummaryEnhancer = createKnowledgeSpaceOutlineSummaryEnhance
   maxOutputTokens: profileReasoningCapability.maxOutputTokens,
   maxSummaryChars: 2_000,
   metrics: operationalMetrics.outlineSummary,
+  modelCallMetrics: operationalMetrics.ingestionModelCalls,
   modelRequestGate: ingestionModelRuntimeOptions.modelRequestGate,
   providerFactory: profileReasoningCapability.providerFactory,
 });
 const documentSemanticChunker = createLlmSemanticChunker({
+  ...(databaseRepositories.documentSemanticWindowCheckpoints
+    ? { checkpoints: databaseRepositories.documentSemanticWindowCheckpoints }
+    : {}),
   maxNodes: 20_000,
+  metrics: operationalMetrics.ingestionModelCalls,
+  modelRequestGate: ingestionModelRuntimeOptions.modelRequestGate,
   reasoningProviderFactory: profileReasoningCapability.providerFactory,
 });
 const relevanceTriageOptions = createApiRelevanceTriageOptions({
@@ -498,6 +511,7 @@ const documentCompilationRuntime = createApiDocumentCompilationRuntime({
   adapter,
   compute,
   config: documentCompilationOptions,
+  createModelBudget: ingestionModelRuntimeOptions.createDocumentModelBudget,
   ...(deletionLifecycleFence ? { deletionFence: deletionLifecycleFence } : {}),
   ...(deletionObjectWriteAdmission ? { objectWriteAdmission: deletionObjectWriteAdmission } : {}),
   embeddingResolver,
@@ -524,6 +538,7 @@ const documentCompilationRuntime = createApiDocumentCompilationRuntime({
         initialProfileActivations: databaseRepositories.knowledgeSpaceUnpublishedProfileActivations,
       }
     : {}),
+  modelCallMetrics: operationalMetrics.ingestionModelCalls,
   modelCapabilityPreflight,
   metrics: operationalMetrics.durableTasks,
   multimodal: multimodalOptions,
@@ -590,6 +605,7 @@ const documentCompilationRuntime = createApiDocumentCompilationRuntime({
   },
   semantic: {
     ...knowledgeSpaceSemanticIngestionOptions,
+    modelCallMetrics: operationalMetrics.ingestionModelCalls,
     modelRequestGate: ingestionModelRuntimeOptions.modelRequestGate,
     semanticExtractionBatchSize: ingestionModelRuntimeOptions.semanticExtractionBatchSize,
     semanticExtractionMaxConcurrency: ingestionModelRuntimeOptions.semanticExtractionMaxConcurrency,

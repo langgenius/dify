@@ -282,6 +282,7 @@ export type JobPayload =
   | { readonly [key: string]: JobPayload };
 
 export type JobStatus = "queued" | "running" | "completed" | "failed" | "canceled";
+export type JobPriority = "high" | "low" | "normal";
 
 export interface JobRecord {
   readonly attempts: number;
@@ -296,6 +297,7 @@ export interface JobRecord {
   readonly idempotencyKey?: string;
   readonly leaseExpiresAt?: number;
   readonly payload: JobPayload;
+  readonly priority?: JobPriority | undefined;
   readonly runAfter?: number;
   readonly startedAt?: number;
   readonly status: JobStatus;
@@ -306,6 +308,7 @@ export interface JobRecord {
 export interface EnqueueJobInput {
   readonly idempotencyKey?: string;
   readonly payload: JobPayload;
+  readonly priority?: JobPriority | undefined;
   readonly runAfter?: number;
   readonly type: string;
 }

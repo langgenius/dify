@@ -14,6 +14,7 @@ import {
 } from "@knowledge/core";
 
 import { deterministicChildId } from "./api-shared-utils";
+import type { DocumentModelBudget } from "./document-model-budget";
 import {
   type DenseVectorProjectionBuilder,
   type FtsProjectionBuilder,
@@ -59,9 +60,12 @@ export interface IncrementalReindexInput {
   readonly embeddingProfile?: KnowledgeSpaceEmbeddingProfile | undefined;
   /** Whether Graph facts from this semantic generation will be materialized by the caller. */
   readonly enableGraph?: boolean | undefined;
+  /** Whether PageIndex paths and summaries will be materialized by the caller. */
+  readonly enablePageIndex?: boolean | undefined;
   readonly knowledgeSpaceId: string;
   /** Optional normalized BCP-47 document language persisted into every generated node. */
   readonly language?: string | undefined;
+  readonly modelBudget?: DocumentModelBudget | undefined;
   readonly parseArtifact: ParseArtifact;
   readonly permissionScope?: readonly string[] | undefined;
   readonly projectionStatus?: ProjectionBuildStatus | undefined;
@@ -397,6 +401,9 @@ export function createIncrementalReindexer({
                       : {}),
                   },
                   knowledgeSpaceId: input.knowledgeSpaceId,
+                  enableGraph: input.enableGraph !== false,
+                  enablePageIndex: input.enablePageIndex !== false,
+                  ...(input.modelBudget ? { modelBudget: input.modelBudget } : {}),
                   parseArtifact: storedArtifact,
                   ...(input.permissionScope ? { permissionScope: [...input.permissionScope] } : {}),
                   ...(publicationGenerationId ? { publicationGenerationId } : {}),
@@ -518,6 +525,7 @@ export function createIncrementalReindexer({
               const built = await denseBuilder.build({
                 ...(input.embeddingProfile ? { embeddingProfile: input.embeddingProfile } : {}),
                 model: input.denseModel,
+                ...(input.modelBudget ? { modelBudget: input.modelBudget } : {}),
                 nodes: nodeBatch,
                 projectionVersion: input.projectionVersion,
                 ...(publicationGenerationId ? { publicationGenerationId } : {}),
@@ -535,6 +543,7 @@ export function createIncrementalReindexer({
               input.signal?.throwIfAborted();
               const built = await visualBuilder.build({
                 model: input.visualModel,
+                ...(input.modelBudget ? { modelBudget: input.modelBudget } : {}),
                 nodes: nodeBatch,
                 projectionVersion: input.projectionVersion,
                 ...(publicationGenerationId ? { publicationGenerationId } : {}),

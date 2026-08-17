@@ -9,6 +9,8 @@ import {
 import { countGraphemes } from "unicode-segmenter/grapheme";
 import { describe, expect, it } from "vitest";
 
+import { createInMemoryDocumentSemanticWindowCheckpointRepository } from "./document-semantic-window-checkpoint-repository";
+
 import {
   DEFAULT_MAX_SEMANTIC_WINDOWS,
   type LlmSemanticCompletionCatalogEntry,
@@ -90,6 +92,71 @@ class ScriptedProvider implements SemanticChunkingLlmProvider {
 }
 
 describe("LLM semantic chunker", () => {
+  it("persists completed semantic windows and resumes after a later window fails", async () => {
+    const checkpoints = createInMemoryDocumentSemanticWindowCheckpointRepository();
+    const transient = new ScriptedProvider([
+      echoEachUnit,
+      () => {
+        throw new Error("temporary model failure");
+      },
+    ]);
+    const input = {
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      parseArtifact: artifact([
+        {
+          id: "resume-paragraph",
+          metadata: {},
+          sectionPath: ["Resume"],
+          text: "第一段。第二段。第三段。",
+          type: "paragraph" as const,
+        },
+      ]),
+      publicationGenerationId: GENERATION_A,
+      retrievalProfile: profile(),
+      tenantId: "tenant-1",
+    };
+    await expect(
+      createLlmSemanticChunker({
+        checkpoints,
+        maxChunkChars: 4,
+        maxWindowChars: 4,
+        reasoningProviderFactory: () => transient,
+      }).chunk(input),
+    ).rejects.toThrow("temporary model failure");
+    expect(transient.calls).toHaveLength(2);
+
+    const resumed = new ScriptedProvider([echoEachUnit]);
+    const nodes = await createLlmSemanticChunker({
+      checkpoints,
+      maxChunkChars: 4,
+      maxWindowChars: 4,
+      reasoningProviderFactory: () => resumed,
+    }).chunk(input);
+
+    expect(nodes.map((node) => node.text).join("")).toBe("第一段。第二段。第三段。");
+    expect(resumed.calls).toHaveLength(2);
+  });
+
+  it("pushes disabled Graph and PageIndex capabilities into the model prompt", async () => {
+    const provider = new ScriptedProvider([echoEachUnit]);
+    await createLlmSemanticChunker({ reasoningProviderFactory: () => provider }).chunk({
+      enableGraph: false,
+      enablePageIndex: false,
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      parseArtifact: artifact([
+        { id: "flags", metadata: {}, sectionPath: ["Input"], text: "内容。", type: "paragraph" },
+      ]),
+      retrievalProfile: profile(),
+      tenantId: "tenant-1",
+    });
+
+    const prompt = provider.calls[0]?.messages.map((message) => message.content).join("\n") ?? "";
+    expect(prompt).toContain("Graph extraction is disabled");
+    expect(prompt).toContain("PageIndex is disabled");
+    expect(prompt).toContain('"enableGraph":false');
+    expect(prompt).toContain('"enablePageIndex":false');
+  });
+
   it("uses the frozen reasoning selection and accepts semantic boundaries below the hard cap", async () => {
     const provider = new ScriptedProvider([
       ({ units }) => ({

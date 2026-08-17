@@ -51,6 +51,7 @@ const knowledgeSpaceMetadataMigrationId = "0040_knowledge_space_metadata";
 const logicalDocumentAvailabilityMigrationId = "0041_logical_document_availability";
 const workflowFailedRetrievalCaptureMigrationId = "0042_workflow_failed_retrieval_capture";
 const semanticGenerationReceiptsMigrationId = "0043_semantic_generation_receipts";
+const semanticWindowCheckpointsMigrationId = "0044_document_semantic_window_checkpoints";
 const migrationsAfterDurableDeletion = [
   versionedSpaceProfilesMigrationId,
   profilePublicationBindingsMigrationId,
@@ -78,6 +79,7 @@ const migrationsAfterDurableDeletion = [
   logicalDocumentAvailabilityMigrationId,
   workflowFailedRetrievalCaptureMigrationId,
   semanticGenerationReceiptsMigrationId,
+  semanticWindowCheckpointsMigrationId,
 ] as const;
 const migrationsAfterTidbBaselineRepair = [
   spaceAccessControlMigrationId,

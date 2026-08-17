@@ -280,6 +280,7 @@ export function createDocumentCompilationJobStateMachine({
       const queueJob = await jobs.enqueue({
         idempotencyKey: documentCompilationIdempotencyKey(input),
         payload,
+        priority: "high",
         type: "document.compile",
       });
       const queuedCompilationJobId = queuedDocumentCompilationJobId(queueJob.payload) ?? id;

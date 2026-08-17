@@ -366,6 +366,7 @@ describe("createDocumentCompilationWorker lease integration", () => {
     const receipts: unknown[] = [];
     const reindexInputs: unknown[] = [];
     let mutableEmbeddingReads = 0;
+    let outlineSummaryCalls = 0;
     let pageIndexBuildCalls = 0;
     let publishCalls = 0;
     const semanticAdmissions: unknown[] = [];
@@ -433,6 +434,12 @@ describe("createDocumentCompilationWorker lease integration", () => {
         maxNodes: 10,
         maxSummaryChars: 200,
       }),
+      outlineSummaryEnhancer: {
+        enhance: async (input) => {
+          outlineSummaryCalls += 1;
+          return input.outline;
+        },
+      },
       outlines,
       pageIndexBuild: {
         materializeBuilding: async ({ outline }) => {
@@ -570,6 +577,7 @@ describe("createDocumentCompilationWorker lease integration", () => {
     expect(publishCalls).toBe(0);
     expect(smokeCalls).toBe(0);
     expect(mutableEmbeddingReads).toBe(0);
+    expect(outlineSummaryCalls).toBe(0);
     expect(pageIndexBuildCalls).toBe(0);
     expect(semanticAdmissions).toEqual([]);
     expect(semanticCalls).toBe(1);

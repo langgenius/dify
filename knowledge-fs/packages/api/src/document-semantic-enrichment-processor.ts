@@ -22,6 +22,7 @@ import {
 import { createExtractionQualityControlFlow } from "./extraction-quality-control-flow";
 import type { GraphIndexRepository } from "./graph-index-repository";
 import { createGraphIndexWriter } from "./graph-index-writer";
+import type { IngestionModelCallOperationalMetrics } from "./ingestion-model-observability";
 import { cloneJsonObject, isPlainObject } from "./json-utils";
 import {
   type KnowledgeNodeRepository,
@@ -86,6 +87,7 @@ export interface DocumentSemanticEnrichmentProcessorOptions {
   readonly maxOutputTokens: number;
   readonly maxRelationsPerNode: number;
   readonly modelRequestGate?: ConcurrencyGate | undefined;
+  readonly modelCallMetrics?: IngestionModelCallOperationalMetrics | undefined;
   readonly nodeListPageSize?: number | undefined;
   readonly nodes: Pick<KnowledgeNodeRepository, "listByArtifact">;
   readonly now?: (() => string) | undefined;
@@ -111,6 +113,7 @@ export function createDocumentSemanticEnrichmentProcessor({
   maxNodesPerArtifact,
   maxOutputTokens,
   maxRelationsPerNode,
+  modelCallMetrics,
   modelRequestGate,
   nodeListPageSize = Math.min(maxNodesPerArtifact, defaultNodeListPageSize),
   nodes,
@@ -201,11 +204,13 @@ export function createDocumentSemanticEnrichmentProcessor({
       const entityProvider = createLlmEntityExtractionProvider({
         maxOutputTokens,
         ...(modelRequestGate ? { modelRequestGate } : {}),
+        ...(modelCallMetrics ? { metrics: modelCallMetrics } : {}),
         provider,
       });
       const relationProvider = createLlmRelationExtractionProvider({
         maxOutputTokens,
         ...(modelRequestGate ? { modelRequestGate } : {}),
+        ...(modelCallMetrics ? { metrics: modelCallMetrics } : {}),
         provider,
       });
       const scope: DocumentSemanticEnrichmentCheckpointScope = {

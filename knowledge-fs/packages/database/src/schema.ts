@@ -91,6 +91,15 @@ const textColumn = (name: string, nullable = false): ColumnDefinition => ({
   },
 });
 
+const mediumTextColumn = (name: string, nullable = false): ColumnDefinition => ({
+  name,
+  nullable,
+  type: {
+    postgres: "TEXT",
+    tidb: "MEDIUMTEXT",
+  },
+});
+
 const varcharColumn = (name: string, maxLength: number, nullable = false): ColumnDefinition => ({
   name,
   nullable,
@@ -6037,6 +6046,68 @@ const tables = [
     ],
   },
   {
+    name: "document_semantic_window_checkpoints",
+    checkConstraints: [
+      {
+        expression: {
+          postgres: `"input_fingerprint" ~ '^sha256:[a-f0-9]{64}$' AND "model_fingerprint" ~ '^sha256:[a-f0-9]{64}$'`,
+          tidb: "`input_fingerprint` REGEXP '^sha256:[a-f0-9]{64}$' AND `model_fingerprint` REGEXP '^sha256:[a-f0-9]{64}$'",
+        },
+        name: "document_semantic_window_checkpoints_fingerprint_ck",
+      },
+      {
+        expression: {
+          postgres: "jsonb_typeof(\"completion\") = 'object'",
+          tidb: "JSON_TYPE(`completion`) = 'OBJECT'",
+        },
+        name: "document_semantic_window_checkpoints_completion_ck",
+      },
+      {
+        expression: {
+          postgres: '"document_version" >= 1',
+          tidb: "`document_version` >= 1",
+        },
+        name: "document_semantic_window_checkpoints_version_ck",
+      },
+    ],
+    foreignKeys: [
+      {
+        columns: ["tenant_id", "knowledge_space_id"],
+        name: "document_semantic_window_checkpoints_scope_fk",
+        onDelete: "CASCADE",
+        referencedColumns: ["tenant_id", "id"],
+        referencedTable: "knowledge_spaces",
+      },
+      {
+        columns: ["knowledge_space_id", "document_asset_id", "document_version"],
+        name: "document_semantic_window_checkpoints_asset_fk",
+        onDelete: "CASCADE",
+        referencedColumns: ["knowledge_space_id", "id", "version"],
+        referencedTable: "document_assets",
+      },
+    ],
+    primaryKey: [
+      "tenant_id",
+      "knowledge_space_id",
+      "publication_generation_id",
+      "window_id",
+      "input_fingerprint",
+    ],
+    columns: [
+      varcharColumn("tenant_id", 255),
+      idColumn("knowledge_space_id"),
+      idColumn("document_asset_id"),
+      integerColumn("document_version"),
+      idColumn("publication_generation_id"),
+      varcharColumn("window_id", 128),
+      varcharColumn("input_fingerprint", 71),
+      varcharColumn("model_fingerprint", 71),
+      mediumTextColumn("response_text"),
+      jsonColumn("completion"),
+      timestampColumn("created_at"),
+    ],
+  },
+  {
     name: "document_semantic_enrichment_jobs",
     checkConstraints: [
       {
@@ -6634,6 +6705,12 @@ const indexes = [
     name: "document_outline_summary_checkpoints_asset_idx",
     purpose: "Cascade and inspect resumable outline summaries by immutable document version",
     tableName: "document_outline_summary_checkpoints",
+  },
+  {
+    columns: ["knowledge_space_id", "document_asset_id", "document_version"],
+    name: "document_semantic_window_checkpoints_asset_idx",
+    purpose: "Resume validated semantic-window model work by immutable document version",
+    tableName: "document_semantic_window_checkpoints",
   },
   {
     columns: ["tenant_id", "knowledge_space_id", "publication_generation_id"],

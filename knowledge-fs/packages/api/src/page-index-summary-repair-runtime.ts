@@ -1,9 +1,8 @@
 import type { DocumentCompilationAttemptRepository } from "./document-compilation-attempt-repository";
 import type {
-  DocumentCompilationJobStateMachine,
-  StartDocumentCompilationJobInput,
-} from "./document-compilation-job";
-import type { PageIndexFindabilityRepository } from "./page-index-findability-repository";
+  PageIndexFindabilityEvaluationRecord,
+  PageIndexFindabilityRepository,
+} from "./page-index-findability-repository";
 
 export interface PageIndexSummaryRepairRuntimeTickResult {
   readonly claimed: number;
@@ -20,7 +19,6 @@ export interface PageIndexSummaryRepairRuntime {
 
 export interface PageIndexSummaryRepairRuntimeOptions {
   readonly attempts: Pick<DocumentCompilationAttemptRepository, "get">;
-  readonly compilationJobs: Pick<DocumentCompilationJobStateMachine, "start">;
   readonly intervalMs: number;
   readonly leaseMs: number;
   readonly maxAttempts: number;
@@ -31,6 +29,11 @@ export interface PageIndexSummaryRepairRuntimeOptions {
     PageIndexFindabilityRepository,
     "claimSummaryRepairs" | "completeSummaryRepair" | "failSummaryRepair"
   >;
+  /** Repairs outline summaries only; implementations must not restart whole-document compilation. */
+  readonly repair: (input: {
+    readonly evaluation: PageIndexFindabilityEvaluationRecord;
+    readonly source: NonNullable<Awaited<ReturnType<DocumentCompilationAttemptRepository["get"]>>>;
+  }) => Promise<void>;
   readonly retryBaseMs: number;
   readonly retryMaxMs: number;
   readonly workerId: string;
@@ -39,7 +42,6 @@ export interface PageIndexSummaryRepairRuntimeOptions {
 /** Durable, bounded dispatcher for low-findability summary regeneration. */
 export function createPageIndexSummaryRepairRuntime({
   attempts,
-  compilationJobs,
   intervalMs,
   leaseMs,
   maxAttempts,
@@ -47,6 +49,7 @@ export function createPageIndexSummaryRepairRuntime({
   now = Date.now,
   onError,
   repository,
+  repair,
   retryBaseMs,
   retryMaxMs,
   workerId,
@@ -78,36 +81,36 @@ export function createPageIndexSummaryRepairRuntime({
     });
     const result = { claimed: claimed.length, dispatched: 0, failed: 0, requeued: 0 };
     await Promise.all(
-      claimed.map(async (repair) => {
-        if (!repair.lockToken) throw new Error("Claimed summary repair has no lock token");
+      claimed.map(async (repairRecord) => {
+        if (!repairRecord.lockToken) throw new Error("Claimed summary repair has no lock token");
         try {
-          const source = await attempts.get(repair.compilationAttemptId);
+          const source = await attempts.get(repairRecord.compilationAttemptId);
           if (!source || source.runState !== "succeeded" || source.checkpoint !== "published") {
             throw new SummaryRepairNotReadyError();
           }
-          await compilationJobs.start(startInput(source));
+          await repair({ evaluation: repairRecord, source });
           const completed = await repository.completeSummaryRepair({
-            id: repair.id,
-            lockToken: repair.lockToken,
+            id: repairRecord.id,
+            lockToken: repairRecord.lockToken,
             now: new Date(now()).toISOString(),
           });
           if (!completed) throw new Error("PageIndex summary repair completion lost its lease");
           result.dispatched += 1;
         } catch (error) {
-          const retry = repair.summaryRepairAttempts < maxAttempts;
+          const retry = repairRecord.summaryRepairAttempts < maxAttempts;
           const retryAt = retry
             ? new Date(
                 now() +
                   Math.min(
                     retryMaxMs,
-                    retryBaseMs * 2 ** Math.max(0, repair.summaryRepairAttempts - 1),
+                    retryBaseMs * 2 ** Math.max(0, repairRecord.summaryRepairAttempts - 1),
                   ),
               ).toISOString()
             : undefined;
           await repository.failSummaryRepair({
             error: error instanceof Error ? error.message : "PageIndex summary repair failed",
-            id: repair.id,
-            lockToken: repair.lockToken,
+            id: repairRecord.id,
+            lockToken: repairRecord.lockToken,
             now: new Date(now()).toISOString(),
             ...(retryAt ? { retryAt } : {}),
           });
@@ -139,20 +142,6 @@ export function createPageIndexSummaryRepairRuntime({
       });
       return active;
     },
-  };
-}
-
-function startInput(
-  source: NonNullable<Awaited<ReturnType<DocumentCompilationAttemptRepository["get"]>>>,
-): StartDocumentCompilationJobInput {
-  return {
-    ...(source.capabilityGrantId ? { capabilityGrantId: source.capabilityGrantId } : {}),
-    documentAssetId: source.documentAssetId,
-    knowledgeSpaceId: source.knowledgeSpaceId,
-    ...(source.permissionSnapshot ? { permissionSnapshot: source.permissionSnapshot } : {}),
-    ...(source.requestedBySubjectId ? { requestedBySubjectId: source.requestedBySubjectId } : {}),
-    tenantId: source.tenantId,
-    version: source.documentVersion,
   };
 }
 

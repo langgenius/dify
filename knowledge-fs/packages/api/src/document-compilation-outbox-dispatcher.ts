@@ -125,6 +125,7 @@ export function createDocumentCompilationOutboxDispatcher({
           queueJob = await jobs.enqueue({
             idempotencyKey: event.idempotencyKey,
             payload: { attemptId: event.attemptId },
+            priority: "high",
             type: DocumentCompilationOutboxEventType,
           });
         } catch (error) {

@@ -40,6 +40,16 @@ describe("API KnowledgeFS operational metrics", () => {
       queuedRequests: 2,
       queueWaitMs: 12,
     });
+    metrics.ingestionModelCalls.record({
+      cacheHits: 3,
+      durationMs: 400,
+      itemCount: 8,
+      outcome: "succeeded",
+      providerCalls: 1,
+      retries: 0,
+      stage: "semantic-chunking",
+      totalTokens: 120,
+    });
     metrics.semanticEnrichment.record({
       degraded: true,
       durationMs: 8_000,
@@ -105,6 +115,17 @@ describe("API KnowledgeFS operational metrics", () => {
         limit: 16,
         queuedRequests: 2,
         queueWaitMs: 12,
+      },
+      {
+        cacheHits: 3,
+        durationMs: 400,
+        event: "knowledge_fs.ingestion_model_call.metric",
+        itemCount: 8,
+        outcome: "succeeded",
+        providerCalls: 1,
+        retries: 0,
+        stage: "semantic-chunking",
+        totalTokens: 120,
       },
       {
         degraded: true,

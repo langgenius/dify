@@ -12,6 +12,7 @@ import {
   type DocumentCompilationOutboxDispatcher,
   DocumentCompilationProcessingError,
   type DocumentCompilationRuntime,
+  type DocumentModelBudget,
   type DocumentMultimodalManifestRepository,
   type DocumentOutlineRepository,
   type DocumentProcessingTaskRepository,
@@ -22,6 +23,7 @@ import {
   type GoldenQuestionRepository,
   type GraphIndexRepository,
   type IndexProjectionRepository,
+  type IngestionModelCallOperationalMetrics,
   type KnowledgeGatewayOptions,
   type KnowledgeNodeRepository,
   type KnowledgePathRepository,
@@ -40,6 +42,7 @@ import {
   type ModelCapabilityPreflight,
   type PageIndexFindabilityEvaluator,
   type PageIndexFindabilityRepository,
+  type PageIndexFindabilityRuntime,
   type PageIndexSummaryRepairRuntime,
   type PageIndexUpgradeBackfillRepository,
   type PageIndexUpgradeBackfillRuntime,
@@ -78,6 +81,7 @@ import {
   createLegacySpacePublicationBootstrapRuntime,
   createLegacySpacePublicationBootstrapService,
   createPageIndexFindabilityPublicationEvaluator,
+  createPageIndexFindabilityRuntime,
   createPageIndexSummaryRepairRuntime,
   createPageIndexUpgradeBackfillRuntime,
   createPageIndexUpgradeBackfillService,
@@ -89,6 +93,7 @@ import {
   createVisualEmbeddingProjectionBuilder,
 } from "@knowledge/api";
 import type { ComputeRuntime } from "@knowledge/compute";
+import { KnowledgeSpaceRetrievalProfileSchema } from "@knowledge/core";
 import type { ParserAdapter } from "@knowledge/parsers";
 
 import type { ApiDocumentCompilationOptions } from "./document-compilation-options";
@@ -119,6 +124,7 @@ export interface CreateApiDocumentCompilationRuntimeOptions {
   readonly adapter: KnowledgeGatewayOptions["adapter"];
   readonly compute: ComputeRuntime | undefined;
   readonly config: ApiDocumentCompilationOptions | undefined;
+  readonly createModelBudget?: (() => DocumentModelBudget) | undefined;
   readonly deletionFence?: DeletionLifecycleFenceGuard | undefined;
   readonly objectWriteAdmission?: DeletionObjectWriteAdmission | undefined;
   readonly embeddingResolver: KnowledgeSpaceEmbeddingResolver | undefined;
@@ -134,6 +140,7 @@ export interface CreateApiDocumentCompilationRuntimeOptions {
     | KnowledgeSpaceUnpublishedProfileActivationRepository
     | undefined;
   readonly modelCapabilityPreflight?: ModelCapabilityPreflight | undefined;
+  readonly modelCallMetrics?: IngestionModelCallOperationalMetrics | undefined;
   readonly metrics?: DurableTaskOperationalMetrics | undefined;
   readonly outlineSummaryEnhancer?:
     | Parameters<typeof createDocumentCompilationWorker>[0]["outlineSummaryEnhancer"]
@@ -170,6 +177,7 @@ export interface CreateApiDocumentCompilationRuntimeOptions {
         | "semanticReasoningMaxOutputTokens"
         | "semanticReasoningProviderFactory"
       > & { readonly modelRequestGate?: ConcurrencyGate | undefined }) & {
+        readonly modelCallMetrics?: IngestionModelCallOperationalMetrics | undefined;
         readonly semanticExtractionBatchSize?: number | undefined;
         readonly semanticExtractionMaxConcurrency?: number | undefined;
       })
@@ -197,6 +205,7 @@ export interface ApiDocumentCompilationRuntimeAssembly {
   readonly pageIndexUpgradeBackfillRuntime: PageIndexUpgradeBackfillRuntime;
   readonly pageIndexUpgradeBackfillService: PageIndexUpgradeBackfillService;
   readonly pageIndexSummaryRepairRuntime?: PageIndexSummaryRepairRuntime | undefined;
+  readonly pageIndexFindabilityRuntime?: PageIndexFindabilityRuntime | undefined;
   readonly profileMigrationRuntime?: KnowledgeSpaceProfileMigrationRuntime | undefined;
   readonly runtime: DocumentCompilationRuntime;
   readonly sourceCompilationPublication: ReturnType<
@@ -242,12 +251,14 @@ export function createApiDocumentCompilationRuntime({
   adapter,
   compute,
   config,
+  createModelBudget,
   deletionFence,
   objectWriteAdmission,
   embeddingResolver,
   findability,
   initialProfileActivations,
   modelCapabilityPreflight,
+  modelCallMetrics,
   metrics,
   multimodal,
   outlineSummaryEnhancer,
@@ -352,10 +363,26 @@ export function createApiDocumentCompilationRuntime({
         findability: findability.repository,
         goldenQuestions: findability.goldenQuestions,
         maxEvidenceIds: 1_000,
-        maxQuestions: 100,
+        maxQuestions: 20,
         nodes: repositories.nodes,
         outlines: repositories.outlines,
         profiles: repositories.profiles,
+      })
+    : undefined;
+  const workerId = `${process.pid}-${randomUUID()}`;
+  const findabilityAsync = findabilityPublication
+    ? createPageIndexFindabilityRuntime({
+        attempts: repositories.attempts,
+        evaluator: findabilityPublication,
+        intervalMs: config.tickMs,
+        jobs: adapter.jobs,
+        leaseMs: config.leaseMs,
+        maxAttempts: Math.min(3, config.maxAttempts),
+        maxBatchSize: config.batchSize,
+        ...(findability?.onError ? { onError: findability.onError } : {}),
+        retryBaseMs: config.retryBaseMs,
+        retryMaxMs: config.retryMaxMs,
+        workerId: `page-index-findability-${workerId}`,
       })
     : undefined;
   const fingerprintMaterial = createRepositoryDocumentCompilationFingerprintMaterialResolver({
@@ -399,6 +426,7 @@ export function createApiDocumentCompilationRuntime({
     denseBuilder: createDenseVectorProjectionBuilder({
       embeddingResolver,
       maxBatchSize: embeddingBatchSize,
+      ...(modelCallMetrics ? { metrics: modelCallMetrics } : {}),
       projections: repositories.projections,
     }),
     ftsBuilder: createFtsProjectionBuilder({
@@ -414,6 +442,7 @@ export function createApiDocumentCompilationRuntime({
       ? {
           visualBuilder: createVisualEmbeddingProjectionBuilder({
             maxBatchSize: embeddingBatchSize,
+            ...(modelCallMetrics ? { metrics: modelCallMetrics } : {}),
             projections: repositories.projections,
             provider: visual.provider,
           }),
@@ -568,6 +597,7 @@ export function createApiDocumentCompilationRuntime({
             }
           : {}),
         multimodalManifests: repositories.multimodalManifests,
+        ...(createModelBudget ? { modelBudget: createModelBudget() } : {}),
         objectStorage: adapter.objectStorage,
         outlineBuilder,
         ...(outlineSummaryEnhancer ? { outlineSummaryEnhancer } : {}),
@@ -596,12 +626,10 @@ export function createApiDocumentCompilationRuntime({
     ...(findabilityPublication
       ? {
           afterPublished: ({ attempt, publication }) =>
-            findabilityPublication
-              .evaluatePublished({
-                attempt,
-                publicationFingerprint: publication.published.fingerprint,
-              })
-              .then(() => undefined),
+            findabilityAsync?.admission.enqueue({
+              compilationAttemptId: attempt.id,
+              publicationFingerprint: publication.published.fingerprint,
+            }) ?? Promise.resolve(),
           ...(findability?.onError ? { onAfterPublishedError: findability.onError } : {}),
         }
       : {}),
@@ -610,7 +638,6 @@ export function createApiDocumentCompilationRuntime({
     coordinator,
     evaluator,
   });
-  const workerId = `${process.pid}-${randomUUID()}`;
   const runtime = createDocumentCompilationRuntime({
     attempts: repositories.attempts,
     heartbeatIntervalMs: Math.max(1, Math.floor(config.leaseMs / 3)),
@@ -662,13 +689,65 @@ export function createApiDocumentCompilationRuntime({
   const pageIndexSummaryRepairRuntime = findability
     ? createPageIndexSummaryRepairRuntime({
         attempts: repositories.attempts,
-        compilationJobs,
         intervalMs: config.tickMs,
         leaseMs: config.leaseMs,
         maxAttempts: Math.min(3, config.maxAttempts),
         maxBatchSize: config.batchSize,
         ...(findability.onError ? { onError: findability.onError } : {}),
         repository: findability.repository,
+        repair: async ({ evaluation, source }) => {
+          if (!outlineSummaryEnhancer) {
+            throw new Error("PageIndex summary component repair requires an outline enhancer");
+          }
+          const profileReference = source.retrievalProfile;
+          const [artifact, outline, profileRevision] = await Promise.all([
+            repositories.artifacts.getByDocumentVersion({
+              documentAssetId: evaluation.documentAssetId,
+              version: evaluation.documentVersion,
+            }),
+            repositories.outlines.getById({ id: evaluation.outlineId }),
+            profileReference
+              ? repositories.profiles.getRevision({
+                  kind: "retrieval",
+                  knowledgeSpaceId: evaluation.knowledgeSpaceId,
+                  revision: profileReference.revision,
+                  tenantId: evaluation.tenantId,
+                })
+              : Promise.resolve(null),
+          ]);
+          if (!artifact || !outline) {
+            throw new Error("PageIndex summary component repair source artifacts are unavailable");
+          }
+          if (
+            outline.publicationGenerationId !== evaluation.generationId ||
+            outline.documentAssetId !== evaluation.documentAssetId ||
+            outline.version !== evaluation.documentVersion
+          ) {
+            throw new Error("PageIndex summary component repair source identity changed");
+          }
+          if (
+            profileReference &&
+            (!profileRevision ||
+              profileRevision.id !== profileReference.revisionId ||
+              profileRevision.snapshotDigest !== profileReference.snapshotDigest)
+          ) {
+            throw new Error("PageIndex summary component repair retrieval profile changed");
+          }
+          await outlineSummaryEnhancer.enhance({
+            ...(createModelBudget ? { modelBudget: createModelBudget() } : {}),
+            outline,
+            parseArtifact: artifact,
+            ...(profileRevision
+              ? {
+                  retrievalProfile: KnowledgeSpaceRetrievalProfileSchema.parse(
+                    profileRevision.snapshot,
+                  ),
+                }
+              : {}),
+            tenantId: evaluation.tenantId,
+            traceId: evaluation.id,
+          });
+        },
         retryBaseMs: config.retryBaseMs,
         retryMaxMs: config.retryMaxMs,
         workerId: `page-index-summary-repair-${workerId}`,
@@ -692,6 +771,7 @@ export function createApiDocumentCompilationRuntime({
     legacyBootstrapService,
     pageIndexUpgradeBackfillRuntime,
     pageIndexUpgradeBackfillService,
+    ...(findabilityAsync ? { pageIndexFindabilityRuntime: findabilityAsync.runtime } : {}),
     ...(pageIndexSummaryRepairRuntime ? { pageIndexSummaryRepairRuntime } : {}),
     ...(profileMigrationRuntime ? { profileMigrationRuntime } : {}),
     runtime,
@@ -705,6 +785,7 @@ export function createApiDocumentCompilationRuntime({
       runtime.start();
       legacyBootstrapRuntime.start();
       pageIndexUpgradeBackfillRuntime.start();
+      findabilityAsync?.runtime.start();
       pageIndexSummaryRepairRuntime?.start();
       semanticEnrichment?.runtime.start();
       void documentMutationReconciler.tick().catch(() => undefined);
@@ -724,6 +805,7 @@ export function createApiDocumentCompilationRuntime({
         return;
       }
       pageIndexUpgradeBackfillRuntime.stop();
+      findabilityAsync?.runtime.stop();
       pageIndexSummaryRepairRuntime?.stop();
       semanticEnrichment?.runtime.stop();
       if (documentMutationTimer) {
@@ -790,6 +872,7 @@ function createCandidateSemanticEnrichment({
     maxOutputTokens: semantic.semanticReasoningMaxOutputTokens ?? 1_500,
     maxRelationsPerNode: semantic.semanticRelationExtractionMaxRelationsPerNode ?? 50,
     ...(semantic.modelRequestGate ? { modelRequestGate: semantic.modelRequestGate } : {}),
+    ...(semantic.modelCallMetrics ? { modelCallMetrics: semantic.modelCallMetrics } : {}),
     nodes,
     providerFactory: semantic.semanticReasoningProviderFactory,
     providerBatchSize: semantic.semanticExtractionBatchSize ?? 8,

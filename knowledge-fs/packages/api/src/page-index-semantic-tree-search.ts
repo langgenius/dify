@@ -1,5 +1,6 @@
 import type { KnowledgeSpaceModelSelection } from "@knowledge/core";
 import { z } from "zod";
+import type { ConcurrencyGate } from "./bounded-concurrency";
 import {
   type ResearchModelCallObserver,
   estimateResearchModelPromptTokens,
@@ -75,6 +76,7 @@ export interface PageIndexSemanticTreeSearchOptions {
   readonly maxOutputTokens: number;
   readonly maxResponseChars?: number | undefined;
   readonly maxTextCharsPerCandidate: number;
+  readonly modelRequestGate?: ConcurrencyGate | undefined;
   readonly providerFactory: (
     selection: KnowledgeSpaceModelSelection,
   ) => PageIndexSemanticScoreProvider;
@@ -122,6 +124,7 @@ export function createPageIndexSemanticTreeSearch({
   maxOutputTokens,
   maxResponseChars = 64_000,
   maxTextCharsPerCandidate,
+  modelRequestGate,
   providerFactory,
   timeoutMs,
 }: PageIndexSemanticTreeSearchOptions): PageIndexSemanticTreeSearch {
@@ -187,7 +190,7 @@ export function createPageIndexSemanticTreeSearch({
           let result: GeneratePageIndexSemanticScoreResult;
           try {
             const provider = providerFactory(input.reasoningModel);
-            result = await raceWithAbort(
+            const generate = () =>
               provider.generate({
                 maxOutputTokens,
                 messages,
@@ -196,7 +199,9 @@ export function createPageIndexSemanticTreeSearch({
                 structuredOutputSchema,
                 temperature: 0,
                 tenantId,
-              }),
+              });
+            result = await raceWithAbort(
+              modelRequestGate ? modelRequestGate.run(generate) : generate(),
               controller.signal,
             );
           } catch (error) {
