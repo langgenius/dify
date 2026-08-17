@@ -1,7 +1,7 @@
 'use client'
 
 import type { KeyboardEvent, MouseEvent } from 'react'
-import type { DataSet } from '@/models/datasets'
+import type { DatasetCardItem } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -28,7 +28,7 @@ import { useDatasetCardState as useDatasetCardController } from './hooks/use-dat
 const EXTERNAL_PROVIDER = 'external'
 
 type DatasetCardProps = {
-  dataset: DataSet
+  dataset: DatasetCardItem
   onSuccess?: () => void
   onOpenTagManagement?: () => void
   stepByStepTourActionMenuHighlightPart?: string
@@ -74,7 +74,7 @@ const DatasetCard = ({
     () =>
       getDatasetACLCapabilities(dataset.permission_keys, {
         currentUserId,
-        resourceMaintainer: dataset.maintainer,
+        resourceMaintainer: dataset.maintainer ?? undefined,
         workspacePermissionKeys,
       }),
     [dataset.maintainer, dataset.permission_keys, currentUserId, workspacePermissionKeys],
@@ -137,7 +137,7 @@ const DatasetCard = ({
         <Description dataset={dataset} />
         <DatasetCardTags
           datasetId={dataset.id}
-          embeddingAvailable={dataset.embedding_available}
+          embeddingAvailable={!!dataset.embedding_available}
           tags={dataset.tags}
           onOpenTagManagement={onOpenTagManagement}
           onTagsChange={onSuccess}

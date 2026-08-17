@@ -30,7 +30,10 @@ export interface ParseDocumentInput {
 export interface ParserRouteHints {
   readonly language?: string;
   readonly layoutComplexity?: "complex" | "simple";
+  /** Request provider-side image extraction when no cheaper local extractor exists. */
+  readonly requiresImages?: boolean;
   readonly requiresOcr?: boolean;
+  readonly requiresTables?: boolean;
 }
 
 export interface ParserAdapter {
@@ -284,13 +287,11 @@ export function createUnstructuredParserClient({
           ) as ArrayBuffer;
           form.set("files", new File([fileBody], input.filename, { type: input.mimeType }));
           form.set("coordinates", "true");
-          // Embedded visuals are not DOCX-specific: PDF, presentation, spreadsheet, HTML and
-          // other container formats can all carry images. Ask Unstructured for image blocks on
-          // every request routed through this adapter so downstream ingestion can persist one
-          // format-independent multimodal artifact.
-          form.set("strategy", "hi_res");
-          form.append("extract_image_block_types", "Image");
-          form.set("extract_image_block_to_payload", "true");
+          form.set("strategy", unstructuredPartitionStrategy(input));
+          if (shouldRequestProviderImages(input)) {
+            form.append("extract_image_block_types", "Image");
+            form.set("extract_image_block_to_payload", "true");
+          }
 
           return new Request(unstructuredPartitionEndpoint(endpoint), {
             body: form,
@@ -340,6 +341,28 @@ export function createUnstructuredParserClient({
       });
     },
   };
+}
+
+function unstructuredPartitionStrategy(input: ParseDocumentInput): "auto" | "fast" | "hi_res" {
+  const hints = input.parserHints;
+  if (hints?.requiresOcr || hints?.layoutComplexity === "complex" || hints?.requiresTables) {
+    return "hi_res";
+  }
+  if (hints?.layoutComplexity === "simple") {
+    return "fast";
+  }
+  if (hints?.requiresImages && !imagesHandledOutsideUnstructured(input)) {
+    return "hi_res";
+  }
+  return "auto";
+}
+
+function shouldRequestProviderImages(input: ParseDocumentInput): boolean {
+  return input.parserHints?.requiresImages === true && !imagesHandledOutsideUnstructured(input);
+}
+
+function imagesHandledOutsideUnstructured(input: ParseDocumentInput): boolean {
+  return input.mimeType.toLowerCase() === "application/pdf" || archiveMediaRoots(input) !== null;
 }
 
 function unstructuredPartitionEndpoint(endpoint: string): string {

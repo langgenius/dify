@@ -116,6 +116,7 @@ export type KnowledgeFsSpaceDetailResponse = {
 export type KnowledgeFsSpaceUpdatePayload = {
   description?: string | null
   icon?: string | null
+  icon_background?: string | null
   name?: string | null
   visibility?: KnowledgeFsControlSpaceVisibility | null
 }
@@ -1335,6 +1336,7 @@ export type KnowledgeFsTechnicalSummary = {
   description?: string | null
   document_count?: number
   icon?: string | null
+  icon_background?: string | null
   index_state?: string | null
   knowledge_space_id: string
   last_job_state?: string | null

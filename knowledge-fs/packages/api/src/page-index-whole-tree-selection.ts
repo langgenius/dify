@@ -4,6 +4,7 @@ import type {
   KnowledgeSpaceModelSelection,
 } from "@knowledge/core";
 import { z } from "zod";
+import type { ConcurrencyGate } from "./bounded-concurrency";
 
 import type {
   GeneratePageIndexSemanticScoreInput,
@@ -72,6 +73,7 @@ export interface PageIndexWholeTreeSelectorOptions {
   readonly maxTitleChars: number;
   readonly maxTreeNodes: number;
   readonly minimumSummaryCoverage: number;
+  readonly modelRequestGate?: ConcurrencyGate | undefined;
   readonly providerFactory: (
     selection: KnowledgeSpaceModelSelection,
   ) => PageIndexSemanticScoreProvider;
@@ -111,6 +113,7 @@ export function createPageIndexWholeTreeSelector({
   maxTitleChars,
   maxTreeNodes,
   minimumSummaryCoverage,
+  modelRequestGate,
   providerFactory,
   timeoutMs,
 }: PageIndexWholeTreeSelectorOptions): PageIndexWholeTreeSelector {
@@ -213,7 +216,7 @@ export function createPageIndexWholeTreeSelector({
       );
       let result: Awaited<ReturnType<PageIndexSemanticScoreProvider["generate"]>>;
       try {
-        result = await raceWithAbort(
+        const generate = () =>
           providerFactory(input.reasoningModel).generate({
             maxOutputTokens,
             messages,
@@ -222,7 +225,9 @@ export function createPageIndexWholeTreeSelector({
             structuredOutputSchema,
             temperature: 0,
             tenantId,
-          }),
+          });
+        result = await raceWithAbort(
+          modelRequestGate ? modelRequestGate.run(generate) : generate(),
           controller.signal,
         );
       } catch (error) {

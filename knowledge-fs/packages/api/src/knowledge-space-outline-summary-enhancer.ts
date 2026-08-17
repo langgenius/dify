@@ -13,6 +13,7 @@ import {
   type DocumentOutlineSummaryProviderInput,
   createDocumentOutlineSummaryEnhancer,
 } from "./document-outline-summary-enhancer";
+import type { IngestionModelCallOperationalMetrics } from "./ingestion-model-observability";
 import type { KnowledgeSpaceManifestRepository } from "./knowledge-space-manifest-repository";
 import type { LlmAnswerProvider } from "./llm-answer-query-generator";
 import { ReasoningCapabilityUnavailableError } from "./profile-aware-query-generator";
@@ -27,6 +28,7 @@ export interface KnowledgeSpaceOutlineSummaryEnhancerOptions {
   readonly maxOutputTokens: number;
   readonly maxSummaryChars: number;
   readonly metrics?: DocumentOutlineSummaryOperationalMetrics | undefined;
+  readonly modelCallMetrics?: IngestionModelCallOperationalMetrics | undefined;
   readonly modelRequestGate?: ConcurrencyGate | undefined;
   readonly promptVersion?: string | undefined;
   readonly providerFactory: (selection: KnowledgeSpaceModelSelection) => LlmAnswerProvider;
@@ -48,6 +50,7 @@ export function createKnowledgeSpaceOutlineSummaryEnhancer({
   maxOutputTokens,
   maxSummaryChars,
   metrics,
+  modelCallMetrics,
   modelRequestGate,
   promptVersion = "document-outline-summary-v2",
   providerFactory,
@@ -87,6 +90,7 @@ export function createKnowledgeSpaceOutlineSummaryEnhancer({
         maxInputChars,
         maxSummaryChars,
         ...(metrics ? { metrics } : {}),
+        ...(modelCallMetrics ? { modelCallMetrics } : {}),
         model: selection.model,
         promptVersion,
         provider: llmOutlineSummaryProvider({
@@ -239,6 +243,7 @@ function llmOutlineSummaryProvider({
               batchSize: inputs.length,
               ...(provider.kind ? { provider: provider.kind } : {}),
             },
+            retries: attempt,
             summary,
           }));
         } catch (error) {

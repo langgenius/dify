@@ -9,6 +9,7 @@ import type {
 
 import { nonnegativeSafeIntegerColumn, stringColumn } from "./database-row-utils";
 import { databasePlaceholder, quoteDatabaseIdentifier } from "./database-sql-utils";
+import { lockKnowledgeSpaceForDeletionAdmission } from "./knowledge-space-deletion-admission";
 
 export type KnowledgeSpaceMetadataFieldType = "number" | "string" | "time";
 
@@ -443,14 +444,9 @@ async function requireWritableSpace(
   executor: DatabaseExecutor,
   input: MetadataScope,
 ): Promise<void> {
-  const result = await executor.execute({
-    maxRows: 1,
-    operation: "select",
-    params: [input.tenantId, input.knowledgeSpaceId],
-    sql: `SELECT ${q(database, "id")} FROM ${q(database, "knowledge_spaces")} WHERE ${q(database, "tenant_id")} = ${p(database, 1)} AND ${q(database, "id")} = ${p(database, 2)} AND ${q(database, "state")} <> 'deleting' FOR UPDATE;`,
-    tableName: "knowledge_spaces",
-  });
-  if (!result.rows[0]) throw new KnowledgeSpaceMetadataNotFoundError("Knowledge space not found");
+  if (!(await lockKnowledgeSpaceForDeletionAdmission(database, executor, input))) {
+    throw new KnowledgeSpaceMetadataNotFoundError("Knowledge space not found");
+  }
 }
 
 function mapField(row: DatabaseRow): KnowledgeSpaceMetadataField {

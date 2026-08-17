@@ -6,6 +6,11 @@ import {
   type EntityExtractionProvider,
   type EntityExtractionProviderInput,
 } from "./entity-extraction-flow";
+import {
+  type IngestionModelCallOperationalMetrics,
+  ingestionModelUsageFromMetadata,
+  recordIngestionModelCallMetric,
+} from "./ingestion-model-observability";
 import { cloneJsonObject, isPlainObject } from "./json-utils";
 import { semanticExtractionModelRequestGate } from "./semantic-extraction-concurrency";
 
@@ -38,6 +43,7 @@ export interface LlmEntityExtractionProviderOptions {
   readonly maxOutputTokens?: number | undefined;
   readonly maxRetries?: number | undefined;
   readonly modelRequestGate?: ConcurrencyGate | undefined;
+  readonly metrics?: IngestionModelCallOperationalMetrics | undefined;
   readonly provider: EntityExtractionTextProvider;
   readonly temperature?: number | undefined;
 }
@@ -46,6 +52,7 @@ export function createLlmEntityExtractionProvider({
   maxOutputTokens = 1_500,
   maxRetries = 2,
   modelRequestGate = semanticExtractionModelRequestGate,
+  metrics,
   provider,
   temperature = 0,
 }: LlmEntityExtractionProviderOptions): EntityExtractionProvider {
@@ -67,6 +74,7 @@ export function createLlmEntityExtractionProvider({
       let result: GenerateEntityExtractionTextResult | undefined;
       let parsed: LlmEntityExtractionOutput | undefined;
       for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+        const startedAt = Date.now();
         try {
           result = await modelRequestGate.run(() =>
             provider.generate({
@@ -78,8 +86,27 @@ export function createLlmEntityExtractionProvider({
             }),
           );
           parsed = parseLlmEntityExtractionJson(result.text);
+          recordIngestionModelCallMetric(metrics, {
+            cacheHits: 0,
+            durationMs: Math.max(0, Date.now() - startedAt),
+            itemCount: 1,
+            outcome: "succeeded",
+            providerCalls: 1,
+            retries: attempt > 0 ? 1 : 0,
+            stage: "graph-entity",
+            ...ingestionModelUsageFromMetadata(result.metadata),
+          });
           break;
         } catch (error) {
+          recordIngestionModelCallMetric(metrics, {
+            cacheHits: 0,
+            durationMs: Math.max(0, Date.now() - startedAt),
+            itemCount: 1,
+            outcome: "failed",
+            providerCalls: 1,
+            retries: attempt > 0 ? 1 : 0,
+            stage: "graph-entity",
+          });
           if (attempt >= maxRetries) {
             throw error;
           }
@@ -119,6 +146,7 @@ export function createLlmEntityExtractionProvider({
       let messages = entityExtractionBatchMessages(inputs);
       let result: GenerateEntityExtractionTextResult | undefined;
       for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+        const startedAt = Date.now();
         try {
           result = await modelRequestGate.run(() =>
             provider.generate({
@@ -130,6 +158,16 @@ export function createLlmEntityExtractionProvider({
             }),
           );
           const parsed = parseLlmEntityExtractionBatchJson(result.text, inputs);
+          recordIngestionModelCallMetric(metrics, {
+            cacheHits: 0,
+            durationMs: Math.max(0, Date.now() - startedAt),
+            itemCount: inputs.length,
+            outcome: "succeeded",
+            providerCalls: 1,
+            retries: attempt > 0 ? 1 : 0,
+            stage: "graph-entity",
+            ...ingestionModelUsageFromMetadata(result.metadata),
+          });
           return parsed.map((entities) => ({
             entities,
             metadata: {
@@ -141,6 +179,15 @@ export function createLlmEntityExtractionProvider({
             },
           }));
         } catch (error) {
+          recordIngestionModelCallMetric(metrics, {
+            cacheHits: 0,
+            durationMs: Math.max(0, Date.now() - startedAt),
+            itemCount: inputs.length,
+            outcome: "failed",
+            providerCalls: 1,
+            retries: attempt > 0 ? 1 : 0,
+            stage: "graph-entity",
+          });
           if (attempt >= maxRetries) {
             if (result) {
               throw new EntityExtractionBatchContractError(

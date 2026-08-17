@@ -19,6 +19,7 @@ export interface PgBossClient {
     name: string,
     data: unknown,
     options?: {
+      readonly priority?: number;
       readonly singletonKey?: string;
       readonly startAfter?: Date;
     },
@@ -186,19 +187,31 @@ function toPgBossMessage(job: JobRecord) {
     attempts: job.attempts,
     id: job.id,
     ...(job.idempotencyKey ? { idempotencyKey: job.idempotencyKey } : {}),
+    priority: job.priority,
     type: job.type,
   };
 }
 
-function toPgBossOptions(
-  input: EnqueueJobInput,
-): { readonly singletonKey?: string; readonly startAfter?: Date } | undefined {
+function toPgBossOptions(input: EnqueueJobInput):
+  | {
+      readonly priority?: number;
+      readonly singletonKey?: string;
+      readonly startAfter?: Date;
+    }
+  | undefined {
   const options = {
+    ...(input.priority ? { priority: pgBossPriority(input.priority) } : {}),
     ...(input.idempotencyKey ? { singletonKey: input.idempotencyKey } : {}),
     ...(input.runAfter !== undefined ? { startAfter: new Date(input.runAfter) } : {}),
   };
 
   return Object.keys(options).length > 0 ? options : undefined;
+}
+
+function pgBossPriority(priority: NonNullable<EnqueueJobInput["priority"]>): number {
+  if (priority === "high") return 10;
+  if (priority === "low") return -10;
+  return 0;
 }
 
 function withExternalJobId(job: JobRecord, externalJobIds: ReadonlyMap<string, string>): JobRecord {

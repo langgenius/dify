@@ -39,7 +39,10 @@ import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { KnowledgeModelReadinessNotice } from './components/knowledge-model-readiness-notice'
 import { KnowledgeSettingsMembers } from './components/knowledge-settings-members'
-import { KnowledgeSpaceIcon } from './components/knowledge-space-icon'
+import {
+  DEFAULT_KNOWLEDGE_SPACE_ICON_BACKGROUND,
+  KnowledgeSpaceIcon,
+} from './components/knowledge-space-icon'
 import { RetrievalModeSegmentedControl } from './components/retrieval-mode-segmented-control'
 import { KNOWLEDGE_DESCRIPTION_MAX_LENGTH, KNOWLEDGE_NAME_MAX_LENGTH } from './constants'
 import { newKnowledgeListPath } from './routes'
@@ -232,6 +235,8 @@ export function KnowledgeSettingsForm({
   const initialName = space.technical_summary?.name ?? ''
   const initialDescription = space.technical_summary?.description ?? ''
   const initialIcon = space.technical_summary?.icon ?? '📙'
+  const initialIconBackground =
+    space.technical_summary?.icon_background ?? DEFAULT_KNOWLEDGE_SPACE_ICON_BACKGROUND
   const initialSelectedMemberIds = permissions
     .filter(
       (permission) =>
@@ -255,6 +260,7 @@ export function KnowledgeSettingsForm({
   const [name, setName] = useState(initialName)
   const [description, setDescription] = useState(initialDescription)
   const [icon, setIcon] = useState(initialIcon)
+  const [iconBackground, setIconBackground] = useState(initialIconBackground)
   const [visibility, setVisibility] = useState(space.visibility)
   const [selectedMemberIds, setSelectedMemberIds] = useState(initialSelectedMemberIds)
   const [apiEnabled, setApiEnabled] = useState(initialApiEnabled)
@@ -295,6 +301,12 @@ export function KnowledgeSettingsForm({
     apiEnabled: initialApiEnabled,
     workflowEnabled: initialWorkflowEnabled,
   })
+  const externalAccessBaselineRef = useRef<ExternalAccessDraft>({
+    apiEnabled: initialApiEnabled,
+    workflowEnabled: initialWorkflowEnabled,
+  })
+  const queuedExternalAccessDraftRef = useRef<ExternalAccessDraft | undefined>(undefined)
+  const externalAccessSaveInFlightRef = useRef(false)
   const completedBasicSaveFingerprintsRef = useRef<Partial<Record<BasicSaveSlice, string>>>({})
   const handledMigrationIdRef = useRef<string | undefined>(undefined)
   const migratingSettingsDraftRef = useRef<SettingsDraft | undefined>(undefined)
@@ -350,6 +362,7 @@ export function KnowledgeSettingsForm({
     name !== initialName ||
     description !== initialDescription ||
     icon !== initialIcon ||
+    iconBackground !== initialIconBackground ||
     visibility !== space.visibility
   const membersDirty = sortedIds(selectedMemberIds) !== sortedIds(initialSelectedMemberIds)
   const currentEmbeddingFingerprint = modelFingerprint(embeddingModel)
@@ -414,17 +427,21 @@ export function KnowledgeSettingsForm({
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.delete.mutationOptions(),
   )
   const isBasicSaving = spaceMutation.isPending || membersMutation.isPending || isBasicRefreshing
-  const isSaving =
-    spaceMutation.isPending ||
-    membersMutation.isPending ||
-    isBasicRefreshing ||
+  const isAnySavePending =
+    isBasicSaving ||
     externalAccessMutation.isPending ||
     settingsMutation.isPending ||
     Boolean(pendingMigrationId)
-  const fieldsDisabled = !canEdit || isSaving
-  const retrievalFieldsDisabled = fieldsDisabled || (!initialModelSetup && embeddingDirty)
+  const basicFieldsDisabled = !canEdit || isBasicSaving
+  const externalAccessDisabled = !canEdit || !canManageAccess || !modelSetupReady
+  const retrievalFieldsDisabled = !canEdit || (!initialModelSetup && embeddingDirty)
   const saveDisabled =
-    !basicDirty || nameInvalid || descriptionInvalid || membersInvalid || isSaving || serverConflict
+    !basicDirty ||
+    nameInvalid ||
+    descriptionInvalid ||
+    membersInvalid ||
+    isBasicSaving ||
+    serverConflict
   const startDraft = () => onDraftStart?.()
   const beginSettingsDraft = (patch: Partial<SettingsDraft>) => {
     if (!basicDirtyRef.current) settingsDraftOwnsFormLockRef.current = true
@@ -438,6 +455,7 @@ export function KnowledgeSettingsForm({
     setName(initialName)
     setDescription(initialDescription)
     setIcon(initialIcon)
+    setIconBackground(initialIconBackground)
     setVisibility(space.visibility)
     setSelectedMemberIds(initialSelectedMemberIds)
     setNameTouched(false)
@@ -547,6 +565,7 @@ export function KnowledgeSettingsForm({
         const body = {
           ...(description !== initialDescription ? { description } : {}),
           ...(icon !== initialIcon ? { icon } : {}),
+          ...(iconBackground !== initialIconBackground ? { icon_background: iconBackground } : {}),
           ...(name !== initialName ? { name: name.trim() } : {}),
           ...(visibility !== space.visibility ? { visibility } : {}),
         }
@@ -587,28 +606,44 @@ export function KnowledgeSettingsForm({
   }
 
   const performExternalAccessSave = async (draft: ExternalAccessDraft) => {
-    if (!canEdit || !canManageAccess || externalAccessMutation.isPending) return
-
     pendingExternalAccessRef.current = draft
-    setSaveErrorSlice(undefined)
-    try {
-      await externalAccessMutation.mutateAsync({
-        body: {
-          agent_enabled: draft.apiEnabled,
-          mcp_enabled: externalAccess.mcp_enabled,
-          service_api_enabled: draft.apiEnabled,
-          workflow_enabled: draft.workflowEnabled,
-        },
-        params: { control_space_id: space.control_space_id },
-      })
-      setApiEnabled(draft.apiEnabled)
-      setWorkflowEnabled(draft.workflowEnabled)
-      await invalidateSettingsQueries()
-    } catch {
-      setApiEnabled(initialApiEnabled)
-      setWorkflowEnabled(initialWorkflowEnabled)
-      setSaveErrorSlice('externalAccess')
+    if (!canEdit || !canManageAccess) return
+    if (externalAccessSaveInFlightRef.current) {
+      queuedExternalAccessDraftRef.current = draft
+      return
     }
+
+    externalAccessSaveInFlightRef.current = true
+    let nextDraft: ExternalAccessDraft | undefined = draft
+    while (nextDraft) {
+      queuedExternalAccessDraftRef.current = undefined
+      setSaveErrorSlice(undefined)
+      try {
+        await externalAccessMutation.mutateAsync({
+          body: {
+            agent_enabled: nextDraft.apiEnabled,
+            mcp_enabled: externalAccess.mcp_enabled,
+            service_api_enabled: nextDraft.apiEnabled,
+            workflow_enabled: nextDraft.workflowEnabled,
+          },
+          params: { control_space_id: space.control_space_id },
+        })
+        externalAccessBaselineRef.current = nextDraft
+        nextDraft = queuedExternalAccessDraftRef.current
+      } catch {
+        queuedExternalAccessDraftRef.current = undefined
+        externalAccessSaveInFlightRef.current = false
+        setApiEnabled(externalAccessBaselineRef.current.apiEnabled)
+        setWorkflowEnabled(externalAccessBaselineRef.current.workflowEnabled)
+        setSaveErrorSlice('externalAccess')
+        return
+      }
+    }
+
+    externalAccessSaveInFlightRef.current = false
+    setApiEnabled(externalAccessBaselineRef.current.apiEnabled)
+    setWorkflowEnabled(externalAccessBaselineRef.current.workflowEnabled)
+    await invalidateSettingsQueries()
   }
 
   const saveSettingsDraft = async (draft: SettingsDraft) => {
@@ -920,11 +955,11 @@ export function KnowledgeSettingsForm({
             <button
               type="button"
               aria-label={tSettings(($) => $['form.nameAndIcon'])}
-              disabled={fieldsDisabled}
+              disabled={basicFieldsDisabled}
               className="shrink-0 rounded-lg outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed"
               onClick={() => setIconPickerOpen(true)}
             >
-              <KnowledgeSpaceIcon icon={icon} size="small" />
+              <KnowledgeSpaceIcon background={iconBackground} icon={icon} size="small" />
             </button>
             <div className="min-w-0 flex-1">
               <Input
@@ -935,7 +970,7 @@ export function KnowledgeSettingsForm({
                 name="knowledge-name"
                 value={name}
                 maxLength={KNOWLEDGE_NAME_MAX_LENGTH}
-                disabled={fieldsDisabled}
+                disabled={basicFieldsDisabled}
                 className={cn(nameTouched && nameInvalid && 'ring-1 ring-text-destructive')}
                 onBlur={() => setNameTouched(true)}
                 onChange={(event) => {
@@ -975,7 +1010,7 @@ export function KnowledgeSettingsForm({
               autoComplete="off"
               name="knowledge-description"
               value={description}
-              disabled={fieldsDisabled}
+              disabled={basicFieldsDisabled}
               placeholder={t(($) => $['newKnowledge.settings.descriptionPlaceholder'])}
               className={cn(
                 'min-h-20 resize-none',
@@ -1002,7 +1037,7 @@ export function KnowledgeSettingsForm({
 
         <SettingsRow label={tSettings(($) => $['form.permissions'])}>
           <KnowledgeSettingsMembers
-            disabled={!canEdit || !canManageAccess || isSaving}
+            disabled={!canEdit || !canManageAccess || isBasicSaving}
             hasError={membersInvalid}
             members={members}
             ownerAccountId={space.owner_account_id}
@@ -1023,7 +1058,7 @@ export function KnowledgeSettingsForm({
           <div className="flex justify-end gap-2 pt-1">
             <Button
               type="button"
-              disabled={(!isDirty && !serverConflict) || isSaving}
+              disabled={(!isDirty && !serverConflict) || isBasicSaving}
               onClick={resetDraft}
             >
               {tCommon(($) => $['operation.cancel'])}
@@ -1044,7 +1079,7 @@ export function KnowledgeSettingsForm({
               aria-label={t(($) => $['newKnowledge.apiAgentAccess'])}
               aria-describedby={API_ACCESS_DESCRIPTION_ID}
               checked={apiEnabled}
-              disabled={!canEdit || !canManageAccess || isSaving || !modelSetupReady}
+              disabled={externalAccessDisabled}
               onCheckedChange={(checked) => {
                 setApiEnabled(checked)
                 void performExternalAccessSave({ apiEnabled: checked, workflowEnabled })
@@ -1065,7 +1100,7 @@ export function KnowledgeSettingsForm({
               aria-label={t(($) => $['newKnowledge.workflowAccess'])}
               aria-describedby={WORKFLOW_ACCESS_DESCRIPTION_ID}
               checked={workflowEnabled}
-              disabled={!canEdit || !canManageAccess || isSaving || !modelSetupReady}
+              disabled={externalAccessDisabled}
               onCheckedChange={(checked) => {
                 setWorkflowEnabled(checked)
                 void performExternalAccessSave({ apiEnabled, workflowEnabled: checked })
@@ -1144,7 +1179,7 @@ export function KnowledgeSettingsForm({
                 ariaRequired
                 value={embeddingModel}
                 models={embeddingModelList}
-                disabled={fieldsDisabled || (!initialModelSetup && retrievalDirty)}
+                disabled={!canEdit || (!initialModelSetup && retrievalDirty)}
                 className="w-full"
                 onValueChange={(model) => {
                   if ((space.technical_summary?.document_count ?? 0) > 0) {
@@ -1362,7 +1397,7 @@ export function KnowledgeSettingsForm({
               <Button
                 type="button"
                 tone="destructive"
-                disabled={isSaving}
+                disabled={isAnySavePending}
                 onClick={() => setDeleteDialogOpen(true)}
               >
                 {tCommon(($) => $['operation.delete'])}
@@ -1375,12 +1410,13 @@ export function KnowledgeSettingsForm({
       <AppIconPicker
         open={iconPickerOpen}
         enableImageUpload={false}
-        initialEmoji={{ icon }}
+        initialEmoji={{ background: iconBackground, icon }}
         onOpenChange={setIconPickerOpen}
         onSelect={(selection) => {
           if (selection.type === 'emoji') {
             startDraft()
             setIcon(selection.icon)
+            setIconBackground(selection.background)
           }
         }}
       />

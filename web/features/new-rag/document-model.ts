@@ -2,6 +2,22 @@ import type { BackgroundTask, DocumentProcessingTask, LogicalDocument } from './
 
 export type DocumentDisplayStatus = 'ready' | 'queued' | 'processing' | 'failed' | 'disabled'
 
+export function documentCanDownload(status: DocumentDisplayStatus) {
+  return status !== 'queued' && status !== 'processing'
+}
+
+export function documentCanReindex(status: DocumentDisplayStatus) {
+  return status !== 'queued' && status !== 'processing' && status !== 'disabled'
+}
+
+export function documentCanToggleAvailability(status: DocumentDisplayStatus) {
+  return status !== 'queued' && status !== 'processing' && status !== 'failed'
+}
+
+export function documentShowsAvailabilityAction(status: DocumentDisplayStatus) {
+  return status !== 'failed'
+}
+
 export const ACTIVE_TASK_STATES = new Set<DocumentProcessingTask['state']>([
   'dispatch_pending',
   'queued',

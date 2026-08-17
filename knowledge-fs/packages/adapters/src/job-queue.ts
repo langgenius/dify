@@ -4,6 +4,7 @@ import type {
   FailJobOptions,
   HeartbeatJobInput,
   JobPayload,
+  JobPriority,
   JobQueueAdapter,
   JobQueueStats,
   JobRecord,
@@ -32,6 +33,7 @@ interface StoredJob {
   idempotencyKey: string | undefined;
   leaseExpiresAt: number | undefined;
   payload: JobPayload;
+  priority: JobPriority;
   runAfter: number | undefined;
   startedAt: number | undefined;
   status: JobStatus;
@@ -126,6 +128,7 @@ export function createInlineJobQueueAdapter({
         idempotencyKey: input.idempotencyKey,
         leaseExpiresAt: undefined,
         payload: clonePayload(input.payload),
+        priority: input.priority ?? "normal",
         runAfter: input.runAfter,
         startedAt: undefined,
         status: "queued",
@@ -243,7 +246,14 @@ function leaseReadyJobs(
   const leaseMs = "leaseMs" in input ? input.leaseMs : undefined;
   const dequeued: JobRecord[] = [];
 
-  for (const job of jobs.values()) {
+  const candidates = [...jobs.values()].sort(
+    (left, right) =>
+      jobPriorityScore(right.priority) - jobPriorityScore(left.priority) ||
+      left.createdAt - right.createdAt ||
+      left.id.localeCompare(right.id),
+  );
+
+  for (const job of candidates) {
     if (dequeued.length >= input.limit) {
       break;
     }
@@ -360,6 +370,7 @@ function toJobRecord(job: StoredJob): JobRecord {
     createdAt: job.createdAt,
     id: job.id,
     payload: clonePayload(job.payload),
+    priority: job.priority,
     status: job.status,
     type: job.type,
     ...(job.completedAt !== undefined ? { completedAt: job.completedAt } : {}),
@@ -372,6 +383,12 @@ function toJobRecord(job: StoredJob): JobRecord {
     ...(job.startedAt !== undefined ? { startedAt: job.startedAt } : {}),
     ...(job.workerId ? { workerId: job.workerId } : {}),
   };
+}
+
+function jobPriorityScore(priority: JobPriority): number {
+  if (priority === "high") return 2;
+  if (priority === "normal") return 1;
+  return 0;
 }
 
 function clonePayload(payload: JobPayload): JobPayload {

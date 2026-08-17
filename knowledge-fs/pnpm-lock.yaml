@@ -101,6 +101,9 @@ importers:
       hono:
         specifier: ^4.12.25
         version: 4.12.31
+      sharp:
+        specifier: 0.35.3
+        version: 0.35.3(@types/node@22.19.18)
     devDependencies:
       '@types/node':
         specifier: ^22.10.2

@@ -46,7 +46,11 @@ export function KnowledgeSpaceCard({
             title={iconName}
             className="shrink-0"
           >
-            <KnowledgeSpaceIcon icon={summary?.icon} size="large" />
+            <KnowledgeSpaceIcon
+              background={summary?.icon_background}
+              icon={summary?.icon}
+              size="large"
+            />
           </div>
           <div className="min-w-0 flex-1 py-px">
             <h2 className="truncate system-md-semibold text-text-secondary">{name}</h2>

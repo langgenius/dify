@@ -146,6 +146,8 @@ describe("migration file rendering", () => {
       "packages/database/migrations/0042_workflow_failed_retrieval_capture.tidb.sql",
       "packages/database/migrations/0043_semantic_generation_receipts.postgres.sql",
       "packages/database/migrations/0043_semantic_generation_receipts.tidb.sql",
+      "packages/database/migrations/0044_document_semantic_window_checkpoints.postgres.sql",
+      "packages/database/migrations/0044_document_semantic_window_checkpoints.tidb.sql",
     ]);
     const workflowCapturePostgres = artifacts.find(
       (artifact) =>
@@ -895,6 +897,7 @@ describe("migration file rendering", () => {
       "packages/database/migrations/0041_logical_document_availability.postgres.sql",
       "packages/database/migrations/0042_workflow_failed_retrieval_capture.postgres.sql",
       "packages/database/migrations/0043_semantic_generation_receipts.postgres.sql",
+      "packages/database/migrations/0044_document_semantic_window_checkpoints.postgres.sql",
     ]);
     expect(
       getPendingMigrationArtifacts({
@@ -942,6 +945,7 @@ describe("migration file rendering", () => {
           "0041_logical_document_availability",
           "0042_workflow_failed_retrieval_capture",
           "0043_semantic_generation_receipts",
+          "0044_document_semantic_window_checkpoints",
         ],
         dialect: "postgres",
       }),

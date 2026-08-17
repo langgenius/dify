@@ -12,6 +12,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
+import { CreatorFilter } from '@/app/components/datasets/creator-filter'
 import {
   getStepByStepTourDropdownMenuContentProps,
   useStepByStepTourControlledDropdown,
@@ -24,6 +25,7 @@ type Props = {
   apiBaseUrl: string
   canConnectExternalDataset: boolean
   canCreateDataset: boolean
+  creatorFilterValue: string[]
   includeAll: boolean
   isCurrentWorkspaceOwner: boolean
   keywords: string
@@ -32,6 +34,7 @@ type Props = {
   onCreateFromPipeline: () => void
   onConnectDataset: () => void
   onExternalApiClick: () => void
+  onCreatorsChange: (value: string[]) => void
   onIncludeAllChange: () => void
   onKeywordsChange: (value: string) => void
   onOpenTagManagement: () => void
@@ -46,6 +49,7 @@ const DatasetListHeader = ({
   apiBaseUrl,
   canConnectExternalDataset,
   canCreateDataset,
+  creatorFilterValue,
   includeAll,
   isCurrentWorkspaceOwner,
   keywords,
@@ -54,6 +58,7 @@ const DatasetListHeader = ({
   onCreateFromPipeline,
   onConnectDataset,
   onExternalApiClick,
+  onCreatorsChange,
   onIncludeAllChange,
   onKeywordsChange,
   onOpenTagManagement,
@@ -106,8 +111,14 @@ const DatasetListHeader = ({
             onChange={onTagsChange}
             onOpenTagManagement={onOpenTagManagement}
             showLeadingIcon={false}
+            triggerClassName="min-w-0"
           />
-          <SearchInput className="w-50" value={keywords} onValueChange={onKeywordsChange} />
+          <CreatorFilter value={creatorFilterValue} onChange={onCreatorsChange} />
+          <SearchInput
+            className="w-full min-w-0 sm:w-50"
+            value={keywords}
+            onValueChange={onKeywordsChange}
+          />
           {isCurrentWorkspaceOwner && (
             <>
               <div className="h-3.5 w-px bg-divider-regular" />

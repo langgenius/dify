@@ -146,7 +146,21 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
 }))
 
 vi.mock('@/app/components/base/app-icon-picker', () => ({
-  default: () => null,
+  default: ({
+    open,
+    onSelect,
+  }: {
+    open: boolean
+    onSelect?: (selection: { background: string; icon: string; type: 'emoji' }) => void
+  }) =>
+    open ? (
+      <button
+        type="button"
+        onClick={() => onSelect?.({ background: '#FCE7F6', icon: 'camera', type: 'emoji' })}
+      >
+        Select camera style
+      </button>
+    ) : null,
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -365,6 +379,41 @@ describe('KnowledgeSettingsForm', () => {
     await waitFor(() => expect(nameInput).toBeEnabled())
   })
 
+  it('keeps access and retrieval controls interactive while basic info is saving', async () => {
+    const user = userEvent.setup()
+    let finishBasicSave!: (value: typeof space) => void
+    serviceMock.patchSpace.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishBasicSave = resolve
+      }),
+    )
+    renderForm()
+
+    const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
+    await user.clear(nameInput)
+    await user.type(nameInput, 'Saving camera specs')
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.settings.saveChanges' }),
+    )
+
+    await waitFor(() => expect(serviceMock.patchSpace).toHaveBeenCalledOnce())
+    const apiAccessSwitch = screen.getByRole('switch', {
+      name: 'dataset.newKnowledge.apiAgentAccess',
+    })
+    const reasoningSelector = screen.getByRole('combobox', {
+      name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
+    })
+    expect(apiAccessSwitch).not.toHaveAttribute('aria-disabled', 'true')
+    expect(reasoningSelector).toBeEnabled()
+    await user.click(apiAccessSwitch)
+    await user.click(reasoningSelector)
+
+    await waitFor(() => expect(serviceMock.patchExternalAccess).toHaveBeenCalledOnce())
+    await waitFor(() => expect(serviceMock.patchSettings).toHaveBeenCalledOnce())
+    finishBasicSave(space)
+    await waitFor(() => expect(serviceMock.patchSpace).toHaveResolved())
+  })
+
   it('uses the 40-character knowledge name limit from the design contract', () => {
     renderForm()
 
@@ -420,6 +469,55 @@ describe('KnowledgeSettingsForm', () => {
         expect.anything(),
       )
     })
+  })
+
+  it('saves the selected emoji background style with the knowledge icon', async () => {
+    const user = userEvent.setup()
+    renderForm()
+
+    const iconButton = screen.getByRole('button', {
+      name: 'datasetSettings.form.nameAndIcon',
+    })
+    await user.click(iconButton)
+    await user.click(screen.getByRole('button', { name: 'Select camera style' }))
+
+    expect(iconButton.firstElementChild).toHaveStyle({ background: '#FCE7F6' })
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.settings.saveChanges',
+      }),
+    )
+
+    await waitFor(() => {
+      expect(serviceMock.patchSpace).toHaveBeenCalledWith(
+        {
+          body: {
+            icon: 'camera',
+            icon_background: '#FCE7F6',
+          },
+          params: { control_space_id: 'space-1' },
+        },
+        expect.anything(),
+      )
+    })
+  })
+
+  it('restores a saved emoji background style from the space detail', () => {
+    renderForm({
+      space: {
+        ...space,
+        technical_summary: {
+          ...space.technical_summary,
+          icon_background: '#D3F8DF',
+        },
+      },
+    })
+
+    const iconButton = screen.getByRole('button', {
+      name: 'datasetSettings.form.nameAndIcon',
+    })
+    expect(iconButton.firstElementChild).toHaveStyle({ background: '#D3F8DF' })
   })
 
   it('accepts 2000 description characters and blocks 2001 with a field error', async () => {
@@ -491,6 +589,76 @@ describe('KnowledgeSettingsForm', () => {
       }),
     ).toBeDisabled()
     expect(toastMock.success).not.toHaveBeenCalled()
+  })
+
+  it('keeps unrelated form controls interactive while external access is saving', async () => {
+    const user = userEvent.setup()
+    let finishExternalAccessSave!: (value: typeof externalAccess) => void
+    serviceMock.patchExternalAccess.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishExternalAccessSave = resolve
+      }),
+    )
+    renderForm()
+
+    const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
+    await user.clear(nameInput)
+    await user.type(nameInput, 'Unsaved camera notes')
+    await user.click(screen.getByRole('switch', { name: 'dataset.newKnowledge.apiAgentAccess' }))
+
+    await waitFor(() => expect(serviceMock.patchExternalAccess).toHaveBeenCalledOnce())
+    expect(nameInput).toBeEnabled()
+    expect(nameInput).toHaveValue('Unsaved camera notes')
+    expect(screen.getByRole('textbox', { name: 'datasetSettings.form.desc' })).toBeEnabled()
+    expect(
+      screen.getByRole('spinbutton', { name: 'dataset.newKnowledge.settings.topKLabel' }),
+    ).toBeEnabled()
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.settings.saveChanges' }),
+    ).toBeEnabled()
+
+    finishExternalAccessSave(externalAccess)
+    await waitFor(() => expect(serviceMock.patchExternalAccess).toHaveResolved())
+  })
+
+  it('serializes independent access switches without blocking either control', async () => {
+    const user = userEvent.setup()
+    let finishFirstAccessSave!: (value: typeof externalAccess) => void
+    serviceMock.patchExternalAccess.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishFirstAccessSave = resolve
+      }),
+    )
+    renderForm()
+
+    const apiAccessSwitch = screen.getByRole('switch', {
+      name: 'dataset.newKnowledge.apiAgentAccess',
+    })
+    const workflowAccessSwitch = screen.getByRole('switch', {
+      name: 'dataset.newKnowledge.workflowAccess',
+    })
+    await user.click(apiAccessSwitch)
+
+    await waitFor(() => expect(serviceMock.patchExternalAccess).toHaveBeenCalledOnce())
+    expect(apiAccessSwitch).not.toHaveAttribute('aria-disabled', 'true')
+    expect(workflowAccessSwitch).not.toHaveAttribute('aria-disabled', 'true')
+    await user.click(workflowAccessSwitch)
+    expect(serviceMock.patchExternalAccess).toHaveBeenCalledOnce()
+
+    finishFirstAccessSave(externalAccess)
+    await waitFor(() => expect(serviceMock.patchExternalAccess).toHaveBeenCalledTimes(2))
+    expect(serviceMock.patchExternalAccess).toHaveBeenLastCalledWith(
+      {
+        body: {
+          agent_enabled: false,
+          mcp_enabled: true,
+          service_api_enabled: false,
+          workflow_enabled: false,
+        },
+        params: { control_space_id: 'space-1' },
+      },
+      expect.anything(),
+    )
   })
 
   it('enables Workflow access independently and preserves API and MCP channels', async () => {
@@ -886,6 +1054,7 @@ describe('KnowledgeSettingsForm', () => {
   })
 
   it('serializes rapid model selections and saves the latest draft with the new revision', async () => {
+    const user = userEvent.setup()
     let resolveFirstSave!: (value: { settings: KnowledgeFsSettingsResponse }) => void
     const firstSave = new Promise<Parameters<typeof resolveFirstSave>[0]>((resolve) => {
       resolveFirstSave = resolve
@@ -903,10 +1072,16 @@ describe('KnowledgeSettingsForm', () => {
     const rerankSelector = screen.getByRole('combobox', {
       name: 'common.modelProvider.rerankModel.key',
     })
-    await act(async () => {
-      reasoningSelector.click()
-      rerankSelector.click()
-    })
+    await user.click(reasoningSelector)
+
+    await waitFor(() => expect(serviceMock.patchSettings).toHaveBeenCalledOnce())
+    expect(reasoningSelector).toBeEnabled()
+    expect(rerankSelector).toBeEnabled()
+    expect(screen.getByRole('textbox', { name: 'datasetSettings.form.name' })).toBeEnabled()
+    expect(
+      screen.getByRole('switch', { name: 'dataset.newKnowledge.apiAgentAccess' }),
+    ).not.toHaveAttribute('aria-disabled', 'true')
+    await user.click(rerankSelector)
 
     expect(onDraftStart).toHaveBeenCalledTimes(2)
     expect(onDraftStart.mock.invocationCallOrder[0]).toBeLessThan(

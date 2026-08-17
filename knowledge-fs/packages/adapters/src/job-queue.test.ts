@@ -33,6 +33,25 @@ describe("inline job queue adapter", () => {
     });
   });
 
+  it("leases high-priority compilation before normal and low-priority background work", async () => {
+    const queue = createInlineJobQueueAdapter({
+      maxBatchSize: 3,
+      maxQueuedJobs: 10,
+      now: () => 1_000,
+    });
+    const low = await queue.enqueue({ payload: {}, priority: "low", type: "findability" });
+    const normal = await queue.enqueue({ payload: {}, type: "maintenance" });
+    const high = await queue.enqueue({ payload: {}, priority: "high", type: "document.compile" });
+
+    const leased = await queue.lease({ leaseMs: 1_000, limit: 3, workerId: "worker-1" });
+
+    expect(leased.map((job) => [job.id, job.priority])).toEqual([
+      [high.id, "high"],
+      [normal.id, "normal"],
+      [low.id, "low"],
+    ]);
+  });
+
   it("leases jobs with expiration and exposes status snapshots", async () => {
     const queue = createInlineJobQueueAdapter({
       maxBatchSize: 2,

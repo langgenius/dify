@@ -143,9 +143,9 @@ class TestDatasourceProviderService:
 
     @pytest.fixture
     def mock_user(self):
-        u = MagicMock()
-        u.id = "uid-1"
-        return u
+        user = Account(name="Test User", email="user@example.com")
+        user.id = "uid-1"
+        return user
 
     # -----------------------------------------------------------------------
     # get_current_user (lines 27-40)
@@ -153,24 +153,26 @@ class TestDatasourceProviderService:
 
     def test_should_return_proxy_when_current_object_is_account(self):
         with patch("libs.login.current_user", new_callable=MagicMock) as proxy:
-            user_obj = MagicMock()
-            user_obj.__class__ = Account
+            user_obj = Account(name="Test User", email="user@example.com")
             proxy._get_current_object.return_value = user_obj
             assert get_current_user() is proxy
 
     def test_should_return_proxy_when_current_object_is_enduser(self):
         with patch("libs.login.current_user", new_callable=MagicMock) as proxy:
-            user_obj = MagicMock()
-            user_obj.__class__ = EndUser
+            user_obj = EndUser(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                type="service-api",
+                session_id="session-1",
+            )
             proxy._get_current_object.return_value = user_obj
             assert get_current_user() is proxy
 
     def test_should_return_proxy_when_get_current_object_raises_attribute_error(self):
         """AttributeError from LocalProxy falls back to the proxy itself."""
-        with patch("libs.login.current_user", new_callable=MagicMock) as proxy:
-            proxy._get_current_object.side_effect = AttributeError("no attr")
-            proxy.__class__ = Account  # make the proxy itself satisfy isinstance
-            assert get_current_user() is proxy
+        account = Account(name="Test User", email="user@example.com")
+        with patch("libs.login.current_user", account):
+            assert get_current_user() is account
 
     def test_should_raise_type_error_when_user_is_not_account_or_enduser(self):
         with patch("libs.login.current_user", new_callable=MagicMock) as proxy:

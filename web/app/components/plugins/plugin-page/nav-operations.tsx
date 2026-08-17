@@ -93,7 +93,7 @@ export function SubmitRequestDropdown({ dividerAfterFirst }: SubmitRequestDropdo
             size="lg"
             className="data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
           >
-            <span className="i-ri-book-open-line size-4 shrink-0" />
+            <span aria-hidden className="i-ri-book-open-line size-4 shrink-0" />
           </IconButton>
         }
       />

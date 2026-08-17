@@ -21,6 +21,8 @@ def test_celery_registers_initial_source_task_when_knowledge_fs_lifecycle_is_rea
     config.CELERY_TASK_ANNOTATIONS = {}
     config.CELERY_BEAT_SCHEDULER_TIME = 1
     config.KNOWLEDGE_FS_LIFECYCLE_POLL_INTERVAL_SECONDS = 2
+    config.ENABLE_CONVERSATION_CLEANUP_TASK = True
+    config.CONVERSATION_CLEANUP_TASK_INTERVAL = 5
     config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK = False
     config.ENABLE_CLEAN_UNUSED_DATASETS_TASK = False
     config.ENABLE_CREATE_TIDB_SERVERLESS_TASK = False
@@ -55,6 +57,11 @@ def test_celery_registers_initial_source_task_when_knowledge_fs_lifecycle_is_rea
     assert "tasks.knowledge_fs_initial_source_preview_tasks" in celery_app.conf["imports"]
     assert "tasks.knowledge_fs_failed_retrieval_tasks" in celery_app.conf["imports"]
     assert "tasks.knowledge_fs_lifecycle_tasks" in celery_app.conf["imports"]
+    assert "tasks.delete_conversation_task" in celery_app.conf["imports"]
+    assert celery_app.conf["beat_schedule"]["conversation_cleanup_sweeper"] == {
+        "task": "tasks.delete_conversation_task.sweep_deleted_conversations",
+        "schedule": timedelta(minutes=5),
+    }
     assert celery_app.conf["beat_schedule"]["knowledge_fs_staged_upload_cleanup"] == {
         "task": "tasks.knowledge_fs_lifecycle_tasks.cleanup_knowledge_fs_staged_uploads",
         "schedule": timedelta(seconds=2),

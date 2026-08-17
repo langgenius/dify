@@ -1128,6 +1128,24 @@ async function databaseHasLegacyNullGenerationState(
 ): Promise<boolean> {
   const knowledgeSpaceId = UuidSchema.parse(input.knowledgeSpaceId);
   const tenant = tenantId(input.tenantId);
+  const publishedHead = await executor.execute({
+    maxRows: 1,
+    operation: "select",
+    params: [tenant, knowledgeSpaceId],
+    sql: `SELECT ${q(database, "publication_id")} FROM ${q(
+      database,
+      headTableName,
+    )} WHERE ${q(database, "tenant_id")} = ${p(database, 1)} AND ${q(
+      database,
+      "knowledge_space_id",
+    )} = ${p(database, 2)} LIMIT 1;`,
+    tableName: headTableName,
+  });
+  // A publication head is the durable boundary between a legacy space and a
+  // publication-aware space. Read-side compatibility caches may intentionally
+  // retain null-generation rows after that boundary, so they must not fence
+  // later document mutations or trigger the expensive legacy-state scan.
+  if (publishedHead.rows[0]) return false;
   const legacyTables = [
     "knowledge_nodes",
     "index_projections",

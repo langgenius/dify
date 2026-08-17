@@ -336,6 +336,7 @@ def test_builtin_provider_add_passes_payload(
     app: Flask, controller_module: ModuleType, monkeypatch: pytest.MonkeyPatch
 ):
     user = _mock_account()
+    user.role = TenantAccountRole.ADMIN
     _set_current_account(monkeypatch, controller_module, user, "tenant-456")
 
     service_mock = MagicMock(return_value={"result": "success"})

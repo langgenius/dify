@@ -61,6 +61,7 @@ describe("document compilation job state machine", () => {
           tenantId: "tenant-1",
           version: 1,
         },
+        priority: "high",
         type: "document.compile",
       },
     ]);

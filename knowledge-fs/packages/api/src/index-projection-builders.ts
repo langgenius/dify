@@ -12,10 +12,15 @@ import {
 import type { EmbeddingProvider } from "@knowledge/embeddings";
 
 import { deterministicChildId } from "./api-shared-utils";
+import { type DocumentModelBudget, estimateDocumentModelTokens } from "./document-model-budget";
 import {
   type IndexProjectionRepository,
   cloneIndexProjection,
 } from "./index-projection-repository";
+import {
+  type IngestionModelCallOperationalMetrics,
+  recordIngestionModelCallMetric,
+} from "./ingestion-model-observability";
 import { cloneJsonObject, isPlainObject } from "./json-utils";
 import { cloneKnowledgeNode } from "./knowledge-node-repository";
 import {
@@ -29,6 +34,7 @@ export interface BuildDenseVectorProjectionInput {
   /** Immutable profile captured by a compilation/profile-migration attempt. */
   readonly embeddingProfile?: KnowledgeSpaceEmbeddingProfile | undefined;
   readonly model: string;
+  readonly modelBudget?: DocumentModelBudget | undefined;
   readonly nodes: readonly KnowledgeNode[];
   readonly projectionVersion: number;
   readonly publicationGenerationId?: string | undefined;
@@ -47,6 +53,7 @@ export interface BuildFtsProjectionInput {
 
 export interface BuildVisualEmbeddingProjectionInput {
   readonly model: string;
+  readonly modelBudget?: DocumentModelBudget | undefined;
   readonly nodes: readonly KnowledgeNode[];
   readonly projectionVersion: number;
   readonly publicationGenerationId?: string | undefined;
@@ -96,6 +103,7 @@ export interface EmbedVisualAssetsResult {
   readonly metadata: {
     readonly model: string;
     readonly provider: string;
+    readonly usage?: { readonly totalTokens: number } | undefined;
   };
   readonly model: string;
 }
@@ -130,6 +138,7 @@ export interface DenseVectorProjectionBuilderOptions {
   readonly expectedDimension?: number | undefined;
   readonly generateId?: () => string;
   readonly maxBatchSize: number;
+  readonly metrics?: IngestionModelCallOperationalMetrics | undefined;
   readonly projections: IndexProjectionRepository;
 }
 
@@ -142,6 +151,7 @@ export interface FtsProjectionBuilderOptions {
 export interface VisualEmbeddingProjectionBuilderOptions {
   readonly generateId?: () => string;
   readonly maxBatchSize: number;
+  readonly metrics?: IngestionModelCallOperationalMetrics | undefined;
   readonly provider: VisualEmbeddingProvider;
   readonly projections: IndexProjectionRepository;
 }
@@ -168,6 +178,7 @@ export function createDenseVectorProjectionBuilder({
   expectedDimension,
   generateId,
   maxBatchSize,
+  metrics,
   projections,
 }: DenseVectorProjectionBuilderOptions): DenseVectorProjectionBuilder {
   if (!embeddings && !embeddingResolver) {
@@ -184,6 +195,7 @@ export function createDenseVectorProjectionBuilder({
   return {
     build: async ({
       model,
+      modelBudget,
       nodes,
       embeddingProfile,
       projectionVersion,
@@ -247,16 +259,60 @@ export function createDenseVectorProjectionBuilder({
           : new Map<string, IndexProjection>();
       const nodesToEmbed = parsedNodes.filter((node) => !reusableByNodeId.has(node.id));
       if (nodesToEmbed.length === 0) {
+        recordIngestionModelCallMetric(metrics, {
+          cacheHits: parsedNodes.length,
+          durationMs: 0,
+          itemCount: parsedNodes.length,
+          outcome: "succeeded",
+          providerCalls: 0,
+          retries: 0,
+          stage: "text-embedding",
+        });
         return parsedNodes.map((node) =>
           cloneIndexProjection(requiredProjection(reusableByNodeId, node.id)),
         );
       }
-      const result = await provider.embed({
-        inputType: "search_document",
-        model: resolvedEmbedding?.model ?? model,
-        ...(signal ? { signal } : {}),
-        texts: nodesToEmbed.map((node) => node.text),
-        ...(tenantId ? { tenantId } : {}),
+      modelBudget?.reserve({
+        estimatedTokens: nodesToEmbed.reduce(
+          (total, node) => total + estimateDocumentModelTokens(node.text),
+          0,
+        ),
+        itemCount: nodesToEmbed.length,
+        stage: "text-embedding",
+      });
+      const embeddingStartedAt = Date.now();
+      let result: Awaited<ReturnType<EmbeddingProvider["embed"]>>;
+      try {
+        result = await provider.embed({
+          inputType: "search_document",
+          model: resolvedEmbedding?.model ?? model,
+          ...(signal ? { signal } : {}),
+          texts: nodesToEmbed.map((node) => node.text),
+          ...(tenantId ? { tenantId } : {}),
+        });
+      } catch (error) {
+        recordIngestionModelCallMetric(metrics, {
+          cacheHits: reusableByNodeId.size,
+          durationMs: Math.max(0, Date.now() - embeddingStartedAt),
+          itemCount: parsedNodes.length,
+          outcome: "failed",
+          providerCalls: 1,
+          retries: 0,
+          stage: "text-embedding",
+        });
+        throw error;
+      }
+      recordIngestionModelCallMetric(metrics, {
+        cacheHits: reusableByNodeId.size,
+        durationMs: Math.max(0, Date.now() - embeddingStartedAt),
+        itemCount: parsedNodes.length,
+        outcome: "succeeded",
+        providerCalls: 1,
+        retries: 0,
+        stage: "text-embedding",
+        ...(result.metadata.usage?.totalTokens === undefined
+          ? {}
+          : { totalTokens: result.metadata.usage.totalTokens }),
       });
       signal?.throwIfAborted();
 
@@ -529,12 +585,14 @@ export function createFtsProjectionBuilder({
 export function createVisualEmbeddingProjectionBuilder({
   generateId,
   maxBatchSize,
+  metrics,
   projections,
   provider,
 }: VisualEmbeddingProjectionBuilderOptions): VisualEmbeddingProjectionBuilder {
   return {
     build: async ({
       model,
+      modelBudget,
       nodes,
       projectionVersion,
       publicationGenerationId,
@@ -579,16 +637,56 @@ export function createVisualEmbeddingProjectionBuilder({
         (candidate) => !reusableByNodeId.has(candidate.asset.nodeId),
       );
       if (candidatesToEmbed.length === 0) {
+        recordIngestionModelCallMetric(metrics, {
+          cacheHits: candidates.length,
+          durationMs: 0,
+          itemCount: candidates.length,
+          outcome: "succeeded",
+          providerCalls: 0,
+          retries: 0,
+          stage: "visual-embedding",
+        });
         return candidates.map((candidate) =>
           cloneIndexProjection(requiredProjection(reusableByNodeId, candidate.asset.nodeId)),
         );
       }
 
-      const result = await provider.embedAssets({
-        assets: candidatesToEmbed.map((candidate) => candidate.asset),
-        model,
-        ...(signal ? { signal } : {}),
-        ...(tenantId ? { tenantId } : {}),
+      modelBudget?.reserve({
+        itemCount: candidatesToEmbed.length,
+        stage: "visual-embedding",
+      });
+      const embeddingStartedAt = Date.now();
+      let result: EmbedVisualAssetsResult;
+      try {
+        result = await provider.embedAssets({
+          assets: candidatesToEmbed.map((candidate) => candidate.asset),
+          model,
+          ...(signal ? { signal } : {}),
+          ...(tenantId ? { tenantId } : {}),
+        });
+      } catch (error) {
+        recordIngestionModelCallMetric(metrics, {
+          cacheHits: reusableByNodeId.size,
+          durationMs: Math.max(0, Date.now() - embeddingStartedAt),
+          itemCount: candidates.length,
+          outcome: "failed",
+          providerCalls: 1,
+          retries: 0,
+          stage: "visual-embedding",
+        });
+        throw error;
+      }
+      recordIngestionModelCallMetric(metrics, {
+        cacheHits: reusableByNodeId.size,
+        durationMs: Math.max(0, Date.now() - embeddingStartedAt),
+        itemCount: candidates.length,
+        outcome: "succeeded",
+        providerCalls: 1,
+        retries: 0,
+        stage: "visual-embedding",
+        ...(result.metadata.usage?.totalTokens === undefined
+          ? {}
+          : { totalTokens: result.metadata.usage.totalTokens }),
       });
       signal?.throwIfAborted();
 

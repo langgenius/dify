@@ -8,6 +8,8 @@ import type {
   DocumentSemanticEnrichmentOperationalMetrics,
   DurableTaskOperationalMetric,
   DurableTaskOperationalMetrics,
+  IngestionModelCallOperationalMetric,
+  IngestionModelCallOperationalMetrics,
   LegacyAuthorizationTrafficMetric,
   LegacyAuthorizationTrafficMetrics,
   RetrievalOperationalMetric,
@@ -26,6 +28,9 @@ export type ApiKnowledgeFsOperationalMetric =
     })
   | (ConcurrencyGateEvent & {
       readonly event: "knowledge_fs.ingestion_model_concurrency.metric";
+    })
+  | (IngestionModelCallOperationalMetric & {
+      readonly event: "knowledge_fs.ingestion_model_call.metric";
     })
   | (DifyCapabilityV2OperationalMetric & {
       readonly event: "knowledge_fs.capability_v2.metric";
@@ -57,6 +62,7 @@ export interface ApiKnowledgeFsOperationalMetrics {
   readonly ingestionModel: {
     record(metric: ConcurrencyGateEvent): Promise<void> | void;
   };
+  readonly ingestionModelCalls: IngestionModelCallOperationalMetrics;
   readonly semanticEnrichment: DocumentSemanticEnrichmentOperationalMetrics;
   readonly outlineSummary: DocumentOutlineSummaryOperationalMetrics;
   readonly retrieval: RetrievalOperationalMetrics;
@@ -92,6 +98,10 @@ export function createApiKnowledgeFsOperationalMetrics({
     ingestionModel: {
       record: (metric) =>
         safelyEmit(emit, { event: "knowledge_fs.ingestion_model_concurrency.metric", ...metric }),
+    },
+    ingestionModelCalls: {
+      record: (metric) =>
+        safelyEmit(emit, { event: "knowledge_fs.ingestion_model_call.metric", ...metric }),
     },
     semanticEnrichment: {
       record: (metric) =>

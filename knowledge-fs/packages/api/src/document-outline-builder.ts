@@ -386,6 +386,13 @@ function applySpanToDraft(draft: OutlineNodeDraft, span: ElementSpan): void {
 
   if (span.element.type !== "heading" && span.element.type !== "title") {
     const semanticSectionSummary = span.element.metadata.semanticSectionSummary;
+    if (typeof semanticSectionSummary === "string" && semanticSectionSummary.trim()) {
+      draft.metadata.summarySource = "semantic-chunking";
+      draft.metadata.semanticSummaryCount =
+        typeof draft.metadata.semanticSummaryCount === "number"
+          ? draft.metadata.semanticSummaryCount + 1
+          : 1;
+    }
     draft.summaryTexts.push(
       typeof semanticSectionSummary === "string" && semanticSectionSummary.trim()
         ? semanticSectionSummary.trim()

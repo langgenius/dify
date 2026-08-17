@@ -273,6 +273,36 @@ class KnowledgeFSControlPlaneService:
                             caller_kinds=("interactive",),
                         )
 
+    def update_icon_background(
+        self,
+        *,
+        tenant_id: str,
+        actor_account_id: str,
+        control_space_id: str,
+        icon_background: str,
+    ) -> None:
+        self._product.authorize_control_space(
+            tenant_id=tenant_id,
+            account_id=actor_account_id,
+            control_space_id=control_space_id,
+            permission=KnowledgeFSProductPermission.EDIT,
+        )
+        with self._session_maker.begin() as session:
+            control_space = session.scalar(
+                sa.select(KnowledgeFSControlSpace)
+                .where(
+                    KnowledgeFSControlSpace.tenant_id == tenant_id,
+                    KnowledgeFSControlSpace.id == control_space_id,
+                )
+                .with_for_update()
+            )
+            if control_space is None:
+                raise KnowledgeFSControlPlaneInvariantError("Control-space disappeared during icon background update")
+            if control_space.icon_background == icon_background:
+                return
+            control_space.icon_background = icon_background
+            control_space.resource_version += 1
+
     def advance_knowledge_space_revision(
         self,
         *,

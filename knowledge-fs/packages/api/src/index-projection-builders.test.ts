@@ -13,6 +13,7 @@ import {
 } from "./index-projection-builders";
 import type { EmbedVisualAssetsInput, EmbedVisualImagesInput } from "./index-projection-builders";
 import type { IndexProjectionRepository } from "./index-projection-repository";
+import type { IngestionModelCallOperationalMetric } from "./ingestion-model-observability";
 
 const KNOWLEDGE_SPACE_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c40";
 const DOCUMENT_ASSET_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c41";
@@ -317,6 +318,7 @@ describe("index projection builders", () => {
 
   it("reuses persisted generation-scoped dense projections without embedding them again", async () => {
     let embedCalls = 0;
+    const metrics: IngestionModelCallOperationalMetric[] = [];
     const embeddings: EmbeddingProvider = {
       embed: async () => {
         embedCalls += 1;
@@ -342,6 +344,11 @@ describe("index projection builders", () => {
         }),
       },
       maxBatchSize: 1,
+      metrics: {
+        record: (metric) => {
+          metrics.push(metric);
+        },
+      },
       projections: repository,
     });
     const input = {
@@ -359,6 +366,10 @@ describe("index projection builders", () => {
     expect(created).toHaveLength(1);
     expect(replay).toEqual(first);
     expect(replay[0]?.metadata.denseVector).toEqual([0.1, 0.2]);
+    expect(metrics).toMatchObject([
+      { cacheHits: 0, itemCount: 1, providerCalls: 1, stage: "text-embedding" },
+      { cacheHits: 1, itemCount: 1, providerCalls: 0, stage: "text-embedding" },
+    ]);
   });
 
   it("reuses persisted generation-scoped FTS projections", async () => {
@@ -380,6 +391,7 @@ describe("index projection builders", () => {
 
   it("reuses only the Visual projection when a node also has a text Dense projection", async () => {
     const { created, repository } = createRecordingProjectionRepository();
+    const metrics: IngestionModelCallOperationalMetric[] = [];
     const imageNode = knowledgeNode({
       kind: "image",
       metadata: { assetRef: { contentType: "image/png", objectKey: "assets/chart.png" } },
@@ -401,6 +413,11 @@ describe("index projection builders", () => {
     let visualEmbedCalls = 0;
     const visualBuilder = createVisualEmbeddingProjectionBuilder({
       maxBatchSize: 1,
+      metrics: {
+        record: (metric) => {
+          metrics.push(metric);
+        },
+      },
       projections: repository,
       provider: {
         embedAssets: async () => {
@@ -426,6 +443,10 @@ describe("index projection builders", () => {
     expect(visualEmbedCalls).toBe(1);
     expect(created).toHaveLength(2);
     expect(replay).toEqual(first);
+    expect(metrics).toMatchObject([
+      { cacheHits: 0, itemCount: 1, providerCalls: 1, stage: "visual-embedding" },
+      { cacheHits: 1, itemCount: 1, providerCalls: 0, stage: "visual-embedding" },
+    ]);
   });
 
   it("uses a frozen candidate profile without rereading or mutating the active manifest", async () => {

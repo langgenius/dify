@@ -3,7 +3,7 @@ import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.
 import type { MutationFunctionContext, QueryFunctionContext } from '@tanstack/react-query'
 import type { consoleQuery as ConsoleQuery } from './client'
 import { QueryClient } from '@tanstack/react-query'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { normalizeConsoleOpenAPIURL } from './console-openapi-url'
 
 const loadGetBaseURL = async (isClientValue: boolean) => {
@@ -446,6 +446,38 @@ describe('consoleQuery transport context', () => {
     expect(requestURL.searchParams.has('creator_ids[1]')).toBe(false)
   })
 
+  it('should serialize dataset filters as repeated query params', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ data: [], has_more: false, limit: 30, page: 1, total: 0 }), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+        },
+      }),
+    )
+    const consoleQuery = await loadConsoleQueryWithFetch()
+    const queryOptions = consoleQuery.datasets.get.queryOptions({
+      input: {
+        query: {
+          creator_ids: ['creator-1', 'creator-2'],
+          limit: 30,
+          page: 1,
+          tag_ids: ['tag-1', 'tag-2'],
+        },
+      },
+    })
+
+    await queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext)
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    const resource = fetchSpy.mock.calls[0]![0]
+    const requestURL = new URL(resource instanceof Request ? resource.url : resource.toString())
+    expect(requestURL.searchParams.getAll('creator_ids')).toEqual(['creator-1', 'creator-2'])
+    expect(requestURL.searchParams.getAll('tag_ids')).toEqual(['tag-1', 'tag-2'])
+    expect(requestURL.searchParams.has('creator_ids[0]')).toBe(false)
+    expect(requestURL.searchParams.has('tag_ids[0]')).toBe(false)
+  })
+
   it('should request KnowledgeFS documents through the control-space contract', async () => {
     const request = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ data: [], next_cursor: null }), {
@@ -507,6 +539,18 @@ describe('normalizeConsoleOpenAPIURL', () => {
   it('should serialize KnowledgeFS list query arrays as repeated params', () => {
     const url = normalizeConsoleOpenAPIURL(
       'https://example.com/console/api/knowledge-fs/spaces?tag_ids%5B0%5D=tag-1&creator_ids%5B0%5D=user-1',
+    )
+    const searchParams = new URL(url).searchParams
+
+    expect(searchParams.getAll('tag_ids')).toEqual(['tag-1'])
+    expect(searchParams.getAll('creator_ids')).toEqual(['user-1'])
+    expect(searchParams.has('tag_ids[0]')).toBe(false)
+    expect(searchParams.has('creator_ids[0]')).toBe(false)
+  })
+
+  it('should serialize dataset list query arrays as repeated params', () => {
+    const url = normalizeConsoleOpenAPIURL(
+      'https://example.com/console/api/datasets?tag_ids%5B0%5D=tag-1&creator_ids%5B0%5D=user-1',
     )
     const searchParams = new URL(url).searchParams
 

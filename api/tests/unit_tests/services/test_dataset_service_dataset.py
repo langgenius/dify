@@ -214,6 +214,23 @@ class TestDatasetServiceRetrieval:
         assert "dataset-1" in statement.params.values()
         assert "tenant-1" in statement.params.values()
 
+    def test_get_datasets_filters_by_creator_ids(self):
+        session = MagicMock()
+
+        with patch("services.dataset_service.paginate_query") as mock_paginate:
+            mock_paginate.return_value = SimpleNamespace(items=[], total=0)
+            DatasetService.get_datasets(
+                page=1,
+                per_page=20,
+                session=session,
+                tenant_id="tenant-1",
+                creator_ids=["creator-1", "creator-2"],
+            )
+
+        statement = mock_paginate.call_args.args[0].compile()
+        assert "datasets.created_by IN" in str(statement)
+        assert ["creator-1", "creator-2"] in statement.params.values()
+
 
 class TestDatasetServiceRetrievalPermissions:
     """Unit tests for dataset list permission branching."""

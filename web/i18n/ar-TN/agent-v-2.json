@@ -156,6 +156,7 @@
   "agentDetail.configure.preview.empty.description": "شغّل الوكيل كمحادثة مكتملة، تمامًا كما سيختبرها المستخدمون بعد النشر.",
   "agentDetail.configure.preview.empty.title": "معاينة {{name}}",
   "agentDetail.configure.preview.endUserAuth": "مصادقة المستخدم النهائي",
+  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "تم إيقاف تشغيل هذا الوكيل بعد بلوغ الحد الأقصى لعدد طلبات النموذج. حاول مرة أخرى، أو قسّم المهمة إلى خطوات أصغر.",
   "agentDetail.configure.preview.errors.agentRunLimitExceeded": "تم إيقاف تشغيل هذا الوكيل بسبب بلوغ الحد الزمني. حاول مرة أخرى، أو قسّم المهمة إلى خطوات أصغر.",
   "agentDetail.configure.preview.inputPlaceholder": "إرسال رسالة إلى {{name}}",
   "agentDetail.configure.preview.restart": "ابدأ من جديد",
@@ -425,6 +426,7 @@
   "roster.sort.lastModified": "آخر تعديل",
   "roster.sort.optionsLabel": "خيارات الفرز",
   "roster.sort.recentlyCreated": "الأحدث إنشاءً",
+  "roster.title": "الوكلاء",
   "roster.updateSuccess": "تم تحديث الوكيل.",
   "roster.usageStatus.draft": "مسودة"
 }

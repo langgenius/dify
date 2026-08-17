@@ -158,6 +158,7 @@ function toCloudflareQueueMessage(job: JobRecord) {
     attempts: job.attempts,
     id: job.id,
     ...(job.idempotencyKey ? { idempotencyKey: job.idempotencyKey } : {}),
+    priority: job.priority,
     type: job.type,
   };
 }

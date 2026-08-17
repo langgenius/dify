@@ -8,6 +8,8 @@ import { createParser, parseAsString, useQueryState } from 'nuqs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
+import { CreatorFilter } from '@/app/components/datasets/creator-filter'
+import { creatorIdsParser } from '@/app/components/datasets/creator-filter-query'
 import ExternalAPIPanel from '@/app/components/datasets/external-api/external-api-panel'
 import ServiceApi from '@/app/components/datasets/extra-info/service-api'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -18,11 +20,6 @@ import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
 import { useDatasetApiBaseUrl } from '@/service/knowledge/use-dataset'
 import { hasPermission } from '@/utils/permission'
-import {
-  CREATOR_FILTER_MAX_ID_LENGTH,
-  CREATOR_FILTER_MAX_SELECTION,
-  CreatorFilter,
-} from './components/creator-filter'
 import { KnowledgeSpaceCard } from './components/knowledge-space-card'
 import { KnowledgeViewSwitcher } from './components/knowledge-view-switcher'
 import {
@@ -38,21 +35,6 @@ const TAG_FILTER_MAX_SELECTION = 100
 const searchParser = parseAsString.withDefault('').withOptions({
   history: 'replace',
 })
-
-function normalizeCreatorIds(creatorIds: string[]) {
-  return [...new Set(creatorIds)]
-    .filter((creatorId) => creatorId.length > 0 && creatorId.length <= CREATOR_FILTER_MAX_ID_LENGTH)
-    .slice(0, CREATOR_FILTER_MAX_SELECTION)
-}
-
-const creatorIdsParser = createParser<string[]>({
-  eq: (left, right) =>
-    left.length === right.length && left.every((creatorId, index) => creatorId === right[index]),
-  parse: (query) => normalizeCreatorIds(query.split(';')),
-  serialize: (creatorIds) => normalizeCreatorIds(creatorIds).join(';'),
-})
-  .withDefault([])
-  .withOptions({ history: 'push' })
 
 function normalizeTagIds(tagIds: string[]) {
   return [...new Set(tagIds)]
@@ -157,6 +139,8 @@ export function NewKnowledgeList({
               value={tagIds}
               onChange={(nextTagIds) => void setTagIds(nextTagIds)}
               onOpenTagManagement={() => setShowTagManagementModal(true)}
+              showLeadingIcon={false}
+              triggerClassName="min-w-0"
             />
             <CreatorFilter
               value={creatorIds}
@@ -174,7 +158,7 @@ export function NewKnowledgeList({
                 render={<Link href="/datasets/new/create" />}
                 variant="primary"
                 size="medium"
-                className="w-24 gap-0.5 overflow-hidden border-[0.5px]! border-components-button-primary-border-hover! bg-components-button-primary-bg-hover! p-2! shadow-xs"
+                className="w-24 gap-0.5 overflow-hidden p-2!"
               >
                 <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
                 <span className="pl-1">{createLabel}</span>

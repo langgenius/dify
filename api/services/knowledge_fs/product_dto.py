@@ -26,6 +26,10 @@ KnowledgeFSIconIdentity = Annotated[
     str,
     Field(max_length=72, pattern=r"^(?:builtin:)?[+a-z0-9_-]{1,64}$"),
 ]
+KnowledgeFSIconBackground = Annotated[
+    str,
+    Field(pattern=r"^#[0-9A-Fa-f]{6}$"),
+]
 
 
 class KnowledgeFSModelIntent(BaseModel):
@@ -316,6 +320,7 @@ class KnowledgeFSUpgradeRetryResponse(ResponseModel):
 class KnowledgeFSSpaceUpdatePayload(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=40)
     icon: KnowledgeFSIconIdentity | None = None
+    icon_background: KnowledgeFSIconBackground | None = None
     description: str | None = Field(default=None, max_length=2_000)
     visibility: KnowledgeFSControlSpaceVisibility | None = None
 
@@ -580,6 +585,7 @@ class KnowledgeFSTechnicalSummary(BaseModel):
     name: str
     slug: str
     icon: str | None = None
+    icon_background: KnowledgeFSIconBackground | None = None
     description: str | None = None
     document_count: int = Field(
         default=0,

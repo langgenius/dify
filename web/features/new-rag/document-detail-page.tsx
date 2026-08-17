@@ -8,6 +8,7 @@ import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { datasetDefaultPermissionKeysAtom } from '@/context/permission-state'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { consoleQuery } from '@/service/client'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { KnowledgeModelReadinessBanner } from './components/knowledge-model-readiness-banner'
@@ -109,6 +110,15 @@ export function DocumentDetailPage({
     [documentId, knowledgeSpaceId],
   )
   const documentQuery = useQuery(documentQueryOptions)
+  const knowledgeSpaceQuery = useQuery(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.get.queryOptions({
+      input: { params: { control_space_id: knowledgeSpaceId } },
+    }),
+  )
+  const documentTitle = documentQuery.data?.title ?? t(($) => $['newKnowledge.documents'])
+  const knowledgeSpaceTitle =
+    knowledgeSpaceQuery.data?.technical_summary?.name ?? t(($) => $.knowledge)
+  useDocumentTitle(`${documentTitle} · ${knowledgeSpaceTitle}`)
   const taskDocumentsQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.infiniteOptions({
       enabled: tasksDrawerOpen,
@@ -254,7 +264,7 @@ export function DocumentDetailPage({
 
   const document = documentQuery.data
   return (
-    <section className="flex min-h-0 flex-1 flex-col px-6 py-5 lg:px-8">
+    <section className="flex min-h-0 flex-1 flex-col px-6 pt-3 pb-5">
       <KnowledgeModelReadinessBanner
         capability="index"
         className="mb-4"

@@ -2,6 +2,11 @@ import { z } from "zod";
 
 import type { ConcurrencyGate } from "./bounded-concurrency";
 import {
+  type IngestionModelCallOperationalMetrics,
+  ingestionModelUsageFromMetadata,
+  recordIngestionModelCallMetric,
+} from "./ingestion-model-observability";
+import {
   RelationExtractionBatchContractError,
   type RelationExtractionProvider,
   type RelationExtractionProviderInput,
@@ -39,6 +44,7 @@ export interface LlmRelationExtractionProviderOptions {
   readonly maxOutputTokens?: number | undefined;
   readonly maxRetries?: number | undefined;
   readonly modelRequestGate?: ConcurrencyGate | undefined;
+  readonly metrics?: IngestionModelCallOperationalMetrics | undefined;
   readonly provider: RelationExtractionTextProvider;
   readonly temperature?: number | undefined;
 }
@@ -47,6 +53,7 @@ export function createLlmRelationExtractionProvider({
   maxOutputTokens = 1_500,
   maxRetries = 2,
   modelRequestGate = semanticExtractionModelRequestGate,
+  metrics,
   provider,
   temperature = 0,
 }: LlmRelationExtractionProviderOptions): RelationExtractionProvider {
@@ -68,6 +75,7 @@ export function createLlmRelationExtractionProvider({
       let result: GenerateRelationExtractionTextResult | undefined;
       let parsed: LlmRelationExtractionOutput | undefined;
       for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+        const startedAt = Date.now();
         try {
           result = await modelRequestGate.run(() =>
             provider.generate({
@@ -79,8 +87,27 @@ export function createLlmRelationExtractionProvider({
             }),
           );
           parsed = parseLlmRelationExtractionJson(result.text);
+          recordIngestionModelCallMetric(metrics, {
+            cacheHits: 0,
+            durationMs: Math.max(0, Date.now() - startedAt),
+            itemCount: 1,
+            outcome: "succeeded",
+            providerCalls: 1,
+            retries: attempt > 0 ? 1 : 0,
+            stage: "graph-relation",
+            ...ingestionModelUsageFromMetadata(result.metadata),
+          });
           break;
         } catch (error) {
+          recordIngestionModelCallMetric(metrics, {
+            cacheHits: 0,
+            durationMs: Math.max(0, Date.now() - startedAt),
+            itemCount: 1,
+            outcome: "failed",
+            providerCalls: 1,
+            retries: attempt > 0 ? 1 : 0,
+            stage: "graph-relation",
+          });
           if (attempt >= maxRetries) {
             throw error;
           }
@@ -116,6 +143,7 @@ export function createLlmRelationExtractionProvider({
       let messages = relationExtractionBatchMessages(inputs);
       let result: GenerateRelationExtractionTextResult | undefined;
       for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+        const startedAt = Date.now();
         try {
           result = await modelRequestGate.run(() =>
             provider.generate({
@@ -127,6 +155,16 @@ export function createLlmRelationExtractionProvider({
             }),
           );
           const parsed = parseLlmRelationExtractionBatchJson(result.text, inputs);
+          recordIngestionModelCallMetric(metrics, {
+            cacheHits: 0,
+            durationMs: Math.max(0, Date.now() - startedAt),
+            itemCount: inputs.length,
+            outcome: "succeeded",
+            providerCalls: 1,
+            retries: attempt > 0 ? 1 : 0,
+            stage: "graph-relation",
+            ...ingestionModelUsageFromMetadata(result.metadata),
+          });
           return parsed.map((relations) => ({
             metadata: {
               batchSize: inputs.length,
@@ -137,6 +175,15 @@ export function createLlmRelationExtractionProvider({
             relations,
           }));
         } catch (error) {
+          recordIngestionModelCallMetric(metrics, {
+            cacheHits: 0,
+            durationMs: Math.max(0, Date.now() - startedAt),
+            itemCount: inputs.length,
+            outcome: "failed",
+            providerCalls: 1,
+            retries: attempt > 0 ? 1 : 0,
+            stage: "graph-relation",
+          });
           if (attempt >= maxRetries) {
             if (result) {
               throw new RelationExtractionBatchContractError(

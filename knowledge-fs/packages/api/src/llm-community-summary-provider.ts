@@ -1,4 +1,10 @@
 import { z } from "zod";
+import type { ConcurrencyGate } from "./bounded-concurrency";
+import {
+  type IngestionModelCallOperationalMetrics,
+  ingestionModelUsageFromMetadata,
+  recordIngestionModelCallMetric,
+} from "./ingestion-model-observability";
 
 import type {
   SemanticCommunitySummaryInput,
@@ -14,6 +20,8 @@ export interface GenerateCommunitySummaryTextInput {
   readonly maxOutputTokens?: number | undefined;
   readonly messages: readonly LlmCommunitySummaryMessage[];
   readonly model: string;
+  readonly metrics?: IngestionModelCallOperationalMetrics | undefined;
+  readonly modelRequestGate?: ConcurrencyGate | undefined;
   readonly temperature?: number | undefined;
   readonly tenantId?: string | undefined;
 }
@@ -33,6 +41,8 @@ export interface CommunitySummaryTextProvider {
 export interface LlmCommunitySummaryProviderOptions {
   readonly maxOutputTokens?: number | undefined;
   readonly model: string;
+  readonly metrics?: IngestionModelCallOperationalMetrics | undefined;
+  readonly modelRequestGate?: ConcurrencyGate | undefined;
   readonly provider: CommunitySummaryTextProvider;
   readonly temperature?: number | undefined;
 }
@@ -40,6 +50,8 @@ export interface LlmCommunitySummaryProviderOptions {
 export function createLlmCommunitySummaryProvider({
   maxOutputTokens = 800,
   model,
+  metrics,
+  modelRequestGate,
   provider,
   temperature = 0,
 }: LlmCommunitySummaryProviderOptions): SemanticCommunitySummaryProvider {
@@ -57,13 +69,40 @@ export function createLlmCommunitySummaryProvider({
 
   return {
     summarize: async (input) => {
-      const result = await provider.generate({
-        maxOutputTokens,
-        messages: communitySummaryMessages(input),
-        model,
-        temperature,
-        ...(input.tenantId ? { tenantId: input.tenantId } : {}),
-      });
+      const startedAt = Date.now();
+      let result: GenerateCommunitySummaryTextResult;
+      try {
+        const generate = () =>
+          provider.generate({
+            maxOutputTokens,
+            messages: communitySummaryMessages(input),
+            model,
+            temperature,
+            ...(input.tenantId ? { tenantId: input.tenantId } : {}),
+          });
+        result = modelRequestGate ? await modelRequestGate.run(generate) : await generate();
+        recordIngestionModelCallMetric(metrics, {
+          cacheHits: 0,
+          durationMs: Math.max(0, Date.now() - startedAt),
+          itemCount: input.nodeTexts.length,
+          outcome: "succeeded",
+          providerCalls: 1,
+          retries: 0,
+          stage: "graph-community-summary",
+          ...ingestionModelUsageFromMetadata(result.metadata),
+        });
+      } catch (error) {
+        recordIngestionModelCallMetric(metrics, {
+          cacheHits: 0,
+          durationMs: Math.max(0, Date.now() - startedAt),
+          itemCount: input.nodeTexts.length,
+          outcome: "failed",
+          providerCalls: 1,
+          retries: 0,
+          stage: "graph-community-summary",
+        });
+        throw error;
+      }
       const parsed = parseLlmCommunitySummaryJson(result.text);
 
       return {

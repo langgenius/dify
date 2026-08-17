@@ -50,6 +50,7 @@ try {
   }
 
   const port = await dockerPort(containerId);
+  const imageProcessing = await verifySharpRuntime(containerId);
   const health = await waitForHealth(`http://127.0.0.1:${port}/health`);
 
   console.log(
@@ -58,6 +59,7 @@ try {
       difyDependencyConnected: health.components.objectStorage,
       healthOk: health.ok,
       imageTag,
+      imageProcessing,
       ok: true,
       port,
       productionConfigValidated: false,
@@ -69,6 +71,51 @@ try {
   if (containerId) {
     await dockerStop(containerId);
   }
+}
+
+async function verifySharpRuntime(containerId) {
+  const program = `
+    const sharp = (await import("sharp")).default;
+    const { data, info } = await sharp({
+      create: {
+        width: 2,
+        height: 1,
+        channels: 4,
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      },
+    }).png().toBuffer({ resolveWithObject: true });
+    if (data.byteLength < 1 || info.format !== "png" || info.width !== 2 || info.height !== 1) {
+      throw new Error("sharp native runtime did not produce the expected PNG");
+    }
+    console.log(JSON.stringify({
+      format: info.format,
+      height: info.height,
+      sharp: sharp.versions.sharp,
+      vips: sharp.versions.vips,
+      width: info.width,
+    }));
+  `;
+  const { stdout } = await execFileAsync(docker, [
+    "exec",
+    containerId,
+    "node",
+    "--input-type=module",
+    "--eval",
+    program,
+  ]);
+  const result = JSON.parse(stdout.trim());
+
+  if (
+    result.format !== "png" ||
+    result.width !== 2 ||
+    result.height !== 1 ||
+    typeof result.sharp !== "string" ||
+    typeof result.vips !== "string"
+  ) {
+    throw new Error(`Unexpected sharp runtime smoke result: ${stdout.trim()}`);
+  }
+
+  return result;
 }
 
 async function dockerPort(containerId) {

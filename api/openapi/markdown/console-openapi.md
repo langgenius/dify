@@ -331,6 +331,7 @@ Check if activation token is valid
 | 201 | Agent app created successfully | **application/json**: [AgentAppDetailWithSite](#agentappdetailwithsite)<br> |
 | 400 | Invalid request parameters |  |
 | 403 | Insufficient permissions |  |
+| 409 | Agent name already exists |  |
 
 ### [GET] /agent/invite-options
 #### Parameters
@@ -5433,6 +5434,7 @@ Get list of datasets
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| creator_ids | query | Filter by creator account IDs | No | [ string ] |
 | ids | query | Filter by dataset IDs | No | [ string ] |
 | include_all | query | Include all datasets | No | boolean |
 | keyword | query | Search keyword | No | string |
@@ -18308,6 +18310,7 @@ Enum class for configurate method of provider model.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| creator_ids | [ string ] | Filter by creator account IDs | No |
 | ids | [ string ] | Filter by dataset IDs | No |
 | include_all | boolean | Include all datasets | No |
 | keyword | string | Search keyword | No |
@@ -23973,6 +23976,7 @@ Coarse node-level status used by Inspector to pick a banner.
 | ---- | ---- | ----------- | -------- |
 | app_icon | string |  | Yes |
 | app_label | object |  | Yes |
+| auto_authorize | boolean |  | Yes |
 | scope | string |  | Yes |
 
 #### OAuthProviderAuthorizeResponse

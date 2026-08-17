@@ -7,6 +7,7 @@ import {
   type DifyIntegrationStateRepository,
   type DocumentCompilationAttemptRepository,
   type DocumentOutlineSummaryCheckpointRepository,
+  type DocumentSemanticWindowCheckpointRepository,
   type DurableDeletionRepository,
   type IntegratedKnowledgeSpaceProvisioningRepository,
   type KnowledgeFsLeaseRepository,
@@ -47,6 +48,7 @@ import {
   createDatabaseDocumentOutlineRepository,
   createDatabaseDocumentOutlineSummaryCheckpointRepository,
   createDatabaseDocumentProcessingTaskRepository,
+  createDatabaseDocumentSemanticWindowCheckpointRepository,
   createDatabaseDocumentSettingsRepository,
   createDatabaseDurableDeletionRepository,
   createDatabaseFailedQueryRepository,
@@ -118,6 +120,9 @@ export interface ApiDatabaseRepositoryBundle {
   readonly documentCompilationAttempts?: DocumentCompilationAttemptRepository | undefined;
   readonly documentOutlineSummaryCheckpoints?:
     | DocumentOutlineSummaryCheckpointRepository
+    | undefined;
+  readonly documentSemanticWindowCheckpoints?:
+    | DocumentSemanticWindowCheckpointRepository
     | undefined;
   readonly durableDeletionRepository?: DurableDeletionRepository | undefined;
   readonly durableDeletionEnabled: boolean;
@@ -193,6 +198,8 @@ export function createApiDatabaseRepositories({
       database,
       maxBatchSize,
     });
+  const documentSemanticWindowCheckpoints =
+    createDatabaseDocumentSemanticWindowCheckpointRepository({ database });
   const bulkOperations = createDatabaseBulkOperationRepository({
     database,
     maxItems: maxBatchSize,
@@ -342,6 +349,7 @@ export function createApiDatabaseRepositories({
     difyIntegrationStates,
     documentCompilationAttempts,
     documentOutlineSummaryCheckpoints,
+    documentSemanticWindowCheckpoints,
     durableDeletionEnabled,
     ...(durableDeletionRepository ? { durableDeletionRepository } : {}),
     gatewayOptions: {

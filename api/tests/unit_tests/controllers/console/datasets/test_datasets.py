@@ -229,6 +229,22 @@ class TestDatasetList:
         assert status == 200
         assert resp["total"] == 2
 
+    def test_get_with_creator_ids_filter(self, app: Flask):
+        api = DatasetListApi()
+        method = unwrap(api.get)
+        current_user = self._mock_user()
+        datasets = [make_dataset()]
+        with app.test_request_context("/datasets?creator_ids=account-1&creator_ids=account-2"):
+            with (
+                patch.object(DatasetService, "get_datasets", return_value=(datasets, 1)) as get_datasets,
+                patch.object(ProviderManager, "get_configurations", return_value=MagicMock(get_models=lambda **_: [])),
+            ):
+                resp, status = method(api, MagicMock(), "tenant-1", current_user)
+
+        assert get_datasets.call_args.kwargs["creator_ids"] == ["account-1", "account-2"]
+        assert status == 200
+        assert resp["total"] == 1
+
     def test_get_attaches_current_user_permission_keys(self, app: Flask):
         api = DatasetListApi()
         method = unwrap(api.get)

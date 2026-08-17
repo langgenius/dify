@@ -9,6 +9,13 @@ import type {
 } from './document-models'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { toast } from '@langgenius/dify-ui/toast'
 import copy from 'copy-to-clipboard'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -87,7 +94,10 @@ function DocumentSectionSummary({ children }: { children: React.ReactNode }) {
     <div className="mt-3 overflow-hidden rounded-lg bg-background-section">
       <button
         aria-expanded={expanded}
-        className="flex w-full items-center gap-1.5 px-3.5 pt-3 text-left system-xs-regular text-text-secondary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
+        className={cn(
+          'flex w-full items-center gap-1.5 px-3.5 pt-3 text-left system-xs-regular text-text-secondary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
+          !expanded && 'pb-3',
+        )}
         type="button"
         onClick={() => setExpanded((current) => !current)}
       >
@@ -206,91 +216,103 @@ export function DocumentChunkDetail({
         className="min-h-72 min-w-0 overflow-hidden bg-background-default xl:px-6"
       >
         {chunks.length || multimodalPlacement.unplaced.length ? (
-          <div
-            ref={contentScrollRef}
-            className="flex max-h-[70vh] flex-col gap-3 overflow-auto px-2 pt-1 xl:h-full xl:max-h-none xl:px-0"
-            data-testid="chunk-content-scroll"
-          >
-            {chunks.map((chunk) => {
-              const content = chunkContentParts(chunk)
-              const markerLabel = chunkMarkerLabels.get(chunk.id)
-              const outlineNode = outlineNodesByChunkId.get(chunk.id)
-              const outlineSummary = outlineSummaryChunkIds.has(chunk.id)
-                ? outlineNode?.summary?.trim()
-                : undefined
-              const sectionLevel =
-                outlineNode?.level ?? (chunk.sectionPath.length > 0 ? chunk.sectionPath.length : 2)
-              const chunkMultimodalItems = multimodalPlacement.byChunkId.get(chunk.id) ?? []
-              return (
-                <section
-                  key={chunk.id}
-                  id={`document-chunk-${chunk.id}`}
-                  className="group scroll-mt-4 rounded-lg px-3 pt-2 [contain-intrinsic-size:auto_160px] [content-visibility:auto] first:pt-3 xl:px-0"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-start gap-1">
-                        {!content.body && markerLabel && <ChunkMarker label={markerLabel} />}
-                        <DocumentSectionHeading level={sectionLevel}>
-                          {outlineNode?.title.trim() ||
-                            content.heading ||
-                            t(($) => $['newKnowledge.chunkHeading'], {
-                              position: chunk.ordinal + 1,
-                            })}
-                        </DocumentSectionHeading>
-                      </div>
-                      {outlineSummary && (
-                        <DocumentSectionSummary>{outlineSummary}</DocumentSectionSummary>
-                      )}
-                    </div>
-                    <Button
-                      aria-label={tCommon(($) => $['operation.copy'])}
-                      className="opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 motion-reduce:transition-none"
-                      onClick={() => {
-                        copy(chunk.text)
-                        toast.success(tCommon(($) => $['actionMsg.copySuccessfully']))
-                      }}
-                      size="small"
-                      variant="ghost"
+          <ScrollArea className="relative max-h-[70vh] min-h-0 min-w-0 xl:h-full xl:max-h-none">
+            <ScrollAreaViewport
+              ref={contentScrollRef}
+              className="max-h-[70vh] overscroll-contain xl:max-h-none"
+              data-testid="chunk-content-scroll"
+              style={{ overflowX: 'hidden' }}
+            >
+              <ScrollAreaContent
+                className="flex min-h-full w-full max-w-full flex-col gap-3 px-2 pt-1 xl:px-0"
+                style={{ minWidth: 0 }}
+              >
+                {chunks.map((chunk) => {
+                  const content = chunkContentParts(chunk)
+                  const markerLabel = chunkMarkerLabels.get(chunk.id)
+                  const outlineNode = outlineNodesByChunkId.get(chunk.id)
+                  const outlineSummary = outlineSummaryChunkIds.has(chunk.id)
+                    ? outlineNode?.summary?.trim()
+                    : undefined
+                  const sectionLevel =
+                    outlineNode?.level ??
+                    (chunk.sectionPath.length > 0 ? chunk.sectionPath.length : 2)
+                  const chunkMultimodalItems = multimodalPlacement.byChunkId.get(chunk.id) ?? []
+                  return (
+                    <section
+                      key={chunk.id}
+                      id={`document-chunk-${chunk.id}`}
+                      className="group scroll-mt-4 rounded-lg px-3 pt-2 [contain-intrinsic-size:auto_160px] [content-visibility:auto] first:pt-3 xl:px-0"
                     >
-                      <span aria-hidden className="i-ri-file-copy-line size-4" />
-                    </Button>
-                  </div>
-                  {chunkMultimodalItems.length > 0 && (
-                    <div className="mt-3 space-y-3">
-                      {chunkMultimodalItems.map((item) => (
-                        <DocumentMultimodalAsset item={item} key={item.id} />
-                      ))}
-                    </div>
-                  )}
-                  {content.body && (
-                    <div className="mt-3 flex items-start gap-1">
-                      {markerLabel && <ChunkMarker label={markerLabel} />}
-                      <Markdown
-                        className="min-w-0 flex-1 text-[13px]! leading-5.5! wrap-break-word text-text-secondary!"
-                        content={content.body}
-                      />
-                    </div>
-                  )}
-                  {!chunk.text && (
-                    <p className="mt-3 text-[13px] leading-5.5 text-text-tertiary">
-                      {t(($) => $['newKnowledge.emptyChunk'])}
-                    </p>
-                  )}
-                </section>
-              )
-            })}
-            {multimodalPlacement.unplaced.length > 0 && (
-              <section className="space-y-3 rounded-lg px-3 pt-2 first:pt-3 xl:px-0">
-                <h3 className="system-sm-semibold text-text-primary">
-                  {t(($) => $['newKnowledge.documentImages'])}
-                </h3>
-                {multimodalPlacement.unplaced.map((item) => (
-                  <DocumentMultimodalAsset item={item} key={item.id} />
-                ))}
-              </section>
-            )}
-          </div>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start gap-1">
+                            {!content.body && markerLabel && <ChunkMarker label={markerLabel} />}
+                            <DocumentSectionHeading level={sectionLevel}>
+                              {outlineNode?.title.trim() ||
+                                content.heading ||
+                                t(($) => $['newKnowledge.chunkHeading'], {
+                                  position: chunk.ordinal + 1,
+                                })}
+                            </DocumentSectionHeading>
+                          </div>
+                          {outlineSummary && (
+                            <DocumentSectionSummary>{outlineSummary}</DocumentSectionSummary>
+                          )}
+                        </div>
+                        <Button
+                          aria-label={tCommon(($) => $['operation.copy'])}
+                          className="opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 motion-reduce:transition-none"
+                          onClick={() => {
+                            copy(chunk.text)
+                            toast.success(tCommon(($) => $['actionMsg.copySuccessfully']))
+                          }}
+                          size="small"
+                          variant="ghost"
+                        >
+                          <span aria-hidden className="i-ri-file-copy-line size-4" />
+                        </Button>
+                      </div>
+                      {chunkMultimodalItems.length > 0 && (
+                        <div className="mt-3 space-y-3">
+                          {chunkMultimodalItems.map((item) => (
+                            <DocumentMultimodalAsset item={item} key={item.id} />
+                          ))}
+                        </div>
+                      )}
+                      {content.body && (
+                        <div className="mt-3 flex items-start gap-1">
+                          {markerLabel && <ChunkMarker label={markerLabel} />}
+                          <Markdown
+                            className="min-w-0 flex-1 text-[13px]! leading-5.5! wrap-break-word text-text-secondary!"
+                            content={content.body}
+                          />
+                        </div>
+                      )}
+                      {!chunk.text && (
+                        <p className="mt-3 text-[13px] leading-5.5 text-text-tertiary">
+                          {t(($) => $['newKnowledge.emptyChunk'])}
+                        </p>
+                      )}
+                    </section>
+                  )
+                })}
+                {multimodalPlacement.unplaced.length > 0 && (
+                  <section className="space-y-3 rounded-lg px-3 pt-2 first:pt-3 xl:px-0">
+                    <h3 className="system-sm-semibold text-text-primary">
+                      {t(($) => $['newKnowledge.documentImages'])}
+                    </h3>
+                    {multimodalPlacement.unplaced.map((item) => (
+                      <DocumentMultimodalAsset item={item} key={item.id} />
+                    ))}
+                  </section>
+                )}
+              </ScrollAreaContent>
+            </ScrollAreaViewport>
+            <ScrollAreaScrollbar>
+              <ScrollAreaThumb />
+            </ScrollAreaScrollbar>
+          </ScrollArea>
         ) : (
           <div className="flex min-h-72 items-center justify-center px-6 text-center body-sm-regular text-text-tertiary">
             {t(($) => $['newKnowledge.selectChunk'])}

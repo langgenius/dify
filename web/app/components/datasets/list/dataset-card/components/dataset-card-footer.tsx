@@ -1,7 +1,6 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetCardItem } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { RiFileTextFill, RiRobot2Fill } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -10,7 +9,7 @@ import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 const EXTERNAL_PROVIDER = 'external'
 
 type DatasetCardFooterProps = {
-  dataset: DataSet
+  dataset: DatasetCardItem
 }
 
 const DatasetCardFooter = ({ dataset }: DatasetCardFooterProps) => {
@@ -47,7 +46,7 @@ const DatasetCardFooter = ({ dataset }: DatasetCardFooterProps) => {
         <TooltipTrigger
           render={
             <div className="flex items-center gap-x-1">
-              <RiFileTextFill className="size-3 text-text-quaternary" />
+              <span aria-hidden className="i-ri-file-text-fill size-3 text-text-quaternary" />
               <span className="system-xs-medium">{documentCount}</span>
             </div>
           }
@@ -59,7 +58,7 @@ const DatasetCardFooter = ({ dataset }: DatasetCardFooterProps) => {
           <TooltipTrigger
             render={
               <div className="flex items-center gap-x-1">
-                <RiRobot2Fill className="size-3 text-text-quaternary" />
+                <span aria-hidden className="i-ri-robot-2-fill size-3 text-text-quaternary" />
                 <span className="system-xs-medium">{dataset.app_count}</span>
               </div>
             }

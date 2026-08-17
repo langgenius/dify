@@ -1085,6 +1085,7 @@ export type GetDatasetsData = {
   body?: never
   path?: never
   query?: {
+    creator_ids?: Array<string>
     ids?: Array<string>
     include_all?: boolean
     keyword?: string

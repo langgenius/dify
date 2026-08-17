@@ -192,6 +192,56 @@ describe("document outline summary enhancer", () => {
     );
   });
 
+  it("reuses semantic leaf summaries and sends only low-quality leaves to the outline model", async () => {
+    const synthetic = largeOutline(8);
+    const semanticNodes = synthetic.outline.nodes.map((node, index) =>
+      index < 6
+        ? {
+            ...node,
+            metadata: { ...node.metadata, summarySource: "semantic-chunking" },
+            summary: `semantic:${node.id}`,
+          }
+        : node,
+    );
+    const optimizedBatch = vi.fn(
+      async (inputs: readonly Parameters<DocumentOutlineSummaryProvider["summarize"]>[0][]) =>
+        inputs.map((input) => ({ summary: `model:${input.outlineNodeId}` })),
+    );
+    const baselineBatch = vi.fn(
+      async (inputs: readonly Parameters<DocumentOutlineSummaryProvider["summarize"]>[0][]) =>
+        inputs.map((input) => ({ summary: `model:${input.outlineNodeId}` })),
+    );
+    const create = (summarizeBatch: typeof optimizedBatch) =>
+      createDocumentOutlineSummaryEnhancer({
+        maxBatchSize: 2,
+        maxConcurrentSummaries: 2,
+        maxInputChars: 80,
+        maxSummaryChars: 120,
+        model: "outline-summary-model",
+        promptVersion: "document-outline-summary-v2",
+        provider: { summarize: async () => ({ summary: "fallback" }), summarizeBatch },
+      });
+
+    await create(baselineBatch).enhance({
+      outline: synthetic.outline,
+      parseArtifact: synthetic.artifact,
+    });
+    const optimized = await create(optimizedBatch).enhance({
+      outline: { ...synthetic.outline, nodes: semanticNodes },
+      parseArtifact: synthetic.artifact,
+    });
+
+    expect(baselineBatch).toHaveBeenCalledTimes(4);
+    expect(optimizedBatch).toHaveBeenCalledTimes(1);
+    expect(optimizedBatch.mock.calls[0]?.[0].map((input) => input.outlineNodeId)).toEqual([
+      "node-6",
+      "node-7",
+    ]);
+    expect(optimized.nodes.slice(0, 6).map((node) => node.summary)).toEqual(
+      semanticNodes.slice(0, 6).map((node) => node.summary),
+    );
+  });
+
   it("keeps the measured 68-node HTML outline within ten default-size requests", async () => {
     const summarizeBatch = vi.fn(
       async (inputs: readonly Parameters<DocumentOutlineSummaryProvider["summarize"]>[0][]) =>

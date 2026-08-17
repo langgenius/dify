@@ -1,4 +1,4 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetCardItem } from '../types'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -20,7 +20,7 @@ type ModalState = {
 }
 
 type DatasetCardModalsProps = {
-  dataset: DataSet
+  dataset: DatasetCardItem
   modalState: ModalState
   onCloseRename: () => void
   onCloseConfirm: () => void

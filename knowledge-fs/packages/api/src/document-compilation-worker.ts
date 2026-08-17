@@ -13,7 +13,7 @@ import {
   PublicationGenerationIdSchema,
   TenantIdSchema,
 } from "@knowledge/core";
-import type { ParserAdapter } from "@knowledge/parsers";
+import type { ParserAdapter, ParserRouteHints } from "@knowledge/parsers";
 
 import {
   DeletionLifecycleFenceActiveError,
@@ -39,6 +39,7 @@ import {
   buildDocumentOutlineKnowledgePath,
   buildDocumentSectionKnowledgePaths,
 } from "./document-knowledge-paths";
+import type { DocumentModelBudget } from "./document-model-budget";
 import { extractDocumentMultimodalAssets } from "./document-multimodal-asset-extractor";
 import { createDocumentMultimodalManifestBuilder } from "./document-multimodal-manifest-builder";
 import type { DocumentMultimodalManifestRepository } from "./document-multimodal-manifest-repository";
@@ -98,6 +99,7 @@ export interface DocumentCompilationWorkerOptions {
   readonly multimodalMaxLocalAssetBytes?: number | undefined;
   readonly multimodalMaxPdfRasterizedAssets?: number | undefined;
   readonly multimodalManifests: DocumentMultimodalManifestRepository;
+  readonly modelBudget?: DocumentModelBudget | undefined;
   readonly objectStorage: PlatformAdapter["objectStorage"];
   readonly parser: ParserAdapter;
   readonly pdfRasterizer?: DocumentPdfRasterizer | undefined;
@@ -230,6 +232,7 @@ export function createDocumentCompilationWorker({
   multimodalMaxLocalAssetBytes,
   multimodalMaxPdfRasterizedAssets,
   multimodalManifests,
+  modelBudget,
   objectStorage,
   objectWriteAdmission,
   operationLeases,
@@ -369,6 +372,12 @@ export function createDocumentCompilationWorker({
               documentAssetId: activeAsset.id,
               filename: activeAsset.filename,
               mimeType: activeAsset.mimeType,
+              parserHints: documentParserHints({
+                assetMetadata: activeAsset.metadata,
+                requiresImages: Boolean(
+                  visualEmbeddingModel || multimodalImageVariantGenerator || pdfRasterizer,
+                ),
+              }),
               ...(signal ? { signal } : {}),
               version: activeAsset.version,
             });
@@ -473,15 +482,19 @@ export function createDocumentCompilationWorker({
                 parseArtifact: canonicalArtifact,
                 ...(publicationGenerationId ? { publicationGenerationId } : {}),
               });
-              const outline = outlineSummaryEnhancer
-                ? await outlineSummaryEnhancer.enhance({
-                    outline: deterministicOutline,
-                    parseArtifact: canonicalArtifact,
-                    ...(frozenRetrievalProfile ? { retrievalProfile: frozenRetrievalProfile } : {}),
-                    ...(signal ? { signal } : {}),
-                    tenantId: input.tenantId,
-                  })
-                : deterministicOutline;
+              const outline =
+                documentIndexOverrides.enablePageIndex !== false && outlineSummaryEnhancer
+                  ? await outlineSummaryEnhancer.enhance({
+                      ...(modelBudget ? { modelBudget } : {}),
+                      outline: deterministicOutline,
+                      parseArtifact: canonicalArtifact,
+                      ...(frozenRetrievalProfile
+                        ? { retrievalProfile: frozenRetrievalProfile }
+                        : {}),
+                      ...(signal ? { signal } : {}),
+                      tenantId: input.tenantId,
+                    })
+                  : deterministicOutline;
               await assertWritable();
               const persistedOutline = await outlines.upsert(outline);
               if (publicationGenerationId && documentIndexOverrides.enablePageIndex !== false) {
@@ -540,7 +553,9 @@ export function createDocumentCompilationWorker({
               : {}),
             ...(frozenEmbeddingProfile ? { embeddingProfile: frozenEmbeddingProfile } : {}),
             enableGraph: documentIndexOverrides.enableGraph !== false,
+            enablePageIndex: documentIndexOverrides.enablePageIndex !== false,
             knowledgeSpaceId: input.knowledgeSpaceId,
+            ...(modelBudget ? { modelBudget } : {}),
             ...(documentIndexOverrides.language
               ? { language: documentIndexOverrides.language }
               : {}),
@@ -551,7 +566,7 @@ export function createDocumentCompilationWorker({
             projectionVersion: input.version,
             ...(publicationGenerationId ? { publicationGenerationId } : {}),
             ...(frozenRetrievalProfile ? { retrievalProfile: frozenRetrievalProfile } : {}),
-            ...(initialJob.stage === "outline_built" ? { resetFailedProjections: true } : {}),
+            ...(initialJob.stage !== "queued" ? { resetFailedProjections: true } : {}),
             ...(signal ? { signal } : {}),
             ...(frozenRetrievalProfile && !resolvedEmbedding ? { skipDense: true as const } : {}),
             tenantId: input.tenantId,
@@ -577,15 +592,17 @@ export function createDocumentCompilationWorker({
               parseArtifact: reindexResult.outlineArtifact,
               publicationGenerationId,
             });
-            const outline = outlineSummaryEnhancer
-              ? await outlineSummaryEnhancer.enhance({
-                  outline: deterministicOutline,
-                  parseArtifact: reindexResult.outlineArtifact,
-                  retrievalProfile: frozenRetrievalProfile,
-                  ...(signal ? { signal } : {}),
-                  tenantId: input.tenantId,
-                })
-              : deterministicOutline;
+            const outline =
+              documentIndexOverrides.enablePageIndex !== false && outlineSummaryEnhancer
+                ? await outlineSummaryEnhancer.enhance({
+                    ...(modelBudget ? { modelBudget } : {}),
+                    outline: deterministicOutline,
+                    parseArtifact: reindexResult.outlineArtifact,
+                    retrievalProfile: frozenRetrievalProfile,
+                    ...(signal ? { signal } : {}),
+                    tenantId: input.tenantId,
+                  })
+                : deterministicOutline;
             await assertWritable();
             const persistedOutline = await outlines.upsert(outline);
             if (documentIndexOverrides.enablePageIndex !== false) {
@@ -843,6 +860,28 @@ export function createDocumentCompilationWorker({
         throw effectiveError;
       }
     },
+  };
+}
+
+function documentParserHints(input: {
+  readonly assetMetadata: Readonly<Record<string, unknown>>;
+  readonly requiresImages: boolean;
+}): ParserRouteHints {
+  const language =
+    typeof input.assetMetadata.language === "string" && input.assetMetadata.language.trim()
+      ? input.assetMetadata.language.trim()
+      : undefined;
+  const layoutComplexity =
+    input.assetMetadata.layoutComplexity === "complex" ||
+    input.assetMetadata.layoutComplexity === "simple"
+      ? input.assetMetadata.layoutComplexity
+      : undefined;
+  return {
+    ...(language ? { language } : {}),
+    ...(layoutComplexity ? { layoutComplexity } : {}),
+    requiresImages: input.requiresImages,
+    ...(input.assetMetadata.requiresOcr === true ? { requiresOcr: true } : {}),
+    ...(input.assetMetadata.requiresTables === true ? { requiresTables: true } : {}),
   };
 }
 

@@ -10,10 +10,16 @@ import {
 } from "@knowledge/core";
 
 import { createConcurrencyGate, mapWithConcurrency } from "./bounded-concurrency";
+import { type DocumentModelBudget, estimateDocumentModelTokens } from "./document-model-budget";
 import type {
   DocumentOutlineSummaryCheckpointRepository,
   DocumentOutlineSummaryCheckpointScope,
 } from "./document-outline-summary-checkpoint-repository";
+import {
+  type IngestionModelCallOperationalMetrics,
+  ingestionModelUsageFromMetadata,
+  recordIngestionModelCallMetric,
+} from "./ingestion-model-observability";
 import { cloneJsonObject } from "./json-utils";
 
 export interface DocumentOutlineSummaryProviderInput {
@@ -33,6 +39,8 @@ export interface DocumentOutlineSummaryProviderInput {
 
 export interface DocumentOutlineSummaryProviderResult {
   readonly metadata?: Readonly<Record<string, unknown>> | undefined;
+  /** Provider attempts after the first request, when the adapter performs contract repair. */
+  readonly retries?: number | undefined;
   readonly summary: string;
 }
 
@@ -62,6 +70,7 @@ export interface DocumentOutlineSummaryEnhancerOptions {
   readonly maxInputChars: number;
   readonly maxSummaryChars: number;
   readonly metrics?: DocumentOutlineSummaryOperationalMetrics | undefined;
+  readonly modelCallMetrics?: IngestionModelCallOperationalMetrics | undefined;
   readonly model: string;
   readonly now?: (() => number) | undefined;
   readonly promptVersion: string;
@@ -75,6 +84,7 @@ export interface DocumentOutlineSummaryOperationalMetric {
   readonly nodeCount: number;
   readonly outcome: "succeeded" | "failed";
   readonly providerCalls: number;
+  readonly reusedSemanticSummaries?: number | undefined;
 }
 
 export interface DocumentOutlineSummaryOperationalMetrics {
@@ -82,6 +92,7 @@ export interface DocumentOutlineSummaryOperationalMetrics {
 }
 
 export interface EnhanceDocumentOutlineInput {
+  readonly modelBudget?: DocumentModelBudget | undefined;
   readonly outline: DocumentOutline;
   readonly parseArtifact: ParseArtifact;
   /** Exact immutable retrieval profile frozen by a durable compilation attempt. */
@@ -104,6 +115,7 @@ export function createDocumentOutlineSummaryEnhancer({
   maxInputChars,
   maxSummaryChars,
   metrics,
+  modelCallMetrics,
   model,
   now = Date.now,
   promptVersion,
@@ -121,13 +133,24 @@ export function createDocumentOutlineSummaryEnhancer({
   const providerGate = createConcurrencyGate(maxConcurrentSummaries);
 
   return {
-    enhance: async ({ outline, parseArtifact, signal, tenantId, traceId }) => {
+    enhance: async ({ modelBudget, outline, parseArtifact, signal, tenantId, traceId }) => {
       signal?.throwIfAborted();
       const parsedOutline = DocumentOutlineSchema.parse(outline);
       const artifact = ParseArtifactSchema.parse(parseArtifact);
       const startedAt = now();
-      const stats = { checkpointHits: 0, providerCalls: 0 };
-      const instrumentedProvider = instrumentSummaryProvider(provider, stats);
+      const stats = {
+        checkpointHits: 0,
+        inputTokens: 0,
+        inputTokensObserved: false,
+        outputTokens: 0,
+        outputTokensObserved: false,
+        providerCalls: 0,
+        retries: 0,
+        reusedSemanticSummaries: 0,
+        totalTokens: 0,
+        totalTokensObserved: false,
+      };
+      const instrumentedProvider = instrumentSummaryProvider(provider, stats, modelBudget);
       try {
         const nodes = await enhanceDocumentOutlineNodes({
           artifact,
@@ -155,6 +178,20 @@ export function createDocumentOutlineSummaryEnhancer({
           nodeCount: countOutlineNodes(parsedOutline.nodes),
           outcome: "succeeded",
           providerCalls: stats.providerCalls,
+          reusedSemanticSummaries: stats.reusedSemanticSummaries,
+        });
+        recordIngestionModelCallMetric(modelCallMetrics, {
+          cacheHits: stats.checkpointHits,
+          durationMs: Math.max(0, now() - startedAt),
+          itemCount: countOutlineNodes(parsedOutline.nodes),
+          outcome: "succeeded",
+          providerCalls: stats.providerCalls,
+          reusedItems: stats.reusedSemanticSummaries,
+          retries: stats.retries,
+          stage: "outline-summary",
+          ...(stats.inputTokensObserved ? { inputTokens: stats.inputTokens } : {}),
+          ...(stats.outputTokensObserved ? { outputTokens: stats.outputTokens } : {}),
+          ...(stats.totalTokensObserved ? { totalTokens: stats.totalTokens } : {}),
         });
         return DocumentOutlineSchema.parse({
           ...parsedOutline,
@@ -176,6 +213,20 @@ export function createDocumentOutlineSummaryEnhancer({
           nodeCount: countOutlineNodes(parsedOutline.nodes),
           outcome: "failed",
           providerCalls: stats.providerCalls,
+          reusedSemanticSummaries: stats.reusedSemanticSummaries,
+        });
+        recordIngestionModelCallMetric(modelCallMetrics, {
+          cacheHits: stats.checkpointHits,
+          durationMs: Math.max(0, now() - startedAt),
+          itemCount: countOutlineNodes(parsedOutline.nodes),
+          outcome: "failed",
+          providerCalls: stats.providerCalls,
+          reusedItems: stats.reusedSemanticSummaries,
+          retries: stats.retries,
+          stage: "outline-summary",
+          ...(stats.inputTokensObserved ? { inputTokens: stats.inputTokens } : {}),
+          ...(stats.outputTokensObserved ? { outputTokens: stats.outputTokens } : {}),
+          ...(stats.totalTokensObserved ? { totalTokens: stats.totalTokens } : {}),
         });
         throw error;
       }
@@ -262,7 +313,7 @@ async function enhanceDocumentOutlineNodes({
   readonly provider: DocumentOutlineSummaryProvider;
   readonly providerGate: ReturnType<typeof createConcurrencyGate>;
   readonly signal?: AbortSignal | undefined;
-  readonly stats: { checkpointHits: number; providerCalls: number };
+  readonly stats: SummaryStats;
   readonly tenantId?: string | undefined;
   readonly traceId?: string | undefined;
 }): Promise<DocumentOutlineNode[]> {
@@ -274,7 +325,16 @@ async function enhanceDocumentOutlineNodes({
   for (let depth = nodesByDepth.length - 1; depth >= 0; depth -= 1) {
     signal?.throwIfAborted();
     const levelNodes = nodesByDepth[depth] ?? [];
-    const inputs = levelNodes.map((node) =>
+    const nodesRequiringProvider = levelNodes.filter((node) => {
+      if (!canReuseSemanticLeafSummary(node)) return true;
+      summaries.set(node.id, {
+        metadata: { source: "semantic-chunking" },
+        summary: node.summary as string,
+      });
+      stats.reusedSemanticSummaries += 1;
+      return false;
+    });
+    const inputs = nodesRequiringProvider.map((node) =>
       summaryInput({
         artifact,
         maxInputChars,
@@ -389,22 +449,92 @@ async function enhanceDocumentOutlineNodes({
 
 function instrumentSummaryProvider(
   provider: DocumentOutlineSummaryProvider,
-  stats: { providerCalls: number },
+  stats: SummaryStats,
+  modelBudget?: DocumentModelBudget,
 ): DocumentOutlineSummaryProvider {
   return {
     summarize: async (input) => {
+      modelBudget?.reserve({
+        estimatedTokens: estimatedSummaryTokens(input),
+        itemCount: 1,
+        stage: "outline-summary",
+      });
       stats.providerCalls += 1;
-      return provider.summarize(input);
+      const result = await provider.summarize(input);
+      stats.retries += validProviderRetries(result.retries);
+      accumulateSummaryUsage(stats, result.metadata);
+      return result;
     },
     ...(provider.summarizeBatch
       ? {
           summarizeBatch: async (inputs: readonly DocumentOutlineSummaryProviderInput[]) => {
+            modelBudget?.reserve({
+              estimatedTokens: inputs.reduce(
+                (total, input) => total + estimatedSummaryTokens(input),
+                0,
+              ),
+              itemCount: inputs.length,
+              stage: "outline-summary",
+            });
             stats.providerCalls += 1;
-            return provider.summarizeBatch?.(inputs) ?? [];
+            const results = (await provider.summarizeBatch?.(inputs)) ?? [];
+            stats.retries += validProviderRetries(results[0]?.retries);
+            accumulateSummaryUsage(stats, results[0]?.metadata);
+            return results;
           },
         }
       : {}),
   };
+}
+
+function estimatedSummaryTokens(input: DocumentOutlineSummaryProviderInput): number {
+  return (
+    estimateDocumentModelTokens(
+      [input.title, input.text, ...input.sectionPath, ...input.childSummaries].join("\n"),
+    ) + Math.ceil(input.maxSummaryChars / 3)
+  );
+}
+
+interface SummaryStats {
+  checkpointHits: number;
+  inputTokens: number;
+  inputTokensObserved: boolean;
+  outputTokens: number;
+  outputTokensObserved: boolean;
+  providerCalls: number;
+  retries: number;
+  reusedSemanticSummaries: number;
+  totalTokens: number;
+  totalTokensObserved: boolean;
+}
+
+function validProviderRetries(value: number | undefined): number {
+  return value !== undefined && Number.isSafeInteger(value) && value >= 0 ? value : 0;
+}
+
+function canReuseSemanticLeafSummary(node: DocumentOutlineNode): boolean {
+  return (
+    node.children.length === 0 &&
+    node.metadata.summarySource === "semantic-chunking" &&
+    typeof node.summary === "string" &&
+    node.summary.trim().length > 0
+  );
+}
+
+function accumulateSummaryUsage(stats: SummaryStats, metadata: unknown): void {
+  const usage = ingestionModelUsageFromMetadata(metadata);
+  if (usage.inputTokens !== undefined) {
+    stats.inputTokens += usage.inputTokens;
+    stats.inputTokensObserved = true;
+  }
+  if (usage.outputTokens !== undefined) {
+    stats.outputTokens += usage.outputTokens;
+    stats.outputTokensObserved = true;
+  }
+  if (usage.totalTokens !== undefined) {
+    stats.totalTokens += usage.totalTokens;
+    stats.totalTokensObserved = true;
+  }
 }
 
 function countOutlineNodes(nodes: readonly DocumentOutlineNode[]): number {

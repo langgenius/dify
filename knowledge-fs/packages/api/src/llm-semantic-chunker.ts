@@ -8,6 +8,7 @@ import {
   KnowledgeSpaceModelSelectionSchema,
   type KnowledgeSpaceRetrievalProfile,
   type ParseArtifact,
+  stableJson,
 } from "@knowledge/core";
 import {
   countGraphemes as countUnicodeGraphemes,
@@ -16,16 +17,28 @@ import {
 import { z } from "zod";
 
 import { deterministicChildId } from "./api-shared-utils";
+import type { ConcurrencyGate } from "./bounded-concurrency";
 import {
   type DocumentLayoutRecompositionStats,
   recomposeDocumentLayoutForSemanticSegmentation,
 } from "./document-layout-recomposer";
+import { type DocumentModelBudget, estimateDocumentModelTokens } from "./document-model-budget";
 import {
   DOCUMENT_ELEMENT_SEPARATOR,
   DOCUMENT_ELEMENT_TEXT_NORMALIZATION,
   DOCUMENT_OFFSET_ENCODING,
   materializeDocumentElementByteSpan,
 } from "./document-offsets";
+import type {
+  DocumentSemanticWindowCheckpoint,
+  DocumentSemanticWindowCheckpointRepository,
+  DocumentSemanticWindowCheckpointScope,
+} from "./document-semantic-window-checkpoint-repository";
+import {
+  type IngestionModelCallOperationalMetrics,
+  ingestionModelUsageFromMetadata,
+  recordIngestionModelCallMetric,
+} from "./ingestion-model-observability";
 import { cloneJsonObject, isPlainObject } from "./json-utils";
 import {
   MAX_LLM_SEMANTIC_COMPLETION_IDENTITIES as MAX_COMPLETION_CATALOG_ENTRIES,
@@ -97,6 +110,11 @@ export interface SemanticChunkerInput {
       }
     | undefined;
   readonly knowledgeSpaceId: string;
+  readonly modelBudget?: DocumentModelBudget | undefined;
+  /** Suppresses graph extraction work in the model prompt when graph materialization is disabled. */
+  readonly enableGraph?: boolean | undefined;
+  /** Suppresses PageIndex-only section expansion and summaries when PageIndex is disabled. */
+  readonly enablePageIndex?: boolean | undefined;
   readonly parseArtifact: ParseArtifact;
   readonly permissionScope?: readonly string[] | undefined;
   readonly publicationGenerationId?: string | undefined;
@@ -117,6 +135,7 @@ export interface SemanticChunker {
 }
 
 export interface LlmSemanticChunkerOptions {
+  readonly checkpoints?: DocumentSemanticWindowCheckpointRepository | undefined;
   readonly maxChunkChars?: number | undefined;
   readonly maxEntitiesPerChunk?: number | undefined;
   readonly maxNodes?: number | undefined;
@@ -124,6 +143,8 @@ export interface LlmSemanticChunkerOptions {
   readonly maxRelationsPerChunk?: number | undefined;
   readonly maxResponseChars?: number | undefined;
   readonly maxWindowChars?: number | undefined;
+  readonly metrics?: IngestionModelCallOperationalMetrics | undefined;
+  readonly modelRequestGate?: ConcurrencyGate | undefined;
   readonly now?: (() => string) | undefined;
   readonly promptVersion?: string | undefined;
   readonly reasoningProviderFactory: (
@@ -280,6 +301,7 @@ interface ProviderCompletionProvenance {
 }
 
 interface CollectedProviderCompletion extends ProviderCompletionProvenance {
+  readonly metadata?: unknown;
   readonly text: string;
 }
 
@@ -307,6 +329,7 @@ export function preflightLlmSemanticWindows({
  * target fill size: the LLM may choose any smaller complete semantic range.
  */
 export function createLlmSemanticChunker({
+  checkpoints,
   maxChunkChars = DEFAULT_MAX_CHUNK_CHARS,
   maxEntitiesPerChunk = DEFAULT_MAX_ENTITIES_PER_CHUNK,
   maxNodes = DEFAULT_MAX_NODES,
@@ -314,6 +337,8 @@ export function createLlmSemanticChunker({
   maxRelationsPerChunk = DEFAULT_MAX_RELATIONS_PER_CHUNK,
   maxResponseChars = DEFAULT_MAX_RESPONSE_CHARS,
   maxWindowChars = DEFAULT_MAX_WINDOW_CHARS,
+  metrics,
+  modelRequestGate,
   now = () => new Date().toISOString(),
   promptVersion = DEFAULT_PROMPT_VERSION,
   reasoningProviderFactory,
@@ -355,6 +380,13 @@ export function createLlmSemanticChunker({
       const units = materializeAtomicUnits(elements, effectiveConfig.maxChunkChars);
       preflightMaterializedSemanticWindows({ canonicalText, effectiveConfig, units });
       const reasoningSelection = input.retrievalProfile.reasoningModel;
+      const modelFingerprint = semanticWindowModelFingerprint({
+        enableGraph: input.enableGraph !== false,
+        enablePageIndex: input.enablePageIndex !== false,
+        promptVersion,
+        selection: reasoningSelection,
+      });
+      const checkpointScope = semanticWindowCheckpointScope(input, checkpoints);
       const provider = reasoningProviderFactory(reasoningSelection);
       assertBoundedOptionalCompletionField(
         provider.kind,
@@ -377,62 +409,139 @@ export function createLlmSemanticChunker({
           units,
           windowIndex,
         });
-        const completion = await collectProviderCompletion({
-          maxOutputTokens,
-          maxResponseChars,
-          messages: semanticChunkingMessages({
-            maxChunkChars: effectiveConfig.maxChunkChars,
-            maxEntitiesPerChunk,
-            maxRelationsPerChunk,
-            window,
-          }),
-          model: reasoningSelection.model,
-          provider,
-          temperature,
-          tenantId: input.tenantId,
-        });
-        const completionFingerprint = llmSemanticCompletionFingerprint({
-          ...(completion.actualModel ? { actualModel: completion.actualModel } : {}),
-          ...(completion.actualProvider ? { actualProvider: completion.actualProvider } : {}),
-          ...(completion.finishReason ? { finishReason: completion.finishReason } : {}),
-          ...(provider.kind ? { transportProvider: provider.kind } : {}),
-        });
-        completionFingerprints.add(completionFingerprint);
-        if (completionFingerprints.size > MAX_COMPLETION_CATALOG_ENTRIES) {
-          throw new Error(
-            `LLM semantic chunking completion identities exceed maxCompletionCatalogEntries=${MAX_COMPLETION_CATALOG_ENTRIES}`,
-          );
-        }
-        const output = parseSemanticChunkingOutput(completion.text);
-        const windowChunks = validateAndMaterializeWindowOutput({
+        const messages = semanticChunkingMessages({
+          enableGraph: input.enableGraph !== false,
+          enablePageIndex: input.enablePageIndex !== false,
           maxChunkChars: effectiveConfig.maxChunkChars,
           maxEntitiesPerChunk,
           maxRelationsPerChunk,
-          output,
           window,
-        }).map((chunk) => ({
-          ...chunk,
-          completion: {
+        });
+        const callStartedAt = Date.now();
+        let completion: CollectedProviderCompletion;
+        let checkpointHit = false;
+        try {
+          const stored = checkpointScope
+            ? await checkpoints?.get({
+                key: { inputFingerprint: window.inputFingerprint, windowId: window.id },
+                scope: checkpointScope,
+              })
+            : null;
+          if (stored) {
+            if (stored.modelFingerprint !== modelFingerprint) {
+              throw new Error("Semantic window checkpoint model fingerprint changed");
+            }
+            completion = semanticCompletionFromCheckpoint(stored);
+            checkpointHit = true;
+          } else {
+            input.modelBudget?.reserve({
+              estimatedTokens:
+                estimateDocumentModelTokens(JSON.stringify(messages)) + maxOutputTokens,
+              itemCount: window.units.length,
+              stage: "semantic-chunking",
+            });
+            const request = () =>
+              collectProviderCompletion({
+                maxOutputTokens,
+                maxResponseChars,
+                messages,
+                model: reasoningSelection.model,
+                provider,
+                temperature,
+                tenantId: input.tenantId,
+              });
+            completion = modelRequestGate ? await modelRequestGate.run(request) : await request();
+          }
+        } catch (error) {
+          recordIngestionModelCallMetric(metrics, {
+            cacheHits: checkpointHit ? 1 : 0,
+            durationMs: Math.max(0, Date.now() - callStartedAt),
+            itemCount: window.units.length,
+            outcome: "failed",
+            providerCalls: checkpointHit ? 0 : 1,
+            retries: 0,
+            stage: "semantic-chunking",
+          });
+          throw error;
+        }
+        try {
+          const completionFingerprint = llmSemanticCompletionFingerprint({
             ...(completion.actualModel ? { actualModel: completion.actualModel } : {}),
             ...(completion.actualProvider ? { actualProvider: completion.actualProvider } : {}),
             ...(completion.finishReason ? { finishReason: completion.finishReason } : {}),
-          },
-        }));
-        chunks.push(...windowChunks);
-        if (chunks.length > effectiveConfig.maxNodes) {
-          throw new Error(
-            `LLM semantic chunking output exceeds maxNodes=${effectiveConfig.maxNodes}`,
-          );
+            ...(provider.kind ? { transportProvider: provider.kind } : {}),
+          });
+          completionFingerprints.add(completionFingerprint);
+          if (completionFingerprints.size > MAX_COMPLETION_CATALOG_ENTRIES) {
+            throw new Error(
+              `LLM semantic chunking completion identities exceed maxCompletionCatalogEntries=${MAX_COMPLETION_CATALOG_ENTRIES}`,
+            );
+          }
+          const output = parseSemanticChunkingOutput(completion.text);
+          const windowChunks = validateAndMaterializeWindowOutput({
+            maxChunkChars: effectiveConfig.maxChunkChars,
+            maxEntitiesPerChunk,
+            maxRelationsPerChunk,
+            output,
+            window,
+          }).map((chunk) => ({
+            ...chunk,
+            completion: {
+              ...(completion.actualModel ? { actualModel: completion.actualModel } : {}),
+              ...(completion.actualProvider ? { actualProvider: completion.actualProvider } : {}),
+              ...(completion.finishReason ? { finishReason: completion.finishReason } : {}),
+            },
+          }));
+          if (chunks.length + windowChunks.length > effectiveConfig.maxNodes) {
+            throw new Error(
+              `LLM semantic chunking output exceeds maxNodes=${effectiveConfig.maxNodes}`,
+            );
+          }
+          const committedEndUnitId = windowChunks.at(-1)?.windowCommitEndUnitId;
+          const committedEndIndex = committedEndUnitId
+            ? globalUnitIndex.get(committedEndUnitId)
+            : undefined;
+          if (committedEndIndex === undefined || committedEndIndex < nextUnitIndex) {
+            throw new Error("LLM semantic chunking response did not advance the document cursor");
+          }
+          if (!checkpointHit && checkpointScope && checkpoints) {
+            await checkpoints.put({
+              checkpoint: {
+                completion: semanticCompletionCheckpointMetadata(completion),
+                inputFingerprint: window.inputFingerprint,
+                modelFingerprint,
+                responseText: completion.text,
+                windowId: window.id,
+              },
+              scope: checkpointScope,
+            });
+          }
+          recordIngestionModelCallMetric(metrics, {
+            cacheHits: checkpointHit ? 1 : 0,
+            durationMs: Math.max(0, Date.now() - callStartedAt),
+            itemCount: window.units.length,
+            outcome: "succeeded",
+            providerCalls: checkpointHit ? 0 : 1,
+            retries: 0,
+            stage: "semantic-chunking",
+            ...(checkpointHit ? {} : ingestionModelUsageFromMetadata(completion.metadata)),
+          });
+          chunks.push(...windowChunks);
+          nextUnitIndex = committedEndIndex + 1;
+          windowIndex += 1;
+        } catch (error) {
+          recordIngestionModelCallMetric(metrics, {
+            cacheHits: checkpointHit ? 1 : 0,
+            durationMs: Math.max(0, Date.now() - callStartedAt),
+            itemCount: window.units.length,
+            outcome: "failed",
+            providerCalls: checkpointHit ? 0 : 1,
+            retries: 0,
+            stage: "semantic-chunking",
+            ...(checkpointHit ? {} : ingestionModelUsageFromMetadata(completion.metadata)),
+          });
+          throw error;
         }
-        const committedEndUnitId = windowChunks.at(-1)?.windowCommitEndUnitId;
-        const committedEndIndex = committedEndUnitId
-          ? globalUnitIndex.get(committedEndUnitId)
-          : undefined;
-        if (committedEndIndex === undefined || committedEndIndex < nextUnitIndex) {
-          throw new Error("LLM semantic chunking response did not advance the document cursor");
-        }
-        nextUnitIndex = committedEndIndex + 1;
-        windowIndex += 1;
       }
 
       const extractedAt = now();
@@ -1679,11 +1788,15 @@ function isWindowCompatible(first: AtomicUnit, candidate: AtomicUnit): boolean {
 }
 
 function semanticChunkingMessages({
+  enableGraph,
+  enablePageIndex,
   maxChunkChars,
   maxEntitiesPerChunk,
   maxRelationsPerChunk,
   window,
 }: {
+  readonly enableGraph: boolean;
+  readonly enablePageIndex: boolean;
   readonly maxChunkChars: number;
   readonly maxEntitiesPerChunk: number;
   readonly maxRelationsPerChunk: number;
@@ -1692,7 +1805,13 @@ function semanticChunkingMessages({
   return [
     {
       content: [
-        "You choose semantically complete chunk boundaries and extract graph facts in one pass.",
+        "You choose semantically complete chunk boundaries in one pass.",
+        enableGraph
+          ? "Graph extraction is enabled: extract grounded entities and relations while choosing boundaries."
+          : "Graph extraction is disabled: return empty entities and relations arrays; do not spend effort identifying graph facts.",
+        enablePageIndex
+          ? "PageIndex is enabled: assign a concise semantic sectionPath and sectionSummary to every chunk."
+          : "PageIndex is disabled: preserve only the supplied sectionPath, omit sectionSummary, and do not invent child section levels.",
         "Return strict JSON only. Never return, rewrite, summarize, correct, or duplicate source text.",
         "The units field is the core: cover every core unit exactly once, in order, by contiguous inclusive ranges.",
         "lookAheadUnits is context-only. Only the final chunk may extend into it, and that final chunk must start in the core.",
@@ -1704,7 +1823,11 @@ function semanticChunkingMessages({
         "Allowed relation types: mentions, defines, references, depends_on, supersedes, contradicts.",
         "Entity text must be an exact source substring. Give every entity a response-local unique id.",
         "Relations must reference entity ids from that same chunk through subjectEntityId/objectEntityId; never use names as relation endpoints.",
-        "Assign every chunk a concise semantic sectionPath and sectionSummary. Preserve the supplied sectionPath as a prefix when it is non-empty; add only meaningful child levels.",
+        ...(enablePageIndex
+          ? [
+              "Preserve the supplied sectionPath as a prefix when it is non-empty; add only meaningful child levels.",
+            ]
+          : []),
         "Output shape:",
         '{"chunks":[{"startUnitId":"u-...","endUnitId":"u-...","sectionPath":["Policy","Eligibility"],"sectionSummary":"Who is eligible and under what conditions.","entities":[{"id":"e-1","text":"Acme","type":"organization","confidence":0.95,"canonicalName":"Acme Corp","aliases":["Acme"]},{"id":"e-2","text":"Policy A","type":"policy","confidence":0.9}],"relations":[{"subjectEntityId":"e-1","type":"references","objectEntityId":"e-2","confidence":0.9}]}]}',
       ].join("\n"),
@@ -1712,6 +1835,7 @@ function semanticChunkingMessages({
     },
     {
       content: JSON.stringify({
+        features: { enableGraph, enablePageIndex },
         lookAheadUnits: window.lookAheadUnits.map(semanticPromptUnit),
         sectionPath: window.sectionPath,
         units: window.units.map(semanticPromptUnit),
@@ -1794,8 +1918,68 @@ async function collectProviderCompletion({
     ...(actualModel ? { actualModel } : {}),
     ...(actualProvider ? { actualProvider } : {}),
     ...(finishReason ? { finishReason } : {}),
+    ...(terminal.metadata === undefined ? {} : { metadata: terminal.metadata }),
     text,
   };
+}
+
+function semanticWindowCheckpointScope(
+  input: SemanticChunkerInput,
+  checkpoints: DocumentSemanticWindowCheckpointRepository | undefined,
+): DocumentSemanticWindowCheckpointScope | undefined {
+  if (!checkpoints || !input.tenantId?.trim() || !input.publicationGenerationId) return undefined;
+  return {
+    documentAssetId: input.parseArtifact.documentAssetId,
+    documentVersion: input.parseArtifact.version,
+    knowledgeSpaceId: input.knowledgeSpaceId,
+    publicationGenerationId: input.publicationGenerationId,
+    tenantId: input.tenantId,
+  };
+}
+
+function semanticWindowModelFingerprint(input: {
+  readonly enableGraph: boolean;
+  readonly enablePageIndex: boolean;
+  readonly promptVersion: string;
+  readonly selection: KnowledgeSpaceModelSelection;
+}): string {
+  return `sha256:${createHash("sha256").update(stableJson(input), "utf8").digest("hex")}`;
+}
+
+function semanticCompletionCheckpointMetadata(
+  completion: CollectedProviderCompletion,
+): Readonly<Record<string, unknown>> {
+  return {
+    ...(completion.actualModel ? { actualModel: completion.actualModel } : {}),
+    ...(completion.actualProvider ? { actualProvider: completion.actualProvider } : {}),
+    ...(completion.finishReason ? { finishReason: completion.finishReason } : {}),
+  };
+}
+
+function semanticCompletionFromCheckpoint(
+  checkpoint: DocumentSemanticWindowCheckpoint,
+): CollectedProviderCompletion {
+  const completion = checkpoint.completion;
+  return {
+    ...(checkpointString(completion.actualModel, "actualModel")
+      ? { actualModel: checkpointString(completion.actualModel, "actualModel") }
+      : {}),
+    ...(checkpointString(completion.actualProvider, "actualProvider")
+      ? { actualProvider: checkpointString(completion.actualProvider, "actualProvider") }
+      : {}),
+    ...(checkpointString(completion.finishReason, "finishReason")
+      ? { finishReason: checkpointString(completion.finishReason, "finishReason") }
+      : {}),
+    text: checkpoint.responseText,
+  };
+}
+
+function checkpointString(value: unknown, label: string): string | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "string" || !value.trim()) {
+    throw new Error(`Semantic window checkpoint ${label} is invalid`);
+  }
+  return value.trim();
 }
 
 function terminalMetadataStringField(
@@ -1924,36 +2108,50 @@ function validateAndMaterializeWindowOutput({
       );
     }
 
-    const entities = candidate.entities.map((entity) => validateEntity(entity, chunkText));
+    const declaredEntityIds = new Set<string>();
     const entitiesById = new Map<string, LlmSemanticEntity>();
-    for (const entity of entities) {
-      if (entitiesById.has(entity.id)) {
+    for (const entity of candidate.entities) {
+      if (declaredEntityIds.has(entity.id)) {
         throw new Error("LLM semantic chunking entity ids must be unique within the same chunk");
       }
-      entitiesById.set(entity.id, entity);
+      declaredEntityIds.add(entity.id);
+      const grounded = groundEntity(entity, chunkText);
+      if (grounded) {
+        entitiesById.set(grounded.id, grounded);
+      }
     }
-    const relations = candidate.relations.map((relation) => {
-      const subject = entitiesById.get(relation.subjectEntityId);
-      const object = entitiesById.get(relation.objectEntityId);
-      if (!subject || !object) {
+    const relations: MaterializedSemanticRelation[] = [];
+    for (const relation of candidate.relations) {
+      if (
+        !declaredEntityIds.has(relation.subjectEntityId) ||
+        !declaredEntityIds.has(relation.objectEntityId)
+      ) {
         throw new Error(
           "LLM semantic chunking relation endpoint ids must reference entities in the same chunk",
         );
       }
-      return {
+      const subject = entitiesById.get(relation.subjectEntityId);
+      const object = entitiesById.get(relation.objectEntityId);
+      if (!subject || !object) {
+        // Entity text that cannot be grounded in the immutable chunk is untrusted. Discard every
+        // relation that depends on it rather than allowing hallucinated graph data to escape or
+        // failing an otherwise valid semantic boundary decision.
+        continue;
+      }
+      relations.push({
         confidence: relation.confidence,
         object: object.canonicalName ?? object.text,
         objectEntityId: object.id,
         subject: subject.canonicalName ?? subject.text,
         subjectEntityId: subject.id,
         type: relation.type,
-      };
-    });
+      });
+    }
     const sectionPath = resolveSemanticSectionPath(candidate.sectionPath, window.sectionPath);
     const kind = commonSpecialKind(chunkUnits) ?? "chunk";
     chunks.push({
       endUnitId: last.id,
-      entities,
+      entities: [...entitiesById.values()],
       kind,
       relations,
       sectionPath,
@@ -1984,10 +2182,10 @@ function validateAndMaterializeWindowOutput({
   return chunks.map((chunk) => ({ ...chunk, windowCommitEndUnitId: commitEndUnitId }));
 }
 
-function validateEntity(entity: LlmSemanticEntity, chunkText: string): LlmSemanticEntity {
+function groundEntity(entity: LlmSemanticEntity, chunkText: string): LlmSemanticEntity | undefined {
   const text = entity.text.trim();
   if (!chunkText.includes(text)) {
-    throw new Error("LLM semantic chunking entity text must be an exact chunk substring");
+    return undefined;
   }
   return {
     ...(entity.aliases

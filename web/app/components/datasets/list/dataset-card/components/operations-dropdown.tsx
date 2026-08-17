@@ -1,4 +1,4 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetCardItem } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -19,7 +19,7 @@ import { getDatasetACLCapabilities } from '@/utils/permission'
 import Operations from '../operations'
 
 type OperationsDropdownProps = {
-  dataset: DataSet
+  dataset: DatasetCardItem
   openRenameModal: () => void
   handleExportPipeline: (include?: boolean) => void
   detectIsUsedByApp: () => void
@@ -56,7 +56,7 @@ const OperationsDropdown = ({
     () =>
       getDatasetACLCapabilities(dataset.permission_keys, {
         currentUserId,
-        resourceMaintainer: dataset.maintainer,
+        resourceMaintainer: dataset.maintainer ?? undefined,
         workspacePermissionKeys,
         isRbacEnabled,
       }),
@@ -84,7 +84,6 @@ const OperationsDropdown = ({
           ? 'pointer-events-auto visible'
           : 'pointer-events-none invisible group-hover:pointer-events-auto group-hover:visible',
       )}
-      onClick={(e) => e.stopPropagation()}
     >
       <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger

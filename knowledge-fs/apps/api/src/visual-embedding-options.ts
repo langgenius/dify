@@ -1,4 +1,5 @@
 import {
+  type ConcurrencyGate,
   type EmbedVisualAssetsResult,
   type ImageBytesVisualEmbeddingProvider,
   type KnowledgeGatewayOptions,
@@ -50,9 +51,11 @@ export interface ApiVisualEmbeddingOptions {
  */
 export function createApiVisualEmbeddingOptions({
   env = process.env,
+  modelRequestGate,
   objectStorage,
 }: {
   readonly env?: ApiVisualEmbeddingEnv | undefined;
+  readonly modelRequestGate?: ConcurrencyGate | undefined;
   readonly objectStorage: KnowledgeGatewayOptions["adapter"]["objectStorage"];
 }): ApiVisualEmbeddingOptions | undefined {
   if (!visualEmbeddingEnabled(env.KNOWLEDGE_VISUAL_EMBEDDING_PROVIDER)) {
@@ -80,6 +83,7 @@ export function createApiVisualEmbeddingOptions({
   const queryModel = trimmed(env.KNOWLEDGE_VISUAL_EMBEDDING_QUERY_MODEL) ?? model;
   const imageBytesProvider = createDifyImageBytesVisualEmbeddingProvider({
     client,
+    modelRequestGate,
     pluginId,
     provider: pluginProvider,
   });
@@ -121,6 +125,7 @@ export function createApiVisualEmbeddingOptions({
 
 interface DifyImageBytesVisualEmbeddingProviderOptions {
   readonly client: ReturnType<typeof createApiDifyModelRuntimeClient>;
+  readonly modelRequestGate?: ConcurrencyGate | undefined;
   readonly pluginId: string;
   readonly provider: string;
 }
@@ -133,6 +138,7 @@ interface DifyImageBytesVisualEmbeddingProviderOptions {
  */
 function createDifyImageBytesVisualEmbeddingProvider({
   client,
+  modelRequestGate,
   pluginId,
   provider,
 }: DifyImageBytesVisualEmbeddingProviderOptions): ImageBytesVisualEmbeddingProvider {
@@ -148,18 +154,20 @@ function createDifyImageBytesVisualEmbeddingProvider({
         throw new Error("Dify model runtime visual embedding requires at least one image");
       }
 
-      const data = await client.invokeMultimodalEmbedding({
-        documents: input.images.map((image) => ({
-          content: Buffer.from(image.body).toString("base64"),
-          content_type: "image",
-          file_id: image.objectKey,
-        })),
-        inputType: input.inputType ?? "document",
-        model: input.model,
-        pluginId,
-        provider,
-        tenantId,
-      });
+      const invoke = () =>
+        client.invokeMultimodalEmbedding({
+          documents: input.images.map((image) => ({
+            content: Buffer.from(image.body).toString("base64"),
+            content_type: "image",
+            file_id: image.objectKey,
+          })),
+          inputType: input.inputType ?? "document",
+          model: input.model,
+          pluginId,
+          provider,
+          tenantId,
+        });
+      const data = modelRequestGate ? await modelRequestGate.run(invoke) : await invoke();
 
       const parsed = parseMultimodalEmbeddingResult(data, input.images.length);
       const model = parsed.model ?? input.model;
@@ -169,6 +177,9 @@ function createDifyImageBytesVisualEmbeddingProvider({
         metadata: {
           model,
           provider: "dify-model-runtime",
+          ...(parsed.totalTokens === undefined
+            ? {}
+            : { usage: { totalTokens: parsed.totalTokens } }),
         },
         model,
       } satisfies EmbedVisualAssetsResult;
@@ -180,7 +191,11 @@ function createDifyImageBytesVisualEmbeddingProvider({
 function parseMultimodalEmbeddingResult(
   data: unknown,
   expectedCount: number,
-): { readonly embeddings: (readonly number[])[]; readonly model?: string | undefined } {
+): {
+  readonly embeddings: (readonly number[])[];
+  readonly model?: string | undefined;
+  readonly totalTokens?: number | undefined;
+} {
   const record = data && typeof data === "object" ? (data as Record<string, unknown>) : undefined;
   const embeddings = Array.isArray(record?.embeddings) ? record.embeddings : undefined;
 
@@ -191,7 +206,19 @@ function parseMultimodalEmbeddingResult(
   return {
     embeddings: embeddings.map(parseVector),
     ...(typeof record?.model === "string" ? { model: record.model } : {}),
+    ...(visualEmbeddingTokenCount(record?.usage) === undefined
+      ? {}
+      : { totalTokens: visualEmbeddingTokenCount(record?.usage) }),
   };
+}
+
+function visualEmbeddingTokenCount(value: unknown): number | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const record = value as Record<string, unknown>;
+  const candidate = record.totalTokens ?? record.total_tokens ?? record.tokens;
+  return typeof candidate === "number" && Number.isSafeInteger(candidate) && candidate >= 0
+    ? candidate
+    : undefined;
 }
 
 function parseVector(value: unknown): readonly number[] {

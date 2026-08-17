@@ -5,19 +5,32 @@ import type { DataSet } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiCloseLine } from '@remixicon/react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import { updateDatasetSetting } from '@/service/datasets'
 import AppIcon from '../../base/app-icon'
 import AppIconPicker from '../../base/app-icon-picker'
 
 type RenameDatasetModalProps = {
   show: boolean
-  dataset: DataSet
+  dataset: {
+    description?: string | null
+    external_knowledge_info?: {
+      external_knowledge_api_id?: string | null
+      external_knowledge_id?: string | null
+    } | null
+    icon_info?: {
+      icon?: string | null
+      icon_background?: string | null
+      icon_type?: string | null
+      icon_url?: string | null
+    } | null
+    id: string
+    name: string
+  }
   onSuccess?: () => void
   onClose: () => void
 }
@@ -25,9 +38,9 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
   const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
   const [name, setName] = useState<string>(dataset.name)
-  const [description, setDescription] = useState<string>(dataset.description)
-  const externalKnowledgeId = dataset.external_knowledge_info.external_knowledge_id
-  const externalKnowledgeApiId = dataset.external_knowledge_info.external_knowledge_api_id
+  const [description, setDescription] = useState(dataset.description ?? '')
+  const externalKnowledgeId = dataset.external_knowledge_info?.external_knowledge_id
+  const externalKnowledgeApiId = dataset.external_knowledge_info?.external_knowledge_api_id
   const [appIcon, setAppIcon] = useState<AppIconSelection>(
     dataset.icon_info?.icon_type === 'image'
       ? {
@@ -108,7 +121,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
             aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             onClick={onClose}
           >
-            <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
+            <span aria-hidden className="i-ri-close-line size-4 text-text-tertiary" />
           </button>
         </div>
         <div>

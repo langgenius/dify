@@ -139,7 +139,8 @@ export const lintConfig = {
     'docker/**',
     'docs/**',
     'knowledge-fs/**',
-    'scripts/**',
+    'scripts/**/*',
+    '!scripts/check-web-production-unused-after-knip-fix.mjs',
     'sdks/php-client/**',
     'sdks/python-client/**',
     '**/.next/**',
@@ -778,7 +779,7 @@ export const lintConfig = {
           'error',
           {
             allowConstantExport: true,
-            allowExportNames: ['viewport'],
+            allowExportNames: ['generateMetadata', 'viewport'],
           },
         ],
       },

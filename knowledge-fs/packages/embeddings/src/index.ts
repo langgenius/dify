@@ -423,11 +423,15 @@ export interface DifyModelRuntimeEmbeddingRequestGate {
 }
 
 export interface DifyModelRuntimeEmbeddingOperationalMetric {
+  readonly cacheHits?: number | undefined;
   readonly concurrencyLimit: number;
   readonly durationMs: number;
   readonly failureKind?: "timeout" | "rate_limited" | "other" | undefined;
   readonly outcome: "succeeded" | "failed";
+  readonly providerCalls?: number | undefined;
+  readonly retries?: number | undefined;
   readonly textCount: number;
+  readonly totalTokens?: number | undefined;
 }
 
 export interface DifyModelRuntimeEmbeddingOperationalMetrics {
@@ -566,18 +570,25 @@ export function createDifyModelRuntimeEmbeddingProvider(
               tokens: parsed.data.usage?.total_tokens ?? parsed.data.usage?.tokens,
             };
             recordDifyEmbeddingMetric(options.metrics, {
+              cacheHits: 0,
               concurrencyLimit: maxConcurrentRequests,
               durationMs: Math.max(0, now() - startedAt),
               outcome: "succeeded",
+              providerCalls: 1,
+              retries: 0,
               textCount: texts.length,
+              ...(result.tokens === undefined ? {} : { totalTokens: result.tokens }),
             });
             return result;
           } catch (error) {
             recordDifyEmbeddingMetric(options.metrics, {
+              cacheHits: 0,
               concurrencyLimit: maxConcurrentRequests,
               durationMs: Math.max(0, now() - startedAt),
               failureKind: difyEmbeddingFailureKind(error),
               outcome: "failed",
+              providerCalls: 1,
+              retries: 0,
               textCount: texts.length,
             });
             throw error;

@@ -78,6 +78,30 @@ describe.each(["postgres", "tidb"] as const)(
       fake.assertPlaceholderArity();
     });
 
+    it("does not fence a published space when a null-generation compatibility cache remains", async () => {
+      const fake = admissionDatabase(dialect, { legacy: true, published: true });
+      const repository = createDatabaseLegacySpacePublicationBootstrapRepository({
+        database: fake.database,
+        maxClaimBatchSize: 10,
+        maxDocuments: 100,
+        maxInsertBatchSize: 10,
+      });
+
+      await expect(repository.isQueryReady({ knowledgeSpaceId, tenantId })).resolves.toBe(true);
+      await expect(
+        repository.assertCompilationAdmission({ knowledgeSpaceId, tenantId }),
+      ).resolves.toBeUndefined();
+      await expect(
+        repository.assertDocumentMutationAdmission({ knowledgeSpaceId, tenantId }),
+      ).resolves.toBeUndefined();
+
+      expect(
+        fake.calls.filter((call) => call.tableName === "projection_set_publication_heads"),
+      ).toHaveLength(3);
+      expect(fake.calls.some((call) => call.sql.includes("legacy_exists"))).toBe(false);
+      fake.assertPlaceholderArity();
+    });
+
     it("opens the latch only for a completed ledger and permits future mutations", async () => {
       const fake = admissionDatabase(dialect, { bootstrap: succeededBootstrapRow() });
       const repository = createDatabaseLegacySpacePublicationBootstrapRepository({
@@ -329,6 +353,9 @@ describe.each(["postgres", "tidb"] as const)(
           }
           return { rows: [verifyingEmptyBootstrapRow()], rowsAffected: 0 };
         }
+        if (input.tableName === "projection_set_publication_heads") {
+          return { rows: [], rowsAffected: 0 };
+        }
         if (input.tableName === "knowledge_spaces") {
           if (input.sql.includes("legacy_exists")) {
             return { rows: [{ legacy_exists: 1 }], rowsAffected: 0 };
@@ -407,6 +434,9 @@ describe.each(["postgres", "tidb"] as const)(
           }
           return { rows: [verifyingEmptyBootstrapRow()], rowsAffected: 0 };
         }
+        if (input.tableName === "projection_set_publication_heads") {
+          return { rows: [], rowsAffected: 0 };
+        }
         if (input.tableName === "knowledge_spaces") {
           if (input.sql.includes("legacy_exists")) {
             return { rows: [], rowsAffected: 0 };
@@ -482,6 +512,9 @@ describe.each(["postgres", "tidb"] as const)(
           };
         }
         if (input.tableName === "legacy_space_publication_bootstraps") {
+          return { rows: [], rowsAffected: 0 };
+        }
+        if (input.tableName === "projection_set_publication_heads") {
           return { rows: [], rowsAffected: 0 };
         }
         if (input.tableName === "deletion_jobs") {
@@ -562,6 +595,9 @@ describe.each(["postgres", "tidb"] as const)(
           };
         }
         if (input.tableName === "legacy_space_publication_bootstraps") {
+          return { rows: [], rowsAffected: 0 };
+        }
+        if (input.tableName === "projection_set_publication_heads") {
           return { rows: [], rowsAffected: 0 };
         }
         if (input.tableName === "deletion_jobs") {
@@ -712,7 +748,7 @@ describe.each(["postgres", "tidb"] as const)(
 
 function admissionDatabase(
   dialect: DatabaseAdapter["dialect"],
-  options: { bootstrap?: Record<string, unknown>; legacy?: boolean },
+  options: { bootstrap?: Record<string, unknown>; legacy?: boolean; published?: boolean },
 ) {
   const calls: DatabaseExecuteInput[] = [];
   const database = createSchemaDatabaseAdapter({
@@ -721,6 +757,12 @@ function admissionDatabase(
       if (input.tableName === "legacy_space_publication_bootstraps") {
         return {
           rows: options.bootstrap ? [structuredClone(options.bootstrap)] : [],
+          rowsAffected: 0,
+        };
+      }
+      if (input.tableName === "projection_set_publication_heads") {
+        return {
+          rows: options.published ? [{ publication_id: bootstrapId }] : [],
           rowsAffected: 0,
         };
       }

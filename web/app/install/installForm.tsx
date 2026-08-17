@@ -37,8 +37,9 @@ const accountFormSchema = z.object({
 })
 
 const InstallForm = () => {
-  useDocumentTitle('')
   const { t, i18n } = useTranslation()
+  const pageTitle = t(($) => $.setAdminAccount, { ns: 'login' })
+  useDocumentTitle(pageTitle)
   const router = useRouter()
   const queryClient = useQueryClient()
   const [showPassword, setShowPassword] = React.useState(false)
@@ -105,9 +106,7 @@ const InstallForm = () => {
   ) : (
     <>
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h1 className="text-[32px] font-bold text-text-primary">
-          {t(($) => $.setAdminAccount, { ns: 'login' })}
-        </h1>
+        <h1 className="text-[32px] font-bold text-text-primary">{pageTitle}</h1>
         <p className="mt-1 text-sm text-text-secondary">
           {t(($) => $.setAdminAccountDesc, { ns: 'login' })}
         </p>

@@ -1,4 +1,4 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetCardItem } from '../types'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
@@ -16,7 +16,7 @@ type ModalState = {
 }
 
 type UseDatasetCardStateOptions = {
-  dataset: DataSet
+  dataset: DatasetCardItem
   onSuccess?: () => void
 }
 

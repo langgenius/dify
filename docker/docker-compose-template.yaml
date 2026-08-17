@@ -235,7 +235,6 @@ services:
       AGENT_BACKEND_API_TOKEN: ${DIFY_AGENT_API_TOKEN:-dify-agent-run-token-for-dev-only}
       AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS: ${AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS:-30}
       AGENT_BACKEND_STREAM_MAX_RECONNECTS: ${AGENT_BACKEND_STREAM_MAX_RECONNECTS:-3}
-      AGENT_BACKEND_RUN_TIMEOUT_SECONDS: ${AGENT_BACKEND_RUN_TIMEOUT_SECONDS:-1200}
     depends_on:
       init_permissions:
         condition: service_completed_successfully
@@ -314,7 +313,6 @@ services:
       AGENT_BACKEND_API_TOKEN: ${DIFY_AGENT_API_TOKEN:-dify-agent-run-token-for-dev-only}
       AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS: ${AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS:-30}
       AGENT_BACKEND_STREAM_MAX_RECONNECTS: ${AGENT_BACKEND_STREAM_MAX_RECONNECTS:-3}
-      AGENT_BACKEND_RUN_TIMEOUT_SECONDS: ${AGENT_BACKEND_RUN_TIMEOUT_SECONDS:-1200}
     depends_on:
       init_permissions:
         condition: service_completed_successfully
@@ -744,7 +742,7 @@ services:
       DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN: ${DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN:-${DIFY_AGENT_SHELLCTL_AUTH_TOKEN:-}}
       DIFY_AGENT_E2B_API_KEY: ${DIFY_AGENT_E2B_API_KEY:-${E2B_API_KEY:-${E2B_API_TOKEN:-}}}
       DIFY_AGENT_E2B_TEMPLATE: ${DIFY_AGENT_E2B_TEMPLATE:-difys-default-team/dify-agent-local-sandbox}
-      # One-hour RuntimeLease limit spanning a complete Agent run.
+      # RuntimeLease active limit; its default matches the independently configurable Agent run deadline.
       DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS: ${DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS:-3600}
       DIFY_AGENT_E2B_SHELLCTL_AUTH_TOKEN: ${DIFY_AGENT_E2B_SHELLCTL_AUTH_TOKEN:-}
       DIFY_AGENT_E2B_SHELLCTL_PORT: ${DIFY_AGENT_E2B_SHELLCTL_PORT:-5004}
@@ -757,6 +755,8 @@ services:
       DIFY_AGENT_API_TOKEN: ${DIFY_AGENT_API_TOKEN:-dify-agent-run-token-for-dev-only}
       DIFY_AGENT_SHUTDOWN_GRACE_SECONDS: ${DIFY_AGENT_SHUTDOWN_GRACE_SECONDS:-30}
       DIFY_AGENT_RUN_RETENTION_SECONDS: ${DIFY_AGENT_RUN_RETENTION_SECONDS:-259200}
+      # Pydantic AI run deadline; its default matches the independently configurable E2B active timeout.
+      DIFY_AGENT_RUN_TIMEOUT_SECONDS: ${DIFY_AGENT_RUN_TIMEOUT_SECONDS:-3600}
     depends_on:
       redis:
         condition: service_started

@@ -3,6 +3,10 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const smokeScript = readFileSync(new URL("./api-image-bundle-smoke.mjs", import.meta.url), "utf8");
+const apiDockerfile = readFileSync(new URL("../apps/api/Dockerfile", import.meta.url), "utf8");
+const apiPackageJson = JSON.parse(
+  readFileSync(new URL("../apps/api/package.json", import.meta.url), "utf8"),
+);
 
 test("isolated API bundle smoke starts the container and checks compute health", () => {
   assert.match(smokeScript, /knowledge-fs-api:local/);
@@ -17,7 +21,21 @@ test("isolated API bundle smoke starts the container and checks compute health",
   assert.match(smokeScript, /components\?\.compute === true/);
   assert.match(smokeScript, /components\?\.objectStorage === false/);
   assert.match(smokeScript, /difyDependencyConnected/);
+  assert.match(smokeScript, /verifySharpRuntime/);
+  assert.match(smokeScript, /await import\("sharp"\)/);
+  assert.match(smokeScript, /sharp\.versions\.vips/);
+  assert.match(smokeScript, /imageProcessing/);
   assert.match(smokeScript, /productionConfigValidated: false/);
   assert.match(smokeScript, /scope: "isolated-bundle"/);
   assert.match(smokeScript, /dockerStop/);
+});
+
+test("production API image carries and executes the target platform sharp runtime", () => {
+  assert.equal(apiPackageJson.dependencies.sharp, "^0.35.3");
+  assert.match(apiPackageJson.scripts["build:prod"], /--external:sharp/);
+  assert.match(apiDockerfile, /realpath apps\/api\/node_modules\/sharp/);
+  assert.match(apiDockerfile, /cp -LR/);
+  assert.match(apiDockerfile, /COPY --from=builder \/runtime\/node_modules \.\/node_modules/);
+  assert.match(apiDockerfile, /await import\('sharp'\)/);
+  assert.match(apiDockerfile, /sharp native runtime smoke failed/);
 });

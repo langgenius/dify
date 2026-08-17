@@ -42,6 +42,7 @@ class OAuthProviderAppResponse(BaseModel):
     app_icon: str
     app_label: dict[str, Any]
     scope: str
+    auto_authorize: bool
 
 
 class OAuthProviderAuthorizeResponse(BaseModel):
@@ -56,6 +57,7 @@ class OAuthProviderTokenResponse(BaseModel):
 
 
 class OAuthProviderAccountResponse(BaseModel):
+    id: str
     name: str
     email: str
     avatar: str | None = None
@@ -166,6 +168,7 @@ class OAuthServerAppApi(Resource):
                 "app_icon": oauth_provider_app.app_icon,
                 "app_label": oauth_provider_app.app_label,
                 "scope": oauth_provider_app.scope,
+                "auto_authorize": oauth_provider_app.auto_authorize,
             }
         )
 
@@ -250,6 +253,7 @@ class OAuthServerUserAccountApi(Resource):
     def post(self, oauth_provider_app: OAuthProviderApp, account: Account):
         return jsonable_encoder(
             {
+                "id": account.id,
                 "name": account.name,
                 "email": account.email,
                 "avatar": account.avatar,

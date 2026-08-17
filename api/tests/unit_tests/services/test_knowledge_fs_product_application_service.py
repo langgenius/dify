@@ -101,6 +101,10 @@ def test_space_payloads_share_the_40_character_name_limit() -> None:
     for icon in ("https://example.com/icon.png", "builtin:Camera", "x" * 65):
         with pytest.raises(ValueError):
             KnowledgeFSSpaceUpdatePayload(icon=icon)
+    assert KnowledgeFSSpaceUpdatePayload(icon_background="#FCE7F6").icon_background == "#FCE7F6"
+    for icon_background in ("FCE7F6", "#fff", "#GGGGGG"):
+        with pytest.raises(ValueError):
+            KnowledgeFSSpaceUpdatePayload(icon_background=icon_background)
 
 
 def _application(*, allowed: bool = True):
@@ -357,6 +361,7 @@ def test_product_application_update_applies_visibility_and_metadata_then_refetch
     product.get_space.return_value = detail
     facade.update_space.return_value = {"id": "space-1", "revision": 4}
     payload = KnowledgeFSSpaceUpdatePayload(
+        icon_background="#FCE7F6",
         name="Renamed",
         visibility=KnowledgeFSControlSpaceVisibility.PARTIAL_MEMBERS,
     )
@@ -378,12 +383,41 @@ def test_product_application_update_applies_visibility_and_metadata_then_refetch
     )
     metadata = facade.update_space.call_args.kwargs["payload"]
     assert metadata.name == "Renamed"
+    assert metadata.icon_background is None
     assert metadata.visibility is None
+    control_plane.update_icon_background.assert_called_once_with(
+        tenant_id="tenant-1",
+        actor_account_id="account-1",
+        control_space_id="control-1",
+        icon_background="#FCE7F6",
+    )
     control_plane.advance_knowledge_space_revision.assert_called_once_with(
         tenant_id="tenant-1",
         control_space_id="control-1",
         knowledge_space_id="space-1",
         revision=4,
+    )
+
+
+def test_product_application_updates_an_icon_background_without_remote_metadata_io() -> None:
+    application, product, control_plane, _commands, facade, _rbac = _application()
+    detail = object()
+    product.get_space.return_value = detail
+
+    result = application.update_space(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        payload=KnowledgeFSSpaceUpdatePayload(icon_background="#D3F8DF"),
+    )
+
+    assert result is detail
+    facade.update_space.assert_not_called()
+    control_plane.update_icon_background.assert_called_once_with(
+        tenant_id="tenant-1",
+        actor_account_id="account-1",
+        control_space_id="control-1",
+        icon_background="#D3F8DF",
     )
 
 

@@ -76,6 +76,10 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
+vi.mock('@/hooks/use-document-title', () => ({
+  default: vi.fn(),
+}))
+
 vi.mock('@/context/permission-state', () => ({
   datasetDefaultPermissionKeysAtom: permissionStateMock.atom,
 }))

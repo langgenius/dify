@@ -13,14 +13,12 @@ import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/client'
+import { CREATOR_FILTER_MAX_SELECTION } from './creator-filter-query'
 
 type CreatorFilterProps = {
   value: string[]
   onChange: (value: string[]) => void
 }
-
-export const CREATOR_FILTER_MAX_ID_LENGTH = 255
-export const CREATOR_FILTER_MAX_SELECTION = 100
 
 export function CreatorFilter({ value, onChange }: CreatorFilterProps) {
   const { t } = useTranslation('dataset')
