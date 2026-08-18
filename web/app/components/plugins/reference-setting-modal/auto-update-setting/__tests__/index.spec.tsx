@@ -9,7 +9,7 @@ import utc from 'dayjs/plugin/utc'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { createAccountProfileQueryClient } from '@/test/account-profile-query'
+import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { PluginCategoryEnum, PluginSource } from '../../../types'
 import AutoUpdateSetting from '../index'
 import NoDataPlaceholder from '../no-data-placeholder'
@@ -73,7 +73,12 @@ vi.mock('react-i18next', async () => {
         components?: Record<string, React.ReactElement>
       }) => {
         const setTimezone = components?.setTimezone
-        if (setTimezone) return React.cloneElement(setTimezone, undefined, i18nKey)
+        if (setTimezone)
+          return React.createElement(
+            setTimezone.type as React.ElementType,
+            setTimezone.props,
+            i18nKey,
+          )
 
         return <span>{i18nKey}</span>
       },
@@ -125,9 +130,16 @@ vi.mock('@langgenius/dify-ui/popover', () => ({
   }) => (
     <div
       data-testid="popover-trigger"
+      role="button"
+      aria-label="popover trigger"
+      tabIndex={0}
       onClick={(e) => {
         onClick?.(e)
         if (!onClick) mockPopoverOnOpenChange?.(!mockPopoverOpen)
+      }}
+      onKeyDown={(e) => {
+        if ((e.key === 'Enter' || e.key === ' ') && !onClick)
+          mockPopoverOnOpenChange?.(!mockPopoverOpen)
       }}
       className={className}
     >
@@ -573,23 +585,6 @@ describe('auto-update-setting', () => {
         // Assert
         expect(screen.getByTestId('search-menu-icon')).toBeInTheDocument()
       })
-
-      it('should apply className prop', () => {
-        // Act
-        const { container } = render(<NoDataPlaceholder className="custom-height" />)
-
-        // Assert
-        expect(container.firstChild).toHaveClass('custom-height')
-      })
-    })
-
-    describe('Component Memoization', () => {
-      it('should be memoized with React.memo', () => {
-        expect(NoDataPlaceholder).toBeDefined()
-        expect((NoDataPlaceholder as { $$typeof?: symbol }).$$typeof?.toString()).toContain(
-          'Symbol',
-        )
-      })
     })
   })
 
@@ -613,13 +608,6 @@ describe('auto-update-setting', () => {
         expect(
           screen.getByText('plugin.autoUpdate.upgradeModePlaceholder.exclude'),
         ).toBeInTheDocument()
-      })
-    })
-
-    describe('Component Memoization', () => {
-      it('should be memoized with React.memo', () => {
-        expect(NoPluginSelected).toBeDefined()
-        expect((NoPluginSelected as { $$typeof?: symbol }).$$typeof?.toString()).toContain('Symbol')
       })
     })
   })
@@ -671,16 +659,6 @@ describe('auto-update-setting', () => {
         expect(icons[0]).toHaveAttribute('src', expect.stringContaining('plugin-a'))
         expect(icons[1]).toHaveAttribute('src', expect.stringContaining('plugin-b'))
       })
-
-      it('should apply custom className', () => {
-        // Act
-        const { container } = render(
-          <PluginsSelected plugins={['test']} className="custom-class" />,
-        )
-
-        // Assert
-        expect(container.firstChild).toHaveClass('custom-class')
-      })
     })
 
     describe('Edge Cases', () => {
@@ -706,13 +684,6 @@ describe('auto-update-setting', () => {
         // Assert
         expect(screen.getAllByTestId('plugin-icon')).toHaveLength(14)
         expect(screen.getByText('+1')).toBeInTheDocument()
-      })
-    })
-
-    describe('Component Memoization', () => {
-      it('should be memoized with React.memo', () => {
-        expect(PluginsSelected).toBeDefined()
-        expect((PluginsSelected as { $$typeof?: symbol }).$$typeof?.toString()).toContain('Symbol')
       })
     })
   })
@@ -797,13 +768,6 @@ describe('auto-update-setting', () => {
 
         // Assert
         expect(onCheckChange).toHaveBeenCalledTimes(1)
-      })
-    })
-
-    describe('Component Memoization', () => {
-      it('should be memoized with React.memo', () => {
-        expect(ToolItem).toBeDefined()
-        expect((ToolItem as { $$typeof?: symbol }).$$typeof?.toString()).toContain('Symbol')
       })
     })
   })
@@ -1048,48 +1012,6 @@ describe('auto-update-setting', () => {
         expect(onChange).toHaveBeenCalledWith([])
       })
     })
-
-    describe('Callback Memoization', () => {
-      it('handleCheckChange should be memoized with correct dependencies', () => {
-        // Arrange
-        const onChange = vi.fn()
-        mockPopoverOpen = true
-        mockPluginsData.plugins = [
-          createMockPluginDetail({
-            plugin_id: 'plugin-1',
-            source: PluginSource.marketplace,
-          }),
-        ]
-
-        // Act - render and interact
-        const { rerender } = renderWithQueryClient(
-          <ToolPicker {...defaultProps} isShow={true} value={[]} onChange={onChange} />,
-        )
-
-        // Click to select
-        fireEvent.click(screen.getByRole('checkbox'))
-        expect(onChange).toHaveBeenCalledWith(['plugin-1'])
-
-        // Rerender with new value
-        onChange.mockClear()
-        rerender(
-          <QueryClientProvider client={createQueryClient()}>
-            <ToolPicker {...defaultProps} isShow={true} value={['plugin-1']} onChange={onChange} />
-          </QueryClientProvider>,
-        )
-
-        // Click to unselect
-        fireEvent.click(screen.getByRole('checkbox'))
-        expect(onChange).toHaveBeenCalledWith([])
-      })
-    })
-
-    describe('Component Memoization', () => {
-      it('should be memoized with React.memo', () => {
-        expect(ToolPicker).toBeDefined()
-        expect((ToolPicker as { $$typeof?: symbol }).$$typeof?.toString()).toContain('Symbol')
-      })
-    })
   })
 
   // ============================================================
@@ -1166,13 +1088,6 @@ describe('auto-update-setting', () => {
 
         // Assert
         expect(onChange).toHaveBeenCalledWith([])
-      })
-    })
-
-    describe('Component Memoization', () => {
-      it('should be memoized with React.memo', () => {
-        expect(PluginsPicker).toBeDefined()
-        expect((PluginsPicker as { $$typeof?: symbol }).$$typeof?.toString()).toContain('Symbol')
       })
     })
   })
@@ -1602,15 +1517,6 @@ describe('auto-update-setting', () => {
         expect(
           screen.getByText('plugin.autoUpdate.excludeUpdate:{"count":1,"num":1}'),
         ).toBeInTheDocument()
-      })
-    })
-
-    describe('Component Memoization', () => {
-      it('should be memoized with React.memo', () => {
-        expect(AutoUpdateSetting).toBeDefined()
-        expect((AutoUpdateSetting as { $$typeof?: symbol }).$$typeof?.toString()).toContain(
-          'Symbol',
-        )
       })
     })
 

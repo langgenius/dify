@@ -5,7 +5,7 @@ const reactEChartsMock = vi.fn()
 vi.mock('echarts-for-react', () => ({
   default: (props: { option: unknown; opts?: unknown }) => {
     reactEChartsMock(props)
-    return <div data-testid="echarts" />
+    return <div role="img" aria-label="Chart" />
   },
 }))
 
@@ -52,12 +52,10 @@ describe('app-chart', () => {
       )
 
       expect(screen.getByText('Cost title'))!.toBeInTheDocument()
-      expect(screen.getByText('Cost title'))!.toHaveClass('system-sm-semibold-uppercase')
       expect(screen.getByText('300'))!.toBeInTheDocument()
-      expect(screen.getByText('300'))!.toHaveClass('title-3xl-semi-bold')
       expect(screen.queryByText('Last 7 days'))!.not.toBeInTheDocument()
       expect(screen.getByText(/\$3\.7500/))!.toBeInTheDocument()
-      expect(screen.getByTestId('echarts'))!.toBeInTheDocument()
+      expect(screen.getByRole('img', { name: 'Chart' }))!.toBeInTheDocument()
     })
   })
 
@@ -83,7 +81,7 @@ describe('app-chart', () => {
 
       expect(screen.getByText(/(?:^|\.)analysis\.totalMessages\.title(?=$|:)/))!.toBeInTheDocument()
       expect(screen.getByText('0'))!.toBeInTheDocument()
-      expect(screen.getByTestId('echarts'))!.toBeInTheDocument()
+      expect(screen.getByRole('img', { name: 'Chart' }))!.toBeInTheDocument()
 
       const chartProps = reactEChartsMock.mock.calls[0]![0] as {
         option: {

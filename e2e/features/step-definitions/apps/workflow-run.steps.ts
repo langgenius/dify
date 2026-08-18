@@ -21,5 +21,7 @@ When('I run the workflow', async function (this: DifyWorld) {
 Then('the workflow run should succeed', async function (this: DifyWorld) {
   const page = this.getPage()
   await page.getByText('DETAIL', { exact: true }).click()
-  await expect(page.getByText('SUCCESS', { exact: true }).first()).toBeVisible({ timeout: 55_000 })
+  await expect(page.getByRole('status').getByText('SUCCESS', { exact: true })).toBeVisible({
+    timeout: 55_000,
+  })
 })

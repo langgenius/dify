@@ -1,4 +1,4 @@
-import type { Dispatch, RefObject, SetStateAction } from 'react'
+import type { RefObject } from 'react'
 import type { Plugin } from '../../plugins/types'
 import type { BlockEnum, ToolWithProvider } from '../types'
 import type { ToolDefaultValue, ToolValue } from './types'
@@ -24,9 +24,9 @@ import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
 import { PluginCategoryEnum } from '../../plugins/types'
 import FeaturedTools from './featured-tools'
 import { useToolTabs } from './hooks'
-import RAGToolRecommendations from './rag-tool-recommendations'
+import { RAGToolRecommendations } from './rag-tool-recommendations'
 import Tools from './tools'
-import { ToolTypeEnum } from './types'
+import { ToolType } from './types'
 import ViewTypeSelect, { ViewType } from './view-type-select'
 
 const marketplaceFooterClassName =
@@ -45,7 +45,7 @@ type AllToolsProps = {
   canNotSelectMultiple?: boolean
   onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   selectedTools?: ToolValue[]
-  onTagsChange?: Dispatch<SetStateAction<string[]>>
+  onTagsChange?: (tags: string[]) => void
   isInRAGPipeline?: boolean
   featuredPlugins?: Plugin[]
   featuredLoading?: boolean
@@ -78,12 +78,16 @@ const AllTools = ({
   const { t } = useTranslation()
   const language = useGetLanguage()
   const tabs = useToolTabs()
-  const [activeTab, setActiveTab] = useState(ToolTypeEnum.All)
+  const [activeTab, setActiveTab] = useState<ToolType>(ToolType.All)
   const [activeView, setActiveView] = useState<ViewType>(ViewType.flat)
   const trimmedSearchText = searchText.trim()
   const hasSearchText = trimmedSearchText.length > 0
   const hasTags = tags.length > 0
   const hasFilter = hasSearchText || hasTags
+  const handleLoadMoreRAGTools = () => {
+    if (!onTagsChange || tags.includes('rag')) return
+    onTagsChange([...tags, 'rag'])
+  }
   const isMatchingKeywords = (text: string, keywords: string) => {
     return text.toLowerCase().includes(keywords.toLowerCase())
   }
@@ -101,12 +105,12 @@ const AllTools = ({
   }, [allProviders])
   const tools = useMemo(() => {
     let mergedTools: ToolWithProvider[] = []
-    if (activeTab === ToolTypeEnum.All)
+    if (activeTab === ToolType.All)
       mergedTools = [...buildInTools, ...customTools, ...workflowTools, ...mcpTools]
-    if (activeTab === ToolTypeEnum.BuiltIn) mergedTools = buildInTools
-    if (activeTab === ToolTypeEnum.Custom) mergedTools = customTools
-    if (activeTab === ToolTypeEnum.Workflow) mergedTools = workflowTools
-    if (activeTab === ToolTypeEnum.MCP) mergedTools = mcpTools
+    if (activeTab === ToolType.BuiltIn) mergedTools = buildInTools
+    if (activeTab === ToolType.Custom) mergedTools = customTools
+    if (activeTab === ToolType.Workflow) mergedTools = workflowTools
+    if (activeTab === ToolType.MCP) mergedTools = mcpTools
 
     const normalizedSearch = trimmedSearchText.toLowerCase()
     const getLocalizedText = (text?: Record<string, string> | null) => {
@@ -182,9 +186,9 @@ const AllTools = ({
 
   const pluginRef = useRef<ListRef>(null)
   const wrapElemRef = useRef<HTMLDivElement>(null)
-  const isSupportGroupView = [ToolTypeEnum.All, ToolTypeEnum.BuiltIn].includes(activeTab)
+  const isSupportGroupView = activeTab === ToolType.All || activeTab === ToolType.BuiltIn
 
-  const isShowRAGRecommendations = isInRAGPipeline && activeTab === ToolTypeEnum.All && !hasFilter
+  const isShowRAGRecommendations = isInRAGPipeline && activeTab === ToolType.All && !hasFilter
   const hasToolsListContent = tools.length > 0 || isShowRAGRecommendations
   const hasPluginContent = enable_marketplace && notInstalledPlugins.length > 0
   const shouldShowEmptyState = hasFilter && !hasToolsListContent && !hasPluginContent
@@ -192,7 +196,7 @@ const AllTools = ({
     showFeatured &&
     enable_marketplace &&
     !isInRAGPipeline &&
-    activeTab === ToolTypeEnum.All &&
+    activeTab === ToolType.All &&
     !hasFilter
   const shouldShowMarketplaceFooter = enable_marketplace && !hasFilter
 
@@ -204,10 +208,10 @@ const AllTools = ({
     [onSelect],
   )
   const toolsListTitle = useMemo(() => {
-    if (activeTab === ToolTypeEnum.BuiltIn) return t(($) => $.allToolPlugins, { ns: 'tools' })
-    if (activeTab === ToolTypeEnum.Custom) return t(($) => $.allSwaggerAPIAsTool, { ns: 'tools' })
-    if (activeTab === ToolTypeEnum.Workflow) return t(($) => $.allWorkflowAsTool, { ns: 'tools' })
-    if (activeTab === ToolTypeEnum.MCP) return t(($) => $.allMCP, { ns: 'tools' })
+    if (activeTab === ToolType.BuiltIn) return t(($) => $.allToolPlugins, { ns: 'tools' })
+    if (activeTab === ToolType.Custom) return t(($) => $.allSwaggerAPIAsTool, { ns: 'tools' })
+    if (activeTab === ToolType.Workflow) return t(($) => $.allWorkflowAsTool, { ns: 'tools' })
+    if (activeTab === ToolType.MCP) return t(($) => $.allMCP, { ns: 'tools' })
     return t(($) => $.allTools, { ns: 'tools' })
   }, [activeTab, t])
 
@@ -216,17 +220,19 @@ const AllTools = ({
       <div className="flex items-center justify-between border-b border-divider-subtle px-3">
         <div className="flex h-8 items-center space-x-1">
           {tabs.map((tab) => (
-            <div
+            <button
+              type="button"
               className={cn(
-                'flex h-6 cursor-pointer items-center rounded-md px-2 hover:bg-state-base-hover',
+                'flex h-6 cursor-pointer items-center rounded-md border-0 bg-transparent px-2 hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
                 'text-xs font-medium text-text-secondary',
                 activeTab === tab.key && 'bg-state-base-hover-alt',
               )}
               key={tab.key}
+              aria-pressed={activeTab === tab.key}
               onClick={() => setActiveTab(tab.key)}
             >
               {tab.name}
-            </div>
+            </button>
           ))}
         </div>
         {isSupportGroupView && <ViewTypeSelect viewType={activeView} onChange={setActiveView} />}
@@ -242,7 +248,7 @@ const AllTools = ({
               <RAGToolRecommendations
                 viewType={isSupportGroupView ? activeView : ViewType.flat}
                 onSelect={handleRAGSelect}
-                onTagsChange={onTagsChange}
+                onLoadMore={handleLoadMoreRAGTools}
               />
             )}
             {shouldShowFeatured && (

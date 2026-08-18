@@ -1,5 +1,5 @@
 import type { ModelProvider } from '../../declarations'
-import { renderHookWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import {
   ConfigurationMethodEnum,
   CurrentSystemQuotaTypeEnum,
@@ -28,7 +28,7 @@ vi.mock('@/config', async (importOriginal) => {
 
 const renderPanelHook = (provider: ModelProvider | undefined) => {
   // oxlint-disable-next-line eslint-react/use-state -- This is a domain hook, not React's useState.
-  return renderHookWithSystemFeatures(() => useCredentialPanelState(provider), {
+  return renderHookWithConsoleQuery(() => useCredentialPanelState(provider), {
     trialModels: mockTrialModels,
   })
 }

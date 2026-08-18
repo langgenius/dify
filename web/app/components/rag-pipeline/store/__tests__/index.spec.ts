@@ -292,16 +292,4 @@ describe('RagPipelineSliceShape type', () => {
     expect(slice).toHaveProperty('isPreparingDataSource')
     expect(slice).toHaveProperty('setIsPreparingDataSource')
   })
-
-  it('should have all setters as functions', () => {
-    const slice = createSlice()
-
-    expect(typeof slice.setShowInputFieldPanel).toBe('function')
-    expect(typeof slice.setShowInputFieldPreviewPanel).toBe('function')
-    expect(typeof slice.setInputFieldEditPanelProps).toBe('function')
-    expect(typeof slice.setNodesDefaultConfigs).toBe('function')
-    expect(typeof slice.setRagPipelineVariables).toBe('function')
-    expect(typeof slice.setDataSourceList).toBe('function')
-    expect(typeof slice.setIsPreparingDataSource).toBe('function')
-  })
 })

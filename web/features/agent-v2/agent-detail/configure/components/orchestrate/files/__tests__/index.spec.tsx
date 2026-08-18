@@ -128,7 +128,7 @@ function ConfigSnapshotProbe() {
   const draft = useAtomValue(agentComposerDraftAtom)
   const configSnapshot = formStateToAgentSoulConfig({ formState: draft })
 
-  return <pre data-testid="config-snapshot-probe">{JSON.stringify(configSnapshot)}</pre>
+  return <pre aria-label="config snapshot">{JSON.stringify(configSnapshot)}</pre>
 }
 
 function createInitialDraft(
@@ -327,7 +327,7 @@ describe('AgentFiles', () => {
       })
     })
 
-    const snapshot = JSON.parse(screen.getByTestId('config-snapshot-probe').textContent ?? '{}')
+    const snapshot = JSON.parse(screen.getByLabelText('config snapshot').textContent ?? '{}')
     expect(snapshot.config_files).toEqual([
       expect.objectContaining({
         name: 'uploaded.md',
@@ -628,7 +628,7 @@ describe('AgentFiles', () => {
     expect(screen.queryByText('build_note.md')).not.toBeInTheDocument()
     expect(mocks.deleteFileMutationFn).not.toHaveBeenCalled()
 
-    const snapshot = JSON.parse(screen.getByTestId('config-snapshot-probe').textContent ?? '{}')
+    const snapshot = JSON.parse(screen.getByLabelText('config snapshot').textContent ?? '{}')
     expect(snapshot.config_note).toBe('')
   })
 

@@ -9,25 +9,39 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useTranslation } from 'react-i18next'
+import {
+  getStepByStepTourDropdownMenuContentProps,
+  useStepByStepTourControlledDropdown,
+} from '@/app/components/step-by-step-tour/dropdown-menu'
 
 type CreateAppDropdownProps = {
   onCreateBlank: () => void
   onCreateTemplate?: () => void
   onImportDSL: () => void
+  stepByStepTourControlledOpen?: boolean
+  stepByStepTourTarget?: string
+  stepByStepTourHighlightPart?: string
 }
 
 export function CreateAppDropdown({
   onCreateBlank,
   onCreateTemplate,
   onImportDSL,
+  stepByStepTourControlledOpen,
+  stepByStepTourTarget,
+  stepByStepTourHighlightPart,
 }: CreateAppDropdownProps) {
   const { t } = useTranslation()
+  const menu = useStepByStepTourControlledDropdown({
+    controlledOpen: stepByStepTourControlledOpen,
+  })
 
   return (
-    <DropdownMenu modal={false}>
+    <DropdownMenu modal={false} open={menu.open} onOpenChange={menu.onOpenChange}>
       <DropdownMenuTrigger
         render={
           <Button
+            data-step-by-step-tour-target={stepByStepTourTarget}
             variant="primary"
             size="medium"
             className="gap-0.5 px-2 whitespace-nowrap shadow-xs shadow-shadow-shadow-3"
@@ -38,7 +52,16 @@ export function CreateAppDropdown({
           </Button>
         }
       />
-      <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-70 p-0">
+      <DropdownMenuContent
+        placement="bottom-end"
+        sideOffset={4}
+        {...getStepByStepTourDropdownMenuContentProps({
+          disableMotion: menu.controlled,
+          highlightPart: menu.controlled ? stepByStepTourHighlightPart : undefined,
+          interactionMode: menu.controlled ? 'presentation' : 'interactive',
+          popupClassName: 'w-70 p-0',
+        })}
+      >
         <div className="py-1">
           <DropdownMenuItem
             className="h-8 gap-1 rounded-lg px-2 py-1 system-md-regular text-text-secondary"

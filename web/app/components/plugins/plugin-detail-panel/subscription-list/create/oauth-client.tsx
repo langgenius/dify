@@ -69,12 +69,7 @@ export const OAuthClientSettingsModal = ({
       <DialogContent backdropProps={{ forceRender: true }} className="p-0">
         <div data-testid="modal" className="flex max-h-[80dvh] flex-col">
           <div className="relative shrink-0 p-6 pr-14 pb-3">
-            <DialogTitle
-              data-testid="modal-title"
-              className="title-2xl-semi-bold text-text-primary"
-            >
-              {title}
-            </DialogTitle>
+            <DialogTitle className="title-2xl-semi-bold text-text-primary">{title}</DialogTitle>
             <DialogCloseButton className="top-5 right-5 size-8 rounded-lg" />
           </div>
           <div data-testid="modal-content" className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
@@ -148,19 +143,14 @@ export const OAuthClientSettingsModal = ({
               )}
             </div>
             <div className="flex items-center">
-              <Button data-testid="modal-extra" variant="secondary" onClick={closeModal}>
+              <Button variant="secondary" onClick={closeModal}>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </Button>
               <div className="mx-3 h-4 w-px bg-divider-regular"></div>
-              <Button data-testid="modal-cancel" onClick={() => handleSave(false)}>
+              <Button onClick={() => handleSave(false)}>
                 {t(($) => $['auth.saveOnly'], { ns: 'plugin' })}
               </Button>
-              <Button
-                data-testid="modal-confirm"
-                className="ml-2"
-                variant="primary"
-                onClick={() => handleSave(true)}
-              >
+              <Button className="ml-2" variant="primary" onClick={() => handleSave(true)}>
                 {confirmButtonText}
               </Button>
             </div>

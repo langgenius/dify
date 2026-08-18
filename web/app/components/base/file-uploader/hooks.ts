@@ -22,6 +22,7 @@ import { uploadHumanInputFormLocalFile, uploadHumanInputFormRemoteFileInfo } fro
 import { TransferMethod } from '@/types/app'
 import { formatFileSize } from '@/utils/format'
 import { useFileStore } from './store'
+import { useFileUploadContext } from './upload-context'
 import {
   fileUpload,
   getFileUploadErrorMessage,
@@ -54,6 +55,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
   const fileStore = useFileStore()
   const params = useParams()
   const pathname = usePathname()
+  const { localUploadUrl, remoteUploadUrl } = useFileUploadContext()
   const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } = useFileSizeLimit(
     fileConfig.fileUploadConfig,
   )
@@ -196,11 +198,11 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
             ...uploadParams,
           })
         } else {
-          fileUpload(uploadParams, !!params.token)
+          fileUpload(uploadParams, !!params.token, localUploadUrl)
         }
       }
     },
-    [fileStore, t, handleUpdateFile, isHumanInputFormPage, formToken, params.token],
+    [fileStore, t, handleUpdateFile, isHumanInputFormPage, formToken, params.token, localUploadUrl],
   )
 
   const startProgressTimer = useCallback(
@@ -234,9 +236,11 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       handleAddFile(uploadingFile)
       startProgressTimer(uploadingFile.id)
 
-      const remoteUpload = isHumanInputFormPage
-        ? uploadHumanInputFormRemoteFileInfo(formToken!, url)
-        : uploadRemoteFileInfo(url, !!params.token)
+      let remoteUpload
+      if (isHumanInputFormPage) remoteUpload = uploadHumanInputFormRemoteFileInfo(formToken!, url)
+      else if (remoteUploadUrl)
+        remoteUpload = uploadRemoteFileInfo(url, !!params.token, undefined, remoteUploadUrl)
+      else remoteUpload = uploadRemoteFileInfo(url, !!params.token)
 
       remoteUpload
         .then((res) => {
@@ -287,6 +291,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       isHumanInputFormPage,
       formToken,
       params.token,
+      remoteUploadUrl,
     ],
   )
 
@@ -374,7 +379,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
               ...uploadParams,
             })
           } else {
-            fileUpload(uploadParams, !!params.token)
+            fileUpload(uploadParams, !!params.token, localUploadUrl)
           }
         },
         false,
@@ -397,6 +402,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       isHumanInputFormPage,
       formToken,
       params.token,
+      localUploadUrl,
       fileConfig?.allowed_file_types,
       fileConfig?.allowed_file_extensions,
       fileConfig?.enabled,

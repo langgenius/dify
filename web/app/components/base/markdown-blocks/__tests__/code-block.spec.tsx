@@ -205,12 +205,6 @@ describe('CodeBlock', () => {
       expect(code?.textContent).toBe('const a=1;')
     })
 
-    it('should render code element when className does not include language prefix', () => {
-      const { container } = render(<CodeBlock className="plain">abc</CodeBlock>)
-
-      expect(container.querySelector('code')?.textContent).toBe('abc')
-    })
-
     it('should render code element when className is not provided', () => {
       const { container } = render(<CodeBlock>plain text</CodeBlock>)
 

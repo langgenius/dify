@@ -1,5 +1,5 @@
 import type { HumanInputFormData } from '@/types/workflow'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CUSTOM_NODE } from '@/app/components/workflow/constants'
 import {
@@ -7,6 +7,7 @@ import {
   UserActionButtonType,
 } from '@/app/components/workflow/nodes/human-input/types'
 import { InputVarType } from '@/app/components/workflow/types'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import HumanInputFormList from '../human-input-form-list'
 
 const mockNodes: Array<{

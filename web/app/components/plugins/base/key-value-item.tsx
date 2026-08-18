@@ -1,12 +1,10 @@
 'use client'
-import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import copy from 'copy-to-clipboard'
-import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import { CopyCheck } from '../../base/icons/src/vender/line/files'
 
 type Props = Readonly<{
@@ -17,13 +15,13 @@ type Props = Readonly<{
   valueMaxWidthClassName?: string
 }>
 
-const KeyValueItem: FC<Props> = ({
+function KeyValueItem({
   label,
   labelWidthClassName = 'w-10',
   value,
   maskedValue,
   valueMaxWidthClassName = 'max-w-[162px]',
-}) => {
+}: Props) {
   const { t } = useTranslation()
   const [isCopied, setIsCopied] = useState(false)
   const handleCopy = useCallback(() => {
@@ -63,7 +61,12 @@ const KeyValueItem: FC<Props> = ({
         <Tooltip>
           <TooltipTrigger
             render={
-              <ActionButton aria-label={copyLabel} onClick={handleCopy}>
+              <Button
+                variant="ghost"
+                aria-label={copyLabel}
+                className="size-6 p-0"
+                onClick={handleCopy}
+              >
                 {isCopied ? (
                   <CopyCheck aria-hidden className="size-3.5 shrink-0 text-text-tertiary" />
                 ) : (
@@ -72,7 +75,7 @@ const KeyValueItem: FC<Props> = ({
                     className="i-ri-clipboard-line size-3.5 shrink-0 text-text-tertiary"
                   />
                 )}
-              </ActionButton>
+              </Button>
             }
           />
           <TooltipContent placement="top">{copyLabel}</TooltipContent>
@@ -82,4 +85,4 @@ const KeyValueItem: FC<Props> = ({
   )
 }
 
-export default React.memo(KeyValueItem)
+export default KeyValueItem

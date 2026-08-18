@@ -55,10 +55,6 @@ describe('usePipelineConfig', () => {
   })
 
   describe('hook initialization', () => {
-    it('should render without crashing', () => {
-      expect(() => renderHook(() => usePipelineConfig())).not.toThrow()
-    })
-
     it('should call useWorkflowConfig with correct URL for nodes default configs', () => {
       renderHook(() => usePipelineConfig())
 

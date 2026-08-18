@@ -691,14 +691,6 @@ describe('MultipleToolSelector', () => {
       expect(screen.getByText('0/1')).toBeInTheDocument()
     })
 
-    it('should handle empty label', () => {
-      // Arrange & Act
-      renderComponent({ label: '' })
-
-      // Assert - Should not crash
-      expect(screen.getByTestId('tool-selector-add')).toBeInTheDocument()
-    })
-
     it('should handle nodeOutputVars as empty array', () => {
       // Arrange & Act
       renderComponent({ nodeOutputVars: [] })

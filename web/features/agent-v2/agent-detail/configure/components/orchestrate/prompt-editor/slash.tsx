@@ -4,7 +4,7 @@ import type { TFunction } from 'i18next'
 import type { ReactNode } from 'react'
 import type { AgentOrchestrateAddAction, AgentOrchestrateAddedItem } from '../add-actions-context'
 import type { Tool } from '@/app/components/tools/types'
-import type { ToolTypeEnum, ToolValue } from '@/app/components/workflow/block-selector/types'
+import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type {
   AgentFileNode,
@@ -21,7 +21,7 @@ import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
 import BlockIcon from '@/app/components/workflow/block-icon'
-import { ToolTypeEnum as ToolTabEnum } from '@/app/components/workflow/block-selector/types'
+import { ToolType } from '@/app/components/workflow/block-selector/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useGetLanguage } from '@/context/i18n'
 import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
@@ -330,10 +330,10 @@ function AgentPromptToolRows({
     : []
   const availableProviders = useMemo(() => {
     if (activeTab === 'all') return [...builtInTools, ...workflowTools, ...customTools, ...mcpTools]
-    if (activeTab === ToolTabEnum.BuiltIn) return builtInTools
-    if (activeTab === ToolTabEnum.Workflow) return workflowTools
-    if (activeTab === ToolTabEnum.Custom) return customTools
-    if (activeTab === ToolTabEnum.MCP) return mcpTools
+    if (activeTab === ToolType.BuiltIn) return builtInTools
+    if (activeTab === ToolType.Workflow) return workflowTools
+    if (activeTab === ToolType.Custom) return customTools
+    if (activeTab === ToolType.MCP) return mcpTools
 
     return []
   }, [activeTab, builtInTools, customTools, mcpTools, workflowTools])
@@ -345,15 +345,15 @@ function AgentPromptToolRows({
   const tabs = [
     { key: 'all' as const, label: t(($) => $['agentDetail.configure.tools.toolTabs.all']) },
     {
-      key: ToolTabEnum.BuiltIn,
+      key: ToolType.BuiltIn,
       label: t(($) => $['agentDetail.configure.tools.toolTabs.plugins']),
     },
     {
-      key: ToolTabEnum.Workflow,
+      key: ToolType.Workflow,
       label: t(($) => $['agentDetail.configure.tools.toolTabs.workflow']),
     },
-    { key: ToolTabEnum.Custom, label: t(($) => $['agentDetail.configure.tools.toolTabs.custom']) },
-    { key: ToolTabEnum.MCP, label: t(($) => $['agentDetail.configure.tools.toolTabs.mcp']) },
+    { key: ToolType.Custom, label: t(($) => $['agentDetail.configure.tools.toolTabs.custom']) },
+    { key: ToolType.MCP, label: t(($) => $['agentDetail.configure.tools.toolTabs.mcp']) },
     ...(ENABLE_AGENT_CLI_TOOLS
       ? [{ key: 'cli' as const, label: t(($) => $['agentDetail.configure.tools.toolTabs.cli']) }]
       : []),
@@ -449,7 +449,7 @@ function AgentPromptToolRows({
   )
 }
 
-type ToolPromptTab = ToolTypeEnum | 'all' | 'cli'
+type ToolPromptTab = ToolType | 'cli'
 
 function getLocalizedText(text: Record<string, string> | undefined | null, language: string) {
   if (!text) return ''

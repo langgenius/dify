@@ -225,7 +225,9 @@ vi.mock('../components/orchestrate', async () => {
     AgentOrchestratePanel: (props: {
       bottomAction?: ReactNode
       isBuildDraftActive?: boolean
+      onExitVersions?: () => void
       onOpenVersions?: () => void
+      onVersionRestored?: () => void | Promise<void>
       readOnly?: boolean
       showPublishBar?: boolean
     }) => {
@@ -239,6 +241,15 @@ vi.mock('../components/orchestrate', async () => {
           <span>{`prompt:${prompt}`}</span>
           <button type="button" onClick={props.onOpenVersions}>
             open versions
+          </button>
+          <button
+            type="button"
+            onClick={async () => {
+              await props.onVersionRestored?.()
+              props.onExitVersions?.()
+            }}
+          >
+            restore version
           </button>
           {props.bottomAction}
         </div>
@@ -1659,6 +1670,76 @@ describe('AgentConfigurePage', () => {
         'publish:yes',
       )
       expect(screen.queryByRole('region', { name: 'build-draft-bar' })).not.toBeInTheDocument()
+    })
+
+    it('should rebase the composer from the restored version', async () => {
+      const user = userEvent.setup()
+      const queryClient = new QueryClient()
+      const refetchComposer = vi.fn(async () => {
+        mocks.queryState.composer = {
+          ...mocks.queryState.composer,
+          data: {
+            agent_soul: {
+              prompt: {
+                system_prompt: 'restored prompt',
+              },
+            },
+          },
+        }
+
+        return {}
+      })
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'draft prompt',
+            },
+          },
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: refetchComposer,
+      }
+      mocks.queryState.version = {
+        data: {
+          config_snapshot: {
+            prompt: {
+              system_prompt: 'published prompt',
+            },
+          },
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+      }
+
+      render(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'prompt:draft prompt',
+      )
+      await user.click(screen.getByRole('button', { name: 'open versions' }))
+      await user.click(screen.getByRole('button', { name: 'select version' }))
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'prompt:published prompt',
+      )
+
+      await user.click(screen.getByRole('button', { name: 'restore version' }))
+
+      expect(refetchComposer).toHaveBeenCalled()
+      await waitFor(() => {
+        expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+          'prompt:restored prompt',
+        )
+      })
     })
 
     it('should apply the build draft and rebase the composer store from the refetched normal draft', async () => {

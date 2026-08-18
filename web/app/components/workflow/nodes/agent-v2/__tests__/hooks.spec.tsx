@@ -86,6 +86,7 @@ const mockAppComposerQueryOptions = vi.hoisted(() =>
           }
         }
       }) => number | false
+      retry?: number
     }) => {
       const { input } = options
 
@@ -96,18 +97,37 @@ const mockAppComposerQueryOptions = vi.hoisted(() =>
             : ['workflow-agent-composer', input.params.app_id, input.params.node_id],
         queryFn: typeof input === 'symbol' ? input : mockAppComposerQueryFn,
         refetchInterval: options.refetchInterval,
+        retry: options.retry,
       }
     },
   ),
 )
 const mockSnippetComposerQueryOptions = vi.hoisted(() =>
-  vi.fn(({ input }: { input: symbol | { params: { snippet_id: string; node_id: string } } }) => ({
-    queryKey:
-      typeof input === 'symbol'
-        ? ['snippet-agent-composer-disabled']
-        : ['snippet-agent-composer', input.params.snippet_id, input.params.node_id],
-    queryFn: typeof input === 'symbol' ? input : mockSnippetComposerQueryFn,
-  })),
+  vi.fn(
+    (options: {
+      input: symbol | { params: { snippet_id: string; node_id: string } }
+      refetchInterval?: (query: {
+        state: {
+          data?: {
+            agent?: unknown
+          }
+        }
+      }) => number | false
+      retry?: number
+    }) => {
+      const { input } = options
+
+      return {
+        queryKey:
+          typeof input === 'symbol'
+            ? ['snippet-agent-composer-disabled']
+            : ['snippet-agent-composer', input.params.snippet_id, input.params.node_id],
+        queryFn: typeof input === 'symbol' ? input : mockSnippetComposerQueryFn,
+        refetchInterval: options.refetchInterval,
+        retry: options.retry,
+      }
+    },
+  ),
 )
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -187,6 +207,10 @@ vi.mock('@/service/client', () => ({
 describe('useWorkflowInlineAgentDetail', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockAppComposerQueryFn.mockReset()
+    mockAppComposerQueryFn.mockResolvedValue({ agent: { id: 'app-agent' } })
+    mockSnippetComposerQueryFn.mockReset()
+    mockSnippetComposerQueryFn.mockResolvedValue({ agent: { id: 'snippet-agent' } })
   })
 
   it('loads inline agent detail through the snippet composer API', async () => {
@@ -254,6 +278,41 @@ describe('useWorkflowInlineAgentDetail', () => {
       timeout: 1500,
     })
     expect(result.current.data).toEqual({ agent: { id: 'app-agent' } })
+  })
+
+  it('retries five times and stops polling when loading the copied inline agent composer fails', async () => {
+    mockAppComposerQueryFn.mockRejectedValue(new Error('Agent composer was not created'))
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+          retryDelay: 0,
+        },
+      },
+    })
+    const { result } = renderWorkflowHook(
+      () =>
+        useWorkflowInlineAgentDetail('copied-node', 'source-inline-agent', {
+          pollUntilReady: true,
+        }),
+      {
+        queryClient,
+        hooksStoreProps: {
+          configsMap: {
+            flowId: 'app-1',
+            flowType: FlowType.appFlow,
+            fileSettings: {} as never,
+          },
+        },
+      },
+    )
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1200))
+    })
+
+    expect(mockAppComposerQueryFn).toHaveBeenCalledTimes(6)
   })
 })
 

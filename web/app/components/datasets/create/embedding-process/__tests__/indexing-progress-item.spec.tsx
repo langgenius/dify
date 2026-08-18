@@ -107,13 +107,4 @@ describe('IndexingProgressItem', () => {
 
     expect(screen.queryByTestId('priority-label')).not.toBeInTheDocument()
   })
-
-  it('should apply error styling for error status', () => {
-    const { container } = render(
-      <IndexingProgressItem detail={makeDetail({ indexing_status: 'error' })} name="error.pdf" />,
-    )
-
-    const wrapper = container.firstChild as HTMLElement
-    expect(wrapper.className).toContain('bg-state-destructive-hover-alt')
-  })
 })

@@ -169,6 +169,7 @@
   "common.currentWorkflow": "Flujo de trabajo actual",
   "common.debugAndPreview": "Vista previa",
   "common.disconnect": "Desconectar",
+  "common.draftSaveFailed": "Error al guardar el borrador",
   "common.duplicate": "Duplicar",
   "common.editing": "Editando",
   "common.effectVarConfirm.content": "La variable se utiliza en otros nodos. ¿Aún quieres eliminarla?",

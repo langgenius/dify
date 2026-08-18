@@ -269,14 +269,6 @@ describe('UploadDropzone', () => {
   })
 
   describe('styling', () => {
-    it('should have base dropzone styling', () => {
-      const { container } = render(<UploadDropzone {...defaultProps} />)
-
-      const dropzone = container.querySelector('[class*="border-dashed"]')
-      expect(dropzone).toBeInTheDocument()
-      expect(dropzone).toHaveClass('rounded-xl')
-    })
-
     it('should have cursor-pointer on browse label', () => {
       render(<UploadDropzone {...defaultProps} />)
 

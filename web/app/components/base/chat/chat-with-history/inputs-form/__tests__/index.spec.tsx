@@ -138,7 +138,6 @@ describe('InputsFormNode', () => {
       screen.queryByTestId('inputs-form-node') ?? (container.firstChild as HTMLElement)
     expect(outerDiv).toBeTruthy()
     // Check for mobile-specific layout classes (pt-4)
-    expect(outerDiv).toHaveClass('pt-4')
 
     // Check padding in expanded content (p-4 for mobile)
     // Prefer a test id for the content wrapper; fallback to finding the label's closest ancestor

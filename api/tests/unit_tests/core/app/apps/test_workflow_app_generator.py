@@ -81,13 +81,15 @@ def test_generate_includes_parent_trace_context_in_extras(monkeypatch):
         "core.app.apps.workflow.app_generator.file_factory.build_from_mappings", lambda *args, **kwargs: []
     )
     monkeypatch.setattr("core.app.apps.workflow.app_generator.TraceQueueManager", MagicMock())
+    workflow_execution_factory = MagicMock(return_value=MagicMock())
+    workflow_node_execution_factory = MagicMock(return_value=MagicMock())
     monkeypatch.setattr(
         "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
-        MagicMock(return_value=MagicMock()),
+        workflow_execution_factory,
     )
     monkeypatch.setattr(
         "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
-        MagicMock(return_value=MagicMock()),
+        workflow_node_execution_factory,
     )
     monkeypatch.setattr("core.app.apps.workflow.app_generator.db", SimpleNamespace(engine=MagicMock()))
     monkeypatch.setattr(generator, "_prepare_user_inputs", lambda *, user_inputs, **kwargs: user_inputs)
@@ -134,6 +136,8 @@ def test_generate_includes_parent_trace_context_in_extras(monkeypatch):
         "parent_node_execution_id": "outer-node-execution-1",
     }
     assert extras["trace_session_id"] == "session-1"
+    assert workflow_execution_factory.call_args.kwargs["tenant_id"] == "tenant-1"
+    assert workflow_node_execution_factory.call_args.kwargs["tenant_id"] == "tenant-1"
 
 
 def test_resume_delegates_to_generate(mocker: MockerFixture):
@@ -181,7 +185,11 @@ def test_generate_appends_pause_layer_and_forwards_state(mocker: MockerFixture):
         return_value="converted",
     )
     mocker.patch.object(WorkflowAppGenerator, "_handle_response", return_value="response")
-    mocker.patch.object(WorkflowAppGenerator, "_get_draft_var_saver_factory", return_value=MagicMock())
+    draft_saver_factory = mocker.patch.object(
+        WorkflowAppGenerator,
+        "_get_draft_var_saver_factory",
+        return_value=MagicMock(),
+    )
 
     pause_layer = MagicMock(name="pause-layer")
     mocker.patch(
@@ -205,7 +213,7 @@ def test_generate_appends_pause_layer_and_forwards_state(mocker: MockerFixture):
 
     mocker.patch("core.app.apps.workflow.app_generator.threading.Thread", DummyThread)
 
-    app_model = SimpleNamespace(mode="workflow")
+    app_model = SimpleNamespace(mode="workflow", tenant_id="tenant")
     app_config = SimpleNamespace(app_id="app", tenant_id="tenant", workflow_id="wf")
     application_generate_entity = SimpleNamespace(
         task_id="task",
@@ -236,6 +244,7 @@ def test_generate_appends_pause_layer_and_forwards_state(mocker: MockerFixture):
     assert result == "converted"
     assert worker_kwargs["kwargs"]["graph_engine_layers"] == ("base-layer", pause_layer)
     assert worker_kwargs["kwargs"]["graph_runtime_state"] is graph_runtime_state
+    assert draft_saver_factory.call_args.kwargs["tenant_id"] == app_model.tenant_id
 
 
 def test_resume_path_runs_worker_with_runtime_state(mocker: MockerFixture):
@@ -297,7 +306,7 @@ def test_resume_path_runs_worker_with_runtime_state(mocker: MockerFixture):
 
     pause_config = SimpleNamespace(session_factory=MagicMock(), state_owner_user_id="owner")
 
-    app_model = SimpleNamespace(mode="workflow")
+    app_model = SimpleNamespace(mode="workflow", tenant_id="tenant")
     app_config = SimpleNamespace(app_id="app", tenant_id="tenant", workflow_id="workflow")
     application_generate_entity = SimpleNamespace(
         task_id="task",

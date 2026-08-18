@@ -30,7 +30,7 @@ Coverage is a diagnostic signal, not a quality target. This guide defines no req
 
 ## Choose the Right Boundary
 
-Use the smallest boundary that proves the product contract without coupling the test to implementation:
+Use the smallest boundary that includes the behavior owner and proves the product contract without coupling the test to implementation:
 
 - Test pure transformations and business rules as unit tests.
 - Test hooks directly only when the hook itself exposes a reusable public contract. Otherwise, exercise the hook through its owning component or feature.
@@ -39,7 +39,9 @@ Use the smallest boundary that proves the product contract without coupling the 
 - Use a real browser for layout, responsive behavior, browser-specific APIs, animation, and focus behavior that `happy-dom` cannot represent faithfully.
 - Follow `packages/dify-ui/README.md` for the Storybook and Vitest boundary of Dify UI primitives.
 
-Test the behavior owner. Barrel exports, pass-through wrappers, and purely presentational children do not need separate tests when the owning feature already proves their contract.
+Browser Mode provides a real browser runtime for focused component tests. Using it does not by itself provide end-to-end coverage or prove integration with the running app's authentication, APIs, or persistence.
+
+Test the behavior owner. Barrel exports, pass-through wrappers, and purely presentational children do not need separate tests when the owning feature already proves their contract. Do not repeat generic behavior already owned by Base UI, React Aria, or the browser; test Dify's integration, overrides, and known regressions.
 
 ## Assert Behavior, Not Implementation
 
@@ -57,9 +59,10 @@ Prefer selectors in this order:
 
 1. `getByRole` with an accessible name.
 1. `getByLabelText` for labeled form controls.
-1. Scoped semantic queries with `within` in React Testing Library or locator chaining in Browser Mode.
 1. `getByText`, `getByPlaceholderText`, or other user-visible queries when appropriate.
 1. `getByTestId` only for boundaries with no useful DOM semantics, such as canvas output, editor shims, or mocked non-visual integrations.
+
+When repeated content creates ambiguity, narrow to a semantic container, then query within it with `within` in React Testing Library or locator chaining in Browser Mode.
 
 If an interactive control cannot be found semantically, first check whether the production markup needs a real button, link, label, landmark, or accessible name.
 
@@ -67,17 +70,18 @@ If an interactive control cannot be found semantically, first check whether the 
 - In Browser Mode, interact through awaited locators. Use `.element()` only for DOM APIs that locators do not expose.
 - Test keyboard and focus behavior when they are part of the interaction contract.
 - Assert accessible names and ARIA state when they communicate product state.
+- Semantic queries and automated checks do not constitute complete accessibility conformance.
 - Exact copy assertions are valid when the copy or translation key is the contract; otherwise prefer a semantic query or resilient match.
-- In React Testing Library, use `queryBy*` for absence and `findBy*` for asynchronously appearing elements. In Browser Mode, use `expect.element` for eventual assertions.
+- In React Testing Library, use `queryBy*` for synchronous absence, `findBy*` for asynchronous appearance, and `waitForElementToBeRemoved` or `waitFor` for asynchronous disappearance. In Browser Mode, use `expect.element` for eventual assertions.
 
 ## Mock at Real Boundaries
 
-Use real components within the owning feature by default, especially when primitive semantics, context wiring, or integration behavior matters. Mock only where isolation improves the signal:
+Keep the production code that owns or transforms the asserted behavior real. Mock only dependencies outside the target contract, where isolation improves the signal:
 
 - Service and network boundaries.
 - Next.js navigation or browser APIs not provided by the test environment.
 - External SDKs and expensive providers.
-- Independently tested child boundaries whose setup would otherwise dominate the owner test.
+- Independently tested child boundaries that do not own or transform the asserted behavior and whose setup would otherwise dominate the owner test.
 
 Mocks must preserve the public contract needed by the test. Do not replace Dify UI or legacy base primitives with semantically inaccurate stubs just to make a test easier.
 
@@ -90,6 +94,7 @@ Mocks must preserve the public contract needed by the test. Do not replace Dify 
 ## Async, Time, and Isolation
 
 - Await user interactions, promises, `findBy*`, and `waitFor`.
+- Wait for observable state changes. Do not use fixed sleeps or broad retries to hide incorrect timing.
 - Use `findBy*` for an element that appears asynchronously and `waitFor` for an eventually true external assertion.
 - Use fake timers only when timer behavior is part of the contract. Restore real timers after the test.
 - Control time, randomness, network responses, and shared stores so tests are deterministic.
@@ -143,6 +148,7 @@ vp test run --coverage path/to/spec-or-directory
 - Are mocks placed at intentional boundaries and faithful to those boundaries?
 - Is the suite deterministic, focused, and cheaper to maintain than the regression it prevents?
 - Would the test survive a refactor that preserves behavior?
+- Can the reviewer name one realistic regression and the assertion that would fail?
 
 ## References
 

@@ -26,6 +26,7 @@ const AuthorizedInNode = ({
     canApiKey,
     canOAuth,
     credentials,
+    isLoading,
     invalidPluginCredentialInfo,
     notAllowCustomCredential,
   } = usePluginAuth(pluginPayload, true, credentialId ? [credentialId] : undefined)
@@ -53,8 +54,14 @@ const AuthorizedInNode = ({
         }
       } else {
         const credential = credentials.find((c) => c.id === credentialId)
-        label = credential ? credential.name : t(($) => $['auth.authRemoved'], { ns: 'plugin' })
-        removed = !credential
+        if (credential) label = credential.name
+        else if (isLoading) {
+          label = t(($) => $.loading, { ns: 'common' })
+          color = 'disabled'
+        } else {
+          label = t(($) => $['auth.authRemoved'], { ns: 'plugin' })
+          removed = true
+        }
         unavailable = !!credential?.not_allowed_to_use && !credential?.from_enterprise
 
         if (removed) color = 'error'
@@ -86,7 +93,7 @@ const AuthorizedInNode = ({
         </Button>
       )
     },
-    [credentialId, credentials, t],
+    [credentialId, credentials, isLoading, t],
   )
   const defaultUnavailable = credentials.find((c) => c.is_default)?.not_allowed_to_use
   const extraAuthorizationItems: Credential[] = [

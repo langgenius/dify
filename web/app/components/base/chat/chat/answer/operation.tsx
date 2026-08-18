@@ -86,6 +86,7 @@ function Operation({
     onAnnotationRemoved,
     onFeedback,
     onRegenerate,
+    showRegenerate,
     readonly,
   } = useChatContext()
   const [isShowReplyModal, setIsShowReplyModal] = useState(false)
@@ -389,7 +390,7 @@ function Operation({
                 <span aria-hidden="true" className="i-ri-clipboard-line size-4" />
               </ActionButton>
             )}
-            {!noChatInput && (
+            {(!noChatInput || showRegenerate) && (
               <ActionButton aria-label={regenerateLabel} onClick={() => onRegenerate?.(item)}>
                 <span aria-hidden="true" className="i-ri-reset-left-line size-4" />
               </ActionButton>

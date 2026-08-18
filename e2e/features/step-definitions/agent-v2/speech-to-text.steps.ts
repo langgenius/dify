@@ -21,9 +21,9 @@ const normalizeFixturePhrase = (value: string) =>
 Given(
   'an Agent v2 test agent with speech-to-text enabled has been created via API',
   async function (this: DifyWorld) {
-    if (!this.agentBuilder.preflight.speechToTextModel) {
+    if (!this.agentBuilder.fixtures.speechToTextModel) {
       throw new Error(
-        'Create a speech-to-text Agent v2 test agent after the default Speech-to-Text model preflight.',
+        'Create a speech-to-text Agent v2 test agent after the default Speech-to-Text model fixture setup.',
       )
     }
 

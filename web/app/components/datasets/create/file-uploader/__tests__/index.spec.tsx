@@ -109,12 +109,6 @@ describe('FileUploader', () => {
       render(<FileUploader {...defaultProps} />)
       expect(screen.getByText('datasetCreation.stepOne.uploader.browse')).toBeInTheDocument()
     })
-
-    it('should apply custom title className', () => {
-      render(<FileUploader {...defaultProps} titleClassName="custom-class" />)
-      const title = screen.getByText('datasetCreation.stepOne.uploader.title')
-      expect(title).toHaveClass('custom-class')
-    })
   })
 
   describe('file list rendering', () => {

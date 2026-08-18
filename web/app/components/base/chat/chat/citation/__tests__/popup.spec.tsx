@@ -317,7 +317,7 @@ describe('Popup', () => {
 
       await openPopup(user)
 
-      expect(screen.queryByTestId('popup-dataset-link')).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: /linkToDataset/i })).not.toBeInTheDocument()
     })
 
     it('should not render hit info section when showHitInfo is false', async () => {
@@ -357,7 +357,7 @@ describe('Popup', () => {
 
       await openPopup(user)
 
-      expect(screen.getByTestId('popup-dataset-link'))!.toBeInTheDocument()
+      expect(screen.getByRole('link', { name: /linkToDataset/i }))!.toBeInTheDocument()
     })
 
     it('should render the dataset link with correct href', async () => {
@@ -366,7 +366,7 @@ describe('Popup', () => {
 
       await openPopup(user)
 
-      expect(screen.getByTestId('popup-dataset-link'))!.toHaveAttribute(
+      expect(screen.getByRole('link', { name: /linkToDataset/i }))!.toHaveAttribute(
         'href',
         `/datasets/${dataWithScore.sources[0]!.dataset_id}/documents/${dataWithScore.sources[0]!.document_id}`,
       )
@@ -378,7 +378,9 @@ describe('Popup', () => {
 
       await openPopup(user)
 
-      expect(screen.getByTestId('popup-dataset-link'))!.toHaveTextContent(/linkToDataset/i)
+      expect(screen.getByRole('link', { name: /linkToDataset/i }))!.toHaveTextContent(
+        /linkToDataset/i,
+      )
     })
 
     it('should render hit info section when showHitInfo is true', async () => {
@@ -618,14 +620,6 @@ describe('Popup', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should render without crashing with minimum required props', () => {
-      expect(() => render(<Popup data={makeData()} />)).not.toThrow()
-    })
-
-    it('should render without crashing with an empty sources array', () => {
-      expect(() => render(<Popup data={makeData({ sources: [] })} />)).not.toThrow()
-    })
-
     it('should render correctly when source has no score (undefined)', async () => {
       const user = userEvent.setup()
       render(

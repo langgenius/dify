@@ -15,7 +15,6 @@ import type {
 import type { ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Emoji } from '@/app/components/tools/types'
 import type { DataSet } from '@/models/datasets'
-import type { FlowType } from '@/types/common'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueries, useQueryClient } from '@tanstack/react-query'
@@ -42,12 +41,13 @@ import {
 } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { AppModeEnum } from '@/types/app'
+import { FlowType } from '@/types/common'
 import { CUSTOM_NODE } from '../constants'
 import { useDatasetsDetailStore } from '../datasets-detail-store/store'
 import { useGetToolIcon, useNodesMetaData } from '../hooks'
 import { useHooksStore } from '../hooks-store/store'
 import { getNodeUsedVars, isSpecialVar } from '../nodes/_base/components/variable/utils'
-import { isAgentV2NodeData } from '../nodes/agent-v2/types'
+import { hasValidInlineAgentBinding, isAgentV2NodeData } from '../nodes/agent-v2/types'
 import { IndexMethodEnum } from '../nodes/knowledge-base/types'
 import {
   getLLMModelIssue,
@@ -152,8 +152,71 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
     appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT
   const modelProviders = useProviderContextSelector((s) => s.modelProviders)
   const workflowStore = useWorkflowStore()
+  const configsMap = useHooksStore((s) => s.configsMap)
 
   const map = useNodesAvailableVarList(nodes)
+  const inlineAgentNodes = useMemo(
+    () =>
+      nodes.filter(
+        (node) =>
+          node.type === CUSTOM_NODE &&
+          isAgentV2NodeData(node.data) &&
+          hasValidInlineAgentBinding(node.data),
+      ),
+    [nodes],
+  )
+  const inlineAgentMissingReferences = useQueries({
+    queries:
+      !configsMap?.flowId ||
+      (configsMap.flowType !== FlowType.appFlow && configsMap.flowType !== FlowType.snippet)
+        ? []
+        : inlineAgentNodes.map((node) =>
+            configsMap.flowType === FlowType.snippet
+              ? consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get.queryOptions(
+                  {
+                    input: {
+                      params: {
+                        snippet_id: configsMap.flowId,
+                        node_id: node.id,
+                      },
+                    },
+                  },
+                )
+              : consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryOptions(
+                  {
+                    input: {
+                      params: {
+                        app_id: configsMap.flowId,
+                        node_id: node.id,
+                      },
+                    },
+                  },
+                ),
+          ),
+    combine: (results) => {
+      const missingReferences: Record<
+        string,
+        { hasMissingFiles: boolean; hasMissingSkills: boolean }
+      > = {}
+
+      results.forEach((result, index) => {
+        const nodeId = inlineAgentNodes[index]?.id
+        const agentSoul = result.data?.agent_soul
+        if (!nodeId || !agentSoul) return
+
+        const hasMissingFiles = agentSoul.config_files?.some((file) => file.is_missing === true)
+        const hasMissingSkills = agentSoul.config_skills?.some((skill) => skill.is_missing === true)
+        if (!hasMissingFiles && !hasMissingSkills) return
+
+        missingReferences[nodeId] = {
+          hasMissingFiles: !!hasMissingFiles,
+          hasMissingSkills: !!hasMissingSkills,
+        }
+      })
+
+      return missingReferences
+    },
+  })
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
   const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
   const knowledgeBaseEmbeddingProviders = useMemo(() => {
@@ -315,6 +378,16 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
             if (validationError) errorMessages.push(validationError)
           }
 
+          const missingReferences = inlineAgentMissingReferences[node!.id]
+          if (missingReferences?.hasMissingFiles)
+            errorMessages.push(
+              t(($) => $['agentDetail.configure.files.missing'], { ns: 'agentV2' }),
+            )
+          if (missingReferences?.hasMissingSkills)
+            errorMessages.push(
+              t(($) => $['agentDetail.configure.skills.missing'], { ns: 'agentV2' }),
+            )
+
           const availableVars = map[node!.id]!.availableVars
           let hasInvalidVar = false
           for (const variable of usedVars) {
@@ -423,6 +496,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
     t,
     map,
     modelProviders,
+    inlineAgentMissingReferences,
     options?.flowType,
   ])
 

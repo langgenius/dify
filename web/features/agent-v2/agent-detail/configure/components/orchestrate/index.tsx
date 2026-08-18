@@ -55,6 +55,7 @@ type AgentOrchestratePanelProps = {
   onPublish?: () => void | Promise<void>
   onExitVersions?: () => void
   onOpenVersions?: () => void
+  onVersionRestored?: () => void | Promise<void>
 }
 
 export function AgentOrchestratePanel({
@@ -83,6 +84,7 @@ export function AgentOrchestratePanel({
   onPublish,
   onExitVersions,
   onOpenVersions,
+  onVersionRestored,
 }: AgentOrchestratePanelProps) {
   const { t } = useTranslation('agentV2')
   const orchestrateHeadingId = 'agent-configure-orchestrate-heading'
@@ -102,6 +104,7 @@ export function AgentOrchestratePanel({
         onPublish={onPublish}
         onExitVersions={onExitVersions}
         onOpenVersions={onOpenVersions}
+        onVersionRestored={onVersionRestored}
       />
     ) : null)
   const hasBottomAction = !!orchestrateBottomAction

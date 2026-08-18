@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import type { PromptEditorProps } from '@/app/components/base/prompt-editor'
 import type { AgentTool } from '@/features/agent-v2/agent-composer/form-state'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { API_PREFIX } from '@/config'
@@ -10,6 +10,8 @@ import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store
 import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { agentComposerToolsAtom } from '@/features/agent-v2/agent-composer/store-modules/tools'
+import { render } from '@/test/console/render'
+import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { AgentPromptEditor } from '../orchestrate/prompt-editor'
 import { AgentPromptSlashMenu } from '../orchestrate/prompt-editor/slash'
 
@@ -153,47 +155,11 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => 'https://docs.example.com',
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
     currentWorkspace: { id: 'workspace-123' },
   }))
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    currentWorkspace: { id: 'workspace-123' },
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    currentWorkspace: { id: 'workspace-123' },
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    currentWorkspace: { id: 'workspace-123' },
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    currentWorkspace: { id: 'workspace-123' },
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('@/service/use-tools', () => ({
@@ -247,6 +213,7 @@ const renderAgentPromptEditor = (
   draftOverrides: Partial<typeof defaultAgentSoulConfigFormState> = {},
 ) => {
   const store = createStore()
+  seedRegisteredConsoleStateFixture(store)
   store.set(agentComposerDraftAtom, {
     ...promptEditorDraft,
     ...draftOverrides,
@@ -262,13 +229,8 @@ const renderAgentPromptEditor = (
   return {
     store,
     ...view,
-    rerenderWithValue: (nextValue: string) => {
-      store.set(agentComposerPromptAtom, nextValue)
-      view.rerender(
-        <JotaiProvider store={store}>
-          <AgentPromptEditor />
-        </JotaiProvider>,
-      )
+    setPromptValue: (nextValue: string) => {
+      act(() => store.set(agentComposerPromptAtom, nextValue))
     },
   }
 }
@@ -484,8 +446,7 @@ describe('AgentPromptEditor', () => {
   // Prompt slash commands should use the Agent Roster category menu and replace it with submenus.
   describe('Slash Commands', () => {
     it('should open category menu, show skill submenu, and append the selected reference', async () => {
-      const { store, rerenderWithValue, container } =
-        renderAgentPromptEditor('Review these tenders')
+      const { store, setPromptValue, container } = renderAgentPromptEditor('Review these tenders')
 
       expect(mockPromptEditor).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -497,7 +458,7 @@ describe('AgentPromptEditor', () => {
         }),
       )
 
-      rerenderWithValue('Review these tenders/')
+      setPromptValue('Review these tenders/')
       await openSlashMenuFromEditor()
       expect(container).toContainElement(
         screen.getByRole('dialog', { name: /agentDetail\.configure\.prompt\.insert\.label/i }),
@@ -853,7 +814,7 @@ describe('AgentPromptEditor', () => {
     })
 
     it('should append available provider tool references and add missing tools to the configuration', async () => {
-      const { store, rerenderWithValue } = renderAgentPromptEditor('Research/', { tools: [] })
+      const { store, setPromptValue } = renderAgentPromptEditor('Research/', { tools: [] })
       const expectedProviderIcon = `${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=workspace-123&filename=duckduckgo.svg`
 
       await openSlashMenuFromEditor()
@@ -884,7 +845,7 @@ describe('AgentPromptEditor', () => {
         }),
       ])
 
-      rerenderWithValue('Research/')
+      setPromptValue('Research/')
       await openSlashMenuFromEditor()
       fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.tools\.label/i }))
       fireEvent.click(
@@ -905,36 +866,45 @@ describe('AgentPromptEditor', () => {
       ])
     })
 
-    it('should close slash menu when slash is deleted or the user clicks outside', async () => {
-      const { rerenderWithValue } = renderAgentPromptEditor('Review/')
+    it('should close the slash menu when the trailing slash is deleted', async () => {
+      const { setPromptValue } = renderAgentPromptEditor('Review/')
 
       await openSlashMenuFromEditor()
-      expect(
-        screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i }),
-      ).toBeInTheDocument()
 
-      rerenderWithValue('Review')
+      setPromptValue('Review')
       fireEvent.keyUp(screen.getByRole('textbox'), { key: 'Backspace' })
 
       await waitFor(() => {
         expect(
-          screen.queryByRole('button', { name: /agentDetail\.configure\.skills\.label/i }),
+          screen.queryByRole('dialog', {
+            name: /agentDetail\.configure\.prompt\.insert\.label/i,
+          }),
         ).not.toBeInTheDocument()
       })
+    })
 
-      rerenderWithValue('Review/')
-      await openSlashMenuFromEditor()
-      expect(
-        screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i }),
-      ).toBeInTheDocument()
+    it('should close the slash menu when the user clicks outside', async () => {
+      const user = userEvent.setup()
+      const outsideButton = document.createElement('button')
+      outsideButton.textContent = 'Outside'
+      document.body.append(outsideButton)
 
-      fireEvent.pointerDown(document.body)
+      try {
+        renderAgentPromptEditor('Review/')
 
-      await waitFor(() => {
-        expect(
-          screen.queryByRole('button', { name: /agentDetail\.configure\.skills\.label/i }),
-        ).not.toBeInTheDocument()
-      })
+        await openSlashMenuFromEditor()
+        await user.click(outsideButton)
+
+        await waitFor(() => {
+          expect(
+            screen.queryByRole('dialog', {
+              name: /agentDetail\.configure\.prompt\.insert\.label/i,
+            }),
+          ).not.toBeInTheDocument()
+        })
+      } finally {
+        outsideButton.remove()
+      }
     })
 
     it('should close the slash menu when focus moves outside the prompt editor', async () => {

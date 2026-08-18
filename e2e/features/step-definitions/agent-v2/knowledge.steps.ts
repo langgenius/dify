@@ -11,17 +11,17 @@ import {
   createAgentSoulConfigWithKnowledgeDataset,
   normalAgentSoulConfig,
 } from '../../agent-v2/support/agent-soul'
-import { asArray, asRecord } from '../../agent-v2/support/preflight/common'
+import { asArray, asRecord } from '../../agent-v2/support/fixtures/common'
 import { getCurrentAgentId } from './configure-helpers'
 
 const getPreseededKnowledgeBase = (world: DifyWorld) => {
   const resource =
-    world.agentBuilder.preflight.preseededResources[
+    world.agentBuilder.fixtures.preseededResources[
       agentBuilderPreseededResources.agentKnowledgeBase
     ]
   if (!resource || resource.kind !== 'dataset') {
     throw new Error(
-      `Preseeded dataset "${agentBuilderPreseededResources.agentKnowledgeBase}" is not available. Run the matching preflight step first.`,
+      `Preseeded dataset "${agentBuilderPreseededResources.agentKnowledgeBase}" is not available. Run the matching fixture setup step first.`,
     )
   }
 

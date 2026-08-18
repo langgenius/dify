@@ -34,6 +34,7 @@ type CollaborationManagerInternals = {
   leaderId: string | null
   isLeader: boolean
   graphViewActive: boolean | null
+  crdtTrusted: boolean
   pendingInitialSync: boolean
   onlineUsers: OnlineUser[]
   graphImportLogs: unknown[]
@@ -74,6 +75,7 @@ const setupManagerWithDoc = () => {
   internals.doc = doc
   internals.nodesMap = doc.getMap('nodes')
   internals.edgesMap = doc.getMap('edges')
+  internals.crdtTrusted = true
   return { manager, internals }
 }
 

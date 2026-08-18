@@ -169,6 +169,7 @@
   "common.currentWorkflow": "Bieżący przepływ pracy",
   "common.debugAndPreview": "Podgląd",
   "common.disconnect": "Odłączyć",
+  "common.draftSaveFailed": "Nie udało się zapisać wersji roboczej",
   "common.duplicate": "Duplikuj",
   "common.editing": "Edytowanie",
   "common.effectVarConfirm.content": "Zmienna jest używana w innych węzłach. Czy na pewno chcesz ją usunąć?",

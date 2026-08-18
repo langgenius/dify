@@ -169,6 +169,7 @@
   "common.currentWorkflow": "Flux de travail actuel",
   "common.debugAndPreview": "Aperçu",
   "common.disconnect": "Déconnecter",
+  "common.draftSaveFailed": "Échec de l’enregistrement du brouillon",
   "common.duplicate": "Dupliquer",
   "common.editing": "Édition",
   "common.effectVarConfirm.content": "La variable est utilisée dans d'autres nœuds. Voulez-vous toujours la supprimer?",

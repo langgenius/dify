@@ -459,7 +459,6 @@ export function SelectionContextmenu({ onClose }: { onClose: () => void }) {
               return (
                 <ContextMenuItem
                   key={item.alignType}
-                  data-testid={`selection-contextmenu-item-${item.alignType}`}
                   onClick={() => handleAlignNodes(item.alignType)}
                 >
                   <span

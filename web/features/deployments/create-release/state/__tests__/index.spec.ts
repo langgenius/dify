@@ -1,75 +1,17 @@
-import type { Getter } from 'jotai'
+import type { QueryClient } from '@tanstack/react-query'
 import type { CreateReleaseFormValues } from '../index'
-import { QueryClient, skipToken } from '@tanstack/react-query'
-import { atom, createStore } from 'jotai'
-import { queryClientAtom } from 'jotai-tanstack-query'
+import { skipToken } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { consoleQuery } from '@/service/client'
-
-type QueryResult = {
-  data?: unknown
-  isError?: boolean
-  isFetching?: boolean
-  isLoading?: boolean
-  isSuccess?: boolean
-}
+import { createQueryAtomTestStore } from '@/test/query-atom'
 
 type QueryOptions = {
   enabled?: boolean
   input?: unknown
-  queryFn?: () => unknown
-  queryKey?: readonly unknown[]
-  retry?: boolean
 }
 
-type MutationResult = {
-  isPending: boolean
-  mutateAsync: ReturnType<typeof vi.fn>
-}
-
-const mockQueryResults = vi.hoisted(() => ({
-  current: new Map<string, QueryResult>(),
-}))
-
-const mockQueryOptions = vi.hoisted(() => ({
-  current: new Map<string, QueryOptions>(),
-}))
-
-const mockCreateReleaseMutation = vi.hoisted<{ current: MutationResult }>(() => ({
-  current: {
-    isPending: false,
-    mutateAsync: vi.fn(),
-  },
-}))
-
-vi.mock('jotai-tanstack-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('jotai-tanstack-query')>()
-
-  return {
-    ...actual,
-    atomWithQuery: (createOptions: (get: Getter) => QueryOptions) =>
-      atom((get) => {
-        const options = createOptions(get)
-        const queryKey = Array.isArray(options.queryKey) ? options.queryKey[0] : undefined
-        const queryName = typeof queryKey === 'string' ? queryKey : 'unknown'
-        const queryResult =
-          options.enabled === false ? undefined : mockQueryResults.current.get(queryName)
-
-        mockQueryOptions.current.set(queryName, options)
-
-        return {
-          ...options,
-          data: undefined,
-          isError: false,
-          isFetching: false,
-          isLoading: false,
-          isSuccess: false,
-          ...queryResult,
-        }
-      }),
-    atomWithMutation: () => atom(() => mockCreateReleaseMutation.current),
-  }
-})
+const mockPrecheckReleaseQueryOptions = vi.hoisted(() => vi.fn())
+const mockCreateRelease = vi.hoisted(() => vi.fn())
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
@@ -105,14 +47,21 @@ vi.mock('@/service/client', () => ({
           }),
         },
         precheckRelease: {
-          queryOptions: ({ enabled, input }: QueryOptions) => ({
-            enabled,
-            input,
-            queryKey: ['precheckRelease', input],
-          }),
+          queryOptions: ({ enabled, input }: QueryOptions) => {
+            mockPrecheckReleaseQueryOptions({ enabled, input })
+
+            return {
+              enabled,
+              input,
+              queryKey: ['precheckRelease', input],
+            }
+          },
         },
         createRelease: {
-          mutationOptions: () => ({ mutationKey: ['createRelease'] }),
+          mutationOptions: () => ({
+            mutationKey: ['createRelease'],
+            mutationFn: mockCreateRelease,
+          }),
         },
       },
     },
@@ -125,15 +74,7 @@ async function loadState() {
 
 async function mountedStore() {
   const state = await loadState()
-  const store = createStore()
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-    },
-  })
-  store.set(queryClientAtom, queryClient)
+  const { queryClient, store } = createQueryAtomTestStore()
   const unsubscribe = store.sub(state.createReleaseFormIsSubmittingAtom, () => undefined)
 
   return {
@@ -170,39 +111,56 @@ function workflowDsl() {
 }
 
 function setDefaultSourceApp(
+  queryClient: QueryClient,
+  appInstanceId: string,
   defaultSourceApp = sourceApp({ id: 'default-source-app', name: 'Default Source App' }),
 ) {
-  mockQueryResults.current.set('listReleases', {
-    data: {
+  queryClient.setQueryData(
+    [
+      'listReleases',
+      {
+        params: { appInstanceId },
+        query: {
+          pageNumber: 1,
+          resultsPerPage: 1,
+        },
+      },
+    ],
+    {
       releases: [
         {
+          displayName: 'Previous Release',
           sourceAppId: defaultSourceApp.id,
         },
       ],
     },
-    isSuccess: true,
-  })
-  mockQueryResults.current.set('appById', {
-    data: defaultSourceApp,
-    isSuccess: true,
-  })
+  )
+  queryClient.setQueryData(
+    ['appById', { params: { app_id: defaultSourceApp.id } }],
+    defaultSourceApp,
+  )
 }
 
 function setPrecheckReleaseResult(
+  queryClient: QueryClient,
+  input: {
+    body: {
+      appInstanceId: string
+      dsl?: string
+      sourceAppId?: string
+    }
+  },
   overrides: {
     canCreate?: boolean
     matchedRelease?: unknown
     unsupportedNodes?: Array<{ id?: string; type?: string }>
   } = {},
 ) {
-  mockQueryResults.current.set('precheckRelease', {
-    data: {
-      gateCommitId: 'gate-commit-1',
-      canCreate: true,
-      unsupportedNodes: [],
-      ...overrides,
-    },
-    isSuccess: true,
+  queryClient.setQueryData(['precheckRelease', input], {
+    gateCommitId: 'gate-commit-1',
+    canCreate: true,
+    unsupportedNodes: [],
+    ...overrides,
   })
 }
 
@@ -227,23 +185,17 @@ function setCachedReleaseSummaries(
   )
 }
 
-function setDslFileContentResult(overrides: QueryResult = {}) {
-  mockQueryResults.current.set('createReleaseDslFileContent', {
-    data: workflowDsl(),
-    isSuccess: true,
-    ...overrides,
-  })
+function setDslFileContentResult(queryClient: QueryClient, file: File, fileReadVersion: number) {
+  queryClient.setQueryData(
+    ['createReleaseDslFileContent', fileReadVersion, file, file.name, file.size, file.lastModified],
+    workflowDsl(),
+  )
 }
 
 describe('create release state', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockQueryResults.current.clear()
-    mockQueryOptions.current.clear()
-    mockCreateReleaseMutation.current = {
-      isPending: false,
-      mutateAsync: vi.fn(),
-    }
+    mockCreateRelease.mockReset()
   })
 
   it('should validate release name only when submitting', async () => {
@@ -251,7 +203,7 @@ describe('create release state', () => {
 
     await store.set(state.submitCreateReleaseFormAtom)
 
-    expect(mockCreateReleaseMutation.current.mutateAsync).not.toHaveBeenCalled()
+    expect(mockCreateRelease).not.toHaveBeenCalled()
     expect(
       hasValidationIssue(
         store.get(state.createReleaseNameFieldAtom).meta?.errors ?? [],
@@ -263,17 +215,22 @@ describe('create release state', () => {
   })
 
   it('should submit after fixing release name following a submit validation error', async () => {
-    const { state, store, unsubscribe } = await mountedStore()
+    const { queryClient, state, store, unsubscribe } = await mountedStore()
     const response = {
       release: {
         displayName: 'Release 1',
       },
     }
-    mockCreateReleaseMutation.current.mutateAsync.mockResolvedValue(response)
+    mockCreateRelease.mockResolvedValue(response)
     store.set(state.createReleaseAppInstanceIdAtom, 'app-instance-1')
     store.set(state.openCreateReleaseDialogAtom)
-    setDefaultSourceApp()
-    setPrecheckReleaseResult()
+    setDefaultSourceApp(queryClient, 'app-instance-1')
+    setPrecheckReleaseResult(queryClient, {
+      body: {
+        appInstanceId: 'app-instance-1',
+        sourceAppId: 'default-source-app',
+      },
+    })
 
     await store.set(state.submitCreateReleaseFormAtom)
     store.set(state.createReleaseNameFieldAtom, 'Release 1')
@@ -281,7 +238,7 @@ describe('create release state', () => {
     const result = await store.set(state.submitCreateReleaseFormAtom)
 
     expect(result).toBe(response)
-    expect(mockCreateReleaseMutation.current.mutateAsync).toHaveBeenCalledTimes(1)
+    expect(mockCreateRelease).toHaveBeenCalledTimes(1)
 
     unsubscribe()
   })
@@ -298,10 +255,10 @@ describe('create release state', () => {
   })
 
   it('should derive default source app selection from the latest release source', async () => {
-    const { state, store, unsubscribe } = await mountedStore()
+    const { queryClient, state, store, unsubscribe } = await mountedStore()
     store.set(state.createReleaseAppInstanceIdAtom, 'app-instance-1')
     store.set(state.openCreateReleaseDialogAtom)
-    setDefaultSourceApp()
+    setDefaultSourceApp(queryClient, 'app-instance-1')
 
     expect(store.get(state.createReleaseSelectedSourceAppAtom)).toEqual({
       id: 'default-source-app',
@@ -314,11 +271,11 @@ describe('create release state', () => {
   })
 
   it('should derive workflow DSL read state when selecting a DSL file', async () => {
-    const { state, store, unsubscribe } = await mountedStore()
+    const { queryClient, state, store, unsubscribe } = await mountedStore()
     const file = new File([workflowDsl()], 'workflow.yml', { type: 'text/yaml' })
 
     store.set(state.updateCreateReleaseDslFileAtom, file)
-    setDslFileContentResult()
+    setDslFileContentResult(queryClient, file, 1)
 
     expect(store.get(state.createReleaseDslFileFieldAtom).value).toBe(file)
     expect(store.get(state.createReleaseDslContentAtom)).toBe(workflowDsl())
@@ -331,11 +288,11 @@ describe('create release state', () => {
   })
 
   it('should reset DSL state when switching back to source app mode', async () => {
-    const { state, store, unsubscribe } = await mountedStore()
+    const { queryClient, state, store, unsubscribe } = await mountedStore()
     const file = new File([workflowDsl()], 'workflow.yml', { type: 'text/yaml' })
 
     store.set(state.updateCreateReleaseDslFileAtom, file)
-    setDslFileContentResult()
+    setDslFileContentResult(queryClient, file, 1)
     store.set(state.selectCreateReleaseSourceModeAtom, 'sourceApp')
 
     expect(store.get(state.createReleaseSourceModeFieldAtom).value).toBe('sourceApp')
@@ -373,10 +330,12 @@ describe('create release state', () => {
     store.set(state.openCreateReleaseDialogAtom)
     store.get(state.isCheckingCreateReleaseContentAtom)
 
-    expect(mockQueryOptions.current.get('precheckRelease')).toMatchObject({
-      enabled: false,
-      input: skipToken,
-    })
+    expect(mockPrecheckReleaseQueryOptions).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        enabled: false,
+        input: skipToken,
+      }),
+    )
 
     unsubscribe()
   })
@@ -384,15 +343,14 @@ describe('create release state', () => {
   it('should capture DSL file read failures and clear them when opening or closing the dialog', async () => {
     const { state, store, unsubscribe } = await mountedStore()
     const file = new File(['broken'], 'broken.yml', { type: 'text/yaml' })
+    vi.spyOn(file, 'text').mockRejectedValue(new Error('read failed'))
 
     store.set(state.updateCreateReleaseDslFileAtom, file)
-    setDslFileContentResult({
-      data: undefined,
-      isError: true,
-      isSuccess: false,
-    })
+    const unsubscribeDslReadError = store.sub(state.createReleaseDslReadErrorAtom, () => undefined)
 
-    expect(store.get(state.createReleaseDslReadErrorAtom)).toBe(true)
+    await vi.waitFor(() => {
+      expect(store.get(state.createReleaseDslReadErrorAtom)).toBe(true)
+    })
 
     store.set(state.openCreateReleaseDialogAtom)
     expect(store.get(state.createReleaseDialogOpenAtom)).toBe(true)
@@ -401,15 +359,21 @@ describe('create release state', () => {
     store.set(state.closeCreateReleaseDialogAtom)
     expect(store.get(state.createReleaseDialogOpenAtom)).toBe(false)
 
+    unsubscribeDslReadError()
     unsubscribe()
   })
 
   it('should derive content readiness from release content precheck', async () => {
-    const { state, store, unsubscribe } = await mountedStore()
+    const { queryClient, state, store, unsubscribe } = await mountedStore()
     store.set(state.createReleaseAppInstanceIdAtom, 'app-instance-1')
     store.set(state.openCreateReleaseDialogAtom)
-    setDefaultSourceApp()
-    setPrecheckReleaseResult()
+    setDefaultSourceApp(queryClient, 'app-instance-1')
+    setPrecheckReleaseResult(queryClient, {
+      body: {
+        appInstanceId: 'app-instance-1',
+        sourceAppId: 'default-source-app',
+      },
+    })
 
     expect(store.get(state.createReleaseContentReadyAtom)).toBe(true)
 
@@ -444,14 +408,23 @@ describe('create release state', () => {
   })
 
   it('should expose unsupported nodes from release content precheck', async () => {
-    const { state, store, unsubscribe } = await mountedStore()
+    const { queryClient, state, store, unsubscribe } = await mountedStore()
     store.set(state.createReleaseAppInstanceIdAtom, 'app-instance-1')
     store.set(state.openCreateReleaseDialogAtom)
-    setDefaultSourceApp()
-    setPrecheckReleaseResult({
-      canCreate: false,
-      unsupportedNodes: [{ id: 'precheck-node' }],
-    })
+    setDefaultSourceApp(queryClient, 'app-instance-1')
+    setPrecheckReleaseResult(
+      queryClient,
+      {
+        body: {
+          appInstanceId: 'app-instance-1',
+          sourceAppId: 'default-source-app',
+        },
+      },
+      {
+        canCreate: false,
+        unsupportedNodes: [{ id: 'precheck-node' }],
+      },
+    )
 
     expect(store.get(state.createReleaseUnsupportedDslNodesAtom)).toEqual([{ id: 'precheck-node' }])
 
@@ -459,24 +432,29 @@ describe('create release state', () => {
   })
 
   it('should submit source app release with the checked source and metadata', async () => {
-    const { state, store, unsubscribe } = await mountedStore()
+    const { queryClient, state, store, unsubscribe } = await mountedStore()
     const response = {
       release: {
         displayName: 'Release 1',
       },
     }
-    mockCreateReleaseMutation.current.mutateAsync.mockResolvedValue(response)
+    mockCreateRelease.mockResolvedValue(response)
     store.set(state.createReleaseAppInstanceIdAtom, 'app-instance-1')
     store.set(state.openCreateReleaseDialogAtom)
-    setDefaultSourceApp()
-    setPrecheckReleaseResult()
+    setDefaultSourceApp(queryClient, 'app-instance-1')
+    setPrecheckReleaseResult(queryClient, {
+      body: {
+        appInstanceId: 'app-instance-1',
+        sourceAppId: 'default-source-app',
+      },
+    })
     store.set(state.createReleaseNameFieldAtom, ' Release 1 ')
     store.set(state.createReleaseDescriptionFieldAtom, ' Initial rollout ')
 
     const result = await store.set(state.submitCreateReleaseFormAtom)
 
     expect(result).toBe(response)
-    expect(mockCreateReleaseMutation.current.mutateAsync).toHaveBeenCalledWith({
+    expect(mockCreateRelease.mock.calls[0]?.[0]).toEqual({
       body: {
         appInstanceId: 'app-instance-1',
         sourceAppId: 'default-source-app',
@@ -493,27 +471,37 @@ describe('create release state', () => {
     const { queryClient, state, store, unsubscribe } = await mountedStore()
     store.set(state.createReleaseAppInstanceIdAtom, 'app-instance-1')
     store.set(state.openCreateReleaseDialogAtom)
-    setDefaultSourceApp()
-    setPrecheckReleaseResult()
+    setDefaultSourceApp(queryClient, 'app-instance-1')
+    setPrecheckReleaseResult(queryClient, {
+      body: {
+        appInstanceId: 'app-instance-1',
+        sourceAppId: 'default-source-app',
+      },
+    })
     setCachedReleaseSummaries(queryClient, 'app-instance-1', ['Release 1'])
     store.set(state.createReleaseNameFieldAtom, 'Release 1')
 
     const result = await store.set(state.submitCreateReleaseFormAtom)
 
     expect(result).toBeUndefined()
-    expect(mockCreateReleaseMutation.current.mutateAsync).not.toHaveBeenCalled()
+    expect(mockCreateRelease).not.toHaveBeenCalled()
 
     unsubscribe()
   })
 
   it('should propagate create release submission errors', async () => {
-    const { state, store, unsubscribe } = await mountedStore()
+    const { queryClient, state, store, unsubscribe } = await mountedStore()
     const submitError = new Error('submit failed')
-    mockCreateReleaseMutation.current.mutateAsync.mockRejectedValue(submitError)
+    mockCreateRelease.mockRejectedValue(submitError)
     store.set(state.createReleaseAppInstanceIdAtom, 'app-instance-1')
     store.set(state.openCreateReleaseDialogAtom)
-    setDefaultSourceApp()
-    setPrecheckReleaseResult()
+    setDefaultSourceApp(queryClient, 'app-instance-1')
+    setPrecheckReleaseResult(queryClient, {
+      body: {
+        appInstanceId: 'app-instance-1',
+        sourceAppId: 'default-source-app',
+      },
+    })
     store.set(state.createReleaseNameFieldAtom, 'Release 1')
 
     await expect(store.set(state.submitCreateReleaseFormAtom)).rejects.toThrow(submitError)

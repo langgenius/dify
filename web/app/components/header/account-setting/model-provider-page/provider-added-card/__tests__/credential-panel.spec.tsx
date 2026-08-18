@@ -1,6 +1,6 @@
 import type { ModelProvider } from '../../declarations'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import {
   ConfigurationMethodEnum,
   CurrentSystemQuotaTypeEnum,
@@ -140,7 +140,7 @@ const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =
   }) as unknown as ModelProvider
 
 const renderWithQueryClient = (provider: ModelProvider) => {
-  return renderWithSystemFeatures(<CredentialPanel provider={provider} />, {
+  return renderWithConsoleQuery(<CredentialPanel provider={provider} />, {
     trialModels: ['langgenius/openai/openai'],
   })
 }

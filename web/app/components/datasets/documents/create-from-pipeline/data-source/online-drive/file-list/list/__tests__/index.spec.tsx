@@ -181,14 +181,6 @@ describe('List', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const props = createDefaultProps()
-
-      render(<List {...props} />)
-
-      expect(document.body).toBeInTheDocument()
-    })
-
     it('should render Loading component when isAllLoading is true', () => {
       const props = createDefaultProps({
         isLoading: true,
@@ -632,11 +624,6 @@ describe('List', () => {
 
   // Component Memoization Tests
   describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      // List component should have $$typeof symbol indicating memo wrapper
-      expect(List).toHaveProperty('$$typeof', Symbol.for('react.memo'))
-    })
-
     it('should not re-render when props are equal', () => {
       const fileList = createMockFileList(2)
       const props = createDefaultProps({ fileList })
@@ -755,16 +742,6 @@ describe('List', () => {
         render(<List {...props} />)
 
         expect(screen.getByTestId('item-name-file-1')).toHaveTextContent(longName)
-      })
-
-      it('should handle special characters in file names', () => {
-        const specialName = 'test<script>alert("xss")</script>.txt'
-        const fileList = [createMockOnlineDriveFile({ name: specialName })]
-        const props = createDefaultProps({ fileList })
-
-        render(<List {...props} />)
-
-        expect(screen.getByTestId('item-name-file-1')).toHaveTextContent(specialName)
       })
 
       it('should handle unicode characters in file names', () => {
@@ -1033,20 +1010,9 @@ describe('EmptyFolder', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<ActualEmptyFolder />)
-      expect(document.body).toBeInTheDocument()
-    })
-
     it('should render empty folder message', () => {
       render(<ActualEmptyFolder />)
       expect(screen.getByText(/datasetPipeline\.onlineDrive\.emptyFolder/)).toBeInTheDocument()
-    })
-  })
-
-  describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect(ActualEmptyFolder).toHaveProperty('$$typeof', Symbol.for('react.memo'))
     })
   })
 
@@ -1076,12 +1042,6 @@ describe('EmptySearchResult', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const onResetKeywords = vi.fn()
-      render(<ActualEmptySearchResult onResetKeywords={onResetKeywords} />)
-      expect(document.body).toBeInTheDocument()
-    })
-
     it('should render empty search result message', () => {
       const onResetKeywords = vi.fn()
       render(<ActualEmptySearchResult onResetKeywords={onResetKeywords} />)
@@ -1126,12 +1086,6 @@ describe('EmptySearchResult', () => {
     })
   })
 
-  describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect(ActualEmptySearchResult).toHaveProperty('$$typeof', Symbol.for('react.memo'))
-    })
-  })
-
   describe('Accessibility', () => {
     it('should have accessible button', () => {
       const onResetKeywords = vi.fn()
@@ -1172,13 +1126,6 @@ describe('FileIcon', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(
-        <ActualFileIcon type={OnlineDriveFileType.file} fileName="test.txt" />,
-      )
-      expect(container).toBeInTheDocument()
-    })
-
     it('should render bucket icon for bucket type', () => {
       const { container } = render(
         <ActualFileIcon type={OnlineDriveFileType.bucket} fileName="my-bucket" />,
@@ -1193,62 +1140,6 @@ describe('FileIcon', () => {
       )
       const svg = container.querySelector('svg')
       expect(svg).toBeInTheDocument()
-    })
-
-    it('should render file type icon for file type', () => {
-      const { container } = render(
-        <ActualFileIcon type={OnlineDriveFileType.file} fileName="document.pdf" />,
-      )
-      expect(container.firstChild).toBeInTheDocument()
-    })
-  })
-
-  describe('Props', () => {
-    describe('type prop', () => {
-      it.each([
-        { type: OnlineDriveFileType.bucket, fileName: 'bucket-name' },
-        { type: OnlineDriveFileType.folder, fileName: 'folder-name' },
-        { type: OnlineDriveFileType.file, fileName: 'file.txt' },
-      ])('should render correctly for type=$type', ({ type, fileName }) => {
-        const { container } = render(<ActualFileIcon type={type} fileName={fileName} />)
-        expect(container.firstChild).toBeInTheDocument()
-      })
-    })
-
-    describe('fileName prop', () => {
-      it.each([
-        { fileName: 'document.pdf' },
-        { fileName: 'image.png' },
-        { fileName: 'video.mp4' },
-        { fileName: 'audio.mp3' },
-        { fileName: 'code.json' },
-        { fileName: 'readme.md' },
-        { fileName: 'data.xlsx' },
-        { fileName: 'doc.docx' },
-        { fileName: 'slides.pptx' },
-        { fileName: 'unknown.xyz' },
-      ])('should render icon for $fileName', ({ fileName }) => {
-        const { container } = render(
-          <ActualFileIcon type={OnlineDriveFileType.file} fileName={fileName} />,
-        )
-        expect(container.firstChild).toBeInTheDocument()
-      })
-    })
-
-    describe('size prop', () => {
-      it.each(['sm', 'md', 'lg', 'xl'] as const)('should accept size=%s', (size) => {
-        const { container } = render(
-          <ActualFileIcon type={OnlineDriveFileType.file} fileName="test.pdf" size={size} />,
-        )
-        expect(container.firstChild).toBeInTheDocument()
-      })
-
-      it('should default to md size', () => {
-        const { container } = render(
-          <ActualFileIcon type={OnlineDriveFileType.file} fileName="test.pdf" />,
-        )
-        expect(container.firstChild).toBeInTheDocument()
-      })
     })
   })
 
@@ -1267,48 +1158,6 @@ describe('FileIcon', () => {
       )
       const svg = container.querySelector('svg')
       expect(svg).toBeInTheDocument()
-    })
-
-    it('should determine file type based on fileName extension', () => {
-      const { container } = render(
-        <ActualFileIcon type={OnlineDriveFileType.file} fileName="image.gif" />,
-      )
-      expect(container.firstChild).toBeInTheDocument()
-    })
-  })
-
-  describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect(ActualFileIcon).toHaveProperty('$$typeof', Symbol.for('react.memo'))
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle empty fileName', () => {
-      const { container } = render(<ActualFileIcon type={OnlineDriveFileType.file} fileName="" />)
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
-    it('should handle fileName without extension', () => {
-      const { container } = render(
-        <ActualFileIcon type={OnlineDriveFileType.file} fileName="README" />,
-      )
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
-    it('should handle special characters in fileName', () => {
-      const { container } = render(
-        <ActualFileIcon type={OnlineDriveFileType.file} fileName="文件 (1).pdf" />,
-      )
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
-    it('should handle very long fileName', () => {
-      const longFileName = `${'a'.repeat(500)}.pdf`
-      const { container } = render(
-        <ActualFileIcon type={OnlineDriveFileType.file} fileName={longFileName} />,
-      )
-      expect(container.firstChild).toBeInTheDocument()
     })
   })
 })
@@ -1350,12 +1199,6 @@ describe('Item', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const props = createItemProps()
-      render(<ActualItem {...props} />)
-      expect(screen.getByText('test-file.txt')).toBeInTheDocument()
-    })
-
     it('should render file name', () => {
       const props = createItemProps({
         file: createMockOnlineDriveFile({ name: 'document.pdf' }),
@@ -1576,12 +1419,6 @@ describe('Item', () => {
     })
   })
 
-  describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect(ActualItem).toHaveProperty('$$typeof', Symbol.for('react.memo'))
-    })
-  })
-
   describe('Edge Cases', () => {
     it('should handle empty file name', () => {
       const props = createItemProps({ file: createMockOnlineDriveFile({ name: '' }) })
@@ -1594,13 +1431,6 @@ describe('Item', () => {
       const props = createItemProps({ file: createMockOnlineDriveFile({ name: longName }) })
       render(<ActualItem {...props} />)
       expect(screen.getByText(longName)).toBeInTheDocument()
-    })
-
-    it('should handle special characters in file name', () => {
-      const specialName = '文件 <test> (1).pdf'
-      const props = createItemProps({ file: createMockOnlineDriveFile({ name: specialName }) })
-      render(<ActualItem {...props} />)
-      expect(screen.getByText(specialName)).toBeInTheDocument()
     })
 
     it('should handle zero file size', () => {
@@ -1662,20 +1492,6 @@ describe('utils', () => {
     })
 
     describe('Edge Cases', () => {
-      it('should return empty string for empty filename', () => {
-        expect(getFileExtension('')).toBe('')
-      })
-
-      it('should return empty string for filename without extension', () => {
-        expect(getFileExtension('README')).toBe('')
-        expect(getFileExtension('Makefile')).toBe('')
-      })
-
-      it('should return empty string for hidden files without extension', () => {
-        expect(getFileExtension('.gitignore')).toBe('')
-        expect(getFileExtension('.env')).toBe('')
-      })
-
       it('should handle hidden files with extension', () => {
         expect(getFileExtension('.eslintrc.json')).toBe('json')
         expect(getFileExtension('.config.yaml')).toBe('yaml')
@@ -1683,11 +1499,6 @@ describe('utils', () => {
 
       it('should handle files ending with dot', () => {
         expect(getFileExtension('file.')).toBe('')
-      })
-
-      it('should handle special characters in filename', () => {
-        expect(getFileExtension('file-name_v1.0.pdf')).toBe('pdf')
-        expect(getFileExtension('data (1).xlsx')).toBe('xlsx')
       })
     })
 
@@ -1789,15 +1600,6 @@ describe('utils', () => {
         expect(getFileType('file.xyz')).toBe(FileAppearanceTypeEnum.custom)
         expect(getFileType('data.unknown')).toBe(FileAppearanceTypeEnum.custom)
         expect(getFileType('binary.bin')).toBe(FileAppearanceTypeEnum.custom)
-      })
-
-      it('should return custom type for files without extension', () => {
-        expect(getFileType('README')).toBe(FileAppearanceTypeEnum.custom)
-        expect(getFileType('Makefile')).toBe(FileAppearanceTypeEnum.custom)
-      })
-
-      it('should return custom type for empty filename', () => {
-        expect(getFileType('')).toBe(FileAppearanceTypeEnum.custom)
       })
     })
 

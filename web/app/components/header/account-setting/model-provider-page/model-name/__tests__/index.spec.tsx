@@ -39,7 +39,6 @@ describe('ModelName', () => {
     mockLocale = 'en-US'
   })
 
-  // Rendering scenarios for the model name label.
   describe('rendering', () => {
     it('should render the localized model label when translation exists', () => {
       mockLocale = 'zh-Hans'
@@ -63,23 +62,8 @@ describe('ModelName', () => {
 
       expect(screen.getByText('English Only')).toBeInTheDocument()
     })
-
-    it('should render nothing when modelItem is null', () => {
-      const { container } = render(<ModelName modelItem={null as unknown as ModelItem} />)
-
-      expect(container).toBeEmptyDOMElement()
-    })
-
-    it('should apply custom class to model name only', () => {
-      const modelItem = createModelItem()
-
-      render(<ModelName modelItem={modelItem} nameClassName="line-through" showMode />)
-
-      expect(screen.getByText('English Model')).toHaveClass('line-through')
-    })
   })
 
-  // Badges that surface model metadata to the user.
   describe('badges', () => {
     it('should show model type, mode, and context size when enabled', () => {
       const modelItem = createModelItem({

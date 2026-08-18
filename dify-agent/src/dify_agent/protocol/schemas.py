@@ -39,6 +39,7 @@ composition and the runtime can rebuild the same structured output contract.
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Annotated, ClassVar, Final, Literal, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter, model_serializer, model_validator
@@ -254,11 +255,26 @@ class DeferredToolCallPayload(BaseModel):
 
 
 class AgentRunUsage(BaseModel):
-    """Token usage reported by the model request behind one Agent run."""
+    """Complete model usage reported for one Agent run.
+
+    Pricing fields default to zero so events from older Agent backend versions that contain only
+    token counts remain valid when a new consumer replays persisted Redis streams.
+    """
 
     prompt_tokens: int = 0
+    prompt_unit_price: Decimal = Decimal(0)
+    prompt_price_unit: Decimal = Decimal(0)
+    prompt_price: Decimal = Decimal(0)
     completion_tokens: int = 0
+    completion_unit_price: Decimal = Decimal(0)
+    completion_price_unit: Decimal = Decimal(0)
+    completion_price: Decimal = Decimal(0)
     total_tokens: int = 0
+    total_price: Decimal = Decimal(0)
+    currency: str = "USD"
+    latency: float = 0.0
+    time_to_first_token: float | None = None
+    time_to_generate: float | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 

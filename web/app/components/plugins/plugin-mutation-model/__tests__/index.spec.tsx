@@ -1,10 +1,18 @@
 import type { Plugin } from '../../types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { expectLoadingButton } from '@/test/button'
+import { render } from '@/test/console/render'
 import { PluginCategoryEnum } from '../../types'
 import PluginMutationModal from '../index'
+
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
 
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
@@ -203,14 +211,6 @@ describe('PluginMutationModal', () => {
   // Rendering Tests
   // ================================
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const props = createDefaultProps()
-
-      render(<PluginMutationModal {...props} />)
-
-      expect(document.body).toBeInTheDocument()
-    })
-
     it('should render modal title', () => {
       const props = createDefaultProps({
         modelTitle: 'Update Plugin',
@@ -596,48 +596,6 @@ describe('PluginMutationModal', () => {
       render(<PluginMutationModal {...props} />)
 
       expect(screen.getByTestId('partner-badge')).toBeInTheDocument()
-    })
-  })
-
-  // ================================
-  // Memoization Tests
-  // ================================
-  describe('Memoization', () => {
-    it('should be memoized with React.memo', () => {
-      // Verify the component is wrapped with memo
-      expect(PluginMutationModal).toBeDefined()
-      expect(typeof PluginMutationModal).toBe('object')
-    })
-
-    it('should have displayName set', () => {
-      // The component sets displayName = 'PluginMutationModal'
-      const displayName =
-        (
-          PluginMutationModal as unknown as {
-            type?: { displayName?: string }
-            displayName?: string
-          }
-        ).type?.displayName ||
-        (PluginMutationModal as unknown as { displayName?: string }).displayName
-      expect(displayName).toBe('PluginMutationModal')
-    })
-
-    it('should not re-render when props unchanged', () => {
-      const renderCount = vi.fn()
-
-      const TestWrapper = ({ props }: { props: PluginMutationModalProps }) => {
-        renderCount()
-        return <PluginMutationModal {...props} />
-      }
-
-      const props = createDefaultProps()
-      const { rerender } = render(<TestWrapper props={props} />)
-
-      expect(renderCount).toHaveBeenCalledTimes(1)
-
-      // Re-render with same props reference
-      rerender(<TestWrapper props={props} />)
-      expect(renderCount).toHaveBeenCalledTimes(2)
     })
   })
 

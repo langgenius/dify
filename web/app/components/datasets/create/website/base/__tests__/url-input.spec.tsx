@@ -22,12 +22,6 @@ describe('UrlInput', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<UrlInput isRunning={false} onRun={mockOnRun} />)
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
-      expect(screen.getByRole('button')).toBeInTheDocument()
-    })
-
     it('should render input with placeholder from docLink', () => {
       render(<UrlInput isRunning={false} onRun={mockOnRun} />)
       const input = screen.getByRole('textbox')
@@ -309,14 +303,6 @@ describe('UrlInput', () => {
   })
 
   describe('Memoization', () => {
-    it('should be memoized with React.memo', () => {
-      const { rerender } = render(<UrlInput isRunning={false} onRun={mockOnRun} />)
-
-      rerender(<UrlInput isRunning={false} onRun={mockOnRun} />)
-
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
-    })
-
     it('should use useCallback for handleUrlChange', async () => {
       const user = userEvent.setup()
 

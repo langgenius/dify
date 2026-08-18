@@ -26,6 +26,7 @@ from core.app.entities.queue_entities import (
     QueueNodeSucceededEvent,
     QueueReasoningChunkEvent,
     QueueRetrieverResourcesEvent,
+    QueueStopEvent,
     QueueTextChunkEvent,
     QueueWorkflowFailedEvent,
     QueueWorkflowPartialSuccessEvent,
@@ -424,7 +425,12 @@ class WorkflowBasedAppRunner:
                     QueueWorkflowFailedEvent(error=event.error, exceptions_count=event.exceptions_count)
                 )
             case GraphRunAbortedEvent():
-                self._publish_event(QueueWorkflowFailedEvent(error=event.reason or "Unknown error", exceptions_count=0))
+                self._publish_event(
+                    QueueStopEvent(
+                        stopped_by=QueueStopEvent.StopBy.USER_MANUAL,
+                        reason=event.reason or "Workflow execution aborted",
+                    )
+                )
             case GraphRunPausedEvent():
                 runtime_state = workflow_entry.graph_engine.graph_runtime_state
                 paused_nodes = runtime_state.get_paused_nodes()

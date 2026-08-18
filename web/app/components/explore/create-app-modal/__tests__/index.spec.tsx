@@ -1,6 +1,6 @@
 import type { CreateAppModalProps } from '../index'
 import type { UsagePlanInfo } from '@/app/components/billing/type'
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import * as React from 'react'
 import {
   createMockPlan,
@@ -8,6 +8,7 @@ import {
   createMockPlanUsage,
 } from '@/__mocks__/provider-context'
 import { Plan } from '@/app/components/billing/type'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import CreateAppModal from '../index'
 

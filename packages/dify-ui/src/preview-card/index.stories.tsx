@@ -3,9 +3,6 @@ import type { Placement } from '.'
 import * as React from 'react'
 import { createPreviewCardHandle, PreviewCard, PreviewCardContent, PreviewCardTrigger } from '.'
 
-const rowButtonClassName =
-  'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
-
 const triggerButtonClassName =
   'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
 
@@ -20,7 +17,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Hover- and focus-activated rich preview for triggers whose primary click has its own destination (following a link, selecting a row, jumping to a definition). Built on Base UI PreviewCard.\n\n**A11y contract:** touch and screen-reader users cannot open the preview. Never place information or actions in the popup that are not also reachable from the trigger's primary click destination. If that is unavoidable, add a separate click affordance (Popover) or move the unique content onto the destination.",
+          'Hover- and focus-activated rich link preview built on Base UI PreviewCard.\n\n**A11y contract:** touch and screen-reader users cannot open the preview. Keep popup content available on the link destination. A polymorphic action trigger is a Dify application-level extension and is only valid when its click result exposes the same information.',
       },
     },
   },
@@ -85,38 +82,6 @@ export const LinkPreview: Story = {
   ),
 }
 
-export const Supplementary: Story = {
-  name: 'Supplementary preview on a button trigger',
-  parameters: {
-    docs: {
-      description: {
-        story:
-          'Application-level adaptation of the same semantic: the trigger is a `<button>` that owns a primary action (selecting a model row) rather than an `<a>`. The preview still only shows supplementary info reachable from the selection destination, so the a11y contract holds.',
-      },
-    },
-  },
-  render: () => (
-    <PreviewCard>
-      <PreviewCardTrigger
-        render={
-          <button type="button" className={rowButtonClassName}>
-            <span className="i-ri-sparkling-fill h-4 w-4 text-text-accent" />
-            <span>gpt-4o</span>
-          </button>
-        }
-      />
-      <PreviewCardContent placement="right" popupClassName="w-[220px] p-3">
-        <div className="flex flex-col gap-2">
-          <div className="text-sm font-medium text-text-primary">gpt-4o</div>
-          <div className="text-xs text-text-tertiary">
-            Multimodal flagship model. Vision, audio and 128k context.
-          </div>
-        </div>
-      </PreviewCardContent>
-    </PreviewCard>
-  ),
-}
-
 const PLACEMENTS: Placement[] = [
   'top-start',
   'top',
@@ -152,13 +117,9 @@ const PlacementsDemo = () => {
         ))}
       </div>
       <PreviewCard open>
-        <PreviewCardTrigger
-          render={
-            <button type="button" className={triggerButtonClassName}>
-              Hover me
-            </button>
-          }
-        />
+        <PreviewCardTrigger href="#preview-card-placement" className={triggerButtonClassName}>
+          Hover me
+        </PreviewCardTrigger>
         <PreviewCardContent placement={placement} popupClassName="w-56 p-3">
           <div className="flex flex-col gap-1">
             <div className="text-sm font-semibold text-text-primary">
@@ -187,12 +148,11 @@ const CustomDelayDemo = () => (
     <PreviewCardTrigger
       delay={100}
       closeDelay={100}
-      render={
-        <button type="button" className={triggerButtonClassName}>
-          Snappy trigger
-        </button>
-      }
-    />
+      href="#preview-card-delay"
+      className={triggerButtonClassName}
+    >
+      Snappy trigger
+    </PreviewCardTrigger>
     <PreviewCardContent popupClassName="w-64 p-3">
       <div className="flex flex-col gap-1">
         <div className="text-sm font-semibold text-text-primary">Fast hover</div>

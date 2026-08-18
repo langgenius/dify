@@ -223,9 +223,10 @@ export const uploadRemoteFileInfo = (
   url: string,
   isPublic?: boolean,
   silent?: boolean,
+  uploadEndpoint?: string,
 ): Promise<{ id: string; name: string; size: number; mime_type: string; url: string }> => {
   return post<{ id: string; name: string; size: number; mime_type: string; url: string }>(
-    '/remote-files/upload',
+    uploadEndpoint || '/remote-files/upload',
     { body: { url } },
     { isPublicAPI: isPublic, silent },
   )

@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Iterator
 from http import HTTPStatus
 from inspect import unwrap
 from io import BytesIO
@@ -6,6 +7,8 @@ from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy import Engine, event
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import Unauthorized
 
@@ -34,6 +37,17 @@ from controllers.console.workspace.workspace import (
 from enums.cloud_plan import CloudPlan
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, Tenant, TenantCustomConfigDict, TenantStatus
+
+
+@pytest.fixture
+def workspace_session(sqlite_engine: Engine) -> Iterator[scoped_session[Session]]:
+    """Provide the callable scoped session expected by Flask-SQLAlchemy controllers."""
+    Tenant.metadata.create_all(sqlite_engine, tables=[Tenant.__table__])
+    session = scoped_session(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
+    try:
+        yield session
+    finally:
+        session.remove()
 
 
 def make_account(account_id: str = "u1") -> Account:
@@ -370,11 +384,13 @@ class TestTenantInfoResponse:
 
 
 class TestSwitchWorkspaceApi:
-    def test_switch_success(self, app: Flask):
+    def test_switch_success(self, app: Flask, workspace_session: scoped_session[Session]):
         api = SwitchWorkspaceApi()
         method = unwrap(api.post)
         payload = {"tenant_id": "t2"}
         tenant = make_tenant("t2")
+        workspace_session.add(tenant)
+        workspace_session.commit()
         user = make_account()
         with (
             app.test_request_context("/workspaces/switch", json=payload),
@@ -383,11 +399,10 @@ class TestSwitchWorkspaceApi:
                 "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info", return_value={"id": "t2"}
             ),
         ):
-            session = MagicMock()
-            session.get.return_value = tenant
-            result = method(api, session, user)
+            result = method(api, workspace_session, user)
+
         assert result["result"] == "success"
-        switch_tenant.assert_called_once_with(user, "t2", session=session)
+        switch_tenant.assert_called_once_with(user, "t2", session=workspace_session)
 
     def test_switch_not_linked(self, app: Flask):
         api = SwitchWorkspaceApi()
@@ -401,7 +416,7 @@ class TestSwitchWorkspaceApi:
             with pytest.raises(AccountNotLinkTenantError):
                 method(api, MagicMock(), user)
 
-    def test_switch_tenant_not_found(self, app: Flask):
+    def test_switch_tenant_not_found(self, app: Flask, workspace_session: scoped_session[Session]):
         api = SwitchWorkspaceApi()
         method = unwrap(api.post)
         payload = {"tenant_id": "missing"}
@@ -410,19 +425,21 @@ class TestSwitchWorkspaceApi:
             app.test_request_context("/workspaces/switch", json=payload),
             patch("controllers.console.workspace.workspace.TenantService.switch_tenant"),
         ):
-            session = MagicMock()
-            session.get.return_value = None
             with pytest.raises(ValueError):
-                method(api, session, user)
+                method(api, workspace_session, user)
 
 
 class TestCustomConfigWorkspaceApi:
-    def test_post_success(self, app: Flask):
+    def test_post_success(self, app: Flask, workspace_session: scoped_session[Session]):
         api = CustomConfigWorkspaceApi()
         method = unwrap(api.post)
         tenant = make_tenant(custom_config={})
+        workspace_session.add(tenant)
+        workspace_session.commit()
+
         payload = {"remove_webapp_brand": True}
         events = []
+        event.listen(workspace_session, "after_commit", lambda _: events.append("commit"))
         with (
             app.test_request_context("/workspaces/custom-config", json=payload),
             patch(
@@ -430,27 +447,29 @@ class TestCustomConfigWorkspaceApi:
                 side_effect=lambda *args, **kwargs: events.append("get_tenant_info") or {"id": "t1"},
             ),
         ):
-            session = MagicMock()
-            session.get.return_value = tenant
-            session.commit.side_effect = lambda: events.append("commit")
-            result = method(api, session, "t1")
+            result = method(api, workspace_session, "t1")
         assert result["result"] == "success"
         assert events == ["commit", "get_tenant_info"]
 
-    def test_logo_fallback(self, app: Flask):
+    def test_logo_fallback(self, app: Flask, workspace_session: scoped_session[Session]):
         api = CustomConfigWorkspaceApi()
         method = unwrap(api.post)
+
         tenant = make_tenant(custom_config={"replace_webapp_logo": "old-logo"})
+        workspace_session.add(tenant)
+        workspace_session.commit()
+
         payload = {"remove_webapp_brand": False}
+
         with (
             app.test_request_context("/workspaces/custom-config", json=payload),
             patch(
-                "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info", return_value={"id": "t1"}
+                "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info",
+                return_value={"id": "t1"},
             ),
         ):
-            session = MagicMock()
-            session.get.return_value = tenant
-            result = method(api, session, "t1")
+            result = method(api, workspace_session, "t1")
+
         assert tenant.custom_config_dict["replace_webapp_logo"] == "old-logo"
         assert result["result"] == "success"
 
@@ -541,14 +560,19 @@ class TestWebappLogoWorkspaceApi:
 
 
 class TestWorkspaceInfoApi:
-    def test_post_success(self, app: Flask):
+    def test_post_success(self, app: Flask, workspace_session: scoped_session[Session]):
         api = WorkspaceInfoApi()
         method = unwrap(api.post)
         tenant = make_tenant()
+        workspace_session.add(tenant)
+        workspace_session.commit()
+
         payload = {"name": "New Name"}
         events = []
         with (
             app.test_request_context("/workspaces/info", json=payload),
+            patch("controllers.console.workspace.workspace.db.get_or_404", return_value=tenant),
+            patch("controllers.console.workspace.workspace.db.session", workspace_session),
             patch(
                 "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info",
                 side_effect=lambda *args, **kwargs: (

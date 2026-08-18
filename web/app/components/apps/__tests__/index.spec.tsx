@@ -1,11 +1,14 @@
 import type { ReactNode } from 'react'
 import type { App } from '@/models/explore'
+import type { TryAppSelection } from '@/types/try-app'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { useContextSelector } from 'use-context-selector'
 import AppListContext from '@/context/app-list-context'
 import { fetchAppDetail } from '@/service/explore'
+import { render } from '@/test/console/render'
 import { AppModeEnum } from '@/types/app'
 import Apps from '../index'
 
@@ -69,47 +72,11 @@ vi.mock('@/app/education-apply/hooks', () => ({
   },
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }))
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('@/hooks/use-import-dsl', () => ({
@@ -132,7 +99,13 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('../list', () => {
-  const MockList = () => {
+  const MockList = ({
+    onCreateLearnDify,
+    onTryLearnDify,
+  }: {
+    onCreateLearnDify?: (app: App) => void
+    onTryLearnDify?: (params: TryAppSelection) => void
+  }) => {
     const setShowTryAppPanel = useContextSelector(AppListContext, (ctx) => ctx.setShowTryAppPanel)
     return React.createElement(
       'div',
@@ -149,6 +122,19 @@ vi.mock('../list', () => {
             }),
         },
         'Open Preview',
+      ),
+      React.createElement(
+        'button',
+        {
+          type: 'button',
+          onClick: () => onTryLearnDify?.({ appId: mockTemplateApp.app_id, app: mockTemplateApp }),
+        },
+        'Preview Learn Dify template',
+      ),
+      React.createElement(
+        'button',
+        { type: 'button', onClick: () => onCreateLearnDify?.(mockTemplateApp) },
+        'Create Learn Dify template',
       ),
     )
   }
@@ -283,62 +269,7 @@ describe('Apps', () => {
     })
   })
 
-  describe('Rendering', () => {
-    it('should render without crashing', () => {
-      renderWithClient(<Apps />)
-      expect(screen.getByTestId('apps-list')).toBeInTheDocument()
-    })
-
-    it('should render List component', () => {
-      renderWithClient(<Apps />)
-      expect(screen.getByText('Apps List')).toBeInTheDocument()
-    })
-
-    it('should have correct container structure', () => {
-      const { container } = renderWithClient(<Apps />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('relative', 'flex', 'h-0', 'shrink-0', 'grow', 'flex-col')
-    })
-  })
-
-  describe('Hooks', () => {
-    it('should call useDocumentTitle with correct title', () => {
-      renderWithClient(<Apps />)
-      expect(documentTitleCalls).toContain('common.menus.apps')
-    })
-
-    it('should call useEducationInit', () => {
-      renderWithClient(<Apps />)
-      expect(educationInitCalls).toBeGreaterThan(0)
-    })
-  })
-
   describe('Integration', () => {
-    it('should render full component tree', () => {
-      renderWithClient(<Apps />)
-
-      expect(screen.getByTestId('apps-list')).toBeInTheDocument()
-      expect(documentTitleCalls.length).toBeGreaterThanOrEqual(1)
-      expect(educationInitCalls).toBeGreaterThanOrEqual(1)
-    })
-
-    it('should handle multiple renders', () => {
-      const queryClient = createQueryClient()
-      const { rerender } = render(
-        <QueryClientProvider client={queryClient}>
-          <Apps />
-        </QueryClientProvider>,
-      )
-      expect(screen.getByTestId('apps-list')).toBeInTheDocument()
-
-      rerender(
-        <QueryClientProvider client={queryClient}>
-          <Apps />
-        </QueryClientProvider>,
-      )
-      expect(screen.getByTestId('apps-list')).toBeInTheDocument()
-    })
-
     it('should track template preview creation after a successful import', async () => {
       mockHandleImportDSL.mockImplementation(
         async (
@@ -363,6 +294,24 @@ describe('Apps', () => {
           templateId: 'template-1',
         })
       })
+    })
+
+    it('should open the template preview from Learn Dify', async () => {
+      const user = userEvent.setup()
+      renderWithClient(<Apps />)
+
+      await user.click(screen.getByRole('button', { name: 'Preview Learn Dify template' }))
+
+      expect(await screen.findByTestId('try-app-panel')).toBeInTheDocument()
+    })
+
+    it('should open the create modal from Learn Dify', async () => {
+      const user = userEvent.setup()
+      renderWithClient(<Apps />)
+
+      await user.click(screen.getByRole('button', { name: 'Create Learn Dify template' }))
+
+      expect(await screen.findByTestId('create-app-modal')).toBeInTheDocument()
     })
 
     it('should track template preview creation after confirming a pending import', async () => {
@@ -533,20 +482,6 @@ describe('Apps', () => {
           templateId: 'tpl-42',
         })
       })
-    })
-  })
-
-  describe('Styling', () => {
-    it('should have overflow-y-auto class', () => {
-      const { container } = renderWithClient(<Apps />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('overflow-y-auto')
-    })
-
-    it('should have background styling', () => {
-      const { container } = renderWithClient(<Apps />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('bg-background-body')
     })
   })
 })

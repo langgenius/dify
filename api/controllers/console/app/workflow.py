@@ -105,6 +105,7 @@ class SyncDraftWorkflowPayload(BaseModel):
     graph: dict[str, Any]
     features: dict[str, Any]
     hash: str | None = None
+    is_collaborative: bool = Field(default=False, alias="_is_collaborative")
     environment_variables: list[dict[str, Any]] = Field(
         default_factory=list,
     )
@@ -610,6 +611,7 @@ class DraftWorkflowApi(Resource):
                 environment_variables=environment_variables,
                 conversation_variables=conversation_variables,
                 session=db.session(),
+                graph_only=args["is_collaborative"],
             )
         except WorkflowHashNotEqualError:
             raise DraftWorkflowNotSync()

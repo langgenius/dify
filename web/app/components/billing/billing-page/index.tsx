@@ -3,27 +3,21 @@ import type { FC } from 'react'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { useBillingUrl } from '@/service/use-billing'
-import { BillingPermission, hasPermission } from '@/utils/permission'
 import PlanComp from '../plan'
 
 const Billing: FC = () => {
   const { t } = useTranslation()
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { enableBilling } = useProviderContext()
-  const canManageBillingSubscription =
-    isCurrentWorkspaceManager &&
-    hasPermission(workspacePermissionKeys, BillingPermission.SubscriptionManage)
   const {
     data: billingUrl,
     isFetching,
     refetch,
-  } = useBillingUrl(enableBilling && canManageBillingSubscription)
+  } = useBillingUrl(enableBilling && isCurrentWorkspaceManager)
   const openAsyncWindow = useAsyncWindowOpen()
 
   const handleOpenBilling = async () => {
@@ -46,7 +40,7 @@ const Billing: FC = () => {
   return (
     <div>
       <PlanComp loc="billing-page" />
-      {enableBilling && canManageBillingSubscription && (
+      {enableBilling && isCurrentWorkspaceManager && (
         <button
           type="button"
           className="mt-3 flex w-full items-center justify-between rounded-xl bg-background-section-burn px-4 py-3"

@@ -1,8 +1,9 @@
 import type { Banner as BannerType } from '@/models/app'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, screen } from '@testing-library/react'
 import * as React from 'react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { render } from '@/test/console/render'
 import { Banner } from '../banner'
 
 const mockTrackEvent = vi.fn()
@@ -14,7 +15,7 @@ const mockAutoplayListeners = {
   play: new Set<() => void>(),
   stop: new Set<() => void>(),
 }
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   userProfile: {
     id: 'account-123',
     name: 'Evan',
@@ -57,15 +58,9 @@ const setMockSelectedIndex = (index: number) => {
   mockCarouselListeners.forEach((listener) => listener())
 }
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => mockConsoleState)
 })
 
 vi.mock('@/app/components/base/amplitude', () => ({
@@ -178,7 +173,7 @@ describe('Banner', () => {
     mockCarouselListeners.clear()
     mockAutoplayListeners.play.clear()
     mockAutoplayListeners.stop.clear()
-    mockAppContextState.userProfile = { id: 'account-123', name: 'Evan' }
+    mockConsoleState.userProfile = { id: 'account-123', name: 'Evan' }
   })
 
   afterEach(cleanup)
@@ -391,7 +386,7 @@ describe('Banner', () => {
   })
 
   it('does not track impressions without an account id', () => {
-    mockAppContextState.userProfile = { id: '', name: '' }
+    mockConsoleState.userProfile = { id: '', name: '' }
     render(<Banner banners={[createMockBanner('1')]} />)
 
     expect(mockTrackEvent).not.toHaveBeenCalled()

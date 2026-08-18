@@ -279,7 +279,7 @@ function TestQueryClientHydrator({
   return children
 }
 
-function createTestQueryClient() {
+function createConsoleQueryClient() {
   return new QueryClient({
     defaultOptions: {
       queries: {
@@ -291,7 +291,7 @@ function createTestQueryClient() {
 }
 
 function renderConsoleBootstrap() {
-  const queryClient = createTestQueryClient()
+  const queryClient = createConsoleQueryClient()
   queryClient.setQueryData(['user-profile'], mockUserProfileResponseState.data)
   queryClient.setQueryData(['system-features'], mockSystemFeaturesState.data)
 

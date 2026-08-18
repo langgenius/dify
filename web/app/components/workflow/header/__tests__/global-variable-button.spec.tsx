@@ -41,21 +41,6 @@ describe('GlobalVariableButton', () => {
     expect(mockCloseAllInputFieldPanels).toHaveBeenCalledTimes(1)
   })
 
-  it('should apply the active dark theme styles when the global variable panel is visible', () => {
-    mockTheme = 'dark'
-    renderWorkflowComponent(<GlobalVariableButton disabled={false} />, {
-      initialStoreState: {
-        showGlobalVariablePanel: true,
-      },
-    })
-
-    expect(screen.getByRole('button')).toHaveClass(
-      'border-black/5',
-      'bg-white/10',
-      'backdrop-blur-xs',
-    )
-  })
-
   it('should keep the button disabled when the disabled prop is true', () => {
     const { store } = renderWorkflowComponent(<GlobalVariableButton disabled />, {
       initialStoreState: {

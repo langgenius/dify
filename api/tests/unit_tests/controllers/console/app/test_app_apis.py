@@ -398,6 +398,12 @@ class TestWorkflowEndpoints:
     def test_workflow_copy_payload(self):
         payload = SyncDraftWorkflowPayload(graph={}, features={})
         assert payload.graph == {}
+        assert payload.model_dump()["is_collaborative"] is False
+
+    def test_workflow_sync_payload_accepts_collaboration_marker(self):
+        payload = SyncDraftWorkflowPayload.model_validate({"graph": {}, "features": {}, "_is_collaborative": True})
+        assert payload.is_collaborative is True
+        assert payload.model_dump()["is_collaborative"] is True
 
     def test_workflow_mode_query(self):
         payload = AdvancedChatWorkflowRunPayload(inputs={}, query="hi")

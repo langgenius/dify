@@ -85,13 +85,6 @@ describe('DatasetMetadataDrawer', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', async () => {
-      render(<DatasetMetadataDrawer {...defaultProps} />)
-      await waitFor(() => {
-        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
-      })
-    })
-
     it('should render user metadata items', async () => {
       render(<DatasetMetadataDrawer {...defaultProps} />)
       await waitFor(() => {

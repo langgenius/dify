@@ -16,12 +16,6 @@ describe('BatchAction', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(<BatchAction {...defaultProps} />)
-
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
     it('should display selected count', () => {
       render(<BatchAction {...defaultProps} />)
 
@@ -188,13 +182,6 @@ describe('BatchAction', () => {
       fireEvent.click(screen.getByText(/batchAction\.reIndex/i))
 
       expect(mockOnBatchReIndex).toHaveBeenCalledTimes(1)
-    })
-
-    it('should apply custom className', () => {
-      const { container } = render(<BatchAction {...defaultProps} className="custom-class" />)
-
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('custom-class')
     })
   })
 

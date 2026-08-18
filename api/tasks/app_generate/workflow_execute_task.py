@@ -248,7 +248,6 @@ class _AppRunner:
             case _Account():
                 with self._session() as session:
                     user: Account = session.get(Account, user_params.user_id)
-                    user.set_tenant_id_with_session(self._exec_params.tenant_id, session=session)
                 return user
             case _:
                 raise AssertionError(f"user should only be _Account or _EndUser, got {type(user_params)}")
@@ -257,10 +256,7 @@ class _AppRunner:
 def _resolve_user_for_run(session: Session, workflow_run: WorkflowRun) -> Account | EndUser | None:
     role = CreatorUserRole(workflow_run.created_by_role)
     if role == CreatorUserRole.ACCOUNT:
-        user = session.get(Account, workflow_run.created_by)
-        if user:
-            user.set_tenant_id_with_session(workflow_run.tenant_id, session=session)
-        return user
+        return session.get(Account, workflow_run.created_by)
 
     return session.get(EndUser, workflow_run.created_by)
 
@@ -617,12 +613,14 @@ def _resume_advanced_chat(
 
     workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
         session_factory=session_factory,
+        tenant_id=app_model.tenant_id,
         user=user,
         app_id=app_model.id,
         triggered_from=triggered_from,
     )
     workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
         session_factory=session_factory,
+        tenant_id=app_model.tenant_id,
         user=user,
         app_id=app_model.id,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -684,12 +682,14 @@ def _resume_workflow(
 
     workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
         session_factory=session_factory,
+        tenant_id=app_model.tenant_id,
         user=user,
         app_id=app_model.id,
         triggered_from=triggered_from,
     )
     workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
         session_factory=session_factory,
+        tenant_id=app_model.tenant_id,
         user=user,
         app_id=app_model.id,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,

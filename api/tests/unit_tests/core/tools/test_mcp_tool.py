@@ -1,9 +1,12 @@
+"""MCP tool tests using real SQLite sessions for the ORM invocation contract."""
+
 from __future__ import annotations
 
 import base64
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.mcp.types import (
@@ -97,7 +100,8 @@ def test_mcp_tool_usage_extraction_helpers():
     assert derived.total_tokens == 0
 
 
-def test_mcp_tool_invoke_handles_content_types_and_structured_output():
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+def test_mcp_tool_invoke_handles_content_types_and_structured_output(sqlite_session: Session):
     tool = _build_mcp_tool()
     img_data = base64.b64encode(b"img").decode()
     blob_data = base64.b64encode(b"blob").decode()
@@ -123,7 +127,7 @@ def test_mcp_tool_invoke_handles_content_types_and_structured_output():
     )
 
     with patch.object(MCPTool, "invoke_remote_mcp_tool", return_value=result):
-        messages = list(tool.invoke(session=MagicMock(), user_id="user-1", tool_parameters={"a": 1}))
+        messages = list(tool.invoke(session=sqlite_session, user_id="user-1", tool_parameters={"a": 1}))
 
     types = [m.type for m in messages]
     assert ToolInvokeMessage.MessageType.JSON in types
@@ -133,7 +137,8 @@ def test_mcp_tool_invoke_handles_content_types_and_structured_output():
     assert tool.latest_usage.total_tokens == 5
 
 
-def test_mcp_tool_invoke_raises_for_unsupported_embedded_resource():
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+def test_mcp_tool_invoke_raises_for_unsupported_embedded_resource(sqlite_session: Session):
     tool = _build_mcp_tool()
     # Use model_construct to bypass pydantic validation and force unsupported resource path.
     bad_resource = EmbeddedResource.model_construct(type="resource", resource=object())
@@ -141,7 +146,7 @@ def test_mcp_tool_invoke_raises_for_unsupported_embedded_resource():
 
     with patch.object(MCPTool, "invoke_remote_mcp_tool", return_value=result):
         with pytest.raises(ToolInvokeError, match="Unsupported embedded resource type"):
-            list(tool.invoke(session=MagicMock(), user_id="user-1", tool_parameters={}))
+            list(tool.invoke(session=sqlite_session, user_id="user-1", tool_parameters={}))
 
 
 def test_mcp_tool_handle_none_parameter_filters_empty_values():

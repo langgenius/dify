@@ -169,6 +169,7 @@
   "common.currentWorkflow": "Mevcut İş Akışı",
   "common.debugAndPreview": "Önizleme",
   "common.disconnect": "Bağlantıyı Kes",
+  "common.draftSaveFailed": "Taslak kaydedilemedi",
   "common.duplicate": "Çoğalt",
   "common.editing": "Düzenleme",
   "common.effectVarConfirm.content": "Değişken diğer düğümlerde kullanılıyor. Yine de kaldırmak istiyor musunuz?",

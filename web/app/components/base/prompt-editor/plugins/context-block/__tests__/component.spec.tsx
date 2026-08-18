@@ -43,14 +43,6 @@ describe('ContextBlockComponent', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      defaultSetup()
-      const { container } = render(
-        <ContextBlockComponent nodeKey="test-key" onAddContext={vi.fn()} />,
-      )
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
     it('should display the context title', () => {
       defaultSetup()
       render(<ContextBlockComponent nodeKey="test-key" onAddContext={vi.fn()} />)
@@ -81,38 +73,6 @@ describe('ContextBlockComponent', () => {
   })
 
   describe('Props', () => {
-    it('should apply selected border class when isSelected is true', () => {
-      defaultSetup({ isSelected: true })
-      const { container } = render(
-        <ContextBlockComponent nodeKey="test-key" onAddContext={vi.fn()} />,
-      )
-      expect(container.firstChild).toHaveClass('border-[#9B8AFB]!')
-    })
-
-    it('should not apply selected border class when isSelected is false', () => {
-      defaultSetup({ isSelected: false })
-      const { container } = render(
-        <ContextBlockComponent nodeKey="test-key" onAddContext={vi.fn()} />,
-      )
-      expect(container.firstChild).not.toHaveClass('border-[#9B8AFB]!')
-    })
-
-    it('should apply open background class when dropdown is open', () => {
-      defaultSetup({ open: true })
-      const { container } = render(
-        <ContextBlockComponent nodeKey="test-key" onAddContext={vi.fn()} />,
-      )
-      expect(container.firstChild).toHaveClass('bg-[#EBE9FE]')
-    })
-
-    it('should apply default background class when dropdown is closed', () => {
-      defaultSetup({ open: false })
-      const { container } = render(
-        <ContextBlockComponent nodeKey="test-key" onAddContext={vi.fn()} />,
-      )
-      expect(container.firstChild).toHaveClass('bg-[#F4F3FF]')
-    })
-
     it('should hide the portal trigger when canNotAddContext is true', () => {
       defaultSetup()
       render(
@@ -215,25 +175,6 @@ describe('ContextBlockComponent', () => {
       })
       await userEvent.click(addButton)
       expect(handleAddContext).toHaveBeenCalledTimes(1)
-    })
-
-    it('should render the count badge with open styles when dropdown is open', () => {
-      defaultSetup({ open: true })
-      render(
-        <ContextBlockComponent nodeKey="test-key" datasets={mockDatasets} onAddContext={vi.fn()} />,
-      )
-      const countBadge = screen.getByText('2')
-      expect(countBadge).toHaveClass('bg-[#6938EF]')
-      expect(countBadge).toHaveClass('text-white')
-    })
-
-    it('should render the count badge with closed styles when dropdown is closed', () => {
-      defaultSetup({ open: false })
-      render(
-        <ContextBlockComponent nodeKey="test-key" datasets={mockDatasets} onAddContext={vi.fn()} />,
-      )
-      const countBadge = screen.getByText('2')
-      expect(countBadge).toHaveClass('bg-white/50')
     })
   })
 

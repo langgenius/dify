@@ -31,6 +31,7 @@ export type ChatProps = {
   noStopResponding?: boolean
   onStopResponding?: () => void
   noChatInput?: boolean
+  showRegenerate?: boolean
   onSend?: OnSend
   inputs?: Record<string, unknown>
   inputsForm?: InputForm[]
@@ -101,6 +102,7 @@ const Chat: FC<ChatProps> = ({
   noStopResponding,
   onStopResponding,
   noChatInput,
+  showRegenerate,
   chatContainerClassName,
   chatContainerInnerClassName,
   chatFooterClassName,
@@ -179,6 +181,7 @@ const Chat: FC<ChatProps> = ({
       answerIcon={answerIcon}
       onSend={onSend}
       onRegenerate={onRegenerate}
+      showRegenerate={showRegenerate}
       onAnnotationAdded={onAnnotationAdded}
       onAnnotationEdited={onAnnotationEdited}
       onAnnotationRemoved={onAnnotationRemoved}

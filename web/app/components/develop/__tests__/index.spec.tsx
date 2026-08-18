@@ -1,7 +1,15 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import DevelopMain from '../index'
 
 const mockAppDetailValue: { current: unknown } = { current: undefined }
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
+
 vi.mock('@/app/components/app/store', () => ({
   useStore: (selector: (state: unknown) => unknown) => {
     const state = { appDetail: mockAppDetailValue.current }
@@ -22,6 +30,14 @@ vi.mock('@/app/components/develop/ApiServer', () => ({
     </div>
   ),
 }))
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: [],
+  }))
+})
 
 describe('DevelopMain', () => {
   beforeEach(() => {

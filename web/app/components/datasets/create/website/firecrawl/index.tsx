@@ -33,6 +33,11 @@ const Step = {
   finished: 'finished',
 } as const
 type Step = (typeof Step)[keyof typeof Step]
+const STEP_CONTROL_FOLD_OPTIONS: Record<Step, number> = {
+  [Step.init]: 0,
+  [Step.running]: 1,
+  [Step.finished]: 2,
+}
 type CrawlState = {
   current: number
   total: number
@@ -57,11 +62,8 @@ const FireCrawl: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const [step, setStep] = useState<Step>(Step.init)
-  const [controlFoldOptions, setControlFoldOptions] = useState<number>(0)
+  const controlFoldOptions = STEP_CONTROL_FOLD_OPTIONS[step]
   const isMountedRef = useRef(true)
-  useEffect(() => {
-    if (step !== Step.init) setControlFoldOptions(Date.now())
-  }, [step])
   useEffect(() => {
     return () => {
       isMountedRef.current = false

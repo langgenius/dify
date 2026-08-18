@@ -169,6 +169,7 @@
   "common.currentWorkflow": "현재 워크플로",
   "common.debugAndPreview": "미리보기",
   "common.disconnect": "연결 해제",
+  "common.draftSaveFailed": "초안 저장에 실패했습니다",
   "common.duplicate": "복제",
   "common.editing": "편집 중",
   "common.effectVarConfirm.content": "변수가 다른 노드에서 사용되고 있습니다. 그래도 제거하시겠습니까?",

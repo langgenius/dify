@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
@@ -33,6 +33,11 @@ const Step = {
   finished: 'finished',
 } as const
 type Step = (typeof Step)[keyof typeof Step]
+const STEP_CONTROL_FOLD_OPTIONS: Record<Step, number> = {
+  [Step.init]: 0,
+  [Step.running]: 1,
+  [Step.finished]: 2,
+}
 const WaterCrawl: FC<Props> = ({
   onPreview,
   checkedCrawlResult,
@@ -43,10 +48,7 @@ const WaterCrawl: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const [step, setStep] = useState<Step>(Step.init)
-  const [controlFoldOptions, setControlFoldOptions] = useState<number>(0)
-  useEffect(() => {
-    if (step !== Step.init) setControlFoldOptions(Date.now())
-  }, [step])
+  const controlFoldOptions = STEP_CONTROL_FOLD_OPTIONS[step]
   const openIntegrationsSetting = useIntegrationsSetting()
   const handleSetting = useCallback(() => {
     openIntegrationsSetting({

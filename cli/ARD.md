@@ -83,7 +83,7 @@ export default class MyCommand extends DifyCommand {
     process.stdout.write(
       await runMyThing(
         {
-          /* args */
+          // args
         },
         { bundle: ctx.bundle, http: ctx.http, io: ctx.io },
       ),

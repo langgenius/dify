@@ -278,15 +278,6 @@ describe('WebsiteCrawl', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const props = createDefaultProps()
-
-      render(<WebsiteCrawl {...props} />)
-
-      expect(screen.getByTestId('header')).toBeInTheDocument()
-      expect(screen.getByTestId('options')).toBeInTheDocument()
-    })
-
     it('should render Header with correct props', () => {
       mockStoreState.currentCredentialId = 'cred-123'
       const props = createDefaultProps({
@@ -1276,17 +1267,6 @@ describe('WebsiteCrawl', () => {
 
   // Component Memoization
   describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      const props = createDefaultProps()
-
-      const { rerender } = render(<WebsiteCrawl {...props} />)
-      rerender(<WebsiteCrawl {...props} />)
-
-      // Assert - Component should still render correctly after rerender
-      expect(screen.getByTestId('header')).toBeInTheDocument()
-      expect(screen.getByTestId('options')).toBeInTheDocument()
-    })
-
     it('should not re-run callbacks when props are the same', () => {
       const onCredentialChange = vi.fn()
       const props = createDefaultProps({ onCredentialChange })
@@ -1302,15 +1282,6 @@ describe('WebsiteCrawl', () => {
 
   // Styling
   describe('Styling', () => {
-    it('should apply correct container classes', () => {
-      const props = createDefaultProps()
-
-      const { container } = render(<WebsiteCrawl {...props} />)
-
-      const rootDiv = container.firstChild as HTMLElement
-      expect(rootDiv).toHaveClass('flex', 'flex-col')
-    })
-
     it('should apply correct classes to options container', () => {
       const props = createDefaultProps()
 

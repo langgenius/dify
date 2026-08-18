@@ -2,10 +2,10 @@ import type { App } from '@/types/app'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/app/components/apps/storage'
 import { Plan } from '@/app/components/billing/type'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import SwitchAppModal from '../index'
 
@@ -284,7 +284,7 @@ describe('SwitchAppModal', () => {
         expect(onSuccess).toHaveBeenCalledTimes(1)
         expect(onClose).toHaveBeenCalledTimes(1)
         expect(notify).toHaveBeenCalledWith({ type: 'success', message: 'app.newApp.appCreated' })
-        expect(localStorage.setItem).toHaveBeenCalledWith(NEED_REFRESH_APP_LIST_KEY, '1')
+        expect(localStorage.getItem(NEED_REFRESH_APP_LIST_KEY)).toBe('1')
         expect(mockPush).toHaveBeenCalledWith('/app/new-app-001/workflow')
         expect(mockReplace).not.toHaveBeenCalled()
       })

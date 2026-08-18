@@ -169,6 +169,7 @@
   "common.currentWorkflow": "Alur Kerja Saat Ini",
   "common.debugAndPreview": "Pratayang",
   "common.disconnect": "Lepaskan",
+  "common.draftSaveFailed": "Gagal menyimpan draf",
   "common.duplicate": "Duplikat",
   "common.editing": "Mengedit",
   "common.effectVarConfirm.content": "Variabel ini digunakan di node lain. Apakah Anda masih ingin menghapusnya?",

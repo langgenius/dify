@@ -100,6 +100,7 @@ type CollaborationManagerInternals = {
   forceDisconnect: () => void
   activeConnections: Set<string>
   isUndoRedoInProgress: boolean
+  crdtTrusted: boolean
 }
 
 const createVariable = (
@@ -251,6 +252,7 @@ const setupManager = (): {
   internals.doc = doc
   internals.nodesMap = doc.getMap('nodes')
   internals.edgesMap = doc.getMap('edges')
+  internals.crdtTrusted = true
   return { manager, internals }
 }
 
@@ -653,6 +655,7 @@ describe('CollaborationManager public API wrappers', () => {
   beforeEach(() => {
     manager = new CollaborationManager()
     internals = getManagerInternals(manager)
+    internals.crdtTrusted = true
   })
 
   it('setNodes delegates to syncNodes and commits the CRDT document', () => {

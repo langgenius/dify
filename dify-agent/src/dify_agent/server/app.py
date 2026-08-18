@@ -67,6 +67,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         inner_api_key=resolved_settings.inner_api_key or "",
         shell_provider=shell_provider,
         shell_home_root=resolved_settings.shell_home_root,
+        shell_redact_patterns=resolved_settings.get_shell_redact_patterns(),
         agent_stub_api_base_url=resolved_settings.agent_stub_api_base_url,
         agent_stub_token_factory=agent_stub_token_factory,
     )

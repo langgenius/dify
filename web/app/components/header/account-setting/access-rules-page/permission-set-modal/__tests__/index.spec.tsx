@@ -1,6 +1,10 @@
-import type { PermissionGroup } from '@/models/access-control'
+import type { PermissionCatalogResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { ReactNode } from 'react'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { consoleQuery } from '@/service/client'
+import { createTestQueryClient } from '@/test/query-client'
 import PermissionSetModal from '../index'
 
 const expectedAppACLPermissionKeys = [
@@ -19,59 +23,71 @@ const expectedAppACLPermissionKeys = [
 const getPermissionKeyMatcher = (permissionKey: string) =>
   new RegExp(permissionKey.replaceAll('.', '\\.'))
 
-const mockCatalogs = vi.hoisted(() => ({
-  app: {
-    groups: [] as PermissionGroup[],
-  },
-  dataset: {
-    groups: [] as PermissionGroup[],
-  },
-}))
-
-vi.mock('@/service/access-control/use-permission-catalog', () => ({
-  useAppPermissionCatalog: () => ({
-    data: { groups: mockCatalogs.app.groups },
-  }),
-  useDatasetPermissionCatalog: () => ({
-    data: { groups: mockCatalogs.dataset.groups },
-  }),
-}))
-
-const createPermissionGroup = (overrides: Partial<PermissionGroup> = {}): PermissionGroup => ({
-  group_key: 'app_management',
-  group_name: 'App management',
-  description: '',
-  permissions: expectedAppACLPermissionKeys.map((permissionKey) => ({
-    key: permissionKey,
-    name: permissionKey,
-    description: '',
-  })),
-  ...overrides,
+vi.mock('react-i18next', async () => {
+  const { createReactI18nextMock } = await import('@/test/i18n-mock')
+  return createReactI18nextMock({
+    'permission.group.app_acl': 'Translated app permissions',
+    'permission.group.dataset_acl': 'Translated dataset permissions',
+  })
 })
+
+const appPermissionCatalog = {
+  groups: [
+    {
+      group_key: 'app_management',
+      group_name: 'App management',
+      description: '',
+      permissions: expectedAppACLPermissionKeys.map((permissionKey) => ({
+        key: permissionKey,
+        name: permissionKey,
+        description: '',
+      })),
+    },
+  ],
+} satisfies PermissionCatalogResponse
+
+const datasetPermissionCatalog = {
+  groups: [
+    {
+      group_key: 'dataset_management',
+      group_name: 'Dataset management',
+      description: '',
+      permissions: [
+        {
+          key: 'dataset.acl.edit',
+          name: 'Edit dataset',
+          description: '',
+        },
+      ],
+    },
+  ],
+} satisfies PermissionCatalogResponse
+
+const renderModal = (modal: ReactNode) => {
+  const queryClient = createTestQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.rbac.rolePermissions.catalog.app.get.queryKey({ input: {} }),
+    appPermissionCatalog,
+  )
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.rbac.rolePermissions.catalog.dataset.get.queryKey({
+      input: {},
+    }),
+    datasetPermissionCatalog,
+  )
+
+  return render(<QueryClientProvider client={queryClient}>{modal}</QueryClientProvider>)
+}
 
 describe('PermissionSetModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockCatalogs.app.groups = [createPermissionGroup()]
-    mockCatalogs.dataset.groups = [
-      createPermissionGroup({
-        group_key: 'dataset_management',
-        group_name: 'Dataset management',
-        permissions: [
-          {
-            key: 'dataset.acl.edit',
-            name: 'Edit dataset',
-            description: '',
-          },
-        ],
-      }),
-    ]
   })
 
   // Rendering keeps the form fields and permission picker available inside the modal.
   describe('Rendering', () => {
     it('should render create mode with app permission catalog', () => {
-      render(
+      renderModal(
         <PermissionSetModal
           open
           mode="create"
@@ -86,7 +102,7 @@ describe('PermissionSetModal', () => {
       ).toBeInTheDocument()
       expect(screen.getByLabelText(/permission\.permissionSet\.nameLabel/)).toBeInTheDocument()
       expect(screen.getByLabelText('permission.permissionSet.descriptionLabel')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /App management/ })).toHaveAttribute(
+      expect(screen.getByRole('button', { name: /Translated app permissions/ })).toHaveAttribute(
         'aria-expanded',
         'true',
       )
@@ -94,7 +110,7 @@ describe('PermissionSetModal', () => {
     })
 
     it('should render the complete app ACL permission catalog', async () => {
-      render(
+      renderModal(
         <PermissionSetModal
           open
           mode="create"
@@ -109,7 +125,7 @@ describe('PermissionSetModal', () => {
     })
 
     it('should render dataset permission catalog when resource type is dataset', () => {
-      render(
+      renderModal(
         <PermissionSetModal
           open
           mode="create"
@@ -122,7 +138,9 @@ describe('PermissionSetModal', () => {
       expect(
         screen.getByText('permission.permissionSet.modal.create.dataset.title'),
       ).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /Dataset management/ })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /Translated dataset permissions/ }),
+      ).toBeInTheDocument()
       expect(screen.getByText(/dataset\.acl\.edit/)).toBeInTheDocument()
     })
   })
@@ -134,7 +152,7 @@ describe('PermissionSetModal', () => {
       const handleClose = vi.fn()
       const handleSubmit = vi.fn()
 
-      render(
+      renderModal(
         <PermissionSetModal
           open
           mode="create"
@@ -168,7 +186,7 @@ describe('PermissionSetModal', () => {
       const user = userEvent.setup()
       const handleSubmit = vi.fn()
 
-      render(
+      renderModal(
         <PermissionSetModal
           open
           mode="edit"
@@ -200,7 +218,7 @@ describe('PermissionSetModal', () => {
   // View mode is read-only and uses close-only footer actions.
   describe('Read-only Mode', () => {
     it('should disable editing and hide confirm action in view mode', () => {
-      render(
+      renderModal(
         <PermissionSetModal
           open
           mode="view"

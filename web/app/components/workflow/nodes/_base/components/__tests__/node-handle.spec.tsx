@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import type { CommonNodeType } from '@/app/components/workflow/types'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { NodeSourceHandle, NodeTargetHandle } from '../node-handle'
 
 type MockHooksState = {
@@ -240,19 +240,6 @@ describe('node-handle', () => {
       expect(getAddNodeButton()).toHaveClass('opacity-100')
       expect(getAddNodeButton()).toHaveClass('pointer-events-none')
     })
-
-    it.each([
-      ['succeeded', NodeRunningStatus.Succeeded, 'after:bg-workflow-link-line-success-handle'],
-      ['failed', NodeRunningStatus.Failed, 'after:bg-workflow-link-line-error-handle'],
-      ['exception', NodeRunningStatus.Exception, 'after:bg-workflow-link-line-failure-handle'],
-    ])('should render the target %s status class', (_label, runningStatus, expectedClass) => {
-      renderTargetHandle({
-        _runningStatus: runningStatus,
-      })
-
-      expect(screen.getByTestId('handle-target-handle')).toHaveClass(expectedClass)
-      expect(screen.getByTestId('handle-target-handle')).toHaveClass('custom-target-handle')
-    })
   })
 
   // Source-side tests cover selector opening paths, previous-node selection, and status styling.
@@ -299,37 +286,6 @@ describe('node-handle', () => {
       expect(addNodeButton).toHaveClass('opacity-100')
       expect(addNodeButton).toHaveClass('pointer-events-none')
     })
-
-    it.each([
-      [
-        'succeeded',
-        NodeRunningStatus.Succeeded,
-        undefined,
-        'after:bg-workflow-link-line-success-handle',
-      ],
-      ['failed', NodeRunningStatus.Failed, undefined, 'after:bg-workflow-link-line-error-handle'],
-      [
-        'exception',
-        NodeRunningStatus.Exception,
-        true,
-        'after:bg-workflow-link-line-failure-handle',
-      ],
-    ])(
-      'should render the source %s status class',
-      (_label, runningStatus, showExceptionStatus, expectedClass) => {
-        renderSourceHandle(
-          {
-            _runningStatus: runningStatus,
-          },
-          {
-            showExceptionStatus,
-          },
-        )
-
-        expect(screen.getByTestId('handle-source-handle')).toHaveClass(expectedClass)
-        expect(screen.getByTestId('handle-source-handle')).toHaveClass('custom-source-handle')
-      },
-    )
   })
 
   // Auto-open tests cover workflow start-trigger variants, chat-mode bypass, and store fallback paths.

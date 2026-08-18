@@ -16,11 +16,13 @@ type LearnDifyProps = {
   canCreate?: boolean
   className?: string
   dismissible?: boolean
+  forceVisible?: boolean
   itemLimit?: number
   loadingFallback?: React.ReactNode
   onCreate?: (app: App) => void
   onTry?: (params: TryAppSelection) => void
   showDescription?: boolean
+  stepByStepTourTarget?: string
   title?: string
 }
 
@@ -37,6 +39,7 @@ const LearnDifyContent = ({
   onCreate,
   onTry,
   showDescription = true,
+  stepByStepTourTarget,
   title,
 }: LearnDifyContentProps) => {
   const { t } = useTranslation()
@@ -95,6 +98,7 @@ const LearnDifyContent = ({
         isClosing ? { transform: collapseTransform, transformOrigin: 'center center' } : undefined
       }
       aria-labelledby="learn-dify-title"
+      data-step-by-step-tour-target={stepByStepTourTarget}
     >
       <div className="-mx-4 rounded-2xl bg-background-section p-4">
         <div className="flex items-start justify-between gap-4 pb-2.5">
@@ -153,7 +157,7 @@ const LearnDify = (props: LearnDifyProps) => {
 
   if (!systemFeatures.enable_learn_app) return null
 
-  if (props.dismissible === false) return <LearnDifyContent {...props} />
+  if (props.dismissible === false || props.forceVisible) return <LearnDifyContent {...props} />
 
   return <DismissibleLearnDify {...props} />
 }

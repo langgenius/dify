@@ -42,12 +42,6 @@ describe('RegenerationModal', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing when isShow is true', () => {
-      render(<RegenerationModal {...defaultProps} />, { wrapper: createWrapper() })
-
-      expect(screen.getByText(/segment\.regenerationConfirmTitle/i)).toBeInTheDocument()
-    })
-
     it('should not render content when isShow is false', () => {
       render(<RegenerationModal {...defaultProps} isShow={false} />, { wrapper: createWrapper() })
 

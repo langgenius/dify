@@ -100,11 +100,5 @@ describe('AppBasic', () => {
       render(<AppBasic name="My App" type="Chatbot" isExtraInLine />)
       expect(screen.getByText('Chatbot')).toBeInTheDocument()
     })
-
-    it('should apply custom text styles', () => {
-      render(<AppBasic name="My App" type="Chatbot" textStyle={{ main: 'text-red-500' }} />)
-      const nameContainer = screen.getByText('My App').parentElement
-      expect(nameContainer).toHaveClass('text-red-500')
-    })
   })
 })

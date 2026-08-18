@@ -1,5 +1,5 @@
 import { fireEvent, screen, within } from '@testing-library/react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import ZoomInOut from '../zoom-in-out'
 
 const {
@@ -52,7 +52,7 @@ vi.mock('../tip-popup', () => ({
 }))
 
 const renderZoomInOut = (ui: React.ReactElement = <ZoomInOut />) =>
-  renderWithSystemFeatures(ui, {
+  renderWithConsoleQuery(ui, {
     systemFeatures: { enable_collaboration_mode: collaborationEnabled },
   })
 

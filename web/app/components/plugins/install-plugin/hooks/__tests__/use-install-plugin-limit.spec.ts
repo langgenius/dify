@@ -1,7 +1,7 @@
 import type { PluginInstallationScope } from '@dify/contracts/api/console/system-features/types.gen'
 import { describe, expect, it } from 'vitest'
-import { renderHookWithSystemFeatures as renderHook } from '@/__tests__/utils/mock-system-features'
 import { InstallationScope } from '@/features/system-features/constants'
+import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
 import { pluginInstallLimit } from '../use-install-plugin-limit'
 
 const basePlugin = {

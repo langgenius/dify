@@ -21,6 +21,8 @@ from libs.datetime_utils import naive_utc_now
 from models import Account, EndUser
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
 
+RESOURCE_TENANT_ID = "resource-tenant-id"
+
 
 @pytest.fixture
 def mock_session_factory():
@@ -79,12 +81,13 @@ class TestCeleryWorkflowNodeExecutionRepository:
 
         repo = CeleryWorkflowNodeExecutionRepository(
             session_factory=mock_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
             user=mock_account,
             app_id=app_id,
             triggered_from=triggered_from,
         )
 
-        assert repo._tenant_id == mock_account.current_tenant_id
+        assert repo._tenant_id == RESOURCE_TENANT_ID
         assert repo._app_id == app_id
         assert repo._triggered_from == triggered_from
         assert repo._creator_user_id == mock_account.id
@@ -94,6 +97,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
         """Test repository initialization with cache properly initialized."""
         repo = CeleryWorkflowNodeExecutionRepository(
             session_factory=mock_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
             user=mock_account,
             app_id="test-app",
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
@@ -106,12 +110,13 @@ class TestCeleryWorkflowNodeExecutionRepository:
         """Test repository initialization with EndUser."""
         repo = CeleryWorkflowNodeExecutionRepository(
             session_factory=mock_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
             user=mock_end_user,
             app_id="test-app",
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         )
 
-        assert repo._tenant_id == mock_end_user.tenant_id
+        assert repo._tenant_id == RESOURCE_TENANT_ID
 
     def test_init_without_tenant_id_raises_error(self, mock_session_factory):
         """Test that initialization fails without tenant_id."""
@@ -120,13 +125,30 @@ class TestCeleryWorkflowNodeExecutionRepository:
         user.current_tenant_id = None
         user.id = str(uuid4())
 
-        with pytest.raises(ValueError, match="User must have a tenant_id"):
+        with pytest.raises(ValueError, match="tenant_id is required"):
             CeleryWorkflowNodeExecutionRepository(
                 session_factory=mock_session_factory,
+                tenant_id="",
                 user=user,
                 app_id="test-app",
                 triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
             )
+
+    def test_init_uses_resource_tenant_when_account_has_no_current_tenant(self, mock_session_factory):
+        user = Mock(spec=Account)
+        user.current_tenant_id = None
+        user.id = str(uuid4())
+
+        repo = CeleryWorkflowNodeExecutionRepository(
+            session_factory=mock_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
+            user=user,
+            app_id="test-app",
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        )
+
+        assert repo._tenant_id == RESOURCE_TENANT_ID
+        assert repo._creator_user_id == user.id
 
     @patch("core.repositories.celery_workflow_node_execution_repository.save_workflow_node_execution_task")
     def test_save_caches_and_queues_celery_task(
@@ -135,6 +157,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
         """Test that save operation caches execution and queues a Celery task."""
         repo = CeleryWorkflowNodeExecutionRepository(
             session_factory=mock_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
             user=mock_account,
             app_id="test-app",
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -147,7 +170,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
         call_args = mock_task.delay.call_args[1]
 
         assert call_args["execution_data"] == sample_workflow_node_execution.model_dump()
-        assert call_args["tenant_id"] == mock_account.current_tenant_id
+        assert call_args["tenant_id"] == RESOURCE_TENANT_ID
         assert call_args["app_id"] == "test-app"
         assert call_args["triggered_from"] == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
         assert call_args["creator_user_id"] == mock_account.id
@@ -172,6 +195,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
 
         repo = CeleryWorkflowNodeExecutionRepository(
             session_factory=mock_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
             user=mock_account,
             app_id="test-app",
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -187,6 +211,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
         """Test that get_by_workflow_execution retrieves executions from cache."""
         repo = CeleryWorkflowNodeExecutionRepository(
             session_factory=mock_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
             user=mock_account,
             app_id="test-app",
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -209,6 +234,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
         """Test get_by_workflow_execution without order configuration."""
         repo = CeleryWorkflowNodeExecutionRepository(
             session_factory=mock_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
             user=mock_account,
             app_id="test-app",
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -224,6 +250,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
         """Test cache operations work correctly."""
         repo = CeleryWorkflowNodeExecutionRepository(
             session_factory=mock_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
             user=mock_account,
             app_id="test-app",
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -245,6 +272,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
         """Test multiple executions for the same workflow."""
         repo = CeleryWorkflowNodeExecutionRepository(
             session_factory=mock_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
             user=mock_account,
             app_id="test-app",
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -296,6 +324,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
         """Test ordering functionality works correctly."""
         repo = CeleryWorkflowNodeExecutionRepository(
             session_factory=mock_session_factory,
+            tenant_id=mock_account.current_tenant_id,
             user=mock_account,
             app_id="test-app",
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,

@@ -7,6 +7,10 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
+import {
+  getStepByStepTourDropdownMenuContentProps,
+  useStepByStepTourControlledDropdown,
+} from '@/app/components/step-by-step-tour/dropdown-menu'
 import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { datasetRbacEnabledAtom } from '@/context/system-features-state'
@@ -19,6 +23,8 @@ type OperationsDropdownProps = {
   handleExportPipeline: (include?: boolean) => void
   detectIsUsedByApp: () => void
   openAccessConfig: () => void
+  stepByStepTourHighlightPart?: string
+  stepByStepTourOpen?: boolean
 }
 
 const OperationsDropdown = ({
@@ -27,8 +33,15 @@ const OperationsDropdown = ({
   handleExportPipeline,
   detectIsUsedByApp,
   openAccessConfig,
+  stepByStepTourHighlightPart,
+  stepByStepTourOpen,
 }: OperationsDropdownProps) => {
-  const [open, setOpen] = React.useState(false)
+  const operationsMenu = useStepByStepTourControlledDropdown({
+    allowTriggerCloseWhileControlled: false,
+    controlledOpen: stepByStepTourOpen,
+  })
+  const open = operationsMenu.open
+  const setOpen = operationsMenu.onOpenChange
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = useAtomValue(datasetRbacEnabledAtom)
@@ -76,10 +89,21 @@ const OperationsDropdown = ({
             'data-popup-open:bg-state-base-hover',
           )}
           aria-label="Dataset operations"
+          onClick={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+          }}
         >
           <span className="i-ri-more-fill size-5 text-text-tertiary" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" popupClassName="min-w-[186px]">
+        <DropdownMenuContent
+          placement="bottom-end"
+          popupClassName="min-w-[186px]"
+          {...getStepByStepTourDropdownMenuContentProps({
+            highlightPart: stepByStepTourHighlightPart,
+            interactionMode: operationsMenu.controlled ? 'presentation' : 'interactive',
+          })}
+        >
           <Operations
             showEdit={datasetACLCapabilities.canEdit}
             showDelete={datasetACLCapabilities.canDelete}

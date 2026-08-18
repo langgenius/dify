@@ -2,11 +2,11 @@ import type { ScheduleTriggerNodeType } from '../types'
 import { renderHook } from '@testing-library/react'
 import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import { createAccountProfileQueryWrapper } from '@/test/account-profile-query'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
 import { BlockEnum } from '../../../types'
 import useConfig from '../use-config'
 
-const mockUseAppContext = vi.hoisted(() => vi.fn())
+const mockConsoleStateReader = vi.hoisted(() => vi.fn())
 
 vi.mock('@/app/components/workflow/hooks', () => ({
   useNodesReadOnly: vi.fn(),
@@ -42,7 +42,7 @@ describe('trigger-schedule/use-config', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: false, getNodesReadOnly: () => false })
-    mockUseAppContext.mockReturnValue({
+    mockConsoleStateReader.mockReturnValue({
       userProfile: { timezone: 'Asia/Shanghai' },
     })
     mockUseNodeCrud.mockReturnValue({

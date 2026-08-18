@@ -130,12 +130,6 @@ describe('DocumentSettings', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(<DocumentSettings {...defaultProps} />)
-
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
     it('should render StepTwo component when data is loaded', () => {
       render(<DocumentSettings {...defaultProps} />)
 

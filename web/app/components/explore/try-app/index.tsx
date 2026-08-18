@@ -1,3 +1,4 @@
+/* eslint-disable style/multiline-ternary */
 'use client'
 import type { FC } from 'react'
 import type { App as AppType } from '@/models/explore'
@@ -21,12 +22,22 @@ import { TypeEnum } from './types'
 type Props = Readonly<{
   appId: string
   app?: AppType
+  canCreate?: boolean
   categories?: string[]
+  createButtonStepByStepTourTarget?: string
   onClose: () => void
   onCreate: () => void
 }>
 
-const TryApp: FC<Props> = ({ appId, app, categories, onClose, onCreate }) => {
+const TryApp: FC<Props> = ({
+  appId,
+  app,
+  canCreate = true,
+  categories,
+  createButtonStepByStepTourTarget,
+  onClose,
+  onCreate,
+}) => {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isTrialApp = !!(app && app.can_trial && systemFeatures.enable_trial_app)
@@ -111,7 +122,9 @@ const TryApp: FC<Props> = ({ appId, app, categories, onClose, onCreate }) => {
                 className="w-[360px] shrink-0"
                 appDetail={appDetail}
                 appId={appId}
+                canCreate={canCreate}
                 categories={categories}
+                createButtonStepByStepTourTarget={createButtonStepByStepTourTarget}
                 onCreate={onCreate}
               />
             </div>

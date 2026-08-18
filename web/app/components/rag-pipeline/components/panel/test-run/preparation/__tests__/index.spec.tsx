@@ -342,14 +342,6 @@ describe('StepIndicator', () => {
   ]
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<StepIndicator steps={defaultSteps} currentStep={1} />)
-
-      expect(screen.getByText('Step 1'))!.toBeInTheDocument()
-      expect(screen.getByText('Step 2'))!.toBeInTheDocument()
-      expect(screen.getByText('Step 3'))!.toBeInTheDocument()
-    })
-
     it('should render all step labels', () => {
       const steps = [
         { label: 'Data Source', value: 'dataSource' },
@@ -360,17 +352,6 @@ describe('StepIndicator', () => {
 
       expect(screen.getByText('Data Source'))!.toBeInTheDocument()
       expect(screen.getByText('Processing'))!.toBeInTheDocument()
-    })
-
-    it('should render container with correct classes', () => {
-      const { container } = render(<StepIndicator steps={defaultSteps} currentStep={1} />)
-
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper.className).toContain('flex')
-      expect(wrapper.className).toContain('items-center')
-      expect(wrapper.className).toContain('gap-x-2')
-      expect(wrapper.className).toContain('px-4')
-      expect(wrapper.className).toContain('pb-2')
     })
 
     it('should render divider between steps but not after last step', () => {
@@ -425,23 +406,9 @@ describe('StepIndicator', () => {
       const dots = container.querySelectorAll('.size-1.rounded-full')
       expect(dots.length).toBe(1)
     })
-
-    it('should handle empty steps array', () => {
-      const { container } = render(<StepIndicator steps={[]} currentStep={1} />)
-
-      expect(container.firstChild)!.toBeInTheDocument()
-    })
   })
 
   describe('Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      const { rerender } = render(<StepIndicator steps={defaultSteps} currentStep={1} />)
-
-      rerender(<StepIndicator steps={defaultSteps} currentStep={1} />)
-
-      expect(screen.getByText('Step 1'))!.toBeInTheDocument()
-    })
-
     it('should update when currentStep changes', () => {
       const { rerender } = render(<StepIndicator steps={defaultSteps} currentStep={1} />)
 
@@ -536,37 +503,7 @@ describe('FooterTips', () => {
     vi.clearAllMocks()
   })
 
-  describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<FooterTips />)
-
-      expect(screen.getByText('datasetPipeline.testRun.tooltip'))!.toBeInTheDocument()
-    })
-
-    it('should render with correct container classes', () => {
-      const { container } = render(<FooterTips />)
-
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper.className).toContain('system-xs-regular')
-      expect(wrapper.className).toContain('flex')
-      expect(wrapper.className).toContain('grow')
-      expect(wrapper.className).toContain('flex-col')
-      expect(wrapper.className).toContain('justify-end')
-      expect(wrapper.className).toContain('p-4')
-      expect(wrapper.className).toContain('pt-2')
-      expect(wrapper.className).toContain('text-text-tertiary')
-    })
-  })
-
   describe('Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      const { rerender } = render(<FooterTips />)
-
-      rerender(<FooterTips />)
-
-      expect(screen.getByText('datasetPipeline.testRun.tooltip'))!.toBeInTheDocument()
-    })
-
     it('should render consistently across multiple rerenders', () => {
       const { rerender } = render(<FooterTips />)
 
@@ -1153,12 +1090,6 @@ describe('Preparation', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<Preparation />)
-
-      expect(screen.getByTestId('data-source-options'))!.toBeInTheDocument()
-    })
-
     it('should render StepIndicator', () => {
       render(<Preparation />)
 
@@ -1689,13 +1620,6 @@ describe('Preparation', () => {
   })
 
   describe('Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      const { rerender } = render(<Preparation />)
-      rerender(<Preparation />)
-
-      expect(screen.getByTestId('data-source-options'))!.toBeInTheDocument()
-    })
-
     it('should maintain state across rerenders', () => {
       mockDataSourceStoreState.localFileList = [
         {

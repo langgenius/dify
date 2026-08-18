@@ -169,6 +169,7 @@
   "common.currentWorkflow": "Fluxo de trabalho atual",
   "common.debugAndPreview": "Visualizar",
   "common.disconnect": "Desligar",
+  "common.draftSaveFailed": "Falha ao salvar o rascunho",
   "common.duplicate": "Duplicar",
   "common.editing": "Editando",
   "common.effectVarConfirm.content": "A variável é usada em outros nós. Você ainda deseja removê-la?",

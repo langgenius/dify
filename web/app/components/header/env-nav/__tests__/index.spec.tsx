@@ -1,38 +1,17 @@
-import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
-import { render, screen } from '@testing-library/react'
+import type { ConsoleStateFixture } from '@/test/console/state-fixture'
+import { screen } from '@testing-library/react'
 import { vi } from 'vitest'
+import { render } from '@/test/console/render'
 import EnvNav from '../index'
 
-const mockAppContextState = vi.hoisted(() => ({
-  current: {} as Partial<AppContextStateMockState>,
+const mockConsoleState = vi.hoisted(() => ({
+  current: {} as Partial<ConsoleStateFixture>,
 }))
-const mockUseAppContext = vi.hoisted(() => vi.fn())
+const mockConsoleStateReader = vi.hoisted(() => vi.fn())
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
+vi.mock('@/context/version-state', async () => {
+  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createVersionStateModuleMock(() => mockConsoleState.current)
 })
 
 describe('EnvNav', () => {
@@ -41,39 +20,39 @@ describe('EnvNav', () => {
   })
 
   it('should render null when environment is PRODUCTION', () => {
-    const appContextValue = {
+    const consoleState = {
       langGeniusVersionInfo: {
         current_env: 'PRODUCTION',
       },
-    } as unknown as AppContextStateMockState
-    mockAppContextState.current = appContextValue
-    mockUseAppContext.mockReturnValue(appContextValue)
+    } as unknown as ConsoleStateFixture
+    mockConsoleState.current = consoleState
+    mockConsoleStateReader.mockReturnValue(consoleState)
 
     const { container } = render(<EnvNav />)
     expect(container.firstChild).toBeNull()
   })
 
   it('should render TESTING tag and icon when environment is TESTING', () => {
-    const appContextValue = {
+    const consoleState = {
       langGeniusVersionInfo: {
         current_env: 'TESTING',
       },
-    } as unknown as AppContextStateMockState
-    mockAppContextState.current = appContextValue
-    mockUseAppContext.mockReturnValue(appContextValue)
+    } as unknown as ConsoleStateFixture
+    mockConsoleState.current = consoleState
+    mockConsoleStateReader.mockReturnValue(consoleState)
 
     render(<EnvNav />)
     expect(screen.getByText('common.environment.testing')).toBeInTheDocument()
   })
 
   it('should render DEVELOPMENT tag and icon when environment is DEVELOPMENT', () => {
-    const appContextValue = {
+    const consoleState = {
       langGeniusVersionInfo: {
         current_env: 'DEVELOPMENT',
       },
-    } as unknown as AppContextStateMockState
-    mockAppContextState.current = appContextValue
-    mockUseAppContext.mockReturnValue(appContextValue)
+    } as unknown as ConsoleStateFixture
+    mockConsoleState.current = consoleState
+    mockConsoleStateReader.mockReturnValue(consoleState)
 
     render(<EnvNav />)
     expect(screen.getByText('common.environment.development')).toBeInTheDocument()

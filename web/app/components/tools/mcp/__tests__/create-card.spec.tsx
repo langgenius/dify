@@ -1,8 +1,13 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  getStepByStepTourTargetSelector,
+  STEP_BY_STEP_TOUR_TARGETS,
+} from '@/app/components/step-by-step-tour/target-registry'
+import { render } from '@/test/console/render'
 import NewMCPCard, { NewMCPButton } from '../create-card'
 
 // Track the mock functions
@@ -42,35 +47,17 @@ vi.mock('../modal', () => ({
   },
 }))
 
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: ['mcp.manage'] as string[],
-  workspacePermissionKeysAtom: Symbol('workspacePermissionKeysAtom'),
 }))
 
-vi.mock('@/context/account-state', () => ({
-  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
-}))
-vi.mock('@/context/workspace-state', () => ({
-  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
-}))
-vi.mock('@/context/permission-state', () => ({
-  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
-}))
-vi.mock('@/context/version-state', () => ({
-  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
-}))
-vi.mock('@/context/system-features-state', () => ({
-  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
-}))
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
 
-vi.mock('jotai', () => ({
-  useAtomValue: (atom: unknown) => {
-    if (atom === mockAppContextState.workspacePermissionKeysAtom)
-      return mockAppContextState.workspacePermissionKeys
-
-    throw new Error('Unexpected atom')
-  },
-}))
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: mockConsoleState.workspacePermissionKeys,
+  }))
+})
 
 // Mock the plugins service
 vi.mock('@/service/use-plugins', () => ({
@@ -108,15 +95,10 @@ describe('NewMCPCard', () => {
 
   beforeEach(() => {
     mockCreateMCP.mockClear()
-    mockAppContextState.workspacePermissionKeys = ['mcp.manage']
+    mockConsoleState.workspacePermissionKeys = ['mcp.manage']
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<NewMCPCard {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.create.cardTitle')).toBeInTheDocument()
-    })
-
     it('should render card title', () => {
       render(<NewMCPCard {...defaultProps} />, { wrapper: createWrapper() })
       expect(screen.getByText('tools.mcp.create.cardTitle')).toBeInTheDocument()
@@ -127,17 +109,25 @@ describe('NewMCPCard', () => {
       expect(screen.getByText('tools.mcp.create.cardLink')).toBeInTheDocument()
     })
 
-    it('should render add icon', () => {
-      render(<NewMCPCard {...defaultProps} />, { wrapper: createWrapper() })
-      expect(document.querySelector('.border-dashed')).toBeInTheDocument()
-    })
-
     it('should render toolbar button', () => {
       render(<NewMCPButton {...defaultProps} />, { wrapper: createWrapper() })
 
       expect(
         screen.getByRole('button', { name: /tools\.mcp\.create\.cardTitle/i }),
       ).toBeInTheDocument()
+    })
+
+    it('should expose the tour target on the toolbar add action only', () => {
+      const selector = getStepByStepTourTargetSelector(STEP_BY_STEP_TOUR_TARGETS.integrationMcpAdd)
+
+      render(<NewMCPCard {...defaultProps} />, { wrapper: createWrapper() })
+
+      expect(document.querySelectorAll(selector)).toHaveLength(0)
+
+      render(<NewMCPButton {...defaultProps} />, { wrapper: createWrapper() })
+
+      expect(document.querySelectorAll(selector)).toHaveLength(1)
+      expect(document.querySelector(selector)).toHaveTextContent('tools.mcp.create.cardTitle')
     })
   })
 
@@ -178,7 +168,7 @@ describe('NewMCPCard', () => {
 
   describe('mcp.manage Permission', () => {
     it('should not render card when user lacks mcp.manage', () => {
-      mockAppContextState.workspacePermissionKeys = []
+      mockConsoleState.workspacePermissionKeys = []
 
       render(<NewMCPCard {...defaultProps} />, { wrapper: createWrapper() })
 
@@ -186,41 +176,11 @@ describe('NewMCPCard', () => {
     })
 
     it('should not render toolbar button when user lacks mcp.manage', () => {
-      mockAppContextState.workspacePermissionKeys = []
+      mockConsoleState.workspacePermissionKeys = []
 
       render(<NewMCPButton {...defaultProps} />, { wrapper: createWrapper() })
 
       expect(screen.queryByText('tools.mcp.create.cardTitle')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Styling', () => {
-    it('should match the Figma card shell and section sizing', () => {
-      render(<NewMCPCard {...defaultProps} />, { wrapper: createWrapper() })
-
-      const card = screen.getByText('tools.mcp.create.cardTitle').closest('.col-span-1')
-      expect(card).toHaveClass(
-        'h-[120px]',
-        'overflow-hidden',
-        'rounded-xl',
-        'border-[0.5px]',
-        'border-components-panel-border',
-        'bg-components-panel-on-panel-item-bg',
-        'shadow-md',
-      )
-
-      const header = screen.getByRole('button', { name: 'tools.mcp.create.cardTitle' })
-      expect(header).toHaveClass('h-[84px]', 'gap-3', 'p-4')
-
-      const docLink = screen.getByText('tools.mcp.create.cardLink').closest('a')
-      expect(docLink).toHaveClass('h-8', 'border-t', 'border-divider-subtle', 'px-3', 'py-2')
-    })
-
-    it('should have clickable cursor style', () => {
-      render(<NewMCPCard {...defaultProps} />, { wrapper: createWrapper() })
-
-      const card = document.querySelector('.cursor-pointer')
-      expect(card).toBeInTheDocument()
     })
   })
 

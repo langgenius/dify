@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook } from '@testing-library/react'
 import { createElement } from 'react'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { createAccountProfileQueryWrapper } from '@/test/account-profile-query'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
 import useTimestamp from './use-timestamp'
 
 const mockUseLocale = vi.hoisted(() => vi.fn(() => 'en-US'))

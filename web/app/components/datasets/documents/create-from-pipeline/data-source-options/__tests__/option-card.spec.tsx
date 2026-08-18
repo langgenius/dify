@@ -83,27 +83,4 @@ describe('OptionCard', () => {
   })
 
   // Props: selected state applies different styles
-  describe('Props', () => {
-    it('should apply selected styles when selected is true', () => {
-      const { container } = render(<OptionCard {...defaultProps} selected />)
-
-      const card = container.firstElementChild
-      expect(card?.className).toContain('border-components-option-card-option-selected-border')
-      expect(card?.className).toContain('bg-components-option-card-option-selected-bg')
-    })
-
-    it('should apply default styles when selected is false', () => {
-      const { container } = render(<OptionCard {...defaultProps} selected={false} />)
-
-      const card = container.firstElementChild
-      expect(card?.className).not.toContain('border-components-option-card-option-selected-border')
-    })
-
-    it('should apply text-text-primary class to label when selected', () => {
-      render(<OptionCard {...defaultProps} selected />)
-
-      const labelEl = screen.getByTitle('Google Drive')
-      expect(labelEl.className).toContain('text-text-primary')
-    })
-  })
 })

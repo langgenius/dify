@@ -1,21 +1,30 @@
 import type { DifyWorld } from '../../support/world'
 import { Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { openAgentAdvancedSettings } from './configure-helpers'
 
 When('I expand Agent v2 Advanced Settings', async function (this: DifyWorld) {
   const page = this.getPage()
   const advancedSettings = page.getByRole('region', { name: 'Advanced Settings' })
+  const trigger = advancedSettings
+    .getByRole('heading', { name: 'Advanced Settings' })
+    .getByRole('button')
 
-  await page.getByRole('button', { name: 'Advanced Settings' }).first().click()
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+  await trigger.click()
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true')
   await expect(advancedSettings.getByRole('heading', { name: 'Env Editor' })).toBeVisible()
 })
 
 When('I collapse Agent v2 Advanced Settings', async function (this: DifyWorld) {
   const page = this.getPage()
   const advancedSettings = page.getByRole('region', { name: 'Advanced Settings' })
+  const trigger = advancedSettings
+    .getByRole('heading', { name: 'Advanced Settings' })
+    .getByRole('button')
 
-  await page.getByRole('button', { name: 'Advanced Settings' }).first().click()
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true')
+  await trigger.click()
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false')
   await expect(advancedSettings.getByRole('heading', { name: 'Env Editor' })).not.toBeVisible()
 })
 
@@ -36,7 +45,7 @@ Then(
 Then(
   'I should see the supported Agent v2 Advanced Settings entries',
   async function (this: DifyWorld) {
-    const advancedSettings = await openAgentAdvancedSettings(this.getPage())
+    const advancedSettings = this.getPage().getByRole('region', { name: 'Advanced Settings' })
     const envEditor = advancedSettings.getByRole('region', { name: 'Env Editor' })
 
     await expect(envEditor).toBeVisible()

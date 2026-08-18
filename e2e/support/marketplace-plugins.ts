@@ -34,7 +34,6 @@ type PluginInstallStartResponse = {
 type MarketplacePluginBootstrapConfig = {
   defaultPluginIds: string[]
   pluginIdsEnv: string
-  pluginUniqueIdentifiersEnv: string
   title: string
 }
 
@@ -53,12 +52,6 @@ const unique = (values: string[]) => Array.from(new Set(values))
 
 const getPluginId = (pluginUniqueIdentifier: string) =>
   pluginUniqueIdentifier.split(':')[0]?.trim() || pluginUniqueIdentifier.trim()
-
-const findPlaceholderPluginIdentifier = (pluginUniqueIdentifiers: string[]) =>
-  pluginUniqueIdentifiers.find((identifier) => identifier.includes('replace-with-'))
-
-const withoutPlaceholderPluginIdentifiers = (pluginUniqueIdentifiers: string[]) =>
-  pluginUniqueIdentifiers.filter((identifier) => !identifier.includes('replace-with-'))
 
 const resolveLatestPluginIdentifiers = async (pluginIds: string[]) => {
   if (pluginIds.length === 0) return { identifiers: [] as string[], missing: [] as string[] }
@@ -249,25 +242,8 @@ export const bootstrapMarketplacePlugins = async (
   config: MarketplacePluginBootstrapConfig,
 ): Promise<SeedResult> => {
   const requestedPluginIds = parseListEnv(config.pluginIdsEnv)
-  const rawExactPluginUniqueIdentifiers = unique(parseListEnv(config.pluginUniqueIdentifiersEnv))
-  const exactPluginUniqueIdentifiers = withoutPlaceholderPluginIdentifiers(
-    rawExactPluginUniqueIdentifiers,
-  )
-  const placeholderPluginIdentifier = findPlaceholderPluginIdentifier(
-    rawExactPluginUniqueIdentifiers,
-  )
-  if (placeholderPluginIdentifier) {
-    console.warn(
-      `[seed] ignoring example marketplace package placeholder for ${getPluginId(placeholderPluginIdentifier)}.`,
-    )
-  }
-
   const pluginIds = unique(
-    exactPluginUniqueIdentifiers.length > 0
-      ? []
-      : requestedPluginIds.length > 0
-        ? requestedPluginIds
-        : config.defaultPluginIds,
+    requestedPluginIds.length > 0 ? requestedPluginIds : config.defaultPluginIds,
   )
 
   if (pluginIds.length > 0) {
@@ -287,14 +263,11 @@ export const bootstrapMarketplacePlugins = async (
   if (resolved.missing.length > 0) {
     return blocked(
       config.title,
-      `Marketplace metadata was not found for plugin ids: ${resolved.missing.join(', ')}. Set ${config.pluginUniqueIdentifiersEnv} to exact package identifiers to bypass latest-version lookup.`,
+      `Marketplace metadata was not found for plugin ids: ${resolved.missing.join(', ')}.`,
     )
   }
 
-  const requiredPluginUniqueIdentifiers = unique([
-    ...resolved.identifiers,
-    ...exactPluginUniqueIdentifiers,
-  ])
+  const requiredPluginUniqueIdentifiers = unique(resolved.identifiers)
   const requiredPluginIds = unique(requiredPluginUniqueIdentifiers.map(getPluginId))
 
   if (requiredPluginUniqueIdentifiers.length === 0)

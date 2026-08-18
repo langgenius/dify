@@ -16,6 +16,7 @@ export type SystemFeatureModel = {
   enable_learn_app: boolean
   enable_marketplace: boolean
   enable_social_oauth_login: boolean
+  enable_step_by_step_tour: boolean
   enable_trial_app: boolean
   is_allow_create_workspace: boolean
   is_allow_register: boolean

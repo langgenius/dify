@@ -40,15 +40,6 @@ describe('Actions', () => {
   })
 
   describe('Rendering', () => {
-    // Tests basic rendering functionality
-    it('should render without crashing', () => {
-      render(<Actions {...defaultProps} />)
-
-      expect(
-        screen.getByRole('button', { name: /datasetCreation.stepOne.button/i }),
-      ).toBeInTheDocument()
-    })
-
     it('should render cancel button with correct link', () => {
       render(<Actions {...defaultProps} />)
 
@@ -388,12 +379,6 @@ describe('Actions', () => {
 
   // Component Memoization Testing
   describe('Component Memoization', () => {
-    // Tests for React.memo behavior
-    it('should be wrapped with React.memo', () => {
-      // Assert - verify component has memo wrapper
-      expect(Actions.$$typeof).toBe(Symbol.for('react.memo'))
-    })
-
     it('should not re-render when props are the same', () => {
       const handleNextStep = vi.fn()
       const props = {

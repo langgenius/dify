@@ -1003,6 +1003,7 @@ export type WorkflowResponse = {
 }
 
 export type SyncDraftWorkflowPayload = {
+  _is_collaborative?: boolean
   conversation_variables?: Array<{
     [key: string]: unknown
   }>

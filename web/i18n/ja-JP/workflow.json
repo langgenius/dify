@@ -169,6 +169,7 @@
   "common.currentWorkflow": "現在のワークフロー",
   "common.debugAndPreview": "プレビュー",
   "common.disconnect": "接続解除",
+  "common.draftSaveFailed": "下書きの保存に失敗しました",
   "common.duplicate": "複製",
   "common.editing": "編集中",
   "common.effectVarConfirm.content": "他のノードで変数が使用されています。それでも削除しますか？",

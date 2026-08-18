@@ -1,5 +1,6 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { DatasetACLPermission } from '@/utils/permission'
 
 // --- All hoisted mock fns and state (accessible inside vi.mock factories) ---
@@ -29,6 +30,13 @@ const mocks = vi.hoisted(() => {
 })
 
 // --- External mocks ---
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
+
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mocks.push }),
   useSearchParams: () => new URLSearchParams(mocks.state.searchParams),
@@ -260,6 +268,14 @@ const createDocumentDetail = (overrides?: Record<string, unknown>) => ({
   ...overrides,
 })
 
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: [],
+  }))
+})
+
 describe('DocumentDetail', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -381,13 +397,13 @@ describe('DocumentDetail', () => {
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
       expect(screen.getByTestId('metadata')).toBeInTheDocument()
 
-      fireEvent.click(screen.getByTestId('document-detail-metadata-toggle'))
+      fireEvent.click(screen.getByRole('button', { name: /metadata\.title/ }))
       expect(screen.queryByTestId('metadata')).not.toBeInTheDocument()
     })
 
     it('should expose aria semantics for metadata toggle button', () => {
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      const toggle = screen.getByTestId('document-detail-metadata-toggle')
+      const toggle = screen.getByRole('button', { name: /metadata\.title/ })
       expect(toggle).toHaveAttribute('aria-label')
       expect(toggle).toHaveAttribute('aria-pressed', 'true')
 

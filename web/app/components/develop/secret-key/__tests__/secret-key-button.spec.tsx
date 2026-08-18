@@ -106,12 +106,6 @@ describe('SecretKeyButton', () => {
   })
 
   describe('props', () => {
-    it('should apply custom className', () => {
-      render(<SecretKeyButton className="custom-class" />)
-      const button = screen.getByRole('button')
-      expect(button.className).toContain('custom-class')
-    })
-
     it('should pass appId to modal', async () => {
       const user = userEvent.setup()
       render(<SecretKeyButton appId="app-123" canManage />)
@@ -204,12 +198,6 @@ describe('SecretKeyButton', () => {
   })
 
   describe('text styling', () => {
-    it('should have system-xs-medium class', () => {
-      render(<SecretKeyButton />)
-      const text = screen.getByText('appApi.apiKey')
-      expect(text.className).toContain('system-xs-medium')
-    })
-
     it('should have horizontal padding', () => {
       render(<SecretKeyButton />)
       const text = screen.getByText('appApi.apiKey')

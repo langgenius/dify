@@ -252,17 +252,5 @@ describe('useDocumentsPageState', () => {
       expect(result.current).toHaveProperty('selectedIds')
       expect(result.current).toHaveProperty('setSelectedIds')
     })
-
-    it('should expose function handlers', () => {
-      const { result } = renderHook(() => useDocumentsPageState())
-
-      expect(typeof result.current.handleInputChange).toBe('function')
-      expect(typeof result.current.handleStatusFilterChange).toBe('function')
-      expect(typeof result.current.handleStatusFilterClear).toBe('function')
-      expect(typeof result.current.handleSortChange).toBe('function')
-      expect(typeof result.current.handlePageChange).toBe('function')
-      expect(typeof result.current.handleLimitChange).toBe('function')
-      expect(typeof result.current.setSelectedIds).toBe('function')
-    })
   })
 })

@@ -127,33 +127,11 @@ describe('SecretKeyGenerateModal', () => {
     })
   })
 
-  describe('className prop', () => {
-    it('should apply custom className', async () => {
-      await renderModal(<SecretKeyGenerateModal {...defaultProps} className="custom-modal-class" />)
-      const modal = document.body.querySelector('.custom-modal-class')
-      expect(modal).toBeInTheDocument()
-    })
-
-    it('should apply shrink-0 class', async () => {
-      await renderModal(<SecretKeyGenerateModal {...defaultProps} className="shrink-0" />)
-      const modal = document.body.querySelector('.shrink-0')
-      expect(modal).toBeInTheDocument()
-    })
-  })
-
   describe('modal styling', () => {
     it('should have px-8 padding', async () => {
       await renderModal(<SecretKeyGenerateModal {...defaultProps} />)
       const modal = document.body.querySelector('.px-8')
       expect(modal).toBeInTheDocument()
-    })
-  })
-
-  describe('close icon styling', () => {
-    it('should have cursor-pointer class on close icon', async () => {
-      await renderModal(<SecretKeyGenerateModal {...defaultProps} />)
-      const closeIcon = document.body.querySelector('svg.cursor-pointer')
-      expect(closeIcon).toBeInTheDocument()
     })
   })
 

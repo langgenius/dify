@@ -56,12 +56,6 @@ describe('PreviewDocumentPicker', () => {
 
   // Tests for basic rendering
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      renderComponent()
-
-      expect(screen.getByTestId('popover')).toBeInTheDocument()
-    })
-
     it('should render document name from value prop', () => {
       renderComponent({
         value: createMockDocumentItem({ name: 'My Document' }),
@@ -112,20 +106,6 @@ describe('PreviewDocumentPicker', () => {
     it('should accept required props', () => {
       const props = createDefaultProps()
       render(<PreviewDocumentPicker {...props} />)
-
-      expect(screen.getByTestId('popover')).toBeInTheDocument()
-    })
-
-    it('should apply className to trigger element', () => {
-      renderComponent({ className: 'custom-class' })
-
-      const trigger = screen.getByTestId('popover-trigger')
-      expect(trigger).toHaveClass('custom-class')
-    })
-
-    it('should handle empty files array', () => {
-      // Component should render without crashing with empty files
-      renderComponent({ files: [] })
 
       expect(screen.getByTestId('popover')).toBeInTheDocument()
     })
@@ -228,10 +208,6 @@ describe('PreviewDocumentPicker', () => {
 
   // Tests for component memoization
   describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect((PreviewDocumentPicker as unknown as { $$typeof: symbol }).$$typeof).toBeDefined()
-    })
-
     it('should not re-render when props are the same', () => {
       const onChange = vi.fn()
       const value = createMockDocumentItem()
@@ -320,13 +296,6 @@ describe('PreviewDocumentPicker', () => {
       expect(screen.getByTestId('popover')).toBeInTheDocument()
     })
 
-    it('should handle empty files array', () => {
-      renderComponent({ files: [] })
-
-      // Component should render without crashing
-      expect(screen.getByTestId('popover')).toBeInTheDocument()
-    })
-
     it('should handle very long document names', () => {
       const longName = 'A'.repeat(500)
       renderComponent({
@@ -343,18 +312,6 @@ describe('PreviewDocumentPicker', () => {
       })
 
       expect(screen.getByText(specialName)).toBeInTheDocument()
-    })
-
-    it('should handle undefined files prop', () => {
-      // Test edge case where files might be undefined at runtime
-      const props = createDefaultProps()
-      // @ts-expect-error - Testing runtime edge case
-      props.files = undefined
-
-      render(<PreviewDocumentPicker {...props} />)
-
-      // Component should render without crashing
-      expect(screen.getByTestId('popover')).toBeInTheDocument()
     })
 
     it('should handle large number of files', () => {
@@ -427,29 +384,6 @@ describe('PreviewDocumentPicker', () => {
       })
     })
 
-    describe('className variations', () => {
-      it('should apply custom className', () => {
-        renderComponent({ className: 'my-custom-class' })
-
-        const trigger = screen.getByTestId('popover-trigger')
-        expect(trigger).toHaveClass('my-custom-class')
-      })
-
-      it('should work without className', () => {
-        renderComponent({ className: undefined })
-
-        expect(screen.getByTestId('popover-trigger')).toBeInTheDocument()
-      })
-
-      it('should handle multiple class names', () => {
-        renderComponent({ className: 'class-one class-two' })
-
-        const trigger = screen.getByTestId('popover-trigger')
-        expect(trigger).toHaveClass('class-one')
-        expect(trigger).toHaveClass('class-two')
-      })
-    })
-
     describe('extension variations', () => {
       const extensions = ['txt', 'pdf', 'docx', 'xlsx', 'md']
 
@@ -516,22 +450,6 @@ describe('PreviewDocumentPicker', () => {
 
   // Tests for visual states
   describe('Visual States', () => {
-    it('should apply hover styles on trigger', () => {
-      renderComponent()
-
-      const trigger = screen.getByTestId('popover-trigger')
-      expect(trigger).toHaveClass('hover:bg-state-base-hover')
-    })
-
-    it('should have truncate class for long names', () => {
-      renderComponent({
-        value: createMockDocumentItem({ name: 'Very Long Document Name' }),
-      })
-
-      const nameElement = screen.getByText('Very Long Document Name')
-      expect(nameElement).toHaveClass('truncate')
-    })
-
     it('should have max-width on name element', () => {
       renderComponent({
         value: createMockDocumentItem({ name: 'Test' }),

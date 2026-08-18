@@ -1,28 +1,22 @@
-import type { ReactNode } from 'react'
 import type { PluginPayload } from '../../types'
 import type { FormSchema } from '@/app/components/base/form/types'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { QueryClient } from '@tanstack/react-query'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createQueryClientWrapper } from '@/test/console/query-client'
 import { AuthCategory } from '../../types'
 
-// Create a wrapper with QueryClientProvider
-const createTestQueryClient = () =>
-  new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-        gcTime: 0,
+const createWrapper = () =>
+  createQueryClientWrapper(
+    new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+          gcTime: 0,
+        },
       },
-    },
-  })
-
-const createWrapper = () => {
-  const testQueryClient = createTestQueryClient()
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={testQueryClient}>{children}</QueryClientProvider>
+    }),
   )
-}
 
 // Mock API hooks - these make network requests so must be mocked
 const mockGetPluginOAuthUrl = vi.fn()
@@ -80,6 +74,10 @@ vi.mock('@/service/use-triggers', () => ({
   useInvalidTriggerDynamicOptions: () => vi.fn(),
 }))
 
+vi.mock('@/service/use-common', () => ({
+  useMembers: () => ({ data: { accounts: [] } }),
+}))
+
 // Mock AuthForm to control form validation in tests
 const mockGetFormValues = vi.fn()
 vi.mock('@/app/components/base/form/form-scenarios/auth', () => ({
@@ -90,24 +88,33 @@ vi.mock('@/app/components/base/form/form-scenarios/auth', () => ({
   }),
 }))
 
-const mockNotify = vi.fn()
-const mockToast = {
-  success: (message: string, options?: Record<string, unknown>) =>
-    mockNotify({ type: 'success', message, ...options }),
-  error: (message: string, options?: Record<string, unknown>) =>
-    mockNotify({ type: 'error', message, ...options }),
-  warning: (message: string, options?: Record<string, unknown>) =>
-    mockNotify({ type: 'warning', message, ...options }),
-  info: (message: string, options?: Record<string, unknown>) =>
-    mockNotify({ type: 'info', message, ...options }),
-  dismiss: vi.fn(),
-  update: vi.fn(),
-  promise: vi.fn(),
-}
+const { mockToast } = vi.hoisted(() => {
+  const mockNotify = vi.fn()
+  return {
+    mockToast: {
+      success: (message: string, options?: Record<string, unknown>) =>
+        mockNotify({ type: 'success', message, ...options }),
+      error: (message: string, options?: Record<string, unknown>) =>
+        mockNotify({ type: 'error', message, ...options }),
+      warning: (message: string, options?: Record<string, unknown>) =>
+        mockNotify({ type: 'warning', message, ...options }),
+      info: (message: string, options?: Record<string, unknown>) =>
+        mockNotify({ type: 'info', message, ...options }),
+      dismiss: vi.fn(),
+      update: vi.fn(),
+      promise: vi.fn(),
+    },
+  }
+})
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: mockToast,
 }))
+
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => ({ userProfile: {} }))
+})
 // Factory function for creating test PluginPayload
 const createPluginPayload = (overrides: Partial<PluginPayload> = {}): PluginPayload => ({
   category: AuthCategory.tool,
@@ -291,13 +298,6 @@ describe('AddApiKeyButton', () => {
       await waitFor(() => {
         expect(screen.getByText('plugin.auth.useApiAuth')).toBeInTheDocument()
       })
-    })
-  })
-
-  describe('Memoization', () => {
-    it('should be a memoized component', async () => {
-      const AddApiKeyButtonDefault = (await import('../add-api-key-button')).default
-      expect(typeof AddApiKeyButtonDefault).toBe('object')
     })
   })
 })
@@ -1082,7 +1082,9 @@ describe('ApiKeyModal', () => {
       expect(apiCallCount).toBe(1)
 
       // Clean up by resolving the promise
-      resolveFirstCall()
+      await act(async () => {
+        resolveFirstCall()
+      })
     })
 
     it('should call onRemove when extra button is clicked in edit mode', async () => {
@@ -1580,7 +1582,9 @@ describe('OAuthClientSettings', () => {
       expect(apiCallCount).toBe(1)
 
       // Clean up
-      resolveFirstCall()
+      await act(async () => {
+        resolveFirstCall()
+      })
     })
 
     it('should return early from handleRemove if doingActionRef is true', async () => {
@@ -1640,7 +1644,9 @@ describe('OAuthClientSettings', () => {
       expect(deleteCallCount).toBe(1)
 
       // Clean up
-      resolveFirstCall()
+      await act(async () => {
+        resolveFirstCall()
+      })
     })
   })
 
@@ -2003,13 +2009,6 @@ describe('OAuthClientSettings', () => {
       )
 
       expect(screen.queryByText('common.operation.remove')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Memoization', () => {
-    it('should be a memoized component', async () => {
-      const OAuthClientSettingsDefault = (await import('../oauth-client-settings')).default
-      expect(typeof OAuthClientSettingsDefault).toBe('object')
     })
   })
 })

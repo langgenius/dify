@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
@@ -44,9 +44,6 @@ const JinaReader: FC<Props> = ({
   const { t } = useTranslation()
   const [step, setStep] = useState<Step>(Step.init)
   const [controlFoldOptions, setControlFoldOptions] = useState<number>(0)
-  useEffect(() => {
-    if (step !== Step.init) setControlFoldOptions(Date.now())
-  }, [step])
   const openIntegrationsSetting = useIntegrationsSetting()
   const handleSetting = useCallback(() => {
     openIntegrationsSetting({
@@ -147,6 +144,9 @@ const JinaReader: FC<Props> = ({
         return
       }
       setStep(Step.running)
+      // fold the options panel when the step leaves `init`,
+      // previously synced via a setState in an effect on `step`
+      setControlFoldOptions(Date.now())
       try {
         const startTime = Date.now()
         const res = (await createJinaReaderTask({
@@ -190,6 +190,7 @@ const JinaReader: FC<Props> = ({
         console.log(e)
       } finally {
         setStep(Step.finished)
+        setControlFoldOptions(Date.now())
       }
     },
     [checkValid, crawlOptions, onCheckedCrawlResultChange, onJobIdChange, t, waitForCrawlFinished],

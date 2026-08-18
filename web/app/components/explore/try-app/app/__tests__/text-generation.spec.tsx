@@ -259,21 +259,6 @@ describe('TextGeneration', () => {
     })
   })
 
-  describe('className prop', () => {
-    it('applies custom className', async () => {
-      const appData = createMockAppData()
-
-      const { container } = render(
-        <TextGeneration appId="test-app-id" appData={appData} className="custom-class" />,
-      )
-
-      await waitFor(() => {
-        const element = container.querySelector('.custom-class')
-        expect(element).toBeInTheDocument()
-      })
-    })
-  })
-
   describe('hook effects', () => {
     it('calls updateAppInfo when appData changes', async () => {
       const appData = createMockAppData()

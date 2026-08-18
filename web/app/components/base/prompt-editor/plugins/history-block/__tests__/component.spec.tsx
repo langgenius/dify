@@ -82,19 +82,6 @@ describe('HistoryBlockComponent', () => {
     expect(screen.getByText('common.promptEditor.history.item.title')).toBeInTheDocument()
   })
 
-  it('should apply selected and opened classes when selected and popup is open', () => {
-    mockUseSelectOrDelete.mockReturnValue(createSelectHookReturn(true))
-    mockUseTrigger.mockReturnValue(createTriggerHookReturn(true))
-
-    const { container } = render(
-      <HistoryBlockComponent nodeKey="history-node-2" onEditRole={vi.fn()} />,
-    )
-
-    const wrapper = container.firstElementChild
-    expect(wrapper).toHaveClass('border-[#F670C7]!')
-    expect(wrapper).toHaveClass('bg-[#FCE7F6]')
-  })
-
   it('should render modal content when popup is open', () => {
     mockUseTrigger.mockReturnValue(createTriggerHookReturn(true))
 

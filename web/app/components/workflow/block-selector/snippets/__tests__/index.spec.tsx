@@ -45,7 +45,16 @@ describe('Snippets', () => {
 
   describe('Rendering', () => {
     it('should render loading skeleton when loading', () => {
-      const { container } = render(<Snippets loading searchText="" />)
+      mockUseInfiniteSnippetList.mockReturnValue({
+        data: undefined,
+        isLoading: true,
+        isFetching: true,
+        isFetchingNextPage: false,
+        fetchNextPage: vi.fn(),
+        hasNextPage: undefined,
+      })
+
+      const { container } = render(<Snippets searchText="" />)
 
       expect(container.querySelectorAll('.bg-text-quaternary')).not.toHaveLength(0)
     })
@@ -59,7 +68,7 @@ describe('Snippets', () => {
       ).not.toBeInTheDocument()
     })
 
-    it('should render snippet rows from infinite list data', () => {
+    it('should keep cached snippet rows visible while refetching', () => {
       mockUseInfiniteSnippetList.mockReturnValue({
         data: {
           pages: [
@@ -85,7 +94,7 @@ describe('Snippets', () => {
           ],
         },
         isLoading: false,
-        isFetching: false,
+        isFetching: true,
         isFetchingNextPage: false,
         fetchNextPage: vi.fn(),
         hasNextPage: false,

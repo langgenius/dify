@@ -935,6 +935,43 @@ describe('consoleQuery agent mutation defaults', () => {
   })
 })
 
+// Scenario: oRPC mutation defaults own shared Web app access cache behavior.
+describe('consoleQuery Web app access mutation defaults', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('should invalidate access data and Agent details after updating Web app access', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+
+    const mutationOptions =
+      consoleQuery.enterprise.webAppAuth.updateWebAppWhitelistSubjects.mutationOptions()
+    await mutationOptions.onSuccess?.(
+      { message: 'updated' },
+      {
+        body: {
+          appId: 'app-1',
+          accessMode: 'private',
+        },
+      },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.enterprise.webAppAuth.getWebAppAccessMode.key(),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.enterprise.webAppAuth.getWebAppWhitelistSubjects.key(),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.byAgentId.get.key(),
+    })
+  })
+})
+
 // Scenario: oRPC mutation defaults own shared tag cache behavior.
 describe('consoleQuery tag mutation defaults', () => {
   beforeEach(() => {

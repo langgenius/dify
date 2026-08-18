@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/react'
 import dayjs from 'dayjs'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { LicenseStatus } from '@/features/system-features/constants'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import LicenseNav from '../index'
 
 describe('LicenseNav', () => {
@@ -17,12 +17,12 @@ describe('LicenseNav', () => {
   })
 
   it('should render null when license status is NONE', () => {
-    const { container } = renderWithSystemFeatures(<LicenseNav />)
+    const { container } = renderWithConsoleQuery(<LicenseNav />)
     expect(container).toBeEmptyDOMElement()
   })
 
   it('should render Enterprise badge when license status is ACTIVE', () => {
-    renderWithSystemFeatures(<LicenseNav />, {
+    renderWithConsoleQuery(<LicenseNav />, {
       systemFeatures: {
         license: {
           status: LicenseStatus.ACTIVE,
@@ -35,7 +35,7 @@ describe('LicenseNav', () => {
 
   it('should render singular expiring message when license expires in 0 days', () => {
     const expiredAt = dayjs().add(2, 'hours').toISOString()
-    renderWithSystemFeatures(<LicenseNav />, {
+    renderWithConsoleQuery(<LicenseNav />, {
       systemFeatures: {
         license: {
           status: LicenseStatus.EXPIRING,
@@ -49,7 +49,7 @@ describe('LicenseNav', () => {
 
   it('should render singular expiring message when license expires in 1 day', () => {
     const tomorrow = dayjs().add(1, 'day').add(1, 'hour').toISOString()
-    renderWithSystemFeatures(<LicenseNav />, {
+    renderWithConsoleQuery(<LicenseNav />, {
       systemFeatures: {
         license: {
           status: LicenseStatus.EXPIRING,
@@ -63,7 +63,7 @@ describe('LicenseNav', () => {
 
   it('should render plural expiring message when license expires in 5 days', () => {
     const fiveDaysLater = dayjs().add(5, 'day').add(1, 'hour').toISOString()
-    renderWithSystemFeatures(<LicenseNav />, {
+    renderWithConsoleQuery(<LicenseNav />, {
       systemFeatures: {
         license: {
           status: LicenseStatus.EXPIRING,

@@ -1,8 +1,11 @@
 import type { CommonNodeType, Node } from '../../types'
 import type { ChecklistItem } from '../use-checklist'
+import { zWorkflowAgentComposerResponse } from '@dify/contracts/api/console/apps/zod.gen'
+import { QueryClient } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
 import { createElement, Fragment } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
+import { consoleQuery } from '@/service/client'
 import { FlowType } from '@/types/common'
 import { createEdge, createNode, resetFixtureCounters } from '../../__tests__/fixtures'
 import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
@@ -146,6 +149,10 @@ function setupNodesMap() {
     checkValid: () => ({ errorMessage: '' }),
     metaData: { isStart: false, isRequired: false },
   }
+  mockNodesMap[BlockEnum.AgentV2] = {
+    checkValid: () => ({ errorMessage: '' }),
+    metaData: { isStart: false, isRequired: false },
+  }
 }
 
 beforeEach(() => {
@@ -173,6 +180,82 @@ function buildConnectedGraph() {
     createEdge({ source: 'code', target: 'end' }),
   ]
   return { nodes, edges }
+}
+
+function buildInlineAgentGraph({
+  hasMissingFile,
+  hasMissingSkill,
+}: {
+  hasMissingFile: boolean
+  hasMissingSkill: boolean
+}) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, staleTime: Infinity },
+    },
+  })
+  const appId = 'app-id'
+  const nodeId = 'inline-agent-node'
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
+      input: {
+        params: {
+          app_id: appId,
+          node_id: nodeId,
+        },
+      },
+    }),
+    zWorkflowAgentComposerResponse.parse({
+      agent_soul: {
+        config_files: [
+          { file_kind: 'upload_file', name: 'available.pdf' },
+          ...(hasMissingFile
+            ? [{ file_kind: 'upload_file', is_missing: true, name: 'missing.pdf' }]
+            : []),
+        ],
+        config_skills: [
+          { name: 'Available Skill' },
+          ...(hasMissingSkill ? [{ is_missing: true, name: 'Missing Skill' }] : []),
+        ],
+      },
+      node_job: {},
+      save_options: [],
+      soul_lock: { locked: false },
+      variant: 'workflow',
+    }),
+  )
+
+  const startNode = createNode({ id: 'start', data: { type: BlockEnum.Start, title: 'Start' } })
+  const agentNode = createNode({
+    id: nodeId,
+    data: {
+      type: BlockEnum.AgentV2,
+      title: 'Inline Agent',
+      agent_node_kind: 'dify_agent',
+      version: '2',
+      agent_binding: {
+        binding_type: 'inline_agent',
+        agent_id: 'inline-agent-id',
+        current_snapshot_id: 'snapshot-id',
+      },
+    },
+  })
+
+  return {
+    edges: [createEdge({ source: 'start', target: nodeId })],
+    nodeId,
+    nodes: [startNode, agentNode],
+    options: {
+      queryClient,
+      hooksStoreProps: {
+        configsMap: {
+          flowId: appId,
+          flowType: FlowType.appFlow,
+          fileSettings: {} as never,
+        },
+      },
+    },
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -220,6 +303,43 @@ describe('useChecklist', () => {
     const warning = result.current.find((item: ChecklistItem) => item.id === 'llm')
     expect(warning).toBeDefined()
     expect(warning!.errorMessages).toContain('Model not configured')
+  })
+
+  it.each([
+    {
+      errorMessage: 'agentV2.agentDetail.configure.files.missing',
+      hasMissingFile: true,
+      hasMissingSkill: false,
+      referenceType: 'file',
+    },
+    {
+      errorMessage: 'agentV2.agentDetail.configure.skills.missing',
+      hasMissingFile: false,
+      hasMissingSkill: true,
+      referenceType: 'skill',
+    },
+  ])('should report a missing $referenceType reference from inline agents', async (scenario) => {
+    const { edges, nodeId, nodes, options } = buildInlineAgentGraph(scenario)
+    const { result } = renderWorkflowHook(() => useChecklist(nodes, edges), options)
+
+    await waitFor(() => {
+      expect(result.current).toEqual([
+        expect.objectContaining({
+          id: nodeId,
+          errorMessages: [scenario.errorMessage],
+        }),
+      ])
+    })
+  })
+
+  it('should not report available file and skill references from inline agents', () => {
+    const { edges, nodes, options } = buildInlineAgentGraph({
+      hasMissingFile: false,
+      hasMissingSkill: false,
+    })
+    const { result } = renderWorkflowHook(() => useChecklist(nodes, edges), options)
+
+    expect(result.current).toEqual([])
   })
 
   it('should pass flow type to node validators', () => {

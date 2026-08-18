@@ -72,11 +72,6 @@ describe('EditPipelineInfo', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<EditPipelineInfo {...defaultProps} />)
-      expect(screen.getByText(/editPipelineInfo/i)).toBeInTheDocument()
-    })
-
     it('should render title', () => {
       render(<EditPipelineInfo {...defaultProps} />)
       expect(screen.getByText(/editPipelineInfo/i)).toBeInTheDocument()
@@ -573,24 +568,10 @@ describe('EditPipelineInfo', () => {
   })
 
   describe('Layout', () => {
-    it('should have proper container styling', () => {
-      const { container } = render(<EditPipelineInfo {...defaultProps} />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('relative', 'flex', 'flex-col')
-    })
-
     it('should have close button in header', () => {
       const { container } = render(<EditPipelineInfo {...defaultProps} />)
       const closeButton = container.querySelector('button.absolute')
       expect(closeButton).toHaveClass('right-5', 'top-5')
-    })
-  })
-
-  describe('Memoization', () => {
-    it('should be memoized with React.memo', () => {
-      const { rerender } = render(<EditPipelineInfo {...defaultProps} />)
-      rerender(<EditPipelineInfo {...defaultProps} />)
-      expect(screen.getByText(/editPipelineInfo/i)).toBeInTheDocument()
     })
   })
 })

@@ -47,12 +47,6 @@ describe('CSVDownloader', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(<CSVDownload docForm={ChunkingMode.text} />)
-
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
     it('should render structure title', () => {
       render(<CSVDownload docForm={ChunkingMode.text} />)
 

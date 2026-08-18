@@ -1,13 +1,13 @@
 import type { ReactElement } from 'react'
 import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { fetchInitValidateStatus, fetchSetupStatus, login, setup } from '@/service/common'
 import { expectLoadingButton } from '@/test/button'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { encryptPassword } from '@/utils/encryption'
 import InstallForm from './installForm'
 
-const render = (ui: ReactElement) => renderWithSystemFeatures(ui)
+const render = (ui: ReactElement) => renderWithConsoleQuery(ui)
 
 const mockPush = vi.fn()
 const mockReplace = vi.fn()

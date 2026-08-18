@@ -25,6 +25,7 @@ const mockSetShowPricingModal = vi.fn()
 const mockSetShowAccountSettingModal = vi.fn()
 vi.mock('@/context/modal-context', () => ({
   useModalContext: (): ModalContextState => ({
+    hasBlockingModalOpen: false,
     setShowAccountSettingModal: mockSetShowAccountSettingModal,
     setShowModerationSettingModal: vi.fn(),
     setShowExternalDataToolModal: vi.fn(),
@@ -576,8 +577,6 @@ describe('EditCustomCollectionModal', () => {
     it('should handle empty URL', () => {
       renderModal({ payload: payloadWithVariousUrls('') })
 
-      // Should not crash and show the row
-      // Should not crash and show the row
       expect(screen.getByText('testOp'))!.toBeInTheDocument()
     })
 

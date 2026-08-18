@@ -143,18 +143,6 @@ describe('TTSParamsPanel', () => {
 
   // ==================== Rendering Tests ====================
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      // Arrange
-      const props = createDefaultProps()
-
-      // Act
-      const { container } = render(<TTSParamsPanel {...props} />)
-
-      // Assert
-      // Assert
-      expect(container)!.toBeInTheDocument()
-    })
-
     it('should render language label', () => {
       // Arrange
       const props = createDefaultProps()
@@ -246,39 +234,6 @@ describe('TTSParamsPanel', () => {
   })
 
   // ==================== Props Testing ====================
-  describe('Props', () => {
-    it('should apply trigger className to SelectTrigger', () => {
-      // Arrange
-      const props = createDefaultProps()
-
-      // Act
-      render(<TTSParamsPanel {...props} />)
-
-      // Assert
-      // Assert
-      expect(screen.getByTestId('tts-language-select-trigger'))!.toHaveAttribute(
-        'data-class',
-        'w-full',
-      )
-      expect(screen.getByTestId('tts-voice-select-trigger'))!.toHaveAttribute(
-        'data-class',
-        'w-full',
-      )
-    })
-
-    it('should apply popup className to SelectContent', () => {
-      // Arrange
-      const props = createDefaultProps()
-
-      // Act
-      render(<TTSParamsPanel {...props} />)
-
-      // Assert
-      const contents = screen.getAllByTestId('select-content')
-      expect(contents[0])!.toHaveAttribute('data-popup-class', 'w-[354px]')
-      expect(contents[1])!.toHaveAttribute('data-popup-class', 'w-[354px]')
-    })
-  })
 
   // ==================== Event Handlers ====================
   describe('Event Handlers', () => {
@@ -702,22 +657,6 @@ describe('TTSParamsPanel', () => {
       // Assert
       // Assert
       expect(screen.queryByTestId('select-item-alloy')).not.toBeInTheDocument()
-    })
-  })
-
-  // ==================== Component Type ====================
-  describe('Component Type', () => {
-    it('should be a functional component', () => {
-      // Assert
-      expect(typeof TTSParamsPanel).toBe('function')
-    })
-
-    it('should accept all required props', () => {
-      // Arrange
-      const props = createDefaultProps()
-
-      // Act & Assert
-      expect(() => render(<TTSParamsPanel {...props} />)).not.toThrow()
     })
   })
 

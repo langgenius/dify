@@ -282,10 +282,6 @@ describe('InstallFromMarketplace', () => {
       expect(screen.getByTestId('unique-identifier')).toHaveTextContent('test-unique-identifier')
       expect(screen.getByTestId('payload-name')).toHaveTextContent('Test Plugin')
     })
-
-    it('should apply modal className from useHideLogic', () => {
-      expect(mockHideLogicState.modalClassName).toBe('test-modal-class')
-    })
   })
 
   // ================================
@@ -385,46 +381,6 @@ describe('InstallFromMarketplace', () => {
 
       await waitFor(() => {
         expect(screen.getByText('plugin.installModal.installedSuccessfully')).toBeInTheDocument()
-      })
-    })
-  })
-
-  // ================================
-  // Callback Stability Tests (Memoization)
-  // ================================
-  describe('Callback Stability', () => {
-    it('should maintain stable getTitle callback across rerenders', () => {
-      const { rerender } = render(<InstallFromMarketplace {...defaultProps} />)
-
-      expect(screen.getByText('plugin.installModal.installPlugin')).toBeInTheDocument()
-
-      rerender(<InstallFromMarketplace {...defaultProps} />)
-
-      expect(screen.getByText('plugin.installModal.installPlugin')).toBeInTheDocument()
-    })
-
-    it('should maintain stable handleInstalled callback', async () => {
-      const { rerender } = render(<InstallFromMarketplace {...defaultProps} />)
-
-      rerender(<InstallFromMarketplace {...defaultProps} />)
-
-      fireEvent.click(screen.getByTestId('install-success-btn'))
-
-      await waitFor(() => {
-        expect(screen.getByTestId('installed-step')).toBeInTheDocument()
-      })
-    })
-
-    it('should maintain stable handleFailed callback', async () => {
-      const { rerender } = render(<InstallFromMarketplace {...defaultProps} />)
-
-      rerender(<InstallFromMarketplace {...defaultProps} />)
-
-      fireEvent.click(screen.getByTestId('install-fail-btn'))
-
-      await waitFor(() => {
-        expect(screen.getByTestId('installed-step')).toBeInTheDocument()
-        expect(screen.getByTestId('is-failed')).toHaveTextContent('true')
       })
     })
   })

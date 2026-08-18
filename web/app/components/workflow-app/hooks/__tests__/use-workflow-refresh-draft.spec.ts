@@ -78,9 +78,11 @@ describe('useWorkflowRefreshDraft — notUpdateCanvas parameter', () => {
 
   it('should update canvas by default (notUpdateCanvas omitted)', async () => {
     const { result } = renderHook(() => useWorkflowRefreshDraft())
+    let refreshed = false
     await act(async () => {
-      result.current.handleRefreshWorkflowDraft()
+      refreshed = await result.current.handleRefreshWorkflowDraft()
     })
+    expect(refreshed).toBe(true)
     expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledTimes(1)
   })
 
@@ -100,6 +102,78 @@ describe('useWorkflowRefreshDraft — notUpdateCanvas parameter', () => {
       result.current.handleRefreshWorkflowDraft(true)
     })
     expect(mockHandleUpdateWorkflowCanvas).not.toHaveBeenCalled()
+  })
+
+  it('should discard a stale guarded response before it mutates the canvas or draft metadata', async () => {
+    let resolveFetch: ((value: typeof draftResponse) => void) | undefined
+    mockFetchWorkflowDraft.mockReturnValue(
+      new Promise((resolve) => {
+        resolveFetch = resolve
+      }),
+    )
+    let isCurrent = true
+    const { result } = renderHook(() => useWorkflowRefreshDraft())
+    let refreshPromise: Promise<boolean> | undefined
+
+    act(() => {
+      refreshPromise = result.current.handleRefreshWorkflowDraft(false, {
+        shouldApply: () => isCurrent,
+      })
+    })
+    isCurrent = false
+    await act(async () => {
+      resolveFetch?.(draftResponse)
+      await refreshPromise
+    })
+
+    await expect(refreshPromise).resolves.toBe(false)
+    expect(mockHandleUpdateWorkflowCanvas).not.toHaveBeenCalled()
+    expect(mockSetSyncWorkflowDraftHash).not.toHaveBeenCalled()
+    expect(mockSetEnvironmentVariables).not.toHaveBeenCalled()
+    expect(mockSetConversationVariables).not.toHaveBeenCalled()
+  })
+
+  it('keeps the syncing guard active until the newest overlapping refresh completes', async () => {
+    let resolveFirst: ((value: typeof draftResponse) => void) | undefined
+    let resolveSecond: ((value: typeof draftResponse) => void) | undefined
+    mockFetchWorkflowDraft
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveFirst = resolve
+        }),
+      )
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveSecond = resolve
+        }),
+      )
+    let firstIsCurrent = true
+    const { result } = renderHook(() => useWorkflowRefreshDraft())
+    let firstRefresh: Promise<boolean> | undefined
+    let secondRefresh: Promise<boolean> | undefined
+
+    act(() => {
+      firstRefresh = result.current.handleRefreshWorkflowDraft(false, {
+        shouldApply: () => firstIsCurrent,
+      })
+      secondRefresh = result.current.handleRefreshWorkflowDraft(false, {
+        shouldApply: () => true,
+      })
+    })
+    firstIsCurrent = false
+    mockSetIsSyncingWorkflowDraft.mockClear()
+
+    await act(async () => {
+      resolveFirst?.(draftResponse)
+      await firstRefresh
+    })
+    expect(mockSetIsSyncingWorkflowDraft).not.toHaveBeenCalledWith(false)
+
+    await act(async () => {
+      resolveSecond?.(draftResponse)
+      await secondRefresh
+    })
+    expect(mockSetIsSyncingWorkflowDraft).toHaveBeenLastCalledWith(false)
   })
 
   it('should still update hash even when notUpdateCanvas=true', async () => {
@@ -223,9 +297,12 @@ describe('useWorkflowRefreshDraft — notUpdateCanvas parameter', () => {
 
     const { result } = renderHook(() => useWorkflowRefreshDraft())
 
-    act(() => {
-      result.current.handleRefreshWorkflowDraft()
+    let refreshed = true
+    await act(async () => {
+      refreshed = await result.current.handleRefreshWorkflowDraft()
     })
+
+    expect(refreshed).toBe(false)
 
     await waitFor(() => {
       expect(mockSetIsWorkflowDataLoaded).toHaveBeenNthCalledWith(1, false)

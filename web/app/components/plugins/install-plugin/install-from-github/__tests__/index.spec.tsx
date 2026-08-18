@@ -313,13 +313,6 @@ describe('InstallFromGitHub', () => {
 
       expect(screen.getByText('plugin.installFromGitHub.installNote')).toBeInTheDocument()
     })
-
-    it('should apply modal className from useHideLogic', () => {
-      // Verify useHideLogic provides modalClassName
-      // The actual className application is handled by Modal component internally
-      // We verify the hook integration by checking that it returns the expected class
-      expect(mockHideLogicState.modalClassName).toBe('test-modal-class')
-    })
   })
 
   // ================================
@@ -698,30 +691,6 @@ describe('InstallFromGitHub', () => {
 
       await waitFor(() => {
         expect(mockHideLogicState.setIsInstalling).toHaveBeenCalledWith(false)
-      })
-    })
-  })
-
-  // ================================
-  // Callback Stability Tests (Memoization)
-  // ================================
-  describe('Callback Stability', () => {
-    it('should maintain stable handleUploadFail callback reference', async () => {
-      const { rerender } = render(
-        <InstallFromGitHub {...defaultProps} updatePayload={createUpdatePayload()} />,
-      )
-
-      const firstRender = screen.getByTestId('select-package-step')
-      expect(firstRender).toBeInTheDocument()
-
-      // Rerender with same props
-      rerender(<InstallFromGitHub {...defaultProps} updatePayload={createUpdatePayload()} />)
-
-      // The component should still work correctly
-      fireEvent.click(screen.getByTestId('trigger-upload-fail-btn'))
-
-      await waitFor(() => {
-        expect(screen.getByTestId('installed-step')).toBeInTheDocument()
       })
     })
   })

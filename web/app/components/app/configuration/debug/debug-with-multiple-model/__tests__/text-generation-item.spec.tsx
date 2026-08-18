@@ -630,7 +630,6 @@ describe('TextGenerationItem', () => {
         payload: { message: 'Test', files: [] },
       })
 
-      // Should still call handleSend without crashing
       expect(handleSend).toHaveBeenCalled()
     })
   })

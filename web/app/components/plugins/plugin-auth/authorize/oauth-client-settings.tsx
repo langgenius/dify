@@ -141,10 +141,7 @@ const OAuthClientSettings = ({
       >
         <div data-testid="modal" className="flex max-h-[80dvh] flex-col">
           <div className="relative shrink-0 p-6 pr-14 pb-3">
-            <DialogTitle
-              data-testid="modal-title"
-              className="title-2xl-semi-bold text-text-primary"
-            >
+            <DialogTitle className="title-2xl-semi-bold text-text-primary">
               {t(($) => $['auth.oauthClientSettings'], { ns: 'plugin' })}
             </DialogTitle>
             <DialogCloseButton className="top-5 right-5 size-8 rounded-lg" />
@@ -165,7 +162,6 @@ const OAuthClientSettings = ({
             <div>
               {__oauth_client__ === 'custom' && hasOriginalClientParams && (
                 <Button
-                  data-testid="modal-extra"
                   variant="secondary"
                   className="text-components-button-destructive-secondary-text"
                   disabled={isDisabled || !editValues}
@@ -184,11 +180,10 @@ const OAuthClientSettings = ({
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </Button>
               <div className="mx-3 h-4 w-px bg-divider-regular"></div>
-              <Button data-testid="modal-cancel" onClick={handleConfirm} disabled={isDisabled}>
+              <Button onClick={handleConfirm} disabled={isDisabled}>
                 {t(($) => $['auth.saveOnly'], { ns: 'plugin' })}
               </Button>
               <Button
-                data-testid="modal-confirm"
                 className="ml-2"
                 variant="primary"
                 onClick={handleConfirmAndAuthorize}

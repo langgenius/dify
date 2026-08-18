@@ -85,11 +85,6 @@ describe('StepOnePreview', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(<StepOnePreview {...defaultProps} />)
-      expect(container.querySelector('.h-full')).toBeInTheDocument()
-    })
-
     it('should render container with correct structure', () => {
       const { container } = render(<StepOnePreview {...defaultProps} />)
       expect(container.querySelector('.flex.h-full.flex-col')).toBeInTheDocument()
@@ -224,11 +219,6 @@ describe('StepTwoPreview', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(<StepTwoPreview {...defaultProps} />)
-      expect(container.querySelector('.h-full')).toBeInTheDocument()
-    })
-
     it('should render ChunkPreview component structure', () => {
       const { container } = render(<StepTwoPreview {...defaultProps} />)
       expect(container.querySelector('.flex.h-full.flex-col')).toBeInTheDocument()

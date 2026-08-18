@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { runCleanupTasks } from '../support/cleanup'
+import { runCleanupTasks, shouldFailForCleanupErrors } from '../support/cleanup'
 
 describe('runCleanupTasks', () => {
   it('runs every task in order', async () => {
@@ -46,4 +46,17 @@ describe('runCleanupTasks', () => {
     expect(finalTask).toHaveBeenCalledOnce()
     expect(errors).toEqual(['sync cleanup: sync failure', 'async cleanup: async failure'])
   })
+})
+
+describe('shouldFailForCleanupErrors', () => {
+  it.each(['PASSED', 'SKIPPED'])('fails a %s scenario when cleanup fails', (status) => {
+    expect(shouldFailForCleanupErrors(status)).toBe(true)
+  })
+
+  it.each(['FAILED', 'AMBIGUOUS', 'PENDING', 'UNDEFINED', 'UNKNOWN'])(
+    'preserves an existing %s result when cleanup fails',
+    (status) => {
+      expect(shouldFailForCleanupErrors(status)).toBe(false)
+    },
+  )
 })

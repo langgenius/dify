@@ -78,17 +78,4 @@ describe('DeprecationNotice', () => {
     )
     expect(screen.getByText('plugin.detailPanel.deprecation.noReason')).toBeInTheDocument()
   })
-
-  it('applies custom className', () => {
-    const { container } = render(
-      <DeprecationNotice
-        status="deleted"
-        deprecatedReason=""
-        alternativePluginId=""
-        alternativePluginURL=""
-        className="my-custom-class"
-      />,
-    )
-    expect((container.firstChild as HTMLElement).className).toContain('my-custom-class')
-  })
 })

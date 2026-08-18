@@ -169,6 +169,7 @@
   "common.currentWorkflow": "Flux de lucru curent",
   "common.debugAndPreview": "Previzualizare",
   "common.disconnect": "Deconecta",
+  "common.draftSaveFailed": "Salvarea schiței a eșuat",
   "common.duplicate": "Duplică",
   "common.editing": "Editare",
   "common.effectVarConfirm.content": "Variabila este utilizată în alte noduri. Doriți să o eliminați oricum?",

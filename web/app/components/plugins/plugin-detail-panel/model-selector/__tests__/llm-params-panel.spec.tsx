@@ -259,17 +259,6 @@ describe('LLMParamsPanel', () => {
 
   // ==================== Rendering Tests ====================
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      // Arrange
-      const props = createDefaultProps()
-
-      // Act
-      const { container } = render(<LLMParamsPanel {...props} />)
-
-      // Assert
-      expect(container).toBeInTheDocument()
-    })
-
     it('should render loading state when isPending is true', () => {
       // Arrange
       setupModelParameterRulesMock({ isPending: true })
@@ -877,23 +866,6 @@ describe('LLMParamsPanel', () => {
 
       // Assert
       expect(screen.getByTestId('parameter-item-stop')).toBeInTheDocument()
-    })
-  })
-
-  // ==================== Component Type ====================
-  describe('Component Type', () => {
-    it('should be a functional component', () => {
-      // Assert
-      expect(typeof LLMParamsPanel).toBe('function')
-    })
-
-    it('should accept all required props', () => {
-      // Arrange
-      setupModelParameterRulesMock({ data: [], isPending: false })
-      const props = createDefaultProps()
-
-      // Act & Assert
-      expect(() => render(<LLMParamsPanel {...props} />)).not.toThrow()
     })
   })
 })

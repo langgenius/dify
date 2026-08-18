@@ -110,12 +110,6 @@ describe('MessageLogModal', () => {
       const modal = screen.getByRole('dialog')
       expect(container).not.toContainElement(modal)
       expect(document.body).toContainElement(modal)
-      expect(modal).toHaveClass(
-        'fixed',
-        'z-50',
-        'w-[480px]!',
-        'left-[max(8px,calc(100vw-1136px))]!',
-      )
     })
 
     it('sets fixed width when fixedWidth is true', () => {

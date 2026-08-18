@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import FirstEmptyActionCard from '@/app/components/apps/first-empty-state/action-card'
+import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 
 const EMPTY_PLACEHOLDER_CARD_IDS = Array.from(
   { length: 16 },
@@ -14,6 +15,7 @@ type EmptyCreateAction = {
   id: string
   title: string
   description: string
+  target: string
 }
 
 type DatasetFirstEmptyStateProps = {
@@ -36,6 +38,7 @@ function DatasetFirstEmptyState({
           id: 'create',
           title: t(($) => $['firstEmpty.createTitle'], { ns: 'dataset' }),
           description: t(($) => $['firstEmpty.createDescription'], { ns: 'dataset' }),
+          target: STEP_BY_STEP_TOUR_TARGETS.knowledgeEmptyCreate,
         },
         {
           href: '/datasets/create-from-pipeline',
@@ -43,6 +46,7 @@ function DatasetFirstEmptyState({
           id: 'pipeline',
           title: t(($) => $['firstEmpty.pipelineTitle'], { ns: 'dataset' }),
           description: t(($) => $['firstEmpty.pipelineDescription'], { ns: 'dataset' }),
+          target: STEP_BY_STEP_TOUR_TARGETS.knowledgeEmptyPipeline,
         },
       ]
     : []
@@ -58,6 +62,7 @@ function DatasetFirstEmptyState({
         id: 'connect',
         title: t(($) => $.connectDataset, { ns: 'dataset' }),
         description: t(($) => $['firstEmpty.connectDescription'], { ns: 'dataset' }),
+        target: STEP_BY_STEP_TOUR_TARGETS.knowledgeEmptyConnect,
       }
     : undefined
   const hasActions = createActions.length > 0 || !!connectAction
@@ -98,6 +103,7 @@ function DatasetFirstEmptyState({
                       description={action.description}
                       href={action.href}
                       icon={action.icon}
+                      stepByStepTourTarget={action.target}
                       title={action.title}
                       visualStyle="list"
                     />
@@ -118,6 +124,7 @@ function DatasetFirstEmptyState({
                   description={connectAction.description}
                   href={connectAction.href}
                   icon={connectAction.icon}
+                  stepByStepTourTarget={connectAction.target}
                   title={connectAction.title}
                   visualStyle="list"
                 />

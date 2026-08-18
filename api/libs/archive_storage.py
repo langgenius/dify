@@ -16,11 +16,18 @@ from urllib.parse import quote
 import boto3
 import orjson
 from botocore.client import Config
-from botocore.exceptions import ClientError
+from botocore.exceptions import BotoCoreError, ClientError
 
 from configs import dify_config
 
 logger = logging.getLogger(__name__)
+
+_OBJECT_NOT_FOUND_ERROR_CODES = frozenset({"404", "NoSuchKey", "NotFound"})
+
+
+def _is_object_not_found_error(error: ClientError) -> bool:
+    error_code = str(error.response.get("Error", {}).get("Code", ""))
+    return error_code in _OBJECT_NOT_FOUND_ERROR_CODES
 
 
 class ArchiveStorageError(Exception):
@@ -138,10 +145,11 @@ class ArchiveStorage:
             response = self.client.get_object(Bucket=self.bucket, Key=key)
             return response["Body"].read()
         except ClientError as e:
-            error_code = e.response.get("Error", {}).get("Code")
-            if error_code == "NoSuchKey":
-                raise FileNotFoundError(f"Archive object not found: {key}")
-            raise ArchiveStorageError(f"Failed to download object '{key}': {e}")
+            if _is_object_not_found_error(e):
+                raise FileNotFoundError(f"Archive object not found: {key}") from e
+            raise ArchiveStorageError(f"Failed to download object '{key}': {e}") from e
+        except BotoCoreError as e:
+            raise ArchiveStorageError(f"Failed to download object '{key}': {e}") from e
 
     def get_object_stream(self, key: str) -> Generator[bytes, None, None]:
         """
@@ -161,10 +169,11 @@ class ArchiveStorage:
             response = self.client.get_object(Bucket=self.bucket, Key=key)
             yield from response["Body"].iter_chunks()
         except ClientError as e:
-            error_code = e.response.get("Error", {}).get("Code")
-            if error_code == "NoSuchKey":
-                raise FileNotFoundError(f"Archive object not found: {key}")
-            raise ArchiveStorageError(f"Failed to stream object '{key}': {e}")
+            if _is_object_not_found_error(e):
+                raise FileNotFoundError(f"Archive object not found: {key}") from e
+            raise ArchiveStorageError(f"Failed to stream object '{key}': {e}") from e
+        except BotoCoreError as e:
+            raise ArchiveStorageError(f"Failed to stream object '{key}': {e}") from e
 
     def object_exists(self, key: str) -> bool:
         """
@@ -175,12 +184,19 @@ class ArchiveStorage:
 
         Returns:
             True if object exists, False otherwise
+
+        Raises:
+            ArchiveStorageError: If storage cannot authoritatively determine object existence
         """
         try:
             self.client.head_object(Bucket=self.bucket, Key=key)
             return True
-        except ClientError:
-            return False
+        except ClientError as e:
+            if _is_object_not_found_error(e):
+                return False
+            raise ArchiveStorageError(f"Failed to check archive object '{key}': {e}") from e
+        except BotoCoreError as e:
+            raise ArchiveStorageError(f"Failed to check archive object '{key}': {e}") from e
 
     def delete_object(self, key: str) -> None:
         """
@@ -196,7 +212,12 @@ class ArchiveStorage:
             self.client.delete_object(Bucket=self.bucket, Key=key)
             logger.debug("Deleted object: %s", key)
         except ClientError as e:
-            raise ArchiveStorageError(f"Failed to delete object '{key}': {e}")
+            if _is_object_not_found_error(e):
+                logger.debug("Archive object was already absent: %s", key)
+                return
+            raise ArchiveStorageError(f"Failed to delete object '{key}': {e}") from e
+        except BotoCoreError as e:
+            raise ArchiveStorageError(f"Failed to delete object '{key}': {e}") from e
 
     def generate_presigned_url(
         self,

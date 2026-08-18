@@ -3,13 +3,13 @@ import type { EmbeddedChatbotContextValue } from '../../context'
 import type { AppData } from '@/models/share'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { useEmbeddedChatbotContext } from '../../context'
 import Header from '../index'
 
 let mockBranding = { enabled: true, workspace_logo: '' }
 const render = (ui: ReactElement) =>
-  renderWithSystemFeatures(ui, {
+  renderWithConsoleQuery(ui, {
     systemFeatures: { branding: { ...mockBranding } },
   })
 
@@ -84,7 +84,6 @@ describe('EmbeddedChatbot Header', () => {
     it('should render desktop header with branding by default', async () => {
       render(<Header title="Test Chatbot" />)
 
-      expect(screen.getByTestId('webapp-brand')).toBeInTheDocument()
       expect(screen.getByText('share.chat.poweredBy')).toBeInTheDocument()
     })
 
@@ -141,7 +140,7 @@ describe('EmbeddedChatbot Header', () => {
 
       render(<Header title="Test Chatbot" />)
 
-      expect(screen.queryByTestId('webapp-brand')).not.toBeInTheDocument()
+      expect(screen.queryByText('share.chat.poweredBy')).not.toBeInTheDocument()
     })
 
     it('should render divider only when currentConversationId is present', () => {

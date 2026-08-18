@@ -66,15 +66,6 @@ describe('EmptyDatasetCreationModal', () => {
 
   // Rendering Tests - Verify component renders correctly
   describe('Rendering', () => {
-    it('should render without crashing when show is true', () => {
-      const props = createDefaultProps()
-
-      render(<EmptyDatasetCreationModal {...props} />)
-
-      // Assert - Check modal title is rendered
-      expect(screen.getByText('datasetCreation.stepOne.modal.title')).toBeInTheDocument()
-    })
-
     it('should render modal with correct elements', () => {
       const props = createDefaultProps()
 

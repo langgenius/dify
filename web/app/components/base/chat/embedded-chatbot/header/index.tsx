@@ -88,10 +88,7 @@ const Header: FC<IHeaderProps> = ({
           {/* powered by */}
           <div className="shrink-0">
             {!appData?.custom_config?.remove_webapp_brand && (
-              <div
-                className={cn('flex shrink-0 items-center gap-1.5 px-2')}
-                data-testid="webapp-brand"
-              >
+              <div className={cn('flex shrink-0 items-center gap-1.5 px-2')}>
                 <div className="system-2xs-medium-uppercase text-text-tertiary">
                   {t(($) => $['chat.poweredBy'], { ns: 'share' })}
                 </div>

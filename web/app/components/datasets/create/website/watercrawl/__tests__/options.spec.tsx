@@ -66,16 +66,6 @@ describe('Options (watercrawl)', () => {
 
       expect(screen.getByPlaceholderText('articles/*'))!.toBeInTheDocument()
     })
-
-    it('should render with custom className', () => {
-      const payload = createMockCrawlOptions()
-      const { container } = render(
-        <Options payload={payload} onChange={mockOnChange} className="custom-class" />,
-      )
-
-      const rootElement = container.firstChild as HTMLElement
-      expect(rootElement)!.toHaveClass('custom-class')
-    })
   })
 
   // Props Display Tests

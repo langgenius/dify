@@ -631,7 +631,9 @@ class TestDatasetServiceCreationAndUpdate:
         get_external_knowledge_api.assert_called_once_with("api-1", dataset.tenant_id, session=session)
         update_binding.assert_called_once_with("dataset-1", "knowledge-1", "api-1", session)
         session.add.assert_called_once_with(dataset)
-        session.commit.assert_called_once()
+        # flush() (not commit()) preserves the caller-managed transaction (#39191)
+        session.flush.assert_called_once()
+        session.commit.assert_not_called()
 
     @pytest.mark.parametrize(
         ("payload", "message"),
@@ -728,7 +730,9 @@ class TestDatasetServiceCreationAndUpdate:
         assert "external_knowledge_api_id" not in updated_values
         assert "external_knowledge_id" not in updated_values
         assert "external_retrieval_model" not in updated_values
-        session.commit.assert_called_once()
+        # flush() (not commit()) preserves the caller-managed transaction (#39191)
+        session.flush.assert_called_once()
+        session.commit.assert_not_called()
         session.refresh.assert_called_once_with(dataset)
         update_pipeline.assert_called_once_with(dataset, "user-1", session)
         vector_task.delay.assert_called_once_with("dataset-1", "update")

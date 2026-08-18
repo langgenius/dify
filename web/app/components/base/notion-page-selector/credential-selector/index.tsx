@@ -43,11 +43,7 @@ const CredentialSelector = ({ value, items, onSelect }: CredentialSelectorProps)
             name={currentDisplayName}
             size={20}
           />
-          <span
-            className="truncate"
-            title={currentDisplayName}
-            data-testid="notion-credential-selector-name"
-          >
+          <span className="truncate" title={currentDisplayName}>
             {currentDisplayName}
           </span>
         </span>
@@ -56,12 +52,7 @@ const CredentialSelector = ({ value, items, onSelect }: CredentialSelectorProps)
         {items.map((item) => {
           const displayName = getDisplayName(item)
           return (
-            <SelectItem
-              key={item.credentialId}
-              value={item.credentialId}
-              className="h-9 px-3"
-              data-testid={`notion-credential-item-${item.credentialId}`}
-            >
+            <SelectItem key={item.credentialId} value={item.credentialId} className="h-9 px-3">
               <CredentialIcon
                 className="mr-2 shrink-0"
                 avatarUrl={item.workspaceIcon}

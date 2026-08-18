@@ -1,6 +1,6 @@
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -10,8 +10,16 @@ import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-compo
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { RerankingModeEnum } from '@/models/datasets'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
 import { AgentKnowledgeRetrieval } from '../index'
+
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
 
 vi.mock('@/app/components/workflow/nodes/knowledge-retrieval/components/add-dataset', () => ({
   default: function MockAddKnowledge({
@@ -125,6 +133,14 @@ function getDialogNameEditButton(dialog: HTMLElement) {
     name: /agentDetail\.configure\.knowledgeRetrieval\.edit/,
   })
 }
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: [],
+  }))
+})
 
 describe('AgentKnowledgeRetrieval', () => {
   beforeEach(() => {

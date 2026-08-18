@@ -17,11 +17,8 @@ import {
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AuthCategory } from '@/app/components/plugins/plugin-auth'
-import AddOAuthButton from '@/app/components/plugins/plugin-auth/authorize/add-oauth-button'
-import ApiKeyModal from '@/app/components/plugins/plugin-auth/authorize/api-key-modal'
+import { AuthCategory, Authorized, usePluginAuth } from '@/app/components/plugins/plugin-auth'
 import AuthorizedInNode from '@/app/components/plugins/plugin-auth/authorized-in-node'
-import { useInvalidPluginCredentialInfoHook } from '@/app/components/plugins/plugin-auth/hooks/use-credential'
 import { CollectionType } from '@/app/components/tools/types'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -58,7 +55,7 @@ function UnauthorizedCredentialStatus({
   ) => void
 }) {
   const { t } = useTranslation()
-  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(false)
   const pluginPayload = useMemo(
     () => ({
       provider: tool.id,
@@ -67,53 +64,58 @@ function UnauthorizedCredentialStatus({
     }),
     [tool.id, tool.providerType],
   )
-  const invalidPluginCredentialInfo = useInvalidPluginCredentialInfoHook(pluginPayload)
-  const handleApiKeyModalOpen = useCallback(() => {
-    setIsApiKeyModalOpen(true)
-  }, [])
-  const handleApiKeyModalClose = useCallback(() => {
-    setIsApiKeyModalOpen(false)
-  }, [])
+  const {
+    canApiKey,
+    canOAuth,
+    credentials,
+    invalidPluginCredentialInfo,
+    notAllowCustomCredential,
+  } = usePluginAuth(pluginPayload, true)
   const handleCredentialUpdate = useCallback(() => {
     invalidPluginCredentialInfo()
     onCredentialChange(undefined, tool.credentialType)
   }, [invalidPluginCredentialInfo, onCredentialChange, tool.credentialType])
-
-  if (tool.credentialType === 'oauth2') {
-    return (
-      <AddOAuthButton
-        pluginPayload={pluginPayload}
-        onUpdate={handleCredentialUpdate}
-        renderTrigger={({ disabled, onClick }) => (
-          <Button
-            variant="secondary"
-            size="small"
-            className="shrink-0"
-            disabled={disabled}
-            onClick={onClick}
-          >
-            {t(($) => $.notAuthorized, { ns: 'tools' })}
-            <StatusDot className="ml-2" status="warning" />
-          </Button>
-        )}
-      />
-    )
-  }
-
-  return (
-    <>
-      <Button variant="secondary" size="small" className="shrink-0" onClick={handleApiKeyModalOpen}>
+  const handleAuthorizationItemClick = useCallback(
+    (id: string) => {
+      const credential = credentials.find((item) => item.id === id)
+      onCredentialChange(id, credential?.credential_type ?? tool.credentialType)
+      setIsOpen(false)
+    },
+    [credentials, onCredentialChange, tool.credentialType],
+  )
+  const renderTrigger = useCallback(
+    (open?: boolean) => (
+      <Button
+        variant="secondary"
+        size="small"
+        className={cn('shrink-0', open && 'bg-components-button-secondary-bg-hover')}
+      >
         {t(($) => $.notAuthorized, { ns: 'tools' })}
         <StatusDot className="ml-2" status="warning" />
       </Button>
-      <ApiKeyModal
-        pluginPayload={pluginPayload}
-        open={isApiKeyModalOpen}
-        onOpenChange={setIsApiKeyModalOpen}
-        onClose={handleApiKeyModalClose}
-        onUpdate={handleCredentialUpdate}
-      />
-    </>
+    ),
+    [t],
+  )
+
+  return (
+    <Authorized
+      pluginPayload={pluginPayload}
+      credentials={credentials}
+      canOAuth={canOAuth}
+      canApiKey={canApiKey}
+      renderTrigger={renderTrigger}
+      isOpen={isOpen}
+      onOpenChange={setIsOpen}
+      offset={4}
+      placement="bottom-end"
+      triggerPopupSameWidth={false}
+      popupClassName="w-[360px]"
+      disableSetDefault
+      onItemClick={handleAuthorizationItemClick}
+      showItemSelectedIcon
+      onUpdate={handleCredentialUpdate}
+      notAllowCustomCredential={notAllowCustomCredential}
+    />
   )
 }
 

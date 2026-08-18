@@ -169,6 +169,7 @@
   "common.currentWorkflow": "Поточний робочий процес",
   "common.debugAndPreview": "Попередній перегляд",
   "common.disconnect": "Відключити",
+  "common.draftSaveFailed": "Не вдалося зберегти чернетку",
   "common.duplicate": "Дублювати",
   "common.editing": "Редагування",
   "common.effectVarConfirm.content": "Змінна використовується в інших вузлах. Ви все ще хочете її видалити?",

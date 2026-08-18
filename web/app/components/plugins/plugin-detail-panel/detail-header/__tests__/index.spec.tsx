@@ -2,9 +2,9 @@ import type { ReactElement } from 'react'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
-import { createAccountProfileQueryClient } from '@/test/account-profile-query'
+import { createAccountProfileQueryClient } from '@/test/console/account-profile'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import DetailHeader from '../index'
 
 const mockSetTargetVersion = vi.fn()
@@ -15,7 +15,7 @@ const mockHandleDelete = vi.fn()
 
 const render = (ui: ReactElement) => {
   const queryClient = createAccountProfileQueryClient({ timezone: 'UTC' })
-  return renderWithSystemFeatures(ui, {
+  return renderWithConsoleQuery(ui, {
     queryClient,
     systemFeatures: { enable_marketplace: true },
   })

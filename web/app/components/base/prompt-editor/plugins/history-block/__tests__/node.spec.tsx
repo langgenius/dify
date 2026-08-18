@@ -1,7 +1,7 @@
 import type { SerializedNode as SerializedHistoryBlockNode } from '../node'
 import { act } from '@testing-library/react'
 import { $getNodeByKey, $getRoot } from 'lexical'
-import { createLexicalTestEditor, expectInlineWrapperDom } from '../../test-helpers'
+import { createLexicalTestEditor, expectInlineWrapperDom } from '../../__tests__/test-helpers'
 import HistoryBlockComponent from '../component'
 import { $createHistoryBlockNode, $isHistoryBlockNode, HistoryBlockNode } from '../node'
 

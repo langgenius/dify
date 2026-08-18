@@ -15,14 +15,12 @@ import { useEducationDiscount } from '@/app/components/billing/hooks/use-educati
 import { Plan } from '@/app/components/billing/type'
 import { useSetEducationVerifying } from '@/app/education-apply/storage'
 import { useDocLink } from '@/context/i18n'
-import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
-import { currentWorkspaceAtom } from '@/context/workspace-state'
+import { currentWorkspaceAtom, isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { useEducationAdd, useInvalidateEducationStatus } from '@/service/use-education'
-import { BillingPermission, hasPermission } from '@/utils/permission'
 import DifyLogo from '../components/base/logo/dify-logo'
 import AppliedEducationContent from './applied-education-content'
 import RoleSelector from './role-selector'
@@ -46,7 +44,7 @@ const EducationApplyAgeContent = () => {
   const { isPending, mutateAsync: educationAdd } = useEducationAdd({ onSuccess: noop })
   const { onPlanInfoChanged, isEducationAccount, plan } = useProviderContext()
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const updateEducationStatus = useInvalidateEducationStatus()
   const docLink = useDocLink()
   const { handleEducationDiscount } = useEducationDiscount()
@@ -58,9 +56,8 @@ const EducationApplyAgeContent = () => {
 
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
-  const canManageBilling = hasPermission(workspacePermissionKeys, BillingPermission.Manage)
   const appliedEducationCase = (() => {
-    if (!canManageBilling) return AppliedEducationCase.noPaymentPermission
+    if (!isCurrentWorkspaceManager) return AppliedEducationCase.noPaymentPermission
 
     if (plan.type === Plan.sandbox) return AppliedEducationCase.eligible
 

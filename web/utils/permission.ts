@@ -29,12 +29,6 @@ export const DatasetACLPermission = {
   AccessConfig: 'dataset.acl.access_config',
 } as const
 
-export const BillingPermission = {
-  View: 'billing.view',
-  Manage: 'billing.manage',
-  SubscriptionManage: 'billing.subscription.manage',
-} as const
-
 export type ResourceMaintainerPermissionOptions = {
   currentUserId?: string | null
   resourceMaintainer?: string | null

@@ -9,7 +9,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
-import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
+import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
 import { CreateSubscriptionButton } from '../index'
 import { CreateButtonType, DEFAULT_METHOD } from '../types'
 
@@ -116,7 +116,7 @@ vi.mock('../oauth-client', () => ({
               id: 'test-builder',
               name: 'test',
               provider: 'test-provider',
-              credential_type: TriggerCredentialTypeEnum.Oauth2,
+              credential_type: TriggerCredentialType.Oauth2,
               credentials: {},
               endpoint: 'https://test.com',
               parameters: {},
@@ -203,8 +203,14 @@ vi.mock('@langgenius/dify-ui/select', async () => {
       return (
         <div
           data-testid="custom-trigger"
+          role="button"
+          aria-label="custom trigger"
+          tabIndex={0}
           className={className}
           onClick={() => context.onOpenChange?.(true)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') context.onOpenChange?.(true)
+          }}
         >
           {children}
         </div>
@@ -216,7 +222,16 @@ vi.mock('@langgenius/dify-ui/select', async () => {
     SelectItem: ({ children, value }: { children: React.ReactNode; value: string }) => {
       const context = React.useContext(SelectContext)
       return (
-        <div data-testid={`option-${value}`} onClick={() => context.onValueChange?.(value)}>
+        <div
+          data-testid={`option-${value}`}
+          role="button"
+          aria-label={`option ${value}`}
+          tabIndex={0}
+          onClick={() => context.onValueChange?.(value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') context.onValueChange?.(value)
+          }}
+        >
           {children}
         </div>
       )
@@ -270,7 +285,7 @@ const createSubscription = (overrides: Partial<TriggerSubscription> = {}): Trigg
   id: 'test-subscription',
   name: 'Test Subscription',
   provider: 'test-provider',
-  credential_type: TriggerCredentialTypeEnum.ApiKey,
+  credential_type: TriggerCredentialType.ApiKey,
   credentials: {},
   endpoint: 'https://test.com',
   parameters: {},
@@ -326,54 +341,6 @@ describe('CreateSubscriptionButton', () => {
       // Assert
       // Assert
       expect(container)!.toBeEmptyDOMElement()
-    })
-
-    it('should render without crashing when supportedMethods is provided', () => {
-      // Arrange
-      setupMocks({
-        storeDetail: createStoreDetail(),
-        providerInfo: createProviderInfo({
-          supported_creation_methods: [SupportedCreationMethods.MANUAL],
-        }),
-      })
-      const props = createDefaultProps()
-
-      // Act
-      const { container } = render(<CreateSubscriptionButton {...props} />)
-
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      expect(container).not.toBeEmptyDOMElement()
     })
 
     it('should render full button by default', () => {
@@ -1166,7 +1133,7 @@ describe('CreateSubscriptionButton', () => {
         id: 'oauth-builder',
         name: 'OAuth Builder',
         provider: 'test-provider',
-        credential_type: TriggerCredentialTypeEnum.Oauth2,
+        credential_type: TriggerCredentialType.Oauth2,
         credentials: {},
         endpoint: 'https://test.com',
         parameters: {},
@@ -1549,24 +1516,6 @@ describe('CreateSubscriptionButton', () => {
 
   // ==================== Button Type Variations ====================
   describe('Button Type Variations', () => {
-    it('should render full button with grow class', () => {
-      // Arrange
-      setupMocks({
-        storeDetail: createStoreDetail(),
-        providerInfo: createProviderInfo({
-          supported_creation_methods: [SupportedCreationMethods.MANUAL],
-        }),
-      })
-      const props = createDefaultProps({ buttonType: CreateButtonType.FULL_BUTTON })
-
-      // Act
-      render(<CreateSubscriptionButton {...props} />)
-
-      // Assert
-      const button = getCreateButton()
-      expect(button)!.toHaveClass('w-full')
-    })
-
     it('should render icon button with float-right class', () => {
       // Arrange
       setupMocks({
@@ -1583,25 +1532,6 @@ describe('CreateSubscriptionButton', () => {
       // Assert
       // Assert
       expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
-    })
-  })
-
-  // ==================== Export Verification ====================
-  describe('Export Verification', () => {
-    it('should export CreateButtonType enum', () => {
-      // Assert
-      expect(CreateButtonType.FULL_BUTTON).toBe('full-button')
-      expect(CreateButtonType.ICON_BUTTON).toBe('icon-button')
-    })
-
-    it('should export DEFAULT_METHOD constant', () => {
-      // Assert
-      expect(DEFAULT_METHOD).toBe('default')
-    })
-
-    it('should export CreateSubscriptionButton component', () => {
-      // Assert
-      expect(typeof CreateSubscriptionButton).toBe('function')
     })
   })
 
@@ -1668,7 +1598,7 @@ describe('CreateSubscriptionButton', () => {
         id: 'oauth-builder',
         name: 'OAuth Builder',
         provider: 'test-provider',
-        credential_type: TriggerCredentialTypeEnum.Oauth2,
+        credential_type: TriggerCredentialType.Oauth2,
         credentials: {},
         endpoint: 'https://test.com',
         parameters: {},
@@ -1840,7 +1770,7 @@ describe('CreateSubscriptionButton', () => {
         id: 'oauth-builder',
         name: 'OAuth Builder',
         provider: 'test-provider',
-        credential_type: TriggerCredentialTypeEnum.Oauth2,
+        credential_type: TriggerCredentialType.Oauth2,
         credentials: {},
         endpoint: 'https://test.com',
         parameters: {},

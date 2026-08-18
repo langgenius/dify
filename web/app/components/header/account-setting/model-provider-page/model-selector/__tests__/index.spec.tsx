@@ -71,7 +71,7 @@ const makeModel = (overrides: Partial<Model> = {}): Model => ({
   ...overrides,
 })
 
-const createTestQueryClient = () =>
+const createConsoleQueryClient = () =>
   new QueryClient({
     defaultOptions: {
       queries: { retry: false },
@@ -80,7 +80,7 @@ const createTestQueryClient = () =>
   })
 
 const renderWithQueryClient = (node: ReactNode) => {
-  const queryClient = createTestQueryClient()
+  const queryClient = createConsoleQueryClient()
   return render(<QueryClientProvider client={queryClient}>{node}</QueryClientProvider>)
 }
 

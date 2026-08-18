@@ -1,10 +1,11 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 import { defaultPlan } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { render } from '@/test/console/render'
 import { ArchivedLogsNotice } from '../archived-logs-notice'
 
 vi.mock('@/config', async (importOriginal) => {
@@ -15,8 +16,13 @@ vi.mock('@/config', async (importOriginal) => {
   }
 })
 
-vi.mock('@/context/workspace-state', () => ({ isCurrentWorkspaceManagerAtom: {} }))
-vi.mock('jotai', () => ({ useAtomValue: () => true }))
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createWorkspaceStateModuleMock(() => ({
+    isCurrentWorkspaceManager: true,
+  }))
+})
 
 vi.mock('@/context/provider-context', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/context/provider-context')>()

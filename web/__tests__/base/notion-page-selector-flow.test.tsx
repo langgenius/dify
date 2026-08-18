@@ -152,11 +152,14 @@ describe('Base Notion Page Selector Flow', () => {
       ]),
     )
 
-    await user.type(screen.getByTestId('notion-search-input'), 'missing-page')
+    await user.type(
+      screen.getByPlaceholderText('common.dataSource.notion.selector.searchPages'),
+      'missing-page',
+    )
     expect(screen.getByText('common.dataSource.notion.selector.noSearchResult')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
-    expect(screen.getByTestId('notion-page-name-root-1')).toBeInTheDocument()
+    expect(screen.getByText('Root 1')).toBeInTheDocument()
 
     await user.click(screen.getByTestId('notion-page-preview-root-1'))
     expect(onPreview).toHaveBeenCalledWith(
@@ -181,7 +184,7 @@ describe('Base Notion Page Selector Flow', () => {
     expect(onSelectCredential).toHaveBeenCalledWith('c1')
 
     await user.click(screen.getByRole('combobox', { name: /Workspace 1/ }))
-    await user.click(screen.getByTestId('notion-credential-item-c2'))
+    await user.click(screen.getByRole('option', { name: /Workspace 2/ }))
 
     expect(mockInvalidPreImportNotionPages).toHaveBeenCalledWith({
       datasetId: 'dataset-1',
@@ -191,7 +194,7 @@ describe('Base Notion Page Selector Flow', () => {
 
     await waitFor(() => {
       expect(onSelectCredential).toHaveBeenLastCalledWith('c2')
-      expect(screen.getByTestId('notion-page-name-external-1')).toBeInTheDocument()
+      expect(screen.getByText('External 1')).toBeInTheDocument()
     })
 
     await user.click(

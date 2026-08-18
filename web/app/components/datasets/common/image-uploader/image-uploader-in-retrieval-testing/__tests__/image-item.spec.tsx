@@ -16,12 +16,6 @@ const createMockFile = (overrides: Partial<FileEntity> = {}): FileEntity =>
 
 describe('ImageItem (image-uploader-in-retrieval-testing)', () => {
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const file = createMockFile()
-      const { container } = render(<ImageItem file={file} />)
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
     it('should render with size-20 class', () => {
       const file = createMockFile()
       const { container } = render(<ImageItem file={file} />)
@@ -128,18 +122,6 @@ describe('ImageItem (image-uploader-in-retrieval-testing)', () => {
         const imageContainer = container.querySelector('.group\\/file-image')
         if (imageContainer) fireEvent.click(imageContainer)
       }).not.toThrow()
-    })
-
-    it('should use base64Url when available', () => {
-      const file = createMockFile({ base64Url: 'data:custom' })
-      const { container } = render(<ImageItem file={file} />)
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
-    it('should fallback to sourceUrl', () => {
-      const file = createMockFile({ base64Url: undefined })
-      const { container } = render(<ImageItem file={file} />)
-      expect(container.firstChild).toBeInTheDocument()
     })
   })
 })

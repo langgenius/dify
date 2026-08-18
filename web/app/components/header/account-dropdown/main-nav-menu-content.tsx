@@ -16,14 +16,14 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
 import { useTranslation } from 'react-i18next'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { userProfileAtom } from '@/context/account-state'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import Link from '@/next/link'
 import { ExternalLinkIndicator, MenuItemContent } from './menu-item-content'
 
@@ -102,7 +102,10 @@ type MainNavMenuContentProps = {
 
 export function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
   const { t } = useTranslation()
-  const userProfile = useAtomValue(userProfileAtom)
+  const { data: userProfile } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile,
+  })
   const { isEducationAccount } = useProviderContext()
   const { setShowAccountSettingModal } = useModalContext()
 

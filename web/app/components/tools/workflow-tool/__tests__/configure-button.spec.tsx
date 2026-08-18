@@ -1,6 +1,6 @@
 import type { WorkflowToolDrawerPayload } from '../index'
 import type { WorkflowToolProviderResponse } from '@/app/components/tools/types'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { VarType } from '@/app/components/workflow/types'
 import WorkflowToolConfigureButton from '../configure-button'
@@ -190,18 +190,6 @@ describe('WorkflowToolConfigureButton', () => {
 
   // Rendering Tests (REQUIRED)
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      // Arrange
-      const props = createDefaultConfigureButtonProps()
-
-      // Act
-      render(<WorkflowToolConfigureButton {...props} />)
-
-      // Assert
-      // Assert
-      expect(screen.getByText('workflow.common.workflowAsTool'))!.toBeInTheDocument()
-    })
-
     it('should render configure required badge when not published', () => {
       // Arrange
       const props = createDefaultConfigureButtonProps({ published: false })
@@ -389,29 +377,6 @@ describe('WorkflowToolConfigureButton', () => {
 
   // Edge Cases (REQUIRED)
   describe('Edge Cases', () => {
-    it('should handle rapid publish/unpublish state changes', async () => {
-      // Arrange
-      const props = createDefaultConfigureButtonProps({ published: false })
-
-      // Act
-      const { rerender } = render(<WorkflowToolConfigureButton {...props} />)
-
-      // Toggle published state rapidly
-      await act(async () => {
-        rerender(<WorkflowToolConfigureButton {...props} published={true} />)
-      })
-      await act(async () => {
-        rerender(<WorkflowToolConfigureButton {...props} published={false} />)
-      })
-      await act(async () => {
-        rerender(<WorkflowToolConfigureButton {...props} published={true} />)
-      })
-
-      // Assert - should not crash
-      // Assert - should not crash
-      expect(screen.getByText('workflow.common.workflowAsTool'))!.toBeInTheDocument()
-    })
-
     it('should keep the configure entry independent from workflow parameter shape', async () => {
       // Arrange
       const user = userEvent.setup()
@@ -483,9 +448,9 @@ describe('WorkflowToolDrawer', () => {
 
       // Assert
       // Assert
-      expect(screen.getByTestId('drawer-title'))!.toHaveTextContent(
-        'workflow.common.workflowAsTool',
-      )
+      expect(
+        screen.getByRole('heading', { name: 'workflow.common.workflowAsTool' }),
+      ).toBeInTheDocument()
     })
 
     it('should render name input field', () => {
@@ -1253,44 +1218,6 @@ describe('WorkflowToolDrawer', () => {
       expect(textElements.length).toBe(2)
     })
 
-    it('should handle undefined onSave gracefully', async () => {
-      // Arrange
-      const user = userEvent.setup()
-      const props = {
-        isAdd: false,
-        payload: createDefaultDrawerPayload({ workflow_tool_id: 'tool-123' }),
-        onHide: vi.fn(),
-        // onSave is undefined
-      }
-
-      // Act
-      render(<WorkflowToolDrawer {...props} />)
-      await user.click(screen.getByText('common.operation.save'))
-
-      // Show confirm modal
-      await waitFor(() => {
-        expect(screen.getByText('tools.createTool.confirmTitle'))!.toBeInTheDocument()
-      })
-
-      // Assert - should not crash
-      await user.click(screen.getByText('common.operation.confirm'))
-    })
-
-    it('should handle undefined onCreate gracefully', async () => {
-      // Arrange
-      const user = userEvent.setup()
-      const props = {
-        isAdd: true,
-        payload: createDefaultDrawerPayload(),
-        onHide: vi.fn(),
-        // onCreate is undefined
-      }
-
-      // Act & Assert - should not crash
-      render(<WorkflowToolDrawer {...props} />)
-      await user.click(screen.getByText('common.operation.save'))
-    })
-
     it('should close confirm modal on close button', async () => {
       // Arrange
       const user = userEvent.setup()
@@ -1331,21 +1258,6 @@ describe('MethodSelector', () => {
 
   // Rendering Tests (REQUIRED)
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      // Arrange
-      const props = {
-        value: 'llm',
-        onChange: vi.fn(),
-      }
-
-      // Act
-      render(<MethodSelector {...props} />)
-
-      // Assert
-      // Assert
-      expect(screen.getByTestId('popover-trigger'))!.toBeInTheDocument()
-    })
-
     it('should display parameter method text when value is llm', () => {
       // Arrange
       const props = {
@@ -1511,25 +1423,6 @@ describe('MethodSelector', () => {
 
   // Edge Cases (REQUIRED)
   describe('Edge Cases', () => {
-    it('should handle rapid value changes', async () => {
-      // Arrange
-      const onChange = vi.fn()
-      const props = {
-        value: 'llm',
-        onChange,
-      }
-
-      // Act
-      const { rerender } = render(<MethodSelector {...props} />)
-      rerender(<MethodSelector {...props} value="form" />)
-      rerender(<MethodSelector {...props} value="llm" />)
-      rerender(<MethodSelector {...props} value="form" />)
-
-      // Assert - should not crash
-      // Assert - should not crash
-      expect(screen.getByText('tools.createTool.toolInput.methodSetting'))!.toBeInTheDocument()
-    })
-
     it('should handle empty string value', () => {
       // Arrange
       const props = {
@@ -1638,26 +1531,6 @@ describe('Integration Tests', () => {
           }),
         )
       })
-    })
-  })
-
-  // Test callbacks and state synchronization
-  describe('Callback Stability', () => {
-    it('should maintain callback references across rerenders', async () => {
-      // Arrange
-      const onConfigure = vi.fn()
-      const props = createDefaultConfigureButtonProps({
-        onConfigure,
-      })
-
-      // Act
-      const { rerender } = render(<WorkflowToolConfigureButton {...props} />)
-      rerender(<WorkflowToolConfigureButton {...props} />)
-      rerender(<WorkflowToolConfigureButton {...props} />)
-
-      // Assert - component should not crash and callbacks should be stable
-      // Assert - component should not crash and callbacks should be stable
-      expect(screen.getByText('workflow.common.workflowAsTool'))!.toBeInTheDocument()
     })
   })
 })

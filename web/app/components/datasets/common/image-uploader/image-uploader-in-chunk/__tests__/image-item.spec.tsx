@@ -16,12 +16,6 @@ const createMockFile = (overrides: Partial<FileEntity> = {}): FileEntity =>
 
 describe('ImageItem (image-uploader-in-chunk)', () => {
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const file = createMockFile()
-      const { container } = render(<ImageItem file={file} />)
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
     it('should render image preview', () => {
       const file = createMockFile()
       const { container } = render(<ImageItem file={file} />)
@@ -44,18 +38,6 @@ describe('ImageItem (image-uploader-in-chunk)', () => {
       const { container } = render(<ImageItem file={file} showDeleteAction={false} />)
       const deleteButton = container.querySelector('button')
       expect(deleteButton).not.toBeInTheDocument()
-    })
-
-    it('should use base64Url for image when available', () => {
-      const file = createMockFile({ base64Url: 'data:image/png;base64,custom' })
-      const { container } = render(<ImageItem file={file} />)
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
-    it('should fallback to sourceUrl when base64Url is not available', () => {
-      const file = createMockFile({ base64Url: undefined })
-      const { container } = render(<ImageItem file={file} />)
-      expect(container.firstChild).toBeInTheDocument()
     })
   })
 

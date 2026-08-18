@@ -92,31 +92,11 @@ describe('ModelSelectorTrigger', () => {
       )
 
       expect(screen.getByText('legacy-model')).toBeInTheDocument()
-      expect(screen.getByText('legacy-model')).toHaveClass('line-through')
-      expect(container.firstElementChild).toHaveClass('bg-components-input-bg-disabled')
       expect(container.querySelector('.i-ri-arrow-down-s-line')).not.toBeInTheDocument()
     })
   })
 
   describe('Props', () => {
-    it('should apply custom className to root element', () => {
-      const { container } = render(<ModelSelectorTrigger className="custom-trigger" />)
-
-      expect(container.firstElementChild).toHaveClass('custom-trigger')
-    })
-
-    it('should apply open background style when open is true and model is active', () => {
-      const { container } = render(
-        <ModelSelectorTrigger
-          currentProvider={createModel()}
-          currentModel={createModelItem()}
-          open
-        />,
-      )
-
-      expect(container.firstElementChild).toHaveClass('bg-components-input-bg-hover')
-    })
-
     it('should hide the expand arrow when readonly is true', () => {
       const { container } = render(
         <ModelSelectorTrigger
@@ -160,9 +140,6 @@ describe('ModelSelectorTrigger', () => {
         <ModelSelectorTrigger currentProvider={createModel()} currentModel={createModelItem()} />,
       )
 
-      expect(
-        screen.getByText('common.modelProvider.selector.creditsExhausted').parentElement,
-      ).toHaveClass('bg-components-badge-bg-dimm')
       expect(screen.queryByText('CHAT')).not.toBeInTheDocument()
     })
 

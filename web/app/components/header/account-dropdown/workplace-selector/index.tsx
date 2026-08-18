@@ -8,6 +8,7 @@ import {
 } from '@langgenius/dify-ui/select'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
 import { Plan } from '@/app/components/billing/type'
 import { PlanBadge } from '@/app/components/header/plan-badge'
 
@@ -32,11 +33,7 @@ const WorkplaceSelectorItem = memo(({ workspace }: WorkplaceSelectorItemProps) =
 
   return (
     <SelectItem value={workspace.id} className="gap-2 py-1 pr-2 pl-3">
-      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-components-icon-bg-blue-solid text-[13px]">
-        <span className="h-6 bg-linear-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text align-middle leading-6 font-semibold text-shadow-shadow-1 uppercase opacity-90">
-          {workspaceName[0]?.toLocaleUpperCase()}
-        </span>
-      </div>
+      <WorkspaceAvatar name={workspaceName} size="sm" />
       <SelectItemText className="system-md-regular">{workspaceName}</SelectItemText>
       <PlanBadge plan={workspacePlan} />
     </SelectItem>

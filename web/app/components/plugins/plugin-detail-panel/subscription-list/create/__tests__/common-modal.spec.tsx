@@ -3,7 +3,7 @@ import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
-import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
+import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
 import { CommonCreateModal } from '../common-modal'
 
 type PluginDetail = {
@@ -63,7 +63,7 @@ function createMockSubscriptionBuilder(
     id: 'builder-123',
     name: 'Test Builder',
     provider: 'test-provider',
-    credential_type: TriggerCredentialTypeEnum.ApiKey,
+    credential_type: TriggerCredentialType.ApiKey,
     credentials: {},
     endpoint: 'https://example.com/callback',
     parameters: {},
@@ -305,23 +305,25 @@ describe('CommonCreateModal', () => {
     it('should render modal with correct title for API Key method', () => {
       render(<CommonCreateModal {...defaultProps} />)
 
-      expect(screen.getByTestId('modal-title')).toHaveTextContent(
-        'pluginTrigger.modal.apiKey.title',
-      )
+      expect(
+        screen.getByRole('heading', { name: 'pluginTrigger.modal.apiKey.title' }),
+      ).toBeInTheDocument()
     })
 
     it('should render modal with correct title for Manual method', () => {
       render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} />)
 
-      expect(screen.getByTestId('modal-title')).toHaveTextContent(
-        'pluginTrigger.modal.manual.title',
-      )
+      expect(
+        screen.getByRole('heading', { name: 'pluginTrigger.modal.manual.title' }),
+      ).toBeInTheDocument()
     })
 
     it('should render modal with correct title for OAuth method', () => {
       render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.OAUTH} />)
 
-      expect(screen.getByTestId('modal-title')).toHaveTextContent('pluginTrigger.modal.oauth.title')
+      expect(
+        screen.getByRole('heading', { name: 'pluginTrigger.modal.oauth.title' }),
+      ).toBeInTheDocument()
     })
 
     it('should show multi-steps for API Key method', () => {
@@ -584,21 +586,23 @@ describe('CommonCreateModal', () => {
   describe('MODAL_TITLE_KEY_MAP', () => {
     it('should use correct title key for APIKEY', () => {
       render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.APIKEY} />)
-      expect(screen.getByTestId('modal-title')).toHaveTextContent(
-        'pluginTrigger.modal.apiKey.title',
-      )
+      expect(
+        screen.getByRole('heading', { name: 'pluginTrigger.modal.apiKey.title' }),
+      ).toBeInTheDocument()
     })
 
     it('should use correct title key for OAUTH', () => {
       render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.OAUTH} />)
-      expect(screen.getByTestId('modal-title')).toHaveTextContent('pluginTrigger.modal.oauth.title')
+      expect(
+        screen.getByRole('heading', { name: 'pluginTrigger.modal.oauth.title' }),
+      ).toBeInTheDocument()
     })
 
     it('should use correct title key for MANUAL', () => {
       render(<CommonCreateModal {...defaultProps} createType={SupportedCreationMethods.MANUAL} />)
-      expect(screen.getByTestId('modal-title')).toHaveTextContent(
-        'pluginTrigger.modal.manual.title',
-      )
+      expect(
+        screen.getByRole('heading', { name: 'pluginTrigger.modal.manual.title' }),
+      ).toBeInTheDocument()
     })
   })
 

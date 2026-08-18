@@ -2,7 +2,7 @@ import type { Edge as ReactFlowEdge, Node as ReactFlowNode, Viewport, XYPosition
 import type { Plugin, PluginMeta } from '@/app/components/plugins/types'
 import type { Collection, Tool } from '@/app/components/tools/types'
 import type {
-  BlockClassificationEnum,
+  BlockClassification,
   BlockDefaultValue,
   PluginDefaultValue,
 } from '@/app/components/workflow/block-selector/types'
@@ -329,7 +329,7 @@ export type NodeOutPutVar = {
 
 export type NodeDefault<T = {}> = {
   metaData: {
-    classification: BlockClassificationEnum
+    classification: BlockClassification
     sort: number
     type: BlockEnum
     title: string

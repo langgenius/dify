@@ -76,7 +76,7 @@ function CommonCreateModalContent({ onClose, createType, builder }: Omit<Props, 
       data-disabled={isDisabled}
     >
       <div className="relative shrink-0 p-6 pr-14 pb-3">
-        <DialogTitle className="title-2xl-semi-bold text-text-primary" data-testid="modal-title">
+        <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t(($) => $[MODAL_TITLE_KEY_MAP[createType]], { ns: 'pluginTrigger' })}
         </DialogTitle>
         <DialogCloseButton

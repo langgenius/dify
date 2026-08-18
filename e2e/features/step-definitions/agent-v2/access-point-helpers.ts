@@ -12,10 +12,10 @@ export const getPreseededResource = (
   name: string,
   kind: 'agent' | 'workflow',
 ) => {
-  const resource = world.agentBuilder.preflight.preseededResources[name]
+  const resource = world.agentBuilder.fixtures.preseededResources[name]
   if (!resource || resource.kind !== kind) {
     throw new Error(
-      `Preseeded ${kind} "${name}" is not available. Run the matching preflight step first.`,
+      `Preseeded ${kind} "${name}" is not available. Run the matching fixture setup step first.`,
     )
   }
 

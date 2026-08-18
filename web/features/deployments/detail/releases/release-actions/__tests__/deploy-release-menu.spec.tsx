@@ -93,7 +93,7 @@ describe('DeployReleaseMenu', () => {
 
     render(<DeployReleaseMenu releaseId={release.id} releaseRows={[release]} />)
 
-    fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
+    fireEvent.click(screen.getByLabelText('deployments.versions.moreActions'))
     const deleteItem = screen.getByRole('menuitem', { name: 'deployments.versions.deleteRelease' })
 
     expect(deleteItem).toHaveAttribute('aria-disabled', 'true')

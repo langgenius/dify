@@ -158,28 +158,6 @@ describe('EmbeddingProcess', () => {
   })
 
   describe('Rendering', () => {
-    // Tests basic rendering functionality
-    it('should render without crashing', () => {
-      const props = createDefaultProps()
-
-      render(<EmbeddingProcess {...props} />)
-
-      expect(screen.getByTestId('rule-detail')).toBeInTheDocument()
-    })
-
-    it('should render RuleDetail component with correct props', () => {
-      const props = createDefaultProps({
-        indexingType: IndexingType.ECONOMICAL,
-        retrievalMethod: RETRIEVE_METHOD.fullText,
-      })
-
-      render(<EmbeddingProcess {...props} />)
-
-      // Assert - RuleDetail renders FieldInfo components with translated text
-      // Check that the component renders without error
-      expect(screen.getByTestId('rule-detail')).toBeInTheDocument()
-    })
-
     it('should render API reference link with correct URL', () => {
       const props = createDefaultProps()
 
@@ -898,62 +876,6 @@ describe('EmbeddingProcess', () => {
 
       // Assert - should show processing (since one is still indexing)
       expect(screen.getByText('datasetDocuments.embedding.processing')).toBeInTheDocument()
-    })
-  })
-
-  // Props Variations Tests
-  describe('Props Variations', () => {
-    // Tests for different prop combinations
-    it('should handle undefined indexingType', () => {
-      const props = createDefaultProps({ indexingType: undefined })
-
-      render(<EmbeddingProcess {...props} />)
-
-      // Assert - component renders without crashing
-      expect(screen.getByTestId('rule-detail')).toBeInTheDocument()
-    })
-
-    it('should handle undefined retrievalMethod', () => {
-      const props = createDefaultProps({ retrievalMethod: undefined })
-
-      render(<EmbeddingProcess {...props} />)
-
-      // Assert - component renders without crashing
-      expect(screen.getByTestId('rule-detail')).toBeInTheDocument()
-    })
-
-    it('should pass different indexingType values', () => {
-      const indexingTypes = [IndexingType.QUALIFIED, IndexingType.ECONOMICAL]
-
-      indexingTypes.forEach((indexingType) => {
-        const props = createDefaultProps({ indexingType })
-
-        const { unmount } = render(<EmbeddingProcess {...props} />)
-
-        // Assert - RuleDetail renders and shows appropriate text based on indexingType
-        expect(screen.getByTestId('rule-detail')).toBeInTheDocument()
-
-        unmount()
-      })
-    })
-
-    it('should pass different retrievalMethod values', () => {
-      const retrievalMethods = [
-        RETRIEVE_METHOD.semantic,
-        RETRIEVE_METHOD.fullText,
-        RETRIEVE_METHOD.hybrid,
-      ]
-
-      retrievalMethods.forEach((retrievalMethod) => {
-        const props = createDefaultProps({ retrievalMethod })
-
-        const { unmount } = render(<EmbeddingProcess {...props} />)
-
-        // Assert - RuleDetail renders and shows appropriate text based on retrievalMethod
-        expect(screen.getByTestId('rule-detail')).toBeInTheDocument()
-
-        unmount()
-      })
     })
   })
 

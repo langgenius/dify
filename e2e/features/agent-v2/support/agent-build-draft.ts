@@ -61,16 +61,6 @@ export async function getAgentBuildDraft(agentId: string): Promise<AgentBuildDra
   }
 }
 
-export async function applyAgentBuildDraft(agentId: string): Promise<void> {
-  const ctx = await createApiContext()
-  try {
-    const response = await ctx.post(`/console/api/agent/${agentId}/build-draft/apply`)
-    await expectApiResponseOK(response, `Apply Agent v2 build draft for ${agentId}`)
-  } finally {
-    await ctx.dispose()
-  }
-}
-
 export async function discardAgentBuildDraft(agentId: string): Promise<void> {
   const ctx = await createApiContext()
   try {

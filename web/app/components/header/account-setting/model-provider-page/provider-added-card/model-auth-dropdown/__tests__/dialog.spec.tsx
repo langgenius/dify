@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
 import type { ModelProvider } from '../../../declarations'
 import type { CredentialPanelState } from '../../use-credential-panel-state'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, screen } from '@testing-library/react'
+import { render } from '@/test/console/render'
 import DropdownContent from '../dropdown-content'
 
 type AlertDialogProps = {
@@ -14,6 +15,13 @@ const mockOpenConfirmDelete = vi.fn()
 const mockCloseConfirmDelete = vi.fn()
 const mockHandleConfirmDelete = vi.fn()
 const mockHandleOpenModal = vi.fn()
+
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
 
 vi.mock('../../../model-auth/hooks', () => ({
   useAuth: () => ({
@@ -114,6 +122,14 @@ const createState = (overrides: Partial<CredentialPanelState> = {}): CredentialP
   credentialName: undefined,
   credits: 0,
   ...overrides,
+})
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: [],
+  }))
 })
 
 describe('DropdownContent dialog branches', () => {

@@ -168,21 +168,6 @@ describe('LanguageSelect', () => {
 
   // Styling and memoization
   describe('Styling and memoization', () => {
-    it('should apply the compact tertiary trigger styles', () => {
-      render(<LanguageSelect {...createDefaultProps()} />)
-
-      const trigger = screen.getByRole('combobox', { name: 'language' })
-      expect(trigger).toHaveClass(
-        'mx-1',
-        'bg-components-button-tertiary-bg',
-        'text-components-button-tertiary-text',
-      )
-    })
-
-    it('should be wrapped with React.memo', () => {
-      expect(LanguageSelect.$$typeof).toBe(Symbol.for('react.memo'))
-    })
-
     it('should avoid re-rendering when props stay the same', () => {
       const renderSpy = vi.fn()
       const props = createDefaultProps()

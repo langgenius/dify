@@ -2,15 +2,12 @@ import type { GetWorkflowRunArchivesResponse } from '@dify/contracts/api/console
 import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
-import {
-  createTestQueryClient,
-  renderWithSystemFeatures,
-} from '@/__tests__/utils/mock-system-features'
 import { defaultPlan } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { consoleQuery } from '@/service/client'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import WorkflowLogArchivesPage from '../index'
 
 vi.mock('@/config', async (importOriginal) => {
@@ -74,10 +71,10 @@ function mockPlan(planType: Plan.sandbox | Plan.professional) {
 }
 
 function renderPage() {
-  const queryClient = createTestQueryClient()
+  const queryClient = createConsoleQueryClient()
   queryClient.setQueryData(consoleQuery.workflowRunArchives.get.queryKey(), archiveData)
 
-  return renderWithSystemFeatures(<WorkflowLogArchivesPage />, {
+  return renderWithConsoleQuery(<WorkflowLogArchivesPage />, {
     queryClient,
   })
 }

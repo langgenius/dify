@@ -14,6 +14,7 @@ const StatusContainer: FC<Props> = ({ status, children }) => {
 
   return (
     <div
+      role="status"
       className={cn(
         'relative rounded-lg border border-workflow-display-disabled-border-1 px-3 py-2.5 system-xs-regular break-all',
         status === 'succeeded' &&

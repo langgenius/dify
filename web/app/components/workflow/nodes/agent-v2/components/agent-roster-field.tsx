@@ -329,11 +329,13 @@ export function AgentRosterField({
   agent,
   agentId,
   canOpenPanel = true,
+  errorMessage,
   isPanelOpen,
   isPanelCopyPending = false,
   isPending = false,
   isLoading = false,
   isInlineSetup = false,
+  isRetrying = false,
   panelBody,
   panelMode = 'detail',
   showPanelDetailActions = true,
@@ -341,16 +343,19 @@ export function AgentRosterField({
   onChange,
   onMakeCopy,
   onPanelOpenChange,
+  onRetry,
   onSaveInlineToRoster,
   onStartFromScratch,
 }: {
   agent?: AgentRosterDisplayData
   agentId?: string
   canOpenPanel?: boolean
+  errorMessage?: string
   isPanelOpen?: boolean
   isPanelCopyPending?: boolean
   isLoading?: boolean
   isInlineSetup?: boolean
+  isRetrying?: boolean
   isPending?: boolean
   panelBody?: ReactNode
   panelMode?: AgentRosterDrawerMode
@@ -359,6 +364,7 @@ export function AgentRosterField({
   onChange: (agent: AgentRosterNodeData) => void
   onMakeCopy?: () => void
   onPanelOpenChange?: (open: boolean) => void
+  onRetry?: () => void
   onSaveInlineToRoster?: () => void
   onStartFromScratch?: () => void
 }) {
@@ -464,7 +470,30 @@ export function AgentRosterField({
           </PopoverContent>
         </Popover>
       </div>
-      {agent ? (
+      {errorMessage ? (
+        <div
+          role="alert"
+          className="flex min-h-13 w-full min-w-0 items-center gap-2 rounded-[10px] border-[0.5px] border-state-destructive-border bg-components-panel-on-panel-item-bg py-2 pr-2 pl-2 text-left shadow-xs shadow-shadow-shadow-3"
+        >
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-state-destructive-hover text-text-destructive">
+            <span aria-hidden className="i-ri-error-warning-line size-4" />
+          </span>
+          <span className="line-clamp-2 min-w-0 flex-1 system-xs-medium text-text-destructive">
+            {errorMessage}
+          </span>
+          {onRetry && (
+            <Button
+              variant="secondary"
+              size="small"
+              className="shrink-0"
+              loading={isRetrying}
+              onClick={onRetry}
+            >
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          )}
+        </div>
+      ) : agent ? (
         canOpenPanel ? (
           <>
             {isInlineSetup ? (

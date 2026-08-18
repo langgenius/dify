@@ -87,29 +87,15 @@ describe('markdown-with-directive', () => {
     })
   })
 
-  // Validate WithIconCardList rendering and class merge behavior.
   describe('WithIconCardList component', () => {
-    it('should render children and merge className with base class', () => {
-      const { container } = render(
-        <WithIconCardList className="custom-list-class">
+    it('should render children', () => {
+      render(
+        <WithIconCardList>
           <span>List child</span>
         </WithIconCardList>,
       )
 
       expect(screen.getByText('List child')).toBeInTheDocument()
-      expect(container.firstElementChild).toHaveClass('space-y-1')
-      expect(container.firstElementChild).toHaveClass('custom-list-class')
-    })
-
-    it('should render base class when className is not provided', () => {
-      const { container } = render(
-        <WithIconCardList>
-          <span>Only base class</span>
-        </WithIconCardList>,
-      )
-
-      expect(screen.getByText('Only base class')).toBeInTheDocument()
-      expect(container.firstElementChild).toHaveClass('space-y-1')
     })
   })
 

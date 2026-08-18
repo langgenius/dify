@@ -1,7 +1,10 @@
+import asyncio
 import json
+from collections.abc import AsyncGenerator
+from typing import cast
 
 from dify_agent.protocol.schemas import RunFailedEvent, RunFailedEventData, RunStartedEvent
-from dify_agent.server.sse import format_sse_event
+from dify_agent.server.sse import format_sse_event, sse_event_stream
 
 
 def test_format_sse_event_uses_id_event_and_json_data() -> None:
@@ -28,3 +31,21 @@ def test_format_sse_event_escapes_unicode_line_separators() -> None:
     assert "\\u2028" in frame
     assert "\\u2029" in frame
     assert json.loads(data)["data"]["error"] == error
+
+
+def test_sse_event_stream_emits_heartbeats_while_waiting() -> None:
+    async def scenario() -> None:
+        release = asyncio.Event()
+
+        async def events():
+            await release.wait()
+            yield RunStartedEvent(id="1-0", run_id="run-1")
+
+        stream = cast(AsyncGenerator[str, None], sse_event_stream(events(), heartbeat_interval_seconds=0.001))
+        assert await anext(stream) == ": keepalive\n\n"
+
+        _ = release.set()
+        assert (await anext(stream)).startswith("id: 1-0\nevent: run_started")
+        await stream.aclose()
+
+    asyncio.run(scenario())

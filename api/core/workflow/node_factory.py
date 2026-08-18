@@ -499,6 +499,9 @@ class DifyNodeFactory(NodeFactory):
                     base_url=dify_config.AGENT_BACKEND_BASE_URL,
                     use_fake=dify_config.AGENT_BACKEND_USE_FAKE,
                     fake_scenario=dify_config.AGENT_BACKEND_FAKE_SCENARIO,
+                    stream_read_timeout_seconds=dify_config.AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS,
+                    stream_max_reconnects=dify_config.AGENT_BACKEND_STREAM_MAX_RECONNECTS,
+                    stream_run_timeout_seconds=dify_config.AGENT_BACKEND_RUN_TIMEOUT_SECONDS,
                 ),
                 "event_adapter": AgentBackendRunEventAdapter(),
                 # Agent Files §4.6: reback file outputs from the ToolFile row so

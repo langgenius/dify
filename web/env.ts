@@ -93,6 +93,7 @@ const clientSchema = {
   NEXT_PUBLIC_ENABLE_TRIAL_APP: coercedBoolean.default(true),
   NEXT_PUBLIC_ENABLE_EXPLORE_BANNER: coercedBoolean.default(true),
   NEXT_PUBLIC_ENABLE_LEARN_APP: coercedBoolean.default(true),
+  NEXT_PUBLIC_ENABLE_STEP_BY_STEP_TOUR: coercedBoolean.default(true),
   NEXT_PUBLIC_RBAC_ENABLED: coercedBoolean.default(false),
 
   /**
@@ -164,6 +165,10 @@ const clientSchema = {
    */
   NEXT_PUBLIC_UPLOAD_IMAGE_AS_ICON: coercedBoolean.default(false),
   NEXT_PUBLIC_WEB_PREFIX: z.url().optional(),
+  /**
+   * The timeout for the cmd+k workflow generation in millisecond
+   */
+  NEXT_PUBLIC_WORKFLOW_GENERATION_TIMEOUT_MS: coercedNumber.default(180000),
   NEXT_PUBLIC_ZENDESK_FIELD_ID_EMAIL: z.string().optional(),
   NEXT_PUBLIC_ZENDESK_FIELD_ID_ENVIRONMENT: z.string().optional(),
   NEXT_PUBLIC_ZENDESK_FIELD_ID_PLAN: z.string().optional(),
@@ -189,6 +194,10 @@ export const env = createEnv({
      * The timeout for the text generation in millisecond
      */
     TEXT_GENERATION_TIMEOUT_MS: coercedNumber.default(60000),
+    /**
+     * The timeout for the cmd+k workflow generation in millisecond
+     */
+    WORKFLOW_GENERATION_TIMEOUT_MS: coercedNumber.default(180000),
   },
   client: clientSchema,
   experimental__runtimeEnv: {
@@ -278,6 +287,9 @@ export const env = createEnv({
     NEXT_PUBLIC_ENABLE_LEARN_APP: isServer
       ? process.env.NEXT_PUBLIC_ENABLE_LEARN_APP
       : getRuntimeEnvFromBody('enableLearnApp'),
+    NEXT_PUBLIC_ENABLE_STEP_BY_STEP_TOUR: isServer
+      ? process.env.NEXT_PUBLIC_ENABLE_STEP_BY_STEP_TOUR
+      : getRuntimeEnvFromBody('enableStepByStepTour'),
     NEXT_PUBLIC_RBAC_ENABLED: isServer
       ? process.env.NEXT_PUBLIC_RBAC_ENABLED
       : getRuntimeEnvFromBody('rbacEnabled'),
@@ -354,6 +366,9 @@ export const env = createEnv({
     NEXT_PUBLIC_WEB_PREFIX: isServer
       ? process.env.NEXT_PUBLIC_WEB_PREFIX
       : getRuntimeEnvFromBody('webPrefix'),
+    NEXT_PUBLIC_WORKFLOW_GENERATION_TIMEOUT_MS: isServer
+      ? process.env.NEXT_PUBLIC_WORKFLOW_GENERATION_TIMEOUT_MS
+      : getRuntimeEnvFromBody('workflowGenerationTimeoutMs'),
     NEXT_PUBLIC_ZENDESK_FIELD_ID_EMAIL: isServer
       ? process.env.NEXT_PUBLIC_ZENDESK_FIELD_ID_EMAIL
       : getRuntimeEnvFromBody('zendeskFieldIdEmail'),

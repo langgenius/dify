@@ -14,11 +14,10 @@ import VerifyStateModal from '@/app/education-apply/verify-state-modal'
 import { IS_CLOUD_EDITION } from '@/config'
 import { userProfileEmailAtom } from '@/context/account-state'
 import { useModalContextSelector } from '@/context/modal-context'
-import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
+import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { usePathname, useRouter } from '@/next/navigation'
 import { useEducationVerify } from '@/service/use-education'
-import { BillingPermission, hasPermission } from '@/utils/permission'
 import { getDaysUntilEndOfMonth } from '@/utils/time'
 import Loading from '../../base/icons/src/public/thought/Loading'
 import { NUM_INFINITE } from '../config'
@@ -38,7 +37,7 @@ const PlanComp: FC<Props> = ({ loc }) => {
   const router = useRouter()
   const path = usePathname()
   const userProfileEmail = useAtomValue(userProfileEmailAtom)
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const { plan, enableEducationPlan, allowRefreshEducationVerify, isEducationAccount } =
     useProviderContext()
   const isAboutToExpire = allowRefreshEducationVerify
@@ -59,7 +58,6 @@ const PlanComp: FC<Props> = ({ loc }) => {
 
   const [showModal, setShowModal] = React.useState(false)
   const { handleEducationDiscount, isEducationDiscountLoading } = useEducationDiscount()
-  const canManageBilling = hasPermission(workspacePermissionKeys, BillingPermission.Manage)
   const { mutateAsync, isPending } = useEducationVerify()
   const setShowAccountSettingModal = useModalContextSelector((s) => s.setShowAccountSettingModal)
   const setEducationVerifying = useSetEducationVerifying()
@@ -112,7 +110,7 @@ const PlanComp: FC<Props> = ({ loc }) => {
               enableEducationPlan &&
               isEducationAccount &&
               type === Plan.sandbox &&
-              canManageBilling && (
+              isCurrentWorkspaceManager && (
                 <Button
                   variant="ghost"
                   onClick={handleEducationDiscount}

@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import pytest
 from pydantic import ValidationError
 from pydantic_ai.messages import FinalResultEvent
@@ -427,6 +429,45 @@ def test_run_succeeded_event_round_trips_usage() -> None:
     assert decoded.data.usage.completion_tokens == 5
     assert decoded.data.usage.total_tokens == 8
     assert b'"usage"' in payload
+
+
+def test_run_succeeded_event_round_trips_complete_pricing_usage() -> None:
+    event = RunSucceededEvent(
+        run_id="run-priced-usage",
+        data=RunSucceededEventData(
+            output="done",
+            session_snapshot=CompositorSessionSnapshot(layers=[]),
+            usage=AgentRunUsage(
+                prompt_tokens=10,
+                prompt_unit_price=Decimal("5"),
+                prompt_price_unit=Decimal("0.000001"),
+                prompt_price=Decimal("0.000050"),
+                completion_tokens=2,
+                completion_unit_price=Decimal("30"),
+                completion_price_unit=Decimal("0.000001"),
+                completion_price=Decimal("0.000060"),
+                total_tokens=12,
+                total_price=Decimal("0.000110"),
+                currency="USD",
+                latency=0.4,
+                time_to_first_token=0.1,
+                time_to_generate=0.3,
+            ),
+        ),
+    )
+
+    payload = RUN_EVENT_ADAPTER.dump_json(event)
+    decoded = RUN_EVENT_ADAPTER.validate_json(payload)
+
+    assert isinstance(decoded, RunSucceededEvent)
+    assert decoded.data.usage is not None
+    assert decoded.data.usage.prompt_price == Decimal("0.000050")
+    assert decoded.data.usage.completion_price == Decimal("0.000060")
+    assert decoded.data.usage.total_price == Decimal("0.000110")
+    assert decoded.data.usage.currency == "USD"
+    assert decoded.data.usage.latency == 0.4
+    assert decoded.data.usage.time_to_first_token == 0.1
+    assert decoded.data.usage.time_to_generate == 0.3
 
 
 def test_on_exit_accept_layer_overrides() -> None:

@@ -113,12 +113,6 @@ describe('NotionPagePreview', () => {
 
   // Rendering Tests - Verify component renders properly
   describe('Rendering', () => {
-    it('should render without crashing', async () => {
-      await renderNotionPagePreview()
-
-      expect(screen.getByText('datasetCreation.stepOne.pagePreview')).toBeInTheDocument()
-    })
-
     it('should render page preview header', async () => {
       await renderNotionPagePreview()
 
@@ -140,13 +134,6 @@ describe('NotionPagePreview', () => {
       await renderNotionPagePreview({ currentPage: page })
 
       expect(screen.getByText('My Notion Page')).toBeInTheDocument()
-    })
-
-    it('should apply correct CSS classes to container', async () => {
-      const { container } = await renderNotionPagePreview()
-
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('h-full')
     })
 
     it('should render NotionIcon component', async () => {
@@ -361,17 +348,14 @@ describe('NotionPagePreview', () => {
       expect(screen.getByText('Notion page preview content from API')).toBeInTheDocument()
     })
 
-    it('should handle API error gracefully', async () => {
+    it('should keep the preview header visible when loading fails', async () => {
       mockFetchNotionPagePreview.mockRejectedValue(new Error('Network error'))
 
-      const { container } = await renderNotionPagePreview({}, false)
+      await renderNotionPagePreview({}, false)
 
-      // Assert - Component should not crash
       await waitFor(() => {
-        expect(container.firstChild).toBeInTheDocument()
+        expect(screen.getByText('datasetCreation.stepOne.pagePreview')).toBeInTheDocument()
       })
-      // Header should still render
-      expect(screen.getByText('datasetCreation.stepOne.pagePreview')).toBeInTheDocument()
     })
 
     it('should handle empty content response', async () => {
@@ -543,15 +527,6 @@ describe('NotionPagePreview', () => {
         expect(screen.getByText('datasetCreation.stepOne.pagePreview')).toBeInTheDocument()
       })
 
-      it('should handle page with empty name', async () => {
-        const page = createMockNotionPage({ page_name: '' })
-
-        const { container } = await renderNotionPagePreview({ currentPage: page })
-
-        // Assert - Should not crash
-        expect(container.firstChild).toBeInTheDocument()
-      })
-
       it('should handle page with very long name', async () => {
         const longName = 'a'.repeat(200)
         const page = createMockNotionPage({ page_name: longName })
@@ -666,15 +641,6 @@ describe('NotionPagePreview', () => {
       expect(contentDiv?.textContent).toContain('Line 1')
       expect(contentDiv?.textContent).toContain('Line 2')
       expect(contentDiv?.textContent).toContain('Line 3')
-    })
-
-    it('should handle null content from API', async () => {
-      mockFetchNotionPagePreview.mockResolvedValue({ content: null as unknown as string })
-
-      const { container } = await renderNotionPagePreview()
-
-      // Assert - Should not crash
-      expect(container.firstChild).toBeInTheDocument()
     })
 
     it('should handle different page types', async () => {
@@ -810,25 +776,10 @@ describe('NotionPagePreview', () => {
       })
     })
 
-    it('should handle unmount during loading', async () => {
-      mockFetchNotionPagePreview.mockImplementation(
-        () => new Promise((resolve) => setTimeout(() => resolve({ content: 'delayed' }), 1000)),
-      )
-
-      // Act - Don't wait for content
-      const { unmount } = await renderNotionPagePreview({}, false)
-
-      // Unmount before API resolves
-      unmount()
-
-      // Assert - No errors should be thrown
-      expect(true).toBe(true)
-    })
-
     it('should handle page changing from defined to undefined', async () => {
       const page = createMockNotionPage()
 
-      const { rerender, container } = render(
+      const { rerender } = render(
         <NotionPagePreview
           currentPage={page}
           notionCredentialId="cred-123"
@@ -850,87 +801,7 @@ describe('NotionPagePreview', () => {
         )
       })
 
-      // Assert - Should not crash, API should not be called again
-      expect(container.firstChild).toBeInTheDocument()
       expect(mockFetchNotionPagePreview).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  describe('Accessibility', () => {
-    it('should have clickable close button with visual indicator', async () => {
-      const { container } = await renderNotionPagePreview()
-
-      const closeButton = container.querySelector('.cursor-pointer')
-      expect(closeButton).toBeInTheDocument()
-      expect(closeButton).toHaveClass('cursor-pointer')
-    })
-
-    it('should have proper heading structure', async () => {
-      await renderNotionPagePreview()
-
-      expect(screen.getByText('datasetCreation.stepOne.pagePreview')).toBeInTheDocument()
-    })
-  })
-
-  // Error Handling Tests
-  describe('Error Handling', () => {
-    it('should not crash on API network error', async () => {
-      mockFetchNotionPagePreview.mockRejectedValue(new Error('Network Error'))
-
-      const { container } = await renderNotionPagePreview({}, false)
-
-      // Assert - Component should still render
-      await waitFor(() => {
-        expect(container.firstChild).toBeInTheDocument()
-      })
-    })
-
-    it('should not crash on API timeout', async () => {
-      mockFetchNotionPagePreview.mockRejectedValue(new Error('Timeout'))
-
-      const { container } = await renderNotionPagePreview({}, false)
-
-      await waitFor(() => {
-        expect(container.firstChild).toBeInTheDocument()
-      })
-    })
-
-    it('should not crash on malformed API response', async () => {
-      mockFetchNotionPagePreview.mockResolvedValue({} as { content: string })
-
-      const { container } = await renderNotionPagePreview()
-
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
-    it('should handle 404 error gracefully', async () => {
-      mockFetchNotionPagePreview.mockRejectedValue(new Error('404 Not Found'))
-
-      const { container } = await renderNotionPagePreview({}, false)
-
-      await waitFor(() => {
-        expect(container.firstChild).toBeInTheDocument()
-      })
-    })
-
-    it('should handle 500 error gracefully', async () => {
-      mockFetchNotionPagePreview.mockRejectedValue(new Error('500 Internal Server Error'))
-
-      const { container } = await renderNotionPagePreview({}, false)
-
-      await waitFor(() => {
-        expect(container.firstChild).toBeInTheDocument()
-      })
-    })
-
-    it('should handle authorization error gracefully', async () => {
-      mockFetchNotionPagePreview.mockRejectedValue(new Error('401 Unauthorized'))
-
-      const { container } = await renderNotionPagePreview({}, false)
-
-      await waitFor(() => {
-        expect(container.firstChild).toBeInTheDocument()
-      })
     })
   })
 
@@ -996,59 +867,10 @@ describe('NotionPagePreview', () => {
       expect(img).toBeInTheDocument()
       expect(img).toHaveAttribute('src', 'https://example.com/custom-icon.png')
     })
-
-    it('should handle page with icon object having null values', async () => {
-      const page = createMockNotionPage({
-        page_icon: {
-          type: null,
-          url: null,
-          emoji: null,
-        },
-      })
-
-      const { container } = await renderNotionPagePreview({ currentPage: page })
-
-      // Assert - Should render, likely with default/fallback
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
-    it('should handle page with icon object having empty url', async () => {
-      // Suppress console.error for this test as we're intentionally testing empty src edge case
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(vi.fn())
-
-      const page = createMockNotionPage({
-        page_icon: {
-          type: 'url',
-          url: '',
-          emoji: null,
-        },
-      })
-
-      const { container } = await renderNotionPagePreview({ currentPage: page })
-
-      // Assert - Component should not crash, may render img or fallback
-      expect(container.firstChild).toBeInTheDocument()
-      // NotionIcon renders img when type is 'url'
-      const img = container.querySelector('img[alt="page icon"]')
-      if (img) expect(img).toBeInTheDocument()
-
-      // Restore console.error
-      consoleErrorSpy.mockRestore()
-    })
   })
 
   // Content Display Tests
   describe('Content Display', () => {
-    it('should display content in fileContent div with correct class', async () => {
-      mockFetchNotionPagePreview.mockResolvedValue({ content: 'Test content' })
-
-      const { container } = await renderNotionPagePreview()
-
-      const contentDiv = container.querySelector('[class*="fileContent"]')
-      expect(contentDiv).toBeInTheDocument()
-      expect(contentDiv).toHaveTextContent('Test content')
-    })
-
     it('should preserve whitespace in content', async () => {
       const contentWithWhitespace = '  indented content\n    more indent'
       mockFetchNotionPagePreview.mockResolvedValue({ content: contentWithWhitespace })

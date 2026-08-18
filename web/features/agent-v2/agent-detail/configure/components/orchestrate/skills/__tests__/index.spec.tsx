@@ -166,7 +166,7 @@ function ConfigSnapshotProbe() {
   const draft = useAtomValue(agentComposerDraftAtom)
   const configSnapshot = formStateToAgentSoulConfig({ formState: draft })
 
-  return <pre data-testid="config-snapshot-probe">{JSON.stringify(configSnapshot)}</pre>
+  return <pre aria-label="config snapshot">{JSON.stringify(configSnapshot)}</pre>
 }
 
 function renderAgentSkills({
@@ -372,7 +372,7 @@ describe('AgentSkills', () => {
     })
 
     expect(screen.getByText('Invoice Helper')).toBeInTheDocument()
-    const snapshot = JSON.parse(screen.getByTestId('config-snapshot-probe').textContent ?? '{}')
+    const snapshot = JSON.parse(screen.getByLabelText('config snapshot').textContent ?? '{}')
     expect(snapshot.config_skills).toEqual([
       expect.objectContaining({
         name: 'Invoice Helper',

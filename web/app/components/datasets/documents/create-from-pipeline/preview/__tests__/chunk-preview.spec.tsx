@@ -457,13 +457,4 @@ describe('ChunkPreview', () => {
       expect(screen.getByTestId('document-picker')).toBeInTheDocument()
     })
   })
-
-  describe('Component Memoization', () => {
-    it('should be exported as a memoized component', () => {
-      // ChunkPreview is wrapped with React.memo
-      // We verify this by checking the component type
-      expect(typeof ChunkPreview).toBe('object')
-      expect(ChunkPreview.$$typeof?.toString()).toBe('Symbol(react.memo)')
-    })
-  })
 })

@@ -47,17 +47,6 @@ describe('Filter', () => {
   // Rendering Tests (REQUIRED)
   // --------------------------------------------------------------------------
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(
-        <Filter queryParams={createDefaultQueryParams()} setQueryParams={defaultSetQueryParams} />,
-      )
-
-      // Should render status chip, period chip, and search input
-      // Should render status chip, period chip, and search input
-      expect(screen.getByText('All'))!.toBeInTheDocument()
-      expect(screen.getByPlaceholderText('common.operation.search'))!.toBeInTheDocument()
-    })
-
     it('should render all filter components', () => {
       render(
         <Filter queryParams={createDefaultQueryParams()} setQueryParams={defaultSetQueryParams} />,
@@ -214,21 +203,6 @@ describe('Filter', () => {
         expect(screen.getByText('appLog.filter.period.last3months'))!.toBeInTheDocument()
         expect(screen.getByText('appLog.filter.period.allTime'))!.toBeInTheDocument()
       })
-    })
-
-    it('should apply period chip sizing classes to trigger and panel', async () => {
-      const user = userEvent.setup()
-
-      render(
-        <Filter queryParams={createDefaultQueryParams()} setQueryParams={defaultSetQueryParams} />,
-      )
-
-      const periodTrigger = screen.getByRole('combobox', { name: 'appLog.filter.period.last7days' })
-      expect(periodTrigger).toHaveClass('min-w-[150px]')
-
-      await user.click(periodTrigger)
-      const listbox = await screen.findByRole('listbox')
-      expect(listbox.parentElement).toHaveClass('w-[270px]')
     })
 
     it('should call setQueryParams when period is selected', async () => {

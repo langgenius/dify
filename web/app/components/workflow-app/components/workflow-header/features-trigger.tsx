@@ -167,6 +167,9 @@ const FeaturesTrigger = () => {
 
       // Then perform the detailed validation
       if (await handleCheckBeforePublish()) {
+        const draftSyncResult = await handleSyncWorkflowDraft(true)
+        if (!draftSyncResult) throw new Error('Workflow draft sync failed')
+
         const res = await publishWorkflow({
           url: publishParams?.url || `/apps/${appID}/workflows/publish`,
           title: publishParams?.title || '',
@@ -206,6 +209,7 @@ const FeaturesTrigger = () => {
     [
       needWarningNodes,
       handleCheckBeforePublish,
+      handleSyncWorkflowDraft,
       publishWorkflow,
       appID,
       t,
@@ -222,7 +226,7 @@ const FeaturesTrigger = () => {
 
   const onPublisherToggle = useCallback(
     (state: boolean) => {
-      if (state) handleSyncWorkflowDraft(true)
+      if (state) void handleSyncWorkflowDraft(true)
     },
     [handleSyncWorkflowDraft],
   )

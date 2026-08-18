@@ -5,7 +5,7 @@ import type {
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
+import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
 import { OAuthClientSettingsModal } from '../oauth-client'
 
 type PluginDetail = {
@@ -59,7 +59,7 @@ function createMockSubscriptionBuilder(
     id: 'builder-123',
     name: 'Test Builder',
     provider: 'test-provider',
-    credential_type: TriggerCredentialTypeEnum.Oauth2,
+    credential_type: TriggerCredentialType.Oauth2,
     credentials: {},
     endpoint: 'https://example.com/callback',
     parameters: {},

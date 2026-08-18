@@ -15,6 +15,7 @@ import VariableTrigger from '@/app/components/workflow/panel/env-panel/variable-
 import { useStore } from '@/app/components/workflow/store'
 
 const HIDDEN_SECRET_VALUE = '[__HIDDEN__]'
+type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
 
 const formatSecret = (secret: string) => {
   return secret.length > 8
@@ -47,7 +48,7 @@ const useEnvPanelActions = ({
   updateEnvList: (envList: EnvironmentVariable[]) => void
   setEnvSecrets: (envSecrets: Record<string, string>) => void
   setControlPromptEditorRerenderKey: (controlPromptEditorRerenderKey: number) => void
-  doSyncWorkflowDraft: () => Promise<void>
+  doSyncWorkflowDraft: DoSyncWorkflowDraft
 }) => {
   const emitVarsAndFeaturesUpdate = useCallback(async () => {
     try {

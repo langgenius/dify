@@ -23,7 +23,6 @@ import { useStore } from '@/app/components/workflow/store'
 import { consoleQuery } from '@/service/client'
 import { FlowType } from '@/types/common'
 import useNodeCrud from '../_base/hooks/use-node-crud'
-import { AgentAdvancedSettings } from './components/agent-advanced-settings'
 import {
   WorkflowInlineAgentConfigureWorkspace,
   WorkflowRosterAgentOrchestratePanelContent,
@@ -159,7 +158,9 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
       ? inlineAgentBinding.agent_id
       : sourceInlineAgentId
   const isInlineAgentCreated = isInlineAgentReady && !!inlineAgent
-  const isInlineAgentWaitingForCreation = isInlineAgentReady && !isInlineAgentCreated
+  const isInlineAgentLoadError = isInlineAgentReady && inlineAgentQuery.isError
+  const isInlineAgentWaitingForCreation =
+    isInlineAgentReady && !isInlineAgentCreated && !isInlineAgentLoadError
   const isInlineAgentPanelOpen =
     (isInlineAgentCreated || isInlineAgentPending) && openInlineAgentPanelNodeId === id
   const { isPending: isAppCopyingFromRoster, mutate: copyFromRosterApp } = useMutation(
@@ -619,14 +620,22 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
       />
       <div className="border-b border-divider-subtle">
         <AgentRosterField
-          agent={isInlineAgentWaitingForCreation ? undefined : displayedAgent}
+          agent={
+            isInlineAgentWaitingForCreation || isInlineAgentLoadError ? undefined : displayedAgent
+          }
           agentId={rosterAgentId ?? inlineAgentId ?? (isInlineAgentPending ? id : undefined)}
           canOpenPanel={!isInlineAgentWaitingForCreation}
+          errorMessage={
+            isInlineAgentLoadError
+              ? t(($) => $['roster.nodeSelector.createInlineFailed'], { ns: 'agentV2' })
+              : undefined
+          }
           isInlineSetup={isInlineAgentReady || isInlineAgentPending}
           isLoading={isInlineAgentLoading}
           isPanelCopyPending={isCopyingFromRoster}
           isPanelOpen={isAgentPanelOpen}
           isPending={isAgentBindingPending}
+          isRetrying={isInlineAgentLoadError && inlineAgentQuery.isFetching}
           panelBody={
             isAgentPanelOpen && displayedAgent ? (
               isInlineAgentReady || isInlineAgentPending ? (
@@ -662,6 +671,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
           onChange={handleRosterChange}
           onMakeCopy={rosterAgentId ? handleMakeRosterCopy : undefined}
           onPanelOpenChange={handleAgentPanelOpenChange}
+          onRetry={isInlineAgentLoadError ? () => void inlineAgentQuery.refetch() : undefined}
           onSaveInlineToRoster={canSaveInlineToRoster ? handleSaveInlineToRosterOpen : undefined}
           onStartFromScratch={canStartFromScratch ? handleStartFromScratch : undefined}
         />
@@ -692,7 +702,6 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
             onOutputsChange={handleDeclaredOutputsChange}
           />
         </div>
-        <AgentAdvancedSettings />
         <div>
           <AgentOutputVariables
             collapsed={isOutputVariablesCollapsed}

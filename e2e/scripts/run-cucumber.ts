@@ -1,6 +1,8 @@
 import type { ManagedProcess } from '../support/process'
 import { mkdir, readFile, rm } from 'node:fs/promises'
 import path from 'node:path'
+import { runCleanupTasks } from '../support/cleanup'
+import { assertCucumberScenariosStarted } from '../support/cucumber-messages'
 import { startLoggedProcess, stopManagedProcess, waitForUrl } from '../support/process'
 import { startWebServer, stopWebServer } from '../support/web-server'
 import { apiURL, baseURL, reuseExistingWebServer } from '../test-env'
@@ -44,8 +46,7 @@ const parseArgs = (argv: string[]): RunOptions => {
 const hasCustomTags = (forwardArgs: string[]) =>
   forwardArgs.some((arg) => arg === '--tags' || arg.startsWith('--tags='))
 
-const fullNonExternalTags =
-  'not @skip and not @preview and not @external-model and not @external-tool'
+const fullNonExternalTags = 'not @prepared and not @external-model and not @external-tool'
 
 const isTruthyEnv = (value: string | undefined) => value === '1' || value === 'true'
 
@@ -150,19 +151,17 @@ const main = async () => {
   const cleanup = async () => {
     if (!cleanupPromise) {
       cleanupPromise = (async () => {
-        await stopWebServer()
-        await stopManagedProcess(celeryProcess)
-        await stopManagedProcess(apiProcess)
-        await stopManagedProcess(difyAgentProcess)
-        await stopManagedProcess(shellctlProcess)
+        const cleanupErrors = await runCleanupTasks([
+          { label: 'Stop web server', run: stopWebServer },
+          { label: 'Stop celery worker', run: () => stopManagedProcess(celeryProcess) },
+          { label: 'Stop API server', run: () => stopManagedProcess(apiProcess) },
+          { label: 'Stop agent backend', run: () => stopManagedProcess(difyAgentProcess) },
+          { label: 'Stop shellctl sandbox', run: () => stopManagedProcess(shellctlProcess) },
+          ...(startMiddlewareForRun ? [{ label: 'Stop middleware', run: stopMiddleware }] : []),
+        ])
 
-        if (startMiddlewareForRun) {
-          try {
-            await stopMiddleware()
-          } catch {
-            // Cleanup should continue even if middleware shutdown fails.
-          }
-        }
+        if (cleanupErrors.length > 0)
+          throw new Error(`E2E teardown errors:\n${cleanupErrors.join('\n')}`)
       })()
     }
 
@@ -170,9 +169,13 @@ const main = async () => {
   }
 
   const onTerminate = () => {
-    void cleanup().finally(() => {
-      process.exit(1)
-    })
+    void cleanup()
+      .catch((error) => {
+        console.error(error instanceof Error ? error.message : String(error))
+      })
+      .finally(() => {
+        process.exit(1)
+      })
   }
 
   process.once('SIGINT', onTerminate)
@@ -264,6 +267,11 @@ const main = async () => {
       cwd: e2eDir,
       env: cucumberEnv,
     })
+
+    if (result.exitCode === 0) {
+      const messages = await readFile(path.join(cucumberReportDir, 'report.ndjson'), 'utf8')
+      assertCucumberScenariosStarted(messages)
+    }
 
     process.exitCode = result.exitCode
   } finally {

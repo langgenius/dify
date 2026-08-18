@@ -5,7 +5,8 @@ import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-s
 import type { Edge, Node } from '@/app/components/workflow/types'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { useAtomValue } from 'jotai'
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
@@ -40,12 +41,20 @@ type WorkflowDataUpdatePayload = Pick<
   FetchWorkflowDraftResponse,
   'features' | 'conversation_variables' | 'environment_variables'
 >
+const GRAPH_RELOAD_RETRY_BASE_DELAY = 1000
+const GRAPH_RELOAD_RETRY_MAX_DELAY = 30_000
+
 const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
+  const { t } = useTranslation()
   const featuresStore = useFeaturesStore()
   const workflowStore = useWorkflowStore()
   const appId = useStore((s) => s.appId)
   const appDetail = useAppStore((s) => s.appDetail)
   const containerRef = useRef<HTMLDivElement>(null)
+  const [collaborationGraphState, setCollaborationGraphState] = useState({
+    appId: null as string | null,
+    isReady: false,
+  })
   const reactFlow = useReactFlow()
   const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appDetail?.mode)
 
@@ -98,6 +107,14 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
       stopCursorTracking()
     }
   }, [startCursorTracking, stopCursorTracking, reactFlow, isCollaborationEnabled])
+
+  useEffect(() => {
+    if (!appId || !isCollaborationEnabled) return
+
+    return collaborationManager.onGraphReadyChange((isReady) => {
+      setCollaborationGraphState({ appId, isReady })
+    })
+  }, [appId, isCollaborationEnabled])
 
   const handleWorkflowDataUpdate = useCallback(
     (payload: WorkflowDataUpdatePayload) => {
@@ -214,16 +231,70 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     isCollaborationEnabled,
   ])
 
-  // Listen for sync requests from other users (only processed by leader)
+  // The server directs this request to the selected saver. Do not gate it on the
+  // local leader flag because the preceding status event may still be in flight.
   useEffect(() => {
     if (!appId || !isCollaborationEnabled) return
 
-    const unsubscribe = collaborationManager.onSyncRequest(() => {
-      doSyncWorkflowDraft()
+    const unsubscribe = collaborationManager.onSyncRequest(({ acknowledge }) => {
+      if (!collaborationManager.canPersistLocalGraph()) {
+        acknowledge({ success: false, error: 'Collaborative graph is not ready to save.' })
+        return
+      }
+
+      collaborationManager.refreshGraphSynchronously()
+      void doSyncWorkflowDraft(false, undefined, { forceLocal: true })
+        .then((result) => {
+          acknowledge(
+            result
+              ? { success: true, hash: result.hash, updatedAt: result.updatedAt }
+              : { success: false },
+          )
+        })
+        .catch(() => {
+          acknowledge({ success: false })
+        })
     })
 
     return unsubscribe
   }, [appId, doSyncWorkflowDraft, isCollaborationEnabled])
+
+  useEffect(() => {
+    if (!appId || !isCollaborationEnabled) return
+
+    let retryTimer: ReturnType<typeof setTimeout> | undefined
+    let disposed = false
+    const unsubscribe = collaborationManager.onGraphReloadRequired(async (request) => {
+      if (retryTimer) {
+        clearTimeout(retryTimer)
+        retryTimer = undefined
+      }
+
+      const isCurrent = () => !disposed && collaborationManager.isGraphReloadCurrent(request)
+      const refreshed = await handleRefreshWorkflowDraft(false, { shouldApply: isCurrent })
+      if (!isCurrent()) return
+
+      if (refreshed) {
+        collaborationManager.replaceGraphFromReactFlow(request)
+        return
+      }
+
+      const retryDelay = Math.min(
+        GRAPH_RELOAD_RETRY_BASE_DELAY * 2 ** request.attempt,
+        GRAPH_RELOAD_RETRY_MAX_DELAY,
+      )
+      retryTimer = setTimeout(() => {
+        retryTimer = undefined
+        collaborationManager.retryGraphReload(request)
+      }, retryDelay)
+    })
+
+    return () => {
+      disposed = true
+      if (retryTimer) clearTimeout(retryTimer)
+      unsubscribe()
+    }
+  }, [appId, handleRefreshWorkflowDraft, isCollaborationEnabled])
   const {
     handleStartWorkflowRun,
     handleWorkflowStartRunInChatflow,
@@ -350,12 +421,32 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
         viewport={viewport}
         onWorkflowDataUpdate={handleWorkflowDataUpdate}
         hooksStore={hooksStore as unknown as Partial<HooksStoreShape>}
+        isCollaborationEnabled={isCollaborationEnabled}
         cursors={filteredCursors}
         myUserId={myUserId}
         onlineUsers={onlineUsers}
       >
         <WorkflowChildren />
       </WorkflowWithInnerContext>
+      {isCollaborationEnabled &&
+        (collaborationGraphState.appId !== appId || !collaborationGraphState.isReady) && (
+          <div
+            data-testid="collaboration-graph-loading"
+            className="absolute inset-0 z-50 flex cursor-wait items-center justify-center"
+          >
+            <div
+              role="status"
+              aria-live="polite"
+              className="flex items-center gap-1.5 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-3 py-2 system-xs-medium text-text-secondary shadow-lg backdrop-blur-[5px]"
+            >
+              <span
+                aria-hidden="true"
+                className="i-ri-loader-4-line size-4 animate-spin text-text-accent motion-reduce:animate-none"
+              />
+              <span>{t(($) => $['common.syncingData'], { ns: 'workflow' })}</span>
+            </div>
+          </div>
+        )}
     </div>
   )
 }

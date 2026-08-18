@@ -126,14 +126,14 @@ export default function WorkflowLogArchivesPage() {
 
   if (!canViewArchiveContent) {
     return (
-      <div data-testid="workflow-log-archives-page" className="pb-6">
+      <div className="pb-6">
         <ArchivedLogsUpgradeBanner />
       </div>
     )
   }
 
   return (
-    <div data-testid="workflow-log-archives-page" className="flex flex-col gap-4 pb-6">
+    <div className="flex flex-col gap-4 pb-6">
       <div className="rounded-2xl border-[0.5px] border-effects-highlight-lightmode-off bg-background-section-burn p-2">
         <div className="grid grid-cols-2 gap-1 lg:grid-cols-4">
           {summaryItems.map((item) => (

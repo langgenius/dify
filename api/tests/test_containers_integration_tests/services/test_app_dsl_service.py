@@ -11,7 +11,7 @@ import pytest
 import yaml
 from faker import Faker
 from flask import Flask
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from core.trigger.constants import (
@@ -22,11 +22,24 @@ from core.trigger.constants import (
 from extensions.ext_redis import redis_client
 from graphon.enums import BuiltinNodeTypes
 from models import Account, App, AppMode
-from models.agent import Agent, AgentConfigDraft, AgentConfigDraftType, AgentConfigSnapshot, AgentScope, AgentSource
+from models.agent import (
+    Agent,
+    AgentConfigDraft,
+    AgentConfigDraftType,
+    AgentConfigSnapshot,
+    AgentScope,
+    AgentSource,
+    AgentStatus,
+    WorkflowAgentBindingType,
+    WorkflowAgentNodeBinding,
+)
 from models.agent_config_entities import AgentSoulConfig
 from models.model import AppModelConfig, IconType
+from models.workflow import Workflow, WorkflowType
 from services import app_dsl_service
 from services.account_service import AccountService, TenantService
+from services.agent.dsl_entities import AGENT_PACKAGE_REF_KEY, make_portable_agent_package
+from services.agent.dsl_service import AgentDslService
 from services.app_dsl_service import (
     CHECK_DEPENDENCIES_REDIS_KEY_PREFIX,
     CURRENT_DSL_VERSION,
@@ -951,6 +964,126 @@ class TestAppDslService:
         assert exported_data["app"]["mode"] == app.mode
         assert "model_config" in exported_data
         assert "dependencies" in exported_data
+
+    def test_workflow_package_import_materializes_all_agent_bindings_as_inline(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+        app.mode = AppMode.WORKFLOW
+        workflow = Workflow.new(
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            type=WorkflowType.WORKFLOW.value,
+            version=Workflow.VERSION_DRAFT,
+            graph=json.dumps({"nodes": [], "edges": []}),
+            features=json.dumps({}),
+            created_by=account.id,
+            environment_variables=[],
+            conversation_variables=[],
+            rag_pipeline_variables=[],
+        )
+        db_session_with_containers.add(workflow)
+        db_session_with_containers.flush()
+
+        source_agent = Agent(
+            tenant_id=app.tenant_id,
+            name="Portable Agent",
+            description="Imported into each node",
+            role="researcher",
+            scope=AgentScope.ROSTER,
+            source=AgentSource.AGENT_APP,
+            status=AgentStatus.ACTIVE,
+            created_by=account.id,
+            updated_by=account.id,
+        )
+        package = make_portable_agent_package(source_agent, AgentSoulConfig(config_note="portable"))
+        graph = {
+            "nodes": [
+                {
+                    "id": "roster-node",
+                    "data": {
+                        "type": BuiltinNodeTypes.AGENT,
+                        "version": "2",
+                        "agent_binding": {
+                            "binding_type": WorkflowAgentBindingType.ROSTER_AGENT.value,
+                            AGENT_PACKAGE_REF_KEY: "agent_1",
+                        },
+                    },
+                },
+                {
+                    "id": "inline-node",
+                    "data": {
+                        "type": BuiltinNodeTypes.AGENT,
+                        "version": "2",
+                        "agent_binding": {
+                            "binding_type": WorkflowAgentBindingType.INLINE_AGENT.value,
+                            AGENT_PACKAGE_REF_KEY: "agent_1",
+                        },
+                    },
+                },
+            ],
+            "edges": [],
+        }
+        imported_roster_count_before = db_session_with_containers.scalar(
+            select(func.count())
+            .select_from(Agent)
+            .where(
+                Agent.tenant_id == app.tenant_id,
+                Agent.scope == AgentScope.ROSTER,
+                Agent.source == AgentSource.IMPORTED,
+            )
+        )
+
+        imported_graph, warnings = AgentDslService(db_session_with_containers).import_workflow_packages(
+            workflow=workflow,
+            portable_graph=graph,
+            raw_packages={"agent_1": package.model_dump(mode="json")},
+            account=account,
+        )
+        db_session_with_containers.commit()
+
+        assert warnings == []
+        graph_bindings = [node["data"]["agent_binding"] for node in imported_graph["nodes"]]
+        assert all(binding["binding_type"] == WorkflowAgentBindingType.INLINE_AGENT.value for binding in graph_bindings)
+        assert len({binding["agent_id"] for binding in graph_bindings}) == 2
+
+        bindings = db_session_with_containers.scalars(
+            select(WorkflowAgentNodeBinding).where(
+                WorkflowAgentNodeBinding.tenant_id == app.tenant_id,
+                WorkflowAgentNodeBinding.workflow_id == workflow.id,
+                WorkflowAgentNodeBinding.workflow_version == Workflow.VERSION_DRAFT,
+            )
+        ).all()
+        assert len(bindings) == 2
+        assert all(binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT for binding in bindings)
+
+        imported_agents = db_session_with_containers.scalars(
+            select(Agent).where(Agent.id.in_({binding.agent_id for binding in bindings if binding.agent_id}))
+        ).all()
+        assert len(imported_agents) == 2
+        assert all(agent.scope == AgentScope.WORKFLOW_ONLY for agent in imported_agents)
+        assert all(agent.source == AgentSource.IMPORTED for agent in imported_agents)
+        assert all(agent.app_id == app.id and agent.workflow_id == workflow.id for agent in imported_agents)
+        assert {agent.workflow_node_id for agent in imported_agents} == {"roster-node", "inline-node"}
+        assert all(agent.backing_app_id for agent in imported_agents)
+
+        backing_apps = db_session_with_containers.scalars(
+            select(App).where(App.id.in_({agent.backing_app_id for agent in imported_agents if agent.backing_app_id}))
+        ).all()
+        assert len(backing_apps) == 2
+        assert all(backing_app.mode == AppMode.AGENT for backing_app in backing_apps)
+        assert all(backing_app.enable_site is False and backing_app.enable_api is False for backing_app in backing_apps)
+
+        imported_roster_count_after = db_session_with_containers.scalar(
+            select(func.count())
+            .select_from(Agent)
+            .where(
+                Agent.tenant_id == app.tenant_id,
+                Agent.scope == AgentScope.ROSTER,
+                Agent.source == AgentSource.IMPORTED,
+            )
+        )
+        assert imported_roster_count_after == imported_roster_count_before
 
     def test_agent_app_dsl_round_trip_creates_unpublished_imported_agent(
         self, db_session_with_containers: Session, mock_external_service_dependencies

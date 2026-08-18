@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
 import { fireEvent, render as rtlRender, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { createAccountProfileQueryWrapper } from '@/test/account-profile-query'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
 import WrappedDatePicker from '../date-picker'
 
 type TriggerArgs = {
@@ -48,12 +48,6 @@ const render = (ui: ReactElement) => {
 
 describe('WrappedDatePicker', () => {
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const handleChange = vi.fn()
-      render(<WrappedDatePicker onChange={handleChange} />)
-      expect(screen.getByRole('group', { name: 'Date picker' })).toBeInTheDocument()
-    })
-
     it('should render placeholder text when no value', () => {
       const handleChange = vi.fn()
       render(<WrappedDatePicker onChange={handleChange} />)

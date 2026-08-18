@@ -7,8 +7,9 @@ import List from './index'
 
 type ListWrapperProps = {
   showInstallButton?: boolean
+  linkToMarketplaceDetail?: boolean
 }
-const ListWrapper = ({ showInstallButton }: ListWrapperProps) => {
+const ListWrapper = ({ showInstallButton, linkToMarketplaceDetail }: ListWrapperProps) => {
   const { t } = useTranslation()
 
   const {
@@ -45,6 +46,7 @@ const ListWrapper = ({ showInstallButton }: ListWrapperProps) => {
             marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap || {}}
             plugins={plugins}
             showInstallButton={showInstallButton}
+            linkToMarketplaceDetail={linkToMarketplaceDetail}
           />
         )}
       </div>
