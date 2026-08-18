@@ -55,6 +55,10 @@ export const contractLoaders = {
   remoteFiles: () => import('./remote-files/orpc.gen').then(({ remoteFiles }) => ({ remoteFiles })),
   resetPassword: () =>
     import('./reset-password/orpc.gen').then(({ resetPassword }) => ({ resetPassword })),
+  resourceAccessTokens: () =>
+    import('./resource-access-tokens/orpc.gen').then(({ resourceAccessTokens }) => ({
+      resourceAccessTokens,
+    })),
   ruleCodeGenerate: () =>
     import('./rule-code-generate/orpc.gen').then(({ ruleCodeGenerate }) => ({ ruleCodeGenerate })),
   ruleGenerate: () =>

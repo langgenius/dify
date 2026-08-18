@@ -52,6 +52,7 @@ from models.workflow import (
 )
 from repositories.factory import DifyAPIRepositoryFactory
 from services.api_token_service import ApiTokenCache
+from services.resource_access_token_service import ResourceAccessTokenService
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +67,7 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
         _delete_app_site(tenant_id, app_id)
         _delete_app_mcp_servers(tenant_id, app_id)
         _delete_app_api_tokens(tenant_id, app_id)
+        _delete_app_resource_access_token_relations(app_id)
         _delete_installed_apps(tenant_id, app_id)
         _delete_app_stars(tenant_id, app_id)
         _delete_recommended_apps(tenant_id, app_id)
@@ -162,6 +164,12 @@ def _delete_app_api_tokens(tenant_id: str, app_id: str):
         del_api_token,
         "api token",
     )
+
+
+def _delete_app_resource_access_token_relations(app_id: str):
+    with session_factory.get_session_maker()() as session:
+        ResourceAccessTokenService.delete_relations_for_app(app_id=app_id, session=session)
+        session.commit()
 
 
 def _delete_installed_apps(tenant_id: str, app_id: str):

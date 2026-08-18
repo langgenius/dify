@@ -34,6 +34,7 @@ from services import dataset_api_key_service
 from services.api_token_service import ApiTokenCache, fetch_token_with_single_flight, record_token_usage
 from services.end_user_service import EndUserService
 from services.feature_service import FeatureService
+from services.resource_access_token_service import ResourceAccessTokenService
 
 logger = logging.getLogger(__name__)
 
@@ -110,9 +111,16 @@ def validate_app_token[**P, R](
     def decorator(view_func: Callable[P, R]) -> Callable[P, R]:
         @wraps(view_func)
         def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
-            api_token = validate_and_get_api_token("app")
-
-            app_model = db.session.get(App, api_token.app_id)
+            auth_token = peek_service_api_bearer_token()
+            if auth_token and ResourceAccessTokenService.is_resource_access_token(auth_token):
+                app_model = ResourceAccessTokenService.resolve_app_for_service_api(
+                    token=auth_token,
+                    requested_app_id=request.headers.get("X-Dify-App-ID"),
+                    session=db.session(),
+                )
+            else:
+                api_token = validate_and_get_api_token("app")
+                app_model = db.session.get(App, api_token.app_id)
             if not app_model:
                 raise Forbidden("The app no longer exists.")
 
@@ -318,8 +326,6 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
 
     @wraps(view)
     def decorated(*args: object, **kwargs: object) -> R:
-        api_token = validate_and_get_api_token("dataset")
-
         # Flask may pass URL path parameters positionally, so inspect both kwargs and args.
         dataset_id = kwargs.get("dataset_id")
 
@@ -332,17 +338,28 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
             except Exception:
                 logger.exception("Failed to parse dataset_id from positional args")
 
-        # Per-knowledge-base scoping is expressed by DatasetApiTokenBinding rows:
-        #   no rows  -> the key can reach every dataset in its tenant (default / back-compat)
-        #   N rows   -> the key is limited to exactly those datasets
-        # A bound key may only call endpoints carrying one of its dataset ids; endpoints
-        # without a dataset id (e.g. list/create datasets) are rejected. The set is queried
-        # per request (not cached) so scope changes take effect immediately.
-        # db.session is Flask-SQLAlchemy's scoped_session proxy; cast so the plain-Session
-        # typed helper accepts it (runtime proxies every Session method through unchanged).
-        bound_dataset_ids = dataset_api_key_service.get_bound_dataset_ids(cast(Session, db.session), api_token.id)
-        if bound_dataset_ids and (not dataset_id or str(dataset_id) not in bound_dataset_ids):
-            raise Forbidden("The API key is not authorized to access this knowledge base.")
+        auth_token = peek_service_api_bearer_token()
+        if auth_token and ResourceAccessTokenService.is_resource_access_token(auth_token):
+            tenant_id = ResourceAccessTokenService.resolve_tenant_for_dataset_service_api(
+                token=auth_token,
+                dataset_id=str(dataset_id) if dataset_id else None,
+                session=db.session(),
+            )
+        else:
+            api_token = validate_and_get_api_token("dataset")
+            tenant_id = api_token.tenant_id
+
+            # Per-knowledge-base scoping is expressed by DatasetApiTokenBinding rows:
+            #   no rows  -> the key can reach every dataset in its tenant (default / back-compat)
+            #   N rows   -> the key is limited to exactly those datasets
+            # A bound key may only call endpoints carrying one of its dataset ids; endpoints
+            # without a dataset id (e.g. list/create datasets) are rejected. The set is queried
+            # per request (not cached) so scope changes take effect immediately.
+            # db.session is Flask-SQLAlchemy's scoped_session proxy; cast so the plain-Session
+            # typed helper accepts it (runtime proxies every Session method through unchanged).
+            bound_dataset_ids = dataset_api_key_service.get_bound_dataset_ids(cast(Session, db.session), api_token.id)
+            if bound_dataset_ids and (not dataset_id or str(dataset_id) not in bound_dataset_ids):
+                raise Forbidden("The API key is not authorized to access this knowledge base.")
 
         if dataset_id:
             dataset_id = str(dataset_id)
@@ -350,7 +367,7 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
                 select(Dataset)
                 .where(
                     Dataset.id == dataset_id,
-                    Dataset.tenant_id == api_token.tenant_id,
+                    Dataset.tenant_id == tenant_id,
                 )
                 .limit(1)
             )
@@ -361,7 +378,7 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
 
         tenant_account_join = db.session.execute(
             select(Tenant, TenantAccountJoin).where(
-                Tenant.id == api_token.tenant_id,
+                Tenant.id == tenant_id,
                 TenantAccountJoin.tenant_id == Tenant.id,
                 TenantAccountJoin.role.in_(["owner"]),
                 Tenant.status == TenantStatus.NORMAL,
@@ -383,9 +400,9 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
         if expects_bound_instance:
             if not args:
                 raise TypeError("validate_dataset_token expected a bound resource instance.")
-            return view(args[0], api_token.tenant_id, *args[1:], **kwargs)
+            return view(args[0], tenant_id, *args[1:], **kwargs)
 
-        return view(api_token.tenant_id, *args, **kwargs)
+        return view(tenant_id, *args, **kwargs)
 
     return decorated
 
@@ -401,15 +418,7 @@ def validate_and_get_api_token(scope: str | None = None):
     The last_used_at field is updated asynchronously via Celery task
     to avoid blocking the request.
     """
-    auth_header = request.headers.get("Authorization")
-    if auth_header is None or " " not in auth_header:
-        raise Unauthorized("Authorization header must be provided and start with 'Bearer'")
-
-    auth_scheme, auth_token = auth_header.split(None, 1)
-    auth_scheme = auth_scheme.lower()
-
-    if auth_scheme != "bearer":
-        raise Unauthorized("Authorization scheme must be 'Bearer'")
+    auth_token = extract_service_api_bearer_token()
 
     # Try to get token from cache first
     # Returns a CachedApiToken (plain Python object), not a SQLAlchemy model
@@ -423,6 +432,27 @@ def validate_and_get_api_token(scope: str | None = None):
     # Cache miss - use Redis lock for single-flight mode
     # This ensures only one request queries DB for the same token concurrently
     return fetch_token_with_single_flight(auth_token, scope)
+
+
+def extract_service_api_bearer_token() -> str:
+    auth_header = request.headers.get("Authorization")
+    if auth_header is None or " " not in auth_header:
+        raise Unauthorized("Authorization header must be provided and start with 'Bearer'")
+
+    auth_scheme, auth_token = auth_header.split(None, 1)
+    if auth_scheme.lower() != "bearer":
+        raise Unauthorized("Authorization scheme must be 'Bearer'")
+    return auth_token
+
+
+def peek_service_api_bearer_token() -> str | None:
+    auth_header = request.headers.get("Authorization")
+    if auth_header is None or " " not in auth_header:
+        return None
+    auth_scheme, auth_token = auth_header.split(None, 1)
+    if auth_scheme.lower() != "bearer":
+        return None
+    return auth_token
 
 
 class DatasetApiResource(Resource):

@@ -90,6 +90,7 @@ from services.external_knowledge_service import ExternalDatasetService
 from services.feature_service import FeatureService
 from services.file_service import FileService
 from services.rag_pipeline.rag_pipeline import RagPipelineService
+from services.resource_access_token_service import ResourceAccessTokenService
 from services.tag_service import TagService
 from services.vector_service import VectorService
 from tasks.add_document_to_index_task import add_document_to_index_task
@@ -1365,6 +1366,7 @@ class DatasetService:
         # silently degrade to unrestricted (access-all) once its last binding is gone.
         dataset_api_key_service.delete_keys_scoped_only_to(session, str(dataset.id))
 
+        ResourceAccessTokenService.delete_relations_for_dataset(dataset_id=dataset.id, session=session)
         session.delete(dataset)
         session.commit()
         return True
