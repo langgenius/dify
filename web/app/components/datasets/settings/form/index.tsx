@@ -5,7 +5,6 @@ import Divider from '@/app/components/base/divider'
 import BasicInfoSection from './components/basic-info-section'
 import ExternalKnowledgeSection from './components/external-knowledge-section'
 import IndexingSection from './components/indexing-section'
-import KnowledgeFSUpgrade from './components/knowledge-fs-upgrade'
 import { useFormState } from './hooks/use-form-state'
 
 const Form = () => {
@@ -116,12 +115,6 @@ const Form = () => {
           showMultiModalTip={showMultiModalTip}
           readonly={readonly}
         />
-      )}
-
-      <Divider type="horizontal" className="my-1 h-px bg-divider-subtle" />
-
-      {!isExternalProvider && currentDataset && (
-        <KnowledgeFSUpgrade datasetId={currentDataset.id} disabled={readonly} />
       )}
 
       <Divider type="horizontal" className="my-1 h-px bg-divider-subtle" />

@@ -1,4 +1,5 @@
 import type { KnowledgeFsSpaceListItemResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -16,9 +17,11 @@ function getBuiltinIconName(iconRef: string | undefined) {
 export function KnowledgeSpaceCard({
   knowledgeSpace,
   onOpenTagManagement,
+  highlighted = false,
 }: {
   knowledgeSpace: KnowledgeFsSpaceListItemResponse
   onOpenTagManagement: () => void
+  highlighted?: boolean
 }) {
   const { t } = useTranslation('dataset')
   const { formatTimeFromNow } = useFormatTimeFromNow()
@@ -33,7 +36,14 @@ export function KnowledgeSpaceCard({
     : formatTimeFromNow(updatedAt)
 
   return (
-    <li className="group relative flex h-41.5 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg text-left shadow-xs outline-hidden transition-shadow hover:shadow-md motion-reduce:transition-none">
+    <li
+      className={cn(
+        'group relative flex h-41.5 flex-col overflow-hidden rounded-xl bg-components-card-bg text-left outline-hidden transition-shadow hover:shadow-md motion-reduce:transition-none',
+        highlighted
+          ? 'border-2 border-state-accent-solid shadow-[0_0_12px_4px_rgba(21,94,239,0.18)]'
+          : 'border-[0.5px] border-components-card-border shadow-xs',
+      )}
+    >
       <Link
         href={newKnowledgeOverviewPath(knowledgeSpace.control_space_id)}
         aria-label={name}

@@ -1,7 +1,11 @@
+import type { KnowledgeFsUpgradeJobResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { DataSet } from '@/models/datasets'
-import { createEvent, fireEvent, screen } from '@testing-library/react'
+import { createEvent, fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
+import { KNOWLEDGE_UPGRADE_RECOVERY_STORAGE_KEY } from '@/features/new-rag/storage'
+import { KnowledgeUpgradeProvider } from '@/features/new-rag/upgrade/knowledge-upgrade-context'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { DatasetACLPermission } from '@/utils/permission'
@@ -72,6 +76,7 @@ describe('OperationsDropdown', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.clear()
     mockConsoleState.userProfile = { id: 'user-1' }
     mockConsoleState.workspacePermissionKeys = []
     mockIsRbacEnabled = true
@@ -84,14 +89,16 @@ describe('OperationsDropdown', () => {
       expect(moreIcon).toBeInTheDocument()
     })
 
-    it('should render in hidden state initially (group-hover)', () => {
+    it('should reveal the initially transparent trigger on hover or keyboard focus', () => {
       const { container } = render(<OperationsDropdown {...defaultProps} />)
       const wrapper = container.firstChild as HTMLElement
       expect(wrapper).toHaveClass(
-        'invisible',
         'pointer-events-none',
-        'group-hover:visible',
+        'opacity-0',
         'group-hover:pointer-events-auto',
+        'group-hover:opacity-100',
+        'focus-within:pointer-events-auto',
+        'focus-within:opacity-100',
       )
     })
   })
@@ -177,6 +184,14 @@ describe('OperationsDropdown', () => {
       expect(trigger).toBeInTheDocument()
     })
 
+    it('should preserve the Figma menu width through the tour prop adapter', () => {
+      render(<OperationsDropdown {...defaultProps} />)
+
+      fireEvent.click(screen.getByLabelText('Dataset operations'))
+
+      expect(screen.getByRole('menu')).toHaveClass('min-w-44')
+    })
+
     it('should use a solid trigger background without backdrop blur on hover states', () => {
       const { container } = render(<OperationsDropdown {...defaultProps} />)
       const trigger = container.querySelector('[aria-label="Dataset operations"]')
@@ -186,6 +201,110 @@ describe('OperationsDropdown', () => {
   })
 
   describe('User Interactions', () => {
+    it('exposes upgrade and its help as separate keyboard-addressable menu items', async () => {
+      const user = userEvent.setup()
+
+      render(
+        <KnowledgeUpgradeProvider onUpgradeStarted={vi.fn()}>
+          <OperationsDropdown {...defaultProps} />
+        </KnowledgeUpgradeProvider>,
+      )
+
+      await user.click(screen.getByLabelText('Dataset operations'))
+
+      const upgradeItem = await screen.findByRole('menuitem', {
+        name: 'dataset.newKnowledge.upgrade.menuLabel',
+      })
+      const guideItem = screen.getByRole('menuitem', {
+        name: 'dataset.newKnowledge.upgrade.guideTitle',
+      })
+      expect(upgradeItem).not.toContainElement(guideItem)
+
+      await user.click(guideItem)
+      expect(
+        await screen.findByText('dataset.newKnowledge.upgrade.guideDescription'),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('menuitem', { name: 'dataset.newKnowledge.learnMore' }),
+      ).toHaveAttribute('href', 'https://docs.dify.ai/en/guides/knowledge-base')
+    })
+
+    it('opens the knowledge upgrade confirmation from an editable legacy card', async () => {
+      const user = userEvent.setup()
+
+      render(
+        <KnowledgeUpgradeProvider onUpgradeStarted={vi.fn()}>
+          <OperationsDropdown {...defaultProps} />
+        </KnowledgeUpgradeProvider>,
+      )
+
+      await user.click(screen.getByLabelText('Dataset operations'))
+      await user.click(
+        await screen.findByRole('menuitem', { name: 'dataset.newKnowledge.upgrade.menuLabel' }),
+      )
+
+      expect(
+        await screen.findByRole('alertdialog', {
+          name: 'dataset.newKnowledge.upgrade.dialogTitle',
+        }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'dataset.newKnowledge.upgrade.start' }),
+      ).toBeInTheDocument()
+    })
+
+    it('returns focus to dataset operations after cancelling the upgrade confirmation', async () => {
+      const user = userEvent.setup()
+
+      render(
+        <KnowledgeUpgradeProvider onUpgradeStarted={vi.fn()}>
+          <OperationsDropdown {...defaultProps} />
+        </KnowledgeUpgradeProvider>,
+      )
+
+      const operationsTrigger = screen.getByLabelText('Dataset operations')
+      await user.click(operationsTrigger)
+      await user.click(
+        await screen.findByRole('menuitem', { name: 'dataset.newKnowledge.upgrade.menuLabel' }),
+      )
+      await user.click(await screen.findByRole('button', { name: 'common.operation.cancel' }))
+
+      await waitFor(() => expect(operationsTrigger).toHaveFocus())
+    })
+
+    it('does not offer another upgrade after a completed job is restored on refresh', async () => {
+      const completedJob: KnowledgeFsUpgradeJobResponse = {
+        completed_documents: 10,
+        completed_sources: 1,
+        id: 'upgrade-1',
+        new_control_space_id: 'space-1',
+        old_dataset_id: defaultProps.dataset.id,
+        snapshot_at: '2026-08-18T00:00:00Z',
+        stage: 'completed',
+        status: 'succeeded',
+        total_documents: 10,
+        total_sources: 1,
+      }
+      localStorage.setItem(
+        KNOWLEDGE_UPGRADE_RECOVERY_STORAGE_KEY,
+        JSON.stringify({
+          'workspace-1': [{ dataset: defaultProps.dataset, job: completedJob, notified: true }],
+        }),
+      )
+
+      const user = userEvent.setup()
+      render(
+        <KnowledgeUpgradeProvider onUpgradeStarted={vi.fn()}>
+          <OperationsDropdown {...defaultProps} />
+        </KnowledgeUpgradeProvider>,
+      )
+      await user.click(screen.getByLabelText('Dataset operations'))
+
+      expect(
+        screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.upgrade.menuLabel' }),
+      ).not.toBeInTheDocument()
+    })
+
     it('should keep outside interactions available when the menu is open', () => {
       const onOutsideClick = vi.fn()
 
