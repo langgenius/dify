@@ -826,6 +826,19 @@ class TestMessageTrace:
         assert len(ttft_calls) == 1
         assert ttft_calls[0][0][1] == pytest.approx(0.42)
 
+    def test_ttft_histogram_has_required_labels(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
+        with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event"):
+            trace_handler._message_trace(make_message_info(gen_ai_server_time_to_first_token=0.42))
+
+        ttft_calls = [
+            c
+            for c in mock_exporter.record_histogram.call_args_list
+            if c[0][0] == EnterpriseTelemetryHistogram.MESSAGE_TTFT
+        ]
+        labels = ttft_calls[0][0][2]
+        for key in ("tenant_id", "app_id", "model_provider", "model_name"):
+            assert key in labels, f"Missing required TTFT label: {key}"
+
     def test_no_ttft_histogram_when_not_present(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event"):
             trace_handler._message_trace(make_message_info(gen_ai_server_time_to_first_token=None))
@@ -1290,6 +1303,41 @@ class TestPromptGenerationTrace:
         ]
         assert len(hist_calls) == 1
         assert hist_calls[0][0][1] == pytest.approx(3.2)
+
+    def test_duration_histogram_has_required_labels(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
+        with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event"):
+            trace_handler._prompt_generation_trace(make_prompt_generation_info())
+
+        hist_calls = [
+            c
+            for c in mock_exporter.record_histogram.call_args_list
+            if c[0][0] == EnterpriseTelemetryHistogram.PROMPT_GENERATION_DURATION
+        ]
+        labels = hist_calls[0][0][2]
+        for key in ("tenant_id", "app_id", "operation_type", "model_provider", "model_name", "status"):
+            assert key in labels, f"Missing required label: {key}"
+
+    def test_duration_histogram_status_succeeded(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
+        with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event"):
+            trace_handler._prompt_generation_trace(make_prompt_generation_info())
+
+        hist_calls = [
+            c
+            for c in mock_exporter.record_histogram.call_args_list
+            if c[0][0] == EnterpriseTelemetryHistogram.PROMPT_GENERATION_DURATION
+        ]
+        assert hist_calls[0][0][2]["status"] == "succeeded"
+
+    def test_duration_histogram_status_failed(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
+        with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event"):
+            trace_handler._prompt_generation_trace(make_prompt_generation_info(error="boom"))
+
+        hist_calls = [
+            c
+            for c in mock_exporter.record_histogram.call_args_list
+            if c[0][0] == EnterpriseTelemetryHistogram.PROMPT_GENERATION_DURATION
+        ]
+        assert hist_calls[0][0][2]["status"] == "failed"
 
     def test_total_price_attribute_set_when_present(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event") as mock_emit:

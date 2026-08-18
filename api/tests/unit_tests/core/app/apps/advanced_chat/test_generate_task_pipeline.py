@@ -157,6 +157,8 @@ def test_resume_appends_chunks_to_paused_answer() -> None:
         invoke_from=InvokeFrom.WEB_APP,
         inputs={},
         task_id="task-1",
+        trace_manager=None,
+        extras={},
     )
     queue_manager = SimpleNamespace(graph_runtime_state=None)
     conversation = pipeline_module.ConversationSnapshot(id="conversation-1", mode=AppMode.ADVANCED_CHAT)
