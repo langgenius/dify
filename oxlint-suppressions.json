@@ -3703,11 +3703,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/_base/components/retry/retry-on-panel.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/_base/components/selector.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 3
