@@ -2,7 +2,7 @@ import io
 import types
 from contextlib import contextmanager
 from inspect import unwrap
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy.orm import Session
@@ -12,6 +12,9 @@ import controllers.files.upload as module
 from core.workflow.file_reference import build_file_reference
 from models import Account, TenantAccountJoin
 from models.account import AccountStatus
+from models.enums import EndUserType
+from models.model import EndUser
+from models.tools import ToolFile
 
 
 def fake_request(args: dict, file=None):
@@ -37,9 +40,13 @@ def _persist_account_memberships(session: Session) -> None:
     session.commit()
 
 
-class DummyUser:
-    def __init__(self, user_id="user-1"):
-        self.id = user_id
+def _end_user(user_id: str = "user-1") -> EndUser:
+    return EndUser(
+        id=user_id,
+        tenant_id="tenant-1",
+        type=EndUserType.SERVICE_API,
+        session_id="session-1",
+    )
 
 
 class DummyFile:
@@ -63,22 +70,24 @@ class RecordingStream(io.BytesIO):
         return super().read(*args, **kwargs)
 
 
-class DummyToolFile:
-    def __init__(self, name="test.txt", mimetype="text/plain"):
-        self.id = "file-id"
-        self.name = name
-        self.size = 10
-        self.mimetype = mimetype
-        self.original_url = "http://original"
-        self.user_id = "user-1"
-        self.tenant_id = "tenant-1"
-        self.conversation_id = None
-        self.file_key = "file-key"
+def _tool_file(*, name: str = "test.txt", mimetype: str = "text/plain") -> ToolFile:
+    tool_file = ToolFile(
+        user_id="user-1",
+        tenant_id="tenant-1",
+        conversation_id=None,
+        file_key="file-key",
+        mimetype=mimetype,
+        original_url="http://original",
+        name=name,
+        size=10,
+    )
+    tool_file.id = "file-id"
+    return tool_file
 
 
 class TestPluginUploadFileApi:
     @patch.object(module, "verify_plugin_file_signature", return_value=True)
-    @patch.object(module, "get_user", return_value=DummyUser())
+    @patch.object(module, "get_user", return_value=_end_user())
     @patch.object(module, "ToolFileManager")
     def test_success_upload(
         self,
@@ -101,7 +110,7 @@ class TestPluginUploadFileApi:
         )
 
         tool_file_manager_instance = mock_tool_file_manager.return_value
-        tool_file_manager_instance.create_file_by_raw.return_value = DummyToolFile(
+        tool_file_manager_instance.create_file_by_raw.return_value = _tool_file(
             name="report.docx",
             mimetype="application/octet-stream",
         )
@@ -165,7 +174,7 @@ class TestPluginUploadFileApi:
         )
         tool_file_manager = mock_tool_file_manager.return_value
         tool_file_manager.create_file_by_raw.side_effect = lambda **_kwargs: (
-            events.append("storage-create-file") or DummyToolFile(name="report.pdf", mimetype="application/pdf")
+            events.append("storage-create-file") or _tool_file(name="report.pdf", mimetype="application/pdf")
         )
         mock_tool_file_manager.sign_file.return_value = "signed-url"
 
@@ -197,6 +206,7 @@ class TestPluginUploadFileApi:
             timestamp="123",
             nonce="abc",
             sign="sig",
+            max_size=None,
         )
         tool_file_manager.create_file_by_raw.assert_called_once_with(
             user_id="account-1",
@@ -273,7 +283,7 @@ class TestPluginUploadFileApi:
         with pytest.raises(Forbidden):
             post_fn(api)
 
-    @patch.object(module, "get_user", return_value=DummyUser())
+    @patch.object(module, "get_user", return_value=_end_user())
     @patch.object(module, "verify_plugin_file_signature", return_value=False)
     def test_invalid_signature(self, mock_verify, mock_get_user):
         dummy_file = DummyFile()
@@ -295,7 +305,7 @@ class TestPluginUploadFileApi:
         with pytest.raises(Forbidden):
             post_fn(api)
 
-    @patch.object(module, "get_user", return_value=DummyUser())
+    @patch.object(module, "get_user", return_value=_end_user())
     @patch.object(module, "verify_plugin_file_signature", return_value=True)
     @patch.object(module, "ToolFileManager")
     def test_file_too_large(
@@ -327,7 +337,66 @@ class TestPluginUploadFileApi:
         with pytest.raises(module.FileTooLargeError):
             post_fn(api)
 
-    @patch.object(module, "get_user", return_value=DummyUser())
+    @patch.object(module, "get_user", return_value=_end_user())
+    @patch.object(module, "verify_plugin_file_signature", return_value=True)
+    @patch.object(module, "ToolFileManager")
+    def test_signed_max_size_bounds_file_read(
+        self,
+        mock_tool_file_manager,
+        mock_verify,
+        mock_get_user,
+    ):
+        dummy_file = DummyFile(content=b"data")
+        dummy_file.stream = MagicMock()
+        dummy_file.stream.read.return_value = b"data"
+        module.request = fake_request(
+            {
+                "timestamp": "123",
+                "nonce": "abc",
+                "sign": "sig",
+                "tenant_id": "tenant-1",
+                "user_id": "user-1",
+                "max_size": "4",
+            },
+            file=dummy_file,
+        )
+        mock_tool_file_manager.return_value.create_file_by_raw.return_value = _tool_file()
+        mock_tool_file_manager.sign_file.return_value = "signed-url"
+
+        unwrap(module.PluginUploadFileApi().post)(module.PluginUploadFileApi())
+
+        dummy_file.stream.read.assert_called_once_with(5)
+        assert mock_verify.call_args.kwargs["max_size"] == 4
+        assert mock_tool_file_manager.return_value.create_file_by_raw.call_args.kwargs["file_binary"] == b"data"
+
+    @patch.object(module, "get_user", return_value=_end_user())
+    @patch.object(module, "verify_plugin_file_signature", return_value=True)
+    @patch.object(module, "ToolFileManager")
+    def test_signed_max_size_rejects_oversized_file_before_creation(
+        self,
+        mock_tool_file_manager,
+        mock_verify,
+        mock_get_user,
+    ):
+        dummy_file = DummyFile(content=b"oversized")
+        module.request = fake_request(
+            {
+                "timestamp": "123",
+                "nonce": "abc",
+                "sign": "sig",
+                "tenant_id": "tenant-1",
+                "user_id": "user-1",
+                "max_size": "4",
+            },
+            file=dummy_file,
+        )
+
+        with pytest.raises(module.FileTooLargeError):
+            unwrap(module.PluginUploadFileApi().post)(module.PluginUploadFileApi())
+
+        mock_tool_file_manager.assert_not_called()
+
+    @patch.object(module, "get_user", return_value=_end_user())
     @patch.object(module, "verify_plugin_file_signature", return_value=True)
     @patch.object(module, "ToolFileManager")
     def test_unsupported_file_type(

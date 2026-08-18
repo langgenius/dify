@@ -18,6 +18,8 @@ from dify_agent.protocol import (
     CancelRunRequest,
     CancelRunResponse,
     PydanticAIStreamRunEvent,
+    RunCancelledEvent,
+    RunCancelledEventData,
     RunEvent,
     RunFailedEvent,
     RunFailedEventData,
@@ -39,6 +41,7 @@ from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
 from clients.agent_backend import (
+    AgentBackendError,
     AgentBackendRunEventAdapter,
     AgentBackendRunFailedError,
     AgentBackendRunFailedInternalEvent,
@@ -67,9 +70,13 @@ from models.model import MessageAgentThought
 
 
 @pytest.fixture(autouse=True)
-def bind_agent_db(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
-    """Bind the runner's ORM writes to the shared SQLite session."""
+def bind_agent_dependencies(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+    """Bind local runner dependencies without reaching external services."""
     monkeypatch.setattr(app_runner_module.db, "session", sqlite_session)
+    monkeypatch.setattr(
+        "core.app.apps.agent_app.runtime_request_builder.resolve_model_context_window",
+        lambda **_kwargs: None,
+    )
 
 
 def _thought_rows(session: Session) -> list[MessageAgentThought]:
@@ -108,11 +115,37 @@ class _RecordingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.cancelled_run_ids: list[str] = []
+        self.cancel_after: list[str | None] = []
 
     @override
     def cancel_run(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
         self.cancelled_run_ids.append(run_id)
         return super().cancel_run(run_id, request=request)
+
+    @override
+    def cancel_run_and_wait(
+        self,
+        run_id: str,
+        request: CancelRunRequest | None = None,
+        *,
+        after: str | None = None,
+    ) -> RunCancelledEvent:
+        self.cancel_after.append(after)
+        return super().cancel_run_and_wait(run_id, request=request, after=after)
+
+
+class _CancelAndWaitFailingClient(_RecordingFakeAgentBackendRunClient):
+    @override
+    def cancel_run_and_wait(
+        self,
+        run_id: str,
+        request: CancelRunRequest | None = None,
+        *,
+        after: str | None = None,
+    ) -> RunCancelledEvent:
+        del request
+        self.cancel_after.append(after)
+        raise RuntimeError(f"failed to finish cancelling {run_id}")
 
 
 class _RunLimitBindingLostFakeAgentBackendRunClient(FakeAgentBackendRunClient):
@@ -137,6 +170,38 @@ class _RunLimitBindingLostFakeAgentBackendRunClient(FakeAgentBackendRunClient):
                 reason="binding_lost",
             ),
         )
+
+
+class _TerminalWithoutSnapshotFakeAgentBackendRunClient(FakeAgentBackendRunClient):
+    def __init__(self, *, terminal_type: str) -> None:
+        super().__init__()
+        self.terminal_type = terminal_type
+
+    @override
+    def stream_events(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
+        del after, should_stop
+        created_at = datetime(2026, 1, 1, tzinfo=UTC)
+        yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
+        if self.terminal_type == "failed":
+            yield RunFailedEvent(
+                id="2-0",
+                run_id=run_id,
+                created_at=created_at,
+                data=RunFailedEventData(error="failed without snapshot"),
+            )
+        else:
+            yield RunCancelledEvent(
+                id="2-0",
+                run_id=run_id,
+                created_at=created_at,
+                data=RunCancelledEventData(reason="cancelled without snapshot"),
+            )
 
 
 class _StreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
@@ -437,6 +502,26 @@ class _FakeSessionStore:
         pending_tool_call_id: str | None = None,
     ) -> None:
         self.saved.append((scope, binding_id, snapshot, pending_form_id, pending_tool_call_id))
+
+
+class _ExplodingSessionStore(_FakeSessionStore):
+    def __init__(self, loaded: CompositorSessionSnapshot | None = None) -> None:
+        super().__init__(loaded=loaded)
+        self.save_attempts: list[CompositorSessionSnapshot | None] = []
+
+    @override
+    def save_active_snapshot(
+        self,
+        *,
+        scope: AgentAppSessionScope,
+        binding_id: str,
+        snapshot: CompositorSessionSnapshot | None,
+        pending_form_id: str | None = None,
+        pending_tool_call_id: str | None = None,
+    ) -> None:
+        del scope, binding_id, pending_form_id, pending_tool_call_id
+        self.save_attempts.append(snapshot)
+        raise RuntimeError("session save failed")
 
 
 class _MonotonicClock:
@@ -768,6 +853,7 @@ def test_streaming_turn_cancels_after_persisting_seen_agent_answer(
     assert len(rows) == 1
     assert rows[0].answer == "hello "
     assert client.cancelled_run_ids == ["fake-run-1"]
+    assert client.cancel_after == ["3-0"]
 
 
 def test_tool_result_without_identity_does_not_attach_to_previous_tool(
@@ -1158,8 +1244,40 @@ def test_failed_run_raises_agent_backend_error() -> None:
 
     with pytest.raises(AgentBackendRunFailedError, match="fake failure .*agent_run_id=fake-run-1"):
         _run(_runner(client, store), qm)
-    # No message-end on failure; no snapshot saved.
+    # No message-end on failure; post-exit session state is still saved.
     assert not [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
+    assert store.saved[0][2] == CompositorSessionSnapshot(layers=[])
+
+
+@pytest.mark.parametrize("outcome", ["failed", "stopped"])
+def test_snapshot_save_failure_preserves_original_app_outcome(outcome: str) -> None:
+    store = _ExplodingSessionStore()
+    queue_manager: _FakeQueueManager = _FakeQueueManager() if outcome == "failed" else _StoppedQueueManager()
+    client = FakeAgentBackendRunClient(
+        scenario=FakeAgentBackendScenario.FAILED if outcome == "failed" else FakeAgentBackendScenario.SUCCESS
+    )
+    expected_error = AgentBackendRunFailedError if outcome == "failed" else GenerateTaskStoppedError
+
+    with pytest.raises(expected_error, match="fake failure" if outcome == "failed" else None):
+        _run(_runner(client, store), queue_manager)
+
+    assert store.save_attempts == [CompositorSessionSnapshot(layers=[])]
+
+
+@pytest.mark.parametrize(
+    ("terminal_type", "expected_error"),
+    [("failed", AgentBackendRunFailedError), ("cancelled", AgentBackendError)],
+)
+def test_terminal_without_snapshot_preserves_prior_app_session_without_write(
+    terminal_type: str,
+    expected_error: type[Exception],
+) -> None:
+    store = _FakeSessionStore()
+    client = _TerminalWithoutSnapshotFakeAgentBackendRunClient(terminal_type=terminal_type)
+
+    with pytest.raises(expected_error):
+        _run(_runner(client, store), _FakeQueueManager())
+
     assert store.saved == []
 
 
@@ -1229,7 +1347,7 @@ def test_agent_backend_failure_to_exception_prefers_run_failure_type_over_known_
     }
 
 
-def test_stopped_task_cancels_agent_backend_run_and_skips_session_save() -> None:
+def test_stopped_task_waits_for_cancelled_snapshot_and_saves_session() -> None:
     client = _RecordingFakeAgentBackendRunClient()
     store = _FakeSessionStore()
     qm = _StoppedQueueManager()
@@ -1238,6 +1356,18 @@ def test_stopped_task_cancels_agent_backend_run_and_skips_session_save() -> None
         _run(_runner(client, store), qm)
 
     assert client.cancelled_run_ids == ["fake-run-1"]
+    assert len(store.saved) == 1
+    assert store.saved[0][2] == CompositorSessionSnapshot(layers=[])
+
+
+def test_cancel_and_wait_failure_preserves_stopped_app_outcome() -> None:
+    client = _CancelAndWaitFailingClient()
+    store = _FakeSessionStore()
+
+    with pytest.raises(GenerateTaskStoppedError):
+        _run(_runner(client, store), _StoppedQueueManager())
+
+    assert client.cancel_after == [None]
     assert store.saved == []
 
 

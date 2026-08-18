@@ -1,7 +1,7 @@
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
 import { updateWorkspaceInfo } from '@/service/common'
 import { render } from '@/test/console/render'
 import EditWorkspaceModal from '../index'

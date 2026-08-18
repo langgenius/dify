@@ -96,8 +96,8 @@ class PartnerTenants(Resource):
         try:
             click_id = req_data.click_id
             decoded_partner_key = base64.b64decode(partner_key).decode("utf-8")
-        except Exception:
-            raise BadRequest("Invalid partner_key")
+        except Exception as e:
+            raise BadRequest("Invalid partner_key") from e
 
         if not click_id or not decoded_partner_key or not current_user.id:
             raise BadRequest("Invalid partner information")

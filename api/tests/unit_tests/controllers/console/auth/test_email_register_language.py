@@ -25,6 +25,7 @@ def test_create_new_account_uses_requested_language(mock_create_account):
         password="ValidPass123!",
         interface_language="zh-Hans",
         timezone="Asia/Shanghai",
+        ip_address=None,
         session=ANY,
     )
 

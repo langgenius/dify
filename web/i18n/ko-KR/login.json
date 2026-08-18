@@ -49,6 +49,7 @@
   "join": "가입하기",
   "joinTipEnd": "팀에 가입하세요.",
   "joinTipStart": "당신을 초대합니다.",
+  "joinWorkspace": "{{workspaceName}}에 가입하기",
   "license.link": "오픈 소스 라이선스",
   "license.tip": "Dify Community Edition 을 시작하기 전에 GitHub 의",
   "licenseExpired": "라이센스가 만료되었습니다.",
