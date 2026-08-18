@@ -188,6 +188,7 @@ class TestStructuredOutput:
 
         assert len(result) == 2
         assert isinstance(result[0], SystemPromptMessage)
+        assert isinstance(result[0].content, str)
         assert "Existing system prompt" in result[0].content
         assert json.dumps(schema) in result[0].content
         assert isinstance(result[1], UserPromptMessage)
@@ -200,6 +201,7 @@ class TestStructuredOutput:
 
         assert len(result) == 2
         assert isinstance(result[0], SystemPromptMessage)
+        assert isinstance(result[0].content, str)
         assert json.dumps(schema) in result[0].content
         assert isinstance(result[1], UserPromptMessage)
 
@@ -450,6 +452,9 @@ class TestStructuredOutput:
         sent_messages = call_args.kwargs.get("prompt_messages") or call_args.args[0]
         system_messages = [m for m in sent_messages if isinstance(m, SystemPromptMessage)]
         assert system_messages, "Expected a SystemPromptMessage with schema injected (prompt-based fallback)"
+        assert isinstance(system_messages[0].content, str), (
+            "SystemPromptMessage content must be a str for schema injection to work"
+        )
         assert json.dumps(schema) in system_messages[0].content, (
             "Schema should appear in the injected system prompt when response_format is not set"
         )
