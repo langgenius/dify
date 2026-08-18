@@ -4,7 +4,6 @@ import type { MarketplacePlugin, MarketplaceTemplate } from '@dify/contracts/mar
 import {
   Autocomplete,
   AutocompleteClear,
-  AutocompleteContent,
   AutocompleteEmpty,
   AutocompleteInput,
   AutocompleteInputGroup,
@@ -12,6 +11,9 @@ import {
   AutocompleteItemIndicator,
   AutocompleteItemText,
   AutocompleteList,
+  AutocompletePopup,
+  AutocompletePortal,
+  AutocompletePositioner,
 } from '@langgenius/dify-ui/autocomplete'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery } from '@tanstack/react-query'
@@ -24,7 +26,11 @@ import { marketplaceQuery } from '@/service/client'
 import { markMarketplaceSiteSearch } from '@/utils/marketplace-site-track'
 import { getPluginIconInMarketplace } from '../utils'
 
-type MarketplaceSearchScope = 'all' | 'plugins' | 'templates'
+export type MarketplaceSearchScope = 'all' | 'plugins' | 'templates'
+
+export type MarketplaceSearchSelection =
+  | { kind: 'plugin'; plugin: MarketplacePlugin }
+  | { kind: 'template'; template: MarketplaceTemplate }
 
 type MarketplaceSuggestion = {
   description: string
@@ -33,12 +39,14 @@ type MarketplaceSuggestion = {
   kind: 'plugin' | 'template'
   label: string
   meta: string
+  selection: MarketplaceSearchSelection
 }
 
 type MarketplaceSearchAutocompleteProps = {
   category?: string
   inputName?: string
   locale: string
+  onSuggestionSelect?: (selection: MarketplaceSearchSelection) => void
   onValueChange: (value: string) => void
   placeholder: string
   scope: MarketplaceSearchScope
@@ -62,6 +70,7 @@ const toTemplateSuggestion = (template: MarketplaceTemplate): MarketplaceSuggest
   kind: 'template',
   label: template.template_name,
   meta: template.publisher_handle || template.publisher_unique_handle || '',
+  selection: { kind: 'template', template },
 })
 
 const toPluginSuggestion = (plugin: MarketplacePlugin, locale: string): MarketplaceSuggestion => ({
@@ -71,12 +80,14 @@ const toPluginSuggestion = (plugin: MarketplacePlugin, locale: string): Marketpl
   kind: 'plugin',
   label: getPluginText(plugin.label, locale) || plugin.name,
   meta: plugin.org,
+  selection: { kind: 'plugin', plugin },
 })
 
 export function MarketplaceSearchAutocomplete({
   category = 'all',
   inputName,
   locale,
+  onSuggestionSelect,
   onValueChange,
   placeholder,
   scope,
@@ -195,54 +206,68 @@ export function MarketplaceSearchAutocomplete({
           />
         )}
       </AutocompleteInputGroup>
-      <AutocompleteContent
-        sideOffset={8}
-        portalProps={{ hidden: !showDropdown }}
-        popupClassName="max-w-[420px]"
-        popupProps={{ 'aria-busy': isSearching || undefined }}
-      >
-        <AutocompleteList<MarketplaceSuggestion>>
-          {(item) => (
-            <AutocompleteItem key={item.id} value={item} className="items-start py-2">
-              {item.iconUrl ? (
-                <img
-                  alt=""
-                  className="mt-0.5 size-6 shrink-0 rounded-md object-contain"
-                  src={item.iconUrl}
-                  onError={({ currentTarget }) => {
-                    currentTarget.style.display = 'none'
-                  }}
-                />
-              ) : (
-                <span
-                  aria-hidden
-                  className={cn(
-                    'mt-0.5 size-4 shrink-0 text-text-tertiary',
-                    item.kind === 'template' ? 'i-ri-layout-grid-line' : 'i-ri-puzzle-2-line',
+      <AutocompletePortal hidden={!showDropdown}>
+        <AutocompletePositioner sideOffset={8}>
+          <AutocompletePopup className="max-w-[420px]" aria-busy={isSearching || undefined}>
+            <AutocompleteList<MarketplaceSuggestion>>
+              {(item) => (
+                <AutocompleteItem
+                  key={item.id}
+                  value={item}
+                  className="items-start py-2"
+                  onClick={
+                    onSuggestionSelect
+                      ? () => {
+                          onSuggestionSelect(item.selection)
+                          queueMicrotask(() => {
+                            onValueChange('')
+                            setIsOpen(false)
+                          })
+                        }
+                      : undefined
+                  }
+                >
+                  {item.iconUrl ? (
+                    <img
+                      alt=""
+                      className="mt-0.5 size-6 shrink-0 rounded-md object-contain"
+                      src={item.iconUrl}
+                      onError={({ currentTarget }) => {
+                        currentTarget.style.display = 'none'
+                      }}
+                    />
+                  ) : (
+                    <span
+                      aria-hidden
+                      className={cn(
+                        'mt-0.5 size-4 shrink-0 text-text-tertiary',
+                        item.kind === 'template' ? 'i-ri-layout-grid-line' : 'i-ri-puzzle-2-line',
+                      )}
+                    />
                   )}
-                />
+                  <span className="flex min-w-0 grow flex-col gap-0.5">
+                    <AutocompleteItemText className="px-0 text-text-primary">
+                      {item.label}
+                    </AutocompleteItemText>
+                    {!!item.description && (
+                      <span className="line-clamp-2 system-xs-regular text-text-tertiary">
+                        {item.description}
+                      </span>
+                    )}
+                    {!!item.meta && (
+                      <span className="truncate system-xs-regular text-text-quaternary">
+                        {item.meta}
+                      </span>
+                    )}
+                  </span>
+                  <AutocompleteItemIndicator />
+                </AutocompleteItem>
               )}
-              <span className="flex min-w-0 grow flex-col gap-0.5">
-                <AutocompleteItemText className="px-0 text-text-primary">
-                  {item.label}
-                </AutocompleteItemText>
-                {!!item.description && (
-                  <span className="line-clamp-2 system-xs-regular text-text-tertiary">
-                    {item.description}
-                  </span>
-                )}
-                {!!item.meta && (
-                  <span className="truncate system-xs-regular text-text-quaternary">
-                    {item.meta}
-                  </span>
-                )}
-              </span>
-              <AutocompleteItemIndicator />
-            </AutocompleteItem>
-          )}
-        </AutocompleteList>
-        {!isSearching && <AutocompleteEmpty>{emptyText}</AutocompleteEmpty>}
-      </AutocompleteContent>
+            </AutocompleteList>
+            {!isSearching && <AutocompleteEmpty>{emptyText}</AutocompleteEmpty>}
+          </AutocompletePopup>
+        </AutocompletePositioner>
+      </AutocompletePortal>
     </Autocomplete>
   )
 }

@@ -222,6 +222,65 @@ describe('MarketplaceSearchAutocomplete', () => {
     expect(handleSubmit).toHaveBeenCalledOnce()
   })
 
+  it('hands the selected plugin back to a creator-profile owner without submitting', async () => {
+    mockPluginSearch.mockResolvedValue({
+      data: {
+        plugins: [
+          {
+            type: 'plugin',
+            org: 'langgenius',
+            name: 'google-search',
+            label: { en_US: 'Google Search' },
+            brief: { en_US: 'Search the web from your workflow.' },
+            category: 'tool',
+          },
+        ],
+        total: 1,
+      },
+    })
+    const user = userEvent.setup()
+    const onSuggestionSelect = vi.fn()
+    const handleSubmit = vi.fn((event: Event) => {
+      event.preventDefault()
+    })
+
+    const ControlledSearch = () => {
+      const [value, setValue] = useState('')
+
+      return (
+        <form
+          onSubmit={(event) => {
+            handleSubmit(event.nativeEvent)
+          }}
+        >
+          <MarketplaceSearchAutocomplete
+            locale="en-US"
+            onSuggestionSelect={onSuggestionSelect}
+            onValueChange={setValue}
+            placeholder="Search plugins"
+            scope="plugins"
+            value={value}
+          />
+        </form>
+      )
+    }
+
+    render(<ControlledSearch />, { wrapper: Wrapper })
+
+    await user.type(screen.getByRole('combobox'), 'google')
+    await user.click(await screen.findByText('Google Search'))
+
+    expect(onSuggestionSelect).toHaveBeenCalledWith({
+      kind: 'plugin',
+      plugin: expect.objectContaining({
+        org: 'langgenius',
+        name: 'google-search',
+      }),
+    })
+    expect(handleSubmit).not.toHaveBeenCalled()
+    expect(screen.getByRole('combobox')).toHaveValue('')
+  })
+
   it('does not offer the previous term suggestions while a new search is pending', async () => {
     const googleResponse = {
       data: {
