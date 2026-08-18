@@ -2087,11 +2087,6 @@
       "count": 4
     }
   },
-  "web/app/components/datasets/documents/components/documents-header.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/documents/components/list.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -2252,9 +2247,6 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
-    },
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/datasets/documents/detail/completed/common/chunk-content.tsx": {
@@ -2263,11 +2255,6 @@
     },
     "jsx-a11y/no-autofocus": {
       "count": 2
-    }
-  },
-  "web/app/components/datasets/documents/detail/completed/components/menu-bar.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/datasets/documents/detail/completed/components/segment-list-content.tsx": {
