@@ -2,7 +2,6 @@
 Unit tests for inner_api auth decorators
 """
 
-from unittest.mock import patch
 from uuid import NAMESPACE_URL, uuid5
 
 import pytest
