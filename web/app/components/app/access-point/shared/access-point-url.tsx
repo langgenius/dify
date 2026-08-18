@@ -3,7 +3,7 @@
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
-import CopyFeedback from '@/app/components/base/copy-feedback'
+import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import ShareQRCode from '@/app/components/base/qrcode'
 import { AccessPointEndpoint } from './access-point-card'
 
@@ -81,7 +81,7 @@ export function AccessPointUrl({
           <span aria-hidden className="i-ri-file-copy-line size-4 text-text-disabled" />
         </div>
       ) : (
-        <CopyFeedback content={value} className="size-6!" />
+        <CopyFeedback content={value} className="size-6" />
       )}
       {showQrCode &&
         (copyDisabled ? (
