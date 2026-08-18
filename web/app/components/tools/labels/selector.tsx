@@ -6,7 +6,7 @@ import { useDebounceFn } from 'ahooks'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
-import Input from '@/app/components/base/input'
+import { SearchInput } from '@/app/components/base/search-input'
 import { useTags } from '@/app/components/plugins/hooks'
 
 type LabelSelectorProps = {
@@ -66,13 +66,7 @@ function LabelSelector({ value, onChange }: LabelSelectorProps) {
         >
           <div className="relative w-147.75 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
             <div className="border-b-[0.5px] border-divider-regular p-2">
-              <Input
-                showLeftIcon
-                showClearIcon
-                value={keywords}
-                onChange={(e) => handleKeywordsChange(e.target.value)}
-                onClear={() => handleKeywordsChange('')}
-              />
+              <SearchInput value={keywords} onValueChange={handleKeywordsChange} />
             </div>
             <CheckboxGroup
               aria-label={t(($) => $['createTool.toolInput.labelPlaceholder'], { ns: 'tools' })}
