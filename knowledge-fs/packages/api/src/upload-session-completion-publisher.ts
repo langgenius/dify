@@ -10,6 +10,7 @@ import type { LogicalDocumentRepository } from "./logical-document-repository";
 import {
   type UploadSessionCompletionPublisher,
   UploadSessionConflictError,
+  uploadSessionObjectKey,
 } from "./upload-session";
 
 export interface CreateUploadSessionDocumentCompletionPublisherOptions {
@@ -205,9 +206,11 @@ function canonicalSha256Hex(checksumSha256Base64: string): string {
 function assertUploadObjectKey(
   input: Parameters<UploadSessionCompletionPublisher["publish"]>[0],
 ): void {
-  const expected = `namespaces/${encodeURIComponent(input.tenantId)}/spaces/${encodeURIComponent(
+  const expected = uploadSessionObjectKey(
+    input.tenantId,
     input.knowledgeSpaceId,
-  )}/uploads/${encodeURIComponent(input.uploadSessionId)}/source`;
+    input.uploadSessionId,
+  );
   if (input.objectKey !== expected) {
     throw new UploadSessionConflictError("Upload session object key is outside its reserved scope");
   }

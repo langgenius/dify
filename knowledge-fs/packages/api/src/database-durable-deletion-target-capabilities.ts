@@ -41,6 +41,7 @@ import {
 } from "./research-task-deletion-cleanup";
 import { createDatabaseRetrievalExecutionLeaseRepository } from "./retrieval-execution-lease";
 import type { SourceSecretStore } from "./source-secret-store";
+import { uploadSessionObjectKeyPrefix } from "./upload-session";
 
 export interface DatabaseDurableDeletionTargetCapabilitiesOptions {
   readonly cache: CacheAdapter;
@@ -207,7 +208,11 @@ export function createDatabaseDurableDeletionTargetCapabilities({
             state,
             limit,
           );
-          const pageKeys = validateObjectKeys(manifestPage.keys, `${spacePrefix}/`, limit);
+          const pageKeys = validateObjectKeys(
+            manifestPage.keys,
+            spaceObjectKeyPrefixes(spacePrefix, job),
+            limit,
+          );
           const items = pageKeys.map((key, index) =>
             objectInventoryItem(key, state.ordinal + index, job.maxExecutionAttempts),
           );
@@ -236,7 +241,7 @@ export function createDatabaseDurableDeletionTargetCapabilities({
             state.databaseKeyCursor,
             limit,
           ),
-          `${spacePrefix}/`,
+          spaceObjectKeyPrefixes(spacePrefix, job),
           limit,
         );
         const items = pageKeys.map((key, index) =>
@@ -321,7 +326,10 @@ export function createDatabaseDurableDeletionTargetCapabilities({
           if (!item.objectKey) throw new Error("Durable deletion object item has no object key");
           validateObjectKeys(
             [item.objectKey],
-            `${await getSpaceObjectPrefix(database, job.tenantId, job.knowledgeSpaceId)}/`,
+            spaceObjectKeyPrefixes(
+              await getSpaceObjectPrefix(database, job.tenantId, job.knowledgeSpaceId),
+              job,
+            ),
             1,
           );
           await objectStorage.deleteObject(item.objectKey);
@@ -4734,18 +4742,30 @@ function encodeInventoryCursor(value: InventoryCursor): string {
 
 function validateObjectKeys(
   values: readonly string[],
-  requiredPrefix: string,
+  requiredPrefix: string | readonly string[],
   limit: number,
 ): readonly string[] {
   if (values.length > limit || new Set(values).size !== values.length) {
     throw new Error("Durable deletion object inventory page is unbounded or duplicated");
   }
+  const requiredPrefixes = typeof requiredPrefix === "string" ? [requiredPrefix] : requiredPrefix;
   for (const value of values) {
-    if (!value || value.length > 1024 || !value.startsWith(requiredPrefix)) {
+    if (
+      !value ||
+      value.length > 1024 ||
+      !requiredPrefixes.some((prefix) => value.startsWith(prefix))
+    ) {
       throw new Error("Durable deletion object key escapes the immutable space prefix");
     }
   }
   return values;
+}
+
+function spaceObjectKeyPrefixes(
+  manifestPrefix: string,
+  job: Pick<DurableDeletionTargetOperationInput["job"], "knowledgeSpaceId" | "tenantId">,
+): readonly string[] {
+  return [`${manifestPrefix}/`, uploadSessionObjectKeyPrefix(job.tenantId, job.knowledgeSpaceId)];
 }
 
 function validateObjectStoragePage(

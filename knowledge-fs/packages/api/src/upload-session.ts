@@ -585,7 +585,7 @@ export function createUploadSessionService({
         mode,
         ...(multipartPartCount === undefined ? {} : { multipartPartCount }),
         ...(mode === "multipart" ? { multipartPartSizeBytes } : {}),
-        objectKey: uploadObjectKey(input.tenantId, input.knowledgeSpaceId, id),
+        objectKey: uploadSessionObjectKey(input.tenantId, input.knowledgeSpaceId, id),
         reservedBytes: input.expectedSizeBytes,
         rowVersion: 1,
         status: "creating",
@@ -806,10 +806,20 @@ function uploadMetadata(session: UploadSession): Readonly<Record<string, string>
   };
 }
 
-function uploadObjectKey(tenantId: string, knowledgeSpaceId: string, sessionId: string): string {
+export function uploadSessionObjectKeyPrefix(tenantId: string, knowledgeSpaceId: string): string {
   return `namespaces/${encodeURIComponent(tenantId)}/spaces/${encodeURIComponent(
     knowledgeSpaceId,
-  )}/uploads/${encodeURIComponent(sessionId)}/source`;
+  )}/uploads/`;
+}
+
+export function uploadSessionObjectKey(
+  tenantId: string,
+  knowledgeSpaceId: string,
+  sessionId: string,
+): string {
+  return `${uploadSessionObjectKeyPrefix(tenantId, knowledgeSpaceId)}${encodeURIComponent(
+    sessionId,
+  )}/source`;
 }
 
 function uploadIdempotencyScope(session: UploadSession): string {

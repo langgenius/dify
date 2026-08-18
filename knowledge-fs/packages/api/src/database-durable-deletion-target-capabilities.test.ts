@@ -289,6 +289,67 @@ describe("database durable deletion target capabilities", () => {
       );
     });
 
+    it(`deletes upload-session source objects from the reserved namespace (${dialect})`, async () => {
+      const manifestPrefix = `tenant-a/spaces/${spaceId}`;
+      const uploadObjectKey = `namespaces/tenant-a/spaces/${spaceId}/uploads/018f0d60-7a49-7cc2-9c1b-5b36f18f2d21/source`;
+      const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+        if (input.tableName === "knowledge_space_manifests") {
+          return result([{ object_key_prefix: manifestPrefix }]);
+        }
+        if (input.tableName === "document_assets" && input.sql.includes("object_key")) {
+          return result([{ object_key: uploadObjectKey }]);
+        }
+        if (input.tableName === "document_assets") {
+          return result([{ id: targetDocumentId }]);
+        }
+        return result([]);
+      };
+      const objectStorage = createMemoryObjectStorageAdapter({
+        kind: "memory",
+        maxObjectBytes: 1_024,
+      });
+      await objectStorage.putObject({ body: new Uint8Array([1]), key: uploadObjectKey });
+      const capabilities = createDatabaseDurableDeletionTargetCapabilities({
+        cache: createMemoryCacheAdapter({ maxEntries: 10 }),
+        database: createSchemaDatabaseAdapter({
+          executor: execute,
+          kind: dialect,
+          transaction: async (callback) => callback({ execute }),
+        }),
+        objectStorage,
+        secretStore: { delete: vi.fn(async () => undefined) },
+      });
+      const logicalDocumentJob = job({ targetType: "logical_document" });
+      const signal = new AbortController().signal;
+
+      const inventory = await capabilities.inventory({
+        job: logicalDocumentJob,
+        limit: 1,
+        signal,
+      });
+      expect(inventory.items).toEqual([
+        expect.objectContaining({ kind: "object", objectKey: uploadObjectKey }),
+      ]);
+
+      await capabilities.executeExternalItem({
+        item: deletionItem("object", { objectKey: uploadObjectKey }),
+        job: logicalDocumentJob,
+        signal,
+      });
+      await expect(objectStorage.headObject(uploadObjectKey)).resolves.toBeNull();
+
+      await expect(
+        capabilities.executeExternalItem({
+          item: deletionItem("object", {
+            objectKey:
+              "namespaces/tenant-a/spaces/018f0d60-7a49-7cc2-9c1b-5b36f18f2c99/uploads/session/source",
+          }),
+          job: logicalDocumentJob,
+          signal,
+        }),
+      ).rejects.toThrow("escapes the immutable space prefix");
+    });
+
     it(`inventories and executes space objects, lifecycle secrets, source secrets, and cache items (${dialect})`, async () => {
       const prefix = `tenant-a/spaces/${spaceId}`;
       const firstObjectKey = `${prefix}/a.bin`;
