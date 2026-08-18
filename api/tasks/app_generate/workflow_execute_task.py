@@ -12,6 +12,7 @@ from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
+from core.app.apps.execution_coordinator import clear_app_task_cancellation_signals
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import (
@@ -557,6 +558,12 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
             type(generate_entity),
         )
         return
+
+    # The resumed attempt reuses the paused run's task ID, so cancellation
+    # signals armed against that ID before or during the pause would abort it
+    # immediately and report it as stopped by the user. This attempt is starting
+    # deliberately, so drop them before any engine can observe them.
+    clear_app_task_cancellation_signals(generate_entity.task_id)
 
     workflow_run_repo.resume_workflow_pause(workflow_run_id, pause_entity)
 

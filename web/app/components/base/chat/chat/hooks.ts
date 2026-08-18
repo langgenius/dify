@@ -1,6 +1,6 @@
 import type { ChatConfig, ChatItem, ChatItemInTree, Inputs } from '../types'
 import type { InputForm, ThoughtItem } from './type'
-import type AudioPlayer from '@/app/components/base/audio-btn/audio'
+import type { AudioPlayer } from '@/app/components/base/audio-btn/audio'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { Annotation } from '@/models/log'
 import type { IOnDataMoreInfo, IOtherOptions } from '@/service/base'

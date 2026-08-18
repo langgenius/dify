@@ -312,13 +312,13 @@ class E2BExecutionBindingBackend:
             raise BindingAcquireError("E2B sandbox did not provide a traffic access token")
         http_client = httpx.AsyncClient(
             base_url=entrypoint,
-            headers={"X-Access-Token": traffic_token},
+            headers={"e2b-traffic-access-token": traffic_token},
             follow_redirects=True,
             timeout=httpx.Timeout(60.0),
         )
 
         # Explicit token="" prevents process-level SHELLCTL_AUTH_TOKEN fallback;
-        # E2B port access is authenticated only by X-Access-Token above.
+        # E2B port access is authenticated only by e2b-traffic-access-token above.
         def client_factory() -> ShellctlClientProtocol:
             from shellctl.client import ShellctlClient
 

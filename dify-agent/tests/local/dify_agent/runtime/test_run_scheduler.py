@@ -99,7 +99,7 @@ class FakeStore:
     statuses: dict[str, RunStatus]
     errors: dict[str, str | None]
     error_types: dict[str, RunFailureType | None]
-    terminal_changes: dict[str, asyncio.Event]
+    cancellation_changes: dict[str, asyncio.Event]
     cancellation_intents: dict[str, RunCancellationIntent]
 
     def __init__(self) -> None:
@@ -108,7 +108,7 @@ class FakeStore:
         self.statuses = {}
         self.errors = {}
         self.error_types = {}
-        self.terminal_changes = {}
+        self.cancellation_changes = {}
         self.cancellation_intents = {}
 
     async def create_run(self) -> RunRecord:
@@ -116,7 +116,7 @@ class FakeStore:
         record = RunRecord(run_id=run_id, status="running")
         self.records[run_id] = record
         self.statuses[run_id] = "running"
-        self.terminal_changes[run_id] = asyncio.Event()
+        self.cancellation_changes[run_id] = asyncio.Event()
         return record
 
     async def append_event(self, event: NonTerminalRunEvent) -> str:
@@ -146,7 +146,6 @@ class FakeStore:
         self.statuses[event.run_id] = status
         self.errors[event.run_id] = error
         self.error_types[event.run_id] = error_type
-        self.terminal_changes[event.run_id].set()
         return RunFinalizationResult(applied=True, status=status, event_id=event_id)
 
     async def request_cancellation(self, run_id: str, request: CancelRunRequest) -> RunStatus:
@@ -159,16 +158,15 @@ class FakeStore:
                 message=request.message,
                 requested_at=utc_now(),
             )
-            self.terminal_changes[run_id].set()
+            self.cancellation_changes[run_id].set()
         return "running"
 
     async def get_cancellation_intent(self, run_id: str) -> RunCancellationIntent | None:
         return self.cancellation_intents.get(run_id)
 
-    async def wait_for_cancellation(self, run_id: str) -> RunCancellationIntent | None:
-        while self.statuses[run_id] == "running" and run_id not in self.cancellation_intents:
-            await self.terminal_changes[run_id].wait()
-        return self.cancellation_intents.get(run_id)
+    async def wait_for_cancellation(self, run_id: str) -> RunCancellationIntent:
+        await self.cancellation_changes[run_id].wait()
+        return self.cancellation_intents[run_id]
 
     async def finalize_cancellation(
         self,
@@ -196,7 +194,6 @@ class FakeStore:
         self.errors[run_id] = intent.message or intent.reason
         self.error_types[run_id] = None
         del self.cancellation_intents[run_id]
-        self.terminal_changes[run_id].set()
         return RunFinalizationResult(applied=True, status="cancelled", event_id=event_id)
 
 
@@ -228,7 +225,7 @@ class TrackingStore(FakeStore):
         if not pause_observer:
             self.release_observer.set()
 
-    async def wait_for_cancellation(self, run_id: str) -> RunCancellationIntent | None:
+    async def wait_for_cancellation(self, run_id: str) -> RunCancellationIntent:
         self.observer_started.set()
         try:
             await self.release_observer.wait()
@@ -246,7 +243,7 @@ class FailingObserverStore(FakeStore):
         self.fail_observer = fail_observer
         self.observer_finished = asyncio.Event()
 
-    async def wait_for_cancellation(self, run_id: str) -> RunCancellationIntent | None:
+    async def wait_for_cancellation(self, run_id: str) -> RunCancellationIntent:
         del run_id
         try:
             await self.fail_observer.wait()

@@ -2,7 +2,7 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as echarts from 'echarts'
 import { Theme } from '@/types/app'
-import CodeBlock from '../code-block'
+import { CodeBlock } from '../code-block'
 
 const { mockHighlightCode } = vi.hoisted(() => ({
   mockHighlightCode: vi.fn(),
