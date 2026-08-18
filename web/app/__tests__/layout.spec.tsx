@@ -4,16 +4,21 @@ let queryClient: QueryClient
 
 const mocks = vi.hoisted(() => ({
   getSystemFeatures: vi.fn(),
-  requestHeaders: new Headers(),
+  headers: vi.fn(async () => new Headers()),
 }))
 
 vi.mock('@/features/system-features/server', () => ({
   getSystemFeaturesQueryClient: () => queryClient,
-  systemFeaturesServerQueryOptions: () => ({
-    queryKey: ['console', 'system-features'],
-    queryFn: mocks.getSystemFeatures,
-    retry: false,
-  }),
+  prefetchSystemFeatures: async () => {
+    const queryOptions = {
+      queryKey: ['console', 'system-features'],
+      queryFn: mocks.getSystemFeatures,
+      retry: false,
+    }
+    if (!queryClient.getQueryState(queryOptions.queryKey))
+      await queryClient.prefetchQuery(queryOptions)
+    return queryClient.getQueryData(queryOptions.queryKey)
+  },
 }))
 
 vi.mock('@/env', async (importOriginal) => {
@@ -30,13 +35,35 @@ vi.mock('@/i18n-config/server', () => ({
 }))
 
 vi.mock('@/next/headers', () => ({
-  headers: async () => mocks.requestHeaders,
+  headers: mocks.headers,
 }))
 
 describe('Root layout System Features bootstrap', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.headers.mockResolvedValue(new Headers())
     queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  })
+
+  it('waits for request headers before RootLayout starts the System Features request', async () => {
+    let resolveHeaders!: (headers: Headers) => void
+    mocks.headers.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveHeaders = resolve
+        }),
+    )
+    mocks.getSystemFeatures.mockResolvedValue({ deployment_edition: 'CLOUD' })
+    const { default: RootLayout } = await import('../layout')
+
+    const layout = RootLayout({ children: <div>App</div> })
+    await Promise.resolve()
+
+    expect(mocks.getSystemFeatures).not.toHaveBeenCalled()
+
+    resolveHeaders(new Headers())
+    await expect(layout).resolves.toBeDefined()
+    expect(mocks.getSystemFeatures).toHaveBeenCalledOnce()
   })
 
   it('caches the resolved System Features for dehydration', async () => {
