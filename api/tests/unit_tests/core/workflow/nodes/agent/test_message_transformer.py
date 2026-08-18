@@ -2,9 +2,12 @@ from collections.abc import Generator
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.workflow.file_reference import build_file_reference
+from core.workflow.nodes.agent.exceptions import ToolFileNotFoundError
 from core.workflow.nodes.agent.message_transformer import AgentMessageTransformer
 from graphon.enums import BuiltinNodeTypes
 from graphon.file import File, FileTransferMethod, FileType
@@ -118,6 +121,45 @@ def test_transform_promotes_serialized_tool_file_link_to_files_output() -> None:
     assert text == "File: /files/tools/tool-file-id.docx\n"
     assert files.value == [file]
     build_file.assert_called_once()
+
+
+def test_transform_promotes_serialized_file_mapping_without_tool_file_id() -> None:
+    file = _file()
+    file_mapping = file.model_dump(mode="json")
+    message = ToolInvokeMessage(
+        type=ToolInvokeMessage.MessageType.LINK,
+        message=ToolInvokeMessage.TextMessage(text="https://example.com/report.docx"),
+        meta={"file": file_mapping},
+    )
+
+    with patch(
+        "core.workflow.nodes.agent.message_transformer.file_factory.build_from_mapping",
+        return_value=file,
+    ) as build_file:
+        text, files = _run_transform([message])
+
+    assert text == "File: https://example.com/report.docx\n"
+    assert files.value == [file]
+    build_file.assert_called_once()
+
+
+def test_transform_rejects_unknown_tool_file_link() -> None:
+    message = ToolInvokeMessage(
+        type=ToolInvokeMessage.MessageType.LINK,
+        message=ToolInvokeMessage.TextMessage(text="/files/tools/missing.docx"),
+        meta={"tool_file_id": "missing"},
+    )
+
+    session = MagicMock()
+    session.scalar.return_value = None
+    session_context = MagicMock()
+    session_context.__enter__.return_value = session
+    with (
+        patch("core.workflow.nodes.agent.message_transformer.db", SimpleNamespace(engine=object())),
+        patch("core.workflow.nodes.agent.message_transformer.Session", return_value=session_context),
+        pytest.raises(ToolFileNotFoundError, match="missing"),
+    ):
+        _run_transform([message])
 
 
 def test_transform_keeps_plain_link_as_text() -> None:
