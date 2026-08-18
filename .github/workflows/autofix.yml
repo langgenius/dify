@@ -176,7 +176,13 @@ jobs:
 
       - name: Vite+ static autofix
         if: github.event_name != 'merge_group' && (steps.web-changes.outputs.any_changed == 'true' || steps.frontend-contract-changes.outputs.any_changed == 'true')
-        run: vp check --fix || true
+        run: |
+          vp check --fix || true
+          for file in oxlint-suppressions.json eslint-suppressions.json; do
+            if [ -f "$file" ] && [ -n "$(tail -c 1 "$file")" ]; then
+              printf '\n' >> "$file"
+            fi
+          done
 
       - if: github.event_name != 'merge_group'
         uses: autofix-ci/action@c5b2d67aa2274e7b5a18224e8171550871fc7e4a # v1.3.4
