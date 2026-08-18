@@ -43,7 +43,7 @@ def save_workflow_execution_task(
         creator_user_role: Role of the user who created the execution
 
     Returns:
-        True if successful, False otherwise
+        True when the snapshot is persisted or safely ignored as stale.
     """
     try:
         with session_factory.create_session() as session:
@@ -51,9 +51,21 @@ def save_workflow_execution_task(
             execution = WorkflowExecution.model_validate(execution_data)
 
             # Check if workflow run already exists
-            existing_run = session.scalar(select(WorkflowRun).where(WorkflowRun.id == execution.id_))
+            existing_run = session.scalar(
+                select(WorkflowRun)
+                .where(
+                    WorkflowRun.id == execution.id_,
+                    WorkflowRun.tenant_id == tenant_id,
+                )
+                .with_for_update()
+            )
 
             if existing_run:
+                if existing_run.finished_at is not None and (
+                    execution.finished_at is None or execution.finished_at < existing_run.finished_at
+                ):
+                    logger.debug("Ignored stale workflow execution: %s", execution.id_)
+                    return True
                 # Update existing workflow run
                 _update_workflow_run_from_execution(existing_run, execution)
                 logger.debug("Updated existing workflow run: %s", execution.id_)
@@ -110,9 +122,10 @@ def _create_workflow_run_from_execution(
         else "{}"
     )
     workflow_run.error = execution.error_message
-    workflow_run.elapsed_time = execution.elapsed_time
+    workflow_run.elapsed_time = _calculate_elapsed_time(execution)
     workflow_run.total_tokens = execution.total_tokens
     workflow_run.total_steps = execution.total_steps
+    workflow_run.exceptions_count = execution.exceptions_count
     workflow_run.created_by_role = creator_user_role
     workflow_run.created_by = creator_user_id
     workflow_run.created_at = execution.started_at
@@ -131,7 +144,14 @@ def _update_workflow_run_from_execution(workflow_run: WorkflowRun, execution: Wo
         json.dumps(json_converter.to_json_encodable(execution.outputs)) if execution.outputs else "{}"
     )
     workflow_run.error = execution.error_message
-    workflow_run.elapsed_time = execution.elapsed_time
+    workflow_run.elapsed_time = _calculate_elapsed_time(execution)
     workflow_run.total_tokens = execution.total_tokens
     workflow_run.total_steps = execution.total_steps
+    workflow_run.exceptions_count = execution.exceptions_count
     workflow_run.finished_at = execution.finished_at
+
+
+def _calculate_elapsed_time(execution: WorkflowExecution) -> float:
+    if execution.finished_at is None:
+        return 0.0
+    return max((execution.finished_at - execution.started_at).total_seconds(), 0.0)
