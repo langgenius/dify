@@ -52,6 +52,7 @@ from core.workflow_copilot.models import (
     Run,
 )
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
 from models.model import App
 from models.workflow import Workflow
 from repositories.factory import DifyAPIRepositoryFactory
@@ -134,6 +135,9 @@ class WorkflowServiceDifyPort:
                 )
                 changed_nodes.extend(changed)
 
+            if not changed_nodes:
+                return ApplyResult(changed_nodes=[], new_hash=unique_hash)
+
             try:
                 updated = WorkflowService().sync_draft_workflow(
                     app_model=app,
@@ -195,5 +199,7 @@ class WorkflowServiceDifyPort:
             app_in_session = session.get(App, app_id)
             assert app_in_session is not None, f"app disappeared mid-transaction: {app_id}"
             app_in_session.workflow_id = workflow.id
+            app_in_session.updated_by = account.id
+            app_in_session.updated_at = naive_utc_now()
 
             session.commit()
