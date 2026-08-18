@@ -400,3 +400,62 @@ class TestStructuredOutput:
     def test_parse_structured_output_empty_string(self):
         with pytest.raises(OutputParserError):
             _parse_structured_output("")
+
+    def test_invoke_llm_structured_output_native_no_response_format_rule_falls_back_to_prompt(self):
+        """
+        Regression test for #40907.
+
+        When a model YAML declares `structured-output` in its features
+        (support_structure_output=True) but the provider plugin has no
+        `response_format` parameter rule that accepts json_schema, the native
+        handler sets `json_schema` in model_parameters but leaves
+        `response_format` unset.  The plugin then silently ignores the schema.
+
+        The fix: after the native handler runs, if response_format is still
+        absent, fall back to prompt-based schema injection so the schema is
+        enforced by at least one mechanism.
+        """
+        model_schema = MagicMock(spec=AIModelEntity)
+        model_schema.support_structure_output = True
+        # No response_format rule — the plugin never sets response_format
+        model_schema.parameter_rules = []
+        model_schema.model = "claude-sonnet-4-6"
+
+        model_instance = MagicMock(spec=ModelInstance)
+        mock_result = MagicMock(spec=LLMResult)
+        mock_result.message = AssistantPromptMessage(content='{"result": "ok"}')
+        mock_result.model = "claude-sonnet-4-6"
+        mock_result.usage = LLMUsage.empty_usage()
+        mock_result.system_fingerprint = "fp_fallback"
+        mock_result.prompt_messages = []
+
+        model_instance.invoke_llm.return_value = mock_result
+
+        schema = {"type": "object", "properties": {"result": {"type": "string"}}}
+
+        result = invoke_llm_with_structured_output(
+            provider="anthropic",
+            model_schema=model_schema,
+            model_instance=model_instance,
+            prompt_messages=[UserPromptMessage(content="hi")],
+            json_schema=schema,
+            stream=False,
+        )
+
+        assert isinstance(result, LLMResultWithStructuredOutput)
+
+        # The call must have used prompt-based injection: the prompt passed to
+        # invoke_llm should include a SystemPromptMessage containing the schema.
+        call_args = model_instance.invoke_llm.call_args
+        sent_messages = call_args.kwargs.get("prompt_messages") or call_args.args[0]
+        system_messages = [m for m in sent_messages if isinstance(m, SystemPromptMessage)]
+        assert system_messages, "Expected a SystemPromptMessage with schema injected (prompt-based fallback)"
+        assert json.dumps(schema) in system_messages[0].content, (
+            "Schema should appear in the injected system prompt when response_format is not set"
+        )
+
+        # json_schema must still be in model_parameters (native path is still attempted)
+        call_params = call_args.kwargs.get("model_parameters") or {}
+        assert "json_schema" in call_params, "json_schema should be set in model_parameters by the native handler"
+        # response_format must NOT be set (no rule for it)
+        assert "response_format" not in call_params
