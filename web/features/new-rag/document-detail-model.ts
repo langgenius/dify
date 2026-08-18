@@ -10,21 +10,35 @@ import type {
 
 export type DocumentChunkTreeNode = {
   children: DocumentChunkTreeNode[]
-  chunk: DocumentRevisionChunk
   id: string
   label: string
-  outlineNode?: KnowledgeFsDocumentOutlineNodeResponse
   parentId?: string
   targetChunkId: string
 }
 
 export type DocumentChunkTree = {
   byId: Map<string, DocumentChunkTreeNode>
-  chunksById: Map<string, DocumentRevisionChunk>
-  displayChunks: DocumentRevisionChunk[]
-  outlineNodesByChunkId: Map<string, KnowledgeFsDocumentOutlineNodeResponse>
-  outlineSummaryChunkIds: Set<string>
   roots: DocumentChunkTreeNode[]
+}
+
+export type DocumentContentBlock = {
+  body: string
+  chunk: DocumentRevisionChunk
+  heading?: {
+    level: number
+    text?: string
+  }
+  markerLabel?: string
+  summary?: string
+}
+
+export type DocumentDetailModel = {
+  contentBlocks: DocumentContentBlock[]
+  contentBlocksByChunkId: Map<string, DocumentContentBlock>
+  indexChunks: DocumentRevisionChunk[]
+  sourceChunks: DocumentRevisionChunk[]
+  sourceChunksById: Map<string, DocumentRevisionChunk>
+  tree: DocumentChunkTree
 }
 
 export type DocumentMultimodalPlacement = {
@@ -76,23 +90,30 @@ function chunkForMultimodalItem(
 ) {
   const offset = item.start_offset
   if (offset !== null && offset !== undefined) {
-    const containing = chunks.find(
-      (chunk) =>
+    let following: DocumentRevisionChunk | undefined
+    let preceding: DocumentRevisionChunk | undefined
+    for (const chunk of chunks) {
+      if (
         chunk.startOffset !== undefined &&
         chunk.endOffset !== undefined &&
         offset >= chunk.startOffset &&
-        offset < chunk.endOffset,
-    )
-    if (containing) return containing
-
-    const following = chunks
-      .filter((chunk) => chunk.startOffset !== undefined && chunk.startOffset >= offset)
-      .sort((left, right) => left.startOffset! - right.startOffset!)[0]
+        offset < chunk.endOffset
+      )
+        return chunk
+      if (
+        chunk.startOffset !== undefined &&
+        chunk.startOffset >= offset &&
+        (!following || chunk.startOffset < following.startOffset!)
+      )
+        following = chunk
+      if (
+        chunk.endOffset !== undefined &&
+        chunk.endOffset <= offset &&
+        (!preceding || chunk.endOffset > preceding.endOffset!)
+      )
+        preceding = chunk
+    }
     if (following) return following
-
-    const preceding = chunks
-      .filter((chunk) => chunk.endOffset !== undefined && chunk.endOffset <= offset)
-      .sort((left, right) => right.endOffset! - left.endOffset!)[0]
     if (preceding) return preceding
   }
 
@@ -129,20 +150,26 @@ function cyclicChunkIds(chunksById: Map<string, DocumentRevisionChunk>) {
   return cycleIds
 }
 
-export function buildDocumentChunkTree(
+export function buildDocumentDetailModel(
   chunks: DocumentRevisionChunk[],
   outlineNodes: KnowledgeFsDocumentOutlineNodeResponse[] = [],
-): DocumentChunkTree {
+): DocumentDetailModel {
   const sortedChunks = [...chunks].sort(compareChunks)
   if (outlineNodes.length) {
-    const outlineTree = buildOutlineBackedChunkTree(sortedChunks, outlineNodes)
-    if (outlineTree.roots.length) return outlineTree
+    const outlineModel = buildOutlineBackedDocumentModel(sortedChunks, outlineNodes)
+    if (outlineModel.tree.roots.length) return outlineModel
   }
-  return buildChunkDerivedTree(sortedChunks)
+  return buildChunkDerivedDocumentModel(sortedChunks)
+}
+
+function buildChunkDerivedDocumentModel(
+  sortedChunks: DocumentRevisionChunk[],
+): DocumentDetailModel {
+  const tree = buildChunkDerivedTree(sortedChunks)
+  return createDocumentDetailModel(sortedChunks, sortedChunks, tree)
 }
 
 function buildChunkDerivedTree(sortedChunks: DocumentRevisionChunk[]): DocumentChunkTree {
-  const chunksById = new Map(sortedChunks.map((chunk) => [chunk.id, chunk]))
   const byId = new Map<string, DocumentChunkTreeNode>()
   const roots: DocumentChunkTreeNode[] = []
   const sectionedChunkIds = new Set<string>()
@@ -159,7 +186,6 @@ function buildChunkDerivedTree(sortedChunks: DocumentRevisionChunk[]): DocumentC
       if (!node) {
         node = {
           children: [],
-          chunk,
           id,
           label: path.at(-1)!,
           ...(parent ? { parentId: parent.id } : {}),
@@ -184,7 +210,6 @@ function buildChunkDerivedTree(sortedChunks: DocumentRevisionChunk[]): DocumentC
       .find(Boolean)
     const node = {
       children: [],
-      chunk,
       id: chunk.id,
       label: contentLabel || `#${chunk.ordinal + 1}`,
       targetChunkId: chunk.id,
@@ -204,42 +229,29 @@ function buildChunkDerivedTree(sortedChunks: DocumentRevisionChunk[]): DocumentC
     }
   }
 
-  for (const node of byId.values())
-    node.children.sort((left, right) => compareChunks(left.chunk, right.chunk))
-  roots.sort((left, right) => compareChunks(left.chunk, right.chunk))
-  return {
-    byId,
-    chunksById,
-    displayChunks: sortedChunks,
-    outlineNodesByChunkId: new Map(),
-    outlineSummaryChunkIds: new Set(),
-    roots,
-  }
+  const chunksById = new Map(sortedChunks.map((chunk) => [chunk.id, chunk]))
+  const compareNodes = (left: DocumentChunkTreeNode, right: DocumentChunkTreeNode) =>
+    compareChunks(chunksById.get(left.targetChunkId)!, chunksById.get(right.targetChunkId)!)
+  for (const node of byId.values()) node.children.sort(compareNodes)
+  roots.sort(compareNodes)
+  return { byId, roots }
 }
 
-function buildOutlineBackedChunkTree(
+function buildOutlineBackedDocumentModel(
   sortedChunks: DocumentRevisionChunk[],
   sourceRoots: KnowledgeFsDocumentOutlineNodeResponse[],
-): DocumentChunkTree {
+): DocumentDetailModel {
   const outlineRoots = coalesceDuplicateOutlineRoots(sourceRoots)
   const allOutlineNodes = flattenOutlineNodes(sourceRoots)
   const outlineTitleKeys = new Set(allOutlineNodes.map((node) => comparableTitle(node.title)))
-  const outlinePathKeys = new Set(
-    allOutlineNodes
-      .map((node) => normalizedSectionPath(node.section_path ?? []))
-      .filter((path) => path.length)
-      .map(sectionPathKey),
-  )
   const firstOrdinal = sortedChunks[0]?.ordinal
-  const displayChunks = sortedChunks.filter(
-    (chunk) =>
-      !isLegacyDocumentTitleChunk(chunk, firstOrdinal, outlineTitleKeys) &&
-      !isStructuralOutlineChunk(chunk, outlinePathKeys),
+  const contentChunks = sortedChunks.filter(
+    (chunk) => !isLegacyDocumentTitleChunk(chunk, firstOrdinal, outlineTitleKeys),
   )
-  const chunksById = new Map(displayChunks.map((chunk) => [chunk.id, chunk]))
+  const contentChunksById = new Map(contentChunks.map((chunk) => [chunk.id, chunk]))
   const chunksBySection = new Map<string, DocumentRevisionChunk[]>()
   const firstChunkBySectionPrefix = new Map<string, DocumentRevisionChunk>()
-  for (const chunk of displayChunks) {
+  for (const chunk of contentChunks) {
     const sectionPath = normalizedSectionPath(chunk.sectionPath)
     if (!sectionPath.length) continue
     const key = sectionPathKey(sectionPath)
@@ -255,7 +267,7 @@ function buildOutlineBackedChunkTree(
   const byId = new Map<string, DocumentChunkTreeNode>()
   const matchedChunkIds = new Set<string>()
   const outlineNodesByChunkId = new Map<string, KnowledgeFsDocumentOutlineNodeResponse>()
-  const outlineSummaryChunkIds = new Set<string>()
+  const summariesByChunkId = new Map<string, string>()
 
   const buildNode = (
     outlineNode: KnowledgeFsDocumentOutlineNodeResponse,
@@ -269,22 +281,22 @@ function buildOutlineBackedChunkTree(
       matchedChunkIds.add(chunk.id)
       if (!outlineNodesByChunkId.has(chunk.id)) outlineNodesByChunkId.set(chunk.id, outlineNode)
     }
-    if (outlineNode.summary?.trim() && exactChunks[0]) outlineSummaryChunkIds.add(exactChunks[0].id)
+    const summary = outlineNode.summary?.trim()
+    if (summary && exactChunks[0]) summariesByChunkId.set(exactChunks[0].id, summary)
 
     const children = (outlineNode.children ?? []).flatMap((child) => {
       const node = buildNode(child, outlineNode.id, path)
       return node ? [node] : []
     })
     const descendantChunk = firstChunkBySectionPrefix.get(sectionPathKey(path))
-    const chunk = exactChunks[0] ?? children[0]?.chunk ?? descendantChunk
+    const childChunk = children[0] ? contentChunksById.get(children[0].targetChunkId) : undefined
+    const chunk = exactChunks[0] ?? childChunk ?? descendantChunk
     if (!chunk) return undefined
 
     const node = {
       children,
-      chunk,
       id: outlineNode.id,
       label: outlineNode.title,
-      outlineNode,
       ...(parentId ? { parentId } : {}),
       targetChunkId: chunk.id,
     } satisfies DocumentChunkTreeNode
@@ -296,7 +308,7 @@ function buildOutlineBackedChunkTree(
     const node = buildNode(outlineNode)
     return node ? [node] : []
   })
-  const unmatchedChunks = displayChunks.filter((chunk) => !matchedChunkIds.has(chunk.id))
+  const unmatchedChunks = contentChunks.filter((chunk) => !matchedChunkIds.has(chunk.id))
   if (unmatchedChunks.length) {
     const fallbackTree = buildChunkDerivedTree(unmatchedChunks)
     for (const [id, node] of fallbackTree.byId) if (!byId.has(id)) byId.set(id, node)
@@ -305,14 +317,15 @@ function buildOutlineBackedChunkTree(
     )
   }
 
-  return {
-    byId,
-    chunksById,
-    displayChunks,
-    outlineNodesByChunkId,
-    outlineSummaryChunkIds,
-    roots,
-  }
+  return createDocumentDetailModel(
+    sortedChunks,
+    contentChunks,
+    { byId, roots },
+    {
+      outlineNodesByChunkId,
+      summariesByChunkId,
+    },
+  )
 }
 
 function isLegacyDocumentTitleChunk(
@@ -326,20 +339,6 @@ function isLegacyDocumentTitleChunk(
     !normalizedSectionPath(chunk.sectionPath).length &&
     !chunk.text.includes('\n') &&
     outlineTitleKeys.has(comparableTitle(chunk.text))
-  )
-}
-
-function isStructuralOutlineChunk(
-  chunk: DocumentRevisionChunk,
-  outlinePathKeys: ReadonlySet<string>,
-) {
-  if (chunk.kind !== 'chunk') return false
-  const sectionPath = normalizedSectionPath(chunk.sectionPath)
-  const title = sectionPath.at(-1)
-  return Boolean(
-    title &&
-    outlinePathKeys.has(sectionPathKey(sectionPath)) &&
-    comparableTitle(chunk.text) === comparableTitle(title),
   )
 }
 
@@ -382,6 +381,73 @@ function coalesceDuplicateOutlineRoots(nodes: readonly KnowledgeFsDocumentOutlin
 
 function sectionTreeNodeId(sectionPath: string[]) {
   return `section:${encodeURIComponent(JSON.stringify(sectionPath))}`
+}
+
+function createDocumentDetailModel(
+  sourceChunks: DocumentRevisionChunk[],
+  contentChunks: DocumentRevisionChunk[],
+  tree: DocumentChunkTree,
+  outline: {
+    outlineNodesByChunkId?: ReadonlyMap<string, KnowledgeFsDocumentOutlineNodeResponse>
+    summariesByChunkId?: ReadonlyMap<string, string>
+  } = {},
+): DocumentDetailModel {
+  const firstChunkIdBySection = new Map<string, string>()
+  for (const chunk of contentChunks) {
+    const sectionPath = normalizedSectionPath(chunk.sectionPath)
+    if (!sectionPath.length) continue
+    const key = sectionPathKey(sectionPath)
+    if (!firstChunkIdBySection.has(key)) firstChunkIdBySection.set(key, chunk.id)
+  }
+
+  const contentBlocks: DocumentContentBlock[] = contentChunks.map((chunk) => {
+    const content = chunkContentParts(chunk)
+    const sectionPath = normalizedSectionPath(chunk.sectionPath)
+    const ownsSectionHeading =
+      !sectionPath.length || firstChunkIdBySection.get(sectionPathKey(sectionPath)) === chunk.id
+    const outlineNode = outline.outlineNodesByChunkId?.get(chunk.id)
+    const headingText = outlineNode?.title.trim() || content.heading || undefined
+    return {
+      body: content.body,
+      chunk,
+      ...(ownsSectionHeading
+        ? {
+            heading: {
+              level: outlineNode?.level ?? (sectionPath.length || 2),
+              ...(headingText ? { text: headingText } : {}),
+            },
+          }
+        : {}),
+      ...(outline.summariesByChunkId?.get(chunk.id)
+        ? { summary: outline.summariesByChunkId.get(chunk.id) }
+        : {}),
+    } satisfies DocumentContentBlock
+  })
+
+  const parentChunkIds = new Set(
+    contentChunks.flatMap((chunk) => (chunk.parentChunkId ? [chunk.parentChunkId] : [])),
+  )
+  const indexChunks = contentBlocks
+    .filter((block) => block.body || !block.chunk.text)
+    .map((block) => block.chunk)
+  const indexChunkIds = new Set(indexChunks.map((chunk) => chunk.id))
+  const positionsByParent = new Map<string, number>()
+  for (const block of contentBlocks) {
+    if (!indexChunkIds.has(block.chunk.id) || parentChunkIds.has(block.chunk.id)) continue
+    const parentId = block.chunk.parentChunkId ?? ''
+    const position = (positionsByParent.get(parentId) ?? 0) + 1
+    positionsByParent.set(parentId, position)
+    block.markerLabel = `C-${position}`
+  }
+
+  return {
+    contentBlocks,
+    contentBlocksByChunkId: new Map(contentBlocks.map((block) => [block.chunk.id, block])),
+    indexChunks,
+    sourceChunks,
+    sourceChunksById: new Map(sourceChunks.map((chunk) => [chunk.id, chunk])),
+    tree,
+  }
 }
 
 export function visibleDocumentChunkNodes(

@@ -8,7 +8,7 @@ import type {
   LogicalDocumentRevision,
 } from '../document-models'
 import {
-  buildDocumentChunkTree,
+  buildDocumentDetailModel,
   chunkCharacterCount,
   chunkContentParts,
   chunkMetadataEntries,
@@ -171,7 +171,7 @@ describe('document detail model', () => {
   })
 
   it('builds the chapter hierarchy from structured section paths instead of chunk text', () => {
-    const tree = buildDocumentChunkTree([
+    const { tree } = buildDocumentDetailModel([
       chunk({
         id: 'tax-table',
         ordinal: 3,
@@ -211,7 +211,7 @@ describe('document detail model', () => {
       sectionPath: ['Guide Operating safely', 'Setup'],
       text: 'Setup\n\nSetup body',
     })
-    const tree = buildDocumentChunkTree(
+    const model = buildDocumentDetailModel(
       [titleChunk, guideChunk, setupChunk],
       [
         outlineNode({
@@ -237,14 +237,15 @@ describe('document detail model', () => {
       ],
     )
 
-    expect(tree.roots.map((node) => node.id)).toEqual(['guide-node'])
-    expect(tree.roots[0]?.children.map((node) => node.id)).toEqual(['setup-node'])
-    expect(tree.displayChunks.map((item) => item.id)).toEqual(['guide', 'setup'])
-    expect(tree.outlineNodesByChunkId.get('setup')?.summary).toBe('Generated setup summary.')
-    expect(tree.outlineSummaryChunkIds.has('setup')).toBe(true)
+    expect(model.tree.roots.map((node) => node.id)).toEqual(['guide-node'])
+    expect(model.tree.roots[0]?.children.map((node) => node.id)).toEqual(['setup-node'])
+    expect(model.sourceChunks.map((item) => item.id)).toEqual(['html-title', 'guide', 'setup'])
+    expect(model.indexChunks.map((item) => item.id)).toEqual(['guide', 'setup'])
+    expect(model.contentBlocks.map((block) => block.chunk.id)).toEqual(['guide', 'setup'])
+    expect(model.contentBlocksByChunkId.get('setup')?.summary).toBe('Generated setup summary.')
   })
 
-  it('keeps structural outline headings in the tree without rendering them as empty chunks', () => {
+  it('models structural headings once and keeps following section content heading-free', () => {
     const chapterHeading = chunk({
       id: 'chapter-heading',
       ordinal: 0,
@@ -263,7 +264,7 @@ describe('document detail model', () => {
       sectionPath: ['Detailed features', 'Document upload'],
       text: 'Document upload\n\nFiles are parsed and indexed in the background.',
     })
-    const tree = buildDocumentChunkTree(
+    const model = buildDocumentDetailModel(
       [chapterHeading, sectionHeading, sectionBody],
       [
         outlineNode({
@@ -282,29 +283,56 @@ describe('document detail model', () => {
       ],
     )
 
-    expect(tree.roots.map((node) => node.id)).toEqual(['detailed-features'])
-    expect(tree.roots[0]?.targetChunkId).toBe('section-body')
-    expect(tree.roots[0]?.children[0]?.targetChunkId).toBe('section-body')
-    expect(tree.displayChunks.map((item) => item.id)).toEqual(['section-body'])
+    expect(model.tree.roots.map((node) => node.id)).toEqual(['detailed-features'])
+    expect(model.tree.roots[0]?.targetChunkId).toBe('chapter-heading')
+    expect(model.tree.roots[0]?.children[0]?.targetChunkId).toBe('section-heading')
+    expect(
+      model.contentBlocks.map((block) => ({
+        body: block.body,
+        heading: block.heading,
+        id: block.chunk.id,
+        markerLabel: block.markerLabel,
+      })),
+    ).toEqual([
+      {
+        body: '',
+        heading: { level: 1, text: 'Detailed features' },
+        id: 'chapter-heading',
+        markerLabel: undefined,
+      },
+      {
+        body: '',
+        heading: { level: 2, text: 'Document upload' },
+        id: 'section-heading',
+        markerLabel: undefined,
+      },
+      {
+        body: 'Files are parsed and indexed in the background.',
+        heading: undefined,
+        id: 'section-body',
+        markerLabel: 'C-1',
+      },
+    ])
+    expect(model.indexChunks.map((item) => item.id)).toEqual(['section-body'])
   })
 
   it('builds a deterministic parent-child tree and keeps orphans visible', () => {
-    const tree = buildDocumentChunkTree([
+    const { tree } = buildDocumentDetailModel([
       chunk({ id: 'child-b', ordinal: 3, parentChunkId: 'parent' }),
       chunk({ id: 'parent', ordinal: 1 }),
       chunk({ id: 'orphan', ordinal: 2, parentChunkId: 'missing' }),
       chunk({ id: 'child-a', ordinal: 2, parentChunkId: 'parent' }),
     ])
 
-    expect(tree.roots.map((node) => node.chunk.id)).toEqual(['parent', 'orphan'])
-    expect(tree.byId.get('parent')?.children.map((node) => node.chunk.id)).toEqual([
+    expect(tree.roots.map((node) => node.targetChunkId)).toEqual(['parent', 'orphan'])
+    expect(tree.byId.get('parent')?.children.map((node) => node.targetChunkId)).toEqual([
       'child-a',
       'child-b',
     ])
   })
 
   it('uses chunk content for unsectioned labels and a one-based fallback for empty chunks', () => {
-    const tree = buildDocumentChunkTree([
+    const { tree } = buildDocumentDetailModel([
       chunk({ id: 'first', ordinal: 0, text: 'Product use and differentiation' }),
       chunk({ id: 'empty', ordinal: 1, text: '' }),
     ])
@@ -313,13 +341,13 @@ describe('document detail model', () => {
   })
 
   it('breaks cyclic parent links instead of losing every node', () => {
-    const tree = buildDocumentChunkTree([
+    const { tree } = buildDocumentDetailModel([
       chunk({ id: 'cycle-a', ordinal: 1, parentChunkId: 'cycle-b' }),
       chunk({ id: 'cycle-b', ordinal: 2, parentChunkId: 'cycle-a' }),
       chunk({ id: 'self', ordinal: 3, parentChunkId: 'self' }),
     ])
 
-    expect(tree.roots.map((node) => node.chunk.id)).toEqual(['cycle-a', 'cycle-b', 'self'])
+    expect(tree.roots.map((node) => node.targetChunkId)).toEqual(['cycle-a', 'cycle-b', 'self'])
   })
 
   it('builds a long parent chain without repeated ancestor walks', () => {
@@ -331,28 +359,28 @@ describe('document detail model', () => {
       }),
     )
 
-    const tree = buildDocumentChunkTree(chunks)
+    const { tree } = buildDocumentDetailModel(chunks)
     const visible = visibleDocumentChunkNodes(tree.roots, new Set(tree.byId.keys()))
 
     expect(tree.byId).toHaveLength(5000)
-    expect(tree.roots.map((node) => node.chunk.id)).toEqual(['chunk-0'])
+    expect(tree.roots.map((node) => node.targetChunkId)).toEqual(['chunk-0'])
     expect(visible).toHaveLength(5000)
     expect(visible.at(-1)).toMatchObject({ depth: 4999 })
   })
 
   it('flattens only expanded descendants in tree order', () => {
-    const tree = buildDocumentChunkTree([
+    const { tree } = buildDocumentDetailModel([
       chunk({ id: 'parent', ordinal: 1 }),
       chunk({ id: 'child', ordinal: 2, parentChunkId: 'parent' }),
       chunk({ id: 'grandchild', ordinal: 3, parentChunkId: 'child' }),
     ])
 
     expect(
-      visibleDocumentChunkNodes(tree.roots, new Set()).map(({ node }) => node.chunk.id),
+      visibleDocumentChunkNodes(tree.roots, new Set()).map(({ node }) => node.targetChunkId),
     ).toEqual(['parent'])
     expect(
       visibleDocumentChunkNodes(tree.roots, new Set(['parent', 'child'])).map(
-        ({ depth, node }) => `${depth}:${node.chunk.id}`,
+        ({ depth, node }) => `${depth}:${node.targetChunkId}`,
       ),
     ).toEqual(['0:parent', '1:child', '2:grandchild'])
   })

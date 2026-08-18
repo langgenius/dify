@@ -1032,6 +1032,82 @@ describe('DocumentDetailPage', () => {
     expect(within(article).getByRole('heading', { level: 3, name: 'Setup' })).toBeInTheDocument()
   })
 
+  it('renders structural headings once before the chunks in their sections', () => {
+    chunksQuery.data = {
+      pages: [
+        {
+          items: [
+            chunk({
+              id: 'chapter-heading',
+              ordinal: 0,
+              sectionPath: ['Detailed features'],
+              text: 'Detailed features',
+            }),
+            chunk({
+              id: 'section-heading',
+              ordinal: 1,
+              sectionPath: ['Detailed features', 'Document upload'],
+              text: 'Document upload',
+            }),
+            chunk({
+              id: 'section-body',
+              ordinal: 2,
+              sectionPath: ['Detailed features', 'Document upload'],
+              text: 'Document upload\n\nFiles are parsed in the background.',
+            }),
+          ],
+        },
+      ],
+    }
+    outlineQuery.data = {
+      artifact_hash: 'artifact-hash',
+      created_at: '2026-08-07T10:00:00Z',
+      document_asset_id: 'asset-1',
+      id: 'outline-1',
+      knowledge_space_id: 'space-1',
+      metadata: {},
+      nodes: [
+        {
+          children: [
+            {
+              children: [],
+              id: 'document-upload',
+              level: 2,
+              metadata: {},
+              section_path: ['Detailed features', 'Document upload'],
+              title: 'Document upload',
+              toc_source: 'parser-heading',
+            },
+          ],
+          id: 'detailed-features',
+          level: 1,
+          metadata: {},
+          section_path: ['Detailed features'],
+          title: 'Detailed features',
+          toc_source: 'parser-heading',
+        },
+      ],
+      outline_version: 'document-outline-v1',
+      parse_artifact_id: 'parse-artifact-1',
+      version: 1,
+    }
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    const article = screen.getByRole('article')
+    expect(
+      within(article).getAllByRole('heading', { level: 2, name: 'Detailed features' }),
+    ).toHaveLength(1)
+    expect(
+      within(article).getAllByRole('heading', { level: 3, name: 'Document upload' }),
+    ).toHaveLength(1)
+    expect(within(article).getByText('Files are parsed in the background.')).toBeInTheDocument()
+    expect(within(article).getByText('C-1')).toBeInTheDocument()
+    const chunkCountRow = screen.getByText('dataset.newKnowledge.chunkCount').closest('div')
+    expect(chunkCountRow).not.toBeNull()
+    expect(within(chunkCountRow!).getByText('1')).toBeInTheDocument()
+  })
+
   it('loads protected document images next to the chunk selected by canonical offsets', async () => {
     const createObjectUrl = vi
       .spyOn(URL, 'createObjectURL')
@@ -1152,8 +1228,8 @@ describe('DocumentDetailPage', () => {
       pages: [
         {
           items: [
-            chunk({ id: 'first', ordinal: 0, text: 'First chunk' }),
-            chunk({ id: 'second', ordinal: 1, text: 'Second chunk' }),
+            chunk({ id: 'first', ordinal: 0, sectionPath: [], text: 'First chunk' }),
+            chunk({ id: 'second', ordinal: 1, sectionPath: [], text: 'Second chunk' }),
           ],
         },
       ],
@@ -1171,11 +1247,29 @@ describe('DocumentDetailPage', () => {
       pages: [
         {
           items: [
-            chunk({ id: 'parent-a', ordinal: 0, text: 'Parent A' }),
-            chunk({ id: 'child-a-1', ordinal: 1, parentChunkId: 'parent-a', text: 'Child A1' }),
-            chunk({ id: 'child-a-2', ordinal: 2, parentChunkId: 'parent-a', text: 'Child A2' }),
-            chunk({ id: 'parent-b', ordinal: 3, text: 'Parent B' }),
-            chunk({ id: 'child-b-1', ordinal: 4, parentChunkId: 'parent-b', text: 'Child B1' }),
+            chunk({ id: 'parent-a', ordinal: 0, sectionPath: [], text: 'Parent A' }),
+            chunk({
+              id: 'child-a-1',
+              ordinal: 1,
+              parentChunkId: 'parent-a',
+              sectionPath: [],
+              text: 'Child A1',
+            }),
+            chunk({
+              id: 'child-a-2',
+              ordinal: 2,
+              parentChunkId: 'parent-a',
+              sectionPath: [],
+              text: 'Child A2',
+            }),
+            chunk({ id: 'parent-b', ordinal: 3, sectionPath: [], text: 'Parent B' }),
+            chunk({
+              id: 'child-b-1',
+              ordinal: 4,
+              parentChunkId: 'parent-b',
+              sectionPath: [],
+              text: 'Child B1',
+            }),
           ],
         },
       ],

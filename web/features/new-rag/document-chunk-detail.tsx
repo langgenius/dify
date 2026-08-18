@@ -1,7 +1,5 @@
-import type {
-  KnowledgeFsDocumentMultimodalItemResponse,
-  KnowledgeFsDocumentOutlineNodeResponse,
-} from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { KnowledgeFsDocumentMultimodalItemResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { DocumentContentBlock } from './document-detail-model'
 import type {
   DocumentRevisionChunk,
   LogicalDocument,
@@ -21,11 +19,7 @@ import copy from 'copy-to-clipboard'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
-import {
-  chunkCharacterCount,
-  chunkContentParts,
-  placeDocumentMultimodalItems,
-} from './document-detail-model'
+import { chunkCharacterCount, placeDocumentMultimodalItems } from './document-detail-model'
 import { DocumentMetadataCard } from './document-metadata-card'
 import { DocumentMultimodalAsset } from './document-multimodal-asset'
 
@@ -123,27 +117,25 @@ function DocumentSectionSummary({ children }: { children: React.ReactNode }) {
 export function DocumentChunkDetail({
   canEdit,
   controlSpaceId,
+  contentBlocks,
   document,
-  chunks,
   chunksComplete,
+  indexChunks,
   isLoadingMore,
   locale,
   multimodalItems,
-  outlineNodesByChunkId,
-  outlineSummaryChunkIds,
   revision,
   selectedChunkId,
 }: {
   canEdit: boolean
   controlSpaceId: string
+  contentBlocks: DocumentContentBlock[]
   document: LogicalDocument
-  chunks: DocumentRevisionChunk[]
   chunksComplete: boolean
+  indexChunks: DocumentRevisionChunk[]
   isLoadingMore: boolean
   locale: string
   multimodalItems: KnowledgeFsDocumentMultimodalItemResponse[]
-  outlineNodesByChunkId: Map<string, KnowledgeFsDocumentOutlineNodeResponse>
-  outlineSummaryChunkIds: Set<string>
   revision?: Exclude<LogicalDocumentRevision, null>
   selectedChunkId?: string
 }) {
@@ -151,33 +143,19 @@ export function DocumentChunkDetail({
   const { t: tCommon } = useTranslation('common')
   const contentScrollRef = useRef<HTMLDivElement>(null)
   const characterCount = useMemo(
-    () => chunks.reduce((total, chunk) => total + chunkCharacterCount(chunk.text), 0),
-    [chunks],
+    () => indexChunks.reduce((total, chunk) => total + chunkCharacterCount(chunk.text), 0),
+    [indexChunks],
   )
-  const averageChunkLength = chunks.length ? Math.round(characterCount / chunks.length) : 0
-  const childChunkCount = chunks.filter((chunk) => chunk.parentChunkId).length
-  const parentChunkCount = chunks.length - childChunkCount
+  const averageChunkLength = indexChunks.length
+    ? Math.round(characterCount / indexChunks.length)
+    : 0
+  const childChunkCount = indexChunks.filter((chunk) => chunk.parentChunkId).length
+  const parentChunkCount = indexChunks.length - childChunkCount
+  const contentChunks = useMemo(() => contentBlocks.map((block) => block.chunk), [contentBlocks])
   const multimodalPlacement = useMemo(
-    () => placeDocumentMultimodalItems(chunks, multimodalItems),
-    [chunks, multimodalItems],
+    () => placeDocumentMultimodalItems(contentChunks, multimodalItems),
+    [contentChunks, multimodalItems],
   )
-  const chunkMarkerLabels = useMemo(() => {
-    const parentChunkIds = new Set(
-      chunks.flatMap((chunk) => (chunk.parentChunkId ? [chunk.parentChunkId] : [])),
-    )
-    const positionsByParent = new Map<string, number>()
-    const labels = new Map<string, string>()
-
-    for (const chunk of chunks) {
-      if (parentChunkIds.has(chunk.id)) continue
-      const parentId = chunk.parentChunkId ?? ''
-      const position = (positionsByParent.get(parentId) ?? 0) + 1
-      positionsByParent.set(parentId, position)
-      labels.set(chunk.id, `C-${position}`)
-    }
-
-    return labels
-  }, [chunks])
   const sizeBytes = revision?.sizeBytes ?? document.active?.sizeBytes
   const sourceName =
     typeof document.userMetadata.sourceName === 'string'
@@ -207,7 +185,7 @@ export function DocumentChunkDetail({
     })
 
     return () => globalThis.cancelAnimationFrame(animationFrame)
-  }, [chunks, outlineNodesByChunkId, outlineSummaryChunkIds, selectedChunkId])
+  }, [contentBlocks, selectedChunkId])
 
   return (
     <>
@@ -215,7 +193,7 @@ export function DocumentChunkDetail({
         aria-busy={isLoadingMore}
         className="min-h-72 min-w-0 overflow-hidden bg-background-default xl:px-6"
       >
-        {chunks.length || multimodalPlacement.unplaced.length ? (
+        {contentBlocks.length || multimodalPlacement.unplaced.length ? (
           <ScrollArea className="relative max-h-[70vh] min-h-0 min-w-0 xl:h-full xl:max-h-none">
             <ScrollAreaViewport
               ref={contentScrollRef}
@@ -227,16 +205,8 @@ export function DocumentChunkDetail({
                 className="flex min-h-full w-full max-w-full flex-col gap-3 px-2 pt-1 xl:px-0"
                 style={{ minWidth: 0 }}
               >
-                {chunks.map((chunk) => {
-                  const content = chunkContentParts(chunk)
-                  const markerLabel = chunkMarkerLabels.get(chunk.id)
-                  const outlineNode = outlineNodesByChunkId.get(chunk.id)
-                  const outlineSummary = outlineSummaryChunkIds.has(chunk.id)
-                    ? outlineNode?.summary?.trim()
-                    : undefined
-                  const sectionLevel =
-                    outlineNode?.level ??
-                    (chunk.sectionPath.length > 0 ? chunk.sectionPath.length : 2)
+                {contentBlocks.map((block) => {
+                  const { chunk } = block
                   const chunkMultimodalItems = multimodalPlacement.byChunkId.get(chunk.id) ?? []
                   return (
                     <section
@@ -246,18 +216,16 @@ export function DocumentChunkDetail({
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-start gap-1">
-                            {!content.body && markerLabel && <ChunkMarker label={markerLabel} />}
-                            <DocumentSectionHeading level={sectionLevel}>
-                              {outlineNode?.title.trim() ||
-                                content.heading ||
+                          {block.heading && (
+                            <DocumentSectionHeading level={block.heading.level}>
+                              {block.heading.text ||
                                 t(($) => $['newKnowledge.chunkHeading'], {
                                   position: chunk.ordinal + 1,
                                 })}
                             </DocumentSectionHeading>
-                          </div>
-                          {outlineSummary && (
-                            <DocumentSectionSummary>{outlineSummary}</DocumentSectionSummary>
+                          )}
+                          {block.summary && (
+                            <DocumentSectionSummary>{block.summary}</DocumentSectionSummary>
                           )}
                         </div>
                         <Button
@@ -280,12 +248,12 @@ export function DocumentChunkDetail({
                           ))}
                         </div>
                       )}
-                      {content.body && (
+                      {block.body && (
                         <div className="mt-3 flex items-start gap-1">
-                          {markerLabel && <ChunkMarker label={markerLabel} />}
+                          {block.markerLabel && <ChunkMarker label={block.markerLabel} />}
                           <Markdown
                             className="min-w-0 flex-1 text-[13px]! leading-5.5! wrap-break-word text-text-secondary!"
-                            content={content.body}
+                            content={block.body}
                           />
                         </div>
                       )}
@@ -390,7 +358,7 @@ export function DocumentChunkDetail({
                         childCount: new Intl.NumberFormat(locale).format(childChunkCount),
                         parentCount: new Intl.NumberFormat(locale).format(parentChunkCount),
                       })
-                    : new Intl.NumberFormat(locale).format(chunks.length)
+                    : new Intl.NumberFormat(locale).format(indexChunks.length)
                   : '—'}
               </dd>
             </div>

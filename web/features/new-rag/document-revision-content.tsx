@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { DocumentChunkDetail } from './document-chunk-detail'
 import { DocumentChunkTreePanel } from './document-chunk-tree'
-import { buildDocumentChunkTree } from './document-detail-model'
+import { buildDocumentDetailModel } from './document-detail-model'
 import {
   documentChunksQueryOptions,
   documentMultimodalQueryOptions,
@@ -156,22 +156,32 @@ function LoadedDocumentRevisionContent({
       ].sort((left, right) => left.ordinal - right.ordinal || left.id.localeCompare(right.id)),
     [chunksQuery.data],
   )
-  const tree = useMemo(() => {
+  const detailModel = useMemo(() => {
     const outline = outlineQuery.data
-    return buildDocumentChunkTree(
+    return buildDocumentDetailModel(
       chunks,
       outline && outline.version === documentAsset?.documentAssetVersion ? outline.nodes : [],
     )
   }, [chunks, documentAsset?.documentAssetVersion, outlineQuery.data])
-  const targetedChunk = selectedChunkId ? tree.chunksById.get(selectedChunkId) : undefined
+  const targetedBlock = selectedChunkId
+    ? detailModel.contentBlocksByChunkId.get(selectedChunkId)
+    : undefined
+  const selectedChunkKnown = selectedChunkId
+    ? detailModel.sourceChunksById.has(selectedChunkId)
+    : false
   const targetLookupComplete =
-    !selectedChunkId || (!chunksQuery.isPending && (!hasNextChunkPage || isFetchNextChunkPageError))
-  const selectedChunk = targetedChunk ?? (targetLookupComplete ? tree.roots[0]?.chunk : undefined)
+    !selectedChunkId ||
+    selectedChunkKnown ||
+    (!chunksQuery.isPending && (!hasNextChunkPage || isFetchNextChunkPageError))
+  const fallbackBlock = detailModel.tree.roots[0]
+    ? detailModel.contentBlocksByChunkId.get(detailModel.tree.roots[0].targetChunkId)
+    : undefined
+  const selectedBlock = targetedBlock ?? (targetLookupComplete ? fallbackBlock : undefined)
 
   useEffect(() => {
     if (
       !selectedChunkId ||
-      targetedChunk ||
+      selectedChunkKnown ||
       !hasNextChunkPage ||
       isFetchingNextChunkPage ||
       isFetchNextChunkPageError
@@ -184,7 +194,7 @@ function LoadedDocumentRevisionContent({
     isFetchNextChunkPageError,
     isFetchingNextChunkPage,
     selectedChunkId,
-    targetedChunk,
+    selectedChunkKnown,
   ])
 
   return (
@@ -199,14 +209,14 @@ function LoadedDocumentRevisionContent({
         isPending={chunksQuery.isPending}
         onRetry={() => void chunksQuery.refetch()}
         onSelectChunk={onSelectChunk}
-        selectedChunkId={selectedChunk?.id}
-        tree={tree}
+        selectedChunkId={selectedBlock?.chunk.id}
+        tree={detailModel.tree}
       />
 
       <DocumentChunkDetail
         canEdit={canEdit}
         controlSpaceId={knowledgeSpaceId}
-        chunks={tree.displayChunks}
+        contentBlocks={detailModel.contentBlocks}
         chunksComplete={
           Boolean(chunksQuery.data) &&
           !chunksQuery.error &&
@@ -222,10 +232,9 @@ function LoadedDocumentRevisionContent({
             ? (multimodalQuery.data?.items ?? [])
             : []
         }
-        outlineNodesByChunkId={tree.outlineNodesByChunkId}
-        outlineSummaryChunkIds={tree.outlineSummaryChunkIds}
         revision={revision}
-        selectedChunkId={selectedChunk?.id}
+        selectedChunkId={selectedBlock?.chunk.id}
+        indexChunks={detailModel.indexChunks}
       />
     </div>
   )
