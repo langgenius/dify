@@ -15,8 +15,20 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from typing import TYPE_CHECKING, Any
-
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any, cast
+from core.telemetry.events import (
+    AppCreatedEvent,
+    AppDeletedEvent,
+    AppUpdatedEvent,
+    DraftNodeExecutionTraceEvent,
+    FeedbackCreatedEvent,
+    MetricLogContext,
+    TelemetryContext,
+    TelemetryEvent,
+    TraceContext,
+)
+from enterprise.telemetry.contracts import TelemetryCase
 from core.ops.entities.trace_entity import TraceTaskName
 from enterprise.telemetry.contracts import CaseRoute, SignalType
 from extensions.ext_storage import storage
@@ -26,6 +38,7 @@ if TYPE_CHECKING:
     from enterprise.telemetry.contracts import TelemetryCase
 
 logger = logging.getLogger(__name__)
+
 
 PAYLOAD_SIZE_THRESHOLD_BYTES = 1 * 1024 * 1024
 
@@ -147,11 +160,35 @@ def _handle_payload_sizing(
 # Public API
 # ---------------------------------------------------------------------------
 
+def emit(event: TelemetryEvent, trace_manager: TraceQueueManager | None = None) -> None:
+    """Emit a telemetry event.
 
-def emit(
+    Dispatches the typed ``TelemetryEvent`` to the corresponding
+    ``core.telemetry.gateway.emit()`` case based on its event class.
+    """
+    trace_context: TraceContext = {
+        "tenant_id": event.context.tenant_id,
+        "user_id": event.context.user_id,
+        "app_id": event.context.app_id,
+    }
+    metric_context: MetricLogContext = {"tenant_id": event.context.tenant_id}
+
+    match event:
+        case DraftNodeExecutionTraceEvent():
+            _emit(TelemetryCase.DRAFT_NODE_EXECUTION, trace_context, event.payload, trace_manager)
+        case AppCreatedEvent():
+            _emit(event.case, metric_context, event.payload, trace_manager)
+        case AppUpdatedEvent():
+            _emit(event.case, metric_context, event.payload, trace_manager)
+        case AppDeletedEvent():
+            _emit(event.case, metric_context, event.payload, trace_manager)
+        case FeedbackCreatedEvent():
+            _emit(event.case, metric_context, event.payload, trace_manager)
+
+def _emit(
     case: TelemetryCase,
-    context: dict[str, Any],
-    payload: dict[str, Any],
+    context: TraceContext | MetricLogContext,
+    payload: Mapping[str, Any],
     trace_manager: TraceQueueManager | None = None,
 ) -> None:
     """Route a telemetry event to the correct pipeline.
@@ -173,15 +210,15 @@ def emit(
         return
 
     if route.signal_type == SignalType.TRACE:
-        _emit_trace(case, context, payload, trace_manager)
+        _emit_trace(case, cast(TraceContext, context), payload, trace_manager)
     else:
         _emit_metric_log(case, context, payload)
 
 
 def _emit_trace(
     case: TelemetryCase,
-    context: dict[str, Any],
-    payload: dict[str, Any],
+    context: TraceContext,
+    payload: Mapping[str, Any],
     trace_manager: TraceQueueManager | None,
 ) -> None:
     from core.ops.ops_trace_manager import TraceQueueManager as LocalTraceQueueManager
@@ -192,7 +229,7 @@ def _emit_trace(
         logger.warning("No TraceTaskName mapping for case: %s", case)
         return
 
-    queue_manager = trace_manager or LocalTraceQueueManager(
+    queue_manager: TraceQueueManager = trace_manager or LocalTraceQueueManager(
         app_id=context.get("app_id"),
         user_id=context.get("user_id"),
     )
@@ -202,8 +239,8 @@ def _emit_trace(
 
 def _emit_metric_log(
     case: TelemetryCase,
-    context: dict[str, Any],
-    payload: dict[str, Any],
+    context: MetricLogContext,
+    payload: Mapping[str, Any],
 ) -> None:
     """Build envelope and dispatch to enterprise Celery queue.
 
@@ -218,7 +255,7 @@ def _emit_metric_log(
     tenant_id = context.get("tenant_id") or ""
     event_id = str(uuid.uuid4())
 
-    payload_for_envelope, payload_ref = _handle_payload_sizing(payload, tenant_id, event_id)
+    payload_for_envelope, payload_ref = _handle_payload_sizing(cast(dict[str, Any], payload), tenant_id, event_id)
 
     from enterprise.telemetry.contracts import TelemetryEnvelope
 
