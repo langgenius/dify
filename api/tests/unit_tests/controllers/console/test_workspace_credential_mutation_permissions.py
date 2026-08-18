@@ -50,4 +50,3 @@ def test_model_provider_credential_get_requires_admin_and_rbac(
     assert rbac_config["resource_type"] == RBACResourceScope.WORKSPACE
     assert rbac_config["scene"] == RBACPermission.CREDENTIAL_MANAGE
     assert rbac_config["resource_required"] is False
-
