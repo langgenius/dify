@@ -1,4 +1,5 @@
 import type { CommonNodeType } from '../../types'
+import type { CollectionProviderType } from '@/app/components/tools/types'
 import { act } from '@testing-library/react'
 import { CollectionType } from '@/app/components/tools/types'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
@@ -15,41 +16,11 @@ const mockInvalidateTriggers = vi.fn()
 const mockInvalidDataSourceList = vi.fn()
 let mockWorkspacePermissionKeys = ['plugin.install']
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }))
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('@/service/use-tools', () => ({
@@ -57,7 +28,8 @@ vi.mock('@/service/use-tools', () => ({
   useAllCustomTools: (enabled: boolean) => mockCustomTools(enabled),
   useAllWorkflowTools: (enabled: boolean) => mockWorkflowTools(enabled),
   useAllMCPTools: (enabled: boolean) => mockMcpTools(enabled),
-  useInvalidToolsByType: (providerType?: string) => mockInvalidToolsByType(providerType),
+  useInvalidToolsByType: (providerType?: CollectionProviderType) =>
+    mockInvalidToolsByType(providerType),
 }))
 
 vi.mock('@/service/use-triggers', () => ({
@@ -194,11 +166,11 @@ describe('useNodePluginInstallation', () => {
     expect(result.current.shouldDim).toBe(false)
   })
 
-  it('should keep unknown tool collection types installable without collection state', () => {
+  it('should keep plugin tool collections installable without collection state', () => {
     const { result } = renderWorkflowHook(() =>
       useNodePluginInstallation(
         makeToolNode({
-          provider_type: 'unknown' as CollectionType,
+          provider_type: 'plugin',
           plugin_unique_identifier: undefined,
           plugin_id: undefined,
           provider_id: 'legacy-provider',

@@ -59,7 +59,7 @@ const Config: FC = () => {
 
   return (
     <>
-      <div className="relative h-0 grow overflow-y-auto px-6 pb-[50px]">
+      <div className="relative h-0 grow overflow-y-auto px-6 pb-12.5">
         {/* Template */}
         <ConfigPrompt
           mode={mode}

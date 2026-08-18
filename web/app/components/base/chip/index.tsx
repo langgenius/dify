@@ -50,7 +50,7 @@ function Chip<T extends ItemValue>({
     : t(($) => $['operation.clear'], { ns: 'common' })
 
   return (
-    <Select
+    <Select<T>
       value={selectedItem?.value ?? null}
       itemToStringLabel={(itemValue: T) =>
         items.find((item) => Object.is(item.value, itemValue))?.name ?? ''
@@ -66,7 +66,7 @@ function Chip<T extends ItemValue>({
         <SelectTrigger
           aria-label={triggerContent || t(($) => $['placeholder.select'], { ns: 'common' })}
           className={cn(
-            'h-auto min-h-8 w-fit max-w-full cursor-pointer items-center rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover-alt! data-popup-open:hover:bg-state-base-hover-alt [&>*:last-child]:hidden',
+            'h-auto min-h-8 w-fit max-w-full cursor-pointer items-center rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt! data-popup-open:hover:bg-state-base-hover-alt [&>*:last-child]:hidden',
             hasValue &&
               'border-components-button-secondary-border! bg-components-button-secondary-bg! pr-6 shadow-xs hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover! data-popup-open:border-components-button-secondary-border-hover! data-popup-open:bg-components-button-secondary-bg-hover! data-popup-open:hover:border-components-button-secondary-border-hover data-popup-open:hover:bg-components-button-secondary-bg-hover!',
             className,
@@ -121,13 +121,13 @@ function Chip<T extends ItemValue>({
           placement="bottom-start"
           sideOffset={4}
           popupClassName={cn(
-            'relative w-[240px] rounded-xl border-[0.5px] bg-components-panel-bg-blur p-0 text-sm text-text-secondary shadow-lg outline-hidden backdrop-blur-[5px] focus:outline-hidden focus-visible:outline-hidden',
+            'relative w-60 rounded-xl border-[0.5px] bg-components-panel-bg-blur p-0 text-sm text-text-secondary shadow-lg outline-hidden backdrop-blur-[5px] focus:outline-hidden focus-visible:outline-hidden',
             panelClassName,
           )}
           listClassName="max-h-72 p-1"
         >
           {items.map((item) => (
-            <SelectItem key={item.value} value={item.value}>
+            <SelectItem<T> key={item.value} value={item.value}>
               <SelectItemText title={item.name}>{item.name}</SelectItemText>
               {showItemIndicator && <SelectItemIndicator />}
             </SelectItem>

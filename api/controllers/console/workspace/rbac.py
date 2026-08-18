@@ -11,9 +11,10 @@ from werkzeug.exceptions import NotFound
 from configs import dify_config
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.wraps import RBACPermission, RBACResourceScope, rbac_permission_required
+from controllers.console.wraps import RBACPermission, RBACResourceScope, model_validate, rbac_permission_required
 from core.db.session_factory import session_factory
 from core.rbac import RBACResourceWhitelistScope
+from enums import DeploymentEdition
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
 from models import Account
@@ -196,7 +197,7 @@ def _pagination_options() -> svc.ListOption:
 
 
 def _legacy_workspace_roles(
-    options: svc.ListOption | None = None, *, include_owner: int = 0
+    options: svc.ListOption | None = None, *, include_owner: int = 0, billing_enabled: bool = True
 ) -> svc.Paginated[svc.RBACRole]:
     """Return the built-in legacy workspace roles in the RBAC list shape.
 
@@ -207,6 +208,14 @@ def _legacy_workspace_roles(
     for role_name in ("owner", "admin", "editor", "normal", "dataset_operator"):
         if not dify_config.DATASET_OPERATOR_ENABLED and role_name == "dataset_operator":
             continue
+
+        permission_keys = _LEGACY_ROLE_PERMISSION_KEYS[role_name]
+        valid_permission_keys = []
+        for permission_key in permission_keys:
+            if not billing_enabled and "billing" in permission_key:
+                continue
+            valid_permission_keys.append(permission_key)
+
         legacy_roles.append(
             svc.RBACRole(
                 id=role_name,
@@ -216,7 +225,7 @@ def _legacy_workspace_roles(
                 name=role_name,
                 description="",
                 is_builtin=True,
-                permission_keys=list(dict.fromkeys(_LEGACY_ROLE_PERMISSION_KEYS[role_name])),
+                permission_keys=valid_permission_keys,
                 role_tag="owner" if role_name == "owner" else "",
             )
         )
@@ -302,15 +311,23 @@ class RBACRolesApi(Resource):
         RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
     )
     @console_ns.response(200, "Success", console_ns.models[_RBACRoleList.__name__])
-    def get(self):
+    @model_validate(_RolesListQuery)
+    def get(self, req_data: _RolesListQuery):
         tenant_id, account_id = _current_ids()
-        query = _RolesListQuery.model_validate(request.args.to_dict(flat=True))
-        options = query.to_inner_options()
+        options = req_data.to_inner_options()
         if not dify_config.RBAC_ENABLED:
-            result = _legacy_workspace_roles(options, include_owner=query.include_owner)
+            result = _legacy_workspace_roles(
+                options,
+                include_owner=req_data.include_owner,
+                billing_enabled=dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD,
+            )
         else:
             result = svc.RBACService.Roles.list(
-                tenant_id, account_id, include_owner=query.include_owner, options=options
+                tenant_id,
+                account_id,
+                include_owner=req_data.include_owner,
+                biiling_enabled=dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD,
+                options=options,
             )
 
         return _dump(result)
@@ -336,7 +353,14 @@ class RBACRoleItemApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[svc.RBACRole.__name__])
     def get(self, role_id):
         tenant_id, account_id = _current_ids()
-        return _dump(svc.RBACService.Roles.get(tenant_id, account_id, str(role_id)))
+        return _dump(
+            svc.RBACService.Roles.get(
+                tenant_id,
+                account_id,
+                role_id,
+                billing_enabled=dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD,
+            )
+        )
 
     @login_required
     @rbac_permission_required(
@@ -703,14 +727,17 @@ class RBACDatasetWhitelistApi(Resource):
     def put(self, dataset_id):
         tenant_id, account_id = _current_ids()
         request = _payload(_ResourceAccessScopeRequest)
-        return _dump(
-            svc.RBACService.DatasetAccess.replace_whitelist(
-                tenant_id,
-                account_id,
-                str(dataset_id),
-                svc.ReplaceMemberBindings(scope=request.scope.value),
-            )
+        result = svc.RBACService.DatasetAccess.replace_whitelist(
+            tenant_id,
+            account_id,
+            str(dataset_id),
+            svc.ReplaceMemberBindings(scope=request.scope.value),
         )
+        # Widening the scope only records it: the members still need the default access policy
+        # before they can reach the dataset, same as the app whitelist route above.
+        if dify_config.RBAC_ENABLED and request.scope is RBACResourceWhitelistScope.ALL:
+            initialize_created_app_rbac_access_task.delay(tenant_id, account_id, dataset_id=str(dataset_id))
+        return _dump(result)
 
 
 @console_ns.route("/workspaces/current/rbac/datasets/<uuid:dataset_id>/user-access-policies")

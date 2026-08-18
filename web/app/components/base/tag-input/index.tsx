@@ -78,7 +78,7 @@ const TagInput = ({
     <div
       className={cn(
         'flex flex-wrap',
-        !isInWorkflow && 'min-w-[200px]',
+        !isInWorkflow && 'min-w-50',
         isSpecialMode ? 'rounded-lg bg-components-input-bg-normal pb-1 pl-1' : '',
       )}
     >
@@ -118,8 +118,8 @@ const TagInput = ({
           <span
             data-input-value={value || inputPlaceholder}
             className={cn(
-              !isInWorkflow && 'max-w-[300px]',
-              isInWorkflow && 'max-w-[146px]',
+              !isInWorkflow && 'max-w-75',
+              isInWorkflow && 'max-w-36.5',
               'grid overflow-hidden rounded-md py-1 system-xs-regular after:invisible after:col-start-1 after:row-start-1 after:whitespace-pre after:content-[attr(data-input-value)]',
               isSpecialMode && 'border border-transparent px-1.5',
               focused && isSpecialMode && 'border-dashed border-divider-deep',

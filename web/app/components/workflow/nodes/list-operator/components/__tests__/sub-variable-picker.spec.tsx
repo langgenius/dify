@@ -21,15 +21,12 @@ describe('list-operator/sub-variable-picker', () => {
     expect(handleChange).toHaveBeenCalledWith('name')
   })
 
-  it('should render the selected value chip and keep the wrapper class name', async () => {
+  it('should render the selected value chip and update it from the options', async () => {
     const user = userEvent.setup()
     const handleChange = vi.fn()
 
-    const { container } = render(
-      <SubVariablePicker value="size" onChange={handleChange} className="custom-sub-variable" />,
-    )
+    render(<SubVariablePicker value="size" onChange={handleChange} />)
 
-    expect(container.firstChild).toHaveClass('custom-sub-variable')
     expect(screen.getByText('size')).toBeInTheDocument()
 
     await user.click(screen.getByRole('combobox'))

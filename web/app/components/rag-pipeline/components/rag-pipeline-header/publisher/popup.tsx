@@ -14,6 +14,7 @@ import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowRightUpLine, RiPlayCircleLine, RiTerminalBoxLine } from '@remixicon/react'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
@@ -22,10 +23,8 @@ import { trackEvent } from '@/app/components/base/amplitude'
 import Divider from '@/app/components/base/divider'
 import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import PremiumBadge from '@/app/components/base/premium-badge'
-import { useChecklistBeforePublish } from '@/app/components/workflow/hooks'
+import { useChecklistBeforePublish } from '@/app/components/workflow/hooks/use-checklist'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
-import { IS_CLOUD_EDITION } from '@/config'
-import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useModalContextSelector } from '@/context/modal-context'
 import {
@@ -33,6 +32,8 @@ import {
   workspacePermissionKeysLoadingAtom,
 } from '@/context/permission-state'
 import { useProviderContextSelector } from '@/context/provider-context'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
@@ -62,6 +63,10 @@ export function Popup({
   onShowPublishAsKnowledgePipelineModal,
 }: PopupProps) {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
   const { datasetId } = useParams()
   const { push } = useRouter()
   const publishedAt = useStore((s) => s.publishedAt)
@@ -69,7 +74,10 @@ export function Popup({
   const pipelineId = useStore((s) => s.pipelineId)
   const dataset = useDatasetDetailContextWithSelector((s) => s.dataset)
   const mutateDatasetRes = useDatasetDetailContextWithSelector((s) => s.mutateDatasetRes)
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const [published, setPublished] = useState(false)
@@ -195,12 +203,13 @@ export function Popup({
   const handleClickPublishAsKnowledgePipeline = useCallback(() => {
     onRequestClose?.()
     if (!isAllowPublishAsCustomKnowledgePipelineTemplate) {
-      if (IS_CLOUD_EDITION) setShowPricingModal()
+      if (deploymentEdition === 'CLOUD') setShowPricingModal()
     } else {
       onShowPublishAsKnowledgePipelineModal?.()
     }
   }, [
     isAllowPublishAsCustomKnowledgePipelineTemplate,
+    deploymentEdition,
     onRequestClose,
     onShowPublishAsKnowledgePipelineModal,
     setShowPricingModal,
@@ -209,7 +218,7 @@ export function Popup({
     <div
       className={cn(
         'rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5',
-        isAllowPublishAsCustomKnowledgePipelineTemplate ? 'w-[360px]' : 'w-[400px]',
+        isAllowPublishAsCustomKnowledgePipelineTemplate ? 'w-90' : 'w-100',
       )}
     >
       <div className="p-4 pt-3">
@@ -264,7 +273,7 @@ export function Popup({
             <RiPlayCircleLine className="mr-2 size-4" />
             {t(($) => $['common.goToAddDocuments'], { ns: 'pipeline' })}
           </div>
-          <RiArrowRightUpLine className="ml-2 size-4 shrink-0" />
+          <RiArrowRightUpLine className="size-4 shrink-0" />
         </Button>
         <Link href={apiReferenceUrl} target="_blank" rel="noopener noreferrer">
           <Button
@@ -276,7 +285,7 @@ export function Popup({
               <RiTerminalBoxLine className="mr-2 size-4" />
               {t(($) => $['common.accessAPIReference'], { ns: 'workflow' })}
             </div>
-            <RiArrowRightUpLine className="ml-2 size-4 shrink-0" />
+            <RiArrowRightUpLine className="size-4 shrink-0" />
           </Button>
         </Link>
         <Divider className="my-2" />
@@ -294,7 +303,7 @@ export function Popup({
             >
               {t(($) => $['common.publishAs'], { ns: 'pipeline' })}
             </span>
-            {IS_CLOUD_EDITION && !isAllowPublishAsCustomKnowledgePipelineTemplate && (
+            {deploymentEdition === 'CLOUD' && !isAllowPublishAsCustomKnowledgePipelineTemplate && (
               <PremiumBadge className="shrink-0 select-none" size="s" color="indigo">
                 <SparklesSoft
                   aria-hidden="true"

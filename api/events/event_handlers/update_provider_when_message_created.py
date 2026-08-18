@@ -9,7 +9,11 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
 from configs import dify_config
-from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, ChatAppGenerateEntity
+from core.app.entities.app_invoke_entities import (
+    AgentAppGenerateEntity,
+    AgentChatAppGenerateEntity,
+    ChatAppGenerateEntity,
+)
 from core.entities.provider_entities import ProviderQuotaType, QuotaUnit, SystemConfiguration
 from events.message_event import message_was_created
 from extensions.ext_database import db
@@ -121,8 +125,13 @@ def handle(sender: Message, **kwargs):
     provider_model_bundle = model_config.provider_model_bundle
     provider_configuration = provider_model_bundle.configuration
 
+    agent_gateway_metered = (
+        isinstance(application_generate_entity, AgentAppGenerateEntity)
+        and application_generate_entity.agent_llm_gateway_enabled
+    )
     if (
-        provider_configuration.using_provider_type == ProviderType.SYSTEM
+        not agent_gateway_metered
+        and provider_configuration.using_provider_type == ProviderType.SYSTEM
         and provider_configuration.system_configuration
         and provider_configuration.system_configuration.current_quota_type is not None
     ):

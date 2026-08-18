@@ -12,11 +12,11 @@ import {
   DrawerPortal,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RiArrowLeftLine, RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import Loading from '@/app/components/base/loading'
 import TabSlider from '@/app/components/base/tab-slider-plain'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
@@ -44,6 +44,7 @@ type Props = Readonly<{
   toolName: string
   setting?: Record<string, any>
   readonly?: boolean
+  showReadOnlySettingDetails?: boolean
   onHide: () => void
   onSave?: (value: Record<string, any>) => void
   credentialId?: string
@@ -58,6 +59,7 @@ const SettingBuiltInTool: FC<Props> = ({
   toolName,
   setting = {},
   readonly,
+  showReadOnlySettingDetails = false,
   onHide,
   onSave,
   credentialId,
@@ -75,6 +77,8 @@ const SettingBuiltInTool: FC<Props> = ({
   const infoSchemas = formSchemas.filter((item) => item.form === 'llm')
   const settingSchemas = formSchemas.filter((item) => item.form !== 'llm')
   const hasSetting = settingSchemas.length > 0
+  const showSettingTab = hasSetting && (!readonly || showReadOnlySettingDetails)
+  const showSettingAsDetails = readonly && showReadOnlySettingDetails
   const [tempSetting, setTempSetting] = useState(setting)
   const [currType, setCurrType] = useState('info')
   const isInfoActive = currType === 'info'
@@ -120,12 +124,12 @@ const SettingBuiltInTool: FC<Props> = ({
     return type
   }
 
-  const infoUI = (
+  const renderSchemaDetails = (schemas: typeof formSchemas) => (
     <div className="">
-      {infoSchemas.length > 0 && (
+      {schemas.length > 0 && (
         <div className="space-y-1 py-2">
-          {infoSchemas.map((item, index) => (
-            <div key={index} className="py-1">
+          {schemas.map((item) => (
+            <div key={item.name} className="py-1">
               <div className="flex items-center gap-2">
                 <div className="code-sm-semibold text-text-secondary">{item.label[language]}</div>
                 <div className="system-xs-regular text-text-tertiary">{getType(item.type)}</div>
@@ -146,6 +150,8 @@ const SettingBuiltInTool: FC<Props> = ({
       )}
     </div>
   )
+  const infoUI = renderSchemaDetails(infoSchemas)
+  const settingDetailsUI = renderSchemaDetails(settingSchemas)
 
   const settingUI = (
     <Form
@@ -173,7 +179,7 @@ const SettingBuiltInTool: FC<Props> = ({
         <DrawerViewport>
           <DrawerPopup
             className={cn(
-              'justify-start bg-components-panel-bg! p-0! shadow-xl data-[swipe-direction=right]:top-6 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-6 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-[420px] data-[swipe-direction=right]:max-w-[420px] data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-components-panel-border',
+              'justify-start bg-components-panel-bg! p-0! shadow-xl data-[swipe-direction=right]:top-6 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-6 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-105 data-[swipe-direction=right]:max-w-105 data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-components-panel-border',
             )}
           >
             <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
@@ -183,9 +189,12 @@ const SettingBuiltInTool: FC<Props> = ({
                   {/* header */}
                   <div className="relative border-b border-divider-subtle p-4 pb-3">
                     <div className="absolute top-3 right-3">
-                      <ActionButton onClick={onHide}>
-                        <RiCloseLine className="size-4" />
-                      </ActionButton>
+                      <IconButton
+                        aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                        onClick={onHide}
+                      >
+                        <RiCloseLine aria-hidden="true" className="size-4" />
+                      </IconButton>
                     </div>
                     {showBackButton && (
                       <div
@@ -230,7 +239,7 @@ const SettingBuiltInTool: FC<Props> = ({
                   {/* form */}
                   <div className="h-full">
                     <div className="flex h-full flex-col">
-                      {hasSetting && !readonly ? (
+                      {showSettingTab ? (
                         <TabSlider
                           className="mt-1 shrink-0 px-4"
                           itemClassName="py-3"
@@ -256,7 +265,9 @@ const SettingBuiltInTool: FC<Props> = ({
                         </div>
                       )}
                       <div className="h-0 grow overflow-y-auto px-4">
-                        {isInfoActive ? infoUI : settingUI}
+                        {isInfoActive && infoUI}
+                        {!isInfoActive && showSettingAsDetails && settingDetailsUI}
+                        {!isInfoActive && !showSettingAsDetails && settingUI}
                         {!readonly && !isInfoActive && (
                           <div className="flex shrink-0 justify-end space-x-2 rounded-b-[10px] bg-components-panel-bg py-2">
                             <Button

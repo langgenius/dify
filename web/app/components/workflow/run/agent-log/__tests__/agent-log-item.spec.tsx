@@ -1,6 +1,7 @@
 import type { AgentLogItemWithChildren } from '@/types/workflow'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { render } from '@/test/console/render'
 import AgentLogItem from '../agent-log-item'
 
 const createLogItem = (
@@ -17,6 +18,13 @@ const createLogItem = (
     elapsed_time: 1.234,
   },
   ...overrides,
+})
+
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
 })
 
 describe('AgentLogItem', () => {

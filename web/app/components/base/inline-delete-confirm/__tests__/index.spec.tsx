@@ -85,17 +85,4 @@ describe('InlineDeleteConfirm', () => {
       expect(onCancel).not.toHaveBeenCalled()
     })
   })
-
-  describe('Custom className', () => {
-    it('should apply custom className to wrapper', () => {
-      const onConfirm = vi.fn()
-      const onCancel = vi.fn()
-      const { container } = render(
-        <InlineDeleteConfirm className="custom-class" onConfirm={onConfirm} onCancel={onCancel} />,
-      )
-
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper.className).toContain('custom-class')
-    })
-  })
 })

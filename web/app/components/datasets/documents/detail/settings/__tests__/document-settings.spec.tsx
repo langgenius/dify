@@ -1,10 +1,11 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import DocumentSettings from '../document-settings'
 
 const mockPush = vi.fn()
 const mockBack = vi.fn()
-const mockOpenIntegrationsSetting = vi.fn()
+const mockSetSettingsDestination = vi.fn()
+const mockUseDocumentTitle = vi.hoisted(() => vi.fn())
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
@@ -19,10 +20,14 @@ vi.mock('use-context-selector', async (importOriginal) => {
     ...actual,
     useContext: () => ({
       indexingTechnique: 'qualified',
-      dataset: { id: 'dataset-1' },
+      dataset: { id: 'dataset-1', name: 'Dataset 1' },
     }),
   }
 })
+
+vi.mock('@/hooks/use-document-title', () => ({
+  default: mockUseDocumentTitle,
+}))
 
 const mockInvalidDocumentList = vi.fn()
 const mockInvalidDocumentDetail = vi.fn()
@@ -107,9 +112,10 @@ vi.mock('@/app/components/datasets/create/step-two', () => ({
   ),
 }))
 
-vi.mock('@/app/components/header/account-setting/use-integrations-setting', () => ({
-  useIntegrationsSetting: () => mockOpenIntegrationsSetting,
-}))
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
 
 describe('DocumentSettings', () => {
   beforeEach(() => {
@@ -130,10 +136,12 @@ describe('DocumentSettings', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(<DocumentSettings {...defaultProps} />)
+    it('uses the settings, document, and knowledge names in the document title', () => {
+      render(<DocumentSettings {...defaultProps} />)
 
-      expect(container.firstChild).toBeInTheDocument()
+      expect(mockUseDocumentTitle).toHaveBeenLastCalledWith(
+        'datasetPipeline.documentSettings.title · test-document · Dataset 1',
+      )
     })
 
     it('should render StepTwo component when data is loaded', () => {
@@ -211,7 +219,7 @@ describe('DocumentSettings', () => {
 
       fireEvent.click(screen.getByTestId('setting-btn'))
 
-      expect(mockOpenIntegrationsSetting).toHaveBeenCalledWith({ payload: 'provider' })
+      expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
     })
   })
 

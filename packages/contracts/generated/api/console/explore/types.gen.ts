@@ -20,7 +20,7 @@ export type BannerListResponse = Array<BannerResponse>
 export type RecommendedAppResponse = {
   app?: RecommendedAppInfoResponse | null
   app_id: string
-  can_trial?: boolean | null
+  can_trial: boolean
   categories?: Array<string>
   copyright?: string | null
   custom_disclaimer?: string | null
@@ -31,7 +31,7 @@ export type RecommendedAppResponse = {
 }
 
 export type RecommendedAppDetailResponse = {
-  can_trial?: boolean | null
+  can_trial: boolean
   export_data: string
   icon?: string | null
   icon_background?: string | null
@@ -41,12 +41,12 @@ export type RecommendedAppDetailResponse = {
 }
 
 export type BannerResponse = {
-  content: unknown
-  created_at?: string | null
+  content: BannerContentResponse
+  created_at: string
   id: string
-  link?: string | null
+  link: string
   sort: number
-  status: string
+  status: BannerStatus
 }
 
 export type RecommendedAppInfoResponse = {
@@ -58,6 +58,15 @@ export type RecommendedAppInfoResponse = {
   mode?: string | null
   name?: string | null
 }
+
+export type BannerContentResponse = {
+  category: string
+  description: string
+  'img-src': string
+  title: string
+}
+
+export type BannerStatus = 'disabled' | 'enabled'
 
 export type RecommendedAppListResponseWritable = {
   categories: Array<string>
@@ -71,7 +80,7 @@ export type LearnDifyAppListResponseWritable = {
 export type RecommendedAppResponseWritable = {
   app?: RecommendedAppInfoResponseWritable | null
   app_id: string
-  can_trial?: boolean | null
+  can_trial: boolean
   categories?: Array<string>
   copyright?: string | null
   custom_disclaimer?: string | null

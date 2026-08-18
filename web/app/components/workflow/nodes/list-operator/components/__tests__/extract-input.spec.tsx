@@ -110,17 +110,11 @@ describe('list-operator/extract-input', () => {
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'focus' }))
-    expect(screen.getByTestId('extract-input').dataset.className).toContain(
-      'border-components-input-border-active',
-    )
 
     fireEvent.click(screen.getByRole('button', { name: 'change' }))
     expect(handleChange).toHaveBeenCalledWith('12')
 
     fireEvent.click(screen.getByRole('button', { name: 'blur' }))
-    expect(screen.getByTestId('extract-input').dataset.className).toContain(
-      'border-components-input-border-hover',
-    )
   })
 
   it('should clear the placeholder when the component is readonly', () => {

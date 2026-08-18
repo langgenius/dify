@@ -22,7 +22,6 @@ import { produce } from 'immer'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
-import { useIsChatMode } from '@/app/components/workflow/hooks/use-workflow'
 import { getVarType } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import BoolValue from '@/app/components/workflow/panel/chat-variable-panel/components/bool-value'
 import { useWorkflowStore } from '@/app/components/workflow/store'
@@ -33,6 +32,7 @@ import {
   useAllMCPTools,
   useAllWorkflowTools,
 } from '@/service/use-tools'
+import { useIsChatMode } from '../../../../hooks/use-workflow'
 import useMatchSchemaType from '../../../_base/components/variable/use-match-schema-type'
 import { FILE_TYPE_OPTIONS, SUB_VARIABLES, TRANSFER_METHOD } from '../../../constants'
 import { ComparisonOperator } from '../../types'
@@ -348,7 +348,7 @@ const ConditionItem = ({
                     >
                       <div className="flex h-6 items-center justify-between">
                         <div className="flex h-full items-center">
-                          <Variable02 className="mr-[5px] h-3.5 w-3.5 text-text-accent" />
+                          <Variable02 className="mr-1.25 h-3.5 w-3.5 text-text-accent" />
                           <SelectItemText className="mr-0 px-0 system-sm-medium text-text-secondary">
                             {option.name}
                           </SelectItemText>
@@ -383,7 +383,7 @@ const ConditionItem = ({
           !isNotInput &&
           condition.varType !== VarType.number &&
           !showBooleanInput && (
-            <div className="max-h-[100px] overflow-y-auto border-t border-t-divider-subtle px-2 py-1">
+            <div className="max-h-25 overflow-y-auto border-t border-t-divider-subtle px-2 py-1">
               <ConditionInput
                 disabled={disabled}
                 value={condition.value as string}
@@ -403,7 +403,7 @@ const ConditionItem = ({
         {!comparisonOperatorNotRequireValue(condition.comparison_operator) &&
           !isNotInput &&
           condition.varType === VarType.number && (
-            <div className="border-t border-t-divider-subtle px-2 py-1 pt-[3px]">
+            <div className="border-t border-t-divider-subtle px-2 py-1 pt-0.75">
               <ConditionNumberInput
                 numberVarType={condition.numberVarType}
                 onNumberVarTypeChange={handleUpdateConditionNumberVarType}

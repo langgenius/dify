@@ -1,6 +1,9 @@
 import { Button } from '@langgenius/dify-ui/button'
-import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Input } from '@langgenius/dify-ui/input'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -114,7 +117,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
         <FieldLabel className="my-2 py-0 system-md-semibold text-text-secondary">
           {t(($) => $.email, { ns: 'login' })}
         </FieldLabel>
-        <FieldControl
+        <Input
           value={email}
           onValueChange={setEmail}
           disabled={isInvite}
@@ -139,25 +142,21 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
             {t(($) => $.forget, { ns: 'login' })}
           </Link>
         </div>
-        <div className="relative mt-1">
-          <FieldControl
+        <InputGroup className="mt-1">
+          <InputGroupInput
             value={password}
             onValueChange={setPassword}
             type={showPassword ? 'text' : 'password'}
             autoComplete="current-password"
             spellCheck={false}
             placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
-            className="pr-10"
           />
-          <div className="absolute inset-y-0 right-0 flex items-center">
-            <Button
-              type="button"
-              variant="ghost"
+          <InputGroupAddon align="inline-end">
+            <IconButton
+              size="lg"
               aria-label={t(($) => $[showPassword ? 'hidePassword' : 'showPassword'], {
                 ns: 'login',
               })}
-              aria-pressed={showPassword}
-              className="mr-1 size-8 p-0 text-text-tertiary hover:text-text-secondary"
               onClick={() => setShowPassword(!showPassword)}
             >
               {showPassword ? (
@@ -165,9 +164,9 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
               ) : (
                 <span className="i-ri-eye-line size-4" aria-hidden="true" />
               )}
-            </Button>
-          </div>
-        </div>
+            </IconButton>
+          </InputGroupAddon>
+        </InputGroup>
       </Field>
 
       <div className="mb-2">

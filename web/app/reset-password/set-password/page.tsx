@@ -8,6 +8,7 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import { validPassword } from '@/config'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { changePasswordWithToken } from '@/service/common'
 
@@ -22,6 +23,11 @@ const ChangePasswordForm = () => {
   const [showSuccess, setShowSuccess] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  useDocumentTitle(
+    showSuccess
+      ? t(($) => $.passwordChangedTip, { ns: 'login' })
+      : t(($) => $.changePassword, { ns: 'login' }),
+  )
 
   const showErrorMessage = useCallback((message: string) => {
     toast.error(message)
@@ -89,18 +95,14 @@ const ChangePasswordForm = () => {
 
   return (
     <div
-      className={cn(
-        'flex w-full grow flex-col items-center justify-center',
-        'px-6',
-        'md:px-[108px]',
-      )}
+      className={cn('flex w-full grow flex-col items-center justify-center', 'px-6', 'md:px-27')}
     >
       {!showSuccess && (
-        <div className="flex flex-col md:w-[400px]">
+        <div className="flex flex-col md:w-100">
           <div className="mx-auto w-full">
-            <h2 className="title-4xl-semi-bold text-text-primary">
+            <h1 className="title-4xl-semi-bold text-text-primary">
               {t(($) => $.changePassword, { ns: 'login' })}
-            </h2>
+            </h1>
             <p className="mt-2 body-md-regular text-text-secondary">
               {t(($) => $.changePasswordTip, { ns: 'login' })}
             </p>
@@ -173,14 +175,14 @@ const ChangePasswordForm = () => {
         </div>
       )}
       {showSuccess && (
-        <div className="flex flex-col md:w-[400px]">
+        <div className="flex flex-col md:w-100">
           <div className="mx-auto w-full">
             <div className="mb-3 flex size-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle font-bold shadow-lg">
               <RiCheckboxCircleFill className="size-6 text-text-success" />
             </div>
-            <h2 className="title-4xl-semi-bold text-text-primary">
+            <h1 className="title-4xl-semi-bold text-text-primary">
               {t(($) => $.passwordChangedTip, { ns: 'login' })}
-            </h2>
+            </h1>
           </div>
           <div className="mx-auto mt-6 w-full">
             <Button

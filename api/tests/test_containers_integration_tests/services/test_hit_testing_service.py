@@ -173,7 +173,9 @@ class TestHitTestingService:
         assert response.query.content == query
         assert len(response.records) == 1
         assert response.records[0].content == "formatted content"
-        mock_format.assert_called_once_with([mock_doc])
+        mock_format.assert_called_once()
+        assert mock_format.call_args.args[0] is not db_session_with_containers
+        assert mock_format.call_args.args[1] == [mock_doc]
 
     def test_compact_external_retrieve_response_should_return_records_for_external_provider(
         self, db_session_with_containers: Session

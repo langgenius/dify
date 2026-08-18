@@ -2,7 +2,7 @@ import type { PropsWithChildren } from 'react'
 import type { CommonNodeType } from '@/app/components/workflow/types'
 import { fireEvent, screen } from '@testing-library/react'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
-import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
+import { BlockEnum, ControlMode, NodeRunningStatus } from '@/app/components/workflow/types'
 import BaseNode from '../node'
 
 const mockHasNodeInspectVars = vi.fn()
@@ -11,59 +11,36 @@ const mockHandleNodeIterationChildSizeChange = vi.fn()
 const mockHandleNodeLoopChildSizeChange = vi.fn()
 const mockUseNodeResizeObserver = vi.fn()
 const mockUseCollaboration = vi.fn()
-const mockAppContextState = vi.hoisted(() => ({
-  userProfile: {
-    id: 'user-1',
-    name: 'User',
-    email: 'user@example.com',
-    avatar: '',
-    avatar_url: '',
-  },
-}))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+vi.mock('../../../hooks/use-tool-icon', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-tool-icon')>()
+
+  return {
+    ...actual,
+    useToolIcon: () => undefined,
+  }
 })
 
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
-})
+vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesReadOnly: () => ({ nodesReadOnly: false }),
-  useToolIcon: () => undefined,
-}))
+  return {
+    ...actual,
+    useNodesReadOnly: () => ({ nodesReadOnly: false }),
+  }
+})
 
 vi.mock('@/app/components/workflow/collaboration/hooks/use-collaboration', () => ({
   useCollaboration: (...args: unknown[]) => mockUseCollaboration(...args),
 }))
 
-vi.mock('@/app/components/workflow/hooks/use-inspect-vars-crud', () => ({
+vi.mock('../../../hooks/use-inspect-vars-crud', () => ({
   default: () => ({
     hasNodeInspectVars: mockHasNodeInspectVars,
   }),
 }))
 
-vi.mock('@/app/components/workflow/hooks/use-node-plugin-installation', () => ({
+vi.mock('../../../hooks/use-node-plugin-installation', () => ({
   useNodePluginInstallation: (...args: unknown[]) => mockUseNodePluginInstallation(...args),
 }))
 
@@ -181,6 +158,23 @@ describe('BaseNode', () => {
     fireEvent.click(node)
 
     expect(selectWorkflowNode).toHaveBeenCalledWith('node-1')
+  })
+
+  it('should not select the node from the title button while in comment mode', async () => {
+    const { selectWorkflowNode } = await import('@/app/components/workflow/utils/node-navigation')
+
+    renderWorkflowComponent(
+      <BaseNode id="node-1" data={toNodeData(createData())}>
+        <div>Body</div>
+      </BaseNode>,
+      { initialStoreState: { controlMode: ControlMode.Comment } },
+    )
+
+    const node = screen.getByRole('button', { name: 'Node title' })
+
+    fireEvent.click(node)
+
+    expect(selectWorkflowNode).not.toHaveBeenCalled()
   })
 
   it('should keep header metadata outside the selectable button', () => {
@@ -305,7 +299,9 @@ describe('BaseNode', () => {
     )
 
     expect(mockHandleNodeLoopChildSizeChange).toHaveBeenCalledWith('node-2')
-    expect(mockUseNodeResizeObserver).toHaveBeenCalledTimes(2)
+    expect(mockUseNodeResizeObserver).toHaveBeenCalledWith(
+      expect.objectContaining({ enabled: true }),
+    )
   })
 
   it('should keep viewer avatars outside the truncated title area', () => {

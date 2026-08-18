@@ -1,8 +1,8 @@
 import type { PluginDeclaration, PluginDetail } from '@/app/components/plugins/types'
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
 import { createReactI18nextMock } from '@/test/i18n-mock'
 import { SubscriptionList } from '../index'
 import { SubscriptionListMode } from '../types'
@@ -53,7 +53,7 @@ const createSubscription = (overrides: Partial<TriggerSubscription> = {}): Trigg
   id: 'sub-1',
   name: 'Subscription One',
   provider: 'provider-1',
-  credential_type: TriggerCredentialTypeEnum.ApiKey,
+  credential_type: TriggerCredentialType.ApiKey,
   credentials: {},
   endpoint: 'https://example.com',
   parameters: {},

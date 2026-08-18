@@ -9,14 +9,14 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
+import { skipToken, useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
-import { Plan } from '@/app/components/billing/type'
-import { API_PREFIX, IS_CLOUD_EDITION } from '@/config'
+import { API_PREFIX } from '@/config'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/client'
 
 const numberFormatter = new Intl.NumberFormat()
@@ -64,10 +64,15 @@ const tableGridClassName = 'grid-cols-[0.66fr_0.78fr_0.78fr_1fr]'
 
 export default function WorkflowLogArchivesPage() {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
   const { plan, enableBilling } = useProviderContext()
   const [visibleArchiveMonthCount, setVisibleArchiveMonthCount] = useState(ARCHIVE_MONTH_PAGE_SIZE)
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
-  const canViewArchiveContent = IS_CLOUD_EDITION && enableBilling && plan.type !== Plan.sandbox
+  const canViewArchiveContent =
+    deploymentEdition === 'CLOUD' && enableBilling && plan.type !== 'sandbox'
   const archiveListQuery = useQuery(
     consoleQuery.workflowRunArchives.get.queryOptions({
       enabled: canViewArchiveContent,
@@ -126,20 +131,20 @@ export default function WorkflowLogArchivesPage() {
 
   if (!canViewArchiveContent) {
     return (
-      <div data-testid="workflow-log-archives-page" className="pb-6">
+      <div className="pb-6">
         <ArchivedLogsUpgradeBanner />
       </div>
     )
   }
 
   return (
-    <div data-testid="workflow-log-archives-page" className="flex flex-col gap-4 pb-6">
+    <div className="flex flex-col gap-4 pb-6">
       <div className="rounded-2xl border-[0.5px] border-effects-highlight-lightmode-off bg-background-section-burn p-2">
         <div className="grid grid-cols-2 gap-1 lg:grid-cols-4">
           {summaryItems.map((item) => (
             <div
               key={item.label}
-              className="flex min-h-[92px] flex-col gap-2 rounded-xl bg-components-panel-bg p-4"
+              className="flex min-h-23 flex-col gap-2 rounded-xl bg-components-panel-bg p-4"
             >
               <span className={cn(item.icon, 'size-4 text-text-tertiary')} aria-hidden="true" />
               <div className="system-xs-medium text-text-tertiary">{item.label}</div>
@@ -159,7 +164,7 @@ export default function WorkflowLogArchivesPage() {
 
       <div className="overflow-hidden rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg shadow-xs">
         <div className="overflow-x-auto">
-          <div className="min-w-[460px]">
+          <div className="min-w-115">
             <div
               className={cn(
                 'grid h-8 items-center gap-3 border-b border-divider-subtle bg-background-section-burn px-4 system-xs-medium-uppercase text-text-tertiary',
@@ -269,7 +274,7 @@ function ArchivedLogsUpgradeBanner() {
       </div>
       <button
         type="button"
-        className="flex h-10 w-[120px] shrink-0 cursor-pointer items-center justify-center rounded-3xl border-none bg-white p-0 system-md-semibold text-text-accent shadow-xs hover:opacity-95"
+        className="flex h-10 w-30 shrink-0 cursor-pointer items-center justify-center rounded-3xl border-none bg-white p-0 system-md-semibold text-text-accent shadow-xs hover:opacity-95"
         onClick={() => setShowPricingModal()}
       >
         {t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
@@ -393,7 +398,7 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
                 variant="secondary"
                 loading={isPreparing}
                 disabled={isPreparing}
-                className="gap-1 px-2"
+                className="px-2"
                 aria-label={buttonAriaLabel}
                 onClick={onAction}
               >
@@ -407,8 +412,8 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
           <TooltipContent
             placement="top"
             className={cn(
-              'max-w-[260px] text-center text-text-tertiary',
-              isFailed && 'max-w-[300px] text-start [overflow-wrap:anywhere] whitespace-pre-wrap',
+              'max-w-65 text-center text-text-tertiary',
+              isFailed && 'max-w-75 text-start wrap-anywhere whitespace-pre-wrap',
             )}
           >
             {downloadHint}

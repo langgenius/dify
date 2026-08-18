@@ -1,16 +1,40 @@
 from libs.exception import BaseHTTPException
 
 
-class ApiKeyAuthFailedError(BaseHTTPException):
-    error_code = "auth_failed"
-    description = "{message}"
-    code = 500
+class DataSourceApiKeyAuthProviderNotSupportedError(BaseHTTPException):
+    error_code = "unsupported_data_source_api_key_auth_provider"
+    description = "The data-source API-key authentication provider is not supported."
+    code = 400
+
+
+class InvalidDataSourceApiKeyAuthCredentialsRequestError(BaseHTTPException):
+    error_code = "invalid_data_source_api_key_auth_credentials"
+    description = "The data-source API-key authentication credentials are invalid."
+    code = 400
+
+
+class DataSourceApiKeyAuthCredentialsRejectedRequestError(BaseHTTPException):
+    error_code = "data_source_api_key_auth_credentials_rejected"
+    description = "The data-source provider rejected the API-key authentication credentials."
+    code = 400
+
+
+class DataSourceApiKeyAuthProviderUnavailableRequestError(BaseHTTPException):
+    error_code = "data_source_api_key_auth_provider_unavailable"
+    description = "The data-source API-key authentication provider is temporarily unavailable."
+    code = 502
 
 
 class InvalidEmailError(BaseHTTPException):
     error_code = "invalid_email"
     description = "The email address is not valid."
     code = 400
+
+
+class InvitationAccountMismatchError(BaseHTTPException):
+    error_code = "invitation_account_mismatch"
+    description = "This invitation was sent to another account. Please sign in with the invited account."
+    code = 403
 
 
 class PasswordMismatchError(BaseHTTPException):
@@ -87,6 +111,18 @@ class EmailPasswordLoginLimitError(BaseHTTPException):
     error_code = "email_code_login_limit"
     description = "Too many incorrect password attempts. Please try again later."
     code = 429
+
+
+class TurnstileVerificationFailedError(BaseHTTPException):
+    error_code = "turnstile_verification_failed"
+    description = "Turnstile verification failed. Please try again."
+    code = 400
+
+
+class TurnstileServiceUnavailableError(BaseHTTPException):
+    error_code = "turnstile_service_unavailable"
+    description = "Turnstile verification is temporarily unavailable. Please try again later."
+    code = 503
 
 
 class EmailCodeLoginRateLimitExceededError(BaseHTTPException):

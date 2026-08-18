@@ -1,40 +1,100 @@
 import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import { createStore } from 'jotai'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { agentSoulConfigToFormState, formStateToAgentSoulConfig } from '../conversions'
 import { defaultAgentSoulConfigFormState } from '../form-state'
 import {
   agentComposerDraftAtom,
-  agentComposerOriginalConfigAtom,
-  agentComposerOriginalDraftAtom,
-  agentComposerPublishedDraftAtom,
+  agentComposerSavedDraftAtom,
   rebaseAgentComposerDraftAtom,
 } from '../store'
 
 describe('agent composer store conversions', () => {
+  it('should hydrate missing file and skill references from API config', () => {
+    const formState = agentSoulConfigToFormState({
+      config_files: [
+        {
+          file_id: 'missing-file-id',
+          file_kind: 'upload_file',
+          is_missing: true,
+          name: 'missing.pdf',
+        },
+      ],
+      config_skills: [
+        {
+          file_id: 'missing-skill-id',
+          file_kind: 'tool_file',
+          is_missing: true,
+          name: 'Missing Skill',
+        },
+      ],
+    } as unknown as AgentSoulConfig)
+
+    expect(formState.files).toEqual([
+      expect.objectContaining({
+        isMissing: true,
+        name: 'missing.pdf',
+      }),
+    ])
+    expect(formState.skills).toEqual([
+      expect.objectContaining({
+        isMissing: true,
+        name: 'Missing Skill',
+      }),
+    ])
+  })
+
+  it('should preserve missing file and skill references without file ids in autosave config', () => {
+    const baseConfig = {
+      config_files: [
+        {
+          file_id: '',
+          file_kind: 'upload_file',
+          is_missing: true,
+          name: 'missing.pdf',
+        },
+      ],
+      config_skills: [
+        {
+          file_id: '',
+          file_kind: 'tool_file',
+          is_missing: true,
+          name: 'Missing Skill',
+        },
+      ],
+    } satisfies AgentSoulConfig
+    const formState = agentSoulConfigToFormState(baseConfig)
+
+    const autosaveConfig = formStateToAgentSoulConfig({ baseConfig, formState })
+
+    expect(autosaveConfig.config_files).toEqual([
+      expect.objectContaining({
+        file_id: '',
+        is_missing: true,
+        name: 'missing.pdf',
+      }),
+    ])
+    expect(autosaveConfig.config_skills).toEqual([
+      expect.objectContaining({
+        file_id: '',
+        is_missing: true,
+        name: 'Missing Skill',
+      }),
+    ])
+  })
+
   it('rebases draft baselines through the composer state action', () => {
     const store = createStore()
     const nextDraft = {
       ...defaultAgentSoulConfigFormState,
       prompt: 'Build draft prompt',
     }
-    const originalConfig = {
-      prompt: {
-        system_prompt: 'Build draft prompt',
-      },
-    } satisfies AgentSoulConfig
-
     store.set(rebaseAgentComposerDraftAtom, {
       draft: nextDraft,
-      originalConfig,
     })
 
     expect(store.get(agentComposerDraftAtom).prompt).toBe('Build draft prompt')
-    expect(store.get(agentComposerOriginalDraftAtom)?.prompt).toBe('Build draft prompt')
-    expect(store.get(agentComposerPublishedDraftAtom)?.prompt).toBe('Build draft prompt')
-    expect(store.get(agentComposerOriginalConfigAtom)?.prompt?.system_prompt).toBe(
-      'Build draft prompt',
-    )
+    expect(store.get(agentComposerSavedDraftAtom)?.prompt).toBe('Build draft prompt')
   })
 
   it('should hydrate editable form state from an AgentSoulConfig and preserve it in the config snapshot', () => {
@@ -321,6 +381,40 @@ describe('agent composer store conversions', () => {
     })
   })
 
+  it('should preserve a plugin tool identity when hydrating and publishing imported config', () => {
+    const baseConfig = {
+      tools: {
+        dify_tools: [
+          {
+            plugin_id: 'langgenius/google',
+            provider_id: 'langgenius/google/google',
+            provider_type: 'plugin',
+            tool_name: 'search',
+            credential_type: 'unauthorized',
+          },
+        ],
+      },
+    } satisfies AgentSoulConfig
+
+    const formState = agentSoulConfigToFormState(baseConfig)
+    const publishConfig = formStateToAgentSoulConfig({ baseConfig, formState })
+
+    expect(formState.tools).toEqual([
+      expect.objectContaining({
+        id: 'langgenius/google/google',
+        name: 'google',
+        pluginId: 'langgenius/google',
+      }),
+    ])
+    expect(publishConfig.tools?.dify_tools).toEqual([
+      expect.objectContaining({
+        plugin_id: 'langgenius/google',
+        provider: 'google',
+        provider_id: 'langgenius/google/google',
+      }),
+    ])
+  })
+
   it('should hydrate legacy secret refs from ref when value is absent', () => {
     const formState = agentSoulConfigToFormState({
       env: {
@@ -355,6 +449,7 @@ describe('agent composer store conversions', () => {
             kind: 'provider',
             name: 'duckduckgo',
             iconClassName: 'i-custom-public-other-default-tool-icon text-text-tertiary',
+            providerType: 'builtin',
             credentialVariant: 'none',
             actions: [
               {

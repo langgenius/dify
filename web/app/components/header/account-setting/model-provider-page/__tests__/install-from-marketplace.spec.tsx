@@ -1,9 +1,25 @@
-import type { Mock } from 'vitest'
-import type { ModelProvider } from '../declarations'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import type { Mock } from 'vite-plus/test'
+import { act, fireEvent, screen } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import {
+  getStepByStepTourTargetSelector,
+  STEP_BY_STEP_TOUR_TARGETS,
+} from '@/app/components/step-by-step-tour/target-registry'
+import { consoleQuery } from '@/service/client'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { useMarketplaceAllPlugins } from '../hooks'
 import InstallFromMarketplace from '../install-from-marketplace'
+
+const render = (ui: React.ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.plugin.installedIds.get.queryKey({
+      input: { query: { category: 'model' } },
+    }),
+    { plugin_ids: [] },
+  )
+  return renderWithConsoleQuery(ui, { queryClient })
+}
 
 // Mock dependencies
 vi.mock('@/next/link', () => ({
@@ -72,20 +88,53 @@ vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
 }))
 
 describe('InstallFromMarketplace', () => {
-  const mockProviders = [] as ModelProvider[]
-
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('should wait until the section approaches the viewport before loading marketplace data', () => {
+    let intersectionCallback: IntersectionObserverCallback | undefined
+    const disconnect = vi.fn()
+    function MockIntersectionObserver(callback: IntersectionObserverCallback) {
+      intersectionCallback = callback
+      return {
+        disconnect,
+        observe: vi.fn(),
+        takeRecords: vi.fn(),
+        unobserve: vi.fn(),
+        root: null,
+        thresholds: [0],
+      }
+    }
+    vi.stubGlobal('IntersectionObserver', vi.fn(MockIntersectionObserver))
+
+    render(<InstallFromMarketplace searchText="" />)
+
+    expect(useMarketplaceAllPlugins).toHaveBeenLastCalledWith('', [], false)
+
+    act(() => {
+      intersectionCallback?.(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      )
+    })
+
+    expect(useMarketplaceAllPlugins).toHaveBeenLastCalledWith('', [], true)
+    expect(disconnect).toHaveBeenCalled()
+  })
+
   it('should render expanded by default', () => {
-    render(<InstallFromMarketplace providers={mockProviders} searchText="" />)
+    render(<InstallFromMarketplace searchText="" />)
     expect(screen.getByText('common.modelProvider.installProvider')).toBeInTheDocument()
     expect(screen.getByTestId('plugin-list')).toBeInTheDocument()
   })
 
   it('should collapse when clicked', () => {
-    render(<InstallFromMarketplace providers={mockProviders} searchText="" />)
+    render(<InstallFromMarketplace searchText="" />)
     const toggle = screen.getByRole('button', { name: /common\.modelProvider\.installProvider/ })
 
     fireEvent.click(toggle)
@@ -103,7 +152,7 @@ describe('InstallFromMarketplace', () => {
       isLoading: true,
     })
 
-    render(<InstallFromMarketplace providers={mockProviders} searchText="" />)
+    render(<InstallFromMarketplace searchText="" />)
     // It's expanded by default, so loading should show immediately
     expect(screen.getByTestId('loading')).toBeInTheDocument()
   })
@@ -114,9 +163,40 @@ describe('InstallFromMarketplace', () => {
       isLoading: false,
     })
 
-    render(<InstallFromMarketplace providers={mockProviders} searchText="" />)
+    render(<InstallFromMarketplace searchText="" />)
     // Expanded by default
     expect(screen.getByText('Plugin 1')).toBeInTheDocument()
+  })
+
+  it('should anchor the tour target to the heading and first marketplace row', () => {
+    ;(useMarketplaceAllPlugins as unknown as Mock).mockReturnValue({
+      plugins: [
+        { plugin_id: '1', name: 'Plugin 1' },
+        { plugin_id: '2', name: 'Plugin 2' },
+        { plugin_id: '3', name: 'Plugin 3' },
+        { plugin_id: '4', name: 'Plugin 4' },
+      ],
+      isLoading: false,
+    })
+
+    render(
+      <InstallFromMarketplace
+        searchText=""
+        stepByStepTourTarget={STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderInstall}
+      />,
+    )
+
+    const selector = getStepByStepTourTargetSelector(
+      STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderInstall,
+    )
+    const target = document.querySelector<HTMLElement>(selector)
+
+    expect(target).toHaveClass('absolute', 'inset-x-0', 'top-0', 'h-43.5')
+    expect(target).toHaveAttribute('aria-hidden', 'true')
+    expect(target?.parentElement).toContainElement(
+      screen.getByRole('button', { name: /common\.modelProvider\.installProvider/ }),
+    )
+    expect(target?.parentElement).toContainElement(screen.getByTestId('plugin-list'))
   })
 
   it('should hide bundle plugins from the list', () => {
@@ -128,14 +208,14 @@ describe('InstallFromMarketplace', () => {
       isLoading: false,
     })
 
-    render(<InstallFromMarketplace providers={mockProviders} searchText="" />)
+    render(<InstallFromMarketplace searchText="" />)
 
     expect(screen.getByText('Plugin 1')).toBeInTheDocument()
     expect(screen.queryByText('Bundle 1')).not.toBeInTheDocument()
   })
 
   it('should render discovery link', () => {
-    render(<InstallFromMarketplace providers={mockProviders} searchText="" />)
+    render(<InstallFromMarketplace searchText="" />)
     expect(screen.getByText('plugin.marketplace.difyMarketplace')).toHaveAttribute(
       'href',
       'https://marketplace.test/plugins/model?theme=light',
@@ -145,13 +225,7 @@ describe('InstallFromMarketplace', () => {
   it('should use the marketplace callback action when provided', () => {
     const onOpenMarketplace = vi.fn()
 
-    render(
-      <InstallFromMarketplace
-        providers={mockProviders}
-        searchText=""
-        onOpenMarketplace={onOpenMarketplace}
-      />,
-    )
+    render(<InstallFromMarketplace searchText="" onOpenMarketplace={onOpenMarketplace} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'plugin.marketplace.difyMarketplace' }))
 

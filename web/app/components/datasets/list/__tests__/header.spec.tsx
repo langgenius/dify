@@ -1,38 +1,10 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import DatasetListHeader from '../header'
 
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, className }: { children: React.ReactNode; className?: string }) => (
-    <button type="button" className={className}>
-      {children}
-    </button>
-  ),
-}))
-
-vi.mock('@langgenius/dify-ui/dropdown-menu', () => ({
-  DropdownMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DropdownMenuContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DropdownMenuItem: ({
-    children,
-    className,
-    onClick,
-  }: {
-    children: React.ReactNode
-    className?: string
-    onClick?: () => void
-  }) => (
-    <button type="button" className={className} onClick={onClick}>
-      {children}
-    </button>
-  ),
-  DropdownMenuSeparator: ({ className }: { className?: string }) => (
-    <hr data-testid="create-menu-separator" className={className} />
-  ),
-  DropdownMenuTrigger: ({ render }: { render: React.ReactNode }) => render,
-}))
-
 vi.mock('@/features/tag-management/components/tag-filter', () => ({
-  TagFilter: () => <div data-testid="tag-filter" />,
+  TagFilter: () => <div />,
 }))
 
 vi.mock('@/app/components/datasets/create/website/base/checkbox-with-label', () => ({
@@ -66,31 +38,36 @@ describe('DatasetListHeader', () => {
     vi.clearAllMocks()
   })
 
-  it('uses the updated create menu labels and pipeline icon', () => {
+  it('shows dataset and pipeline creation actions in the create menu', async () => {
+    const user = userEvent.setup()
     render(<DatasetListHeader {...defaultProps} />)
 
+    await user.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
+
     expect(
-      screen.getByRole('button', { name: /dataset\.firstEmpty\.createTitle/ }),
+      screen.getByRole('menuitem', { name: /dataset\.firstEmpty\.createTitle/ }),
     ).toBeInTheDocument()
-
-    const menuItem = screen.getByRole('button', { name: /dataset\.firstEmpty\.pipelineTitle/ })
-
-    expect(menuItem.querySelector('.i-custom-vender-pipeline-pipeline-line')).toBeInTheDocument()
+    expect(
+      screen.getByRole('menuitem', { name: /dataset\.firstEmpty\.pipelineTitle/ }),
+    ).toBeInTheDocument()
   })
 
-  it('should hide dataset creation actions when dataset.create_and_management is unavailable', () => {
+  it('only shows external dataset connection without create permission', async () => {
+    const user = userEvent.setup()
     render(<DatasetListHeader {...defaultProps} canCreateDataset={false} />)
 
+    await user.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
+
     expect(
-      screen.queryByRole('button', { name: /dataset\.firstEmpty\.createTitle/ }),
+      screen.queryByRole('menuitem', { name: /dataset\.firstEmpty\.createTitle/ }),
     ).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: /dataset\.firstEmpty\.pipelineTitle/ }),
+      screen.queryByRole('menuitem', { name: /dataset\.firstEmpty\.pipelineTitle/ }),
     ).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /dataset\.connectDataset/ })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: /dataset\.connectDataset/ })).toBeInTheDocument()
   })
 
-  it('should hide external API panel entry when dataset.external.connect is unavailable', () => {
+  it('hides the external API entry without external-connect permission', () => {
     render(<DatasetListHeader {...defaultProps} canConnectExternalDataset={false} />)
 
     expect(
@@ -98,7 +75,7 @@ describe('DatasetListHeader', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('should hide the create menu when no creation or connection action is available', () => {
+  it('hides the create menu when no creation action is available', () => {
     render(
       <DatasetListHeader
         {...defaultProps}
@@ -110,5 +87,51 @@ describe('DatasetListHeader', () => {
     expect(
       screen.queryByRole('button', { name: /common\.operation\.create/ }),
     ).not.toBeInTheDocument()
+  })
+
+  it('exposes step-by-step tour targets for the create menu walkthrough', () => {
+    render(
+      <DatasetListHeader
+        {...defaultProps}
+        stepByStepTourCreateMenuOpen
+        stepByStepTourCreateMenuTarget={STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsCreate}
+        stepByStepTourCreateMenuHighlightPart={
+          STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsCreateMenu
+        }
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: /common\.operation\.create/ })).toHaveAttribute(
+      'data-step-by-step-tour-target',
+      STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsCreate,
+    )
+    expect(screen.getByText('dataset.firstEmpty.createTitle')).toBeInTheDocument()
+    expect(
+      screen.getByRole('menuitem', { name: 'dataset.firstEmpty.createTitle', hidden: true }),
+    ).toBeInTheDocument()
+    const createMenuHighlightPart = document.body.querySelector(
+      `[data-step-by-step-tour-highlight-part="${STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsCreateMenu}"]`,
+    )
+    expect(createMenuHighlightPart).toBeInTheDocument()
+    expect(screen.getByRole('menu', { hidden: true })).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it('keeps the tour-opened create menu as presentation only', () => {
+    render(
+      <DatasetListHeader
+        {...defaultProps}
+        stepByStepTourCreateMenuOpen
+        stepByStepTourCreateMenuTarget={STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsCreate}
+        stepByStepTourCreateMenuHighlightPart={
+          STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsCreateMenu
+        }
+      />,
+    )
+
+    fireEvent.click(
+      screen.getByRole('menuitem', { name: 'dataset.firstEmpty.createTitle', hidden: true }),
+    )
+
+    expect(defaultProps.onCreateDataset).not.toHaveBeenCalled()
   })
 })

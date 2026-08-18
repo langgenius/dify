@@ -20,11 +20,6 @@ describe('useTextAreaHeight', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { result } = renderHook(() => useTextAreaHeight())
-      expect(result.current).toBeDefined()
-    })
-
     it('should return all required properties', () => {
       const { result } = renderHook(() => useTextAreaHeight())
       expect(result.current).toHaveProperty('wrapperRef')

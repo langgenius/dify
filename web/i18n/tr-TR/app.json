@@ -17,6 +17,7 @@
   "accessControlDialog.operateGroupAndMember.searchPlaceholder": "Grupları ve üyeleri ara",
   "accessControlDialog.title": "Web Uygulaması Erişim Kontrolü",
   "accessControlDialog.updateSuccess": "Başarıyla güncellendi",
+  "accessControlDialog.webAppPublicAccessDisabledTip": "Genel erişim yöneticiniz tarafından devre dışı bırakıldı.",
   "accessControlDialog.webAppSSONotEnabledTip": "Lütfen web uygulaması kimlik doğrulama yöntemini yapılandırmak için kurumsal yöneticinizle iletişime geçin.",
   "accessItemsDescription.anyone": "Herkes web uygulamasına erişebilir",
   "accessItemsDescription.external": "Sadece kimliği doğrulanmış dış kullanıcılar Web uygulamasına erişebilir",

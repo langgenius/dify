@@ -3,7 +3,7 @@ name: Build docker image
 on:
   pull_request:
     branches:
-      - "main"
+      - 'main'
     paths:
       - api/Dockerfile
       - api/Dockerfile.dockerignore
@@ -33,36 +33,36 @@ jobs:
     strategy:
       matrix:
         include:
-          - service_name: "api-amd64"
+          - service_name: 'api-amd64'
             platform: linux/amd64
             runs_on: depot-ubuntu-24.04-4
-            context: "{{defaultContext}}"
-            file: "api/Dockerfile"
-          - service_name: "api-arm64"
+            context: '{{defaultContext}}'
+            file: 'api/Dockerfile'
+          - service_name: 'api-arm64'
             platform: linux/arm64
             runs_on: depot-ubuntu-24.04-4
-            context: "{{defaultContext}}"
-            file: "api/Dockerfile"
-          - service_name: "web-amd64"
+            context: '{{defaultContext}}'
+            file: 'api/Dockerfile'
+          - service_name: 'web-amd64'
             platform: linux/amd64
             runs_on: depot-ubuntu-24.04-4
-            context: "{{defaultContext}}"
-            file: "web/Dockerfile"
-          - service_name: "web-arm64"
+            context: '{{defaultContext}}'
+            file: 'web/Dockerfile'
+          - service_name: 'web-arm64'
             platform: linux/arm64
             runs_on: depot-ubuntu-24.04-4
-            context: "{{defaultContext}}"
-            file: "web/Dockerfile"
-          - service_name: "local-sandbox-amd64"
+            context: '{{defaultContext}}'
+            file: 'web/Dockerfile'
+          - service_name: 'local-sandbox-amd64'
             platform: linux/amd64
             runs_on: depot-ubuntu-24.04-4
-            context: "{{defaultContext}}:dify-agent-runtime"
-            file: "docker/Dockerfile"
-          - service_name: "local-sandbox-arm64"
+            context: '{{defaultContext}}:dify-agent-runtime'
+            file: 'docker/Dockerfile'
+          - service_name: 'local-sandbox-arm64'
             platform: linux/arm64
             runs_on: depot-ubuntu-24.04-4
-            context: "{{defaultContext}}:dify-agent-runtime"
-            file: "docker/Dockerfile"
+            context: '{{defaultContext}}:dify-agent-runtime'
+            file: 'docker/Dockerfile'
     steps:
       - name: Set up Depot CLI
         uses: depot/setup-action@15c09a5f77a0840ad4bce955686522a257853461 # v1.7.1
@@ -85,15 +85,15 @@ jobs:
     strategy:
       matrix:
         include:
-          - service_name: "api-amd64"
-            context: "{{defaultContext}}"
-            file: "api/Dockerfile"
-          - service_name: "web-amd64"
-            context: "{{defaultContext}}"
-            file: "web/Dockerfile"
-          - service_name: "local-sandbox-amd64"
-            context: "{{defaultContext}}:dify-agent-runtime"
-            file: "docker/Dockerfile"
+          - service_name: 'api-amd64'
+            context: '{{defaultContext}}'
+            file: 'api/Dockerfile'
+          - service_name: 'web-amd64'
+            context: '{{defaultContext}}'
+            file: 'web/Dockerfile'
+          - service_name: 'local-sandbox-amd64'
+            context: '{{defaultContext}}:dify-agent-runtime'
+            file: 'docker/Dockerfile'
     steps:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0

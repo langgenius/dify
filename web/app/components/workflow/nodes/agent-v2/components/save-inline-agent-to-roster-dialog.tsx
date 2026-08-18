@@ -3,6 +3,7 @@
 import type {
   AgentComposerAgentResponse,
   AgentComposerBindingResponse,
+  WorkflowAgentComposerResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type {
   AgentFormValues,
@@ -28,9 +29,11 @@ import {
 } from '@/features/agent-v2/roster/components/agent-form'
 import { AgentFormFields } from '@/features/agent-v2/roster/components/agent-form-fields'
 import { consoleQuery } from '@/service/client'
+import { FlowType } from '@/types/common'
 
 type SaveInlineAgentToRosterDialogProps = {
-  appId?: string
+  flowId?: string
+  flowType?: FlowType
   formKey: number
   initialAgent?: AgentComposerAgentResponse | null
   nodeId: string
@@ -40,7 +43,8 @@ type SaveInlineAgentToRosterDialogProps = {
 }
 
 export function SaveInlineAgentToRosterDialog({
-  appId,
+  flowId,
+  flowType,
   formKey,
   initialAgent,
   nodeId,
@@ -57,9 +61,14 @@ export function SaveInlineAgentToRosterDialog({
   const [agentIcon, setAgentIcon] = useState<AgentIconSelection>(() =>
     initialAgent ? createAgentIconSelection(initialAgent) : defaultAgentIcon,
   )
-  const saveToRosterMutation = useMutation(
+  const appSaveToRosterMutation = useMutation(
     consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.saveToRoster.post.mutationOptions(),
   )
+  const snippetSaveToRosterMutation = useMutation(
+    consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.saveToRoster.post.mutationOptions(),
+  )
+  const isSavingToRoster =
+    appSaveToRosterMutation.isPending || snippetSaveToRosterMutation.isPending
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (nextOpen) {
@@ -74,41 +83,60 @@ export function SaveInlineAgentToRosterDialog({
   }
 
   const handleSubmit = (formValues: AgentFormValues) => {
-    if (saveToRosterMutation.isPending) return
+    if (isSavingToRoster) return
 
-    if (!appId) return
+    if (!flowId) return
 
     const trimmedName = formValues.name?.trim() ?? ''
     const trimmedRole = formValues.role?.trim() ?? ''
 
-    saveToRosterMutation.mutate(
-      {
-        params: {
-          app_id: appId,
-          node_id: nodeId,
-        },
-        body: {
-          variant: 'workflow',
-          save_strategy: 'save_to_roster',
-          new_agent_name: trimmedName,
-          description: formValues.description?.trim() ?? '',
-          role: trimmedRole,
-          icon_type: agentIcon.type,
-          icon: agentIcon.type === 'image' ? agentIcon.fileId : agentIcon.icon,
-          icon_background: agentIcon.type === 'emoji' ? agentIcon.background : undefined,
-        },
-      },
-      {
-        onSuccess: (composerState) => {
-          const binding = composerState.binding
-          if (binding?.binding_type !== 'roster_agent' || !binding.agent_id) return
+    const body = {
+      variant: 'workflow' as const,
+      save_strategy: 'save_to_roster' as const,
+      new_agent_name: trimmedName,
+      description: formValues.description?.trim() ?? '',
+      role: trimmedRole,
+      icon_type: agentIcon.type,
+      icon: agentIcon.type === 'image' ? agentIcon.fileId : agentIcon.icon,
+      icon_background: agentIcon.type === 'emoji' ? agentIcon.background : undefined,
+    }
+    const options = {
+      onSuccess: (composerState: WorkflowAgentComposerResponse) => {
+        const binding = composerState.binding
+        if (binding?.binding_type !== 'roster_agent' || !binding.agent_id) return
 
-          toast.success(t(($) => $['roster.saveToRosterSuccess']))
-          onSaved(binding)
-          handleOpenChange(false)
-        },
+        toast.success(t(($) => $['roster.saveToRosterSuccess']))
+        onSaved(binding)
+        handleOpenChange(false)
       },
-    )
+    }
+
+    if (flowType === FlowType.snippet) {
+      snippetSaveToRosterMutation.mutate(
+        {
+          params: {
+            snippet_id: flowId,
+            node_id: nodeId,
+          },
+          body,
+        },
+        options,
+      )
+      return
+    }
+
+    if (flowType === FlowType.appFlow) {
+      appSaveToRosterMutation.mutate(
+        {
+          params: {
+            app_id: flowId,
+            node_id: nodeId,
+          },
+          body,
+        },
+        options,
+      )
+    }
   }
 
   return (
@@ -145,7 +173,7 @@ export function SaveInlineAgentToRosterDialog({
                 type="button"
                 className="min-w-18"
                 onClick={() => handleOpenChange(false)}
-                disabled={saveToRosterMutation.isPending}
+                disabled={isSavingToRoster}
               >
                 {tCommon(($) => $['operation.cancel'])}
               </Button>
@@ -153,7 +181,7 @@ export function SaveInlineAgentToRosterDialog({
                 type="submit"
                 variant="primary"
                 className="min-w-18"
-                loading={saveToRosterMutation.isPending}
+                loading={isSavingToRoster}
               >
                 {tCommon(($) => $['operation.save'])}
               </Button>

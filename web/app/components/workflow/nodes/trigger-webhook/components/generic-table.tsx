@@ -348,7 +348,7 @@ const GenericTable: FC<GenericTableProps> = ({
       </div>
 
       {showPlaceholder ? (
-        <div className="flex h-7 items-center justify-center rounded-lg border border-divider-regular bg-components-panel-bg text-xs leading-[18px] font-normal text-text-quaternary">
+        <div className="flex h-7 items-center justify-center rounded-lg border border-divider-regular bg-components-panel-bg text-xs leading-4.5 font-normal text-text-quaternary">
           {placeholder}
         </div>
       ) : (

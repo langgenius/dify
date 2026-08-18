@@ -5,7 +5,7 @@ import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import Input from '@/app/components/base/input'
+import { SearchInput } from '@/app/components/base/search-input'
 import { formatNumber } from '@/utils/format'
 import { EditSlice } from '../../../formatted-text/flavours/edit-slice'
 import { FormattedText } from '../../../formatted-text/formatted'
@@ -211,13 +211,10 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
           </button>
         </div>
         {isFullDocMode && (
-          <Input
-            showLeftIcon
-            showClearIcon
-            wrapperClassName="w-52!"
-            value={inputValue}
-            onChange={(e) => handleInputChange?.(e.target.value)}
-            onClear={() => handleInputChange?.('')}
+          <SearchInput
+            className="w-52!"
+            value={inputValue ?? ''}
+            onValueChange={(value) => handleInputChange?.(value)}
           />
         )}
       </div>
@@ -226,7 +223,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
         <div className={cn('flex gap-x-0.5', isFullDocMode ? 'mb-6 grow' : 'items-center')}>
           {isParagraphMode && (
             <div className="self-stretch">
-              <Divider type="vertical" className="mx-[7px] w-[2px] bg-text-accent-secondary" />
+              <Divider type="vertical" className="mx-1.75 w-0.5 bg-text-accent-secondary" />
             </div>
           )}
           {renderContent()}

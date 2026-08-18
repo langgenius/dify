@@ -134,7 +134,7 @@ const ExamplePrompts = ({ mode, onSelect }: Props) => {
           ? SKELETONS.map(({ id, width }) => (
               <div
                 key={id}
-                className="h-[26px] animate-pulse rounded-md bg-components-button-secondary-bg"
+                className="h-6.5 animate-pulse rounded-md bg-components-button-secondary-bg"
                 style={{ width }}
               />
             ))

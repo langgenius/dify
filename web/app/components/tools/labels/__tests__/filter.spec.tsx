@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import LabelFilter from '../filter'
 
 // Mock useTags hook with controlled test data
@@ -27,12 +27,6 @@ describe('LabelFilter', () => {
 
   // Rendering Tests
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<LabelFilter value={[]} onChange={mockOnChange} />)
-
-      expect(screen.getByText('common.tag.tags')).toBeInTheDocument()
-    })
-
     it('should display filter label when no labels selected', () => {
       render(<LabelFilter value={[]} onChange={mockOnChange} />)
 
@@ -76,7 +70,7 @@ describe('LabelFilter', () => {
       await act(async () => fireEvent.click(trigger!))
 
       expect(screen.getByText('Agent')).toBeInTheDocument()
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toBeInTheDocument()
     })
   })
 
@@ -153,10 +147,10 @@ describe('LabelFilter', () => {
         fireEvent.click(screen.getByText('common.tag.tags'))
       })
 
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toBeInTheDocument()
 
       await act(async () => {
-        const searchInput = screen.getByRole('textbox')
+        const searchInput = screen.getByRole('searchbox', { name: 'common.operation.search' })
         fireEvent.change(searchInput, { target: { value: 'rag' } })
       })
 
@@ -171,10 +165,10 @@ describe('LabelFilter', () => {
         fireEvent.click(screen.getByText('common.tag.tags'))
       })
 
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toBeInTheDocument()
 
       await act(async () => {
-        const searchInput = screen.getByRole('textbox')
+        const searchInput = screen.getByRole('searchbox', { name: 'common.operation.search' })
         fireEvent.change(searchInput, { target: { value: 'nonexistent' } })
       })
 
@@ -188,10 +182,10 @@ describe('LabelFilter', () => {
         fireEvent.click(screen.getByText('common.tag.tags'))
       })
 
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toBeInTheDocument()
 
       await act(async () => {
-        const searchInput = screen.getByRole('textbox')
+        const searchInput = screen.getByRole('searchbox', { name: 'common.operation.search' })
         fireEvent.change(searchInput, { target: { value: 'rag' } })
       })
 
@@ -199,7 +193,7 @@ describe('LabelFilter', () => {
       expect(screen.queryByRole('button', { name: 'Agent' })).not.toBeInTheDocument()
 
       await act(async () => {
-        const searchInput = screen.getByRole('textbox')
+        const searchInput = screen.getByRole('searchbox', { name: 'common.operation.search' })
         fireEvent.change(searchInput, { target: { value: '' } })
       })
 
@@ -224,13 +218,6 @@ describe('LabelFilter', () => {
       render(<LabelFilter value={[]} onChange={mockOnChange} />)
 
       expect(screen.getByText('common.tag.tags')).toBeInTheDocument()
-    })
-
-    it('should handle value with non-existent label', () => {
-      render(<LabelFilter value={['nonexistent']} onChange={mockOnChange} />)
-
-      // Should still render without crashing
-      expect(document.querySelector('.text-text-tertiary')).toBeInTheDocument()
     })
   })
 

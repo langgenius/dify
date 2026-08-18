@@ -15,11 +15,9 @@ const TagManagementModal = dynamic(
 export function AppListTagManagementModal({
   show,
   onClose,
-  onTagsChange,
 }: {
   show: boolean
   onClose: () => void
-  onTagsChange: () => unknown
 }) {
-  return <TagManagementModal type="app" show={show} onClose={onClose} onTagsChange={onTagsChange} />
+  return <TagManagementModal type="app" show={show} onClose={onClose} />
 }

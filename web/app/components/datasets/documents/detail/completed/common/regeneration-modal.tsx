@@ -57,12 +57,7 @@ const RegeneratingContent: FC = React.memo(() => {
         </p>
       </div>
       <div className="flex justify-end pt-6">
-        <Button
-          variant="primary"
-          tone="destructive"
-          disabled
-          className="inline-flex items-center gap-x-0.5"
-        >
+        <Button variant="primary" tone="destructive" disabled className="inline-flex items-center">
           <RiLoader2Line className="size-4 animate-spin text-components-button-destructive-primary-text-disabled" />
           <span>{t(($) => $['operation.regenerate'], { ns: 'common' })}</span>
         </Button>
@@ -138,7 +133,7 @@ const RegenerationModal: FC<IRegenerationModalProps> = ({
 
   return (
     <AlertDialog open={isShow}>
-      <AlertDialogContent className="w-[calc(100vw-2rem)] max-w-[480px]! overflow-hidden! rounded-2xl! border-none p-6 text-left align-middle shadow-xl">
+      <AlertDialogContent className="w-[calc(100vw-2rem)] max-w-120! overflow-hidden! rounded-2xl! border-none p-6 text-left align-middle shadow-xl">
         {!loading && !updateSucceeded && (
           <DefaultContent onCancel={onCancel} onConfirm={onConfirm} />
         )}

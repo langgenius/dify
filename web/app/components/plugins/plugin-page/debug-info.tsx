@@ -1,10 +1,10 @@
 'use client'
+import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { Placement } from '@langgenius/dify-ui/popover'
-import type { ComponentProps, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { RiArrowRightUpLine, RiBugLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 import { useDebugKey } from '@/service/use-plugins'
@@ -17,7 +17,7 @@ type DebugInfoProps = {
   popupPlacement?: Placement
   triggerClassName?: string
   triggerContent?: ReactNode
-  triggerVariant?: ComponentProps<typeof Button>['variant']
+  triggerVariant?: ButtonProps['variant']
 }
 
 function DebugInfo({
@@ -29,7 +29,8 @@ function DebugInfo({
   const { t } = useTranslation()
   const docLink = useDocLink()
   const { data: info, isLoading } = useDebugKey()
-  const trigger = triggerContent ?? <RiBugLine className="size-4" />
+  const title = t(($) => $[`${i18nPrefix}.title`], { ns: 'plugin' })
+  const trigger = triggerContent ?? <span aria-hidden className="i-ri-bug-line size-4" />
   const triggerClassNames = cn(
     !triggerClassName && 'size-full p-2 text-components-button-secondary-text',
     triggerClassName,
@@ -42,7 +43,7 @@ function DebugInfo({
 
   if (!info) {
     return (
-      <Button variant={triggerVariant} className={triggerClassNames} disabled>
+      <Button variant={triggerVariant} className={triggerClassNames} aria-label={title} disabled>
         {trigger}
       </Button>
     )
@@ -52,7 +53,7 @@ function DebugInfo({
     <Popover>
       <PopoverTrigger
         render={
-          <Button variant={triggerVariant} className={triggerClassNames}>
+          <Button variant={triggerVariant} className={triggerClassNames} aria-label={title}>
             {trigger}
           </Button>
         }
@@ -62,7 +63,7 @@ function DebugInfo({
         popupClassName="border-0 bg-transparent p-0 shadow-none"
       >
         <PluginSidecarPanel
-          title={t(($) => $[`${i18nPrefix}.title`], { ns: 'plugin' })}
+          title={title}
           footer={
             <div className="flex w-full shrink-0 flex-col items-start">
               <div className="flex w-full shrink-0 items-center justify-end gap-2 px-4 pt-2 pb-4">
@@ -73,10 +74,10 @@ function DebugInfo({
                     )}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex cursor-pointer items-center gap-1 system-xs-regular text-text-accent"
+                    className="flex cursor-pointer items-center gap-1 rounded-xs system-xs-regular text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                   >
                     <span>{t(($) => $[`${i18nPrefix}.viewDocs`], { ns: 'plugin' })}</span>
-                    <RiArrowRightUpLine className="size-3" />
+                    <span aria-hidden className="i-ri-arrow-right-up-line size-3" />
                   </a>
                 </div>
               </div>

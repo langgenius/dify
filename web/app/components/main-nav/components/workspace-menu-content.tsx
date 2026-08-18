@@ -1,19 +1,4 @@
 import type { ReactNode } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
-import { getWorkspaceInitial } from '../utils'
-
-export function WorkspaceIcon({ name, className }: { name?: string; className?: string }) {
-  return (
-    <div
-      className={cn(
-        'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-components-icon-bg-orange-dark-solid text-white shadow-xs',
-        className,
-      )}
-    >
-      <span className="system-md-semibold">{getWorkspaceInitial(name)}</span>
-    </div>
-  )
-}
 
 export function WorkspaceMenuItemContent({
   icon,

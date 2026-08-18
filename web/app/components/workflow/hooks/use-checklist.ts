@@ -2,20 +2,21 @@ import type { AgentNodeType } from '../nodes/agent/types'
 import type { DataSourceNodeType } from '../nodes/data-source/types'
 import type { KnowledgeBaseNodeType } from '../nodes/knowledge-base/types'
 import type { KnowledgeRetrievalNodeType } from '../nodes/knowledge-retrieval/types'
+import type { LLMNodeType } from '../nodes/llm/types'
 import type { ToolNodeType } from '../nodes/tool/types'
 import type { PluginTriggerNodeType } from '../nodes/trigger-plugin/types'
 import type {
   CommonEdgeType,
   CommonNodeType,
   Edge,
-  ModelConfig,
+  EnvironmentVariable,
   Node,
   ValueSelector,
 } from '../types'
 import type { ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Emoji } from '@/app/components/tools/types'
+import type { AgentToolPublishIssue } from '@/features/agent-v2/agent-detail/configure/tool-provider-catalog'
 import type { DataSet } from '@/models/datasets'
-import type { FlowType } from '@/types/common'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueries, useQueryClient } from '@tanstack/react-query'
@@ -31,6 +32,12 @@ import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { MAX_TREE_DEPTH } from '@/config'
 import { useGetLanguage } from '@/context/i18n'
 import { useProviderContextSelector } from '@/context/provider-context'
+import { agentSoulConfigToFormState } from '@/features/agent-v2/agent-composer/conversions'
+import {
+  createAgentToolProviderCatalog,
+  getAgentToolPublishIssues,
+  useAgentToolPresentation,
+} from '@/features/agent-v2/agent-detail/configure/tool-provider-catalog'
 import { consoleQuery } from '@/service/client'
 import { fetchDatasets } from '@/service/datasets'
 import { useStrategyProviders } from '@/service/use-strategy'
@@ -42,17 +49,18 @@ import {
 } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { AppModeEnum } from '@/types/app'
+import { FlowType } from '@/types/common'
 import { CUSTOM_NODE } from '../constants'
 import { useDatasetsDetailStore } from '../datasets-detail-store/store'
-import { useGetToolIcon, useNodesMetaData } from '../hooks'
 import { useHooksStore } from '../hooks-store/store'
 import { getNodeUsedVars, isSpecialVar } from '../nodes/_base/components/variable/utils'
-import { isAgentV2NodeData } from '../nodes/agent-v2/types'
+import { hasValidInlineAgentBinding, isAgentV2NodeData } from '../nodes/agent-v2/types'
 import { IndexMethodEnum } from '../nodes/knowledge-base/types'
 import {
   getLLMModelIssue,
   isLLMModelProviderInstalled,
   LLMModelIssueCode,
+  resolveLLMNodeModel,
 } from '../nodes/llm/utils'
 import { useStore, useWorkflowStore } from '../store'
 import { BlockEnum } from '../types'
@@ -68,6 +76,8 @@ import { getTriggerCheckParams } from '../utils/trigger'
 import useNodesAvailableVarList, {
   useGetNodesAvailableVarList,
 } from './use-nodes-available-var-list'
+import { useNodesMetaData } from './use-nodes-meta-data'
+import { useGetToolIcon } from './use-tool-icon'
 
 export type ChecklistItem = {
   id: string
@@ -80,9 +90,12 @@ export type ChecklistItem = {
   disableGoTo?: boolean
   isPluginMissing?: boolean
   pluginUniqueIdentifier?: string
+  openInlineAgentPanel?: boolean
 }
 
 type CheckValidExtraData = Record<string, unknown> | undefined
+
+const EMPTY_ENVIRONMENT_VARIABLES: EnvironmentVariable[] = []
 
 const withFlowType = (moreDataForCheckValid: CheckValidExtraData, flowType?: FlowType) => {
   if (!flowType) return moreDataForCheckValid
@@ -142,7 +155,13 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
   const { data: mcpTools } = useAllMCPTools()
+  const inlineAgentToolProviderCatalog = useMemo(
+    () => createAgentToolProviderCatalog({ buildInTools, customTools, mcpTools, workflowTools }),
+    [buildInTools, customTools, mcpTools, workflowTools],
+  )
   const dataSourceList = useStore((s) => s.dataSourceList)
+  const environmentVariables =
+    useStore((s) => s.environmentVariables) ?? EMPTY_ENVIRONMENT_VARIABLES
   const { data: strategyProviders } = useStrategyProviders()
   const { data: triggerPlugins } = useAllTriggerPlugins()
   const datasetsDetail = useDatasetsDetailStore((s) => s.datasetsDetail)
@@ -152,8 +171,91 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
     appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT
   const modelProviders = useProviderContextSelector((s) => s.modelProviders)
   const workflowStore = useWorkflowStore()
+  const configsMap = useHooksStore((s) => s.configsMap)
 
   const map = useNodesAvailableVarList(nodes)
+  const inlineAgentNodes = useMemo(
+    () =>
+      nodes.filter(
+        (node) =>
+          node.type === CUSTOM_NODE &&
+          isAgentV2NodeData(node.data) &&
+          hasValidInlineAgentBinding(node.data),
+      ),
+    [nodes],
+  )
+  const inlineAgentConfigurationIssues = useQueries({
+    queries:
+      !configsMap?.flowId ||
+      (configsMap.flowType !== FlowType.appFlow && configsMap.flowType !== FlowType.snippet)
+        ? []
+        : inlineAgentNodes.map((node) =>
+            configsMap.flowType === FlowType.snippet
+              ? consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get.queryOptions(
+                  {
+                    input: {
+                      params: {
+                        snippet_id: configsMap.flowId,
+                        node_id: node.id,
+                      },
+                    },
+                  },
+                )
+              : consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryOptions(
+                  {
+                    input: {
+                      params: {
+                        app_id: configsMap.flowId,
+                        node_id: node.id,
+                      },
+                    },
+                  },
+                ),
+          ),
+    combine: (results) => {
+      const issuesByNodeId: Record<
+        string,
+        {
+          hasMissingFiles: boolean
+          hasMissingSkills: boolean
+          toolIssues: AgentToolPublishIssue[]
+        }
+      > = {}
+
+      results.forEach((result, index) => {
+        const nodeId = inlineAgentNodes[index]?.id
+        const agentSoul = result.data?.agent_soul
+        if (!nodeId || !agentSoul) return
+
+        const hasMissingFiles = agentSoul.config_files?.some((file) => file.is_missing === true)
+        const hasMissingSkills = agentSoul.config_skills?.some((skill) => skill.is_missing === true)
+        const toolIssues = getAgentToolPublishIssues(
+          agentSoulConfigToFormState(agentSoul).tools,
+          inlineAgentToolProviderCatalog,
+        )
+        if (!hasMissingFiles && !hasMissingSkills && toolIssues.length === 0) return
+
+        issuesByNodeId[nodeId] = {
+          hasMissingFiles: !!hasMissingFiles,
+          hasMissingSkills: !!hasMissingSkills,
+          toolIssues,
+        }
+      })
+
+      return issuesByNodeId
+    },
+  })
+  const inlineAgentIssueTools = useMemo(
+    () =>
+      Object.values(inlineAgentConfigurationIssues).flatMap((issues) =>
+        issues.toolIssues.map((issue) => issue.tool),
+      ),
+    [inlineAgentConfigurationIssues],
+  )
+  const inlineAgentToolPresentation = useAgentToolPresentation(
+    inlineAgentIssueTools,
+    inlineAgentToolProviderCatalog,
+  )
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
   const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
   const knowledgeBaseEmbeddingProviders = useMemo(() => {
@@ -275,6 +377,13 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
         usedVars = getNodeUsedVars(node!).filter((v) => v.length > 0)
       }
 
+      if (node!.data.type === BlockEnum.LLM) {
+        moreDataForCheckValid = {
+          ...(moreDataForCheckValid ?? {}),
+          environmentVariables,
+        }
+      }
+
       if (node!.type === CUSTOM_NODE) {
         const checkData = getCheckData(node!.data)
         const validator = nodesExtraData?.[getNodeCatalogType(node!.data)]?.checkValid
@@ -288,13 +397,18 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
         })
 
         const errorMessages: string[] = []
+        const inlineAgentIssues = inlineAgentConfigurationIssues[node!.id]
 
         if (isPluginMissing) {
           errorMessages.push(t(($) => $['nodes.common.pluginNotInstalled'], { ns: 'workflow' }))
         } else {
           if (node!.data.type === BlockEnum.LLM) {
-            const modelProvider = (node!.data as CommonNodeType<{ model?: ModelConfig }>).model
-              ?.provider
+            const llmNodeData = node!.data as LLMNodeType
+            const modelProvider = resolveLLMNodeModel(
+              llmNodeData.model,
+              llmNodeData.model_selector,
+              environmentVariables,
+            )?.provider
             const modelIssue = getLLMModelIssue({
               modelProvider,
               isModelProviderInstalled: isLLMModelProviderInstalled(
@@ -313,6 +427,31 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
               withFlowType(moreDataForCheckValid, options?.flowType),
             ).errorMessage
             if (validationError) errorMessages.push(validationError)
+          }
+
+          if (inlineAgentIssues?.hasMissingFiles)
+            errorMessages.push(
+              t(($) => $['agentDetail.configure.files.missing'], { ns: 'agentV2' }),
+            )
+          if (inlineAgentIssues?.hasMissingSkills)
+            errorMessages.push(
+              t(($) => $['agentDetail.configure.skills.missing'], { ns: 'agentV2' }),
+            )
+          for (const toolIssue of inlineAgentIssues?.toolIssues ?? []) {
+            const toolName =
+              inlineAgentToolPresentation.toolDisplayNameById.get(toolIssue.tool.id) ??
+              toolIssue.tool.name
+            errorMessages.push(
+              toolIssue.type === 'uninstalled'
+                ? t(($) => $['nodes.agent.toolNotInstallTooltip'], {
+                    ns: 'workflow',
+                    tool: toolName,
+                  })
+                : t(($) => $['nodes.agent.toolNotAuthorizedTooltip'], {
+                    ns: 'workflow',
+                    tool: toolName,
+                  }),
+            )
           }
 
           const availableVars = map[node!.id]!.availableVars
@@ -355,6 +494,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
             pluginUniqueIdentifier: isPluginMissing
               ? (node!.data as { plugin_unique_identifier?: string }).plugin_unique_identifier
               : undefined,
+            ...(inlineAgentIssues ? { openInlineAgentPanel: true } : {}),
           })
         }
       }
@@ -416,6 +556,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
     mcpTools,
     language,
     dataSourceList,
+    environmentVariables,
     triggerPlugins,
     getToolIcon,
     strategyProviders,
@@ -423,6 +564,8 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
     t,
     map,
     modelProviders,
+    inlineAgentConfigurationIssues,
+    inlineAgentToolPresentation.toolDisplayNameById,
     options?.flowType,
   ])
 
@@ -498,7 +641,7 @@ export const useChecklistBeforePublish = () => {
 
   const handleCheckBeforePublish = useCallback(async () => {
     const { getNodes, edges } = store.getState()
-    const { dataSourceList } = workflowStore.getState()
+    const { dataSourceList, environmentVariables = [] } = workflowStore.getState()
     const nodes = getNodes()
     const filteredNodes = nodes.filter((node) => node.type === CUSTOM_NODE)
     const duplicateEndOutputMessages = getDuplicateEndOutputMessages(filteredNodes, t)
@@ -609,8 +752,19 @@ export const useChecklistBeforePublish = () => {
       }
 
       if (node!.data.type === BlockEnum.LLM) {
-        const modelProvider = (node!.data as CommonNodeType<{ model?: ModelConfig }>).model
-          ?.provider
+        moreDataForCheckValid = {
+          ...(moreDataForCheckValid ?? {}),
+          environmentVariables,
+        }
+      }
+
+      if (node!.data.type === BlockEnum.LLM) {
+        const llmNodeData = node!.data as LLMNodeType
+        const modelProvider = resolveLLMNodeModel(
+          llmNodeData.model,
+          llmNodeData.model_selector,
+          environmentVariables,
+        )?.provider
         const modelIssue = getLLMModelIssue({
           modelProvider,
           isModelProviderInstalled: isLLMModelProviderInstalled(modelProvider, installedPluginIds),

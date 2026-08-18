@@ -72,7 +72,7 @@ const ImportFromMarketplaceTemplateModal = ({
         if (!open) onClose()
       }}
     >
-      <DialogContent className="w-[520px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0 shadow-xl">
+      <DialogContent className="w-130 rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0 shadow-xl">
         <div className="flex items-center justify-between pt-6 pr-5 pb-3 pl-6 title-2xl-semi-bold text-text-primary">
           {t(($) => $['marketplace.template.modalTitle'], { ns: 'app' })}
           <div className="flex size-8 cursor-pointer items-center" onClick={onClose}>

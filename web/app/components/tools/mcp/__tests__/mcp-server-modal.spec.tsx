@@ -3,7 +3,7 @@ import type { MCPServerDetail } from '@/app/components/tools/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import MCPServerModal from '../mcp-server-modal'
 
 const mockGetSocket = vi.hoisted(() => vi.fn())
@@ -53,11 +53,6 @@ describe('MCPServerModal', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<MCPServerModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.server.modal.addTitle'))!.toBeInTheDocument()
-    })
-
     it('should render add title when no data is provided', () => {
       render(<MCPServerModal {...defaultProps} />, { wrapper: createWrapper() })
       expect(screen.getByText('tools.mcp.server.modal.addTitle'))!.toBeInTheDocument()

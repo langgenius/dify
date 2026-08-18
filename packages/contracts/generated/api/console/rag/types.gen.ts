@@ -175,6 +175,7 @@ export type WorkflowResponse = {
   updated_at: number
   updated_by?: SimpleAccountResponse | null
   version: string
+  version_number?: number | null
 }
 
 export type DraftWorkflowSyncPayload = {
@@ -240,6 +241,7 @@ export type WorkflowRunNodeExecutionResponse = {
   predecessor_node_id?: string | null
   process_data?: unknown
   process_data_truncated?: boolean | null
+  retry_index?: number | null
   status?: string | null
   title?: string | null
 }
@@ -583,6 +585,10 @@ export type PostRagPipelineCustomizedTemplatesByTemplateIdData = {
   url: '/rag/pipeline/customized/templates/{template_id}'
 }
 
+export type PostRagPipelineCustomizedTemplatesByTemplateIdErrors = {
+  404: unknown
+}
+
 export type PostRagPipelineCustomizedTemplatesByTemplateIdResponses = {
   200: SimpleDataResponse
 }
@@ -644,6 +650,10 @@ export type GetRagPipelineTemplatesByTemplateIdData = {
     type?: string
   }
   url: '/rag/pipeline/templates/{template_id}'
+}
+
+export type GetRagPipelineTemplatesByTemplateIdErrors = {
+  404: unknown
 }
 
 export type GetRagPipelineTemplatesByTemplateIdResponses = {
@@ -753,6 +763,10 @@ export type PostRagPipelinesTransformDatasetsByDatasetIdData = {
   url: '/rag/pipelines/transform/datasets/{dataset_id}'
 }
 
+export type PostRagPipelinesTransformDatasetsByDatasetIdErrors = {
+  404: unknown
+}
+
 export type PostRagPipelinesTransformDatasetsByDatasetIdResponses = {
   200: RagPipelineOpaqueResponse
 }
@@ -767,6 +781,10 @@ export type PostRagPipelinesByPipelineIdCustomizedPublishData = {
   }
   query?: never
   url: '/rag/pipelines/{pipeline_id}/customized/publish'
+}
+
+export type PostRagPipelinesByPipelineIdCustomizedPublishErrors = {
+  404: unknown
 }
 
 export type PostRagPipelinesByPipelineIdCustomizedPublishResponses = {

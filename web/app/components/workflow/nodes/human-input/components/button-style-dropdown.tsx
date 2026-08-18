@@ -65,10 +65,10 @@ const ButtonStyleDropdown: FC<Props> = ({ text = 'Button Text', data, onChange, 
           <div className="system-md-medium text-text-primary">
             {t(($) => $[`${i18nPrefix}.userActions.chooseStyle`], { ns: 'workflow' })}
           </div>
-          <div className="mt-2 flex w-[324px] flex-wrap gap-1">
+          <div className="mt-2 flex w-81 flex-wrap gap-1">
             <div
               className={cn(
-                'box-border flex h-[80px] w-[160px] cursor-pointer items-center justify-center rounded-lg border-[1.5px] border-transparent bg-background-section hover:bg-background-section-burn',
+                'box-border flex h-20 w-40 cursor-pointer items-center justify-center rounded-lg border-[1.5px] border-transparent bg-background-section hover:bg-background-section-burn',
                 data === UserActionButtonType.Primary &&
                   'border-components-option-card-option-selected-border',
               )}
@@ -80,7 +80,7 @@ const ButtonStyleDropdown: FC<Props> = ({ text = 'Button Text', data, onChange, 
             </div>
             <div
               className={cn(
-                'box-border flex h-[80px] w-[160px] cursor-pointer items-center justify-center rounded-lg border-[1.5px] border-transparent bg-background-section hover:bg-background-section-burn',
+                'box-border flex h-20 w-40 cursor-pointer items-center justify-center rounded-lg border-[1.5px] border-transparent bg-background-section hover:bg-background-section-burn',
                 data === UserActionButtonType.Default &&
                   'border-components-option-card-option-selected-border',
               )}
@@ -92,7 +92,7 @@ const ButtonStyleDropdown: FC<Props> = ({ text = 'Button Text', data, onChange, 
             </div>
             <div
               className={cn(
-                'box-border flex h-[80px] w-[160px] cursor-pointer items-center justify-center rounded-lg border-[1.5px] border-transparent bg-background-section hover:bg-background-section-burn',
+                'box-border flex h-20 w-40 cursor-pointer items-center justify-center rounded-lg border-[1.5px] border-transparent bg-background-section hover:bg-background-section-burn',
                 data === UserActionButtonType.Accent &&
                   'border-components-option-card-option-selected-border',
               )}
@@ -104,7 +104,7 @@ const ButtonStyleDropdown: FC<Props> = ({ text = 'Button Text', data, onChange, 
             </div>
             <div
               className={cn(
-                'box-border flex h-[80px] w-[160px] cursor-pointer items-center justify-center rounded-lg border-[1.5px] border-transparent bg-background-section hover:bg-background-section-burn',
+                'box-border flex h-20 w-40 cursor-pointer items-center justify-center rounded-lg border-[1.5px] border-transparent bg-background-section hover:bg-background-section-burn',
                 data === UserActionButtonType.Ghost &&
                   'border-components-option-card-option-selected-border',
               )}

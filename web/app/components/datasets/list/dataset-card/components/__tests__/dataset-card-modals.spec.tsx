@@ -1,6 +1,6 @@
 import type { DataSet } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import DatasetCardModals from '../dataset-card-modals'
@@ -91,7 +91,7 @@ describe('DatasetCardModals', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing when no modals are shown', () => {
+    it('renders no dialogs when both visibility flags are false', () => {
       const { container } = render(<DatasetCardModals {...defaultProps} />)
       // Should render empty fragment
       expect(container.innerHTML).toBe('')

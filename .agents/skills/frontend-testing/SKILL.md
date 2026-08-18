@@ -1,31 +1,16 @@
 ---
 name: frontend-testing
-description: Write, update, or review Dify frontend tests using Vitest and React Testing Library. Trigger for frontend specs, test coverage requests, regressions, testability, or testing strategy under web/.
+description: Use when writing or changing Vitest or React Testing Library tests under `web/` or `packages/dify-ui/`, or when the user explicitly requests frontend test strategy, including evaluation of an existing strategy. Do not use for frontend code-review-only requests, general testability discussion, Python tests, or Cucumber/Playwright E2E.
 ---
 
-# Dify Frontend Testing
+# Frontend Testing
 
-Use this skill for Vitest and React Testing Library work under `web/`. Do not use it for Python tests or Cucumber/Playwright tests under `e2e/`.
+`web/docs/test.md` is the single policy owner. Read it before changing frontend tests; this skill adds no separate requirements.
 
-## Required Source
+1. Identify the observable contract and regression risk.
+2. Choose the smallest boundary that includes the behavior owner.
+3. Establish the failing case first when practical, then implement one coherent scenario.
+4. Run the focused spec before the affected suite and relevant static checks.
+5. Report the behavior verified and any remaining browser, visual, or end-to-end risk.
 
-Before writing, changing, or reviewing frontend tests, read `web/docs/test.md` completely. It is the single source of truth. This skill defines the execution workflow and must not add requirements that conflict with or duplicate that guide.
-
-## Workflow
-
-1. Read the source, its behavior owner, nearby specs, and relevant public dependencies.
-1. Apply the canonical guide to decide whether a test is needed and choose its boundary.
-1. For a behavior change or bug fix, write or identify the failing scenario first when practical.
-1. Implement one coherent scenario at a time and run the focused spec before expanding scope.
-1. Finish with the affected suite and relevant repository checks.
-1. Report what behavior was verified and any risk that still requires browser, visual, or end-to-end validation.
-
-When reviewing existing tests, recommend deleting low-value tests as readily as adding missing behavior coverage.
-
-Run focused tests from `web/`:
-
-```bash
-vp test run path/to/spec-or-directory
-```
-
-Run broader checks only after the focused behavior passes.
+Recommend deleting low-value tests as readily as adding missing behavior coverage. Use `web/docs/test.md` for policy and Web commands; use the `packages/dify-ui/README.md` Development section for Dify UI commands.

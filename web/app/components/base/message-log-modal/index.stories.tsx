@@ -139,7 +139,7 @@ const MessageLogPreview = (props: MessageLogModalProps) => {
   useMessageLogMocks()
 
   return (
-    <div className="relative min-h-[640px] w-full bg-background-default-subtle p-6">
+    <div className="relative min-h-160 w-full bg-background-default-subtle p-6">
       <WorkflowContextProvider>
         <MessageLogModal {...props} currentLogItem={mockCurrentLogItem} />
       </WorkflowContextProvider>

@@ -9,11 +9,12 @@ from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.ops.ops_trace_manager import TraceTask, TraceTaskName
 from core.workflow.system_variables import SystemVariableKey, build_system_variables
-from graphon.entities import WorkflowNodeExecution
+from graphon.entities import WorkflowNodeExecution, WorkflowStartReason
 from graphon.entities.pause_reason import SchedulingPause
 from graphon.enums import (
     BuiltinNodeTypes,
     WorkflowExecutionStatus,
+    WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
     WorkflowType,
 )
@@ -31,6 +32,7 @@ from graphon.graph_events import (
     NodeRunStartedEvent,
     NodeRunSucceededEvent,
 )
+from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.node_events import NodeRunResult
 from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
 
@@ -38,13 +40,21 @@ from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper,
 class _RepoRecorder:
     def __init__(self) -> None:
         self.saved: list[object] = []
+        self.synchronously_saved: list[object] = []
         self.saved_exec_data: list[object] = []
+        self.loaded: list[object] = []
 
     def save(self, entity):
         self.saved.append(entity)
 
+    def save_synchronously(self, entity):
+        self.synchronously_saved.append(entity)
+
     def save_execution_data(self, entity):
         self.saved_exec_data.append(entity)
+
+    def get_by_workflow_execution(self, _workflow_execution_id):
+        return self.loaded
 
 
 def _naive_utc_now() -> datetime:
@@ -164,12 +174,45 @@ class TestWorkflowPersistenceLayer:
 
         assert exec_repo.saved
 
+    def test_resumption_restores_container_execution_before_terminal_event(self):
+        layer, _, node_repo, _ = _make_layer()
+        started_at = _naive_utc_now()
+        execution = WorkflowNodeExecution(
+            id="loop-exec",
+            workflow_id="workflow-id",
+            workflow_execution_id="run-id",
+            index=4,
+            node_id="loop",
+            node_type=BuiltinNodeTypes.LOOP,
+            title="Loop",
+            status=WorkflowNodeExecutionStatus.RUNNING,
+            created_at=started_at,
+        )
+        node_repo.loaded = [execution]
+
+        layer.on_event(GraphRunStartedEvent(reason=WorkflowStartReason.RESUMPTION))
+        layer.on_event(
+            NodeRunSucceededEvent(
+                id=execution.id,
+                node_id=execution.node_id,
+                node_type=execution.node_type,
+                start_at=started_at,
+                node_run_result=NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED),
+            )
+        )
+
+        assert execution.status == WorkflowNodeExecutionStatus.SUCCEEDED
+        assert layer._next_node_sequence() == 5
+
     def test_handle_graph_run_succeeded_updates_execution(self):
         layer, exec_repo, _, runtime_state = _make_layer()
         layer._handle_graph_run_started()
-        runtime_state.total_tokens = 3
-        runtime_state.node_run_steps = 2
-        runtime_state.outputs = {"out": "v"}
+        usage = LLMUsage.empty_usage()
+        usage.total_tokens = 3
+        runtime_state.add_llm_usage(usage)
+        for _ in range(2):
+            runtime_state.increment_node_run_steps()
+        runtime_state.set_output("out", "v")
 
         layer._handle_graph_run_succeeded(GraphRunSucceededEvent(outputs={"ok": True}))
 
@@ -181,8 +224,11 @@ class TestWorkflowPersistenceLayer:
     def test_handle_graph_run_partial_succeeded_updates_execution(self):
         layer, exec_repo, _, runtime_state = _make_layer()
         layer._handle_graph_run_started()
-        runtime_state.total_tokens = 5
-        runtime_state.node_run_steps = 4
+        usage = LLMUsage.empty_usage()
+        usage.total_tokens = 5
+        runtime_state.add_llm_usage(usage)
+        for _ in range(4):
+            runtime_state.increment_node_run_steps()
         runtime_state._graph_execution = SimpleNamespace(exceptions_count=2)
 
         layer._handle_graph_run_partial_succeeded(
@@ -288,8 +334,11 @@ class TestWorkflowPersistenceLayer:
     def test_handle_graph_run_paused_updates_outputs(self):
         layer, exec_repo, _, runtime_state = _make_layer()
         layer._handle_graph_run_started()
-        runtime_state.total_tokens = 7
-        runtime_state.node_run_steps = 5
+        usage = LLMUsage.empty_usage()
+        usage.total_tokens = 7
+        runtime_state.add_llm_usage(usage)
+        for _ in range(5):
+            runtime_state.increment_node_run_steps()
 
         layer._handle_graph_run_paused(GraphRunPausedEvent(outputs={"pause": True}))
 
@@ -329,6 +378,134 @@ class TestWorkflowPersistenceLayer:
         )
         layer._handle_node_retry(retry_event)
         assert node_repo.saved_exec_data
+
+    def test_agent_v2_caller_row_is_saved_synchronously_before_node_run(self):
+        layer, _, node_repo, _ = _make_layer()
+        layer._handle_graph_run_started()
+
+        layer._handle_node_started(
+            NodeRunStartedEvent(
+                id="agent-exec",
+                node_id="agent-node",
+                node_type=BuiltinNodeTypes.AGENT,
+                node_version="2",
+                node_title="Agent",
+                start_at=_naive_utc_now(),
+            )
+        )
+
+        assert [execution.id for execution in node_repo.synchronously_saved] == ["agent-exec"]
+        assert node_repo.saved == []
+
+    def test_retry_history_is_preserved_after_node_succeeds(self):
+        layer, _, node_repo, _ = _make_layer()
+        layer._handle_graph_run_started()
+        started_at = _naive_utc_now()
+        layer._handle_node_started(
+            NodeRunStartedEvent(
+                id="exec",
+                node_id="node",
+                node_type=BuiltinNodeTypes.HTTP_REQUEST,
+                node_title="HTTP",
+                start_at=started_at,
+            )
+        )
+
+        for retry_index in (1, 2):
+            layer._handle_node_retry(
+                NodeRunRetryEvent(
+                    id="exec",
+                    node_id="node",
+                    node_type=BuiltinNodeTypes.HTTP_REQUEST,
+                    node_title="HTTP",
+                    start_at=started_at,
+                    error=f"attempt {retry_index} failed",
+                    retry_index=retry_index,
+                    node_run_result=NodeRunResult(
+                        inputs={"attempt": retry_index},
+                        process_data={"request": f"attempt-{retry_index}"},
+                        outputs={"status_code": 500, "body": f"failure-{retry_index}"},
+                        metadata={WorkflowNodeExecutionMetadataKey.ITERATION_ID: "iteration-1"},
+                    ),
+                )
+            )
+
+        layer._handle_node_succeeded(
+            NodeRunSucceededEvent(
+                id="exec",
+                node_id="node",
+                node_type=BuiltinNodeTypes.HTTP_REQUEST,
+                start_at=started_at,
+                node_run_result=NodeRunResult(
+                    inputs={"attempt": 3},
+                    process_data={"request": "successful-attempt"},
+                    outputs={"status_code": 200, "body": "ok"},
+                    metadata={},
+                ),
+            )
+        )
+
+        saved_execution = node_repo.saved_exec_data[-1]
+        assert saved_execution.status == WorkflowNodeExecutionStatus.SUCCEEDED
+        assert saved_execution.process_data["request"] == "successful-attempt"
+        retry_history = saved_execution.process_data["__dify_retry_history"]
+        assert [attempt["retry_index"] for attempt in retry_history] == [1, 2]
+        assert retry_history[0]["inputs"] == {"attempt": 1}
+        assert retry_history[0]["process_data"] == {"request": "attempt-1"}
+        assert retry_history[0]["outputs"] == {"status_code": 500, "body": "failure-1"}
+        assert retry_history[0]["error"] == "attempt 1 failed"
+        assert retry_history[0]["execution_metadata"] == {"iteration_id": "iteration-1"}
+
+    @pytest.mark.parametrize(
+        ("event_type", "expected_status"),
+        [
+            (NodeRunFailedEvent, WorkflowNodeExecutionStatus.FAILED),
+            (NodeRunExceptionEvent, WorkflowNodeExecutionStatus.EXCEPTION),
+        ],
+    )
+    def test_retry_history_is_preserved_after_terminal_error(self, event_type, expected_status):
+        layer, _, node_repo, _ = _make_layer()
+        layer._handle_graph_run_started()
+        started_at = _naive_utc_now()
+        layer._handle_node_started(
+            NodeRunStartedEvent(
+                id="exec",
+                node_id="node",
+                node_type=BuiltinNodeTypes.LLM,
+                node_title="LLM",
+                start_at=started_at,
+            )
+        )
+        layer._handle_node_retry(
+            NodeRunRetryEvent(
+                id="exec",
+                node_id="node",
+                node_type=BuiltinNodeTypes.LLM,
+                node_title="LLM",
+                start_at=started_at,
+                error="retry failed",
+                retry_index=1,
+                node_run_result=NodeRunResult(outputs={"attempt": 1}),
+            )
+        )
+
+        terminal_event = event_type(
+            id="exec",
+            node_id="node",
+            node_type=BuiltinNodeTypes.LLM,
+            start_at=started_at,
+            error="terminal failure",
+            node_run_result=NodeRunResult(process_data={"terminal": True}),
+        )
+        if expected_status == WorkflowNodeExecutionStatus.FAILED:
+            layer._handle_node_failed(terminal_event)
+        else:
+            layer._handle_node_exception(terminal_event)
+
+        saved_execution = node_repo.saved_exec_data[-1]
+        assert saved_execution.status == expected_status
+        assert saved_execution.process_data["terminal"] is True
+        assert saved_execution.process_data["__dify_retry_history"][0]["retry_index"] == 1
 
     def test_handle_node_result_events_update_execution(self):
         layer, _, node_repo, _ = _make_layer()
@@ -390,7 +567,12 @@ class TestWorkflowPersistenceLayer:
         domain_execution = layer._node_execution_cache["exec"]
         domain_execution.inputs = {"old": True}
 
-        result = NodeRunResult(inputs={"new": True}, outputs={"out": 1}, process_data={"p": 1}, metadata={})
+        result = NodeRunResult(
+            inputs={"new": True},
+            outputs={"out": 1},
+            process_data={"p": 1, "workflow_agent_binding_id": "workflow-binding-1"},
+            metadata={},
+        )
         pause_event = NodeRunPauseRequestedEvent(
             id="exec",
             node_id="node",
@@ -402,6 +584,38 @@ class TestWorkflowPersistenceLayer:
 
         assert domain_execution.status == WorkflowNodeExecutionStatus.PAUSED
         assert domain_execution.inputs == {"old": True}
+        assert domain_execution.process_data == {"workflow_agent_binding_id": "workflow-binding-1"}
+
+    def test_handle_node_retry_preserves_workflow_agent_binding_identity(self):
+        layer, _, _, _ = _make_layer()
+        layer._handle_graph_run_started()
+        started_at = _naive_utc_now()
+        layer._handle_node_started(
+            NodeRunStartedEvent(
+                id="exec",
+                node_id="node",
+                node_type=BuiltinNodeTypes.AGENT,
+                node_title="Agent",
+                start_at=started_at,
+            )
+        )
+
+        layer._handle_node_retry(
+            NodeRunRetryEvent(
+                id="exec",
+                node_id="node",
+                node_type=BuiltinNodeTypes.AGENT,
+                node_title="Agent",
+                start_at=started_at,
+                error="retry",
+                retry_index=1,
+                node_run_result=NodeRunResult(
+                    process_data={"workflow_agent_binding_id": "workflow-binding-1"},
+                ),
+            )
+        )
+
+        assert layer._node_execution_cache["exec"].process_data["workflow_agent_binding_id"] == "workflow-binding-1"
 
     def test_get_node_execution_raises_for_missing(self):
         layer, _, _, _ = _make_layer()

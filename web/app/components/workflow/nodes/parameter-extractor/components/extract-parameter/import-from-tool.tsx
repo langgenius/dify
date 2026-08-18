@@ -7,7 +7,7 @@ import type {
   ToolDefaultValue,
 } from '@/app/components/workflow/block-selector/types'
 import type { BlockEnum } from '@/app/components/workflow/types'
-import { cn } from '@langgenius/dify-ui/cn'
+import { Button } from '@langgenius/dify-ui/button'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -15,6 +15,7 @@ import { CollectionType } from '@/app/components/tools/types'
 import { useAllBuiltInTools, useAllCustomTools, useAllWorkflowTools } from '@/service/use-tools'
 import { canFindTool } from '@/utils'
 import BlockSelector from '../../../../block-selector'
+import { TabType } from '../../../../block-selector/types'
 
 const i18nPrefix = 'nodes.parameterExtractor'
 
@@ -67,34 +68,24 @@ const ImportFromTool: FC<Props> = ({ onImport }) => {
     [buildInTools, customTools, language, onImport, workflowTools],
   )
 
-  const renderTrigger = useCallback(
-    (open: boolean) => {
-      return (
-        <div>
-          <div
-            className={cn(
-              'flex h-6 cursor-pointer items-center rounded-md px-2 text-xs font-medium text-text-tertiary hover:bg-state-base-hover',
-              open && 'bg-state-base-hover',
-            )}
-          >
-            {t(($) => $[`${i18nPrefix}.importFromTool`], { ns: 'workflow' })}
-          </div>
-        </div>
-      )
-    },
-    [t],
+  const triggerElement = (
+    <Button
+      variant="ghost"
+      size="small"
+      className="text-text-tertiary data-popup-open:bg-state-base-hover data-popup-open:hover:bg-components-button-ghost-bg-hover"
+    >
+      {t(($) => $[`${i18nPrefix}.importFromTool`], { ns: 'workflow' })}
+    </Button>
   )
 
   return (
     <BlockSelector
       placement="bottom-end"
-      offset={{
-        mainAxis: 4,
-        crossAxis: 52,
-      }}
-      trigger={renderTrigger}
+      sideOffset={4}
+      alignOffset={52}
+      trigger={triggerElement}
       onSelect={handleSelectTool}
-      noBlocks
+      standalonePanel={TabType.Tools}
     />
   )
 }

@@ -53,7 +53,7 @@ class HitTestingApi(Resource, DatasetsHitTestingBase):
     ) -> dict[str, object]:
         dataset_id_str = str(dataset_id)
 
-        dataset = self.get_and_validate_dataset(dataset_id_str, current_user, current_tenant_id)
+        dataset = self.get_and_validate_dataset(session, dataset_id_str, current_user, current_tenant_id)
         args = self.parse_args(console_ns.payload)
         self.hit_testing_args_check(args)
 

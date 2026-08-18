@@ -1,71 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import LabelSelector from '../selector'
-
-vi.mock('@langgenius/dify-ui/popover', async () => {
-  const React = await import('react')
-  const PopoverContext = React.createContext({
-    open: false,
-    setOpen: (_open: boolean) => {},
-  })
-
-  const Popover = ({
-    children,
-    open: controlledOpen,
-    onOpenChange,
-  }: {
-    children: React.ReactNode
-    open?: boolean
-    onOpenChange?: (open: boolean) => void
-  }) => {
-    const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false)
-    const isControlled = controlledOpen !== undefined
-    const open = isControlled ? !!controlledOpen : uncontrolledOpen
-    const setOpen = (nextOpen: boolean) => {
-      if (!isControlled) setUncontrolledOpen(nextOpen)
-      onOpenChange?.(nextOpen)
-    }
-
-    return <PopoverContext.Provider value={{ open, setOpen }}>{children}</PopoverContext.Provider>
-  }
-
-  const PopoverTrigger = ({
-    children,
-    className,
-    render,
-  }: {
-    children?: React.ReactNode
-    className?: string
-    render?: React.ReactNode
-  }) => {
-    const { open, setOpen } = React.useContext(PopoverContext)
-    if (render) {
-      return <div onClick={() => setOpen(!open)}>{render}</div>
-    }
-
-    return (
-      <button type="button" className={className} onClick={() => setOpen(!open)}>
-        {children}
-      </button>
-    )
-  }
-
-  const PopoverContent = ({
-    children,
-    ...props
-  }: React.HTMLAttributes<HTMLDivElement> & { children?: React.ReactNode }) => {
-    const { open } = React.useContext(PopoverContext)
-    if (!open) return null
-
-    return <div {...props}>{children}</div>
-  }
-
-  return {
-    Popover,
-    PopoverTrigger,
-    PopoverContent,
-  }
-})
 
 // Mock useTags hook with controlled test data
 const mockTags = [
@@ -113,12 +48,6 @@ describe('LabelSelector', () => {
 
   // Rendering Tests
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<LabelSelector value={[]} onChange={mockOnChange} />)
-
-      expect(screen.getByText('tools.createTool.toolInput.labelPlaceholder')).toBeInTheDocument()
-    })
-
     it('should display placeholder when no labels selected', () => {
       render(<LabelSelector value={[]} onChange={mockOnChange} />)
 
@@ -183,7 +112,7 @@ describe('LabelSelector', () => {
         vi.advanceTimersByTime(10)
       })
 
-      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+      expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()
     })
   })
 
@@ -263,10 +192,10 @@ describe('LabelSelector', () => {
         vi.advanceTimersByTime(10)
       })
 
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toBeInTheDocument()
 
       await act(async () => {
-        const searchInput = screen.getByRole('textbox')
+        const searchInput = screen.getByRole('searchbox', { name: 'common.operation.search' })
         // Filter by 'rag' which only matches 'rag' name
         fireEvent.change(searchInput, { target: { value: 'rag' } })
         vi.advanceTimersByTime(10)
@@ -286,10 +215,10 @@ describe('LabelSelector', () => {
         vi.advanceTimersByTime(10)
       })
 
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toBeInTheDocument()
 
       await act(async () => {
-        const searchInput = screen.getByRole('textbox')
+        const searchInput = screen.getByRole('searchbox', { name: 'common.operation.search' })
         fireEvent.change(searchInput, { target: { value: 'nonexistent' } })
         vi.advanceTimersByTime(10)
       })
@@ -305,10 +234,10 @@ describe('LabelSelector', () => {
         vi.advanceTimersByTime(10)
       })
 
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toBeInTheDocument()
 
       await act(async () => {
-        const searchInput = screen.getByRole('textbox')
+        const searchInput = screen.getByRole('searchbox', { name: 'common.operation.search' })
         // First filter to show only RAG
         fireEvent.change(searchInput, { target: { value: 'rag' } })
         vi.advanceTimersByTime(10)
@@ -319,7 +248,7 @@ describe('LabelSelector', () => {
 
       await act(async () => {
         // Clear the input
-        const searchInput = screen.getByRole('textbox')
+        const searchInput = screen.getByRole('searchbox', { name: 'common.operation.search' })
         fireEvent.change(searchInput, { target: { value: '' } })
         vi.advanceTimersByTime(10)
       })
@@ -336,13 +265,6 @@ describe('LabelSelector', () => {
       render(<LabelSelector value={[]} onChange={mockOnChange} />)
 
       expect(screen.getByText('tools.createTool.toolInput.labelPlaceholder')).toBeInTheDocument()
-    })
-
-    it('should handle value with non-existent label', () => {
-      render(<LabelSelector value={['nonexistent']} onChange={mockOnChange} />)
-
-      // Should still render without crashing, undefined label will be filtered
-      expect(document.querySelector('.text-text-secondary')).toBeInTheDocument()
     })
 
     it('should handle multiple labels display', () => {

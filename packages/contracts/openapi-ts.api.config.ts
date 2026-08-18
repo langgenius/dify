@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { $, defineConfig } from '@hey-api/openapi-ts'
+import ts from 'typescript'
 
 type JsonObject = Record<string, unknown>
 
@@ -442,12 +443,10 @@ const splitConsoleDocument = (document: SwaggerDocument) => {
   }
 
   const segments = [...pathsBySegment.keys()].sort((left, right) => left.localeCompare(right))
-  const jobs = segments.map(
-    (segment): ApiJob => ({
-      document: cloneDocumentWithPaths(document, pathsBySegment.get(segment) ?? {}),
-      outputPath: `generated/api/console/${toKebabCase(segment)}`,
-    }),
-  )
+  const jobs = segments.map((segment): ApiJob => ({
+    document: cloneDocumentWithPaths(document, pathsBySegment.get(segment) ?? {}),
+    outputPath: `generated/api/console/${toKebabCase(segment)}`,
+  }))
 
   return [...jobs, createConsoleContractEntryJob(document, segments)]
 }
@@ -497,7 +496,15 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
           if (ctx.schema.format === 'binary')
             return $(ctx.symbols.z)
               .attr('custom')
-              .call()
+              .call(
+                $.func((predicate) => {
+                  const value = $.id('value')
+                  const isBlob = $.binary(value, ts.SyntaxKind.InstanceOfKeyword, $.id('Blob'))
+                  const isFile = $.binary(value, ts.SyntaxKind.InstanceOfKeyword, $.id('File'))
+                  predicate.param('value')
+                  predicate.do($.return($.binary(isBlob, '||', isFile)))
+                }),
+              )
               .generic($.type.or($.type('Blob'), $.type('File')))
 
           if (ctx.schema.pattern === pydanticDecimalStringPattern) {

@@ -26,13 +26,26 @@ vi.mock('reactflow', async () => {
   }
 })
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesReadOnly: () => ({ nodesReadOnly: false }),
-  useEdgesInteractions: () => ({
-    handleEdgeDeleteByDeleteBranch: (...args: unknown[]) =>
-      mockHandleEdgeDeleteByDeleteBranch(...args),
-  }),
-}))
+vi.mock('../../../hooks/use-edges-interactions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-edges-interactions')>()
+
+  return {
+    ...actual,
+    useEdgesInteractions: () => ({
+      handleEdgeDeleteByDeleteBranch: (...args: unknown[]) =>
+        mockHandleEdgeDeleteByDeleteBranch(...args),
+    }),
+  }
+})
+
+vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useNodesReadOnly: () => ({ nodesReadOnly: false }),
+  }
+})
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   ...createNodeCrudModuleMock<IfElseNodeType>(mockSetInputs),

@@ -1,6 +1,5 @@
 // Package agentcli implements the dify-agent CLI that runs inside the sandbox
-// container. It communicates with the Agent Stub server on the host via HTTP
-// or gRPC to provide connect, file, drive, and config operations.
+// container. It communicates with the Agent Stub server on the host via HTTP.
 package agentcli
 
 import (
@@ -9,14 +8,16 @@ import (
 	"net/url"
 	"os"
 	"strings"
+
+	"github.com/langgenius/dify/dify-agent-runtime/internal/envvar"
 )
 
 const (
-	EnvAPIBaseURL = "DIFY_AGENT_STUB_API_BASE_URL"
-	EnvAuthJWE    = "DIFY_AGENT_STUB_AUTH_JWE"
-	EnvDriveBase  = "DIFY_AGENT_STUB_DRIVE_BASE"
+	EnvAPIBaseURL = envvar.EnvAgentStubAPIBaseURL
+	EnvAuthJWE    = envvar.EnvAgentStubAuthJWE
+	EnvDriveBase  = envvar.EnvAgentStubDriveBase
 
-	DefaultDriveBase = "/mnt/drive"
+	DefaultDriveBase = envvar.DefaultDriveBase
 )
 
 // Environment holds validated Agent Stub connection parameters.
@@ -25,13 +26,9 @@ type Environment struct {
 	AuthJWE string
 }
 
-// Endpoint represents a parsed Agent Stub endpoint with transport info.
+// Endpoint represents a normalized HTTP Agent Stub endpoint.
 type Endpoint struct {
-	URL    string
-	Scheme string // "http", "https", or "grpc"
-	Host   string
-	Port   string
-	IsGRPC bool
+	URL string
 }
 
 var ErrMissingEnvironment = errors.New("missing required Agent Stub environment variables")
@@ -88,14 +85,10 @@ func ParseEndpoint(rawURL string) (*Endpoint, error) {
 		return nil, fmt.Errorf("invalid URL: %w", err)
 	}
 
-	switch parsed.Scheme {
-	case "http", "https":
-		return parseHTTPEndpoint(parsed)
-	case "grpc":
-		return parseGRPCEndpoint(parsed)
-	default:
-		return nil, errors.New("agent stub URL must use http, https, or grpc")
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return nil, errors.New("agent stub URL must use http or https")
 	}
+	return parseHTTPEndpoint(parsed)
 }
 
 func parseHTTPEndpoint(parsed *url.URL) (*Endpoint, error) {
@@ -118,33 +111,6 @@ func parseHTTPEndpoint(parsed *url.URL) (*Endpoint, error) {
 
 	normalizedURL := fmt.Sprintf("%s://%s%s", parsed.Scheme, parsed.Host, path)
 	return &Endpoint{
-		URL:    normalizedURL,
-		Scheme: parsed.Scheme,
-		Host:   parsed.Hostname(),
-		Port:   parsed.Port(),
-		IsGRPC: false,
-	}, nil
-}
-
-func parseGRPCEndpoint(parsed *url.URL) (*Endpoint, error) {
-	if parsed.Host == "" {
-		return nil, errors.New("gRPC agent stub URL must include a host")
-	}
-	path := strings.TrimRight(parsed.Path, "/")
-	if path != "" && path != "/" {
-		return nil, errors.New("gRPC agent stub URL must not include a path")
-	}
-	port := parsed.Port()
-	if port == "" {
-		return nil, errors.New("gRPC agent stub URL must include an explicit port")
-	}
-
-	normalizedURL := fmt.Sprintf("grpc://%s:%s", parsed.Hostname(), port)
-	return &Endpoint{
-		URL:    normalizedURL,
-		Scheme: "grpc",
-		Host:   parsed.Hostname(),
-		Port:   port,
-		IsGRPC: true,
+		URL: normalizedURL,
 	}, nil
 }

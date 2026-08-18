@@ -1,4 +1,6 @@
-import { render, screen } from '@testing-library/react'
+import type { PeriodParams } from '@/app/components/app/overview/app-chart'
+import { screen } from '@testing-library/react'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AppACLPermission } from '@/utils/permission'
 import ChartView from '../chart-view'
 
@@ -12,7 +14,15 @@ const testState = vi.hoisted(() => ({
   currentUserId: 'user-1',
   workspacePermissionKeys: [] as string[],
   chartRenderSpy: vi.fn(),
+  conversationPeriodSpy: vi.fn(),
 }))
+
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
 
 vi.mock('@/app/components/app/store', () => ({
   useStore: <T,>(selector: (state: { appDetail: typeof testState.appDetail }) => T): T =>
@@ -38,8 +48,9 @@ vi.mock('@/app/components/app/overview/app-chart', () => ({
     testState.chartRenderSpy('avg-user-interactions')
     return <div>avg user interactions chart</div>
   },
-  ConversationsChart: () => {
+  ConversationsChart: ({ period }: { period: PeriodParams }) => {
     testState.chartRenderSpy('conversations')
+    testState.conversationPeriodSpy(period)
     return <div>conversations chart</div>
   },
   CostChart: () => {
@@ -83,6 +94,14 @@ vi.mock('../long-time-range-picker', () => ({
 vi.mock('../time-range-picker', () => ({
   default: () => <button type="button">time range</button>,
 }))
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: [],
+  }))
+})
 
 describe('ChartView monitor permission', () => {
   beforeEach(() => {

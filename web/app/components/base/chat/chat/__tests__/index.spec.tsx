@@ -4,6 +4,7 @@ import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { createTheme } from '../../embedded-chatbot/theme/theme'
 import Chat from '../index'
 
 // ─── Why each mock exists ─────────────────────────────────────────────────────
@@ -33,8 +34,8 @@ vi.mock('../answer', () => ({
 }))
 
 vi.mock('../question', () => ({
-  default: ({ item }: { item: ChatItem }) => (
-    <div data-testid="question-item" data-id={item.id}>
+  default: ({ item, theme }: { item: ChatItem; theme?: { primaryColor: string } }) => (
+    <div data-testid="question-item" data-id={item.id} data-theme-color={theme?.primaryColor}>
       {item.content}
     </div>
   ),
@@ -48,6 +49,7 @@ vi.mock('../chat-input-area', () => ({
     footerNotice,
     onBeforeSpeechToText,
     speechToTextTarget,
+    theme,
   }: {
     customPlaceholder?: string
     disabled?: boolean
@@ -55,6 +57,7 @@ vi.mock('../chat-input-area', () => ({
     footerNotice?: string
     onBeforeSpeechToText?: () => Promise<unknown>
     speechToTextTarget?: SpeechToTextTarget
+    theme?: { primaryColor: string }
   }) => (
     <div
       data-testid="chat-input-area"
@@ -70,6 +73,7 @@ vi.mock('../chat-input-area', () => ({
           ? speechToTextTarget.appSourceType
           : speechToTextTarget?.type
       }
+      data-theme-color={theme?.primaryColor}
     >
       {footerNotice}
     </div>
@@ -176,11 +180,6 @@ describe('Chat', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing with an empty chatList', () => {
-      renderChat()
-      expect(screen.getByTestId('chat-root')).toBeInTheDocument()
-    })
-
     it('should render chatNode when provided', () => {
       renderChat({ chatNode: <div data-testid="slot-node">slot</div> })
       expect(screen.getByTestId('slot-node')).toBeInTheDocument()
@@ -194,11 +193,6 @@ describe('Chat', () => {
     it('should not have flex-col when isTryApp is falsy', () => {
       renderChat({ isTryApp: false })
       expect(screen.getByTestId('chat-root')).not.toHaveClass('flex-col')
-    })
-
-    it('should apply chatContainerClassName to the scroll container', () => {
-      renderChat({ chatContainerClassName: 'my-custom-class' })
-      expect(screen.getByTestId('chat-container')).toHaveClass('my-custom-class')
     })
 
     it('should apply px-8 spacing by default', () => {
@@ -642,14 +636,6 @@ describe('Chat', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should render without crashing with no optional props', () => {
-      expect(() => render(<Chat chatList={[]} />)).not.toThrow()
-    })
-
-    it('should handle readonly=true without crashing', () => {
-      expect(() => renderChat({ readonly: true })).not.toThrow()
-    })
-
     it('should render no modals when both modal flags are false', () => {
       useAppStore.setState({
         ...baseStoreState,
@@ -686,15 +672,14 @@ describe('Chat', () => {
       expect(screen.getByTestId('question-item')).toBeInTheDocument()
     })
 
-    it('should pass theme from themeBuilder to Question', () => {
-      const mockTheme = { chatBubbleColorStyle: 'test' }
-      const themeBuilder = { theme: mockTheme }
+    it('should pass theme to Question', () => {
+      const theme = createTheme('#123456')
 
       renderChat({
-        themeBuilder: themeBuilder as unknown as ChatProps['themeBuilder'],
+        theme,
         chatList: [makeChatItem({ id: 'q1', isAnswer: false })],
       })
-      expect(screen.getByTestId('question-item')).toBeInTheDocument()
+      expect(screen.getByTestId('question-item')).toHaveAttribute('data-theme-color', '#123456')
     })
 
     it('should pass switchSibling to Question component', () => {
@@ -754,17 +739,6 @@ describe('Chat', () => {
     it('should pass showPromptLog to Answer component', () => {
       renderChat({
         showPromptLog: true,
-        chatList: [
-          makeChatItem({ id: 'q1', isAnswer: false }),
-          makeChatItem({ id: 'a1', isAnswer: true }),
-        ],
-      })
-      expect(screen.getByTestId('answer-item')).toBeInTheDocument()
-    })
-
-    it('should pass chatAnswerContainerInner className to Answer', () => {
-      renderChat({
-        chatAnswerContainerInner: 'custom-class',
         chatList: [
           makeChatItem({ id: 'q1', isAnswer: false }),
           makeChatItem({ id: 'a1', isAnswer: true }),
@@ -973,15 +947,14 @@ describe('Chat', () => {
       expect(screen.getByTestId('chat-input-area')).toBeInTheDocument()
     })
 
-    it('should pass theme from themeBuilder to ChatInputArea', () => {
-      const mockTheme = { someThemeProperty: true }
-      const themeBuilder = { theme: mockTheme }
+    it('should pass theme to ChatInputArea', () => {
+      const theme = createTheme('#654321')
 
       renderChat({
         noChatInput: false,
-        themeBuilder: themeBuilder as unknown as ChatProps['themeBuilder'],
+        theme,
       })
-      expect(screen.getByTestId('chat-input-area')).toBeInTheDocument()
+      expect(screen.getByTestId('chat-input-area')).toHaveAttribute('data-theme-color', '#654321')
     })
   })
 
@@ -1045,23 +1018,6 @@ describe('Chat', () => {
         'pointer-events-auto',
       )
     })
-
-    it('should apply chatFooterClassName when footer has content', () => {
-      renderChat({
-        noChatInput: false,
-        chatFooterClassName: 'my-footer-class',
-      })
-      expect(screen.getByTestId('chat-footer')).toHaveClass('my-footer-class')
-    })
-
-    it('should apply chatFooterInnerClassName to footer inner div', () => {
-      renderChat({
-        noChatInput: false,
-        chatFooterInnerClassName: 'my-inner-class',
-      })
-      const innerDivs = screen.getByTestId('chat-footer').querySelectorAll('div')
-      expect(innerDivs.length).toBeGreaterThan(0)
-    })
   })
 
   describe('Container and Spacing Variations', () => {
@@ -1086,16 +1042,6 @@ describe('Chat', () => {
         isTryApp: false,
       })
       expect(screen.getByTestId('chat-container')).not.toHaveClass('h-0', 'grow')
-    })
-
-    it('should apply footer classList combination correctly', () => {
-      renderChat({
-        noChatInput: false,
-        chatFooterClassName: 'custom-footer',
-      })
-      const footer = screen.getByTestId('chat-footer')
-      expect(footer).toHaveClass('custom-footer')
-      expect(footer).toHaveClass('bg-chat-input-mask')
     })
   })
 

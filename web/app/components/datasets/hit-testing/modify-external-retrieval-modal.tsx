@@ -1,8 +1,8 @@
 import { Button } from '@langgenius/dify-ui/button'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RiCloseLine } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import RetrievalSettings from '../external-knowledge-base/create/RetrievalSettings'
 
 type ModifyExternalRetrievalModalProps = {
@@ -50,14 +50,18 @@ const ModifyExternalRetrievalModal: React.FC<ModifyExternalRetrievalModalProps> 
   }
 
   return (
-    <div className="shadows-shadow-2xl absolute top-[36px] right-[14px] z-10 flex w-[320px] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg">
+    <div className="shadows-shadow-2xl absolute top-9 right-3.5 z-10 flex w-[320px] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg">
       <div className="flex items-center justify-between self-stretch p-4 pb-2">
         <div className="grow system-xl-semibold text-text-primary">
           {t(($) => $.settingTitle, { ns: 'datasetHitTesting' })}
         </div>
-        <ActionButton className="ml-auto" onClick={onClose}>
-          <RiCloseLine className="size-4 shrink-0" />
-        </ActionButton>
+        <IconButton
+          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+          className="ml-auto"
+          onClick={onClose}
+        >
+          <RiCloseLine aria-hidden className="size-4 shrink-0" />
+        </IconButton>
       </div>
       <div className="flex flex-col items-start justify-center gap-4 self-stretch p-4 pt-2">
         <RetrievalSettings
@@ -69,10 +73,10 @@ const ModifyExternalRetrievalModal: React.FC<ModifyExternalRetrievalModalProps> 
         />
       </div>
       <div className="flex w-full items-end justify-end gap-1 p-4 pt-2">
-        <Button className="min-w-[72px] shrink-0" onClick={onClose}>
+        <Button className="min-w-18 shrink-0" onClick={onClose}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </Button>
-        <Button variant="primary" className="min-w-[72px] shrink-0" onClick={handleSave}>
+        <Button variant="primary" className="min-w-18 shrink-0" onClick={handleSave}>
           {t(($) => $['operation.save'], { ns: 'common' })}
         </Button>
       </div>

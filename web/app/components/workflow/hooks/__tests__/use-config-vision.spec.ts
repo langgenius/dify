@@ -20,7 +20,7 @@ const createModel = (overrides: Partial<ModelConfig> = {}): ModelConfig => ({
   provider: 'openai',
   name: 'gpt-4o',
   mode: 'chat',
-  completion_params: [],
+  completion_params: {},
   ...overrides,
 })
 

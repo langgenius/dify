@@ -288,10 +288,10 @@ class TestDatasetPermissionServiceUpdatePartialMemberList:
         )
         assert result == []
 
-    def test_update_partial_member_list_database_error_rollback(self, db_session_with_containers: Session):
-        """
-        Test error handling and rollback on database error.
-        """
+    def test_update_partial_member_list_database_error_requires_caller_rollback(
+        self, db_session_with_containers: Session
+    ):
+        """The transaction owner rolls back a failed partial-member update."""
         # Arrange
         owner, tenant = DatasetPermissionTestDataFactory.create_account_with_tenant(role=TenantAccountRole.OWNER)
         existing_member, _ = DatasetPermissionTestDataFactory.create_account_with_tenant(
@@ -309,32 +309,28 @@ class TestDatasetPermissionServiceUpdatePartialMemberList:
             DatasetPermissionTestDataFactory.build_user_list_payload([existing_member.id]),
             session=db_session_with_containers,
         )
+        db_session_with_containers.commit()
         user_list = DatasetPermissionTestDataFactory.build_user_list_payload([replacement_member.id])
-        rollback_called = {"count": 0}
-        original_rollback = db_session_with_containers.rollback
+        original_flush = db_session_with_containers.flush
 
         # Act / Assert
         with pytest.MonkeyPatch.context() as mp:
 
-            def _raise_commit():
+            def _raise_flush():
                 raise Exception("Database connection error")
 
-            def _rollback_and_mark():
-                rollback_called["count"] += 1
-                original_rollback()
-
-            mp.setattr(db_session_with_containers, "commit", _raise_commit)
-            mp.setattr(db_session_with_containers, "rollback", _rollback_and_mark)
+            mp.setattr(db_session_with_containers, "flush", _raise_flush)
             with pytest.raises(Exception, match="Database connection error"):
                 DatasetPermissionService.update_partial_member_list(
                     tenant.id, dataset.id, user_list, session=db_session_with_containers
                 )
+            mp.setattr(db_session_with_containers, "flush", original_flush)
 
         # Assert
+        db_session_with_containers.rollback()
         result = DatasetPermissionService.get_dataset_partial_member_list(
             dataset.id, session=db_session_with_containers
         )
-        assert rollback_called["count"] == 1
         assert result == [existing_member.id]
         assert db_session_with_containers.query(DatasetPermission).filter_by(dataset_id=dataset.id).count() == 1
 
@@ -388,10 +384,10 @@ class TestDatasetPermissionServiceClearPartialMemberList:
         )
         assert result == []
 
-    def test_clear_partial_member_list_database_error_rollback(self, db_session_with_containers: Session):
-        """
-        Test error handling and rollback on database error.
-        """
+    def test_clear_partial_member_list_database_error_requires_caller_rollback(
+        self, db_session_with_containers: Session
+    ):
+        """The transaction owner rolls back a failed partial-member clear."""
         # Arrange
         owner, tenant = DatasetPermissionTestDataFactory.create_account_with_tenant(role=TenantAccountRole.OWNER)
         member_1, _ = DatasetPermissionTestDataFactory.create_account_with_tenant(
@@ -407,29 +403,25 @@ class TestDatasetPermissionServiceClearPartialMemberList:
         DatasetPermissionService.update_partial_member_list(
             tenant.id, dataset.id, users, session=db_session_with_containers
         )
-        rollback_called = {"count": 0}
-        original_rollback = db_session_with_containers.rollback
+        db_session_with_containers.commit()
+        original_flush = db_session_with_containers.flush
 
         # Act / Assert
         with pytest.MonkeyPatch.context() as mp:
 
-            def _raise_commit():
+            def _raise_flush():
                 raise Exception("Database connection error")
 
-            def _rollback_and_mark():
-                rollback_called["count"] += 1
-                original_rollback()
-
-            mp.setattr(db_session_with_containers, "commit", _raise_commit)
-            mp.setattr(db_session_with_containers, "rollback", _rollback_and_mark)
+            mp.setattr(db_session_with_containers, "flush", _raise_flush)
             with pytest.raises(Exception, match="Database connection error"):
                 DatasetPermissionService.clear_partial_member_list(dataset.id, session=db_session_with_containers)
+            mp.setattr(db_session_with_containers, "flush", original_flush)
 
         # Assert
+        db_session_with_containers.rollback()
         result = DatasetPermissionService.get_dataset_partial_member_list(
             dataset.id, session=db_session_with_containers
         )
-        assert rollback_called["count"] == 1
         assert set(result) == {member_1.id, member_2.id}
         assert db_session_with_containers.query(DatasetPermission).filter_by(dataset_id=dataset.id).count() == 2
 

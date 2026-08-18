@@ -7,9 +7,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import ColumnElement
 
-from extensions.ext_database import db
+from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
 from libs.helper import to_timestamp
-from models import Account
+from models import Account, App, Conversation
 from models.agent import (
     APP_BACKED_AGENT_SOURCES,
     Agent,
@@ -18,12 +18,15 @@ from models.agent import (
     AgentConfigRevision,
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
+    AgentConfigVersionKind,
+    AgentDebugConversation,
     AgentDriveFile,
     AgentIconType,
     AgentKind,
     AgentScope,
     AgentSource,
     AgentStatus,
+    AgentWorkspaceOwnerType,
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
@@ -35,6 +38,7 @@ from models.workflow import Workflow
 from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import (
+    AgentBuildSandboxNotFoundError,
     AgentModelNotConfiguredError,
     AgentNameConflictError,
     AgentNotFoundError,
@@ -42,11 +46,17 @@ from services.agent.errors import (
     AgentVersionNotFoundError,
     InvalidComposerConfigError,
 )
+from services.agent.home_snapshot_service import (
+    AgentHomeSnapshotService,
+    validate_home_snapshot_binding,
+)
 from services.agent.knowledge_datasets import (
     get_tenant_knowledge_dataset_rows,
     list_missing_tenant_knowledge_dataset_ids,
 )
+from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.roster_service import AgentRosterService
+from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService, WorkspaceOwnerScope
 from services.app_service import AppService, CreateAppParams
 from services.entities.agent_entities import (
     AgentSoulConfig,
@@ -56,6 +66,8 @@ from services.entities.agent_entities import (
     ComposerVariant,
     WorkflowNodeJobConfig,
 )
+from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
+from tasks.new_agent_beta_task import register_new_agent_beta_publish_after_commit
 
 # WorkflowAgentNodeBinding.workflow_version tag for the draft workflow row.
 # Mirrors Workflow.version when it is "draft" (see models/workflow.py).
@@ -108,43 +120,43 @@ class AgentComposerService:
     def load_workflow_composer(
         cls,
         *,
+        session: Session,
         tenant_id: str,
         app_id: str,
         node_id: str,
         account_id: str | None = None,
         snapshot_id: str | None = None,
-        session: Session,
     ) -> dict[str, Any]:
-        workflow = cls._get_draft_workflow(tenant_id=tenant_id, app_id=app_id, session=session)
+        workflow = cls._get_draft_workflow(session=session, tenant_id=tenant_id, app_id=app_id)
         binding = cls._get_workflow_binding(
-            tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id, session=session
+            session=session, tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id
         )
         if not binding:
             if snapshot_id:
                 raise AgentVersionNotFoundError()
             return cls._empty_workflow_state(app_id=app_id, workflow_id=workflow.id, node_id=node_id)
 
-        agent = cls._get_agent_if_present(tenant_id=tenant_id, agent_id=binding.agent_id, session=session)
+        agent = cls._get_agent_if_present(session=session, tenant_id=tenant_id, agent_id=binding.agent_id)
         version = cls._workflow_composer_version(
+            session=session,
             tenant_id=tenant_id,
             binding=binding,
             agent=agent,
             snapshot_id=snapshot_id,
-            session=session,
         )
         return cls._serialize_workflow_state(
-            binding=binding, agent=agent, version=version, account_id=account_id, session=session
+            session=session, binding=binding, agent=agent, version=version, account_id=account_id
         )
 
     @classmethod
     def _workflow_composer_version(
         cls,
         *,
+        session: Session,
         tenant_id: str,
         binding: WorkflowAgentNodeBinding,
         agent: Agent | None,
         snapshot_id: str | None,
-        session: Session,
     ) -> AgentConfigSnapshot | None:
         if snapshot_id:
             if agent is None:
@@ -162,7 +174,7 @@ class AgentComposerService:
                     raise AgentVersionNotFoundError()
             else:
                 raise AgentVersionNotFoundError()
-            return cls._require_version(tenant_id=tenant_id, agent_id=agent.id, version_id=snapshot_id, session=session)
+            return cls._require_version(session=session, tenant_id=tenant_id, agent_id=agent.id, version_id=snapshot_id)
 
         version_id = (
             agent.active_config_snapshot_id
@@ -170,22 +182,22 @@ class AgentComposerService:
             else binding.current_snapshot_id
         )
         return cls._get_version_if_present(
+            session=session,
             tenant_id=tenant_id,
             agent_id=agent.id if agent else None,
             version_id=version_id,
-            session=session,
         )
 
     @classmethod
     def save_workflow_composer(
         cls,
         *,
+        session: Session,
         tenant_id: str,
         app_id: str,
         node_id: str,
         account_id: str,
         payload: ComposerSavePayload,
-        session: Session,
     ) -> dict[str, Any]:
         if payload.variant != ComposerVariant.WORKFLOW:
             raise ValueError("Workflow composer endpoint only accepts workflow variant")
@@ -193,15 +205,28 @@ class AgentComposerService:
         _backfill_cli_tool_ids(payload.agent_soul)
         _validate_composer_payload_for_strategy(payload)
         if payload.save_strategy in _PUBLISH_SAVE_STRATEGIES:
-            cls.validate_knowledge_datasets(tenant_id=tenant_id, agent_soul=payload.agent_soul)
-        workflow = cls._get_draft_workflow(tenant_id=tenant_id, app_id=app_id, session=session)
+            cls.validate_knowledge_datasets(session=session, tenant_id=tenant_id, agent_soul=payload.agent_soul)
+        workflow = cls._get_draft_workflow(session=session, tenant_id=tenant_id, app_id=app_id)
         binding = cls._get_workflow_binding(
-            tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id, session=session
+            session=session, tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id
+        )
+        retirement_candidates = (
+            {binding.agent_id}
+            if binding is not None
+            and binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT
+            and binding.agent_id
+            and payload.save_strategy
+            in {
+                ComposerSaveStrategy.SAVE_AS_NEW_AGENT,
+                ComposerSaveStrategy.SAVE_TO_ROSTER,
+            }
+            else set()
         )
 
         match payload.save_strategy:
             case ComposerSaveStrategy.NODE_JOB_ONLY:
                 binding = cls._save_node_job_only(
+                    session=session,
                     tenant_id=tenant_id,
                     app_id=app_id,
                     workflow_id=workflow.id,
@@ -209,18 +234,18 @@ class AgentComposerService:
                     account_id=account_id,
                     binding=binding,
                     payload=payload,
-                    session=session,
                 )
             case ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION:
                 binding = cls._save_to_current_version(
-                    tenant_id=tenant_id, account_id=account_id, binding=binding, payload=payload, session=session
+                    session=session, tenant_id=tenant_id, account_id=account_id, binding=binding, payload=payload
                 )
             case ComposerSaveStrategy.SAVE_AS_NEW_VERSION:
                 binding = cls._save_as_new_version(
-                    tenant_id=tenant_id, account_id=account_id, binding=binding, payload=payload, session=session
+                    session=session, tenant_id=tenant_id, account_id=account_id, binding=binding, payload=payload
                 )
             case ComposerSaveStrategy.SAVE_AS_NEW_AGENT:
                 binding = cls._save_as_new_agent(
+                    session=session,
                     tenant_id=tenant_id,
                     app_id=app_id,
                     workflow_id=workflow.id,
@@ -228,34 +253,48 @@ class AgentComposerService:
                     account_id=account_id,
                     binding=binding,
                     payload=payload,
-                    session=session,
                 )
             case ComposerSaveStrategy.SAVE_TO_ROSTER:
                 binding = cls._save_to_roster(
-                    tenant_id=tenant_id, account_id=account_id, binding=binding, payload=payload, session=session
+                    session=session,
+                    tenant_id=tenant_id,
+                    account_id=account_id,
+                    binding=binding,
+                    payload=payload,
                 )
 
-        session.commit()
-        agent = cls._get_agent_if_present(tenant_id=tenant_id, agent_id=binding.agent_id, session=session)
+        session.flush()
+        agent = cls._get_agent_if_present(session=session, tenant_id=tenant_id, agent_id=binding.agent_id)
         version_id = (
             agent.active_config_snapshot_id
             if agent and binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT
             else binding.current_snapshot_id
         )
         version = cls._get_version_if_present(
+            session=session,
             tenant_id=tenant_id,
             agent_id=agent.id if agent else None,
             version_id=version_id,
-            session=session,
         )
         state = cls._serialize_workflow_state(
-            binding=binding, agent=agent, version=version, account_id=account_id, session=session
+            session=session, binding=binding, agent=agent, version=version, account_id=account_id
         )
         state["validation"] = cls.collect_validation_findings(
+            session=session,
             tenant_id=tenant_id,
             payload=payload,
             agent_id=binding.agent_id,
-            session=session,
+        )
+        session.commit()
+        binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+            tenant_id=tenant_id,
+            agent_ids=retirement_candidates,
+            account_id=account_id,
+        )
+        enqueue_agent_resource_collection(
+            tenant_id=tenant_id,
+            binding_ids=binding_ids,
+            home_snapshot_ids=home_snapshot_ids,
         )
         return state
 
@@ -263,6 +302,7 @@ class AgentComposerService:
     def copy_workflow_composer_from_roster(
         cls,
         *,
+        session: Session,
         tenant_id: str,
         app_id: str,
         node_id: str,
@@ -270,23 +310,24 @@ class AgentComposerService:
         source_agent_id: str,
         source_snapshot_id: str | None = None,
         idempotency_key: str | None = None,
-        session: Session,
     ) -> dict[str, Any]:
-        workflow = cls._get_draft_workflow(tenant_id=tenant_id, app_id=app_id, session=session)
+        """Copy a callable roster Agent snapshot into a workflow-owned inline Agent."""
+
+        workflow = cls._get_draft_workflow(session=session, tenant_id=tenant_id, app_id=app_id)
         binding = cls._require_binding(
-            cls._get_workflow_binding(tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id, session=session)
+            cls._get_workflow_binding(session=session, tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id)
         )
 
         if binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT and idempotency_key:
-            agent = cls._get_agent_if_present(tenant_id=tenant_id, agent_id=binding.agent_id, session=session)
+            agent = cls._get_agent_if_present(session=session, tenant_id=tenant_id, agent_id=binding.agent_id)
             version = cls._get_version_if_present(
+                session=session,
                 tenant_id=tenant_id,
                 agent_id=agent.id if agent else None,
                 version_id=binding.current_snapshot_id,
-                session=session,
             )
             return cls._serialize_workflow_state(
-                binding=binding, agent=agent, version=version, account_id=account_id, session=session
+                session=session, binding=binding, agent=agent, version=version, account_id=account_id
             )
 
         if binding.binding_type != WorkflowAgentBindingType.ROSTER_AGENT:
@@ -294,20 +335,23 @@ class AgentComposerService:
         if binding.agent_id != source_agent_id:
             raise InvalidComposerConfigError("Source agent does not match the current workflow node binding.")
 
-        source_agent = cls._require_agent(tenant_id=tenant_id, agent_id=source_agent_id, session=session)
+        source_agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=source_agent_id)
         if source_agent.scope != AgentScope.ROSTER or source_agent.status != AgentStatus.ACTIVE:
             raise InvalidComposerConfigError("Source agent must be an active roster agent.")
+        if not agent_has_workflow_callable_active_snapshot(session=session, agent=source_agent):
+            raise InvalidComposerConfigError("Source agent must have a published config snapshot.")
         source_version = cls._require_version(
+            session=session,
             tenant_id=tenant_id,
             agent_id=source_agent.id,
             version_id=source_agent.active_config_snapshot_id,
-            session=session,
         )
         if source_snapshot_id and source_snapshot_id != source_version.id:
             raise AgentVersionConflictError()
 
         agent_soul = AgentSoulConfig.model_validate(source_version.config_snapshot_dict)
         inline_agent = cls._create_workflow_only_agent(
+            session=session,
             tenant_id=tenant_id,
             app_id=app_id,
             workflow_id=workflow.id,
@@ -320,16 +364,15 @@ class AgentComposerService:
             icon_type=source_agent.icon_type,
             icon=source_agent.icon,
             icon_background=source_agent.icon_background,
-            session=session,
         )
         cls._copy_agent_drive_rows(
+            session=session,
             tenant_id=tenant_id,
             source_agent_id=source_agent.id,
             target_agent_id=inline_agent.id,
             account_id=account_id,
             agent_soul=agent_soul,
             node_job=WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict),
-            session=session,
         )
 
         binding.binding_type = WorkflowAgentBindingType.INLINE_AGENT
@@ -337,37 +380,36 @@ class AgentComposerService:
         binding.current_snapshot_id = inline_agent.active_config_snapshot_id
         binding.updated_by = account_id
         session.flush()
-        session.commit()
 
         version = cls._require_version(
+            session=session,
             tenant_id=tenant_id,
             agent_id=inline_agent.id,
             version_id=inline_agent.active_config_snapshot_id,
-            session=session,
         )
         return cls._serialize_workflow_state(
-            binding=binding, agent=inline_agent, version=version, account_id=account_id, session=session
+            session=session, binding=binding, agent=inline_agent, version=version, account_id=account_id
         )
 
     @classmethod
-    def load_agent_app_composer(cls, *, tenant_id: str, app_id: str, session: Session) -> dict[str, Any]:
-        agent = cls._require_agent_app_agent(tenant_id=tenant_id, app_id=app_id, session=session)
-        return cls._load_agent_composer_for_agent(tenant_id=tenant_id, agent=agent, session=session)
+    def load_agent_app_composer(cls, *, session: Session, tenant_id: str, app_id: str) -> dict[str, Any]:
+        agent = cls._require_agent_app_agent(session=session, tenant_id=tenant_id, app_id=app_id)
+        return cls._load_agent_composer_for_agent(session=session, tenant_id=tenant_id, agent=agent)
 
     @classmethod
-    def load_agent_composer(cls, *, tenant_id: str, agent_id: str, session: Session) -> dict[str, Any]:
-        agent = cls._require_agent(tenant_id=tenant_id, agent_id=agent_id, session=session)
-        return cls._load_agent_composer_for_agent(tenant_id=tenant_id, agent=agent, session=session)
+    def load_agent_composer(cls, *, session: Session, tenant_id: str, agent_id: str) -> dict[str, Any]:
+        agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
+        return cls._load_agent_composer_for_agent(session=session, tenant_id=tenant_id, agent=agent)
 
     @classmethod
     def load_agent_soul_for_debug(
         cls,
         *,
+        session: Session,
         tenant_id: str,
         agent_id: str,
         account_id: str,
         draft_type: AgentConfigDraftType,
-        session: Session,
     ) -> AgentSoulConfig:
         """Load the same normal or account-owned build draft used by Agent debug chat."""
         if draft_type == AgentConfigDraftType.DEBUG_BUILD:
@@ -386,22 +428,21 @@ class AgentComposerService:
         return AgentSoulConfig.model_validate(state["agent_soul"])
 
     @classmethod
-    def _load_agent_composer_for_agent(cls, *, tenant_id: str, agent: Agent, session: Session) -> dict[str, Any]:
-        draft = cls._get_or_create_agent_draft(
+    def _load_agent_composer_for_agent(cls, *, session: Session, tenant_id: str, agent: Agent) -> dict[str, Any]:
+        draft = cls.get_or_create_normal_agent_draft(
+            session=session,
             tenant_id=tenant_id,
             agent=agent,
-            draft_type=AgentConfigDraftType.DRAFT,
-            account_id=None,
             created_by=agent.updated_by or agent.created_by,
-            session=session,
         )
         version = cls._get_version_if_present(
-            tenant_id=tenant_id, agent_id=agent.id, version_id=agent.active_config_snapshot_id, session=session
+            session=session, tenant_id=tenant_id, agent_id=agent.id, version_id=agent.active_config_snapshot_id
         )
         return {
             "variant": ComposerVariant.AGENT_APP.value,
             "agent": cls._serialize_agent(agent),
             "active_config_snapshot": cls._serialize_version(version),
+            "active_config_is_published": bool(agent.active_config_snapshot_id and agent.active_config_is_published),
             "draft": cls._serialize_draft(draft),
             "agent_soul": draft.config_snapshot_dict,
             "save_options": [ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION.value],
@@ -415,11 +456,32 @@ class AgentComposerService:
     def save_agent_app_composer(
         cls,
         *,
+        session: Session,
         tenant_id: str,
         app_id: str,
         account_id: str,
         payload: ComposerSavePayload,
+    ) -> dict[str, Any]:
+        try:
+            return cls._save_agent_app_composer_impl(
+                session=session,
+                tenant_id=tenant_id,
+                app_id=app_id,
+                account_id=account_id,
+                payload=payload,
+            )
+        except IntegrityError as exc:
+            raise AgentNameConflictError() from exc
+
+    @classmethod
+    def _save_agent_app_composer_impl(
+        cls,
+        *,
         session: Session,
+        tenant_id: str,
+        app_id: str,
+        account_id: str,
+        payload: ComposerSavePayload,
     ) -> dict[str, Any]:
         if payload.variant != ComposerVariant.AGENT_APP:
             raise ValueError("Agent App composer endpoint only accepts agent_app variant")
@@ -432,7 +494,7 @@ class AgentComposerService:
         _backfill_cli_tool_ids(payload.agent_soul)
         _validate_composer_payload_for_strategy(payload)
 
-        agent = cls._get_agent_app_agent(tenant_id=tenant_id, app_id=app_id, session=session)
+        agent = cls._get_agent_app_agent(session=session, tenant_id=tenant_id, app_id=app_id)
         if not agent:
             agent = Agent(
                 tenant_id=tenant_id,
@@ -448,28 +510,31 @@ class AgentComposerService:
                 updated_by=account_id,
             )
             session.add(agent)
-            try:
-                session.flush()
-            except IntegrityError as exc:
-                session.rollback()
-                raise AgentNameConflictError() from exc
+            session.flush()
+            initial_version = cls._create_config_version(
+                session=session,
+                tenant_id=tenant_id,
+                agent_id=agent.id,
+                account_id=account_id,
+                agent_soul=AgentSoulConfig(),
+                operation=AgentConfigRevisionOperation.CREATE_VERSION,
+                version_note=None,
+                home_snapshot_id=None,
+            )
+            agent.active_config_snapshot_id = initial_version.id
+            agent.active_config_has_model = False
+            agent.active_config_is_published = False
         return cls._save_agent_composer_for_agent(
+            session=session,
             tenant_id=tenant_id,
             agent=agent,
             account_id=account_id,
             payload=payload,
-            session=session,
         )
 
     @classmethod
     def save_agent_composer(
-        cls,
-        *,
-        tenant_id: str,
-        agent_id: str,
-        account_id: str,
-        payload: ComposerSavePayload,
-        session: Session,
+        cls, *, session: Session, tenant_id: str, agent_id: str, account_id: str, payload: ComposerSavePayload
     ) -> dict[str, Any]:
         if payload.variant != ComposerVariant.AGENT_APP:
             raise ValueError("Agent composer endpoint only accepts agent_app variant")
@@ -481,51 +546,46 @@ class AgentComposerService:
             raise ValueError("agent_soul is required")
         _backfill_cli_tool_ids(payload.agent_soul)
         _validate_composer_payload_for_strategy(payload)
-        agent = cls._require_agent(tenant_id=tenant_id, agent_id=agent_id, session=session)
+        agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
         return cls._save_agent_composer_for_agent(
+            session=session,
             tenant_id=tenant_id,
             agent=agent,
             account_id=account_id,
             payload=payload,
-            session=session,
         )
 
     @classmethod
     def _save_agent_composer_for_agent(
-        cls,
-        *,
-        tenant_id: str,
-        agent: Agent,
-        account_id: str,
-        payload: ComposerSavePayload,
-        session: Session,
+        cls, *, session: Session, tenant_id: str, agent: Agent, account_id: str, payload: ComposerSavePayload
     ) -> dict[str, Any]:
         if payload.agent_soul is None:
             raise ValueError("agent_soul is required")
-        cls._save_agent_draft(
+        draft = cls._save_agent_draft(
+            session=session,
             tenant_id=tenant_id,
             agent=agent,
             draft_type=AgentConfigDraftType.DRAFT,
             account_id=None,
             agent_soul=payload.agent_soul,
             account_id_for_audit=account_id,
-            session=session,
         )
         agent.updated_by = account_id
         agent.active_config_is_published = cls._agent_soul_matches_active_config(
+            session=session,
             tenant_id=tenant_id,
             agent=agent,
             agent_soul=payload.agent_soul,
-            session=session,
+            home_snapshot_id=draft.home_snapshot_id,
         )
 
-        session.commit()
-        state = cls.load_agent_composer(tenant_id=tenant_id, agent_id=agent.id, session=session)
+        session.flush()
+        state = cls.load_agent_composer(session=session, tenant_id=tenant_id, agent_id=agent.id)
         state["validation"] = cls.collect_validation_findings(
+            session=session,
             tenant_id=tenant_id,
             payload=payload,
             agent_id=agent.id,
-            session=session,
         )
         return state
 
@@ -533,72 +593,45 @@ class AgentComposerService:
     def _agent_soul_matches_active_config(
         cls,
         *,
+        session: Session,
         tenant_id: str,
         agent: Agent,
         agent_soul: AgentSoulConfig,
-        session: Session,
+        home_snapshot_id: str | None,
     ) -> bool:
         if not agent.active_config_snapshot_id:
             return False
 
         active_version = cls._get_version_if_present(
+            session=session,
             tenant_id=tenant_id,
             agent_id=agent.id,
             version_id=agent.active_config_snapshot_id,
-            session=session,
         )
         if not active_version:
             return False
-        if agent.source in APP_BACKED_AGENT_SOURCES and not cls._has_publish_visible_revision(
-            tenant_id=tenant_id,
-            agent_id=agent.id,
-            snapshot_id=agent.active_config_snapshot_id,
-        ):
+        if not agent_has_workflow_callable_active_snapshot(session=session, agent=agent):
             return False
 
-        return _agent_soul_config_json(agent_soul) == _agent_soul_config_json(active_version.config_snapshot_dict)
-
-    @classmethod
-    def _has_publish_visible_revision(cls, *, tenant_id: str, agent_id: str, snapshot_id: str) -> bool:
-        revisions = db.session.scalars(
-            select(AgentConfigRevision.operation).where(
-                AgentConfigRevision.tenant_id == tenant_id,
-                AgentConfigRevision.agent_id == agent_id,
-                AgentConfigRevision.current_snapshot_id == snapshot_id,
-            )
-        ).all()
-
-        return any(
-            operation
-            in {
-                AgentConfigRevisionOperation.PUBLISH_DRAFT,
-                AgentConfigRevisionOperation.SAVE_NEW_VERSION,
-                AgentConfigRevisionOperation.SAVE_TO_ROSTER,
-                AgentConfigRevisionOperation.RESTORE_VERSION,
-            }
-            for operation in revisions
-        )
+        return home_snapshot_id == active_version.home_snapshot_id and _agent_soul_config_json(
+            agent_soul
+        ) == _agent_soul_config_json(active_version.config_snapshot_dict)
 
     @classmethod
     def publish_agent_app_draft(
-        cls,
-        *,
-        tenant_id: str,
-        agent_id: str,
-        account_id: str,
-        version_note: str | None = None,
-        session: Session,
+        cls, *, session: Session, tenant_id: str, agent_id: str, account_id: str, version_note: str | None = None
     ) -> dict[str, Any]:
-        agent = cls._require_agent(tenant_id=tenant_id, agent_id=agent_id, session=session)
+        agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
         if agent.scope != AgentScope.ROSTER or agent.source not in APP_BACKED_AGENT_SOURCES:
             raise AgentNotFoundError()
+        access_was_ready = agent_has_workflow_callable_active_snapshot(session=session, agent=agent)
         draft = cls._get_or_create_agent_draft(
+            session=session,
             tenant_id=tenant_id,
             agent=agent,
             draft_type=AgentConfigDraftType.DRAFT,
             account_id=None,
             created_by=account_id,
-            session=session,
         )
         agent_soul = AgentSoulConfig.model_validate(draft.config_snapshot_dict)
         ComposerConfigValidator.validate_publish_payload(
@@ -611,8 +644,14 @@ class AgentComposerService:
         )
         if not agent_soul_has_model(agent_soul):
             raise AgentModelNotConfiguredError()
-        cls.validate_knowledge_datasets(tenant_id=tenant_id, agent_soul=agent_soul)
+        cls.validate_knowledge_datasets(session=session, tenant_id=tenant_id, agent_soul=agent_soul)
+        validate_home_snapshot_binding(
+            session=session,
+            agent=agent,
+            home_snapshot_id=draft.home_snapshot_id,
+        )
         version = cls._create_config_version(
+            session=session,
             tenant_id=tenant_id,
             agent_id=agent.id,
             account_id=account_id,
@@ -620,7 +659,7 @@ class AgentComposerService:
             operation=AgentConfigRevisionOperation.PUBLISH_DRAFT,
             version_note=version_note,
             previous_snapshot_id=agent.active_config_snapshot_id,
-            session=session,
+            home_snapshot_id=draft.home_snapshot_id,
         )
         agent.active_config_snapshot_id = version.id
         agent.active_config_has_model = agent_soul_has_model(agent_soul)
@@ -628,7 +667,29 @@ class AgentComposerService:
         agent.updated_by = account_id
         draft.base_snapshot_id = version.id
         draft.updated_by = account_id
-        session.commit()
+        if not access_was_ready:
+            if not agent.app_id:
+                raise AgentNotFoundError()
+            app = session.scalar(
+                select(App)
+                .where(
+                    App.tenant_id == tenant_id,
+                    App.id == agent.app_id,
+                )
+                .limit(1)
+            )
+            if app is None:
+                raise AgentNotFoundError()
+            app.enable_site = True
+            app.enable_api = True
+            app.updated_by = account_id
+        session.flush()
+        register_new_agent_beta_publish_after_commit(
+            session=session,
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+            snapshot_id=version.id,
+        )
         return {
             "result": "success",
             "active_config_snapshot_id": version.id,
@@ -638,32 +699,65 @@ class AgentComposerService:
 
     @classmethod
     def checkout_agent_app_build_draft(
-        cls,
-        *,
-        tenant_id: str,
-        agent_id: str,
-        account_id: str,
-        force: bool = False,
-        session: Session,
+        cls, *, session: Session, tenant_id: str, agent_id: str, account_id: str, force: bool = False
     ) -> dict[str, Any]:
-        agent = cls._require_agent(tenant_id=tenant_id, agent_id=agent_id, session=session)
+        try:
+            result, retired_binding_id = cls._checkout_agent_app_build_draft_in_transaction(
+                session=session,
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                account_id=account_id,
+                force=force,
+            )
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+        if retired_binding_id is not None:
+            enqueue_agent_resource_collection(
+                tenant_id=tenant_id,
+                binding_ids=(retired_binding_id,),
+            )
+        return result
+
+    @classmethod
+    def _checkout_agent_app_build_draft_in_transaction(
+        cls, *, session: Session, tenant_id: str, agent_id: str, account_id: str, force: bool
+    ) -> tuple[dict[str, Any], str | None]:
+        agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
         normal_draft = cls._get_or_create_agent_draft(
+            session=session,
             tenant_id=tenant_id,
             agent=agent,
             draft_type=AgentConfigDraftType.DRAFT,
             account_id=None,
             created_by=account_id,
-            session=session,
         )
         build_draft = cls._get_agent_draft(
+            session=session,
             tenant_id=tenant_id,
             agent_id=agent.id,
             draft_type=AgentConfigDraftType.DEBUG_BUILD,
             account_id=account_id,
-            session=session,
         )
         if build_draft is not None and not force:
-            return cls._serialize_build_draft_state(build_draft)
+            return cls._serialize_build_draft_state(build_draft), None
+        retired_binding_id: str | None = None
+        if build_draft is not None and build_draft.agent_workspace_binding_id is not None:
+            cls._validate_active_build_draft_binding(
+                session=session,
+                tenant_id=tenant_id,
+                agent=agent,
+                build_draft=build_draft,
+            )
+            retired_binding_id = AgentWorkspaceService.retire_binding(
+                session=session,
+                tenant_id=tenant_id,
+                binding_id=build_draft.agent_workspace_binding_id,
+            )
+            if retired_binding_id is None:
+                raise AgentBuildSandboxNotFoundError()
+            build_draft.agent_workspace_binding_id = None
         if build_draft is None:
             build_draft = AgentConfigDraft(
                 tenant_id=tenant_id,
@@ -675,21 +769,55 @@ class AgentComposerService:
             )
             session.add(build_draft)
         build_draft.base_snapshot_id = normal_draft.base_snapshot_id
+        build_draft.home_snapshot_id = normal_draft.home_snapshot_id
         build_draft.config_snapshot = AgentSoulConfig.model_validate(normal_draft.config_snapshot_dict)
         build_draft.updated_by = account_id
-        session.commit()
-        return cls._serialize_build_draft_state(build_draft)
+        session.flush()
+        return cls._serialize_build_draft_state(build_draft), retired_binding_id
+
+    @classmethod
+    def _validate_active_build_draft_binding(
+        cls,
+        *,
+        session: Session,
+        tenant_id: str,
+        agent: Agent,
+        build_draft: AgentConfigDraft,
+    ) -> None:
+        binding_id = build_draft.agent_workspace_binding_id
+        runtime_app_id = AgentRosterService.runtime_backing_app_id(agent)
+        if binding_id is None or runtime_app_id is None:
+            raise AgentBuildSandboxNotFoundError()
+        binding = AgentWorkspaceService.get_active_binding(
+            session=session,
+            tenant_id=tenant_id,
+            binding_id=binding_id,
+            expected_owner_scope=WorkspaceOwnerScope(
+                tenant_id=tenant_id,
+                app_id=runtime_app_id,
+                owner_type=AgentWorkspaceOwnerType.BUILD_DRAFT,
+                owner_id=build_draft.id,
+            ),
+        )
+        if binding is None or binding.agent_id != agent.id:
+            raise AgentBuildSandboxNotFoundError()
+        AgentWorkspaceService.validate_binding_generation(
+            binding,
+            base_home_snapshot_id=build_draft.home_snapshot_id,
+            agent_config_version_id=build_draft.id,
+            agent_config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
+        )
 
     @classmethod
     def load_agent_app_build_draft(
-        cls, *, tenant_id: str, agent_id: str, account_id: str, session: Session
+        cls, *, session: Session, tenant_id: str, agent_id: str, account_id: str
     ) -> dict[str, Any]:
         build_draft = cls._get_agent_draft(
+            session=session,
             tenant_id=tenant_id,
             agent_id=agent_id,
             draft_type=AgentConfigDraftType.DEBUG_BUILD,
             account_id=account_id,
-            session=session,
         )
         if build_draft is None:
             raise AgentVersionNotFoundError()
@@ -697,47 +825,80 @@ class AgentComposerService:
 
     @classmethod
     def save_agent_app_build_draft(
-        cls,
-        *,
-        tenant_id: str,
-        agent_id: str,
-        account_id: str,
-        payload: ComposerSavePayload,
-        session: Session,
+        cls, *, session: Session, tenant_id: str, agent_id: str, account_id: str, payload: ComposerSavePayload
     ) -> dict[str, Any]:
         if payload.agent_soul is None:
             raise ValueError("agent_soul is required")
         _backfill_cli_tool_ids(payload.agent_soul)
         ComposerConfigValidator.validate_draft_save_payload(payload)
-        agent = cls._require_agent(tenant_id=tenant_id, agent_id=agent_id, session=session)
+        agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
         build_draft = cls._save_agent_draft(
+            session=session,
             tenant_id=tenant_id,
             agent=agent,
             draft_type=AgentConfigDraftType.DEBUG_BUILD,
             account_id=account_id,
             agent_soul=payload.agent_soul,
             account_id_for_audit=account_id,
-            session=session,
         )
-        session.commit()
+        session.flush()
         return cls._serialize_build_draft_state(build_draft)
 
     @classmethod
     def apply_agent_app_build_draft(
-        cls, *, tenant_id: str, agent_id: str, account_id: str, session: Session
+        cls, *, session: Session, tenant_id: str, agent_id: str, account_id: str
     ) -> dict[str, Any]:
-        agent = cls._require_agent(tenant_id=tenant_id, agent_id=agent_id, session=session)
+        try:
+            result, retired_binding_ids = cls._apply_agent_app_build_draft_in_transaction(
+                session=session,
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                account_id=account_id,
+            )
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+        enqueue_agent_resource_collection(tenant_id=tenant_id, binding_ids=retired_binding_ids)
+        return result
+
+    @classmethod
+    def _apply_agent_app_build_draft_in_transaction(
+        cls,
+        *,
+        session: Session,
+        tenant_id: str,
+        agent_id: str,
+        account_id: str,
+    ) -> tuple[dict[str, Any], list[str]]:
+        agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
         build_draft = cls._get_agent_draft(
+            session=session,
             tenant_id=tenant_id,
             agent_id=agent.id,
             draft_type=AgentConfigDraftType.DEBUG_BUILD,
             account_id=account_id,
-            session=session,
         )
         if build_draft is None:
             raise AgentVersionNotFoundError()
         applied_agent_soul = AgentSoulConfig.model_validate(build_draft.config_snapshot_dict)
+        ComposerConfigValidator.validate_publish_payload(
+            ComposerSavePayload(
+                variant=ComposerVariant.AGENT_APP,
+                agent_soul=applied_agent_soul,
+                save_strategy=ComposerSaveStrategy.SAVE_AS_NEW_VERSION,
+            )
+        )
+        cls.validate_knowledge_datasets(session=session, tenant_id=tenant_id, agent_soul=applied_agent_soul)
+        source_binding_id = build_draft.agent_workspace_binding_id
+        if source_binding_id is None:
+            raise AgentBuildSandboxNotFoundError()
+        home_snapshot = AgentHomeSnapshotService.create_for_build_apply(
+            session=session,
+            build_draft=build_draft,
+        )
         normal_draft = cls._save_agent_draft(
+            session=session,
             tenant_id=tenant_id,
             agent=agent,
             draft_type=AgentConfigDraftType.DRAFT,
@@ -745,43 +906,155 @@ class AgentComposerService:
             agent_soul=applied_agent_soul,
             account_id_for_audit=account_id,
             base_snapshot_id=build_draft.base_snapshot_id,
-            session=session,
         )
+        retired_binding_ids = cls._retire_normal_preview_bindings(
+            session=session,
+            tenant_id=tenant_id,
+            agent=agent,
+            normal_draft=normal_draft,
+        )
+        normal_draft.home_snapshot_id = home_snapshot.id
         agent.active_config_is_published = cls._agent_soul_matches_active_config(
+            session=session,
             tenant_id=tenant_id,
             agent=agent,
             agent_soul=applied_agent_soul,
-            session=session,
+            home_snapshot_id=home_snapshot.id,
         )
         agent.updated_by = account_id
+        retired_binding_id = AgentWorkspaceService.retire_binding(
+            session=session,
+            tenant_id=tenant_id,
+            binding_id=source_binding_id,
+        )
+        if retired_binding_id is None:
+            raise AgentBuildSandboxNotFoundError()
+        retired_binding_ids.append(source_binding_id)
         session.delete(build_draft)
-        session.commit()
-        return {"result": "success", "draft": cls._serialize_draft(normal_draft)}
+        return {"result": "success", "draft": cls._serialize_draft(normal_draft)}, retired_binding_ids
+
+    @classmethod
+    def _retire_normal_preview_bindings(
+        cls,
+        *,
+        session: Session,
+        tenant_id: str,
+        agent: Agent,
+        normal_draft: AgentConfigDraft,
+    ) -> list[str]:
+        """Retire Preview participants before Build Apply replaces the shared Draft Home."""
+
+        mappings = session.scalars(
+            select(AgentDebugConversation).where(
+                AgentDebugConversation.tenant_id == tenant_id,
+                AgentDebugConversation.agent_id == agent.id,
+                AgentDebugConversation.draft_type == AgentConfigDraftType.DRAFT,
+            )
+        ).all()
+        retired_binding_ids: list[str] = []
+        for mapping in mappings:
+            conversation = session.scalar(
+                select(Conversation).where(
+                    Conversation.id == mapping.conversation_id,
+                    Conversation.app_id == mapping.app_id,
+                    Conversation.is_deleted.is_(False),
+                )
+            )
+            if conversation is None or conversation.agent_workspace_binding_id is None:
+                continue
+            binding_id = conversation.agent_workspace_binding_id
+            binding = AgentWorkspaceService.get_active_binding(
+                session=session,
+                tenant_id=tenant_id,
+                binding_id=binding_id,
+                expected_owner_scope=WorkspaceOwnerScope(
+                    tenant_id=tenant_id,
+                    app_id=mapping.app_id,
+                    owner_type=AgentWorkspaceOwnerType.CONVERSATION,
+                    owner_id=conversation.id,
+                ),
+            )
+            if binding is None or binding.agent_id != agent.id:
+                raise AgentWorkspaceNotFoundError("Agent Preview participant Binding is unavailable")
+            AgentWorkspaceService.validate_binding_generation(
+                binding,
+                base_home_snapshot_id=normal_draft.home_snapshot_id,
+                agent_config_version_id=normal_draft.id,
+                agent_config_version_kind=AgentConfigVersionKind.DRAFT,
+            )
+            retired_binding_id = AgentWorkspaceService.retire_binding(
+                session=session,
+                tenant_id=tenant_id,
+                binding_id=binding_id,
+            )
+            if retired_binding_id is None:
+                raise AgentWorkspaceNotFoundError("Agent Preview participant Binding is unavailable")
+            conversation.agent_workspace_binding_id = None
+            retired_binding_ids.append(binding_id)
+        return retired_binding_ids
 
     @classmethod
     def discard_agent_app_build_draft(
-        cls, *, tenant_id: str, agent_id: str, account_id: str, session: Session
+        cls, *, session: Session, tenant_id: str, agent_id: str, account_id: str
     ) -> dict[str, Any]:
+        try:
+            result, retired_binding_id = cls._discard_agent_app_build_draft_in_transaction(
+                session=session,
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                account_id=account_id,
+            )
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+        if retired_binding_id is not None:
+            enqueue_agent_resource_collection(
+                tenant_id=tenant_id,
+                binding_ids=(retired_binding_id,),
+            )
+        return result
+
+    @classmethod
+    def _discard_agent_app_build_draft_in_transaction(
+        cls, *, session: Session, tenant_id: str, agent_id: str, account_id: str
+    ) -> tuple[dict[str, Any], str | None]:
+        agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
         build_draft = cls._get_agent_draft(
+            session=session,
             tenant_id=tenant_id,
-            agent_id=agent_id,
+            agent_id=agent.id,
             draft_type=AgentConfigDraftType.DEBUG_BUILD,
             account_id=account_id,
-            session=session,
         )
-        if build_draft is not None:
-            session.delete(build_draft)
-            session.commit()
-        return {"result": "success"}
+        if build_draft is None:
+            return {"result": "success"}, None
+        retired_binding_id: str | None = None
+        if build_draft.agent_workspace_binding_id is not None:
+            cls._validate_active_build_draft_binding(
+                session=session,
+                tenant_id=tenant_id,
+                agent=agent,
+                build_draft=build_draft,
+            )
+            retired_binding_id = AgentWorkspaceService.retire_binding(
+                session=session,
+                tenant_id=tenant_id,
+                binding_id=build_draft.agent_workspace_binding_id,
+            )
+            if retired_binding_id is None:
+                raise AgentBuildSandboxNotFoundError()
+        session.delete(build_draft)
+        return {"result": "success"}, retired_binding_id
 
     @classmethod
     def collect_validation_findings(
         cls,
         *,
+        session: Session,
         tenant_id: str,
         payload: ComposerSavePayload,
         agent_id: str | None = None,
-        session: Session,
     ) -> dict[str, Any]:
         """ENG-617 soft findings, with DB-backed dataset and drive mention checks."""
         existing_knowledge_set_ids = (
@@ -796,16 +1069,18 @@ class AgentComposerService:
         if agent_id and payload.agent_soul is not None:
             findings["warnings"].extend(
                 cls._drive_mention_findings(
+                    session=session,
                     tenant_id=tenant_id,
                     agent_id=agent_id,
                     prompt=payload.agent_soul.prompt.system_prompt,
-                    session=session,
                 )
             )
         return findings
 
     @classmethod
-    def validate_knowledge_datasets(cls, *, tenant_id: str, agent_soul: AgentSoulConfig | None) -> None:
+    def validate_knowledge_datasets(
+        cls, *, session: Session, tenant_id: str, agent_soul: AgentSoulConfig | None
+    ) -> None:
         """Hard-validate tenant-scoped knowledge set datasets before saving.
 
         DTO validators own set shape, duplicate set ids/names, and duplicate
@@ -815,7 +1090,9 @@ class AgentComposerService:
         """
         if agent_soul is None:
             return
-        missing_ids = list_missing_tenant_knowledge_dataset_ids(tenant_id=tenant_id, agent_soul=agent_soul)
+        missing_ids = list_missing_tenant_knowledge_dataset_ids(
+            session=session, tenant_id=tenant_id, agent_soul=agent_soul
+        )
         if missing_ids:
             raise InvalidComposerConfigError(
                 "knowledge_dataset_not_found: knowledge sets reference missing or out-of-scope datasets: "
@@ -823,7 +1100,7 @@ class AgentComposerService:
             )
 
     @classmethod
-    def resolve_bound_agent_id(cls, *, tenant_id: str, app_id: str, session: Session) -> str | None:
+    def resolve_bound_agent_id(cls, *, session: Session, tenant_id: str, app_id: str) -> str | None:
         """The Agent App's bound roster agent id, if any (validate-endpoint context)."""
         return session.scalar(
             select(Agent.id)
@@ -839,15 +1116,15 @@ class AgentComposerService:
 
     @classmethod
     def resolve_workflow_node_agent_id(
-        cls, *, tenant_id: str, app_id: str, node_id: str, session: Session
+        cls, *, session: Session, tenant_id: str, app_id: str, node_id: str
     ) -> str | None:
         """The draft workflow node binding's agent id, if any (validate-endpoint context)."""
         try:
-            workflow = cls._get_draft_workflow(tenant_id=tenant_id, app_id=app_id, session=session)
+            workflow = cls._get_draft_workflow(session=session, tenant_id=tenant_id, app_id=app_id)
         except ValueError:
             return None
         binding = cls._get_workflow_binding(
-            tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id, session=session
+            session=session, tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id
         )
         return binding.agent_id if binding else None
 
@@ -855,10 +1132,10 @@ class AgentComposerService:
     def _drive_mention_findings(
         cls,
         *,
+        session: Session,
         tenant_id: str,
         agent_id: str,
         prompt: str,
-        session: Session,
     ) -> list[dict[str, str | None]]:
         """Soft warnings for missing drive-backed prompt mentions."""
         from services.agent.prompt_mentions import MentionKind, parse_prompt_mentions
@@ -901,19 +1178,13 @@ class AgentComposerService:
 
     @classmethod
     def get_workflow_candidates(
-        cls,
-        *,
-        tenant_id: str,
-        app_id: str,
-        node_id: str,
-        user_id: str,
-        session: Session,
+        cls, *, session: Session, tenant_id: str, app_id: str, node_id: str, user_id: str
     ) -> dict[str, Any]:
         """Slash-menu data source for the workflow Agent node composer (ENG-615)."""
         from services.agent.composer_candidates import previous_node_output_candidates, soul_candidates
 
         try:
-            workflow = cls._get_draft_workflow(tenant_id=tenant_id, app_id=app_id, session=session)
+            workflow = cls._get_draft_workflow(session=session, tenant_id=tenant_id, app_id=app_id)
         except ValueError:
             workflow = None
 
@@ -921,37 +1192,35 @@ class AgentComposerService:
         agent_soul: AgentSoulConfig | None = None
         if workflow is not None:
             binding = cls._get_workflow_binding(
-                tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id, session=session
+                session=session, tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id
             )
             if binding is not None:
                 node_job = cls._parse_node_job(binding)
-                agent_soul = cls._load_binding_soul(tenant_id=tenant_id, binding=binding, session=session)
+                agent_soul = cls._load_binding_soul(session=session, tenant_id=tenant_id, binding=binding)
 
         truncated = False
         previous_outputs: list[dict[str, Any]] = []
         if workflow is not None:
-            draft_variable_session = cls._draft_variable_session()
-            try:
-                previous_outputs, outputs_truncated = previous_node_output_candidates(
-                    graph=workflow.graph_dict,
-                    node_id=node_id,
-                    declared_outputs_loader=lambda nid: cls._binding_declared_outputs(
-                        tenant_id=tenant_id, workflow_id=workflow.id, node_id=nid, session=session
-                    ),
-                    draft_variables_loader=lambda nid: cls._draft_node_variables(
-                        session=draft_variable_session, app_id=app_id, node_id=nid, user_id=user_id
-                    ),
-                    system_variables_loader=lambda: cls._draft_system_variables(
-                        session=draft_variable_session, app_id=app_id, user_id=user_id
-                    ),
-                )
-            finally:
-                draft_variable_session.close()
+            previous_outputs, outputs_truncated = previous_node_output_candidates(
+                graph=workflow.graph_dict,
+                node_id=node_id,
+                declared_outputs_loader=lambda nid: cls._binding_declared_outputs(
+                    session=session, tenant_id=tenant_id, workflow_id=workflow.id, node_id=nid
+                ),
+                draft_variables_loader=lambda nid: cls._draft_node_variables(
+                    session=session, app_id=app_id, node_id=nid, user_id=user_id
+                ),
+                system_variables_loader=lambda: cls._draft_system_variables(
+                    session=session, app_id=app_id, user_id=user_id
+                ),
+            )
             truncated = truncated or outputs_truncated
 
         soul_lists, soul_truncated = soul_candidates(
             agent_soul=agent_soul,
-            dataset_lookup=lambda ids: get_tenant_knowledge_dataset_rows(tenant_id=tenant_id, dataset_ids=ids),
+            dataset_lookup=lambda ids: get_tenant_knowledge_dataset_rows(
+                session=session, tenant_id=tenant_id, dataset_ids=ids
+            ),
             workspace_tools_loader=lambda: cls._workspace_dify_tools(tenant_id=tenant_id, user_id=user_id),
         )
         truncated = truncated or soul_truncated
@@ -972,15 +1241,17 @@ class AgentComposerService:
 
     @classmethod
     def get_agent_app_candidates(
-        cls, *, tenant_id: str, agent_id: str, user_id: str, session: Session
+        cls, *, session: Session, tenant_id: str, agent_id: str, user_id: str
     ) -> dict[str, Any]:
         """Slash-menu data source for the Agent App (Console) composer (ENG-615)."""
         from services.agent.composer_candidates import soul_candidates
 
-        agent_soul = cls._load_agent_soul(tenant_id=tenant_id, agent_id=agent_id, session=session)
+        agent_soul = cls._load_agent_soul(session=session, tenant_id=tenant_id, agent_id=agent_id)
         soul_lists, truncated = soul_candidates(
             agent_soul=agent_soul,
-            dataset_lookup=lambda ids: get_tenant_knowledge_dataset_rows(tenant_id=tenant_id, dataset_ids=ids),
+            dataset_lookup=lambda ids: get_tenant_knowledge_dataset_rows(
+                session=session, tenant_id=tenant_id, dataset_ids=ids
+            ),
             workspace_tools_loader=lambda: cls._workspace_dify_tools(tenant_id=tenant_id, user_id=user_id),
         )
         response = ComposerCandidatesResponse(
@@ -1003,29 +1274,29 @@ class AgentComposerService:
 
     @classmethod
     def _load_binding_soul(
-        cls, *, tenant_id: str, binding: WorkflowAgentNodeBinding, session: Session
+        cls, *, session: Session, tenant_id: str, binding: WorkflowAgentNodeBinding
     ) -> AgentSoulConfig | None:
-        agent = cls._get_agent_if_present(tenant_id=tenant_id, agent_id=binding.agent_id, session=session)
+        agent = cls._get_agent_if_present(session=session, tenant_id=tenant_id, agent_id=binding.agent_id)
         version = cls._get_version_if_present(
+            session=session,
             tenant_id=tenant_id,
             agent_id=agent.id if agent else None,
             version_id=binding.current_snapshot_id,
-            session=session,
         )
         return cls._parse_soul_snapshot(version)
 
     @classmethod
-    def _load_agent_soul(cls, *, tenant_id: str, agent_id: str, session: Session) -> AgentSoulConfig | None:
-        agent = cls._get_agent_if_present(tenant_id=tenant_id, agent_id=agent_id, session=session)
+    def _load_agent_soul(cls, *, session: Session, tenant_id: str, agent_id: str) -> AgentSoulConfig | None:
+        agent = cls._get_agent_if_present(session=session, tenant_id=tenant_id, agent_id=agent_id)
         if agent is None:
             return None
         draft = cls._get_or_create_agent_draft(
+            session=session,
             tenant_id=tenant_id,
             agent=agent,
             draft_type=AgentConfigDraftType.DRAFT,
             account_id=None,
             created_by=agent.updated_by or agent.created_by,
-            session=session,
         )
         return AgentSoulConfig.model_validate(draft.config_snapshot_dict)
 
@@ -1041,10 +1312,10 @@ class AgentComposerService:
 
     @classmethod
     def _binding_declared_outputs(
-        cls, *, tenant_id: str, workflow_id: str, node_id: str, session: Session
+        cls, *, session: Session, tenant_id: str, workflow_id: str, node_id: str
     ) -> list[DeclaredOutputConfig] | None:
         binding = cls._get_workflow_binding(
-            tenant_id=tenant_id, workflow_id=workflow_id, node_id=node_id, session=session
+            session=session, tenant_id=tenant_id, workflow_id=workflow_id, node_id=node_id
         )
         if binding is None:
             return None
@@ -1052,12 +1323,6 @@ class AgentComposerService:
         if node_job is None:
             return None
         return list(_effective_declared_outputs(node_job.declared_outputs))
-
-    @staticmethod
-    def _draft_variable_session():
-        from sqlalchemy.orm import sessionmaker
-
-        return sessionmaker(bind=db.engine, expire_on_commit=False)()
 
     @staticmethod
     def _draft_node_variables(*, session: Any, app_id: str, node_id: str, user_id: str) -> list[tuple[str, str | None]]:
@@ -1120,7 +1385,7 @@ class AgentComposerService:
         return tools
 
     @classmethod
-    def calculate_impact(cls, *, tenant_id: str, current_snapshot_id: str, session: Session) -> dict[str, Any]:
+    def calculate_impact(cls, *, session: Session, tenant_id: str, current_snapshot_id: str) -> dict[str, Any]:
         snapshot = session.scalar(
             select(AgentConfigSnapshot)
             .where(
@@ -1161,6 +1426,7 @@ class AgentComposerService:
     def _save_node_job_only(
         cls,
         *,
+        session: Session,
         tenant_id: str,
         app_id: str,
         workflow_id: str,
@@ -1168,12 +1434,12 @@ class AgentComposerService:
         account_id: str,
         binding: WorkflowAgentNodeBinding | None,
         payload: ComposerSavePayload,
-        session: Session,
     ) -> WorkflowAgentNodeBinding:
         node_job = payload.node_job or WorkflowNodeJobConfig()
         if binding:
             if cls._is_start_from_scratch_request(binding=binding, payload=payload):
                 return cls._switch_roster_binding_to_inline_agent(
+                    session=session,
                     tenant_id=tenant_id,
                     app_id=app_id,
                     workflow_id=workflow_id,
@@ -1181,25 +1447,24 @@ class AgentComposerService:
                     account_id=account_id,
                     binding=binding,
                     payload=payload,
-                    session=session,
                 )
             binding.node_job_config = node_job
             if payload.agent_soul is not None and binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT:
                 current_snapshot = cls._require_version(
+                    session=session,
                     tenant_id=tenant_id,
                     agent_id=binding.agent_id,
                     version_id=binding.current_snapshot_id,
-                    session=session,
                 )
                 version = cls._update_current_version(
+                    session=session,
                     current_snapshot=current_snapshot,
                     account_id=account_id,
                     agent_soul=payload.agent_soul,
                     operation=AgentConfigRevisionOperation.SAVE_CURRENT_VERSION,
                     version_note=payload.version_note,
-                    session=session,
                 )
-                agent = cls._require_agent(tenant_id=tenant_id, agent_id=binding.agent_id, session=session)
+                agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=binding.agent_id)
                 if agent.scope != AgentScope.WORKFLOW_ONLY:
                     raise ValueError("Inline workflow agent binding must point to a workflow-only agent")
                 agent.active_config_snapshot_id = version.id
@@ -1207,18 +1472,32 @@ class AgentComposerService:
                 agent.active_config_is_published = True
                 agent.updated_by = account_id
                 binding.current_snapshot_id = version.id
+                normal_draft = cls._get_agent_draft(
+                    session=session,
+                    tenant_id=tenant_id,
+                    agent_id=agent.id,
+                    draft_type=AgentConfigDraftType.DRAFT,
+                    account_id=None,
+                )
+                if normal_draft is not None and cls._rebase_workflow_only_normal_draft(
+                    agent=agent,
+                    draft=normal_draft,
+                    snapshot=version,
+                    updated_by=account_id,
+                ):
+                    session.flush()
             binding.updated_by = account_id
             return binding
 
         agent_soul = payload.agent_soul or AgentSoulConfig()
         agent = cls._create_workflow_only_agent(
+            session=session,
             tenant_id=tenant_id,
             app_id=app_id,
             workflow_id=workflow_id,
             node_id=node_id,
             account_id=account_id,
             agent_soul=agent_soul,
-            session=session,
         )
         binding = WorkflowAgentNodeBinding(
             tenant_id=tenant_id,
@@ -1249,6 +1528,7 @@ class AgentComposerService:
     def _switch_roster_binding_to_inline_agent(
         cls,
         *,
+        session: Session,
         tenant_id: str,
         app_id: str,
         workflow_id: str,
@@ -1256,20 +1536,19 @@ class AgentComposerService:
         account_id: str,
         binding: WorkflowAgentNodeBinding,
         payload: ComposerSavePayload,
-        session: Session,
     ) -> WorkflowAgentNodeBinding:
         if payload.binding and (payload.binding.agent_id or payload.binding.current_snapshot_id):
             raise ValueError("Start from Scratch must not provide an existing inline agent binding.")
 
         agent_soul = payload.agent_soul or AgentSoulConfig()
         agent = cls._create_workflow_only_agent(
+            session=session,
             tenant_id=tenant_id,
             app_id=app_id,
             workflow_id=workflow_id,
             node_id=node_id,
             account_id=account_id,
             agent_soul=agent_soul,
-            session=session,
         )
         binding.binding_type = WorkflowAgentBindingType.INLINE_AGENT
         binding.agent_id = agent.id
@@ -1283,30 +1562,30 @@ class AgentComposerService:
     def _save_to_current_version(
         cls,
         *,
+        session: Session,
         tenant_id: str,
         account_id: str,
         binding: WorkflowAgentNodeBinding | None,
         payload: ComposerSavePayload,
-        session: Session,
     ) -> WorkflowAgentNodeBinding:
         binding = cls._require_binding(binding)
         if payload.agent_soul is None:
             raise ValueError("agent_soul is required")
         current_snapshot = cls._require_version(
+            session=session,
             tenant_id=tenant_id,
             agent_id=binding.agent_id,
             version_id=binding.current_snapshot_id,
-            session=session,
         )
         version = cls._update_current_version(
+            session=session,
             current_snapshot=current_snapshot,
             account_id=account_id,
             agent_soul=payload.agent_soul,
             operation=AgentConfigRevisionOperation.SAVE_CURRENT_VERSION,
             version_note=payload.version_note,
-            session=session,
         )
-        agent = cls._require_agent(tenant_id=tenant_id, agent_id=binding.agent_id, session=session)
+        agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=binding.agent_id)
         agent.active_config_snapshot_id = version.id
         agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
         agent.active_config_is_published = True
@@ -1321,25 +1600,32 @@ class AgentComposerService:
     def _save_as_new_version(
         cls,
         *,
+        session: Session,
         tenant_id: str,
         account_id: str,
         binding: WorkflowAgentNodeBinding | None,
         payload: ComposerSavePayload,
-        session: Session,
     ) -> WorkflowAgentNodeBinding:
         binding = cls._require_binding(binding)
         if not binding.agent_id or payload.agent_soul is None:
             raise ValueError("agent_id and agent_soul are required")
+        current_snapshot = cls._require_version(
+            session=session,
+            tenant_id=tenant_id,
+            agent_id=binding.agent_id,
+            version_id=binding.current_snapshot_id,
+        )
         version = cls._create_config_version(
+            session=session,
             tenant_id=tenant_id,
             agent_id=binding.agent_id,
             account_id=account_id,
             agent_soul=payload.agent_soul,
             operation=AgentConfigRevisionOperation.SAVE_NEW_VERSION,
             version_note=payload.version_note,
-            session=session,
+            home_snapshot_id=current_snapshot.home_snapshot_id,
         )
-        agent = cls._require_agent(tenant_id=tenant_id, agent_id=binding.agent_id, session=session)
+        agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=binding.agent_id)
         agent.active_config_snapshot_id = version.id
         agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
         agent.active_config_is_published = True
@@ -1354,6 +1640,7 @@ class AgentComposerService:
     def _save_as_new_agent(
         cls,
         *,
+        session: Session,
         tenant_id: str,
         app_id: str,
         workflow_id: str,
@@ -1361,12 +1648,12 @@ class AgentComposerService:
         account_id: str,
         binding: WorkflowAgentNodeBinding | None,
         payload: ComposerSavePayload,
-        session: Session,
     ) -> WorkflowAgentNodeBinding:
         if payload.agent_soul is None:
             raise ValueError("agent_soul is required")
         agent_name = payload.new_agent_name or "Untitled Agent"
         agent = cls._create_roster_agent_for_composer(
+            session=session,
             tenant_id=tenant_id,
             account_id=account_id,
             name=agent_name,
@@ -1378,7 +1665,6 @@ class AgentComposerService:
             agent_soul=payload.agent_soul,
             operation=AgentConfigRevisionOperation.SAVE_NEW_AGENT,
             version_note=payload.version_note,
-            session=session,
         )
         node_job = payload.node_job or WorkflowNodeJobConfig()
         if not binding:
@@ -1403,23 +1689,24 @@ class AgentComposerService:
     def _save_to_roster(
         cls,
         *,
+        session: Session,
         tenant_id: str,
         account_id: str,
         binding: WorkflowAgentNodeBinding | None,
         payload: ComposerSavePayload,
-        session: Session,
     ) -> WorkflowAgentNodeBinding:
         binding = cls._require_binding(binding)
-        source_agent = cls._require_agent(tenant_id=tenant_id, agent_id=binding.agent_id, session=session)
+        source_agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=binding.agent_id)
         source_version = cls._require_version(
+            session=session,
             tenant_id=tenant_id,
             agent_id=source_agent.id,
             version_id=binding.current_snapshot_id,
-            session=session,
         )
         agent_soul = payload.agent_soul or AgentSoulConfig.model_validate(source_version.config_snapshot_dict)
         agent_name = payload.new_agent_name or source_agent.name
         roster_agent = cls._create_roster_agent_for_composer(
+            session=session,
             tenant_id=tenant_id,
             account_id=account_id,
             name=agent_name,
@@ -1433,16 +1720,15 @@ class AgentComposerService:
             agent_soul=agent_soul,
             operation=AgentConfigRevisionOperation.SAVE_TO_ROSTER,
             version_note=payload.version_note,
-            session=session,
         )
         cls._copy_agent_drive_rows(
+            session=session,
             tenant_id=tenant_id,
             source_agent_id=source_agent.id,
             target_agent_id=roster_agent.id,
             account_id=account_id,
             agent_soul=agent_soul,
             node_job=payload.node_job or WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict),
-            session=session,
         )
         binding.binding_type = WorkflowAgentBindingType.ROSTER_AGENT
         binding.agent_id = roster_agent.id
@@ -1456,6 +1742,7 @@ class AgentComposerService:
     def _create_workflow_only_agent(
         cls,
         *,
+        session: Session,
         tenant_id: str,
         app_id: str,
         workflow_id: str,
@@ -1468,7 +1755,6 @@ class AgentComposerService:
         icon_type: Any | None = None,
         icon: str | None = None,
         icon_background: str | None = None,
-        session: Session,
     ) -> Agent:
         backing_app = AgentRosterService(session).create_hidden_backing_app_for_workflow_agent(
             tenant_id=tenant_id,
@@ -1501,13 +1787,14 @@ class AgentComposerService:
         session.add(agent)
         session.flush()
         version = cls._create_config_version(
+            session=session,
             tenant_id=tenant_id,
             agent_id=agent.id,
             account_id=account_id,
             agent_soul=agent_soul,
             operation=AgentConfigRevisionOperation.CREATE_VERSION,
             version_note=None,
-            session=session,
+            home_snapshot_id=None,
         )
         agent.active_config_snapshot_id = version.id
         agent.active_config_has_model = agent_soul_has_model(agent_soul)
@@ -1518,13 +1805,13 @@ class AgentComposerService:
     def _copy_agent_drive_rows(
         cls,
         *,
+        session: Session,
         tenant_id: str,
         source_agent_id: str,
         target_agent_id: str,
         account_id: str,
         agent_soul: AgentSoulConfig,
         node_job: WorkflowNodeJobConfig | None = None,
-        session: Session,
     ) -> None:
         exact_keys, prefixes = cls._drive_copy_scopes_from_agent_configs(agent_soul=agent_soul, node_job=node_job)
         predicates: list[ColumnElement[bool]] = []
@@ -1611,6 +1898,7 @@ class AgentComposerService:
     def _create_roster_agent_for_composer(
         cls,
         *,
+        session: Session,
         tenant_id: str,
         account_id: str,
         name: str,
@@ -1622,9 +1910,8 @@ class AgentComposerService:
         icon_type: AgentIconType | None = None,
         icon: str | None = None,
         icon_background: str | None = None,
-        session: Session,
     ) -> Agent:
-        account = cls._require_account(account_id=account_id, session=session)
+        account = cls._require_account(session=session, account_id=account_id)
         try:
             app = AppService().create_app(
                 tenant_id,
@@ -1641,7 +1928,6 @@ class AgentComposerService:
                 session=session,
             )
         except IntegrityError as exc:
-            session.rollback()
             raise AgentNameConflictError() from exc
 
         agent = AgentRosterService(session).get_app_backing_agent(tenant_id=tenant_id, app_id=app.id)
@@ -1649,18 +1935,18 @@ class AgentComposerService:
             raise AgentNotFoundError()
 
         current_snapshot = cls._require_version(
+            session=session,
             tenant_id=tenant_id,
             agent_id=agent.id,
             version_id=agent.active_config_snapshot_id,
-            session=session,
         )
         version = cls._update_current_version(
+            session=session,
             current_snapshot=current_snapshot,
             account_id=account_id,
             agent_soul=agent_soul,
             operation=operation,
             version_note=version_note,
-            session=session,
         )
         agent.active_config_snapshot_id = version.id
         agent.active_config_has_model = agent_soul_has_model(agent_soul)
@@ -1672,14 +1958,15 @@ class AgentComposerService:
     def _create_config_version(
         cls,
         *,
+        session: Session,
         tenant_id: str,
         agent_id: str,
         account_id: str,
         agent_soul: AgentSoulConfig,
         operation: AgentConfigRevisionOperation,
         version_note: str | None,
+        home_snapshot_id: str | None,
         previous_snapshot_id: str | None = None,
-        session: Session,
     ) -> AgentConfigSnapshot:
         next_version = (
             session.scalar(
@@ -1695,6 +1982,7 @@ class AgentComposerService:
             agent_id=agent_id,
             version=next_version,
             config_snapshot=agent_soul,
+            home_snapshot_id=home_snapshot_id,
             version_note=version_note,
             created_by=account_id,
         )
@@ -1705,7 +1993,7 @@ class AgentComposerService:
             agent_id=agent_id,
             previous_snapshot_id=previous_snapshot_id,
             current_snapshot_id=version.id,
-            revision=cls._next_revision(tenant_id=tenant_id, agent_id=agent_id, session=session),
+            revision=cls._next_revision(session=session, tenant_id=tenant_id, agent_id=agent_id),
             operation=operation,
             version_note=version_note,
             created_by=account_id,
@@ -1718,14 +2006,15 @@ class AgentComposerService:
     def _update_current_version(
         cls,
         *,
+        session: Session,
         current_snapshot: AgentConfigSnapshot,
         account_id: str,
         agent_soul: AgentSoulConfig,
         operation: AgentConfigRevisionOperation,
         version_note: str | None,
-        session: Session,
     ) -> AgentConfigSnapshot:
         return cls._create_config_version(
+            session=session,
             tenant_id=current_snapshot.tenant_id,
             agent_id=current_snapshot.agent_id,
             account_id=account_id,
@@ -1733,11 +2022,11 @@ class AgentComposerService:
             operation=operation,
             version_note=version_note,
             previous_snapshot_id=current_snapshot.id,
-            session=session,
+            home_snapshot_id=current_snapshot.home_snapshot_id,
         )
 
     @classmethod
-    def _next_revision(cls, *, tenant_id: str, agent_id: str, session: Session) -> int:
+    def _next_revision(cls, *, session: Session, tenant_id: str, agent_id: str) -> int:
         return (
             session.scalar(
                 select(func.max(AgentConfigRevision.revision)).where(
@@ -1749,7 +2038,7 @@ class AgentComposerService:
         ) + 1
 
     @classmethod
-    def _get_agent_app_agent(cls, *, tenant_id: str, app_id: str, session: Session) -> Agent | None:
+    def _get_agent_app_agent(cls, *, session: Session, tenant_id: str, app_id: str) -> Agent | None:
         return session.scalar(
             select(Agent)
             .where(
@@ -1764,8 +2053,8 @@ class AgentComposerService:
         )
 
     @classmethod
-    def _require_agent_app_agent(cls, *, tenant_id: str, app_id: str, session: Session) -> Agent:
-        agent = cls._get_agent_app_agent(tenant_id=tenant_id, app_id=app_id, session=session)
+    def _require_agent_app_agent(cls, *, session: Session, tenant_id: str, app_id: str) -> Agent:
+        agent = cls._get_agent_app_agent(session=session, tenant_id=tenant_id, app_id=app_id)
         if agent is None:
             raise AgentNotFoundError()
         return agent
@@ -1774,11 +2063,11 @@ class AgentComposerService:
     def _get_agent_draft(
         cls,
         *,
+        session: Session,
         tenant_id: str,
         agent_id: str,
         draft_type: AgentConfigDraftType,
         account_id: str | None,
-        session: Session,
     ) -> AgentConfigDraft | None:
         stmt = select(AgentConfigDraft).where(
             AgentConfigDraft.tenant_id == tenant_id,
@@ -1792,43 +2081,111 @@ class AgentComposerService:
         return session.scalar(stmt.order_by(AgentConfigDraft.updated_at.desc()).limit(1))
 
     @classmethod
+    def get_or_create_normal_agent_draft(
+        cls,
+        *,
+        session: Session,
+        tenant_id: str,
+        agent: Agent,
+        created_by: str | None,
+    ) -> AgentConfigDraft:
+        """Resolve the normal Draft, rebasing only stale WORKFLOW_ONLY DRAFT rows whose account_id is None.
+
+        Roster and DEBUG_BUILD Drafts are never rebased.
+        """
+        return cls._get_or_create_agent_draft(
+            session=session,
+            tenant_id=tenant_id,
+            agent=agent,
+            draft_type=AgentConfigDraftType.DRAFT,
+            account_id=None,
+            created_by=created_by,
+        )
+
+    @staticmethod
+    def _rebase_workflow_only_normal_draft(
+        *,
+        agent: Agent,
+        draft: AgentConfigDraft,
+        snapshot: AgentConfigSnapshot,
+        updated_by: str | None,
+    ) -> bool:
+        """Sync a stale normal Draft's base_snapshot_id, home_snapshot_id, config_snapshot, and updated_by."""
+
+        if (
+            agent.scope != AgentScope.WORKFLOW_ONLY
+            or draft.draft_type != AgentConfigDraftType.DRAFT
+            or draft.account_id is not None
+            or not agent.active_config_snapshot_id
+            or draft.base_snapshot_id == agent.active_config_snapshot_id
+            or snapshot.id != agent.active_config_snapshot_id
+        ):
+            return False
+        draft.base_snapshot_id = snapshot.id
+        draft.home_snapshot_id = snapshot.home_snapshot_id
+        draft.config_snapshot = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict)
+        draft.updated_by = updated_by
+        return True
+
+    @classmethod
     def _get_or_create_agent_draft(
         cls,
         *,
+        session: Session,
         tenant_id: str,
         agent: Agent,
         draft_type: AgentConfigDraftType,
         account_id: str | None,
         created_by: str | None,
-        session: Session,
     ) -> AgentConfigDraft:
         draft = cls._get_agent_draft(
+            session=session,
             tenant_id=tenant_id,
             agent_id=agent.id,
             draft_type=draft_type,
             account_id=account_id,
-            session=session,
         )
         if draft is not None:
+            if (
+                agent.scope == AgentScope.WORKFLOW_ONLY
+                and draft_type == AgentConfigDraftType.DRAFT
+                and draft.account_id is None
+                and agent.active_config_snapshot_id
+                and draft.base_snapshot_id != agent.active_config_snapshot_id
+            ):
+                active_snapshot = cls._get_version_if_present(
+                    session=session,
+                    tenant_id=tenant_id,
+                    agent_id=agent.id,
+                    version_id=agent.active_config_snapshot_id,
+                )
+                if active_snapshot is None:
+                    raise AgentVersionNotFoundError()
+                if cls._rebase_workflow_only_normal_draft(
+                    agent=agent,
+                    draft=draft,
+                    snapshot=active_snapshot,
+                    updated_by=agent.updated_by or agent.created_by,
+                ):
+                    session.flush()
             return draft
         base_snapshot = cls._get_version_if_present(
+            session=session,
             tenant_id=tenant_id,
             agent_id=agent.id,
             version_id=agent.active_config_snapshot_id,
-            session=session,
         )
-        agent_soul = (
-            AgentSoulConfig.model_validate(base_snapshot.config_snapshot_dict)
-            if base_snapshot is not None
-            else AgentSoulConfig()
-        )
+        if base_snapshot is None:
+            raise AgentVersionNotFoundError()
+        agent_soul = AgentSoulConfig.model_validate(base_snapshot.config_snapshot_dict)
         draft = AgentConfigDraft(
             tenant_id=tenant_id,
             agent_id=agent.id,
             draft_type=draft_type,
             account_id=account_id if draft_type == AgentConfigDraftType.DEBUG_BUILD else None,
             draft_owner_key=account_id if draft_type == AgentConfigDraftType.DEBUG_BUILD and account_id else "",
-            base_snapshot_id=base_snapshot.id if base_snapshot else None,
+            base_snapshot_id=base_snapshot.id,
+            home_snapshot_id=base_snapshot.home_snapshot_id,
             config_snapshot=agent_soul,
             created_by=created_by,
             updated_by=created_by,
@@ -1841,6 +2198,7 @@ class AgentComposerService:
     def _save_agent_draft(
         cls,
         *,
+        session: Session,
         tenant_id: str,
         agent: Agent,
         draft_type: AgentConfigDraftType,
@@ -1848,15 +2206,14 @@ class AgentComposerService:
         agent_soul: AgentSoulConfig,
         account_id_for_audit: str,
         base_snapshot_id: str | None = None,
-        session: Session,
     ) -> AgentConfigDraft:
         draft = cls._get_or_create_agent_draft(
+            session=session,
             tenant_id=tenant_id,
             agent=agent,
             draft_type=draft_type,
             account_id=account_id,
             created_by=account_id_for_audit,
-            session=session,
         )
         draft.config_snapshot = agent_soul
         if base_snapshot_id is not None:
@@ -1894,7 +2251,7 @@ class AgentComposerService:
         }
 
     @classmethod
-    def _get_draft_workflow(cls, *, tenant_id: str, app_id: str, session: Session) -> Workflow:
+    def _get_draft_workflow(cls, *, session: Session, tenant_id: str, app_id: str) -> Workflow:
         workflow = session.scalar(
             select(Workflow)
             .where(
@@ -1910,7 +2267,7 @@ class AgentComposerService:
 
     @classmethod
     def _get_workflow_binding(
-        cls, *, tenant_id: str, workflow_id: str, node_id: str, session: Session
+        cls, *, session: Session, tenant_id: str, workflow_id: str, node_id: str
     ) -> WorkflowAgentNodeBinding | None:
         # Composer always operates against the draft workflow row, so this lookup
         # is scoped to ``workflow_version="draft"``. Published bindings are
@@ -1934,7 +2291,7 @@ class AgentComposerService:
         return binding
 
     @classmethod
-    def _require_agent(cls, *, tenant_id: str, agent_id: str | None, session: Session) -> Agent:
+    def _require_agent(cls, *, session: Session, tenant_id: str, agent_id: str | None) -> Agent:
         if not agent_id:
             raise AgentNotFoundError()
         agent = session.scalar(select(Agent).where(Agent.tenant_id == tenant_id, Agent.id == agent_id).limit(1))
@@ -1943,21 +2300,21 @@ class AgentComposerService:
         return agent
 
     @classmethod
-    def _require_account(cls, *, account_id: str, session: Session) -> Account:
+    def _require_account(cls, *, session: Session, account_id: str) -> Account:
         account = session.get(Account, account_id)
         if not account:
             raise ValueError("Account not found")
         return account
 
     @classmethod
-    def _get_agent_if_present(cls, *, tenant_id: str, agent_id: str | None, session: Session) -> Agent | None:
+    def _get_agent_if_present(cls, *, session: Session, tenant_id: str, agent_id: str | None) -> Agent | None:
         if not agent_id:
             return None
         return session.scalar(select(Agent).where(Agent.tenant_id == tenant_id, Agent.id == agent_id).limit(1))
 
     @classmethod
     def _require_version(
-        cls, *, tenant_id: str, agent_id: str | None, version_id: str | None, session: Session
+        cls, *, session: Session, tenant_id: str, agent_id: str | None, version_id: str | None
     ) -> AgentConfigSnapshot:
         if not agent_id or not version_id:
             raise AgentVersionNotFoundError()
@@ -1976,7 +2333,7 @@ class AgentComposerService:
 
     @classmethod
     def _get_version_if_present(
-        cls, *, tenant_id: str, agent_id: str | None, version_id: str | None, session: Session
+        cls, *, session: Session, tenant_id: str, agent_id: str | None, version_id: str | None
     ) -> AgentConfigSnapshot | None:
         if not agent_id or not version_id:
             return None
@@ -2035,11 +2392,11 @@ class AgentComposerService:
     def _serialize_workflow_state(
         cls,
         *,
+        session: Session,
         binding: WorkflowAgentNodeBinding,
         agent: Agent | None,
         version: AgentConfigSnapshot | None,
         account_id: str | None = None,
-        session: Session,
     ) -> dict[str, Any]:
         locked = bool(agent and agent.scope == AgentScope.ROSTER)
         save_options = [ComposerSaveStrategy.NODE_JOB_ONLY.value]
@@ -2054,11 +2411,11 @@ class AgentComposerService:
         else:
             save_options.append(ComposerSaveStrategy.SAVE_TO_ROSTER.value)
         debug_conversation_id = cls._workflow_inline_debug_conversation_id(
+            session=session,
             tenant_id=binding.tenant_id,
             binding=binding,
             agent=agent,
             account_id=account_id,
-            session=session,
         )
         debug_conversation_message_count = (
             AgentRosterService(session).count_agent_app_debug_conversation_messages(
@@ -2095,7 +2452,7 @@ class AgentComposerService:
             "effective_declared_outputs": cls._serialize_effective_outputs(cls._declared_outputs_from_binding(binding)),
             "save_options": save_options,
             "impact_summary": cls.calculate_impact(
-                tenant_id=binding.tenant_id, current_snapshot_id=version.id, session=session
+                session=session, tenant_id=binding.tenant_id, current_snapshot_id=version.id
             )
             if version
             else None,
@@ -2113,12 +2470,13 @@ class AgentComposerService:
     @staticmethod
     def _workflow_inline_debug_conversation_id(
         *,
+        session: Session,
         tenant_id: str,
         binding: WorkflowAgentNodeBinding,
         agent: Agent | None,
         account_id: str | None,
-        session: Session,
     ) -> str | None:
+        """Return the editor's inline debug conversation within the caller-owned transaction."""
         if (
             not account_id
             or not agent
@@ -2129,10 +2487,11 @@ class AgentComposerService:
 
         from services.agent.roster_service import AgentRosterService
 
-        return AgentRosterService(session).get_or_create_agent_app_debug_conversation_id(
+        return AgentRosterService(session).get_or_create_build_conversation(
             tenant_id=tenant_id,
             agent_id=agent.id,
             account_id=account_id,
+            commit=False,
         )
 
     @classmethod

@@ -1,6 +1,6 @@
 import type { Dependency, PluginDeclaration } from '../../../types'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { InstallStep, PluginCategoryEnum } from '../../../types'
 import InstallFromLocalPackage from '../index'
 
@@ -293,10 +293,6 @@ describe('InstallFromLocalPackage', () => {
       expect(screen.getByText('plugin.installModal.installPlugin')).toBeInTheDocument()
     })
 
-    it('should apply modal className from useHideLogic', () => {
-      expect(mockHideLogicState.modalClassName).toBe('test-modal-class')
-    })
-
     it('should identify bundle file correctly', () => {
       render(<InstallFromLocalPackage {...defaultProps} file={createMockBundleFile()} />)
 
@@ -584,57 +580,6 @@ describe('InstallFromLocalPackage', () => {
       fireEvent.click(screen.getByTestId('bundle-close-btn'))
 
       expect(defaultProps.onClose).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  // ================================
-  // Callback Stability Tests (Memoization)
-  // ================================
-  describe('Callback Stability', () => {
-    it('should maintain stable handlePackageUploaded callback reference', async () => {
-      const { rerender } = render(<InstallFromLocalPackage {...defaultProps} />)
-
-      expect(screen.getByTestId('uploading-step')).toBeInTheDocument()
-
-      // Rerender with same props
-      rerender(<InstallFromLocalPackage {...defaultProps} />)
-
-      // The component should still work correctly
-      fireEvent.click(screen.getByTestId('trigger-package-upload-btn'))
-
-      await waitFor(() => {
-        expect(screen.getByTestId('ready-to-install-package')).toBeInTheDocument()
-      })
-    })
-
-    it('should maintain stable handleBundleUploaded callback reference', async () => {
-      const bundleProps = { ...defaultProps, file: createMockBundleFile() }
-      const { rerender } = render(<InstallFromLocalPackage {...bundleProps} />)
-
-      expect(screen.getByTestId('uploading-step')).toBeInTheDocument()
-
-      // Rerender with same props
-      rerender(<InstallFromLocalPackage {...bundleProps} />)
-
-      // The component should still work correctly
-      fireEvent.click(screen.getByTestId('trigger-bundle-upload-btn'))
-
-      await waitFor(() => {
-        expect(screen.getByTestId('ready-to-install-bundle')).toBeInTheDocument()
-      })
-    })
-
-    it('should maintain stable handleUploadFail callback reference', async () => {
-      const { rerender } = render(<InstallFromLocalPackage {...defaultProps} />)
-
-      // Rerender with same props
-      rerender(<InstallFromLocalPackage {...defaultProps} />)
-
-      fireEvent.click(screen.getByTestId('trigger-upload-fail-btn'))
-
-      await waitFor(() => {
-        expect(screen.getByTestId('package-error-msg')).toHaveTextContent('Upload failed error')
-      })
     })
   })
 
@@ -1072,13 +1017,6 @@ describe('InstallFromLocalPackage', () => {
   // Integration with useHideLogic Tests
   // ================================
   describe('Integration with useHideLogic', () => {
-    it('should use modalClassName from useHideLogic', () => {
-      render(<InstallFromLocalPackage {...defaultProps} />)
-
-      // The hook is called and provides modalClassName
-      expect(mockHideLogicState.modalClassName).toBe('test-modal-class')
-    })
-
     it('should use foldAnimInto as modal onClose handler', () => {
       render(<InstallFromLocalPackage {...defaultProps} />)
 

@@ -1,7 +1,7 @@
 import type { FileItem } from '@/models/datasets'
 import { render, renderHook } from '@testing-library/react'
 import * as React from 'react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { createDataSourceStore, useDataSourceStore, useDataSourceStoreWithSelector } from '../'
 import DataSourceProvider from '../provider'
 

@@ -29,6 +29,8 @@ export const getVarKindType = (type: string) => {
       FormTypeEnum.textNumber,
       FormTypeEnum.array,
       FormTypeEnum.object,
+      FormTypeEnum.date,
+      FormTypeEnum.dateRange,
     ].includes(type as FormTypeEnum)
   )
     return VarKindType.constant
@@ -54,7 +56,11 @@ export const createFilterVar = (type: string) => {
   if (type === FormTypeEnum.textNumber)
     return (varPayload: Var) => varPayload.type === VarType.number
 
-  if (type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput)
+  if (
+    type === FormTypeEnum.textInput ||
+    type === FormTypeEnum.secretInput ||
+    type === FormTypeEnum.date
+  )
     return (varPayload: Var) =>
       [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
 
@@ -166,6 +172,8 @@ export const updateVariableSelectorValue = (
 }
 
 export const getFieldFlags = (type: string, varInput?: ReasoningConfigInputValue) => {
+  const isDateRange = type === FormTypeEnum.dateRange
+  const isDate = type === FormTypeEnum.date
   const isString = type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput
   const isNumber = type === FormTypeEnum.textNumber
   const isObject = type === FormTypeEnum.object
@@ -188,7 +196,9 @@ export const getFieldFlags = (type: string, varInput?: ReasoningConfigInputValue
     isSelect,
     isAppSelector,
     isModelSelector,
-    showTypeSwitch: isNumber || isObject || isArray,
+    isDate,
+    isDateRange,
+    showTypeSwitch: isNumber || isObject || isArray || isDate,
     isConstant,
     showVariableSelector: isFile || varInput?.type === VarKindType.variable,
   }

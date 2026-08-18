@@ -97,7 +97,9 @@ class TestAnnotationReplyFeature:
         vector_instance = Mock()
         vector_instance.search_by_vector.return_value = [document]
 
-        with patch("core.app.features.annotation_reply.annotation_reply.Vector", return_value=vector_instance):
+        with patch(
+            "core.app.features.annotation_reply.annotation_reply.Vector", return_value=vector_instance
+        ) as vector_cls:
             result = AnnotationReplyFeature().query(
                 app_record=SimpleNamespace(id="app-1", tenant_id="tenant-1"),
                 message=SimpleNamespace(id="msg-1"),
@@ -111,6 +113,7 @@ class TestAnnotationReplyFeature:
         vector_instance.search_by_vector.assert_called_once_with(
             query="hi", top_k=1, score_threshold=1, filter={"group_id": ["app-1"]}
         )
+        assert vector_cls.call_args.kwargs["session"] is sqlite_session
         sqlite_session.refresh(annotation)
         assert annotation.hit_count == 1
         history = sqlite_session.scalar(select(AppAnnotationHitHistory))

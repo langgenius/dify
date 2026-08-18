@@ -34,7 +34,7 @@ from controllers.service_api.app.error import (
 )
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
-from services.app_ref_service import MessageRef
+from services.app_ref_service import AppRef, MessageRef
 from services.audio_service import AudioService
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.audio import (
@@ -143,11 +143,12 @@ class TestAudioServiceMockedBehavior:
 
     @pytest.fixture
     def mock_app(self):
-        """Create mock app model."""
+        """Create an app model."""
         from models.model import App
 
-        app = Mock(spec=App)
-        app.id = str(uuid.uuid4())
+        app = App(
+            id=str(uuid.uuid4()),
+        )
         return app
 
     @pytest.fixture
@@ -159,7 +160,7 @@ class TestAudioServiceMockedBehavior:
         return mock
 
     @patch.object(AudioService, "transcript_asr")
-    def test_transcript_asr_returns_response(self, mock_asr, mock_app, mock_file):
+    def test_transcript_asr_returns_response(self, mock_asr, mock_app, mock_file, sqlite_session: Session):
         """Test ASR transcription returns response dict."""
         mock_response = {"text": "Transcribed text"}
         mock_asr.return_value = mock_response
@@ -167,13 +168,13 @@ class TestAudioServiceMockedBehavior:
         result = AudioService.transcript_asr(
             app_model=mock_app,
             file=mock_file,
+            session=sqlite_session,
             end_user="user_123",
         )
 
         assert result["text"] == "Transcribed text"
 
     @patch.object(AudioService, "transcript_tts")
-    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
     def test_transcript_tts_returns_response(self, mock_tts, mock_app, sqlite_session: Session):
         """Test TTS transcription returns response."""
         mock_response = {"audio": "base64_audio_data"}
@@ -284,7 +285,7 @@ class TestTextApi:
             response = handler(api, app_model=app_model, end_user=end_user)
 
         assert response == {"audio": "ok"}
-        assert calls["message_ref"] == MessageRef("tenant-1", "a1", "message-1", end_user_id="end-user-1")
+        assert calls["message_ref"] == MessageRef(AppRef("tenant-1", "a1"), "message-1", end_user_id="end-user-1")
 
     def test_error_mapping(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(

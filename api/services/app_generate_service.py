@@ -21,7 +21,7 @@ from core.app.features.rate_limiting import RateLimit
 from core.app.features.rate_limiting.rate_limit import rate_limit_context
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.db import session_factory
-from enums.quota_type import QuotaType
+from enums import DeploymentEdition, QuotaType
 from extensions.otel import AppGenerateHandler, trace_span
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowRun
@@ -134,7 +134,7 @@ class AppGenerateService:
         action: Callable[[RateLimit, str], Any],
     ):
         quota_charge = unlimited()
-        if dify_config.BILLING_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             try:
                 quota_charge = QuotaService.reserve(QuotaType.WORKFLOW, app_model.tenant_id)
             except QuotaExceededError:
@@ -172,7 +172,9 @@ class AppGenerateService:
         request_id: str,
     ):
         effective_mode = (
-            AppMode.AGENT_CHAT if app_model.is_agent and app_model.mode != AppMode.AGENT_CHAT else app_model.mode
+            AppMode.AGENT_CHAT
+            if app_model.is_agent_with_session(session=session) and app_model.mode != AppMode.AGENT_CHAT
+            else app_model.mode
         )
         match effective_mode:
             case AppMode.COMPLETION:
@@ -193,7 +195,12 @@ class AppGenerateService:
                 return rate_limit.generate(
                     AgentChatAppGenerator.convert_to_event_stream(
                         AgentChatAppGenerator().generate(
-                            app_model=app_model, user=user, args=args, invoke_from=invoke_from, streaming=streaming
+                            session=session,
+                            app_model=app_model,
+                            user=user,
+                            args=args,
+                            invoke_from=invoke_from,
+                            streaming=streaming,
                         ),
                     ),
                     request_id,
@@ -202,7 +209,12 @@ class AppGenerateService:
                 return rate_limit.generate(
                     AgentAppGenerator.convert_to_event_stream(
                         AgentAppGenerator().generate(
-                            app_model=app_model, user=user, args=args, invoke_from=invoke_from, streaming=streaming
+                            app_model=app_model,
+                            user=user,
+                            args=args,
+                            invoke_from=invoke_from,
+                            session=session,
+                            streaming=streaming,
                         ),
                     ),
                     request_id,
@@ -274,6 +286,7 @@ class AppGenerateService:
                             workflow_run_id=str(uuid.uuid4()),
                             streaming=False,
                             pause_state_config=pause_config,
+                            session=session,
                         )
                     ),
                     request_id=request_id,
@@ -379,6 +392,7 @@ class AppGenerateService:
                         user=user,
                         args=args,
                         streaming=streaming,
+                        session=session,
                     )
                 )
             case AppMode.WORKFLOW:
@@ -391,6 +405,7 @@ class AppGenerateService:
                         user=user,
                         args=args,
                         streaming=streaming,
+                        session=session,
                     )
                 )
             case AppMode.CHANNEL | AppMode.RAG_PIPELINE:
@@ -422,6 +437,7 @@ class AppGenerateService:
                         user=user,
                         args=args,
                         streaming=streaming,
+                        session=session,
                     )
                 )
             case AppMode.WORKFLOW:
@@ -434,6 +450,7 @@ class AppGenerateService:
                         user=user,
                         args=args,
                         streaming=streaming,
+                        session=session,
                     )
                 )
             case AppMode.CHANNEL | AppMode.RAG_PIPELINE:

@@ -15,7 +15,7 @@ from controllers.console.app.error import (
 from controllers.console.app.wraps import with_session
 from controllers.console.explore.error import NotWorkflowAppError
 from controllers.console.explore.wraps import InstalledAppResource
-from controllers.console.wraps import with_current_user
+from controllers.console.wraps import model_validate, with_current_user
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -47,19 +47,25 @@ class InstalledAppWorkflowRunApi(InstalledAppResource):
     @console_ns.response(200, "Success")
     @with_current_user
     @with_session
-    def post(self, session: Session, current_user: Account, installed_app: InstalledApp):
+    @model_validate(WorkflowRunPayload)
+    def post(
+        self,
+        req_data: WorkflowRunPayload,
+        session: Session,
+        current_user: Account,
+        installed_app: InstalledApp,
+    ):
         """
         Run workflow
         """
-        app_model = installed_app.app
+        app_model = installed_app.app_with_session(session=session)
         if not app_model:
             raise NotWorkflowAppError()
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
 
-        payload = WorkflowRunPayload.model_validate(console_ns.payload or {})
-        args = payload.model_dump(exclude_none=True)
+        args = req_data.model_dump(exclude_none=True)
         try:
             response = AppGenerateService.generate(
                 session=session,
@@ -92,11 +98,12 @@ class InstalledAppWorkflowRunApi(InstalledAppResource):
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/workflows/tasks/<string:task_id>/stop")
 class InstalledAppWorkflowTaskStopApi(InstalledAppResource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    def post(self, installed_app: InstalledApp, task_id: str):
+    @with_session(write=False)
+    def post(self, session: Session, installed_app: InstalledApp, task_id: str):
         """
         Stop workflow task
         """
-        app_model = installed_app.app
+        app_model = installed_app.app_with_session(session=session)
         if not app_model:
             raise NotWorkflowAppError()
         app_mode = AppMode.value_of(app_model.mode)

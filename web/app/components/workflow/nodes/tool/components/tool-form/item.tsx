@@ -5,12 +5,11 @@ import type { CredentialFormSchema } from '@/app/components/header/account-setti
 import type { Tool } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { RiBracesLine } from '@remixicon/react'
-import { useBoolean } from 'ahooks'
+import { useState } from 'react'
 import { Infotip } from '@/app/components/base/infotip'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { SchemaModal } from '@/app/components/plugins/plugin-detail-panel/tool-selector/components'
+import { SchemaModal } from '@/app/components/plugins/plugin-detail-panel/tool-selector/components/schema-modal'
 import FormInputItem from '@/app/components/workflow/nodes/_base/components/form-input-item'
 
 const URL_REGEX = /(https?:\/\/\S+)/g
@@ -23,7 +22,7 @@ const renderDescriptionWithLinks = (description: string): ReactNode => {
   const parts: ReactNode[] = []
   let currentIndex = 0
 
-  matches.forEach((match, index) => {
+  matches.forEach((match) => {
     const [url] = match
     const start = match.index ?? 0
 
@@ -31,7 +30,7 @@ const renderDescriptionWithLinks = (description: string): ReactNode => {
 
     parts.push(
       <a
-        key={`${url}-${index}`}
+        key={`${url}-${start}`}
         href={url}
         target="_blank"
         rel="noopener noreferrer"
@@ -60,7 +59,7 @@ type Props = Readonly<{
   currentProvider?: ToolWithProvider
   showManageInputField?: boolean
   onManageInputField?: () => void
-  extraParams?: Record<string, any>
+  extraParams?: Record<string, unknown>
   providerType?: 'tool' | 'trigger'
 }>
 
@@ -81,8 +80,13 @@ const ToolFormItem: FC<Props> = ({
   const language = useLanguage()
   const { name, label, type, required, tooltip, input_schema } = schema
   const showSchemaButton = type === FormTypeEnum.object || type === FormTypeEnum.array
-  const showDescription = type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput
-  const [isShowSchema, { setTrue: showSchema, setFalse: hideSchema }] = useBoolean(false)
+  const showDescription =
+    type === FormTypeEnum.textInput ||
+    type === FormTypeEnum.textNumber ||
+    type === FormTypeEnum.secretInput ||
+    type === FormTypeEnum.date ||
+    type === FormTypeEnum.dateRange
+  const [isShowSchema, setIsShowSchema] = useState(false)
   return (
     <div className="space-y-0.5 py-1">
       <div>
@@ -108,10 +112,10 @@ const ToolFormItem: FC<Props> = ({
               <Button
                 variant="ghost"
                 size="small"
-                onClick={showSchema}
+                onClick={() => setIsShowSchema(true)}
                 className="px-1 system-xs-regular text-text-tertiary"
               >
-                <RiBracesLine className="mr-1 size-3.5" />
+                <span aria-hidden className="i-ri-braces-line size-3.5" />
                 <span>JSON Schema</span>
               </Button>
             </>
@@ -139,7 +143,12 @@ const ToolFormItem: FC<Props> = ({
       />
 
       {isShowSchema && (
-        <SchemaModal isShow onClose={hideSchema} rootName={name} schema={input_schema!} />
+        <SchemaModal
+          isShow
+          onClose={() => setIsShowSchema(false)}
+          rootName={name}
+          schema={input_schema!}
+        />
       )}
     </div>
   )

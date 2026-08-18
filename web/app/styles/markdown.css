@@ -615,6 +615,11 @@
   background-color: var(--color-background-section-burn);
 }
 
+/* Hide Streamdown controls that cannot locate the portaled fullscreen table. */
+[data-streamdown='table-fullscreen'] [role='presentation'] > div:first-child > div {
+  display: none;
+}
+
 [data-streamdown='table-fullscreen'] table[data-streamdown='table'] {
   border-color: var(--color-divider-regular);
 }

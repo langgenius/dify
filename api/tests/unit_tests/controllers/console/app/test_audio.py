@@ -17,6 +17,8 @@ from controllers.console.app.audio import (
     ChatMessageAudioApi,
     ChatMessageTextApi,
     TextModesApi,
+    TextToSpeechPayload,
+    TextToSpeechVoiceQuery,
 )
 from controllers.console.app.error import (
     AppUnavailableError,
@@ -37,7 +39,7 @@ from models.agent import AgentConfigDraftType
 from models.agent_config_entities import AgentSoulConfig
 from services.agent.composer_service import AgentComposerService
 from services.agent.errors import AgentVersionNotFoundError
-from services.app_ref_service import MessageRef
+from services.app_ref_service import AppRef, MessageRef
 from services.audio_service import AudioService
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.audio import (
@@ -114,7 +116,7 @@ def test_agent_console_audio_api_uses_agent_draft(app: Flask, monkeypatch: pytes
         )
 
     assert response == {"text": "agent transcript"}
-    assert calls["resolver"] == {"tenant_id": "tenant-1", "agent_id": agent_id}
+    assert calls["resolver"] == {"session": session, "tenant_id": "tenant-1", "agent_id": agent_id}
     assert calls["rbac"] == {
         "tenant_id": "tenant-1",
         "account_id": "account-1",
@@ -133,6 +135,7 @@ def test_agent_console_audio_api_uses_agent_draft(app: Flask, monkeypatch: pytes
         "app_model": app_model,
         "agent_soul": agent_soul,
         "file": calls["asr"]["file"],
+        "session": session,
         "end_user": None,
     }
 
@@ -289,7 +292,7 @@ def test_console_text_api_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -
         method="POST",
         json={"text": "hello", "voice": "v"},
     ):
-        response = handler(api, app_model=app_model)
+        response = handler(api, TextToSpeechPayload(text="hello"), app_model=app_model)
 
     assert response == {"audio": "ok"}
 
@@ -314,10 +317,10 @@ def test_console_text_api_builds_message_ref(app: Flask, monkeypatch: pytest.Mon
         ),
         patch("controllers.console.app.audio.current_user", SimpleNamespace(id="account-1")),
     ):
-        response = handler(api, app_model=app_model)
+        response = handler(api, TextToSpeechPayload(text="hello", message_id="message-1"), app_model=app_model)
 
     assert response == {"audio": "ok"}
-    assert calls["message_ref"] == MessageRef("tenant-1", "app-1", "message-1", account_id="account-1")
+    assert calls["message_ref"] == MessageRef(AppRef("tenant-1", "app-1"), "message-1", account_id="account-1")
 
 
 def test_console_text_api_error_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -333,7 +336,7 @@ def test_console_text_api_error_mapping(app: Flask, monkeypatch: pytest.MonkeyPa
         json={"text": "hello"},
     ):
         with pytest.raises(ProviderQuotaExceededError):
-            handler(api, app_model=app_model)
+            handler(api, TextToSpeechPayload(text="hello"), app_model=app_model)
 
 
 def test_console_text_modes_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -345,7 +348,7 @@ def test_console_text_modes_success(app: Flask, monkeypatch: pytest.MonkeyPatch)
     app_model = SimpleNamespace(tenant_id="t1")
 
     with app.test_request_context("/console/api/apps/app/text-to-audio/voices?language=en", method="GET"):
-        response = handler(api, app_model=app_model)
+        response = handler(api, TextToSpeechVoiceQuery(language="en-US"), app_model=app_model)
 
     assert response == expected_voices
 
@@ -363,7 +366,7 @@ def test_console_text_modes_language_error(app: Flask, monkeypatch: pytest.Monke
 
     with app.test_request_context("/console/api/apps/app/text-to-audio/voices?language=en", method="GET"):
         with pytest.raises(AppUnavailableError):
-            handler(api, app_model=app_model)
+            handler(api, TextToSpeechVoiceQuery(language="en-US"), app_model=app_model)
 
 
 def test_audio_to_text_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -423,7 +426,7 @@ def test_text_to_audio_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> N
         method="POST",
         json={"text": "hello"},
     ):
-        response = method(api, app_model=app_model)
+        response = method(api, TextToSpeechPayload(text="hello"), app_model=app_model)
 
     assert response == {"audio": "ok"}
 
@@ -442,7 +445,7 @@ def test_text_to_audio_voices_success(app: Flask, monkeypatch: pytest.MonkeyPatc
         method="GET",
         query_string={"language": "en-US"},
     ):
-        response = method(api, app_model=app_model)
+        response = method(api, TextToSpeechVoiceQuery(language="en-US"), app_model=app_model)
 
     assert response == expected_voices
 
@@ -480,7 +483,7 @@ def test_text_to_audio_with_language_param(app: Flask, monkeypatch: pytest.Monke
         method="POST",
         json={"text": "hello", "language": "en-US"},
     ):
-        response = method(api, app_model=app_model)
+        response = method(api, TextToSpeechPayload(text="hello"), app_model=app_model)
         assert response == {"audio": "test"}
 
 
@@ -500,5 +503,5 @@ def test_text_to_audio_voices_with_language_filter(app: Flask, monkeypatch: pyte
         "/console/api/apps/app-1/text-to-audio/voices?language=en-US",
         method="GET",
     ):
-        response = method(api, app_model=app_model)
+        response = method(api, TextToSpeechVoiceQuery(language="en-US"), app_model=app_model)
         assert isinstance(response, list)

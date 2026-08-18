@@ -11,11 +11,12 @@ from controllers.common.schema import query_params_from_model, register_response
 from controllers.console.app.error import AppUnavailableError
 from controllers.console.explore.error import NotChatAppError
 from controllers.console.explore.wraps import InstalledAppResource
-from controllers.console.wraps import with_current_user
+from controllers.console.wraps import model_validate, with_current_user
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from fields.conversation_fields import (
     ConversationInfiniteScrollPagination,
+    ConversationResponseSource,
     ResultResponse,
     SimpleConversation,
 )
@@ -53,7 +54,7 @@ class ConversationListApi(InstalledAppResource):
     @console_ns.response(200, "Success", console_ns.models[ConversationInfiniteScrollPagination.__name__])
     @with_current_user
     def get(self, current_user: Account, installed_app: InstalledApp):
-        app_model = installed_app.app
+        app_model = installed_app.app_with_session(session=db.session())
         if app_model is None:
             raise AppUnavailableError()
         app_mode = AppMode.value_of(app_model.mode)
@@ -84,7 +85,13 @@ class ConversationListApi(InstalledAppResource):
                     pinned=args.pinned,
                 )
                 adapter = TypeAdapter(SimpleConversation)
-                conversations = [adapter.validate_python(item, from_attributes=True) for item in pagination.data]
+                conversations = [
+                    adapter.validate_python(
+                        ConversationResponseSource(item, session=session),
+                        from_attributes=True,
+                    )
+                    for item in pagination.data
+                ]
                 return ConversationInfiniteScrollPagination(
                     limit=pagination.limit,
                     has_more=pagination.has_more,
@@ -102,7 +109,7 @@ class ConversationApi(InstalledAppResource):
     @console_ns.response(204, "Conversation deleted successfully")
     @with_current_user
     def delete(self, current_user: Account, installed_app: InstalledApp, c_id: UUID):
-        app_model = installed_app.app
+        app_model = installed_app.app_with_session(session=db.session())
         if app_model is None:
             raise AppUnavailableError()
         app_mode = AppMode.value_of(app_model.mode)
@@ -126,8 +133,9 @@ class ConversationRenameApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[ConversationRenamePayload.__name__])
     @console_ns.response(200, "Conversation renamed successfully", console_ns.models[SimpleConversation.__name__])
     @with_current_user
-    def post(self, current_user: Account, installed_app: InstalledApp, c_id: UUID):
-        app_model = installed_app.app
+    @model_validate(ConversationRenamePayload)
+    def post(self, req_data: ConversationRenamePayload, current_user: Account, installed_app: InstalledApp, c_id: UUID):
+        app_model = installed_app.app_with_session(session=db.session())
         if app_model is None:
             raise AppUnavailableError()
         app_mode = AppMode.value_of(app_model.mode)
@@ -136,15 +144,14 @@ class ConversationRenameApi(InstalledAppResource):
 
         conversation_id = str(c_id)
 
-        payload = ConversationRenamePayload.model_validate(console_ns.payload or {})
-
         try:
+            session = db.session()
             conversation = ConversationService.rename(
-                app_model, conversation_id, current_user, payload.name, payload.auto_generate, session=db.session()
+                app_model, conversation_id, current_user, req_data.name, req_data.auto_generate, session=session
             )
             return (
                 TypeAdapter(SimpleConversation)
-                .validate_python(conversation, from_attributes=True)
+                .validate_python(ConversationResponseSource(conversation, session=session), from_attributes=True)
                 .model_dump(mode="json")
             )
         except ConversationNotExistsError:
@@ -159,7 +166,7 @@ class ConversationPinApi(InstalledAppResource):
     @console_ns.response(200, "Success", console_ns.models[ResultResponse.__name__])
     @with_current_user
     def patch(self, current_user: Account, installed_app: InstalledApp, c_id: UUID):
-        app_model = installed_app.app
+        app_model = installed_app.app_with_session(session=db.session())
         if app_model is None:
             raise AppUnavailableError()
         app_mode = AppMode.value_of(app_model.mode)
@@ -184,7 +191,7 @@ class ConversationUnPinApi(InstalledAppResource):
     @console_ns.response(200, "Success", console_ns.models[ResultResponse.__name__])
     @with_current_user
     def patch(self, current_user: Account, installed_app: InstalledApp, c_id: UUID):
-        app_model = installed_app.app
+        app_model = installed_app.app_with_session(session=db.session())
         if app_model is None:
             raise AppUnavailableError()
         app_mode = AppMode.value_of(app_model.mode)

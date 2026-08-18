@@ -77,13 +77,6 @@ describe('Actions', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<Actions {...defaultActionsProps} />)
-
-      expect(screen.getByText('datasetPipeline.operations.dataSource')).toBeInTheDocument()
-      expect(screen.getByText('datasetPipeline.operations.saveAndProcess')).toBeInTheDocument()
-    })
-
     it('should render back button with arrow icon', () => {
       render(<Actions {...defaultActionsProps} />)
 
@@ -177,13 +170,6 @@ describe('Actions', () => {
       expect(onProcess).not.toHaveBeenCalled()
     })
   })
-
-  // Component Memoization Testing
-  describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect(Actions.$$typeof).toBe(Symbol.for('react.memo'))
-    })
-  })
 })
 
 // Header Component Tests
@@ -199,14 +185,6 @@ describe('Header', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<Header {...defaultHeaderProps} />)
-
-      expect(
-        screen.getByText('datasetPipeline.addDocuments.stepTwo.chunkSettings'),
-      ).toBeInTheDocument()
-    })
-
     it('should render reset button', () => {
       render(<Header {...defaultHeaderProps} />)
 
@@ -336,13 +314,6 @@ describe('Header', () => {
     })
   })
 
-  // Component Memoization Testing
-  describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect(Header.$$typeof).toBe(Symbol.for('react.memo'))
-    })
-  })
-
   // Edge Cases Testing
   describe('Edge Cases', () => {
     it('should handle both buttons disabled', () => {
@@ -387,14 +358,6 @@ describe('Form', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<Form {...defaultFormProps} />)
-
-      expect(
-        screen.getByText('datasetPipeline.addDocuments.stepTwo.chunkSettings'),
-      ).toBeInTheDocument()
-    })
-
     it('should render form element', () => {
       const { container } = render(<Form {...defaultFormProps} />)
 

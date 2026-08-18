@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ChunkingMode } from '@/models/datasets'
 import { SegmentDetail } from '../segment-detail'
@@ -240,12 +240,6 @@ describe('SegmentDetail', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(<SegmentDetail {...defaultProps} />)
-
-      expect(container.firstChild)!.toBeInTheDocument()
-    })
-
     it('should render title for view mode', () => {
       render(<SegmentDetail {...defaultProps} isEditMode={false} />)
 
@@ -448,18 +442,6 @@ describe('SegmentDetail', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should handle segInfo with minimal data', () => {
-      const minimalSegInfo = {
-        id: 'segment-minimal',
-        position: 1,
-        word_count: 0,
-      }
-
-      const { container } = render(<SegmentDetail {...defaultProps} segInfo={minimalSegInfo} />)
-
-      expect(container.firstChild)!.toBeInTheDocument()
-    })
-
     it('should handle empty keywords array', () => {
       mockIndexingTechnique = IndexingType.ECONOMICAL
       const segInfo = { ...defaultSegInfo, keywords: [] }

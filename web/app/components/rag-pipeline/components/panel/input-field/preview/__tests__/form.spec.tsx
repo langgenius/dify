@@ -27,7 +27,7 @@ vi.mock('@/app/components/base/form/form-scenarios/base/field', () => ({
   default: mockBaseField,
 }))
 
-vi.mock('@/app/components/rag-pipeline/hooks/use-input-fields', () => ({
+vi.mock('../../../../../hooks/use-input-fields', () => ({
   useInitialData: mockUseInitialData,
   useConfigurations: mockUseConfigurations,
 }))

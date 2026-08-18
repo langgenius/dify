@@ -13,7 +13,7 @@ from flask_restx.utils import merge
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
-from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
+from werkzeug.exceptions import Forbidden, NotFound, ServiceUnavailable, Unauthorized
 
 from configs import dify_config
 from controllers.service_api.schema import (
@@ -22,7 +22,7 @@ from controllers.service_api.schema import (
     USER_QUERY_PARAM,
     USER_REQUIRED_ATTR,
 )
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.login import current_user
@@ -161,7 +161,7 @@ def validate_app_token[**P, R](
 
                 if tenant_owner_info:
                     tenant_model, account = tenant_owner_info
-                    account.current_tenant = tenant_model
+                    account.set_current_tenant_with_session(tenant_model, session=db.session())
                     current_app.login_manager._update_request_context_with_user(account)  # type: ignore
                     user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
                 else:
@@ -186,10 +186,16 @@ def cloud_edition_billing_resource_check[**P, R](
         def decorated(*args: P.args, **kwargs: P.kwargs):
             api_token = validate_and_get_api_token(api_token_type)
             if resource == "vector_space":
-                if not dify_config.BILLING_ENABLED:
+                if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
                     return view(*args, **kwargs)
 
                 vector_space = FeatureService.get_vector_space(api_token.tenant_id)
+                if vector_space.usage_unknown:
+                    features = FeatureService.get_features(api_token.tenant_id, exclude_vector_space=True)
+                    if features.billing.enabled and features.billing.subscription.plan == CloudPlan.SANDBOX:
+                        raise ServiceUnavailable(
+                            "Unable to verify vector space usage right now. Please try again later."
+                        )
                 if 0 < vector_space.limit <= vector_space.size:
                     raise Forbidden("The capacity of the vector space has reached the limit of your subscription.")
                 return view(*args, **kwargs)
@@ -322,18 +328,19 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
                 raise Forbidden("Dataset api access is not enabled.")
 
         tenant_account_join = db.session.execute(
-            select(Tenant, TenantAccountJoin)
-            .where(Tenant.id == api_token.tenant_id)
-            .where(TenantAccountJoin.tenant_id == Tenant.id)
-            .where(TenantAccountJoin.role.in_(["owner"]))
-            .where(Tenant.status == TenantStatus.NORMAL)
+            select(Tenant, TenantAccountJoin).where(
+                Tenant.id == api_token.tenant_id,
+                TenantAccountJoin.tenant_id == Tenant.id,
+                TenantAccountJoin.role.in_(["owner"]),
+                Tenant.status == TenantStatus.NORMAL,
+            )
         ).one_or_none()  # TODO: only owner information is required, so only one is returned.
         if tenant_account_join:
             tenant, ta = tenant_account_join
             account = db.session.get(Account, ta.account_id)
             # Login admin
             if account:
-                account.current_tenant = tenant
+                account.set_current_tenant_with_session(tenant, session=db.session())
                 current_app.login_manager._update_request_context_with_user(account)  # type: ignore
                 user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
             else:

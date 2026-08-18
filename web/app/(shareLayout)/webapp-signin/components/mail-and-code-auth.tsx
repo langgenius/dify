@@ -1,12 +1,11 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
-import { noop } from 'es-toolkit/function'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resolveWebAppLoginRedirect } from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import Input from '@/app/components/base/input'
 import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '@/app/components/signin/storage'
-import { emailRegex, IS_CLOUD_EDITION } from '@/config'
+import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendWebAppEMailLoginCode } from '@/service/common'
@@ -27,13 +26,13 @@ export default function MailAndCodeAuth() {
 
   useEffect(() => {
     if (!resolveWebAppLoginRedirect(redirectUrl, window.location.origin))
-      replaceLoginRedirect(getClientLoginFallback(IS_CLOUD_EDITION), router.replace, basePath)
+      replaceLoginRedirect(getClientLoginFallback(), router.replace, basePath)
   }, [redirectUrl, router])
 
   const handleGetEMailVerificationCode = async () => {
     const loginRedirect = resolveWebAppLoginRedirect(redirectUrl, window.location.origin)
     if (!loginRedirect) {
-      replaceLoginRedirect(getClientLoginFallback(IS_CLOUD_EDITION), router.replace, basePath)
+      replaceLoginRedirect(getClientLoginFallback(), router.replace, basePath)
       return
     }
     try {
@@ -64,8 +63,12 @@ export default function MailAndCodeAuth() {
   }
 
   return (
-    <form onSubmit={noop}>
-      <input type="text" className="hidden" />
+    <form
+      onSubmit={(event) => {
+        event.preventDefault()
+        void handleGetEMailVerificationCode()
+      }}
+    >
       <div className="mb-2">
         <label htmlFor="email" className="my-2 system-md-semibold text-text-secondary">
           {t(($) => $.email, { ns: 'login' })}
@@ -73,7 +76,10 @@ export default function MailAndCodeAuth() {
         <div className="mt-1">
           <Input
             id="email"
+            name="email"
             type="email"
+            autoComplete="email"
+            spellCheck={false}
             value={email}
             placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) as string}
             onChange={(e) => setEmail(e.target.value)}
@@ -81,11 +87,11 @@ export default function MailAndCodeAuth() {
         </div>
         <div className="mt-3">
           <Button
+            type="submit"
             loading={loading}
             disabled={loading || !email}
             variant="primary"
             className="w-full"
-            onClick={handleGetEMailVerificationCode}
           >
             {t(($) => $['signup.verifyMail'], { ns: 'login' })}
           </Button>

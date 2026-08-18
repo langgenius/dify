@@ -112,7 +112,9 @@ export const zAppMetaResponse = z.object({
 /**
  * AudioBinaryResponse
  */
-export const zAudioBinaryResponse = z.custom<Blob | File>()
+export const zAudioBinaryResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
 
 /**
  * AudioTranscriptResponse
@@ -124,7 +126,9 @@ export const zAudioTranscriptResponse = z.object({
 /**
  * BinaryFileResponse
  */
-export const zBinaryFileResponse = z.custom<Blob | File>()
+export const zBinaryFileResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
 
 /**
  * ButtonStyle
@@ -868,6 +872,8 @@ export const zDocumentStatusResponse = z.object({
   completed_at: z.int().nullable(),
   completed_segments: z.int().nullish(),
   error: z.string().nullable(),
+  error_code: z.string().nullish(),
+  estimated_vector_space_mb: z.int().nullish(),
   id: z.string(),
   indexing_status: z.string(),
   parsing_completed_at: z.int().nullable(),
@@ -876,6 +882,7 @@ export const zDocumentStatusResponse = z.object({
   splitting_completed_at: z.int().nullable(),
   stopped_at: z.int().nullable(),
   total_segments: z.int().nullish(),
+  vector_space_limit_mb: z.int().nullish(),
 })
 
 /**
@@ -1259,7 +1266,7 @@ export const zMetadataArgs = z.object({
  * MetadataDetail
  */
 export const zMetadataDetail = z.object({
-  id: z.string(),
+  id: z.uuid(),
   name: z.string(),
   value: z.union([z.string(), z.int(), z.number()]).nullish(),
 })
@@ -1268,7 +1275,7 @@ export const zMetadataDetail = z.object({
  * DocumentMetadataOperation
  */
 export const zDocumentMetadataOperation = z.object({
-  document_id: z.string(),
+  document_id: z.uuid(),
   metadata_list: z.array(zMetadataDetail),
   partial_update: z.boolean().optional().default(false),
 })
@@ -1890,7 +1897,7 @@ export const zUserActionConfig = z.object({
  * ValueSourceType
  *
  * ValueSourceType records whether the value comes from a static setting
- * in form definiton, or a variable while the workflow is running.
+ * in form definition, or a variable while the workflow is running.
  */
 export const zValueSourceType = z.enum(['constant', 'variable'])
 
@@ -2452,7 +2459,7 @@ export const zPutAppsAnnotationsByAnnotationIdPath = z.object({
 export const zPutAppsAnnotationsByAnnotationIdResponse = zAnnotation
 
 export const zPostAudioToTextBody = z.object({
-  file: z.custom<Blob | File>(),
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
   user: z.string().optional(),
 })
 
@@ -2591,7 +2598,7 @@ export const zPostDatasetsBody = zDatasetCreatePayload
 export const zPostDatasetsResponse = zDatasetDetailResponse
 
 export const zPostDatasetsPipelineFileUploadBody = z.object({
-  file: z.custom<Blob | File>(),
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
 })
 
 /**
@@ -2670,7 +2677,7 @@ export const zPatchDatasetsByDatasetIdResponse = zDatasetDetailWithPartialMember
 
 export const zPostDatasetsByDatasetIdDocumentCreateByFileBody = z.object({
   data: z.string().optional(),
-  file: z.custom<Blob | File>(),
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
 })
 
 export const zPostDatasetsByDatasetIdDocumentCreateByFilePath = z.object({
@@ -2695,7 +2702,7 @@ export const zPostDatasetsByDatasetIdDocumentCreateByTextResponse = zDocumentAnd
 
 export const zPostDatasetsByDatasetIdDocumentCreateByFile2Body = z.object({
   data: z.string().optional(),
-  file: z.custom<Blob | File>(),
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
 })
 
 export const zPostDatasetsByDatasetIdDocumentCreateByFile2Path = z.object({
@@ -2745,7 +2752,9 @@ export const zPostDatasetsByDatasetIdDocumentsDownloadZipPath = z.object({
 /**
  * ZIP archive containing the requested documents.
  */
-export const zPostDatasetsByDatasetIdDocumentsDownloadZipResponse = z.custom<Blob | File>()
+export const zPostDatasetsByDatasetIdDocumentsDownloadZipResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
 
 export const zPostDatasetsByDatasetIdDocumentsMetadataBody = zMetadataOperationData
 
@@ -2807,7 +2816,7 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdResponse = zDocumentDet
 
 export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdBody = z.object({
   data: z.string().optional(),
-  file: z.custom<Blob | File>().optional(),
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File).optional(),
 })
 
 export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdPath = z.object({
@@ -2967,7 +2976,7 @@ export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdCh
 
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileBody = z.object({
   data: z.string().optional(),
-  file: z.custom<Blob | File>().optional(),
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File).optional(),
 })
 
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFilePath = z.object({
@@ -2996,7 +3005,7 @@ export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponse =
 
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Body = z.object({
   data: z.string().optional(),
-  file: z.custom<Blob | File>().optional(),
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File).optional(),
 })
 
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Path = z.object({
@@ -3167,7 +3176,7 @@ export const zGetEndUsersByEndUserIdPath = z.object({
 export const zGetEndUsersByEndUserIdResponse = zEndUserDetail
 
 export const zPostFilesUploadBody = z.object({
-  file: z.custom<Blob | File>(),
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
   user: z.string().optional(),
 })
 
@@ -3188,7 +3197,9 @@ export const zGetFilesByFileIdPreviewQuery = z.object({
 /**
  * Returns the raw file content. The `Content-Type` header is set to the file's MIME type. If `as_attachment` is `true`, the file is returned as a download with `Content-Disposition: attachment`.
  */
-export const zGetFilesByFileIdPreviewResponse = z.custom<Blob | File>()
+export const zGetFilesByFileIdPreviewResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
 
 export const zGetFormHumanInputByFormTokenPath = z.object({
   form_token: z.string(),
@@ -3271,7 +3282,9 @@ export const zPostTextToAudioBody = zTextToAudioPayloadWithUser
 /**
  * Returns the generated audio. Generator responses are streamed by the service as `audio/mpeg`; otherwise the provider output is returned directly.
  */
-export const zPostTextToAudioResponse = z.custom<Blob | File>()
+export const zPostTextToAudioResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
 
 export const zGetWorkflowByTaskIdEventsPath = z.object({
   task_id: z.string(),

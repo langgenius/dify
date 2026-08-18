@@ -22,14 +22,14 @@ import json
 import uuid
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 from flask import Flask
 from flask.views import MethodView
 from pydantic import ValidationError
-from sqlalchemy import Engine, select
-from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound, UnprocessableEntity
 
 from controllers.openapi import bp as openapi_bp
@@ -45,7 +45,6 @@ from controllers.openapi.workspaces import (
 from libs.oauth_bearer import AuthContext, Scope, SubjectType, TokenType, reset_auth_ctx, set_auth_ctx
 from models import Account, Tenant, TenantAccountJoin
 from models.account import AccountStatus, TenantAccountRole, TenantStatus
-from models.base import TypeBase
 from services.account_service import TenantService as RealTenantService
 from services.errors.account import (
     AccountAlreadyInTenantError,
@@ -92,19 +91,8 @@ def openapi_app() -> Flask:
 
 
 @pytest.fixture
-def database_session(sqlite_engine: Engine):
-    models = (Account, Tenant, TenantAccountJoin)
-    tables = [model.metadata.tables[model.__tablename__] for model in models]
-    TypeBase.metadata.create_all(sqlite_engine, tables=tables)
-    database_session = scoped_session(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
-    try:
-        with (
-            patch.object(workspaces_module.db, "session", database_session),
-            patch("models.account.db", SimpleNamespace(engine=sqlite_engine)),
-        ):
-            yield database_session()
-    finally:
-        database_session.remove()
+def database_session(sqlite_session: Session):
+    return sqlite_session
 
 
 def _rule(app: Flask, path: str):

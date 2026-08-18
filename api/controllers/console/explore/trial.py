@@ -1,4 +1,5 @@
 import logging
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Literal
 
@@ -44,10 +45,11 @@ from controllers.console.explore.error import (
     NotCompletionAppError,
     NotWorkflowAppError,
 )
-from controllers.console.explore.wraps import TrialAppResource, trial_feature_enable
-from controllers.console.wraps import with_current_user
+from controllers.console.explore.wraps import TrialAppResource
+from controllers.console.files import FILE_UPLOAD_PARAMS, upload_file_from_request
+from controllers.console.remote_files import RemoteFileUploadPayload, upload_remote_file_from_request
+from controllers.console.wraps import cloud_edition_billing_resource_check, model_validate, with_current_user
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
@@ -55,21 +57,29 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from core.helper import encrypter
+from core.workflow.llm_environment_variable import LLMEnvironmentVariable, dump_environment_variable
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.base import ResponseModel
+from fields.conversation_variable_fields import WorkflowConversationVariableResponse
+from fields.file_fields import FileResponse, FileWithSignedUrl
 from fields.message_fields import SuggestedQuestionsResponse
 from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
+from graphon.variables import SecretVariable, VariableBase
 from libs import helper
 from libs.helper import dump_response, to_timestamp, uuid_value
-from models import Account
+from models import Account, App
 from models.account import TenantStatus
 from models.model import AppMode, Site
 from models.workflow import Workflow
+from services.account_service import TenantService
+from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.app_generate_service import AppGenerateService
 from services.app_ref_service import AppRefService
-from services.app_service import AppService
+from services.app_service import AppResponseView, AppService
 from services.audio_service import AudioService
 from services.dataset_service import DatasetService
 from services.errors.audio import (
@@ -370,13 +380,54 @@ class TrialWorkflowResponse(ResponseModel):
     updated_at: int | None = None
     tool_published: bool | None = None
     environment_variables: list[JsonObject] = Field(default_factory=list)
-    conversation_variables: list[JsonObject] = Field(default_factory=list)
+    conversation_variables: list[WorkflowConversationVariableResponse] = Field(default_factory=list)
     rag_pipeline_variables: list[JsonObject] = Field(default_factory=list)
 
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
         return to_timestamp(value)
+
+    @field_validator("environment_variables", mode="before")
+    @classmethod
+    def _serialize_environment_variables(cls, value: Any) -> list[Any]:
+        if value is None:
+            return []
+
+        result: list[Any] = []
+        for item in value:
+            if isinstance(item, SecretVariable):
+                serialized = item.model_dump(mode="json")
+                serialized["value"] = encrypter.full_mask_token()
+                result.append(serialized)
+            elif isinstance(item, LLMEnvironmentVariable):
+                result.append(dump_environment_variable(item, mode="json"))
+            elif isinstance(item, VariableBase):
+                result.append(item.model_dump(mode="json"))
+            else:
+                result.append(item)
+        return result
+
+
+@dataclass(frozen=True)
+class TrialWorkflowResponseSource:
+    workflow: Workflow
+    session: Session
+
+    @property
+    def created_by_account(self) -> Account | None:
+        return self.workflow.get_created_by_account(session=self.session)
+
+    @property
+    def updated_by_account(self) -> Account | None:
+        return self.workflow.get_updated_by_account(session=self.session)
+
+    @property
+    def tool_published(self) -> bool:
+        return self.workflow.get_tool_published(session=self.session)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.workflow, name)  # guard-ignore: no-new-getattr -- delegates model fields
 
 
 register_schema_models(
@@ -403,13 +454,41 @@ register_response_schema_models(
 simple_account_model = console_ns.models[TrialSimpleAccount.__name__]
 
 
+class TrialAppFileUploadApi(TrialAppResource):
+    @cloud_edition_billing_resource_check("documents")
+    @console_ns.doc(consumes=["multipart/form-data"], params=FILE_UPLOAD_PARAMS)
+    @console_ns.response(201, "File uploaded successfully", console_ns.models[FileResponse.__name__])
+    @with_current_user
+    def post(self, current_user: Account, app_model: App):
+        """Upload a file into the tenant that owns the trial app."""
+        upload_file = upload_file_from_request(
+            current_user=current_user,
+            resource_tenant_id=app_model.tenant_id,
+        )
+        return dump_response(FileResponse, upload_file), 201
+
+
+class TrialAppRemoteFileUploadApi(TrialAppResource):
+    @cloud_edition_billing_resource_check("documents")
+    @console_ns.expect(console_ns.models[RemoteFileUploadPayload.__name__])
+    @console_ns.response(201, "File uploaded successfully", console_ns.models[FileWithSignedUrl.__name__])
+    @with_current_user
+    def post(self, current_user: Account, app_model: App):
+        """Upload a remote file into the tenant that owns the trial app."""
+        remote_file = upload_remote_file_from_request(
+            current_user=current_user,
+            resource_tenant_id=app_model.tenant_id,
+        )
+        return remote_file.model_dump(mode="json"), 201
+
+
 class TrialAppWorkflowRunApi(TrialAppResource):
-    @trial_feature_enable
     @console_ns.expect(console_ns.models[WorkflowRunRequest.__name__])
     @console_ns.response(200, "Success")
     @with_current_user
     @with_session
-    def post(self, session: Session, current_user: Account, trial_app):
+    @model_validate(WorkflowRunRequest)
+    def post(self, req_data: WorkflowRunRequest, session: Session, current_user: Account, trial_app):
         """
         Run workflow
         """
@@ -420,8 +499,7 @@ class TrialAppWorkflowRunApi(TrialAppResource):
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
 
-        request_data = WorkflowRunRequest.model_validate(console_ns.payload)
-        args = request_data.model_dump()
+        args = req_data.model_dump()
         try:
             app_id = app_model.id
             user_id = current_user.id
@@ -455,7 +533,6 @@ class TrialAppWorkflowRunApi(TrialAppResource):
 
 class TrialAppWorkflowTaskStopApi(TrialAppResource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    @trial_feature_enable
     def post(self, trial_app, task_id: str):
         """
         Stop workflow task
@@ -480,17 +557,16 @@ class TrialAppWorkflowTaskStopApi(TrialAppResource):
 class TrialChatApi(TrialAppResource):
     @console_ns.expect(console_ns.models[ChatRequest.__name__])
     @console_ns.response(200, "Success")
-    @trial_feature_enable
     @with_current_user
     @with_session
-    def post(self, session: Session, current_user: Account, trial_app):
+    @model_validate(ChatRequest)
+    def post(self, req_data: ChatRequest, session: Session, current_user: Account, trial_app):
         app_model = trial_app
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        request_data = ChatRequest.model_validate(console_ns.payload)
-        args = request_data.model_dump()
+        args = req_data.model_dump()
 
         # Validate UUID values if provided
         if args.get("conversation_id"):
@@ -582,19 +658,23 @@ class TrialMessageSuggestedQuestionApi(TrialAppResource):
 
 class TrialChatAudioApi(TrialAppResource):
     @console_ns.response(200, "Success", console_ns.models[AudioTranscriptResponse.__name__])
-    @trial_feature_enable
     @with_current_user
     def post(self, current_user: Account, trial_app):
         app_model = trial_app
 
-        file = request.files["file"]
+        file = request.files.get("file")
 
         try:
             # Get IDs before they might be detached from session
             app_id = app_model.id
             user_id = current_user.id
 
-            response = AudioService.transcript_asr(app_model=app_model, file=file, end_user=None)
+            response = AudioService.transcript_asr(
+                app_model=app_model,
+                file=file,
+                session=db.session(),
+                end_user=None,
+            )
             RecommendedAppService.add_trial_app_record(app_id, user_id, session=db.session())
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
@@ -628,16 +708,14 @@ class TrialChatAudioApi(TrialAppResource):
 class TrialChatTextApi(TrialAppResource):
     @console_ns.expect(console_ns.models[TextToSpeechRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[AudioBinaryResponse.__name__])
-    @trial_feature_enable
     @with_current_user
-    def post(self, current_user: Account, trial_app):
+    @model_validate(TextToSpeechRequest)
+    def post(self, req_data: TextToSpeechRequest, current_user: Account, trial_app):
         app_model = trial_app
         try:
-            request_data = TextToSpeechRequest.model_validate(console_ns.payload)
-
-            message_id = request_data.message_id
-            text = request_data.text
-            voice = request_data.voice
+            message_id = req_data.message_id
+            text = req_data.text
+            voice = req_data.voice
             message_ref = None
             if message_id:
                 app_ref = AppRefService.create_app_ref(app_model)
@@ -689,16 +767,15 @@ class TrialChatTextApi(TrialAppResource):
 class TrialCompletionApi(TrialAppResource):
     @console_ns.expect(console_ns.models[CompletionRequest.__name__])
     @console_ns.response(200, "Success")
-    @trial_feature_enable
     @with_current_user
     @with_session
-    def post(self, session: Session, current_user: Account, trial_app):
+    @model_validate(CompletionRequest)
+    def post(self, req_data: CompletionRequest, session: Session, current_user: Account, trial_app):
         app_model = trial_app
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
-        request_data = CompletionRequest.model_validate(console_ns.payload)
-        args = request_data.model_dump()
+        args = req_data.model_dump()
 
         streaming = args["response_mode"] == "streaming"
         args["auto_generate_name"] = False
@@ -746,19 +823,21 @@ class TrialSitApi(Resource):
     """Resource for trial app sites."""
 
     @console_ns.response(200, "Success", console_ns.models[SiteResponse.__name__])
+    @with_session(write=False)
     @get_app_model_with_trial(None)
-    def get(self, app_model):
+    def get(self, session: Session, app_model):
         """Retrieve app site info.
 
         Returns the site configuration for the application including theme, icons, and text.
         """
-        site = db.session.scalar(select(Site).where(Site.app_id == app_model.id).limit(1))
+        site = session.scalar(select(Site).where(Site.app_id == app_model.id).limit(1))
 
         if not site:
             raise Forbidden()
 
-        assert app_model.tenant
-        if app_model.tenant.status == TenantStatus.ARCHIVE:
+        tenant = TenantService.get_tenant_by_id(app_model.tenant_id, session=session)
+        assert tenant
+        if tenant.status == TenantStatus.ARCHIVE:
             raise Forbidden()
 
         return SiteResponse.model_validate(site).model_dump(mode="json")
@@ -768,72 +847,70 @@ class TrialAppParameterApi(Resource):
     """Resource for app variables."""
 
     @console_ns.response(200, "Success", console_ns.models[ParametersResponse.__name__])
+    @with_session(write=False)
     @get_app_model_with_trial(None)
-    def get(self, app_model):
+    def get(self, session: Session, app_model):
         """Retrieve app parameters."""
 
         if app_model is None:
             raise AppUnavailableError()
 
-        if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
-            workflow = app_model.workflow
-            if workflow is None:
-                raise AppUnavailableError()
+        try:
+            parameters = application_services().app_definitions.get_parameters(app_model.id)
+        except AppDefinitionUnavailableError:
+            raise AppUnavailableError() from None
 
-            features_dict = workflow.features_dict
-            user_input_form = workflow.user_input_form(to_old_structure=True)
-        else:
-            app_model_config = app_model.app_model_config
-            if app_model_config is None:
-                raise AppUnavailableError()
-
-            features_dict = app_model_config.to_dict()
-
-            user_input_form = features_dict.get("user_input_form", [])
-
-        parameters = get_parameters_from_feature_dict(features_dict=features_dict, user_input_form=user_input_form)
-        return ParametersResponse.model_validate(parameters).model_dump(mode="json")
+        return dump_response(ParametersResponse, parameters)
 
 
 class AppApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[TrialAppDetailResponse.__name__])
+    @with_session(write=False)
     @get_app_model_with_trial(None)
-    def get(self, app_model):
+    def get(self, session: Session, app_model):
         """Get app detail"""
 
         app_service = AppService()
-        app_model = app_service.get_app(app_model)
+        app_model = app_service.get_app(app_model, session=session)
 
-        return dump_response(TrialAppDetailResponse, app_model)
+        return TrialAppDetailResponse.model_validate(
+            AppResponseView(app_model, session=session),
+            from_attributes=True,
+        ).model_dump(mode="json")
 
 
 class AppWorkflowApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[TrialWorkflowResponse.__name__])
+    @with_session(write=False)
     @get_app_model_with_trial(None)
-    def get(self, app_model):
+    def get(self, session: Session, app_model):
         """Get workflow detail"""
         if not app_model.workflow_id:
             raise AppUnavailableError()
 
-        workflow = db.session.get(Workflow, app_model.workflow_id)
+        workflow = app_model.workflow_with_session(session=session)
         if workflow is None:
             raise AppUnavailableError()
 
-        return dump_response(TrialWorkflowResponse, workflow)
+        return TrialWorkflowResponse.model_validate(
+            TrialWorkflowResponseSource(workflow=workflow, session=session),
+            from_attributes=True,
+        ).model_dump(mode="json")
 
 
 class DatasetListApi(Resource):
     @console_ns.doc(params=query_params_from_model(TrialDatasetListQuery))
     @console_ns.response(200, "Success", console_ns.models[TrialDatasetListResponse.__name__])
+    @with_session(write=False)
     @get_app_model_with_trial(None)
-    def get(self, app_model):
+    def get(self, session: Session, app_model):
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
         ids = request.args.getlist("ids")
 
         tenant_id = app_model.tenant_id
         if ids:
-            datasets, total = DatasetService.get_datasets_by_ids(ids, tenant_id)
+            datasets, total = DatasetService.get_datasets_by_ids(ids, tenant_id, session=session)
         else:
             raise NeedAddIdsError()
 
@@ -842,6 +919,18 @@ class DatasetListApi(Resource):
 
 
 console_ns.add_resource(TrialChatApi, "/trial-apps/<uuid:app_id>/chat-messages", endpoint="trial_app_chat_completion")
+
+console_ns.add_resource(
+    TrialAppFileUploadApi,
+    "/trial-apps/<uuid:app_id>/files/upload",
+    endpoint="trial_app_file_upload",
+)
+
+console_ns.add_resource(
+    TrialAppRemoteFileUploadApi,
+    "/trial-apps/<uuid:app_id>/remote-files/upload",
+    endpoint="trial_app_remote_file_upload",
+)
 
 console_ns.add_resource(
     TrialMessageSuggestedQuestionApi,

@@ -59,7 +59,7 @@ const ConditionNumberInput = ({
       <DropdownMenu open={numberVarTypeVisible} onOpenChange={setNumberVarTypeVisible}>
         <DropdownMenuTrigger render={<Button className="shrink-0" variant="ghost" size="small" />}>
           {capitalize(numberVarType)}
-          <RiArrowDownSLine className="ml-px size-3.5" />
+          <RiArrowDownSLine className="size-3.5" />
         </DropdownMenuTrigger>
         <DropdownMenuContent
           placement="bottom-start"
@@ -112,8 +112,8 @@ const ConditionNumberInput = ({
             >
               <div
                 className={cn(
-                  'w-[296px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pt-1 shadow-lg',
-                  isShort && 'w-[200px]',
+                  'w-74 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pt-1 shadow-lg',
+                  isShort && 'w-50',
                 )}
               >
                 <VarReferenceVars vars={variables} onChange={handleSelectVariable} />

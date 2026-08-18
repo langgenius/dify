@@ -1,8 +1,9 @@
 import type { CreateSnippetDialogPayload } from '@/app/components/snippets/create-snippet-dialog'
 import type { SnippetDetail } from '@/models/snippet'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import { render } from '@/test/console/render'
 import SnippetInfoDropdown from '../dropdown'
 
 const mockReplace = vi.fn()
@@ -13,9 +14,7 @@ const mockUpdateMutate = vi.fn()
 const mockExportMutateAsync = vi.fn()
 const mockDeleteMutate = vi.fn()
 let mockWorkspacePermissionKeys: string[] = ['snippets.create_and_modify', 'snippets.management']
-let mockDropdownOpen = false
-let mockDropdownOnOpenChange: ((open: boolean) => void) | undefined
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   current: {
     get workspacePermissionKeys() {
       return mockWorkspacePermissionKeys
@@ -23,31 +22,9 @@ const mockAppContextState = vi.hoisted(() => ({
   },
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current)
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => mockConsoleState.current)
 })
 
 vi.mock('@/next/navigation', () => ({
@@ -65,51 +42,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
     success: (...args: unknown[]) => mockToastSuccess(...args),
     error: (...args: unknown[]) => mockToastError(...args),
   },
-}))
-
-vi.mock('@langgenius/dify-ui/dropdown-menu', () => ({
-  DropdownMenu: ({
-    open,
-    onOpenChange,
-    children,
-  }: {
-    open?: boolean
-    onOpenChange?: (open: boolean) => void
-    children: React.ReactNode
-  }) => {
-    mockDropdownOpen = !!open
-    mockDropdownOnOpenChange = onOpenChange
-    return <div>{children}</div>
-  },
-  DropdownMenuTrigger: ({
-    children,
-    className,
-  }: {
-    children: React.ReactNode
-    className?: string
-  }) => (
-    <button
-      type="button"
-      className={className}
-      onClick={() => mockDropdownOnOpenChange?.(!mockDropdownOpen)}
-    >
-      {children}
-    </button>
-  ),
-  DropdownMenuContent: ({ children }: { children: React.ReactNode }) =>
-    mockDropdownOpen ? <div>{children}</div> : null,
-  DropdownMenuItem: ({
-    children,
-    onClick,
-  }: {
-    children: React.ReactNode
-    onClick?: () => void
-  }) => (
-    <button type="button" onClick={onClick}>
-      {children}
-    </button>
-  ),
-  DropdownMenuSeparator: () => <hr />,
 }))
 
 vi.mock('@/service/use-snippets', () => ({
@@ -194,8 +126,6 @@ describe('SnippetInfoDropdown', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockWorkspacePermissionKeys = ['snippets.create_and_modify', 'snippets.management']
-    mockDropdownOpen = false
-    mockDropdownOnOpenChange = undefined
   })
 
   // Rendering coverage for the menu trigger itself.
@@ -203,7 +133,7 @@ describe('SnippetInfoDropdown', () => {
     it('should render the dropdown trigger button', () => {
       render(<SnippetInfoDropdown snippet={mockSnippet} />)
 
-      expect(screen.getByRole('button')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.more' })).toBeInTheDocument()
     })
 
     it('should render nothing without snippet create or management permission', () => {
@@ -219,7 +149,7 @@ describe('SnippetInfoDropdown', () => {
       mockWorkspacePermissionKeys = ['snippets.create_and_modify']
 
       const { unmount } = render(<SnippetInfoDropdown snippet={mockSnippet} />)
-      await user.click(screen.getByRole('button'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
 
       expect(screen.getByText('snippet.menu.editInfo')).toBeInTheDocument()
       expect(screen.getByText('snippet.menu.exportSnippet')).toBeInTheDocument()
@@ -228,7 +158,7 @@ describe('SnippetInfoDropdown', () => {
       unmount()
       mockWorkspacePermissionKeys = ['snippets.management']
       render(<SnippetInfoDropdown snippet={mockSnippet} />)
-      await user.click(screen.getByRole('button'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
 
       expect(screen.queryByText('snippet.menu.editInfo')).not.toBeInTheDocument()
       expect(screen.queryByText('snippet.menu.exportSnippet')).not.toBeInTheDocument()
@@ -247,7 +177,7 @@ describe('SnippetInfoDropdown', () => {
       )
 
       render(<SnippetInfoDropdown snippet={mockSnippet} />)
-      await user.click(screen.getByRole('button'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
       await user.click(screen.getByText('snippet.menu.editInfo'))
 
       expect(screen.getByTestId('create-snippet-dialog')).toBeInTheDocument()
@@ -286,7 +216,7 @@ describe('SnippetInfoDropdown', () => {
 
       render(<SnippetInfoDropdown snippet={mockSnippet} />)
 
-      await user.click(screen.getByRole('button'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
       await user.click(screen.getByText('snippet.menu.exportSnippet'))
 
       await waitFor(() => {
@@ -306,7 +236,7 @@ describe('SnippetInfoDropdown', () => {
 
       render(<SnippetInfoDropdown snippet={mockSnippet} />)
 
-      await user.click(screen.getByRole('button'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
       await user.click(screen.getByText('snippet.menu.exportSnippet'))
 
       await waitFor(() => {
@@ -327,7 +257,7 @@ describe('SnippetInfoDropdown', () => {
 
       render(<SnippetInfoDropdown snippet={mockSnippet} />)
 
-      await user.click(screen.getByRole('button'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
       await user.click(screen.getByText('snippet.menu.deleteSnippet'))
 
       expect(screen.getByText('snippet.deleteConfirmTitle')).toBeInTheDocument()

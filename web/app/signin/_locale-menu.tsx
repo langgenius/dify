@@ -24,10 +24,6 @@ export default function LocaleMenu<T extends string>({
   onChange,
 }: LocaleMenuProps<T>) {
   const selectedItem = items.find((item) => item.value === value)
-  const handleValueChange = (nextValue: string) => {
-    const nextItem = items.find((item) => item.value === nextValue)
-    if (nextItem) onChange?.(nextItem.value)
-  }
 
   return (
     <div className="w-56 text-right">
@@ -38,7 +34,7 @@ export default function LocaleMenu<T extends string>({
               render={
                 <button
                   type="button"
-                  className="inline-flex w-full items-center rounded-lg border border-components-button-secondary-border px-[10px] py-[6px] text-[13px] font-medium text-text-primary hover:bg-state-base-hover"
+                  className="inline-flex w-full items-center rounded-lg border border-components-button-secondary-border px-2.5 py-1.5 text-[13px] font-medium text-text-primary hover:bg-state-base-hover"
                 />
               }
             >
@@ -48,9 +44,12 @@ export default function LocaleMenu<T extends string>({
           </div>
         </div>
         <DropdownMenuContent placement="bottom-end" sideOffset={8} popupClassName="w-[200px]">
-          <DropdownMenuRadioGroup value={value} onValueChange={handleValueChange}>
+          <DropdownMenuRadioGroup<T>
+            value={value}
+            onValueChange={(nextValue) => onChange?.(nextValue)}
+          >
             {items.map((item) => (
-              <DropdownMenuRadioItem
+              <DropdownMenuRadioItem<T>
                 key={item.value}
                 value={item.value}
                 closeOnClick

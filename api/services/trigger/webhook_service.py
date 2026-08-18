@@ -23,7 +23,7 @@ from core.workflow.nodes.trigger_webhook.entities import (
     WebhookData,
     WebhookParameter,
 )
-from enums.quota_type import QuotaType
+from enums import QuotaType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from factories import file_factory
@@ -881,7 +881,7 @@ class WebhookService:
                     response_data = {"message": response_body}
             else:
                 response_data = {"status": "success", "message": "Webhook processed successfully"}
-        except:
+        except Exception:
             response_data = {"message": response_body or "Webhook processed successfully"}
 
         return response_data, status_code

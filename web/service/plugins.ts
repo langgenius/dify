@@ -4,11 +4,11 @@ import type {
   InstallPackageResponse,
   PluginManifestInMarket,
   TaskStatusResponse,
-  UninstallPluginResponse,
   updatePackageResponse,
   uploadGitHubResponse,
 } from '@/app/components/plugins/types'
 import { get, getMarketplace, post, upload } from './base'
+import { consoleClient } from './client'
 
 export const uploadFile = async (file: File, isBundle: boolean) => {
   const formData = new FormData()
@@ -87,8 +87,14 @@ export const checkTaskStatus = async (taskId: string) => {
   return get<TaskStatusResponse>(`/workspaces/current/plugin/tasks/${taskId}`)
 }
 
-export const uninstallPlugin = async (pluginId: string) => {
-  return post<UninstallPluginResponse>('/workspaces/current/plugin/uninstall', {
-    body: { plugin_installation_id: pluginId },
+export const uninstallPlugin = async (
+  pluginId: string,
+  options: { preserveCredentials?: boolean } = {},
+) => {
+  return consoleClient.workspaces.current.plugin.uninstall.post({
+    body: {
+      plugin_installation_id: pluginId,
+      preserve_credentials: options.preserveCredentials ?? false,
+    },
   })
 }

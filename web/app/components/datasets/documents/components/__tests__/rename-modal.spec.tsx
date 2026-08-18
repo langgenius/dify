@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 // Import after mock
 import { renameDocumentName } from '@/service/datasets'
 import RenameModal from '../rename-modal'
@@ -37,11 +37,6 @@ describe('RenameModal', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<RenameModal {...defaultProps} />)
-      expect(screen.getByText(/list\.table\.rename/i)).toBeInTheDocument()
-    })
-
     it('should render modal title', () => {
       render(<RenameModal {...defaultProps} />)
       expect(screen.getByText(/list\.table\.rename/i)).toBeInTheDocument()
