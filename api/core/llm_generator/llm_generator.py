@@ -456,7 +456,7 @@ class LLMGenerator:
 
         error = ""
         error_step = ""
-        rule_config = {"prompt": "", "variables": [], "opening_statement": "", "error": ""}
+        rule_config: dict[str, Any] = {"prompt": "", "variables": [], "opening_statement": "", "error": ""}
         model_parameters = args.model_config_data.completion_params
         if args.no_variable:
             prompt_template = PromptTemplateParser(WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE)
