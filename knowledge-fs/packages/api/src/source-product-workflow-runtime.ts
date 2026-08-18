@@ -207,7 +207,7 @@ export function createSourceProductWorkflowRuntime(input: {
   const bulkChildPollMs = input.bulkChildPollMs ?? Math.max(input.intervalMs ?? 1_000, 1_000);
   const intervalMs = input.intervalMs ?? 1_000;
   const leaseMs = input.leaseMs ?? 5 * 60_000;
-  const externalOperationTimeoutMs = input.externalOperationTimeoutMs ?? 2 * 60_000;
+  const externalOperationTimeoutMs = input.externalOperationTimeoutMs ?? 10 * 60_000;
   const maxCleanupBatchesPerRun = input.maxCleanupBatchesPerRun ?? 25;
   const now = input.now ?? Date.now;
   let timer: ReturnType<typeof setInterval> | undefined;
