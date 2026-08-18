@@ -45,8 +45,11 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const datasetMap = getDatasetMap()
-  const requestHeaders = await headers()
-  const [locale] = await Promise.all([getLocaleOnServer(), prefetchSystemFeatures()])
+  const [locale, requestHeaders] = await Promise.all([
+    getLocaleOnServer(),
+    headers(),
+    prefetchSystemFeatures(),
+  ])
   const dehydratedState = dehydrate(getSystemFeaturesQueryClient())
   const nonce = IS_PROD ? (requestHeaders.get('x-nonce') ?? undefined) : undefined
   const themeProviderProps: Omit<ThemeProviderProps, 'children'> = {

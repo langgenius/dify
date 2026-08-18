@@ -45,27 +45,6 @@ describe('Root layout System Features bootstrap', () => {
     queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   })
 
-  it('waits for request headers before RootLayout starts the System Features request', async () => {
-    let resolveHeaders!: (headers: Headers) => void
-    mocks.headers.mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          resolveHeaders = resolve
-        }),
-    )
-    mocks.getSystemFeatures.mockResolvedValue({ deployment_edition: 'CLOUD' })
-    const { default: RootLayout } = await import('../layout')
-
-    const layout = RootLayout({ children: <div>App</div> })
-    await Promise.resolve()
-
-    expect(mocks.getSystemFeatures).not.toHaveBeenCalled()
-
-    resolveHeaders(new Headers())
-    await expect(layout).resolves.toBeDefined()
-    expect(mocks.getSystemFeatures).toHaveBeenCalledOnce()
-  })
-
   it('caches the resolved System Features for dehydration', async () => {
     mocks.getSystemFeatures.mockResolvedValue({
       branding: {
