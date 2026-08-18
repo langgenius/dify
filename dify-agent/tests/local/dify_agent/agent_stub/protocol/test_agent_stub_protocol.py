@@ -15,6 +15,7 @@ from dify_agent.agent_stub.protocol.agent_stub import (
     AgentStubConfigDownloadSource,
     AgentStubFileDownloadRequest,
     AgentStubFileMapping,
+    AgentStubFileUploadRequest,
     agent_stub_connections_url,
     agent_stub_drive_base_for_ref,
     agent_stub_drive_commit_url,
@@ -52,6 +53,13 @@ def test_agent_stub_file_request_urls_handle_trailing_slash() -> None:
     assert agent_stub_file_download_request_url("https://agent.example.com/agent-stub") == (
         "https://agent.example.com/agent-stub/files/download-request"
     )
+
+
+def test_agent_stub_file_upload_request_rejects_client_max_size() -> None:
+    with pytest.raises(ValidationError, match="extra_forbidden"):
+        AgentStubFileUploadRequest.model_validate(
+            {"filename": "report.pdf", "mimetype": "application/pdf", "max_size": 1024}
+        )
 
 
 def test_agent_stub_drive_request_urls_handle_trailing_slash() -> None:

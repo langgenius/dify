@@ -184,6 +184,7 @@ class AgentRunRunner:
     dify_api_http_client: httpx.AsyncClient
     is_cancelled: Callable[[], bool]
     run_timeout_seconds: float
+    _terminal_session_snapshot: CompositorSessionSnapshot | None
 
     def __init__(
         self,
@@ -205,9 +206,16 @@ class AgentRunRunner:
         self.layer_providers = layer_providers if layer_providers is not None else create_default_layer_providers()
         self.is_cancelled = is_cancelled or (lambda: False)
         self.run_timeout_seconds = run_timeout_seconds
+        self._terminal_session_snapshot = None
+
+    @property
+    def terminal_session_snapshot(self) -> CompositorSessionSnapshot | None:
+        """Return the snapshot captured after the current compositor context exited."""
+        return self._terminal_session_snapshot
 
     async def run(self) -> None:
         """Execute the run and emit the documented event sequence."""
+        self._terminal_session_snapshot = None
         if self.is_cancelled():
             return
         _ = await emit_run_started(self.sink, run_id=self.run_id)
@@ -224,6 +232,7 @@ class AgentRunRunner:
                 error=message,
                 error_type=error_type,
                 reason=reason,
+                session_snapshot=self._terminal_session_snapshot,
             )
             if finalization.applied:
                 raise
@@ -287,6 +296,7 @@ class AgentRunRunner:
         deferred_tool_call: DeferredToolCallPayload | None = None
         result_kind: Literal["output", "deferred_tool_call"] | None = None
         usage: AgentRunUsage | None = None
+        run = None
         try:
             async with compositor.enter(configs=layer_configs, session_snapshot=self.request.session_snapshot) as run:
                 entered_run = True
@@ -383,8 +393,11 @@ class AgentRunRunner:
             if not entered_run:
                 raise AgentRunValidationError(str(exc)) from exc
             raise
+        finally:
+            if entered_run and run is not None:
+                self._terminal_session_snapshot = run.session_snapshot
 
-        if run.session_snapshot is None:
+        if run is None or run.session_snapshot is None:
             raise RuntimeError("Agenton run did not produce a session snapshot after exit.")
         if result_kind is None:
             raise RuntimeError("Agent run did not resolve either a final output or a deferred tool call.")

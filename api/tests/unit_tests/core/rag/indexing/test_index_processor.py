@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 from sqlalchemy import event
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.rag.index_processor import index_processor as index_processor_module
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.index_processor import IndexProcessor
 from core.workflow.nodes.knowledge_index.protocols import Preview, PreviewItem
@@ -237,12 +238,10 @@ class TestIndexProcessor:
                 "core.rag.index_processor.index_processor.current_app",
                 SimpleNamespace(_get_current_object=lambda: flask_app),
             ),
-            patch(
-                "core.rag.index_processor.index_processor.session_factory",
-                SimpleNamespace(create_session=sqlite_session_factory),
-            ),
-            patch(
-                "core.rag.index_processor.index_processor.ParagraphIndexProcessor.generate_summary",
+            patch.object(index_processor_module.session_factory, "create_session", sqlite_session_factory),
+            patch.object(
+                index_processor_module.ParagraphIndexProcessor,
+                "generate_summary",
                 side_effect=generate_summary,
             ) as generate_summary,
         ):

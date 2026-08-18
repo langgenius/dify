@@ -59,6 +59,7 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
+  const searchInputRef = React.useRef<HTMLInputElement>(null)
 
   const { run: handleSearch } = useDebounceFn(
     () => {
@@ -195,7 +196,13 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
           </div>
           <div className="relative w-full flex-1">
             <Input
-              className="w-full border-transparent bg-transparent pr-7 hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent focus:shadow-none"
+              ref={searchInputRef}
+              type="search"
+              name="query"
+              autoComplete="off"
+              enterKeyHint="search"
+              aria-label={t(($) => $['newAppFromTemplate.searchAllTemplate'], { ns: 'app' })}
+              className="w-full border-transparent bg-transparent pr-7 hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent focus:shadow-none [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
               placeholder={t(($) => $['newAppFromTemplate.searchAllTemplate'], { ns: 'app' })}
               value={keywords}
               onChange={(e) => handleKeywordsChange(e.target.value)}
@@ -204,8 +211,11 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
               <button
                 type="button"
                 aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-                className="group absolute top-1/2 right-2 -translate-y-1/2 border-none bg-transparent p-px"
-                onClick={() => handleKeywordsChange('')}
+                className="group absolute top-1/2 right-2 -translate-y-1/2 rounded-sm border-none bg-transparent p-px outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                onClick={() => {
+                  handleKeywordsChange('')
+                  searchInputRef.current?.focus()
+                }}
               >
                 <span
                   aria-hidden

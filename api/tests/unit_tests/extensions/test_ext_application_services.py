@@ -17,6 +17,7 @@ from services.account_activation_adapters import (
     DeploymentWorkspaceInvitePolicy,
     RegisterServiceInvitationTokenStore,
 )
+from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
 from services.init_validation_service import InvalidInitializationPasswordError
 
 
@@ -172,3 +173,16 @@ def test_build_application_services_wires_account_activation(
     assert activation._eligibility._enabled is billing_enabled
     assert isinstance(activation._membership_cache, BillingWorkspaceMembershipCache)
     assert activation._membership_cache._enabled is billing_enabled
+
+
+def test_build_application_services_wires_data_source_api_key_auth(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert isinstance(services.data_source_api_key_auth, DataSourceApiKeyAuthService)

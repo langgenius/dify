@@ -17,7 +17,7 @@ import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue } from 'jotai'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Uploader } from '@/app/components/app/create-from-dsl-modal/uploader'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -106,6 +106,7 @@ function SnippetDSLConfirmDialog({
 }
 
 function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps) {
+  const dslUrlInputId = useId()
   const { t } = useTranslation()
   const { push } = useRouter()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
@@ -270,8 +271,14 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
             )}
             {currentTab === ImportSnippetDSLDialogTab.FromUrl && (
               <div>
-                <div className="mb-1 system-md-semibold text-text-secondary">DSL URL</div>
+                <label
+                  htmlFor={dslUrlInputId}
+                  className="mb-1 block system-md-semibold text-text-secondary"
+                >
+                  DSL URL
+                </label>
                 <Input
+                  id={dslUrlInputId}
                   placeholder={t(($) => $.importFromDSLUrlPlaceholder, { ns: 'snippet' }) || ''}
                   value={dslUrl}
                   onChange={(event) => setDslUrl(event.target.value)}

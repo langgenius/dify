@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from controllers.inner_api.agent.files import (
     AgentFileDownloadRequestApi,
     AgentFileUploadRequestApi,
+    AgentFileUploadRequestPayload,
 )
 from core.workflow.file_reference import build_file_reference
 from services.file_request_service import DownloadFileRequestResult
@@ -29,6 +30,7 @@ def test_upload_request_returns_origin_free_uri(app: Flask, unbound_session: Ses
         "filename": "report.pdf",
         "mimetype": "application/pdf",
         "conversation_id": "conversation-1",
+        "max_size": 64 * 1024 * 1024,
     }
     tenant = SimpleNamespace(id="tenant-1")
     user = SimpleNamespace(id="canonical-end-user-1")
@@ -51,7 +53,24 @@ def test_upload_request_returns_origin_free_uri(app: Flask, unbound_session: Ses
         user_id="canonical-end-user-1",
         conversation_id="conversation-1",
         user_from=None,
+        max_size=64 * 1024 * 1024,
     )
+
+
+def test_upload_request_payload_requires_non_negative_max_size() -> None:
+    payload = {
+        "tenant_id": "tenant-1",
+        "user_id": "user-1",
+        "filename": "report.pdf",
+        "mimetype": "application/pdf",
+    }
+
+    with pytest.raises(ValueError):
+        AgentFileUploadRequestPayload.model_validate(payload)
+    with pytest.raises(ValueError):
+        AgentFileUploadRequestPayload.model_validate({**payload, "max_size": -1})
+
+    assert AgentFileUploadRequestPayload.model_validate({**payload, "max_size": 0}).max_size == 0
 
 
 def test_download_request_returns_origin_free_uri_for_sandbox(app: Flask, unbound_session: Session) -> None:
