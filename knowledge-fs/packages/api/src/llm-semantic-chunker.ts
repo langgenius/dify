@@ -60,7 +60,10 @@ const DEFAULT_MAX_ENTITIES_PER_CHUNK = 100;
 const DEFAULT_MAX_RELATIONS_PER_CHUNK = 100;
 const DEFAULT_MAX_OUTPUT_TOKENS = 6_000;
 const DEFAULT_MAX_RESPONSE_CHARS = 1_000_000;
-const DEFAULT_PROMPT_VERSION = "semantic-chunking-v2";
+const DEFAULT_PROMPT_VERSION = "semantic-chunking-v3";
+const SEMANTIC_CHUNKING_V2_PROMPT_VERSION = "semantic-chunking-v2";
+const V3_MAX_CORE_UNITS_PER_WINDOW = 32;
+const V3_MAX_LOOK_AHEAD_UNITS_PER_WINDOW = 8;
 const SEMANTIC_CHUNKING_STRATEGY = "llm-semantic-v1";
 const SEMANTIC_CHUNKING_SCHEMA_VERSION = 1;
 /**
@@ -271,7 +274,7 @@ interface SemanticWindow {
   readonly units: readonly AtomicUnit[];
 }
 
-type SemanticWindowPlanningVersion = "v1" | "v2";
+type SemanticWindowPlanningVersion = "v1" | "v2" | "v3";
 
 interface SemanticWindowPlanningPolicy {
   readonly atomicDocument: boolean;
@@ -1778,7 +1781,11 @@ function resolveSemanticWindowPlanningPolicy({
   readonly units: readonly AtomicUnit[];
 }): SemanticWindowPlanningPolicy {
   const version: SemanticWindowPlanningVersion =
-    promptVersion === DEFAULT_PROMPT_VERSION ? "v2" : "v1";
+    promptVersion === DEFAULT_PROMPT_VERSION
+      ? "v3"
+      : promptVersion === SEMANTIC_CHUNKING_V2_PROMPT_VERSION
+        ? "v2"
+        : "v1";
   if (version === "v1") {
     return { atomicDocument: false, version };
   }
@@ -1795,6 +1802,7 @@ function resolveSemanticWindowPlanningPolicy({
   );
   const atomicDocument =
     units.length > 0 &&
+    (version !== "v3" || units.length <= V3_MAX_CORE_UNITS_PER_WINDOW) &&
     tableElementIds.size === 1 &&
     hasNarrativeText &&
     hasCompletePageProvenance &&
@@ -1828,6 +1836,9 @@ function materializeSemanticWindow({
   const coreUnits: AtomicUnit[] = [];
   let cursor = startUnitIndex;
   while (cursor < units.length) {
+    if (planningPolicy.version === "v3" && coreUnits.length >= V3_MAX_CORE_UNITS_PER_WINDOW) {
+      break;
+    }
     const candidate = units[cursor] as AtomicUnit;
     if (planningPolicy.version === "v1" && !isLegacyWindowCompatible(first, candidate)) {
       break;
@@ -1848,6 +1859,12 @@ function materializeSemanticWindow({
   const lookAheadUnits: AtomicUnit[] = [];
   const firstLookAhead = units[cursor];
   while (firstLookAhead && cursor < units.length) {
+    if (
+      planningPolicy.version === "v3" &&
+      lookAheadUnits.length >= V3_MAX_LOOK_AHEAD_UNITS_PER_WINDOW
+    ) {
+      break;
+    }
     const candidate = units[cursor] as AtomicUnit;
     if (planningPolicy.version === "v1" && !isLegacyWindowCompatible(first, candidate)) {
       break;
@@ -1873,10 +1890,12 @@ function materializeSemanticWindow({
         }
       : {
           atomicDocument: planningPolicy.atomicDocument,
-          lookAheadUnits: lookAheadUnits.map((unit) => semanticPromptUnit(unit, "v2")),
+          lookAheadUnits: lookAheadUnits.map((unit) =>
+            semanticPromptUnit(unit, planningPolicy.version),
+          ),
           planningVersion: planningPolicy.version,
           sectionPath,
-          units: coreUnits.map((unit) => semanticPromptUnit(unit, "v2")),
+          units: coreUnits.map((unit) => semanticPromptUnit(unit, planningPolicy.version)),
           windowId: id,
         };
   return {
@@ -1904,13 +1923,14 @@ function semanticPromptUnit(
   readonly text: string;
   readonly type: string;
 } {
+  const carriesParserProvenance = planningVersion !== "v1";
   return {
-    ...(planningVersion === "v2" && unit.isolationKey
+    ...(carriesParserProvenance && unit.isolationKey
       ? { boundaryPolicy: "isolated" as const }
       : {}),
     graphemeLength: unit.graphemeLength,
     id: unit.id,
-    ...(planningVersion === "v2"
+    ...(carriesParserProvenance
       ? {
           sourceElementId: unit.elementId,
           sourceSectionPath: [...unit.sectionPath],
@@ -1958,7 +1978,7 @@ function semanticChunkingMessages({
   readonly maxRelationsPerChunk: number;
   readonly window: SemanticWindow;
 }): readonly SemanticChunkingLlmMessage[] {
-  const v2 = window.planningVersion === "v2";
+  const carriesParserProvenance = window.planningVersion !== "v1";
   return [
     {
       content: [
@@ -1980,7 +2000,7 @@ function semanticChunkingMessages({
         "Allowed relation types: mentions, defines, references, depends_on, supersedes, contradicts.",
         "Entity text must be an exact source substring. Give every entity a response-local unique id.",
         "Relations must reference entity ids from that same chunk through subjectEntityId/objectEntityId; never use names as relation endpoints.",
-        ...(v2
+        ...(carriesParserProvenance
           ? [
               "Each unit carries its parser-derived sourceSectionPath. It is provenance, not a request boundary.",
               "Prefer natural source-section boundaries, but adjacent short sections may share a chunk when they form one coherent fact or record.",
@@ -2014,7 +2034,7 @@ function semanticChunkingMessages({
     },
     {
       content: JSON.stringify({
-        ...(v2 ? { atomicDocument: window.atomicDocument } : {}),
+        ...(carriesParserProvenance ? { atomicDocument: window.atomicDocument } : {}),
         features: { enableGraph, enablePageIndex },
         lookAheadUnits: window.lookAheadUnits.map((unit) =>
           semanticPromptUnit(unit, window.planningVersion),

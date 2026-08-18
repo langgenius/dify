@@ -239,7 +239,7 @@ describe("LLM semantic chunker", () => {
         completed: true,
         entityCount: 2,
         model: "reasoner-model",
-        promptVersion: "semantic-chunking-v2",
+        promptVersion: "semantic-chunking-v3",
       },
       relationExtraction: { completed: true, relationCount: 1 },
       semanticChunking: {
@@ -440,8 +440,61 @@ describe("LLM semantic chunker", () => {
       windowPlanning: {
         atomicDocument: false,
         sourceSectionPathCount: 2,
-        version: "v2",
+        version: "v3",
       },
+    });
+  });
+
+  it("bounds compact parser units per request without invalidating v2 generation replay", async () => {
+    const parseArtifact = artifact(
+      Array.from({ length: 96 }, (_, index) => ({
+        id: `compact-field-${index}`,
+        metadata: {},
+        sectionPath: ["Compact record"],
+        text: `Field ${index}: value ${index}.`,
+        type: "paragraph" as const,
+      })),
+    );
+    const currentPreflight = preflightLlmSemanticWindows({ parseArtifact });
+    const v2Preflight = preflightLlmSemanticWindows({
+      parseArtifact,
+      promptVersion: "semantic-chunking-v2",
+    });
+    const provider = new ScriptedProvider([echoEachUnit]);
+    const nodes = await createLlmSemanticChunker({
+      reasoningProviderFactory: () => provider,
+    }).chunk({
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      parseArtifact,
+      retrievalProfile: profile(),
+    });
+    const v2Provider = new ScriptedProvider([echoEachUnit]);
+    const v2Nodes = await createLlmSemanticChunker({
+      promptVersion: "semantic-chunking-v2",
+      reasoningProviderFactory: () => v2Provider,
+    }).chunk({
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      parseArtifact,
+      retrievalProfile: profile(),
+    });
+
+    expect(currentPreflight).toEqual({ maximumWindowCount: 3, unitCount: 96 });
+    expect(v2Preflight).toEqual({ maximumWindowCount: 1, unitCount: 96 });
+    expect(provider.calls).toHaveLength(3);
+    expect(v2Provider.calls).toHaveLength(1);
+    const prompts = provider.calls.map((call) =>
+      JSON.parse(call.messages.find((message) => message.role === "user")?.content ?? "{}"),
+    ) as PromptPayload[];
+    expect(prompts.every((prompt) => prompt.units.length <= 32)).toBe(true);
+    expect(prompts.every((prompt) => (prompt.lookAheadUnits?.length ?? 0) <= 8)).toBe(true);
+    expect(nodes.map((node) => node.text).join("\n")).toBe(
+      parseArtifact.elements.map((element) => element.text?.trim() ?? "").join("\n"),
+    );
+    expect(nodes[0]?.metadata.semanticChunking).toMatchObject({
+      windowPlanning: { version: "v3" },
+    });
+    expect(v2Nodes[0]?.metadata.semanticChunking).toMatchObject({
+      windowPlanning: { version: "v2" },
     });
   });
 
@@ -538,7 +591,7 @@ describe("LLM semantic chunker", () => {
       windowPlanning: {
         atomicDocument: true,
         sourceSectionPathCount: 1,
-        version: "v2",
+        version: "v3",
       },
     });
     expect(nodes[0]?.metadata.extractedEntities).toEqual([
