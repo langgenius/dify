@@ -2,18 +2,18 @@ import type {
   StepByStepTourStatePatchPayload,
   StepByStepTourStateResponse,
 } from '@dify/contracts/api/console/onboarding/types.gen'
+import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { StepByStepTourSessionState, StepByStepTourTaskId } from '../types'
-import type { ICurrentWorkspace } from '@/models/common'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
-import { Plan } from '@/app/components/billing/type'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { defaultSystemFeatures } from '@/features/system-features/config'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { createTestQueryClient } from '@/test/query-client'
 import StepByStepTourMount from '../mount'
 import { stepByStepTourSessionAtom } from '../state'
@@ -31,8 +31,6 @@ type StepByStepTourFixtureState = StepByStepTourSessionState & {
   skipped: boolean
   updatedAt?: string | null
 }
-
-type WorkspaceRole = ICurrentWorkspace['role']
 
 const mockRouterPush = vi.fn()
 const mockTrackEvent = vi.hoisted(() => vi.fn())
@@ -53,7 +51,7 @@ const mockIsCurrentWorkspaceManager = vi.hoisted(() => ({
   value: true,
 }))
 const mockCurrentWorkspaceRole = vi.hoisted(() => ({
-  value: 'owner' as WorkspaceRole,
+  value: 'owner' as GetWorkspacesCurrentSummaryResponse['role'],
 }))
 const mockEnableLearnApp = vi.hoisted(() => ({
   value: true,
@@ -62,6 +60,9 @@ const mockEnableStepByStepTour = vi.hoisted(() => ({
   value: true,
 }))
 const mockHasBlockingModalOpen = vi.hoisted(() => ({
+  value: false,
+}))
+const mockEducationExpireNotice = vi.hoisted(() => ({
   value: false,
 }))
 const mockStepByStepTour = vi.hoisted(() => {
@@ -199,14 +200,6 @@ const setViewportSize = ({ height, width }: { height: number; width: number }) =
   })
 }
 
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    IS_CLOUD_EDITION: true,
-  }
-})
-
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
 }))
@@ -216,6 +209,15 @@ vi.mock('@/context/modal-context', () => ({
     selector({
       hasBlockingModalOpen: mockHasBlockingModalOpen.value,
     }),
+}))
+
+vi.mock('@/app/education/expire-notice/use-expire-notice', () => ({
+  useEducationExpireNotice: () => [
+    mockEducationExpireNotice.value
+      ? { accountId: 'user-1', expireAt: 1, expired: false, phase: 'expiring' }
+      : null,
+    vi.fn(),
+  ],
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -228,6 +230,10 @@ vi.mock('@/service/client', () => ({
     systemFeatures: {
       get: {
         queryKey: () => ['console', 'system-features'],
+        queryOptions: (options: Record<string, unknown> = {}) => ({
+          queryKey: ['console', 'system-features'],
+          ...options,
+        }),
       },
     },
     onboarding: {
@@ -394,14 +400,8 @@ function getMockAppContextState() {
     currentWorkspace: {
       id: 'workspace-1',
       name: 'Solar Studio',
-      plan: Plan.sandbox,
-      status: 'normal',
+      plan: 'sandbox',
       role: mockCurrentWorkspaceRole.value,
-      created_at: 0,
-      providers: [],
-      trial_credits: 0,
-      trial_credits_used: 0,
-      next_credit_reset_date: 0,
     },
     isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager.value,
     workspacePermissionKeys: mockWorkspacePermissionKeys.value,
@@ -484,18 +484,22 @@ const setStepByStepTourTestState = (state: Partial<StepByStepTourFixtureState>) 
   }
 }
 
-const renderStepByStepTourMount = () => {
+const renderStepByStepTourMount = (searchParams = '') => {
   const queryClient = createTestQueryClient()
   queryClient.setQueryData(mockStepByStepTour.stateQueryKey, mockStepByStepTour.state)
-  queryClient.setQueryData(systemFeaturesQueryOptions().queryKey, {
-    ...defaultSystemFeatures,
-    enable_learn_app: mockEnableLearnApp.value,
-    enable_step_by_step_tour: mockEnableStepByStepTour.value,
-  })
+  queryClient.setQueryData(
+    systemFeaturesQueryOptions().queryKey,
+    createSystemFeaturesFixture({
+      deployment_edition: 'CLOUD',
+      enable_learn_app: mockEnableLearnApp.value,
+      enable_step_by_step_tour: mockEnableStepByStepTour.value,
+    }),
+  )
   const jotaiStore = createStore()
   seedRegisteredConsoleStateFixture(jotaiStore)
   jotaiStore.set(queryClientAtom, queryClient)
   jotaiStore.set(stepByStepTourSessionAtom, mockStepByStepTour.uiState)
+  const { wrapper } = createNuqsTestWrapper({ searchParams })
 
   return render(
     <JotaiProvider store={jotaiStore}>
@@ -503,6 +507,7 @@ const renderStepByStepTourMount = () => {
         <StepByStepTourMount />
       </QueryClientProvider>
     </JotaiProvider>,
+    { wrapper },
   )
 }
 
@@ -533,6 +538,7 @@ describe('StepByStepTourMount', () => {
     mockEnableLearnApp.value = true
     mockEnableStepByStepTour.value = true
     mockHasBlockingModalOpen.value = false
+    mockEducationExpireNotice.value = false
     mockPathname = '/apps'
     localStorage.clear()
     mockStepByStepTour.reset()
@@ -657,6 +663,9 @@ describe('StepByStepTourMount', () => {
     ).toBeInTheDocument()
 
     const dismissButton = screen.getByRole('button', { name: 'Dismiss' })
+    await waitFor(() => {
+      expect(dismissButton).toHaveFocus()
+    })
     await user.click(dismissButton)
 
     await waitFor(() => {
@@ -746,6 +755,71 @@ describe('StepByStepTourMount', () => {
     expect(await screen.findByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
   })
 
+  it('exposes dialog semantics and returns focus after minimizing with the keyboard', async () => {
+    setStepByStepTourTestState({
+      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyDisabledWorkspaceIds: [],
+      minimized: false,
+      completedTaskIds: [],
+      skipped: false,
+    })
+
+    renderStepByStepTourMount()
+
+    expect(
+      await screen.findByRole('dialog', {
+        name: 'Get to know Dify',
+        description: 'A quick tour — about 5 minutes',
+      }),
+    ).toBeInTheDocument()
+
+    const minimizeButton = await screen.findByRole('button', { name: 'Minimize tour' })
+    minimizeButton.focus()
+    await user.keyboard('{Enter}')
+
+    const restoreButton = await screen.findByRole('button', { name: 'Open step-by-step tour' })
+
+    await waitFor(() => {
+      expect(restoreButton).toHaveFocus()
+    })
+    expect(screen.getAllByRole('button', { name: 'Open step-by-step tour' })).toHaveLength(1)
+  })
+
+  it('focuses the minimize button when the checklist opens', async () => {
+    setStepByStepTourTestState({
+      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyDisabledWorkspaceIds: [],
+      minimized: false,
+      completedTaskIds: ['home'],
+      skipped: false,
+    })
+
+    renderStepByStepTourMount()
+
+    const minimizeButton = await screen.findByRole('button', { name: 'Minimize tour' })
+    await waitFor(() => {
+      expect(minimizeButton).toHaveFocus()
+    })
+  })
+
+  it('keeps the expanded checklist open after an outside pointer interaction', async () => {
+    setStepByStepTourTestState({
+      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyDisabledWorkspaceIds: [],
+      minimized: false,
+      completedTaskIds: [],
+      skipped: false,
+    })
+
+    renderStepByStepTourMount()
+
+    const dialog = await screen.findByRole('dialog', { name: 'Get to know Dify' })
+    await user.click(document.body)
+
+    expect(dialog).toBeInTheDocument()
+    expect(localStorage.getItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY)).toBe('expanded')
+  })
+
   it('shows the completion prompt expanded even when the saved shell mode is collapsed', async () => {
     localStorage.setItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY, 'collapsed')
     setStepByStepTourTestState({
@@ -781,6 +855,57 @@ describe('StepByStepTourMount', () => {
       expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
     })
     expect(document.body.querySelector('[data-base-ui-portal]')).not.toBeInTheDocument()
+  })
+
+  it('hides expanded tour overlays while settings is open', async () => {
+    setStepByStepTourTestState({
+      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyDisabledWorkspaceIds: [],
+      minimized: false,
+      completedTaskIds: [],
+      skipped: false,
+    })
+
+    renderStepByStepTourMount('?settings=preferences')
+
+    await waitFor(() => {
+      expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
+    })
+    expect(document.body.querySelector('[data-base-ui-portal]')).not.toBeInTheDocument()
+  })
+
+  it('hides expanded tour overlays while the Education expiration notice is open', async () => {
+    setStepByStepTourTestState({
+      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyDisabledWorkspaceIds: [],
+      minimized: false,
+      completedTaskIds: [],
+      skipped: false,
+    })
+
+    mockEducationExpireNotice.value = true
+    renderStepByStepTourMount()
+
+    await waitFor(() => {
+      expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
+    })
+    expect(document.body.querySelector('[data-base-ui-portal]')).not.toBeInTheDocument()
+  })
+
+  it('does not block the tour outside the Apps route for an unmounted Education notice', async () => {
+    mockPathname = '/datasets'
+    mockEducationExpireNotice.value = true
+    setStepByStepTourTestState({
+      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyDisabledWorkspaceIds: [],
+      minimized: false,
+      completedTaskIds: [],
+      skipped: false,
+    })
+
+    renderStepByStepTourMount()
+
+    expect(await screen.findByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
   })
 
   it('keeps the minimized tour entry available while a blocking modal is open', async () => {
@@ -876,13 +1001,13 @@ describe('StepByStepTourMount', () => {
     }
   })
 
-  it('completes Knowledge directly when the workspace has no Knowledge walkthrough permissions', async () => {
+  it('focuses Dismiss after completing Knowledge as the final task without permission', async () => {
     mockWorkspacePermissionKeys.value = ['app.create_and_management']
     setStepByStepTourTestState({
       manuallyEnabledWorkspaceIds: ['workspace-1'],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
-      completedTaskIds: ['home', 'studio'],
+      completedTaskIds: ['home', 'studio', 'integration'],
       skipped: false,
     })
 
@@ -907,6 +1032,10 @@ describe('StepByStepTourMount', () => {
     await user.click(screen.getByRole('button', { name: 'Got it' }))
 
     await expectStepByStepTourPatch({ action: 'complete_task', task_id: 'knowledge' })
+    const dismissButton = await screen.findByRole('button', { name: 'Dismiss' })
+    await waitFor(() => {
+      expect(dismissButton).toHaveFocus()
+    })
     expect(mockRouterPush).not.toHaveBeenCalled()
   })
 

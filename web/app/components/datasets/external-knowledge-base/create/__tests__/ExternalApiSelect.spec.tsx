@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 // Explicit react-i18next mock so the test stays portable
 // even if the global vitest.setup changes.
@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
   push: vi.fn(),
   refresh: vi.fn(),
   setShowExternalKnowledgeAPIModal: vi.fn(),
-  mutateExternalKnowledgeApis: vi.fn(),
+  invalidateQueries: vi.fn(),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -22,10 +22,28 @@ vi.mock('@/context/modal-context', () => ({
   }),
 }))
 
-vi.mock('@/context/external-knowledge-api-context', () => ({
-  useExternalKnowledgeApi: () => ({
-    mutateExternalKnowledgeApis: mocks.mutateExternalKnowledgeApis,
-  }),
+const externalKnowledgeApiQueryKey = ['console', 'datasets', 'externalKnowledgeApi', 'get']
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...original,
+    useQueryClient: () => ({ invalidateQueries: mocks.invalidateQueries }),
+  }
+})
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    datasets: {
+      externalKnowledgeApi: {
+        get: {
+          queryOptions: () => ({
+            queryKey: ['console', 'datasets', 'externalKnowledgeApi', 'get'],
+          }),
+        },
+      },
+    },
+  },
 }))
 
 vi.mock('@/app/components/base/icons/src/vender/solid/development', () => ({
@@ -87,11 +105,19 @@ describe('ExternalApiSelect', () => {
       expect(screen.getByText('dataset.createNewExternalAPI')).toBeInTheDocument()
     })
 
-    it('should call setShowExternalKnowledgeAPIModal when add new clicked', () => {
+    it('should invalidate the generated query after creating an external API', async () => {
       render(<ExternalApiSelect items={items} onSelect={onSelect} />)
       fireEvent.click(screen.getByText('dataset.selectExternalKnowledgeAPI.placeholder'))
       fireEvent.click(screen.getByText('dataset.createNewExternalAPI'))
       expect(mocks.setShowExternalKnowledgeAPIModal).toHaveBeenCalledOnce()
+
+      const modalConfig = mocks.setShowExternalKnowledgeAPIModal.mock.calls[0]![0]
+      await modalConfig.onSaveCallback()
+
+      expect(mocks.invalidateQueries).toHaveBeenCalledWith({
+        queryKey: externalKnowledgeApiQueryKey,
+      })
+      expect(mocks.refresh).toHaveBeenCalledOnce()
     })
 
     it('should show item URLs in dropdown', () => {

@@ -3,7 +3,7 @@
   "actionMsg.deleteConfirmTitle": "Xóa khóa bí mật này?",
   "actionMsg.ok": "OK",
   "apiKey": "Khóa API",
-  "apiKeyModal.apiSecretKey": "Khóa bí mật API",
+  "apiKeyModal.apiSecretKey": "Khóa API",
   "apiKeyModal.apiSecretKeyTips": "Để ngăn chặn việc lạm dụng API, hãy bảo vệ Khóa API của bạn. Tránh sử dụng nó dưới dạng văn bản thuần trong mã giao diện người dùng.",
   "apiKeyModal.createNewSecretKey": "Tạo khóa bí mật mới",
   "apiKeyModal.created": "ĐÃ TẠO",

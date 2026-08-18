@@ -12,7 +12,7 @@ from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fix
 from werkzeug.exceptions import InternalServerError
 
 from core.helper.http_client_pooling import get_pooled_http_client
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan
 from extensions.ext_redis import redis_client
 from libs.helper import RateLimiter
 from models import Account, TenantAccountJoin, TenantAccountRole
@@ -21,7 +21,10 @@ logger = logging.getLogger(__name__)
 
 _http_client: httpx.Client = get_pooled_http_client(
     "billing:default",
-    lambda: httpx.Client(limits=httpx.Limits(max_keepalive_connections=50, max_connections=100)),
+    lambda: httpx.Client(
+        timeout=httpx.Timeout(30.0, connect=5.0),
+        limits=httpx.Limits(max_keepalive_connections=50, max_connections=100),
+    ),
 )
 
 
@@ -102,6 +105,7 @@ class _BillingQuota(TypedDict):
 class _VectorSpaceQuota(TypedDict):
     size: float
     limit: int
+    usage_unknown: NotRequired[bool]
 
 
 class _KnowledgeRateLimit(TypedDict):
@@ -205,6 +209,10 @@ class BillingService:
     _PLAN_CACHE_TTL = 600
 
     @classmethod
+    def ensure_new_agent_beta_revision(cls, revision_id: str) -> None:
+        cls._send_request("POST", f"/new-agent-beta/revisions/{revision_id}/ensure")
+
+    @classmethod
     def get_info(cls, tenant_id: str, exclude_vector_space: bool = False) -> BillingInfo:
         params = {"tenant_id": tenant_id}
         if exclude_vector_space:
@@ -217,11 +225,17 @@ class BillingService:
         return _billing_info_adapter.validate_python(billing_info)
 
     @classmethod
-    def get_vector_space(cls, tenant_id: str) -> _VectorSpaceQuota:
+    def get_vector_space(cls, tenant_id: str, bypass_cache: bool = False) -> _VectorSpaceQuota:
         params = {"tenant_id": tenant_id}
+        if bypass_cache:
+            params["bypass_cache"] = "true"
         return _vector_space_quota_adapter.validate_python(
             cls._send_request("GET", "/subscription/vector-space", params=params)
         )
+
+    @classmethod
+    def invalidate_vector_space_cache(cls, tenant_id: str) -> None:
+        cls.get_vector_space(tenant_id, bypass_cache=True)
 
     @classmethod
     def get_tenant_feature_plan_usage_info(cls, tenant_id: str):

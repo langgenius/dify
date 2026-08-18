@@ -22,15 +22,16 @@ from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
 from constants.languages import get_valid_language, language_timezone_mapping
+from enums import DeploymentEdition
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client, redis_fallback
 from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter, TokenManager
 from libs.helper import timezone as validate_timezone
+from libs.key_providers import generate_key_pair
 from libs.passport import PassportService
 from libs.password import compare_password, hash_password, valid_password
-from libs.rsa import generate_key_pair
 from libs.token import generate_csrf_token
 from models.account import (
     Account,
@@ -75,6 +76,7 @@ from services.errors.account import (
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
+from services.telemetry_service import CommunityTelemetryService
 from tasks.delete_account_task import delete_account_task
 from tasks.mail_account_deletion_task import send_account_deletion_verification_code
 from tasks.mail_change_mail_task import (
@@ -118,7 +120,7 @@ class InvitationDetailDict(TypedDict):
 
 def _try_join_enterprise_default_workspace(account_id: str) -> None:
     """Best-effort join to enterprise default workspace."""
-    if not dify_config.ENTERPRISE_ENABLED:
+    if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
         return
 
     from services.enterprise.enterprise_service import try_join_default_workspace
@@ -324,26 +326,41 @@ class AccountService:
         if account.status == AccountStatus.BANNED:
             raise Unauthorized("Account is banned.")
 
-        current_tenant = session.scalar(
+        current_tenant_join = session.scalar(
             select(TenantAccountJoin)
             .where(TenantAccountJoin.account_id == account.id, TenantAccountJoin.current == True)
             .limit(1)
         )
-        if current_tenant:
-            account.set_tenant_id_with_session(current_tenant.tenant_id, session=session)
-        else:
-            available_ta = session.scalar(
+        if current_tenant_join is not None:
+            account.set_tenant_id_with_session(current_tenant_join.tenant_id, session=session)
+
+        has_valid_current_tenant = (
+            current_tenant_join is not None
+            and account.current_tenant is not None
+            and account.current_tenant.status == TenantStatus.NORMAL
+        )
+        if not has_valid_current_tenant:
+            if current_tenant_join is not None:
+                current_tenant_join.current = False
+
+            available_tenant_join = session.scalar(
                 select(TenantAccountJoin)
-                .where(TenantAccountJoin.account_id == account.id)
+                .join(Tenant, TenantAccountJoin.tenant_id == Tenant.id)
+                .where(
+                    TenantAccountJoin.account_id == account.id,
+                    Tenant.status == TenantStatus.NORMAL,
+                )
                 .order_by(TenantAccountJoin.id.asc())
                 .limit(1)
             )
-            if not available_ta:
+            if available_tenant_join is None:
+                if current_tenant_join is not None:
+                    session.commit()
                 return None
 
-            account.set_tenant_id_with_session(available_ta.tenant_id, session=session)
-            available_ta.current = True
-            available_ta.last_opened_at = naive_utc_now()
+            account.set_tenant_id_with_session(available_tenant_join.tenant_id, session=session)
+            available_tenant_join.current = True
+            available_tenant_join.last_opened_at = naive_utc_now()
             session.commit()
 
         AccountService._refresh_account_last_active(account, session)
@@ -362,7 +379,7 @@ class AccountService:
         payload = {
             "user_id": account.id,
             "exp": exp,
-            "iss": dify_config.EDITION,
+            "iss": dify_config.DEPLOYMENT_EDITION.value,
             "sub": "Console API Passport",
         }
 
@@ -431,6 +448,7 @@ class AccountService:
         interface_theme: str = "light",
         is_setup: bool | None = False,
         timezone: str | None = None,
+        ip_address: str | None = None,
         *,
         session: Session,
     ) -> Account:
@@ -442,12 +460,12 @@ class AccountService:
 
         # A licensed seat is one Account row, deployment-wide; joining an existing
         # account into another workspace does not pass through here and costs no seat.
-        # is_authenticated=True: server-side enforcement needs the full license payload,
-        # which the enterprise fill withholds from unauthenticated (browser-facing) calls.
-        if not FeatureService.get_system_features(is_authenticated=True).license.seats.is_available():
+        # get_license() carries the full license payload that server-side enforcement needs;
+        # the public system-features endpoint exposes only license status.
+        if not FeatureService.get_license().seats.is_available():
             raise SeatsLimitExceededError("licensed seats limit exceeded")
 
-        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(email):
             raise AccountRegisterError(
                 description=(
                     "This email account has been deleted within the past "
@@ -483,6 +501,7 @@ class AccountService:
             interface_language=interface_language,
             interface_theme=interface_theme,
             timezone=resolved_timezone,
+            last_login_ip=ip_address,
         )
 
         session.add(account)
@@ -496,6 +515,7 @@ class AccountService:
         interface_language: str,
         password: str | None = None,
         timezone: str | None = None,
+        ip_address: str | None = None,
         *,
         session: Session,
     ) -> Account:
@@ -506,6 +526,7 @@ class AccountService:
             interface_language=interface_language,
             password=password,
             timezone=timezone,
+            ip_address=ip_address,
             session=session,
         )
 
@@ -1037,7 +1058,7 @@ class AccountService:
 
     @classmethod
     def get_user_through_email(cls, email: str, *, session: Session):
-        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(email):
             raise AccountRegisterError(
                 description=(
                     "This email account has been deleted within the past "
@@ -1056,7 +1077,7 @@ class AccountService:
 
     @classmethod
     def is_account_in_freeze(cls, email: str) -> bool:
-        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(email):
             return True
         return False
 
@@ -1229,12 +1250,12 @@ class AccountService:
             if hour_limit_count >= 1:
                 redis_client.setex(freeze_key, 60 * 60, 1)
                 return True
-            else:
-                redis_client.setex(hour_limit_key, 60 * 10, hour_limit_count + 1)  # first time limit 10 minutes
 
-            # add hour limit count
-            redis_client.incr(hour_limit_key)
-            redis_client.expire(hour_limit_key, 60 * 60)
+            # First strike claims a 10-minute window atomically; a concurrent
+            # over-limit request that loses the claim is the second strike and
+            # freezes the IP for an hour.
+            if not redis_client.set(hour_limit_key, 1, ex=60 * 10, nx=True):
+                redis_client.setex(freeze_key, 60 * 60, 1)
 
             return True
 
@@ -1258,11 +1279,7 @@ class TenantService:
         session: Session,
     ) -> Tenant:
         """Create tenant"""
-        if (
-            not FeatureService.get_system_features().is_allow_create_workspace
-            and not is_setup
-            and not is_from_dashboard
-        ):
+        if not FeatureService.is_workspace_creation_allowed() and not is_setup and not is_from_dashboard:
             from controllers.console.error import NotAllowedCreateWorkspace
 
             raise NotAllowedCreateWorkspace()
@@ -1325,14 +1342,10 @@ class TenantService:
         owner. It persists the legacy membership before creating the matching
         RBAC role binding, then makes the workspace current for the account.
         """
-        if (
-            not FeatureService.get_system_features().is_allow_create_workspace
-            and not is_setup
-            and not is_from_dashboard
-        ):
+        if not FeatureService.is_workspace_creation_allowed() and not is_setup and not is_from_dashboard:
             raise WorkSpaceNotAllowedCreateError()
 
-        workspaces = FeatureService.get_system_features().license.workspaces
+        workspaces = FeatureService.get_license().workspaces
         if not workspaces.is_available():
             raise WorkspacesLimitExceededError()
 
@@ -1387,7 +1400,7 @@ class TenantService:
             session.add(ta)
 
         session.commit()
-        if dify_config.BILLING_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             BillingService.clean_billing_info_cache(tenant.id)
         return ta
 
@@ -1631,8 +1644,7 @@ class TenantService:
             select(Account, TenantAccountJoin.role)
             .select_from(Account)
             .join(TenantAccountJoin, Account.id == TenantAccountJoin.account_id)
-            .where(TenantAccountJoin.tenant_id == tenant.id)
-            .where(TenantAccountJoin.role == "dataset_operator")
+            .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.role == "dataset_operator")
         )
 
         # Initialize an empty list to store the updated accounts
@@ -1821,7 +1833,7 @@ class TenantService:
                 account_email,
             )
 
-        if dify_config.BILLING_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             BillingService.clean_billing_info_cache(tenant.id)
 
         # Queue account deletion sync task for enterprise backend to reassign resources (enterprise only)
@@ -1953,15 +1965,15 @@ class RegisterService:
                 interface_language=get_valid_language(language),
                 password=password,
                 is_setup=True,
+                ip_address=ip_address,
                 session=session,
             )
 
-            account.last_login_ip = ip_address
             account.initialized_at = naive_utc_now()
 
             TenantService.create_owner_tenant_if_not_exist(account=account, is_setup=True, session=session)
 
-            dify_setup = DifySetup(version=dify_config.project.version)
+            dify_setup = DifySetup(version=dify_config.project.version, instance_id=str(uuid.uuid4()))
             session.add(dify_setup)
             session.commit()
         except Exception as e:
@@ -1973,6 +1985,11 @@ class RegisterService:
 
             logger.exception("Setup account failed, email: %s, name: %s", email, name)
             raise ValueError(f"Setup failed: {e}")
+
+        try:
+            CommunityTelemetryService.report_install(session=session)
+        except Exception:
+            logger.debug("Failed to report install telemetry", exc_info=True)
 
     @classmethod
     def register(
@@ -1987,6 +2004,7 @@ class RegisterService:
         is_setup: bool | None = False,
         create_workspace_required: bool | None = True,
         timezone: str | None = None,
+        ip_address: str | None = None,
         *,
         session: Session,
     ) -> Account:
@@ -2001,6 +2019,7 @@ class RegisterService:
                 password=password,
                 is_setup=is_setup,
                 timezone=timezone,
+                ip_address=ip_address,
                 session=session,
             )
             account.status = status or AccountStatus.ACTIVE
@@ -2010,9 +2029,9 @@ class RegisterService:
                 AccountService.link_account_integrate(provider, open_id, account, session=session)
 
             if (
-                FeatureService.get_system_features().is_allow_create_workspace
+                FeatureService.is_workspace_creation_allowed()
                 and create_workspace_required
-                and FeatureService.get_system_features().license.workspaces.is_available()
+                and FeatureService.get_license().workspaces.is_available()
             ):
                 try:
                     TenantService.create_owner_tenant(account, session=session)

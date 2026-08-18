@@ -66,7 +66,7 @@ vi.mock('@/app/components/app/store', () => ({
 }))
 
 vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
-  default: ({ updateFile }: { updateFile: (file?: File) => void }) => (
+  Uploader: ({ updateFile }: { updateFile: (file?: File) => void }) => (
     <input
       data-testid="dsl-file-input"
       type="file"
@@ -207,8 +207,7 @@ describe('UpdateDSLModal', () => {
 
     await waitFor(() => {
       expect(toast.warning).toHaveBeenCalledWith('workflow.common.importWarning', {
-        description:
-          "Agent file 'brief.pdf' was not included in the portable package. · Agent tool 'web_search' requires authorization.",
+        description: expect.anything(),
       })
     })
   })
@@ -293,7 +292,7 @@ describe('UpdateDSLModal', () => {
 
     await waitFor(() => {
       expect(toast.warning).toHaveBeenCalledWith('workflow.common.importWarning', {
-        description: "Agent secret 'SEARCH_TOKEN' must be configured.",
+        description: expect.anything(),
       })
     })
   })

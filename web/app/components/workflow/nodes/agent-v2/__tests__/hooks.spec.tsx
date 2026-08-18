@@ -4,8 +4,7 @@ import { getDefaultStore } from 'jotai'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import {
   agentComposerDraftAtom,
-  agentComposerOriginalConfigAtom,
-  agentComposerOriginalDraftAtom,
+  agentComposerSavedDraftAtom,
 } from '@/features/agent-v2/agent-composer/store'
 import { FlowType } from '@/types/common'
 import { renderWorkflowHook } from '../../../__tests__/workflow-test-env'
@@ -591,13 +590,11 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     const store = getDefaultStore()
-    store.set(agentComposerOriginalConfigAtom, undefined)
-    store.set(agentComposerOriginalDraftAtom, defaultAgentSoulConfigFormState)
+    store.set(agentComposerSavedDraftAtom, defaultAgentSoulConfigFormState)
     store.set(agentComposerDraftAtom, defaultAgentSoulConfigFormState)
   })
 
   it('saves inline agent composer changes through the workflow node composer API', async () => {
-    vi.setSystemTime(1710000300000)
     const queryClient = new QueryClient({
       defaultOptions: {
         queries: {
@@ -667,7 +664,6 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
       },
       expect.any(Object),
     )
-    await waitFor(() => expect(result.current.draftSavedAt).toBe(1710000300000))
     expect(queryClient.getQueryData(['workflow-agent-composer', 'app-1', 'node-1'])).toEqual(
       expect.objectContaining({
         agent_soul: expect.objectContaining({
@@ -851,7 +847,6 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
 
     expect(mockComposerMutationFn).not.toHaveBeenCalled()
     expect(queryClient.getQueryData(['workflow-agent-composer', 'app-1', 'node-1'])).toBeUndefined()
-    expect(result.current.draftSavedAt).toBeUndefined()
   })
 
   it('saves the effective inline model when the form draft is unchanged', async () => {

@@ -1,6 +1,7 @@
 import type { NotionPage } from '@/models/common'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import PreviewPanel from '../preview-panel'
 
 vi.mock('../../../file-preview', () => ({

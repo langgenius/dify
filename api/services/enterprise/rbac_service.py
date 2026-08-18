@@ -330,6 +330,7 @@ _LEGACY_WORKSPACE_OWNER_KEYS: list[str] = [
     "snippets.management",
     "tool.manage",
     "mcp.manage",
+    "agent.manage",
 ]
 
 _LEGACY_WORKSPACE_ADMIN_KEYS: list[str] = [
@@ -357,6 +358,7 @@ _LEGACY_WORKSPACE_ADMIN_KEYS: list[str] = [
     "snippets.management",
     "tool.manage",
     "mcp.manage",
+    "agent.manage",
 ]
 
 _LEGACY_WORKSPACE_EDITOR_KEYS: list[str] = [
@@ -371,6 +373,7 @@ _LEGACY_WORKSPACE_EDITOR_KEYS: list[str] = [
     "dataset.external.connect",
     "snippets.create_and_modify",
     "tool.manage",
+    "agent.manage",
 ]
 
 _LEGACY_WORKSPACE_NORMAL_KEYS: list[str] = [
@@ -827,10 +830,13 @@ class RBACService:
             tenant_id: str,
             account_id: str | None = None,
             include_owner: int | None = None,
+            biiling_enabled: bool | None = None,
             *,
             options: ListOption | None = None,
         ) -> Paginated[RBACRole]:
-            params = (options or ListOption()).to_params({"include_owner": include_owner})
+            params = (options or ListOption()).to_params(
+                {"include_owner": include_owner, "biiling_enabled": biiling_enabled}
+            )
             params["dataset_operator_enabled"] = dify_config.DATASET_OPERATOR_ENABLED
             data = _inner_call(
                 "GET",
@@ -866,13 +872,13 @@ class RBACService:
             )
 
         @staticmethod
-        def get(tenant_id: str, account_id: str | None, role_id: str) -> RBACRole:
+        def get(tenant_id: str, account_id: str | None, role_id: str, billing_enabled: bool = True) -> RBACRole:
             data = _inner_call(
                 "GET",
                 f"{_INNER_PREFIX}/roles/item",
                 tenant_id=tenant_id,
                 account_id=account_id,
-                params={"id": role_id},
+                params={"id": role_id, "billing_enabled": billing_enabled},
             )
             return RBACRole.model_validate(data or {})
 

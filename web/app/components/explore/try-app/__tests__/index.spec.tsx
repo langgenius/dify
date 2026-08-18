@@ -1,17 +1,21 @@
+import type { ComponentProps } from 'react'
+import type { App as ExploreApp } from '@/models/explore'
 import type { TryAppInfo } from '@/service/try-app'
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
-import TryApp from '../index'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import TryAppComponent from '../index'
 import { TypeEnum } from '../types'
 
-vi.mock('@/config', async (importOriginal) => {
-  const actual = (await importOriginal()) as object
-  return {
-    ...actual,
-    IS_CLOUD_EDITION: true,
-  }
-})
+const defaultApp = { can_trial: true } as ExploreApp
+
+function TryApp({
+  app = defaultApp,
+  ...props
+}: Omit<ComponentProps<typeof TryAppComponent>, 'app'> & {
+  app?: ExploreApp
+}) {
+  return <TryAppComponent {...props} app={app} />
+}
 
 const mockUseGetTryAppInfo = vi.fn()
 
@@ -148,6 +152,26 @@ describe('TryApp (main index.tsx)', () => {
   })
 
   describe('content rendering', () => {
+    it('uses app trial eligibility as the authoritative default tab', async () => {
+      const app = { can_trial: true } as ExploreApp
+
+      render(<TryApp appId="test-app-id" app={app} onClose={vi.fn()} onCreate={vi.fn()} />)
+
+      expect(await screen.findByTestId('app-component')).toBeInTheDocument()
+    })
+
+    it('defaults to details and disables trial when the app is ineligible', async () => {
+      const app = { can_trial: false } as ExploreApp
+
+      render(<TryApp appId="test-app-id" app={app} onClose={vi.fn()} onCreate={vi.fn()} />)
+
+      expect(await screen.findByTestId('preview-component')).toBeInTheDocument()
+      expect(screen.getByRole('tab', { name: 'explore.tryApp.tabHeader.try' })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+    })
+
     it('renders Tab component', async () => {
       render(<TryApp appId="test-app-id" onClose={vi.fn()} onCreate={vi.fn()} />)
 

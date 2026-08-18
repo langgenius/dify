@@ -22,7 +22,7 @@ export type OAuthClientSettingsProps = {
   editValues?: Record<string, unknown>
   disabled?: boolean
   schemas: FormSchema[]
-  onAuth?: () => Promise<void>
+  onRequestAuthorization?: () => Promise<void> | void
   hasOriginalClientParams?: boolean
   onUpdate?: () => void
 }
@@ -34,7 +34,7 @@ const OAuthClientSettings = ({
   editValues,
   disabled,
   schemas,
-  onAuth,
+  onRequestAuthorization,
   hasOriginalClientParams,
   onUpdate,
 }: OAuthClientSettingsProps) => {
@@ -64,7 +64,7 @@ const OAuthClientSettings = ({
   const invalidPluginOAuthClientSchema = useInvalidPluginOAuthClientSchemaHook(pluginPayload)
   const formRef = useRef<FormRefObject>(null)
   const handleConfirm = useCallback(async () => {
-    if (doingActionRef.current) return
+    if (doingActionRef.current) return false
 
     try {
       const { isCheckValidated, values } = formRef.current?.getFormValues({
@@ -85,6 +85,7 @@ const OAuthClientSettings = ({
       onClose?.()
       onUpdate?.()
       invalidPluginOAuthClientSchema()
+      return true
     } finally {
       handleSetDoingAction(false)
     }
@@ -99,9 +100,14 @@ const OAuthClientSettings = ({
   ])
 
   const handleConfirmAndAuthorize = useCallback(async () => {
-    await handleConfirm()
-    if (onAuth) await onAuth()
-  }, [handleConfirm, onAuth])
+    try {
+      const isSaved = await handleConfirm()
+      if (isSaved) await onRequestAuthorization?.()
+    } catch {
+      // The request layer reports the save error. Keep settings open and stop
+      // before opening the permission dialog.
+    }
+  }, [handleConfirm, onRequestAuthorization])
   const { mutateAsync: deletePluginOAuthCustomClient } =
     useDeletePluginOAuthCustomClientHook(pluginPayload)
   const handleRemove = useCallback(async () => {
@@ -137,7 +143,7 @@ const OAuthClientSettings = ({
     <Dialog open={open} disablePointerDismissal onOpenChange={handleOpenChange}>
       <DialogContent
         backdropProps={{ forceRender: true }}
-        className="w-[480px]! max-w-[calc(100vw-2rem)]! p-0!"
+        className="w-120! max-w-[calc(100vw-2rem)]! p-0!"
       >
         <div data-testid="modal" className="flex max-h-[80dvh] flex-col">
           <div className="relative shrink-0 p-6 pr-14 pb-3">

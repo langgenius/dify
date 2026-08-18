@@ -1,13 +1,15 @@
 'use client'
+
 import type { FC } from 'react'
 import type { DataSet } from '@/models/datasets'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import Item from './dataset-item'
 
@@ -31,7 +33,10 @@ const DatasetList: FC<Props> = ({
   settingsModalHeight,
 }) => {
   const { t } = useTranslation()
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
   const handleRemove = useCallback(

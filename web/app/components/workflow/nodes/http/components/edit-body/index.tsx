@@ -160,7 +160,7 @@ const EditBody: FC<Props> = ({ readonly, nodeId, payload, onChange }) => {
               onChange={handleTypeChange}
               disabled={readonly}
             />
-            <div className="text-[13px] leading-[18px] font-normal text-text-secondary">
+            <div className="text-[13px] leading-4.5 font-normal text-text-secondary">
               {bodyTextMap[t]}
             </div>
           </label>

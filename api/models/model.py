@@ -56,6 +56,7 @@ from .provider_ids import GenericProviderID
 from .types import EnumText, LongText, StringUUID
 
 if TYPE_CHECKING:
+    from .agent import Agent
     from .workflow import Workflow
 
 
@@ -361,6 +362,9 @@ class DifySetup(TypeBase):
     __table_args__ = (sa.PrimaryKeyConstraint("version", name="dify_setup_pkey"),)
 
     version: Mapped[str] = mapped_column(String(255), nullable=False)
+    instance_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    install_reported_at: Mapped[datetime | None] = mapped_column(sa.DateTime, nullable=True, default=None)
+    last_heartbeat_at: Mapped[datetime | None] = mapped_column(sa.DateTime, nullable=True, default=None)
     setup_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
@@ -501,25 +505,42 @@ class App(Base):
         Resolved via ``Agent.app_id`` so the console can open the Composer in
         roster-detail mode from the app id. ``None`` for non-agent apps.
         """
+        agent = self.agent_app_binding_with_session(session=session)
+        return agent.id if agent else None
+
+    def agent_app_binding_with_session(self, *, session: Session, include_archived: bool = False) -> Agent | None:
+        """For an Agent App (mode=agent), the Agent bound to it.
+
+        A roster Agent is bound through ``Agent.app_id``; a workflow-only Agent
+        is bound to its hidden runtime backing App through
+        ``Agent.backing_app_id``. Callers branch on ``Agent.scope`` to tell the
+        public roster Agent App apart from the hidden backing App. Archived
+        Agents are excluded unless ``include_archived`` is set (authorization
+        gates must keep covering an Agent App after its Agent is archived).
+        ``None`` for non-agent apps and unbound agent apps.
+        """
         if self.mode != AppMode.AGENT:
             return None
         from .agent import APP_BACKED_AGENT_SOURCES, Agent, AgentScope, AgentStatus
 
-        agent = session.scalar(
-            select(Agent).where(
-                Agent.tenant_id == self.tenant_id,
-                sa.or_(
-                    sa.and_(
-                        Agent.app_id == self.id,
-                        Agent.scope == AgentScope.ROSTER,
-                        Agent.source.in_(APP_BACKED_AGENT_SOURCES),
-                    ),
-                    Agent.backing_app_id == self.id,
+        conditions = [
+            Agent.tenant_id == self.tenant_id,
+            sa.or_(
+                sa.and_(
+                    Agent.app_id == self.id,
+                    Agent.scope == AgentScope.ROSTER,
+                    Agent.source.in_(APP_BACKED_AGENT_SOURCES),
                 ),
-                Agent.status == AgentStatus.ACTIVE,
-            )
-        )
-        return agent.id if agent else None
+                sa.and_(
+                    Agent.backing_app_id == self.id,
+                    Agent.scope == AgentScope.WORKFLOW_ONLY,
+                ),
+            ),
+        ]
+        if not include_archived:
+            conditions.append(Agent.status == AgentStatus.ACTIVE)
+
+        return session.scalar(select(Agent).where(*conditions).limit(1))
 
     @property
     def api_base_url(self) -> str:
@@ -1096,14 +1117,14 @@ class ExporleBanner(TypeBase):
     status: Mapped[BannerStatus] = mapped_column(
         EnumText(BannerStatus, length=255),
         nullable=False,
-        server_default=sa.text("'enabled'::character varying"),
+        server_default=sa.text("'enabled'"),
         default=BannerStatus.ENABLED,
     )
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
     language: Mapped[str] = mapped_column(
-        String(255), nullable=False, server_default=sa.text("'en-US'::character varying"), default="en-US"
+        String(255), nullable=False, server_default=sa.text("'en-US'"), default="en-US"
     )
 
 
@@ -1133,12 +1154,23 @@ class OAuthProviderApp(TypeBase):
         server_default=sa.text("'read:name read:email read:avatar read:interface_language read:timezone'"),
         default="read:name read:email read:avatar read:interface_language read:timezone",
     )
+    # First-party apps (e.g. the Dify Marketplace) skip the consent screen.
+    # Default false: self-hosted / EE / newly registered apps keep the
+    # consent-screen behavior.
+    auto_authorize: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.false(), default=False)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
 
 
 class Conversation(Base):
+    """Conversation state, including the exact Agent participant when applicable.
+
+    ``agent_workspace_binding_id`` is a logical pointer rather than a foreign
+    key because retired Binding ledger rows may be collected before the
+    conversation history is deleted.
+    """
+
     __tablename__ = "conversations"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="conversation_pkey"),
@@ -1155,11 +1187,18 @@ class Conversation(Base):
             sa.text("updated_at DESC"),
             postgresql_where=sa.text("is_deleted IS false"),
         ),
+        sa.Index(
+            "conversation_is_deleted_updated_at_idx",
+            "is_deleted",
+            "updated_at",
+            postgresql_where=sa.text("is_deleted IS true"),
+        ),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
     app_id = mapped_column(StringUUID, nullable=False)
     app_model_config_id = mapped_column(StringUUID, nullable=True)
+    agent_workspace_binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     model_provider = mapped_column(String(255), nullable=True)
     override_model_configs = mapped_column(LongText)
     model_id = mapped_column(String(255), nullable=True)
@@ -1701,11 +1740,10 @@ class Message(Base):
             select(MessageFeedback).where(MessageFeedback.message_id == self.id, MessageFeedback.from_source == "user")
         )
 
-    @property
-    def admin_feedback(self) -> MessageFeedback | None:
-        return self.admin_feedback_with_session(session=db.session())
+    def admin_feedback(self, session: Session) -> MessageFeedback | None:
+        return self.admin_feedback_with_session(session=session)
 
-    def admin_feedback_with_session(self, *, session: Session) -> MessageFeedback | None:
+    def admin_feedback_with_session(self, session: Session) -> MessageFeedback | None:
         return session.scalar(
             select(MessageFeedback).where(MessageFeedback.message_id == self.id, MessageFeedback.from_source == "admin")
         )
@@ -2277,7 +2315,7 @@ class Site(Base):
     app_id = mapped_column(StringUUID, nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     icon_type: Mapped[IconType | None] = mapped_column(EnumText(IconType, length=255), nullable=True)
-    icon = mapped_column(String(255))
+    icon: Mapped[str | None] = mapped_column(String(255))
     icon_background = mapped_column(String(255))
     description = mapped_column(LongText)
     default_language: Mapped[str] = mapped_column(String(255), nullable=False)

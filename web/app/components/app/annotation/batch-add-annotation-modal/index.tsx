@@ -84,7 +84,7 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
 
   return (
     <Dialog open={isShow}>
-      <DialogContent className="w-full max-w-[520px]! overflow-hidden! rounded-xl! border-none px-8 py-6 text-left align-middle">
+      <DialogContent className="w-full max-w-130! overflow-hidden! rounded-xl! border-none px-8 py-6 text-left align-middle">
         <div className="relative pb-1 system-xl-medium text-text-primary">
           {t(($) => $['batchModal.title'], { ns: 'appAnnotation' })}
         </div>
@@ -105,7 +105,7 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
           </div>
         )}
 
-        <div className="mt-[28px] flex justify-end pt-6">
+        <div className="mt-7 flex justify-end pt-6">
           <Button className="mr-2 system-sm-medium text-text-tertiary" onClick={onCancel}>
             {t(($) => $['batchModal.cancel'], { ns: 'appAnnotation' })}
           </Button>

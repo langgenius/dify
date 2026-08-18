@@ -5,8 +5,9 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiCloseLine, RiPlayLargeLine } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { debounce } from 'es-toolkit/compat'
-import { useAtomValue } from 'jotai'
+import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { cloneElement, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -14,9 +15,11 @@ import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { Stop } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import {
   AuthCategory,
   AuthorizedInDataSourceNode,
@@ -29,18 +32,7 @@ import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
-import {
-  useAvailableBlocks,
-  useNodeDataUpdate,
-  useNodesInteractions,
-  useNodesMetaData,
-  useNodesReadOnly,
-  useToolIcon,
-  useWorkflowHistory,
-  WorkflowHistoryEvent,
-} from '@/app/components/workflow/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
-import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
 import { NodeActionsDropdown } from '@/app/components/workflow/node-actions-menu'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import { useSetWorkflowNodePanelWidth } from '@/app/components/workflow/persistence/local-storage-options'
@@ -55,10 +47,18 @@ import {
   hasRetryNode,
   isSupportCustomRunForm,
 } from '@/app/components/workflow/utils'
-import { userProfileAtom } from '@/context/account-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useAllBuiltInTools } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { FlowType } from '@/types/common'
+import { useAvailableBlocks } from '../../../../hooks/use-available-blocks'
+import useInspectVarsCrud from '../../../../hooks/use-inspect-vars-crud'
+import { useNodeDataUpdate } from '../../../../hooks/use-node-data-update'
+import { useNodesInteractions } from '../../../../hooks/use-nodes-interactions'
+import { useNodesMetaData } from '../../../../hooks/use-nodes-meta-data'
+import { useToolIcon } from '../../../../hooks/use-tool-icon'
+import { useNodesReadOnly } from '../../../../hooks/use-workflow'
+import { useWorkflowHistory, WorkflowHistoryEvent } from '../../../../hooks/use-workflow-history'
 import { useResizePanel } from '../../hooks/use-resize-panel'
 import BeforeRunForm from '../before-run-form'
 import PanelWrap from '../before-run-form/panel-wrap'
@@ -96,7 +96,10 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   const { t } = useTranslation()
   const language = useLanguage()
   const appId = useStore((s) => s.appId)
-  const userProfile = useAtomValue(userProfileAtom)
+  const { data: userProfile } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile,
+  })
   const { isConnected, nodePanelPresence } = useCollaboration(appId as string)
   const { showMessageLogModal } = useAppStore(
     useShallow((state) => ({
@@ -377,11 +380,11 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
     [handleNodeDataUpdateWithSyncDraft, id],
   )
 
-  const openIntegrationsSetting = useIntegrationsSetting()
+  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
 
   const handleJumpToDataSourcePage = useCallback(() => {
-    openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.DATA_SOURCE })
-  }, [openIntegrationsSetting])
+    setSettingsDestination('data-source')
+  }, [setSettingsDestination])
 
   const { appendNodeInspectVars } = useInspectVarsCrud()
 
@@ -540,7 +543,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
       className={cn(
         'relative mr-1 h-full',
         showMessageLogModal &&
-          'absolute z-0 mr-2 w-[400px] overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border shadow-lg transition-all',
+          'absolute z-0 mr-2 w-100 overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border shadow-lg transition-all',
       )}
       style={
         {
@@ -637,7 +640,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
                   className="px-4 pb-2"
                   pluginPayload={{
                     provider: currToolCollection?.name || '',
-                    providerType: currToolCollection?.type || '',
+                    providerType: currToolCollection?.type,
                     category: AuthCategory.tool,
                     detail: currToolCollection as any,
                   }}
@@ -647,7 +650,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
                     <AuthorizedInNode
                       pluginPayload={{
                         provider: currToolCollection?.name || '',
-                        providerType: currToolCollection?.type || '',
+                        providerType: currToolCollection?.type,
                         category: AuthCategory.tool,
                         detail: currToolCollection as any,
                       }}

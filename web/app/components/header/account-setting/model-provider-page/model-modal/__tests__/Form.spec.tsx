@@ -40,7 +40,6 @@ vi.mock('@/app/components/plugins/plugin-detail-panel/app-selector', () => ({
 vi.mock('@/app/components/plugins/plugin-detail-panel/model-selector', () => ({
   default: (props: {
     setModel: (model: { model: string; model_type: string }) => void
-    isAgentStrategy?: boolean
     readonly?: boolean
   }) => {
     modelSelectorPropsSpy(props)
@@ -1662,38 +1661,6 @@ describe('Form', () => {
         expect.objectContaining({
           nodeOutputVars,
           availableNodes,
-        }),
-      )
-    })
-
-    it('should pass isAgentStrategy to modelSelector', () => {
-      modelSelectorPropsSpy.mockClear()
-      const formSchemas: AnyFormSchema[] = [
-        createTextSchema({
-          variable: 'model_sel',
-          type: FormTypeEnum.modelSelector,
-          label: createI18n('Model Selector'),
-        }),
-      ]
-      const value: FormValue = { model_sel: '' }
-
-      render(
-        <Form
-          value={value}
-          onChange={vi.fn()}
-          formSchemas={formSchemas}
-          validating={false}
-          validatedSuccess={false}
-          showOnVariableMap={{}}
-          isEditMode={false}
-          isAgentStrategy
-        />,
-      )
-
-      expect(screen.getByText('Select Model'))!.toBeInTheDocument()
-      expect(modelSelectorPropsSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          isAgentStrategy: true,
         }),
       )
     })

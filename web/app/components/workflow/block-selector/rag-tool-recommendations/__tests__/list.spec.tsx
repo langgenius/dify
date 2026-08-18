@@ -6,7 +6,7 @@ import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import { BlockEnum } from '../../../types'
 import { createPlugin, createToolProvider } from '../../__tests__/factories'
-import { ViewType } from '../../view-type-select'
+import { ViewType } from '../../types'
 import List from '../list'
 import UninstalledItem from '../uninstalled-item'
 
@@ -100,7 +100,11 @@ describe('RAG tool recommendations list', () => {
 
     expect(screen.getByText('RAG Plugin')).toBeInTheDocument()
 
-    await user.click(screen.getByText('plugin.installAction'))
+    const installButton = screen.getByRole('button', { name: 'plugin.installAction' })
+    await user.tab()
+    expect(installButton).toHaveFocus()
+
+    await user.keyboard('{Enter}')
 
     expect(screen.getByTestId('install-from-marketplace')).toHaveTextContent('rag-plugin@1.0.0')
   })

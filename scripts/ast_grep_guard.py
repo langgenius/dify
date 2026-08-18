@@ -245,13 +245,13 @@ def extract_meta_variables(raw_match: dict[str, Any]) -> dict[str, str]:
     return result
 
 
-def has_reasoned_noqa(source_line: str, rule_id: str) -> bool:
-    pattern = re.compile(rf"# noqa: {re.escape(rule_id)}(?:\s+(?P<reason>\S.*))?\s*$")
+def has_reasoned_guard_ignore(source_line: str, rule_id: str) -> bool:
+    pattern = re.compile(rf"# guard-ignore: {re.escape(rule_id)} -- (?P<reason>\S.*)\s*$")
     match = pattern.search(source_line)
     if not match:
         return False
     reason = match.group("reason")
-    return reason is not None and bool(reason.strip())
+    return bool(reason.strip())
 
 
 def collect_hunk_violations(

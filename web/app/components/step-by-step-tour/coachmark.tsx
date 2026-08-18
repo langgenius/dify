@@ -140,8 +140,24 @@ export function StepByStepTourCoachmark({
   const measuredRectMatchesGuide =
     measuredTargetElement === targetElement &&
     targetElement.matches(getStepByStepTourTargetSelector(guide.target))
+  const currentOverlayReady = highlightPartsReady && rectSettled && measuredRectMatchesGuide
+  const currentOverlay = currentOverlayReady
+    ? {
+        coachmarkPosition,
+        guide,
+        highlightRect,
+        onComplete,
+        onSkip,
+        placement: coachmarkPosition.placement,
+        skipLabel,
+        interactionPolicy,
+        stepLabel,
+      }
+    : undefined
 
-  if (highlightPartsReady && rectSettled && measuredRectMatchesGuide) {
+  useLayoutEffect(() => {
+    if (!currentOverlayReady) return
+
     stableOverlayRef.current = {
       coachmarkPosition,
       guide,
@@ -153,9 +169,19 @@ export function StepByStepTourCoachmark({
       interactionPolicy,
       stepLabel,
     }
-  }
+  }, [
+    coachmarkPosition,
+    currentOverlayReady,
+    guide,
+    highlightRect,
+    interactionPolicy,
+    onComplete,
+    onSkip,
+    skipLabel,
+    stepLabel,
+  ])
 
-  const stableOverlay = stableOverlayRef.current
+  const stableOverlay = currentOverlay ?? stableOverlayRef.current
   const isActionGuide = stableOverlay
     ? getStepByStepTourGuideKind(stableOverlay.guide) === 'action'
     : false
@@ -278,7 +304,7 @@ export function StepByStepTourCoachmark({
           />
           <div
             ref={coachmarkRef}
-            className="fixed z-50 w-[352px] max-w-[calc(100vw-16px)]"
+            className="fixed z-50 w-88 max-w-[calc(100vw-16px)]"
             data-step-by-step-tour-coachmark=""
             style={stableOverlay.coachmarkPosition.bubbleStyle}
           >
@@ -313,7 +339,7 @@ export function StepByStepTourCoachmark({
               }
               className={cn(
                 'relative flex w-full flex-col rounded-2xl border-[0.5px] border-state-accent-hover-alt bg-state-accent-hover p-4 shadow-[0_20px_24px_-4px_var(--color-shadow-shadow-5),0_8px_8px_-4px_var(--color-shadow-shadow-1)] backdrop-blur-[5px]',
-                isActionGuide ? 'min-h-[118px]' : 'min-h-[158px]',
+                isActionGuide ? 'min-h-29.5' : 'min-h-39.5',
               )}
             >
               {isActionGuide ? (

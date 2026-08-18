@@ -318,6 +318,7 @@ def test_oauth_account_successful_retrieval(
 
     assert response.status_code == 200
     assert response.get_json() == {
+        "id": account.id,
         "name": "Test User",
         "email": account.email,
         "avatar": "avatar_url",

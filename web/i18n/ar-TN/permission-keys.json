@@ -1,8 +1,10 @@
 {
+  "agent.manage": "إدارة Agents",
   "api_extension.manage": "إدارة إعدادات امتداد API",
   "app.access_config": "تكوين أذونات الوصول إلى التطبيق",
   "app.acl.access_config": "تكوين أذونات الوصول إلى التطبيق",
   "app.acl.delete": "حذف التطبيق",
+  "app.acl.deploy": "نشر التطبيق",
   "app.acl.edit": "تعديل التطبيق وتنسيقه",
   "app.acl.import_export_dsl": "استيراد / تصدير DSL",
   "app.acl.log_and_annotation": "الوصول إلى السجلات والتعليقات التوضيحية",

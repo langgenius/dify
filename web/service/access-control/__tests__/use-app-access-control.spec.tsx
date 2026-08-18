@@ -1,8 +1,7 @@
-import type { ReactNode } from 'react'
-import { QueryClient, QueryClientProvider, queryOptions } from '@tanstack/react-query'
 import { renderHook, waitFor } from '@testing-library/react'
 import { get } from '@/service/base'
 import { getUserCanAccess } from '@/service/share'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import {
   useAppWhiteListSubjects,
   useGetUserCanAccessApp,
@@ -25,46 +24,37 @@ vi.mock('@/service/share', () => ({
   getUserCanAccess: vi.fn(),
 }))
 
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    enterprise: {
-      webAppAuth: {
-        getWebAppWhitelistSubjects: {
-          queryOptions: ({ input }: { input: { query: { appId?: string } } }) => ({
-            queryKey: ['web-app-whitelist-subjects', input.query.appId],
-            queryFn: () => mockGetWebAppWhitelistSubjects(input),
-          }),
+vi.mock('@/service/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/client')>()
+  return {
+    ...actual,
+    consoleQuery: {
+      ...actual.consoleQuery,
+      systemFeatures: actual.consoleQuery.systemFeatures,
+      enterprise: {
+        ...actual.consoleQuery.enterprise,
+        webAppAuth: {
+          ...actual.consoleQuery.enterprise.webAppAuth,
+          getWebAppWhitelistSubjects: {
+            queryOptions: ({ input }: { input: { query: { appId?: string } } }) => ({
+              queryKey: ['web-app-whitelist-subjects', input.query.appId],
+              queryFn: () => mockGetWebAppWhitelistSubjects(input),
+            }),
+          },
         },
       },
     },
-  },
-}))
+  }
+})
 
-vi.mock('@/features/system-features/client', () => ({
-  systemFeaturesQueryOptions: () =>
-    queryOptions({
-      queryKey: ['system-features'],
-      queryFn: () =>
-        Promise.resolve({
-          webapp_auth: {
-            enabled: mockSystemFeatures.webappAuthEnabled,
-          },
-        }),
-    }),
-}))
-
-const createWrapper = () => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
-      mutations: { retry: false },
+const createWrapper = () =>
+  createConsoleQueryWrapper({
+    systemFeatures: {
+      webapp_auth: {
+        enabled: mockSystemFeatures.webappAuthEnabled,
+      },
     },
-  })
-
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  )
-}
+  }).wrapper
 
 describe('use-app-access-control', () => {
   beforeEach(() => {

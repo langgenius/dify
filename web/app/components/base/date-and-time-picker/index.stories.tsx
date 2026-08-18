@@ -41,7 +41,7 @@ const DatePickerPlayground = (props: DatePickerProps) => {
         onChange={setValue}
         onClear={() => setValue(undefined)}
       />
-      <div className="w-[252px] rounded-lg border border-divider-subtle bg-components-panel-bg p-3 text-xs text-text-secondary">
+      <div className="w-63 rounded-lg border border-divider-subtle bg-components-panel-bg p-3 text-xs text-text-secondary">
         Selected datetime:{' '}
         <span className="font-mono text-text-primary">{value ? value.format() : 'undefined'}</span>
       </div>

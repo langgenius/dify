@@ -1,4 +1,3 @@
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,12 +29,7 @@ const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, on
     <DropdownMenu>
       <DropdownMenuTrigger
         disabled={!moreThanOneVersion}
-        className={cn(
-          'flex items-center border-none bg-transparent p-0 system-xs-medium text-text-tertiary',
-          moreThanOneVersion
-            ? 'cursor-pointer data-popup-open:text-text-secondary'
-            : 'cursor-default',
-        )}
+        className="flex cursor-pointer items-center border-none bg-transparent p-0 system-xs-medium text-text-tertiary data-disabled:cursor-default data-popup-open:text-text-secondary"
       >
         <div>
           {t(($) => $['generate.version'], { ns: 'appDebug' })} {value + 1}
@@ -49,7 +43,7 @@ const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, on
         alignOffset={-12}
         popupClassName="w-[208px] rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1"
       >
-        <div className="flex h-[22px] items-center px-3 pl-3 system-xs-medium-uppercase text-text-tertiary">
+        <div className="flex h-5.5 items-center px-3 pl-3 system-xs-medium-uppercase text-text-tertiary">
           {t(($) => $['generate.versions'], { ns: 'appDebug' })}
         </div>
         <DropdownMenuRadioGroup

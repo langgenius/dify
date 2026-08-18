@@ -7,15 +7,13 @@ import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import DifyLogo from '@/app/components/base/logo/dify-logo'
+import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import EnvNav from '@/app/components/header/env-nav'
 import StepByStepTourMount from '@/app/components/step-by-step-tour/mount'
-import { langGeniusVersionInfoAtom } from '@/context/version-state'
-import {
-  isCurrentWorkspaceDatasetOperatorAtom,
-  isCurrentWorkspaceEditorAtom,
-} from '@/context/workspace-state'
+import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
+import { useCanManageAgents } from '@/features/agent-v2/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import dynamic from '@/next/dynamic'
 import Link from '@/next/link'
@@ -32,22 +30,22 @@ const WebAppsSection = dynamic(() => import('./components/web-apps-section'), { 
 export function MainNav({ className }: MainNavProps) {
   const { t } = useTranslation()
   const pathname = usePathname()
-  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
-  const isCurrentWorkspaceEditor = useAtomValue(isCurrentWorkspaceEditorAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const { data: currentEnv } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.meta.currentEnv,
+  })
   const agentV2Enabled = isAgentV2Enabled()
-  const showEnvTag =
-    langGeniusVersionInfo.current_env === 'TESTING' ||
-    langGeniusVersionInfo.current_env === 'DEVELOPMENT'
-  const canUseAppDeploy = isCurrentWorkspaceEditor && systemFeatures.enable_app_deploy
+  const canManageAgents = useCanManageAgents()
+  const showEnvTag = currentEnv === 'TESTING' || currentEnv === 'DEVELOPMENT'
 
   const navItems = useMemo<MainNavItem[]>(
     () =>
       MAIN_NAV_ROUTES.filter((route) =>
         isMainNavRouteVisible(route, {
           agentV2Enabled,
-          canUseAppDeploy,
+          canManageAgents,
           isCurrentWorkspaceDatasetOperator,
           marketplaceEnabled: systemFeatures.enable_marketplace,
         }),
@@ -60,7 +58,7 @@ export function MainNav({ className }: MainNavProps) {
       })),
     [
       agentV2Enabled,
-      canUseAppDeploy,
+      canManageAgents,
       isCurrentWorkspaceDatasetOperator,
       systemFeatures.enable_marketplace,
       t,
@@ -123,13 +121,14 @@ export function MainNav({ className }: MainNavProps) {
         </nav>
         {!isCurrentWorkspaceDatasetOperator && <WebAppsSection />}
         {showEnvTag && (
-          <div className="relative z-30 mt-auto shrink-0 px-3 pb-2">
+          <div className="mt-auto shrink-0 px-3 pb-2">
             <EnvNav />
           </div>
         )}
       </div>
-      <div className="relative w-60 shrink-0">
-        <div className="flex w-60 items-center justify-between bg-gradient-to-b from-background-body-transparent to-background-body to-50% py-3 pr-1 pl-3 backdrop-blur-[2px]">
+      <div className="isolate w-60 shrink-0">
+        <StepByStepTourMount className="relative z-1 -mb-1 ml-2.5 h-8 w-45.75 overflow-visible" />
+        <div className="flex w-60 items-center justify-between bg-linear-to-b from-background-body-transparent to-background-body to-50% py-3 pr-1 pl-3 backdrop-blur-[2px]">
           <div className="flex min-w-0 items-center gap-1 overflow-hidden">
             <AccountSection />
           </div>
@@ -137,7 +136,6 @@ export function MainNav({ className }: MainNavProps) {
             <HelpMenu />
           </div>
         </div>
-        <StepByStepTourMount className="absolute -top-7 left-2.5 h-8 w-[183px] overflow-visible" />
       </div>
     </aside>
   )

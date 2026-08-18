@@ -8,7 +8,6 @@ vi.mock('@/utils/var', () => ({
   basePath: '/app',
   API_PREFIX: '/console/api',
   PUBLIC_API_PREFIX: '/api',
-  IS_CE_EDITION: false,
 }))
 
 describe('buildSigninUrlWithRedirect', () => {

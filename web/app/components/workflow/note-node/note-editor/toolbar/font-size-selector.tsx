@@ -48,7 +48,7 @@ const FontSizeSelector = () => {
         sideOffset={2}
         popupClassName="border-none bg-transparent shadow-none"
       >
-        <div className="w-[120px] rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 text-text-secondary shadow-xl">
+        <div className="w-30 rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 text-text-secondary shadow-xl">
           {FONT_SIZE_LIST.map((font) => (
             <div
               key={font.key}

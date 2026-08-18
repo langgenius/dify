@@ -10,9 +10,14 @@ const mockUseToolIcon = vi.hoisted(() => vi.fn())
 const mockUseNodeCrud = vi.hoisted(() => vi.fn())
 const mockFormatToTracingNodeList = vi.hoisted(() => vi.fn())
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useToolIcon: (...args: unknown[]) => mockUseToolIcon(...args),
-}))
+vi.mock('../../../../hooks/use-tool-icon', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../hooks/use-tool-icon')>()
+
+  return {
+    ...actual,
+    useToolIcon: (...args: unknown[]) => mockUseToolIcon(...args),
+  }
+})
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   __esModule: true,

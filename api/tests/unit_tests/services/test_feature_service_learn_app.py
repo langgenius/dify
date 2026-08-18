@@ -1,12 +1,16 @@
 import pytest
 
+from enums import DeploymentEdition
 from services import feature_service as feature_service_module
-from services.feature_service import FeatureService, SystemFeatureModel
+from services.entities.feature_entities import SystemFeatureModel
+from services.feature_service import FeatureService
 
 
 def test_system_feature_model_defaults_enable_learn_app():
-    assert SystemFeatureModel().enable_learn_app is True
-    assert SystemFeatureModel().enable_step_by_step_tour is False
+    system_features = SystemFeatureModel(deployment_edition=DeploymentEdition.COMMUNITY)
+
+    assert system_features.enable_learn_app is True
+    assert system_features.enable_step_by_step_tour is False
 
 
 @pytest.mark.parametrize("enabled", [True, False])

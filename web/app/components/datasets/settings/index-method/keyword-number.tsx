@@ -42,7 +42,7 @@ const KeyWordNumber = ({ keywordNumber, onKeywordNumberChange }: KeyWordNumberPr
         </Infotip>
       </div>
       <Slider
-        className="mr-3 w-[206px] shrink-0"
+        className="mr-3 w-51.5 shrink-0"
         value={keywordNumber}
         min={MIN_KEYWORD_NUMBER}
         max={MAX_KEYWORD_NUMBER}
@@ -50,7 +50,7 @@ const KeyWordNumber = ({ keywordNumber, onKeywordNumberChange }: KeyWordNumberPr
         aria-label={label}
       />
       <NumberField
-        className="w-[74px] shrink-0"
+        className="w-18.5 shrink-0"
         min={MIN_KEYWORD_NUMBER}
         max={MAX_KEYWORD_NUMBER}
         value={keywordNumber}

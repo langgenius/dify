@@ -307,7 +307,7 @@ const ModelModal: FC<ModelModalProps> = ({
     <Dialog open onOpenChange={handleOpenChange}>
       <DialogContent
         backdropProps={{ forceRender: true }}
-        className="flex w-[640px] max-w-[640px] flex-col overflow-hidden p-0"
+        className="flex w-160 max-w-160 flex-col overflow-hidden p-0"
       >
         <DialogCloseButton className="top-5 right-5 size-8" />
         <div className="shrink-0 p-6 pb-3">
@@ -389,7 +389,7 @@ const ModelModal: FC<ModelModalProps> = ({
                 provider.help.url[language] ||
                 provider.help.title?.en_US ||
                 provider.help.url.en_US}
-              <LinkExternal02 className="mt-[-2px] ml-1 inline-block h-3 w-3" />
+              <LinkExternal02 className="-mt-0.5 ml-1 inline-block h-3 w-3" />
             </a>
           ) : (
             <div />

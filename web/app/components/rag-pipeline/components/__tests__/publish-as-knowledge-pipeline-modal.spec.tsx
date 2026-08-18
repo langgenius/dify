@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import PublishAsKnowledgePipelineModal from '../publish-as-knowledge-pipeline-modal'
 
 vi.mock('@/app/components/workflow/store', () => ({
@@ -14,27 +14,6 @@ vi.mock('@/app/components/workflow/store', () => ({
       },
     }),
   }),
-}))
-
-vi.mock('@langgenius/dify-ui/dialog', () => ({
-  Dialog: ({ children, open }: { children: React.ReactNode; open?: boolean }) =>
-    open === false ? null : <>{children}</>,
-  DialogContent: ({ children, className }: { children: React.ReactNode; className?: string }) => (
-    <div data-testid="modal" className={className}>
-      {children}
-    </div>
-  ),
-  DialogTitle: ({ children, className }: { children: React.ReactNode; className?: string }) => (
-    <h2 className={className}>{children}</h2>
-  ),
-}))
-
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, onClick, disabled, ...props }: Record<string, unknown>) => (
-    <button onClick={onClick as () => void} disabled={disabled as boolean} {...props}>
-      {children as string}
-    </button>
-  ),
 }))
 
 vi.mock('@/app/components/base/input', () => ({
@@ -78,7 +57,7 @@ describe('PublishAsKnowledgePipelineModal', () => {
   it('should render modal with title', () => {
     render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
-    expect(screen.getByTestId('modal')).toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(screen.getByText('pipeline.common.publishAs')).toBeInTheDocument()
   })
 

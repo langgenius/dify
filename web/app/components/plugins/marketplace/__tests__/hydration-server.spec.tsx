@@ -1,6 +1,8 @@
+import type { DehydratedState } from '@tanstack/react-query'
+import type { ReactElement } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 vi.mock('@/config', () => ({
   API_PREFIX: '/api',
@@ -28,16 +30,18 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-let serverQueryClient: QueryClient
+let queryClient: QueryClient
 
-vi.mock('@/context/query-client-server', () => ({
-  getQueryClientServer: () => serverQueryClient,
-}))
+vi.mock('@/app/get-query-client', () => {
+  return {
+    getQueryClient: () => queryClient,
+  }
+})
 
 describe('HydrateQueryClient', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    serverQueryClient = new QueryClient({
+    queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false, gcTime: 0 } },
     })
     mockCollections.mockResolvedValue({
@@ -85,6 +89,23 @@ describe('HydrateQueryClient', () => {
     })
 
     expect(mockCollections).toHaveBeenCalled()
+  })
+
+  it('should dehydrate only Marketplace-owned queries', async () => {
+    const { HydrateQueryClient } = await import('../hydration-server')
+
+    const element = await HydrateQueryClient({
+      searchParams: Promise.resolve({ category: 'all' }),
+      children: <div>Child</div>,
+    })
+    const state = (element as ReactElement<{ state: DehydratedState }>).props.state
+
+    expect(state.queries).toHaveLength(1)
+    expect(state.queries[0]?.queryKey).toEqual([
+      'marketplace',
+      'collections',
+      { input: { query: {} } },
+    ])
   })
 
   it('should prefetch when category has collections (tool)', async () => {

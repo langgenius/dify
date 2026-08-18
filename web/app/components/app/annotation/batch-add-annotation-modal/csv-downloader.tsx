@@ -33,7 +33,7 @@ const CSVDownload: FC = () => {
       <div className="system-sm-medium text-text-primary">
         {t(($) => $['generation.csvStructureTitle'], { ns: 'share' })}
       </div>
-      <div className="mt-2 max-h-[500px] overflow-auto">
+      <div className="mt-2 max-h-125 overflow-auto">
         <table className="w-full table-fixed border-separate border-spacing-0 rounded-lg border border-divider-regular text-xs">
           <thead className="text-text-tertiary">
             <tr>
@@ -72,7 +72,7 @@ const CSVDownload: FC = () => {
         bom={true}
         data={getTemplate()}
       >
-        <div className="flex h-[18px] items-center space-x-1 system-xs-medium text-text-accent">
+        <div className="flex h-4.5 items-center space-x-1 system-xs-medium text-text-accent">
           <DownloadIcon className="mr-1 size-3" />
           {t(($) => $['batchModal.template'], { ns: 'appAnnotation' })}
         </div>

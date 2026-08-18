@@ -28,13 +28,18 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   },
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesReadOnly: () => mockUseNodesReadOnly(),
-  useWorkflow: () => ({
-    isVarUsedInNodes: (...args: unknown[]) => mockIsVarUsedInNodes(...args),
-    removeUsedVarInNodes: (...args: unknown[]) => mockRemoveUsedVarInNodes(...args),
-  }),
-}))
+vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useNodesReadOnly: () => mockUseNodesReadOnly(),
+    useWorkflow: () => ({
+      isVarUsedInNodes: (...args: unknown[]) => mockIsVarUsedInNodes(...args),
+      removeUsedVarInNodes: (...args: unknown[]) => mockRemoveUsedVarInNodes(...args),
+    }),
+  }
+})
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   ...createNodeCrudModuleMock<WebhookTriggerNodeType>(mockSetInputs),

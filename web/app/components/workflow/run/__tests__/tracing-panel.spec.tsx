@@ -135,11 +135,23 @@ describe('TracingPanel', () => {
 
     fireEvent.mouseLeave(hoverTarget)
 
-    fireEvent.click(screen.getAllByRole('button')[0]!)
+    const parallelToggle = screen.getByRole('button', {
+      name: 'Parallel Group',
+      expanded: true,
+    })
+    expect(parallelToggle).toHaveAttribute('aria-controls', 'parallel-1-children')
+
+    fireEvent.click(parallelToggle)
+    expect(
+      screen.getByRole('button', { name: 'Parallel Group', expanded: false }),
+    ).toBeInTheDocument()
     expect(
       container.querySelector('[data-parallel-id="parallel-1"] > div:last-child'),
     )!.toHaveClass('hidden')
-    fireEvent.click(screen.getAllByRole('button')[0]!)
+    fireEvent.click(parallelToggle)
+    expect(
+      screen.getByRole('button', { name: 'Parallel Group', expanded: true }),
+    ).toBeInTheDocument()
     expect(
       container.querySelector('[data-parallel-id="parallel-1"] > div:last-child'),
     ).not.toHaveClass('hidden')

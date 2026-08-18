@@ -82,11 +82,10 @@ describe('DatasetFirstEmptyState', () => {
     )
   })
 
-  it('renders nothing when no empty-state action is available', () => {
-    const { container } = render(
-      <DatasetFirstEmptyState canConnectExternalDataset={false} canCreateDataset={false} />,
-    )
+  it('shows a permission message when no empty-state action is available', () => {
+    render(<DatasetFirstEmptyState canConnectExternalDataset={false} canCreateDataset={false} />)
 
-    expect(container).toBeEmptyDOMElement()
+    expect(screen.getByText('dataset.firstEmpty.noCreatePermission')).toBeInTheDocument()
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
   })
 })

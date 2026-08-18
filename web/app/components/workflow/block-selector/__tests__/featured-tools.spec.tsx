@@ -20,7 +20,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
   }),
 }))
 
-vi.mock('@/app/components/workflow/block-selector/market-place-plugin/action', () => ({
+vi.mock('@/app/components/workflow/block-selector/marketplace-plugin/action', () => ({
   default: () => <button type="button" aria-label="common.operation.more" />,
 }))
 
@@ -77,8 +77,6 @@ describe('FeaturedTools', () => {
     const showMoreButton = screen.getByRole('button', {
       name: 'workflow.tabs.showMoreFeatured',
     })
-    expect(showMoreButton).not.toHaveAttribute('aria-expanded')
-
     await user.click(showMoreButton)
 
     expect(screen.getByText('Provider 10')).toBeInTheDocument()
@@ -87,10 +85,16 @@ describe('FeaturedTools', () => {
     await user.click(screen.getByRole('button', { name: 'workflow.tabs.showMoreFeatured' }))
 
     expect(screen.getByText('Provider 11')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'workflow.tabs.showLessFeatured' }),
+    ).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'workflow.tabs.showLessFeatured' }))
 
     expect(screen.queryByText('Provider 6')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'workflow.tabs.showMoreFeatured' }),
+    ).toBeInTheDocument()
   })
 
   it('restores the collapsed state and expands from the keyboard', async () => {
@@ -109,7 +113,8 @@ describe('FeaturedTools', () => {
     expect(trigger).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByText('Provider One')).not.toBeInTheDocument()
 
-    trigger.focus()
+    await user.tab()
+    expect(trigger).toHaveFocus()
     await user.keyboard('{Enter}')
 
     expect(trigger).toHaveAttribute('aria-expanded', 'true')
@@ -133,6 +138,8 @@ describe('FeaturedTools', () => {
     const moreButton = screen.getByRole('button', { name: 'common.operation.more' })
 
     expect(detailsLink).toHaveAttribute('href', 'https://marketplace.test/plugins/org/plugin-one')
+    expect(detailsLink).not.toContainElement(installButton)
+    expect(detailsLink).not.toContainElement(moreButton)
 
     detailsLink.focus()
     await user.tab()

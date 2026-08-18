@@ -7,9 +7,11 @@ from unittest.mock import MagicMock
 import httpx
 import pytest
 from flask import Flask, Response
+from pydantic import SecretStr
 from werkzeug.exceptions import (
     BadGateway,
     Forbidden,
+    HTTPException,
     NotFound,
     RequestEntityTooLarge,
     ServiceUnavailable,
@@ -22,15 +24,18 @@ from controllers.console.knowledge_fs_proxy import (
     _proxy_request,
     _proxy_response,
     proxy_knowledge_fs_get,
+    proxy_knowledge_fs_options,
     proxy_knowledge_fs_write,
 )
 from controllers.console.wraps import RBACPermission
-from services.knowledge_fs_proxy import (
-    KnowledgeFSAccessDeniedError,
-    KnowledgeFSConfigurationError,
+from services.knowledge_fs_operations import (
     KnowledgeFSMethod,
     KnowledgeFSOperation,
     KnowledgeFSResponseKind,
+)
+from services.knowledge_fs_proxy import (
+    KnowledgeFSAccessDeniedError,
+    KnowledgeFSConfigurationError,
     KnowledgeFSRouteNotAllowedError,
     KnowledgeFSUpstreamResponse,
     get_knowledge_fs_operation,
@@ -46,6 +51,7 @@ def _upstream(
     response: httpx.Response,
     kind: KnowledgeFSResponseKind = "buffered",
     *,
+    error_status_map: tuple[tuple[int, int], ...] = ((401, 502), (403, 403)),
     max_response_bytes: int | None = None,
 ) -> KnowledgeFSUpstreamResponse:
     operation = KnowledgeFSOperation(
@@ -55,7 +61,7 @@ def _upstream(
         response_kind=kind,
         required_scope="knowledge-spaces:read",
         rbac_permission=RBACPermission.DATASET_READONLY,
-        requires_dataset_editor=False,
+        legacy_role="reader",
         max_response_bytes=max_response_bytes
         or (64 * 1024 * 1024 if kind == "stream" else 25 * 1024 * 1024 if kind == "binary" else 1024 * 1024),
         request_headers=(),
@@ -66,6 +72,7 @@ def _upstream(
             "x-session-id",
         ),
         response_media_types=(),
+        error_status_map=error_status_map,
     )
     return KnowledgeFSUpstreamResponse(response, kind, operation)
 
@@ -92,7 +99,7 @@ def _set_current_workspace(
 def _bypass_policy_wrappers(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "controllers.console.knowledge_fs_proxy._proxy_knowledge_fs_non_get",
-        unwrap(_proxy_knowledge_fs_non_get),
+        lambda method, path: _proxy_request(method, path),
     )
 
 
@@ -118,8 +125,59 @@ def test_console_blueprint_registers_generic_knowledge_fs_routes() -> None:
         "/console/api/knowledge-fs/knowledge-spaces",
         method="OPTIONS",
     )
-    assert options_endpoint.endswith("proxy_knowledge_fs_get")
+    assert options_endpoint.endswith("proxy_knowledge_fs_options")
     assert options_values == {"upstream_path": "knowledge-spaces"}
+
+
+def test_proxy_options_does_not_require_an_authenticated_account(app: Flask) -> None:
+    with app.test_request_context(
+        "/console/api/knowledge-fs/knowledge-spaces",
+        method="OPTIONS",
+        headers={"Access-Control-Request-Method": "GET"},
+    ):
+        response = app.make_response(proxy_knowledge_fs_options("knowledge-spaces"))
+
+    assert response.status_code == 204
+
+
+def test_proxy_options_is_hidden_when_knowledge_fs_is_disabled(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("controllers.console.knowledge_fs_proxy.dify_config.KNOWLEDGE_FS_ENABLED", False)
+
+    with app.test_request_context(
+        "/console/api/knowledge-fs/knowledge-spaces",
+        method="OPTIONS",
+        headers={"Access-Control-Request-Method": "GET"},
+    ):
+        response = app.make_response(proxy_knowledge_fs_options("knowledge-spaces"))
+
+    assert response.status_code == 404
+
+
+@pytest.mark.parametrize(
+    ("upstream_path", "requested_method"),
+    [
+        ("unregistered", "GET"),
+        ("knowledge-spaces", "DELETE"),
+        ("knowledge-spaces", ""),
+    ],
+)
+def test_proxy_options_hides_unregistered_operations(
+    app: Flask,
+    upstream_path: str,
+    requested_method: str,
+) -> None:
+    headers = {"Access-Control-Request-Method": requested_method} if requested_method else None
+    with app.test_request_context(
+        f"/console/api/knowledge-fs/{upstream_path}",
+        method="OPTIONS",
+        headers=headers,
+    ):
+        response = app.make_response(proxy_knowledge_fs_options(upstream_path))
+
+    assert response.status_code == 404
 
 
 def test_proxy_is_hidden_when_knowledge_fs_is_disabled(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -235,10 +293,8 @@ def test_read_post_applies_knowledge_rate_limit_once(
 
     monkeypatch.setattr("controllers.console.knowledge_fs_proxy.current_account_with_tenant", current_workspace)
     monkeypatch.setattr("controllers.console.wraps.current_account_with_tenant", current_workspace)
-    monkeypatch.setattr(
-        "services.knowledge_fs_proxy.RBACService.CheckAccess.check",
-        MagicMock(return_value=True),
-    )
+    check_access = MagicMock(return_value=True)
+    monkeypatch.setattr("services.knowledge_fs_proxy.RBACService.CheckAccess.check", check_access)
     monkeypatch.setattr(
         "controllers.console.wraps.FeatureService.get_knowledge_rate_limit",
         MagicMock(return_value=MagicMock(enabled=True, limit=10)),
@@ -248,14 +304,19 @@ def test_read_post_applies_knowledge_rate_limit_once(
     monkeypatch.setattr("controllers.console.wraps.redis_client.zremrangebyscore", MagicMock())
     monkeypatch.setattr("controllers.console.wraps.redis_client.zcard", MagicMock(return_value=1))
     proxy = MagicMock(return_value=Response(status=200))
-    monkeypatch.setattr("controllers.console.knowledge_fs_proxy._proxy_request", proxy)
+    monkeypatch.setattr("controllers.console.knowledge_fs_proxy._proxy_authorized_request", proxy)
 
     with app.test_request_context("/console/api/knowledge-fs/knowledge-spaces", method="POST"):
         response = _proxy_knowledge_fs_non_get("POST", "knowledge-spaces")
 
     assert isinstance(response, Response)
     zadd.assert_called_once()
-    proxy.assert_called_once_with("POST", "knowledge-spaces")
+    proxy.assert_called_once()
+    authorization = proxy.call_args.args[0]
+    assert authorization.account_id == "account-1"
+    assert authorization.tenant_id == "tenant-1"
+    assert authorization.operation.operation_id == "createKnowledgeSpace"
+    check_access.assert_called_once()
 
 
 def test_denied_write_does_not_consume_the_workspace_rate_limit(
@@ -393,6 +454,65 @@ def test_generic_write_forwards_path_raw_body_and_current_tenant(
     assert isinstance(response, Response)
     assert response.status_code == 201
     assert response.get_json()["tenantId"] == "tenant-1"
+
+
+def test_generic_write_forwards_through_the_authorized_production_path(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    account = MagicMock(id="account-1", is_dataset_editor=True)
+
+    def current_workspace() -> tuple[MagicMock, str]:
+        return account, "tenant-1"
+
+    monkeypatch.setattr("controllers.console.knowledge_fs_proxy.current_account_with_tenant", current_workspace)
+    monkeypatch.setattr("controllers.console.wraps.current_account_with_tenant", current_workspace)
+    check_access = MagicMock(return_value=True)
+    monkeypatch.setattr("services.knowledge_fs_proxy.RBACService.CheckAccess.check", check_access)
+    monkeypatch.setattr(
+        "controllers.console.wraps.FeatureService.get_knowledge_rate_limit",
+        MagicMock(return_value=MagicMock(enabled=False)),
+    )
+    monkeypatch.setattr(
+        "services.knowledge_fs_proxy.dify_config.KNOWLEDGE_FS_BASE_URL",
+        "http://knowledge-fs.test",
+        raising=False,
+    )
+    monkeypatch.setattr(
+        "services.knowledge_fs_proxy.dify_config.KNOWLEDGE_FS_JWT_SECRET",
+        SecretStr("production-secret-with-at-least-32-bytes"),
+        raising=False,
+    )
+    upstream_request = MagicMock(
+        return_value=httpx.Response(
+            201,
+            content=b'{"id":"space-1","tenantId":"tenant-1"}',
+            headers={"Content-Type": "application/json"},
+        )
+    )
+    monkeypatch.setattr("services.knowledge_fs_proxy.ssrf_proxy.make_request", upstream_request)
+    route = unwrap(proxy_knowledge_fs_write)
+    body = b'{"idempotencyKey":"create-product-docs","name":"Product docs"}'
+
+    with app.test_request_context(
+        "/console/api/knowledge-fs/knowledge-spaces",
+        method="POST",
+        query_string={"source": "console"},
+        data=body,
+        content_type="application/json",
+        headers={"X-Trace-Id": "trace-1"},
+    ):
+        response = route("knowledge-spaces")
+
+    assert isinstance(response, Response)
+    assert response.status_code == 201
+    assert response.get_json() == {"id": "space-1", "tenantId": "tenant-1"}
+    check_access.assert_called_once()
+    assert upstream_request.call_args.kwargs["method"] == "POST"
+    assert upstream_request.call_args.kwargs["url"] == "http://knowledge-fs.test/knowledge-spaces"
+    assert upstream_request.call_args.kwargs["params"] == b"source=console"
+    assert upstream_request.call_args.kwargs["content"] == body
+    assert upstream_request.call_args.kwargs["headers"]["x-trace-id"] == "trace-1"
 
 
 def test_generic_write_forwards_contract_declared_request_headers(
@@ -565,6 +685,43 @@ def test_resource_authorization_rejection_is_exposed_as_forbidden(
             route("knowledge-spaces")
 
 
+def test_proxy_response_applies_operation_specific_error_status_mapping() -> None:
+    upstream = httpx.Response(
+        429,
+        content=b'{"error":"rate limited"}',
+        headers={"Content-Type": "application/json"},
+    )
+
+    with pytest.raises(ServiceUnavailable):
+        _proxy_response(
+            _upstream(upstream, error_status_map=((429, 503),)),
+            tenant_id="tenant-1",
+            contract_response_headers=(),
+            max_response_bytes=1024 * 1024,
+        )
+
+    assert upstream.is_closed
+
+
+def test_proxy_response_preserves_nonstandard_mapped_error_status() -> None:
+    upstream = httpx.Response(
+        429,
+        content=b'{"error":"rate limited"}',
+        headers={"Content-Type": "application/json"},
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        _proxy_response(
+            _upstream(upstream, error_status_map=((429, 499),)),
+            tenant_id="tenant-1",
+            contract_response_headers=(),
+            max_response_bytes=1024 * 1024,
+        )
+
+    assert exc_info.value.code == 499
+    assert upstream.is_closed
+
+
 def test_contract_response_headers_are_deduplicated_case_insensitively() -> None:
     upstream = httpx.Response(
         200,
@@ -619,6 +776,7 @@ def test_disallowed_non_get_route_is_hidden_as_not_found(
     monkeypatch: pytest.MonkeyPatch,
     method: KnowledgeFSMethod,
 ) -> None:
+    _set_current_workspace(monkeypatch)
     route = unwrap(proxy_knowledge_fs_write)
 
     with app.test_request_context("/console/api/knowledge-fs/not-a-route", method=method):

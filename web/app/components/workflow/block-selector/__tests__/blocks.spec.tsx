@@ -50,6 +50,12 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   },
 }))
 
+// Permission-dependent selector actions are covered by agent-selector.spec.tsx;
+// this suite is about block insertion.
+vi.mock('@/features/agent-v2/permissions', () => ({
+  useCanManageAgents: () => true,
+}))
+
 const createBlock = (
   type: BlockEnum,
   title: string,
@@ -444,14 +450,14 @@ describe('Blocks', () => {
     )
 
     await user.click(screen.getByRole('button', { name: /Agent/ }))
-    const consoleLink = await screen.findByRole('option', {
+    const consoleLink = await screen.findByRole('link', {
       name: 'agentV2.roster.nodeSelector.manageInAgentConsole',
     })
     expect(consoleLink).toHaveAttribute('href', '/agents')
     expect(consoleLink).toHaveAttribute('target', '_blank')
     expect(consoleLink).toHaveAttribute('rel', 'noopener noreferrer')
     await user.click(
-      await screen.findByRole('option', { name: 'agentV2.roster.nodeSelector.startFromScratch' }),
+      await screen.findByRole('button', { name: 'agentV2.roster.nodeSelector.startFromScratch' }),
     )
 
     expect(onSelect).toHaveBeenCalledWith(BlockEnum.AgentV2, {

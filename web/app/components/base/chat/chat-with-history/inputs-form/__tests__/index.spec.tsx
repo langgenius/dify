@@ -2,7 +2,7 @@ import type { ChatWithHistoryContextValue } from '../../context'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { InputVarType } from '@/app/components/workflow/types'
 import { useChatWithHistoryContext } from '../../context'
 import InputsFormNode from '../index'
@@ -44,7 +44,7 @@ const defaultContextValues: Partial<ChatWithHistoryContextValue> = {
   currentConversationId: '',
   handleStartChat: mockHandleStartChat,
   allInputsHidden: false,
-  themeBuilder: undefined,
+  theme: undefined,
   inputsForms: [{ variable: 'test_var', type: InputVarType.textInput, label: 'Test Label' }],
   currentConversationInputs: {},
   newConversationInputs: {},
@@ -112,9 +112,7 @@ describe('InputsFormNode', () => {
 
     setMockContext({
       currentConversationId: '',
-      themeBuilder: {
-        theme: { primaryColor: themeColor },
-      } as unknown as ChatWithHistoryContextValue['themeBuilder'],
+      theme: { primaryColor: themeColor } as unknown as ChatWithHistoryContextValue['theme'],
     })
 
     render(<InputsFormNode collapsed={false} setCollapsed={setCollapsed} />)

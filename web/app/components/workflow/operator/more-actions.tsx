@@ -1,4 +1,3 @@
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -6,7 +5,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { RiExportLine, RiMoreFill } from '@remixicon/react'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toJpeg, toPng, toSvg } from 'html-to-image'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -14,7 +13,7 @@ import { getNodesBounds, useReactFlow } from 'reactflow'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import { useStore } from '@/app/components/workflow/store'
 import { downloadUrl } from '@/utils/download'
-import { useNodesReadOnly } from '../hooks'
+import { useNodesReadOnly } from '../hooks/use-workflow'
 import TipPopup from './tip-popup'
 
 function MoreActions() {
@@ -155,20 +154,24 @@ function MoreActions() {
           setOpen(nextOpen)
         }}
       >
-        <DropdownMenuTrigger
-          className={cn(
-            'flex size-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover hover:text-text-secondary',
-            isReadOnly &&
-              'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
-          )}
-        >
-          <TipPopup title={t(($) => $['common.moreActions'], { ns: 'workflow' })}>
-            <RiMoreFill className="size-4" />
-          </TipPopup>
-        </DropdownMenuTrigger>
+        <TipPopup title={t(($) => $['common.moreActions'], { ns: 'workflow' })}>
+          <DropdownMenuTrigger
+            render={
+              <IconButton
+                size="lg"
+                aria-label={t(($) => $['common.moreActions'], { ns: 'workflow' })}
+                disabled={isReadOnly}
+                focusableWhenDisabled
+                className="rounded-md"
+              >
+                <span aria-hidden className="i-ri-more-fill size-4" />
+              </IconButton>
+            }
+          />
+        </TipPopup>
         <DropdownMenuContent placement="right-end" popupClassName="min-w-[180px]">
           <div className="flex items-center gap-2 px-2 py-1 text-xs font-medium text-text-tertiary">
-            <RiExportLine className="size-3" />
+            <span aria-hidden className="i-ri-export-line size-3" />
             {t(($) => $['common.exportImage'], { ns: 'workflow' })}
           </div>
           <div className="px-2 py-1 text-xs font-medium text-text-tertiary">

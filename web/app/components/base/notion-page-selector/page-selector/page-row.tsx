@@ -44,7 +44,7 @@ const NotionPageRow = ({
   return (
     <div
       className={cn(
-        'group flex cursor-pointer items-center rounded-md pr-[2px] pl-2 hover:bg-state-base-hover',
+        'group flex cursor-pointer items-center rounded-md pr-0.5 pl-2 hover:bg-state-base-hover',
         isPreviewed && 'bg-state-base-hover',
       )}
       style={style}
@@ -101,7 +101,7 @@ const NotionPageRow = ({
       )}
       {searchValue && (
         <div
-          className="ml-1 max-w-[120px] shrink-0 truncate text-xs text-text-quaternary"
+          className="ml-1 max-w-30 shrink-0 truncate text-xs text-text-quaternary"
           title={breadcrumbs.join(' / ')}
         >
           {breadcrumbs.join(' / ')}

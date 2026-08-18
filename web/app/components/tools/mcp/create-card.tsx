@@ -45,7 +45,7 @@ export function NewMCPButton({ handleCreate }: Props) {
     <>
       <Button
         variant="secondary"
-        className="gap-0.5 px-3!"
+        className="px-3!"
         data-step-by-step-tour-target={STEP_BY_STEP_TOUR_TARGETS.integrationMcpAdd}
         onClick={() => setShowModal(true)}
         title={addMCPServerLabel}

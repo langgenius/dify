@@ -3,6 +3,7 @@
 import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { Ref } from 'react'
 import type { AgentPreviewChatConfig } from './chat-config'
+import type { AnswerActionPosition } from '@/app/components/base/chat/chat/answer/operation'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
 import type { ChatItem, ChatItemInTree, OnSend } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
@@ -11,18 +12,18 @@ import type { AgentComposerModel } from '@/features/agent-v2/agent-composer/form
 import type { Inputs } from '@/models/debug'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useQueryClient } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { AgentRosterResponseContent } from '@/app/components/base/chat/chat/answer/agent-roster-response-content'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
-import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { userProfileAtom } from '@/context/account-state'
+import { useDocLink } from '@/context/i18n'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import dynamic from '@/next/dynamic'
 import { consoleClient, consoleQuery } from '@/service/client'
-import { buildChatConfig, getAgentSoulInputs, getAgentSoulInputsForm } from './chat-config'
+import { getAgentSoulInputs, getAgentSoulInputsForm } from './chat-config'
 
 const Chat = dynamic(() => import('@/app/components/base/chat/chat'), { ssr: false })
 
@@ -44,6 +45,19 @@ const fetchAgentSuggestedQuestions = (agentId: string, messageId: string) => {
   })
 }
 
+type AgentChatHandleSend = ReturnType<typeof useChat>['handleSend']
+
+export type AgentChatMessageRequest = {
+  agentId: string
+  callbacks: Parameters<AgentChatHandleSend>[2]
+  data: Parameters<AgentChatHandleSend>[1]
+  handleSend: AgentChatHandleSend
+}
+
+export type AgentChatMessageSender = (
+  request: AgentChatMessageRequest,
+) => ReturnType<AgentChatHandleSend>
+
 export type AgentPreviewChatRuntimeState = {
   isEmptyChat: boolean
   isResponding: boolean
@@ -52,21 +66,24 @@ export type AgentPreviewChatRuntimeState = {
 
 export type AgentPreviewChatController = {
   send: OnSend
+  stop: () => void
 }
 
 export function AgentPreviewChatConversation({
   ref,
   agentId,
+  answerActionPosition,
   agentSoulConfig,
   clearChatList,
   config,
   conversationId,
-  currentModel,
+  currentModel: _currentModel,
   draftType,
   initialChatTree,
   inputs,
   inputsForm,
   sendButtonLabel,
+  sendMessage,
   speechToTextTarget,
   onBeforeSpeechToText,
   onClearChatListChange,
@@ -79,6 +96,7 @@ export function AgentPreviewChatConversation({
 }: {
   ref: Ref<AgentPreviewChatController>
   agentId: string
+  answerActionPosition?: AnswerActionPosition
   agentSoulConfig?: AgentSoulConfig
   clearChatList: boolean
   config: AgentPreviewChatConfig
@@ -89,6 +107,7 @@ export function AgentPreviewChatConversation({
   inputs: Inputs
   inputsForm: InputForm[]
   sendButtonLabel?: string
+  sendMessage: AgentChatMessageSender
   speechToTextTarget: SpeechToTextTarget
   onBeforeSpeechToText?: () => Promise<unknown>
   onClearChatListChange: (clearChatList: boolean) => void
@@ -99,8 +118,13 @@ export function AgentPreviewChatConversation({
   onSaveDraftBeforeRun?: () => Promise<AgentSoulConfig | void>
   onSendInterrupted?: () => void
 }) {
+  const { t } = useTranslation('agentV2')
+  const docLink = useDocLink()
   const queryClient = useQueryClient()
-  const userProfile = useAtomValue(userProfileAtom)
+  const { data: userProfile } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile,
+  })
   const sendInterruptedRef = useRef(false)
   const [isSendPending, setIsSendPending] = useState(false)
   const notifySendInterrupted = useCallback(() => {
@@ -109,8 +133,6 @@ export function AgentPreviewChatConversation({
     sendInterruptedRef.current = true
     onSendInterrupted?.()
   }, [onSendInterrupted])
-  const { textGenerationModelList } =
-    useTextGenerationCurrentProviderAndModelAndModelList(currentModel)
   const {
     chatList,
     setTargetMessageId,
@@ -152,21 +174,6 @@ export function AgentPreviewChatConversation({
         const runtimeInputs = preparedAgentSoulConfig
           ? getAgentSoulInputs(runtimeInputsForm)
           : inputs
-        const runtimeConfig = preparedAgentSoulConfig
-          ? buildChatConfig({
-              agentSoulConfig: runtimeAgentSoulConfig,
-              currentModel: undefined,
-              prompt: runtimeAgentSoulConfig?.prompt?.system_prompt ?? '',
-            })
-          : config
-
-        const currentProvider = textGenerationModelList.find(
-          (item) => item.provider === runtimeConfig.model.provider,
-        )
-        const selectedModel = currentProvider?.models.find(
-          (model) => model.model === runtimeConfig.model.name,
-        )
-        const supportVision = selectedModel?.features?.includes(ModelFeatureEnum.vision)
         const data: Record<string, unknown> = {
           query: message,
           inputs: runtimeInputs,
@@ -176,46 +183,76 @@ export function AgentPreviewChatConversation({
         }
         if (draftType) data.draft_type = draftType
 
-        if (files?.length && supportVision) data.files = files
+        if (files?.length) data.files = files
 
-        handleSend(`agent/${agentId}/chat-messages`, data as Parameters<typeof handleSend>[1], {
-          onGetConversationMessages: async (conversationId) => {
-            return queryClient.fetchQuery({
-              ...consoleQuery.agent.byAgentId.chatMessages.get.queryOptions({
-                input: {
-                  params: {
-                    agent_id: agentId,
+        sendMessage({
+          agentId,
+          data: data as Parameters<typeof handleSend>[1],
+          handleSend,
+          callbacks: {
+            onGetConversationMessages: async (conversationId) => {
+              return queryClient.fetchQuery({
+                ...consoleQuery.agent.byAgentId.chatMessages.get.queryOptions({
+                  input: {
+                    params: {
+                      agent_id: agentId,
+                    },
+                    query: {
+                      conversation_id: conversationId,
+                    },
                   },
-                  query: {
-                    conversation_id: conversationId,
-                  },
-                },
-              }),
-              staleTime: 0,
-            })
-          },
-          onGetSuggestedQuestions: (responseItemId) =>
-            fetchAgentSuggestedQuestions(agentId, responseItemId),
-          onUnhandledEvent: (event) => {
-            if (event.event !== 'error' || typeof event.message !== 'string') return
+                }),
+                staleTime: 0,
+              })
+            },
+            onGetSuggestedQuestions: (responseItemId) =>
+              fetchAgentSuggestedQuestions(agentId, responseItemId),
+            onUnhandledEvent: (event) => {
+              if (event.event !== 'error' || typeof event.message !== 'string') return
 
-            return {
-              conversationId:
-                typeof event.conversation_id === 'string' ? event.conversation_id : undefined,
-              messageId: typeof event.message_id === 'string' ? event.message_id : undefined,
-              errorMessage: event.message,
-              errorCode: typeof event.code === 'string' ? event.code : undefined,
-            }
-          },
-          onConversationComplete: (completedConversationId, workflowRunId) => {
-            if (completedConversationId && completedConversationId !== conversationId)
-              onCurrentSessionConversationIdChange(completedConversationId)
-            onConversationIdChange?.(completedConversationId)
-            onConversationComplete?.(completedConversationId, workflowRunId)
-          },
-          onSendSettled: (hasError) => {
-            setIsSendPending(false)
-            if (hasError) notifySendInterrupted()
+              const errorCode = typeof event.code === 'string' ? event.code : undefined
+              if (errorCode === 'agent_run_limit_exceeded') {
+                // The backend currently uses the same code for time and request-count limits.
+                // Pydantic AI's request-count error includes its `request_limit` field name.
+                const errorMessage = event.message.includes('request_limit')
+                  ? t(
+                      ($) =>
+                        $['agentDetail.configure.preview.errors.agentModelRequestLimitExceeded'],
+                    )
+                  : t(($) => $['agentDetail.configure.preview.errors.agentRunLimitExceeded'])
+                toast.error(errorMessage, {
+                  description: (
+                    <a
+                      href={docLink('/use-dify/build/new-agent/build#publish')}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-text-accent hover:underline"
+                    >
+                      {t(($) => $['agentDetail.configure.rightPanel.learnMore'])}
+                    </a>
+                  ),
+                  timeout: 0,
+                })
+              }
+
+              return {
+                conversationId:
+                  typeof event.conversation_id === 'string' ? event.conversation_id : undefined,
+                messageId: typeof event.message_id === 'string' ? event.message_id : undefined,
+                errorMessage: event.message,
+                errorCode,
+              }
+            },
+            onConversationComplete: (completedConversationId, workflowRunId) => {
+              if (completedConversationId && completedConversationId !== conversationId)
+                onCurrentSessionConversationIdChange(completedConversationId)
+              onConversationIdChange?.(completedConversationId)
+              onConversationComplete?.(completedConversationId, workflowRunId)
+            },
+            onSendSettled: (hasError) => {
+              setIsSendPending(false)
+              if (hasError) notifySendInterrupted()
+            },
           },
         })
         sendStarted = true
@@ -229,9 +266,9 @@ export function AgentPreviewChatConversation({
       agentId,
       agentSoulConfig,
       chatList,
-      config,
       conversationId,
       draftType,
+      docLink,
       handleSend,
       inputs,
       inputsForm,
@@ -241,7 +278,8 @@ export function AgentPreviewChatConversation({
       onCurrentSessionConversationIdChange,
       onSaveDraftBeforeRun,
       queryClient,
-      textGenerationModelList,
+      sendMessage,
+      t,
     ],
   )
 
@@ -269,7 +307,10 @@ export function AgentPreviewChatConversation({
   )
   const isEmptyChat = chatList.length === 0
   const sendButtonLoading = isEmptyChat && !!sendButtonLabel && (isSendPending || isResponding)
-  useImperativeHandle(ref, () => ({ send: doSend }), [doSend])
+  useImperativeHandle(ref, () => ({ send: doSend, stop: doStopResponding }), [
+    doSend,
+    doStopResponding,
+  ])
   useLayoutEffect(() => {
     onRuntimeStateChange({
       isEmptyChat,
@@ -280,6 +321,7 @@ export function AgentPreviewChatConversation({
 
   return (
     <Chat
+      answerActionPosition={answerActionPosition}
       config={config}
       speechToTextTarget={speechToTextTarget}
       onBeforeSpeechToText={onBeforeSpeechToText}
@@ -287,7 +329,7 @@ export function AgentPreviewChatConversation({
       isResponding={isResponding}
       sendButtonLabel={isEmptyChat ? sendButtonLabel : undefined}
       sendButtonLoading={sendButtonLoading}
-      chatContainerClassName={cn('pt-6', isEmptyChat ? 'px-12 pt-2 !pb-[88px]' : 'px-3')}
+      chatContainerClassName={cn('pt-6', isEmptyChat ? 'px-12 pt-2 pb-22!' : 'px-3')}
       chatFooterClassName={isEmptyChat ? 'hidden' : 'px-3 pb-0 pt-10'}
       suggestedQuestions={suggestedQuestions}
       onSend={doSend}

@@ -46,7 +46,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
   )
 
   return (
-    <div className="relative flex w-[480px] flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9">
+    <div className="relative flex w-120 flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9">
       <button
         type="button"
         aria-label={t(($) => $['operation.close'], { ns: 'common' })}
@@ -93,7 +93,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
         <div className="flex items-center">
           <Textarea
             aria-label={t(($) => $['nodes.llm.jsonSchema.instruction'], { ns: 'workflow' })}
-            className="h-[364px] resize-none px-2 py-1"
+            className="h-91 resize-none px-2 py-1"
             value={instruction}
             placeholder={t(($) => $['nodes.llm.jsonSchema.promptPlaceholder'], { ns: 'workflow' })}
             onValueChange={handleInstructionChange}
@@ -105,7 +105,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
         <Button variant="secondary" onClick={onClose}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </Button>
-        <Button variant="primary" className="flex items-center gap-x-0.5" onClick={onGenerate}>
+        <Button variant="primary" className="flex items-center" onClick={onGenerate}>
           <RiSparklingFill className="size-4" />
           <span>{t(($) => $['nodes.llm.jsonSchema.generate'], { ns: 'workflow' })}</span>
         </Button>

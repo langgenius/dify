@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { ControlMode } from '../../types'
 import Control from '../control'
 
@@ -26,11 +27,14 @@ let mockCanUseCommentMode = true
 let mockIsCommentModeAvailable = true
 let mockStoreState: WorkflowStoreState
 
-vi.mock('../../hooks', () => ({
+vi.mock('../../hooks/use-workflow', () => ({
   useNodesReadOnly: () => ({
     nodesReadOnly: mockNodesReadOnly,
     getNodesReadOnly: () => mockNodesReadOnly,
   }),
+}))
+
+vi.mock('../../hooks/use-workflow-panel-interactions', () => ({
   useWorkflowMoveMode: () => ({
     handleModePointer: mockHandleModePointer,
     handleModeHand: mockHandleModeHand,
@@ -38,6 +42,9 @@ vi.mock('../../hooks', () => ({
     isCommentModeAvailable: mockIsCommentModeAvailable,
     canUseCommentMode: mockCanUseCommentMode,
   }),
+}))
+
+vi.mock('../../hooks/use-workflow-organize', () => ({
   useWorkflowOrganize: () => ({
     handleLayout: mockHandleLayout,
   }),
@@ -78,18 +85,20 @@ describe('Control', () => {
     }
   })
 
-  // Rendering and visual states for control buttons.
+  // Rendering and semantic states for control buttons.
   describe('Rendering', () => {
     it('should render the child action groups and highlight the active pointer mode', () => {
       render(<Control />)
 
       expect(screen.getByTestId('add-block')).toBeInTheDocument()
       expect(screen.getByTestId('more-actions')).toBeInTheDocument()
-      expect(screen.getByTestId('workflow.common.pointerMode').firstElementChild).toHaveClass(
-        'bg-state-accent-active',
+      expect(screen.getByRole('button', { name: 'workflow.common.pointerMode' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
       )
-      expect(screen.getByTestId('workflow.common.handMode').firstElementChild).not.toHaveClass(
-        'bg-state-accent-active',
+      expect(screen.getByRole('button', { name: 'workflow.common.handMode' })).toHaveAttribute(
+        'aria-pressed',
+        'false',
       )
     })
 
@@ -100,8 +109,9 @@ describe('Control', () => {
 
       render(<Control />)
 
-      expect(screen.getByTestId('workflow.common.handMode').firstElementChild).toHaveClass(
-        'bg-state-accent-active',
+      expect(screen.getByRole('button', { name: 'workflow.common.handMode' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
       )
     })
   })
@@ -134,14 +144,19 @@ describe('Control', () => {
       expect(mockHandleLayout).toHaveBeenCalledTimes(1)
     })
 
-    it('should block note creation when editing is not allowed', () => {
+    it('should keep read-only actions focusable without activating them', async () => {
+      const user = userEvent.setup()
       mockNodesReadOnly = true
 
       render(<Control />)
 
-      fireEvent.click(
-        screen.getByTestId('workflow.nodes.note.addNote').firstElementChild as HTMLElement,
-      )
+      const noteButton = screen.getByTestId('workflow.nodes.note.addNote')
+        .firstElementChild as HTMLButtonElement
+
+      expect(noteButton).toHaveAttribute('aria-disabled', 'true')
+      await user.tab()
+      expect(noteButton).toHaveFocus()
+      await user.keyboard('{Enter}')
 
       expect(mockHandleAddNote).not.toHaveBeenCalled()
     })
@@ -161,16 +176,19 @@ describe('Control', () => {
       expect(mockHandleModeComment).toHaveBeenCalledTimes(1)
     })
 
-    it('should disable comment mode when comment operation is blocked', () => {
+    it('should keep blocked comment mode focusable without activating it', async () => {
+      const user = userEvent.setup()
       mockCanUseCommentMode = false
 
       render(<Control />)
 
       const commentButton = screen.getByTestId('workflow.common.commentMode')
         .firstElementChild as HTMLButtonElement
-      expect(commentButton).toBeDisabled()
+      expect(commentButton).toHaveAttribute('aria-disabled', 'true')
 
-      fireEvent.click(commentButton)
+      commentButton.focus()
+      expect(commentButton).toHaveFocus()
+      await user.keyboard('{Enter}')
 
       expect(mockHandleModeComment).not.toHaveBeenCalled()
     })

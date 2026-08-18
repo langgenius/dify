@@ -4,11 +4,11 @@ import type { DatasetConfigs } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiEqualizer2Line } from '@remixicon/react'
 import { memo, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
+import { toast } from '@/app/components/app/configuration/toast'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   useCurrentProviderAndModel,
@@ -113,7 +113,7 @@ const ParamsConfig = ({ disabled, selectedDatasets }: ParamsConfigProps) => {
         }}
         disabled={disabled}
       >
-        <RiEqualizer2Line className="mr-1 size-3.5" />
+        <RiEqualizer2Line className="size-3.5" />
         {t(($) => $.retrievalSettings, { ns: 'dataset' })}
       </Button>
       {rerankSettingModalOpen && (
@@ -125,7 +125,7 @@ const ParamsConfig = ({ disabled, selectedDatasets }: ParamsConfigProps) => {
             }
           }}
         >
-          <DialogContent className="w-full max-w-[480px] border-none text-left align-middle sm:min-w-[528px]">
+          <DialogContent className="w-full max-w-120 border-none text-left align-middle sm:min-w-132">
             <ConfigContent
               datasetConfigs={tempDataSetConfigs}
               onChange={handleSetTempDataSetConfigs}

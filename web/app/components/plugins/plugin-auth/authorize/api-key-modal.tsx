@@ -1,6 +1,6 @@
 import type { PluginPayload } from '../types'
-import type { CredentialPermission } from './permission-selector'
 import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
+import type { CredentialPermission } from '@/models/permission'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -151,7 +151,7 @@ const ApiKeyModal = ({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         backdropProps={{ forceRender: true }}
-        className="w-[640px]! max-w-[calc(100vw-2rem)]! p-0!"
+        className="w-160! max-w-[calc(100vw-2rem)]! p-0!"
       >
         <div data-testid="modal" className="flex max-h-[80dvh] flex-col">
           <div className="relative shrink-0 p-6 pr-14 pb-3">

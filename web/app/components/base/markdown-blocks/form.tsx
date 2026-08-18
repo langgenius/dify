@@ -1,4 +1,3 @@
-import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { Dayjs } from 'dayjs'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
@@ -22,6 +21,8 @@ import {
   toDayjs,
 } from '@/app/components/base/date-and-time-picker/utils/dayjs'
 import Input from '@/app/components/base/input'
+import { MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS } from '@/config'
+import { getMarkdownButtonAppearance } from './button-appearance'
 
 const DATA_FORMAT = {
   TEXT: 'text',
@@ -54,34 +55,29 @@ const SUPPORTED_TYPES_SET = new Set<string>(Object.values(SUPPORTED_TYPES))
 
 const SAFE_NAME_RE = (() => {
   try {
-    return new RegExp('^\\p{L}[\\p{L}\\p{M}\\p{N}_()!*&（）！＊＆－-]*$', 'u')
+    return new RegExp('^\\p{L}[\\p{L}\\p{M}\\p{N}_-]*$', 'u')
   } catch {
     // Fallback for browsers without Unicode property escape support.
     return /^[a-z][\w-]*$/i
   }
 })()
+// Treat operator-provided characters literally instead of interpolating them into a regular expression.
+const EXTRA_SAFE_NAME_CHARS = new Set(MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS)
 const PROTOTYPE_POISON_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
 
 function isSafeName(name: unknown): name is string {
+  if (typeof name !== 'string' || name.length === 0 || name.length > 128) return false
+
+  const [firstChar, ...remainingChars] = Array.from(name)
   return (
-    typeof name === 'string' &&
-    name.length > 0 &&
-    name.length <= 128 &&
-    SAFE_NAME_RE.test(name) &&
+    firstChar !== undefined &&
+    SAFE_NAME_RE.test(firstChar) &&
+    remainingChars.every(
+      (char) => SAFE_NAME_RE.test(`A${char}`) || EXTRA_SAFE_NAME_CHARS.has(char),
+    ) &&
     !PROTOTYPE_POISON_KEYS.has(name)
   )
 }
-
-const VALID_BUTTON_VARIANTS = new Set<string>([
-  'primary',
-  'warning',
-  'secondary',
-  'secondary-accent',
-  'ghost',
-  'ghost-accent',
-  'tertiary',
-])
-const VALID_BUTTON_SIZES = new Set<string>(['small', 'medium', 'large'])
 
 type HastText = {
   type: 'text'
@@ -137,7 +133,8 @@ function computeInitialFormValues(children: HastElement[]): FormValues {
       init[name] = raw != null ? toDayjs(String(raw)) : undefined
     } else if (type === SUPPORTED_TYPES.CHECKBOX) {
       const { checked, value } = child.properties
-      init[name] = !!checked || value === true || value === 'true'
+      const hasInitialValue = checked != null || value != null
+      init[name] = hasInitialValue ? !!checked || value === true || value === 'true' : undefined
     } else {
       init[name] = child.properties.value != null ? str(child.properties.value) : undefined
     }
@@ -213,8 +210,9 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
         const includeTime = child.properties.type === SUPPORTED_TYPES.DATETIME
         value = formatDateForOutput(value as Dayjs, includeTime)
       }
+      if (value === undefined) continue
       if (typeof value === 'boolean') out[name] = value
-      else out[name] = value != null ? String(value) : undefined
+      else out[name] = String(value)
     }
     return out
   }, [elementChildren, formValues])
@@ -391,21 +389,16 @@ const MarkdownForm = ({ node }: { node: HastElement }) => {
         }
 
         if (child.tagName === SUPPORTED_TAGS.BUTTON) {
-          const rawVariant = str(child.properties.dataVariant)
-          const rawSize = str(child.properties.dataSize)
-          const variant = VALID_BUTTON_VARIANTS.has(rawVariant)
-            ? (rawVariant as ButtonProps['variant'])
-            : undefined
-          const size = VALID_BUTTON_SIZES.has(rawSize)
-            ? (rawSize as ButtonProps['size'])
-            : undefined
+          const appearance = getMarkdownButtonAppearance(
+            child.properties.dataVariant,
+            child.properties.dataSize,
+          )
 
           return (
             <Button
-              variant={variant}
-              size={size}
-              className="mt-4"
               key={key}
+              {...appearance}
+              className="mt-4"
               disabled={isSubmitting}
               onClick={onSubmit}
             >

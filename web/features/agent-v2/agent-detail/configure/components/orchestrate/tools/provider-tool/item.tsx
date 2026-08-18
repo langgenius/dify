@@ -21,9 +21,12 @@ import { AuthCategory, Authorized, usePluginAuth } from '@/app/components/plugin
 import AuthorizedInNode from '@/app/components/plugins/plugin-auth/authorized-in-node'
 import { CollectionType } from '@/app/components/tools/types'
 import BlockIcon from '@/app/components/workflow/block-icon'
+import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
 import { BlockEnum } from '@/app/components/workflow/types'
 import useTheme from '@/hooks/use-theme'
+import { usePluginManifestInfo } from '@/service/use-plugins'
 import { Theme } from '@/types/app'
+import { getIconFromMarketPlace } from '@/utils/get-icon'
 import { useAgentOrchestrateReadOnly } from '../../read-only-context'
 
 function ProviderIcon({
@@ -60,7 +63,7 @@ function UnauthorizedCredentialStatus({
     () => ({
       provider: tool.id,
       category: AuthCategory.tool,
-      providerType: tool.providerType ?? CollectionType.builtIn,
+      providerType: tool.providerType,
     }),
     [tool.id, tool.providerType],
   )
@@ -91,7 +94,7 @@ function UnauthorizedCredentialStatus({
         className={cn('shrink-0', open && 'bg-components-button-secondary-bg-hover')}
       >
         {t(($) => $.notAuthorized, { ns: 'tools' })}
-        <StatusDot className="ml-2" status="warning" />
+        <StatusDot status="warning" />
       </Button>
     ),
     [t],
@@ -119,6 +122,36 @@ function UnauthorizedCredentialStatus({
   )
 }
 
+function UninstalledPluginStatus({
+  installInfo,
+  extraIdentifiers,
+  onInstall,
+}: {
+  installInfo?: string
+  extraIdentifiers: string[]
+  onInstall: () => void
+}) {
+  const { t } = useTranslation()
+
+  if (installInfo) {
+    return (
+      <InstallPluginButton
+        size="small"
+        uniqueIdentifier={installInfo}
+        extraIdentifiers={extraIdentifiers}
+        onSuccess={onInstall}
+      />
+    )
+  }
+
+  return (
+    <span className="flex h-6 shrink-0 items-center rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 system-xs-medium text-components-button-secondary-text shadow-xs backdrop-blur-[5px]">
+      {t(($) => $['detailPanel.toolSelector.uninstalledTitle'], { ns: 'plugin' })}
+      <StatusDot className="ml-2" status="warning" />
+    </span>
+  )
+}
+
 function CredentialStatus({
   tool,
   onCredentialChange,
@@ -129,8 +162,7 @@ function CredentialStatus({
     credentialType?: AgentProviderTool['credentialType'],
   ) => void
 }) {
-  const canSwitchCredential =
-    (tool.providerType ?? CollectionType.builtIn) === CollectionType.builtIn && tool.allowDelete
+  const canSwitchCredential = tool.providerType === CollectionType.builtIn && tool.allowDelete
   const handleAuthorizationItemClick = useCallback(
     (id: string) => {
       onCredentialChange(
@@ -161,7 +193,7 @@ function CredentialStatus({
         pluginPayload={{
           provider: tool.id,
           category: AuthCategory.tool,
-          providerType: tool.providerType ?? CollectionType.builtIn,
+          providerType: tool.providerType,
         }}
         credentialId={tool.credentialId}
         onAuthorizationItemClick={handleAuthorizationItemClick}
@@ -232,19 +264,23 @@ const ProviderToolActionItem = memo(
 export const AgentProviderToolItem = memo(
   ({
     tool,
+    isInstalled,
     isExpanded,
     onOpenChange,
     onConfigureAction,
     onRemoveAction,
     onRemoveProvider,
     onCredentialChange,
+    onInstall,
   }: {
     tool: AgentProviderTool
+    isInstalled?: boolean
     isExpanded: boolean
     onOpenChange: (open: boolean) => void
     onConfigureAction: (target: ToolSettingTarget) => void
     onRemoveAction: (actionId: string) => void
     onRemoveProvider: () => void
+    onInstall: () => void
     onCredentialChange: (
       credentialId?: string,
       credentialType?: AgentProviderTool['credentialType'],
@@ -253,7 +289,20 @@ export const AgentProviderToolItem = memo(
     const { t } = useTranslation('agentV2')
     const readOnly = useAgentOrchestrateReadOnly()
     const { theme } = useTheme()
-    const icon = theme === Theme.dark && tool.iconDark ? tool.iconDark : tool.icon
+    const shouldFetchPluginManifest =
+      isInstalled === false && !!tool.pluginId && !tool.pluginUniqueIdentifier
+    const { data: pluginManifestData } = usePluginManifestInfo(
+      shouldFetchPluginManifest ? tool.pluginId! : '',
+    )
+    const pluginManifest = pluginManifestData?.data.plugin
+    const configuredIcon = theme === Theme.dark && tool.iconDark ? tool.iconDark : tool.icon
+    const icon =
+      configuredIcon ??
+      (pluginManifest && tool.pluginId ? getIconFromMarketPlace(tool.pluginId) : undefined)
+    const installInfo = tool.pluginUniqueIdentifier ?? pluginManifest?.latest_package_identifier
+    const installIdentifiers = [tool.pluginId, tool.id].filter((identifier): identifier is string =>
+      Boolean(identifier),
+    )
     const displayName = tool.displayName ?? tool.name
 
     return (
@@ -278,32 +327,41 @@ export const AgentProviderToolItem = memo(
             </span>
           </CollapsibleTrigger>
           {!readOnly && (
-            <>
-              <DropdownMenu modal={false}>
-                <DropdownMenuTrigger
-                  aria-label={t(($) => $['agentDetail.configure.tools.moreActions'], {
-                    name: tool.name,
-                  })}
-                  className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover"
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger
+                aria-label={t(($) => $['agentDetail.configure.tools.moreActions'], {
+                  name: tool.name,
+                })}
+                className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover"
+              >
+                <span className="sr-only">
+                  {t(($) => $['agentDetail.configure.tools.moreActions'], { name: tool.name })}
+                </span>
+                <span aria-hidden className="i-ri-more-fill size-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-44">
+                <DropdownMenuItem
+                  variant="destructive"
+                  className="gap-2"
+                  onClick={onRemoveProvider}
                 >
-                  <span className="sr-only">
-                    {t(($) => $['agentDetail.configure.tools.moreActions'], { name: tool.name })}
-                  </span>
-                  <span aria-hidden className="i-ri-more-fill size-4" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-44">
-                  <DropdownMenuItem
-                    variant="destructive"
-                    className="gap-2"
-                    onClick={onRemoveProvider}
-                  >
-                    <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-                    <span>{t(($) => $['agentDetail.configure.tools.removeProvider'])}</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <CredentialStatus tool={tool} onCredentialChange={onCredentialChange} />
-            </>
+                  <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
+                  <span>{t(($) => $['agentDetail.configure.tools.removeProvider'])}</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          {isInstalled === false && (
+            <div className="shrink-0">
+              <UninstalledPluginStatus
+                installInfo={installInfo}
+                extraIdentifiers={installIdentifiers}
+                onInstall={onInstall}
+              />
+            </div>
+          )}
+          {!readOnly && isInstalled === true && (
+            <CredentialStatus tool={tool} onCredentialChange={onCredentialChange} />
           )}
         </div>
 

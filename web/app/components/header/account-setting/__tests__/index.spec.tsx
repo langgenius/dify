@@ -1,7 +1,6 @@
 import type { AccountSettingTab } from '../constants'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { fireEvent, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -9,23 +8,9 @@ import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { ACCOUNT_SETTING_TAB } from '../constants'
 import AccountSetting from '../index'
 
-const mockResetModelProviderListExpanded = vi.fn()
-const mockConfig = vi.hoisted(() => ({
-  IS_CLOUD_EDITION: true,
-}))
 const mockConsoleState = vi.hoisted(() => ({
   current: null as unknown,
 }))
-
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    get IS_CLOUD_EDITION() {
-      return mockConfig.IS_CLOUD_EDITION
-    },
-  }
-})
 
 vi.mock('@/context/provider-context', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/context/provider-context')>()
@@ -35,10 +20,6 @@ vi.mock('@/context/provider-context', async (importOriginal) => {
   }
 })
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState.current ?? {})
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState.current ?? {})
@@ -47,11 +28,6 @@ vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState.current ?? {})
 })
-vi.mock('@/context/version-state', async () => {
-  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createVersionStateModuleMock(() => mockConsoleState.current ?? {})
-})
-
 vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(() => ({
     push: vi.fn(),
@@ -77,10 +53,6 @@ vi.mock('next-themes', () => ({
     theme: 'system',
     setTheme: vi.fn(),
   })),
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/atoms', () => ({
-  useResetModelProviderListExpanded: () => mockResetModelProviderListExpanded,
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page', () => ({
@@ -141,6 +113,11 @@ vi.mock('@/app/components/billing/billing-page', () => ({
   default: () => <div data-testid="billing-page" />,
 }))
 
+vi.mock('@/app/components/custom/custom-page', () => ({
+  __esModule: true,
+  default: () => <div>custom.custom</div>,
+}))
+
 vi.mock('@/app/components/header/account-setting/data-source-page-new', () => ({
   __esModule: true,
   default: () => <div data-testid="data-source-page" />,
@@ -165,33 +142,17 @@ const baseConsoleState: ConsoleStateFixture = {
     avatar_url: '',
     is_password_set: false,
   },
-  refreshUserProfile: vi.fn(),
   currentWorkspace: {
     id: '1',
     name: 'Workspace',
-    plan: '',
-    status: '',
-    created_at: 0,
+    plan: null,
     role: 'owner',
-    providers: [],
-    trial_credits: 0,
-    trial_credits_used: 0,
-    next_credit_reset_date: 0,
   },
   isCurrentWorkspaceManager: true,
   isCurrentWorkspaceOwner: true,
   isCurrentWorkspaceEditor: true,
   isCurrentWorkspaceDatasetOperator: false,
   refreshCurrentWorkspace: vi.fn(),
-  langGeniusVersionInfo: {
-    current_env: 'testing',
-    current_version: '0.1.0',
-    latest_version: '0.1.0',
-    release_date: '',
-    release_notes: '',
-    version: '0.1.0',
-    can_auto_update: false,
-  },
   isLoadingCurrentWorkspace: false,
   workspacePermissionKeys: [
     'workspace.member.manage',
@@ -210,12 +171,14 @@ describe('AccountSetting', () => {
     onCancel?: () => void
     onTabChange?: (tab: AccountSettingTab) => void
     rbacEnabled?: boolean
+    deploymentEdition?: 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD'
   }) => {
     const {
       initialTab = ACCOUNT_SETTING_TAB.MEMBERS,
       onCancel = mockOnCancel,
       onTabChange = mockOnTabChange,
       rbacEnabled = true,
+      deploymentEdition = 'CLOUD',
     } = props ?? {}
 
     const StatefulAccountSetting = () => {
@@ -234,7 +197,9 @@ describe('AccountSetting', () => {
     }
 
     return renderWithConsoleQuery(<StatefulAccountSetting />, {
+      accountProfile: (mockConsoleState.current as ConsoleStateFixture).userProfile,
       systemFeatures: {
+        deployment_edition: deploymentEdition,
         webapp_auth: { enabled: true },
         branding: { enabled: false },
         enable_marketplace: true,
@@ -246,7 +211,6 @@ describe('AccountSetting', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockConfig.IS_CLOUD_EDITION = true
     vi.mocked(useProviderContext).mockReturnValue({
       ...baseProviderContextValue,
       enableBilling: true,
@@ -283,25 +247,6 @@ describe('AccountSetting', () => {
           .compareDocumentPosition(screen.getByRole('button', { name: 'appLog.archives.title' })),
       ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
       expect(screen.getByText('common.settings.preferences'))!.toBeInTheDocument()
-    })
-
-    it('should keep hidden legacy tab metadata for direct entries', () => {
-      // Act
-      renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.DATA_SOURCE })
-
-      // Assert
-      expect(screen.getByText('common.settings.dataSource'))!.toBeInTheDocument()
-    })
-
-    it('should normalize legacy language tab entries to preferences', () => {
-      // Act
-      renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.LANGUAGE })
-
-      // Assert
-      const preferencesButton = screen.getByRole('button', { name: 'common.settings.preferences' })
-      expect(preferencesButton.querySelector('.i-ri-equalizer-2-fill')).toBeInTheDocument()
-      expect(screen.getByText('common.account.general')).toBeInTheDocument()
-      expect(screen.getByText('common.account.appearanceLabel')).toBeInTheDocument()
     })
 
     it('should hide sidebar labels on mobile', () => {
@@ -535,10 +480,8 @@ describe('AccountSetting', () => {
 
     it('should hide workflow log archives outside cloud edition', () => {
       // Arrange
-      mockConfig.IS_CLOUD_EDITION = false
-
       // Act
-      renderAccountSetting()
+      renderAccountSetting({ deploymentEdition: 'COMMUNITY' })
 
       // Assert
       expect(
@@ -574,10 +517,11 @@ describe('AccountSetting', () => {
 
     it('should not render workflow log archives page outside cloud edition', () => {
       // Arrange
-      mockConfig.IS_CLOUD_EDITION = false
-
       // Act
-      renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES })
+      renderAccountSetting({
+        initialTab: ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES,
+        deploymentEdition: 'COMMUNITY',
+      })
 
       // Assert
       expect(screen.queryByText('appLog.archives.upgradeTip.title')).not.toBeInTheDocument()
@@ -701,19 +645,6 @@ describe('AccountSetting', () => {
 
       // Assert
       expect(mockOnCancel).toHaveBeenCalled()
-    })
-
-    it('should keep provider search controlled at the account setting boundary', async () => {
-      // Arrange
-      const user = userEvent.setup()
-      renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.PROVIDER })
-
-      // Act
-      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
-      await user.type(input, 'test-search')
-
-      // Assert
-      expect(input)!.toHaveValue('test-search')
     })
 
     it('should handle scroll event in panel', () => {

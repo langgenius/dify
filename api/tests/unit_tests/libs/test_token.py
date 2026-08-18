@@ -92,3 +92,21 @@ def test_non_whitelisted_path_requires_csrf():
 
     with pytest.raises(Unauthorized):
         token.check_csrf_token(request, "account-1")
+
+
+def test_admin_api_key_header_bypasses_csrf_when_console_cookie_is_present(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(token.dify_config, "ADMIN_API_KEY_ENABLE", True)
+    monkeypatch.setattr(token.dify_config, "ADMIN_API_KEY", "admin-key")
+    monkeypatch.setattr(token.dify_config, "CONSOLE_WEB_URL", "http://console.example.com")
+    monkeypatch.setattr(token.dify_config, "CONSOLE_API_URL", "http://api.example.com")
+    monkeypatch.setattr(token.dify_config, "COOKIE_DOMAIN", "")
+    request = cast(
+        Request,
+        MockRequest(
+            headers={"Authorization": "Bearer admin-key"},
+            cookies={COOKIE_NAME_ACCESS_TOKEN: "console-session"},
+            args={},
+        ),
+    )
+
+    token.check_csrf_token(request, "account-1")

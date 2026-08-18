@@ -13,8 +13,9 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
+import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -155,7 +156,7 @@ export function DuplicateAgentDialog({
                   aria-label={t(($) => $['roster.duplicateForm.changeIcon'], {
                     name: latestAgent.name,
                   })}
-                  className="shrink-0 rounded-full outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                  className="shrink-0 rounded-full focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                   onClick={() => setIconPickerOpen(true)}
                 >
                   <AppIcon
@@ -176,7 +177,7 @@ export function DuplicateAgentDialog({
                         {tCommon(($) => $['label.optional'])}
                       </span>
                     </FieldLabel>
-                    <FieldControl
+                    <Input
                       autoComplete="off"
                       // oxlint-disable-next-line jsx-a11y/no-autofocus -- The duplicate dialog opens from an explicit command, and naming the copy is the primary editable action.
                       autoFocus
@@ -193,7 +194,7 @@ export function DuplicateAgentDialog({
                         {tCommon(($) => $['label.optional'])}
                       </span>
                     </FieldLabel>
-                    <FieldControl
+                    <Input
                       autoComplete="off"
                       maxLength={255}
                       onValueChange={setRole}

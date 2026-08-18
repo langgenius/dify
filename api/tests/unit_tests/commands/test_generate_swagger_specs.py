@@ -110,6 +110,27 @@ def test_generate_specs_writes_unique_operation_ids(tmp_path):
         assert len(operation_ids) == len(set(operation_ids))
 
 
+def test_system_features_specs_exclude_backend_only_fields(tmp_path):
+    module = _load_generate_swagger_specs_module()
+
+    written_paths = module.generate_specs(tmp_path)
+    excluded_fields = {
+        "enable_trial_app",
+        "is_allow_create_workspace",
+        "max_plugin_package_size",
+        "plugin_manager",
+    }
+
+    for spec_name in ("console-openapi.json", "web-openapi.json"):
+        spec_path = next(path for path in written_paths if path.name == spec_name)
+        payload = json.loads(spec_path.read_text(encoding="utf-8"))
+        schemas = payload["components"]["schemas"]
+        system_features_schema = schemas["SystemFeatureModel"]
+
+        assert excluded_fields.isdisjoint(system_features_schema["properties"])
+        assert "PluginManagerModel" not in schemas
+
+
 def test_generate_specs_writes_get_operations_without_request_bodies(tmp_path):
     module = _load_generate_swagger_specs_module()
 
@@ -195,6 +216,16 @@ def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp
     assert file_upload_schema["properties"]["file"]["type"] == "string"
     assert file_upload_schema["properties"]["source"]["enum"] == ["datasets"]
 
+    api_key_auth_binding_schema = _request_schema(paths["/api-key-auth/data-source/binding"]["post"])
+    assert api_key_auth_binding_schema["$ref"] == "#/components/schemas/ApiKeyAuthBindingPayload"
+    assert schemas["ApiKeyAuthBindingPayload"]["properties"]["credentials"]["$ref"] == (
+        "#/components/schemas/ApiKeyAuthCredentialsPayload"
+    )
+    assert schemas["ApiKeyAuthCredentialsPayload"]["properties"]["config"]["$ref"] == (
+        "#/components/schemas/ApiKeyAuthConfigPayload"
+    )
+    assert schemas["ApiKeyAuthConfigPayload"]["properties"]["api_key"]["minLength"] == 1
+
     invoices_schema_ref = _response_schema(paths["/billing/invoices"]["get"])["$ref"].removeprefix(
         "#/components/schemas/"
     )
@@ -203,7 +234,13 @@ def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp
     app_detail_schema = schemas["RecommendedAppDetailResponse"]
     assert app_detail_schema["properties"]["id"]["type"] == "string"
     assert app_detail_schema["properties"]["export_data"]["type"] == "string"
-    assert {"type": "boolean"} in app_detail_schema["properties"]["can_trial"]["anyOf"]
+    assert app_detail_schema["properties"]["can_trial"]["type"] == "boolean"
+    assert "anyOf" not in app_detail_schema["properties"]["can_trial"]
+    assert "can_trial" in app_detail_schema["required"]
+    app_list_item_schema = schemas["RecommendedAppResponse"]
+    assert app_list_item_schema["properties"]["can_trial"]["type"] == "boolean"
+    assert "anyOf" not in app_list_item_schema["properties"]["can_trial"]
+    assert "can_trial" in app_list_item_schema["required"]
     app_detail_nullable_schema = schemas["RecommendedAppDetailNullableResponse"]
     assert _response_schema(paths["/explore/apps/{app_id}"]["get"])["$ref"] == (
         "#/components/schemas/RecommendedAppDetailNullableResponse"
@@ -212,6 +249,17 @@ def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp
     assert {"type": "null"} in app_detail_nullable_schema["anyOf"]
     assert schemas["RecommendedAppInfoResponse"]["properties"]["icon_url"]["readOnly"] is True
     assert schemas["InstalledAppInfoResponse"]["properties"]["icon_url"]["readOnly"] is True
+    assert _response_schema(paths["/apps/{app_id}"]["get"])["$ref"] == "#/components/schemas/AppDetailWithSite"
+    app_model_config = schemas["AppDetailWithSite"]["properties"]["model_config"]
+    assert {"$ref": "#/components/schemas/AppModelConfigResponse"} in app_model_config["anyOf"]
+    app_detail = schemas["AppDetail"]
+    assert "mode" in app_detail["properties"]
+    assert "mode_compatible_with_agent" not in app_detail["properties"]
+    sync_draft_workflow = schemas["SyncDraftWorkflowResponse"]
+    assert _response_schema(paths["/apps/{app_id}/workflows/draft"]["post"])["$ref"] == (
+        "#/components/schemas/SyncDraftWorkflowResponse"
+    )
+    assert sync_draft_workflow["properties"]["updated_at"]["type"] == "integer"
     tool_icon_schema = schemas["ExploreAppMetaResponse"]["properties"]["tool_icons"]["additionalProperties"]
     assert {"type": "string"} in tool_icon_schema["anyOf"]
     assert {"additionalProperties": True, "type": "object"} in tool_icon_schema["anyOf"]

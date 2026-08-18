@@ -2,7 +2,7 @@ import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-so
 import { fireEvent, render, screen } from '@testing-library/react'
 import OptionCard from '../option-card'
 
-vi.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks/use-tool-icon', () => ({
   useToolIcon: () => 'source-icon',
 }))
 

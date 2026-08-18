@@ -5,6 +5,7 @@ import { fireEvent, screen } from '@testing-library/react'
 import { useTheme } from 'next-themes'
 import { usePluginsWithLatestVersion } from '@/app/components/plugins/hooks'
 import { usePluginAuthAction } from '@/app/components/plugins/plugin-auth'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import {
   useGetDataSourceListAuth,
@@ -301,6 +302,9 @@ describe('DataSourcePage Component', () => {
 
       // Assert
       expect(screen.getByTestId('plugin-actions-plugin-1')).toBeInTheDocument()
+      expect(useInstalledPluginList).toHaveBeenLastCalledWith({
+        category: PluginCategoryEnum.datasource,
+      })
     })
 
     it('should filter installed data sources and pass search text to marketplace', () => {

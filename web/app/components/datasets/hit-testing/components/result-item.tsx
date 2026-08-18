@@ -94,7 +94,7 @@ const ResultItem = ({ payload }: ResultItemProps) => {
                 {child_chunks.map((item) => (
                   <div
                     key={item.id}
-                    className="ml-[7px] border-l-2 border-text-accent-secondary pl-[7px]"
+                    className="ml-1.75 border-l-2 border-text-accent-secondary pl-1.75"
                   >
                     <ChildChunkItem payload={item} isShowAll={false} />
                   </div>

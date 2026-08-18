@@ -66,7 +66,7 @@ const OptionCard = <T,>({
         {effectColor && showEffectColor && (
           <div
             className={cn(
-              'absolute top-[-2px] left-[-2px] h-14 w-14 rounded-full blur-[80px]',
+              'absolute -top-0.5 -left-0.5 h-14 w-14 rounded-full blur-[80px]',
               `${HEADER_EFFECT_MAP[effectColor]}`,
             )}
           />
@@ -85,7 +85,7 @@ const OptionCard = <T,>({
           <div className="flex items-center gap-x-1">
             <span className="system-sm-medium text-text-secondary">{title}</span>
             {isRecommended && (
-              <Badge className="h-[18px] border-text-accent-secondary text-text-accent-secondary">
+              <Badge className="h-4.5 border-text-accent-secondary text-text-accent-secondary">
                 {t(($) => $['stepTwo.recommend'], { ns: 'datasetCreation' })}
               </Badge>
             )}
@@ -95,7 +95,7 @@ const OptionCard = <T,>({
       </div>
       {!!(children && showChildren) && (
         <div className="relative rounded-b-xl bg-components-panel-bg p-4">
-          <ArrowShape className="absolute top-[-11px] left-[14px] size-4 text-components-panel-bg" />
+          <ArrowShape className="absolute -top-2.75 left-3.5 size-4 text-components-panel-bg" />
           {children}
         </div>
       )}

@@ -40,7 +40,7 @@ export type AppDetailWithSite = {
   maintainer?: string | null
   max_active_requests?: number | null
   mode: string
-  model_config?: ModelConfig | null
+  model_config?: AppModelConfigResponse | null
   name: string
   permission_keys?: Array<string>
   site?: AppDetailSiteResponse | null
@@ -78,6 +78,10 @@ export type Import = {
 
 export type CheckDependenciesResult = {
   leaked_dependencies?: Array<PluginDependency>
+}
+
+export type RecentAppListResponse = {
+  data: Array<RecentAppResponse>
 }
 
 export type WorkflowOnlineUsersPayload = {
@@ -415,7 +419,6 @@ export type AppApiStatusPayload = {
 
 export type AppDetail = {
   access_mode?: string | null
-  app_model_config?: ModelConfig | null
   created_at?: number | null
   created_by?: string | null
   description?: string | null
@@ -425,7 +428,8 @@ export type AppDetail = {
   icon_background?: string | null
   id: string
   maintainer?: string | null
-  mode_compatible_with_agent: string
+  mode: string
+  model_config?: AppModelConfigResponse | null
   name: string
   permission_keys?: Array<string>
   tags?: Array<Tag>
@@ -861,21 +865,21 @@ export type SandboxListResponse = {
   truncated?: boolean
 }
 
+export type WorkflowAgentSandboxDownloadPayload = {
+  node_execution_id: string
+  path: string
+}
+
+export type SandboxDownloadResponse = {
+  url: string
+}
+
 export type SandboxReadResponse = {
   binary: boolean
   path: string
   size?: number | null
   text?: string | null
   truncated: boolean
-}
-
-export type WorkflowAgentSandboxUploadPayload = {
-  node_execution_id?: string | null
-  path: string
-}
-
-export type SandboxUploadResponse = {
-  url: string
 }
 
 export type WorkflowCommentBasicList = {
@@ -1000,6 +1004,7 @@ export type WorkflowResponse = {
   updated_at: number
   updated_by?: SimpleAccountResponse | null
   version: string
+  version_number?: number | null
 }
 
 export type SyncDraftWorkflowPayload = {
@@ -1007,9 +1012,7 @@ export type SyncDraftWorkflowPayload = {
   conversation_variables?: Array<{
     [key: string]: unknown
   }>
-  environment_variables?: Array<{
-    [key: string]: unknown
-  }>
+  environment_variable_patch?: SyncEnvironmentVariablePatchPayload | null
   features: {
     [key: string]: unknown
   }
@@ -1020,9 +1023,9 @@ export type SyncDraftWorkflowPayload = {
 }
 
 export type SyncDraftWorkflowResponse = {
-  hash?: string
-  result?: string
-  updated_at?: string
+  hash: string
+  result: string
+  updated_at: number
 }
 
 export type WorkflowDraftVariableList = {
@@ -1038,7 +1041,9 @@ export type EnvironmentVariableListResponse = {
 }
 
 export type EnvironmentVariableUpdatePayload = {
+  deleted_environment_variable_ids?: Array<string>
   environment_variables: Array<EnvironmentVariableItemPayload>
+  patch?: boolean
 }
 
 export type WorkflowFeaturesPayload = {
@@ -1322,13 +1327,31 @@ export type DeletedTool = {
   type: string
 }
 
-export type ModelConfig = {
-  completion_params?: {
-    [key: string]: unknown
-  }
-  mode: LlmMode
-  name: string
-  provider: string
+export type AppModelConfigResponse = {
+  agent_mode?: unknown | null
+  annotation_reply?: unknown | null
+  chat_prompt_config?: unknown | null
+  completion_prompt_config?: unknown | null
+  created_at?: number | null
+  created_by?: string | null
+  dataset_configs?: unknown | null
+  dataset_query_variable?: string | null
+  external_data_tools?: unknown | null
+  file_upload?: unknown | null
+  model?: unknown | null
+  more_like_this?: unknown | null
+  opening_statement?: string | null
+  pre_prompt?: string | null
+  prompt_type?: string | null
+  retriever_resource?: unknown | null
+  sensitive_word_avoidance?: unknown | null
+  speech_to_text?: unknown | null
+  suggested_questions?: unknown | null
+  suggested_questions_after_answer?: unknown | null
+  text_to_speech?: unknown | null
+  updated_at?: number | null
+  updated_by?: string | null
+  user_input_form?: unknown | null
 }
 
 export type AppDetailSiteResponse = {
@@ -1388,6 +1411,20 @@ export type PluginDependency = {
   current_identifier?: string | null
   type: PluginDependencyType
   value: Github | Marketplace | Package
+}
+
+export type RecentAppResponse = {
+  author_name?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: IconType | null
+  readonly icon_url: string | null
+  id: string
+  maintainer?: string | null
+  mode: 'advanced-chat' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
+  name: string
+  permission_keys?: Array<string>
+  updated_at: number
 }
 
 export type WorkflowOnlineUsersByApp = {
@@ -1606,6 +1643,15 @@ export type ConversationWithSummary = {
 export type FeedbackStat = {
   dislike: number
   like: number
+}
+
+export type ModelConfig = {
+  completion_params?: {
+    [key: string]: unknown
+  }
+  mode: LlmMode
+  name: string
+  provider: string
 }
 
 export type Conversation = {
@@ -1932,6 +1978,13 @@ export type PipelineVariableResponse = {
   variable: string
 }
 
+export type SyncEnvironmentVariablePatchPayload = {
+  deleted_environment_variable_ids?: Array<string>
+  environment_variables?: Array<{
+    [key: string]: unknown
+  }>
+}
+
 export type ConversationVariableItemPayload = {
   description?: string | null
   id?: string | null
@@ -2043,14 +2096,14 @@ export type DeclaredOutputConfig = {
       description?: string | null
       type?: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
       [key: string]: unknown
-    }
+    } | null
     children?: Array<{
       [key: string]: unknown
     }>
     description?: string | null
     file?: {
       [key: string]: unknown
-    }
+    } | null
     name: string
     required?: boolean
     type: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
@@ -2196,8 +2249,6 @@ export type ModelConfigPartial = {
   updated_by?: string | null
 }
 
-export type LlmMode = 'chat' | 'completion'
-
 export type PluginDependencyType = 'github' | 'marketplace' | 'package'
 
 export type Github = {
@@ -2258,6 +2309,8 @@ export type StatusCount = {
   paused: number
   success: number
 }
+
+export type LlmMode = 'chat' | 'completion'
 
 export type SimpleMessageDetail = {
   answer: string
@@ -2477,14 +2530,14 @@ export type DeclaredArrayItem = {
       description?: string | null
       type?: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
       [key: string]: unknown
-    }
+    } | null
     children?: Array<{
       [key: string]: unknown
     }>
     description?: string | null
     file?: {
       [key: string]: unknown
-    }
+    } | null
     name: string
     required?: boolean
     type: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
@@ -2794,6 +2847,7 @@ export type AgentSoulModelSettings = {
   stop?: Array<string> | null
   temperature?: number | null
   top_p?: number | null
+  [key: string]: unknown
 }
 
 export type AgentSandboxProviderConfig = {
@@ -2813,7 +2867,7 @@ export type AgentSoulDifyToolConfig = {
   plugin_id?: string | null
   provider?: string | null
   provider_id?: string | null
-  provider_type?: string
+  provider_type: ToolProviderType
   runtime_parameters?: {
     [key: string]:
       | string
@@ -2964,6 +3018,15 @@ export type AgentSoulDifyToolCredentialRef = {
   type?: 'provider' | 'tool'
 }
 
+export type ToolProviderType =
+  | 'api'
+  | 'app'
+  | 'builtin'
+  | 'dataset-retrieval'
+  | 'mcp'
+  | 'plugin'
+  | 'workflow'
+
 export type StringSource = {
   selector?: Array<string>
   type: ValueSourceType
@@ -3036,6 +3099,8 @@ export type AgentKnowledgeMetadataCondition = {
     | '≠'
     | '≤'
     | '≥'
+  id?: string | null
+  metadata_id?: string | null
   name: string
   value?: string | Array<string> | number | null
 }
@@ -3066,7 +3131,7 @@ export type AppDetailWithSiteWritable = {
   maintainer?: string | null
   max_active_requests?: number | null
   mode: string
-  model_config?: ModelConfig | null
+  model_config?: AppModelConfigResponse | null
   name: string
   permission_keys?: Array<string>
   site?: AppDetailSiteResponseWritable | null
@@ -3076,6 +3141,10 @@ export type AppDetailWithSiteWritable = {
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
   workflow?: WorkflowPartial | null
+}
+
+export type RecentAppListResponseWritable = {
+  data: Array<RecentAppResponseWritable>
 }
 
 export type GeneratedAppResponseWritable = JsonValue
@@ -3158,6 +3227,19 @@ export type AppDetailSiteResponseWritable = {
   updated_at?: number | null
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
+}
+
+export type RecentAppResponseWritable = {
+  author_name?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: IconType | null
+  id: string
+  maintainer?: string | null
+  mode: 'advanced-chat' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
+  name: string
+  permission_keys?: Array<string>
+  updated_at: number
 }
 
 export type WorkflowCommentBasicWritable = {
@@ -3319,6 +3401,21 @@ export type PostAppsImportsByImportIdConfirmResponses = {
 
 export type PostAppsImportsByImportIdConfirmResponse =
   PostAppsImportsByImportIdConfirmResponses[keyof PostAppsImportsByImportIdConfirmResponses]
+
+export type GetAppsRecentData = {
+  body?: never
+  path?: never
+  query?: {
+    limit?: number
+  }
+  url: '/apps/recent'
+}
+
+export type GetAppsRecentResponses = {
+  200: RecentAppListResponse
+}
+
+export type GetAppsRecentResponse = GetAppsRecentResponses[keyof GetAppsRecentResponses]
 
 export type GetAppsStarredData = {
   body?: never
@@ -4924,6 +5021,27 @@ export type PutAppsByAppIdServerResponses = {
 export type PutAppsByAppIdServerResponse =
   PutAppsByAppIdServerResponses[keyof PutAppsByAppIdServerResponses]
 
+export type PostAppsByAppIdServerRefreshData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/server/refresh'
+}
+
+export type PostAppsByAppIdServerRefreshErrors = {
+  403: unknown
+  404: unknown
+}
+
+export type PostAppsByAppIdServerRefreshResponses = {
+  200: AppMcpServerResponse
+}
+
+export type PostAppsByAppIdServerRefreshResponse =
+  PostAppsByAppIdServerRefreshResponses[keyof PostAppsByAppIdServerRefreshResponses]
+
 export type PostAppsByAppIdSiteData = {
   body: AppSiteUpdatePayload
   path: {
@@ -5572,8 +5690,8 @@ export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFi
     node_id: string
     workflow_run_id: string
   }
-  query?: {
-    node_execution_id?: string
+  query: {
+    node_execution_id: string
     path?: string
   }
   url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files'
@@ -5586,6 +5704,25 @@ export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFi
 export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesResponse =
   GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesResponses[keyof GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesResponses]
 
+export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadData = {
+  body: WorkflowAgentSandboxDownloadPayload
+  path: {
+    app_id: string
+    node_id: string
+    workflow_run_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/download'
+}
+
+export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadResponses =
+  {
+    200: SandboxDownloadResponse
+  }
+
+export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadResponse =
+  PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadResponses[keyof PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadResponses]
+
 export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadData = {
   body?: never
   path: {
@@ -5594,7 +5731,7 @@ export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFi
     workflow_run_id: string
   }
   query: {
-    node_execution_id?: string
+    node_execution_id: string
     path: string
   }
   url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/read'
@@ -5606,25 +5743,6 @@ export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFi
 
 export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadResponse =
   GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadResponses[keyof GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadResponses]
-
-export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadData = {
-  body: WorkflowAgentSandboxUploadPayload
-  path: {
-    app_id: string
-    node_id: string
-    workflow_run_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/upload'
-}
-
-export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadResponses =
-  {
-    200: SandboxUploadResponse
-  }
-
-export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadResponse =
-  PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadResponses[keyof PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadResponses]
 
 export type GetAppsByAppIdWorkflowCommentsData = {
   body?: never
@@ -6915,24 +7033,3 @@ export type DeleteAppsByResourceIdApiKeysByApiKeyIdResponses = {
 
 export type DeleteAppsByResourceIdApiKeysByApiKeyIdResponse =
   DeleteAppsByResourceIdApiKeysByApiKeyIdResponses[keyof DeleteAppsByResourceIdApiKeysByApiKeyIdResponses]
-
-export type GetAppsByServerIdServerRefreshData = {
-  body?: never
-  path: {
-    server_id: string
-  }
-  query?: never
-  url: '/apps/{server_id}/server/refresh'
-}
-
-export type GetAppsByServerIdServerRefreshErrors = {
-  403: unknown
-  404: unknown
-}
-
-export type GetAppsByServerIdServerRefreshResponses = {
-  200: AppMcpServerResponse
-}
-
-export type GetAppsByServerIdServerRefreshResponse =
-  GetAppsByServerIdServerRefreshResponses[keyof GetAppsByServerIdServerRefreshResponses]

@@ -128,7 +128,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
 
   return (
     <div className="overflow-x-auto">
-      <table className={cn('mt-2 w-full min-w-[440px] border-collapse border-0')}>
+      <table className={cn('mt-2 w-full min-w-110 border-collapse border-0')}>
         <thead className="system-xs-medium-uppercase text-text-tertiary">
           <tr>
             <td className="w-5 rounded-l-lg bg-background-section-burn pr-1 pl-2 whitespace-nowrap"></td>
@@ -199,7 +199,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
                     </div>
                   )}
                 </td>
-                <td className="w-[180px] p-3 pr-2">
+                <td className="w-45 p-3 pr-2">
                   {formatTime(
                     log.created_at,
                     t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
@@ -248,7 +248,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
         <DrawerPortal>
           <DrawerBackdrop className={cn(!isMobile && 'bg-transparent')} />
           <DrawerViewport>
-            <DrawerPopup className="p-0! data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-3 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-[600px] data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:border data-[swipe-direction=right]:border-components-panel-border">
+            <DrawerPopup className="p-0! data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-3 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-150 data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:border data-[swipe-direction=right]:border-components-panel-border">
               <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
                 <DetailPanel
                   onClose={onCloseDrawer}

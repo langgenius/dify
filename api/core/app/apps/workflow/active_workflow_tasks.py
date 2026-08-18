@@ -1,7 +1,7 @@
 """In-process registry for workflow application task IDs."""
 
 import threading
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 
 _active_task_ids: set[str] = set()
@@ -9,7 +9,7 @@ _active_task_ids_lock = threading.RLock()
 
 
 @contextmanager
-def active_workflow_task(task_id: str) -> Iterator[None]:
+def active_workflow_task(task_id: str) -> Generator[None]:
     """Register a workflow application task ID for the duration of a workflow run."""
     if not task_id:
         raise ValueError("task_id must not be empty")
