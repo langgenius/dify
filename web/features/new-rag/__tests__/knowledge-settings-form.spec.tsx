@@ -121,13 +121,12 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
       <>
         <button
           type="button"
-          role="combobox"
           aria-controls={popupId}
           aria-expanded="false"
           aria-describedby={ariaDescribedBy}
-          aria-invalid={ariaInvalid || undefined}
           aria-labelledby={ariaLabelledBy}
-          aria-required={ariaRequired}
+          data-invalid={ariaInvalid ? '' : undefined}
+          data-required={ariaRequired ? '' : undefined}
           disabled={disabled}
           onClick={() =>
             onValueChange?.({
@@ -400,7 +399,7 @@ describe('KnowledgeSettingsForm', () => {
     const apiAccessSwitch = screen.getByRole('switch', {
       name: 'dataset.newKnowledge.apiAgentAccess',
     })
-    const reasoningSelector = screen.getByRole('combobox', {
+    const reasoningSelector = screen.getByRole('button', {
       name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
     })
     expect(apiAccessSwitch).not.toHaveAttribute('aria-disabled', 'true')
@@ -828,7 +827,7 @@ describe('KnowledgeSettingsForm', () => {
     renderForm()
 
     await user.click(
-      screen.getByRole('combobox', {
+      screen.getByRole('button', {
         name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
       }),
     )
@@ -903,7 +902,7 @@ describe('KnowledgeSettingsForm', () => {
     renderForm()
 
     await user.click(
-      screen.getByRole('combobox', {
+      screen.getByRole('button', {
         name: 'dataset.newKnowledge.settings.embeddingModelLabel',
       }),
     )
@@ -993,13 +992,12 @@ describe('KnowledgeSettingsForm', () => {
     expect(
       screen.queryByRole('switch', { name: 'common.modelProvider.rerankModel.key' }),
     ).not.toBeInTheDocument()
-    const rerankSelector = screen.getByRole('combobox', {
+    const rerankSelector = screen.getByRole('button', {
       name: 'common.modelProvider.rerankModel.key',
     })
     expect(rerankSelector).toHaveAccessibleDescription(
       'dataset.newKnowledge.settings.rerankModelRequired',
     )
-    expect(rerankSelector).toHaveAttribute('aria-invalid', 'true')
     await user.click(rerankSelector)
 
     await waitFor(() => expect(serviceMock.patchSettings).toHaveBeenCalledOnce())
@@ -1040,7 +1038,7 @@ describe('KnowledgeSettingsForm', () => {
     renderForm()
 
     await user.click(
-      screen.getByRole('combobox', {
+      screen.getByRole('button', {
         name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
       }),
     )
@@ -1066,10 +1064,10 @@ describe('KnowledgeSettingsForm', () => {
     const onDraftStart = vi.fn()
     renderForm({ onDraftFinish, onDraftStart })
 
-    const reasoningSelector = screen.getByRole('combobox', {
+    const reasoningSelector = screen.getByRole('button', {
       name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
     })
-    const rerankSelector = screen.getByRole('combobox', {
+    const rerankSelector = screen.getByRole('button', {
       name: 'common.modelProvider.rerankModel.key',
     })
     await user.click(reasoningSelector)
@@ -1160,10 +1158,10 @@ describe('KnowledgeSettingsForm', () => {
     })
     renderForm()
 
-    const reasoningSelector = screen.getByRole('combobox', {
+    const reasoningSelector = screen.getByRole('button', {
       name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
     })
-    const rerankSelector = screen.getByRole('combobox', {
+    const rerankSelector = screen.getByRole('button', {
       name: 'common.modelProvider.rerankModel.key',
     })
     await act(async () => {
@@ -1233,7 +1231,7 @@ describe('KnowledgeSettingsForm', () => {
       renderForm()
 
       await userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).click(
-        screen.getByRole('combobox', {
+        screen.getByRole('button', {
           name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
         }),
       )
@@ -1359,28 +1357,24 @@ describe('KnowledgeSettingsForm', () => {
     expect(screen.getByRole('status')).toHaveTextContent(
       'datasetSettings.form.embeddingModel · common.modelProvider.systemReasoningModel.key · common.modelProvider.rerankModel.key',
     )
-    const reasoningSelector = screen.getByRole('combobox', {
+    const reasoningSelector = screen.getByRole('button', {
       name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
     })
     expect(reasoningSelector).toHaveAccessibleDescription(
       'dataset.newKnowledge.settings.systemReasoningModelRequired',
     )
-    expect(reasoningSelector).toHaveAttribute('aria-invalid', 'true')
-    expect(reasoningSelector).toHaveAttribute('aria-required', 'true')
-    const embeddingSelector = screen.getByRole('combobox', {
+    const embeddingSelector = screen.getByRole('button', {
       name: 'dataset.newKnowledge.settings.embeddingModelLabel',
     })
     expect(embeddingSelector).toHaveAccessibleDescription(
       'dataset.newKnowledge.settings.embeddingModelRequired',
     )
-    expect(embeddingSelector).toHaveAttribute('aria-invalid', 'true')
-    const rerankSelector = screen.getByRole('combobox', {
+    const rerankSelector = screen.getByRole('button', {
       name: 'common.modelProvider.rerankModel.key',
     })
     expect(rerankSelector).toHaveAccessibleDescription(
       'dataset.newKnowledge.settings.rerankModelRequired',
     )
-    expect(rerankSelector).toHaveAttribute('aria-invalid', 'true')
     expect(
       screen.getByRole('switch', { name: 'dataset.newKnowledge.apiAgentAccess' }),
     ).toHaveAttribute('aria-disabled', 'true')
@@ -1389,7 +1383,7 @@ describe('KnowledgeSettingsForm', () => {
     ).toHaveAttribute('aria-disabled', 'true')
 
     await user.click(
-      screen.getByRole('combobox', {
+      screen.getByRole('button', {
         name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
       }),
     )
@@ -1525,7 +1519,7 @@ describe('KnowledgeSettingsForm', () => {
     })
 
     expect(
-      screen.getByRole('combobox', {
+      screen.getByRole('button', {
         name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
       }),
     ).toBeInTheDocument()
@@ -1536,7 +1530,7 @@ describe('KnowledgeSettingsForm', () => {
     renderForm()
 
     await user.click(
-      screen.getByRole('combobox', {
+      screen.getByRole('button', {
         name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
       }),
     )
@@ -1593,7 +1587,7 @@ describe('KnowledgeSettingsForm', () => {
     renderForm()
 
     await user.click(
-      screen.getByRole('combobox', {
+      screen.getByRole('button', {
         name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
       }),
     )
@@ -1645,7 +1639,7 @@ describe('KnowledgeSettingsForm', () => {
     renderForm()
 
     await user.click(
-      screen.getByRole('combobox', {
+      screen.getByRole('button', {
         name: 'dataset.newKnowledge.settings.systemReasoningModelLabel',
       }),
     )

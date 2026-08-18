@@ -506,7 +506,6 @@ export function CreateSourceSetup({
                 disabled={disabled}
                 draft={draft}
                 preventSubmitOnEnter
-                size="large"
                 onDraftChange={updateDraft}
               />
             }

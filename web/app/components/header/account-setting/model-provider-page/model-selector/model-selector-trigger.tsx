@@ -3,6 +3,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useQuery } from '@tanstack/react-query'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import {
@@ -50,6 +51,7 @@ function ModelSelectorTrigger({
   isModelCompatible = true,
 }: ModelSelectorTriggerProps) {
   const { t } = useTranslation()
+  const requiredTextId = useId()
 
   const isSelected = !!currentProvider && !!currentModel
   const isDeprecated = !isSelected && !!defaultModel
@@ -95,6 +97,13 @@ function ModelSelectorTrigger({
       : isSelected && ((!isActive && statusI18nKey) || !isModelCompatible)
         ? tooltipLabel
         : undefined
+  const configureModelLabel = t(($) => $['detailPanel.configureModel'], { ns: 'plugin' })
+  const requiredText = ariaRequired
+    ? t(($) => $['errorMsg.fieldRequired'], { field: '', ns: 'common' }).trim()
+    : undefined
+  const triggerLabelledBy = [ariaLabelledBy, requiredText ? requiredTextId : undefined]
+    .filter(Boolean)
+    .join(' ')
 
   return (
     <Tooltip>
@@ -110,9 +119,9 @@ function ModelSelectorTrigger({
                 aria-label={
                   ariaLabelledBy
                     ? undefined
-                    : t(($) => $['detailPanel.configureModel'], { ns: 'plugin' })
+                    : [configureModelLabel, requiredText].filter(Boolean).join(' ')
                 }
-                aria-labelledby={ariaLabelledBy}
+                aria-labelledby={triggerLabelledBy || undefined}
                 data-deprecated={isDeprecated ? '' : undefined}
                 data-invalid={ariaInvalid ? '' : undefined}
                 data-model-status={status}
@@ -137,6 +146,11 @@ function ModelSelectorTrigger({
               />
             }
           >
+            {requiredText && (
+              <span id={requiredTextId} className="sr-only">
+                {requiredText}
+              </span>
+            )}
             <span className="flex min-w-0 grow items-center gap-0.5">
               {isEmpty ? (
                 <span
@@ -182,7 +196,7 @@ function ModelSelectorTrigger({
                 )}
                 {isEmpty && (
                   <span className="grow truncate text-[13px] text-components-input-text-placeholder">
-                    {t(($) => $['detailPanel.configureModel'], { ns: 'plugin' })}
+                    {configureModelLabel}
                   </span>
                 )}
 
