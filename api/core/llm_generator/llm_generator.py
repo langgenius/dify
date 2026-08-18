@@ -451,7 +451,7 @@ class LLMGenerator:
         return "\n\n".join(sections) + "\n\n"
 
     @classmethod
-    def generate_rule_config(cls, tenant_id: str, args: RuleGeneratePayload):
+    def generate_rule_config(cls, tenant_id: str, args: RuleGeneratePayload, *, app_id: str | None = None):
         output_parser = RuleConfigGeneratorOutputParser()
 
         error = ""
@@ -497,6 +497,7 @@ class LLMGenerator:
 
             cls._emit_prompt_generation(
                 tenant_id=tenant_id,
+                app_id=app_id,
                 operation_type="rule_generate",
                 instruction=args.instruction,
                 generated_output=rule_config.get("prompt", ""),
@@ -601,6 +602,7 @@ class LLMGenerator:
 
         cls._emit_prompt_generation(
             tenant_id=tenant_id,
+            app_id=app_id,
             operation_type="rule_generate",
             instruction=args.instruction,
             generated_output=rule_config.get("prompt", ""),
@@ -620,6 +622,8 @@ class LLMGenerator:
         cls,
         tenant_id: str,
         args: RuleCodeGeneratePayload,
+        *,
+        app_id: str | None = None,
     ) -> CodeGenerateResultDict:
         if args.code_language == "python":
             prompt_template = PromptTemplateParser(PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE)
@@ -666,6 +670,7 @@ class LLMGenerator:
 
         cls._emit_prompt_generation(
             tenant_id=tenant_id,
+            app_id=app_id,
             operation_type="code_generate",
             instruction=args.instruction,
             generated_output=generated_code,
@@ -709,7 +714,7 @@ class LLMGenerator:
 
     @classmethod
     def generate_structured_output(
-        cls, tenant_id: str, args: RuleStructuredOutputPayload
+        cls, tenant_id: str, args: RuleStructuredOutputPayload, *, app_id: str | None = None
     ) -> StructuredOutputResultDict:
         model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
         model_instance = model_manager.get_model_instance(
@@ -749,6 +754,7 @@ class LLMGenerator:
 
         cls._emit_prompt_generation(
             tenant_id=tenant_id,
+            app_id=app_id,
             operation_type="structured_output",
             instruction=args.instruction,
             generated_output=generated_output,
@@ -782,6 +788,7 @@ class LLMGenerator:
         if not last_run:
             return LLMGenerator.__instruction_modify_common(
                 tenant_id=tenant_id,
+                app_id=flow_id,
                 model_config=model_config,
                 last_run=None,
                 current=current,
@@ -797,6 +804,7 @@ class LLMGenerator:
         }
         return LLMGenerator.__instruction_modify_common(
             tenant_id=tenant_id,
+            app_id=flow_id,
             model_config=model_config,
             last_run=last_run_dict,
             current=current,
@@ -839,6 +847,7 @@ class LLMGenerator:
         if not last_run:  # Node is not executed yet
             return LLMGenerator.__instruction_modify_common(
                 tenant_id=tenant_id,
+                app_id=flow_id,
                 model_config=model_config,
                 last_run=None,
                 current=current,
@@ -872,6 +881,7 @@ class LLMGenerator:
 
         return LLMGenerator.__instruction_modify_common(
             tenant_id=tenant_id,
+            app_id=flow_id,
             model_config=model_config,
             last_run=last_run_dict,
             current=current,
@@ -884,6 +894,7 @@ class LLMGenerator:
     @staticmethod
     def __instruction_modify_common(
         tenant_id: str,
+        app_id: str | None,
         model_config: ModelConfig,
         last_run: dict[str, Any] | None,
         current: str | None,
@@ -960,6 +971,7 @@ class LLMGenerator:
 
         LLMGenerator._emit_prompt_generation(
             tenant_id=tenant_id,
+            app_id=app_id,
             operation_type="instruction_modify",
             instruction=instruction,
             generated_output=generated_output,

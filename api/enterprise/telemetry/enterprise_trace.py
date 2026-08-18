@@ -953,7 +953,7 @@ class EnterpriseOtelTrace:
         self._exporter.record_histogram(
             EnterpriseTelemetryHistogram.PROMPT_GENERATION_DURATION,
             info.latency,
-            labels,
+            self._labels(**labels, status=prompt_status),
         )
 
         if info.error:
