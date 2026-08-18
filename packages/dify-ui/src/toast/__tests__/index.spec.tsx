@@ -1,5 +1,5 @@
 import { render } from 'vitest-browser-react'
-import { toast, ToastHost } from '../index'
+import { createToast, createToastManager, toast, ToastHost } from '../index'
 
 const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
 
@@ -52,6 +52,46 @@ describe('@langgenius/dify-ui/toast', () => {
     toast('Neutral toast')
 
     await expect.element(screen.getByText('Neutral toast')).toBeInTheDocument()
+  })
+
+  it('should isolate toasts between managers', async () => {
+    const localManager = createToastManager()
+    const localToast = createToast(localManager)
+    const screen = await render(
+      <>
+        <ToastHost />
+        <ToastHost manager={localManager} />
+      </>,
+    )
+
+    localToast.error('Local error')
+    toast.success('Global success')
+
+    await expect.element(screen.getByText('Local error')).toBeInTheDocument()
+    await expect.element(screen.getByText('Global success')).toBeInTheDocument()
+    const globalViewport = screen.getByText('Global success').element().closest('[role="region"]')
+    const localViewport = screen.getByText('Local error').element().closest('[role="region"]')
+    expect(globalViewport).not.toBe(localViewport)
+    expect(globalViewport).not.toHaveTextContent('Local error')
+    expect(localViewport).not.toHaveTextContent('Global success')
+
+    localToast.dismiss()
+  })
+
+  it('should apply custom positioning to the viewport', async () => {
+    const localManager = createToastManager()
+    const localToast = createToast(localManager)
+    const screen = await render(<ToastHost manager={localManager} offset={{ top: 80 }} />)
+
+    localToast('Positioned viewport')
+
+    const viewport = screen.getByRole('region', { name: 'Notifications' })
+    await expect.element(screen.getByText('Positioned viewport')).toBeInTheDocument()
+    await vi.waitFor(() => {
+      expect(viewport.element().getBoundingClientRect().top).toBeCloseTo(80, 0)
+    })
+
+    localToast.dismiss()
   })
 
   it('should mark overflow toasts as limited when the stack exceeds the configured limit', async () => {

@@ -26,7 +26,7 @@ const InviteButton = (props: InviteButtonProps) => {
   }
   return (
     <Button {...props} variant="primary">
-      <span aria-hidden="true" className="mr-1 i-ri-user-add-line size-4" />
+      <span aria-hidden="true" className="i-ri-user-add-line size-4" />
       {t(($) => $['members.invite'], { ns: 'common' })}
     </Button>
   )

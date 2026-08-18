@@ -18,7 +18,7 @@ from dify_agent.agent_stub.protocol.agent_stub import (
 from dify_agent.agent_stub.server.agent_stub_drive import AgentStubDriveRequestError, AgentStubDriveRequestHandler
 from dify_agent.agent_stub.server.agent_stub_files import AgentStubFileRequestError, AgentStubFileRequestHandler
 from dify_agent.agent_stub.server.routes.agent_stub import create_agent_stub_http_router
-from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec
+from dify_agent.agent_stub.server.tokens.agent_stub import AGENT_STUB_TOKEN_TTL_SECONDS, AgentStubTokenCodec
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 
 
@@ -91,6 +91,81 @@ def test_agent_stub_connections_route_returns_401_for_invalid_bearer_token() -> 
     assert response.json()["detail"] == "invalid or missing Agent Stub authorization"
 
 
+def test_agent_stub_connections_route_returns_structured_401_for_expired_bearer_token() -> None:
+    codec = _token_codec()
+    token = codec.encode_connection_token(
+        _execution_context(),
+        now=int(time.time()) - AGENT_STUB_TOKEN_TTL_SECONDS - 1,
+    )
+    app = FastAPI()
+    app.include_router(create_agent_stub_http_router(codec))
+    client = TestClient(app)
+
+    response = client.post(
+        "/agent-stub/connections",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"protocol_version": 1, "argv": []},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == {
+        "code": "agent_stub_authorization_expired",
+        "message": "Agent Stub authorization expired after 5 minutes; start a new shell tool call and retry the command.",
+    }
+
+
+def test_agent_stub_file_upload_route_exposes_expiration_when_requested() -> None:
+    codec = _token_codec()
+    token = codec.encode_connection_token(
+        _execution_context(),
+        now=int(time.time()) - AGENT_STUB_TOKEN_TTL_SECONDS - 1,
+    )
+    app = FastAPI()
+    app.include_router(create_agent_stub_http_router(codec))
+    client = TestClient(app)
+    headers = {"Authorization": f"Bearer {token}"}
+    payload = {"filename": "report.pdf", "mimetype": "application/pdf"}
+
+    opted_in_response = client.post(
+        "/agent-stub/files/upload-request",
+        headers=headers,
+        params={"expose_expiration": "true"},
+        json=payload,
+    )
+
+    assert opted_in_response.status_code == 401
+    assert opted_in_response.json()["detail"]["code"] == "agent_stub_authorization_expired"
+
+
+def test_agent_stub_file_download_and_config_routes_return_structured_401_for_expired_token() -> None:
+    codec = _token_codec()
+    token = codec.encode_connection_token(
+        _execution_context(),
+        now=int(time.time()) - AGENT_STUB_TOKEN_TTL_SECONDS - 1,
+    )
+    app = FastAPI()
+    app.include_router(create_agent_stub_http_router(codec))
+    client = TestClient(app)
+    headers = {"Authorization": f"Bearer {token}"}
+    expected_detail = {
+        "code": "agent_stub_authorization_expired",
+        "message": "Agent Stub authorization expired after 5 minutes; start a new shell tool call and retry the command.",
+    }
+
+    responses = [
+        client.post(
+            "/agent-stub/files/download-request",
+            headers=headers,
+            json={"file": {"transfer_method": "tool_file", "reference": _reference("tool-file-1")}},
+        ),
+        client.get("/agent-stub/config/manifest", headers=headers),
+    ]
+
+    for response in responses:
+        assert response.status_code == 401
+        assert response.json()["detail"] == expected_detail
+
+
 def test_agent_stub_connections_route_returns_503_when_server_has_no_token_codec() -> None:
     app = FastAPI()
     app.include_router(create_agent_stub_http_router(None))
@@ -158,6 +233,7 @@ def test_agent_stub_file_download_route_forwards_authenticated_request() -> None
     class FakeHandler:
         async def create_download_request(self, *, principal, request):
             assert principal.execution_context.user_id == "user-1"
+            assert request.file is not None
             assert request.file.transfer_method == "tool_file"
             return AgentStubFileDownloadResponse(
                 filename="report.pdf",

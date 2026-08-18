@@ -105,7 +105,7 @@ export function ApiBasedExtensionPage({ layout }: ApiBasedExtensionPageProps = {
     <div className="flex w-full items-center justify-between gap-2">
       <SearchInput className="w-50" value={keywords} onValueChange={setKeywords} />
       <Button variant="secondary" disabled={!canManage} onClick={handleOpenApiBasedExtensionModal}>
-        <span className="mr-1 i-ri-add-line size-4" aria-hidden="true" />
+        <span className="i-ri-add-line size-4" aria-hidden="true" />
         {t(($) => $['apiBasedExtension.add'], { ns: 'common' })}
       </Button>
     </div>

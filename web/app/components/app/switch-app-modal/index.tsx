@@ -1,6 +1,7 @@
 'use client'
 
-import type { App } from '@/types/app'
+import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
+import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -14,41 +15,35 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiCloseLine } from '@remixicon/react'
-import { useSuspenseQuery } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import AppIcon from '@/app/components/base/app-icon'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
-import Input from '@/app/components/base/input'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
-import { deleteApp, switchApp } from '@/service/apps'
+import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import AppIconPicker from '../../base/app-icon-picker'
 
 type SwitchAppModalProps = {
   show: boolean
-  appDetail: App
-  onSuccess?: () => void
+  appDetail: Pick<
+    AppPartial,
+    'icon' | 'icon_background' | 'icon_type' | 'icon_url' | 'id' | 'mode' | 'name'
+  >
   onClose: () => void
   inAppDetail?: boolean
 }
 
-const SwitchAppModal = ({
-  show,
-  appDetail,
-  inAppDetail = false,
-  onSuccess,
-  onClose,
-}: SwitchAppModalProps) => {
+const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onClose }: SwitchAppModalProps) => {
   const { push, replace } = useRouter()
+  const nameInputId = useId()
   const { t } = useTranslation()
   const setAppDetail = useAppStore((s) => s.setAppDetail)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -58,33 +53,45 @@ const SwitchAppModal = ({
   const isAppsFull = enableBilling && plan.usage.buildApps >= plan.total.buildApps
 
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
+  const appIconType = zIconType.safeParse(appDetail.icon_type).data
   const [appIcon, setAppIcon] = useState(
-    appDetail.icon_type === 'image'
-      ? { type: 'image' as const, url: appDetail.icon_url, fileId: appDetail.icon }
-      : { type: 'emoji' as const, icon: appDetail.icon, background: appDetail.icon_background },
+    appIconType === 'image'
+      ? { type: 'image' as const, url: appDetail.icon_url, fileId: appDetail.icon ?? '' }
+      : {
+          type: 'emoji' as const,
+          icon: appDetail.icon ?? '',
+          background: appDetail.icon_background,
+        },
   )
 
   const [name, setName] = useState(`${appDetail.name}(copy)`)
   const [removeOriginal, setRemoveOriginal] = useState<boolean>(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
-
-  const setNeedRefresh = useSetNeedRefreshAppList()
+  const { mutateAsync: convertToWorkflow } = useMutation(
+    consoleQuery.apps.byAppId.convertToWorkflow.post.mutationOptions(),
+  )
+  const { mutateAsync: deleteOriginalApp } = useMutation(
+    consoleQuery.apps.byAppId.delete.mutationOptions(),
+  )
 
   const goStart = async () => {
     try {
-      const { new_app_id: newAppID, permission_keys } = await switchApp({
-        appID: appDetail.id,
-        name,
-        icon_type: appIcon.type,
-        icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
-        icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
+      const { new_app_id: newAppID, permission_keys } = await convertToWorkflow({
+        params: { app_id: appDetail.id },
+        body: {
+          name,
+          icon_type: appIcon.type,
+          icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
+          icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
+        },
       })
-      if (onSuccess) onSuccess()
-      if (onClose) onClose()
+      onClose()
       toast.success(t(($) => $['newApp.appCreated'], { ns: 'app' }))
       if (inAppDetail) setAppDetail()
-      if (removeOriginal) await deleteApp(appDetail.id)
-      setNeedRefresh('1')
+      if (removeOriginal)
+        await deleteOriginalApp({
+          params: { app_id: appDetail.id },
+        })
       getRedirection(
         {
           id: newAppID,
@@ -101,10 +108,6 @@ const SwitchAppModal = ({
       toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
     }
   }
-
-  useEffect(() => {
-    if (removeOriginal) setShowConfirmDelete(true)
-  }, [removeOriginal])
 
   const handleConfirmDeleteOpenChange = (open: boolean) => {
     if (open) return
@@ -128,10 +131,13 @@ const SwitchAppModal = ({
             aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             onClick={onClose}
           >
-            <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
+            <span aria-hidden className="i-ri-close-line size-4 text-text-tertiary" />
           </button>
           <div className="h-12 w-12 rounded-xl border-[0.5px] border-divider-regular bg-background-default-burn p-3 shadow-xl">
-            <AlertTriangle className="h-6 w-6 text-[rgb(247,144,9)]" />
+            <span
+              aria-hidden
+              className="i-custom-vender-solid-alertsAndFeedback-alert-triangle size-6 text-[rgb(247,144,9)]"
+            />
           </div>
           <div className="relative mt-3 text-xl leading-7.5 font-semibold text-text-primary">
             {t(($) => $.switch, { ns: 'app' })}
@@ -144,9 +150,12 @@ const SwitchAppModal = ({
             <span>{t(($) => $.switchTipEnd, { ns: 'app' })}</span>
           </div>
           <div className="pb-4">
-            <div className="py-2 text-sm leading-5 font-medium text-text-primary">
+            <label
+              htmlFor={nameInputId}
+              className="block py-2 text-sm leading-5 font-medium text-text-primary"
+            >
               {t(($) => $.switchLabel, { ns: 'app' })}
-            </div>
+            </label>
             <div className="flex items-center justify-between space-x-2">
               <AppIcon
                 size="large"
@@ -160,6 +169,7 @@ const SwitchAppModal = ({
                 imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
               />
               <Input
+                id={nameInputId}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder={t(($) => $['newApp.appNamePlaceholder'], { ns: 'app' }) || ''}
@@ -188,7 +198,10 @@ const SwitchAppModal = ({
                 <Checkbox
                   className="shrink-0"
                   checked={removeOriginal}
-                  onCheckedChange={setRemoveOriginal}
+                  onCheckedChange={(checked) => {
+                    setRemoveOriginal(checked)
+                    if (checked) setShowConfirmDelete(true)
+                  }}
                 />
                 <span className="ml-2 text-left text-sm/5 text-text-secondary">
                   {t(($) => $.removeOriginal, { ns: 'app' })}
@@ -200,7 +213,7 @@ const SwitchAppModal = ({
                 {t(($) => $['newApp.Cancel'], { ns: 'app' })}
               </Button>
               <Button
-                className="border-red-700"
+                className="inset-ring-red-700"
                 disabled={isAppsFull || !name}
                 variant="primary"
                 tone="destructive"

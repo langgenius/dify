@@ -3,12 +3,12 @@ import type { FC } from 'react'
 import type { PluginDeclaration } from '../../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiLoader2Line } from '@remixicon/react'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
-import { langGeniusVersionInfoAtom } from '@/context/version-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { uninstallPlugin } from '@/service/plugins'
 import { useInstallPackageFromLocal, usePluginTaskList } from '@/service/use-plugins'
 import { isEqualOrLaterThanVersion } from '@/utils/semver'
@@ -101,14 +101,14 @@ const Installed: FC<Props> = ({
     }
   }
 
-  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
+  const { data: currentVersion } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.meta.currentVersion ?? '',
+  })
   const isDifyVersionCompatible = useMemo(() => {
-    if (!langGeniusVersionInfo.current_version) return true
-    return isEqualOrLaterThanVersion(
-      langGeniusVersionInfo.current_version,
-      payload.meta.minimum_dify_version ?? '0.0.0',
-    )
-  }, [langGeniusVersionInfo.current_version, payload.meta.minimum_dify_version])
+    if (!currentVersion) return true
+    return isEqualOrLaterThanVersion(currentVersion, payload.meta.minimum_dify_version ?? '0.0.0')
+  }, [currentVersion, payload.meta.minimum_dify_version])
 
   return (
     <>
@@ -156,7 +156,7 @@ const Installed: FC<Props> = ({
         )}
         <Button
           variant="primary"
-          className="flex min-w-18 space-x-0.5"
+          className="flex min-w-18"
           disabled={isInstalling || isLoading}
           onClick={handleInstall}
         >

@@ -213,7 +213,7 @@ class TestBuildNodeExecutionData:
 class TestEnqueueDraftNodeExecutionTrace:
     @patch("enterprise.telemetry.draft_trace.telemetry_emit")
     def test_emits_telemetry_event(self, mock_emit: MagicMock) -> None:
-        from core.telemetry import TelemetryEvent, TraceTaskName
+        from core.telemetry import DraftNodeExecutionTraceEvent, TraceTaskName
         from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
 
         execution = _make_execution()
@@ -225,7 +225,7 @@ class TestEnqueueDraftNodeExecutionTrace:
         )
 
         mock_emit.assert_called_once()
-        event: TelemetryEvent = mock_emit.call_args[0][0]
+        event: DraftNodeExecutionTraceEvent = mock_emit.call_args[0][0]
         assert event.name == TraceTaskName.DRAFT_NODE_EXECUTION_TRACE
         assert event.context.tenant_id == "tenant-1"
         assert event.context.user_id == "user-1"
@@ -233,7 +233,7 @@ class TestEnqueueDraftNodeExecutionTrace:
 
     @patch("enterprise.telemetry.draft_trace.telemetry_emit")
     def test_payload_contains_node_execution_data(self, mock_emit: MagicMock) -> None:
-        from core.telemetry import TelemetryEvent
+        from core.telemetry import DraftNodeExecutionTraceEvent
         from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
 
         execution = _make_execution()
@@ -244,7 +244,7 @@ class TestEnqueueDraftNodeExecutionTrace:
             user_id="user-2",
         )
 
-        event: TelemetryEvent = mock_emit.call_args[0][0]
+        event: DraftNodeExecutionTraceEvent = mock_emit.call_args[0][0]
         node_data = event.payload["node_execution_data"]
         assert node_data["workflow_id"] == "wf-1"
         assert node_data["node_type"] == "llm"
@@ -252,7 +252,7 @@ class TestEnqueueDraftNodeExecutionTrace:
 
     @patch("enterprise.telemetry.draft_trace.telemetry_emit")
     def test_outputs_forwarded_to_build(self, mock_emit: MagicMock) -> None:
-        from core.telemetry import TelemetryEvent
+        from core.telemetry import DraftNodeExecutionTraceEvent
         from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
 
         execution = _make_execution(outputs_dict={"default": True})
@@ -263,12 +263,12 @@ class TestEnqueueDraftNodeExecutionTrace:
             user_id="user-3",
         )
 
-        event: TelemetryEvent = mock_emit.call_args[0][0]
+        event: DraftNodeExecutionTraceEvent = mock_emit.call_args[0][0]
         assert event.payload["node_execution_data"]["node_outputs"] == {"explicit": True}
 
     @patch("enterprise.telemetry.draft_trace.telemetry_emit")
     def test_none_outputs_uses_execution_outputs(self, mock_emit: MagicMock) -> None:
-        from core.telemetry import TelemetryEvent
+        from core.telemetry import DraftNodeExecutionTraceEvent
         from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
 
         execution = _make_execution(outputs_dict={"from_model": "yes"})
@@ -279,7 +279,7 @@ class TestEnqueueDraftNodeExecutionTrace:
             user_id="user-4",
         )
 
-        event: TelemetryEvent = mock_emit.call_args[0][0]
+        event: DraftNodeExecutionTraceEvent = mock_emit.call_args[0][0]
         assert event.payload["node_execution_data"]["node_outputs"] == {"from_model": "yes"}
 
 

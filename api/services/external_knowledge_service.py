@@ -19,8 +19,10 @@ from models.dataset import (
     ExternalKnowledgeApis,
     ExternalKnowledgeBindings,
 )
+from services.enterprise import rbac_service as enterprise_rbac_service
 from services.entities.external_knowledge_entities.external_knowledge_entities import (
     Authorization,
+    ExternalDatasetCreatePayload,
     ExternalKnowledgeApiSetting,
 )
 from services.errors.dataset import DatasetNameDuplicateError
@@ -286,16 +288,17 @@ class ExternalDatasetService:
         return ExternalKnowledgeApiSetting.model_validate(settings)
 
     @staticmethod
-    def create_external_dataset(tenant_id: str, user_id: str, args: dict[str, Any], *, session: Session) -> Dataset:
+    def create_external_dataset(
+        tenant_id: str, user_id: str, args: ExternalDatasetCreatePayload, *, session: Session
+    ) -> Dataset:
+        """Create a tenant-scoped external dataset and binding in the caller's transaction."""
         # check if dataset name already exists
-        if session.scalar(
-            select(Dataset).where(Dataset.name == args.get("name"), Dataset.tenant_id == tenant_id).limit(1)
-        ):
-            raise DatasetNameDuplicateError(f"Dataset with name {args.get('name')} already exists.")
+        if session.scalar(select(Dataset).where(Dataset.name == args.name, Dataset.tenant_id == tenant_id).limit(1)):
+            raise DatasetNameDuplicateError(f"Dataset with name {args.name} already exists.")
         external_knowledge_api = session.scalar(
             select(ExternalKnowledgeApis)
             .where(
-                ExternalKnowledgeApis.id == args.get("external_knowledge_api_id"),
+                ExternalKnowledgeApis.id == args.external_knowledge_api_id,
                 ExternalKnowledgeApis.tenant_id == tenant_id,
             )
             .limit(1)
@@ -306,31 +309,33 @@ class ExternalDatasetService:
 
         dataset = Dataset(
             tenant_id=tenant_id,
-            name=args.get("name"),
-            description=args.get("description", ""),
+            name=args.name,
+            description=args.description or "",
             provider="external",
-            retrieval_model=args.get("external_retrieval_model"),
+            retrieval_model=args.external_retrieval_model,
             created_by=user_id,
             maintainer=user_id,
         )
 
         session.add(dataset)
         session.flush()
-        if args.get("external_knowledge_id") is None:
-            raise ValueError("external_knowledge_id is required")
-        if args.get("external_knowledge_api_id") is None:
-            raise ValueError("external_knowledge_api_id is required")
 
         external_knowledge_binding = ExternalKnowledgeBindings(
             tenant_id=tenant_id,
             dataset_id=dataset.id,
-            external_knowledge_api_id=args.get("external_knowledge_api_id") or "",
-            external_knowledge_id=args.get("external_knowledge_id") or "",
+            external_knowledge_api_id=args.external_knowledge_api_id or "",
+            external_knowledge_id=args.external_knowledge_id or "",
             created_by=user_id,
         )
         session.add(external_knowledge_binding)
 
         session.commit()
+        enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
+            tenant_id,
+            user_id,
+            enterprise_rbac_service.RBACResourceType.DATASET,
+            dataset.id,
+        )
 
         return dataset
 

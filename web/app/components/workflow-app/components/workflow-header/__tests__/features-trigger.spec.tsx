@@ -1,11 +1,11 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { ReactElement } from 'react'
-import type { AppPublisherProps } from '@/app/components/app/app-publisher'
+import type { AppPublisherProps } from '@/app/components/app/app-publisher/types'
 import type { App } from '@/types/app'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { Plan } from '@/app/components/billing/type'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/client'
 import FeaturesTrigger from '../features-trigger'
@@ -55,7 +55,6 @@ const mockResetWorkflowVersionHistory = vi.fn()
 const mockInvalidateAppTriggers = vi.fn()
 const mockFetchAppDetail = vi.fn()
 const mockInvalidateQueries = vi.fn()
-const mockSetQueryData = vi.fn()
 const mockSetPublishedAt = vi.fn()
 const mockSetLastPublishedHasUserInput = vi.fn()
 
@@ -119,7 +118,6 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
     ...actual,
     useQueryClient: () => ({
       invalidateQueries: mockInvalidateQueries,
-      setQueryData: mockSetQueryData,
     }),
   }
 })
@@ -238,10 +236,10 @@ vi.mock('@/hooks/use-theme', () => ({
 // Use real app store - global zustand mock will auto-reset between tests
 
 const createProviderContext = ({
-  type = Plan.sandbox,
+  type = 'sandbox',
   isFetchedPlan = true,
 }: {
-  type?: Plan
+  type?: CloudPlan
   isFetchedPlan?: boolean
 }) => ({
   plan: { type },
@@ -577,12 +575,6 @@ describe('FeaturesTrigger', () => {
           message: 'common.api.actionSuccess',
         })
         expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-id' })
-        expect(mockSetQueryData).toHaveBeenCalledWith(
-          ['apps', 'detail', 'app-id'],
-          expect.objectContaining({
-            name: 'Updated App',
-          }),
-        )
         expect(useAppStore.getState().appDetail).toEqual(
           expect.objectContaining({
             name: 'Updated App',

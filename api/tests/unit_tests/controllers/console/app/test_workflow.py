@@ -17,6 +17,7 @@ from werkzeug.exceptions import HTTPException, NotFound
 from controllers.common.errors import InvalidArgumentError
 from controllers.console.app import workflow as workflow_module
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
+from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables import SecretVariable, StringVariable
 from graphon.variables.variables import RAGPipelineVariable
@@ -147,7 +148,8 @@ def test_sync_draft_workflow_success(app: Flask, monkeypatch: pytest.MonkeyPatch
         workflow_module.variable_factory, "build_conversation_variable_from_mapping", lambda *_args: "conv"
     )
 
-    service = SimpleNamespace(sync_draft_workflow=lambda **_kwargs: workflow)
+    sync_draft_workflow = Mock(return_value=workflow)
+    service = SimpleNamespace(sync_draft_workflow=sync_draft_workflow)
     monkeypatch.setattr(workflow_module, "WorkflowService", lambda: service)
 
     api = workflow_module.DraftWorkflowApi()
@@ -161,6 +163,89 @@ def test_sync_draft_workflow_success(app: Flask, monkeypatch: pytest.MonkeyPatch
         response = handler(api, "t1", app_model=SimpleNamespace(id="app"))
 
     assert response["result"] == "success"
+    assert sync_draft_workflow.call_args.kwargs["environment_variables"] == []
+    assert sync_draft_workflow.call_args.kwargs["preserve_environment_variables"] is True
+
+
+def test_sync_draft_workflow_passes_environment_patch(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    workflow = SimpleNamespace(
+        unique_hash="next-hash",
+        updated_at=None,
+        created_at=datetime(2024, 1, 1),
+    )
+    patched_variable = StringVariable(
+        id="env-model",
+        name="shared_model",
+        value="model",
+        selector=["env", "shared_model"],
+    )
+    build_environment_variable = Mock(return_value=patched_variable)
+    sync_draft_workflow = Mock(return_value=workflow)
+    monkeypatch.setattr(
+        workflow_module.variable_factory,
+        "build_environment_variable_from_mapping",
+        build_environment_variable,
+    )
+    monkeypatch.setattr(
+        workflow_module,
+        "WorkflowService",
+        lambda: SimpleNamespace(sync_draft_workflow=sync_draft_workflow),
+    )
+
+    api = workflow_module.DraftWorkflowApi()
+    handler = inspect.unwrap(api.post)
+    with app.test_request_context(
+        "/apps/app/workflows/draft",
+        method="POST",
+        json={
+            "graph": {},
+            "features": {},
+            "hash": "current-hash",
+            "environment_variable_patch": {
+                "environment_variables": [
+                    {
+                        "id": "env-model",
+                        "name": "shared_model",
+                        "value": "model",
+                        "value_type": "string",
+                    }
+                ],
+                "deleted_environment_variable_ids": ["env-old"],
+            },
+        },
+    ):
+        response = handler(api, "t1", app_model=SimpleNamespace(id="app"))
+
+    assert response["result"] == "success"
+    assert sync_draft_workflow.call_args.kwargs["preserve_environment_variables"] is True
+    assert sync_draft_workflow.call_args.kwargs["environment_variable_upserts"] == [patched_variable]
+    assert sync_draft_workflow.call_args.kwargs["deleted_environment_variable_ids"] == ["env-old"]
+    build_environment_variable.assert_called_once()
+
+
+def test_sync_draft_workflow_rejects_overlapping_environment_patch_ids() -> None:
+    with pytest.raises(ValidationError, match="cannot be upserted and deleted"):
+        workflow_module.SyncDraftWorkflowPayload.model_validate(
+            {
+                "graph": {},
+                "features": {},
+                "environment_variable_patch": {
+                    "environment_variables": [{"id": "env-model"}],
+                    "deleted_environment_variable_ids": ["env-model"],
+                },
+            }
+        )
+
+
+def test_sync_draft_workflow_rejects_legacy_environment_variables() -> None:
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        workflow_module.SyncDraftWorkflowPayload.model_validate(
+            {
+                "graph": {},
+                "features": {},
+                "environment_variables": [],
+            }
+        )
 
 
 def test_sync_draft_workflow_hash_mismatch(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -512,6 +597,31 @@ def test_workflow_response_masks_secret_environment_variables() -> None:
     ]
 
 
+def test_workflow_response_preserves_llm_environment_variable_type() -> None:
+    workflow = _make_workflow(
+        environment_variables=[
+            LLMEnvironmentVariable(
+                id="env-llm",
+                name="for_summarize",
+                value={"provider": "provider", "name": "model", "mode": "chat"},
+                selector=["env", "for_summarize"],
+            )
+        ]
+    )
+
+    response = workflow_module.WorkflowResponse.model_validate(workflow, from_attributes=True).model_dump(mode="json")
+
+    assert response["environment_variables"] == [
+        {
+            "id": "env-llm",
+            "name": "for_summarize",
+            "value": {"provider": "provider", "name": "model", "mode": "chat"},
+            "value_type": "llm",
+            "description": "",
+        }
+    ]
+
+
 def test_workflow_response_rejects_invalid_environment_variable_dict() -> None:
     workflow = _make_workflow(environment_variables=[{"value_type": "not-a-segment-type"}])
 
@@ -540,6 +650,7 @@ def test_draft_workflow_get_projects_agent_node_job_to_graph(monkeypatch: pytest
                     "data": {
                         "type": "agent",
                         "version": "2",
+                        "agent_node_kind": "dify_agent",
                     },
                 }
             ],
@@ -553,6 +664,7 @@ def test_draft_workflow_get_projects_agent_node_job_to_graph(monkeypatch: pytest
                 "data": {
                     "type": "agent",
                     "version": "2",
+                    "agent_node_kind": "dify_agent",
                     "agent_task": "Summarize it.",
                     "agent_declared_outputs": [{"name": "summary", "type": "string"}],
                 },
@@ -614,6 +726,7 @@ def test_advanced_chat_run_conversation_not_exists(app: Flask, monkeypatch: pyte
 def test_trigger_run_loads_draft_with_request_session(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
+    unbound_session: Session,
     resource: type,
     payload: dict[str, object],
 ) -> None:
@@ -623,7 +736,7 @@ def test_trigger_run_loads_draft_with_request_session(
         "WorkflowService",
         lambda: SimpleNamespace(get_draft_workflow=get_draft_workflow),
     )
-    session = Mock()
+    session = unbound_session
     app_model = SimpleNamespace(id="app-1")
     handler = inspect.unwrap(resource.post)
 

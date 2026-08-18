@@ -4,6 +4,7 @@ import pytest
 from flask import Flask
 
 from controllers.console.auth.oauth import OAuthLogin, _generate_account
+from enums import DeploymentEdition
 from libs.oauth import OAuthUserInfo
 from services.errors.account import AccountRegisterError
 
@@ -55,7 +56,9 @@ def test_generate_account_registers_with_browser_timezone(
     user_info = OAuthUserInfo(id="github-123", name="Test User", email="User@Example.com")
 
     with app.test_request_context(headers={"Accept-Language": "zh-Hans,zh;q=0.9"}):
-        result, oauth_new_user = _generate_account("github", user_info, timezone="Asia/Shanghai")
+        result, oauth_new_user = _generate_account(
+            "github", user_info, timezone="Asia/Shanghai", ip_address="203.0.113.10"
+        )
 
     assert result is account
     assert oauth_new_user is True
@@ -67,6 +70,7 @@ def test_generate_account_registers_with_browser_timezone(
         provider="github",
         language="zh-Hans",
         timezone="Asia/Shanghai",
+        ip_address="203.0.113.10",
         session=ANY,
     )
     mock_link_account.assert_called_once_with("github", "github-123", account, session=ANY)
@@ -99,6 +103,7 @@ def test_generate_account_prefers_state_language_over_accept_language(
         provider="github",
         language="zh-Hans",
         timezone=None,
+        ip_address=None,
         session=ANY,
     )
     mock_link_account.assert_called_once_with("github", "github-123", account, session=ANY)
@@ -116,7 +121,7 @@ def test_generate_account_rejects_new_user_when_registration_disabled(
     app: Flask,
 ):
     mock_feature_service.get_system_features.return_value.is_allow_register = False
-    mock_config.BILLING_ENABLED = False
+    mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
     user_info = OAuthUserInfo(id="github-123", name="Test User", email="user@example.com")
 
     with app.test_request_context(headers={"Accept-Language": "en-US,en;q=0.9"}):

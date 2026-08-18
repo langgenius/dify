@@ -10,7 +10,7 @@ from core.telemetry.gateway import (
     CASE_ROUTING,
     CASE_TO_TRACE_TASK,
     PAYLOAD_SIZE_THRESHOLD_BYTES,
-    emit,
+    _emit,
 )
 from enterprise.telemetry.contracts import SignalType, TelemetryCase, TelemetryEnvelope
 
@@ -104,7 +104,7 @@ class TestGatewayTraceRouting:
         context = {"app_id": "app-123", "user_id": "user-456", "tenant_id": "tenant-789"}
         payload = {"workflow_run_id": "run-abc"}
 
-        emit(TelemetryCase.WORKFLOW_RUN, context, payload, mock_trace_manager)
+        _emit(TelemetryCase.WORKFLOW_RUN, context, payload, mock_trace_manager)
 
         mock_trace_manager.add_trace_task.assert_called_once()
 
@@ -118,7 +118,7 @@ class TestGatewayTraceRouting:
         context = {"app_id": "app-123", "user_id": "user-456"}
         payload = {"workflow_run_id": "run-abc"}
 
-        emit(TelemetryCase.WORKFLOW_RUN, context, payload, mock_trace_manager)
+        _emit(TelemetryCase.WORKFLOW_RUN, context, payload, mock_trace_manager)
 
         mock_trace_manager.add_trace_task.assert_called_once()
 
@@ -132,7 +132,7 @@ class TestGatewayTraceRouting:
         context = {"app_id": "app-123", "user_id": "user-456"}
         payload = {"node_id": "node-abc"}
 
-        emit(TelemetryCase.NODE_EXECUTION, context, payload, mock_trace_manager)
+        _emit(TelemetryCase.NODE_EXECUTION, context, payload, mock_trace_manager)
 
         mock_trace_manager.add_trace_task.assert_not_called()
 
@@ -146,7 +146,7 @@ class TestGatewayTraceRouting:
         context = {"app_id": "app-123", "user_id": "user-456"}
         payload = {"node_id": "node-abc"}
 
-        emit(TelemetryCase.NODE_EXECUTION, context, payload, mock_trace_manager)
+        _emit(TelemetryCase.NODE_EXECUTION, context, payload, mock_trace_manager)
 
         mock_trace_manager.add_trace_task.assert_called_once()
 
@@ -162,7 +162,7 @@ class TestGatewayMetricLogRouting:
         context = {"tenant_id": "tenant-123"}
         payload = {"app_id": "app-abc", "name": "My App"}
 
-        emit(TelemetryCase.APP_CREATED, context, payload)
+        _emit(TelemetryCase.APP_CREATED, context, payload)
 
         mock_delay.assert_called_once()
         envelope_json = mock_delay.call_args[0][0]
@@ -181,8 +181,8 @@ class TestGatewayMetricLogRouting:
         context = {"tenant_id": "tenant-123"}
         payload = {"app_id": "app-abc"}
 
-        emit(TelemetryCase.APP_CREATED, context, payload)
-        emit(TelemetryCase.APP_CREATED, context, payload)
+        _emit(TelemetryCase.APP_CREATED, context, payload)
+        _emit(TelemetryCase.APP_CREATED, context, payload)
 
         assert mock_delay.call_count == 2
         envelope1 = TelemetryEnvelope.model_validate_json(mock_delay.call_args_list[0][0][0])
@@ -201,7 +201,7 @@ class TestGatewayPayloadSizing:
         context = {"tenant_id": "tenant-123"}
         payload = {"key": "small_value"}
 
-        emit(TelemetryCase.APP_CREATED, context, payload)
+        _emit(TelemetryCase.APP_CREATED, context, payload)
 
         envelope_json = mock_delay.call_args[0][0]
         envelope = TelemetryEnvelope.model_validate_json(envelope_json)
@@ -221,7 +221,7 @@ class TestGatewayPayloadSizing:
         large_value = "x" * (PAYLOAD_SIZE_THRESHOLD_BYTES + 1000)
         payload = {"key": large_value}
 
-        emit(TelemetryCase.APP_CREATED, context, payload)
+        _emit(TelemetryCase.APP_CREATED, context, payload)
 
         mock_storage.save.assert_called_once()
         storage_key = mock_storage.save.call_args[0][0]
@@ -247,7 +247,7 @@ class TestGatewayPayloadSizing:
         large_value = "x" * (PAYLOAD_SIZE_THRESHOLD_BYTES + 1000)
         payload = {"key": large_value}
 
-        emit(TelemetryCase.APP_CREATED, context, payload)
+        _emit(TelemetryCase.APP_CREATED, context, payload)
 
         envelope_json = mock_delay.call_args[0][0]
         envelope = TelemetryEnvelope.model_validate_json(envelope_json)

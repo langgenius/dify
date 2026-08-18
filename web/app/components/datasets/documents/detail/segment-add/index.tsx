@@ -10,7 +10,6 @@ import {
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
-import { Plan } from '@/app/components/billing/type'
 import { useProviderContext } from '@/context/provider-context'
 import { segmentImportStatus } from '@/types/dataset'
 
@@ -32,7 +31,7 @@ export function SegmentAdd({
   const { t } = useTranslation()
   const [isPlanUpgradeModalOpen, setIsPlanUpgradeModalOpen] = useState(false)
   const { plan, enableBilling } = useProviderContext()
-  const canAddChunks = !enableBilling || plan.type !== Plan.sandbox
+  const canAddChunks = !enableBilling || plan.type !== 'sandbox'
 
   const textColor = embedding
     ? 'text-components-button-secondary-accent-text-disabled'

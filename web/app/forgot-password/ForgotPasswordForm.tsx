@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import * as z from 'zod'
 import { formContext, useAppForm } from '@/app/components/base/form'
 import { zodSubmitValidator } from '@/app/components/base/form/utils/zod-submit-validator'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
 import {
   fetchInitValidateStatus,
@@ -29,6 +30,12 @@ const ForgotPasswordForm = () => {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [isEmailSent, setIsEmailSent] = useState(false)
+  const documentTitle = loading
+    ? t(($) => $.loading, { ns: 'common' })
+    : isEmailSent
+      ? t(($) => $.resetLinkSent, { ns: 'login' })
+      : t(($) => $.forgotPassword, { ns: 'login' })
+  useDocumentTitle(documentTitle)
 
   const form = useAppForm({
     defaultValues: { email: '' },
@@ -77,11 +84,11 @@ const ForgotPasswordForm = () => {
   ) : (
     <>
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="text-[32px] font-bold text-text-primary">
+        <h1 className="text-[32px] font-bold text-text-primary">
           {isEmailSent
             ? t(($) => $.resetLinkSent, { ns: 'login' })
             : t(($) => $.forgotPassword, { ns: 'login' })}
-        </h2>
+        </h1>
         <p className="mt-1 text-sm text-text-secondary">
           {isEmailSent
             ? t(($) => $.checkEmailForResetLink, { ns: 'login' })

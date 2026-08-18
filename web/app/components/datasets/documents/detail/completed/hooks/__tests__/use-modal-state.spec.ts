@@ -1,6 +1,6 @@
 import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
 import { act, renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import * as modalStateHooks from '../use-modal-state'
 
 const renderDatasetModalState = modalStateHooks.useModalState

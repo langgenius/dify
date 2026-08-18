@@ -9,7 +9,7 @@ from sqlalchemy.sql.elements import ColumnElement
 
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
 from libs.helper import to_timestamp
-from models import Account, Conversation
+from models import Account, App, Conversation
 from models.agent import (
     APP_BACKED_AGENT_SOURCES,
     Agent,
@@ -67,6 +67,7 @@ from services.entities.agent_entities import (
     WorkflowNodeJobConfig,
 )
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
+from tasks.new_agent_beta_task import register_new_agent_beta_publish_after_commit
 
 # WorkflowAgentNodeBinding.workflow_version tag for the draft workflow row.
 # Mirrors Workflow.version when it is "draft" (see models/workflow.py).
@@ -623,6 +624,7 @@ class AgentComposerService:
         agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
         if agent.scope != AgentScope.ROSTER or agent.source not in APP_BACKED_AGENT_SOURCES:
             raise AgentNotFoundError()
+        access_was_ready = agent_has_workflow_callable_active_snapshot(session=session, agent=agent)
         draft = cls._get_or_create_agent_draft(
             session=session,
             tenant_id=tenant_id,
@@ -665,7 +667,29 @@ class AgentComposerService:
         agent.updated_by = account_id
         draft.base_snapshot_id = version.id
         draft.updated_by = account_id
+        if not access_was_ready:
+            if not agent.app_id:
+                raise AgentNotFoundError()
+            app = session.scalar(
+                select(App)
+                .where(
+                    App.tenant_id == tenant_id,
+                    App.id == agent.app_id,
+                )
+                .limit(1)
+            )
+            if app is None:
+                raise AgentNotFoundError()
+            app.enable_site = True
+            app.enable_api = True
+            app.updated_by = account_id
         session.flush()
+        register_new_agent_beta_publish_after_commit(
+            session=session,
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+            snapshot_id=version.id,
+        )
         return {
             "result": "success",
             "active_config_snapshot_id": version.id,

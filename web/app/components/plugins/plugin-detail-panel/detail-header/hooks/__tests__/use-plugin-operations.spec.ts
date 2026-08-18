@@ -1,7 +1,7 @@
 import type { PluginDetail } from '../../../../types'
 import type { ModalStates, VersionTarget } from '../use-detail-header-state'
-import { act, renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import * as amplitude from '@/app/components/base/amplitude'
 import { PluginSource } from '../../../../types'
 import { usePluginOperations } from '../use-plugin-operations'
@@ -183,8 +183,15 @@ describe('usePluginOperations', () => {
       expect(modalStates.showUpdateModal).toHaveBeenCalled()
     })
 
-    it('should call onUpdate and hide modal on successful marketplace update', () => {
+    it('waits for the updated plugin list before hiding the update modal', async () => {
       const detail = createPluginDetail({ source: PluginSource.marketplace })
+      let resolveUpdate: (() => void) | undefined
+      mockOnUpdate = vi.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveUpdate = resolve
+          }),
+      )
       const { result } = renderHook(() =>
         usePluginOperations({
           detail,
@@ -196,12 +203,19 @@ describe('usePluginOperations', () => {
       )
 
       act(() => {
-        result.current.handleUpdatedFromMarketplace()
+        void result.current.handleUpdatedFromMarketplace()
       })
 
       expect(mockInvalidateCheckInstalled).toHaveBeenCalled()
       expect(mockOnUpdate).toHaveBeenCalled()
-      expect(modalStates.hideUpdateModal).toHaveBeenCalled()
+      expect(mockRefreshPluginList).not.toHaveBeenCalled()
+      expect(modalStates.hideUpdateModal).not.toHaveBeenCalled()
+
+      resolveUpdate?.()
+
+      await waitFor(() => {
+        expect(modalStates.hideUpdateModal).toHaveBeenCalled()
+      })
     })
   })
 
@@ -273,11 +287,18 @@ describe('usePluginOperations', () => {
       expect(mockSetShowUpdatePluginModal).toHaveBeenCalled()
     })
 
-    it('should invalidate checkInstalled when GitHub update save callback fires', async () => {
+    it('waits for the update callback when GitHub update save callback fires', async () => {
       const detail = createPluginDetail({
         source: PluginSource.github,
         meta: { repo: 'owner/repo', version: 'v1.0.0', package: 'pkg' },
       })
+      let resolveUpdate: (() => void) | undefined
+      mockOnUpdate = vi.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveUpdate = resolve
+          }),
+      )
       const { result } = renderHook(() =>
         usePluginOperations({
           detail,
@@ -293,10 +314,21 @@ describe('usePluginOperations', () => {
       })
 
       const firstCall = mockSetShowUpdatePluginModal.mock.calls.at(0)?.[0]
-      firstCall?.onSaveCallback()
+      const updatePromise = Promise.resolve(firstCall?.onSaveCallback?.())
 
       expect(mockInvalidateCheckInstalled).toHaveBeenCalled()
       expect(mockOnUpdate).toHaveBeenCalled()
+
+      let didFinish = false
+      void updatePromise.then(() => {
+        didFinish = true
+      })
+      await Promise.resolve()
+      expect(didFinish).toBe(false)
+
+      resolveUpdate?.()
+      await updatePromise
+      expect(didFinish).toBe(true)
     })
 
     it('should not show modal when no releases found', async () => {

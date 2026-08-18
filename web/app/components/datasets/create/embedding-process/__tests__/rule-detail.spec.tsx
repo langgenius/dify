@@ -1,6 +1,6 @@
 import type { ProcessRuleResponse } from '@/models/datasets'
 import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ProcessMode } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
 import RuleDetail from '../rule-detail'

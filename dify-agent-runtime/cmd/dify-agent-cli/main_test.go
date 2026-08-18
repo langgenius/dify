@@ -53,12 +53,22 @@ func TestCommandHelp(t *testing.T) {
 		{
 			name: "file upload",
 			args: []string{"file", "upload", "--help"},
-			want: []string{"dify-agent file upload", "Upload one sandbox-local file"},
+			want: []string{
+				"dify-agent file upload",
+				"Upload one sandbox-local file",
+				"--no-download-link",
+				"Skip creating a public download link after upload.",
+			},
 		},
 		{
 			name: "file download",
 			args: []string{"file", "download", "--help"},
 			want: []string{"dify-agent file download", "Download one workflow file", "--to"},
+		},
+		{
+			name: "file public-url",
+			args: []string{"file", "public-url", "--help"},
+			want: []string{"dify-agent file public-url", "Create a browser-visible download URL"},
 		},
 		{
 			name: "drive",

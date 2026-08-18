@@ -450,6 +450,11 @@ class FileUploadConfig(BaseSettings):
         default=15,
     )
 
+    KNOWLEDGE_UPLOAD_FILE_SIZE_LIMIT_FOR_PAID_PLAN: NonNegativeInt = Field(
+        description="Maximum allowed file size for knowledge uploads on paid cloud plans in megabytes",
+        default=15,
+    )
+
     UPLOAD_FILE_BATCH_LIMIT: NonNegativeInt = Field(
         description="Maximum number of files allowed in a single upload batch",
         default=5,
@@ -801,17 +806,6 @@ class ModelLoadBalanceConfig(BaseSettings):
 
     PLUGIN_BASED_TOKEN_COUNTING_ENABLED: bool = Field(
         description="Enable or disable plugin based token counting. If disabled, token counting will return 0.",
-        default=False,
-    )
-
-
-class BillingConfig(BaseSettings):
-    """
-    Configuration for platform billing features
-    """
-
-    BILLING_ENABLED: bool = Field(
-        description="Enable or disable billing functionality",
         default=False,
     )
 
@@ -1330,6 +1324,17 @@ class MultiModalTransferConfig(BaseSettings):
     )
 
 
+class NewAgentBetaConfig(BaseSettings):
+    NEW_AGENT_BETA_ACTIVITY_START_AT: datetime | None = Field(
+        description="New Agent Beta Publish window start in RFC3339 UTC (inclusive)",
+        default=None,
+    )
+    NEW_AGENT_BETA_ACTIVITY_END_AT: datetime | None = Field(
+        description="New Agent Beta Publish window end in RFC3339 UTC (exclusive)",
+        default=None,
+    )
+
+
 class OpsTraceConfig(BaseSettings):
     OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES: PositiveInt = Field(
         description="Maximum retry attempts for transient ops trace provider dispatch failures.",
@@ -1350,6 +1355,18 @@ class CeleryBeatConfig(BaseSettings):
 
 
 class CeleryScheduleTasksConfig(BaseSettings):
+    ENABLE_CONVERSATION_CLEANUP_TASK: bool = Field(
+        description="Enable periodic recovery of soft-deleted conversation cleanup",
+        default=True,
+    )
+    CONVERSATION_CLEANUP_TASK_INTERVAL: PositiveInt = Field(
+        description="Soft-deleted conversation cleanup recovery interval in minutes",
+        default=5,
+    )
+    CONVERSATION_CLEANUP_BATCH_SIZE: PositiveInt = Field(
+        description="Maximum soft-deleted conversations dispatched per cleanup sweep",
+        default=100,
+    )
     ENABLE_CLEAN_EMBEDDING_CACHE_TASK: bool = Field(
         description="Enable clean embedding cache task",
         default=False,
@@ -1616,7 +1633,6 @@ class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
     AuthConfig,  # Changed from OAuthConfig to AuthConfig
-    BillingConfig,
     CodeExecutionSandboxConfig,
     CreatorsPlatformConfig,
     TriggerConfig,
@@ -1636,6 +1652,7 @@ class FeatureConfig(
     ModelLoadBalanceConfig,
     ModerationConfig,
     MultiModalTransferConfig,
+    NewAgentBetaConfig,
     OpsTraceConfig,
     PositionConfig,
     RagEtlConfig,

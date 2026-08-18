@@ -1,6 +1,6 @@
 import type { CommandConstructor } from './command'
 import type { CommandTree } from './registry'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { Args, Flags } from './flags'
 import { formatHelp, formatTopLevelHelp } from './help'
 

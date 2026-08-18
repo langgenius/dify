@@ -1,5 +1,5 @@
-import { waitFor } from '@testing-library/react'
-import { SSOProtocol } from '@/features/system-features/constants'
+import { zSsoProtocol } from '@dify/contracts/api/console/system-features/zod.gen'
+import { screen, waitFor } from '@testing-library/react'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import ExternalMemberSSOAuth from '../external-member-sso-auth'
 
@@ -33,10 +33,21 @@ describe('ExternalMemberSSOAuth redirect security', () => {
     })
   })
 
+  it('should show unavailable without starting SSO when the protocol is not configured', () => {
+    renderWithConsoleQuery(<ExternalMemberSSOAuth />, {
+      systemFeatures: { webapp_auth: { sso_config: { protocol: null } } },
+    })
+
+    expect(screen.getByText('sso protocol is invalid.')).toBeInTheDocument()
+    expect(serviceMocks.fetchWebSAMLSSOUrl).not.toHaveBeenCalled()
+    expect(serviceMocks.fetchWebOIDCSSOUrl).not.toHaveBeenCalled()
+    expect(serviceMocks.fetchWebOAuth2SSOUrl).not.toHaveBeenCalled()
+  })
+
   it('should use the login fallback without calling SSO when the redirect target is external', async () => {
     renderWithConsoleQuery(<ExternalMemberSSOAuth />, {
       systemFeatures: {
-        webapp_auth: { sso_config: { protocol: SSOProtocol.SAML } },
+        webapp_auth: { sso_config: { protocol: zSsoProtocol.enum.saml } },
       },
     })
 
@@ -49,9 +60,9 @@ describe('ExternalMemberSSOAuth redirect security', () => {
   })
 
   it.each([
-    [SSOProtocol.SAML, serviceMocks.fetchWebSAMLSSOUrl],
-    [SSOProtocol.OIDC, serviceMocks.fetchWebOIDCSSOUrl],
-    [SSOProtocol.OAuth2, serviceMocks.fetchWebOAuth2SSOUrl],
+    [zSsoProtocol.enum.saml, serviceMocks.fetchWebSAMLSSOUrl],
+    [zSsoProtocol.enum.oidc, serviceMocks.fetchWebOIDCSSOUrl],
+    [zSsoProtocol.enum.oauth2, serviceMocks.fetchWebOAuth2SSOUrl],
   ])('should send the sanitized redirect target to %s SSO', async (protocol, serviceMock) => {
     navigationMocks.searchParams = new URLSearchParams({
       redirect_url: encodeURIComponent('/chatbot/share-app?foo=bar'),

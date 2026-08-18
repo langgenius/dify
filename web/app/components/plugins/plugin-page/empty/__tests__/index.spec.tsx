@@ -1,13 +1,9 @@
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ReactElement } from 'react'
 import type { FilterState } from '../../filter-management'
+import { zPluginInstallationScope } from '@dify/contracts/api/console/system-features/zod.gen'
 import { act, fireEvent, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import {
-  getStepByStepTourTargetSelector,
-  STEP_BY_STEP_TOUR_TARGETS,
-} from '@/app/components/step-by-step-tour/target-registry'
-import { InstallationScope } from '@/features/system-features/constants'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 // ==================== Imports (after mocks) ====================
 import Empty from '../index'
@@ -99,7 +95,7 @@ const resetMockState = () => {
   mockState.systemFeatures = {
     enable_marketplace: true,
     plugin_installation_permission: {
-      plugin_installation_scope: InstallationScope.ALL,
+      plugin_installation_scope: zPluginInstallationScope.enum.all,
       restrict_to_marketplace_only: false,
     },
   }
@@ -157,116 +153,6 @@ describe('Empty Component', () => {
       // Assert - line components
       const lines = screen.getAllByTestId('line-component')
       expect(lines).toHaveLength(4)
-    })
-
-    it('should render the Figma trigger empty layout variant', async () => {
-      // Arrange & Act
-      const { container } = render(<Empty contentInset="compact" variant="integrationsTrigger" />)
-      await flushEffects()
-
-      // Assert
-      expect(screen.getByText('plugin.list.noTriggerFound')).toBeInTheDocument()
-      expect(screen.getByText('plugin.installModal.dropIntegrationToInstall')).toBeInTheDocument()
-      expect(container.querySelector('.i-ri-drag-drop-line')).toBeInTheDocument()
-      expect(container.firstElementChild).toHaveClass('bg-components-panel-bg')
-      expect(
-        container.querySelector('.i-custom-vender-integrations-trigger-active'),
-      ).toBeInTheDocument()
-      expect(
-        container.querySelector('.i-custom-vender-integrations-trigger'),
-      ).not.toBeInTheDocument()
-
-      const buttons = screen.getAllByRole('button')
-      buttons.forEach((button) => expect(button).toHaveClass('h-8', 'w-full', 'justify-start'))
-    })
-
-    it('should anchor the trigger tour target to the empty state content instead of the grow root', async () => {
-      const { container } = render(<Empty contentInset="compact" variant="integrationsTrigger" />)
-      await flushEffects()
-
-      const selector = getStepByStepTourTargetSelector(
-        STEP_BY_STEP_TOUR_TARGETS.integrationTriggerGrid,
-      )
-      const target = document.querySelector<HTMLElement>(selector)
-
-      expect(container.firstElementChild).not.toHaveAttribute('data-step-by-step-tour-target')
-      expect(target).toContainElement(screen.getByText('plugin.list.noTriggerFound'))
-      expect(target).toContainElement(screen.getByText('plugin.source.marketplace'))
-      expect(target).not.toContainElement(
-        screen.getByText('plugin.installModal.dropIntegrationToInstall'),
-      )
-    })
-
-    it('should render the Figma agent strategy empty layout at the shared center position', async () => {
-      // Arrange & Act
-      const { container } = render(
-        <Empty contentInset="compact" variant="integrationsAgentStrategy" />,
-      )
-      await flushEffects()
-
-      // Assert
-      expect(screen.getByText('plugin.list.noAgentStrategyFound')).toBeInTheDocument()
-      expect(screen.getByText('plugin.installModal.dropIntegrationToInstall')).toBeInTheDocument()
-      expect(container.querySelector('.i-ri-drag-drop-line')).toBeInTheDocument()
-      expect(container.firstElementChild).toHaveClass('bg-components-panel-bg')
-
-      expect(container.querySelector('.items-center')).toBeInTheDocument()
-      expect(container.querySelector('.-translate-y-7')).not.toBeInTheDocument()
-      expect(
-        container.querySelector('.i-custom-vender-integrations-agent-strategy-active'),
-      ).toHaveClass('size-6', 'shrink-0')
-    })
-
-    it('should anchor the agent strategy tour target to the empty state content instead of the grow root', async () => {
-      const { container } = render(
-        <Empty contentInset="compact" variant="integrationsAgentStrategy" />,
-      )
-      await flushEffects()
-
-      const selector = getStepByStepTourTargetSelector(
-        STEP_BY_STEP_TOUR_TARGETS.integrationAgentStrategyEmpty,
-      )
-      const target = document.querySelector<HTMLElement>(selector)
-
-      expect(container.firstElementChild).not.toHaveAttribute('data-step-by-step-tour-target')
-      expect(target).toContainElement(screen.getByText('plugin.list.noAgentStrategyFound'))
-      expect(target).toContainElement(screen.getByText('plugin.source.marketplace'))
-      expect(target).not.toContainElement(
-        screen.getByText('plugin.installModal.dropIntegrationToInstall'),
-      )
-    })
-
-    it('should render the Figma extension empty layout with extension copy', async () => {
-      // Arrange & Act
-      const { container } = render(<Empty contentInset="compact" variant="integrationsExtension" />)
-      await flushEffects()
-
-      // Assert
-      expect(screen.getByText('plugin.list.noExtensionFound')).toBeInTheDocument()
-      expect(screen.getByText('plugin.installModal.dropIntegrationToInstall')).toBeInTheDocument()
-      expect(container.querySelector('.i-ri-drag-drop-line')).toBeInTheDocument()
-
-      expect(container.querySelector('.i-custom-vender-integrations-extension-active')).toHaveClass(
-        'size-6',
-        'shrink-0',
-      )
-    })
-
-    it('should anchor the extension tour target to the empty state content instead of the grow root', async () => {
-      const { container } = render(<Empty contentInset="compact" variant="integrationsExtension" />)
-      await flushEffects()
-
-      const selector = getStepByStepTourTargetSelector(
-        STEP_BY_STEP_TOUR_TARGETS.integrationExtensionGrid,
-      )
-      const target = document.querySelector<HTMLElement>(selector)
-
-      expect(container.firstElementChild).not.toHaveAttribute('data-step-by-step-tour-target')
-      expect(target).toContainElement(screen.getByText('plugin.list.noExtensionFound'))
-      expect(target).toContainElement(screen.getByText('plugin.source.marketplace'))
-      expect(target).not.toContainElement(
-        screen.getByText('plugin.installModal.dropIntegrationToInstall'),
-      )
     })
   })
 
@@ -328,7 +214,7 @@ describe('Empty Component', () => {
       setMockSystemFeatures({
         enable_marketplace: true,
         plugin_installation_permission: {
-          plugin_installation_scope: InstallationScope.ALL,
+          plugin_installation_scope: zPluginInstallationScope.enum.all,
           restrict_to_marketplace_only: false,
         },
       })
@@ -356,7 +242,7 @@ describe('Empty Component', () => {
       setMockSystemFeatures({
         enable_marketplace: true,
         plugin_installation_permission: {
-          plugin_installation_scope: InstallationScope.ALL,
+          plugin_installation_scope: zPluginInstallationScope.enum.all,
           restrict_to_marketplace_only: true,
         },
       })
@@ -378,7 +264,7 @@ describe('Empty Component', () => {
       setMockSystemFeatures({
         enable_marketplace: false,
         plugin_installation_permission: {
-          plugin_installation_scope: InstallationScope.ALL,
+          plugin_installation_scope: zPluginInstallationScope.enum.all,
           restrict_to_marketplace_only: false,
         },
       })
@@ -400,7 +286,7 @@ describe('Empty Component', () => {
       setMockSystemFeatures({
         enable_marketplace: false,
         plugin_installation_permission: {
-          plugin_installation_scope: InstallationScope.ALL,
+          plugin_installation_scope: zPluginInstallationScope.enum.all,
           restrict_to_marketplace_only: true,
         },
       })
@@ -414,9 +300,9 @@ describe('Empty Component', () => {
       expect(buttons).toHaveLength(0)
     })
 
-    it('should render no install methods or drop hint when install permission is unavailable', async () => {
+    it('should render no install methods when install permission is unavailable', async () => {
       // Act
-      render(<Empty canInstall={false} contentInset="compact" variant="integrationsTrigger" />)
+      render(<Empty canInstall={false} contentInset="compact" />)
       await flushEffects()
 
       // Assert
@@ -424,9 +310,6 @@ describe('Empty Component', () => {
       expect(screen.queryByText('plugin.source.marketplace')).not.toBeInTheDocument()
       expect(screen.queryByText('plugin.source.github')).not.toBeInTheDocument()
       expect(screen.queryByText('plugin.source.local')).not.toBeInTheDocument()
-      expect(
-        screen.queryByText('plugin.installModal.dropIntegrationToInstall'),
-      ).not.toBeInTheDocument()
     })
   })
 
@@ -447,9 +330,7 @@ describe('Empty Component', () => {
     it('should use the provided marketplace action when marketplace button is clicked', async () => {
       // Arrange
       const onSwitchToMarketplace = vi.fn()
-      render(
-        <Empty onSwitchToMarketplace={onSwitchToMarketplace} variant="integrationsExtension" />,
-      )
+      render(<Empty onSwitchToMarketplace={onSwitchToMarketplace} />)
       await flushEffects()
 
       // Act
@@ -611,7 +492,7 @@ describe('Empty Component', () => {
       setMockSystemFeatures({
         enable_marketplace: true,
         plugin_installation_permission: {
-          plugin_installation_scope: InstallationScope.ALL,
+          plugin_installation_scope: zPluginInstallationScope.enum.all,
           restrict_to_marketplace_only: false,
         },
       })
@@ -625,7 +506,7 @@ describe('Empty Component', () => {
       setMockSystemFeatures({
         enable_marketplace: true,
         plugin_installation_permission: {
-          plugin_installation_scope: InstallationScope.ALL,
+          plugin_installation_scope: zPluginInstallationScope.enum.all,
           restrict_to_marketplace_only: true,
         },
       })

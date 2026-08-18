@@ -3,6 +3,7 @@ import type { FormInputItem, HumanInputNodeType } from './types'
 import type { NodePanelProps, Var } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiAddLine,
@@ -15,7 +16,6 @@ import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import Divider from '@/app/components/base/divider'
 import { Infotip } from '@/app/components/base/infotip'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
@@ -127,7 +127,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
                 variant="ghost"
                 size="small"
                 className={cn(
-                  'flex items-center space-x-1 px-2',
+                  'flex items-center px-2',
                   isPreview && 'bg-state-accent-active text-text-accent',
                 )}
                 onClick={() => setIsPreview((isPreview) => !isPreview)}
@@ -201,9 +201,12 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({ id, data }) => {
           </div>
           {!readOnly && (
             <div className="flex items-center px-1">
-              <ActionButton onClick={onAddUseAction}>
-                <RiAddLine className="size-4" />
-              </ActionButton>
+              <IconButton
+                aria-label={t(($) => $['operation.add'], { ns: 'common' })}
+                onClick={onAddUseAction}
+              >
+                <RiAddLine aria-hidden="true" className="size-4" />
+              </IconButton>
             </div>
           )}
         </div>

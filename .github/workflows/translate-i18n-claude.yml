@@ -8,15 +8,19 @@ on:
   workflow_dispatch:
     inputs:
       files:
-        description: 'Specific files to translate (space-separated, e.g., "app common"). Required for full mode; leave empty in incremental mode to use en-US files changed since HEAD~1.'
+        description: 'Specific files to translate (space-separated, e.g., "app common").
+          Required for full mode; leave empty in incremental mode to use en-US
+          files changed since HEAD~1.'
         required: false
         type: string
       languages:
-        description: 'Specific languages to translate (space-separated, e.g., "zh-Hans ja-JP"). Leave empty for all supported target languages except en-US.'
+        description: 'Specific languages to translate (space-separated, e.g., "zh-Hans
+          ja-JP"). Leave empty for all supported target languages except en-US.'
         required: false
         type: string
       mode:
-        description: 'Sync mode: incremental (compare with previous en-US revision) or full (sync all keys in scope)'
+        description: 'Sync mode: incremental (compare with previous en-US revision) or
+          full (sync all keys in scope)'
         required: false
         default: incremental
         type: choice
@@ -158,7 +162,7 @@ jobs:
 
       - name: Run Claude Code for Translation Sync
         if: steps.context.outputs.CHANGED_FILES != ''
-        uses: anthropics/claude-code-action@be7b93b1907a4abad570368f3c74b6fe3807510b # v1.0.183
+        uses: anthropics/claude-code-action@9d7150bc8a3dae8149739a88019d192b579ad90c # v1.0.193
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}

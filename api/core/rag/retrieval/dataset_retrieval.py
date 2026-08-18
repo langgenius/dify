@@ -9,6 +9,7 @@ from collections.abc import Generator, Mapping
 from typing import Any, Union, cast
 
 from flask import Flask, current_app
+from opentelemetry.trace import get_current_span
 from sqlalchemy import and_, func, literal, or_, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -650,16 +651,19 @@ class DatasetRetrieval:
         self._record_usage(router_usage)
         timer = None
         if dataset_id:
-            # get retrieval model config
-            dataset_stmt = select(Dataset).where(Dataset.id == dataset_id)
-            selected_dataset = session.scalar(dataset_stmt)
+            allowed_dataset = next((dataset for dataset in available_datasets if dataset.id == dataset_id), None)
+            selected_dataset = (
+                session.scalar(select(Dataset).where(Dataset.id == allowed_dataset.id, Dataset.tenant_id == tenant_id))
+                if allowed_dataset
+                else None
+            )
             if selected_dataset:
                 results = []
                 if selected_dataset.provider == "external":
                     external_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
                         session=session,
                         tenant_id=selected_dataset.tenant_id,
-                        dataset_id=dataset_id,
+                        dataset_id=selected_dataset.id,
                         query=query,
                         external_retrieval_parameters=selected_dataset.retrieval_model,
                         metadata_condition=metadata_condition,
@@ -673,7 +677,7 @@ class DatasetRetrieval:
                         if document.metadata is not None:
                             document.metadata["score"] = external_document.get("score")
                             document.metadata["title"] = external_document.get("title")
-                            document.metadata["dataset_id"] = dataset_id
+                            document.metadata["dataset_id"] = selected_dataset.id
                             document.metadata["dataset_name"] = selected_dataset.name
                         results.append(document)
                 else:
@@ -723,7 +727,7 @@ class DatasetRetrieval:
                             weights=retrieval_model_config.get("weights", None),
                             document_ids_filter=document_ids_filter,
                         )
-                self._on_query(query, None, [dataset_id], app_id, user_from, user_id)
+                self._on_query(query, None, [selected_dataset.id], app_id, user_from, user_id)
 
                 if results:
                     thread = threading.Thread(
@@ -1204,8 +1208,9 @@ class DatasetRetrieval:
         attachment_ids: list[str] | None,
         cancel_event: threading.Event | None,
         thread_exceptions: list[Exception] | None,
+        skip_on_error: bool = False,
     ) -> None:
-        """Collect errors only after they pass through the traced retrieval method."""
+        """Collect errors after tracing, or skip dataset-level failures when requested."""
         try:
             self._run_retriever_thread(
                 flask_app=flask_app,
@@ -1218,6 +1223,25 @@ class DatasetRetrieval:
                 attachment_ids=attachment_ids,
             )
         except Exception as exc:
+            if skip_on_error:
+                logger.warning(
+                    "Skipping dataset retrieval because retriever failed, dataset_id=%s, error_type=%s, error=%s",
+                    dataset_id,
+                    type(exc).__name__,
+                    str(exc),
+                )
+                span = get_current_span()
+                if span and span.is_recording():
+                    span.add_event(
+                        "dataset_retrieval.skipped",
+                        attributes={
+                            "dataset_id": dataset_id,
+                            "error.type": type(exc).__name__,
+                            "error.message": str(exc),
+                        },
+                    )
+                return
+
             if cancel_event:
                 cancel_event.set()
             if thread_exceptions is not None:
@@ -1878,6 +1902,7 @@ class DatasetRetrieval:
                             "attachment_ids": [attachment_id] if attachment_id else None,
                             "cancel_event": cancel_event,
                             "thread_exceptions": retrieval_thread_exceptions,
+                            "skip_on_error": True,
                         },
                     )
                     threads.append(retrieval_thread)

@@ -16,6 +16,7 @@ from configs import dify_config
 from controllers.common.errors import NotFoundError
 from controllers.common.human_input import HumanInputFormSubmitPayload, stringify_form_default_values
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.console.wraps import model_validate
 from controllers.web import web_ns
 from controllers.web.error import WebFormRateLimitExceededError
 from controllers.web.site import WebAppSiteResponse
@@ -235,7 +236,8 @@ class HumanInputFormApi(Resource):
         "Form submitted successfully",
         web_ns.models[HumanInputFormSubmitResponse.__name__],
     )
-    def post(self, form_token: str):
+    @model_validate(HumanInputFormSubmitPayload)
+    def post(self, payload: HumanInputFormSubmitPayload, form_token: str):
         """
         Submit human input form by token.
 
@@ -249,8 +251,6 @@ class HumanInputFormApi(Resource):
             "action": "Approve"
         }
         """
-        payload = HumanInputFormSubmitPayload.model_validate(request.get_json())
-
         ip_address = extract_remote_ip(request)
         if _FORM_SUBMIT_RATE_LIMITER.is_rate_limited(ip_address):
             raise WebFormRateLimitExceededError()
@@ -262,7 +262,7 @@ class HumanInputFormApi(Resource):
             raise NotFoundError("Form not found")
 
         if (recipient_type := form.recipient_type) is None:
-            logger.warning("Recipient type is None for form, form_id=%", form.id)
+            logger.warning("Recipient type is None for form, form_id=%s", form.id)
             raise AssertionError("Recipient type is None")
 
         try:

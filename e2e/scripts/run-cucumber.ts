@@ -15,7 +15,8 @@ import './env-register'
 const hasCustomTags = (forwardArgs: string[]) =>
   forwardArgs.some((arg) => arg === '--tags' || arg.startsWith('--tags='))
 
-const fullNonExternalTags = 'not @prepared and not @external-model and not @external-tool'
+const fullNonExternalTags =
+  'not @axe and not @prepared and not @external-model and not @external-tool'
 const seedCeleryQueues = 'dataset,priority_dataset,workflow_based_app_execution'
 
 const readLogTail = async (logFilePath: string) => {

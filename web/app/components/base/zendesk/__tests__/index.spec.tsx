@@ -2,7 +2,7 @@ import type { DeploymentEdition } from '@dify/contracts/api/console/system-featu
 import type { ReactNode } from 'react'
 import { QueryClient } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import Zendesk from '../index'
 
 // Shared state for mocks
@@ -32,22 +32,13 @@ vi.mock('@/config', () => ({
   },
 }))
 
-vi.mock('@/context/query-client-server', () => ({
-  getQueryClientServer: () => queryClient,
-}))
-
-vi.mock('@/service/server', () => ({
-  serverConsoleQuery: {
-    systemFeatures: {
-      get: {
-        queryOptions: vi.fn(() => ({
-          queryKey: systemFeaturesQueryKey,
-          queryFn: getSystemFeatures,
-          retry: false,
-        })),
-      },
-    },
-  },
+vi.mock('@/features/system-features/server', () => ({
+  getSystemFeaturesQueryClient: () => queryClient,
+  systemFeaturesServerQueryOptions: vi.fn(() => ({
+    queryKey: systemFeaturesQueryKey,
+    queryFn: getSystemFeatures,
+    retry: false,
+  })),
 }))
 
 // Mock next/headers

@@ -25,13 +25,14 @@ import {
   DrawerPortal,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
+import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import Loading from '@/app/components/base/loading'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Icon from '@/app/components/plugins/card/base/card-icon'
@@ -60,6 +61,7 @@ import {
   updateBuiltInToolCredential,
   updateCustomCollection,
 } from '@/service/tools'
+import { modelProviderDetailsQueryOptions } from '@/service/use-common'
 import { useInvalidateAllWorkflowTools } from '@/service/use-tools'
 import { basePath } from '@/utils/var'
 import { AuthHeaderPrefix, AuthType, CollectionType } from '../types'
@@ -91,12 +93,17 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
   const [showSettingAuth, setShowSettingAuth] = useState(false)
   const { setShowModelModal } = useModalContext()
   const { modelProviders: providers } = useProviderContext()
-  const showSettingAuthModal = () => {
+  const queryClient = useQueryClient()
+  const showSettingAuthModal = async () => {
     if (!canOpenCredentialSettings) return
 
     if (isModel) {
-      const provider = providers.find((item) => item.provider === collection?.id)
-      if (provider) {
+      const summary = providers.find((item) => item.provider === collection?.id)
+      if (!summary) return
+      try {
+        const response = await queryClient.ensureQueryData(modelProviderDetailsQueryOptions())
+        const provider = response.data.find((item) => item.provider === summary.provider)
+        if (!provider) return
         setShowModelModal({
           payload: {
             currentProvider: provider,
@@ -107,7 +114,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
             onRefreshData()
           },
         })
-      }
+      } catch {}
     } else {
       setShowSettingAuth(true)
     }
@@ -294,12 +301,12 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                       </div>
                     </div>
                     <div className="flex gap-1">
-                      <ActionButton
+                      <IconButton
                         aria-label={t(($) => $['operation.close'], { ns: 'common' })}
                         onClick={onHide}
                       >
-                        <RiCloseLine className="size-4" />
-                      </ActionButton>
+                        <RiCloseLine aria-hidden className="size-4" />
+                      </IconButton>
                     </div>
                   </div>
                 </div>
@@ -318,7 +325,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                     >
                       <span
                         aria-hidden
-                        className="mr-1 i-ri-equalizer-2-line size-4 text-components-button-secondary-text"
+                        className="i-ri-equalizer-2-line size-4 text-components-button-secondary-text"
                       />
                       <div className="system-sm-medium text-text-secondary">
                         {t(($) => $['createTool.editAction'], { ns: 'tools' })}
@@ -332,7 +339,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                         <Button
                           nativeButton={false}
                           variant="primary"
-                          className={cn('my-3 h-8 min-w-0 flex-1 rounded-lg px-3 py-2')}
+                          className={cn('my-3 h-8 min-w-0 flex-1 rounded-lg py-2')}
                           render={
                             <a
                               href={`${basePath}/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`}
@@ -342,14 +349,14 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                             />
                           }
                         >
-                          <span className="min-w-0 truncate px-0.5 system-sm-medium">
+                          <span className="min-w-0 truncate system-sm-medium">
                             {t(($) => $.openInStudio, { ns: 'tools' })}
                           </span>
                           <span aria-hidden className="i-ri-arrow-right-up-line size-4 shrink-0" />
                         </Button>
                         <Button
                           variant="secondary"
-                          className={cn('my-3 h-8 min-w-0 flex-1 rounded-lg px-3 py-2')}
+                          className={cn('my-3 h-8 min-w-0 flex-1 rounded-lg py-2')}
                           onClick={() => setWorkflowToolDrawerOpen(true)}
                           disabled={!canManageTools}
                         >
@@ -357,7 +364,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                             aria-hidden
                             className="i-ri-equalizer-2-line size-4 shrink-0 text-components-button-secondary-text"
                           />
-                          <span className="min-w-0 truncate px-0.5 system-sm-medium text-components-button-secondary-text">
+                          <span className="min-w-0 truncate system-sm-medium text-components-button-secondary-text">
                             {t(($) => $['createTool.editAction'], { ns: 'tools' })}
                           </span>
                         </Button>
@@ -395,7 +402,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                                   }}
                                   disabled={!canOpenCredentialSettings}
                                 >
-                                  <StatusDot className="mr-2" status="success" />
+                                  <StatusDot status="success" />
                                   {t(($) => $['auth.authorized'], { ns: 'tools' })}
                                 </Button>
                               )}

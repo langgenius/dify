@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shlex
 import sys
 import uuid
 
@@ -13,10 +14,30 @@ from dify_agent.runtime_backend import (
     ExecutionBindingDestroySpec,
     HomeSnapshotCreateSpec,
 )
-from dify_agent.runtime_backend.e2b import E2BExecutionBindingBackend, E2BHomeSnapshotBackend, E2BSDKControlPlane
+from dify_agent.runtime_backend.e2b import (
+    E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
+    E2BExecutionBindingBackend,
+    E2BHomeSnapshotBackend,
+    E2BSDKControlPlane,
+)
 from dify_agent.runtime_backend.local import LocalExecutionBindingBackend
+from dify_agent.runtime.command_runner import execute_complete_with_commands
 
 pytestmark = pytest.mark.integration
+
+
+async def _run(lease, script: str, *, cwd: str) -> str:
+    result = await execute_complete_with_commands(
+        lease.commands,
+        script,
+        cwd=cwd,
+        env={"HOME": lease.layout.home_dir},
+        timeout=30.0,
+        max_output_bytes=4096,
+    )
+    assert result.exit_code == 0
+    assert result.output_complete
+    return result.output
 
 
 def _required_env(name: str, purpose: str) -> str:
@@ -48,9 +69,7 @@ async def test_local_two_agents_share_workspace_but_not_home() -> None:
         allocations.append(first)
         first_lease = await bindings.acquire(first.binding_ref)
         active_leases.append(first_lease)
-        await first_lease.files.upload(
-            content=b"shared", remote_path="shared.txt", cwd=first_lease.layout.workspace_dir
-        )
+        await _run(first_lease, "printf shared > shared.txt", cwd=first_lease.layout.workspace_dir)
         await bindings.release(first_lease)
         active_leases.remove(first_lease)
 
@@ -67,8 +86,8 @@ async def test_local_two_agents_share_workspace_but_not_home() -> None:
         allocations.append(second)
         second_lease = await bindings.acquire(second.binding_ref)
         active_leases.append(second_lease)
-        shared = await second_lease.files.read_bytes(path="shared.txt", max_bytes=1024)
-        assert shared.content == b"shared"
+        shared = await _run(second_lease, "cat shared.txt", cwd=second_lease.layout.workspace_dir)
+        assert shared == "shared"
         assert second_lease.layout.home_dir != first_lease.layout.home_dir
         assert second_lease.layout.workspace_dir == first_lease.layout.workspace_dir
         await bindings.release(second_lease)
@@ -106,7 +125,11 @@ async def test_e2b_binding_checkpoint_and_collection() -> None:
     marker = uuid.uuid4().hex
     control = E2BSDKControlPlane(api_key=api_key)
     snapshots = E2BHomeSnapshotBackend(control_plane=control)
-    bindings = E2BExecutionBindingBackend(control_plane=control, template=template, active_timeout_seconds=3600)
+    bindings = E2BExecutionBindingBackend(
+        control_plane=control,
+        template=template,
+        active_timeout_seconds=E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
+    )
     checkpoint_ref: str | None = None
     allocation = None
     checkpoint_allocation = None
@@ -124,9 +147,9 @@ async def test_e2b_binding_checkpoint_and_collection() -> None:
             )
         )
         lease = await bindings.acquire(allocation.binding_ref)
-        await lease.files.upload(content=b"e2b", remote_path="probe.txt", cwd=lease.layout.workspace_dir)
-        await lease.files.upload(content=b"checkpoint-home", remote_path=".checkpoint-probe", cwd=lease.layout.home_dir)
-        assert (await lease.files.read_bytes(path="probe.txt", max_bytes=1024)).content == b"e2b"
+        await _run(lease, "printf e2b > probe.txt", cwd=lease.layout.workspace_dir)
+        await _run(lease, "printf checkpoint-home > .checkpoint-probe", cwd=lease.layout.home_dir)
+        assert await _run(lease, "cat probe.txt", cwd=lease.layout.workspace_dir) == "e2b"
         checkpoint_ref = await snapshots.create_from_runtime(
             spec=HomeSnapshotCreateSpec(
                 tenant_id="integration-tenant",
@@ -149,8 +172,9 @@ async def test_e2b_binding_checkpoint_and_collection() -> None:
             )
         )
         checkpoint_lease = await bindings.acquire(checkpoint_allocation.binding_ref)
-        restored = await checkpoint_lease.files.read_bytes(path="~/.checkpoint-probe", max_bytes=1024)
-        assert restored.content == b"checkpoint-home"
+        checkpoint_path = shlex.quote(f"{checkpoint_lease.layout.home_dir}/.checkpoint-probe")
+        restored = await _run(checkpoint_lease, f"cat {checkpoint_path}", cwd=checkpoint_lease.layout.workspace_dir)
+        assert restored == "checkpoint-home"
         await bindings.release(checkpoint_lease)
         checkpoint_lease = None
     finally:

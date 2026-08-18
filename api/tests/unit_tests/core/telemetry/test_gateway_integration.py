@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from core.telemetry.gateway import emit, is_enterprise_telemetry_enabled
+from core.telemetry.gateway import _emit, is_enterprise_telemetry_enabled
 from enterprise.telemetry.contracts import TelemetryCase
 
 
@@ -50,7 +50,7 @@ class TestGatewayIntegrationTraceRouting:
             context = {"app_id": "app-123", "user_id": "user-456", "tenant_id": "tenant-789"}
             payload = {"workflow_run_id": "run-abc"}
 
-            emit(TelemetryCase.WORKFLOW_RUN, context, payload, mock_trace_manager)
+            _emit(TelemetryCase.WORKFLOW_RUN, context, payload, mock_trace_manager)
 
             mock_trace_manager.add_trace_task.assert_called_once()
 
@@ -63,7 +63,7 @@ class TestGatewayIntegrationTraceRouting:
             context = {"app_id": "app-123", "user_id": "user-456"}
             payload = {"workflow_run_id": "run-abc"}
 
-            emit(TelemetryCase.WORKFLOW_RUN, context, payload, mock_trace_manager)
+            _emit(TelemetryCase.WORKFLOW_RUN, context, payload, mock_trace_manager)
 
             mock_trace_manager.add_trace_task.assert_called_once()
 
@@ -76,7 +76,7 @@ class TestGatewayIntegrationTraceRouting:
             context = {"app_id": "app-123", "user_id": "user-456"}
             payload = {"node_id": "node-abc"}
 
-            emit(TelemetryCase.NODE_EXECUTION, context, payload, mock_trace_manager)
+            _emit(TelemetryCase.NODE_EXECUTION, context, payload, mock_trace_manager)
 
             mock_trace_manager.add_trace_task.assert_not_called()
 
@@ -89,7 +89,7 @@ class TestGatewayIntegrationTraceRouting:
             context = {"app_id": "app-123", "user_id": "user-456"}
             payload = {"node_id": "node-abc"}
 
-            emit(TelemetryCase.NODE_EXECUTION, context, payload, mock_trace_manager)
+            _emit(TelemetryCase.NODE_EXECUTION, context, payload, mock_trace_manager)
 
             mock_trace_manager.add_trace_task.assert_called_once()
 
@@ -106,7 +106,7 @@ class TestGatewayIntegrationMetricRouting:
             context = {"tenant_id": "tenant-123"}
             payload = {"app_id": "app-abc", "name": "My App"}
 
-            emit(TelemetryCase.APP_CREATED, context, payload)
+            _emit(TelemetryCase.APP_CREATED, context, payload)
 
             mock_delay.assert_called_once()
             envelope_json = mock_delay.call_args[0][0]
@@ -125,7 +125,7 @@ class TestGatewayIntegrationMetricRouting:
         context = {"tenant_id": "tenant-123", "app_id": "app-123"}
         payload = {"tool_name": "test_tool", "tool_inputs": {}, "tool_outputs": "result"}
 
-        emit(TelemetryCase.TOOL_EXECUTION, context, payload, mock_trace_manager)
+        _emit(TelemetryCase.TOOL_EXECUTION, context, payload, mock_trace_manager)
 
         mock_trace_manager.add_trace_task.assert_called_once()
 
@@ -139,7 +139,7 @@ class TestGatewayIntegrationMetricRouting:
         context = {"tenant_id": "tenant-123", "app_id": "app-123"}
         payload = {"message_id": "msg-123", "moderation_result": {"flagged": False}}
 
-        emit(TelemetryCase.MODERATION_CHECK, context, payload, mock_trace_manager)
+        _emit(TelemetryCase.MODERATION_CHECK, context, payload, mock_trace_manager)
 
         mock_trace_manager.add_trace_task.assert_called_once()
 
@@ -158,7 +158,7 @@ class TestGatewayIntegrationCEEligibility:
             context = {"app_id": "app-123", "user_id": "user-456"}
             payload = {"workflow_run_id": "run-abc"}
 
-            emit(TelemetryCase.WORKFLOW_RUN, context, payload, mock_trace_manager)
+            _emit(TelemetryCase.WORKFLOW_RUN, context, payload, mock_trace_manager)
 
             mock_trace_manager.add_trace_task.assert_called_once()
 
@@ -171,7 +171,7 @@ class TestGatewayIntegrationCEEligibility:
             context = {"app_id": "app-123", "user_id": "user-456"}
             payload = {"message_id": "msg-abc", "conversation_id": "conv-123"}
 
-            emit(TelemetryCase.MESSAGE_RUN, context, payload, mock_trace_manager)
+            _emit(TelemetryCase.MESSAGE_RUN, context, payload, mock_trace_manager)
 
             mock_trace_manager.add_trace_task.assert_called_once()
 
@@ -184,7 +184,7 @@ class TestGatewayIntegrationCEEligibility:
             context = {"app_id": "app-123", "user_id": "user-456"}
             payload = {"node_id": "node-abc"}
 
-            emit(TelemetryCase.NODE_EXECUTION, context, payload, mock_trace_manager)
+            _emit(TelemetryCase.NODE_EXECUTION, context, payload, mock_trace_manager)
 
             mock_trace_manager.add_trace_task.assert_not_called()
 
@@ -197,7 +197,7 @@ class TestGatewayIntegrationCEEligibility:
             context = {"app_id": "app-123", "user_id": "user-456"}
             payload = {"node_execution_data": {}}
 
-            emit(TelemetryCase.DRAFT_NODE_EXECUTION, context, payload, mock_trace_manager)
+            _emit(TelemetryCase.DRAFT_NODE_EXECUTION, context, payload, mock_trace_manager)
 
             mock_trace_manager.add_trace_task.assert_not_called()
 
@@ -210,7 +210,7 @@ class TestGatewayIntegrationCEEligibility:
             context = {"app_id": "app-123", "user_id": "user-456", "tenant_id": "tenant-789"}
             payload = {"operation_type": "generate", "instruction": "test"}
 
-            emit(TelemetryCase.PROMPT_GENERATION, context, payload, mock_trace_manager)
+            _emit(TelemetryCase.PROMPT_GENERATION, context, payload, mock_trace_manager)
 
             mock_trace_manager.add_trace_task.assert_not_called()
 
