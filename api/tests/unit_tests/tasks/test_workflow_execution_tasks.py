@@ -1,4 +1,6 @@
 from datetime import datetime
+from types import TracebackType
+from typing import Self
 from unittest.mock import Mock, patch
 
 from graphon.entities import WorkflowExecution
@@ -102,13 +104,18 @@ class _TaskSession:
         self._existing_run = existing_run
         self.committed = False
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, exc_type, exc, traceback) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
         return None
 
-    def scalar(self, _stmt):
+    def scalar(self, _stmt: object) -> WorkflowRun:
         return self._existing_run
 
     def commit(self) -> None:
