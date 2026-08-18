@@ -213,18 +213,17 @@ describe('MainNavLayout', () => {
   ])('keeps the global main nav on collection and creation route %s', (pathname) => {
     ;(usePathname as Mock).mockReturnValue(pathname)
 
-      render(
-        <MainNavLayout detailSidebar={<aside aria-label="Detail sidebar">Detail sidebar</aside>}>
-          <div>content</div>
-        </MainNavLayout>,
-      )
+    render(
+      <MainNavLayout detailSidebar={<aside aria-label="Detail sidebar">Detail sidebar</aside>}>
+        <div>content</div>
+      </MainNavLayout>,
+    )
 
-      expect(screen.getByTestId('main-nav')).toBeInTheDocument()
-      expect(
-        screen.queryByRole('complementary', { name: 'Detail sidebar' }),
-      ).not.toBeInTheDocument()
-    },
-  )
+    expect(screen.getByTestId('main-nav')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('complementary', { name: 'Detail sidebar' }),
+    ).not.toBeInTheDocument()
+  })
 
   it('keeps the global main nav on agent detail routes for dataset operators', () => {
     ;(usePathname as Mock).mockReturnValue('/agents/agent-1/configure')
