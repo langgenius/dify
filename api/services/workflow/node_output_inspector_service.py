@@ -59,15 +59,12 @@ from core.workflow.nodes.agent_v2.binding_resolver import (
     WorkflowAgentBindingError,
     WorkflowAgentBindingResolver,
 )
+from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from core.workflow.nodes.agent_v2.runtime_request_builder import (
     WorkflowAgentRuntimeRequestBuilder,
 )
 from factories.file_factory.builders import build_from_mapping
-from graphon.enums import (
-    BuiltinNodeTypes,
-    WorkflowExecutionStatus,
-    WorkflowNodeExecutionStatus,
-)
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.file import helpers as file_helpers
 from models import App
 from models.agent_config_entities import DeclaredOutputConfig, DeclaredOutputType
@@ -182,18 +179,12 @@ class _ResolvedDeclaration:
 
 
 def _is_agent_v2_node(node: Mapping[str, Any]) -> bool:
-    """A graph node is Agent v2 iff its ``data.type`` is the AGENT builtin
-    AND its ``data.version`` is ``"2"``.
+    """Return whether a graph node explicitly identifies the new Dify Agent node."""
 
-    ``BuiltinNodeTypes.AGENT`` is a ``ClassVar[NodeType]`` (plain string), not
-    a StrEnum, so we compare against it directly without ``.value``.
-    """
     data = node.get("data") or {}
     if not isinstance(data, Mapping):
         return False
-    if data.get("type") != BuiltinNodeTypes.AGENT:
-        return False
-    return str(data.get("version", "")) == "2"
+    return is_dify_agent_node_data(data)
 
 
 def _graph_nodes(workflow_run: WorkflowRun) -> list[Mapping[str, Any]]:

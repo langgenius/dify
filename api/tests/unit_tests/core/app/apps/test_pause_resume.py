@@ -1,5 +1,6 @@
 import sys
 import time
+from collections.abc import Mapping
 from types import ModuleType, SimpleNamespace
 from typing import Any
 
@@ -106,10 +107,19 @@ class _StubToolNode(Node[_StubToolNodeData]):
 def _patch_tool_node(mocker: MockerFixture):
     original_resolve_node_class = node_factory_module.resolve_workflow_node_class
 
-    def _patched_resolve_node_class(*, node_type: NodeType, node_version: str) -> type[Node]:
+    def _patched_resolve_node_class(
+        *,
+        node_type: NodeType,
+        node_version: str,
+        node_data: Mapping[str, Any] | BaseNodeData | None = None,
+    ) -> type[Node]:
         if node_type == BuiltinNodeTypes.TOOL:
             return _StubToolNode
-        return original_resolve_node_class(node_type=node_type, node_version=node_version)
+        return original_resolve_node_class(
+            node_type=node_type,
+            node_version=node_version,
+            node_data=node_data,
+        )
 
     mocker.patch.object(node_factory_module, "resolve_workflow_node_class", side_effect=_patched_resolve_node_class)
 
