@@ -17,7 +17,9 @@ from models.dataset import Dataset, DatasetMetadata, DatasetPermissionEnum, Docu
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom
 from models.knowledge_fs import (
     KnowledgeFSAppSpaceJoinType,
+    KnowledgeFSControlSpace,
     KnowledgeFSControlSpacePermissionRole,
+    KnowledgeFSControlSpaceState,
     KnowledgeFSControlSpaceVisibility,
     KnowledgeFSUpgradeDocument,
     KnowledgeFSUpgradeFileLease,
@@ -29,17 +31,21 @@ from models.knowledge_fs import (
     KnowledgeFSUpgradeStage,
 )
 from models.model import UploadFile
-from services.knowledge_fs import upgrade_service as upgrade_module
+from models.oauth import DatasourceProvider
+from services import dataset_knowledge_fs_upgrade_service as upgrade_module
+from services.dataset_knowledge_fs_upgrade_service import (
+    KnowledgeFSUpgradeConflictError,
+    KnowledgeFSUpgradeDocumentReconciler,
+    KnowledgeFSUpgradeError,
+    KnowledgeFSUpgradeNotFoundError,
+    KnowledgeFSUpgradeNotReadyError,
+    KnowledgeFSUpgradeRunner,
+    KnowledgeFSUpgradeSnapshotService,
+)
 from services.knowledge_fs.product_dto import (
     KnowledgeFSLogicalDocumentListResponse,
     KnowledgeFSLogicalDocumentResponse,
     KnowledgeFSMetadataFieldListResponse,
-)
-from services.knowledge_fs.upgrade_service import (
-    KnowledgeFSUpgradeDocumentReconciler,
-    KnowledgeFSUpgradeError,
-    KnowledgeFSUpgradeRunner,
-    KnowledgeFSUpgradeSnapshotService,
 )
 
 _TENANT_ID = "00000000-0000-0000-0000-000000000001"
@@ -250,9 +256,7 @@ def test_snapshot_is_immutable_after_the_legacy_dataset_changes(
         assert persisted_job.config_snapshot["embedding_model_provider"] == "openai"
         assert persisted_job.config_snapshot["retrieval_model"] == {"top_k": 8, "reranking_enable": True}
         assert persisted_job.config_snapshot["enable_api"] is True
-        assert persisted_job.config_snapshot["metadata_fields"] == [
-            {"name": "department", "type": "string"}
-        ]
+        assert persisted_job.config_snapshot["metadata_fields"] == [{"name": "department", "type": "string"}]
         assert snapshot_document.desired_enabled is False
         assert snapshot_document.legacy_archived is True
         assert snapshot_document.metadata_snapshot == {"department": "support"}
@@ -630,3 +634,699 @@ def test_access_migration_maps_visibility_members_apps_api_and_tags(
     assert runtime.space_tags.replace_tags.call_args.kwargs["tag_ids"] == job.tag_ids_snapshot
     with sqlite_session_factory() as session:
         assert session.get(KnowledgeFSUpgradeJob, job.id).stage is KnowledgeFSUpgradeStage.FINALIZING
+
+
+@pytest.mark.parametrize(
+    ("stage", "method_name", "result", "expected"),
+    [
+        (KnowledgeFSUpgradeStage.WAITING_FOR_SPACE, "_advance_when_space_is_active", None, True),
+        (KnowledgeFSUpgradeStage.CREATING_SOURCES, "_create_next_source", True, True),
+        (KnowledgeFSUpgradeStage.SUBMITTING_DOCUMENTS, "_submit_next_document", True, True),
+        (KnowledgeFSUpgradeStage.MIGRATING_ACCESS, "_migrate_access", None, True),
+        (KnowledgeFSUpgradeStage.FINALIZING, "_finalize", None, False),
+    ],
+)
+def test_runner_dispatches_each_durable_stage(
+    stage: KnowledgeFSUpgradeStage,
+    method_name: str,
+    result: bool | None,
+    expected: bool,
+) -> None:
+    job = _job(status=KnowledgeFSUpgradeJobStatus.QUEUED, stage=stage)
+    runner = KnowledgeFSUpgradeRunner(MagicMock())
+    runner._load_job = MagicMock(return_value=job)  # type: ignore[method-assign]
+    runner._mark_running = MagicMock()  # type: ignore[method-assign]
+    stage_method = MagicMock(return_value=result)
+    setattr(runner, method_name, stage_method)
+
+    assert runner.run_next(job_id=job.id, celery_task_id="task-1") is expected
+
+    runner._mark_running.assert_called_once_with(job_id=job.id, celery_task_id="task-1")
+    stage_method.assert_called_once_with(job)
+
+
+def test_runner_validation_creates_space_and_waits() -> None:
+    job = _job(status=KnowledgeFSUpgradeJobStatus.QUEUED, stage=KnowledgeFSUpgradeStage.VALIDATING)
+    runner = KnowledgeFSUpgradeRunner(MagicMock())
+    runner._load_job = MagicMock(return_value=job)  # type: ignore[method-assign]
+    runner._mark_running = MagicMock()  # type: ignore[method-assign]
+    runner._create_space = MagicMock()  # type: ignore[method-assign]
+
+    with pytest.raises(KnowledgeFSUpgradeNotReadyError, match="provisioning is pending"):
+        runner.run_next(job_id=job.id)
+
+    runner._create_space.assert_called_once_with(job)
+
+
+def test_runner_terminal_and_unknown_stages_do_not_continue() -> None:
+    runner = KnowledgeFSUpgradeRunner(MagicMock())
+    runner._mark_running = MagicMock()  # type: ignore[method-assign]
+    runner._load_job = MagicMock(return_value=_job(status=KnowledgeFSUpgradeJobStatus.SUCCEEDED))  # type: ignore[method-assign]
+    assert runner.run_next(job_id="done") is False
+    runner._mark_running.assert_not_called()
+
+    runner._load_job = MagicMock(  # type: ignore[method-assign]
+        return_value=_job(status=KnowledgeFSUpgradeJobStatus.QUEUED, stage=KnowledgeFSUpgradeStage.COMPLETED)
+    )
+    assert runner.run_next(job_id="completed-stage") is False
+    runner._mark_running.assert_called_once()
+
+
+def test_runner_failure_loading_and_running_state_are_persisted(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    job = _job(status=KnowledgeFSUpgradeJobStatus.QUEUED)
+    with sqlite_session_factory.begin() as session:
+        session.add(job)
+        session.flush()
+        lease = KnowledgeFSUpgradeFileLease(
+            job_id=job.id,
+            old_upload_file_id=_UPLOAD_FILE_ID,
+            expires_at=naive_utc_now() + timedelta(minutes=1),
+        )
+        session.add(lease)
+
+    runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
+    loaded = runner._load_job(job.id)
+    assert loaded.id == job.id
+    runner._mark_running(job_id=job.id, celery_task_id="task-2")
+    runner.fail(job_id=job.id, error=ValueError("broken"))
+
+    with sqlite_session_factory() as session:
+        persisted = session.get(KnowledgeFSUpgradeJob, job.id)
+        persisted_lease = session.get(KnowledgeFSUpgradeFileLease, lease.id)
+        assert persisted is not None
+        assert persisted.status is KnowledgeFSUpgradeJobStatus.FAILED
+        assert persisted.attempt_count == 1
+        assert persisted.celery_task_id == "task-2"
+        assert persisted.last_error_code == "ValueError"
+        assert persisted.last_error_message == "broken"
+        assert persisted.completed_at is not None
+        assert persisted_lease is not None
+        assert persisted_lease.expires_at > naive_utc_now() + timedelta(days=6)
+
+    with pytest.raises(KnowledgeFSUpgradeNotFoundError):
+        runner._load_job("00000000-0000-0000-0000-000000000099")
+    with pytest.raises(KnowledgeFSUpgradeNotFoundError):
+        runner._mark_running(job_id="00000000-0000-0000-0000-000000000099", celery_task_id=None)
+
+    runner.fail(job_id="00000000-0000-0000-0000-000000000099", error=RuntimeError("ignored"))
+
+
+def _resolved_configuration() -> dict[str, object]:
+    return {
+        "embedding": {"pluginId": "langgenius/openai", "provider": "openai", "model": "embedding"},
+        "retrieval": {
+            "defaultMode": "fast",
+            "reasoningModel": {
+                "pluginId": "langgenius/anthropic",
+                "provider": "anthropic",
+                "model": "reasoning",
+            },
+            "rerank": {
+                "enabled": True,
+                "model": {"pluginId": "langgenius/cohere", "provider": "cohere", "model": "rerank"},
+            },
+            "scoreThreshold": {"enabled": False, "stage": "mode-final", "value": None},
+            "topK": 4,
+        },
+    }
+
+
+def test_runner_creates_space_and_advances_after_activation(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    job = _job(
+        status=KnowledgeFSUpgradeJobStatus.RUNNING,
+        stage=KnowledgeFSUpgradeStage.VALIDATING,
+        total_sources=1,
+        config_snapshot={"name": "Legacy", "description": "Description", "icon": "book"},
+    )
+    with sqlite_session_factory.begin() as session:
+        session.add(job)
+
+    application = MagicMock()
+    application.create_space.return_value = SimpleNamespace(control_space_id=_CONTROL_SPACE_ID)
+    monkeypatch.setattr(upgrade_module, "_resolve_configuration", lambda _job: _resolved_configuration())
+    monkeypatch.setattr(
+        upgrade_module,
+        "get_knowledge_fs_runtime",
+        lambda _: SimpleNamespace(application=application),
+    )
+    runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
+    runner._create_space(job)
+
+    payload = application.create_space.call_args.kwargs["payload"]
+    assert payload.name == "Legacy"
+    assert payload.idempotency_key == f"upgrade:{job.id}:space"
+    with sqlite_session_factory.begin() as session:
+        persisted = session.get(KnowledgeFSUpgradeJob, job.id)
+        assert persisted is not None
+        assert persisted.stage is KnowledgeFSUpgradeStage.WAITING_FOR_SPACE
+        control_space = KnowledgeFSControlSpace(
+            tenant_id=_TENANT_ID,
+            owner_account_id=_ACCOUNT_ID,
+            provisioning_key="upgrade-test-space",
+            knowledge_space_id="00000000-0000-0000-0000-000000000040",
+            state=KnowledgeFSControlSpaceState.ACTIVE,
+        )
+        session.add(control_space)
+        session.flush()
+        persisted.new_control_space_id = control_space.id
+        control_space_id = control_space.id
+
+    job.new_control_space_id = control_space_id
+    runner._advance_when_space_is_active(job)
+    with sqlite_session_factory() as session:
+        assert session.get(KnowledgeFSUpgradeJob, job.id).stage is KnowledgeFSUpgradeStage.CREATING_SOURCES
+
+
+def test_runner_waiting_for_space_reports_each_invalid_state(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    job = _job(status=KnowledgeFSUpgradeJobStatus.RUNNING, stage=KnowledgeFSUpgradeStage.WAITING_FOR_SPACE)
+    with sqlite_session_factory.begin() as session:
+        session.add(job)
+    runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
+
+    with pytest.raises(KnowledgeFSUpgradeError, match="reference is missing"):
+        runner._advance_when_space_is_active(job)
+
+    job.new_control_space_id = _CONTROL_SPACE_ID
+    with pytest.raises(KnowledgeFSUpgradeError, match="was not found"):
+        runner._advance_when_space_is_active(job)
+
+    with sqlite_session_factory.begin() as session:
+        control_space = KnowledgeFSControlSpace(
+            tenant_id=_TENANT_ID,
+            owner_account_id=_ACCOUNT_ID,
+            provisioning_key="upgrade-test-provisioning",
+        )
+        session.add(control_space)
+        session.flush()
+        job.new_control_space_id = control_space.id
+        control_space_id = control_space.id
+
+    with pytest.raises(KnowledgeFSUpgradeNotReadyError, match="provisioning is pending"):
+        runner._advance_when_space_is_active(job)
+
+    with sqlite_session_factory.begin() as session:
+        control_space = session.get(KnowledgeFSControlSpace, control_space_id)
+        assert control_space is not None
+        control_space.state = KnowledgeFSControlSpaceState.ERROR
+    with pytest.raises(KnowledgeFSUpgradeError, match="failed in error"):
+        runner._advance_when_space_is_active(job)
+
+
+def _website_source_payload() -> dict[str, object]:
+    return {
+        "kind": "website_crawl",
+        "name": "Legacy Web",
+        "provider": "firecrawl",
+        "datasource": "crawl",
+        "parameters": {"only_main_content": True},
+        "root_url": "https://example.com",
+        "crawl_options": {"include_subpages": False, "limit": 1},
+        "selection": [{"source_url": "https://example.com/page", "title": "Page"}],
+        "sync_policy": "manual",
+    }
+
+
+def test_runner_creates_source_and_marks_its_documents_handed_off(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source_key = "website:firecrawl:job:1"
+    job = _job(
+        status=KnowledgeFSUpgradeJobStatus.RUNNING,
+        stage=KnowledgeFSUpgradeStage.CREATING_SOURCES,
+        new_control_space_id=_CONTROL_SPACE_ID,
+        total_documents=2,
+        total_sources=1,
+    )
+    with sqlite_session_factory.begin() as session:
+        session.add(job)
+        session.flush()
+        source = KnowledgeFSUpgradeSource(
+            job_id=job.id,
+            tenant_id=_TENANT_ID,
+            source_key=source_key,
+            payload_snapshot=_website_source_payload(),
+        )
+        documents = [
+            KnowledgeFSUpgradeDocument(
+                job_id=job.id,
+                tenant_id=_TENANT_ID,
+                old_document_id=f"00000000-0000-0000-0000-00000000005{index}",
+                name=f"page-{index}",
+                data_source_type="website_crawl",
+                data_source_info={"url": f"https://example.com/{index}"},
+                metadata_snapshot={},
+                desired_enabled=True,
+                legacy_archived=False,
+                legacy_indexing_status="completed",
+                source_key=source_key,
+            )
+            for index in range(2)
+        ]
+        session.add_all([source, *documents])
+
+    from tasks import knowledge_fs_initial_source_tasks as source_tasks
+
+    submit = MagicMock(
+        return_value=SimpleNamespace(
+            connection_id="connection-1",
+            source_id="source-1",
+            workflow_id="workflow-1",
+            workflow_error="initial-sync-failed",
+        )
+    )
+    monkeypatch.setattr(source_tasks, "submit_initial_source_for_upgrade", submit)
+    runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
+    assert runner._create_next_source(job) is True
+
+    with sqlite_session_factory() as session:
+        persisted_job = session.get(KnowledgeFSUpgradeJob, job.id)
+        persisted_source = session.get(KnowledgeFSUpgradeSource, source.id)
+        assert persisted_job is not None
+        assert persisted_job.completed_documents == 2
+        assert persisted_job.completed_sources == 1
+        assert persisted_source is not None
+        assert persisted_source.status is KnowledgeFSUpgradeItemStatus.SUCCEEDED
+        assert persisted_source.last_error_code == "initial-sync-failed"
+        assert all(
+            item.status is KnowledgeFSUpgradeItemStatus.SUCCEEDED
+            for item in session.scalars(
+                select(KnowledgeFSUpgradeDocument).where(KnowledgeFSUpgradeDocument.job_id == job.id)
+            )
+        )
+
+    assert runner._create_next_source(job) is True
+    with sqlite_session_factory() as session:
+        assert session.get(KnowledgeFSUpgradeJob, job.id).stage is KnowledgeFSUpgradeStage.SUBMITTING_DOCUMENTS
+
+
+@pytest.mark.parametrize("not_ready", [True, False])
+def test_runner_source_failure_is_retryable_or_persisted(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch, not_ready: bool
+) -> None:
+    job = _job(
+        status=KnowledgeFSUpgradeJobStatus.RUNNING,
+        stage=KnowledgeFSUpgradeStage.CREATING_SOURCES,
+        new_control_space_id=_CONTROL_SPACE_ID,
+        total_sources=1,
+    )
+    with sqlite_session_factory.begin() as session:
+        session.add(job)
+        session.flush()
+        source = KnowledgeFSUpgradeSource(
+            job_id=job.id,
+            tenant_id=_TENANT_ID,
+            source_key=f"source-failure-{not_ready}",
+            payload_snapshot=_website_source_payload(),
+        )
+        session.add(source)
+
+    from tasks import knowledge_fs_initial_source_tasks as source_tasks
+
+    error: Exception
+    if not_ready:
+        error = source_tasks.KnowledgeFSInitialSourceNotReadyError("busy")
+    else:
+        error = RuntimeError("source failed")
+    monkeypatch.setattr(source_tasks, "submit_initial_source_for_upgrade", MagicMock(side_effect=error))
+    runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
+
+    expected_error = KnowledgeFSUpgradeNotReadyError if not_ready else RuntimeError
+    with pytest.raises(expected_error):
+        runner._create_next_source(job)
+
+    with sqlite_session_factory() as session:
+        persisted = session.get(KnowledgeFSUpgradeSource, source.id)
+        assert persisted is not None
+        expected_status = KnowledgeFSUpgradeItemStatus.PENDING if not_ready else KnowledgeFSUpgradeItemStatus.FAILED
+        assert persisted.status is expected_status
+        if not not_ready:
+            assert persisted.last_error_code == "RuntimeError"
+            assert persisted.last_error_message == "source failed"
+
+
+def test_runner_document_boundaries_and_successful_finalize(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    job = _job(
+        status=KnowledgeFSUpgradeJobStatus.RUNNING,
+        stage=KnowledgeFSUpgradeStage.SUBMITTING_DOCUMENTS,
+        new_control_space_id=_CONTROL_SPACE_ID,
+        total_documents=1,
+    )
+    with sqlite_session_factory.begin() as session:
+        session.add(job)
+        session.flush()
+        document = KnowledgeFSUpgradeDocument(
+            job_id=job.id,
+            tenant_id=_TENANT_ID,
+            old_document_id="00000000-0000-0000-0000-000000000060",
+            name="missing.txt",
+            data_source_type="upload_file",
+            data_source_info={},
+            metadata_snapshot={},
+            desired_enabled=True,
+            legacy_archived=False,
+            legacy_indexing_status="completed",
+        )
+        session.add(document)
+
+    runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
+    with pytest.raises(KnowledgeFSUpgradeError, match="no source file reference"):
+        runner._submit_next_document(job)
+    with sqlite_session_factory.begin() as session:
+        persisted_document = session.get(KnowledgeFSUpgradeDocument, document.id)
+        assert persisted_document is not None
+        assert persisted_document.status is KnowledgeFSUpgradeItemStatus.FAILED
+        persisted_document.status = KnowledgeFSUpgradeItemStatus.SUCCEEDED
+        persisted_job = session.get(KnowledgeFSUpgradeJob, job.id)
+        assert persisted_job is not None
+        persisted_job.completed_documents = 1
+
+    assert runner._submit_next_document(job) is True
+    with sqlite_session_factory.begin() as session:
+        persisted_job = session.get(KnowledgeFSUpgradeJob, job.id)
+        assert persisted_job is not None
+        assert persisted_job.stage is KnowledgeFSUpgradeStage.MIGRATING_ACCESS
+        persisted_job.stage = KnowledgeFSUpgradeStage.FINALIZING
+
+    runner._finalize(job)
+    with sqlite_session_factory() as session:
+        persisted_job = session.get(KnowledgeFSUpgradeJob, job.id)
+        assert persisted_job is not None
+        assert persisted_job.status is KnowledgeFSUpgradeJobStatus.SUCCEEDED
+        assert persisted_job.stage is KnowledgeFSUpgradeStage.COMPLETED
+        assert persisted_job.completed_at is not None
+
+
+def test_upgrade_helper_source_identities_payloads_and_validation() -> None:
+    notion = KnowledgeFSUpgradeDocument(
+        job_id="00000000-0000-0000-0000-000000000070",
+        tenant_id=_TENANT_ID,
+        old_document_id="00000000-0000-0000-0000-000000000071",
+        name="Notion page",
+        data_source_type="notion_import",
+        data_source_info={"workspace_id": "workspace", "notion_page_id": "page"},
+        metadata_snapshot={},
+        desired_enabled=True,
+        legacy_archived=False,
+        legacy_indexing_status="completed",
+    )
+    website = KnowledgeFSUpgradeDocument(
+        job_id="00000000-0000-0000-0000-000000000070",
+        tenant_id=_TENANT_ID,
+        old_document_id="00000000-0000-0000-0000-000000000072",
+        name="Website page",
+        data_source_type="website_crawl",
+        data_source_info={"url": "https://example.com/page"},
+        metadata_snapshot={},
+        desired_enabled=True,
+        legacy_archived=False,
+        legacy_indexing_status="completed",
+    )
+    unsupported = KnowledgeFSUpgradeDocument(
+        job_id="00000000-0000-0000-0000-000000000070",
+        tenant_id=_TENANT_ID,
+        old_document_id="00000000-0000-0000-0000-000000000073",
+        name="Unsupported",
+        data_source_type="upload_file",
+        data_source_info={},
+        metadata_snapshot={},
+        desired_enabled=True,
+        legacy_archived=False,
+        legacy_indexing_status="completed",
+    )
+
+    assert upgrade_module._expected_provider_item_id(notion) == '["workspace","page"]'
+    assert (
+        upgrade_module._expected_provider_item_id(website)
+        == upgrade_module.sha256(b"https://example.com/page").hexdigest()
+    )
+    with pytest.raises(KnowledgeFSUpgradeError, match="no provider item identity"):
+        upgrade_module._expected_provider_item_id(unsupported)
+
+    assert upgrade_module._notion_source_group_key({"workspace_id": "workspace", "credential_id": "cred"}) == (
+        "notion:workspace:cred"
+    )
+    assert (
+        upgrade_module._website_source_group_key(
+            {"provider": " Firecrawl ", "job_id": "crawl", "url": "https://example.com"}
+        )
+        == "website:firecrawl:crawl"
+    )
+    with pytest.raises(KnowledgeFSUpgradeConflictError):
+        upgrade_module._notion_source_group_key({})
+    with pytest.raises(KnowledgeFSUpgradeConflictError):
+        upgrade_module._website_source_group_key({"provider": "firecrawl"})
+
+    notion_document = SimpleNamespace(
+        data_source_type="notion_import",
+        name="Page",
+    )
+    notion_payload = upgrade_module._source_payload_snapshot(
+        "Dataset",
+        [(notion_document, {"workspace_id": "workspace", "notion_page_id": "page", "type": "page"})],
+    )
+    assert notion_payload["kind"] == "online_document"
+    website_payload = upgrade_module._source_payload_snapshot(
+        "Dataset",
+        [(SimpleNamespace(data_source_type="website_crawl", name="Page"), {"provider": "firecrawl", "url": "u"})],
+    )
+    assert website_payload["kind"] == "website_crawl"
+    assert upgrade_module._chunks([1, 2, 3], 2) == [[1, 2], [3]]
+    with pytest.raises(KnowledgeFSUpgradeError, match="reference is missing"):
+        upgrade_module._required_space_id(_job())
+
+
+def test_notion_credential_resolution_prefers_direct_then_workspace_match(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        direct = DatasourceProvider(
+            tenant_id=_TENANT_ID,
+            name="Direct",
+            provider="notion_datasource",
+            plugin_id="langgenius/notion_datasource",
+            auth_type="oauth2",
+            encrypted_credentials={"workspace_id": "direct-workspace"},
+        )
+        fallback = DatasourceProvider(
+            tenant_id=_TENANT_ID,
+            name="Fallback",
+            provider="notion_datasource",
+            plugin_id="langgenius/notion_datasource",
+            auth_type="oauth2",
+            encrypted_credentials={"workspace_id": "fallback-workspace"},
+        )
+        session.add_all([direct, fallback])
+        session.flush()
+        direct_id = direct.id
+        fallback_id = fallback.id
+
+    runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
+    assert (
+        runner._resolve_notion_credential(
+            tenant_id=_TENANT_ID,
+            legacy_credential_id=direct_id,
+            workspace_id="ignored",
+        )
+        == direct_id
+    )
+    assert (
+        runner._resolve_notion_credential(
+            tenant_id=_TENANT_ID,
+            legacy_credential_id="00000000-0000-0000-0000-000000000090",
+            workspace_id="fallback-workspace",
+        )
+        == fallback_id
+    )
+
+
+def test_notion_credential_resolution_handles_single_fallback_and_missing(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    single_tenant_id = "00000000-0000-0000-0000-000000000091"
+    missing_tenant_id = "00000000-0000-0000-0000-000000000092"
+    with sqlite_session_factory.begin() as session:
+        only = DatasourceProvider(
+            tenant_id=single_tenant_id,
+            name="Only",
+            provider="notion_datasource",
+            plugin_id="langgenius/notion_datasource",
+            auth_type="oauth2",
+            encrypted_credentials={"workspace_id": "another-workspace"},
+        )
+        session.add(only)
+        session.flush()
+        only_id = only.id
+
+    runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
+    assert (
+        runner._resolve_notion_credential(
+            tenant_id=single_tenant_id,
+            legacy_credential_id="",
+            workspace_id="unmatched",
+        )
+        == only_id
+    )
+    with pytest.raises(KnowledgeFSUpgradeError, match="credential is unavailable"):
+        runner._resolve_notion_credential(
+            tenant_id=missing_tenant_id,
+            legacy_credential_id="",
+            workspace_id="missing",
+        )
+
+
+def test_document_submission_persists_missing_file_and_invalid_body_errors(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    account = Account(name="Upgrade owner", email="upgrade-errors@example.com")
+    with sqlite_session_factory.begin() as session:
+        session.add(account)
+        session.flush()
+        job = _job(
+            owner_account_id=account.id,
+            status=KnowledgeFSUpgradeJobStatus.RUNNING,
+            stage=KnowledgeFSUpgradeStage.SUBMITTING_DOCUMENTS,
+            new_control_space_id=_CONTROL_SPACE_ID,
+            total_documents=2,
+        )
+        session.add(job)
+        session.flush()
+        missing = KnowledgeFSUpgradeDocument(
+            job_id=job.id,
+            tenant_id=_TENANT_ID,
+            old_document_id="00000000-0000-0000-0000-000000000093",
+            name="missing.txt",
+            data_source_type="upload_file",
+            data_source_info={"upload_file_id": _UPLOAD_FILE_ID},
+            metadata_snapshot={},
+            desired_enabled=True,
+            legacy_archived=False,
+            legacy_indexing_status="completed",
+            old_upload_file_id=_UPLOAD_FILE_ID,
+        )
+        session.add(missing)
+
+    staged = MagicMock()
+    monkeypatch.setattr(upgrade_module, "KnowledgeFSStagedUploadService", lambda *_args, **_kwargs: staged)
+    monkeypatch.setattr(upgrade_module, "get_knowledge_fs_runtime", lambda _: SimpleNamespace(facade=MagicMock()))
+    runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
+    with pytest.raises(KnowledgeFSUpgradeError, match="source file is unavailable"):
+        runner._submit_next_document(job)
+
+    with sqlite_session_factory.begin() as session:
+        persisted_missing = session.get(KnowledgeFSUpgradeDocument, missing.id)
+        assert persisted_missing is not None
+        assert persisted_missing.status is KnowledgeFSUpgradeItemStatus.FAILED
+        upload_file = UploadFile(
+            tenant_id=_TENANT_ID,
+            storage_type=StorageType.LOCAL,
+            key=f"upload_files/{_TENANT_ID}/invalid.txt",
+            name="invalid.txt",
+            size=12,
+            extension="txt",
+            mime_type="text/plain",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by=account.id,
+            created_at=naive_utc_now(),
+            used=False,
+        )
+        session.add(upload_file)
+        session.flush()
+        invalid = KnowledgeFSUpgradeDocument(
+            job_id=job.id,
+            tenant_id=_TENANT_ID,
+            old_document_id="00000000-0000-0000-0000-000000000094",
+            name="invalid.txt",
+            data_source_type="upload_file",
+            data_source_info={"upload_file_id": upload_file.id},
+            metadata_snapshot={},
+            desired_enabled=True,
+            legacy_archived=False,
+            legacy_indexing_status="completed",
+            old_upload_file_id=upload_file.id,
+        )
+        session.add(invalid)
+
+    monkeypatch.setattr(upgrade_module.storage, "load", lambda _key: "not-bytes")
+    with pytest.raises(KnowledgeFSUpgradeError, match="invalid body"):
+        runner._submit_next_document(job)
+    with sqlite_session_factory() as session:
+        persisted_invalid = session.get(KnowledgeFSUpgradeDocument, invalid.id)
+        assert persisted_invalid is not None
+        assert persisted_invalid.status is KnowledgeFSUpgradeItemStatus.FAILED
+
+
+def test_reconciler_records_missing_remote_document_and_remote_error(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source_key = "website:firecrawl:job:1"
+    job = _job(
+        status=KnowledgeFSUpgradeJobStatus.SUCCEEDED,
+        stage=KnowledgeFSUpgradeStage.COMPLETED,
+        new_control_space_id=_CONTROL_SPACE_ID,
+    )
+    with sqlite_session_factory.begin() as session:
+        session.add(job)
+        session.flush()
+        source = KnowledgeFSUpgradeSource(
+            job_id=job.id,
+            tenant_id=_TENANT_ID,
+            source_key=source_key,
+            payload_snapshot=_website_source_payload(),
+            status=KnowledgeFSUpgradeItemStatus.SUCCEEDED,
+            new_source_id="source-1",
+        )
+        missing = KnowledgeFSUpgradeDocument(
+            job_id=job.id,
+            tenant_id=_TENANT_ID,
+            old_document_id="00000000-0000-0000-0000-000000000095",
+            name="missing-page",
+            data_source_type="website_crawl",
+            data_source_info={"url": "https://example.com/missing"},
+            metadata_snapshot={},
+            desired_enabled=True,
+            legacy_archived=False,
+            legacy_indexing_status="completed",
+            status=KnowledgeFSUpgradeItemStatus.SUCCEEDED,
+            source_key=source_key,
+        )
+        remote_error = KnowledgeFSUpgradeDocument(
+            job_id=job.id,
+            tenant_id=_TENANT_ID,
+            old_document_id="00000000-0000-0000-0000-000000000096",
+            name="remote-error",
+            data_source_type="upload_file",
+            data_source_info={"upload_file_id": _UPLOAD_FILE_ID},
+            metadata_snapshot={"department": "support"},
+            desired_enabled=True,
+            legacy_archived=False,
+            legacy_indexing_status="completed",
+            status=KnowledgeFSUpgradeItemStatus.SUCCEEDED,
+            new_document_asset_id=_DOCUMENT_ASSET_ID,
+        )
+        session.add_all([source, missing, remote_error])
+
+    facade = MagicMock()
+    facade.list_logical_documents.return_value = KnowledgeFSLogicalDocumentListResponse(
+        data=[_logical_document(enabled=True)], next_cursor=None
+    )
+    facade.update_document_metadata.side_effect = RuntimeError("remote metadata failed")
+    monkeypatch.setattr(upgrade_module, "get_knowledge_fs_runtime", lambda _: SimpleNamespace(facade=facade))
+
+    assert KnowledgeFSUpgradeDocumentReconciler(sqlite_session_factory).reconcile(job_id=job.id) == 2
+    with sqlite_session_factory() as session:
+        persisted_missing = session.get(KnowledgeFSUpgradeDocument, missing.id)
+        persisted_error = session.get(KnowledgeFSUpgradeDocument, remote_error.id)
+        assert persisted_missing is not None
+        assert persisted_missing.state_reconcile_attempt_count == 1
+        assert persisted_missing.state_reconcile_error == "The new logical document is not visible yet"
+        assert persisted_error is not None
+        assert persisted_error.state_reconcile_attempt_count == 1
+        assert persisted_error.state_reconcile_error == "remote metadata failed"

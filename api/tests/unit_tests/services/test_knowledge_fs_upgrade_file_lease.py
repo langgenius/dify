@@ -15,7 +15,7 @@ from models.knowledge_fs import (
     KnowledgeFSUpgradeJob,
 )
 from models.model import UploadFile
-from services.knowledge_fs.upgrade_file_lease import (
+from services.dataset_knowledge_fs_upgrade_file_lease import (
     active_upgrade_file_ids,
     cleanup_deferred_upgrade_files,
     release_upgrade_file_lease,
@@ -106,9 +106,7 @@ def test_cleanup_request_is_persisted_on_every_active_lease(
         assert reserve_upgrade_file_cleanup(session, [_ACTIVE_FILE_ID], now=now) == {_ACTIVE_FILE_ID}
 
     with sqlite_session_factory() as session:
-        persisted = list(
-            session.query(KnowledgeFSUpgradeFileLease).filter_by(old_upload_file_id=_ACTIVE_FILE_ID)
-        )
+        persisted = list(session.query(KnowledgeFSUpgradeFileLease).filter_by(old_upload_file_id=_ACTIVE_FILE_ID))
         assert len(persisted) == 2
         assert all(lease.cleanup_requested_at == now for lease in persisted)
 
@@ -153,16 +151,19 @@ def test_last_lease_release_deletes_deferred_orphan_file(
         )
         session.add(lease)
 
-    with patch("services.knowledge_fs.upgrade_file_lease.storage") as storage:
+    with patch("services.dataset_knowledge_fs_upgrade_file_lease.storage") as storage:
         assert cleanup_deferred_upgrade_files(sqlite_session_factory, now=now) == 0
         storage.delete.assert_not_called()
         with sqlite_session_factory.begin() as session:
-            assert release_upgrade_file_lease(
-                session,
-                job_id=job.id,
-                upload_file_id=upload_file.id,
-                now=now,
-            ) is True
+            assert (
+                release_upgrade_file_lease(
+                    session,
+                    job_id=job.id,
+                    upload_file_id=upload_file.id,
+                    now=now,
+                )
+                is True
+            )
 
     storage.delete.assert_called_once_with(upload_file.key)
     with sqlite_session_factory() as session:
@@ -226,14 +227,17 @@ def test_lease_release_keeps_file_referenced_by_another_legacy_document(
         )
         session.add_all([document, lease])
 
-    with patch("services.knowledge_fs.upgrade_file_lease.storage") as storage:
+    with patch("services.dataset_knowledge_fs_upgrade_file_lease.storage") as storage:
         with sqlite_session_factory.begin() as session:
-            assert release_upgrade_file_lease(
-                session,
-                job_id=job.id,
-                upload_file_id=upload_file.id,
-                now=now,
-            ) is False
+            assert (
+                release_upgrade_file_lease(
+                    session,
+                    job_id=job.id,
+                    upload_file_id=upload_file.id,
+                    now=now,
+                )
+                is False
+            )
 
     storage.delete.assert_not_called()
     with sqlite_session_factory() as session:
@@ -280,7 +284,7 @@ def test_expired_lease_sweeper_deletes_deferred_orphan_file(
         )
         session.add(lease)
 
-    with patch("services.knowledge_fs.upgrade_file_lease.storage") as storage:
+    with patch("services.dataset_knowledge_fs_upgrade_file_lease.storage") as storage:
         assert cleanup_deferred_upgrade_files(sqlite_session_factory, now=now) == 1
 
     storage.delete.assert_called_once_with(upload_file.key)

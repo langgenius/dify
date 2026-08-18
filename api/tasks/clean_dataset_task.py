@@ -24,7 +24,7 @@ from models.dataset import (
 )
 from models.model import UploadFile
 from models.workflow import Workflow
-from services.knowledge_fs.upgrade_file_lease import reserve_upgrade_file_cleanup
+from services.dataset_knowledge_fs_upgrade_file_lease import reserve_upgrade_file_cleanup
 from tasks.refresh_billing_vector_space_task import schedule_billing_vector_space_refresh
 
 logger = logging.getLogger(__name__)

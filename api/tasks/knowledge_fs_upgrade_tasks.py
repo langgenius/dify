@@ -7,8 +7,8 @@ import logging
 from celery import shared_task
 
 from core.db.session_factory import session_factory
-from services.knowledge_fs.upgrade_file_lease import cleanup_deferred_upgrade_files
-from services.knowledge_fs.upgrade_service import (
+from services.dataset_knowledge_fs_upgrade_file_lease import cleanup_deferred_upgrade_files
+from services.dataset_knowledge_fs_upgrade_service import (
     KnowledgeFSUpgradeDocumentReconciler,
     KnowledgeFSUpgradeNotReadyError,
     KnowledgeFSUpgradeRunner,

@@ -38,6 +38,7 @@ from models.knowledge_fs import (
 from models.model import App, AppMode, Tag, TagBinding, UploadFile
 from models.oauth import DatasourceProvider
 from models.provider_ids import ModelProviderID
+from services.dataset_knowledge_fs_upgrade_file_lease import release_upgrade_file_lease
 from services.feature_service import FeatureService
 from services.knowledge_fs.product_dto import (
     KnowledgeFSAppBindingPayload,
@@ -57,7 +58,6 @@ from services.knowledge_fs.product_dto import (
 )
 from services.knowledge_fs.runtime import get_knowledge_fs_runtime
 from services.knowledge_fs.staged_upload_service import KnowledgeFSStagedUploadService
-from services.knowledge_fs.upgrade_file_lease import release_upgrade_file_lease
 
 _ACTIVE_JOB_STATUSES = (KnowledgeFSUpgradeJobStatus.QUEUED, KnowledgeFSUpgradeJobStatus.RUNNING)
 _SOURCE_SELECTION_LIMIT = 200
@@ -852,7 +852,7 @@ class KnowledgeFSUpgradeDocumentReconciler:
                         control_space_id=_required_space_id(job),
                         document_id=current.id,
                         payload=KnowledgeFSDocumentMetadataPayload(
-                            expected_row_version=current.row_version,
+                            expectedRowVersion=current.row_version,
                             patch=dict(document.metadata_snapshot),
                         ),
                     )
@@ -864,7 +864,7 @@ class KnowledgeFSUpgradeDocumentReconciler:
                         document_id=current.id,
                         payload=KnowledgeFSDocumentAvailabilityPayload(
                             enabled=document.desired_enabled,
-                            expected_row_version=current.row_version,
+                            expectedRowVersion=current.row_version,
                         ),
                     )
             except Exception as error:

@@ -54,17 +54,17 @@ from models.enums import ApiTokenType, SegmentStatus
 from models.provider_ids import ModelProviderID
 from services.api_token_service import ApiTokenCache, get_effective_token_last_used_at
 from services.app_service import AppService
-from services.dataset_ref_service import DatasetRefService
-from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
-from services.enterprise import rbac_service as enterprise_rbac_service
-from services.enterprise.rbac_service import RBACResourceWhitelistScope, ReplaceMemberBindings
-from services.knowledge_fs.product_dto import KnowledgeFSUpgradeJobResponse, KnowledgeFSUpgradeRetryResponse
-from services.knowledge_fs.upgrade_service import (
+from services.dataset_knowledge_fs_upgrade_service import (
     KnowledgeFSUpgradeConflictError,
     KnowledgeFSUpgradeNotFoundError,
     KnowledgeFSUpgradeSnapshotService,
     upgrade_job_response,
 )
+from services.dataset_ref_service import DatasetRefService
+from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
+from services.enterprise import rbac_service as enterprise_rbac_service
+from services.enterprise.rbac_service import RBACResourceWhitelistScope, ReplaceMemberBindings
+from services.knowledge_fs.product_dto import KnowledgeFSUpgradeJobResponse, KnowledgeFSUpgradeRetryResponse
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 register_response_schema_models(console_ns, ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse)

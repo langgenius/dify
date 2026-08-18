@@ -33,6 +33,8 @@ from dev.check_knowledge_fs_coverage import (
         "api/extensions/ext_knowledge_fs_observability.py",
         "api/models/knowledge_fs.py",
         "api/repositories/sqlalchemy_knowledge_fs_cutover_repository.py",
+        "api/services/dataset_knowledge_fs_upgrade_file_lease.py",
+        "api/services/dataset_knowledge_fs_upgrade_service.py",
         "api/services/knowledge_fs/runtime.py",
         "api/services/knowledge_fs_capability.py",
         "api/tasks/knowledge_fs_lifecycle_tasks.py",

@@ -156,6 +156,8 @@ def is_core_coverage_path(path: str) -> bool:
         "api/controllers/openapi/knowledge_fs.py",
         "api/events/event_handlers/sync_knowledge_fs_bindings_when_app_published_workflow_updated.py",
         "api/extensions/ext_knowledge_fs_observability.py",
+        "api/services/dataset_knowledge_fs_upgrade_file_lease.py",
+        "api/services/dataset_knowledge_fs_upgrade_service.py",
         "api/services/knowledge_fs_capability.py",
     }:
         return True

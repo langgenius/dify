@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from services.knowledge_fs.upgrade_service import KnowledgeFSUpgradeNotReadyError
+from services.dataset_knowledge_fs_upgrade_service import KnowledgeFSUpgradeNotReadyError
 from tasks.knowledge_fs_upgrade_tasks import (
     KNOWLEDGE_FS_UPGRADE_QUEUE,
     cleanup_deferred_knowledge_fs_upgrade_files,
