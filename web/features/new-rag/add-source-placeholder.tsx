@@ -12,8 +12,9 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
-import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Input } from '@langgenius/dify-ui/input'
 import {
   NumberField,
   NumberFieldControls,
@@ -66,14 +67,13 @@ export function PendingWebsiteSetup({
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field name="rootUrl" className="gap-1.5">
           <FieldLabel>{t(($) => $['newKnowledge.rootUrl'])}</FieldLabel>
-          <FieldControl
+          <Input
             type="url"
             inputMode="url"
             autoComplete="off"
             maxLength={NEW_KNOWLEDGE_SOURCE_URL_MAX_LENGTH}
             value={draft.rootUrl}
             placeholder={t(($) => $['newKnowledge.rootUrlPlaceholder'])}
-            size="large"
             onValueChange={(value) => {
               updateDraft({ ...draft, rootUrl: value })
             }}
@@ -81,13 +81,12 @@ export function PendingWebsiteSetup({
         </Field>
         <Field name="sourceName" className="gap-1.5">
           <FieldLabel>{t(($) => $['newKnowledge.sourceName'])}</FieldLabel>
-          <FieldControl
+          <Input
             type="text"
             autoComplete="off"
             maxLength={NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH}
             value={draft.sourceName}
             placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
-            size="large"
             onValueChange={(value) => {
               updateDraft({ ...draft, sourceName: value })
             }}
@@ -245,13 +244,12 @@ export function UnavailableConnectedSourceSetup({
               *
             </span>
           </FieldLabel>
-          <FieldControl
+          <Input
             type="text"
             autoComplete="off"
             maxLength={NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH}
             value={draft.sourceName}
             placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
-            size="large"
             onValueChange={(value) => onDraftChange({ ...draft, sourceName: value })}
           />
         </Field>

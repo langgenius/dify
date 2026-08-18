@@ -10,13 +10,8 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
-import {
-  Field,
-  FieldControl,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-} from '@langgenius/dify-ui/field'
+import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Input } from '@langgenius/dify-ui/input'
 import {
   Select,
   SelectContent,
@@ -253,7 +248,7 @@ function DatasourceParameterField({
       <FieldLabel>
         <ParameterLabel label={label} required={parameter.required} />
       </FieldLabel>
-      <FieldControl
+      <Input
         aria-describedby={describedBy}
         autoComplete="off"
         disabled={disabled}
@@ -269,7 +264,6 @@ function DatasourceParameterField({
         min={parameter.min}
         placeholder={placeholder || undefined}
         required={parameter.required}
-        size="large"
         step={parameter.type === 'number' ? numberStep : undefined}
         type={parameter.type === 'number' ? 'number' : parameter.name === 'url' ? 'url' : 'text'}
         value={

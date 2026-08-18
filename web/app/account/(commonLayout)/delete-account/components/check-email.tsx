@@ -44,10 +44,14 @@ export default function CheckEmail(props: DeleteAccountProps) {
           {t(($) => $['account.deletePrivacyLink'], { ns: 'common' })}
         </Link>
       </div>
-      <label className="mt-3 mb-1 flex h-6 items-center system-sm-semibold text-text-secondary">
+      <label
+        htmlFor="delete-account-email"
+        className="mt-3 mb-1 flex h-6 items-center system-sm-semibold text-text-secondary"
+      >
         {t(($) => $['account.deleteLabel'], { ns: 'common' })}
       </label>
       <Input
+        id="delete-account-email"
         placeholder={t(($) => $['account.deletePlaceholder'], { ns: 'common' }) as string}
         onChange={(e) => {
           setUserInputEmail(e.target.value)

@@ -44,6 +44,7 @@ def test_dify_plugin_llm_config_discards_legacy_credentials() -> None:
             "model": "gpt-4o-mini",
             "credentials": {"api_key": "secret", "nested": {"legacy": True}},
             "model_settings": {"temperature": 0.2, "max_tokens": 64},
+            "context_window_tokens": 128_000,
         }
     )
 
@@ -52,6 +53,7 @@ def test_dify_plugin_llm_config_discards_legacy_credentials() -> None:
     assert not hasattr(config, "credentials")
     assert "credentials" not in config.model_dump(mode="json")
     assert config.model_settings == {"temperature": 0.2, "max_tokens": 64}
+    assert config.context_window_tokens == 128_000
 
 
 def test_dify_plugin_llm_config_rejects_old_provider_field() -> None:
@@ -62,6 +64,16 @@ def test_dify_plugin_llm_config_rejects_old_provider_field() -> None:
                 "plugin_id": "langgenius/openai",
                 "model": "gpt-4o-mini",
             }
+        )
+
+
+def test_dify_plugin_llm_config_rejects_non_positive_context_window() -> None:
+    with pytest.raises(ValidationError):
+        _ = DifyPluginLLMLayerConfig(
+            plugin_id="langgenius/openai",
+            model_provider="openai",
+            model="gpt-4o-mini",
+            context_window_tokens=0,
         )
 
 

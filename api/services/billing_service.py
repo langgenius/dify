@@ -209,6 +209,10 @@ class BillingService:
     _PLAN_CACHE_TTL = 600
 
     @classmethod
+    def ensure_new_agent_beta_revision(cls, revision_id: str) -> None:
+        cls._send_request("POST", f"/new-agent-beta/revisions/{revision_id}/ensure")
+
+    @classmethod
     def get_info(cls, tenant_id: str, exclude_vector_space: bool = False) -> BillingInfo:
         params = {"tenant_id": tenant_id}
         if exclude_vector_space:

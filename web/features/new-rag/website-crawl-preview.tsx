@@ -17,9 +17,10 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset } from '@langgenius/dify-ui/fieldset'
 import { Form } from '@langgenius/dify-ui/form'
+import { Input } from '@langgenius/dify-ui/input'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
@@ -1347,7 +1348,7 @@ export function WebsiteCrawlPreview({
                   {t(($) => $['newKnowledge.sourceName'])}
                   <span className="ml-0.5 text-text-destructive">*</span>
                 </FieldLabel>
-                <FieldControl
+                <Input
                   ref={sourceNameInputRef}
                   type="text"
                   autoComplete="off"
@@ -1355,7 +1356,6 @@ export function WebsiteCrawlPreview({
                   maxLength={NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH}
                   value={sourceName}
                   placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
-                  size="large"
                   onValueChange={setSourceName}
                 />
               </Field>

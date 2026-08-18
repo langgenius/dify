@@ -17,15 +17,10 @@ import {
   DialogPortal,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import {
-  Field,
-  FieldControl,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-} from '@langgenius/dify-ui/field'
+import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Form } from '@langgenius/dify-ui/form'
+import { Input } from '@langgenius/dify-ui/input'
 import { RadioGroup } from '@langgenius/dify-ui/radio'
 import {
   Select,
@@ -477,7 +472,7 @@ export function CreateKnowledgePage() {
                         *
                       </span>
                     </FieldLabel>
-                    <FieldControl
+                    <Input
                       autoComplete="off"
                       aria-describedby={
                         nameLengthInvalid ? 'knowledge-create-name-error' : undefined

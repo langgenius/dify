@@ -9,8 +9,8 @@ if "graphon.model_runtime.entities.llm_entities" not in sys.modules:
     llm_entities_module = types.ModuleType("graphon.model_runtime.entities.llm_entities")
     message_entities_module = types.ModuleType("graphon.model_runtime.entities.message_entities")
 
-    llm_entities_module.LLMResultChunk = type("LLMResultChunk", (), {})
-    llm_entities_module.LLMUsage = type("LLMUsage", (), {})
+    setattr(llm_entities_module, "LLMResultChunk", type("LLMResultChunk", (), {}))
+    setattr(llm_entities_module, "LLMUsage", type("LLMUsage", (), {}))
 
     for name in (
         "AssistantPromptMessage",
@@ -34,10 +34,10 @@ if "graphon.model_runtime.entities.llm_entities" not in sys.modules:
     sys.modules["graphon.model_runtime.entities.llm_entities"] = llm_entities_module
     sys.modules["graphon.model_runtime.entities.message_entities"] = message_entities_module
 
-    graphon_module.model_runtime = model_runtime_module
-    model_runtime_module.entities = entities_module
-    entities_module.llm_entities = llm_entities_module
-    entities_module.message_entities = message_entities_module
+    setattr(graphon_module, "model_runtime", model_runtime_module)
+    setattr(model_runtime_module, "entities", entities_module)
+    setattr(entities_module, "llm_entities", llm_entities_module)
+    setattr(entities_module, "message_entities", message_entities_module)
 
 if "jsonschema" not in sys.modules:
     jsonschema_module = types.ModuleType("jsonschema")
@@ -65,10 +65,10 @@ if "jsonschema" not in sys.modules:
     def _validator_for(schema):
         return _Validator
 
-    jsonschema_module.SchemaError = _SchemaError
-    jsonschema_exceptions_module.ValidationError = _ValidationError
-    jsonschema_protocols_module.Validator = _Validator
-    jsonschema_validators_module.validator_for = _validator_for
+    setattr(jsonschema_module, "SchemaError", _SchemaError)
+    setattr(jsonschema_exceptions_module, "ValidationError", _ValidationError)
+    setattr(jsonschema_protocols_module, "Validator", _Validator)
+    setattr(jsonschema_validators_module, "validator_for", _validator_for)
 
     sys.modules["jsonschema"] = jsonschema_module
     sys.modules["jsonschema.exceptions"] = jsonschema_exceptions_module
@@ -95,8 +95,8 @@ class FakeProvider:
 
 def _runtime_backend_profile() -> RuntimeBackendProfile:
     return RuntimeBackendProfile(
-        home_snapshots=cast(HomeSnapshotBackend, FakeProvider()),
-        execution_bindings=cast(ExecutionBindingBackend, FakeProvider()),
+        home_snapshots=cast(HomeSnapshotBackend, cast(object, FakeProvider())),
+        execution_bindings=cast(ExecutionBindingBackend, cast(object, FakeProvider())),
     )
 
 

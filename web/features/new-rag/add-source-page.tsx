@@ -5,9 +5,10 @@ import type { NewKnowledgeSourceDraft, NewKnowledgeSourceType } from './routes'
 import type { SourceConnection as Connection, SourceProvider as Provider } from './source-models'
 import type { InstalledSourceProviderOption, SourceProviderOption } from './source-provider-options'
 import { Button } from '@langgenius/dify-ui/button'
-import { Field, FieldControl, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Form } from '@langgenius/dify-ui/form'
+import { Input } from '@langgenius/dify-ui/input'
 import { Radio, RadioGroup } from '@langgenius/dify-ui/radio'
 import {
   Select,
@@ -271,7 +272,7 @@ function ProviderFieldControl({
             {label}
             {field.required && <span className="ml-0.5 text-text-destructive">*</span>}
           </FieldLabel>
-          <FieldControl
+          <Input
             aria-describedby={descriptionId}
             required={field.required}
             value={value}
@@ -286,7 +287,6 @@ function ProviderFieldControl({
             }
             inputMode={field.format === 'uri' ? 'url' : undefined}
             autoComplete={field.secret ? 'new-password' : 'off'}
-            size="large"
             onValueChange={setValue}
           />
         </>
