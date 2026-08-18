@@ -8,6 +8,7 @@ from enum import Enum, auto
 
 from configs import dify_config
 from extensions.ext_redis import redis_client
+from graphon.graph_engine.command_channels import RedisChannel
 from graphon.graph_engine.manager import GraphEngineManager
 
 logger = logging.getLogger(__name__)
@@ -20,11 +21,50 @@ class AppExecutionState(Enum):
     TERMINAL = auto()
 
 
+def app_task_command_channel_key(task_id: str) -> str:
+    """Redis key of the GraphEngine command channel for one app task."""
+    return f"workflow:{task_id}:commands"
+
+
 def set_app_task_stop_flag(task_id: str) -> None:
     if not task_id:
         return
 
     redis_client.setex(f"generate_task_stopped:{task_id}", 600, 1)
+
+
+def clear_app_task_cancellation_signals(task_id: str) -> None:
+    """Discard cancellation signals left over from earlier attempts of one task.
+
+    Both cancellation channels are keyed by task ID and outlive the attempt that
+    armed them: the stop flag lives for 600 seconds and a queued ``AbortCommand``
+    for an hour, and neither is consumed while no engine is running. A resumed
+    workflow deliberately reuses the paused run's task ID, so without this reset
+    it inherits those signals and aborts itself as soon as it starts. Call this
+    only when starting a new attempt that is meant to run, never mid-execution.
+    """
+    if not task_id:
+        return
+
+    try:
+        redis_client.delete(f"generate_task_stopped:{task_id}")
+    except Exception:
+        logger.exception("Failed to clear stop flag for app task %s", task_id)
+
+    channel_key = app_task_command_channel_key(task_id)
+    try:
+        # fetch_commands() drains the queue and its pending marker together; the
+        # explicit delete covers a queue whose marker was already consumed.
+        discarded = RedisChannel(redis_client, channel_key).fetch_commands()
+        redis_client.delete(channel_key)
+        if discarded:
+            logger.info(
+                "Discarded %s stale GraphEngine command(s) for app task %s",
+                len(discarded),
+                task_id,
+            )
+    except Exception:
+        logger.exception("Failed to clear pending GraphEngine commands for app task %s", task_id)
 
 
 class AppExecutionCoordinator:
