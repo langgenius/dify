@@ -11,7 +11,30 @@ from flask import Flask
 from controllers.web.app import AppAccessMode, AppMeta, AppParameterApi, AppWebAuthPermission
 from controllers.web.error import AgentNotPublishedError, AppUnavailableError
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
+from models.enums import EndUserType
+from models.model import App, AppMode, EndUser
 from services.app_definition_query_service import AppDefinitionNotPublishedError, AppDefinitionUnavailableError
+
+
+def _make_app() -> App:
+    return App(
+        id="app-1",
+        tenant_id="tenant-1",
+        name="Web app",
+        mode=AppMode.CHAT,
+        enable_site=True,
+        enable_api=True,
+    )
+
+
+def _make_end_user() -> EndUser:
+    return EndUser(
+        id="end-user-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        type=EndUserType.BROWSER,
+        session_id="session-1",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -26,10 +49,10 @@ class TestAppParameterApi:
             user_input_form=[],
         )
         application_services.return_value = SimpleNamespace(app_definitions=app_definitions)
-        app_model = SimpleNamespace(id="app-1")
+        app_model = _make_app()
 
         with app.test_request_context("/parameters"):
-            result = AppParameterApi().get(app_model, SimpleNamespace())
+            result = AppParameterApi().get(app_model, _make_end_user())
 
         assert result["opening_statement"] == "Hello"
         app_definitions.get_public_parameters.assert_called_once_with("app-1")
@@ -55,7 +78,7 @@ class TestAppParameterApi:
 
         with app.test_request_context("/parameters"):
             with pytest.raises(http_error):
-                AppParameterApi().get(SimpleNamespace(id="app-1"), SimpleNamespace())
+                AppParameterApi().get(_make_app(), _make_end_user())
 
 
 # ---------------------------------------------------------------------------
@@ -67,10 +90,10 @@ class TestAppMeta:
         app_definitions = MagicMock()
         app_definitions.get_tool_icons.return_value = {}
         application_services.return_value = SimpleNamespace(app_definitions=app_definitions)
-        app_model = SimpleNamespace(id="app-1")
+        app_model = _make_app()
 
         with app.test_request_context("/meta"):
-            result = AppMeta().get(app_model, SimpleNamespace())
+            result = AppMeta().get(app_model, _make_end_user())
 
         assert result == {"tool_icons": {}}
         app_definitions.get_tool_icons.assert_called_once_with("app-1")
@@ -83,7 +106,7 @@ class TestAppMeta:
 
         with app.test_request_context("/meta"):
             with pytest.raises(AppUnavailableError) as raised:
-                AppMeta().get(SimpleNamespace(id="app-1"), SimpleNamespace())
+                AppMeta().get(_make_app(), _make_end_user())
 
         assert raised.value.data == {
             "code": "app_unavailable",

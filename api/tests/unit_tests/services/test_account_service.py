@@ -1,5 +1,5 @@
 import json
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 from uuid import UUID
@@ -2288,18 +2288,19 @@ class TestRegisterService:
     # ==================== RBAC Member Invitation Tests ====================
 
     @pytest.mark.usefixtures("mock_task_dependencies")
-    def test_invite_new_member_rbac_enabled_new_account(self, sqlite_session: Session) -> None:
+    def test_invite_new_member_rbac_enabled_new_account(
+        self, sqlite_session: Session, config_overrides: Callable[..., None]
+    ) -> None:
         """When RBAC is enabled, create the member join and replace RBAC member roles."""
+        config_overrides(RBAC_ENABLED=True)
         mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-789"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-456", name="Inviter")
 
         with (
             patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
-            patch("services.account_service.dify_config") as mock_config,
         ):
             mock_lookup.return_value = None
-            mock_config.RBAC_ENABLED = True
 
             mock_new_account = TestAccountAssociatedDataFactory.create_account_mock(
                 account_id="new-user-rbac", email="rbac@example.com", name="rbacuser", status="pending"
@@ -2336,8 +2337,11 @@ class TestRegisterService:
                 )
 
     @pytest.mark.usefixtures("mock_task_dependencies")
-    def test_invite_new_member_rbac_enabled_existing_account(self, sqlite_session: Session) -> None:
+    def test_invite_new_member_rbac_enabled_existing_account(
+        self, sqlite_session: Session, config_overrides: Callable[..., None]
+    ) -> None:
         """When RBAC is enabled and account exists, create the member join and replace RBAC member roles."""
+        config_overrides(RBAC_ENABLED=True)
         mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-789"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-456", name="Inviter")
@@ -2347,10 +2351,8 @@ class TestRegisterService:
 
         with (
             patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
-            patch("services.account_service.dify_config") as mock_config,
         ):
             mock_lookup.return_value = mock_existing_account
-            mock_config.RBAC_ENABLED = True
 
             with (
                 patch("services.account_service.TenantService.check_member_permission"),
@@ -2383,9 +2385,13 @@ class TestRegisterService:
                 )
 
     def test_invite_new_member_rbac_enabled_existing_active_account_adds_role_before_signin_response(
-        self, sqlite_session: Session, mock_task_dependencies: MagicMock
+        self,
+        sqlite_session: Session,
+        mock_task_dependencies: MagicMock,
+        config_overrides: Callable[..., None],
     ) -> None:
         """Existing active accounts still need an RBAC membership before the API returns the signin URL."""
+        config_overrides(RBAC_ENABLED=True)
         mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-789"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-456", name="Inviter")
@@ -2395,10 +2401,8 @@ class TestRegisterService:
 
         with (
             patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
-            patch("services.account_service.dify_config") as mock_config,
         ):
             mock_lookup.return_value = mock_existing_account
-            mock_config.RBAC_ENABLED = True
 
             with (
                 patch("services.account_service.TenantService.check_member_permission"),
@@ -2431,18 +2435,19 @@ class TestRegisterService:
                 mock_task_dependencies.delay.assert_not_called()
 
     @pytest.mark.usefixtures("mock_task_dependencies")
-    def test_invite_new_member_rbac_disabled_uses_legacy_role(self, sqlite_session: Session) -> None:
+    def test_invite_new_member_rbac_disabled_uses_legacy_role(
+        self, sqlite_session: Session, config_overrides: Callable[..., None]
+    ) -> None:
         """When RBAC is disabled, create_tenant_member should be called and MemberRoles.replace should NOT."""
+        config_overrides(RBAC_ENABLED=False)
         mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-legacy"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-789", name="Inviter")
 
         with (
             patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
-            patch("services.account_service.dify_config") as mock_config,
         ):
             mock_lookup.return_value = None
-            mock_config.RBAC_ENABLED = False
 
             mock_new_account = TestAccountAssociatedDataFactory.create_account_mock(
                 account_id="legacy-user", email="legacy@example.com", name="legacyuser", status="pending"

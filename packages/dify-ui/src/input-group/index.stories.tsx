@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
-import { expect, spyOn, within } from 'storybook/test'
+import { expect, spyOn, waitFor, waitForElementToBeRemoved, within } from 'storybook/test'
 import { Button } from '../button'
 import {
   DropdownMenu,
@@ -204,9 +204,15 @@ export const WithDropdownAction: Story = {
     await userEvent.click(trigger)
 
     const body = within(canvasElement.ownerDocument.body)
-    await userEvent.click(await body.findByRole('menuitem', { name: 'Settings' }))
+    const settings = await body.findByRole('menuitem', { name: 'Settings' })
+    const settingsRemoved = waitForElementToBeRemoved(() =>
+      body.queryByRole('menuitem', { name: 'Settings', hidden: true }),
+    )
+    await userEvent.click(settings)
 
-    await expect(trigger).toHaveFocus()
-    await expect(body.queryByRole('menuitem', { name: 'Settings' })).not.toBeInTheDocument()
+    await settingsRemoved
+    await waitFor(async () => {
+      await expect(trigger).toHaveFocus()
+    })
   },
 }
