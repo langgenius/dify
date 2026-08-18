@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -24,10 +25,14 @@ def _file() -> File:
     )
 
 
+def _message_stream(messages: list[ToolInvokeMessage]) -> Generator[ToolInvokeMessage, None, None]:
+    yield from messages
+
+
 def _run_transform(messages: list[ToolInvokeMessage]) -> tuple[str, ArrayFileSegment]:
     events = list(
         AgentMessageTransformer().transform(
-            messages=iter(messages),
+            messages=_message_stream(messages),
             tool_info={},
             parameters_for_log={},
             user_id="user-id",
@@ -45,7 +50,7 @@ def _run_transform(messages: list[ToolInvokeMessage]) -> tuple[str, ArrayFileSeg
 
 
 def test_transform_passes_conversation_id_to_tool_file_message_transformer() -> None:
-    messages = iter(())
+    messages = _message_stream([])
     transformer = AgentMessageTransformer()
 
     with patch.object(ToolFileMessageTransformer, "transform_tool_invoke_messages", return_value=iter(())) as transform:
