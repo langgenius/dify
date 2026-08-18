@@ -209,11 +209,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/annotation/filter.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/app/annotation/header-opts/index.tsx": {
     "typescript/no-explicit-any": {
       "count": 1
@@ -492,9 +487,6 @@
     }
   },
   "web/app/components/app/log/filter.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "react/only-export-components": {
       "count": 1
     }
@@ -557,9 +549,6 @@
     }
   },
   "web/app/components/app/workflow-log/filter.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "react/only-export-components": {
       "count": 1
     }
