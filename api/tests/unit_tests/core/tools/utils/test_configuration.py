@@ -149,6 +149,29 @@ def test_decrypt_tool_parameters_ignores_stale_cache_for_different_secret_input(
     mock_set.assert_called_once()
 
 
+def test_decrypt_tool_parameters_cache_hit_never_stales_non_secret_form_param():
+    """A cache hit must only ever supply the decrypted secret field(s); a non-secret FORM
+    parameter that varies per call (e.g. a loop-bound recipient) alongside a secret that
+    stays constant must always come from the current call's own inputs, never from the
+    cache entry written by an earlier call."""
+    manager = _build_manager()
+    fingerprint = manager._secret_input_fingerprint({"secret": "enc-same"}, manager._merge_parameters())
+
+    with (
+        patch.object(
+            ToolParameterCache,
+            "get",
+            return_value={"secret": "dec-first", "__cache_fingerprint": fingerprint},
+        ),
+        patch.object(ToolParameterCache, "set") as mock_set,
+    ):
+        decrypted = manager.decrypt_tool_parameters({"secret": "enc-same", "plain": "iteration-2"})
+
+    assert decrypted["secret"] == "dec-first"
+    assert decrypted["plain"] == "iteration-2"
+    mock_set.assert_not_called()
+
+
 def test_delete_tool_parameters_cache():
     manager = _build_manager()
 

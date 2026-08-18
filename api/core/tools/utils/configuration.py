@@ -135,12 +135,24 @@ class ToolParameterConfigurationManager:
         decrypt tool parameters with tenant id
 
         return a deep copy of parameters with decrypted values
+
+        Only the decrypted secret-input fields are ever served from cache, merged onto the
+        current call's own (freshly resolved) non-secret values. The cache never supplies a
+        wholesale historical parameter dict, so a non-secret FORM parameter that varies
+        per-call (e.g. a loop-bound recipient) can never be served stale alongside a secret
+        that happens to stay constant.
         """
         parameters = self._deep_copy(parameters)
 
         # override parameters
         current_parameters = self._merge_parameters()
         fingerprint = self._secret_input_fingerprint(parameters, current_parameters)
+        secret_parameters = [
+            parameter
+            for parameter in current_parameters
+            if parameter.form == ToolParameter.ToolParameterForm.FORM
+            and parameter.type == ToolParameter.ToolParameterType.SECRET_INPUT
+        ]
 
         cache = ToolParameterCache(
             tenant_id=self.tenant_id,
@@ -149,25 +161,25 @@ class ToolParameterConfigurationManager:
             cache_type=ToolParameterCacheType.PARAMETER,
             identity_id=self.identity_id,
         )
-        cached_parameters = cache.get()
-        if cached_parameters and cached_parameters.get(_CACHE_FINGERPRINT_KEY) == fingerprint:
-            cached_parameters.pop(_CACHE_FINGERPRINT_KEY, None)
-            return cached_parameters
+        cached_secrets = cache.get()
+        if cached_secrets and cached_secrets.get(_CACHE_FINGERPRINT_KEY) == fingerprint:
+            for parameter in secret_parameters:
+                if parameter.name in cached_secrets:
+                    parameters[parameter.name] = cached_secrets[parameter.name]
+            return parameters
 
         has_secret_input = False
+        decrypted_secrets: dict[str, Any] = {}
 
-        for parameter in current_parameters:
-            if (
-                parameter.form == ToolParameter.ToolParameterForm.FORM
-                and parameter.type == ToolParameter.ToolParameterType.SECRET_INPUT
-            ):
-                if parameter.name in parameters:
-                    has_secret_input = True
-                    with contextlib.suppress(Exception):
-                        parameters[parameter.name] = encrypter.decrypt_token(self.tenant_id, parameters[parameter.name])
+        for parameter in secret_parameters:
+            if parameter.name in parameters:
+                has_secret_input = True
+                with contextlib.suppress(Exception):
+                    parameters[parameter.name] = encrypter.decrypt_token(self.tenant_id, parameters[parameter.name])
+                decrypted_secrets[parameter.name] = parameters[parameter.name]
 
         if has_secret_input:
-            cache.set({**parameters, _CACHE_FINGERPRINT_KEY: fingerprint})
+            cache.set({**decrypted_secrets, _CACHE_FINGERPRINT_KEY: fingerprint})
 
         return parameters
 
