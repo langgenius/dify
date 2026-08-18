@@ -57,6 +57,8 @@ _ENVIRONMENT_FINGERPRINT_FIELDS: tuple[str, ...] = (
     "edge_version_before",
     "edge_version_after",
 )
+
+
 class _AggregationFailure(RuntimeError):
     """A controlled failure whose text is safe to persist in public diagnostics."""
 
@@ -182,14 +184,8 @@ def _load_stage(
             message=f"{source} did not record every required scaling environment identity",
         )
     expected_matrix = set(staging_public_capacity_stage_matrix(expected_replicas))
-    observed_matrix = {
-        (block.scenario_id, block.requested_concurrency) for block in stage.blocks
-    }
-    if (
-        not stage.matrix_complete
-        or observed_matrix != expected_matrix
-        or len(stage.blocks) != len(expected_matrix)
-    ):
+    observed_matrix = {(block.scenario_id, block.requested_concurrency) for block in stage.blocks}
+    if not stage.matrix_complete or observed_matrix != expected_matrix or len(stage.blocks) != len(expected_matrix):
         _fail(
             code="incomplete_stage",
             source=source,
@@ -208,9 +204,7 @@ def _validate_canonical_stage_blocks(
 ) -> None:
     """Recompute measured points and require only scheduler-legal skips."""
 
-    by_key = {
-        (block.scenario_id, block.requested_concurrency): block for block in stage.blocks
-    }
+    by_key = {(block.scenario_id, block.requested_concurrency): block for block in stage.blocks}
     measured: list[StagingPublicCapacityPoint] = []
     stop_all = False
     basic_boundary = False
@@ -243,10 +237,7 @@ def _validate_canonical_stage_blocks(
         measured.append(recomputed)
         if recomputed.status in {"invalid", "e2b_inventory_limited"}:
             stop_all = True
-        elif scenario_id == "basic" and (
-            recomputed.status == "e2b_limited"
-            or detect_suspected_boundaries(measured)
-        ):
+        elif scenario_id == "basic" and (recomputed.status == "e2b_limited" or detect_suspected_boundaries(measured)):
             basic_boundary = True
 
 
@@ -420,8 +411,7 @@ def _validate_cross_stage_environment(stages: Sequence[StagingPublicCapacityStag
                 code="environment_mismatch",
                 source=f"replica_{stage.backend_replicas}",
                 message=(
-                    "target, harness, plugin, Config fixture, or scenario fingerprint differed "
-                    "across replica stages"
+                    "target, harness, plugin, Config fixture, or scenario fingerprint differed across replica stages"
                 ),
             )
 
@@ -433,11 +423,7 @@ def _validate_stage_public_edge(
 ) -> None:
     before = stage.environment.edge_version_before
     after = stage.environment.edge_version_after
-    sample_versions = {
-        observation.sample.edge_version
-        for block in stage.blocks
-        for observation in block.observations
-    }
+    sample_versions = {observation.sample.edge_version for block in stage.blocks for observation in block.observations}
     if (
         before is None
         or after is None

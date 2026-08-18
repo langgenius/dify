@@ -148,9 +148,7 @@ def probe_staging_public_edge(
         raise StagingPublicValidationError("public edge x-version probe failed") from exc
     edge_version = _sanitized_header(response, "x-version")
     if edge_version is None:
-        raise StagingPublicValidationError(
-            "public edge x-version probe did not return a valid x-version header"
-        )
+        raise StagingPublicValidationError("public edge x-version probe did not return a valid x-version header")
     return StagingPublicEdgeProbeEvidence(
         http_status_code=response.status_code,
         edge_version=edge_version,

@@ -352,9 +352,7 @@ def test_cli_entrypoint_restores_sigterm_handler(monkeypatch) -> None:
     assert signal.getsignal(signal.SIGTERM) is previous
 
 
-def test_cli_entrypoint_converts_sigterm_to_safe_interrupt_and_restores_handler(
-    monkeypatch, capsys
-) -> None:
+def test_cli_entrypoint_converts_sigterm_to_safe_interrupt_and_restores_handler(monkeypatch, capsys) -> None:
     previous = signal.getsignal(signal.SIGTERM)
 
     def interrupted_main() -> int:
@@ -485,14 +483,16 @@ def _run_block_with_private_recovery(
         second_vendor_sample = vendor_remaining_probe()
         assert (second_vendor_sample.timestamp - first_vendor_sample.timestamp).total_seconds() >= 10
         return StagingPhysicalCleanupResult(
-            cleanup=tuple(_valid_execution(
-                _FakeRequest(
-                    scenario_id="basic",
-                    requested_concurrency=1,
-                    expected_backend_replicas=1,
-                    invocation_id="cleanup",
-                )
-            ).cleanup),
+            cleanup=tuple(
+                _valid_execution(
+                    _FakeRequest(
+                        scenario_id="basic",
+                        requested_concurrency=1,
+                        expected_backend_replicas=1,
+                        invocation_id="cleanup",
+                    )
+                ).cleanup
+            ),
             database=StagingDatabaseCleanupEvidence(
                 target_conversations=1,
                 target_workspaces=1,
@@ -599,9 +599,7 @@ def test_failed_or_interrupted_block_retains_private_recovery_with_opaque_public
     retained = list(recovery_root.iterdir())
     assert len(retained) == 1
     assert retained[0].stat().st_mode & 0o777 == 0o700
-    assert {
-        path.name for path in retained[0].iterdir()
-    } >= {
+    assert {path.name for path in retained[0].iterdir()} >= {
         "allocation-journal.jsonl",
         "allocation-recovery.json",
         "database-targets.json",
@@ -619,9 +617,7 @@ def test_failed_or_interrupted_block_retains_private_recovery_with_opaque_public
     assert execution.physical_cleanup.complete is False
 
 
-def test_recovered_unknown_allocation_is_cleaned_but_invalidates_the_block(
-    monkeypatch, tmp_path: Path
-) -> None:
+def test_recovered_unknown_allocation_is_cleaned_but_invalidates_the_block(monkeypatch, tmp_path: Path) -> None:
     execution, recovery_root, _block_dir = _run_block_with_private_recovery(
         monkeypatch,
         tmp_path,
@@ -630,10 +626,7 @@ def test_recovered_unknown_allocation_is_cleaned_but_invalidates_the_block(
 
     assert execution.physical_cleanup.complete is True
     assert list(recovery_root.iterdir()) == []
-    assert (
-        "parent recovered an admitted cold request without an SSE allocation identity"
-        in execution.load.fatal_errors
-    )
+    assert "parent recovered an admitted cold request without an SSE allocation identity" in execution.load.fatal_errors
 
 
 def test_interrupted_observer_cleanup_retains_private_recovery(monkeypatch, tmp_path: Path) -> None:
@@ -710,9 +703,7 @@ def test_scale_out_stage_runs_runtime_correctness_before_basic_scan(
     monkeypatch.setattr(staging_public_capacity_cli, "_execute_block", execute)
     assert staging_public_capacity_cli.main() == 0
     assert calls[:3] == [("basic", 1), ("shell", 10), ("config", 10)]
-    assert set(calls) == set(
-        staging_public_capacity_stage_matrix(cast(StagingPublicCapacityReplicaCount, replicas))
-    )
+    assert set(calls) == set(staging_public_capacity_stage_matrix(cast(StagingPublicCapacityReplicaCount, replicas)))
 
 
 def test_basic_stops_after_first_suspected_boundary_without_repeats(monkeypatch, tmp_path: Path) -> None:
@@ -735,11 +726,7 @@ def test_basic_stops_after_first_suspected_boundary_without_repeats(monkeypatch,
     result = json.loads((artifact_dir / "result.json").read_text())
     basic = [block for block in result["blocks"] if block["scenario_id"] == "basic"]
     assert next(block for block in basic if block["requested_concurrency"] == 20)["status"] == "saturated"
-    assert all(
-        block["status"] == "skipped"
-        for block in basic
-        if block["requested_concurrency"] > 20
-    )
+    assert all(block["status"] == "skipped" for block in basic if block["requested_concurrency"] > 20)
 
 
 def test_invalid_point_stops_the_entire_stage(monkeypatch, tmp_path: Path) -> None:

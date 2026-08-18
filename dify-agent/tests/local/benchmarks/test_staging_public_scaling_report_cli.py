@@ -267,21 +267,14 @@ def _execution_from_test_point(
         observations=[item.model_copy(deep=True) for item in point.observations],
         cleanup=[item.model_copy(deep=True) for item in point.cleanup],
         load=point.load.model_copy(deep=True),
-        e2b_observation=(
-            point.e2b_observation.model_copy(deep=True)
-            if point.e2b_observation
-            else None
-        ),
+        e2b_observation=(point.e2b_observation.model_copy(deep=True) if point.e2b_observation else None),
         physical_cleanup=point.physical_cleanup.model_copy(deep=True),
     )
 
 
 def _stage_with_basic_c1_boundary() -> StagingPublicCapacityStageResult:
     stage = _stage(1)
-    by_key = {
-        (block.scenario_id, block.requested_concurrency): block
-        for block in stage.blocks
-    }
+    by_key = {(block.scenario_id, block.requested_concurrency): block for block in stage.blocks}
     execution = _execution_from_test_point(by_key[("basic", 1)])
     execution.load.timeout_requests = 1
     boundary = finalize_staging_public_capacity_point(execution)
@@ -342,9 +335,7 @@ def _stage(
             captured_at="2026-08-13T02:00:00+00:00",
             generation=replicas,
             image_id=after_image_id,
-            effective_agent_config_fingerprint=(
-                after_config_fingerprint or before_config_fingerprint
-            ),
+            effective_agent_config_fingerprint=(after_config_fingerprint or before_config_fingerprint),
         ),
         blocks=blocks,
         points=[],
@@ -389,9 +380,7 @@ def test_aggregates_three_valid_schema_v6_stages_offline(tmp_path: Path) -> None
 
     assert main(args) == 0
 
-    result = StagingPublicCapacityResult.model_validate_json(
-        (output / "result.json").read_text(encoding="utf-8")
-    )
+    result = StagingPublicCapacityResult.model_validate_json((output / "result.json").read_text(encoding="utf-8"))
     assert result.schema_version == 6
     assert result.mode == "staging-public-e2e-scaling"
     assert result.confidence == "single_block_shared_traffic"
@@ -494,9 +483,7 @@ def test_rejects_replica_mismatch_with_sanitized_diagnostics(tmp_path: Path) -> 
 
 
 def test_rejects_an_incomplete_or_filtered_stage(tmp_path: Path) -> None:
-    incomplete = _stage(1).model_copy(
-        update={"matrix_complete": False, "blocks": _stage(1).blocks[:1]}
-    )
+    incomplete = _stage(1).model_copy(update={"matrix_complete": False, "blocks": _stage(1).blocks[:1]})
     args, output = _arguments(tmp_path, (incomplete, _stage(2), _stage(4)))
 
     assert main(args) == 2
@@ -544,11 +531,7 @@ def test_rejects_cross_stage_edge_version_drift(tmp_path: Path) -> None:
 def test_rejects_edge_rollout_within_a_stage(tmp_path: Path) -> None:
     stage_two = _stage(2)
     stage_two = stage_two.model_copy(
-        update={
-            "environment": stage_two.environment.model_copy(
-                update={"edge_version_after": "edge-v2"}
-            )
-        }
+        update={"environment": stage_two.environment.model_copy(update={"edge_version_after": "edge-v2"})}
     )
     args, output = _arguments(tmp_path, (_stage(1), stage_two, _stage(4)))
 
@@ -569,11 +552,7 @@ def test_rejects_cross_stage_load_generator_runtime_drift(
 ) -> None:
     stage_two = _stage(2)
     stage_two = stage_two.model_copy(
-        update={
-            "environment": stage_two.environment.model_copy(
-                update={field_name: changed_value}
-            )
-        }
+        update={"environment": stage_two.environment.model_copy(update={field_name: changed_value})}
     )
     args, output = _arguments(tmp_path, (_stage(1), stage_two, _stage(4)))
 
@@ -614,11 +593,7 @@ def test_rejects_stage_without_required_scaling_environment_identity(
 ) -> None:
     stage_two = _stage(2)
     stage_two = stage_two.model_copy(
-        update={
-            "environment": stage_two.environment.model_copy(
-                update={missing_field: None}
-            )
-        }
+        update={"environment": stage_two.environment.model_copy(update={missing_field: None})}
     )
     args, output = _arguments(tmp_path, (_stage(1), stage_two, _stage(4)))
 

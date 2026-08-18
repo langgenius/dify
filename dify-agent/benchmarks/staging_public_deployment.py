@@ -138,10 +138,7 @@ def collect_staging_backend_deployment_evidence(
 
     deployment = get_json("get", f"deployment/{deployment_name}")
     config_map_names, secret_names = _referenced_configuration_names(deployment)
-    config_maps = {
-        name: get_json("get", f"configmap/{name}")
-        for name in sorted(config_map_names)
-    }
+    config_maps = {name: get_json("get", f"configmap/{name}") for name in sorted(config_map_names)}
     secret_metadata = {
         name: _get_secret_metadata(
             invoke=invoke,
@@ -308,9 +305,7 @@ def evaluate_staging_backend_deployment(
     generation = int(metadata.get("generation", 0))
     observed_generation = int(status.get("observedGeneration", 0))
     if {desired, updated, ready, available} != {expected_replicas}:
-        errors.append(
-            "Deployment desired/updated/ready/available replicas did not all match " f"{expected_replicas}"
-        )
+        errors.append(f"Deployment desired/updated/ready/available replicas did not all match {expected_replicas}")
     if generation != observed_generation:
         errors.append("Deployment generation was not fully observed")
 
@@ -336,9 +331,10 @@ def evaluate_staging_backend_deployment(
     else:
         all_zones = sorted({zone for zone in node_zones.values() if zone})
         counts = Counter(pod.zone for pod in pod_evidence)
-        if all_zones and max(counts.get(zone, 0) for zone in all_zones) - min(
-            counts.get(zone, 0) for zone in all_zones
-        ) > 1:
+        if (
+            all_zones
+            and max(counts.get(zone, 0) for zone in all_zones) - min(counts.get(zone, 0) for zone in all_zones) > 1
+        ):
             errors.append("Agent Pod zone skew exceeded 1")
     if any(not pod.ready for pod in pod_evidence):
         errors.append("one or more Agent Pods were not Ready")
@@ -556,15 +552,11 @@ def _referenced_configuration_names(
     def visit(value: object) -> None:
         if isinstance(value, Mapping):
             for key, nested in value.items():
-                if key in {"configMap", "configMapRef", "configMapKeyRef"} and isinstance(
-                    nested, Mapping
-                ):
+                if key in {"configMap", "configMapRef", "configMapKeyRef"} and isinstance(nested, Mapping):
                     name = nested.get("name")
                     if isinstance(name, str) and name:
                         config_maps.add(name)
-                elif key in {"secret", "secretRef", "secretKeyRef"} and isinstance(
-                    nested, Mapping
-                ):
+                elif key in {"secret", "secretRef", "secretKeyRef"} and isinstance(nested, Mapping):
                     name = nested.get("name") or nested.get("secretName")
                     if isinstance(name, str) and name:
                         secrets.add(name)
@@ -630,9 +622,7 @@ def _effective_agent_config_fingerprint(
         if config_map is None:
             raise ValueError("referenced ConfigMap evidence was not collected")
         metadata = _mapping(config_map.get("metadata"), "ConfigMap metadata")
-        resource_version = _string(
-            metadata.get("resourceVersion"), "ConfigMap metadata.resourceVersion"
-        )
+        resource_version = _string(metadata.get("resourceVersion"), "ConfigMap metadata.resourceVersion")
         data = config_map.get("data", {})
         binary_data = config_map.get("binaryData", {})
         if not isinstance(data, Mapping) or not isinstance(binary_data, Mapping):
@@ -641,9 +631,7 @@ def _effective_agent_config_fingerprint(
             {
                 "name_sha256": _canonical_sha256(name),
                 "resource_version": resource_version,
-                "content_sha256": _canonical_sha256(
-                    {"data": dict(data), "binaryData": dict(binary_data)}
-                ),
+                "content_sha256": _canonical_sha256({"data": dict(data), "binaryData": dict(binary_data)}),
             }
         )
 
@@ -653,14 +641,8 @@ def _effective_agent_config_fingerprint(
         if metadata is None:
             raise ValueError("referenced Secret metadata evidence was not collected")
         uid = _string(metadata.get("uid"), "Secret metadata.uid")
-        resource_version = _string(
-            metadata.get("resourceVersion"), "Secret metadata.resourceVersion"
-        )
-        secret_identities.append(
-            _canonical_sha256(
-                {"name": name, "uid": uid, "resourceVersion": resource_version}
-            )
-        )
+        resource_version = _string(metadata.get("resourceVersion"), "Secret metadata.resourceVersion")
+        secret_identities.append(_canonical_sha256({"name": name, "uid": uid, "resourceVersion": resource_version}))
 
     return _canonical_sha256(
         {
@@ -732,9 +714,7 @@ def _container_ready(status: Mapping[str, Any]) -> bool:
     return status.get("ready") is True
 
 
-def _pod_named_container_status(
-    pod: Mapping[str, Any], container_name: str
-) -> Mapping[str, Any] | None:
+def _pod_named_container_status(pod: Mapping[str, Any], container_name: str) -> Mapping[str, Any] | None:
     status = pod.get("status")
     if not isinstance(status, Mapping):
         return None

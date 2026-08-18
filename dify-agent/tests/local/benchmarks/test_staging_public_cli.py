@@ -138,9 +138,7 @@ def test_cli_persists_redacted_fail_closed_diagnostics_for_worker_crash(
     log = (artifact_dir / "logs" / "worker-failure.log").read_text(encoding="utf-8")
     assert "cleanup=unknown" in log
     assert secret not in "\n".join(
-        path.read_text(encoding="utf-8")
-        for path in artifact_dir.rglob("*")
-        if path.is_file()
+        path.read_text(encoding="utf-8") for path in artifact_dir.rglob("*") if path.is_file()
     )
     captured = capsys.readouterr()
     assert str(artifact_dir) in captured.err
@@ -171,6 +169,7 @@ def test_cli_classifies_timeout_and_invalid_worker_result_diagnostics(
         ),
     )
     for run_id, failure_message, expected_kind in cases:
+
         def fail_worker(_request, *, message=failure_message):
             raise RuntimeError(message)
 

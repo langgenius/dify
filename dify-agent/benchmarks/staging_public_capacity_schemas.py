@@ -56,7 +56,7 @@ STAGING_PUBLIC_CAPACITY_MATRIX = cast(
             for scenario_id in _RUNTIME_SCENARIOS
             for concurrency in STAGING_PUBLIC_CAPACITY_RUNTIME_CONCURRENCY
         )
-    )
+    ),
 )
 STAGING_PUBLIC_CAPACITY_SCALING_MATRIX = cast(
     tuple[tuple[StagingPublicCapacityReplicaCount, StagingPublicScenarioId, int], ...],
@@ -72,7 +72,7 @@ STAGING_PUBLIC_CAPACITY_SCALING_MATRIX = cast(
             for backend_replicas in STAGING_PUBLIC_CAPACITY_SCALE_OUT_REPLICAS
             for scenario_id in _RUNTIME_SCENARIOS
         )
-    )
+    ),
 )
 
 
@@ -232,13 +232,9 @@ class StagingPublicCapacityLoadResult(BaseModel):
         if self.warmup_e2b_limit_failures > self.warmup_operational_failures:
             raise ValueError("warmup_e2b_limit_failures cannot exceed warmup_operational_failures")
         if self.warmup_peak_consecutive_operational_failures > self.warmup_operational_failures:
-            raise ValueError(
-                "warmup_peak_consecutive_operational_failures cannot exceed warmup_operational_failures"
-            )
+            raise ValueError("warmup_peak_consecutive_operational_failures cannot exceed warmup_operational_failures")
         if (
-            self.warmup_completed
-            + self.warmup_operational_failures
-            + self.warmup_correctness_failures
+            self.warmup_completed + self.warmup_operational_failures + self.warmup_correctness_failures
             > self.warmup_attempted
         ):
             raise ValueError("warmup outcomes cannot exceed warmup attempts")
@@ -351,6 +347,7 @@ class StagingPublicCapacityMetrics(BaseModel):
     terminal_p95_change_ratio: float | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
 
 class StagingPublicCapacityPoint(BaseModel):
     """Finalized evidence for one single-block scaling point."""
@@ -517,7 +514,5 @@ class StagingPublicCapacityStageResult(BaseModel):
 
 
 __all__ = [
-    name
-    for name in globals()
-    if name.startswith("StagingPublicCapacity") or name.startswith("STAGING_PUBLIC_CAPACITY")
+    name for name in globals() if name.startswith("StagingPublicCapacity") or name.startswith("STAGING_PUBLIC_CAPACITY")
 ]

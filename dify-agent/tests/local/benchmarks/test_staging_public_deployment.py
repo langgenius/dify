@@ -221,9 +221,7 @@ def test_effective_config_fingerprint_detects_template_configmap_and_secret_drif
         1,
         deployment=deployment,
         config_maps={"agent-config": _config_map()},
-        secret_metadata={
-            "agent-secret": {"uid": "secret-uid", "resourceVersion": "201"}
-        },
+        secret_metadata={"agent-secret": {"uid": "secret-uid", "resourceVersion": "201"}},
     )
 
     changed_template = _configured_deployment(1)
@@ -235,25 +233,19 @@ def test_effective_config_fingerprint_detects_template_configmap_and_secret_drif
         1,
         deployment=changed_template,
         config_maps={"agent-config": _config_map()},
-        secret_metadata={
-            "agent-secret": {"uid": "secret-uid", "resourceVersion": "201"}
-        },
+        secret_metadata={"agent-secret": {"uid": "secret-uid", "resourceVersion": "201"}},
     )
     config_map_evidence = _evaluate(
         1,
         deployment=deployment,
         config_maps={"agent-config": _config_map(resource_version="102", value="three")},
-        secret_metadata={
-            "agent-secret": {"uid": "secret-uid", "resourceVersion": "201"}
-        },
+        secret_metadata={"agent-secret": {"uid": "secret-uid", "resourceVersion": "201"}},
     )
     secret_evidence = _evaluate(
         1,
         deployment=deployment,
         config_maps={"agent-config": _config_map()},
-        secret_metadata={
-            "agent-secret": {"uid": "secret-uid", "resourceVersion": "202"}
-        },
+        secret_metadata={"agent-secret": {"uid": "secret-uid", "resourceVersion": "202"}},
     )
 
     fingerprints = {
