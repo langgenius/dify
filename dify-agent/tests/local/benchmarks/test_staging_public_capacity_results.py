@@ -741,8 +741,7 @@ def test_stage_matrix_and_finalize_are_replica_relative(tmp_path: Path) -> None:
     assert len(staging_public_capacity_stage_matrix(2)) == 11
     assert len(staging_public_capacity_stage_matrix(4)) == 11
     blocks = [
-        _point(scenario, concurrency, replicas=2)
-        for scenario, concurrency in staging_public_capacity_stage_matrix(2)
+        _point(scenario, concurrency, replicas=2) for scenario, concurrency in staging_public_capacity_stage_matrix(2)
     ]
     result, success = finalize_staging_public_capacity_stage(
         artifact_dir=tmp_path,
@@ -763,6 +762,12 @@ def test_stage_matrix_and_finalize_are_replica_relative(tmp_path: Path) -> None:
     assert "does not compare replicas" in report
     assert "`shell` Runtime check: correctness **`passed`**, limit signal **`none`**" in report
     assert "`config` Runtime check: correctness **`passed`**, limit signal **`none`**" in report
+    assert "## Basic capacity observations" in report
+    assert "## Block details" in report
+    assert "### Basic c1 — `valid`" in report
+    assert "#### 10-second measurement buckets" in report
+    assert "  - Failure rates" not in report
+    assert "| c1 | `valid`" in report
     shell_assessment = next(item for item in result.assessments if item.scenario_id == "shell")
     assert shell_assessment.validated_through is None
     assert shell_assessment.terminal_runs_per_second_lower_bound is None
@@ -781,6 +786,30 @@ def test_filtered_stage_is_degraded_not_cross_replica_inconclusive(tmp_path: Pat
     assert not result.matrix_complete
     assert result.status == "degraded"
     assert result.errors == ["replica-stage matrix is incomplete or intentionally filtered"]
+
+
+def test_stage_report_separates_skipped_basic_points_from_metrics(tmp_path: Path) -> None:
+    skipped = build_staging_public_capacity_skipped_point(
+        scenario_id="basic",
+        requested_concurrency=10,
+        backend_replicas=1,
+        block_index=1,
+        reason="stopped after a prior cleanup failure",
+    )
+    result, success = finalize_staging_public_capacity_stage(
+        artifact_dir=tmp_path,
+        environment=_environment(),
+        backend_replicas=1,
+        deployment_before=_deployment(1),
+        deployment_after=_deployment(1),
+        blocks=[_point("basic", 1), skipped],
+    )
+    assert success
+    report = (tmp_path / "report.md").read_text()
+    assert "| c10 | `skipped`" not in report
+    assert "## Not run" in report
+    assert "- Basic c10: stopped after a prior cleanup failure." in report
+    assert "10s buckets attempted/successful/runs-s/p95-ms" not in report
 
 
 def test_stage_edge_probes_are_required_even_without_measurement_samples(tmp_path: Path) -> None:

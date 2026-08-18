@@ -48,16 +48,12 @@ def finalize_staging_public_capacity_point(
     invalid = False
     saturated = False
     e2b = execution.e2b_observation
-    e2b_limited = e2b is not None and (
-        e2b.limit_reached or e2b.vendor_throttle_observed
-    )
+    e2b_limited = e2b is not None and (e2b.limit_reached or e2b.vendor_throttle_observed)
     concurrency = execution.requested_concurrency
     load = execution.load
     warmup_failed = load.warmup_attempted != load.warmup_completed
     warmup_outcomes_accounted = (
-        load.warmup_completed
-        + load.warmup_operational_failures
-        + load.warmup_correctness_failures
+        load.warmup_completed + load.warmup_operational_failures + load.warmup_correctness_failures
         == load.warmup_attempted
     )
     basic_warmup_operational_boundary = (
@@ -97,11 +93,8 @@ def finalize_staging_public_capacity_point(
     if load.fatal_errors:
         invalid = True
         errors.extend(f"worker: {error}" for error in load.fatal_errors)
-    if (
-        load.measurement_started_at is None or load.measurement_ended_at is None
-    ) and not (
-        basic_warmup_operational_boundary
-        or e2b_limited
+    if (load.measurement_started_at is None or load.measurement_ended_at is None) and not (
+        basic_warmup_operational_boundary or e2b_limited
     ):
         invalid = True
         errors.append("measurement UTC time window was missing")
@@ -122,17 +115,14 @@ def finalize_staging_public_capacity_point(
     physical = execution.physical_cleanup
     if physical.target_conversations != concurrency or physical.target_sandboxes != concurrency:
         invalid = True
-        errors.append(
-            "physical cleanup targets did not cover every benchmark Conversation/Sandbox"
-        )
+        errors.append("physical cleanup targets did not cover every benchmark Conversation/Sandbox")
     if not _physical_cleanup_complete(physical):
         invalid = True
         errors.append("physical Workspace/Binding/Sandbox cleanup evidence was incomplete")
     errors.extend(f"physical cleanup: {error}" for error in physical.errors)
 
     request_level_e2b_limit = warmup_e2b_limited or any(
-        observation.sample.error_type == "e2b_inventory_limited"
-        for observation in execution.observations
+        observation.sample.error_type == "e2b_inventory_limited" for observation in execution.observations
     )
     if e2b is None and not basic_warmup_operational_boundary:
         invalid = True
@@ -174,9 +164,7 @@ def finalize_staging_public_capacity_point(
         errors.append("warmup outcomes did not account for every attempted request")
     if basic_warmup_operational_boundary and not warmup_e2b_limited:
         saturated = True
-        errors.append(
-            "warmup reported an operational failure before a valid measurement window"
-        )
+        errors.append("warmup reported an operational failure before a valid measurement window")
 
     run_ids = [observation.sample.benchmark_run_id for observation in execution.observations]
     if len(run_ids) != len(set(run_ids)):
@@ -239,15 +227,7 @@ def finalize_staging_public_capacity_point(
         invalid = True
         errors.append("Runtime warmup contained an operational failure without an E2B limit signal")
 
-    status = (
-        "invalid"
-        if invalid
-        else "e2b_limited"
-        if e2b_limited
-        else "saturated"
-        if saturated
-        else "valid_scaling"
-    )
+    status = "invalid" if invalid else "e2b_limited" if e2b_limited else "saturated" if saturated else "valid_scaling"
     return StagingPublicCapacityPoint(
         scenario_id=execution.scenario_id,
         requested_concurrency=concurrency,
@@ -425,9 +405,8 @@ def finalize_staging_public_capacity(
         for block in blocks
         if block.backend_replicas is not None
     }
-    matrix_complete = (
-        observed == set(STAGING_PUBLIC_CAPACITY_SCALING_MATRIX)
-        and len(blocks) == len(STAGING_PUBLIC_CAPACITY_SCALING_MATRIX)
+    matrix_complete = observed == set(STAGING_PUBLIC_CAPACITY_SCALING_MATRIX) and len(blocks) == len(
+        STAGING_PUBLIC_CAPACITY_SCALING_MATRIX
     )
     errors: list[str] = []
     if not matrix_complete:
@@ -533,9 +512,7 @@ def finalize_staging_public_capacity_stage(
         ):
             deployment_invalid = True
             errors.append("replica-stage deployment evidence did not match the requested replica count")
-        if _stable_stage_deployment_payload(before_evidence) != _stable_stage_deployment_payload(
-            after_evidence
-        ):
+        if _stable_stage_deployment_payload(before_evidence) != _stable_stage_deployment_payload(after_evidence):
             deployment_invalid = True
             errors.append("Agent Deployment, Pod, image, worker, or topology evidence changed during the stage")
     replica_mismatch = any(block.backend_replicas != backend_replicas for block in blocks)
@@ -604,18 +581,10 @@ def _validate_public_edge_stage_evidence(
     elif before != after:
         errors.append("public edge x-version changed between replica-stage probes")
     expected = before if before is not None and before == after else None
-    measurement_samples = [
-        observation.sample
-        for block in blocks
-        for observation in block.observations
-    ]
+    measurement_samples = [observation.sample for block in blocks for observation in block.observations]
     if any(sample.edge_version is None for sample in measurement_samples):
         errors.append("public edge x-version evidence was missing from a measurement transaction")
-    sample_versions = {
-        sample.edge_version
-        for sample in measurement_samples
-        if sample.edge_version is not None
-    }
+    sample_versions = {sample.edge_version for sample in measurement_samples if sample.edge_version is not None}
     if len(sample_versions) > 1:
         errors.append("public edge x-version changed during the replica stage")
     if expected is not None and sample_versions and sample_versions != {expected}:
@@ -657,65 +626,16 @@ def render_staging_public_capacity_stage_markdown(result: StagingPublicCapacityS
                 f"**`{assessment.correctness_status}`**, limit signal "
                 f"**`{assessment.runtime_limit_signal}`**."
             )
-    lines.extend(
-        [
-            "",
-            "## Capacity points",
-            "",
-            "| Scenario | Concurrency | Result | Success | Offered runs/s | Completed runs/s | Active avg/peak | Terminal p50/p95/p99 | Early/Late p95 | E2B running/paused max |",
-            "|---|---:|---|---:|---:|---:|---:|---:|---:|---:|",
-        ]
-    )
-    for point in (item for item in result.points if item.scenario_id == "basic"):
-        block = next(
-            item
-            for item in result.blocks
-            if item.scenario_id == point.scenario_id
-            and item.requested_concurrency == point.requested_concurrency
-        )
-        attempted = block.metrics.attempted
-        successful = block.metrics.successful
-        success = f"{successful / attempted:.2%} ({successful}/{attempted})" if attempted else "N/A"
-        e2b = block.e2b_observation
-        e2b_counts = f"{e2b.running_max}/{e2b.paused_max}" if e2b else "N/A"
-        lines.append(
-            f"| `{point.scenario_id}` | c{point.requested_concurrency} | `{_display_result(point.status)}` | "
-            f"{success} | {_number(block.metrics.admission_runs_per_second, 2)} | "
-            f"{_number(block.metrics.terminal_runs_per_second, 2)} | "
-            f"{block.metrics.active_mean:.2f}/{block.metrics.active_max} | "
-            f"{_percentile_triple(block.metrics.terminal_e2e)} | "
-            f"{_number(block.metrics.early_terminal_p95_ms, 2)}/"
-            f"{_number(block.metrics.late_terminal_p95_ms, 2)} | {e2b_counts} |"
-        )
-        lines.append(
-            f"  - Failure rates: timeout={block.metrics.timeout_rate:.2%}, "
-            f"throttle={block.metrics.throttle_rate:.2%}, HTTP={block.metrics.http_failure_rate:.2%}, "
-            f"SSE={block.metrics.sse_failure_rate:.2%}; drain={block.metrics.drain_duration_seconds:.2f}s."
-        )
-        lines.append(
-            "  - Headers / first SSE / first answer p50/p95/p99 ms: "
-            f"{_percentile_triple(block.metrics.response_headers)}; "
-            f"{_percentile_triple(block.metrics.first_sse)}; "
-            f"{_percentile_triple(block.metrics.first_answer)}."
-        )
-        lines.append(
-            "  - 10s buckets attempted/successful/runs-s/p95-ms: "
-            + ", ".join(
-                f"{bucket.start_seconds}-{bucket.end_seconds}s="
-                f"{bucket.attempted}/{bucket.successful}/{bucket.runs_per_second:.4f}/"
-                f"{_number(bucket.terminal_p95_ms, 2)}"
-                for bucket in block.metrics.buckets
-            )
-            + "."
-        )
-        physical = block.physical_cleanup
-        lines.append(
-            "  - Physical cleanup remaining Workspaces/Bindings/Vendor Sandboxes: "
-            f"{physical.db_workspaces_remaining}/{physical.db_bindings_remaining}/"
-            f"{physical.vendor_sandboxes_remaining}; zero checks={physical.consecutive_zero_checks}, "
-            f"interval={physical.interval_seconds:.2f}s."
-        )
-        lines.extend(f"  - Diagnostic: {error}" for error in block.errors)
+    basic_points = [item for item in result.points if item.scenario_id == "basic"]
+    measured_basic_blocks = [
+        (point, _stage_block_for_point(result.blocks, point)) for point in basic_points if point.status != "skipped"
+    ]
+    skipped_basic_points = [item for item in basic_points if item.status == "skipped"]
+    lines.extend(_render_basic_capacity_table(measured_basic_blocks))
+    lines.extend(["", "## Block details", ""])
+    for point, block in measured_basic_blocks:
+        lines.extend(_render_basic_block_details(point, block))
+    lines.extend(_render_skipped_basic_points(skipped_basic_points, result.blocks))
     lines.extend(
         [
             "",
@@ -727,6 +647,104 @@ def render_staging_public_capacity_stage_markdown(result: StagingPublicCapacityS
         ]
     )
     return "\n".join(lines) + "\n"
+
+
+def _stage_block_for_point(
+    blocks: Sequence[StagingPublicCapacityPoint],
+    point: StagingPublicCapacityPointAggregate,
+) -> StagingPublicCapacityPoint:
+    return next(
+        item
+        for item in blocks
+        if item.scenario_id == point.scenario_id and item.requested_concurrency == point.requested_concurrency
+    )
+
+
+def _render_basic_capacity_table(
+    basic_blocks: Sequence[tuple[StagingPublicCapacityPointAggregate, StagingPublicCapacityPoint]],
+) -> list[str]:
+    lines = [
+        "",
+        "## Basic capacity observations",
+        "",
+        "| Concurrency | Result | Success | Offered runs/s | Completed runs/s | Active avg/peak | Terminal p95 | E2B running/paused max |",
+        "|---:|---|---:|---:|---:|---:|---:|---:|",
+    ]
+    if not basic_blocks:
+        lines.append("| N/A | `not_run` | N/A | N/A | N/A | N/A | N/A | N/A |")
+        return lines
+    for point, block in basic_blocks:
+        attempted = block.metrics.attempted
+        successful = block.metrics.successful
+        success = f"{successful / attempted:.2%} ({successful}/{attempted})" if attempted else "N/A"
+        e2b = block.e2b_observation
+        e2b_counts = f"{e2b.running_max}/{e2b.paused_max}" if e2b else "N/A"
+        lines.append(
+            f"| c{point.requested_concurrency} | `{_display_result(point.status)}` | "
+            f"{success} | {_number(block.metrics.admission_runs_per_second, 2)} | "
+            f"{_number(block.metrics.terminal_runs_per_second, 2)} | "
+            f"{block.metrics.active_mean:.2f}/{block.metrics.active_max} | "
+            f"{_number(block.metrics.terminal_e2e.p95_ms, 2)} ms | {e2b_counts} |"
+        )
+    return lines
+
+
+def _render_basic_block_details(
+    point: StagingPublicCapacityPointAggregate,
+    block: StagingPublicCapacityPoint,
+) -> list[str]:
+    physical = block.physical_cleanup
+    lines = [
+        f"### Basic c{point.requested_concurrency} — `{_display_result(point.status)}`",
+        "",
+        f"- Counts attempted/admitted/terminal/successful: **{block.metrics.attempted}/"
+        f"{block.metrics.admitted}/{block.metrics.terminal}/{block.metrics.successful}**.",
+        f"- Failure rates: timeout={block.metrics.timeout_rate:.2%}, "
+        f"throttle={block.metrics.throttle_rate:.2%}, HTTP={block.metrics.http_failure_rate:.2%}, "
+        f"SSE={block.metrics.sse_failure_rate:.2%}; drain={block.metrics.drain_duration_seconds:.2f}s.",
+        "- Terminal p50/p95/p99: "
+        f"{_percentile_triple(block.metrics.terminal_e2e)} ms; early/late p95: "
+        f"{_number(block.metrics.early_terminal_p95_ms, 2)}/"
+        f"{_number(block.metrics.late_terminal_p95_ms, 2)} ms.",
+        "- Headers / first SSE / first answer p50/p95/p99: "
+        f"{_percentile_triple(block.metrics.response_headers)}; "
+        f"{_percentile_triple(block.metrics.first_sse)}; "
+        f"{_percentile_triple(block.metrics.first_answer)} ms.",
+        "- Physical cleanup remaining Workspaces/Bindings/Vendor Sandboxes: "
+        f"{physical.db_workspaces_remaining}/{physical.db_bindings_remaining}/"
+        f"{physical.vendor_sandboxes_remaining}; zero checks={physical.consecutive_zero_checks}, "
+        f"interval={physical.interval_seconds:.2f}s.",
+        "",
+        "#### 10-second measurement buckets",
+        "",
+        "| Window | Attempted | Successful | Offered runs/s | Terminal p95 |",
+        "|---|---:|---:|---:|---:|",
+    ]
+    lines.extend(
+        f"| {bucket.start_seconds}-{bucket.end_seconds}s | {bucket.attempted} | "
+        f"{bucket.successful} | {bucket.runs_per_second:.2f} | "
+        f"{_number(bucket.terminal_p95_ms, 2)} ms |"
+        for bucket in block.metrics.buckets
+    )
+    if block.errors:
+        lines.extend(["", "#### Diagnostics", ""])
+        lines.extend(f"- {error}" for error in block.errors)
+    lines.append("")
+    return lines
+
+
+def _render_skipped_basic_points(
+    skipped_points: Sequence[StagingPublicCapacityPointAggregate],
+    blocks: Sequence[StagingPublicCapacityPoint],
+) -> list[str]:
+    if not skipped_points:
+        return []
+    lines = ["## Not run", ""]
+    for point in skipped_points:
+        block = _stage_block_for_point(blocks, point)
+        reason = "; ".join(block.errors) if block.errors else "no reason recorded"
+        lines.append(f"- Basic c{point.requested_concurrency}: {reason}.")
+    return lines
 
 
 def render_staging_public_capacity_markdown(result: StagingPublicCapacityResult) -> str:
@@ -792,9 +810,7 @@ def render_staging_public_capacity_markdown(result: StagingPublicCapacityResult)
         p95_change = _relative_change(point.terminal_p95_ms, prior.terminal_p95_ms if prior else None)
         success = f"{successful / attempted:.2%} ({successful}/{attempted})" if attempted else "N/A"
         e2b_running = (
-            str(block.e2b_observation.running_max)
-            if block is not None and block.e2b_observation is not None
-            else "N/A"
+            str(block.e2b_observation.running_max) if block is not None and block.e2b_observation is not None else "N/A"
         )
         lines.append(
             f"| {point.backend_replicas or 'N/A'} | `{point.scenario_id}` | c{point.requested_concurrency} | "
@@ -833,7 +849,9 @@ def render_staging_public_capacity_markdown(result: StagingPublicCapacityResult)
         ]
     )
     for block in result.blocks:
-        lines.append(f"### {block.backend_replicas or 'unknown'} replica(s) / {block.scenario_id} / c{block.requested_concurrency}")
+        lines.append(
+            f"### {block.backend_replicas or 'unknown'} replica(s) / {block.scenario_id} / c{block.requested_concurrency}"
+        )
         lines.append("")
         lines.append(
             f"- Active avg/peak: {block.metrics.active_mean:.2f}/{block.metrics.active_max}; "
@@ -976,12 +994,8 @@ def _aggregate_points(blocks: Sequence[StagingPublicCapacityPoint]) -> list[Stag
                 backend_replicas=block.backend_replicas,
                 block_count=len(group),
                 status=status,
-                terminal_runs_per_second=(
-                    block.metrics.terminal_runs_per_second if capacity_scenario else None
-                ),
-                terminal_p95_ms=(
-                    block.metrics.terminal_e2e.p95_ms if capacity_scenario else None
-                ),
+                terminal_runs_per_second=(block.metrics.terminal_runs_per_second if capacity_scenario else None),
+                terminal_p95_ms=(block.metrics.terminal_e2e.p95_ms if capacity_scenario else None),
                 errors=list(dict.fromkeys(errors)),
             )
         )
@@ -992,9 +1006,7 @@ def _assess_scenarios(
     blocks: Sequence[StagingPublicCapacityPoint],
     aggregates: Sequence[StagingPublicCapacityPointAggregate],
 ) -> list[StagingPublicCapacityScenarioAssessment]:
-    candidates = {
-        (item.backend_replicas, item.scenario_id): item for item in detect_suspected_boundaries(blocks)
-    }
+    candidates = {(item.backend_replicas, item.scenario_id): item for item in detect_suspected_boundaries(blocks)}
     assessments: list[StagingPublicCapacityScenarioAssessment] = []
     present: list[tuple[StagingPublicCapacityReplicaCount, StagingPublicScenarioId]] = sorted(
         {(item.backend_replicas, item.scenario_id) for item in aggregates if item.backend_replicas is not None},
@@ -1003,11 +1015,7 @@ def _assess_scenarios(
     for replicas, scenario_id in present:
         assert replicas is not None
         points = sorted(
-            (
-                item
-                for item in aggregates
-                if item.backend_replicas == replicas and item.scenario_id == scenario_id
-            ),
+            (item for item in aggregates if item.backend_replicas == replicas and item.scenario_id == scenario_id),
             key=lambda item: item.requested_concurrency,
         )
         runtime_scenario = scenario_id in {"shell", "config"}
@@ -1033,9 +1041,7 @@ def _assess_scenarios(
                 scenario_id=scenario_id,
                 backend_replicas=replicas,
                 correctness_status="invalid" if correctness_invalid else "passed",
-                runtime_limit_signal=(
-                    "e2b_limited" if runtime_scenario and e2b_limited else "none"
-                ),
+                runtime_limit_signal=("e2b_limited" if runtime_scenario and e2b_limited else "none"),
                 suspected_boundary_lower=(
                     candidate.lower_concurrency if candidate and not candidate.e2b_limited else None
                 ),
@@ -1047,9 +1053,7 @@ def _assess_scenarios(
                     capacity_point.terminal_runs_per_second if capacity_point else None
                 ),
                 e2b_limited=e2b_limited,
-                e2b_inventory_limited=any(
-                    item.status == "e2b_inventory_limited" for item in points
-                ),
+                e2b_inventory_limited=any(item.status == "e2b_inventory_limited" for item in points),
                 errors=errors,
             )
         )
@@ -1061,11 +1065,7 @@ def _assess_scaling(
     aggregates: Sequence[StagingPublicCapacityPointAggregate],
     assessments: Sequence[StagingPublicCapacityScenarioAssessment],
 ) -> StagingPublicCapacityScalingAssessment:
-    by_replicas = {
-        item.backend_replicas: item
-        for item in assessments
-        if item.scenario_id == scenario_id
-    }
+    by_replicas = {item.backend_replicas: item for item in assessments if item.scenario_id == scenario_id}
     errors: list[str] = []
     conclusion: StagingPublicCapacityConclusion
     if any(item.errors for item in by_replicas.values()):
@@ -1184,9 +1184,7 @@ def _stable_stage_deployment_payload(
     return payload
 
 
-def _relational_regression(
-    lower: StagingPublicCapacityPoint, higher: StagingPublicCapacityPoint
-) -> bool:
+def _relational_regression(lower: StagingPublicCapacityPoint, higher: StagingPublicCapacityPoint) -> bool:
     lower_tps = lower.metrics.terminal_runs_per_second
     higher_tps = higher.metrics.terminal_runs_per_second
     lower_p95 = lower.metrics.terminal_e2e.p95_ms
@@ -1229,13 +1227,14 @@ def _percentile(values: Sequence[float], probability: float) -> float | None:
 def _is_capacity_failure(sample: StagingPublicRunSample) -> bool:
     evidence = f"{sample.error_type or ''} {sample.error or ''}".lower()
     return any(
-        token in evidence
-        for token in ("timeout", "timed out", "throttle", "429", "quota", "e2b_inventory_limited")
+        token in evidence for token in ("timeout", "timed out", "throttle", "429", "quota", "e2b_inventory_limited")
     )
 
 
 def _sample_failure(sample: StagingPublicRunSample) -> str:
-    return f"{sample.scenario_id} public transaction failed: {sample.error_type or sample.error or sample.terminal_status}"
+    return (
+        f"{sample.scenario_id} public transaction failed: {sample.error_type or sample.error or sample.terminal_status}"
+    )
 
 
 def _write_artifacts(artifact_dir: Path, result: StagingPublicCapacityResult) -> None:
