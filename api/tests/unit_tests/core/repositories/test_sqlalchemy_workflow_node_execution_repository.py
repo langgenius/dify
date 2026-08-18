@@ -24,7 +24,7 @@ from core.repositories.sqlalchemy_workflow_node_execution_repository import (
     _deterministic_json_dump,
     _filter_by_offload_type,
     _find_first,
-    _replace_or_append_offload,
+    _replace_offload,
 )
 from extensions.storage.storage_type import StorageType
 from graphon.entities import WorkflowNodeExecution
@@ -73,6 +73,7 @@ def _execution(
     inputs: Mapping[str, Any] | None = None,
     outputs: Mapping[str, Any] | None = None,
     process_data: Mapping[str, Any] | None = None,
+    finished_at: datetime | None = None,
 ) -> WorkflowNodeExecution:
     return WorkflowNodeExecution(
         id=execution_id,
@@ -92,7 +93,7 @@ def _execution(
         elapsed_time=1.0,
         metadata={WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: index},
         created_at=datetime.now(UTC),
-        finished_at=None,
+        finished_at=finished_at,
     )
 
 
@@ -198,10 +199,13 @@ def test_helper_functions_and_truncator_configuration(
     inputs = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.INPUTS)
     outputs = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.OUTPUTS)
     assert _find_first([inputs, outputs], _filter_by_offload_type(ExecutionOffLoadType.OUTPUTS)) is outputs
-    replaced = _replace_or_append_offload(
-        [inputs, outputs], WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.INPUTS)
+    replaced = _replace_offload(
+        [inputs, outputs],
+        ExecutionOffLoadType.INPUTS,
+        WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.INPUTS),
     )
     assert [item.type_ for item in replaced] == [ExecutionOffLoadType.OUTPUTS, ExecutionOffLoadType.INPUTS]
+    assert _replace_offload(replaced, ExecutionOffLoadType.INPUTS, None) == [outputs]
 
     created: dict[str, int] = {}
 
@@ -431,6 +435,84 @@ def test_queue_async_save_execution_data_requires_context(
     repo._creator_user_role = None
     with pytest.raises(ValueError, match="created_by_role is required"):
         repo._queue_async_save_execution_data(execution)
+
+
+def test_async_persistence_queues_metadata_and_data(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    metadata_task = Mock()
+    data_task = Mock()
+    monkeypatch.setattr(
+        "core.repositories.sqlalchemy_workflow_node_execution_repository.save_workflow_node_execution_task",
+        metadata_task,
+    )
+    monkeypatch.setattr(
+        "core.repositories.sqlalchemy_workflow_node_execution_repository.save_workflow_node_execution_data_task",
+        data_task,
+    )
+    repo = _repository(monkeypatch, sqlite_session_factory)
+    repo.set_async_persistence(True)
+    execution = _execution(inputs={"input": 1}, process_data={"step": 2}, outputs={"output": 3})
+
+    repo.save(execution)
+    repo.save_execution_data(execution)
+
+    metadata_payload = metadata_task.delay.call_args.kwargs["execution_data"]
+    assert "inputs" not in metadata_payload
+    assert "process_data" not in metadata_payload
+    assert "outputs" not in metadata_payload
+    assert data_task.delay.call_args.kwargs["execution_data"] == execution.model_dump()
+    assert metadata_task.delay.call_args.kwargs["tenant_id"] == "tenant-1"
+    assert data_task.delay.call_args.kwargs["creator_user_role"] == CreatorUserRole.ACCOUNT.value
+    with sqlite_session_factory() as session:
+        assert session.get(WorkflowNodeExecutionModel, execution.id) is None
+
+
+def test_save_synchronously_bypasses_async_persistence(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    metadata_task = Mock()
+    monkeypatch.setattr(
+        "core.repositories.sqlalchemy_workflow_node_execution_repository.save_workflow_node_execution_task",
+        metadata_task,
+    )
+    repo = _repository(monkeypatch, sqlite_session_factory)
+    repo.set_async_persistence(True)
+    execution = _execution()
+
+    repo.save_synchronously(execution)
+
+    metadata_task.delay.assert_not_called()
+    assert repo._use_async_persistence is True
+    with sqlite_session_factory() as session:
+        assert session.get(WorkflowNodeExecutionModel, execution.id) is not None
+
+
+def test_save_execution_data_does_not_overwrite_terminal_state_with_stale_snapshot(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    repo = _repository(monkeypatch, sqlite_session_factory)
+    repo.save(
+        _execution(
+            status=WorkflowNodeExecutionStatus.RUNNING,
+            outputs={"state": "running"},
+        )
+    )
+    finished_at = datetime(2026, 1, 1)
+    repo.save_execution_data(_execution(outputs={"state": "finished"}, finished_at=finished_at))
+    repo.save_execution_data(
+        _execution(
+            status=WorkflowNodeExecutionStatus.RUNNING,
+            outputs={"state": "stale"},
+        )
+    )
+
+    with sqlite_session_factory() as session:
+        persisted = session.get(WorkflowNodeExecutionModel, "execution-1")
+        assert persisted is not None
+        assert persisted.outputs_dict == {"state": "finished"}
+        assert persisted.status == WorkflowNodeExecutionStatus.SUCCEEDED
+        assert persisted.finished_at == finished_at
 
 
 def test_get_by_workflow_run_filters_tenant_app_trigger_and_paused_and_orders(
