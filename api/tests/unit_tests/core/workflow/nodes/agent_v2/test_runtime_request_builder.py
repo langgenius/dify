@@ -42,30 +42,26 @@ from models.agent_config_entities import (
 
 
 @pytest.fixture(autouse=True)
+def model_context_window_calls(monkeypatch: pytest.MonkeyPatch) -> list[tuple[object, str, str]]:
+    calls: list[tuple[object, str, str]] = []
+
+    def resolve(*, run_context: object, provider_name: str, model_name: str) -> int:
+        calls.append((run_context, provider_name, model_name))
+        return 32_768
+
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.runtime_request_builder.resolve_model_context_window",
+        resolve,
+    )
+    return calls
+
+
+@pytest.fixture(autouse=True)
 def _no_runtime_agent_skills(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         "core.workflow.nodes.agent_v2.runtime_request_builder.load_runtime_agent_skill_configs",
         lambda **_kwargs: [],
     )
-
-
-class FakeCredentialsProvider:
-    def fetch(self, provider_name: str, model_name: str) -> dict[str, object]:
-        assert provider_name == "openai"
-        assert model_name == "gpt-test"
-        return {"api_key": "secret-key"}
-
-
-class CapturingCredentialsProvider:
-    def __init__(self) -> None:
-        self.provider_name: str | None = None
-        self.model_name: str | None = None
-
-    def fetch(self, provider_name: str, model_name: str) -> dict[str, object]:
-        self.provider_name = provider_name
-        self.model_name = model_name
-        return {"api_key": "secret-key"}
-
 
 
 def test_agent_soul_round_trip_preserves_existing_app_feature_fields():
@@ -175,7 +171,7 @@ def _context() -> WorkflowAgentRuntimeBuildContext:
             prompt={"system_prompt": "You are careful."},
             model=AgentSoulModelConfig(
                 plugin_id="langgenius/openai",
-                model_provider="openai",
+                model_provider="langgenius/openai/openai",
                 model="gpt-test",
                 model_settings={"temperature": 0},
             ),
@@ -248,8 +244,11 @@ def _uploaded_workflow_files_prompt_payload(result) -> object:
     raise AssertionError("missing prompt payload for sys.files")
 
 
-def test_builds_create_run_request_from_agent_soul_and_node_job():
-    result = WorkflowAgentRuntimeRequestBuilder().build(_context())
+def test_builds_create_run_request_from_agent_soul_and_node_job(
+    model_context_window_calls: list[tuple[object, str, str]],
+):
+    context = _context()
+    result = WorkflowAgentRuntimeRequestBuilder().build(context)
 
     dumped = result.request.model_dump(mode="json")
     layers = {layer["name"]: layer for layer in dumped["composition"]["layers"]}
@@ -266,6 +265,9 @@ def test_builds_create_run_request_from_agent_soul_and_node_job():
     assert "Previous node outputs:" not in dumped["composition"]["layers"][2]["config"]["user"]
     assert dumped["composition"]["layers"][-1]["config"]["json_schema"]["properties"]["summary"]["type"] == "string"
     assert DIFY_AGENT_HISTORY_LAYER_ID in layers
+    assert layers[DIFY_AGENT_MODEL_LAYER_ID]["config"]["model_provider"] == "openai"
+    assert layers[DIFY_AGENT_MODEL_LAYER_ID]["config"]["context_window_tokens"] == 32_768
+    assert model_context_window_calls == [(context.dify_context, "langgenius/openai/openai", "gpt-test")]
     redacted_layers = {layer["name"]: layer for layer in result.redacted_request["composition"]["layers"]}
     assert "credentials" not in redacted_layers[DIFY_AGENT_MODEL_LAYER_ID]["config"]
 
@@ -1565,7 +1567,7 @@ def test_workflow_run_request_includes_bound_workspace_skills(monkeypatch: pytes
         model=AgentSoulModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test"),
     )
 
-    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+    result = WorkflowAgentRuntimeRequestBuilder().build(context)
 
     config = next(layer for layer in result.request.composition.layers if layer.name == DIFY_CONFIG_LAYER_ID)
     assert [skill.name for skill in config.config.skills] == ["workspace-skill"]

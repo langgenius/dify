@@ -215,7 +215,11 @@ class WorkflowEntry:
         if node_type in {BuiltinNodeTypes.LOOP, BuiltinNodeTypes.ITERATION}:
             raise ValueError("Loop and Iteration nodes must use their engine-backed debug endpoints")
         node_version = str(node_config_data.version)
-        node_cls = resolve_workflow_node_class(node_type=node_type, node_version=node_version)
+        node_cls = resolve_workflow_node_class(
+            node_type=node_type,
+            node_version=node_version,
+            node_data=node_config_data,
+        )
 
         # init graph context and runtime state
         run_context = build_dify_run_context(

@@ -36,8 +36,8 @@ func (c *httpStubClient) Connect(_ context.Context, argv []string, metadataJSON 
 	if err != nil {
 		return nil, err
 	}
-	if err := checkHTTPError(body, statusCode, "connect"); err != nil {
-		return nil, err
+	if err := checkAgentStubHTTPError(body, statusCode); err != nil {
+		return nil, fmt.Errorf("agent stub connect failed: %w", err)
 	}
 
 	var resp ConnectResponse
@@ -72,6 +72,31 @@ func (c *httpStubClient) CreateFileUploadURL(_ context.Context, filename, mimety
 	return resp.UploadURL, nil
 }
 
+func (c *httpStubClient) CreateToolFileUploadURL(_ context.Context, filename, mimetype string) (string, error) {
+	payload := map[string]string{
+		"filename": filename,
+		"mimetype": mimetype,
+	}
+	body, statusCode, err := c.http.postJSON("/files/upload-request?expose_expiration=true", payload)
+	if err != nil {
+		return "", err
+	}
+	if err := checkAgentStubHTTPError(body, statusCode); err != nil {
+		return "", fmt.Errorf("agent stub file upload request failed: %w", err)
+	}
+
+	var resp struct {
+		UploadURL string `json:"upload_url"`
+	}
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return "", fmt.Errorf("parse upload response: %w", err)
+	}
+	if resp.UploadURL == "" {
+		return "", fmt.Errorf("signed file upload response is missing upload_url")
+	}
+	return resp.UploadURL, nil
+}
+
 func (c *httpStubClient) CreateFileDownloadURL(_ context.Context, transferMethod string, reference, url *string, forFrontend bool) (*FileDownloadResponse, error) {
 	fileMapping := map[string]any{
 		"transfer_method": transferMethod,
@@ -91,8 +116,8 @@ func (c *httpStubClient) CreateFileDownloadURL(_ context.Context, transferMethod
 	if err != nil {
 		return nil, err
 	}
-	if err := checkHTTPError(body, statusCode, "file download request"); err != nil {
-		return nil, err
+	if err := checkAgentStubHTTPError(body, statusCode); err != nil {
+		return nil, fmt.Errorf("agent stub file download request failed: %w", err)
 	}
 
 	var resp FileDownloadResponse
@@ -146,8 +171,8 @@ func (c *httpStubClient) GetConfigManifest(_ context.Context) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := checkHTTPError(body, statusCode, "config manifest"); err != nil {
-		return nil, err
+	if err := checkAgentStubHTTPError(body, statusCode); err != nil {
+		return nil, fmt.Errorf("agent stub config manifest failed: %w", err)
 	}
 	return body, nil
 }
@@ -167,8 +192,8 @@ func (c *httpStubClient) CreateConfigDownloadURL(
 	if err != nil {
 		return nil, err
 	}
-	if err := checkHTTPError(body, statusCode, "config download request"); err != nil {
-		return nil, err
+	if err := checkAgentStubHTTPError(body, statusCode); err != nil {
+		return nil, fmt.Errorf("agent stub config download request failed: %w", err)
 	}
 
 	var resp FileDownloadResponse
@@ -186,8 +211,8 @@ func (c *httpStubClient) PushConfig(_ context.Context, payload any) ([]byte, err
 	if err != nil {
 		return nil, err
 	}
-	if err := checkHTTPError(body, statusCode, "config push"); err != nil {
-		return nil, err
+	if err := checkAgentStubHTTPError(body, statusCode); err != nil {
+		return nil, fmt.Errorf("agent stub config push failed: %w", err)
 	}
 	return body, nil
 }
@@ -198,8 +223,8 @@ func (c *httpStubClient) PatchConfigEnv(_ context.Context, envText string) ([]by
 	if err != nil {
 		return nil, err
 	}
-	if err := checkHTTPError(body, statusCode, "config env update"); err != nil {
-		return nil, err
+	if err := checkAgentStubHTTPError(body, statusCode); err != nil {
+		return nil, fmt.Errorf("agent stub config env update failed: %w", err)
 	}
 	return body, nil
 }
@@ -210,8 +235,8 @@ func (c *httpStubClient) PutConfigNote(_ context.Context, note string) ([]byte, 
 	if err != nil {
 		return nil, err
 	}
-	if err := checkHTTPError(body, statusCode, "config note update"); err != nil {
-		return nil, err
+	if err := checkAgentStubHTTPError(body, statusCode); err != nil {
+		return nil, fmt.Errorf("agent stub config note update failed: %w", err)
 	}
 	return body, nil
 }

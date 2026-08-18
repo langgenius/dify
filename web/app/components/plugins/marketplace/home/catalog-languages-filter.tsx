@@ -5,7 +5,7 @@ import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { Input } from '@langgenius/dify-ui/input'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from '#i18n'
@@ -130,24 +130,27 @@ export default function CatalogLanguagesFilter() {
       >
         <div className="w-60 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="p-2 pb-1">
-            <div className="relative">
-              <span
-                aria-hidden
-                className="absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder"
-              />
-              <Input
+            <InputGroup>
+              <InputGroupInput
                 type="search"
                 name="language-query"
                 autoComplete="off"
+                enterKeyHint="search"
                 aria-label={t(($) => $['marketplace.searchFilterLanguage'], { ns: 'plugin' }) || ''}
-                className="pl-6.5"
+                className="[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
                 value={searchText}
-                onChange={(event) => setSearchText(event.target.value)}
+                onValueChange={setSearchText}
                 placeholder={
                   t(($) => $['marketplace.searchFilterLanguage'], { ns: 'plugin' }) || ''
                 }
               />
-            </div>
+              <InputGroupAddon className="ps-1.75 pe-0.75">
+                <span
+                  aria-hidden
+                  className="i-ri-search-line size-4 text-components-input-text-placeholder"
+                />
+              </InputGroupAddon>
+            </InputGroup>
           </div>
           <CheckboxGroup
             aria-label={t(($) => $['marketplace.languages'], { ns: 'plugin' })}

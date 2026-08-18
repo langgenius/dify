@@ -16,22 +16,34 @@ from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.protocol.schemas import (
     CancelRunRequest,
     CreateRunRequest,
-    RunCancelledEvent,
-    RunCancelledEventData,
     RunComposition,
     RunFailedEvent,
     RunFailedEventData,
     RunFailureType,
+    RunStartedEvent,
     RunSucceededEvent,
     RunSucceededEventData,
+    utc_now,
 )
-from dify_agent.runtime.event_sink import TerminalRunEvent, terminal_event_status_fields
+from dify_agent.runtime.cancellation import RunCancellationIntent
 from dify_agent.runtime.run_scheduler import RunScheduler
-from dify_agent.storage.redis_keys import run_events_key, run_record_key
+from dify_agent.storage.redis_keys import run_cancel_intent_key, run_events_key, run_record_key
 from dify_agent.storage.redis_run_store import RedisRunStore
 
 
 pytestmark = pytest.mark.integration
+
+
+def _success_or_failure_event(kind: str, run_id: str) -> RunSucceededEvent | RunFailedEvent:
+    if kind == "succeeded":
+        return RunSucceededEvent(
+            run_id=run_id,
+            data=RunSucceededEventData(
+                output="done",
+                session_snapshot=CompositorSessionSnapshot(layers=[]),
+            ),
+        )
+    return RunFailedEvent(run_id=run_id, data=RunFailedEventData(error="model failed"))
 
 
 @pytest.fixture
@@ -82,7 +94,7 @@ def redis_url() -> Iterator[str]:
             process.wait(timeout=5)
 
 
-def test_two_redis_clients_commit_exactly_one_matching_terminal(redis_url: str) -> None:
+def test_success_and_cancel_intent_commit_exactly_one_matching_terminal(redis_url: str) -> None:
     async def scenario() -> None:
         first_client = Redis.from_url(redis_url)
         second_client = Redis.from_url(redis_url)
@@ -92,43 +104,42 @@ def test_two_redis_clients_commit_exactly_one_matching_terminal(redis_url: str) 
         second_store = RedisRunStore(second_client, prefix=prefix, run_retention_seconds=retention_seconds)
         try:
             record = await first_store.create_run()
-            terminal_events: tuple[TerminalRunEvent, TerminalRunEvent] = (
-                RunSucceededEvent(
-                    run_id=record.run_id,
-                    data=RunSucceededEventData(
-                        output="done",
-                        session_snapshot=CompositorSessionSnapshot(layers=[]),
-                    ),
-                ),
-                RunCancelledEvent(
-                    run_id=record.run_id,
-                    data=RunCancelledEventData(
-                        reason="concurrent_cancel",
-                        message="cancel accepted",
-                    ),
+            success_event = RunSucceededEvent(
+                run_id=record.run_id,
+                data=RunSucceededEventData(
+                    output="done",
+                    session_snapshot=CompositorSessionSnapshot(layers=[]),
                 ),
             )
 
-            results = await asyncio.gather(
-                first_store.finalize_run(terminal_events[0]),
-                second_store.finalize_run(terminal_events[1]),
+            success_result, cancellation_status = await asyncio.gather(
+                first_store.finalize_run(success_event),
+                second_store.request_cancellation(
+                    record.run_id,
+                    CancelRunRequest(reason="concurrent_cancel", message="cancel accepted"),
+                ),
             )
 
-            assert sum(result.applied for result in results) == 1
-            winner_index = next(index for index, result in enumerate(results) if result.applied)
-            winner_event = terminal_events[winner_index]
-            winner_result = results[winner_index]
-            expected_status, expected_error, expected_error_type = terminal_event_status_fields(winner_event)
+            if success_result.applied:
+                assert cancellation_status == "succeeded"
+                winner_result = success_result
+                expected_status = "succeeded"
+                expected_event_type = "run_succeeded"
+            else:
+                assert success_result.status == "running"
+                assert cancellation_status == "running"
+                intent = await first_store.get_cancellation_intent(record.run_id)
+                assert intent is not None
+                winner_result = await first_store.finalize_cancellation(record.run_id, intent)
+                assert winner_result.applied is True
+                expected_status = "cancelled"
+                expected_event_type = "run_cancelled"
 
             persisted = await first_store.get_run(record.run_id)
             page = await second_store.get_events(record.run_id)
             assert persisted.status == expected_status
-            assert persisted.error == expected_error
-            assert persisted.error_type == expected_error_type
-            assert persisted.updated_at == winner_event.created_at
             assert len(page.events) == 1
-            assert page.events[0].type == winner_event.type
-            assert page.events[0].created_at == winner_event.created_at
+            assert page.events[0].type == expected_event_type
             assert page.events[0].id == winner_result.event_id
 
             record_ttl = await first_client.ttl(run_record_key(prefix, record.run_id))
@@ -138,6 +149,116 @@ def test_two_redis_clients_commit_exactly_one_matching_terminal(redis_url: str) 
         finally:
             await first_client.aclose()
             await second_client.aclose()
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("terminal_status", ["succeeded", "failed"])
+def test_terminal_first_rejects_late_cancellation(redis_url: str, terminal_status: str) -> None:
+    async def scenario() -> None:
+        client = Redis.from_url(redis_url)
+        prefix = f"terminal-first-{terminal_status}-{uuid4().hex}"
+        store = RedisRunStore(client, prefix=prefix, run_retention_seconds=60)
+        try:
+            record = await store.create_run()
+            result = await store.finalize_run(_success_or_failure_event(terminal_status, record.run_id))
+
+            cancellation_status = await store.request_cancellation(
+                record.run_id,
+                CancelRunRequest(reason="late_cancel"),
+            )
+
+            assert result.applied is True
+            assert cancellation_status == terminal_status
+            assert await store.get_cancellation_intent(record.run_id) is None
+            events = await store.get_events(record.run_id)
+            assert [event.type for event in events.events] == [f"run_{terminal_status}"]
+        finally:
+            await client.aclose()
+
+    asyncio.run(scenario())
+
+
+def test_cancellation_intent_lifecycle_and_terminal_exclusion(redis_url: str) -> None:
+    async def scenario() -> None:
+        client = Redis.from_url(redis_url)
+        prefix = f"cancel-intent-lifecycle-{uuid4().hex}"
+        retention_seconds = 60
+        store = RedisRunStore(client, prefix=prefix, run_retention_seconds=retention_seconds)
+        try:
+            record = await store.create_run()
+            _ = await store.append_event(RunStartedEvent(run_id=record.run_id))
+            record_key = run_record_key(prefix, record.run_id)
+            events_key = run_events_key(prefix, record.run_id)
+            intent_key = run_cancel_intent_key(prefix, record.run_id)
+            _ = await client.expire(record_key, 1)
+            _ = await client.expire(events_key, 1)
+
+            first_status = await store.request_cancellation(
+                record.run_id,
+                CancelRunRequest(reason="first", message="first message"),
+            )
+            duplicate_status = await store.request_cancellation(
+                record.run_id,
+                CancelRunRequest(reason="second", message="second message"),
+            )
+            intent = await store.get_cancellation_intent(record.run_id)
+
+            assert first_status == duplicate_status == "running"
+            assert intent is not None
+            assert (intent.reason, intent.message) == ("first", "first message")
+            for key in (record_key, events_key, intent_key):
+                assert 0 < await client.ttl(key) <= retention_seconds
+
+            success = await store.finalize_run(_success_or_failure_event("succeeded", record.run_id))
+            failure = await store.finalize_run(_success_or_failure_event("failed", record.run_id))
+            assert (success.applied, success.status) == (False, "running")
+            assert (failure.applied, failure.status) == (False, "running")
+            assert [event.type for event in (await store.get_events(record.run_id)).events] == ["run_started"]
+
+            first_finalization = await store.finalize_cancellation(
+                record.run_id,
+                intent,
+                session_snapshot=CompositorSessionSnapshot(layers=[]),
+            )
+            repeated_finalization = await store.finalize_cancellation(record.run_id, intent)
+            post_terminal_status = await store.request_cancellation(
+                record.run_id,
+                CancelRunRequest(reason="after_finalization"),
+            )
+            events = await store.get_events(record.run_id)
+
+            assert first_finalization.applied is True
+            assert repeated_finalization.applied is False
+            assert repeated_finalization.status == "cancelled"
+            assert post_terminal_status == "cancelled"
+            assert [event.type for event in events.events].count("run_cancelled") == 1
+            assert await client.exists(intent_key) == 0
+            for key in (record_key, events_key):
+                assert 0 < await client.ttl(key) <= retention_seconds
+        finally:
+            await client.aclose()
+
+    asyncio.run(scenario())
+
+
+def test_cancellation_finalization_without_intent_is_unapplied(redis_url: str) -> None:
+    async def scenario() -> None:
+        client = Redis.from_url(redis_url)
+        store = RedisRunStore(client, prefix=f"cancel-without-intent-{uuid4().hex}", run_retention_seconds=60)
+        try:
+            record = await store.create_run()
+            result = await store.finalize_cancellation(
+                record.run_id,
+                RunCancellationIntent(reason="not-accepted", requested_at=utc_now()),
+            )
+
+            assert result.applied is False
+            assert result.status == "running"
+            assert (await store.get_events(record.run_id)).events == []
+            assert (await store.get_run(record.run_id)).status == "running"
+        finally:
+            await client.aclose()
 
     asyncio.run(scenario())
 
@@ -177,6 +298,10 @@ def test_non_owner_scheduler_cancellation_stops_owner_runner(redis_url: str) -> 
         def __init__(self, *, started: asyncio.Event, stopped: asyncio.Event) -> None:
             self.started = started
             self.stopped = stopped
+
+        @property
+        def terminal_session_snapshot(self) -> None:
+            return None
 
         async def run(self) -> None:
             self.started.set()
