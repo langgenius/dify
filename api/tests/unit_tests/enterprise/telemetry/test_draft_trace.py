@@ -226,7 +226,7 @@ class TestEnqueueDraftNodeExecutionTrace:
 
         mock_emit.assert_called_once()
         event: DraftNodeExecutionTraceEvent = mock_emit.call_args[0][0]
-        assert event.name == TraceTaskName.DRAFT_NODE_EXECUTION_TRACE
+        assert event.trace_task_name == TraceTaskName.DRAFT_NODE_EXECUTION_TRACE
         assert event.context.tenant_id == "tenant-1"
         assert event.context.user_id == "user-1"
         assert event.context.app_id == "app-1"

@@ -964,9 +964,7 @@ class LLMGenerator:
             except InvokeError as e:
                 error = str(e)
             except Exception as e:
-                logger.exception(
-                    "Failed to invoke LLM model, model: %s", json.dumps(model_config.name), exc_info=True
-                )
+                logger.exception("Failed to invoke LLM model, model: %s", json.dumps(model_config.name), exc_info=True)
                 error = str(e)
 
         LLMGenerator._emit_prompt_generation(
