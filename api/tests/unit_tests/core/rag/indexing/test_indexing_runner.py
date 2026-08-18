@@ -1580,21 +1580,17 @@ class TestIndexingRunnerSplitter:
                 embedding_model_instance=mock_embedding_instance,
             )
 
-    def test_get_splitter_validates_max_tokens_too_large(self, mock_embedding_instance):
+    def test_get_splitter_validates_max_tokens_too_large(self, mock_embedding_instance, config_overrides):
         """Test splitter validation rejects max_tokens above maximum."""
-        # Arrange
-        with patch("core.indexing_runner.dify_config") as mock_config:
-            mock_config.INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH = 5000
-
-            # Act & Assert
-            with pytest.raises(ValueError, match="Custom segment length should be between"):
-                IndexingRunner._get_splitter(
-                    processing_rule_mode="custom",
-                    max_tokens=10000,  # Above maximum
-                    chunk_overlap=100,
-                    separator="\\n",
-                    embedding_model_instance=mock_embedding_instance,
-                )
+        config_overrides(INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH=5000)
+        with pytest.raises(ValueError, match="Custom segment length should be between"):
+            IndexingRunner._get_splitter(
+                processing_rule_mode="custom",
+                max_tokens=10000,  # Above maximum
+                chunk_overlap=100,
+                separator="\\n",
+                embedding_model_instance=mock_embedding_instance,
+            )
 
 
 class TestIndexingRunnerLoadSegments:
@@ -1782,30 +1778,29 @@ class TestIndexingRunnerEstimate:
                 "factory": mock_factory,
             }
 
-    def test_indexing_estimate_respects_batch_limit(self, mock_dependencies):
+    def test_indexing_estimate_respects_batch_limit(self, mock_dependencies, config_overrides):
         """Test indexing estimate enforces batch upload limit."""
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, BATCH_UPLOAD_LIMIT=10)
         # Arrange
         runner = IndexingRunner()
         tenant_id = str(uuid.uuid4())
 
-        # Create too many extract settings
-        with patch("core.indexing_runner.dify_config") as mock_config:
-            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
-            mock_config.BATCH_UPLOAD_LIMIT = 10
-            extract_settings = [MagicMock() for _ in range(15)]
+        extract_settings = [MagicMock() for _ in range(15)]
 
-            # Act & Assert
-            with pytest.raises(ValueError, match="batch upload limit"):
-                runner.indexing_estimate(
-                    tenant_id=tenant_id,
-                    extract_settings=extract_settings,
-                    tmp_processing_rule={"mode": "automatic", "rules": {}},
-                    doc_form=IndexStructureType.PARAGRAPH_INDEX,
-                    session=mock_dependencies["session"],
-                )
+        with pytest.raises(ValueError, match="batch upload limit"):
+            runner.indexing_estimate(
+                tenant_id=tenant_id,
+                extract_settings=extract_settings,
+                tmp_processing_rule={"mode": "automatic", "rules": {}},
+                doc_form=IndexStructureType.PARAGRAPH_INDEX,
+                session=mock_dependencies["session"],
+            )
 
-    def test_indexing_estimate_commits_preview_cleanup_before_summary_workers(self, mock_dependencies):
+    def test_indexing_estimate_commits_preview_cleanup_before_summary_workers(
+        self, mock_dependencies, config_overrides
+    ):
         """Test preview cleanup is visible before summary workers use independent sessions."""
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         runner = IndexingRunner()
         tenant_id = str(uuid.uuid4())
         mock_processor = MagicMock()
@@ -1845,10 +1840,7 @@ class TestIndexingRunnerEstimate:
         with (
             patch("core.indexing_runner.get_image_upload_file_ids", return_value=["image-1"]),
             patch("core.indexing_runner.storage") as mock_storage,
-            patch("core.indexing_runner.dify_config") as mock_config,
         ):
-            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
-
             result = runner.indexing_estimate(
                 tenant_id=tenant_id,
                 extract_settings=[MagicMock()],
