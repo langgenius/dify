@@ -10,7 +10,7 @@ import Loading from '@/app/components/base/loading'
 import { chunkTreeLabel, visibleDocumentChunkNodes } from './document-detail-model'
 
 const VIRTUALIZATION_THRESHOLD = 80
-const TREE_ROW_HEIGHT = 32
+const TREE_ROW_SIZE = 30
 
 function AutomaticChunkPageLoader({
   fetchNextPage,
@@ -114,7 +114,7 @@ export function DocumentChunkTreePanel({
   const focusedIndex = visibleNodes.findIndex((item) => item.node.id === currentFocusedNodeId)
   const rowVirtualizer = useVirtualizer({
     count: shouldVirtualize ? visibleNodes.length : 0,
-    estimateSize: () => TREE_ROW_HEIGHT,
+    estimateSize: () => TREE_ROW_SIZE,
     getItemKey: (index) => visibleNodes[index]?.node.id ?? index,
     getScrollElement: () => treeScrollRef.current,
     overscan: 8,
@@ -197,14 +197,14 @@ export function DocumentChunkTreePanel({
         aria-selected={activeSelectedNodeId === node.id}
         aria-setsize={hasNextPage ? -1 : setSize}
         className={cn(
-          'flex h-8 w-full items-center gap-1.5 rounded-lg pr-2 text-left system-xs-regular outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
+          'flex h-7 w-full items-center gap-1.5 rounded-lg px-2 text-left system-xs-regular outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
           activeSelectedNodeId === node.id && 'bg-state-accent-hover text-text-accent',
           treeHasFocus &&
             currentFocusedNodeId === node.id &&
             'bg-state-base-hover ring-1 ring-state-accent-solid ring-inset',
         )}
         role="treeitem"
-        style={{ ...style, paddingInlineStart: `${8 + depth * 16}px` }}
+        style={style}
         tabIndex={-1}
         onClick={() => {
           setFocusedNodeId(node.id)
@@ -216,7 +216,7 @@ export function DocumentChunkTreePanel({
         <span
           aria-hidden
           className={cn(
-            'mt-0.5 size-4 shrink-0 rtl:-scale-x-100',
+            'mt-0.5 size-3.5 shrink-0 rtl:-scale-x-100',
             hasChildren ? (expanded ? 'i-ri-arrow-down-s-line' : 'i-ri-arrow-right-s-line') : '',
           )}
         />
@@ -264,7 +264,7 @@ export function DocumentChunkTreePanel({
             currentFocusedNodeId ? `document-chunk-treeitem-${currentFocusedNodeId}` : undefined
           }
           aria-label={t(($) => $['newKnowledge.documentContents'])}
-          className="max-h-[70vh] overflow-auto py-1 pr-4 pl-1 outline-hidden xl:max-h-none xl:min-h-0 xl:flex-1"
+          className="max-h-[70vh] space-y-0.5 overflow-auto py-1 pr-5 outline-hidden xl:max-h-none xl:min-h-0 xl:flex-1"
           role="tree"
           tabIndex={0}
           onBlur={() => setTreeHasFocus(false)}
@@ -275,7 +275,6 @@ export function DocumentChunkTreePanel({
             <div className="relative" style={{ height: `${rowVirtualizer.getTotalSize()}px` }}>
               {virtualRows.map((virtualRow) =>
                 renderTreeItem(visibleNodes[virtualRow.index]!, {
-                  height: `${virtualRow.size}px`,
                   left: 0,
                   position: 'absolute',
                   top: 0,

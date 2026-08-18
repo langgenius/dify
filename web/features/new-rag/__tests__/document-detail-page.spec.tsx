@@ -2198,6 +2198,8 @@ describe('DocumentDetailPage', () => {
       <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
       { searchParams: '?revision=3&chunk=target' },
     )
+    const contentScroll = screen.getByTestId('chunk-content-scroll')
+    Object.defineProperty(contentScroll, 'clientHeight', { configurable: true, value: 1000 })
 
     await waitFor(() => expect(chunksQuery.fetchNextPage).toHaveBeenCalledOnce())
     expect(screen.getByRole('treeitem', { name: 'First chunk' })).toHaveAttribute(
@@ -2218,7 +2220,7 @@ describe('DocumentDetailPage', () => {
       'aria-selected',
       'true',
     )
-    await waitFor(() => expect(screen.getByTestId('chunk-content-scroll').scrollTop).toBe(384))
+    await waitFor(() => expect(contentScroll.scrollTop).toBe(392))
     getBoundingClientRect.mockRestore()
   })
 

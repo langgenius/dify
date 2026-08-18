@@ -23,6 +23,8 @@ import { chunkCharacterCount, placeDocumentMultimodalItems } from './document-de
 import { DocumentMetadataCard } from './document-metadata-card'
 import { DocumentMultimodalAsset } from './document-multimodal-asset'
 
+const SELECTED_CHUNK_TOP_OFFSET = 8
+
 function formatBytes(bytes: number, locale: string) {
   const numberFormat = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 })
   if (bytes < 1024) return `${numberFormat.format(bytes)} B`
@@ -177,11 +179,10 @@ export function DocumentChunkDetail({
       const contentRect = contentScroll.getBoundingClientRect()
       const chunkRect = selectedChunk.getBoundingClientRect()
       const chunkTop = contentScroll.scrollTop + chunkRect.top - contentRect.top
-      const chunkBottom = chunkTop + chunkRect.height
-      if (chunkTop < contentScroll.scrollTop)
-        contentScroll.scrollTo({ top: Math.max(0, chunkTop - 16), behavior: 'instant' })
-      else if (chunkBottom > contentScroll.scrollTop + contentScroll.clientHeight)
-        contentScroll.scrollTo({ top: Math.max(0, chunkTop - 16), behavior: 'instant' })
+      contentScroll.scrollTo({
+        top: Math.max(0, chunkTop - SELECTED_CHUNK_TOP_OFFSET),
+        behavior: 'instant',
+      })
     })
 
     return () => globalThis.cancelAnimationFrame(animationFrame)
@@ -212,35 +213,33 @@ export function DocumentChunkDetail({
                     <section
                       key={chunk.id}
                       id={`document-chunk-${chunk.id}`}
-                      className="group scroll-mt-4 rounded-lg px-3 pt-2 [contain-intrinsic-size:auto_160px] [content-visibility:auto] first:pt-3 xl:px-0"
+                      className="group relative scroll-mt-4 rounded-lg px-3 pt-2 [contain-intrinsic-size:auto_160px] [content-visibility:auto] first:pt-3 xl:px-0"
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          {block.heading && (
-                            <DocumentSectionHeading level={block.heading.level}>
-                              {block.heading.text ||
-                                t(($) => $['newKnowledge.chunkHeading'], {
-                                  position: chunk.ordinal + 1,
-                                })}
-                            </DocumentSectionHeading>
-                          )}
-                          {block.summary && (
-                            <DocumentSectionSummary>{block.summary}</DocumentSectionSummary>
-                          )}
-                        </div>
-                        <Button
-                          aria-label={tCommon(($) => $['operation.copy'])}
-                          className="opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 motion-reduce:transition-none"
-                          onClick={() => {
-                            copy(chunk.text)
-                            toast.success(tCommon(($) => $['actionMsg.copySuccessfully']))
-                          }}
-                          size="small"
-                          variant="ghost"
-                        >
-                          <span aria-hidden className="i-ri-file-copy-line size-4" />
-                        </Button>
+                      <div className="min-w-0">
+                        {block.heading && (
+                          <DocumentSectionHeading level={block.heading.level}>
+                            {block.heading.text ||
+                              t(($) => $['newKnowledge.chunkHeading'], {
+                                position: chunk.ordinal + 1,
+                              })}
+                          </DocumentSectionHeading>
+                        )}
+                        {block.summary && (
+                          <DocumentSectionSummary>{block.summary}</DocumentSectionSummary>
+                        )}
                       </div>
+                      <Button
+                        aria-label={tCommon(($) => $['operation.copy'])}
+                        className="absolute top-1 right-0 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 motion-reduce:transition-none"
+                        onClick={() => {
+                          copy(chunk.text)
+                          toast.success(tCommon(($) => $['actionMsg.copySuccessfully']))
+                        }}
+                        size="small"
+                        variant="ghost"
+                      >
+                        <span aria-hidden className="i-ri-file-copy-line size-4" />
+                      </Button>
                       {chunkMultimodalItems.length > 0 && (
                         <div className="mt-3 space-y-3">
                           {chunkMultimodalItems.map((item) => (
