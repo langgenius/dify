@@ -1,5 +1,3 @@
-from types import SimpleNamespace
-from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -10,6 +8,12 @@ from extensions.logstore.repositories.logstore_workflow_node_execution_repositor
 )
 from models.account import Account
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
+
+
+def _make_account() -> Account:
+    account = Account(name="Logstore User", email="logstore@example.com")
+    account.id = "account-1"
+    return account
 
 
 def test_save_synchronously_writes_sql_when_dual_write_is_disabled(
@@ -26,7 +30,7 @@ def test_save_synchronously_writes_sql_when_dual_write_is_disabled(
         repository = LogstoreWorkflowNodeExecutionRepository(
             session_factory=sqlite_session_factory,
             tenant_id="tenant-1",
-            user=cast(Account, SimpleNamespace(id="account-1")),
+            user=_make_account(),
             app_id="app-1",
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         )
