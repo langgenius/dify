@@ -43,6 +43,7 @@ interface PromptUnit {
 
 interface PromptPayload {
   readonly atomicDocument?: boolean;
+  readonly fixedCoreBoundary?: boolean;
   readonly lookAheadUnits?: readonly PromptUnit[];
   readonly sectionPath: readonly string[];
   readonly units: readonly PromptUnit[];
@@ -95,6 +96,55 @@ class ScriptedProvider implements SemanticChunkingLlmProvider {
   }
 }
 
+class BlockingEchoProvider implements SemanticChunkingLlmProvider {
+  readonly calls: SemanticChunkingLlmStreamInput[] = [];
+  readonly kind = "test-plugin-daemon";
+  readonly saturated: Promise<void>;
+  private active = 0;
+  private releaseBlocked: (() => void) | undefined;
+  private resolveSaturated: (() => void) | undefined;
+  private readonly blocked: Promise<void>;
+  maxActive = 0;
+
+  constructor(private readonly expectedConcurrency: number) {
+    this.saturated = new Promise<void>((resolve) => {
+      this.resolveSaturated = resolve;
+    });
+    this.blocked = new Promise<void>((resolve) => {
+      this.releaseBlocked = resolve;
+    });
+  }
+
+  release(): void {
+    this.releaseBlocked?.();
+  }
+
+  async *stream(input: SemanticChunkingLlmStreamInput): AsyncIterable<{
+    delta?: string;
+    finishReason?: string;
+    metadata?: unknown;
+    type: "delta" | "done";
+  }> {
+    this.calls.push(input);
+    this.active += 1;
+    this.maxActive = Math.max(this.maxActive, this.active);
+    if (this.active === this.expectedConcurrency) this.resolveSaturated?.();
+    try {
+      await this.blocked;
+      const userMessage = input.messages.find((message) => message.role === "user");
+      const payload = JSON.parse(userMessage?.content ?? "{}") as PromptPayload;
+      yield { delta: JSON.stringify(echoEachUnit(payload)), type: "delta" };
+      yield {
+        finishReason: "stop",
+        metadata: { model: input.model, provider: "plugin-daemon" },
+        type: "done",
+      };
+    } finally {
+      this.active -= 1;
+    }
+  }
+}
+
 describe("LLM semantic chunker", () => {
   it("persists completed semantic windows and resumes after a later window fails", async () => {
     const checkpoints = createInMemoryDocumentSemanticWindowCheckpointRepository();
@@ -123,6 +173,7 @@ describe("LLM semantic chunker", () => {
       createLlmSemanticChunker({
         checkpoints,
         maxChunkChars: 4,
+        maxConcurrentWindows: 2,
         maxWindowChars: 4,
         reasoningProviderFactory: () => transient,
       }).chunk(input),
@@ -239,7 +290,7 @@ describe("LLM semantic chunker", () => {
         completed: true,
         entityCount: 2,
         model: "reasoner-model",
-        promptVersion: "semantic-chunking-v3",
+        promptVersion: "semantic-chunking-v4",
       },
       relationExtraction: { completed: true, relationCount: 1 },
       semanticChunking: {
@@ -440,7 +491,7 @@ describe("LLM semantic chunker", () => {
       windowPlanning: {
         atomicDocument: false,
         sourceSectionPathCount: 2,
-        version: "v3",
+        version: "v4",
       },
     });
   });
@@ -491,11 +542,148 @@ describe("LLM semantic chunker", () => {
       parseArtifact.elements.map((element) => element.text?.trim() ?? "").join("\n"),
     );
     expect(nodes[0]?.metadata.semanticChunking).toMatchObject({
-      windowPlanning: { version: "v3" },
+      windowPlanning: { version: "v4" },
     });
     expect(v2Nodes[0]?.metadata.semanticChunking).toMatchObject({
       windowPlanning: { version: "v2" },
     });
+  });
+
+  it("runs fixed-core semantic windows concurrently while preserving document order", async () => {
+    const parseArtifact = artifact(
+      Array.from({ length: 96 }, (_, index) => ({
+        id: `parallel-field-${index}`,
+        metadata: {},
+        sectionPath: ["Parallel record"],
+        text: `Field ${index}: value ${index}.`,
+        type: "paragraph" as const,
+      })),
+    );
+    const provider = new BlockingEchoProvider(2);
+    const pending = createLlmSemanticChunker({
+      maxConcurrentWindows: 2,
+      reasoningProviderFactory: () => provider,
+    }).chunk({
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      parseArtifact,
+      retrievalProfile: profile(),
+    });
+
+    await provider.saturated;
+    expect(provider.calls).toHaveLength(2);
+    expect(provider.maxActive).toBe(2);
+    provider.release();
+    const nodes = await pending;
+
+    expect(provider.calls).toHaveLength(3);
+    expect(provider.maxActive).toBe(2);
+    expect(
+      provider.calls.every((call) => {
+        const user = call.messages.find((message) => message.role === "user");
+        return (JSON.parse(user?.content ?? "{}") as PromptPayload).fixedCoreBoundary === true;
+      }),
+    ).toBe(true);
+    expect(nodes.map((node) => node.text).join("\n")).toBe(
+      parseArtifact.elements.map((element) => element.text?.trim() ?? "").join("\n"),
+    );
+    expect(
+      nodes.every((node) => {
+        const semantic = node.metadata.semanticChunking as Record<string, unknown>;
+        const core = semantic.windowCoreUnitRange as { endUnitId: string };
+        const committed = semantic.windowCommittedUnitRange as { endUnitId: string };
+        return core.endUnitId === committed.endUnitId;
+      }),
+    ).toBe(true);
+  });
+
+  it("rejects a v4 response that consumes read-only look-ahead context", async () => {
+    const provider = new ScriptedProvider([
+      ({ lookAheadUnits = [], units }) => ({
+        chunks: [chunkRange(units[0]?.id, lookAheadUnits[0]?.id)],
+      }),
+    ]);
+
+    await expect(
+      createLlmSemanticChunker({
+        maxChunkChars: 10,
+        maxWindowChars: 15,
+        reasoningProviderFactory: () => provider,
+      }).chunk({
+        knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+        parseArtifact: artifact([
+          {
+            id: "fixed-core-1",
+            metadata: {},
+            sectionPath: ["A"],
+            text: "1234567.",
+            type: "paragraph",
+          },
+          {
+            id: "fixed-core-2",
+            metadata: {},
+            sectionPath: ["A"],
+            text: "abc.",
+            type: "paragraph",
+          },
+          {
+            id: "fixed-core-look-ahead",
+            metadata: {},
+            sectionPath: ["A"],
+            text: "def.",
+            type: "paragraph",
+          },
+        ]),
+        retrievalProfile: profile(),
+      }),
+    ).rejects.toThrow("must not commit read-only look-ahead units");
+  });
+
+  it("bounds per-document semantic window concurrency", () => {
+    expect(() =>
+      createLlmSemanticChunker({
+        maxConcurrentWindows: 33,
+        reasoningProviderFactory: () => new ScriptedProvider([echoEachUnit]),
+      }),
+    ).toThrow("maxConcurrentWindows must be at most 32");
+  });
+
+  it("propagates compilation cancellation into active semantic model calls", async () => {
+    const controller = new AbortController();
+    let markStarted: (() => void) | undefined;
+    const started = new Promise<void>((resolve) => {
+      markStarted = resolve;
+    });
+    const provider: SemanticChunkingLlmProvider = {
+      async *stream(input) {
+        markStarted?.();
+        if (!input.signal) throw new Error("semantic model call did not receive cancellation");
+        await new Promise<void>((_resolve, reject) => {
+          input.signal?.addEventListener("abort", () => reject(input.signal?.reason), {
+            once: true,
+          });
+        });
+      },
+    };
+    const pending = createLlmSemanticChunker({
+      reasoningProviderFactory: () => provider,
+    }).chunk({
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      parseArtifact: artifact([
+        {
+          id: "cancelled-window",
+          metadata: {},
+          sectionPath: ["Cancellation"],
+          text: "Cancel this semantic model request.",
+          type: "paragraph",
+        },
+      ]),
+      retrievalProfile: profile(),
+      signal: controller.signal,
+    });
+
+    await started;
+    controller.abort(new Error("compilation cancelled"));
+    await expect(pending).rejects.toThrow("compilation cancelled");
   });
 
   it("keeps a one-page short structured record atomic across its table boundary", async () => {
@@ -591,7 +779,7 @@ describe("LLM semantic chunker", () => {
       windowPlanning: {
         atomicDocument: true,
         sourceSectionPathCount: 1,
-        version: "v3",
+        version: "v4",
       },
     });
     expect(nodes[0]?.metadata.extractedEntities).toEqual([
@@ -1430,6 +1618,7 @@ describe("LLM semantic chunker", () => {
     const nodes = await createLlmSemanticChunker({
       maxChunkChars: 10,
       maxWindowChars: 15,
+      promptVersion: "semantic-chunking-v3",
       reasoningProviderFactory: () =>
         new ScriptedProvider(
           [
@@ -1460,6 +1649,7 @@ describe("LLM semantic chunker", () => {
         documentChunkCount: overrides.documentChunkCount ?? nodes.length,
         modelSelection: profile().reasoningModel,
         parseArtifact,
+        promptVersion: "semantic-chunking-v3",
         windowManifest: overrides.windowManifest ?? receipt.windowManifest,
       });
     const firstWindow = receipt.windowManifest[0] as LlmSemanticWindowManifestEntry;
@@ -2178,6 +2368,7 @@ describe("LLM semantic chunker", () => {
     const nodes = await createLlmSemanticChunker({
       maxChunkChars: 10,
       maxWindowChars: 15,
+      promptVersion: "semantic-chunking-v3",
       reasoningProviderFactory: () => provider,
     }).chunk({
       knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
@@ -2212,6 +2403,7 @@ describe("LLM semantic chunker", () => {
         modelSelection: profile().reasoningModel,
         nodes,
         parseArtifact,
+        promptVersion: "semantic-chunking-v3",
         publicationGenerationId: GENERATION_A,
       }),
     ).not.toThrow();
@@ -2231,6 +2423,7 @@ describe("LLM semantic chunker", () => {
       createLlmSemanticChunker({
         maxChunkChars: 10,
         maxWindowChars: 15,
+        promptVersion: "semantic-chunking-v3",
         reasoningProviderFactory: () => provider,
       }).chunk({
         knowledgeSpaceId: KNOWLEDGE_SPACE_ID,

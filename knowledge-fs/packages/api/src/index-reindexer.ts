@@ -331,6 +331,9 @@ export function createIncrementalReindexer({
           if (reusedSourceNodes.length > 0) {
             assertExactReusedGenerationReplay(replayedNodes, reusedSourceNodes);
           } else if (semanticChunker && retrievalProfile) {
+            const replayPromptVersion =
+              semanticPromptVersionFromStoredNodes(replayedNodes) ??
+              semanticChunker.replayDefaults?.promptVersion;
             const replayMaxChunkChars =
               input.chunkConfig?.maxChunkChars ?? semanticChunker.replayDefaults?.maxChunkChars;
             const replayMaxWindowChars = semanticChunker.replayDefaults
@@ -358,9 +361,7 @@ export function createIncrementalReindexer({
               nodes: replayedNodes,
               parseArtifact: storedArtifact,
               permissionScope: input.permissionScope ?? [],
-              ...(semanticChunker.replayDefaults?.promptVersion
-                ? { promptVersion: semanticChunker.replayDefaults.promptVersion }
-                : {}),
+              ...(replayPromptVersion ? { promptVersion: replayPromptVersion } : {}),
               publicationGenerationId,
             });
           }
@@ -412,6 +413,7 @@ export function createIncrementalReindexer({
                   ...(input.permissionScope ? { permissionScope: [...input.permissionScope] } : {}),
                   ...(publicationGenerationId ? { publicationGenerationId } : {}),
                   retrievalProfile,
+                  ...(input.signal ? { signal: input.signal } : {}),
                   ...(input.tenantId ? { tenantId: input.tenantId } : {}),
                 })
               : compute.chunkParseArtifact({
@@ -1178,6 +1180,16 @@ function assertExactReusedGenerationReplay(
       "Incremental reindexer found an incomplete projection-only node generation replay",
     );
   }
+}
+
+function semanticPromptVersionFromStoredNodes(nodes: readonly KnowledgeNode[]): string | undefined {
+  for (const node of nodes) {
+    const semantic = node.metadata.semanticChunking;
+    if (!isPlainObject(semantic) || typeof semantic.promptVersion !== "string") continue;
+    const promptVersion = semantic.promptVersion.trim();
+    if (promptVersion) return promptVersion;
+  }
+  return undefined;
 }
 
 function validateReindexProjectionDimensions(

@@ -467,6 +467,28 @@ export function createResearchTaskRuntime({
         return "deferred";
       }
 
+      const terminalErrorCode = explicitlyNonRetryableErrorCode(error);
+      if (terminalErrorCode) {
+        const failed = await serializeExecutionMutation((job) =>
+          repository.failExecution({
+            ...fence(job, now()),
+            error: terminalErrorCode,
+          }),
+        );
+        if (failed) {
+          recordDurableTaskOperationalMetric(metrics, {
+            lifecycle: "terminal",
+            outcome: "failed",
+            taskKind: "research",
+          });
+          await publishProgress(failed, "research_task.failed", {
+            error: terminalErrorCode,
+          });
+          return "failed";
+        }
+        return "deferred";
+      }
+
       if (current.executionAttempts >= current.maxExecutionAttempts) {
         const failed = await serializeExecutionMutation((job) =>
           repository.failExecution({
@@ -1464,6 +1486,13 @@ function retryDelay(attempt: number, initial: number, maximum: number): number {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Research task execution failed";
+}
+
+function explicitlyNonRetryableErrorCode(error: unknown): string | undefined {
+  if (!error || typeof error !== "object" || !("retryable" in error)) return undefined;
+  if ((error as { readonly retryable?: unknown }).retryable !== false) return undefined;
+  const code = "code" in error ? (error as { readonly code?: unknown }).code : undefined;
+  return typeof code === "string" && code.trim() ? code.trim() : "RESEARCH_TASK_EXECUTION_FAILED";
 }
 
 function positiveInteger(value: number, field: string): void {

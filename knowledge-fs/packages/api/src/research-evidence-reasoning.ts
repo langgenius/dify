@@ -102,10 +102,15 @@ const EvidenceJudgementSchema = z
 
 export class ResearchEvidenceReasoningContractError extends Error {
   readonly code = "RESEARCH_EVIDENCE_REASONING_INVALID";
+  readonly retryable: boolean;
 
-  constructor(message: string, options: { readonly cause?: unknown } = {}) {
+  constructor(
+    message: string,
+    options: { readonly cause?: unknown; readonly retryable?: boolean | undefined } = {},
+  ) {
     super(message, options.cause === undefined ? undefined : { cause: options.cause });
     this.name = "ResearchEvidenceReasoningContractError";
+    this.retryable = options.retryable ?? false;
   }
 }
 
@@ -158,7 +163,10 @@ export function createResearchEvidenceReasoning({
     await notifyResearchModelCallBefore(observer, modelCall);
     const controller = new AbortController();
     const timer = setTimeout(
-      () => controller.abort(new ResearchEvidenceReasoningContractError(`${step} timed out`)),
+      () =>
+        controller.abort(
+          new ResearchEvidenceReasoningContractError(`${step} timed out`, { retryable: true }),
+        ),
       timeoutMs,
     );
     let result: Awaited<ReturnType<ResearchEvidenceReasoningProvider["generate"]>>;
@@ -194,6 +202,7 @@ export function createResearchEvidenceReasoning({
       if (error instanceof ResearchEvidenceReasoningContractError) throw error;
       throw new ResearchEvidenceReasoningContractError(`${step} model call failed`, {
         cause: error,
+        retryable: modelFailureIsRetryable(error),
       });
     } finally {
       clearTimeout(timer);
@@ -262,7 +271,7 @@ export function createResearchEvidenceReasoning({
         messages: [
           {
             content:
-              "Judge whether the evidence set is sufficient to answer the query. Do not score individual passages. A supplemental query must target only missing evidence and must be null when sufficient.",
+              "Judge whether the evidence set is sufficient to answer the query. Do not score individual passages. The sufficient field must be the JSON boolean true or false, never an explanation or string. A supplemental query must target only missing evidence and must be null when sufficient.",
             role: "system",
           },
           {
@@ -280,7 +289,7 @@ export function createResearchEvidenceReasoning({
         step: "research.judge",
         tenantId: requiredText(input.tenantId, "tenantId"),
       });
-      const parsed = parseJson(text, EvidenceJudgementSchema, "research.judge");
+      const parsed = parseEvidenceJudgement(text);
       return {
         coverage: parsed.coverage,
         coveredDimensions: uniqueStrings(parsed.coveredDimensions),
@@ -361,6 +370,58 @@ function parseJson<T>(text: string, schema: z.ZodType<T>, label: string): T {
       cause,
     });
   }
+}
+
+function parseEvidenceJudgement(text: string): z.infer<typeof EvidenceJudgementSchema> {
+  let value: unknown;
+  try {
+    value = JSON.parse(text);
+  } catch (cause) {
+    throw new ResearchEvidenceReasoningContractError(
+      "research.judge returned invalid structured JSON",
+      { cause },
+    );
+  }
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const record = value as Record<string, unknown>;
+    const sufficient = normalizeSufficientValue(record.sufficient);
+    if (sufficient !== undefined) {
+      value = { ...record, sufficient };
+    }
+  }
+  try {
+    return EvidenceJudgementSchema.parse(value);
+  } catch (cause) {
+    throw new ResearchEvidenceReasoningContractError(
+      "research.judge returned invalid structured JSON",
+      { cause },
+    );
+  }
+}
+
+function normalizeSufficientValue(value: unknown): boolean | undefined {
+  if (typeof value === "boolean") return value;
+  if (typeof value !== "string") return undefined;
+  const normalized = value.trim().toLocaleLowerCase();
+  if (
+    /^(?:false|no|insufficient|not sufficient|不足|不充分|不够|否)(?:[\s.,，。:：;；]|$)/u.test(
+      normalized,
+    )
+  ) {
+    return false;
+  }
+  if (/^(?:true|yes|sufficient|充分|足够|是)(?:[\s.,，。:：;；]|$)/u.test(normalized)) {
+    return true;
+  }
+  return undefined;
+}
+
+function modelFailureIsRetryable(error: unknown): boolean {
+  if (error && typeof error === "object" && "retryable" in error) {
+    return (error as { readonly retryable?: unknown }).retryable === true;
+  }
+  // Preserve the durable runtime's previous behavior for opaque provider/network failures.
+  return true;
 }
 
 function requiredText(value: string, label: string): string {

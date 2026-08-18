@@ -17,7 +17,7 @@ import {
 import { z } from "zod";
 
 import { deterministicChildId } from "./api-shared-utils";
-import type { ConcurrencyGate } from "./bounded-concurrency";
+import { type ConcurrencyGate, mapWithConcurrency } from "./bounded-concurrency";
 import {
   type DocumentLayoutRecompositionStats,
   recomposeDocumentLayoutForSemanticSegmentation,
@@ -60,10 +60,13 @@ const DEFAULT_MAX_ENTITIES_PER_CHUNK = 100;
 const DEFAULT_MAX_RELATIONS_PER_CHUNK = 100;
 const DEFAULT_MAX_OUTPUT_TOKENS = 6_000;
 const DEFAULT_MAX_RESPONSE_CHARS = 1_000_000;
-const DEFAULT_PROMPT_VERSION = "semantic-chunking-v3";
+const DEFAULT_PROMPT_VERSION = "semantic-chunking-v4";
 const SEMANTIC_CHUNKING_V2_PROMPT_VERSION = "semantic-chunking-v2";
+const SEMANTIC_CHUNKING_V3_PROMPT_VERSION = "semantic-chunking-v3";
 const V3_MAX_CORE_UNITS_PER_WINDOW = 32;
 const V3_MAX_LOOK_AHEAD_UNITS_PER_WINDOW = 8;
+const DEFAULT_MAX_CONCURRENT_WINDOWS = 4;
+const MAX_CONCURRENT_WINDOWS = 32;
 const SEMANTIC_CHUNKING_STRATEGY = "llm-semantic-v1";
 const SEMANTIC_CHUNKING_SCHEMA_VERSION = 1;
 /**
@@ -85,6 +88,7 @@ export interface SemanticChunkingLlmStreamInput {
   readonly maxOutputTokens?: number | undefined;
   readonly messages: readonly SemanticChunkingLlmMessage[];
   readonly model: string;
+  readonly signal?: AbortSignal | undefined;
   readonly temperature?: number | undefined;
   readonly tenantId?: string | undefined;
 }
@@ -123,6 +127,7 @@ export interface SemanticChunkerInput {
   readonly publicationGenerationId?: string | undefined;
   /** Frozen profile revision for the candidate publication being compiled. */
   readonly retrievalProfile: KnowledgeSpaceRetrievalProfile;
+  readonly signal?: AbortSignal | undefined;
   readonly tenantId?: string | undefined;
 }
 
@@ -140,6 +145,7 @@ export interface SemanticChunker {
 export interface LlmSemanticChunkerOptions {
   readonly checkpoints?: DocumentSemanticWindowCheckpointRepository | undefined;
   readonly maxChunkChars?: number | undefined;
+  readonly maxConcurrentWindows?: number | undefined;
   readonly maxEntitiesPerChunk?: number | undefined;
   readonly maxNodes?: number | undefined;
   readonly maxOutputTokens?: number | undefined;
@@ -274,7 +280,7 @@ interface SemanticWindow {
   readonly units: readonly AtomicUnit[];
 }
 
-type SemanticWindowPlanningVersion = "v1" | "v2" | "v3";
+type SemanticWindowPlanningVersion = "v1" | "v2" | "v3" | "v4";
 
 interface SemanticWindowPlanningPolicy {
   readonly atomicDocument: boolean;
@@ -355,6 +361,7 @@ export function preflightLlmSemanticWindows({
 export function createLlmSemanticChunker({
   checkpoints,
   maxChunkChars = DEFAULT_MAX_CHUNK_CHARS,
+  maxConcurrentWindows = DEFAULT_MAX_CONCURRENT_WINDOWS,
   maxEntitiesPerChunk = DEFAULT_MAX_ENTITIES_PER_CHUNK,
   maxNodes = DEFAULT_MAX_NODES,
   maxOutputTokens = DEFAULT_MAX_OUTPUT_TOKENS,
@@ -369,6 +376,7 @@ export function createLlmSemanticChunker({
   temperature = 0,
 }: LlmSemanticChunkerOptions): SemanticChunker {
   validatePositiveInteger("maxChunkChars", maxChunkChars);
+  validatePositiveInteger("maxConcurrentWindows", maxConcurrentWindows);
   validatePositiveInteger("maxEntitiesPerChunk", maxEntitiesPerChunk);
   validatePositiveInteger("maxNodes", maxNodes);
   validatePositiveInteger("maxOutputTokens", maxOutputTokens);
@@ -377,6 +385,11 @@ export function createLlmSemanticChunker({
   validatePositiveInteger("maxWindowChars", maxWindowChars);
   if (maxWindowChars < maxChunkChars) {
     throw new Error("LLM semantic chunking maxWindowChars must be at least maxChunkChars");
+  }
+  if (maxConcurrentWindows > MAX_CONCURRENT_WINDOWS) {
+    throw new Error(
+      `LLM semantic chunking maxConcurrentWindows must be at most ${MAX_CONCURRENT_WINDOWS}`,
+    );
   }
   if (!promptVersion.trim()) {
     throw new Error("LLM semantic chunking promptVersion is required");
@@ -388,6 +401,7 @@ export function createLlmSemanticChunker({
   return {
     replayDefaults: { maxChunkChars, maxWindowChars, promptVersion },
     chunk: async (input) => {
+      input.signal?.throwIfAborted();
       const effectiveConfig = resolveConfig(input.config, {
         maxChunkChars,
         maxNodes,
@@ -435,16 +449,8 @@ export function createLlmSemanticChunker({
       let nextUnitIndex = 0;
       let windowIndex = 0;
 
-      while (nextUnitIndex < units.length) {
-        const window = materializeSemanticWindow({
-          canonicalText,
-          maxChunkChars: effectiveConfig.maxChunkChars,
-          maxWindowChars: effectiveConfig.maxWindowChars,
-          planningPolicy,
-          startUnitIndex: nextUnitIndex,
-          units,
-          windowIndex,
-        });
+      const processWindow = async (window: SemanticWindow) => {
+        input.signal?.throwIfAborted();
         const messages = semanticChunkingMessages({
           enableGraph: input.enableGraph !== false,
           enablePageIndex: input.enablePageIndex !== false,
@@ -454,7 +460,7 @@ export function createLlmSemanticChunker({
           window,
         });
         const callStartedAt = Date.now();
-        let completion: CollectedProviderCompletion;
+        let completion: CollectedProviderCompletion | undefined;
         let checkpointHit = false;
         try {
           const stored = checkpointScope
@@ -483,37 +489,30 @@ export function createLlmSemanticChunker({
                 messages,
                 model: reasoningSelection.model,
                 provider,
+                ...(input.signal ? { signal: input.signal } : {}),
                 temperature,
                 tenantId: input.tenantId,
               });
             completion = modelRequestGate ? await modelRequestGate.run(request) : await request();
           }
-        } catch (error) {
-          recordIngestionModelCallMetric(metrics, {
-            cacheHits: checkpointHit ? 1 : 0,
-            durationMs: Math.max(0, Date.now() - callStartedAt),
-            itemCount: window.units.length,
-            outcome: "failed",
-            providerCalls: checkpointHit ? 0 : 1,
-            retries: 0,
-            stage: "semantic-chunking",
-          });
-          throw error;
-        }
-        try {
+          input.signal?.throwIfAborted();
+          if (!completion) {
+            throw new Error("LLM semantic chunking provider returned no completion");
+          }
+          const resolvedCompletion = completion;
           const completionFingerprint = llmSemanticCompletionFingerprint({
-            ...(completion.actualModel ? { actualModel: completion.actualModel } : {}),
-            ...(completion.actualProvider ? { actualProvider: completion.actualProvider } : {}),
-            ...(completion.finishReason ? { finishReason: completion.finishReason } : {}),
+            ...(resolvedCompletion.actualModel
+              ? { actualModel: resolvedCompletion.actualModel }
+              : {}),
+            ...(resolvedCompletion.actualProvider
+              ? { actualProvider: resolvedCompletion.actualProvider }
+              : {}),
+            ...(resolvedCompletion.finishReason
+              ? { finishReason: resolvedCompletion.finishReason }
+              : {}),
             ...(provider.kind ? { transportProvider: provider.kind } : {}),
           });
-          completionFingerprints.add(completionFingerprint);
-          if (completionFingerprints.size > MAX_COMPLETION_CATALOG_ENTRIES) {
-            throw new Error(
-              `LLM semantic chunking completion identities exceed maxCompletionCatalogEntries=${MAX_COMPLETION_CATALOG_ENTRIES}`,
-            );
-          }
-          const output = parseSemanticChunkingOutput(completion.text);
+          const output = parseSemanticChunkingOutput(resolvedCompletion.text);
           const windowChunks = validateAndMaterializeWindowOutput({
             maxChunkChars: effectiveConfig.maxChunkChars,
             maxEntitiesPerChunk,
@@ -523,30 +522,36 @@ export function createLlmSemanticChunker({
           }).map((chunk) => ({
             ...chunk,
             completion: {
-              ...(completion.actualModel ? { actualModel: completion.actualModel } : {}),
-              ...(completion.actualProvider ? { actualProvider: completion.actualProvider } : {}),
-              ...(completion.finishReason ? { finishReason: completion.finishReason } : {}),
+              ...(resolvedCompletion.actualModel
+                ? { actualModel: resolvedCompletion.actualModel }
+                : {}),
+              ...(resolvedCompletion.actualProvider
+                ? { actualProvider: resolvedCompletion.actualProvider }
+                : {}),
+              ...(resolvedCompletion.finishReason
+                ? { finishReason: resolvedCompletion.finishReason }
+                : {}),
             },
           }));
-          if (chunks.length + windowChunks.length > effectiveConfig.maxNodes) {
-            throw new Error(
-              `LLM semantic chunking output exceeds maxNodes=${effectiveConfig.maxNodes}`,
-            );
-          }
           const committedEndUnitId = windowChunks.at(-1)?.windowCommitEndUnitId;
           const committedEndIndex = committedEndUnitId
             ? globalUnitIndex.get(committedEndUnitId)
             : undefined;
-          if (committedEndIndex === undefined || committedEndIndex < nextUnitIndex) {
+          const coreStartIndex = globalUnitIndex.get((window.units[0] as AtomicUnit).id);
+          if (
+            committedEndIndex === undefined ||
+            coreStartIndex === undefined ||
+            committedEndIndex < coreStartIndex
+          ) {
             throw new Error("LLM semantic chunking response did not advance the document cursor");
           }
           if (!checkpointHit && checkpointScope && checkpoints) {
             await checkpoints.put({
               checkpoint: {
-                completion: semanticCompletionCheckpointMetadata(completion),
+                completion: semanticCompletionCheckpointMetadata(resolvedCompletion),
                 inputFingerprint: window.inputFingerprint,
                 modelFingerprint,
-                responseText: completion.text,
+                responseText: resolvedCompletion.text,
                 windowId: window.id,
               },
               scope: checkpointScope,
@@ -560,11 +565,9 @@ export function createLlmSemanticChunker({
             providerCalls: checkpointHit ? 0 : 1,
             retries: 0,
             stage: "semantic-chunking",
-            ...(checkpointHit ? {} : ingestionModelUsageFromMetadata(completion.metadata)),
+            ...(checkpointHit ? {} : ingestionModelUsageFromMetadata(resolvedCompletion.metadata)),
           });
-          chunks.push(...windowChunks);
-          nextUnitIndex = committedEndIndex + 1;
-          windowIndex += 1;
+          return { committedEndIndex, completionFingerprint, window, windowChunks };
         } catch (error) {
           recordIngestionModelCallMetric(metrics, {
             cacheHits: checkpointHit ? 1 : 0,
@@ -574,9 +577,60 @@ export function createLlmSemanticChunker({
             providerCalls: checkpointHit ? 0 : 1,
             retries: 0,
             stage: "semantic-chunking",
-            ...(checkpointHit ? {} : ingestionModelUsageFromMetadata(completion.metadata)),
+            ...(checkpointHit || !completion
+              ? {}
+              : ingestionModelUsageFromMetadata(completion.metadata)),
           });
           throw error;
+        }
+      };
+
+      const appendProcessedWindow = (
+        processed: Awaited<ReturnType<typeof processWindow>>,
+      ): void => {
+        const coreStartIndex = globalUnitIndex.get((processed.window.units[0] as AtomicUnit).id);
+        if (coreStartIndex !== nextUnitIndex) {
+          throw new Error("LLM semantic chunking windows did not preserve document order");
+        }
+        completionFingerprints.add(processed.completionFingerprint);
+        if (completionFingerprints.size > MAX_COMPLETION_CATALOG_ENTRIES) {
+          throw new Error(
+            `LLM semantic chunking completion identities exceed maxCompletionCatalogEntries=${MAX_COMPLETION_CATALOG_ENTRIES}`,
+          );
+        }
+        if (chunks.length + processed.windowChunks.length > effectiveConfig.maxNodes) {
+          throw new Error(
+            `LLM semantic chunking output exceeds maxNodes=${effectiveConfig.maxNodes}`,
+          );
+        }
+        chunks.push(...processed.windowChunks);
+        nextUnitIndex = processed.committedEndIndex + 1;
+        windowIndex += 1;
+      };
+
+      if (planningPolicy.version === "v4") {
+        const windows = materializeDeterministicSemanticWindows({
+          canonicalText,
+          effectiveConfig,
+          planningPolicy,
+          units,
+        });
+        const processed = await mapWithConcurrency(windows, maxConcurrentWindows, async (window) =>
+          processWindow(window),
+        );
+        for (const result of processed) appendProcessedWindow(result);
+      } else {
+        while (nextUnitIndex < units.length) {
+          const window = materializeSemanticWindow({
+            canonicalText,
+            maxChunkChars: effectiveConfig.maxChunkChars,
+            maxWindowChars: effectiveConfig.maxWindowChars,
+            planningPolicy,
+            startUnitIndex: nextUnitIndex,
+            units,
+            windowIndex,
+          });
+          appendProcessedWindow(await processWindow(window));
         }
       }
 
@@ -750,7 +804,8 @@ export function assertValidLlmSemanticGenerationReplay({
         coreEnd !== undefined &&
         commitStart === coreStart &&
         commitEnd !== undefined &&
-        commitEnd >= coreEnd,
+        commitEnd >= coreEnd &&
+        (planningPolicy.version !== "v4" || commitEnd === coreEnd),
       `chunk ${chunkIndex} has invalid core or committed window ranges`,
     );
     const resolvedWindow = materializeSemanticWindow({
@@ -1140,7 +1195,10 @@ export function assertValidLlmSemanticWindowManifestReplay({
     ) as number;
     const commitEnd = globalUnitIndex.get(manifestWindow.committedUnitRange[1]);
     assertSemanticManifestReplay(
-      commitEnd !== undefined && commitEnd >= coreEnd && commitEnd <= eligibleEnd,
+      commitEnd !== undefined &&
+        commitEnd >= coreEnd &&
+        commitEnd <= eligibleEnd &&
+        (planningPolicy.version !== "v4" || commitEnd === coreEnd),
       `window ${windowOrdinal} has an invalid committed boundary`,
     );
 
@@ -1746,10 +1804,30 @@ function preflightMaterializedSemanticWindows({
   readonly planningPolicy: SemanticWindowPlanningPolicy;
   readonly units: readonly AtomicUnit[];
 }): LlmSemanticWindowPreflightResult {
-  let maximumWindowCount = 0;
+  const windows = materializeDeterministicSemanticWindows({
+    canonicalText,
+    effectiveConfig,
+    planningPolicy,
+    units,
+  });
+  return { maximumWindowCount: windows.length, unitCount: units.length };
+}
+
+function materializeDeterministicSemanticWindows({
+  canonicalText,
+  effectiveConfig,
+  planningPolicy,
+  units,
+}: {
+  readonly canonicalText: string;
+  readonly effectiveConfig: EffectiveChunkConfig;
+  readonly planningPolicy: SemanticWindowPlanningPolicy;
+  readonly units: readonly AtomicUnit[];
+}): SemanticWindow[] {
+  const windows: SemanticWindow[] = [];
   let nextUnitIndex = 0;
   while (nextUnitIndex < units.length) {
-    if (maximumWindowCount >= DEFAULT_MAX_SEMANTIC_WINDOWS) {
+    if (windows.length >= DEFAULT_MAX_SEMANTIC_WINDOWS) {
       throw new Error(
         `LLM semantic chunking deterministic window count exceeds maxSemanticWindows=${DEFAULT_MAX_SEMANTIC_WINDOWS}`,
       );
@@ -1761,12 +1839,12 @@ function preflightMaterializedSemanticWindows({
       planningPolicy,
       startUnitIndex: nextUnitIndex,
       units,
-      windowIndex: maximumWindowCount,
+      windowIndex: windows.length,
     });
+    windows.push(window);
     nextUnitIndex += window.units.length;
-    maximumWindowCount += 1;
   }
-  return { maximumWindowCount, unitCount: units.length };
+  return windows;
 }
 
 function resolveSemanticWindowPlanningPolicy({
@@ -1782,10 +1860,12 @@ function resolveSemanticWindowPlanningPolicy({
 }): SemanticWindowPlanningPolicy {
   const version: SemanticWindowPlanningVersion =
     promptVersion === DEFAULT_PROMPT_VERSION
-      ? "v3"
-      : promptVersion === SEMANTIC_CHUNKING_V2_PROMPT_VERSION
-        ? "v2"
-        : "v1";
+      ? "v4"
+      : promptVersion === SEMANTIC_CHUNKING_V3_PROMPT_VERSION
+        ? "v3"
+        : promptVersion === SEMANTIC_CHUNKING_V2_PROMPT_VERSION
+          ? "v2"
+          : "v1";
   if (version === "v1") {
     return { atomicDocument: false, version };
   }
@@ -1802,7 +1882,7 @@ function resolveSemanticWindowPlanningPolicy({
   );
   const atomicDocument =
     units.length > 0 &&
-    (version !== "v3" || units.length <= V3_MAX_CORE_UNITS_PER_WINDOW) &&
+    ((version !== "v3" && version !== "v4") || units.length <= V3_MAX_CORE_UNITS_PER_WINDOW) &&
     tableElementIds.size === 1 &&
     hasNarrativeText &&
     hasCompletePageProvenance &&
@@ -1836,7 +1916,10 @@ function materializeSemanticWindow({
   const coreUnits: AtomicUnit[] = [];
   let cursor = startUnitIndex;
   while (cursor < units.length) {
-    if (planningPolicy.version === "v3" && coreUnits.length >= V3_MAX_CORE_UNITS_PER_WINDOW) {
+    if (
+      (planningPolicy.version === "v3" || planningPolicy.version === "v4") &&
+      coreUnits.length >= V3_MAX_CORE_UNITS_PER_WINDOW
+    ) {
       break;
     }
     const candidate = units[cursor] as AtomicUnit;
@@ -1860,7 +1943,7 @@ function materializeSemanticWindow({
   const firstLookAhead = units[cursor];
   while (firstLookAhead && cursor < units.length) {
     if (
-      planningPolicy.version === "v3" &&
+      (planningPolicy.version === "v3" || planningPolicy.version === "v4") &&
       lookAheadUnits.length >= V3_MAX_LOOK_AHEAD_UNITS_PER_WINDOW
     ) {
       break;
@@ -1991,8 +2074,15 @@ function semanticChunkingMessages({
           : "PageIndex is disabled: preserve only the supplied sectionPath, omit sectionSummary, and do not invent child section levels.",
         "Return strict JSON only. Never return, rewrite, summarize, correct, or duplicate source text.",
         "The units field is the core: cover every core unit exactly once, in order, by contiguous inclusive ranges.",
-        "lookAheadUnits is context-only. Only the final chunk may extend into it, and that final chunk must start in the core.",
-        "Never emit a chunk that starts wholly in lookAheadUnits. Units not consumed from look-ahead will be reconsidered in the next request.",
+        ...(window.planningVersion === "v4"
+          ? [
+              "lookAheadUnits is read-only context. Never include a look-ahead unit in any returned range; another request owns it.",
+              "The final range must end at the final unit in units so independent windows can be processed safely.",
+            ]
+          : [
+              "lookAheadUnits is context-only. Only the final chunk may extend into it, and that final chunk must start in the core.",
+              "Never emit a chunk that starts wholly in lookAheadUnits. Units not consumed from look-ahead will be reconsidered in the next request.",
+            ]),
         "Ranges may be smaller than the maximum; prefer natural topic boundaries over filling chunks.",
         `Every range must contain at most ${maxChunkChars} Unicode graphemes including separators.`,
         `Return at most ${maxEntitiesPerChunk} entities and ${maxRelationsPerChunk} relations per chunk.`,
@@ -2036,6 +2126,7 @@ function semanticChunkingMessages({
       content: JSON.stringify({
         ...(carriesParserProvenance ? { atomicDocument: window.atomicDocument } : {}),
         features: { enableGraph, enablePageIndex },
+        ...(window.planningVersion === "v4" ? { fixedCoreBoundary: true } : {}),
         lookAheadUnits: window.lookAheadUnits.map((unit) =>
           semanticPromptUnit(unit, window.planningVersion),
         ),
@@ -2054,6 +2145,7 @@ async function collectProviderCompletion({
   messages,
   model,
   provider,
+  signal,
   temperature,
   tenantId,
 }: {
@@ -2062,6 +2154,7 @@ async function collectProviderCompletion({
   readonly messages: readonly SemanticChunkingLlmMessage[];
   readonly model: string;
   readonly provider: SemanticChunkingLlmProvider;
+  readonly signal?: AbortSignal | undefined;
   readonly temperature: number;
   readonly tenantId?: string | undefined;
 }): Promise<CollectedProviderCompletion> {
@@ -2076,6 +2169,7 @@ async function collectProviderCompletion({
     maxOutputTokens,
     messages,
     model,
+    ...(signal ? { signal } : {}),
     temperature,
     ...(tenantId ? { tenantId } : {}),
   })) {
@@ -2270,6 +2364,7 @@ function validateAndMaterializeWindowOutput({
   const eligibleUnits = [...window.units, ...window.lookAheadUnits];
   const unitIndex = new Map(eligibleUnits.map((unit, index) => [unit.id, index]));
   const chunks: UncommittedWindowChunk[] = [];
+  const coreEnd = window.units.length - 1;
   let expectedStart = 0;
 
   for (const candidate of output.chunks) {
@@ -2281,6 +2376,11 @@ function validateAndMaterializeWindowOutput({
     if (start !== expectedStart || end < start) {
       throw new Error(
         "LLM semantic chunking response must cover units contiguously without gaps or overlap",
+      );
+    }
+    if (window.planningVersion === "v4" && end > coreEnd) {
+      throw new Error(
+        "LLM semantic chunking v4 response must not commit read-only look-ahead units",
       );
     }
     const chunkUnits = eligibleUnits.slice(start, end + 1);
@@ -2375,7 +2475,6 @@ function validateAndMaterializeWindowOutput({
   const finalChunk = chunks.at(-1);
   const finalStart = finalChunk ? unitIndex.get(finalChunk.startUnitId) : undefined;
   const finalEnd = finalChunk ? unitIndex.get(finalChunk.endUnitId) : undefined;
-  const coreEnd = window.units.length - 1;
   if (finalStart === undefined || finalEnd === undefined || finalEnd < coreEnd) {
     throw new Error(
       "LLM semantic chunking response must cover units contiguously without gaps or overlap",
@@ -2383,6 +2482,9 @@ function validateAndMaterializeWindowOutput({
   }
   if (finalStart > coreEnd) {
     throw new Error("LLM semantic chunking final chunk must start in the core window");
+  }
+  if (window.planningVersion === "v4" && finalEnd !== coreEnd) {
+    throw new Error("LLM semantic chunking v4 response must end at the fixed core boundary");
   }
   const commitEndUnitId = eligibleUnits[finalEnd]?.id;
   if (!commitEndUnitId) {

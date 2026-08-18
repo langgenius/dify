@@ -125,12 +125,12 @@ function semanticChunker(onCall: () => void) {
   });
 }
 
-function echoSemanticChunker(onCall: () => void) {
+function echoSemanticChunker(onCall: () => void, promptVersion = "semantic-reindex-v1") {
   return createLlmSemanticChunker({
     maxChunkChars: 512,
     maxWindowChars: 600,
     now: () => "2026-08-13T12:00:00.000Z",
-    promptVersion: "semantic-reindex-v1",
+    promptVersion,
     reasoningProviderFactory: () => ({
       kind: "plugin-daemon",
       async *stream(input) {
@@ -296,6 +296,49 @@ describe("incremental reindexer semantic generations", () => {
       storedNodeCount: 1,
       windowManifest: [expect.objectContaining({ windowId: "window-000000" })],
     });
+  });
+
+  it("replays legacy v3 nodes without a generation receipt under the current v4 runtime", async () => {
+    const artifacts = createInMemoryParseArtifactRepository({ maxArtifacts: 4 });
+    const nodes = createInMemoryKnowledgeNodeRepository({
+      maxBatchSize: 4,
+      maxListLimit: 4,
+      maxNodes: 4,
+    });
+    let legacyCalls = 0;
+    const input = {
+      chunkConfig: { maxChunkChars: 512 },
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      parseArtifact: parseArtifact(),
+      projectionVersion: 1,
+      publicationGenerationId: GENERATION_A,
+      retrievalProfile: retrievalProfile(),
+      tenantId: "tenant-1",
+    } as const;
+    await createIncrementalReindexer({
+      artifacts,
+      compute: computeRuntime(),
+      maxNodes: 4,
+      nodes,
+      semanticChunker: echoSemanticChunker(() => legacyCalls++, "semantic-chunking-v3"),
+    }).reindex(input);
+
+    let currentCalls = 0;
+    const nodesWithoutHistoricalReceipt = {
+      ...nodes,
+      getGenerationReceipt: async () => null,
+    };
+    await expect(
+      createIncrementalReindexer({
+        artifacts,
+        compute: computeRuntime(),
+        maxNodes: 4,
+        nodes: nodesWithoutHistoricalReceipt,
+        semanticChunker: echoSemanticChunker(() => currentCalls++, "semantic-chunking-v4"),
+      }).reindex(input),
+    ).resolves.toMatchObject({ nodesCreated: 1, status: "rebuilt" });
+    expect(legacyCalls).toBe(1);
+    expect(currentCalls).toBe(0);
   });
 
   it("persists and replays a fully excluded semantic result", async () => {

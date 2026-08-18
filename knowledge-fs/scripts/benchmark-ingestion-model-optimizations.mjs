@@ -155,9 +155,9 @@ function semanticProvider(failAt) {
     provider: {
       kind: "benchmark-provider",
       async *stream(input) {
-        calls += 1;
+        const callOrdinal = ++calls;
         await sleep(delayMs);
-        if (calls === failAt) throw new Error("benchmark transient failure");
+        if (callOrdinal === failAt) throw new Error("benchmark transient failure");
         const user = input.messages.find((message) => message.role === "user");
         const payload = JSON.parse(user?.content ?? "{}");
         yield {

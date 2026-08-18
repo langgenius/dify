@@ -448,6 +448,7 @@ const documentSemanticChunker = createLlmSemanticChunker({
   ...(databaseRepositories.documentSemanticWindowCheckpoints
     ? { checkpoints: databaseRepositories.documentSemanticWindowCheckpoints }
     : {}),
+  maxConcurrentWindows: ingestionModelRuntimeOptions.semanticExtractionMaxConcurrency,
   maxNodes: 20_000,
   metrics: operationalMetrics.ingestionModelCalls,
   modelRequestGate: ingestionModelRuntimeOptions.modelRequestGate,

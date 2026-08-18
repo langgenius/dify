@@ -1472,6 +1472,33 @@ describe("research task production runtime", () => {
     });
   });
 
+  it("fails an explicitly non-retryable execution error without spending every attempt", async () => {
+    const repository = new MemoryDurableRepository(baseJob());
+    const runtime = createResearchTaskRuntime({
+      ...runtimeOptions(repository),
+      generator: {
+        stream: async function* () {
+          yield traceStep("query.retrieve");
+          throw Object.assign(new Error("research.judge returned invalid structured JSON"), {
+            code: "RESEARCH_EVIDENCE_REASONING_INVALID",
+            retryable: false,
+          });
+        },
+      },
+    });
+
+    await expect(runtime.tick()).resolves.toMatchObject({
+      failed: 1,
+      leased: 1,
+      retryScheduled: 0,
+    });
+    expect(repository.job).toMatchObject({
+      error: "RESEARCH_EVIDENCE_REASONING_INVALID",
+      executionAttempts: 1,
+      stage: "failed",
+    });
+  });
+
   it("reports progress publication failures without rolling back a completed task", async () => {
     const repository = new MemoryDurableRepository(baseJob());
     const onError = vi.fn();

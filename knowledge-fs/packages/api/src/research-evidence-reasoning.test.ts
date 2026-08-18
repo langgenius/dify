@@ -142,6 +142,57 @@ describe("Research evidence reasoning", () => {
     expect(generate).toHaveBeenCalledOnce();
   });
 
+  it("normalizes a provider explanation in the boolean sufficient field", async () => {
+    const reasoning = createResearchEvidenceReasoning({
+      maxOutputTokens: 128,
+      providerFactory: () => ({
+        generate: async () => ({
+          metadata: { model: reasoningModel.model },
+          model: reasoningModel.model,
+          text: JSON.stringify({
+            coverage: 0.2,
+            coveredDimensions: ["governance conflict"],
+            missingDimensions: ["event timeline"],
+            sufficient: "不足。现有证据缺少具体时间线。",
+            supplementalQuery: "Apple 1985 event timeline",
+          }),
+        }),
+      }),
+      timeoutMs: 1_000,
+    });
+
+    await expect(
+      reasoning.judge({
+        evidence: [
+          {
+            citation: {
+              artifactHash: "a".repeat(64),
+              documentAssetId: "doc-1",
+              documentVersion: 1,
+              sectionPath: ["Apple, 1985"],
+            },
+            metadata: { text: "The evidence only summarizes a governance conflict." },
+            nodeId: "node-1",
+            projectionIds: ["projection-1"],
+            score: 0.99,
+            sources: ["dense"],
+          },
+        ],
+        evidenceDimensions: [],
+        query: "Apple，1985 到底发生了什么",
+        reasoningModel,
+        tenantId: "tenant-1",
+      }),
+    ).resolves.toEqual({
+      coverage: 0.2,
+      coveredDimensions: ["governance conflict"],
+      missingDimensions: ["event timeline"],
+      modelCalled: true,
+      sufficient: false,
+      supplementalQuery: "Apple 1985 event timeline",
+    });
+  });
+
   it("reports successful and failed provider calls through the model observer", async () => {
     const before = vi.fn();
     const after = vi.fn();
