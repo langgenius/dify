@@ -1043,6 +1043,7 @@ class TestSystemSetup:
 
     def test_should_raise_not_init_validate_error_with_init_password(self, sqlite_session: Session):
         """Test NotInitValidateError when INIT_PASSWORD is set but setup not complete"""
+
         @setup_required
         def admin_view():
             return "admin_success"
@@ -1058,6 +1059,7 @@ class TestSystemSetup:
 
     def test_should_raise_not_setup_error_without_init_password(self, sqlite_session: Session):
         """Test NotSetupError when no INIT_PASSWORD and setup not complete"""
+
         @setup_required
         def admin_view():
             return "admin_success"
