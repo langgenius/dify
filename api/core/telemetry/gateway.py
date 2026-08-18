@@ -17,6 +17,8 @@ import logging
 import uuid
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, cast
+
+from core.ops.entities.trace_entity import TraceTaskName
 from core.telemetry.events import (
     AppCreatedEvent,
     AppDeletedEvent,
@@ -24,13 +26,11 @@ from core.telemetry.events import (
     DraftNodeExecutionTraceEvent,
     FeedbackCreatedEvent,
     MetricLogContext,
-    TelemetryContext,
+    PromptGenerationEvent,
     TelemetryEvent,
     TraceContext,
 )
-from enterprise.telemetry.contracts import TelemetryCase
-from core.ops.entities.trace_entity import TraceTaskName
-from enterprise.telemetry.contracts import CaseRoute, SignalType
+from enterprise.telemetry.contracts import CaseRoute, SignalType, TelemetryCase
 from extensions.ext_storage import storage
 
 if TYPE_CHECKING:
@@ -160,6 +160,7 @@ def _handle_payload_sizing(
 # Public API
 # ---------------------------------------------------------------------------
 
+
 def emit(event: TelemetryEvent, trace_manager: TraceQueueManager | None = None) -> None:
     """Emit a telemetry event.
 
@@ -176,6 +177,8 @@ def emit(event: TelemetryEvent, trace_manager: TraceQueueManager | None = None) 
     match event:
         case DraftNodeExecutionTraceEvent():
             _emit(TelemetryCase.DRAFT_NODE_EXECUTION, trace_context, event.payload, trace_manager)
+        case PromptGenerationEvent():
+            _emit(TelemetryCase.PROMPT_GENERATION, trace_context, event.payload, trace_manager)
         case AppCreatedEvent():
             _emit(event.case, metric_context, event.payload, trace_manager)
         case AppUpdatedEvent():
@@ -184,6 +187,7 @@ def emit(event: TelemetryEvent, trace_manager: TraceQueueManager | None = None) 
             _emit(event.case, metric_context, event.payload, trace_manager)
         case FeedbackCreatedEvent():
             _emit(event.case, metric_context, event.payload, trace_manager)
+
 
 def _emit(
     case: TelemetryCase,

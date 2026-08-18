@@ -16,18 +16,16 @@ from core.telemetry.events import (
     DraftNodeExecutionTraceEvent,
     FeedbackCreatedEvent,
     MetricLogContext,
+    PromptGenerationEvent,
+    PromptGenerationPayload,
     TelemetryContext,
     TelemetryEvent,
     TraceContext,
 )
-from core.telemetry.gateway import (
-    emit
-)
+from core.telemetry.gateway import emit
+
 if TYPE_CHECKING:
     from core.ops.ops_trace_manager import TraceQueueManager
-
-
-
 
 
 __all__ = [
@@ -37,9 +35,12 @@ __all__ = [
     "DraftNodeExecutionTraceEvent",
     "FeedbackCreatedEvent",
     "MetricLogContext",
+    "PromptGenerationEvent",
+    "PromptGenerationPayload",
     "TelemetryContext",
     "TelemetryEvent",
     "TraceContext",
+    "TraceQueueManager",
     "TraceTaskName",
     "emit",
 ]
