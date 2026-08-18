@@ -331,6 +331,7 @@ Check if activation token is valid
 | 201 | Agent app created successfully | **application/json**: [AgentAppDetailWithSite](#agentappdetailwithsite)<br> |
 | 400 | Invalid request parameters |  |
 | 403 | Insufficient permissions |  |
+| 409 | Agent name already exists |  |
 
 ### [GET] /agent/invite-options
 #### Parameters
@@ -7722,6 +7723,7 @@ Initiate OAuth login process
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | credential_id | query | Credential ID to reauthorize | No | string |
+| visibility | query | Visibility for the credential to be created. Accepts 'only_me' or 'all_team_members'; any other value falls back to 'only_me'. Ignored on reauthorization (credential_id set). | No | string |
 | provider_id | path |  | Yes | string |
 
 #### Responses
@@ -7735,6 +7737,7 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| visibility | query | Visibility for the OAuth credential. Defaults to 'only_me'. | No | string, <br>**Available values:** "all_team_members", "only_me" |
 | provider | path |  | Yes | string |
 
 #### Responses
@@ -9614,21 +9617,6 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [TagResponse](#tagresponse)<br> |
-
-### [POST] /test/retrieval
-Bedrock retrieval test (internal use only)
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [BedrockRetrievalPayload](#bedrockretrievalpayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Bedrock retrieval test completed | **application/json**: [BedrockRetrievalResponse](#bedrockretrievalresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}
 **Get app detail**
@@ -15300,8 +15288,21 @@ Legacy Chat App model config used only for follow-up question generation.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | category | string |  | Yes |
-| credentials | object |  | Yes |
+| credentials | [ApiKeyAuthCredentialsPayload](#apikeyauthcredentialspayload) |  | Yes |
 | provider | string |  | Yes |
+
+#### ApiKeyAuthConfigPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| api_key | string |  | Yes |
+
+#### ApiKeyAuthCredentialsPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| auth_type | string |  | Yes |
+| config | [ApiKeyAuthConfigPayload](#apikeyauthconfigpayload) |  | Yes |
 
 #### ApiKeyAuthDataSourceItem
 
@@ -15904,38 +15905,6 @@ ExporleBanner status
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | upload_file_id | string |  | Yes |
-
-#### BedrockRetrievalPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| knowledge_id | string |  | Yes |
-| query | string |  | Yes |
-| retrieval_setting | [BedrockRetrievalSetting](#bedrockretrievalsetting) |  | Yes |
-
-#### BedrockRetrievalRecordResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| content | string |  | No |
-| metadata | object |  | No |
-| score | number |  | Yes |
-| title | string |  | No |
-
-#### BedrockRetrievalResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| records | [ [BedrockRetrievalRecordResponse](#bedrockretrievalrecordresponse) ] |  | Yes |
-
-#### BedrockRetrievalSetting
-
-Retrieval settings for Amazon Bedrock knowledge base queries.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| score_threshold | number | Minimum relevance score threshold | No |
-| top_k | integer | Maximum number of results to retrieve | No |
 
 #### BillingInvoiceResponse
 
@@ -17251,6 +17220,7 @@ Model class for provider custom model configuration.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | credential_id | string | Credential ID to reauthorize | No |
+| visibility | string | Visibility for the credential to be created. Accepts 'only_me' or 'all_team_members'; any other value falls back to 'only_me'. Ignored on reauthorization (credential_id set). | No |
 
 #### DatasourceOAuthCallbackQuery
 
@@ -19824,6 +19794,7 @@ Coarse node-level status used by Inspector to pick a banner.
 | ---- | ---- | ----------- | -------- |
 | app_icon | string |  | Yes |
 | app_label | object |  | Yes |
+| auto_authorize | boolean |  | Yes |
 | scope | string |  | Yes |
 
 #### OAuthProviderAuthorizeResponse
@@ -22624,6 +22595,12 @@ Tool label
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ToolLabelListResponse | array |  |  |
+
+#### ToolOAuthAuthorizationQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| visibility | string | Visibility for the OAuth credential. Defaults to 'only_me'. | No |
 
 #### ToolOAuthCustomClientPayload
 

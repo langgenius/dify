@@ -40,6 +40,7 @@ def test_oauth_provider_successful_post(
         app_icon="icon_url",
         app_label={"en-US": "Test App"},
         scope="read,write",
+        auto_authorize=True,
     )
 
     with patch(
@@ -56,6 +57,7 @@ def test_oauth_provider_successful_post(
         "app_icon": "icon_url",
         "app_label": {"en-US": "Test App"},
         "scope": "read,write",
+        "auto_authorize": True,
     }
 
 

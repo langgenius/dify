@@ -8,8 +8,7 @@ const meta = {
   parameters: {
     docs: {
       description: {
-        component:
-          'Copy-to-clipboard button that shows instant feedback and a tooltip. Includes the original ActionButton wrapper and the newer ghost-button variant.',
+        component: 'Copy-to-clipboard icon buttons that show instant feedback and a tooltip.',
       },
     },
   },

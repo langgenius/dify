@@ -8,6 +8,7 @@ from flask import Flask
 from werkzeug.exceptions import NotFound
 
 from controllers.console.auth.oauth_server import (
+    OAuthProviderAppResponse,
     OAuthServerAppApi,
     OAuthServerUserAccountApi,
     OAuthServerUserAuthorizeApi,
@@ -38,6 +39,7 @@ def test_provider_parses_payload_delegates_and_serializes() -> None:
         app_icon="icon",
         app_label={"en-US": "Test App"},
         scope="read",
+        auto_authorize=True,
     )
 
     with (
@@ -47,7 +49,12 @@ def test_provider_parses_payload_delegates_and_serializes() -> None:
         result = unwrap(OAuthServerAppApi.post)(OAuthServerAppApi())
 
     assert result == (
-        {"app_icon": "icon", "app_label": {"en-US": "Test App"}, "scope": "read"},
+        {
+            "app_icon": "icon",
+            "app_label": {"en-US": "Test App"},
+            "scope": "read",
+            "auto_authorize": True,
+        },
         HTTPStatus.OK,
     )
     service.get_provider.assert_called_once_with(
@@ -212,3 +219,10 @@ def test_account_endpoint_preserves_client_validation_before_bearer_challenge() 
     ):
         with pytest.raises(NotFound, match="client_id is invalid"):
             unwrap(OAuthServerUserAccountApi.post)(OAuthServerUserAccountApi())
+
+
+def test_oauth_provider_app_response_requires_auto_authorize() -> None:
+    # A missing field must fail validation instead of silently defaulting:
+    # an optional field would surface as `undefined` in the generated TS
+    # contract and silently disable silent authorization.
+    assert "auto_authorize" in OAuthProviderAppResponse.model_json_schema()["required"]

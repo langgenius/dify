@@ -62,9 +62,14 @@ def create_agent_stub_http_router(
     async def create_file_upload_request(
         request: AgentStubFileUploadRequest,
         authorization: str | None = Header(default=None, alias="Authorization"),
+        expose_expiration: bool = False,
     ) -> AgentStubFileUploadResponse:
         try:
-            return await service.create_file_upload_request(request=request, authorization=authorization)
+            return await service.create_file_upload_request(
+                request=request,
+                authorization=authorization,
+                expose_expiration=expose_expiration,
+            )
         except AgentStubControlPlaneError as exc:
             raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 

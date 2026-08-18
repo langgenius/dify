@@ -14,6 +14,7 @@ import { TURNSTILE_SITE_KEY } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { emailLoginWithCode, sendEMailLoginCode } from '@/service/common'
 import { encryptVerificationCode } from '@/utils/encryption'
@@ -45,6 +46,8 @@ export default function CheckCode() {
   const isTurnstileRequired = systemFeatures.deployment_edition === 'CLOUD'
   const shouldRenderResendTurnstile =
     isTurnstileRequired && Boolean(turnstileSiteKey) && showResendTurnstile
+  const pageTitle = t(($) => $['checkCode.checkYourEmail'], { ns: 'login' })
+  useDocumentTitle(pageTitle)
 
   const verify = async () => {
     try {
@@ -133,9 +136,7 @@ export default function CheckCode() {
         <RiMailSendFill className="size-6 text-2xl text-text-accent-light-mode-only" />
       </div>
       <div className="pt-2 pb-4">
-        <h1 className="title-4xl-semi-bold text-text-primary">
-          {t(($) => $['checkCode.checkYourEmail'], { ns: 'login' })}
-        </h1>
+        <h1 className="title-4xl-semi-bold text-text-primary">{pageTitle}</h1>
         <p className="mt-2 body-md-regular text-text-secondary">
           <span>
             {t(($) => $['checkCode.tipsPrefix'], { ns: 'login' })}
@@ -153,6 +154,9 @@ export default function CheckCode() {
         <Input
           ref={codeInputRef}
           id="code"
+          name="code"
+          inputMode="numeric"
+          autoComplete="one-time-code"
           value={code}
           onChange={(e) => setVerifyCode(e.target.value)}
           maxLength={6}

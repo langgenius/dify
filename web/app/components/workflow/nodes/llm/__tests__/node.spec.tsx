@@ -10,9 +10,8 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  __esModule: true,
-  default: ({ defaultModel }: { defaultModel?: { provider: string; model: string } }) => (
-    <div>{defaultModel ? `${defaultModel.provider}:${defaultModel.model}` : 'no-model'}</div>
+  ModelSelector: ({ value }: { value?: { provider: string; model: string } }) => (
+    <div>{value ? `${value.provider}:${value.model}` : 'no-model'}</div>
   ),
 }))
 
@@ -47,7 +46,7 @@ describe('llm/node', () => {
     } as unknown as ReturnType<typeof useTextGenerationCurrentProviderAndModelAndModelList>)
   })
 
-  it('renders the readonly model selector when a model is configured', () => {
+  it('renders the disabled model selector when a model is configured', () => {
     render(<Node id="llm-node" data={createData()} />)
 
     expect(screen.getByText('openai:gpt-4o')).toBeInTheDocument()

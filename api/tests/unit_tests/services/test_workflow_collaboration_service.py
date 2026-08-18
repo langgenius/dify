@@ -8,6 +8,7 @@ from socketio.exceptions import TimeoutError as SocketIOTimeoutError
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
+from models.account import Account, Tenant
 from models.base import TypeBase
 from models.model import App, AppMode, IconType
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
@@ -130,11 +131,12 @@ class TestWorkflowCollaborationService:
 
     def test_repr_and_save_socket_identity(self, service: tuple[WorkflowCollaborationService, Mock, Mock]) -> None:
         collaboration_service, _repository, socketio = service
-        user = Mock()
+        user = Account(name="Jane", email="jane@example.com")
         user.id = "u-1"
-        user.name = "Jane"
         user.avatar = "avatar.png"
-        user.current_tenant_id = "t-1"
+        tenant = Tenant(name="Tenant")
+        tenant.id = "t-1"
+        user._current_tenant = tenant
 
         assert "WorkflowCollaborationService" in repr(collaboration_service)
 

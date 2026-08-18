@@ -305,7 +305,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                         aria-label={t(($) => $['operation.close'], { ns: 'common' })}
                         onClick={onHide}
                       >
-                        <RiCloseLine className="size-4" />
+                        <RiCloseLine aria-hidden className="size-4" />
                       </IconButton>
                     </div>
                   </div>

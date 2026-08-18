@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import HTTPException
 
 from controllers.common.wraps import _extract_resource_id
+from controllers.console import api as console_api
 from controllers.console import flask_admission
 from controllers.console.error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
 from controllers.console.workspace.error import AccountNotInitializedError
@@ -38,6 +39,7 @@ from controllers.console.wraps import (
 from enums import DeploymentEdition
 from libs.login import AccountWithTenant
 from machinery.context import RequestContext
+from machinery.errors import ActiveWorkspaceRequiredError, AdmissionConfigurationError
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
 from models.dataset import Dataset, RateLimitLog
@@ -192,50 +194,90 @@ class TestCurrentContextInjection:
         assert admission_context.active_workspace_id == "tenant-123"
         assert route_value == "route-value"
 
-    def test_console_account_admission_composes_role_and_rbac_requirements(self):
+    def test_console_account_admission_enforces_legacy_workspace_roles(self):
+        current_user = make_account()
+        current_user.role = TenantAccountRole.NORMAL
+
+        with (
+            patch("controllers.console.flask_admission.setup_required", side_effect=lambda view: view),
+            patch("controllers.console.flask_admission.login_required", side_effect=lambda view: view),
+            patch("controllers.console.flask_admission.account_initialization_required", side_effect=lambda view: view),
+            patch("controllers.console.flask_admission.dify_config.RBAC_ENABLED", False),
+            patch(
+                "controllers.console.flask_admission.current_account_with_tenant",
+                return_value=AccountWithTenant(account=current_user, tenant_id="tenant-123"),
+            ),
+        ):
+
+            class Handler:
+                @flask_admission.console_account_admission(
+                    allowed_roles=frozenset({TenantAccountRole.ADMIN, TenantAccountRole.OWNER})
+                )
+                def get(self, request_context: RequestContext):
+                    return request_context
+
+            with Flask(__name__).test_request_context(), pytest.raises(HTTPException) as exc_info:
+                Handler().get()
+
+        assert exc_info.value.code == 403
+
+    def test_console_account_admission_enforces_declared_rbac_requirement(self):
         current_user = make_account()
 
         with (
             patch("controllers.console.flask_admission.setup_required", side_effect=lambda view: view),
             patch("controllers.console.flask_admission.login_required", side_effect=lambda view: view),
             patch("controllers.console.flask_admission.account_initialization_required", side_effect=lambda view: view),
-            patch(
-                "controllers.console.flask_admission.is_admin_or_owner_required", side_effect=lambda view: view
-            ) as admin_required,
-            patch(
-                "controllers.console.flask_admission.rbac_permission_required",
-                return_value=lambda view: view,
-            ) as rbac_required,
+            patch("controllers.console.flask_admission.dify_config.RBAC_ENABLED", True),
             patch(
                 "controllers.console.flask_admission.current_account_with_tenant",
                 return_value=AccountWithTenant(account=current_user, tenant_id="tenant-123"),
             ),
             patch("controllers.console.flask_admission.get_request_id", return_value="request-1"),
             patch("controllers.console.flask_admission.get_trace_id", return_value=None),
+            patch("controllers.console.flask_admission.enforce_rbac_access") as enforce_rbac_access,
         ):
 
             class Handler:
                 @flask_admission.console_account_admission(
-                    require_admin_or_owner=True,
-                    rbac=flask_admission.ConsoleRBACRequirement(
-                        resource_scope=RBACResourceScope.WORKSPACE,
-                        permission=RBACPermission.CREDENTIAL_MANAGE,
-                        resource_required=False,
-                    ),
+                    allowed_roles=frozenset({TenantAccountRole.ADMIN, TenantAccountRole.OWNER}),
+                    rbac_resource_scope=RBACResourceScope.WORKSPACE,
+                    rbac_permission=RBACPermission.CREDENTIAL_CREATE,
+                    rbac_resource_required=False,
                 )
-                def get(self, request_context: RequestContext):
+                def post(self, request_context: RequestContext):
                     return request_context
 
-            with Flask(__name__).test_request_context(headers={"X-Trace-Id": "trace-header"}):
-                result = Handler().get()
+            with Flask(__name__).test_request_context(headers={"X-Trace-Id": "trace-1"}):
+                result = Handler().post()
 
-        assert result.trace_id == "trace-header"
-        admin_required.assert_called_once()
-        rbac_required.assert_called_once_with(
-            RBACResourceScope.WORKSPACE,
-            RBACPermission.CREDENTIAL_MANAGE,
+        assert result.active_workspace_id == "tenant-123"
+        assert result.trace_id == "trace-1"
+        enforce_rbac_access.assert_called_once_with(
+            tenant_id="tenant-123",
+            account_id=current_user.id,
+            resource_type=RBACResourceScope.WORKSPACE,
+            scene=RBACPermission.CREDENTIAL_CREATE,
             resource_required=False,
+            path_args={},
         )
+
+    def test_console_account_admission_rejects_incomplete_rbac_requirement(self):
+        with pytest.raises(AdmissionConfigurationError, match="configured together"):
+            flask_admission.console_account_admission(rbac_resource_scope=RBACResourceScope.WORKSPACE)
+
+    def test_console_maps_missing_active_workspace_to_safe_internal_error(self):
+        handler = console_api.error_handlers[ActiveWorkspaceRequiredError]
+
+        with Flask(__name__).app_context():
+            body, status = handler(ActiveWorkspaceRequiredError())
+
+        assert status == 500
+        assert body == {
+            "code": "active_workspace_required",
+            "message": "Internal Server Error",
+            "status": 500,
+        }
 
     def test_with_current_tenant_id_injects_tenant_id(self):
         class Handler:

@@ -14,12 +14,20 @@ from core.helper.ssrf_proxy import ssrf_proxy
 from core.schemas.schema_manager import SchemaManager
 from enums import DeploymentEdition
 from extensions.ext_redis import RedisClientWrapper, redis_client
+from repositories.app_definition_query_repository import AppDefinitionQueryRepository
+from repositories.data_source_api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
 from repositories.data_source_oauth_binding_repository import SQLAlchemyDataSourceOAuthBindingRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.installation_state_repository import InstallationStateRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
 from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
 from repositories.workspace_query_repository import WorkspaceQueryRepository
+from services.app_definition_query_service import AppDefinitionQueryService
+from services.auth.data_source_api_key_auth_gateways import (
+    ProviderApiKeyAuthCredentialValidator,
+    TenantApiKeyAuthCredentialEncryptor,
+)
+from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
 from services.data_source_oauth_service import DataSourceOAuthService, InvalidDataSourceOAuthProviderError
 from services.explore_banner_query_service import ExploreBannerQueryService
 from services.feature_query_service import FeatureQueryService
@@ -41,6 +49,8 @@ _EXTENSION_KEY = "application_services"
 
 @dataclass(frozen=True, slots=True)
 class ApplicationServices:
+    app_definitions: AppDefinitionQueryService
+    data_source_api_key_auth: DataSourceApiKeyAuthService
     data_source_oauth: Mapping[str, DataSourceOAuthService]
     explore_banner_queries: ExploreBannerQueryService
     schema_definitions: SchemaDefinitionService
@@ -100,7 +110,19 @@ def build_application_services(
     redis: RedisClientWrapper,
 ) -> ApplicationServices:
     installation_state = InstallationStateRepository(client=database_client)
+    data_source_api_key_auth_bindings = SQLAlchemyDataSourceApiKeyAuthBindingRepository(session_factory=database_client)
     return ApplicationServices(
+        app_definitions=AppDefinitionQueryService(
+            definitions=AppDefinitionQueryRepository(session_factory=database_client),
+            builtin_icon_url_prefix=(
+                dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
+            ),
+        ),
+        data_source_api_key_auth=DataSourceApiKeyAuthService(
+            bindings=data_source_api_key_auth_bindings,
+            validator=ProviderApiKeyAuthCredentialValidator(),
+            encryptor=TenantApiKeyAuthCredentialEncryptor(),
+        ),
         data_source_oauth=_build_data_source_oauth_services(database_client=database_client),
         explore_banner_queries=ExploreBannerQueryService(
             banners=ExploreBannerQueryRepository(client=database_client),

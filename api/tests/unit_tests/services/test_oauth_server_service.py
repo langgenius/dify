@@ -26,6 +26,7 @@ def provider_app() -> OAuthProviderAppRecord:
         app_label={"en-US": "Test App"},
         redirect_uris=("https://example.com/callback",),
         scope="read",
+        auto_authorize=True,
     )
 
 
@@ -58,6 +59,7 @@ def test_get_provider_validates_redirect_and_hides_credentials(
     assert result.app_icon == "icon"
     assert result.app_label == {"en-US": "Test App"}
     assert result.scope == "read"
+    assert result.auto_authorize is True
     repository.get_provider_app_by_client_id.assert_called_once_with("client-1")
 
 

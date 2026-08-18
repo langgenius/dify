@@ -44,6 +44,7 @@ class OAuthProviderAppResponse(ResponseModel):
     app_icon: str
     app_label: dict[str, Any]
     scope: str
+    auto_authorize: bool
 
 
 class OAuthProviderAuthorizeResponse(ResponseModel):

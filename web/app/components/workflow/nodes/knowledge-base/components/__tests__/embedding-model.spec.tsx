@@ -27,7 +27,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: mockModelSelector,
+  ModelSelector: mockModelSelector,
 }))
 
 describe('EmbeddingModel', () => {
@@ -53,24 +53,24 @@ describe('EmbeddingModel', () => {
     expect(mockUseModelList).toHaveBeenCalledWith(ModelTypeEnum.textEmbedding)
     expect(mockModelSelector).toHaveBeenCalledWith(
       expect.objectContaining({
-        defaultModel: {
+        value: {
           provider: 'openai',
           model: 'text-embedding-3-large',
         },
-        modelList: [{ provider: 'openai', model: 'text-embedding-3-large' }],
-        readonly: false,
+        models: [{ provider: 'openai', model: 'text-embedding-3-large' }],
+        disabled: false,
         showDeprecatedWarnIcon: true,
       }),
       undefined,
     )
   })
 
-  it('should pass an undefined default model when the embedding model is incomplete', () => {
+  it('should pass an undefined value when the embedding model is incomplete', () => {
     render(<EmbeddingModel embeddingModel="text-embedding-3-large" />)
 
     expect(mockModelSelector).toHaveBeenCalledWith(
       expect.objectContaining({
-        defaultModel: undefined,
+        value: undefined,
       }),
       undefined,
     )

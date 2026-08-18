@@ -32,7 +32,17 @@ class TestUploadDSL:
         mock_post.assert_called_once()
         call_kwargs = mock_post.call_args
         assert "anonymous-upload" in call_kwargs.args[0]
-        assert call_kwargs.kwargs["timeout"] == 30
+        timeout = call_kwargs.kwargs["timeout"]
+        assert isinstance(timeout, httpx.Timeout)
+        assert timeout.connect == 5.0
+        assert timeout.read == 30.0
+
+    def test_creators_request_timeout_bounds_connect_phase(self):
+        """Module-level _CREATORS_REQUEST_TIMEOUT should bound the connect phase to 5.0s."""
+        from core.helper.creators import _CREATORS_REQUEST_TIMEOUT
+
+        assert _CREATORS_REQUEST_TIMEOUT.connect == 5.0
+        assert _CREATORS_REQUEST_TIMEOUT.read == 30.0
 
     @patch("core.helper.creators.httpx.post")
     def test_raises_on_missing_claim_code(self, mock_post):

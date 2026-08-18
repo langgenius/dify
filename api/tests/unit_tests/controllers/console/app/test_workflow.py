@@ -650,6 +650,7 @@ def test_draft_workflow_get_projects_agent_node_job_to_graph(monkeypatch: pytest
                     "data": {
                         "type": "agent",
                         "version": "2",
+                        "agent_node_kind": "dify_agent",
                     },
                 }
             ],
@@ -663,6 +664,7 @@ def test_draft_workflow_get_projects_agent_node_job_to_graph(monkeypatch: pytest
                 "data": {
                     "type": "agent",
                     "version": "2",
+                    "agent_node_kind": "dify_agent",
                     "agent_task": "Summarize it.",
                     "agent_declared_outputs": [{"name": "summary", "type": "string"}],
                 },

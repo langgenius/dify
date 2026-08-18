@@ -26,6 +26,7 @@ class OAuthProviderAppRecord:
     app_label: Mapping[str, object]
     redirect_uris: tuple[str, ...]
     scope: str
+    auto_authorize: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,6 +34,7 @@ class OAuthProviderAppPresentation:
     app_icon: str
     app_label: Mapping[str, object]
     scope: str
+    auto_authorize: bool
 
 
 @dataclass(frozen=True, slots=True)

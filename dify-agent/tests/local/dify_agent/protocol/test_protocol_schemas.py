@@ -77,7 +77,12 @@ def test_run_event_adapter_round_trips_typed_variants() -> None:
                 reason="shutdown",
             ),
         ),
-        RunCancelledEvent(run_id="run-1", data=RunCancelledEventData(reason="user_cancelled")),
+        RunCancelledEvent(
+            run_id="run-1",
+            data=RunCancelledEventData(
+                reason="user_cancelled",
+            ),
+        ),
     ]
 
     for event in events:
@@ -111,6 +116,27 @@ def test_run_failed_event_error_type_is_optional_and_round_trips() -> None:
     assert isinstance(decoded, RunFailedEvent)
     assert decoded.data.error_type is RunFailureType.AGENT_RUN_LIMIT_EXCEEDED
     assert protocol_exports.RunFailureType is RunFailureType
+
+
+@pytest.mark.parametrize("event_type", ["run_failed", "run_cancelled"])
+def test_non_success_terminal_event_round_trips_optional_snapshot(event_type: str) -> None:
+    snapshot = CompositorSessionSnapshot(layers=[])
+    event: RunFailedEvent | RunCancelledEvent
+    if event_type == "run_failed":
+        event = RunFailedEvent(
+            run_id="run-1",
+            data=RunFailedEventData(error="boom", session_snapshot=snapshot),
+        )
+    else:
+        event = RunCancelledEvent(
+            run_id="run-1",
+            data=RunCancelledEventData(reason="stopped", session_snapshot=snapshot),
+        )
+
+    decoded = RUN_EVENT_ADAPTER.validate_json(RUN_EVENT_ADAPTER.dump_json(event))
+
+    assert isinstance(decoded, RunFailedEvent | RunCancelledEvent)
+    assert decoded.data.session_snapshot == snapshot
 
 
 def test_pydantic_ai_event_data_uses_agent_stream_event_model() -> None:
@@ -160,7 +186,6 @@ def test_create_run_request_accepts_dto_first_public_composition_and_normalizes_
         plugin_id="langgenius/openai",
         model_provider="openai",
         model="demo-model",
-        credentials={"api_key": "secret"},
     )
     output_config = DifyOutputLayerConfig(
         json_schema={

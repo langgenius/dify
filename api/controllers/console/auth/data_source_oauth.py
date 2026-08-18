@@ -16,12 +16,13 @@ from controllers.common.schema import (
     register_response_schema_models,
     register_schema_models,
 )
-from controllers.console.flask_admission import ConsoleRBACRequirement, console_account_admission
+from controllers.console.flask_admission import console_account_admission
 from core.rbac import RBACPermission, RBACResourceScope
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.helper import dump_response
 from machinery.context import RequestContext
+from models.account import TenantAccountRole
 from services.data_source_oauth_service import (
     DataSourceOAuthConfigurationError,
     DataSourceOAuthError,
@@ -69,11 +70,7 @@ register_response_schema_models(
 )
 register_response_schema_model(console_ns, RedirectResponse)
 
-_CREDENTIAL_MANAGE_ADMISSION = ConsoleRBACRequirement(
-    resource_scope=RBACResourceScope.WORKSPACE,
-    permission=RBACPermission.CREDENTIAL_MANAGE,
-    resource_required=False,
-)
+_ADMIN_OR_OWNER_ROLES = frozenset({TenantAccountRole.ADMIN, TenantAccountRole.OWNER})
 
 
 def _invalid_provider_response() -> tuple[dict[str, str], HTTPStatus]:
@@ -113,8 +110,10 @@ class OAuthDataSource(Resource):
     @console_ns.response(HTTPStatus.BAD_REQUEST, "Invalid provider")
     @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @console_account_admission(
-        require_admin_or_owner=True,
-        rbac=_CREDENTIAL_MANAGE_ADMISSION,
+        allowed_roles=_ADMIN_OR_OWNER_ROLES,
+        rbac_resource_scope=RBACResourceScope.WORKSPACE,
+        rbac_permission=RBACPermission.CREDENTIAL_MANAGE,
+        rbac_resource_required=False,
     )
     def get(self, request_context: RequestContext, provider: str):
         try:

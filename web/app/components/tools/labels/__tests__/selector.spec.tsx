@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import LabelSelector from '../selector'
 
 // Mock useTags hook with controlled test data
@@ -112,7 +112,7 @@ describe('LabelSelector', () => {
         vi.advanceTimersByTime(10)
       })
 
-      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+      expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()
     })
   })
 
@@ -192,10 +192,10 @@ describe('LabelSelector', () => {
         vi.advanceTimersByTime(10)
       })
 
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toBeInTheDocument()
 
       await act(async () => {
-        const searchInput = screen.getByRole('textbox')
+        const searchInput = screen.getByRole('searchbox', { name: 'common.operation.search' })
         // Filter by 'rag' which only matches 'rag' name
         fireEvent.change(searchInput, { target: { value: 'rag' } })
         vi.advanceTimersByTime(10)
@@ -215,10 +215,10 @@ describe('LabelSelector', () => {
         vi.advanceTimersByTime(10)
       })
 
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toBeInTheDocument()
 
       await act(async () => {
-        const searchInput = screen.getByRole('textbox')
+        const searchInput = screen.getByRole('searchbox', { name: 'common.operation.search' })
         fireEvent.change(searchInput, { target: { value: 'nonexistent' } })
         vi.advanceTimersByTime(10)
       })
@@ -234,10 +234,10 @@ describe('LabelSelector', () => {
         vi.advanceTimersByTime(10)
       })
 
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toBeInTheDocument()
 
       await act(async () => {
-        const searchInput = screen.getByRole('textbox')
+        const searchInput = screen.getByRole('searchbox', { name: 'common.operation.search' })
         // First filter to show only RAG
         fireEvent.change(searchInput, { target: { value: 'rag' } })
         vi.advanceTimersByTime(10)
@@ -248,7 +248,7 @@ describe('LabelSelector', () => {
 
       await act(async () => {
         // Clear the input
-        const searchInput = screen.getByRole('textbox')
+        const searchInput = screen.getByRole('searchbox', { name: 'common.operation.search' })
         fireEvent.change(searchInput, { target: { value: '' } })
         vi.advanceTimersByTime(10)
       })

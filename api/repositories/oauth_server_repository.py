@@ -45,6 +45,7 @@ class SQLAlchemyOAuthServerRepository(OAuthServerRepository):
             OAuthProviderApp.app_label,
             OAuthProviderApp.redirect_uris,
             OAuthProviderApp.scope,
+            OAuthProviderApp.auto_authorize,
         ).where(OAuthProviderApp.client_id == client_id)
 
         with self._session_factory() as session:
@@ -58,6 +59,7 @@ class SQLAlchemyOAuthServerRepository(OAuthServerRepository):
                 app_label=_APP_LABEL_ADAPTER.validate_python(row.app_label),
                 redirect_uris=tuple(_REDIRECT_URIS_ADAPTER.validate_python(row.redirect_uris)),
                 scope=row.scope,
+                auto_authorize=row.auto_authorize,
             )
 
     @override

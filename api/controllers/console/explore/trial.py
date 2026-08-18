@@ -1,5 +1,4 @@
 import logging
-from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Literal
@@ -51,7 +50,6 @@ from controllers.console.files import FILE_UPLOAD_PARAMS, upload_file_from_reque
 from controllers.console.remote_files import RemoteFileUploadPayload, upload_remote_file_from_request
 from controllers.console.wraps import cloud_edition_billing_resource_check, model_validate, with_current_user
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
@@ -61,6 +59,7 @@ from core.errors.error import (
 )
 from core.helper import encrypter
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable, dump_environment_variable
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.base import ResponseModel
@@ -74,9 +73,10 @@ from libs import helper
 from libs.helper import dump_response, to_timestamp, uuid_value
 from models import Account, App
 from models.account import TenantStatus
-from models.model import AppMode, Site, load_annotation_reply_config
+from models.model import AppMode, Site
 from models.workflow import Workflow
 from services.account_service import TenantService
+from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.app_generate_service import AppGenerateService
 from services.app_ref_service import AppRefService
 from services.app_service import AppResponseView, AppService
@@ -855,26 +855,12 @@ class TrialAppParameterApi(Resource):
         if app_model is None:
             raise AppUnavailableError()
 
-        features_dict: Mapping[str, Any]
-        if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
-            workflow = app_model.workflow_with_session(session=session)
-            if workflow is None:
-                raise AppUnavailableError()
+        try:
+            parameters = application_services().app_definitions.get_parameters(app_model.id)
+        except AppDefinitionUnavailableError:
+            raise AppUnavailableError() from None
 
-            features_dict = workflow.features_dict
-            user_input_form = workflow.user_input_form(to_old_structure=True)
-        else:
-            app_model_config = app_model.app_model_config_with_session(session=session)
-            if app_model_config is None:
-                raise AppUnavailableError()
-
-            annotation_reply = load_annotation_reply_config(session, app_model_config.app_id)
-            features_dict = app_model_config.to_dict(annotation_reply=annotation_reply)
-
-            user_input_form = features_dict.get("user_input_form", [])
-
-        parameters = get_parameters_from_feature_dict(features_dict=features_dict, user_input_form=user_input_form)
-        return ParametersResponse.model_validate(parameters).model_dump(mode="json")
+        return dump_response(ParametersResponse, parameters)
 
 
 class AppApi(Resource):

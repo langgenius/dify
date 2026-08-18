@@ -32,6 +32,7 @@ class PluginUploadQuery(BaseModel):
     user_id: str | None = Field(default=None, description="User identifier")
     user_from: Literal["account", "end-user"] | None = Field(default=None, description="User identity type")
     conversation_id: str | None = Field(default=None, description="Conversation identifier")
+    max_size: int | None = Field(default=None, ge=0, description="Signed maximum file size in bytes")
 
 
 register_schema_models(files_ns, PluginUploadQuery)
@@ -113,14 +114,22 @@ class PluginUploadFileApi(Resource):
             timestamp=timestamp,
             nonce=nonce,
             sign=sign,
+            max_size=args.max_size,
         ):
             raise Forbidden("Invalid request.")
 
         try:
+            if args.max_size is None:
+                file_binary = file.stream.read()
+            else:
+                file_binary = file.stream.read(args.max_size + 1)
+                if len(file_binary) > args.max_size:
+                    raise FileTooLargeError("File size exceeds the signed upload limit.")
+
             tool_file = ToolFileManager().create_file_by_raw(
                 user_id=owner_id,
                 tenant_id=tenant_id,
-                file_binary=file.stream.read(),
+                file_binary=file_binary,
                 mimetype=mimetype,
                 filename=filename,
                 conversation_id=args.conversation_id,

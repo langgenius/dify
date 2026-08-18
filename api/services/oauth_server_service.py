@@ -67,6 +67,7 @@ class OAuthServerService:
             app_icon=provider_app.app_icon,
             app_label=provider_app.app_label,
             scope=provider_app.scope,
+            auto_authorize=provider_app.auto_authorize,
         )
 
     def authorize(self, context: RequestContext, *, client_id: str) -> OAuthAuthorizationCode:

@@ -32,6 +32,7 @@ def test_get_provider_app_by_client_id_maps_record(
         app_label={"en-US": "Test App"},
         redirect_uris=["https://example.com/callback"],
         scope="read",
+        auto_authorize=True,
     )
     with sqlite_session_factory.begin() as session:
         session.add(provider_app)
@@ -45,6 +46,7 @@ def test_get_provider_app_by_client_id_maps_record(
         app_label={"en-US": "Test App"},
         redirect_uris=("https://example.com/callback",),
         scope="read",
+        auto_authorize=True,
     )
 
 

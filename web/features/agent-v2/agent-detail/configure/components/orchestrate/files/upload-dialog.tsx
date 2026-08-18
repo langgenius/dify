@@ -18,11 +18,11 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { FileTreeIcon } from '@langgenius/dify-ui/file-tree'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import { getSupportFileType } from '@/app/components/base/file-uploader/utils'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
@@ -190,9 +190,12 @@ function AgentFileUploader({ file, onChange }: { file?: File; onChange: (file?: 
             </div>
           </div>
           <div className="hidden items-center pr-3 group-hover:flex">
-            <ActionButton onClick={() => onChange(undefined)}>
+            <IconButton
+              aria-label={tCommon(($) => $['operation.remove'])}
+              onClick={() => onChange(undefined)}
+            >
               <span aria-hidden className="i-ri-delete-bin-line size-4 text-text-tertiary" />
-            </ActionButton>
+            </IconButton>
           </div>
         </div>
       )}
