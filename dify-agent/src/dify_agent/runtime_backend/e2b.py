@@ -327,7 +327,12 @@ class E2BExecutionBindingBackend:
                 ShellctlClientProtocol,
                 cast(
                     object,
-                    ShellctlClient(entrypoint, token="", client=http_client),
+                    ShellctlClient(
+                        entrypoint,
+                        output_limit=MAX_OUTPUT_LIMIT_BYTES,
+                        token="",
+                        client=http_client,
+                    ),
                 ),
             )
 
