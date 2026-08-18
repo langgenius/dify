@@ -1,3 +1,4 @@
+import type { Plugin } from 'vite-plus'
 import { fileURLToPath } from 'node:url'
 import { configDefaults, defineConfig, lazyPlugins } from 'vite-plus'
 import {
@@ -11,6 +12,17 @@ import { nextStaticImageTestPlugin } from './plugins/vite/next-static-image-test
 const projectRoot = fileURLToPath(new URL('.', import.meta.url))
 const isCI = !!process.env.CI
 const rootClientInjectTarget = getRootClientInjectTarget(projectRoot)
+// Keep the Vinext browser output aligned with package.json#browserslist.
+const browserBuildTargets = ['chrome111', 'edge111', 'firefox128', 'safari16.4', 'ios16.4']
+const browserTargetsPlugin: Plugin = {
+  name: 'dify:browser-targets',
+  configEnvironment(name, options) {
+    if (name !== 'client') return
+    options.build ??= {}
+    options.build.target = browserBuildTargets
+    options.build.cssTarget = browserBuildTargets
+  },
+}
 
 export default defineConfig(({ mode }) => {
   const isTest = mode === 'test'
@@ -47,6 +59,7 @@ export default defineConfig(({ mode }) => {
         tailwindcss(),
         react(),
         vinext({ react: false }),
+        browserTargetsPlugin,
         customI18nHmrPlugin({ injectTarget: rootClientInjectTarget }),
         // reactGrabOpenFilePlugin({
         //   injectTarget: rootClientInjectTarget,
@@ -61,7 +74,6 @@ export default defineConfig(({ mode }) => {
         { find: /^loro-crdt$/, replacement: 'loro-crdt/base64' },
       ],
     },
-
     // vinext related config
     ...(!isTest && !isStorybook
       ? {
