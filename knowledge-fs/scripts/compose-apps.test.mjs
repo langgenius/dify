@@ -46,6 +46,9 @@ function envVariableNames(source) {
 
 function materializedDifyKnowledgeFsEnvironment(rootOverrides = {}) {
   const dockerRoot = new URL("../../docker/", import.meta.url);
+  const envPath = new URL(".env", dockerRoot).pathname;
+  const examplePath = new URL(".env.example", dockerRoot).pathname;
+  const removeMaterializedEnv = materializeDifyComposeEnv({ envPath, examplePath });
   const env = { ...process.env };
   for (const name of [
     "KNOWLEDGE_PDF_RASTERIZER",
@@ -59,26 +62,30 @@ function materializedDifyKnowledgeFsEnvironment(rootOverrides = {}) {
   }
   Object.assign(env, rootOverrides);
 
-  const result = spawnSync(
-    "docker",
-    [
-      "compose",
-      "--project-directory",
-      dockerRoot.pathname,
-      "--env-file",
-      new URL(".env.example", dockerRoot).pathname,
-      "-f",
-      new URL("docker-compose.yaml", dockerRoot).pathname,
-      "config",
-      "--format",
-      "json",
-    ],
-    { encoding: "utf8", env },
-  );
+  try {
+    const result = spawnSync(
+      "docker",
+      [
+        "compose",
+        "--project-directory",
+        dockerRoot.pathname,
+        "--env-file",
+        examplePath,
+        "-f",
+        new URL("docker-compose.yaml", dockerRoot).pathname,
+        "config",
+        "--format",
+        "json",
+      ],
+      { encoding: "utf8", env },
+    );
 
-  assert.ifError(result.error);
-  assert.equal(result.status, 0, result.stderr);
-  return JSON.parse(result.stdout).services.knowledge_fs.environment;
+    assert.ifError(result.error);
+    assert.equal(result.status, 0, result.stderr);
+    return JSON.parse(result.stdout).services.knowledge_fs.environment;
+  } finally {
+    removeMaterializedEnv();
+  }
 }
 
 test("deployment Compose and Kubernetes artifacts are valid YAML", () => {
