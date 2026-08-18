@@ -802,6 +802,44 @@ describe("LLM semantic chunker", () => {
     });
   });
 
+  it("falls back to trusted parser provenance when the model replaces its section prefix", async () => {
+    const provider = new ScriptedProvider([
+      ({ units }) => ({
+        chunks: [
+          {
+            ...chunkRange(units[0]?.id, units.at(-1)?.id),
+            sectionPath: ["Invented section"],
+            sectionSummary: "A grounded summary of the trusted section.",
+          },
+        ],
+      }),
+    ]);
+    const nodes = await createLlmSemanticChunker({
+      reasoningProviderFactory: () => provider,
+    }).chunk({
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      parseArtifact: artifact([
+        {
+          id: "trusted-paragraph",
+          metadata: {},
+          sectionPath: ["Trusted", "Parser section"],
+          text: "The immutable source content.",
+          type: "paragraph",
+        },
+      ]),
+      retrievalProfile: profile(),
+    });
+
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0]?.sourceLocation.sectionPath).toEqual(["Trusted", "Parser section"]);
+    expect(nodes[0]?.metadata.semanticChunking).toMatchObject({
+      section: {
+        path: ["Trusted", "Parser section"],
+        summary: "A grounded summary of the trusted section.",
+      },
+    });
+  });
+
   it("rebases deterministic node IDs onto the immutable publication generation", async () => {
     const chunker = createLlmSemanticChunker({
       reasoningProviderFactory: () => new ScriptedProvider([echoWholeWindow]),

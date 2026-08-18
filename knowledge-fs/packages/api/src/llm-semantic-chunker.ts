@@ -2424,7 +2424,10 @@ function resolveSemanticSectionPath(
     trustedPrefix.length > 0 &&
     !sameStrings(path.slice(0, trustedPrefix.length), trustedPrefix)
   ) {
-    throw new Error("LLM semantic chunking sectionPath must preserve the trusted parser prefix");
+    // Section provenance belongs to the immutable parser input. A model may refine it with child
+    // levels, but it cannot replace that trusted prefix. Discard an unrelated proposal instead of
+    // failing an otherwise grounded semantic-boundary decision for the whole document.
+    return [...trustedPrefix];
   }
   return path;
 }

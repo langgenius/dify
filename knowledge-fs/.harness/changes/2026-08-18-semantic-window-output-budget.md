@@ -9,6 +9,8 @@ Date: 2026-08-18
   existing grapheme budgets.
 - Excluded documents above the same 32-unit bound from atomic-record mode, so a compact document
   cannot force an unbounded structured response merely because its source text is short.
+- Grounded a model-proposed section path back to the immutable parser prefix when the model tries
+  to replace that prefix, while still accepting valid semantic child levels.
 - Preserved the exact v2 planner and prompt payload for stored v2 generation receipts and
   checkpoints. Existing published data therefore keeps its original replay contract.
 
@@ -22,6 +24,10 @@ document.
 
 The v3 unit limits retain cross-section semantic context while bounding the number of ranges,
 section summaries, entities, and relations that one response may need to encode.
+
+Section provenance is parser-owned metadata. Rejecting an otherwise valid chunk merely because the
+model failed to repeat that prefix made a single response invalidate the whole document. The
+materializer now discards only the untrusted path proposal and preserves the trusted parser path.
 
 ## Measured result
 
