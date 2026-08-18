@@ -149,10 +149,10 @@ class AgentMessageTransformer:
                     json_list.append(message.message.json_object)
             elif message.type == ToolInvokeMessage.MessageType.LINK:
                 assert isinstance(message.message, ToolInvokeMessage.TextMessage)
-                file = self._file_from_link_message(message=message, tenant_id=tenant_id)
-                if file is not None:
-                    files.append(file)
-                stream_text = f"{'File' if file is not None else 'Link'}: {message.message.text}\n"
+                linked_file = self._file_from_link_message(message=message, tenant_id=tenant_id)
+                if linked_file is not None:
+                    files.append(linked_file)
+                stream_text = f"{'File' if linked_file is not None else 'Link'}: {message.message.text}\n"
                 text += stream_text
                 yield StreamChunkEvent(
                     selector=[node_id, "text"],
