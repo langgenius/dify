@@ -4,7 +4,7 @@ import { fireEvent, screen } from '@testing-library/react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { usePathname } from '@/next/navigation'
-import { render } from '@/test/console/render'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import MainNavLayout from '../layout'
 
 const mockConsoleState = vi.hoisted(() => ({

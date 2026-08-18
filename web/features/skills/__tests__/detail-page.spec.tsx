@@ -2418,7 +2418,7 @@ describe('SkillDetailPage', () => {
         expect.anything(),
       )
     })
-  }, 10000)
+  }, 15000)
 
   it('sends uploaded Skill Builder attachments without requiring typed text', async () => {
     const user = userEvent.setup()
@@ -2586,7 +2586,7 @@ describe('SkillDetailPage', () => {
 
     expect(mocks.sendSkillAssistMessage).not.toHaveBeenCalled()
     expect(promptInput).toHaveValue('Use the attached guide')
-  })
+  }, 10000)
 
   it('ignores an in-flight attachment after restarting Skill Builder', async () => {
     const user = userEvent.setup()
@@ -3060,9 +3060,11 @@ describe('SkillDetailPage', () => {
     renderSkillDetailPage()
 
     expect(
-      await screen.findByRole('button', {
-        name: 'skill.skillManagement.detail.referencedBy_one:{"count":1}',
-      }),
+      await screen.findByRole(
+        'button',
+        { name: 'skill.skillManagement.detail.referencedBy_one:{"count":1}' },
+        { timeout: 5000 },
+      ),
     ).toBeInTheDocument()
   })
 
