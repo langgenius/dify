@@ -86,6 +86,20 @@ export default defineConfig(({ mode }) => {
             // SyntaxError: Named export not found. The requested module is a CommonJS module, which may not support all module.exports as named exports
             noExternal: ['emoji-mart'],
           },
+          css: {
+            // vinext uses Vite, which minifies CSS with Lightning CSS in
+            // production. The browserslist floor in package.json was raised to
+            // `iOS >=16.4` (PR #38653) for the WASM SIMD MP3 encoder. With that
+            // floor Lightning CSS considers `-webkit-mask-*` vendor prefixes
+            // unnecessary and strips them - breaking CSS mask icons on Chrome 112
+            // and iOS 15. `include: 262144` (= `Features.VendorPrefixes`, see
+            // lightningcss/node/targets.d.ts) forces the prefixed code path to
+            // always run regardless of the browserslist target, so both the MP3
+            // encoder and masked icons keep working independently.
+            lightningcss: {
+              include: 262144,
+            },
+          },
         }
       : {}),
 

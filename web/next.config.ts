@@ -12,6 +12,18 @@ const allowedDevOrigins = process.env.NEXT_ALLOWED_DEV_ORIGINS?.split(',')
 const nextConfig: NextConfig = {
   basePath: env.NEXT_PUBLIC_BASE_PATH,
   ...(allowedDevOrigins?.length ? { allowedDevOrigins } : {}),
+  experimental: {
+    // Turbopack uses Lightning CSS by default since Next 14.2. The browserslist
+    // floor in package.json was raised to `iOS >=16.4` (PR #38653) for the WASM
+    // SIMD MP3 encoder. With that floor Lightning CSS treats `-webkit-mask-*`
+    // vendor prefixes as unnecessary and strips them, breaking CSS mask icons on
+    // Chrome 112 and iOS 15. Forcing the `vendor-prefixes` feature keeps the
+    // prefixed code path always on regardless of browserslist targets, so the
+    // MP3 encoder floor and masked icons stay independent.
+    lightningCssFeatures: {
+      include: ['vendor-prefixes'],
+    },
+  },
   transpilePackages: ['@t3-oss/env-core', '@t3-oss/env-nextjs', 'echarts', 'zrender'],
   serverExternalPackages: ['loro-crdt'],
   turbopack: {
