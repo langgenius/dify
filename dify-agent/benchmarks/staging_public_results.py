@@ -195,8 +195,7 @@ def render_staging_public_markdown(result: StagingPublicSmokeResult) -> str:
             f"- Deterministic plugin expected package: `{result.environment.deterministic_plugin_version}` / "
             f"`{result.environment.deterministic_plugin_package_sha256}` "
             f"(`{result.environment.deterministic_plugin_package_evidence}`)",
-            f"- Config fixture expected SHA256: "
-            f"`{result.environment.config_expected_sha256 or 'N/A'}`",
+            f"- Config fixture expected SHA256: `{result.environment.config_expected_sha256 or 'N/A'}`",
             f"- Python / Locust: `{result.environment.python_version}` / `{result.environment.locust_version}`",
             f"- Public edge x-version / server: `{result.environment.edge_version or 'N/A'}` / "
             f"`{result.environment.edge_server or 'N/A'}`",

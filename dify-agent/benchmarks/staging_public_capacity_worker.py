@@ -145,9 +145,7 @@ class _WorkerState:
             self.spawned_users += 1
         if worker_index >= self.request.requested_concurrency:
             raise RuntimeError("Locust spawned more Users than requested")
-        end_user = bounded_end_user(
-            f"{self.request.invocation_id}.b{self.request.block_index}.w{worker_index}"
-        )
+        end_user = bounded_end_user(f"{self.request.invocation_id}.b{self.request.block_index}.w{worker_index}")
         client = StagingPublicServiceClient(
             settings=self.settings,
             end_user=end_user,
@@ -158,9 +156,7 @@ class _WorkerState:
         )
         return worker_index, client
 
-    def record_lifecycle(
-        self, event: Literal["allocated", "deleted"], worker_index: int, conversation_id: str
-    ) -> None:
+    def record_lifecycle(self, event: Literal["allocated", "deleted"], worker_index: int, conversation_id: str) -> None:
         with self._lock:
             if event == "allocated":
                 owner = self._conversation_owner.get(conversation_id)
@@ -324,9 +320,7 @@ class _WorkerState:
                         turn_index=turn_index,
                         admitted_offset_seconds=max(0.0, admitted_perf - start),
                         terminal_offset_seconds=(
-                            max(0.0, completed_perf - start)
-                            if sample.terminal_status != "not_terminal"
-                            else None
+                            max(0.0, completed_perf - start) if sample.terminal_status != "not_terminal" else None
                         ),
                         completed_after_admission_window=completed_perf > deadline,
                         sample=sample,
@@ -587,17 +581,13 @@ def run_worker(
     sse_failures = sum(sample.error_type == "sse_error" for sample in samples)
     correctness = sum(sample.error_type in {"validation_error", "worker_error"} for sample in samples)
     warmup_operational = sum(
-        sample.error_type
-        in {"throttle", "timeout", "http_error", "sse_error", "e2b_inventory_limited"}
+        sample.error_type in {"throttle", "timeout", "http_error", "sse_error", "e2b_inventory_limited"}
         for sample in state.warmup_samples
     )
     warmup_correctness = sum(
-        sample.error_type in {"validation_error", "worker_error"}
-        for sample in state.warmup_samples
+        sample.error_type in {"validation_error", "worker_error"} for sample in state.warmup_samples
     )
-    warmup_e2b_limits = sum(
-        sample.error_type == "e2b_inventory_limited" for sample in state.warmup_samples
-    )
+    warmup_e2b_limits = sum(sample.error_type == "e2b_inventory_limited" for sample in state.warmup_samples)
     setup = StagingPublicCapacitySetupResult(
         attempted_users=state.setup_attempted,
         allocated_users=len(state._worker_conversation),
@@ -616,9 +606,7 @@ def run_worker(
         warmup_operational_failures=warmup_operational,
         warmup_correctness_failures=warmup_correctness,
         warmup_e2b_limit_failures=warmup_e2b_limits,
-        warmup_peak_consecutive_operational_failures=(
-            state.warmup_peak_consecutive_capacity_failures
-        ),
+        warmup_peak_consecutive_operational_failures=(state.warmup_peak_consecutive_capacity_failures),
         attempted=len(samples),
         admitted=admitted,
         terminal=terminal,

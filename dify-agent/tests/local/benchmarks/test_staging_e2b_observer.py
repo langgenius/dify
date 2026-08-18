@@ -316,9 +316,7 @@ def test_observer_samples_on_one_second_schedule_and_detects_three_seconds_at_li
         sleep=clock.sleep,
     )
 
-    assert [sample.timestamp for sample in samples] == [
-        _STARTED_AT + timedelta(seconds=offset) for offset in range(4)
-    ]
+    assert [sample.timestamp for sample in samples] == [_STARTED_AT + timedelta(seconds=offset) for offset in range(4)]
     assert run.summary.running_max == E2B_FREE_RUNNING_LIMIT
     assert run.summary.paused_max == 4
     assert run.summary.running_limit_consecutive_seconds == 3
@@ -496,9 +494,7 @@ def test_capacity_window_mapping_excludes_setup_and_cleanup_samples() -> None:
         _sample(20, 5, "ok").model_copy(update={"timestamp": _STARTED_AT + timedelta(seconds=offset)})
         for offset in range(3)
     ]
-    cleanup = _sample(0, 0, "ok").model_copy(
-        update={"timestamp": _STARTED_AT + timedelta(seconds=3)}
-    )
+    cleanup = _sample(0, 0, "ok").model_copy(update={"timestamp": _STARTED_AT + timedelta(seconds=3)})
 
     mapped = observer_module.capacity_e2b_observation_for_window(
         [setup_throttle, *measurement, cleanup],
@@ -537,9 +533,7 @@ def test_capacity_window_mapping_accepts_sixty_phase_offset_samples() -> None:
     measurement_started_at = _STARTED_AT + timedelta(milliseconds=200)
     measurement_ended_at = measurement_started_at + timedelta(seconds=60, microseconds=1)
     samples = [
-        _sample(10, 5, "ok").model_copy(
-            update={"timestamp": _STARTED_AT + timedelta(seconds=offset)}
-        )
+        _sample(10, 5, "ok").model_copy(update={"timestamp": _STARTED_AT + timedelta(seconds=offset)})
         for offset in range(1, 61)
     ]
 
@@ -560,9 +554,7 @@ def test_capacity_window_mapping_accepts_ninety_percent_bounded_remote_coverage(
     measurement_ended_at = measurement_started_at + timedelta(seconds=60, microseconds=1)
     omitted_offsets = {10, 11, 20, 30, 40, 50}
     samples = [
-        _sample(10, 5, "ok").model_copy(
-            update={"timestamp": _STARTED_AT + timedelta(seconds=offset)}
-        )
+        _sample(10, 5, "ok").model_copy(update={"timestamp": _STARTED_AT + timedelta(seconds=offset)})
         for offset in range(1, 61)
         if offset not in omitted_offsets
     ]
@@ -584,9 +576,7 @@ def test_capacity_window_mapping_rejects_less_than_ninety_percent_coverage() -> 
     measurement_ended_at = measurement_started_at + timedelta(seconds=60, microseconds=1)
     omitted_offsets = {10, 11, 20, 30, 40, 50, 55}
     samples = [
-        _sample(10, 5, "ok").model_copy(
-            update={"timestamp": _STARTED_AT + timedelta(seconds=offset)}
-        )
+        _sample(10, 5, "ok").model_copy(update={"timestamp": _STARTED_AT + timedelta(seconds=offset)})
         for offset in range(1, 61)
         if offset not in omitted_offsets
     ]
@@ -606,9 +596,7 @@ def test_capacity_window_mapping_rejects_a_long_remote_observation_blackout() ->
     measurement_started_at = _STARTED_AT + timedelta(milliseconds=200)
     measurement_ended_at = measurement_started_at + timedelta(seconds=60, microseconds=1)
     samples = [
-        _sample(10, 5, "ok").model_copy(
-            update={"timestamp": _STARTED_AT + timedelta(seconds=offset)}
-        )
+        _sample(10, 5, "ok").model_copy(update={"timestamp": _STARTED_AT + timedelta(seconds=offset)})
         for offset in range(1, 61)
         if offset not in {10, 11, 12}
     ]
@@ -629,12 +617,8 @@ def test_capacity_window_mapping_tolerates_remote_poll_jitter_without_hiding_a_g
     measurement_ended_at = measurement_started_at + timedelta(seconds=3)
     samples = [
         _sample(10, 5, "ok").model_copy(update={"timestamp": _STARTED_AT + timedelta(seconds=1)}),
-        _sample(10, 5, "ok").model_copy(
-            update={"timestamp": _STARTED_AT + timedelta(seconds=2, milliseconds=4)}
-        ),
-        _sample(10, 5, "ok").model_copy(
-            update={"timestamp": _STARTED_AT + timedelta(seconds=3, milliseconds=8)}
-        ),
+        _sample(10, 5, "ok").model_copy(update={"timestamp": _STARTED_AT + timedelta(seconds=2, milliseconds=4)}),
+        _sample(10, 5, "ok").model_copy(update={"timestamp": _STARTED_AT + timedelta(seconds=3, milliseconds=8)}),
     ]
 
     mapped = observer_module.capacity_e2b_observation_for_window(
@@ -652,9 +636,7 @@ def test_capacity_window_mapping_tolerates_one_missed_poll_in_sixty_seconds() ->
     measurement_started_at = _STARTED_AT + timedelta(milliseconds=200)
     measurement_ended_at = measurement_started_at + timedelta(seconds=60, milliseconds=8)
     samples = [
-        _sample(10, 5, "ok").model_copy(
-            update={"timestamp": _STARTED_AT + timedelta(seconds=offset)}
-        )
+        _sample(10, 5, "ok").model_copy(update={"timestamp": _STARTED_AT + timedelta(seconds=offset)})
         for offset in range(1, 61)
         if offset != 30
     ]
@@ -675,9 +657,7 @@ def test_capacity_window_mapping_accepts_two_isolated_missed_polls_in_sixty_seco
     measurement_started_at = _STARTED_AT + timedelta(milliseconds=200)
     measurement_ended_at = measurement_started_at + timedelta(seconds=60, milliseconds=8)
     samples = [
-        _sample(10, 5, "ok").model_copy(
-            update={"timestamp": _STARTED_AT + timedelta(seconds=offset)}
-        )
+        _sample(10, 5, "ok").model_copy(update={"timestamp": _STARTED_AT + timedelta(seconds=offset)})
         for offset in range(1, 61)
         if offset not in {30, 45}
     ]
@@ -919,9 +899,7 @@ def test_stop_file_can_end_job_without_a_signal(
     assert observer_module._stop_requested(threading.Event(), stop_file) is True
 
     monkeypatch.setenv(observer_module.E2B_OBSERVER_STOP_FILE_ENV, str(stop_file))
-    parsed = observer_module._parse_args(
-        ["--duration-seconds", "10", "--output-dir", str(tmp_path / "public")]
-    )
+    parsed = observer_module._parse_args(["--duration-seconds", "10", "--output-dir", str(tmp_path / "public")])
     assert parsed.stop_file == stop_file
 
 
@@ -934,9 +912,7 @@ def test_cli_reports_missing_secret_environment_without_naming_values(
     monkeypatch.delenv(observer_module.E2B_TENANT_ID_ENV, raising=False)
     monkeypatch.delenv(observer_module.E2B_AGENT_ID_ENV, raising=False)
 
-    exit_code = observer_module.main(
-        ["--duration-seconds", "1", "--output-dir", str(tmp_path / "public")]
-    )
+    exit_code = observer_module.main(["--duration-seconds", "1", "--output-dir", str(tmp_path / "public")])
 
     assert exit_code == 2
     captured = capsys.readouterr()

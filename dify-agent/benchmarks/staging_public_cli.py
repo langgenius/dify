@@ -43,10 +43,7 @@ def main() -> int:
     try:
         args = _parse_args()
         if os.environ.get("BENCH_CONFIRM_STAGING_RUN") != STAGING_PUBLIC_CONFIRMATION:
-            raise RuntimeError(
-                "public Staging smoke requires "
-                "BENCH_CONFIRM_STAGING_RUN=RUN_STAGING_BENCHMARK"
-            )
+            raise RuntimeError("public Staging smoke requires BENCH_CONFIRM_STAGING_RUN=RUN_STAGING_BENCHMARK")
         api_key = os.environ.get("BENCH_STAGING_API_KEY")
         if not api_key:
             raise RuntimeError("BENCH_STAGING_API_KEY must be provided through the environment")
@@ -74,9 +71,7 @@ def main() -> int:
         )
         current_artifact_dir.mkdir(parents=True, exist_ok=False)
         try:
-            execution = run_staging_public_smoke(
-                StagingPublicSmokeRequest(invocation_id=run_id, settings=settings)
-            )
+            execution = run_staging_public_smoke(StagingPublicSmokeRequest(invocation_id=run_id, settings=settings))
         except (OSError, RuntimeError, ValueError) as exc:
             message = _redact_failure(str(exc), api_key)
             _write_worker_failure_artifacts(
@@ -168,7 +163,7 @@ def _plugin_package_version(path: Path) -> str:
         raise RuntimeError("deterministic plugin package did not contain a valid manifest.yaml") from exc
     for line in manifest.splitlines():
         if line.startswith("version:"):
-            version_value = line.partition(":")[2].strip().strip('"\'')
+            version_value = line.partition(":")[2].strip().strip("\"'")
             if version_value:
                 return version_value
             break
@@ -219,8 +214,7 @@ def _write_worker_failure_artifacts(
     )
     (artifact_dir / "cleanup.json").write_text(cleanup.model_dump_json(indent=2) + "\n", encoding="utf-8")
     (logs_dir / "worker-failure.log").write_text(
-        f"status=failed\nfailure_stage=locust_worker\nfailure_kind={failure_kind}\n"
-        f"cleanup=unknown\nerror={message}\n",
+        f"status=failed\nfailure_stage=locust_worker\nfailure_kind={failure_kind}\ncleanup=unknown\nerror={message}\n",
         encoding="utf-8",
     )
 

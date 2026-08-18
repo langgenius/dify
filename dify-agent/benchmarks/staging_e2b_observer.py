@@ -680,9 +680,7 @@ def observe_e2b_inventory(
         next_sample_at += E2B_OBSERVER_SAMPLE_INTERVAL_SECONDS
         now = monotonic()
         if next_sample_at < now:
-            skipped_intervals = math.ceil(
-                (now - next_sample_at) / E2B_OBSERVER_SAMPLE_INTERVAL_SECONDS
-            )
+            skipped_intervals = math.ceil((now - next_sample_at) / E2B_OBSERVER_SAMPLE_INTERVAL_SECONDS)
             next_sample_at += skipped_intervals * E2B_OBSERVER_SAMPLE_INTERVAL_SECONDS
 
     observer_ended_at = _as_utc(utc_now(), field_name="observer end timestamp")
@@ -746,11 +744,7 @@ def summarize_e2b_observation(
         else:
             current_target_zero_seconds = 0
     expected = len(samples) if expected_sample_count is None else expected_sample_count
-    observation_complete = (
-        len(samples) == expected
-        and len(successful_samples) == len(samples)
-        and len(samples) > 0
-    )
+    observation_complete = len(samples) == expected and len(successful_samples) == len(samples) and len(samples) > 0
     return E2BObserverSummary(
         observer_started_at=observer_started_at,
         observer_ended_at=observer_ended_at,
@@ -846,9 +840,7 @@ def _window_has_cadence_coverage(
 
     if not samples:
         return False
-    cadence = timedelta(
-        seconds=E2B_OBSERVER_SAMPLE_INTERVAL_SECONDS + E2B_WINDOW_CADENCE_TOLERANCE_SECONDS
-    )
+    cadence = timedelta(seconds=E2B_OBSERVER_SAMPLE_INTERVAL_SECONDS + E2B_WINDOW_CADENCE_TOLERANCE_SECONDS)
     window_duration_seconds = (ended_at - started_at).total_seconds()
     nominal_sample_count = max(
         1,
@@ -856,25 +848,15 @@ def _window_has_cadence_coverage(
     )
     long_window = window_duration_seconds >= E2B_WINDOW_MINIMUM_SECONDS_FOR_PARTIAL_COVERAGE
     minimum_sample_count = (
-        math.ceil(nominal_sample_count * E2B_WINDOW_MINIMUM_COVERAGE_RATIO)
-        if long_window
-        else nominal_sample_count
+        math.ceil(nominal_sample_count * E2B_WINDOW_MINIMUM_COVERAGE_RATIO) if long_window else nominal_sample_count
     )
     if len(samples) < minimum_sample_count:
         return False
-    timestamps = [
-        _as_utc(sample.timestamp, field_name="E2B sample timestamp")
-        for sample in samples
-    ]
+    timestamps = [_as_utc(sample.timestamp, field_name="E2B sample timestamp") for sample in samples]
     if timestamps[0] - started_at > cadence or ended_at - timestamps[-1] > cadence:
         return False
     maximum_gap = cadence + timedelta(
-        seconds=(
-            E2B_WINDOW_MAX_CONSECUTIVE_MISSED_SAMPLES
-            if long_window
-            else 0
-        )
-        * E2B_OBSERVER_SAMPLE_INTERVAL_SECONDS
+        seconds=(E2B_WINDOW_MAX_CONSECUTIVE_MISSED_SAMPLES if long_window else 0) * E2B_OBSERVER_SAMPLE_INTERVAL_SECONDS
     )
     return all(
         timedelta(0) < current - previous <= maximum_gap
@@ -973,11 +955,7 @@ def _parse_args(argv: Sequence[str] | None) -> _ObserverArgs:
 
 
 def _counter_from_environment() -> E2BMetadataInventoryCounter:
-    missing = [
-        name
-        for name in (E2B_API_KEY_ENV, E2B_TENANT_ID_ENV, E2B_AGENT_ID_ENV)
-        if not os.environ.get(name)
-    ]
+    missing = [name for name in (E2B_API_KEY_ENV, E2B_TENANT_ID_ENV, E2B_AGENT_ID_ENV) if not os.environ.get(name)]
     if missing:
         raise RuntimeError("required E2B observer Secret environment is incomplete")
     return E2BMetadataInventoryCounter(

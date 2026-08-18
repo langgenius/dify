@@ -77,10 +77,7 @@ def _journal(path: Path, count: int) -> None:
 def _journal_indices(path: Path, indices) -> None:
     path.write_text(
         "".join(
-            json.dumps(
-                {"event": "allocated", "worker_index": index, "conversation_id": f"conversation-{index}"}
-            )
-            + "\n"
+            json.dumps({"event": "allocated", "worker_index": index, "conversation_id": f"conversation-{index}"}) + "\n"
             for index in indices
         )
     )
@@ -255,9 +252,7 @@ def test_parent_replays_exact_retired_workspaces_once_after_a_db_and_vendor_stal
             return json.dumps({"enqueued": True, "target_count": len(payload["workspace_ids"])})
         if "count-targets" in script:
             remaining = 0 if replayed else 2
-            return json.dumps(
-                {"conversations": 0, "workspaces": remaining, "bindings": remaining}
-            )
+            return json.dumps({"conversations": 0, "workspaces": remaining, "bindings": remaining})
         return base_runner(argv, stdin)
 
     result = reconcile_staging_public_resources(

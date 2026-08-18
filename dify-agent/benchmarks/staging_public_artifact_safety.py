@@ -23,12 +23,8 @@ FORBIDDEN_DYNAMIC_KEY_PARTS: tuple[str, ...] = (
     "user_id",
     "workspace_id",
 )
-CREDENTIAL_VALUE_RE = re.compile(
-    r"(?i)(?:bearer\s+\S+|\be2b_[A-Za-z0-9]{16,}|\bapp-[A-Za-z0-9_-]{16,})"
-)
-DYNAMIC_KEY_ASSIGNMENT_RE = re.compile(
-    r"(?i)(?:^|[\s,{])['\"]?([A-Za-z][A-Za-z0-9_-]*)['\"]?\s*[:=]"
-)
+CREDENTIAL_VALUE_RE = re.compile(r"(?i)(?:bearer\s+\S+|\be2b_[A-Za-z0-9]{16,}|\bapp-[A-Za-z0-9_-]{16,})")
+DYNAMIC_KEY_ASSIGNMENT_RE = re.compile(r"(?i)(?:^|[\s,{])['\"]?([A-Za-z][A-Za-z0-9_-]*)['\"]?\s*[:=]")
 PRIVATE_VALUE_LABEL_RE = re.compile(
     r"(?i)\b(?:backend|binding|conversation|sandbox|snapshot|task|tenant|user|workspace)"
     r"[\s_-]*(?:id|ref)\s*[:=]"

@@ -134,9 +134,7 @@ def test_capacity_parent_wires_expected_backend_replicas_without_claiming_observ
     assert wire["expected_backend_replicas"] == 4
 
 
-def test_capacity_parent_persists_private_manifest_with_restricted_permissions(
-    monkeypatch, tmp_path: Path
-) -> None:
+def test_capacity_parent_persists_private_manifest_with_restricted_permissions(monkeypatch, tmp_path: Path) -> None:
     conversation_id = "private-conversation"
     secret = "secret-never-persist"
     manifest_path = tmp_path / "private" / "allocation-manifest.jsonl"
@@ -221,9 +219,7 @@ def test_capacity_parent_recovers_with_exact_worker_end_user(monkeypatch) -> Non
     assert conversation_id not in execution.model_dump_json()
 
 
-def test_capacity_parent_preserves_crash_journal_for_outer_physical_cleanup(
-    monkeypatch, tmp_path: Path
-) -> None:
+def test_capacity_parent_preserves_crash_journal_for_outer_physical_cleanup(monkeypatch, tmp_path: Path) -> None:
     conversation_id = "private-conversation"
     manifest_path = tmp_path / "private" / "allocation-manifest.jsonl"
     manifest_path.parent.mkdir()
@@ -231,8 +227,7 @@ def test_capacity_parent_preserves_crash_journal_for_outer_physical_cleanup(
     def fake_run(argv, **_kwargs):
         journal_path = Path(argv[argv.index("--journal") + 1])
         journal_path.write_text(
-            json.dumps({"event": "allocated", "worker_index": 0, "conversation_id": conversation_id})
-            + "\n",
+            json.dumps({"event": "allocated", "worker_index": 0, "conversation_id": conversation_id}) + "\n",
             encoding="utf-8",
         )
         return subprocess.CompletedProcess(argv, 2, stdout="", stderr="")
@@ -270,8 +265,7 @@ def test_capacity_parent_preserves_interrupted_worker_journal_for_outer_physical
     def fake_run(argv, **_kwargs):
         journal_path = Path(argv[argv.index("--journal") + 1])
         journal_path.write_text(
-            json.dumps({"event": "allocated", "worker_index": 0, "conversation_id": conversation_id})
-            + "\n",
+            json.dumps({"event": "allocated", "worker_index": 0, "conversation_id": conversation_id}) + "\n",
             encoding="utf-8",
         )
         raise KeyboardInterrupt
@@ -363,7 +357,7 @@ def test_capacity_worker_imports_locust_in_clean_interpreter() -> None:
 
 
 def test_capacity_worker_spawns_setup_users_at_one_per_second(tmp_path: Path) -> None:
-    script = r'''
+    script = r"""
 from pathlib import Path
 import benchmarks.staging_public_capacity_worker as worker
 from benchmarks.staging_public_capacity_schemas import StagingPublicCapacityPointRequest
@@ -412,7 +406,7 @@ request = StagingPublicCapacityPointRequest(
 )
 worker.run_worker(request, api_key="not-real", journal_path=Path(__import__('sys').argv[1]))
 assert observed["start"] == (2, 1.0)
-'''
+"""
     environment = dict(os.environ)
     environment.pop("LOCUST_SKIP_MONKEY_PATCH", None)
     for key in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"):
@@ -430,7 +424,7 @@ assert observed["start"] == (2, 1.0)
 
 
 def test_capacity_worker_runs_closed_loop_phases_and_unique_conversations(tmp_path: Path) -> None:
-    script = r'''
+    script = r"""
 from pathlib import Path
 import json
 import gevent
@@ -505,7 +499,7 @@ assert all(sequence[:2] == ["basic", "shell"] for sequence in calls.values())
 events = [json.loads(line) for line in Path(__import__('sys').argv[1]).read_text().splitlines()]
 assert len(events) == 10 and all(item["event"] == "allocated" for item in events)
 assert Path(__import__('sys').argv[1]).stat().st_mode & 0o777 == 0o600
-'''
+"""
     environment = dict(os.environ)
     environment.pop("LOCUST_SKIP_MONKEY_PATCH", None)
     for key in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"):
@@ -523,7 +517,7 @@ assert Path(__import__('sys').argv[1]).stat().st_mode & 0o777 == 0o600
 
 
 def test_capacity_worker_never_reuses_conversation_after_failed_turn(tmp_path: Path) -> None:
-    script = r'''
+    script = r"""
 from pathlib import Path
 import benchmarks.staging_public_capacity_worker as worker
 from benchmarks.staging_public_capacity_schemas import StagingPublicCapacityPointRequest
@@ -565,7 +559,7 @@ assert execution.load.warmup_completed == 0
 assert execution.observations == []
 assert execution.cleanup == []
 assert FakeClient.closed == 1
-'''
+"""
     environment = dict(os.environ)
     environment.pop("LOCUST_SKIP_MONKEY_PATCH", None)
     for key in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"):
@@ -583,7 +577,7 @@ assert FakeClient.closed == 1
 
 
 def test_capacity_worker_stops_admission_after_first_correctness_failure(tmp_path: Path) -> None:
-    script = r'''
+    script = r"""
 from pathlib import Path
 from pydantic import SecretStr
 import benchmarks.staging_public_capacity_worker as worker
@@ -629,7 +623,7 @@ try:
     assert state.abort_admission.is_set()
 finally:
     journal.close()
-'''
+"""
     environment = dict(os.environ)
     environment.pop("LOCUST_SKIP_MONKEY_PATCH", None)
     for key in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"):
@@ -649,7 +643,7 @@ finally:
 def test_capacity_worker_counts_isolated_warmup_failure_without_measurement(
     tmp_path: Path,
 ) -> None:
-    script = r'''
+    script = r"""
 from pathlib import Path
 import benchmarks.staging_public_capacity_worker as worker
 from benchmarks.staging_public_capacity_schemas import StagingPublicCapacityPointRequest
@@ -691,7 +685,7 @@ assert execution.load.warmup_correctness_failures == 0
 assert execution.load.warmup_peak_consecutive_operational_failures == 1
 assert execution.load.measurement_started_at is None
 assert execution.observations == []
-'''
+"""
     environment = dict(os.environ)
     environment.pop("LOCUST_SKIP_MONKEY_PATCH", None)
     for key in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"):
@@ -709,7 +703,7 @@ assert execution.observations == []
 
 
 def test_capacity_cleanup_gate_waits_for_every_requested_user_after_early_setup_failure(tmp_path: Path) -> None:
-    script = r'''
+    script = r"""
 from pathlib import Path
 import benchmarks.staging_public_capacity_worker as worker
 from benchmarks.staging_public_capacity_schemas import StagingPublicCapacityPointRequest
@@ -749,7 +743,7 @@ assert execution.setup.allocated_users == 1
 assert execution.load.spawned_users == 10
 assert execution.cleanup == []
 assert FakeClient.closed == 10
-'''
+"""
     environment = dict(os.environ)
     environment.pop("LOCUST_SKIP_MONKEY_PATCH", None)
     for key in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"):

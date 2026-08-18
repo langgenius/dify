@@ -120,9 +120,7 @@ def main() -> int:
         if not _RUN_ID_RE.fullmatch(run_id):
             raise ValueError("run id must contain only benchmark-safe identity characters")
 
-        stage_artifact_dir = (
-            args.results_root / f"{run_id}-staging-public-scaling-r{args.backend_replicas}"
-        )
+        stage_artifact_dir = args.results_root / f"{run_id}-staging-public-scaling-r{args.backend_replicas}"
         artifact_dir = stage_artifact_dir
         stage_artifact_dir.mkdir(parents=True, exist_ok=False)
         blocks_dir = stage_artifact_dir / "blocks"
@@ -164,9 +162,7 @@ def main() -> int:
         blocks: list[StagingPublicCapacityPoint] = []
         executions: list[StagingPublicCapacityExecution] = []
         stop_all_reason: str | None = (
-            None
-            if edge_probe_before is not None
-            else "public edge x-version preflight did not pass"
+            None if edge_probe_before is not None else "public edge x-version preflight did not pass"
         )
         basic_boundary_reason: str | None = None
         execution_count = 0
@@ -231,8 +227,7 @@ def main() -> int:
                 )
             elif point.status == "e2b_inventory_limited":
                 stop_all_reason = (
-                    f"stopped after {scenario_id} c{concurrency} because E2B Sandbox inventory "
-                    "prevented setup"
+                    f"stopped after {scenario_id} c{concurrency} because E2B Sandbox inventory prevented setup"
                 )
             elif scenario_id == "basic":
                 candidate = next(
@@ -661,9 +656,7 @@ def _execute_block(
     return execution
 
 
-def _require_disjoint_private_recovery_root(
-    *, private_recovery_root: Path, public_artifact_dir: Path
-) -> None:
+def _require_disjoint_private_recovery_root(*, private_recovery_root: Path, public_artifact_dir: Path) -> None:
     private = private_recovery_root.expanduser().resolve()
     public = public_artifact_dir.resolve()
     if private == public or private in public.parents or public in private.parents:
@@ -715,9 +708,7 @@ def _read_e2b_samples(path: Path) -> tuple[E2BObserverSample, ...]:
 
 def _require_confirmation() -> None:
     if os.environ.get("BENCH_CONFIRM_STAGING_RUN") != STAGING_PUBLIC_CONFIRMATION:
-        raise RuntimeError(
-            "public Staging scaling requires BENCH_CONFIRM_STAGING_RUN=RUN_STAGING_BENCHMARK"
-        )
+        raise RuntimeError("public Staging scaling requires BENCH_CONFIRM_STAGING_RUN=RUN_STAGING_BENCHMARK")
 
 
 def _validate_plugin_package(path: Path) -> str:
@@ -822,8 +813,7 @@ def _public_scaling_manifest_sha256() -> str:
         {
             "mode": "staging-public-e2e-scaling",
             "replica_matrices": {
-                str(replicas): staging_public_capacity_stage_matrix(replicas)
-                for replicas in (1, 2, 4)
+                str(replicas): staging_public_capacity_stage_matrix(replicas) for replicas in (1, 2, 4)
             },
             "scenario_version": 1,
             "setup_spawn_rate_users_per_second": 1,

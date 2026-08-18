@@ -65,12 +65,15 @@ class StagingPublicCapacityRequest:
             raise ValueError("private_manifest_output must not already exist")
         if self.block_index != 1:
             raise ValueError("single-block capacity scans require block_index=1")
-        if min(
-            self.setup_timeout_seconds,
-            self.warmup_seconds,
-            self.measurement_seconds,
-            self.drain_timeout_seconds,
-        ) <= 0:
+        if (
+            min(
+                self.setup_timeout_seconds,
+                self.warmup_seconds,
+                self.measurement_seconds,
+                self.drain_timeout_seconds,
+            )
+            <= 0
+        ):
             raise ValueError("capacity durations must be positive")
 
 
@@ -148,7 +151,9 @@ def run_staging_public_capacity_point(request: StagingPublicCapacityRequest) -> 
                 execution = None
                 process_error = "isolated public capacity worker returned a mismatched result"
         elif process_error is None:
-            process_error = f"isolated public capacity worker failed with exit {process.returncode if process else 'unknown'}"
+            process_error = (
+                f"isolated public capacity worker failed with exit {process.returncode if process else 'unknown'}"
+            )
 
         # A completed worker deliberately leaves Conversation cleanup to the
         # outer physical reconciler.  Emergency DELETE is reserved for a child

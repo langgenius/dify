@@ -420,7 +420,11 @@ def validate_private_e2b_target_manifest(
         ]
     except (KeyError, OSError, TypeError, json.JSONDecodeError) as exc:
         raise RuntimeError("private cleanup target manifests could not be reconciled") from exc
-    if not isinstance(database_rows, list) or len(database_rows) != expected_targets or len(vendor_rows) != expected_targets:
+    if (
+        not isinstance(database_rows, list)
+        or len(database_rows) != expected_targets
+        or len(vendor_rows) != expected_targets
+    ):
         raise RuntimeError("private cleanup target manifests did not cover every requested User")
 
     def db_identity(row: object) -> tuple[str, str, str]:
@@ -619,9 +623,7 @@ def _select_ready_api_pod(
             isinstance(name, str)
             and isinstance(conditions, list)
             and any(
-                isinstance(condition, dict)
-                and condition.get("type") == "Ready"
-                and condition.get("status") == "True"
+                isinstance(condition, dict) and condition.get("type") == "Ready" and condition.get("status") == "True"
                 for condition in conditions
             )
         ):
@@ -782,11 +784,7 @@ def _wait_for_joint_zero(
             and stalled_resource_replayer is not None
             and now - started >= STALLED_CLEANUP_REPLAY_AFTER_SECONDS
             and latest["conversations"] == 0
-            and (
-                latest["workspaces"] > 0
-                or latest["bindings"] > 0
-                or latest_vendor > 0
-            )
+            and (latest["workspaces"] > 0 or latest["bindings"] > 0 or latest_vendor > 0)
         ):
             # The product collector intentionally treats individual destroy
             # failures as best-effort. Re-enqueue this immutable manifest once
@@ -819,11 +817,7 @@ def _wait_for_joint_zero(
         vendor_sandboxes_remaining=latest_vendor,
         consecutive_zero_checks=joint_zero_checks,
         interval_seconds=10 if joint_zero_checks >= 2 else 0,
-        complete=(
-            joint_zero_checks >= 2
-            and all(count == 0 for count in latest.values())
-            and latest_vendor == 0
-        ),
+        complete=(joint_zero_checks >= 2 and all(count == 0 for count in latest.values()) and latest_vendor == 0),
         errors=joint_errors,
     )
     return database, joint
@@ -1009,7 +1003,7 @@ def _run_command(argv: Sequence[str], stdin: str | None) -> str:
     return completed.stdout
 
 
-_RECOVER_ALLOCATIONS_SCRIPT = r'''# dify-benchmark-recover-allocations
+_RECOVER_ALLOCATIONS_SCRIPT = r"""# dify-benchmark-recover-allocations
 import json,sys
 from app import app
 from extensions.ext_database import db
@@ -1020,10 +1014,10 @@ p=json.load(sys.stdin); sessions=[r['end_user'] for r in p['scopes']]
 with app.app_context(), db.session() as s:
  rows=s.execute(select(Conversation.id,EndUser.session_id).join(EndUser,EndUser.id==Conversation.from_end_user_id).join(App,App.id==Conversation.app_id).join(Agent,and_(Agent.id==p['agent_id'],Agent.tenant_id==p['tenant_id'],Agent.app_id==App.id)).where(App.tenant_id==p['tenant_id'],Conversation.is_deleted.is_(False),Conversation.from_source==ConversationFromSource.API,Conversation.invoke_from==InvokeFrom.SERVICE_API,EndUser.tenant_id==p['tenant_id'],EndUser.app_id==App.id,EndUser.type==EndUserType.SERVICE_API,EndUser.session_id.in_(sessions)).order_by(EndUser.session_id,Conversation.created_at,Conversation.id)).all()
 print(json.dumps({'allocations':[{'conversation_id':r[0],'end_user':r[1]} for r in rows]},separators=(',',':')))
-'''
+"""
 
 
-_CAPTURE_TARGETS_SCRIPT = r'''# dify-benchmark-capture-targets
+_CAPTURE_TARGETS_SCRIPT = r"""# dify-benchmark-capture-targets
 import json,sys
 from app import app
 from extensions.ext_database import db
@@ -1033,9 +1027,9 @@ p=json.load(sys.stdin); ids=p['conversation_ids']
 with app.app_context(), db.session() as s:
  rows=s.execute(select(Conversation.id,AgentWorkspace.id,AgentWorkspaceBinding.id,AgentWorkspace.backend_workspace_ref,AgentWorkspaceBinding.backend_binding_ref).join(AgentWorkspaceBinding,AgentWorkspaceBinding.id==Conversation.agent_workspace_binding_id).join(AgentWorkspace,and_(AgentWorkspace.id==AgentWorkspaceBinding.workspace_id,AgentWorkspace.tenant_id==AgentWorkspaceBinding.tenant_id,AgentWorkspace.app_id==AgentWorkspaceBinding.app_id)).join(App,App.id==Conversation.app_id).where(Conversation.id.in_(ids),Conversation.is_deleted.is_(False),AgentWorkspaceBinding.app_id==Conversation.app_id,AgentWorkspaceBinding.tenant_id==App.tenant_id,AgentWorkspaceBinding.status==AgentWorkingResourceStatus.ACTIVE,AgentWorkspace.owner_type==AgentWorkspaceOwnerType.CONVERSATION,AgentWorkspace.owner_id==Conversation.id,AgentWorkspace.owner_scope_key=='root',AgentWorkspace.status==AgentWorkingResourceStatus.ACTIVE)).all()
 print(json.dumps({'targets':[{'conversation_id':r[0],'workspace_id':r[1],'binding_id':r[2],'backend_workspace_ref':r[3],'backend_binding_ref':r[4]} for r in rows]},separators=(',',':')))
-'''
+"""
 
-_COUNT_TARGETS_SCRIPT = r'''# dify-benchmark-count-targets
+_COUNT_TARGETS_SCRIPT = r"""# dify-benchmark-count-targets
 import json,sys
 from app import app
 from extensions.ext_database import db
@@ -1045,15 +1039,15 @@ p=json.load(sys.stdin)
 with app.app_context(), db.session() as s:
  out={'conversations':s.scalar(select(func.count()).select_from(Conversation).where(Conversation.id.in_(p['conversation_ids']))) or 0,'workspaces':s.scalar(select(func.count()).select_from(AgentWorkspace).where(AgentWorkspace.id.in_(p['workspace_ids']))) or 0,'bindings':s.scalar(select(func.count()).select_from(AgentWorkspaceBinding).where(AgentWorkspaceBinding.id.in_(p['binding_ids']))) or 0}
 print(json.dumps(out,separators=(',',':')))
-'''
+"""
 
-_REPLAY_RETIRED_WORKSPACES_SCRIPT = r'''# dify-benchmark-replay-retired-workspaces
+_REPLAY_RETIRED_WORKSPACES_SCRIPT = r"""# dify-benchmark-replay-retired-workspaces
 import json,sys
 from app import celery
 p=json.load(sys.stdin)
 celery.send_task('tasks.collect_agent_resources_task.collect_agent_resources',kwargs={'tenant_id':p['tenant_id'],'workspace_ids':p['workspace_ids'],'binding_ids':[],'home_snapshot_ids':[]},queue='retention')
 print(json.dumps({'enqueued':True,'target_count':len(p['workspace_ids'])},separators=(',',':')))
-'''
+"""
 
 
 __all__ = [

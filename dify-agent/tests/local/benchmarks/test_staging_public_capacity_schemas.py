@@ -64,9 +64,7 @@ def test_capacity_request_is_dynamic_single_block_secret_free_and_strict() -> No
     with pytest.raises(ValidationError):
         StagingPublicCapacityPointRequest.model_validate({**request.model_dump(), "api_key": "secret"})
     with pytest.raises(ValidationError):
-        StagingPublicCapacityPointRequest.model_validate(
-            {**request.model_dump(), "requested_concurrency": 161}
-        )
+        StagingPublicCapacityPointRequest.model_validate({**request.model_dump(), "requested_concurrency": 161})
 
 
 @pytest.mark.parametrize("block_index", [0, 2])
