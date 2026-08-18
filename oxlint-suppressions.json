@@ -1642,11 +1642,6 @@
       "count": 2
     }
   },
-  "web/app/components/base/prompt-editor/plugins/hitl-input-block/input-field.tsx": {
-    "jsx-a11y/no-autofocus": {
-      "count": 1
-    }
-  },
   "web/app/components/base/prompt-editor/plugins/hitl-input-block/pre-populate.tsx": {
     "jsx-a11y/no-autofocus": {
       "count": 1
@@ -2774,9 +2769,6 @@
     }
   },
   "web/app/components/plugins/install-plugin/install-from-github/index.tsx": {
-    "jsx-a11y/no-autofocus": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 2
     }
@@ -3290,11 +3282,6 @@
       "count": 6
     }
   },
-  "web/app/components/snippets/create-snippet-dialog.tsx": {
-    "jsx-a11y/no-autofocus": {
-      "count": 1
-    }
-  },
   "web/app/components/snippets/hooks/use-snippet-run.ts": {
     "no-restricted-imports": {
       "count": 2
@@ -3308,12 +3295,6 @@
   "web/app/components/tools/edit-custom-collection-modal/index.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 4
-    },
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
     },
     "typescript/no-explicit-any": {
       "count": 2

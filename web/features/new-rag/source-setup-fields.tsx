@@ -5,8 +5,9 @@ import type { NewKnowledgeSourceDraft, NewKnowledgeSourceType } from './routes'
 import type { InstalledSourceProviderOption, SourceProviderOption } from './source-provider-options'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Input } from '@langgenius/dify-ui/input'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
 import { useTranslation } from 'react-i18next'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
@@ -235,7 +236,6 @@ export function SourceNameField({
   labelClassName,
   name = 'sourceName',
   preventSubmitOnEnter = false,
-  size,
   onDraftChange,
 }: {
   className?: string
@@ -244,7 +244,6 @@ export function SourceNameField({
   labelClassName?: string
   name?: string
   preventSubmitOnEnter?: boolean
-  size?: 'large' | 'medium'
   onDraftChange: (draft: NewKnowledgeSourceDraft) => void
 }) {
   const { t } = useTranslation('dataset')
@@ -257,14 +256,13 @@ export function SourceNameField({
           *
         </span>
       </FieldLabel>
-      <FieldControl
+      <Input
         type="text"
         autoComplete="off"
         disabled={disabled}
         maxLength={NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH}
         value={draft.sourceName}
         placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
-        size={size}
         onValueChange={(value) => onDraftChange({ ...draft, sourceName: value })}
         onKeyDown={(event) => {
           if (preventSubmitOnEnter && event.key === 'Enter') event.preventDefault()

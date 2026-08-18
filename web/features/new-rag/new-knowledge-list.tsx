@@ -1,6 +1,7 @@
 'use client'
 
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
@@ -28,6 +29,9 @@ import {
   NewKnowledgeLoadingState,
   NewKnowledgePageState,
 } from './components/new-knowledge-list-states'
+import { KnowledgeUpgradeCard } from './upgrade/knowledge-upgrade-card'
+import { useKnowledgeUpgrade } from './upgrade/knowledge-upgrade-context-value'
+import { matchesKnowledgeUpgradeFilters } from './upgrade/knowledge-upgrade-filters'
 
 const PAGE_SIZE = 30
 const TAG_FILTER_MAX_ID_LENGTH = 255
@@ -77,6 +81,7 @@ export function NewKnowledgeList({
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const uploadAvailable = useAtomValue(knowledgeFsUploadEnabledAtom)
+  const { upgrades } = useKnowledgeUpgrade()
   const canCreate = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
   const canConnect = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
   const createLabel = tCommon(($) => $['operation.create'])
@@ -100,6 +105,24 @@ export function NewKnowledgeList({
     }),
   )
   const knowledgeSpaces = knowledgeSpacesQuery.data?.pages.flatMap((page) => page.data) ?? []
+  const succeededControlSpaceIds = new Set(
+    upgrades.flatMap(({ job }) =>
+      job.status === 'succeeded' && job.new_control_space_id ? [job.new_control_space_id] : [],
+    ),
+  )
+  const pendingUpgradeCards = upgrades.filter(
+    (upgrade) =>
+      matchesKnowledgeUpgradeFilters(upgrade, {
+        creatorIds,
+        query: debouncedSearchValue,
+        tagIds,
+      }) &&
+      (!upgrade.job.new_control_space_id ||
+        !knowledgeSpaces.some(
+          (knowledgeSpace) => knowledgeSpace.control_space_id === upgrade.job.new_control_space_id,
+        )),
+  )
+  const hasVisibleKnowledge = knowledgeSpaces.length > 0 || pendingUpgradeCards.length > 0
 
   return (
     <section
@@ -154,15 +177,16 @@ export function NewKnowledgeList({
           </div>
           {canCreate && (
             <div className="flex items-center gap-1">
-              <Button
-                render={<Link href="/datasets/new/create" />}
-                variant="primary"
-                size="medium"
-                className="w-24 gap-0.5 overflow-hidden p-2!"
+              <Link
+                href="/datasets/new/create"
+                className={cn(
+                  buttonVariants({ variant: 'primary', size: 'medium' }),
+                  'w-24 gap-0.5 overflow-hidden p-2!',
+                )}
               >
                 <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
                 <span className="pl-1">{createLabel}</span>
-              </Button>
+              </Link>
             </div>
           )}
         </div>
@@ -191,7 +215,7 @@ export function NewKnowledgeList({
               />
             )}
           </div>
-        ) : debouncedSearchValue && knowledgeSpaces.length === 0 ? (
+        ) : debouncedSearchValue && !hasVisibleKnowledge ? (
           <div className="px-4 pt-2 pb-8 sm:px-8">
             <NewKnowledgePageState
               title={tCommon(($) => $['operation.noSearchResults'], {
@@ -205,13 +229,13 @@ export function NewKnowledgeList({
               }
             />
           </div>
-        ) : knowledgeSpaces.length === 0 && creatorIds.length === 0 && tagIds.length === 0 ? (
+        ) : !hasVisibleKnowledge && creatorIds.length === 0 && tagIds.length === 0 ? (
           <NewKnowledgeEmptyState
             canConnect={canConnect}
             canCreate={canCreate}
             uploadAvailable={uploadAvailable}
           />
-        ) : knowledgeSpaces.length === 0 ? (
+        ) : !hasVisibleKnowledge ? (
           <div className="flex min-h-105 items-center justify-center px-6 text-center text-text-tertiary">
             {tCommon(($) => $['operation.noSearchResults'], {
               content: t(($) => $.knowledge),
@@ -220,10 +244,14 @@ export function NewKnowledgeList({
         ) : (
           <div className="px-4 pt-2 pb-8 sm:px-8">
             <ul className={KNOWLEDGE_SPACE_GRID_CLASS_NAME} aria-label={t(($) => $.knowledge)}>
+              {pendingUpgradeCards.map((upgrade) => (
+                <KnowledgeUpgradeCard key={upgrade.job.id} upgrade={upgrade} />
+              ))}
               {knowledgeSpaces.map((knowledgeSpace) => (
                 <KnowledgeSpaceCard
                   key={knowledgeSpace.control_space_id}
                   knowledgeSpace={knowledgeSpace}
+                  highlighted={succeededControlSpaceIds.has(knowledgeSpace.control_space_id)}
                   onOpenTagManagement={() => setShowTagManagementModal(true)}
                 />
               ))}

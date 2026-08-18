@@ -21,6 +21,7 @@ import {
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { NewKnowledgeList } from '@/features/new-rag/new-knowledge-list'
+import { KnowledgeUpgradeProvider } from '@/features/new-rag/upgrade/knowledge-upgrade-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -216,15 +217,19 @@ function KnowledgeFsList() {
     void setView(nextView)
   }
 
-  if (view === 'new') return <NewKnowledgeList view={view} onViewChange={onViewChange} />
-
   return (
-    <LegacyList
-      knowledgeViewSwitcherProps={{
-        value: view,
-        onChange: onViewChange,
-      }}
-    />
+    <KnowledgeUpgradeProvider onUpgradeStarted={() => void setView('new')}>
+      {view === 'new' ? (
+        <NewKnowledgeList view={view} onViewChange={onViewChange} />
+      ) : (
+        <LegacyList
+          knowledgeViewSwitcherProps={{
+            value: view,
+            onChange: onViewChange,
+          }}
+        />
+      )}
+    </KnowledgeUpgradeProvider>
   )
 }
 

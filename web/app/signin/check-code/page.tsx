@@ -154,6 +154,9 @@ export default function CheckCode() {
         <Input
           ref={codeInputRef}
           id="code"
+          name="code"
+          inputMode="numeric"
+          autoComplete="one-time-code"
           value={code}
           onChange={(e) => setVerifyCode(e.target.value)}
           maxLength={6}

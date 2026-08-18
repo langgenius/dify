@@ -14,6 +14,7 @@ import {
 } from '@/app/components/step-by-step-tour/dropdown-menu'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { useKnowledgeUpgrade } from '@/features/new-rag/upgrade/knowledge-upgrade-context-value'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import Operations from '../operations'
@@ -43,11 +44,13 @@ const OperationsDropdown = ({
   })
   const open = operationsMenu.open
   const setOpen = operationsMenu.onOpenChange
+  const triggerRef = React.useRef<HTMLButtonElement>(null)
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,
   })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const knowledgeUpgrade = useKnowledgeUpgrade()
   const { data: isRbacEnabled } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ rbac_enabled }) => rbac_enabled,
@@ -68,6 +71,11 @@ const OperationsDropdown = ({
       workspacePermissionKeys,
     ],
   )
+  const canUpgrade =
+    knowledgeUpgrade.enabled &&
+    datasetACLCapabilities.canEdit &&
+    dataset.provider !== 'external' &&
+    !knowledgeUpgrade.upgrades.some((upgrade) => upgrade.dataset.id === dataset.id)
   const canShowOperations =
     datasetACLCapabilities.canEdit ||
     datasetACLCapabilities.canImportExportDSL ||
@@ -81,12 +89,13 @@ const OperationsDropdown = ({
       className={cn(
         'absolute top-2 right-2 z-5',
         open
-          ? 'pointer-events-auto visible'
-          : 'pointer-events-none invisible group-hover:pointer-events-auto group-hover:visible',
+          ? 'pointer-events-auto opacity-100'
+          : 'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100',
       )}
     >
       <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
+          ref={triggerRef}
           className={cn(
             'inline-flex size-9 cursor-pointer items-center justify-center rounded-[10px] border-[0.5px]',
             'border-components-actionbar-border bg-components-button-secondary-bg p-0 shadow-lg inset-ring-2 shadow-shadow-shadow-5 inset-ring-components-button-secondary-bg',
@@ -104,10 +113,10 @@ const OperationsDropdown = ({
         </DropdownMenuTrigger>
         <DropdownMenuContent
           placement="bottom-end"
-          popupClassName="min-w-[186px]"
           {...getStepByStepTourDropdownMenuContentProps({
             highlightPart: stepByStepTourHighlightPart,
             interactionMode: operationsMenu.controlled ? 'presentation' : 'interactive',
+            popupClassName: 'min-w-44',
           })}
         >
           <Operations
@@ -117,10 +126,13 @@ const OperationsDropdown = ({
               dataset.runtime_mode === 'rag_pipeline' && datasetACLCapabilities.canImportExportDSL
             }
             showAccessConfig={datasetACLCapabilities.canAccessConfig}
+            showUpgrade={canUpgrade}
             openRenameModal={openRenameModal}
             handleExportPipeline={handleExportPipeline}
             detectIsUsedByApp={detectIsUsedByApp}
             openAccessConfig={openAccessConfig}
+            onUpgrade={() => knowledgeUpgrade.requestUpgrade(dataset, triggerRef)}
+            onClose={() => setOpen(false)}
           />
         </DropdownMenuContent>
       </DropdownMenu>

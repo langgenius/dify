@@ -338,7 +338,6 @@ export function CreateConnectedSourceSetup({
           disabled={disabled}
           draft={draft}
           preventSubmitOnEnter
-          size="medium"
           onDraftChange={onDraftChange}
         />
         <SourceSyncPolicyField

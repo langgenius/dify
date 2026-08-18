@@ -156,7 +156,7 @@
   "agentDetail.configure.preview.empty.description": "Run the agent as a finished chat, exactly how people will experience it once published.",
   "agentDetail.configure.preview.empty.title": "Preview {{name}}",
   "agentDetail.configure.preview.endUserAuth": "End-user authentication",
-  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "This agent run stopped after reaching the maximum number of model requests. Try again, or break the task into smaller steps.",
+  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "This agent run was stopped at the model request limit. Try again, or break the task into smaller steps.",
   "agentDetail.configure.preview.errors.agentRunLimitExceeded": "This agent run was stopped at the time limit. Try again, or break the task into smaller steps.",
   "agentDetail.configure.preview.inputPlaceholder": "Message {{name}}",
   "agentDetail.configure.preview.restart": "Start fresh",
