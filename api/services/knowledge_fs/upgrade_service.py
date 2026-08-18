@@ -852,7 +852,7 @@ class KnowledgeFSUpgradeDocumentReconciler:
                         control_space_id=_required_space_id(job),
                         document_id=current.id,
                         payload=KnowledgeFSDocumentMetadataPayload(
-                            expected_row_version=current.row_version,
+                            expectedRowVersion=current.row_version,
                             patch=dict(document.metadata_snapshot),
                         ),
                     )
@@ -864,7 +864,7 @@ class KnowledgeFSUpgradeDocumentReconciler:
                         document_id=current.id,
                         payload=KnowledgeFSDocumentAvailabilityPayload(
                             enabled=document.desired_enabled,
-                            expected_row_version=current.row_version,
+                            expectedRowVersion=current.row_version,
                         ),
                     )
             except Exception as error:
