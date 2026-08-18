@@ -162,6 +162,28 @@ def test_transform_rejects_unknown_tool_file_link() -> None:
         _run_transform([message])
 
 
+def test_file_from_link_message_ignores_non_text_message() -> None:
+    message = ToolInvokeMessage(
+        type=ToolInvokeMessage.MessageType.JSON,
+        message=ToolInvokeMessage.JsonMessage(json_object={}),
+    )
+
+    assert AgentMessageTransformer._file_from_link_message(message=message, tenant_id="tenant-id") is None
+
+
+def test_transform_keeps_fileless_link_metadata_as_text() -> None:
+    message = ToolInvokeMessage(
+        type=ToolInvokeMessage.MessageType.LINK,
+        message=ToolInvokeMessage.TextMessage(text="https://dify.ai/docs"),
+        meta={"tool_file_id": "", "description": "documentation"},
+    )
+
+    text, files = _run_transform([message])
+
+    assert text == "Link: https://dify.ai/docs\n"
+    assert files.value == []
+
+
 def test_transform_keeps_plain_link_as_text() -> None:
     message = ToolInvokeMessage(
         type=ToolInvokeMessage.MessageType.LINK,
