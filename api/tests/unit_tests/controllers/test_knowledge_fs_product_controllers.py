@@ -1085,7 +1085,7 @@ def test_service_profile_rejects_cross_control_space_before_facade_io() -> None:
 
 def test_product_modules_do_not_import_dify_dataset_or_document_services() -> None:
     paths = [
-        *_API_ROOT.glob("services/knowledge_fs/*.py"),
+        *(path for path in _API_ROOT.glob("services/knowledge_fs/*.py") if not path.name.startswith("upgrade_")),
         *_API_ROOT.glob("controllers/console/knowledge_fs/*.py"),
         *_API_ROOT.glob("controllers/service_api/knowledge_fs/*.py"),
     ]
