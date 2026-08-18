@@ -397,6 +397,7 @@ function ReadyCrawlSelectionForm({
       ),
   )
   const [localSyncPolicy, setLocalSyncPolicy] = useState<SyncPolicyValue>(() => {
+    if (syncPolicyValue) return syncPolicyValue
     const mode = initialSyncMode ?? (policy.enabled ? policy.mode : 'manual')
     return {
       ...(mode === 'custom'
@@ -408,7 +409,7 @@ function ReadyCrawlSelectionForm({
       mode,
     }
   })
-  const syncPolicy = syncPolicyValue ?? localSyncPolicy
+  const syncPolicy = showSyncPolicyField ? localSyncPolicy : (syncPolicyValue ?? localSyncPolicy)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(false)
   const [policyUncertain, setPolicyUncertain] = useState(false)
@@ -630,7 +631,7 @@ function ReadyCrawlSelectionForm({
           {t(($) => $['newKnowledge.addSourceFailed'])}
         </p>
       )}
-      <div className="mt-1 flex justify-end gap-2 border-t border-divider-subtle pt-5">
+      <div className="mt-1 flex justify-end gap-3 border-t border-divider-subtle pt-5">
         <Button type="button" onClick={onCancel}>
           {t(($) => $['newKnowledge.cancelAddSource'])}
         </Button>

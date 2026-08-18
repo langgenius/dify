@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import type { DatasourceParameters } from './datasource-parameter-model'
 import type { NewKnowledgeWebsiteSourceDraft } from './routes'
 import type { CrawlPreviewPage as PreviewPage, Source, SourceWorkflowRun } from './source-models'
@@ -438,6 +439,7 @@ export function WebsiteCrawlPreview({
   onInteractionLockChange,
   providerOption,
   providerName = 'Firecrawl',
+  syncPolicyField,
 }: {
   connection: ConnectionReference
   initialDraft?: NewKnowledgeWebsiteSourceDraft
@@ -446,6 +448,7 @@ export function WebsiteCrawlPreview({
   onInteractionLockChange?: (locked: boolean) => void
   providerOption?: InstalledSourceProviderOption
   providerName?: string
+  syncPolicyField?: ReactNode
 }) {
   const { t } = useTranslation('dataset')
   const router = useRouter()
@@ -1462,7 +1465,6 @@ export function WebsiteCrawlPreview({
             pages={pages}
             rootUrl={configuration.rootUrl}
             run={run}
-            showSyncPolicyField={false}
             source={draftRef.current.source}
             syncPolicyValue={syncPolicy}
             workflowUncertain={workflowUncertain}
@@ -1526,6 +1528,7 @@ export function WebsiteCrawlPreview({
           </div>
         )}
       </div>
+      {!showSuccess && syncPolicyField && <div className="mt-4">{syncPolicyField}</div>}
       {!showSuccess && (
         <div className="mt-5 flex justify-end gap-3 border-t border-divider-subtle pt-4.75">
           <Button type="button" onClick={cancel}>

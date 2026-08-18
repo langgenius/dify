@@ -1291,12 +1291,6 @@ export function AddSourcePage({
                   })
                 }}
               />
-              <SourceSyncPolicyField
-                className="w-full sm:w-75.25"
-                draft={sourceDraft}
-                size="medium"
-                onDraftChange={updateSourceDraft}
-              />
               {queryError ? (
                 <div className="rounded-xl bg-background-section p-4">
                   <p className="system-sm-semibold text-text-primary">
@@ -1349,6 +1343,15 @@ export function AddSourcePage({
                   onInteractionLockChange={setWebsiteSetupLocked}
                   providerName={websiteProviderName}
                   providerOption={datasourceProvider}
+                  syncPolicyField={
+                    <SourceSyncPolicyField
+                      className="w-full sm:w-75.25"
+                      disabled={websiteSetupLocked}
+                      draft={sourceDraft}
+                      size="medium"
+                      onDraftChange={updateSourceDraft}
+                    />
+                  }
                 />
               ) : activeConnection ? (
                 <div className="flex min-h-64 items-center justify-center">
@@ -1400,6 +1403,14 @@ export function AddSourcePage({
               }}
               onDirtyChange={setConnectionDraftDirty}
               onExit={requestExit}
+            />
+          )}
+          {sourceType === 'websiteCrawl' && !websiteReady && (
+            <SourceSyncPolicyField
+              className="w-full sm:w-75.25"
+              draft={sourceDraft}
+              size="medium"
+              onDraftChange={updateSourceDraft}
             />
           )}
           {sourceType === 'websiteCrawl' && !websiteReady && (
