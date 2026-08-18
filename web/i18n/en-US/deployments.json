@@ -34,7 +34,7 @@
   "status.RUNTIME_INSTANCE_STATUS_UNSPECIFIED": "Unknown",
   "studio.accessPoint.addTriggerNodeDescription": "Add a trigger node to start this app from external events.",
   "studio.accessPoint.apiDescription": "Integrate the app into your services over HTTP",
-  "studio.accessPoint.description": "All the ways this app can be reached in Built-in and every deployed environment.",
+  "studio.accessPoint.description": "All the ways this app can be reached. Access points match the running version only.",
   "studio.accessPoint.embedIntoSite": "Embed Into Site",
   "studio.accessPoint.goToPublish": "Go to publish",
   "studio.accessPoint.mcpDescription": "Expose the app as a tool for agents and AI apps",

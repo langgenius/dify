@@ -34,7 +34,7 @@
   "status.RUNTIME_INSTANCE_STATUS_UNSPECIFIED": "未知",
   "studio.accessPoint.addTriggerNodeDescription": "添加 Trigger 节点，以便通过外部事件启动此应用。",
   "studio.accessPoint.apiDescription": "通过 HTTP 将应用集成到你的服务中",
-  "studio.accessPoint.description": "应用在内置环境和每个已部署环境中的所有访问方式。",
+  "studio.accessPoint.description": "此应用的所有访问方式。访问点仅对应当前运行版本。",
   "studio.accessPoint.embedIntoSite": "嵌入网站",
   "studio.accessPoint.goToPublish": "去发布",
   "studio.accessPoint.mcpDescription": "将应用作为工具提供给 Agent 和 AI 应用",

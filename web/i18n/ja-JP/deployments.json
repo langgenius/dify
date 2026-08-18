@@ -34,7 +34,7 @@
   "status.RUNTIME_INSTANCE_STATUS_UNSPECIFIED": "不明",
   "studio.accessPoint.addTriggerNodeDescription": "外部イベントからこのアプリを開始するには Trigger ノードを追加してください。",
   "studio.accessPoint.apiDescription": "HTTP 経由でアプリをサービスに統合",
-  "studio.accessPoint.description": "組み込み環境および各デプロイ環境からこのアプリにアクセスするすべての方法。",
+  "studio.accessPoint.description": "このアプリにアクセスするすべての方法。アクセスポイントは実行中のバージョンのみに対応します。",
   "studio.accessPoint.embedIntoSite": "サイトに埋め込む",
   "studio.accessPoint.goToPublish": "公開へ移動",
   "studio.accessPoint.mcpDescription": "エージェントや AI アプリ向けのツールとしてアプリを公開",
