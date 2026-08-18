@@ -3303,16 +3303,6 @@
       "count": 1
     }
   },
-  "web/app/components/tools/labels/filter.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/tools/labels/selector.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/tools/mcp/mcp-server-param-item.tsx": {
     "typescript/no-explicit-any": {
       "count": 1
