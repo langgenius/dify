@@ -82,7 +82,7 @@
   "studio.publisher.noPublishedDescription": "发布草稿后即可在此部署。",
   "studio.publisher.notDeployedYet": "尚未部署",
   "studio.retryVersion": "重试 {{version}}",
-  "studio.undeployConfirmDesc": "该应用将停止在此环境中运行，其所有访问点都将无法使用。已部署的版本不会被删除。",
+  "studio.undeployConfirmDesc": "该应用将停止在此环境中运行，其所有访问点都将无法使用。",
   "studio.undeployConfirmTitle": "从 {{envName}} 下线 {{versionName}}",
   "studio.updatedAtBy": "{{name}} 于 {{time}} 更新",
   "studio.versionValue": "版本值",

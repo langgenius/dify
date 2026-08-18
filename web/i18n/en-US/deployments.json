@@ -82,7 +82,7 @@
   "studio.publisher.noPublishedDescription": "Publish your draft to deploy it here.",
   "studio.publisher.notDeployedYet": "Not deployed yet",
   "studio.retryVersion": "Retry {{version}}",
-  "studio.undeployConfirmDesc": "The app will stop running in this environment, and all of its access points will become unavailable. The deployed version won't be deleted.",
+  "studio.undeployConfirmDesc": "The app will stop running in this environment, and all of its access points will become unavailable.",
   "studio.undeployConfirmTitle": "Undeploy {{versionName}} from {{envName}}",
   "studio.updatedAtBy": "Updated at {{time}} by {{name}}",
   "studio.versionValue": "Version value",

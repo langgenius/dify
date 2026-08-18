@@ -82,7 +82,7 @@
   "studio.publisher.noPublishedDescription": "下書きを公開して、ここにデプロイしてください。",
   "studio.publisher.notDeployedYet": "まだデプロイされていません",
   "studio.retryVersion": "{{version}} を再試行",
-  "studio.undeployConfirmDesc": "この環境でのアプリの実行が停止し、すべてのアクセスポイントが利用できなくなります。デプロイ済みのバージョンは削除されません。",
+  "studio.undeployConfirmDesc": "この環境でのアプリの実行が停止し、すべてのアクセスポイントが利用できなくなります。",
   "studio.undeployConfirmTitle": "{{envName}} から {{versionName}} をアンデプロイ",
   "studio.updatedAtBy": "{{name}} が {{time}} に更新",
   "studio.versionValue": "バージョンの値",
