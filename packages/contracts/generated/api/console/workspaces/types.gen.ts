@@ -1847,6 +1847,7 @@ export type SkillReferenceResponse = {
   workflow_name?: string | null
   workflow_version?: string | null
 }
+
 export type CloudPlan = 'professional' | 'sandbox' | 'team'
 
 export type TenantAccountRole = 'admin' | 'dataset_operator' | 'editor' | 'normal' | 'owner'
