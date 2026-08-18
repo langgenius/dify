@@ -17,6 +17,8 @@ from models.knowledge_fs import (
     KnowledgeFSControlSpacePermissionRole,
     KnowledgeFSControlSpaceState,
     KnowledgeFSControlSpaceVisibility,
+    KnowledgeFSUpgradeJobStatus,
+    KnowledgeFSUpgradeStage,
 )
 from services.knowledge_fs.product_operations import KnowledgeFSProductPermission
 
@@ -292,6 +294,27 @@ class KnowledgeFSSpaceCreatePayload(BaseModel):
         if self.retrieval is not None and self.embedding is None:
             raise ValueError("Knowledge-space retrieval requires an embedding model")
         return self
+
+
+class KnowledgeFSUpgradeJobResponse(ResponseModel):
+    id: str
+    old_dataset_id: str
+    new_control_space_id: str | None = None
+    status: KnowledgeFSUpgradeJobStatus
+    stage: KnowledgeFSUpgradeStage
+    snapshot_at: datetime
+    total_documents: int = Field(ge=0)
+    completed_documents: int = Field(ge=0)
+    total_sources: int = Field(ge=0)
+    completed_sources: int = Field(ge=0)
+    last_error_code: str | None = None
+    last_error_message: str | None = None
+    completed_at: datetime | None = None
+
+
+class KnowledgeFSUpgradeRetryResponse(ResponseModel):
+    id: str
+    status: Literal["queued"] = "queued"
 
 
 class KnowledgeFSSpaceUpdatePayload(BaseModel):

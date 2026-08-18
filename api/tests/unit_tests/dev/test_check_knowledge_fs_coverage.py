@@ -33,6 +33,8 @@ from dev.check_knowledge_fs_coverage import (
         "api/extensions/ext_knowledge_fs_observability.py",
         "api/models/knowledge_fs.py",
         "api/repositories/sqlalchemy_knowledge_fs_cutover_repository.py",
+        "api/services/dataset_knowledge_fs_upgrade_file_lease.py",
+        "api/services/dataset_knowledge_fs_upgrade_service.py",
         "api/services/knowledge_fs/runtime.py",
         "api/services/knowledge_fs_capability.py",
         "api/tasks/knowledge_fs_lifecycle_tasks.py",
@@ -121,6 +123,7 @@ def test_core_coverage_rejects_unclassified_knowledge_fs_production_files(tmp_pa
         "api/migrations/versions/2026_07_21_1600-e5a7c9b2d416_add_knowledge_fs_cleanup_completion.py",
         "api/migrations/versions/2026_08_13_1200-9d4e6f8a1b2c_add_knowledge_fs_space_tag_bindings.py",
         "api/migrations/versions/2026_08_17_1200-4f8b2c7d9e10_add_knowledge_fs_icon_background.py",
+        "api/migrations/versions/2026_08_17_1200-f3a8c1d7e920_add_knowledge_fs_upgrade_jobs.py",
     ],
 )
 def test_core_coverage_allows_explicit_non_core_migrations(tmp_path: Path, migration: str) -> None:

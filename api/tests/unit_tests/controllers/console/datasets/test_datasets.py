@@ -23,6 +23,8 @@ from controllers.console.datasets.datasets import (
     DatasetErrorDocs,
     DatasetIndexingEstimateApi,
     DatasetIndexingStatusApi,
+    DatasetKnowledgeFSUpgradeApi,
+    DatasetKnowledgeFSUpgradeJobApi,
     DatasetListApi,
     DatasetPermissionUserListApi,
     DatasetQueryApi,
@@ -45,6 +47,7 @@ from extensions.storage.storage_type import StorageType
 from models.account import Account, TenantAccountRole
 from models.dataset import Dataset, DatasetQuery, Document
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
+from models.knowledge_fs import KnowledgeFSUpgradeJobStatus, KnowledgeFSUpgradeStage
 from models.model import ApiToken, App, AppMode, IconType, UploadFile
 from services.dataset_ref_service import DatasetRef
 from services.dataset_service import DatasetPermissionService, DatasetService
@@ -825,6 +828,144 @@ class TestDatasetApiDelete:
         ):
             with pytest.raises(DatasetInUseError):
                 method(api, MagicMock(), user, dataset_id)
+
+
+class TestDatasetKnowledgeFSUpgradeApi:
+    @staticmethod
+    def _job(dataset_id: str, **overrides):
+        values = {
+            "id": "upgrade-job-1",
+            "old_dataset_id": dataset_id,
+            "new_control_space_id": None,
+            "status": KnowledgeFSUpgradeJobStatus.QUEUED,
+            "stage": KnowledgeFSUpgradeStage.VALIDATING,
+            "snapshot_at": datetime.datetime(2026, 8, 17, tzinfo=datetime.UTC),
+            "total_documents": 1,
+            "completed_documents": 0,
+            "total_sources": 0,
+            "completed_sources": 0,
+            "last_error_code": None,
+            "last_error_message": None,
+            "completed_at": None,
+        }
+        values.update(overrides)
+        return SimpleNamespace(**values)
+
+    def test_create_snapshots_and_enqueues_without_remote_work_in_request(self, app: Flask):
+        dataset_id = "123e4567-e89b-12d3-a456-426614174000"
+        dataset = make_dataset(id=dataset_id, tenant_id="tenant-1")
+        user = make_account()
+        snapshots = MagicMock()
+        snapshots.create.return_value = self._job(dataset_id)
+        session_context = MagicMock()
+        session_context.__enter__.return_value = MagicMock()
+        api = DatasetKnowledgeFSUpgradeApi()
+        method = unwrap(api.post)
+        with (
+            app.test_request_context(
+                f"/datasets/{dataset_id}/knowledge-fs-upgrades",
+                headers={"Idempotency-Key": "upgrade-request-1"},
+            ),
+            patch("controllers.console.datasets.datasets.dify_config.KNOWLEDGE_FS_ENABLED", True),
+            patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", False),
+            patch("controllers.console.datasets.datasets.session_factory.create_session", return_value=session_context),
+            patch("controllers.console.datasets.datasets.session_factory.get_session_maker", return_value="maker"),
+            patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset),
+            patch.object(DatasetService, "check_dataset_permission"),
+            patch(
+                "controllers.console.datasets.datasets.KnowledgeFSUpgradeSnapshotService",
+                return_value=snapshots,
+            ),
+            patch("controllers.console.datasets.datasets._enqueue_upgrade_job") as enqueue,
+        ):
+            response, status = method(api, "tenant-1", user, dataset_id)
+
+        assert status == 202
+        assert response["id"] == "upgrade-job-1"
+        snapshots.create.assert_called_once_with(
+            tenant_id="tenant-1",
+            dataset_id=dataset_id,
+            requested_by_account_id=user.id,
+            idempotency_key="upgrade-request-1",
+        )
+        enqueue.assert_called_once_with(snapshots, tenant_id="tenant-1", job_id="upgrade-job-1")
+
+    def test_status_uses_legacy_dataset_permission_in_community_edition(self, app: Flask):
+        dataset_id = "123e4567-e89b-12d3-a456-426614174000"
+        dataset = make_dataset(id=dataset_id, tenant_id="tenant-1")
+        api = DatasetKnowledgeFSUpgradeJobApi()
+        method = unwrap(api.get)
+        session_context = MagicMock()
+        session_context.__enter__.return_value = MagicMock()
+        with (
+            app.test_request_context(f"/datasets/{dataset_id}/knowledge-fs-upgrades/job-1"),
+            patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", False),
+            patch("controllers.console.datasets.datasets.session_factory.create_session", return_value=session_context),
+            patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset),
+            patch.object(
+                DatasetService,
+                "check_dataset_permission",
+                side_effect=services.errors.account.NoPermissionError("no access"),
+            ),
+            patch("controllers.console.datasets.datasets.KnowledgeFSUpgradeSnapshotService") as snapshots,
+            pytest.raises(Forbidden, match="no access"),
+        ):
+            method(api, "tenant-1", make_account(), dataset_id, "job-1")
+
+        snapshots.assert_not_called()
+
+    def test_status_relies_on_rbac_decorator_when_enterprise_rbac_is_enabled(self, app: Flask):
+        dataset_id = "123e4567-e89b-12d3-a456-426614174000"
+        dataset = make_dataset(id=dataset_id, tenant_id="tenant-1")
+        snapshots = MagicMock()
+        snapshots.get.return_value = self._job(dataset_id)
+        session_context = MagicMock()
+        session_context.__enter__.return_value = MagicMock()
+        api = DatasetKnowledgeFSUpgradeJobApi()
+        method = unwrap(api.get)
+        with (
+            app.test_request_context(f"/datasets/{dataset_id}/knowledge-fs-upgrades/job-1"),
+            patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", True),
+            patch("controllers.console.datasets.datasets.session_factory.create_session", return_value=session_context),
+            patch("controllers.console.datasets.datasets.session_factory.get_session_maker", return_value="maker"),
+            patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset),
+            patch.object(DatasetService, "check_dataset_permission") as legacy_permission,
+            patch(
+                "controllers.console.datasets.datasets.KnowledgeFSUpgradeSnapshotService",
+                return_value=snapshots,
+            ),
+        ):
+            response = method(api, "tenant-1", make_account(), dataset_id, "job-1")
+
+        assert response["id"] == "upgrade-job-1"
+        legacy_permission.assert_not_called()
+
+    def test_retry_rejects_a_job_from_another_dataset(self, app: Flask):
+        dataset_id = "123e4567-e89b-12d3-a456-426614174000"
+        dataset = make_dataset(id=dataset_id, tenant_id="tenant-1")
+        snapshots = MagicMock()
+        snapshots.retry.return_value = self._job("223e4567-e89b-12d3-a456-426614174000")
+        session_context = MagicMock()
+        session_context.__enter__.return_value = MagicMock()
+        api = DatasetKnowledgeFSUpgradeJobApi()
+        method = unwrap(api.post)
+        with (
+            app.test_request_context(f"/datasets/{dataset_id}/knowledge-fs-upgrades/job-1"),
+            patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", False),
+            patch("controllers.console.datasets.datasets.session_factory.create_session", return_value=session_context),
+            patch("controllers.console.datasets.datasets.session_factory.get_session_maker", return_value="maker"),
+            patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset),
+            patch.object(DatasetService, "check_dataset_permission"),
+            patch(
+                "controllers.console.datasets.datasets.KnowledgeFSUpgradeSnapshotService",
+                return_value=snapshots,
+            ),
+            patch("controllers.console.datasets.datasets._enqueue_upgrade_job") as enqueue,
+            pytest.raises(NotFound, match="Upgrade job was not found"),
+        ):
+            method(api, "tenant-1", make_account(), dataset_id, "job-1")
+
+        enqueue.assert_not_called()
 
 
 class TestDatasetUseCheckApi:

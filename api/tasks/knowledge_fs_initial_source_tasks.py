@@ -56,6 +56,16 @@ class _DatasourceBinding:
     provider_kind: str
 
 
+@dataclass(frozen=True)
+class KnowledgeFSInitialSourceSubmission:
+    """Source creation result; the first import is deliberately best-effort."""
+
+    connection_id: str
+    source_id: str
+    workflow_id: str | None
+    workflow_error: str | None = None
+
+
 class KnowledgeFSInitialSourceNotReadyError(RuntimeError):
     """The Space, connection, or Source workflow is progressing and should be retried."""
 
@@ -512,6 +522,140 @@ def start_initial_source_import(
     return workflow.id
 
 
+def submit_initial_source_for_upgrade(
+    *,
+    tenant_id: str,
+    account_id: str,
+    control_space_id: str,
+    operation_id: str,
+    payload: KnowledgeFSInitialSourcePayload,
+) -> KnowledgeFSInitialSourceSubmission:
+    """Create and commit one Source without waiting for its import workflow.
+
+    Upgrade success is based on the independently usable Source existing. The
+    selected import is submitted when possible, but a failure is returned as a
+    warning because users can retry it from the new KnowledgeFS task surface.
+    """
+
+    session_maker = session_factory.get_session_maker()
+    with session_maker() as session:
+        control_space = SQLAlchemyKnowledgeFSControlSpaceRepository(session).get(
+            tenant_id=tenant_id,
+            control_space_id=control_space_id,
+        )
+        if control_space is None:
+            raise RuntimeError("KnowledgeFS control-space was not found")
+        if control_space.state is KnowledgeFSControlSpaceState.PROVISIONING:
+            raise KnowledgeFSInitialSourceNotReadyError("KnowledgeFS Space is still provisioning")
+        if control_space.state is not KnowledgeFSControlSpaceState.ACTIVE or control_space.knowledge_space_id is None:
+            raise RuntimeError(f"KnowledgeFS Space cannot accept a Source in state {control_space.state.value}")
+
+    facade = get_knowledge_fs_runtime(session_maker).facade
+    request_id = _request_id(operation_id=operation_id, payload=payload)
+    source = _find_initial_source(
+        facade=facade,
+        tenant_id=tenant_id,
+        account_id=account_id,
+        control_space_id=control_space_id,
+        request_id=request_id,
+    )
+    if source is None:
+        binding = _binding(payload)
+        credential_id, credential_name = _find_credential(
+            session_maker=session_maker,
+            tenant_id=tenant_id,
+            account_id=account_id,
+            binding=binding,
+        )
+        connection = _find_or_create_connection(
+            facade=facade,
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            binding=binding,
+            credential_id=credential_id,
+            credential_name=credential_name,
+        )
+        source = facade.create_source(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            payload=_source_payload(
+                payload=payload,
+                binding=binding,
+                connection_id=connection.id,
+                request_id=request_id,
+            ),
+        )
+    elif source.connection_id is None:
+        raise RuntimeError("Initial Source has no connection")
+
+    if source.status != "active" or source.metadata.get("preview") is not False:
+        source = facade.update_source(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            source_id=source.id,
+            payload=KnowledgeFSSourceUpdatePayload(
+                expectedVersion=source.version,
+                metadata={**source.metadata, "preview": False, "upgradeJobId": operation_id},
+                status="active",
+            ),
+        )
+
+    try:
+        current_policy = facade.get_source_sync_policy(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            source_id=source.id,
+        )
+        expected_revision = current_policy.revision
+    except KnowledgeFSProductResourceNotFoundError:
+        expected_revision = 0
+    facade.update_source_sync_policy(
+        tenant_id=tenant_id,
+        account_id=account_id,
+        control_space_id=control_space_id,
+        source_id=source.id,
+        payload=_sync_policy_payload(
+            payload=payload,
+            expected_revision=expected_revision,
+            source_version=source.version,
+        ),
+    )
+
+    workflow_id: str | None = None
+    workflow_error: str | None = None
+    try:
+        workflow = _start_workflow(
+            facade=facade,
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            source_id=source.id,
+            request_id=request_id,
+            payload=payload,
+        )
+        workflow_id = workflow.id
+    except Exception as exc:
+        workflow_error = type(exc).__name__
+        logger.warning(
+            "KnowledgeFS upgrade Source was created but its first import was not submitted",
+            extra={
+                "control_space_id": control_space_id,
+                "error_code": workflow_error,
+                "source_id": source.id,
+            },
+        )
+    return KnowledgeFSInitialSourceSubmission(
+        connection_id=source.connection_id or "",
+        source_id=source.id,
+        workflow_id=workflow_id,
+        workflow_error=workflow_error,
+    )
+
+
 def start_initial_website_source_import(
     *,
     tenant_id: str,
@@ -637,8 +781,10 @@ def import_initial_website_source(
 
 
 __all__ = [
+    "KnowledgeFSInitialSourceSubmission",
     "import_initial_source",
     "import_initial_website_source",
     "start_initial_source_import",
     "start_initial_website_source_import",
+    "submit_initial_source_for_upgrade",
 ]

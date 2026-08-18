@@ -6,6 +6,7 @@ starts from the production incident shape: the caller has already deleted the
 """
 
 import uuid
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -13,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 import tasks.clean_document_task as clean_document_task_module
+from extensions.storage.storage_type import StorageType
 from models.dataset import (
     Dataset,
     DatasetMetadataBinding,
@@ -20,7 +22,8 @@ from models.dataset import (
     DocumentSegment,
     SegmentAttachmentBinding,
 )
-from models.enums import DataSourceType, DocumentCreatedFrom
+from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom
+from models.knowledge_fs import KnowledgeFSUpgradeFileLease, KnowledgeFSUpgradeJob
 from models.model import UploadFile
 from tasks.clean_document_task import clean_document_task
 
@@ -244,6 +247,77 @@ class TestVectorCleanupResilience:
         )
         schedule_refresh.assert_not_called()
 
+
+def test_active_upgrade_lease_keeps_the_legacy_source_file(
+    document_id: str,
+    dataset_id: str,
+    tenant_id: str,
+    sqlite_session: Session,
+    bind_task_sessions: None,
+    mock_storage,
+    mock_index_processor_factory,
+) -> None:
+    del bind_task_sessions, mock_index_processor_factory
+    _persist_deleted_document_state(
+        sqlite_session,
+        document_id=document_id,
+        dataset_id=dataset_id,
+        tenant_id=tenant_id,
+        target_segment_ids=[],
+    )
+    account_id = str(uuid.uuid4())
+    upload_file = UploadFile(
+        tenant_id=tenant_id,
+        storage_type=StorageType.LOCAL,
+        key=f"upload_files/{tenant_id}/source.txt",
+        name="source.txt",
+        size=12,
+        extension="txt",
+        mime_type="text/plain",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=account_id,
+        created_at=datetime(2026, 8, 17, tzinfo=UTC),
+        used=False,
+    )
+    now = datetime.now(UTC).replace(tzinfo=None)
+    job = KnowledgeFSUpgradeJob(
+        tenant_id=tenant_id,
+        old_dataset_id=dataset_id,
+        requested_by_account_id=account_id,
+        owner_account_id=account_id,
+        idempotency_key="cleanup-lease-test",
+        snapshot_at=now,
+        config_snapshot={},
+        permission_snapshot={},
+        app_binding_snapshot=[],
+        tag_ids_snapshot=[],
+    )
+    sqlite_session.add_all([upload_file, job])
+    sqlite_session.flush()
+    lease = KnowledgeFSUpgradeFileLease(
+        job_id=job.id,
+        old_upload_file_id=upload_file.id,
+        expires_at=now + timedelta(hours=1),
+    )
+    sqlite_session.add(lease)
+    sqlite_session.commit()
+
+    clean_document_task(
+        document_id=document_id,
+        dataset_id=dataset_id,
+        doc_form="paragraph",
+        file_id=upload_file.id,
+    )
+
+    sqlite_session.expire_all()
+    assert sqlite_session.get(UploadFile, upload_file.id) is not None
+    persisted_lease = sqlite_session.get(KnowledgeFSUpgradeFileLease, lease.id)
+    assert persisted_lease is not None
+    assert persisted_lease.cleanup_requested_at is not None
+    mock_storage.delete.assert_not_called()
+
+
+class TestVectorCleanupSuccessPaths:
     def test_vector_cleanup_success_path_remains_unaffected(
         self,
         document_id: str,

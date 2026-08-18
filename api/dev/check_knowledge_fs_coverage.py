@@ -32,6 +32,7 @@ NON_CORE_COVERAGE_ALLOWLIST = frozenset(
         "api/migrations/versions/2026_08_10_1200-7c1e9a4b2d60_add_knowledge_fs_staged_uploads.py",
         "api/migrations/versions/2026_08_13_1200-9d4e6f8a1b2c_add_knowledge_fs_space_tag_bindings.py",
         "api/migrations/versions/2026_08_17_1200-4f8b2c7d9e10_add_knowledge_fs_icon_background.py",
+        "api/migrations/versions/2026_08_17_1200-f3a8c1d7e920_add_knowledge_fs_upgrade_jobs.py",
     }
 )
 HUNK_HEADER = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
@@ -155,6 +156,8 @@ def is_core_coverage_path(path: str) -> bool:
         "api/controllers/openapi/knowledge_fs.py",
         "api/events/event_handlers/sync_knowledge_fs_bindings_when_app_published_workflow_updated.py",
         "api/extensions/ext_knowledge_fs_observability.py",
+        "api/services/dataset_knowledge_fs_upgrade_file_lease.py",
+        "api/services/dataset_knowledge_fs_upgrade_service.py",
         "api/services/knowledge_fs_capability.py",
     }:
         return True

@@ -1,14 +1,14 @@
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Annotated, Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import Conflict, Forbidden, NotFound
 
 import services
 from configs import dify_config
@@ -32,6 +32,7 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
+from core.db.session_factory import session_factory
 from core.entities.knowledge_entities import IndexingEstimate
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.indexing_runner import IndexingRunner
@@ -53,10 +54,17 @@ from models.enums import ApiTokenType, SegmentStatus
 from models.provider_ids import ModelProviderID
 from services.api_token_service import ApiTokenCache, get_effective_token_last_used_at
 from services.app_service import AppService
+from services.dataset_knowledge_fs_upgrade_service import (
+    KnowledgeFSUpgradeConflictError,
+    KnowledgeFSUpgradeNotFoundError,
+    KnowledgeFSUpgradeSnapshotService,
+    upgrade_job_response,
+)
 from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.rbac_service import RBACResourceWhitelistScope, ReplaceMemberBindings
+from services.knowledge_fs.product_dto import KnowledgeFSUpgradeJobResponse, KnowledgeFSUpgradeRetryResponse
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 register_response_schema_models(console_ns, ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse)
@@ -356,6 +364,8 @@ register_response_schema_models(
     RetrievalSettingResponse,
     PartialMemberListResponse,
     AutoDisableLogsResponse,
+    KnowledgeFSUpgradeJobResponse,
+    KnowledgeFSUpgradeRetryResponse,
 )
 
 
@@ -817,6 +827,124 @@ class DatasetApi(Resource):
                 raise NotFound("Dataset not found.")
         except services.errors.dataset.DatasetInUseError:
             raise DatasetInUseError()
+
+
+@console_ns.route("/datasets/<uuid:dataset_id>/knowledge-fs-upgrades")
+class DatasetKnowledgeFSUpgradeApi(Resource):
+    @console_ns.response(
+        202,
+        "KnowledgeFS Dataset upgrade accepted",
+        console_ns.models[KnowledgeFSUpgradeJobResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str, current_user: Account, dataset_id: UUID):
+        if not dify_config.KNOWLEDGE_FS_ENABLED:
+            raise NotFound()
+        dataset_id_str = str(dataset_id)
+        with session_factory.create_session() as session:
+            dataset = DatasetService.get_dataset_for_tenant(dataset_id_str, current_tenant_id, session=session)
+            if dataset is None:
+                raise NotFound("Dataset not found.")
+            if not dify_config.RBAC_ENABLED:
+                try:
+                    DatasetService.check_dataset_permission(dataset, current_user, session)
+                except services.errors.account.NoPermissionError as error:
+                    raise Forbidden(str(error)) from error
+                if not (current_user.has_edit_permission or current_user.is_dataset_operator):
+                    raise Forbidden()
+        snapshots = KnowledgeFSUpgradeSnapshotService(session_factory.get_session_maker())
+        try:
+            job = snapshots.create(
+                tenant_id=current_tenant_id,
+                dataset_id=dataset_id_str,
+                requested_by_account_id=current_user.id,
+                idempotency_key=request.headers.get("Idempotency-Key"),
+            )
+        except KnowledgeFSUpgradeNotFoundError as error:
+            raise NotFound(str(error)) from error
+        except KnowledgeFSUpgradeConflictError as error:
+            raise Conflict(str(error)) from error
+        _enqueue_upgrade_job(snapshots, tenant_id=current_tenant_id, job_id=job.id)
+        return dump_response(KnowledgeFSUpgradeJobResponse, upgrade_job_response(job)), 202
+
+
+@console_ns.route("/datasets/<uuid:dataset_id>/knowledge-fs-upgrades/<string:job_id>")
+class DatasetKnowledgeFSUpgradeJobApi(Resource):
+    @console_ns.response(
+        200,
+        "KnowledgeFS Dataset upgrade status",
+        console_ns.models[KnowledgeFSUpgradeJobResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, current_user: Account, dataset_id: UUID, job_id: str):
+        with session_factory.create_session() as session:
+            _get_accessible_dataset(dataset_id, current_tenant_id, current_user, session)
+        snapshots = KnowledgeFSUpgradeSnapshotService(session_factory.get_session_maker())
+        try:
+            job = snapshots.get(tenant_id=current_tenant_id, job_id=job_id)
+        except KnowledgeFSUpgradeNotFoundError as error:
+            raise NotFound(str(error)) from error
+        if job.old_dataset_id != str(dataset_id):
+            raise NotFound("Upgrade job was not found")
+        return dump_response(KnowledgeFSUpgradeJobResponse, upgrade_job_response(job))
+
+    @console_ns.response(
+        202,
+        "KnowledgeFS Dataset upgrade retry accepted",
+        console_ns.models[KnowledgeFSUpgradeRetryResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str, current_user: Account, dataset_id: UUID, job_id: str):
+        with session_factory.create_session() as session:
+            _get_accessible_dataset(dataset_id, current_tenant_id, current_user, session)
+            if not dify_config.RBAC_ENABLED and not (
+                current_user.has_edit_permission or current_user.is_dataset_operator
+            ):
+                raise Forbidden()
+        snapshots = KnowledgeFSUpgradeSnapshotService(session_factory.get_session_maker())
+        try:
+            job = snapshots.retry(tenant_id=current_tenant_id, job_id=job_id)
+        except KnowledgeFSUpgradeNotFoundError as error:
+            raise NotFound(str(error)) from error
+        except KnowledgeFSUpgradeConflictError as error:
+            raise Conflict(str(error)) from error
+        if job.old_dataset_id != str(dataset_id):
+            raise NotFound("Upgrade job was not found")
+        _enqueue_upgrade_job(snapshots, tenant_id=current_tenant_id, job_id=job.id)
+        return dump_response(KnowledgeFSUpgradeRetryResponse, {"id": job.id, "status": "queued"}), 202
+
+
+def _enqueue_upgrade_job(
+    snapshots: KnowledgeFSUpgradeSnapshotService,
+    *,
+    tenant_id: str,
+    job_id: str,
+) -> None:
+    from tasks.knowledge_fs_upgrade_tasks import run_knowledge_fs_upgrade
+
+    task_id = str(uuid4())
+    if not snapshots.claim_enqueue(tenant_id=tenant_id, job_id=job_id, task_id=task_id):
+        return
+    try:
+        run_knowledge_fs_upgrade.apply_async(kwargs={"job_id": job_id}, task_id=task_id)
+    except Exception:
+        snapshots.release_enqueue_claim(tenant_id=tenant_id, job_id=job_id, task_id=task_id)
+        raise
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/use-check")

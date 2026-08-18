@@ -352,6 +352,36 @@ services:
       - ssrf_proxy_network
       - default
 
+  # Dedicated worker for click-time Dataset snapshots and KnowledgeFS upgrade orchestration.
+  # Keep this queue out of the generic worker so large file copies cannot starve existing jobs.
+  worker_knowledge_fs_upgrade:
+    <<: *shared-worker-config
+    image: langgenius/dify-api:1.16.1
+    environment:
+      MODE: worker
+      CELERY_WORKER_QUEUES: knowledge_fs_upgrade
+      CELERY_WORKER_CONCURRENCY: ${KNOWLEDGE_FS_UPGRADE_WORKER_AMOUNT:-2}
+      CELERY_PREFETCH_MULTIPLIER: 1
+      SENTRY_DSN: ${API_SENTRY_DSN:-}
+      SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
+      SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
+    depends_on:
+      init_permissions:
+        condition: service_completed_successfully
+      db_postgres:
+        condition: service_healthy
+        required: false
+      db_mysql:
+        condition: service_healthy
+        required: false
+      redis:
+        condition: service_started
+    volumes:
+      - ./volumes/app/storage:/app/api/storage
+    networks:
+      - ssrf_proxy_network
+      - default
+
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
   worker_beat:

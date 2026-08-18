@@ -24,6 +24,7 @@ from models.dataset import (
 )
 from models.model import UploadFile
 from models.workflow import Workflow
+from services.dataset_knowledge_fs_upgrade_file_lease import reserve_upgrade_file_cleanup
 from tasks.refresh_billing_vector_space_task import schedule_billing_vector_space_refresh
 
 logger = logging.getLogger(__name__)
@@ -181,11 +182,19 @@ def clean_dataset_task(
                             if data_source_info and "upload_file_id" in data_source_info:
                                 file_id = data_source_info["upload_file_id"]
                                 file_ids.append(file_id)
-                files = session.scalars(select(UploadFile).where(UploadFile.id.in_(file_ids))).all()
+                leased_file_ids = reserve_upgrade_file_cleanup(session, file_ids)
+                deletable_file_ids = [file_id for file_id in file_ids if file_id not in leased_file_ids]
+                if leased_file_ids:
+                    logger.info(
+                        "Keep %d source files while KnowledgeFS upgrade leases are active, dataset_id=%s",
+                        len(leased_file_ids),
+                        dataset_id,
+                    )
+                files = session.scalars(select(UploadFile).where(UploadFile.id.in_(deletable_file_ids))).all()
                 for file in files:
                     storage.delete(file.key)
 
-                file_delete_stmt = delete(UploadFile).where(UploadFile.id.in_(file_ids))
+                file_delete_stmt = delete(UploadFile).where(UploadFile.id.in_(deletable_file_ids))
                 session.execute(file_delete_stmt)
 
             session.commit()

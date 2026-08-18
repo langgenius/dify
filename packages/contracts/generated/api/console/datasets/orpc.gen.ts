@@ -66,6 +66,8 @@ import {
   zGetDatasetsByDatasetIdErrorDocsResponse,
   zGetDatasetsByDatasetIdIndexingStatusPath,
   zGetDatasetsByDatasetIdIndexingStatusResponse,
+  zGetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdPath,
+  zGetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponse,
   zGetDatasetsByDatasetIdMetadataPath,
   zGetDatasetsByDatasetIdMetadataResponse,
   zGetDatasetsByDatasetIdNotionSyncPath,
@@ -162,6 +164,10 @@ import {
   zPostDatasetsByDatasetIdHitTestingBody,
   zPostDatasetsByDatasetIdHitTestingPath,
   zPostDatasetsByDatasetIdHitTestingResponse,
+  zPostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdPath,
+  zPostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponse,
+  zPostDatasetsByDatasetIdKnowledgeFsUpgradesPath,
+  zPostDatasetsByDatasetIdKnowledgeFsUpgradesResponse,
   zPostDatasetsByDatasetIdMetadataBody,
   zPostDatasetsByDatasetIdMetadataBuiltInByActionPath,
   zPostDatasetsByDatasetIdMetadataBuiltInByActionResponse,
@@ -1424,7 +1430,52 @@ export const indexingStatus3 = {
   get: get27,
 }
 
+export const get28 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDatasetsByDatasetIdKnowledgeFsUpgradesByJobId',
+    path: '/datasets/{dataset_id}/knowledge-fs-upgrades/{job_id}',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdPath }))
+  .output(zGetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponse)
+
 export const post19 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsByDatasetIdKnowledgeFsUpgradesByJobId',
+    path: '/datasets/{dataset_id}/knowledge-fs-upgrades/{job_id}',
+    successStatus: 202,
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdPath }))
+  .output(zPostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponse)
+
+export const byJobId2 = {
+  get: get28,
+  post: post19,
+}
+
+export const post20 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsByDatasetIdKnowledgeFsUpgrades',
+    path: '/datasets/{dataset_id}/knowledge-fs-upgrades',
+    successStatus: 202,
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPostDatasetsByDatasetIdKnowledgeFsUpgradesPath }))
+  .output(zPostDatasetsByDatasetIdKnowledgeFsUpgradesResponse)
+
+export const knowledgeFsUpgrades = {
+  post: post20,
+  byJobId: byJobId2,
+}
+
+export const post21 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1437,7 +1488,7 @@ export const post19 = oc
   .output(zPostDatasetsByDatasetIdMetadataBuiltInByActionResponse)
 
 export const byAction4 = {
-  post: post19,
+  post: post21,
 }
 
 export const builtIn2 = {
@@ -1477,7 +1528,7 @@ export const byMetadataId = {
   patch: patch10,
 }
 
-export const get28 = oc
+export const get29 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1488,7 +1539,7 @@ export const get28 = oc
   .input(z.object({ params: zGetDatasetsByDatasetIdMetadataPath }))
   .output(zGetDatasetsByDatasetIdMetadataResponse)
 
-export const post20 = oc
+export const post22 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1506,13 +1557,13 @@ export const post20 = oc
   .output(zPostDatasetsByDatasetIdMetadataResponse)
 
 export const metadata4 = {
-  get: get28,
-  post: post20,
+  get: get29,
+  post: post22,
   builtIn: builtIn2,
   byMetadataId,
 }
 
-export const get29 = oc
+export const get30 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1524,7 +1575,7 @@ export const get29 = oc
   .output(zGetDatasetsByDatasetIdNotionSyncResponse)
 
 export const sync2 = {
-  get: get29,
+  get: get30,
 }
 
 export const notion2 = {
@@ -1534,7 +1585,7 @@ export const notion2 = {
 /**
  * Get dataset permission user list
  */
-export const get30 = oc
+export const get31 = oc
   .route({
     description: 'Get dataset permission user list',
     inputStructure: 'detailed',
@@ -1547,13 +1598,13 @@ export const get30 = oc
   .output(zGetDatasetsByDatasetIdPermissionPartUsersResponse)
 
 export const permissionPartUsers = {
-  get: get30,
+  get: get31,
 }
 
 /**
  * Get dataset query history
  */
-export const get31 = oc
+export const get32 = oc
   .route({
     description: 'Get dataset query history',
     inputStructure: 'detailed',
@@ -1566,13 +1617,13 @@ export const get31 = oc
   .output(zGetDatasetsByDatasetIdQueriesResponse)
 
 export const queries = {
-  get: get31,
+  get: get32,
 }
 
 /**
  * Get applications related to dataset
  */
-export const get32 = oc
+export const get33 = oc
   .route({
     description: 'Get applications related to dataset',
     inputStructure: 'detailed',
@@ -1585,13 +1636,13 @@ export const get32 = oc
   .output(zGetDatasetsByDatasetIdRelatedAppsResponse)
 
 export const relatedApps = {
-  get: get32,
+  get: get33,
 }
 
 /**
  * retry document
  */
-export const post21 = oc
+export const post23 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1610,13 +1661,13 @@ export const post21 = oc
   .output(zPostDatasetsByDatasetIdRetryResponse)
 
 export const retry = {
-  post: post21,
+  post: post23,
 }
 
 /**
  * Check if dataset is in use
  */
-export const get33 = oc
+export const get34 = oc
   .route({
     description: 'Check if dataset is in use',
     inputStructure: 'detailed',
@@ -1629,7 +1680,7 @@ export const get33 = oc
   .output(zGetDatasetsByDatasetIdUseCheckResponse)
 
 export const useCheck2 = {
-  get: get33,
+  get: get34,
 }
 
 export const delete9 = oc
@@ -1647,7 +1698,7 @@ export const delete9 = oc
 /**
  * Get dataset details
  */
-export const get34 = oc
+export const get35 = oc
   .route({
     description: 'Get dataset details',
     inputStructure: 'detailed',
@@ -1676,7 +1727,7 @@ export const patch11 = oc
 
 export const byDatasetId = {
   delete: delete9,
-  get: get34,
+  get: get35,
   patch: patch11,
   apiKeys: apiKeys2,
   autoDisableLogs,
@@ -1686,6 +1737,7 @@ export const byDatasetId = {
   externalHitTesting,
   hitTesting,
   indexingStatus: indexingStatus3,
+  knowledgeFsUpgrades,
   metadata: metadata4,
   notion: notion2,
   permissionPartUsers,
@@ -1723,7 +1775,7 @@ export const byApiKeyId2 = {
  *
  * Get all API keys for a dataset
  */
-export const get35 = oc
+export const get36 = oc
   .route({
     description: 'Get all API keys for a dataset',
     inputStructure: 'detailed',
@@ -1741,7 +1793,7 @@ export const get35 = oc
  *
  * Create a new API key for a dataset
  */
-export const post22 = oc
+export const post24 = oc
   .route({
     description: 'Create a new API key for a dataset',
     inputStructure: 'detailed',
@@ -1756,8 +1808,8 @@ export const post22 = oc
   .output(zPostDatasetsByResourceIdApiKeysResponse)
 
 export const apiKeys3 = {
-  get: get35,
-  post: post22,
+  get: get36,
+  post: post24,
   byApiKeyId: byApiKeyId2,
 }
 
@@ -1768,7 +1820,7 @@ export const byResourceId = {
 /**
  * Get list of datasets
  */
-export const get36 = oc
+export const get37 = oc
   .route({
     description: 'Get list of datasets',
     inputStructure: 'detailed',
@@ -1783,7 +1835,7 @@ export const get36 = oc
 /**
  * Create a new dataset
  */
-export const post23 = oc
+export const post25 = oc
   .route({
     description: 'Create a new dataset',
     inputStructure: 'detailed',
@@ -1797,8 +1849,8 @@ export const post23 = oc
   .output(zPostDatasetsResponse)
 
 export const datasets = {
-  get: get36,
-  post: post23,
+  get: get37,
+  post: post25,
   apiBaseInfo,
   apiKeys,
   batchImportStatus,
