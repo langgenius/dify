@@ -1,5 +1,7 @@
 from collections.abc import Mapping
 from datetime import UTC, datetime
+from types import TracebackType
+from typing import Self
 from unittest.mock import Mock, patch
 
 import pytest
@@ -224,11 +226,11 @@ def test_save_workflow_node_execution_task_ignores_stale_nonterminal_snapshot(mo
     assert existing_execution.status == WorkflowNodeExecutionStatus.SUCCEEDED
 
 
-def test_create_sqlalchemy_repository_builds_account_context(monkeypatch) -> None:
+def test_create_sqlalchemy_repository_builds_account_context(monkeypatch: pytest.MonkeyPatch) -> None:
     account = Mock()
     session = _Session({Account: account})
 
-    def session_maker():
+    def session_maker() -> _Session:
         return session
 
     monkeypatch.setattr(
@@ -258,11 +260,11 @@ def test_create_sqlalchemy_repository_builds_account_context(monkeypatch) -> Non
     )
 
 
-def test_create_sqlalchemy_repository_builds_end_user_context(monkeypatch) -> None:
+def test_create_sqlalchemy_repository_builds_end_user_context(monkeypatch: pytest.MonkeyPatch) -> None:
     end_user = Mock()
     session = _Session({EndUser: end_user})
 
-    def session_maker():
+    def session_maker() -> _Session:
         return session
 
     monkeypatch.setattr(
@@ -291,10 +293,10 @@ def test_create_sqlalchemy_repository_builds_end_user_context(monkeypatch) -> No
     )
 
 
-def test_create_sqlalchemy_repository_raises_for_missing_creator(monkeypatch) -> None:
+def test_create_sqlalchemy_repository_raises_for_missing_creator(monkeypatch: pytest.MonkeyPatch) -> None:
     session = _Session({})
 
-    def session_maker():
+    def session_maker() -> _Session:
         return session
 
     monkeypatch.setattr(
@@ -318,19 +320,24 @@ def test_create_sqlalchemy_repository_raises_for_missing_creator(monkeypatch) ->
 
 
 class _Session:
-    def __init__(self, users: dict[type, object]) -> None:
+    def __init__(self, users: dict[type[object], object]) -> None:
         self._users = users
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, exc_type, exc, traceback) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
         return None
 
-    def get(self, model, _id: str):
+    def get(self, model: type[object], _id: str) -> object | None:
         return self._users.get(model)
 
-    def scalar(self, _stmt):
+    def scalar(self, _stmt: object) -> object | None:
         return self._users.get(EndUser)
 
 
@@ -340,13 +347,18 @@ class _TaskSession:
         self.added_execution: WorkflowNodeExecutionModel | None = None
         self.committed = False
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, exc_type, exc, traceback) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
         return None
 
-    def scalar(self, _stmt):
+    def scalar(self, _stmt: object) -> WorkflowNodeExecutionModel | None:
         return self._existing_execution
 
     def add(self, execution: WorkflowNodeExecutionModel) -> None:
