@@ -957,7 +957,7 @@ def test_resume_app_execution_clears_stale_cancellation_signals_before_resuming(
         lambda *_args, **_kwargs: resumption_context,
     )
     monkeypatch.setattr(
-        "tasks.app_generate.workflow_execute_task.GraphRuntimeState.from_snapshot",
+        "tasks.app_generate.workflow_execute_task.RuntimeState.from_snapshot",
         lambda *_args, **_kwargs: MagicMock(),
     )
     monkeypatch.setattr(
@@ -1008,7 +1008,7 @@ def test_resume_app_execution_keeps_cancellation_signals_when_resume_is_abandone
         lambda *_args, **_kwargs: resumption_context,
     )
     monkeypatch.setattr(
-        "tasks.app_generate.workflow_execute_task.GraphRuntimeState.from_snapshot",
+        "tasks.app_generate.workflow_execute_task.RuntimeState.from_snapshot",
         lambda *_args, **_kwargs: MagicMock(),
     )
     monkeypatch.setattr(
