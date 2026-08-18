@@ -1866,13 +1866,9 @@ export function ConnectedSourceSetup({
   return (
     <div className="flex flex-col gap-4">
       <SourceProviderSelector
-        appearance="embedded"
         options={providerOptions}
         providerKey={providerOption?.key ?? ''}
         onChange={selectProvider}
-        onMoreProviders={() =>
-          globalThis.open(buildIntegrationPath('data-source'), '_blank', 'noopener,noreferrer')
-        }
       />
       <ConnectedSourceSyncPolicyField draft={draft} onDraftChange={onDraftChange} />
       {providersQuery.isPending ||

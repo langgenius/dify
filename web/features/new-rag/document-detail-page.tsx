@@ -275,14 +275,8 @@ export function DocumentDetailPage({
         canCancelReindex={canCancelReindex}
         cancelReindexBusy={cancelReindexBusy}
         document={document}
-        effectiveRevision={effectiveRevision}
-        fetchNextRevisionPage={() => void revisionsQuery.fetchNextPage()}
-        hasNextRevisionPage={revisionsQuery.hasNextPage}
-        isFetchNextRevisionPageError={revisionsQuery.isFetchNextPageError}
-        isFetchingNextRevisionPage={revisionsQuery.isFetchingNextPage}
         onCancelReindex={() => void cancelReindex()}
         onReindex={() => void reindex()}
-        onRevisionChange={(revision) => void setDocumentLocation({ chunk: null, revision })}
         reindexDisabled={
           !canEdit ||
           reindexBusy ||
@@ -300,7 +294,6 @@ export function DocumentDetailPage({
         reindexFailed={latestTask?.state === 'failed'}
         reindexInProgress={reindexInProgress}
         reindexing={reindexBusy || submissionPending}
-        revisions={availableRevisions}
         titleRef={titleRef}
       />
       {!hasEditPermission && (

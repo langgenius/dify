@@ -617,6 +617,94 @@ describe('RetrievalTestPage', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('collapses the research process when a running task completes', async () => {
+    let emitResearchEvent:
+      | ((event: {
+          createdAt: string
+          id: string
+          payload: Record<string, unknown>
+          researchTaskJobId: string
+          sequence: number
+          stage: string
+          type: string
+        }) => void)
+      | undefined
+    let resolveResearchStream:
+      | ((value: { cursor: string; reconnect: boolean; terminal: boolean }) => void)
+      | undefined
+    apiMock.streamResearchEvents.mockImplementation(
+      ({ onEvent }: { onEvent: typeof emitResearchEvent }) => {
+        emitResearchEvent = onEvent
+        return new Promise((resolve) => {
+          resolveResearchStream = resolve
+        })
+      },
+    )
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.type(
+      screen.getByLabelText('dataset.newKnowledge.retrievalTest.queryPlaceholder'),
+      'Compare the refund policies',
+    )
+    await user.click(
+      screen.getByRole('radio', {
+        name: 'dataset.newKnowledge.settings.retrievalMode.research',
+      }),
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.retrievalTest.startResearch' }),
+    )
+
+    const processLog = await screen.findByRole('button', {
+      name: 'dataset.newKnowledge.retrievalTest.processLog',
+    })
+    expect(processLog).toHaveAttribute('aria-pressed', 'true')
+    expect(
+      screen.getByRole('button', { name: /dataset\.newKnowledge\.retrievalTest\.running/ }),
+    ).toHaveAttribute('aria-expanded', 'true')
+
+    act(() => {
+      emitResearchEvent?.({
+        createdAt: '2027-01-15T08:00:00.000Z',
+        id: 'research-started',
+        payload: {},
+        researchTaskJobId: 'research-1',
+        sequence: 1,
+        stage: 'planning',
+        type: 'research_task.started',
+      })
+      emitResearchEvent?.({
+        createdAt: '2027-01-15T08:00:14.000Z',
+        id: 'research-completed',
+        payload: { details: { chunks: 3, documents: 1, sources: 1 } },
+        researchTaskJobId: 'research-1',
+        sequence: 2,
+        stage: 'completed',
+        type: 'research_task.stage_changed',
+      })
+    })
+
+    const completedSummary = await screen.findByRole('button', {
+      name: /dataset\.newKnowledge\.retrievalTest\.completedIn.*14s/,
+    })
+    expect(processLog).toHaveAttribute('aria-pressed', 'false')
+    expect(completedSummary).toHaveAttribute('aria-expanded', 'false')
+    expect(
+      screen.queryByText('dataset.newKnowledge.retrievalTest.planning'),
+    ).not.toBeInTheDocument()
+
+    await user.click(processLog)
+
+    expect(processLog).toHaveAttribute('aria-pressed', 'true')
+    expect(completedSummary).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByText('dataset.newKnowledge.retrievalTest.planning')).toBeInTheDocument()
+
+    await act(async () =>
+      resolveResearchStream?.({ cursor: '2', reconnect: false, terminal: true }),
+    )
+  })
+
   it('replays research progress events and shows actual stage durations', async () => {
     apiMock.researchTasks = [
       {

@@ -1882,22 +1882,7 @@ describe('DocumentDetailPage', () => {
     expect(chunksQuery.refetch).toHaveBeenCalledOnce()
   })
 
-  it('loads older revisions and always includes the active revision in the selector', async () => {
-    const user = userEvent.setup()
-    revisionsQuery.data = { pages: [{ items: [activeRevision({ revision: 2 })] }] }
-    revisionsQuery.hasNextPage = true
-
-    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
-
-    await user.click(
-      screen.getByRole('combobox', { name: 'dataset.newKnowledge.documentRevision' }),
-    )
-    expect(await screen.findByRole('option', { name: /v3/ })).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.loadMoreRevisions' }))
-    expect(revisionsQuery.fetchNextPage).toHaveBeenCalledOnce()
-  })
-
-  it('restores the selected revision from the URL', () => {
+  it('uses a revision from the URL without exposing revision controls', () => {
     revisionsQuery.data = {
       pages: [{ items: [activeRevision({ revision: 2, state: 'superseded' })] }],
     }
@@ -1907,8 +1892,8 @@ describe('DocumentDetailPage', () => {
     })
 
     expect(
-      screen.getByRole('combobox', { name: 'dataset.newKnowledge.documentRevision' }),
-    ).toHaveTextContent('v2')
+      screen.queryByRole('combobox', { name: 'dataset.newKnowledge.documentRevision' }),
+    ).not.toBeInTheDocument()
     expect(infiniteInput(chunksOptions.mock.lastCall?.[0])(null)).toEqual({
       params: {
         control_space_id: 'space-1',
@@ -1917,62 +1902,6 @@ describe('DocumentDetailPage', () => {
       },
       query: {},
     })
-  })
-
-  it('writes revision selection to browser history', async () => {
-    const user = userEvent.setup()
-    revisionsQuery.data = {
-      pages: [{ items: [activeRevision({ revision: 2, state: 'superseded' })] }],
-    }
-    const { onUrlUpdate } = render(
-      <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
-    )
-
-    await user.click(
-      screen.getByRole('combobox', { name: 'dataset.newKnowledge.documentRevision' }),
-    )
-    await user.click(await screen.findByRole('option', { name: /v2/ }))
-
-    await waitFor(() => {
-      const urlUpdate = onUrlUpdate.mock.calls.at(-1)?.[0]
-      expect(urlUpdate?.searchParams.get('revision')).toBe('2')
-      expect(urlUpdate?.options.history).toBe('push')
-    })
-  })
-
-  it('announces revision cursor errors and restores focus when the final page loads', async () => {
-    const user = userEvent.setup()
-    revisionsQuery.hasNextPage = true
-    const rendered = render(
-      <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
-    )
-    const loadMore = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.loadMoreRevisions',
-    })
-
-    await user.click(loadMore)
-    revisionsQuery.isFetchingNextPage = true
-    rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
-    revisionsQuery.isFetchingNextPage = false
-    revisionsQuery.isFetchNextPageError = true
-    rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'dataset.newKnowledge.documentRevisionsLoadError',
-    )
-    expect(screen.getByRole('button', { name: 'common.operation.retry' })).toHaveFocus()
-
-    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
-    revisionsQuery.isFetchingNextPage = true
-    revisionsQuery.isFetchNextPageError = false
-    rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
-    revisionsQuery.isFetchingNextPage = false
-    revisionsQuery.hasNextPage = false
-    rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
-    await waitFor(() =>
-      expect(
-        screen.getByRole('combobox', { name: 'dataset.newKnowledge.documentRevision' }),
-      ).toHaveFocus(),
-    )
   })
 
   it('finds a document task on later cursor pages and ignores stale revision tasks', async () => {

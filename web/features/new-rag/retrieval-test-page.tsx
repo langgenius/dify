@@ -74,6 +74,8 @@ type ComposerDraft = {
 
 type QualityDecision = 'bad-case' | 'golden'
 
+type ResearchExpansionState = Partial<Record<'active' | 'terminal', boolean>>
+
 type GoldenQuestionPromotion = {
   evidenceOptions: GoldenQuestionEvidenceOption[]
   resultKey: string
@@ -1101,7 +1103,9 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
   const [admittedResearchTasks, setAdmittedResearchTasks] = useState<
     Record<string, KnowledgeFsResearchTaskResponse>
   >({})
-  const [researchExpanded, setResearchExpanded] = useState<Record<string, boolean>>({})
+  const [researchExpanded, setResearchExpanded] = useState<Record<string, ResearchExpansionState>>(
+    {},
+  )
   const [qualityDecisions, setQualityDecisions] = useState<Record<string, QualityDecision>>({})
   const [qualityPendingKey, setQualityPendingKey] = useState<string>()
   const [goldenPromotion, setGoldenPromotion] = useState<GoldenQuestionPromotion>()
@@ -1251,8 +1255,10 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     selectedResearchActiveRef.current = selectedResearchActive
   }, [selectedResearchActive])
   const selectedResearchDefaultExpanded = researchTaskIsActive(selectedResearchTask)
+  const selectedResearchExpansionPhase = selectedResearchDefaultExpanded ? 'active' : 'terminal'
   const selectedResearchExpanded = selectedResearchTask
-    ? (researchExpanded[selectedResearchTask.id] ?? selectedResearchDefaultExpanded)
+    ? (researchExpanded[selectedResearchTask.id]?.[selectedResearchExpansionPhase] ??
+      selectedResearchDefaultExpanded)
     : false
   const selectedTraceId =
     selected?.kind === 'trace'
@@ -1796,7 +1802,6 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
       })
       setAdmittedResearchTasks((current) => ({ ...current, [task.id]: task }))
       setResearchPlans((current) => ({ ...current, [task.id]: plan }))
-      setResearchExpanded((current) => ({ ...current, [task.id]: true }))
       setComposerDraft({
         mode: 'research',
         query: cleanQuery,
@@ -1831,6 +1836,20 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     if (selectedResearchActive || localRun?.status === 'running') return
     if (mode === 'research') void startResearch()
     else void runFastQuery()
+  }
+
+  const toggleSelectedResearchProcess = () => {
+    if (!selectedResearchTask) return
+    setResearchExpanded((current) => ({
+      ...current,
+      [selectedResearchTask.id]: {
+        ...current[selectedResearchTask.id],
+        [selectedResearchExpansionPhase]: !(
+          current[selectedResearchTask.id]?.[selectedResearchExpansionPhase] ??
+          selectedResearchDefaultExpanded
+        ),
+      },
+    }))
   }
 
   return (
@@ -1986,14 +2005,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                     type="button"
                     aria-pressed={selectedResearchExpanded}
                     className="flex h-6 shrink-0 items-center gap-1 rounded-md px-1.5 system-xs-medium text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                    onClick={() =>
-                      setResearchExpanded((current) => ({
-                        ...current,
-                        [selectedResearchTask.id]: !(
-                          current[selectedResearchTask.id] ?? selectedResearchDefaultExpanded
-                        ),
-                      }))
-                    }
+                    onClick={toggleSelectedResearchProcess}
                   >
                     <span aria-hidden className="i-ri-search-eye-line size-3.5" />
                     {t(($) => $['newKnowledge.retrievalTest.processLog'])}
@@ -2019,14 +2031,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                     evidenceCount={currentEvidence.length}
                     documentCount={currentEvidenceDocumentCount}
                     expanded={selectedResearchExpanded}
-                    onToggle={() =>
-                      setResearchExpanded((current) => ({
-                        ...current,
-                        [selectedResearchTask.id]: !(
-                          current[selectedResearchTask.id] ?? selectedResearchDefaultExpanded
-                        ),
-                      }))
-                    }
+                    onToggle={toggleSelectedResearchProcess}
                     onCancel={
                       selectedResearchActive
                         ? () => void cancelResearch(selectedResearchTask.id)

@@ -1,16 +1,6 @@
 import type { RefObject } from 'react'
-import type { LogicalDocument, LogicalDocumentRevision } from './document-models'
+import type { LogicalDocument } from './document-models'
 import { Button } from '@langgenius/dify-ui/button'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectItemIndicator,
-  SelectItemText,
-  SelectLabel,
-  SelectTrigger,
-} from '@langgenius/dify-ui/select'
-import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 
@@ -19,59 +9,29 @@ export function DocumentDetailHeader({
   canCancelReindex,
   cancelReindexBusy,
   document,
-  effectiveRevision,
-  fetchNextRevisionPage,
-  hasNextRevisionPage,
-  isFetchNextRevisionPageError,
-  isFetchingNextRevisionPage,
   onCancelReindex,
   onReindex,
-  onRevisionChange,
   reindexDisabled,
   reindexDisabledReasonId,
   reindexFailed,
   reindexInProgress,
   reindexing,
-  revisions,
   titleRef,
 }: {
   backPath: string
   canCancelReindex: boolean
   cancelReindexBusy: boolean
   document: LogicalDocument
-  effectiveRevision?: number
-  fetchNextRevisionPage: () => void
-  hasNextRevisionPage: boolean
-  isFetchNextRevisionPageError: boolean
-  isFetchingNextRevisionPage: boolean
   onCancelReindex: () => void
   onReindex: () => void
-  onRevisionChange: (revision: number) => void
   reindexDisabled: boolean
   reindexDisabledReasonId?: string
   reindexFailed: boolean
   reindexInProgress: boolean
   reindexing: boolean
-  revisions: Array<Exclude<LogicalDocumentRevision, null>>
   titleRef: RefObject<HTMLHeadingElement | null>
 }) {
   const { t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
-  const revisionTriggerRef = useRef<HTMLButtonElement>(null)
-  const loadMoreRequestedRef = useRef(false)
-  const wasFetchingNextPageRef = useRef(false)
-  useEffect(() => {
-    if (isFetchingNextRevisionPage) wasFetchingNextPageRef.current = true
-    if (
-      isFetchingNextRevisionPage ||
-      !wasFetchingNextPageRef.current ||
-      !loadMoreRequestedRef.current
-    )
-      return
-    wasFetchingNextPageRef.current = false
-    loadMoreRequestedRef.current = false
-    if (!isFetchNextRevisionPageError && !hasNextRevisionPage) revisionTriggerRef.current?.focus()
-  }, [hasNextRevisionPage, isFetchNextRevisionPageError, isFetchingNextRevisionPage])
 
   return (
     <>
@@ -93,44 +53,6 @@ export function DocumentDetailHeader({
           </h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {revisions.length > 0 && effectiveRevision !== undefined && (
-            <Select
-              value={String(effectiveRevision)}
-              onValueChange={(value) => {
-                if (value) onRevisionChange(Number(value))
-              }}
-            >
-              <SelectLabel>{t(($) => $['newKnowledge.documentRevision'])}</SelectLabel>
-              <SelectTrigger ref={revisionTriggerRef} className="h-8 w-fit min-w-28">
-                v{effectiveRevision}
-              </SelectTrigger>
-              <SelectContent>
-                {revisions.map((revision) => (
-                  <SelectItem key={revision.revision} value={String(revision.revision)}>
-                    <SelectItemText>
-                      v{revision.revision} ·{' '}
-                      {t(($) => $[`newKnowledge.revisionState.${revision.state}`])}
-                    </SelectItemText>
-                    <SelectItemIndicator />
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-          {(hasNextRevisionPage || isFetchNextRevisionPageError) && (
-            <Button
-              disabled={isFetchingNextRevisionPage}
-              loading={isFetchingNextRevisionPage}
-              onClick={() => {
-                loadMoreRequestedRef.current = true
-                fetchNextRevisionPage()
-              }}
-            >
-              {isFetchNextRevisionPageError
-                ? tCommon(($) => $['operation.retry'])
-                : t(($) => $['newKnowledge.loadMoreRevisions'])}
-            </Button>
-          )}
           <Button
             aria-busy={reindexing || cancelReindexBusy}
             aria-describedby={reindexDisabledReasonId}
@@ -150,11 +72,6 @@ export function DocumentDetailHeader({
           </Button>
         </div>
       </div>
-      {isFetchNextRevisionPageError && (
-        <p className="mt-2 system-xs-regular text-text-destructive" role="alert">
-          {t(($) => $['newKnowledge.documentRevisionsLoadError'])}
-        </p>
-      )}
     </>
   )
 }

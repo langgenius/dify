@@ -1216,8 +1216,7 @@ describe('AddSourcePage', () => {
     expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources')
   })
 
-  it('discovers installed website providers and keeps the provider-management action', async () => {
-    const user = userEvent.setup()
+  it('discovers installed website providers and keeps the provider-management action', () => {
     queryState.datasourcePlugins.data = [firecrawlDatasourcePlugin, customCrawlerDatasourcePlugin]
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
 
@@ -1226,12 +1225,12 @@ describe('AddSourcePage', () => {
     ).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'Acme Crawler' })).toBeEnabled()
     expect(screen.queryByRole('radio', { name: 'FakeCrawler' })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.moreProviders' }))
-    expect(openMock).toHaveBeenCalledWith(
-      '/integrations/data-source',
-      '_blank',
-      'noopener,noreferrer',
-    )
+    const moreProvidersLink = screen.getByRole('link', {
+      name: 'dataset.newKnowledge.moreProviders',
+    })
+    expect(moreProvidersLink).toHaveAttribute('href', '/integrations/data-source')
+    expect(moreProvidersLink).toHaveAttribute('target', '_blank')
+    expect(moreProvidersLink).toHaveAttribute('rel', 'noopener noreferrer')
   })
 
   it('keeps the handed-off website draft when the provider connection becomes active', async () => {
