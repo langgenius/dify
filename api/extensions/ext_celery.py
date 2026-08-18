@@ -237,6 +237,12 @@ def init_app(app: DifyApp) -> Celery:
             "task": "human_input_form_timeout.check_and_resume",
             "schedule": timedelta(minutes=dify_config.HUMAN_INPUT_TIMEOUT_TASK_INTERVAL),
         }
+    if dify_config.ENABLE_WORKFLOW_COPILOT_RECONCILER:
+        imports.append("schedule.workflow_copilot_reconcile_task")
+        beat_schedule["workflow_copilot_reconcile"] = {
+            "task": "schedule.workflow_copilot_reconcile_task.reconcile_interrupted_sessions",
+            "schedule": timedelta(minutes=dify_config.WORKFLOW_COPILOT_RECONCILE_INTERVAL),
+        }
     if dify_config.ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK and dify_config.MARKETPLACE_ENABLED:
         imports.append("schedule.check_upgradable_plugin_task")
         imports.append("tasks.process_tenant_plugin_autoupgrade_check_task")

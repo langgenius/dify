@@ -1476,6 +1476,15 @@ class CeleryScheduleTasksConfig(BaseSettings):
         default=60 * 60,
     )
 
+    ENABLE_WORKFLOW_COPILOT_RECONCILER: bool = Field(
+        description="Enable the workflow-copilot interrupted-session reconciler (beat sweeper)",
+        default=False,
+    )
+    WORKFLOW_COPILOT_RECONCILE_INTERVAL: PositiveInt = Field(
+        description="Minutes between workflow-copilot reconciler sweeps",
+        default=5,
+    )
+
 
 class PositionConfig(BaseSettings):
     POSITION_PROVIDER_PINS: str = Field(
