@@ -229,7 +229,7 @@ Convert Figma output such as `rounded-[var(--radius/sm, 6px)]` to the mapped Tai
 
 ## Overlay & portal contract
 
-Overlay primitives render their floating surfaces inside a [Base UI Portal] attached to `document.body`. This is the Base UI default — see the upstream [Portals][Base UI Portal] docs for the underlying behavior. Convenience content components such as `DialogContent`, `PopoverContent`, and `SelectContent` own their portal internally. Primitives with explicit portal anatomy such as `Autocomplete`, `Combobox`, and `Drawer` expose their Portal, Positioner, and Popup parts so consumers can compose the Base UI structure and put placement or popup behavior on its owner.
+Overlay primitives render their floating surfaces inside a [Base UI Portal] attached to `document.body`. This is the Base UI default — see the upstream [Portals][Base UI Portal] docs for the underlying behavior. Convenience content components such as `DialogContent`, `PopoverContent`, and `SelectContent` own their portal internally. Primitives with explicit anatomy expose their constituent parts so consumers can compose the Base UI structure and put behavior on its owner.
 
 ### Root isolation requirement
 
