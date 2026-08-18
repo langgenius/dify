@@ -228,7 +228,9 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         :return:
         """
         self._conversation_name_generate_thread = self._message_cycle_manager.generate_conversation_name(
-            conversation_id=self._conversation_id, query=self._application_generate_entity.query
+            conversation_id=self._conversation_id,
+            query=self._application_generate_entity.query,
+            message_id=self._message_id,
         )
 
         generator = self._wrapper_process_stream_response(trace_manager=self._application_generate_entity.trace_manager)

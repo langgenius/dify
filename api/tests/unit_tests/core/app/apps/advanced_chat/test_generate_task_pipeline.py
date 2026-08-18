@@ -34,6 +34,23 @@ def _build_pipeline() -> pipeline_module.AdvancedChatAppGenerateTaskPipeline:
     return pipeline
 
 
+def test_process_passes_message_id_to_conversation_name_generation() -> None:
+    pipeline = _build_pipeline()
+    pipeline._conversation_id = "conversation-1"
+    pipeline._application_generate_entity = SimpleNamespace(query="hello", trace_manager=None)
+    pipeline._message_cycle_manager = mock.Mock()
+    pipeline._base_task_pipeline = SimpleNamespace(stream=True)
+    pipeline._wrapper_process_stream_response = mock.Mock(return_value=iter(()))
+    pipeline._to_stream_response = mock.Mock(return_value="stream")
+
+    result = pipeline.process()
+
+    assert result == "stream"
+    pipeline._message_cycle_manager.generate_conversation_name.assert_called_once_with(
+        conversation_id="conversation-1", query="hello", message_id="message-1"
+    )
+
+
 def test_persist_human_input_extra_content_adds_record(monkeypatch: pytest.MonkeyPatch) -> None:
     pipeline = _build_pipeline()
     monkeypatch.setattr(pipeline, "_load_human_input_form_id", lambda **kwargs: "form-1")
