@@ -1,12 +1,14 @@
-'use client'
-
 import type { PropsWithChildren } from 'react'
-import { useTranslation } from 'react-i18next'
-import useDocumentTitle from '@/hooks/use-document-title'
+import MarketplaceDocumentTitle from './document-title'
 
+// This route layout must stay a Server Component. A client layout wrapping the
+// async marketplace page makes Flight double-resolve streamed children
+// (`reason.enqueueModel`) when opening /marketplace from cloud.dify.dev.
 export default function MarketplaceLayout({ children }: PropsWithChildren) {
-  const { t } = useTranslation()
-  useDocumentTitle(t(($) => $['mainNav.marketplace'], { ns: 'common' }))
-
-  return children
+  return (
+    <>
+      <MarketplaceDocumentTitle />
+      {children}
+    </>
+  )
 }
