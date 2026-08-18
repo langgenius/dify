@@ -99,27 +99,7 @@ def finalize_staging_public_capacity_point(
         invalid = True
         errors.append("measurement UTC time window was missing")
 
-    expected_cleanup = set(range(concurrency))
-    observed_cleanup = {item.worker_index for item in execution.cleanup}
-    if len(observed_cleanup) != len(execution.cleanup) or observed_cleanup != expected_cleanup:
-        invalid = True
-        errors.append("cleanup evidence did not uniquely cover every requested User")
-    for item in execution.cleanup:
-        if item.recovered_by_parent:
-            invalid = True
-            errors.append(f"cleanup required parent recovery for worker {item.worker_index}")
-        if not item.complete or not item.attempted or item.http_status_code != 204 or not item.conversation_deleted:
-            invalid = True
-            errors.append(f"cleanup was incomplete for worker {item.worker_index}")
-
-    physical = execution.physical_cleanup
-    if physical.target_conversations != concurrency or physical.target_sandboxes != concurrency:
-        invalid = True
-        errors.append("physical cleanup targets did not cover every benchmark Conversation/Sandbox")
-    if not _physical_cleanup_complete(physical):
-        invalid = True
-        errors.append("physical Workspace/Binding/Sandbox cleanup evidence was incomplete")
-    errors.extend(f"physical cleanup: {error}" for error in physical.errors)
+    invalid |= _validate_cleanup_evidence(execution, errors)
 
     request_level_e2b_limit = warmup_e2b_limited or any(
         observation.sample.error_type == "e2b_inventory_limited" for observation in execution.observations
@@ -209,20 +189,7 @@ def finalize_staging_public_capacity_point(
     if load.correctness_failures:
         invalid = True
         errors.append(f"observed {load.correctness_failures} correctness failure(s)")
-    if load.attempted != len(execution.observations):
-        invalid = True
-        errors.append(
-            f"measurement observation count {len(execution.observations)} did not match attempted {load.attempted}"
-        )
-    if load.admitted != sum(item.sample.admitted for item in execution.observations):
-        invalid = True
-        errors.append("admitted counter did not match measurement observations")
-    if load.terminal != sum(observation.sample.terminal_e2e_ms is not None for observation in execution.observations):
-        invalid = True
-        errors.append("terminal counter did not match measurement observations")
-    if load.successful != sum(item.sample.succeeded for item in execution.observations):
-        invalid = True
-        errors.append("successful counter did not match measurement observations")
+    invalid |= _validate_measurement_counters(execution, errors)
     if warmup_failed and execution.scenario_id != "basic" and not e2b_limited:
         invalid = True
         errors.append("Runtime warmup contained an operational failure without an E2B limit signal")
@@ -241,9 +208,65 @@ def finalize_staging_public_capacity_point(
         load=load.model_copy(deep=True),
         metrics=metrics,
         e2b_observation=(execution.e2b_observation.model_copy(deep=True) if execution.e2b_observation else None),
-        physical_cleanup=physical.model_copy(deep=True),
+        physical_cleanup=execution.physical_cleanup.model_copy(deep=True),
         errors=list(dict.fromkeys(errors)),
     )
+
+
+def _validate_cleanup_evidence(
+    execution: StagingPublicCapacityExecution,
+    errors: list[str],
+) -> bool:
+    """Validate user and physical cleanup evidence for one capacity point."""
+
+    invalid = False
+    concurrency = execution.requested_concurrency
+    expected_workers = set(range(concurrency))
+    observed_workers = {item.worker_index for item in execution.cleanup}
+    if len(observed_workers) != len(execution.cleanup) or observed_workers != expected_workers:
+        invalid = True
+        errors.append("cleanup evidence did not uniquely cover every requested User")
+    for item in execution.cleanup:
+        if item.recovered_by_parent:
+            invalid = True
+            errors.append(f"cleanup required parent recovery for worker {item.worker_index}")
+        if not item.complete or not item.attempted or item.http_status_code != 204 or not item.conversation_deleted:
+            invalid = True
+            errors.append(f"cleanup was incomplete for worker {item.worker_index}")
+
+    physical = execution.physical_cleanup
+    if physical.target_conversations != concurrency or physical.target_sandboxes != concurrency:
+        invalid = True
+        errors.append("physical cleanup targets did not cover every benchmark Conversation/Sandbox")
+    if not _physical_cleanup_complete(physical):
+        invalid = True
+        errors.append("physical Workspace/Binding/Sandbox cleanup evidence was incomplete")
+    errors.extend(f"physical cleanup: {error}" for error in physical.errors)
+    return invalid
+
+
+def _validate_measurement_counters(
+    execution: StagingPublicCapacityExecution,
+    errors: list[str],
+) -> bool:
+    """Ensure load-engine counters exactly match the public observations."""
+
+    load = execution.load
+    observations = execution.observations
+    invalid = False
+    if load.attempted != len(observations):
+        invalid = True
+        errors.append(f"measurement observation count {len(observations)} did not match attempted {load.attempted}")
+    if load.admitted != sum(item.sample.admitted for item in observations):
+        invalid = True
+        errors.append("admitted counter did not match measurement observations")
+    if load.terminal != sum(observation.sample.terminal_e2e_ms is not None for observation in observations):
+        invalid = True
+        errors.append("terminal counter did not match measurement observations")
+    if load.successful != sum(item.sample.succeeded for item in observations):
+        invalid = True
+        errors.append("successful counter did not match measurement observations")
+    return invalid
 
 
 def _finalize_e2b_inventory_limited_point(
