@@ -66,6 +66,11 @@ func TestCommandHelp(t *testing.T) {
 			want: []string{"dify-agent file download", "Download one workflow file", "--to"},
 		},
 		{
+			name: "file public-url",
+			args: []string{"file", "public-url", "--help"},
+			want: []string{"dify-agent file public-url", "Create a browser-visible download URL"},
+		},
+		{
 			name: "drive",
 			args: []string{"drive", "--help"},
 			want: []string{"dify-agent drive", "list", "pull", "push"},

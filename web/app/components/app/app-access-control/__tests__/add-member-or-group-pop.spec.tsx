@@ -97,13 +97,28 @@ describe('AddMemberOrGroupDialog', () => {
 
     await user.click(screen.getByText('common.operation.add'))
 
-    expect(
-      screen.getByPlaceholderText(
-        'app.accessControlDialog.operateGroupAndMember.searchPlaceholder',
-      ),
-    ).toBeInTheDocument()
+    const searchLabel = 'app.accessControlDialog.operateGroupAndMember.searchPlaceholder'
+    expect(screen.getByRole('dialog', { name: searchLabel })).toBeInTheDocument()
+    expect(screen.getByRole('searchbox', { name: searchLabel })).toHaveFocus()
     expect(screen.getByText(baseGroup.name)).toBeInTheDocument()
     expect(screen.getByText(baseMember.name)).toBeInTheDocument()
+  })
+
+  it('should keep group selection and expansion as separate keyboard actions', async () => {
+    const user = userEvent.setup()
+    render(<ControlledDialog />)
+
+    await user.click(screen.getByText('common.operation.add'))
+
+    const groupToggle = screen.getByRole('button', { name: /Group One/ })
+    const expandButton = screen.getByRole('button', {
+      name: 'app.accessControlDialog.operateGroupAndMember.expand',
+    })
+
+    groupToggle.focus()
+    await user.tab()
+
+    expect(expandButton).toHaveFocus()
   })
 
   it('should allow expanding groups and report selected members', async () => {
@@ -119,8 +134,12 @@ describe('AddMemberOrGroupDialog', () => {
       true,
     )
 
-    await user.click(screen.getByRole('option', { name: /Member One/ }))
+    const memberToggle = screen.getByRole('button', { name: /Member One/ })
+
+    expect(memberToggle).toHaveAttribute('aria-pressed', 'false')
+    await user.click(memberToggle)
     expect(onChange).toHaveBeenCalledWith({ groups: [], members: [baseMember] })
+    expect(memberToggle).toHaveAttribute('aria-pressed', 'true')
   })
 
   it('should show the empty state when no candidates are returned', async () => {
