@@ -28,6 +28,8 @@
   "menus.plugins": "Integrations",
   "menus.status": "beta",
   "menus.tools": "Tools",
+  "settings.accessToken": "Access Tokens",
+  "settings.accessTokenDescription": "Creates workspace machine credentials for automation tasks and external systems, used only to discover and run specified applications via Difyctl.",
   "settings.agentStrategy": "Agent Strategy",
   "settings.billing": "Billing",
   "settings.customEndpoint": "Custom Endpoint",

@@ -63,6 +63,7 @@ from services.entities.app_entities import (
 from services.model_provider.service import ModelProviderService
 from services.openapi.visibility import apply_openapi_gate, is_openapi_visible
 from services.rbac_agent_access_service import initialize_agent_rbac_access
+from services.resource_access_token_service import ResourceAccessTokenService
 from services.system_feature_service import SystemFeatureService
 from services.tag_service import TagService
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
@@ -874,6 +875,7 @@ class AppService:
             tenant_id=app.tenant_id,
             app_id=app.id,
         )
+        ResourceAccessTokenService.delete_relations_for_app(app_id=app.id, session=session)
         session.delete(app)
         session.commit()
 

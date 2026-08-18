@@ -28,6 +28,8 @@
   "menus.plugins": "集成",
   "menus.status": "beta",
   "menus.tools": "工具",
+  "settings.accessToken": "Access Tokens",
+  "settings.accessTokenDescription": "创建工作区机器凭证，用于自动化任务和外部系统，仅通过 Difyctl 发现和运行指定应用。",
   "settings.agentStrategy": "Agent 策略",
   "settings.billing": "账单",
   "settings.customEndpoint": "自定义端点",

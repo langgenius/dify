@@ -28,6 +28,8 @@
   "menus.plugins": "Integrare-uri",
   "menus.status": "beta",
   "menus.tools": "Instrumente",
+  "settings.accessToken": "Access Tokens",
+  "settings.accessTokenDescription": "Create service API tokens that grant access only to selected apps and knowledge bases.",
   "settings.agentStrategy": "Agent strategy",
   "settings.billing": "Facturare",
   "settings.customEndpoint": "Endpoint personalizat",

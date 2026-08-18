@@ -28,6 +28,8 @@
   "menus.plugins": "การผสานรวม",
   "menus.status": "Beta",
   "menus.tools": "เครื่อง มือ",
+  "settings.accessToken": "Access Tokens",
+  "settings.accessTokenDescription": "Create service API tokens that grant access only to selected apps and knowledge bases.",
   "settings.agentStrategy": "Agent strategy",
   "settings.billing": "เรียก เก็บ เงิน",
   "settings.customEndpoint": "ปลายทางแบบกำหนดเอง",
