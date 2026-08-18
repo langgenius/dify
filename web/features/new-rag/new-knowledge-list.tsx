@@ -141,12 +141,21 @@ export function NewKnowledgeList({
         query: debouncedSearchValue,
         tagIds,
       }) &&
-      (!upgrade.job.new_control_space_id ||
+      (upgrade.job.status !== 'succeeded' ||
+        !upgrade.job.new_control_space_id ||
         !knowledgeSpaces.some(
           (knowledgeSpace) => knowledgeSpace.control_space_id === upgrade.job.new_control_space_id,
         )),
   )
-  const hasVisibleKnowledge = knowledgeSpaces.length > 0 || pendingUpgradeCards.length > 0
+  const pendingUpgradeControlSpaceIds = new Set(
+    pendingUpgradeCards.flatMap((upgrade) =>
+      upgrade.job.new_control_space_id ? [upgrade.job.new_control_space_id] : [],
+    ),
+  )
+  const visibleKnowledgeSpaces = knowledgeSpaces.filter(
+    (knowledgeSpace) => !pendingUpgradeControlSpaceIds.has(knowledgeSpace.control_space_id),
+  )
+  const hasVisibleKnowledge = visibleKnowledgeSpaces.length > 0 || pendingUpgradeCards.length > 0
 
   useEffect(() => {
     if (!highlightedControlSpaceId) return
@@ -286,7 +295,7 @@ export function NewKnowledgeList({
                   onSucceeded={setHighlightedControlSpaceId}
                 />
               ))}
-              {knowledgeSpaces.map((knowledgeSpace) => (
+              {visibleKnowledgeSpaces.map((knowledgeSpace) => (
                 <KnowledgeSpaceCard
                   key={knowledgeSpace.control_space_id}
                   knowledgeSpace={knowledgeSpace}

@@ -376,6 +376,37 @@ describe('consoleQuery transport context', () => {
     )
   })
 
+  it('should not report query cancellation as a transport error', async () => {
+    const request = vi.fn().mockRejectedValue(new DOMException('Aborted', 'AbortError'))
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const queryOptions = consoleQuery.datasets.get.queryOptions({
+      input: { query: { limit: 30, page: 1 } },
+    })
+
+    await Promise.resolve(
+      queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext),
+    ).catch(() => undefined)
+
+    expect(errorSpy).not.toHaveBeenCalled()
+  })
+
+  it('should continue reporting non-cancellation transport errors', async () => {
+    const networkError = new TypeError('Network failed')
+    const request = vi.fn().mockRejectedValue(networkError)
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const queryOptions = consoleQuery.datasets.get.queryOptions({
+      input: { query: { limit: 30, page: 1 } },
+    })
+
+    await Promise.resolve(
+      queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext),
+    ).catch(() => undefined)
+
+    expect(errorSpy).toHaveBeenCalledWith(networkError)
+  })
+
   it('should serialize trial app dataset ids as repeated query params', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(

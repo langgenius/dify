@@ -72,6 +72,16 @@ export type ConsoleClientContext = TanstackQueryOperationContext & {
 
 type ConsoleClientLink = ClientLink<ConsoleClientContext>
 
+function isAbortError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  if ('name' in error && error.name === 'AbortError') return true
+  return 'cause' in error && isAbortError(error.cause)
+}
+
+function reportClientError(error: unknown) {
+  if (!isAbortError(error)) console.error(error)
+}
+
 function createConsoleOpenAPILink(contract: AnyContractRouter): ConsoleClientLink {
   return new OpenAPILink<ConsoleClientContext>(contract, {
     url: getBaseURL(API_PREFIX),
@@ -89,7 +99,7 @@ function createConsoleOpenAPILink(contract: AnyContractRouter): ConsoleClientLin
     },
     interceptors: [
       onError((error) => {
-        console.error(error)
+        reportClientError(error)
       }),
     ],
   })
@@ -106,7 +116,7 @@ const marketplaceLink = new OpenAPILink(marketplaceRouterContract, {
   },
   interceptors: [
     onError((error) => {
-      console.error(error)
+      reportClientError(error)
     }),
   ],
 })

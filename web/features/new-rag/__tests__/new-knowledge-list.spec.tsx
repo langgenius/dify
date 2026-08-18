@@ -111,7 +111,7 @@ const datasetListMock = vi.hoisted(() => ({
               old_dataset_id: string
               snapshot_at: string
               stage: 'completed' | 'submitting_documents'
-              status: 'failed' | 'succeeded'
+              status: 'failed' | 'queued' | 'running' | 'succeeded'
               total_documents: number
               total_sources: number
             } | null
@@ -410,6 +410,51 @@ describe('NewKnowledgeList', () => {
     expect(consoleQueryMock.datasetsQueryOptions).toHaveBeenCalledWith({
       input: { query: { limit: 30, page: 1 } },
     })
+  })
+
+  it('keeps an active upgrade card when its control space appears before migration completes', () => {
+    setResolvedPage([
+      {
+        createdAt: '2026-08-18T00:00:00Z',
+        id: 'space-1',
+        name: 'space-1',
+        revision: 1,
+        slug: 'space-1',
+        tenantId: 'tenant-1',
+        updatedAt: '2026-08-18T00:00:00Z',
+      },
+    ])
+    datasetListMock.data = {
+      data: [
+        {
+          description: 'Legacy knowledge',
+          id: 'dataset-1',
+          knowledge_fs_upgrade: {
+            can_retry: false,
+            can_upgrade: false,
+            job: {
+              completed_documents: 4,
+              completed_sources: 1,
+              id: 'upgrade-1',
+              new_control_space_id: 'space-1',
+              old_dataset_id: 'dataset-1',
+              snapshot_at: '2026-08-18T00:00:00Z',
+              stage: 'submitting_documents',
+              status: 'running',
+              total_documents: 10,
+              total_sources: 1,
+            },
+          },
+          name: 'Support knowledge',
+          tags: [],
+        },
+      ],
+    }
+
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+
+    expect(screen.getByText('upgrade:dataset-1:running')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'space-1' })).not.toBeInTheDocument()
   })
 
   it('does not highlight a knowledge space for a historical successful upgrade', () => {
