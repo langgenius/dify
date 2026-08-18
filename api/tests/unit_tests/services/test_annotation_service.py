@@ -11,12 +11,42 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import Conflict, NotFound
 
+import services.annotation_service as annotation_service_module
 from models.dataset import DatasetCollectionBinding
 from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, Message, MessageAnnotation
 from services.annotation_service import AppAnnotationService
 from services.app_ref_service import AnnotationRef, AppRef
+
+
+class _FakeRedis:
+    def __init__(self) -> None:
+        self.values: dict[str, str] = {}
+
+    def get(self, name: str) -> str | None:
+        return self.values.get(name)
+
+    def set(self, name: str, value: str, *, nx: bool = False, ex: int | None = None) -> bool:
+        del ex
+        if nx and name in self.values:
+            return False
+        self.values[name] = value
+        return True
+
+    def setex(self, name: str, time: int, value: str) -> bool:
+        del time
+        self.values[name] = value
+        return True
+
+    def delete(self, *names: str) -> int:
+        return sum(self.values.pop(name, None) is not None for name in names)
+
+    def compare_and_delete(self, name: str, expected_value: str) -> int:
+        if self.values.get(name) != expected_value:
+            return 0
+        del self.values[name]
+        return 1
 
 
 def _make_app(app_id: str = "app-1", tenant_id: str = "tenant-1") -> App:
@@ -275,6 +305,79 @@ class TestAppAnnotationServiceUpInsert:
 class TestAppAnnotationServiceEnableDisable:
     """Test suite for enable/disable app annotation."""
 
+    def test_enable_app_annotation_should_reuse_running_job(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Repeated enable requests should observe the same in-flight job."""
+        args = {"score_threshold": 0.5, "embedding_provider_name": "p", "embedding_model_name": "m"}
+        current_user = _make_user("user-1")
+        task = MagicMock()
+        redis = _FakeRedis()
+
+        monkeypatch.setattr(annotation_service_module, "redis_client", redis)
+        monkeypatch.setattr(annotation_service_module, "enable_annotation_reply_task", task)
+        monkeypatch.setattr(
+            annotation_service_module,
+            "current_account_with_tenant",
+            lambda: (current_user, "tenant-1"),
+        )
+
+        with patch.object(annotation_service_module.uuid, "uuid4", side_effect=["job-1", "job-2"]):
+            first = AppAnnotationService.enable_app_annotation(args, "app-1")
+            second = AppAnnotationService.enable_app_annotation(args, "app-1")
+
+        assert first == {"job_id": "job-1", "job_status": "waiting"}
+        assert second == {"job_id": "job-1", "job_status": "processing"}
+        task.delay.assert_called_once()
+
+    def test_disable_app_annotation_should_reject_running_enable_job(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Enable and disable operations for one app must not run at the same time."""
+        args = {"score_threshold": 0.5, "embedding_provider_name": "p", "embedding_model_name": "m"}
+        current_user = _make_user("user-1")
+        enable_task = MagicMock()
+        disable_task = MagicMock()
+        redis = _FakeRedis()
+
+        monkeypatch.setattr(annotation_service_module, "redis_client", redis)
+        monkeypatch.setattr(annotation_service_module, "enable_annotation_reply_task", enable_task)
+        monkeypatch.setattr(annotation_service_module, "disable_annotation_reply_task", disable_task)
+        monkeypatch.setattr(
+            annotation_service_module,
+            "current_account_with_tenant",
+            lambda: (current_user, "tenant-1"),
+        )
+
+        with patch.object(annotation_service_module.uuid, "uuid4", side_effect=["enable-job", "disable-job"]):
+            AppAnnotationService.enable_app_annotation(args, "app-1")
+            with pytest.raises(Conflict, match="already running"):
+                AppAnnotationService.disable_app_annotation("app-1")
+
+        disable_task.delay.assert_not_called()
+
+    def test_enable_app_annotation_should_allow_retry_when_enqueue_fails(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A broker failure must not leave the app blocked by a job that was never queued."""
+        args = {"score_threshold": 0.5, "embedding_provider_name": "p", "embedding_model_name": "m"}
+        current_user = _make_user("user-1")
+        task = MagicMock()
+        task.delay.side_effect = RuntimeError("broker unavailable")
+        redis = _FakeRedis()
+
+        monkeypatch.setattr(annotation_service_module, "redis_client", redis)
+        monkeypatch.setattr(annotation_service_module, "enable_annotation_reply_task", task)
+        monkeypatch.setattr(
+            annotation_service_module,
+            "current_account_with_tenant",
+            lambda: (current_user, "tenant-1"),
+        )
+
+        with patch.object(annotation_service_module.uuid, "uuid4", side_effect=["failed-job", "retry-job"]):
+            with pytest.raises(RuntimeError, match="broker unavailable"):
+                AppAnnotationService.enable_app_annotation(args, "app-1")
+
+            task.delay.side_effect = None
+            retry = AppAnnotationService.enable_app_annotation(args, "app-1")
+
+        assert retry == {"job_id": "retry-job", "job_status": "waiting"}
+        assert task.delay.call_count == 2
+
     def test_enable_app_annotation_should_return_processing_when_cache_hit(self) -> None:
         """Test cache hit returns processing status."""
         # Arrange
@@ -284,7 +387,8 @@ class TestAppAnnotationServiceEnableDisable:
             patch("services.annotation_service.redis_client") as mock_redis,
             patch("services.annotation_service.enable_annotation_reply_task") as mock_task,
         ):
-            mock_redis.get.return_value = "job-1"
+            mock_redis.set.return_value = False
+            mock_redis.get.return_value = "enable:job-1"
 
             # Act
             result = AppAnnotationService.enable_app_annotation(args, "app-1")
@@ -306,14 +410,15 @@ class TestAppAnnotationServiceEnableDisable:
             patch("services.annotation_service.uuid.uuid4", return_value="uuid-1"),
             patch("services.annotation_service.enable_annotation_reply_task") as mock_task,
         ):
-            mock_redis.get.return_value = None
+            mock_redis.set.return_value = True
 
             # Act
             result = AppAnnotationService.enable_app_annotation(args, "app-1")
 
             # Assert
             assert result == {"job_id": "uuid-1", "job_status": "waiting"}
-            mock_redis.setnx.assert_called_once_with("enable_app_annotation_job_uuid-1", "waiting")
+            mock_redis.set.assert_any_call("app_annotation_job:app-1", "enable:uuid-1", nx=True, ex=7200)
+            mock_redis.set.assert_any_call("enable_app_annotation_job_uuid-1", "waiting", ex=7200)
             mock_task.delay.assert_called_once_with(
                 "uuid-1",
                 "app-1",
@@ -333,7 +438,8 @@ class TestAppAnnotationServiceEnableDisable:
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.disable_annotation_reply_task") as mock_task,
         ):
-            mock_redis.get.return_value = "job-2"
+            mock_redis.set.return_value = False
+            mock_redis.get.return_value = "disable:job-2"
 
             # Act
             result = AppAnnotationService.disable_app_annotation("app-1")
@@ -353,14 +459,15 @@ class TestAppAnnotationServiceEnableDisable:
             patch("services.annotation_service.uuid.uuid4", return_value="uuid-2"),
             patch("services.annotation_service.disable_annotation_reply_task") as mock_task,
         ):
-            mock_redis.get.return_value = None
+            mock_redis.set.return_value = True
 
             # Act
             result = AppAnnotationService.disable_app_annotation("app-1")
 
             # Assert
             assert result == {"job_id": "uuid-2", "job_status": "waiting"}
-            mock_redis.setnx.assert_called_once_with("disable_app_annotation_job_uuid-2", "waiting")
+            mock_redis.set.assert_any_call("app_annotation_job:app-1", "disable:uuid-2", nx=True, ex=7200)
+            mock_redis.set.assert_any_call("disable_app_annotation_job_uuid-2", "waiting", ex=7200)
             mock_task.delay.assert_called_once_with("uuid-2", "app-1", tenant_id)
 
 

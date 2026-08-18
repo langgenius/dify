@@ -14,6 +14,7 @@ from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset
 from models.enums import CollectionBindingType
 from models.model import App, AppAnnotationSetting, MessageAnnotation
+from services.annotation_job_service import AnnotationReplyJob, AnnotationReplyJobCoordinator
 from services.dataset_service import DatasetCollectionBindingService
 
 logger = logging.getLogger(__name__)
@@ -34,21 +35,23 @@ def enable_annotation_reply_task(
     """
     logger.info(click.style(f"Start add app annotation to index: {app_id}", fg="green"))
     start_at = time.perf_counter()
-    # get app info
+    job = AnnotationReplyJob(action="enable", app_id=app_id, job_id=job_id)
+    coordinator = AnnotationReplyJobCoordinator(redis_client)
+    if not coordinator.start(job):
+        logger.info("Skip stale annotation reply job %s for app %s", job_id, app_id)
+        return
+
     with session_factory.create_session() as session:
-        app = session.scalar(
-            select(App).where(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").limit(1)
-        )
-
-        if not app:
-            logger.info(click.style(f"App not found: {app_id}", fg="red"))
-            return
-
-        annotations = session.scalars(select(MessageAnnotation).where(MessageAnnotation.app_id == app_id)).all()
-        enable_app_annotation_key = f"enable_app_annotation_{str(app_id)}"
-        enable_app_annotation_job_key = f"enable_app_annotation_job_{str(job_id)}"
-
         try:
+            app = session.scalar(
+                select(App).where(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").limit(1)
+            )
+            if not app:
+                logger.info(click.style(f"App not found: {app_id}", fg="red"))
+                coordinator.fail(job, "App not found")
+                return
+
+            annotations = session.scalars(select(MessageAnnotation).where(MessageAnnotation.app_id == app_id)).all()
             documents = []
             dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
                 embedding_provider_name, embedding_model_name, session, CollectionBindingType.ANNOTATION
@@ -120,7 +123,7 @@ def enable_annotation_reply_task(
                     logger.info(click.style(f"Delete annotation index error: {str(e)}", fg="red"))
                 vector.create(documents)
             session.commit()
-            redis_client.setex(enable_app_annotation_job_key, 600, "completed")
+            coordinator.complete(job)
             end_at = time.perf_counter()
             logger.info(
                 click.style(
@@ -130,9 +133,5 @@ def enable_annotation_reply_task(
             )
         except Exception as e:
             logger.exception("Annotation batch created index failed")
-            redis_client.setex(enable_app_annotation_job_key, 600, "error")
-            enable_app_annotation_error_key = f"enable_app_annotation_error_{str(job_id)}"
-            redis_client.setex(enable_app_annotation_error_key, 600, str(e))
             session.rollback()
-        finally:
-            redis_client.delete(enable_app_annotation_key)
+            coordinator.fail(job, str(e))

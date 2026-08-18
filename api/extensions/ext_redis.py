@@ -34,6 +34,13 @@ from libs.broadcast_channel.redis.streams_channel import StreamsBroadcastChannel
 
 logger = logging.getLogger(__name__)
 
+_COMPARE_AND_DELETE_SCRIPT = """
+if redis.call("get", KEYS[1]) == ARGV[1] then
+    return redis.call("del", KEYS[1])
+end
+return 0
+"""
+
 
 _normalize_redis_key_prefix = normalize_redis_key_prefix
 _serialize_redis_name = serialize_redis_name
@@ -146,6 +153,15 @@ class RedisClientWrapper:
 
     def getdel(self, name: str | bytes) -> Any:
         return self._require_client().getdel(_serialize_redis_name_arg(name, self._get_prefix()))
+
+    def compare_and_delete(self, name: str | bytes, expected_value: str | bytes) -> Any:
+        client = cast(Any, self._require_client())
+        return client.eval(
+            _COMPARE_AND_DELETE_SCRIPT,
+            1,
+            _serialize_redis_name_arg(name, self._get_prefix()),
+            expected_value,
+        )
 
     def lock(
         self,

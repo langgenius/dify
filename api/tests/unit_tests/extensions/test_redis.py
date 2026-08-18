@@ -188,6 +188,20 @@ class TestRedisClientWrapperKeyPrefix:
         assert args == ("enterprise-a:resource-lock",)
         assert kwargs["timeout"] == 10
 
+    def test_wrapper_compare_and_delete_prefixes_key(self):
+        mock_client = MagicMock()
+        wrapper = RedisClientWrapper()
+        wrapper.initialize(mock_client)
+
+        with patch("extensions.ext_redis.dify_config") as mock_config:
+            mock_config.REDIS_KEY_PREFIX = "enterprise-a"
+
+            wrapper.compare_and_delete("resource-lock", "owner-1")
+
+        mock_client.eval.assert_called_once()
+        args = mock_client.eval.call_args.args
+        assert args[1:] == (1, "enterprise-a:resource-lock", "owner-1")
+
     def test_wrapper_hash_operations_prefix_key_name(self):
         mock_client = MagicMock()
         wrapper = RedisClientWrapper()
