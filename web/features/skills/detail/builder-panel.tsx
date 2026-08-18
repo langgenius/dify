@@ -23,7 +23,7 @@ import {
   useDefaultModel,
   useModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { sendSkillAssistMessage, uploadSkillFile } from '../client'
 import { SkillBuilderGridTexture } from './builder-grid-texture'
 import {
@@ -84,16 +84,16 @@ function BuilderModelSelector({
         <div className="h-6 w-20 rounded-md bg-state-base-hover" />
       ) : (
         <ModelSelector
-          defaultModel={
+          value={
             selectedModel
               ? { provider: selectedModel.provider, model: selectedModel.model }
               : undefined
           }
-          modelList={modelList}
+          models={modelList}
           popupClassName="h-[480px]! max-h-[480px]! w-80! max-w-80!"
           showModelMeta={false}
-          triggerClassName="h-8! w-fit! max-w-full bg-transparent! p-1! hover:bg-state-base-hover! [&>div:first-child]:hidden [&>div:nth-child(2)]:px-0"
-          onSelect={({ model, provider }) => {
+          className="h-8! w-fit! max-w-full bg-transparent! p-1! hover:bg-state-base-hover! [&>div:first-child]:hidden [&>div:nth-child(2)]:px-0"
+          onValueChange={({ model, provider }) => {
             onSelect({
               ...selectedModel,
               provider,

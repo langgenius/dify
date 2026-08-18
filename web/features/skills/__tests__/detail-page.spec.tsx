@@ -118,7 +118,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: () => <button type="button">model-settings</button>,
+  ModelSelector: () => <button type="button">model-settings</button>,
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({

@@ -2655,22 +2655,6 @@
       "count": 5
     }
   },
-  "web/app/components/header/account-setting/model-provider-page/model-parameter-modal/model-display.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/model-parameter-modal/status-indicators.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    },
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/header/account-setting/model-provider-page/provider-added-card/cooldown-timer.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 1

@@ -1,5 +1,5 @@
 import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
-import type { ComboboxContentProps, ComboboxProps } from '@langgenius/dify-ui/combobox'
+import type { ComboboxPortalProps, ComboboxProps } from '@langgenius/dify-ui/combobox'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Combobox,
@@ -27,7 +27,7 @@ type TagFilterProps = {
   value: string[]
   onChange: (v: string[]) => void
   onOpenTagManagement?: () => void
-  portalProps?: ComboboxContentProps['portalProps']
+  portalProps?: ComboboxPortalProps
   showTagManagement?: boolean
   showLeadingIcon?: boolean
   triggerClassName?: string
@@ -41,6 +41,7 @@ export const TagFilter = ({
   showTagManagement = true,
   showLeadingIcon = true,
   triggerClassName,
+  portalProps,
 }: TagFilterProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -158,7 +159,7 @@ export const TagFilter = ({
             />
           </IconButton>
         )}
-        <ComboboxPortal>
+        <ComboboxPortal {...portalProps}>
           <ComboboxPositioner placement="bottom-start" sideOffset={4}>
             <ComboboxPopup
               aria-label={triggerLabel}

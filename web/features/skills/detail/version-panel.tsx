@@ -26,7 +26,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { Input } from '@langgenius/dify-ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -416,7 +417,7 @@ function VersionRow({
               <FieldLabel className="flex h-6 items-center py-0 system-sm-semibold text-text-secondary">
                 {t(($) => $['skillManagement.detail.versionTitle'])}
               </FieldLabel>
-              <FieldControl
+              <Input
                 value={versionName}
                 placeholder={t(($) => $['skillManagement.detail.nameThisVersion'])}
                 onValueChange={setVersionName}
