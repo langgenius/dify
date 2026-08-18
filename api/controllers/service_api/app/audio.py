@@ -49,7 +49,7 @@ class AudioApi(Resource):
         summary="Convert Audio to Text",
         description=(
             "Convert audio file to text. Supported MIME types: `audio/mp3`, `audio/mpga`, `audio/m4a`, "
-            "`audio/wav`, and `audio/amr`. File size limit is `30 MB`."
+            "`audio/x-m4a`, `audio/wav`, and `audio/amr`. File size limit is `30 MB`."
         ),
         tags=["TTS"],
         responses={
@@ -76,7 +76,7 @@ class AudioApi(Resource):
             include_user=True,
             file_description=(
                 "Audio file to transcribe. Supported MIME types: `audio/mp3`, `audio/mpga`, `audio/m4a`, "
-                "`audio/wav`, and `audio/amr`. File size limit is `30 MB`."
+                "`audio/x-m4a`, `audio/wav`, and `audio/amr`. File size limit is `30 MB`."
             ),
         ),
     )

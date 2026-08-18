@@ -1,6 +1,8 @@
 import type { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
@@ -28,6 +30,7 @@ function MarketplaceSection({
   onOpenMarketplace,
 }: MarketplaceSectionProps) {
   const { t } = useTranslation()
+  const headingId = useId()
 
   if (marketplaceProviders.length === 0) return null
 
@@ -36,34 +39,37 @@ function MarketplaceSection({
       <div className="py-2">
         <div className="h-px bg-divider-subtle" />
       </div>
-      <div>
+      <Collapsible
+        open={!marketplaceCollapsed}
+        onOpenChange={(open) => onMarketplaceCollapsedChange(!open)}
+        render={<section aria-labelledby={headingId} />}
+      >
         <div className="flex h-5.5 items-center pr-2 pl-4">
-          <button
-            type="button"
-            className="flex flex-1 cursor-pointer items-center border-0 bg-transparent p-0 text-left system-sm-medium text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-            onClick={() => onMarketplaceCollapsedChange(!marketplaceCollapsed)}
+          <CollapsibleTrigger
+            id={headingId}
+            className="group/marketplace min-h-0 flex-1 justify-start gap-0 rounded-none p-0 system-sm-medium text-text-primary hover:not-data-disabled:bg-transparent hover:not-data-disabled:text-text-primary data-panel-open:text-text-primary"
           >
             {t(($) => $['modelProvider.selector.fromMarketplace'], { ns: 'common' })}
             <span
+              aria-hidden="true"
               className={cn(
-                'i-custom-vender-solid-general-arrow-down-round-fill size-4 text-text-quaternary',
-                marketplaceCollapsed && '-rotate-90',
+                'i-custom-vender-solid-general-arrow-down-round-fill size-4 -rotate-90 text-text-quaternary transition-transform group-data-panel-open/marketplace:rotate-0 motion-reduce:transition-none',
               )}
             />
-          </button>
+          </CollapsibleTrigger>
         </div>
-        {!marketplaceCollapsed && (
-          <div className="px-1 pb-1">
+        <CollapsiblePanel>
+          <ul className="px-1 pb-1">
             {marketplaceProviders.map((key) => {
               const Icon = providerIconMap[key]
               const isInstalling = installingProvider === key
               return (
-                <div
+                <li
                   key={key}
-                  className="group flex cursor-pointer items-center gap-1 rounded-lg py-0.5 pr-0.5 pl-3 hover:bg-state-base-hover"
+                  className="group flex cursor-pointer items-center gap-1 rounded-lg py-0.5 pr-0.5 pl-3 focus-within:bg-state-base-hover hover:bg-state-base-hover"
                 >
                   <div className="flex flex-1 items-center gap-2 py-0.5">
-                    <Icon className="size-5 shrink-0 rounded-md" />
+                    <Icon aria-hidden="true" className="size-5 shrink-0 rounded-md" />
                     <span className="system-sm-regular text-text-secondary">
                       {modelNameMap[key]}
                     </span>
@@ -72,28 +78,36 @@ function MarketplaceSection({
                     <Button
                       variant="secondary"
                       size="small"
+                      aria-busy={isInstalling || undefined}
                       className={cn(
                         'shrink-0 backdrop-blur-[5px]',
-                        !isInstalling && 'hidden group-hover:flex',
+                        !isInstalling &&
+                          'opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 focus-visible:opacity-100',
                       )}
                       disabled={isInstalling}
                       onClick={() => onInstallPlugin(key)}
                     >
                       {isInstalling && (
-                        <span className="i-ri-loader-2-line size-3.5 animate-spin" />
+                        <span
+                          aria-hidden="true"
+                          className="i-ri-loader-2-line size-3.5 animate-spin"
+                        />
                       )}
                       {isInstalling
                         ? t(($) => $['installModal.installing'], { ns: 'plugin' })
                         : t(($) => $['modelProvider.selector.install'], { ns: 'common' })}
                     </Button>
                   )}
-                </div>
+                </li>
               )
             })}
+          </ul>
+          <div className="px-1 pb-1">
             {onOpenMarketplace ? (
-              <button
-                type="button"
-                className="flex w-full cursor-pointer items-center gap-0.5 border-0 bg-transparent px-3 py-1.5 text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+              <Button
+                variant="ghost"
+                size="small"
+                className="h-auto w-full justify-start gap-0.5 px-3 py-1.5 text-left"
                 onClick={onOpenMarketplace}
               >
                 <span className="flex-1 system-xs-regular text-text-accent">
@@ -105,10 +119,10 @@ function MarketplaceSection({
                   className="i-ri-arrow-right-up-line size-3! text-text-accent"
                   aria-hidden="true"
                 />
-              </button>
+              </Button>
             ) : (
               <a
-                className="flex cursor-pointer items-center gap-0.5 px-3 py-1.5"
+                className="flex cursor-pointer items-center gap-0.5 rounded-md px-3 py-1.5 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                 href={getMarketplaceCategoryUrl(PluginCategoryEnum.model, { theme })}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -125,8 +139,8 @@ function MarketplaceSection({
               </a>
             )}
           </div>
-        )}
-      </div>
+        </CollapsiblePanel>
+      </Collapsible>
     </>
   )
 }

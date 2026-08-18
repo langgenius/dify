@@ -71,12 +71,17 @@ class ServerSettings(BaseSettings):
         ge=1,
         le=E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
     )
-    e2b_shellctl_auth_token: str = ""
     e2b_shellctl_port: int = Field(default=5004, ge=1, le=65535)
     agent_stub_api_base_url: str | None = Field(default=None, validation_alias="DIFY_AGENT_STUB_API_BASE_URL")
     sandbox_files_base_url: str | None = Field(
         default=None,
         validation_alias="DIFY_AGENT_SANDBOX_FILES_BASE_URL",
+    )
+    stub_upload_file_size_limit: int = Field(
+        default=50,
+        ge=0,
+        description="Maximum Agent Stub upload size in MiB",
+        validation_alias="DIFY_AGENT_STUB_UPLOAD_FILE_SIZE_LIMIT",
     )
     server_secret_key: str | None = None
     api_token: str | None = None
@@ -205,7 +210,6 @@ class ServerSettings(BaseSettings):
                 e2b_api_key=self.e2b_api_key,
                 e2b_template=self.e2b_template,
                 e2b_active_timeout_seconds=self.e2b_active_timeout_seconds,
-                e2b_shellctl_auth_token=self.e2b_shellctl_auth_token,
                 e2b_shellctl_port=self.e2b_shellctl_port,
             )
         )
@@ -224,6 +228,7 @@ class ServerSettings(BaseSettings):
             inner_api_url=self.inner_api_url,
             inner_api_key=self.inner_api_key,
             sandbox_files_base_url=self.sandbox_files_base_url,
+            max_upload_size_bytes=self.stub_upload_file_size_limit * 1024 * 1024,
             timeout=self.create_outbound_http_timeout(),
         )
 
