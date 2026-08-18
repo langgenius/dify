@@ -21,7 +21,6 @@ from core.tools.entities.tool_entities import (
 )
 
 from .base import TypeBase
-from .engine import db
 from .enums import PermissionEnum
 from .model import Account, App, Tenant
 from .types import EnumText, LongText, StringUUID
