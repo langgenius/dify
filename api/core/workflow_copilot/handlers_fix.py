@@ -1,11 +1,10 @@
-"""Run-fix handlers: pure ``(env, turn, session, fc) -> StepResult`` steps.
+"""Fix-flow handlers: pure ``(env, turn, session, fc) -> StepResult`` steps.
 
-Port of the run-fix subset of
-dify-enterprise/server/pkg/enterprise/biz/copilot/handlers_fix.go
-(``handlers_fix.go:9-270,316-347``). The checklist handlers
-(``handle_checklist_diagnose`` / ``handle_await_recheck`` /
-``decode_checklist_errors``) and the merged ``fix_registry()`` are Task 7 —
-deliberately not included here.
+Port of dify-enterprise/server/pkg/enterprise/biz/copilot/handlers_fix.go —
+both the run-fix subset (``handlers_fix.go:9-270,316-347``, Task 6) and the
+checklist subset + merged registry (``handlers_fix.go:18-36,72,272,303``,
+Task 7). ``checklist.propose`` deliberately reuses ``handle_propose`` (as Go
+does) rather than defining a duplicate handler.
 
 Deltas from the Go source (per the P1 port plan's Global Constraints / ADR):
 
@@ -31,6 +30,7 @@ from typing import Any
 
 from core.workflow_copilot.models import (
     ChangeSet,
+    ChecklistError,
     ConversationItem,
     FixContext,
     NodeOutput,
@@ -40,18 +40,22 @@ from core.workflow_copilot.models import (
     TestInput,
     Turn,
 )
-from core.workflow_copilot.runner import Env, StepResult
+from core.workflow_copilot.runner import Env, Handler, StepResult
 from core.workflow_copilot.state import PcState
 
 __all__ = [
     "action_string",
     "append_item",
+    "decode_checklist_errors",
     "first_failed_node",
+    "fix_registry",
     "handle_apply",
     "handle_await_approval",
     "handle_await_decision",
+    "handle_await_recheck",
     "handle_await_testdata",
     "handle_await_verify",
+    "handle_checklist_diagnose",
     "handle_diagnose",
     "handle_propose",
     "handle_publish",
@@ -278,3 +282,134 @@ def handle_publish(env: Env, turn: Turn, s: Session, fc: FixContext) -> StepResu
     env.dify.publish(s.app_id, turn.actor)
     items = append_item(fc, "notice", {"text": "published"})
     return StepResult(next=PcState.SUCCESS, context=fc, items=items)
+
+
+# ---- checklist handlers -----------------------------------------------------
+
+
+def handle_checklist_diagnose(env: Env, turn: Turn, s: Session, fc: FixContext) -> StepResult:
+    """(working) Mirrors ``handle_diagnose`` but diagnoses from the
+    pre-publish checklist's config errors instead of a failed run's node
+    outputs — there is no ``fc.failed_run_id`` on this path, so no run
+    lookup. Port of ``handlers_fix.go:72``."""
+    graph, graph_hash = env.dify.read_graph(s.app_id, turn.actor)
+    diagnosis = env.agent.diagnose_checklist(fc.checklist_errors, graph)
+    fc.diagnosis = diagnosis
+    fc.last_snapshot_hash = graph_hash
+
+    items = append_item(
+        fc,
+        "diagnosis",
+        {
+            "culprit_node_id": diagnosis.culprit_node_id,
+            "root_cause": diagnosis.root_cause,
+            "source": "checklist",
+        },
+    )
+    return StepResult(
+        next=PcState.CHECKLIST_PROPOSE,
+        context=fc,
+        items=items,
+        checkpoint=Snapshot(session_id=s.id, hash=graph_hash, graph=graph),
+    )
+
+
+def handle_await_recheck(env: Env, turn: Turn, s: Session, fc: FixContext) -> StepResult:
+    """(waiting) The checklist-fix counterpart of ``handle_await_verify``:
+    instead of running the workflow, the caller re-runs the pre-publish
+    checklist and reports the result via a ``"recheck"`` action. On ``undo``
+    the flow ends (recorded intent only, matching ``handle_await_decision``'s
+    undo). If the checklist now passes, hand off to the shared
+    ``fix.await_decision`` gate (publish / keep / re-fix / undo). Otherwise
+    the caller supplies the still-failing entries in
+    ``payload["remaining"]``, which replace ``fc.checklist_errors``, and the
+    flow loops back to ``checklist.diagnose`` to re-fix. Port of
+    ``handlers_fix.go:272``."""
+    if turn.action is not None and turn.action.kind == "undo":
+        items = append_item(fc, "notice", {"text": "revert requested"})
+        return StepResult(next=PcState.SUCCESS, context=fc, items=items)
+
+    passed = False
+    if turn.action is not None:
+        value = turn.action.payload.get("passed")
+        if isinstance(value, bool):
+            passed = value
+    if passed:
+        items = append_item(fc, "verify-result", {"passed": True, "source": "checklist"})
+        return StepResult(next=PcState.FIX_AWAIT_DECISION, context=fc, items=items)
+
+    # residual checklist errors: reload them and loop back to re-diagnose.
+    if turn.action is not None:
+        raw = turn.action.payload.get("remaining")
+        if isinstance(raw, list):
+            fc.checklist_errors = decode_checklist_errors(raw)
+    fc.diagnosis, fc.staged_repair, fc.risk, fc.change_set = None, [], None, None
+    items = append_item(fc, "notice", {"text": "checklist still failing, re-diagnosing"})
+    return StepResult(next=PcState.CHECKLIST_DIAGNOSE, context=fc, items=items)
+
+
+def decode_checklist_errors(raw: list) -> list[ChecklistError]:
+    """Decode a checklist-recheck action's loosely-typed ``remaining``
+    payload (JSON objects decoded as ``list[dict]``, mirroring Go's
+    ``[]any``/``map[string]any``) into ``list[ChecklistError]`` — the same
+    JSON round-trip Go's ``decodeChecklistErrors`` (``handlers_fix.go:303``)
+    does via ``json.Marshal``/``json.Unmarshal``, mirroring how the ent layer
+    maps JSON columns onto typed structs. A checklist recheck action is
+    best-effort user input, not a persisted commit: like Go's
+    ``json.Unmarshal`` failing the whole decode on the first type mismatch
+    it hits, any entry that isn't a well-typed ``ChecklistError`` drops the
+    ENTIRE batch (returns ``[]``) rather than raising or partially decoding.
+    """
+    out: list[ChecklistError] = []
+    for entry in raw:
+        if not isinstance(entry, dict):
+            return []
+        node_id = entry.get("node_id", "")
+        node_type = entry.get("node_type", "")
+        title = entry.get("title", "")
+        messages = entry.get("messages", [])
+        unconnected = entry.get("unconnected", False)
+        plugin_missing = entry.get("plugin_missing", False)
+        if (
+            not isinstance(node_id, str)
+            or not isinstance(node_type, str)
+            or not isinstance(title, str)
+            or not isinstance(messages, list)
+            or not all(isinstance(m, str) for m in messages)
+            or not isinstance(unconnected, bool)
+            or not isinstance(plugin_missing, bool)
+        ):
+            return []
+        out.append(
+            ChecklistError(
+                node_id=node_id,
+                node_type=node_type,
+                title=title,
+                messages=list(messages),
+                unconnected=unconnected,
+                plugin_missing=plugin_missing,
+            )
+        )
+    return out
+
+
+def fix_registry() -> dict[PcState, Handler]:
+    """The handler table for the Fix flow — the nine Fix states plus the
+    checklist-fix states, which feed into the same
+    propose/apply/verify/publish flow via a shared ``fc.source`` branch in
+    ``handle_apply``. Port of Go ``FixRegistry`` (``handlers_fix.go:18-36``).
+    """
+    return {
+        PcState.FIX_DIAGNOSE: handle_diagnose,
+        PcState.FIX_PROPOSE: handle_propose,
+        PcState.FIX_AWAIT_APPROVAL: handle_await_approval,
+        PcState.FIX_APPLY: handle_apply,
+        PcState.FIX_AWAIT_VERIFY: handle_await_verify,
+        PcState.FIX_AWAIT_TESTDATA: handle_await_testdata,
+        PcState.FIX_VERIFY: handle_verify,
+        PcState.FIX_AWAIT_DECISION: handle_await_decision,
+        PcState.FIX_PUBLISH: handle_publish,
+        PcState.CHECKLIST_DIAGNOSE: handle_checklist_diagnose,
+        PcState.CHECKLIST_PROPOSE: handle_propose,
+        PcState.CHECKLIST_AWAIT_RECHECK: handle_await_recheck,
+    }
