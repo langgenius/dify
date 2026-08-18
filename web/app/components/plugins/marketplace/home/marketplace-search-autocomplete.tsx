@@ -14,6 +14,7 @@ import {
   AutocompletePopup,
   AutocompletePortal,
   AutocompletePositioner,
+  AutocompleteStatus,
 } from '@langgenius/dify-ui/autocomplete'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery } from '@tanstack/react-query'
@@ -153,8 +154,10 @@ export function MarketplaceSearchAutocomplete({
       : []
   const suggestions = [...templateSuggestions, ...pluginSuggestions]
   const isSearching = isDebouncing || pluginQuery.isFetching || templateQuery.isFetching
-  // Open only when there is something to show; do not flash a searching status.
-  const showDropdown = isOpen && hasQuery && (!isSearching || suggestions.length > 0)
+  // Keep open tied to the typing session so outside-press can dismiss during
+  // debounce/fetch. Pending, empty, and error copy live inside the popup.
+  const hasTypedQuery = Boolean(value.trim())
+  const isPopupOpen = isOpen && hasTypedQuery
   // A failed request must not read as "nothing matched"; when every source in
   // scope errored and nothing is displayable, surface a load failure instead.
   const hasLoadError =
@@ -179,7 +182,7 @@ export function MarketplaceSearchAutocomplete({
         onValueChange(nextValue)
         setIsOpen(Boolean(nextValue.trim()))
       }}
-      open={showDropdown}
+      open={isPopupOpen}
       openOnInputClick
       submitOnItemClick={Boolean(inputName)}
       value={value}
@@ -206,7 +209,7 @@ export function MarketplaceSearchAutocomplete({
           />
         )}
       </AutocompleteInputGroup>
-      <AutocompletePortal hidden={!showDropdown}>
+      <AutocompletePortal hidden={!isPopupOpen}>
         <AutocompletePositioner sideOffset={8}>
           <AutocompletePopup className="max-w-[420px]" aria-busy={isSearching || undefined}>
             <AutocompleteList<MarketplaceSuggestion>>
@@ -264,7 +267,12 @@ export function MarketplaceSearchAutocomplete({
                 </AutocompleteItem>
               )}
             </AutocompleteList>
-            {!isSearching && <AutocompleteEmpty>{emptyText}</AutocompleteEmpty>}
+            <AutocompleteEmpty>
+              {!isSearching && suggestions.length === 0 ? emptyText : null}
+            </AutocompleteEmpty>
+            <AutocompleteStatus>
+              {isSearching ? t(($) => $.loading, { ns: 'common' }) : null}
+            </AutocompleteStatus>
           </AutocompletePopup>
         </AutocompletePositioner>
       </AutocompletePortal>
