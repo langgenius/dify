@@ -45,9 +45,24 @@ RUN sharp_runtime_source="$(dirname "$(realpath apps/api/node_modules/sharp)")" 
 
 FROM node:22-bookworm-slim
 
-ENV NODE_ENV=production
+ENV NODE_ENV=production \
+    KNOWLEDGE_PDF_RASTERIZER=poppler \
+    KNOWLEDGE_PDF_RASTERIZER_DPI=144 \
+    KNOWLEDGE_PDF_RASTERIZER_THUMBNAIL_DPI=48 \
+    KNOWLEDGE_PDF_RASTERIZER_TIMEOUT_MS=30000 \
+    KNOWLEDGE_PDF_RASTERIZER_MAX_ASSETS=500 \
+    KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY=2
 
 WORKDIR /workspace
+
+# PDF image elements are rasterized outside Unstructured. Keep Poppler in the
+# final image and fail the build if the executable is not usable on the target
+# platform. Deployments can set KNOWLEDGE_PDF_RASTERIZER=off as a kill switch.
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends poppler-utils \
+    && rm -rf /var/lib/apt/lists/* \
+    && command -v pdftoppm >/dev/null \
+    && pdftoppm -v >/dev/null 2>&1
 
 COPY --from=builder /workspace/apps/api/dist/server.mjs ./server.mjs
 COPY --from=builder /workspace/apps/api/dist/migrate.mjs ./migrate.mjs

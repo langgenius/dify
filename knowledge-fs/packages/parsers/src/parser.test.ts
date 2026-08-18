@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   ProviderInputError,
   ProviderRateLimitError,
+  ProviderRequestError,
   ProviderResponseError,
   createNativeHtmlParser,
   createNativeMarkdownParser,
@@ -925,7 +926,7 @@ describe("parser adapters", () => {
       metadata: {
         filename: "report.pdf",
         mimeType: "application/pdf",
-        parserVersion: "unstructured@4",
+        parserVersion: "unstructured@5",
       },
       parser: "unstructured",
       version: 1,
@@ -986,54 +987,94 @@ describe("parser adapters", () => {
     ]);
   });
 
-  it.each([
-    ["report.pdf", "application/pdf"],
-    ["handbook.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
-    ["briefing.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"],
-    ["forecast.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],
-  ])(
-    "uses local image extraction and adaptive strategy when parsing %s",
-    async (filename, mimeType) => {
+  it.each(["application/pdf", " Application/PDF; charset=binary "])(
+    "requests PDF image and table payloads for MIME %s without an external handler",
+    async (mimeType) => {
       const parser = createUnstructuredParserClient({
         endpoint: "https://unstructured.example.test",
         fetch: async (request) => {
-          const parsedRequest = request instanceof Request ? request : new Request(request);
-          const form = await parsedRequest.formData();
+          const form = await (request instanceof Request
+            ? request
+            : new Request(request)
+          ).formData();
 
-          expect(form.get("strategy")).toBe("auto");
-          expect(form.getAll("extract_image_block_types")).toEqual([]);
-          expect(form.get("extract_image_block_to_payload")).toBeNull();
-          expect((form.get("files") as File).name).toBe(filename);
+          expect(form.get("strategy")).toBe("hi_res");
+          expect(form.getAll("extract_image_block_types")).toEqual(["Image", "Table"]);
+          expect(form.get("extract_image_block_to_payload")).toBe("true");
 
-          return new Response("[]", {
-            headers: { "content-type": "application/json" },
-            status: 200,
-          });
+          return new Response("[]", { status: 200 });
         },
-        generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2c51",
-        now: () => createdAt,
       });
 
       await expect(
         parser.parse({
           body: new Uint8Array([1, 2, 3]),
           documentAssetId,
-          filename,
+          filename: "report.pdf",
           mimeType,
+          parserHints: { requiresImages: true },
           version: 1,
         }),
       ).resolves.toMatchObject({
-        metadata: { filename, mimeType, parserVersion: "unstructured@4" },
+        metadata: { parserVersion: "unstructured@5" },
         parser: "unstructured",
       });
     },
   );
+
+  it("keeps hi_res PDF coordinates but suppresses payloads for an explicit external handler", async () => {
+    const parser = createUnstructuredParserClient({
+      endpoint: "https://unstructured.example.test",
+      fetch: async (request) => {
+        const form = await (request instanceof Request ? request : new Request(request)).formData();
+
+        expect(form.get("strategy")).toBe("hi_res");
+        expect(form.getAll("extract_image_block_types")).toEqual([]);
+        expect(form.get("extract_image_block_to_payload")).toBeNull();
+
+        return new Response("[]", { status: 200 });
+      },
+    });
+
+    await parser.parse({
+      body: new Uint8Array([1, 2, 3]),
+      documentAssetId,
+      filename: "report.pdf",
+      mimeType: "application/pdf",
+      parserHints: { imagesHandledExternally: true, requiresImages: true },
+      version: 1,
+    });
+  });
+
+  it("does not request image payloads when the caller does not require images", async () => {
+    const parser = createUnstructuredParserClient({
+      endpoint: "https://unstructured.example.test",
+      fetch: async (request) => {
+        const form = await (request instanceof Request ? request : new Request(request)).formData();
+
+        expect(form.get("strategy")).toBe("auto");
+        expect(form.getAll("extract_image_block_types")).toEqual([]);
+        expect(form.get("extract_image_block_to_payload")).toBeNull();
+
+        return new Response("[]", { status: 200 });
+      },
+    });
+
+    await parser.parse({
+      body: new Uint8Array([1, 2, 3]),
+      documentAssetId,
+      filename: "report.pdf",
+      mimeType: "application/pdf",
+      version: 1,
+    });
+  });
 
   it.each([
     [{ layoutComplexity: "simple" as const }, "fast", false],
     [{ requiresOcr: true }, "hi_res", false],
     [{ requiresTables: true }, "hi_res", false],
     [{ requiresImages: true }, "hi_res", true],
+    [{ imagesHandledExternally: true, requiresImages: true }, "hi_res", true],
   ])(
     "selects %s parsing hints without forcing hi_res for every document",
     async (parserHints, expectedStrategy, expectedImages) => {
@@ -1060,6 +1101,46 @@ describe("parser adapters", () => {
       });
     },
   );
+
+  it("includes Unstructured request strategy and parser hints in artifact hashes", async () => {
+    const parser = createUnstructuredParserClient({
+      endpoint: "https://unstructured.example.test",
+      fetch: async () => new Response("[]", { status: 200 }),
+    });
+    const parseWithHints = (parserHints: {
+      readonly imagesHandledExternally?: boolean;
+      readonly layoutComplexity?: "complex" | "simple";
+      readonly requiresImages?: boolean;
+      readonly requiresOcr?: boolean;
+      readonly requiresTables?: boolean;
+    }) =>
+      parser.parse({
+        body: new Uint8Array([1, 2, 3]),
+        documentAssetId,
+        filename: "report.pdf",
+        mimeType: "application/pdf",
+        parserHints,
+        version: 1,
+      });
+
+    const [fast, ocr, tables, providerImages, externalImages] = await Promise.all([
+      parseWithHints({ layoutComplexity: "simple" }),
+      parseWithHints({ requiresOcr: true }),
+      parseWithHints({ requiresTables: true }),
+      parseWithHints({ requiresImages: true }),
+      parseWithHints({ imagesHandledExternally: true, requiresImages: true }),
+    ]);
+
+    expect(
+      new Set([
+        fast.artifactHash,
+        ocr.artifactHash,
+        tables.artifactHash,
+        providerImages.artifactHash,
+        externalImages.artifactHash,
+      ]).size,
+    ).toBe(5);
+  });
 
   it.each([
     [
@@ -1093,8 +1174,17 @@ describe("parser adapters", () => {
       );
       const parser = createUnstructuredParserClient({
         endpoint: "https://unstructured.example.test",
-        fetch: async () =>
-          new Response(
+        fetch: async (request) => {
+          const form = await (request instanceof Request
+            ? request
+            : new Request(request)
+          ).formData();
+
+          expect(form.get("strategy")).toBe("auto");
+          expect(form.getAll("extract_image_block_types")).toEqual([]);
+          expect(form.get("extract_image_block_to_payload")).toBeNull();
+
+          return new Response(
             JSON.stringify([
               {
                 metadata: { page_number: 1 },
@@ -1103,7 +1193,8 @@ describe("parser adapters", () => {
               },
             ]),
             { headers: { "content-type": "application/json" }, status: 200 },
-          ),
+          );
+        },
         generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f2c52",
         now: () => createdAt,
       });
@@ -1113,6 +1204,7 @@ describe("parser adapters", () => {
         documentAssetId,
         filename,
         mimeType,
+        parserHints: { requiresImages: true },
         version: 1,
       });
 
@@ -1526,12 +1618,10 @@ describe("parser adapters", () => {
     expect(requestedUrl).toBe("https://unstructured.example.test/general/v0/general");
   });
 
-  it("retries retryable Unstructured failures and propagates AbortSignal", async () => {
+  it("retries retryable Unstructured failures", async () => {
     const statuses = [429, 200];
     const delays: number[] = [];
     const seenAbortedSignals: boolean[] = [];
-    const controller = new AbortController();
-    controller.abort();
     const parser = createUnstructuredParserClient({
       endpoint: "https://unstructured.example.test",
       fetch: async (request) => {
@@ -1559,7 +1649,6 @@ describe("parser adapters", () => {
         documentAssetId,
         filename: "retry.pdf",
         mimeType: "application/pdf",
-        signal: controller.signal,
         version: 1,
       }),
     ).resolves.toMatchObject({
@@ -1572,7 +1661,107 @@ describe("parser adapters", () => {
       parser: "unstructured",
     });
     expect(delays).toEqual([10]);
-    expect(seenAbortedSignals).toEqual([true, true]);
+    expect(seenAbortedSignals).toEqual([false, false]);
+  });
+
+  it("retries transient network failures without sleeping when retryDelayMs is zero", async () => {
+    let fetchCalls = 0;
+    let sleepCalls = 0;
+    const parser = createUnstructuredParserClient({
+      endpoint: "https://unstructured.example.test",
+      fetch: async () => {
+        fetchCalls += 1;
+        if (fetchCalls === 1) throw new TypeError("connection reset");
+        return new Response(JSON.stringify([{ text: "Recovered", type: "NarrativeText" }]), {
+          status: 200,
+        });
+      },
+      maxRetries: 1,
+      retryDelayMs: 0,
+      sleep: async () => {
+        sleepCalls += 1;
+      },
+    });
+
+    await expect(
+      parser.parse({
+        body: new Uint8Array([1]),
+        documentAssetId,
+        filename: "network-retry.pdf",
+        mimeType: "application/pdf",
+        version: 1,
+      }),
+    ).resolves.toMatchObject({ parser: "unstructured" });
+    expect(fetchCalls).toBe(2);
+    expect(sleepCalls).toBe(0);
+  });
+
+  it("preserves caller cancellation while an Unstructured request is active", async () => {
+    const controller = new AbortController();
+    let fetchStarted = false;
+    const parser = createUnstructuredParserClient({
+      endpoint: "https://unstructured.example.test",
+      fetch: async (input) => {
+        const request = input instanceof Request ? input : new Request(input);
+        fetchStarted = true;
+        return await new Promise<Response>((_resolve, reject) => {
+          request.signal.addEventListener("abort", () => reject(request.signal.reason), {
+            once: true,
+          });
+        });
+      },
+    });
+    const pending = parser.parse({
+      body: new Uint8Array([1]),
+      documentAssetId,
+      filename: "cancel-active.pdf",
+      mimeType: "application/pdf",
+      signal: controller.signal,
+      version: 1,
+    });
+
+    await waitForCondition(() => fetchStarted);
+    controller.abort();
+
+    await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+  });
+
+  it("validates Unstructured retry and resource bounds", () => {
+    const base = {
+      endpoint: "https://unstructured.example.test",
+      fetch: async () => new Response("[]", { status: 200 }),
+    };
+
+    expect(() => createUnstructuredParserClient({ ...base, maxRetries: -1 })).toThrow(
+      "maxRetries must be a non-negative integer",
+    );
+    expect(() => createUnstructuredParserClient({ ...base, maxRetries: 0.5 })).toThrow(
+      "maxRetries must be a non-negative integer",
+    );
+    expect(() => createUnstructuredParserClient({ ...base, retryDelayMs: -1 })).toThrow(
+      "retryDelayMs must be a non-negative integer",
+    );
+    expect(() => createUnstructuredParserClient({ ...base, retryDelayMs: 0.5 })).toThrow(
+      "retryDelayMs must be a non-negative integer",
+    );
+    expect(() => createUnstructuredParserClient({ ...base, maxConcurrency: 0 })).toThrow(
+      "maxConcurrency must be an integer between 1 and 32",
+    );
+    expect(() => createUnstructuredParserClient({ ...base, maxConcurrency: 33 })).toThrow(
+      "maxConcurrency must be an integer between 1 and 32",
+    );
+    expect(() => createUnstructuredParserClient({ ...base, maxConcurrency: 1.5 })).toThrow(
+      "maxConcurrency must be an integer between 1 and 32",
+    );
+    expect(() => createUnstructuredParserClient({ ...base, requestTimeoutMs: 0 })).toThrow(
+      "requestTimeoutMs must be an integer between 1 and 600000",
+    );
+    expect(() => createUnstructuredParserClient({ ...base, requestTimeoutMs: 600_001 })).toThrow(
+      "requestTimeoutMs must be an integer between 1 and 600000",
+    );
+    expect(() => createUnstructuredParserClient({ ...base, requestTimeoutMs: 1.5 })).toThrow(
+      "requestTimeoutMs must be an integer between 1 and 600000",
+    );
   });
 
   it("rejects failed, invalid, and oversized Unstructured responses", async () => {
@@ -1706,7 +1895,217 @@ describe("parser adapters", () => {
       }),
     ).rejects.toThrow("Unstructured parser response exceeds maxResponseBytes=3");
   });
+
+  it("cancels an oversized streaming Unstructured response before reading later chunks", async () => {
+    let canceled = false;
+    let pullCount = 0;
+    const responseBody = new ReadableStream<Uint8Array>(
+      {
+        cancel: () => {
+          canceled = true;
+        },
+        pull: (controller) => {
+          pullCount += 1;
+          if (pullCount === 1) {
+            controller.enqueue(new Uint8Array([91, 123]));
+            return;
+          }
+          if (pullCount === 2) {
+            controller.enqueue(new Uint8Array([125, 93]));
+            return;
+          }
+          controller.enqueue(new Uint8Array([32, 32]));
+        },
+      },
+      { highWaterMark: 0 },
+    );
+    const parser = createUnstructuredParserClient({
+      endpoint: "https://unstructured.example.test",
+      fetch: async () => new Response(responseBody, { status: 200 }),
+      maxResponseBytes: 3,
+    });
+
+    await expect(
+      parser.parse({
+        body: new Uint8Array([1]),
+        documentAssetId,
+        filename: "streamed.pdf",
+        mimeType: "application/pdf",
+        version: 1,
+      }),
+    ).rejects.toThrow("Unstructured parser response exceeds maxResponseBytes=3");
+    expect(canceled).toBe(true);
+    expect(pullCount).toBe(2);
+  });
+
+  it("limits concurrent Unstructured requests and releases queued calls in FIFO order", async () => {
+    const releases: Array<() => void> = [];
+    let active = 0;
+    let maxActive = 0;
+    const parser = createUnstructuredParserClient({
+      endpoint: "https://unstructured.example.test",
+      fetch: async () => {
+        active += 1;
+        maxActive = Math.max(maxActive, active);
+        await new Promise<void>((resolve) => releases.push(resolve));
+        active -= 1;
+        return new Response("[]", { status: 200 });
+      },
+      maxConcurrency: 2,
+    });
+    const parses = Array.from({ length: 4 }, (_, index) =>
+      parser.parse({
+        body: new Uint8Array([index]),
+        documentAssetId,
+        filename: `concurrent-${index}.pdf`,
+        mimeType: "application/pdf",
+        version: 1,
+      }),
+    );
+
+    await waitForCondition(() => releases.length === 2);
+    expect(active).toBe(2);
+    for (const release of releases.splice(0, 2)) release();
+    await waitForCondition(() => releases.length === 2);
+    for (const release of releases.splice(0, 2)) release();
+
+    await expect(Promise.all(parses)).resolves.toHaveLength(4);
+    expect(maxActive).toBe(2);
+  });
+
+  it("removes an aborted Unstructured request while it waits for the concurrency gate", async () => {
+    let fetchCalls = 0;
+    let releaseFirst: (() => void) | undefined;
+    const parser = createUnstructuredParserClient({
+      endpoint: "https://unstructured.example.test",
+      fetch: async () => {
+        fetchCalls += 1;
+        await new Promise<void>((resolve) => {
+          releaseFirst = resolve;
+        });
+        return new Response("[]", { status: 200 });
+      },
+      maxConcurrency: 1,
+    });
+    const first = parser.parse({
+      body: new Uint8Array([1]),
+      documentAssetId,
+      filename: "first.pdf",
+      mimeType: "application/pdf",
+      version: 1,
+    });
+    await waitForCondition(() => fetchCalls === 1);
+    const controller = new AbortController();
+    const queued = parser.parse({
+      body: new Uint8Array([2]),
+      documentAssetId,
+      filename: "queued.pdf",
+      mimeType: "application/pdf",
+      signal: controller.signal,
+      version: 1,
+    });
+    controller.abort();
+
+    await expect(queued).rejects.toMatchObject({ name: "AbortError" });
+    expect(fetchCalls).toBe(1);
+    releaseFirst?.();
+    await expect(first).resolves.toMatchObject({ parser: "unstructured" });
+  });
+
+  it("bounds stalled Unstructured response headers and response bodies", async () => {
+    const stalledHeaders = createUnstructuredParserClient({
+      endpoint: "https://unstructured.example.test",
+      fetch: async (input) => {
+        const request = input instanceof Request ? input : new Request(input);
+        return await new Promise<Response>((_resolve, reject) => {
+          request.signal.addEventListener("abort", () => reject(request.signal.reason), {
+            once: true,
+          });
+        });
+      },
+      requestTimeoutMs: 10,
+    });
+    const stalledHeadersResult = stalledHeaders.parse({
+      body: new Uint8Array([1]),
+      documentAssetId,
+      filename: "headers.pdf",
+      mimeType: "application/pdf",
+      version: 1,
+    });
+    await expect(stalledHeadersResult).rejects.toMatchObject({
+      code: "provider_request_failed",
+      retryable: true,
+    });
+
+    const stalledBody = createUnstructuredParserClient({
+      endpoint: "https://unstructured.example.test",
+      fetch: async (input) => {
+        const request = input instanceof Request ? input : new Request(input);
+        return new Response(
+          new ReadableStream<Uint8Array>({
+            start: (controller) => {
+              request.signal.addEventListener(
+                "abort",
+                () => controller.error(request.signal.reason),
+                { once: true },
+              );
+            },
+          }),
+          { status: 200 },
+        );
+      },
+      requestTimeoutMs: 10,
+    });
+    const stalledBodyResult = stalledBody.parse({
+      body: new Uint8Array([1]),
+      documentAssetId,
+      filename: "body.pdf",
+      mimeType: "application/pdf",
+      version: 1,
+    });
+    await expect(stalledBodyResult).rejects.toMatchObject({
+      code: "provider_request_failed",
+      retryable: true,
+    });
+  });
+
+  it("classifies transient provider failures as retryable without retrying invalid input", async () => {
+    const networkFailure = createUnstructuredParserClient({
+      endpoint: "https://unstructured.example.test",
+      fetch: async () => {
+        throw new TypeError("connection reset");
+      },
+    }).parse({
+      body: new Uint8Array([1]),
+      documentAssetId,
+      filename: "network.pdf",
+      mimeType: "application/pdf",
+      version: 1,
+    });
+    await expect(networkFailure).rejects.toBeInstanceOf(ProviderRequestError);
+    await expect(networkFailure).rejects.toMatchObject({ retryable: true });
+
+    const inputFailure = createUnstructuredParserClient({
+      endpoint: "https://unstructured.example.test",
+      fetch: async () => new Response("bad request", { status: 400 }),
+    }).parse({
+      body: new Uint8Array([1]),
+      documentAssetId,
+      filename: "input.pdf",
+      mimeType: "application/pdf",
+      version: 1,
+    });
+    await expect(inputFailure).rejects.toMatchObject({ retryable: false, status: 400 });
+  });
 });
+
+async function waitForCondition(condition: () => boolean): Promise<void> {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    if (condition()) return;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+  throw new Error("Timed out waiting for parser test condition");
+}
 
 describe("structured data parser coverage", () => {
   const structured = () =>

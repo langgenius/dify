@@ -10,12 +10,34 @@ export interface DifyObjectStorageOptions {
   readonly baseUrl: string;
   readonly fetch?: typeof globalThis.fetch;
   readonly maxObjectBytes?: number;
+  readonly requestTimeoutMs?: number;
 }
 
 const defaultMaxObjectBytes = 64 * 1024 * 1024;
+const defaultRequestTimeoutMs = 60_000;
 const metadataHeader = "X-Knowledge-FS-Metadata";
 const checksumHeader = "X-Knowledge-FS-Checksum-Sha256";
 const contentTypeHeader = "X-Knowledge-FS-Content-Type";
+
+export class DifyObjectStorageRequestError extends Error {
+  readonly code = "dify_object_storage_request_failed";
+  readonly retryable: boolean;
+  readonly status?: number;
+
+  constructor(
+    message: string,
+    options: {
+      readonly cause?: unknown;
+      readonly retryable: boolean;
+      readonly status?: number;
+    },
+  ) {
+    super(message, options.cause === undefined ? undefined : { cause: options.cause });
+    this.name = "DifyObjectStorageRequestError";
+    this.retryable = options.retryable;
+    if (options.status !== undefined) this.status = options.status;
+  }
+}
 
 /**
  * Uses Dify's authenticated inner API as the only physical object-storage owner. The adapter
@@ -27,77 +49,134 @@ export function createDifyObjectStorageAdapter({
   baseUrl,
   fetch = globalThis.fetch,
   maxObjectBytes = defaultMaxObjectBytes,
+  requestTimeoutMs = defaultRequestTimeoutMs,
 }: DifyObjectStorageOptions): ObjectStorageAdapter {
   const normalizedBaseUrl = requiredBaseUrl(baseUrl);
   const normalizedApiKey = requiredString(apiKey, "Dify inner API key");
   positiveSafeInteger(maxObjectBytes, "maxObjectBytes");
+  positiveSafeInteger(requestTimeoutMs, "requestTimeoutMs");
 
-  const request = (path: string, init: RequestInit = {}) =>
-    fetch(new URL(path, normalizedBaseUrl), {
-      ...init,
-      headers: {
-        ...headersRecord(init.headers),
-        "X-Inner-Api-Key": normalizedApiKey,
-      },
-    });
+  const request = async (path: string, init: RequestInit = {}) => {
+    const deadline = createRequestDeadline(requestTimeoutMs);
+    try {
+      const response = await fetch(new URL(path, normalizedBaseUrl), {
+        ...init,
+        headers: {
+          ...headersRecord(init.headers),
+          "X-Inner-Api-Key": normalizedApiKey,
+        },
+        signal: deadline.signal,
+      });
+      return { deadline, response };
+    } catch (error) {
+      deadline.dispose();
+      throw requestTransportError(error, deadline.expired(), requestTimeoutMs);
+    }
+  };
+
+  const withResponse = async <T>(
+    path: string,
+    init: RequestInit,
+    consume: (response: Response) => Promise<T> | T,
+  ): Promise<T> => {
+    const { deadline, response } = await request(path, init);
+    try {
+      const result = await consume(response);
+      deadline.throwIfExpired();
+      return result;
+    } catch (error) {
+      if (deadline.expired()) {
+        throw requestTransportError(error, true, requestTimeoutMs);
+      }
+      throw error;
+    } finally {
+      deadline.dispose();
+    }
+  };
 
   return {
     kind: "dify",
     deleteObject: async (key) => {
-      const response = await request(
+      await withResponse(
         objectPath("/inner/api/knowledge-fs/storage/object", { key }),
         {
           method: "DELETE",
         },
+        (response) => assertStatus(response, [204]),
       );
-      assertStatus(response, [204]);
     },
     getObject: async (key) => {
-      const response = await request(objectPath("/inner/api/knowledge-fs/storage/object", { key }));
-      if (response.status === 404) return null;
-      assertStatus(response, [200]);
-      return readBoundedBody(response, maxObjectBytes);
+      return withResponse(
+        objectPath("/inner/api/knowledge-fs/storage/object", { key }),
+        {},
+        async (response) => {
+          if (response.status === 404) return null;
+          assertStatus(response, [200]);
+          return readBoundedBody(response, maxObjectBytes);
+        },
+      );
     },
     getObjectStream: async (key) => {
-      const response = await request(objectPath("/inner/api/knowledge-fs/storage/object", { key }));
-      if (response.status === 404) return null;
-      assertStatus(response, [200]);
-      return boundedResponseStream(response, maxObjectBytes);
+      const { deadline, response } = await request(
+        objectPath("/inner/api/knowledge-fs/storage/object", { key }),
+      );
+      if (response.status === 404) {
+        deadline.dispose();
+        return null;
+      }
+      try {
+        assertStatus(response, [200]);
+        return boundedResponseStream(response, maxObjectBytes, deadline, requestTimeoutMs);
+      } catch (error) {
+        deadline.dispose();
+        throw error;
+      }
     },
     health: async () => {
       try {
-        const response = await request("/inner/api/knowledge-fs/storage/health");
-        if (!response.ok) return false;
-        const payload = asRecord(await response.json());
-        return payload?.ok === true;
+        return await withResponse(
+          "/inner/api/knowledge-fs/storage/health",
+          {},
+          async (response) => {
+            if (!response.ok) return false;
+            const payload = asRecord(await response.json());
+            return payload?.ok === true;
+          },
+        );
       } catch {
         return false;
       }
     },
     headObject: async (key) => {
-      const response = await request(
+      return withResponse(
         objectPath("/inner/api/knowledge-fs/storage/object/metadata", { key }),
+        {},
+        async (response) => {
+          if (response.status === 404) return null;
+          assertStatus(response, [200]);
+          return parseObjectMetadata(await response.json());
+        },
       );
-      if (response.status === 404) return null;
-      assertStatus(response, [200]);
-      return parseObjectMetadata(await response.json());
     },
     listObjects: async ({ cursor, limit, prefix }) => {
-      const response = await request(
+      return withResponse(
         objectPath("/inner/api/knowledge-fs/storage/objects", {
           ...(cursor ? { cursor } : {}),
           limit: String(limit),
           prefix,
         }),
+        {},
+        async (response) => {
+          assertStatus(response, [200]);
+          return parseObjectList(await response.json());
+        },
       );
-      assertStatus(response, [200]);
-      return parseObjectList(await response.json());
     },
     putObject: async (input) => {
       if (input.body.byteLength > maxObjectBytes) {
         throw new Error(`Object ${input.key} exceeds maxObjectBytes=${maxObjectBytes}`);
       }
-      const response = await request(
+      return withResponse(
         objectPath("/inner/api/knowledge-fs/storage/object", { key: input.key }),
         {
           body: requestBody(input.body),
@@ -110,9 +189,11 @@ export function createDifyObjectStorageAdapter({
           },
           method: "PUT",
         },
+        async (response) => {
+          assertStatus(response, [200]);
+          return parseObjectMetadata(await response.json());
+        },
       );
-      assertStatus(response, [200]);
-      return parseObjectMetadata(await response.json());
     },
   };
 }
@@ -164,7 +245,10 @@ function headersRecord(headers: HeadersInit | undefined): Record<string, string>
 
 function assertStatus(response: Response, expected: readonly number[]): void {
   if (!expected.includes(response.status)) {
-    throw new Error(`Dify object storage request failed with status ${response.status}`);
+    throw new DifyObjectStorageRequestError(
+      `Dify object storage request failed with status ${response.status}`,
+      { retryable: isRetryableStatus(response.status), status: response.status },
+    );
   }
 }
 
@@ -246,32 +330,97 @@ async function readBoundedBody(response: Response, maxObjectBytes: number): Prom
 function boundedResponseStream(
   response: Response,
   maxObjectBytes: number,
+  deadline?: RequestDeadline,
+  requestTimeoutMs = defaultRequestTimeoutMs,
 ): ReadableStream<Uint8Array> {
   const declaredLength = Number(response.headers.get("content-length"));
   if (Number.isFinite(declaredLength) && declaredLength > maxObjectBytes) {
     throw new Error(`Dify object storage response exceeds maxObjectBytes=${maxObjectBytes}`);
   }
   const source = response.body;
-  if (!source) return new ReadableStream({ start: (controller) => controller.close() });
+  if (!source) {
+    deadline?.dispose();
+    return new ReadableStream({ start: (controller) => controller.close() });
+  }
   const reader = source.getReader();
   let totalBytes = 0;
   return new ReadableStream<Uint8Array>({
-    cancel: (reason) => reader.cancel(reason),
+    cancel: async (reason) => {
+      try {
+        await reader.cancel(reason);
+      } finally {
+        deadline?.dispose();
+      }
+    },
     async pull(controller) {
-      const chunk = await reader.read();
-      if (chunk.done) {
-        controller.close();
-        return;
+      try {
+        const chunk = await reader.read();
+        if (chunk.done) {
+          deadline?.throwIfExpired();
+          deadline?.dispose();
+          controller.close();
+          return;
+        }
+        totalBytes += chunk.value.byteLength;
+        if (totalBytes > maxObjectBytes) {
+          await reader.cancel();
+          deadline?.dispose();
+          controller.error(
+            new Error(`Dify object storage response exceeds maxObjectBytes=${maxObjectBytes}`),
+          );
+          return;
+        }
+        controller.enqueue(chunk.value);
+      } catch (error) {
+        const timedOut = deadline?.expired() === true;
+        deadline?.dispose();
+        controller.error(timedOut ? requestTransportError(error, true, requestTimeoutMs) : error);
       }
-      totalBytes += chunk.value.byteLength;
-      if (totalBytes > maxObjectBytes) {
-        await reader.cancel();
-        controller.error(
-          new Error(`Dify object storage response exceeds maxObjectBytes=${maxObjectBytes}`),
-        );
-        return;
-      }
-      controller.enqueue(chunk.value);
     },
   });
+}
+
+interface RequestDeadline {
+  readonly signal: AbortSignal;
+  dispose(): void;
+  expired(): boolean;
+  throwIfExpired(): void;
+}
+
+function createRequestDeadline(requestTimeoutMs: number): RequestDeadline {
+  const controller = new AbortController();
+  const timeoutReason = new Error("Dify object storage request deadline exceeded");
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort(timeoutReason);
+  }, requestTimeoutMs);
+  (timer as { unref?: () => void }).unref?.();
+
+  return {
+    signal: controller.signal,
+    dispose: () => clearTimeout(timer),
+    expired: () => timedOut,
+    throwIfExpired: () => {
+      if (timedOut) throw timeoutReason;
+    },
+  };
+}
+
+function requestTransportError(
+  cause: unknown,
+  timedOut: boolean,
+  requestTimeoutMs: number,
+): DifyObjectStorageRequestError {
+  if (cause instanceof DifyObjectStorageRequestError) return cause;
+  return new DifyObjectStorageRequestError(
+    timedOut
+      ? `Dify object storage request timed out after requestTimeoutMs=${requestTimeoutMs}`
+      : "Dify object storage request failed",
+    { cause, retryable: true },
+  );
+}
+
+function isRetryableStatus(status: number): boolean {
+  return status === 408 || status === 409 || status === 425 || status === 429 || status >= 500;
 }

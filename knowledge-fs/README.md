@@ -57,6 +57,7 @@ The canonical Dify Compose service loads
 - `DATABASE_URL`
 - `DIFY_INNER_API_URL` and `DIFY_INNER_API_KEY`, injected by Dify Compose
 - `UNSTRUCTURED_API_URL` and optional `UNSTRUCTURED_API_KEY`
+- bounded Poppler PDF image rasterization settings (the API image includes `pdftoppm`)
 - KnowledgeFS capability/JWKS and document-compilation rollout settings
 
 Do not configure storage-provider credentials, model-provider keys, datasource credentials, or a

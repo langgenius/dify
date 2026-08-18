@@ -28,6 +28,8 @@ export interface ParseDocumentInput {
 }
 
 export interface ParserRouteHints {
+  /** A downstream handler can materialize PDF images from provider-supplied coordinates. */
+  readonly imagesHandledExternally?: boolean;
   readonly language?: string;
   readonly layoutComplexity?: "complex" | "simple";
   /** Request provider-side image extraction when no cheaper local extractor exists. */
@@ -49,6 +51,7 @@ export type ProviderErrorCode =
 
 export class ProviderError extends Error {
   readonly code: ProviderErrorCode;
+  readonly retryable: boolean;
   readonly status?: number;
 
   constructor(
@@ -56,16 +59,19 @@ export class ProviderError extends Error {
     {
       cause,
       code,
+      retryable = false,
       status,
     }: {
       readonly cause?: unknown;
       readonly code: ProviderErrorCode;
+      readonly retryable?: boolean;
       readonly status?: number;
     },
   ) {
     super(message, cause === undefined ? undefined : { cause });
     this.name = "ProviderError";
     this.code = code;
+    this.retryable = retryable;
     if (status !== undefined) {
       this.status = status;
     }
@@ -84,7 +90,7 @@ export class ProviderRateLimitError extends ProviderError {
     message: string,
     options: { readonly cause?: unknown; readonly status?: number } = {},
   ) {
-    super(message, { ...options, code: "provider_rate_limited" });
+    super(message, { ...options, code: "provider_rate_limited", retryable: true });
     this.name = "ProviderRateLimitError";
   }
 }
@@ -92,9 +98,19 @@ export class ProviderRateLimitError extends ProviderError {
 export class ProviderRequestError extends ProviderError {
   constructor(
     message: string,
-    options: { readonly cause?: unknown; readonly status?: number } = {},
+    options: {
+      readonly cause?: unknown;
+      readonly retryable?: boolean;
+      readonly status?: number;
+    } = {},
   ) {
-    super(message, { ...options, code: "provider_request_failed" });
+    super(message, {
+      ...options,
+      code: "provider_request_failed",
+      retryable:
+        options.retryable ??
+        (options.status !== undefined && isRetryableProviderStatus(options.status)),
+    });
     this.name = "ProviderRequestError";
   }
 }
@@ -122,7 +138,9 @@ export interface UnstructuredParserClientOptions extends NativeParserOptions {
   readonly endpoint: string;
   readonly fetch?: typeof fetch;
   readonly maxResponseBytes?: number;
+  readonly maxConcurrency?: number;
   readonly maxRetries?: number;
+  readonly requestTimeoutMs?: number;
   readonly retryDelayMs?: number;
   readonly sleep?: (ms: number) => Promise<void>;
 }
@@ -166,7 +184,9 @@ const archivePathCollator = new Intl.Collator("en", { numeric: true, sensitivity
 // Image blocks are returned as base64 in the partition JSON. Keep the response bounded while
 // leaving enough headroom for the encoded images of ordinary PDF, Office, and presentation files.
 const defaultMaxResponseBytes = 32 * 1024 * 1024;
+const defaultMaxConcurrency = 2;
 const defaultMaxRetries = 0;
+const defaultRequestTimeoutMs = 120_000;
 const defaultMaxRows = 20_000;
 const defaultRetryDelayMs = 100;
 const defaultNow = () => new Date().toISOString();
@@ -265,104 +285,195 @@ export function createUnstructuredParserClient({
   apiKey,
   endpoint,
   fetch: fetchImpl = fetch,
+  maxConcurrency = defaultMaxConcurrency,
   maxResponseBytes = defaultMaxResponseBytes,
   maxRetries = defaultMaxRetries,
+  requestTimeoutMs = defaultRequestTimeoutMs,
   retryDelayMs = defaultRetryDelayMs,
   sleep = sleepMs,
   ...options
 }: UnstructuredParserClientOptions): ParserAdapter {
   validateRetryOptions({ maxRetries, retryDelayMs });
+  validateUnstructuredResourceOptions({ maxConcurrency, requestTimeoutMs });
+  const requestGate = createAbortAwareConcurrencyGate(maxConcurrency);
 
   return {
     kind: "unstructured",
-    parse: async (input) => {
-      const parserVersion = options.parserVersion ?? "unstructured@4";
-      assertInputBounds(input.body, options.maxInputBytes ?? defaultMaxInputBytes);
-      const response = await fetchWithRetries({
-        buildRequest: () => {
-          const form = new FormData();
-          const fileBody = input.body.buffer.slice(
-            input.body.byteOffset,
-            input.body.byteOffset + input.body.byteLength,
-          ) as ArrayBuffer;
-          form.set("files", new File([fileBody], input.filename, { type: input.mimeType }));
-          form.set("coordinates", "true");
-          form.set("strategy", unstructuredPartitionStrategy(input));
-          if (shouldRequestProviderImages(input)) {
-            form.append("extract_image_block_types", "Image");
-            form.set("extract_image_block_to_payload", "true");
+    parse: async (input) =>
+      requestGate.run(async () => {
+        const deadline = createUnstructuredRequestDeadline(input.signal, requestTimeoutMs);
+        try {
+          const parserVersion = options.parserVersion ?? "unstructured@5";
+          const partitionStrategy = unstructuredPartitionStrategy(input);
+          const providerImageBlockTypes = unstructuredProviderImageBlockTypes(input);
+          assertInputBounds(input.body, options.maxInputBytes ?? defaultMaxInputBytes);
+          const response = await fetchWithRetries({
+            buildRequest: () => {
+              const form = new FormData();
+              const fileBody = input.body.buffer.slice(
+                input.body.byteOffset,
+                input.body.byteOffset + input.body.byteLength,
+              ) as ArrayBuffer;
+              form.set("files", new File([fileBody], input.filename, { type: input.mimeType }));
+              form.set("coordinates", "true");
+              form.set("strategy", partitionStrategy);
+              if (providerImageBlockTypes.length > 0) {
+                for (const blockType of providerImageBlockTypes) {
+                  form.append("extract_image_block_types", blockType);
+                }
+                form.set("extract_image_block_to_payload", "true");
+              }
+
+              return new Request(unstructuredPartitionEndpoint(endpoint), {
+                body: form,
+                method: "POST",
+                ...(apiKey ? { headers: { authorization: `Bearer ${apiKey}` } } : {}),
+                signal: deadline.signal,
+              });
+            },
+            fetchImpl,
+            maxRetries,
+            retryDelayMs,
+            sleep,
+            signal: deadline.signal,
+          });
+
+          if (!response.ok) {
+            throw providerRequestError("Unstructured parser", response.status);
           }
 
-          return new Request(unstructuredPartitionEndpoint(endpoint), {
-            body: form,
-            method: "POST",
-            ...(apiKey ? { headers: { authorization: `Bearer ${apiKey}` } } : {}),
-            ...(input.signal ? { signal: input.signal } : {}),
+          const responseText = await boundedResponseText(response, maxResponseBytes);
+          let payload: unknown;
+
+          try {
+            payload = JSON.parse(responseText);
+          } catch (error) {
+            throw new ProviderResponseError("Unstructured parser returned an invalid response", {
+              cause: error,
+            });
+          }
+
+          const parsed = UnstructuredResponseSchema.safeParse(payload);
+
+          if (!parsed.success) {
+            throw new ProviderResponseError("Unstructured parser returned an invalid response");
+          }
+
+          const providerElements = unstructuredElementsToElements(
+            normalizeUnstructuredLayout(parsed.data),
+          );
+          const elements = appendArchiveMediaFallbackElements(input, providerElements);
+
+          const artifact = await createParseArtifact({
+            artifactHashContext: unstructuredArtifactHashContext(input, {
+              partitionStrategy,
+              providerImageBlockTypes,
+            }),
+            elements,
+            input,
+            kind: "unstructured",
+            options,
+            parserVersion,
           });
-        },
-        fetchImpl,
-        maxRetries,
-        retryDelayMs,
-        sleep,
-      });
-
-      if (!response.ok) {
-        throw providerRequestError("Unstructured parser", response.status);
-      }
-
-      const responseText = await boundedResponseText(response, maxResponseBytes);
-      let payload: unknown;
-
-      try {
-        payload = JSON.parse(responseText);
-      } catch (error) {
-        throw new ProviderResponseError("Unstructured parser returned an invalid response", {
-          cause: error,
-        });
-      }
-
-      const parsed = UnstructuredResponseSchema.safeParse(payload);
-
-      if (!parsed.success) {
-        throw new ProviderResponseError("Unstructured parser returned an invalid response");
-      }
-
-      const providerElements = unstructuredElementsToElements(
-        normalizeUnstructuredLayout(parsed.data),
-      );
-      const elements = appendArchiveMediaFallbackElements(input, providerElements);
-
-      return createParseArtifact({
-        elements,
-        input,
-        kind: "unstructured",
-        options,
-        parserVersion,
-      });
-    },
+          deadline.throwIfExpired();
+          return artifact;
+        } catch (error) {
+          if (deadline.expired()) {
+            throw new ProviderRequestError(
+              `Unstructured parser request timed out after requestTimeoutMs=${requestTimeoutMs}`,
+              { cause: error, retryable: true },
+            );
+          }
+          if (input.signal?.aborted) {
+            throw abortSignalReason(input.signal);
+          }
+          throw error;
+        } finally {
+          deadline.dispose();
+        }
+      }, input.signal),
   };
 }
 
 function unstructuredPartitionStrategy(input: ParseDocumentInput): "auto" | "fast" | "hi_res" {
   const hints = input.parserHints;
-  if (hints?.requiresOcr || hints?.layoutComplexity === "complex" || hints?.requiresTables) {
+  if (
+    hints?.requiresOcr ||
+    hints?.layoutComplexity === "complex" ||
+    hints?.requiresTables ||
+    shouldRequestProviderImages(input) ||
+    (hints?.requiresImages === true && isPdf(input))
+  ) {
     return "hi_res";
   }
   if (hints?.layoutComplexity === "simple") {
     return "fast";
   }
-  if (hints?.requiresImages && !imagesHandledOutsideUnstructured(input)) {
-    return "hi_res";
-  }
   return "auto";
 }
 
 function shouldRequestProviderImages(input: ParseDocumentInput): boolean {
-  return input.parserHints?.requiresImages === true && !imagesHandledOutsideUnstructured(input);
+  return unstructuredProviderImageBlockTypes(input).length > 0;
 }
 
-function imagesHandledOutsideUnstructured(input: ParseDocumentInput): boolean {
-  return input.mimeType.toLowerCase() === "application/pdf" || archiveMediaRoots(input) !== null;
+function unstructuredProviderImageBlockTypes(
+  input: ParseDocumentInput,
+): readonly ("Image" | "Table")[] {
+  if (
+    input.parserHints?.requiresImages !== true ||
+    providerImagesHandledOutsideUnstructured(input)
+  ) {
+    return [];
+  }
+
+  // PDF fallback mirrors the local rasterizer, which materializes both figures and tables. Other
+  // formats retain the narrower historical Image-only request to avoid increasing payload sizes.
+  return isPdf(input) ? ["Image", "Table"] : ["Image"];
+}
+
+function providerImagesHandledOutsideUnstructured(input: ParseDocumentInput): boolean {
+  if (archiveMediaRoots(input) !== null) {
+    return true;
+  }
+
+  return isPdf(input) && input.parserHints?.imagesHandledExternally === true;
+}
+
+function isPdf(input: ParseDocumentInput): boolean {
+  return normalizedMimeType(input.mimeType) === "application/pdf";
+}
+
+function normalizedMimeType(value: string): string {
+  return value.split(";", 1)[0]?.trim().toLowerCase() ?? "";
+}
+
+function unstructuredArtifactHashContext(
+  input: ParseDocumentInput,
+  request: {
+    readonly partitionStrategy: "auto" | "fast" | "hi_res";
+    readonly providerImageBlockTypes: readonly ("Image" | "Table")[];
+  },
+): string {
+  const hints = input.parserHints;
+
+  return JSON.stringify({
+    filename: input.filename,
+    mimeType: input.mimeType.trim().toLowerCase(),
+    parserHints: {
+      imagesHandledExternally: hints?.imagesHandledExternally === true,
+      language: hints?.language?.trim().toLowerCase() || null,
+      layoutComplexity: hints?.layoutComplexity ?? null,
+      requiresImages: hints?.requiresImages === true,
+      requiresOcr: hints?.requiresOcr === true,
+      requiresTables: hints?.requiresTables === true,
+    },
+    request: {
+      coordinates: true,
+      imageBlockTypes: request.providerImageBlockTypes,
+      imagePayload: request.providerImageBlockTypes.length > 0,
+      strategy: request.partitionStrategy,
+    },
+  });
 }
 
 function unstructuredPartitionEndpoint(endpoint: string): string {
@@ -667,6 +778,7 @@ function selectParser(
 }
 
 async function createParseArtifact({
+  artifactHashContext,
   artifactMetadata,
   elements,
   input,
@@ -674,6 +786,7 @@ async function createParseArtifact({
   options,
   parserVersion,
 }: {
+  readonly artifactHashContext?: string | undefined;
   readonly artifactMetadata?: Readonly<Record<string, unknown>> | undefined;
   readonly elements: readonly ParseElementInput[];
   readonly input: ParseDocumentInput;
@@ -698,7 +811,7 @@ async function createParseArtifact({
   );
 
   return ParseArtifactSchema.parse({
-    artifactHash: await artifactHash(parserVersion, input.body),
+    artifactHash: await artifactHash(parserVersion, input.body, artifactHashContext),
     contentType: inferContentType(materializedElements),
     createdAt: (options.now ?? defaultNow)(),
     documentAssetId: input.documentAssetId,
@@ -1509,8 +1622,9 @@ function unstructuredParseElementMetadata({
   const {
     image_base64: _imageBase64,
     page_number: _pageNumber,
-    ...parsed
-  } = cloneMetadata(metadata);
+    ...metadataWithoutInlineImage
+  } = metadata;
+  const parsed = cloneMetadata(metadataWithoutInlineImage);
   const assetRef = unstructuredAssetRef(metadata);
   const boundingBox = unstructuredBoundingBox(metadata.coordinates);
   const textAsHtml = metadataString(metadata, "text_as_html");
@@ -1930,8 +2044,14 @@ function assertInputBounds(body: Uint8Array, maxInputBytes: number): void {
   }
 }
 
-async function artifactHash(parserVersion: string, body: Uint8Array): Promise<string> {
-  const prefix = new TextEncoder().encode(`${parserVersion}\n`);
+async function artifactHash(
+  parserVersion: string,
+  body: Uint8Array,
+  context?: string,
+): Promise<string> {
+  const prefix = new TextEncoder().encode(
+    context === undefined ? `${parserVersion}\n` : `${parserVersion}\n${context}\n`,
+  );
   const bytes = new Uint8Array(prefix.byteLength + body.byteLength);
   bytes.set(prefix, 0);
   bytes.set(body, prefix.byteLength);
@@ -1952,20 +2072,71 @@ async function boundedResponseText(response: Response, maxResponseBytes: number)
   const contentLength = response.headers.get("content-length");
 
   if (contentLength && Number(contentLength) > maxResponseBytes) {
+    await cancelResponseBody(response.body);
     throw new ProviderResponseError(
       `Unstructured parser response exceeds maxResponseBytes=${maxResponseBytes}`,
     );
   }
 
-  const body = new Uint8Array(await response.arrayBuffer());
+  if (!response.body) {
+    return "";
+  }
 
-  if (body.byteLength > maxResponseBytes) {
-    throw new ProviderResponseError(
-      `Unstructured parser response exceeds maxResponseBytes=${maxResponseBytes}`,
-    );
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+
+      if (done) {
+        break;
+      }
+
+      totalBytes += value.byteLength;
+      if (totalBytes > maxResponseBytes) {
+        await cancelResponseReader(reader);
+        throw new ProviderResponseError(
+          `Unstructured parser response exceeds maxResponseBytes=${maxResponseBytes}`,
+        );
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const body = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
   }
 
   return decodeUtf8(body);
+}
+
+async function cancelResponseBody(body: ReadableStream<Uint8Array> | null): Promise<void> {
+  if (!body) {
+    return;
+  }
+
+  try {
+    await body.cancel();
+  } catch {
+    // Preserve the bounded-response error even when the transport rejects cancellation.
+  }
+}
+
+async function cancelResponseReader(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+): Promise<void> {
+  try {
+    await reader.cancel();
+  } catch {
+    // Preserve the bounded-response error even when the transport rejects cancellation.
+  }
 }
 
 async function fetchWithRetries({
@@ -1973,23 +2144,68 @@ async function fetchWithRetries({
   fetchImpl,
   maxRetries,
   retryDelayMs,
+  signal,
   sleep,
 }: {
   readonly buildRequest: () => Request;
   readonly fetchImpl: typeof fetch;
   readonly maxRetries: number;
   readonly retryDelayMs: number;
+  readonly signal: AbortSignal;
   readonly sleep: (ms: number) => Promise<void>;
 }): Promise<Response> {
   for (let attempt = 0; ; attempt += 1) {
-    const response = await fetchImpl(buildRequest());
+    signal.throwIfAborted();
+    let response: Response;
+    try {
+      response = await fetchImpl(buildRequest());
+    } catch (error) {
+      if (signal.aborted) {
+        throw abortSignalReason(signal);
+      }
+      if (attempt >= maxRetries) {
+        throw new ProviderRequestError("Unstructured parser request failed", {
+          cause: error,
+          retryable: true,
+        });
+      }
+      await sleepWithAbort(sleep, retryDelayMs, signal);
+      continue;
+    }
 
     if (!isRetryableProviderStatus(response.status) || attempt >= maxRetries) {
       return response;
     }
 
     await response.body?.cancel().catch(() => undefined);
-    await sleep(retryDelayMs);
+    await sleepWithAbort(sleep, retryDelayMs, signal);
+  }
+}
+
+async function sleepWithAbort(
+  sleep: (ms: number) => Promise<void>,
+  delayMs: number,
+  signal: AbortSignal,
+): Promise<void> {
+  signal.throwIfAborted();
+  if (delayMs === 0) {
+    return;
+  }
+
+  let onAbort: (() => void) | undefined;
+  try {
+    await Promise.race([
+      sleep(delayMs),
+      new Promise<never>((_resolve, reject) => {
+        onAbort = () => reject(abortSignalReason(signal));
+        signal.addEventListener("abort", onAbort, { once: true });
+        if (signal.aborted) onAbort();
+      }),
+    ]);
+  } finally {
+    if (onAbort) {
+      signal.removeEventListener("abort", onAbort);
+    }
   }
 }
 
@@ -2007,6 +2223,158 @@ function validateRetryOptions({
   if (!Number.isInteger(retryDelayMs) || retryDelayMs < 0) {
     throw new ProviderInputError("Unstructured parser retryDelayMs must be a non-negative integer");
   }
+}
+
+function validateUnstructuredResourceOptions({
+  maxConcurrency,
+  requestTimeoutMs,
+}: {
+  readonly maxConcurrency: number;
+  readonly requestTimeoutMs: number;
+}): void {
+  if (!Number.isSafeInteger(maxConcurrency) || maxConcurrency < 1 || maxConcurrency > 32) {
+    throw new ProviderInputError(
+      "Unstructured parser maxConcurrency must be an integer between 1 and 32",
+    );
+  }
+  if (
+    !Number.isSafeInteger(requestTimeoutMs) ||
+    requestTimeoutMs < 1 ||
+    requestTimeoutMs > 600_000
+  ) {
+    throw new ProviderInputError(
+      "Unstructured parser requestTimeoutMs must be an integer between 1 and 600000",
+    );
+  }
+}
+
+interface AbortAwareConcurrencyGate {
+  run<T>(task: () => Promise<T>, signal?: AbortSignal): Promise<T>;
+}
+
+function createAbortAwareConcurrencyGate(limit: number): AbortAwareConcurrencyGate {
+  let active = 0;
+  const waiters: Array<{
+    readonly cleanup: () => void;
+    readonly reject: (error: unknown) => void;
+    readonly resolve: () => void;
+    readonly signal?: AbortSignal;
+  }> = [];
+
+  const acquire = async (signal?: AbortSignal): Promise<void> => {
+    if (signal?.aborted) {
+      throw abortSignalReason(signal);
+    }
+    if (active < limit) {
+      active += 1;
+      return;
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      let onAbort: (() => void) | undefined;
+      const waiter = {
+        cleanup: () => {
+          if (onAbort) signal?.removeEventListener("abort", onAbort);
+        },
+        reject,
+        resolve,
+        ...(signal ? { signal } : {}),
+      };
+      onAbort = () => {
+        const index = waiters.indexOf(waiter);
+        if (index >= 0) {
+          waiters.splice(index, 1);
+          waiter.cleanup();
+          reject(abortSignalReason(signal as AbortSignal));
+        }
+      };
+      signal?.addEventListener("abort", onAbort, { once: true });
+      waiters.push(waiter);
+      if (signal?.aborted) {
+        onAbort();
+      }
+    });
+  };
+
+  const release = (): void => {
+    while (true) {
+      const next = waiters.shift();
+      if (!next) {
+        active -= 1;
+        return;
+      }
+      if (next.signal?.aborted) {
+        next.cleanup();
+        next.reject(abortSignalReason(next.signal));
+        continue;
+      }
+      next.cleanup();
+      next.resolve();
+      return;
+    }
+  };
+
+  return {
+    run: async <T>(task: () => Promise<T>, signal?: AbortSignal): Promise<T> => {
+      await acquire(signal);
+      try {
+        return await task();
+      } finally {
+        release();
+      }
+    },
+  };
+}
+
+interface UnstructuredRequestDeadline {
+  readonly signal: AbortSignal;
+  dispose(): void;
+  expired(): boolean;
+  throwIfExpired(): void;
+}
+
+function createUnstructuredRequestDeadline(
+  externalSignal: AbortSignal | undefined,
+  requestTimeoutMs: number,
+): UnstructuredRequestDeadline {
+  const controller = new AbortController();
+  const timeoutReason = new Error("Unstructured parser request deadline exceeded");
+  let expired = false;
+  const onExternalAbort = () => controller.abort(abortSignalReason(externalSignal as AbortSignal));
+  externalSignal?.addEventListener("abort", onExternalAbort, { once: true });
+  if (externalSignal?.aborted) {
+    onExternalAbort();
+  }
+  const timer = setTimeout(() => {
+    if (!controller.signal.aborted) {
+      expired = true;
+      controller.abort(timeoutReason);
+    }
+  }, requestTimeoutMs);
+  (timer as { unref?: () => void }).unref?.();
+
+  return {
+    signal: controller.signal,
+    dispose: () => {
+      clearTimeout(timer);
+      externalSignal?.removeEventListener("abort", onExternalAbort);
+    },
+    expired: () => expired,
+    throwIfExpired: () => {
+      if (expired) {
+        throw timeoutReason;
+      }
+    },
+  };
+}
+
+function abortSignalReason(signal: AbortSignal): unknown {
+  try {
+    signal.throwIfAborted();
+  } catch (error) {
+    return error;
+  }
+  return new DOMException("The operation was aborted", "AbortError");
 }
 
 function isRetryableProviderStatus(status: number): boolean {

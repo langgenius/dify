@@ -41,6 +41,7 @@ import {
   preflightLlmSemanticWindows,
 } from "./llm-semantic-chunker";
 import {
+  type MaterializeParseArtifactResult,
   type ParseArtifactLookupInput,
   type ParseArtifactRepository,
   cloneParseArtifact,
@@ -111,7 +112,7 @@ export interface UpdateIncrementalReindexProjectionStatusInput {
 }
 
 export interface IncrementalReindexer {
-  canonicalizeArtifact?(artifact: ParseArtifact): Promise<ParseArtifact>;
+  canonicalizeArtifact?(artifact: ParseArtifact): Promise<MaterializeParseArtifactResult>;
   failProjections?(input: UpdateIncrementalReindexProjectionStatusInput): Promise<number>;
   getCanonicalArtifact?(input: ParseArtifactLookupInput): Promise<ParseArtifact | null>;
   publishProjections?(input: UpdateIncrementalReindexProjectionStatusInput): Promise<number>;
@@ -193,16 +194,18 @@ export function createIncrementalReindexer({
   };
 
   return {
-    canonicalizeArtifact: async (artifact: ParseArtifact) =>
-      cloneParseArtifact(
-        await artifacts.create(cloneParseArtifact(ParseArtifactSchema.parse(artifact))),
-      ),
+    canonicalizeArtifact: async (artifact: ParseArtifact) => {
+      const materialized = await artifacts.materialize(
+        cloneParseArtifact(ParseArtifactSchema.parse(artifact)),
+      );
+      return { ...materialized, artifact: cloneParseArtifact(materialized.artifact) };
+    },
     getCanonicalArtifact: async (input: ParseArtifactLookupInput) => {
       const persisted = await artifacts.getByDocumentVersion(input);
 
-      return persisted
-        ? cloneParseArtifact(await artifacts.create(cloneParseArtifact(persisted)))
-        : null;
+      if (!persisted) return null;
+      const materialized = await artifacts.materialize(cloneParseArtifact(persisted));
+      return cloneParseArtifact(materialized.artifact);
     },
     ...(canUpdateProjectionStatuses
       ? {

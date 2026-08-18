@@ -205,7 +205,7 @@ describe("incremental reindexer", () => {
     });
   });
 
-  it("idempotently rebuilds unchanged artifacts so partial indexes can be repaired", async () => {
+  it("idempotently rebuilds changed artifacts so partial indexes can be repaired", async () => {
     const artifacts = createInMemoryParseArtifactRepository({ maxArtifacts: 4 });
     const nodes = createInMemoryKnowledgeNodeRepository({
       maxBatchSize: 4,

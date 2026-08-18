@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { createDifyObjectStorageAdapter } from "./dify-object-storage";
+import {
+  DifyObjectStorageRequestError,
+  createDifyObjectStorageAdapter,
+} from "./dify-object-storage";
 
 const metadata = {
   checksumSha256Base64: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
@@ -80,5 +83,73 @@ describe("Dify object storage adapter", () => {
     });
 
     await expect(adapter.health()).resolves.toBe(false);
+  });
+
+  it("classifies transient transport and HTTP failures as retryable", async () => {
+    const offline = createDifyObjectStorageAdapter({
+      apiKey: "inner-key",
+      baseUrl: "http://api:5001",
+      fetch: vi.fn<typeof globalThis.fetch>().mockRejectedValue(new Error("offline")),
+    });
+    const offlineRequest = offline.headObject("tenant-1/offline");
+    await expect(offlineRequest).rejects.toBeInstanceOf(DifyObjectStorageRequestError);
+    await expect(offlineRequest).rejects.toMatchObject({ retryable: true });
+
+    const statusFetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValueOnce(new Response(null, { status: 503 }))
+      .mockResolvedValueOnce(new Response(null, { status: 400 }));
+    const statuses = createDifyObjectStorageAdapter({
+      apiKey: "inner-key",
+      baseUrl: "http://api:5001",
+      fetch: statusFetch,
+    });
+    await expect(statuses.deleteObject("tenant-1/transient")).rejects.toMatchObject({
+      retryable: true,
+      status: 503,
+    });
+    await expect(statuses.deleteObject("tenant-1/invalid")).rejects.toMatchObject({
+      retryable: false,
+      status: 400,
+    });
+  });
+
+  it("bounds stalled Dify object-storage headers and response bodies", async () => {
+    const stalledHeaders = createDifyObjectStorageAdapter({
+      apiKey: "inner-key",
+      baseUrl: "http://api:5001",
+      fetch: async (input, init) => {
+        const signal = init?.signal ?? (input instanceof Request ? input.signal : undefined);
+        return await new Promise<Response>((_resolve, reject) => {
+          signal?.addEventListener("abort", () => reject(signal.reason), { once: true });
+        });
+      },
+      requestTimeoutMs: 10,
+    });
+    await expect(stalledHeaders.headObject("tenant-1/headers")).rejects.toMatchObject({
+      retryable: true,
+    });
+
+    const stalledBody = createDifyObjectStorageAdapter({
+      apiKey: "inner-key",
+      baseUrl: "http://api:5001",
+      fetch: async (input, init) => {
+        const signal = init?.signal ?? (input instanceof Request ? input.signal : undefined);
+        return new Response(
+          new ReadableStream<Uint8Array>({
+            start: (controller) => {
+              signal?.addEventListener("abort", () => controller.error(signal.reason), {
+                once: true,
+              });
+            },
+          }),
+          { status: 200 },
+        );
+      },
+      requestTimeoutMs: 10,
+    });
+    await expect(stalledBody.headObject("tenant-1/body")).rejects.toMatchObject({
+      retryable: true,
+    });
   });
 });

@@ -72,6 +72,58 @@ describe("extractDocumentMultimodalAssets", () => {
     ).resolves.toEqual(new Uint8Array([1, 2, 3, 4]));
   });
 
+  it("stores provider table image payloads without discarding table semantics", async () => {
+    const adapter = createNodePlatformAdapter({ env: {} });
+
+    const result = await extractDocumentMultimodalAssets({
+      artifact: {
+        artifactHash: "a".repeat(64),
+        contentType: "mixed",
+        createdAt: "2026-06-23T00:00:00.000Z",
+        documentAssetId,
+        elements: [
+          {
+            id: "table-1",
+            metadata: {
+              assetRef: {
+                contentType: "image/png",
+                uri: "data:image/png;base64,AQIDBA==",
+              },
+              table: { html: "<table><tr><td>42</td></tr></table>" },
+              textAsHtml: "<table><tr><td>42</td></tr></table>",
+            },
+            sectionPath: ["Results"],
+            text: "42",
+            type: "table",
+          },
+        ],
+        id: parseArtifactId,
+        metadata: {},
+        parser: "unstructured",
+        version: 1,
+      },
+      knowledgeSpaceId,
+      objectStorage: adapter.objectStorage,
+      tenantId: "tenant-1",
+    });
+
+    expect(result.extractedCount).toBe(1);
+    expect(result.artifact.elements[0]).toMatchObject({
+      metadata: {
+        assetRef: {
+          contentType: "image/png",
+          objectKey: expect.stringMatching(/table-1-[a-f0-9]{12}\.png$/u),
+          sha256: "9f64a747e1b97f131fabb6b447296c9b6f0201e79fb3c5356e6c77e89b6a806a",
+        },
+        table: { html: "<table><tr><td>42</td></tr></table>" },
+        textAsHtml: "<table><tr><td>42</td></tr></table>",
+      },
+      text: "42",
+      type: "table",
+    });
+    expect(result.artifact.elements[0]?.metadata).not.toHaveProperty("assetRef.uri");
+  });
+
   it("records dimensions for extracted image asset refs when headers expose them", async () => {
     const adapter = createNodePlatformAdapter({ env: {} });
     const pngBytes = new Uint8Array([

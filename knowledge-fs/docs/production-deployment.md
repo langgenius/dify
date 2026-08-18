@@ -15,6 +15,7 @@ This deployment does not migrate, replace, or delete existing Dataset/Document d
 | Physical object storage | Dify `STORAGE_TYPE` implementation | Dify inner storage API |
 | KnowledgeFS relational state | KnowledgeFS database | `DATABASE_URL` |
 | Complex document parsing | Unstructured-compatible service | `UNSTRUCTURED_API_URL` |
+| PDF image rasterization | KnowledgeFS API image | Bundled Poppler `pdftoppm` executable |
 | Capability signing | Dify | Public JWKS only in KnowledgeFS |
 
 KnowledgeFS must never receive model-provider keys, datasource secrets, direct Plugin Daemon
@@ -50,16 +51,50 @@ the service:
 |---|---|
 | `DATABASE_URL` | KnowledgeFS PostgreSQL connection string. |
 | `KNOWLEDGE_DOCUMENT_COMPILATION_RUNTIME` | Durable document worker rollout. |
+| `KNOWLEDGE_PDF_RASTERIZER` | PDF image rasterizer. The production image defaults to `poppler`; set `off` as a kill switch. |
+| `KNOWLEDGE_PDF_RASTERIZER_DPI` | Main PDF image resolution; the bounded deployment default is `144`. |
+| `KNOWLEDGE_PDF_RASTERIZER_THUMBNAIL_DPI` | Thumbnail resolution; the bounded deployment default is `48`. |
+| `KNOWLEDGE_PDF_RASTERIZER_TIMEOUT_MS` | Poppler subprocess timeout; the deployment default is `30000`. |
+| `KNOWLEDGE_PDF_RASTERIZER_MAX_ASSETS` | Maximum PDF assets rasterized for one document; the deployment default is `500`. |
+| `KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY` | Maximum concurrent Poppler page batches per API replica; defaults to `2` and accepts `1..8`. |
 | `KNOWLEDGE_FS_CAPABILITY_V2_ENABLED` | Capability-v2 verifier rollout. |
 | `KNOWLEDGE_FS_CAPABILITY_V2_PUBLIC_JWKS` | Public verification key set issued by Dify. |
 | `KNOWLEDGE_QUERY_IMAGE_RETRIEVAL_ENABLED` | Opt in to query-image visual retrieval; requires an enabled visual-embedding provider/index and a query mode other than `off`. |
 | `KNOWLEDGE_QUERY_IMAGE_EXPANSION_TIMEOUT_MS` | Timeout for the single Deep/Research vision expansion call; defaults to 8000 ms. |
 | `UNSTRUCTURED_API_URL` | Parser endpoint for complex formats. |
 | `UNSTRUCTURED_API_KEY` | Optional parser authentication. |
+| `UNSTRUCTURED_MAX_CONCURRENCY` | Process-wide parser request limit; defaults to `2`. |
+| `UNSTRUCTURED_REQUEST_TIMEOUT_MS` | Total timeout for one parser request and response body; defaults to `120000`. |
+| `UNSTRUCTURED_MAX_RESPONSE_BYTES` | Maximum parser response body; defaults to `33554432` (32 MiB). |
 
 Compose injects `DIFY_INNER_API_URL` and `DIFY_INNER_API_KEY`; do not duplicate them in the
 operator-owned env file. Do not add `MINIO_*`, cloud object-storage credentials, provider API keys,
 `PLUGIN_DAEMON_*`, datasource tokens, or OAuth client secrets.
+
+`DIFY_OBJECT_STORAGE_REQUEST_TIMEOUT_MS` bounds each authenticated inner object-storage request,
+including response consumption. It defaults to `60000`; transport failures and
+408/409/425/429/5xx responses remain retryable at the durable compilation layer.
+
+## PDF image rasterization
+
+The production API image installs Poppler and verifies `pdftoppm` during the image build. Its image
+defaults enable rasterization at 144 DPI, generate 48 DPI thumbnails, stop an individual Poppler
+operation after 30 seconds, cap one document at 500 rasterized assets, and run at most two Poppler
+page batches concurrently per API replica. The process still runs as the unprivileged `node` user.
+
+The Dify Compose service keeps canonical values in
+`docker/envs/core-services/knowledge-fs.env`, where they override the image defaults. It maps only
+whitelisted `DIFY_ROOT_*_OVERRIDE` proxies, so an explicitly set PDF rasterizer value in
+`docker/.env` takes precedence without exposing the rest of the root environment. An unset or
+empty root value leaves the service env (or image default when that file is absent) in control.
+Set `KNOWLEDGE_PDF_RASTERIZER=off` in either operator env during an incident or on a deliberately
+constrained deployment. Do not set
+`KNOWLEDGE_PDF_RASTERIZER_COMMAND` for the published image; its bundled command is on `PATH`.
+
+Rasterization supplies durable image objects for PDF image elements when the parser returns layout
+coordinates without image bytes. It does not repair already-published parse artifacts. Re-run the
+document ingestion after deploying the corrected image to repopulate images that were previously
+stored without an asset reference.
 
 ## Image-query rollout
 

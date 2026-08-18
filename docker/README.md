@@ -66,6 +66,15 @@ bucket, endpoint, or provider credentials in `knowledge-fs.env`. Feature-specifi
 and capacity tunables should be added only when deliberately overriding their safe runtime
 defaults.
 
+The KnowledgeFS API image includes Poppler and enables its `pdftoppm` PDF image rasterizer with
+bounded defaults (144 DPI, 48 DPI thumbnails, a 30-second timeout, at most 500 assets per document,
+and two concurrent Poppler page batches per replica). Canonical settings live in the dedicated
+`knowledge-fs.env`; whitelisted `DIFY_ROOT_*_OVERRIDE` proxies let explicitly set values in
+`docker/.env` take precedence without injecting the complete root environment. When a root value
+is unset, the service env or image default remains authoritative. Set
+`KNOWLEDGE_PDF_RASTERIZER=off` in either operator env as an emergency or low-resource kill switch. Existing
+documents whose parse artifacts lack image asset references must be ingested again after rollout.
+
 Use a dedicated KnowledgeFS database. Do not point `DATABASE_URL` at Dify's application database,
 reuse Dataset/Document tables, or run a data migration as part of this service. KnowledgeFS
 migrations remain a separate controlled operator step. The selected Dify storage backend must

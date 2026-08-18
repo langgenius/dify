@@ -25,12 +25,13 @@ export interface ExtractDocumentMultimodalAssetsInput {
   readonly imageVariantGenerator?: DocumentImageVariantGenerator | undefined;
   readonly objectStorage: PlatformAdapter["objectStorage"];
   readonly tenantId: string;
+  readonly writeOwnerId?: string | undefined;
 }
 
 export interface ExtractDocumentMultimodalAssetsResult {
   readonly artifact: ParseArtifact;
   readonly extractedCount: number;
-  /** Number of extractable images left inline because the per-document cap was reached. */
+  /** Number of extractable visual assets left inline because the per-document cap was reached. */
   readonly skippedForCapCount: number;
 }
 
@@ -61,6 +62,7 @@ export async function extractDocumentMultimodalAssets({
   imageVariantGenerator,
   objectStorage,
   tenantId,
+  writeOwnerId,
 }: ExtractDocumentMultimodalAssetsInput): Promise<ExtractDocumentMultimodalAssetsResult> {
   if (!Number.isSafeInteger(maxEmbeddedAssetBytes) || maxEmbeddedAssetBytes < 1) {
     throw new Error("Document multimodal embedded asset max bytes must be at least 1");
@@ -81,7 +83,7 @@ export async function extractDocumentMultimodalAssets({
   const allowedLocalRoots = normalizeAllowedLocalAssetPaths(allowLocalAssetPaths);
 
   for (const element of artifact.elements) {
-    if (element.type !== "image") {
+    if (element.type !== "image" && element.type !== "table") {
       elements.push(element);
       continue;
     }
@@ -118,6 +120,7 @@ export async function extractDocumentMultimodalAssets({
       knowledgeSpaceId,
       sha256,
       tenantId,
+      ...(writeOwnerId ? { writeOwnerId } : {}),
     });
 
     await objectStorage.putObject({
@@ -130,6 +133,7 @@ export async function extractDocumentMultimodalAssets({
         parseElementId: element.id,
         sha256,
         tenantId,
+        ...(writeOwnerId ? { writeOwnerId } : {}),
       },
     });
     const variants = imageVariantGenerator
@@ -141,6 +145,7 @@ export async function extractDocumentMultimodalAssets({
           knowledgeSpaceId,
           objectStorage,
           tenantId,
+          ...(writeOwnerId ? { writeOwnerId } : {}),
         })
       : {};
 
@@ -207,6 +212,7 @@ async function storeGeneratedImageVariants({
   knowledgeSpaceId,
   objectStorage,
   tenantId,
+  writeOwnerId,
 }: {
   readonly assetId: string;
   readonly elementId: string;
@@ -215,6 +221,7 @@ async function storeGeneratedImageVariants({
   readonly knowledgeSpaceId: string;
   readonly objectStorage: PlatformAdapter["objectStorage"];
   readonly tenantId: string;
+  readonly writeOwnerId?: string | undefined;
 }): Promise<Record<string, Record<string, unknown>>> {
   const variants: Record<string, Record<string, unknown>> = {};
   const generated = await generator.generate({
@@ -231,6 +238,7 @@ async function storeGeneratedImageVariants({
       objectStorage,
       tenantId,
       variant,
+      ...(writeOwnerId ? { writeOwnerId } : {}),
     });
     variants[variant.name] = stored;
   }
@@ -245,6 +253,7 @@ async function storeGeneratedImageVariant({
   objectStorage,
   tenantId,
   variant,
+  writeOwnerId,
 }: {
   readonly assetId: string;
   readonly elementId: string;
@@ -252,6 +261,7 @@ async function storeGeneratedImageVariant({
   readonly objectStorage: PlatformAdapter["objectStorage"];
   readonly tenantId: string;
   readonly variant: GeneratedDocumentImageVariant;
+  readonly writeOwnerId?: string | undefined;
 }): Promise<Record<string, unknown>> {
   const sha256 = sha256Hex(variant.body);
   const objectKey = createDocumentMultimodalAssetVariantObjectKey({
@@ -262,6 +272,7 @@ async function storeGeneratedImageVariant({
     sha256,
     tenantId,
     variant: variant.name,
+    ...(writeOwnerId ? { writeOwnerId } : {}),
   });
 
   await objectStorage.putObject({
@@ -275,6 +286,7 @@ async function storeGeneratedImageVariant({
       sha256,
       tenantId,
       variant: variant.name,
+      ...(writeOwnerId ? { writeOwnerId } : {}),
     },
   });
 

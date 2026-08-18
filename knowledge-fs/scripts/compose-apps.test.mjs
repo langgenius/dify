@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -41,6 +42,43 @@ function envVariableNames(source) {
     .split("\n")
     .filter((line) => /^[A-Z][A-Z0-9_]*=/.test(line))
     .map((line) => line.slice(0, line.indexOf("=")));
+}
+
+function materializedDifyKnowledgeFsEnvironment(rootOverrides = {}) {
+  const dockerRoot = new URL("../../docker/", import.meta.url);
+  const env = { ...process.env };
+  for (const name of [
+    "KNOWLEDGE_PDF_RASTERIZER",
+    "KNOWLEDGE_PDF_RASTERIZER_DPI",
+    "KNOWLEDGE_PDF_RASTERIZER_MAX_ASSETS",
+    "KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY",
+    "KNOWLEDGE_PDF_RASTERIZER_THUMBNAIL_DPI",
+    "KNOWLEDGE_PDF_RASTERIZER_TIMEOUT_MS",
+  ]) {
+    delete env[name];
+  }
+  Object.assign(env, rootOverrides);
+
+  const result = spawnSync(
+    "docker",
+    [
+      "compose",
+      "--project-directory",
+      dockerRoot.pathname,
+      "--env-file",
+      new URL(".env.example", dockerRoot).pathname,
+      "-f",
+      new URL("docker-compose.yaml", dockerRoot).pathname,
+      "config",
+      "--format",
+      "json",
+    ],
+    { encoding: "utf8", env },
+  );
+
+  assert.ifError(result.error);
+  assert.equal(result.status, 0, result.stderr);
+  return JSON.parse(result.stdout).services.knowledge_fs.environment;
 }
 
 test("deployment Compose and Kubernetes artifacts are valid YAML", () => {
@@ -111,13 +149,48 @@ test("app compose profile uses local middleware and the required Dify dependency
     compose,
     /^ {6}DATABASE_URL: postgresql:\/\/\$\{POSTGRES_USER:-knowledge_fs\}:\$\{POSTGRES_PASSWORD:-knowledge_fs\}@postgres:5432\/\$\{POSTGRES_DB:-knowledge_fs\}$/m,
   );
-  assert.match(compose, /^ {6}UNSTRUCTURED_API_URL: http:\/\/unstructured:8000$/m);
+  assert.match(
+    compose,
+    /^ {6}UNSTRUCTURED_API_URL: \$\{UNSTRUCTURED_API_URL:-http:\/\/unstructured:8000\}$/m,
+  );
+  assert.match(
+    compose,
+    /^ {6}UNSTRUCTURED_MAX_CONCURRENCY: \$\{UNSTRUCTURED_MAX_CONCURRENCY:-2\}$/m,
+  );
+  assert.match(
+    compose,
+    /^ {6}UNSTRUCTURED_REQUEST_TIMEOUT_MS: \$\{UNSTRUCTURED_REQUEST_TIMEOUT_MS:-120000\}$/m,
+  );
   assert.match(
     compose,
     /^ {6}DIFY_INNER_API_URL: \$\{DIFY_INNER_API_URL:-http:\/\/host\.docker\.internal:5001\}$/m,
   );
   assert.match(compose, /^ {6}DIFY_INNER_API_KEY: \$\{DIFY_INNER_API_KEY:-\}$/m);
   assert.doesNotMatch(compose, /^ {6}(?:MINIO|R2|OPENAI|ANTHROPIC|COHERE|GEMINI|VOYAGE)_/m);
+});
+
+test("app compose profile enables the bundled PDF rasterizer with bounded defaults", () => {
+  assert.match(compose, /^ {6}KNOWLEDGE_PDF_RASTERIZER: \$\{KNOWLEDGE_PDF_RASTERIZER:-poppler\}$/m);
+  assert.match(
+    compose,
+    /^ {6}KNOWLEDGE_PDF_RASTERIZER_DPI: \$\{KNOWLEDGE_PDF_RASTERIZER_DPI:-144\}$/m,
+  );
+  assert.match(
+    compose,
+    /^ {6}KNOWLEDGE_PDF_RASTERIZER_THUMBNAIL_DPI: \$\{KNOWLEDGE_PDF_RASTERIZER_THUMBNAIL_DPI:-48\}$/m,
+  );
+  assert.match(
+    compose,
+    /^ {6}KNOWLEDGE_PDF_RASTERIZER_TIMEOUT_MS: \$\{KNOWLEDGE_PDF_RASTERIZER_TIMEOUT_MS:-30000\}$/m,
+  );
+  assert.match(
+    compose,
+    /^ {6}KNOWLEDGE_PDF_RASTERIZER_MAX_ASSETS: \$\{KNOWLEDGE_PDF_RASTERIZER_MAX_ASSETS:-500\}$/m,
+  );
+  assert.match(
+    compose,
+    /^ {6}KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY: \$\{KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY:-2\}$/m,
+  );
 });
 
 test("app compose profile builds Admin as a production image after API readiness", () => {
@@ -150,6 +223,8 @@ test("Dify compose starts the integrated KnowledgeFS API by default and keeps it
     assert.match(knowledgeFs, /^ {4}expose:$/m);
     assert.match(knowledgeFs, /^ {6}- "8787"$/m);
     assert.doesNotMatch(knowledgeFs, /^ {4}ports:$/m);
+    assert.match(knowledgeFs, /^ {6}- path: \.\/envs\/core-services\/knowledge-fs\.env$/m);
+    assert.match(knowledgeFs, /whitelisted proxies/);
     assert.match(
       knowledgeFs,
       /^ {6}KNOWLEDGE_INTEGRATED_MODE_ENABLED: \$\{KNOWLEDGE_INTEGRATED_MODE_ENABLED:-true\}$/m,
@@ -163,14 +238,59 @@ test("Dify compose starts the integrated KnowledgeFS API by default and keeps it
     assert.doesNotMatch(knowledgeFs, /^ {6}plugin_daemon:$/m);
     assert.match(knowledgeFs, /http:\/\/127\.0\.0\.1:8787\/ready/);
     assert.match(knowledgeFs, /^ {6}- default$/m);
+    assert.doesNotMatch(knowledgeFs, /^ {6}KNOWLEDGE_PDF_RASTERIZER:/m);
+    assert.doesNotMatch(
+      knowledgeFs,
+      /^ {6}KNOWLEDGE_PDF_RASTERIZER_(?:DPI|MAX_ASSETS|MAX_CONCURRENCY|TIMEOUT_MS|THUMBNAIL_DPI):/m,
+    );
+    for (const suffix of [
+      "",
+      "_DPI",
+      "_MAX_ASSETS",
+      "_MAX_CONCURRENCY",
+      "_THUMBNAIL_DPI",
+      "_TIMEOUT_MS",
+    ]) {
+      const canonicalName = `KNOWLEDGE_PDF_RASTERIZER${suffix}`;
+      assert.ok(
+        knowledgeFs.includes(
+          `      DIFY_ROOT_KNOWLEDGE_PDF_RASTERIZER${suffix}_OVERRIDE: \${${canonicalName}-}`,
+        ),
+      );
+    }
   }
   assert.match(difyApiEnv, /^KNOWLEDGE_FS_ENABLED=\$\{KNOWLEDGE_FS_ENABLED:-false\}$/m);
+});
+
+test("Dify Compose whitelists root PDF overrides without shadowing service values when unset", () => {
+  const withoutRootOverrides = materializedDifyKnowledgeFsEnvironment({
+    ROOT_ONLY_TEST_SECRET: "must-not-enter-container",
+  });
+  assert.equal(withoutRootOverrides.DIFY_ROOT_KNOWLEDGE_PDF_RASTERIZER_OVERRIDE, "");
+  assert.equal(
+    withoutRootOverrides.DIFY_ROOT_KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY_OVERRIDE,
+    "",
+  );
+  assert.equal(withoutRootOverrides.ROOT_ONLY_TEST_SECRET, undefined);
+
+  const withRootOverrides = materializedDifyKnowledgeFsEnvironment({
+    KNOWLEDGE_PDF_RASTERIZER: "off",
+    KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY: "6",
+  });
+  assert.equal(withRootOverrides.DIFY_ROOT_KNOWLEDGE_PDF_RASTERIZER_OVERRIDE, "off");
+  assert.equal(withRootOverrides.DIFY_ROOT_KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY_OVERRIDE, "6");
 });
 
 test("KnowledgeFS deployment env contains only operator-owned runtime inputs", () => {
   assert.deepEqual(envVariableNames(difyKnowledgeFsEnv), [
     "DATABASE_URL",
     "KNOWLEDGE_DOCUMENT_COMPILATION_RUNTIME",
+    "KNOWLEDGE_PDF_RASTERIZER",
+    "KNOWLEDGE_PDF_RASTERIZER_DPI",
+    "KNOWLEDGE_PDF_RASTERIZER_THUMBNAIL_DPI",
+    "KNOWLEDGE_PDF_RASTERIZER_TIMEOUT_MS",
+    "KNOWLEDGE_PDF_RASTERIZER_MAX_ASSETS",
+    "KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY",
     "KNOWLEDGE_OUTLINE_SUMMARY_MAX_CONCURRENCY",
     "KNOWLEDGE_OUTLINE_SUMMARY_BATCH_SIZE",
     "KNOWLEDGE_OUTLINE_SUMMARY_BATCH_MAX_INPUT_CHARS",
@@ -187,8 +307,18 @@ test("KnowledgeFS deployment env contains only operator-owned runtime inputs", (
     "KNOWLEDGE_QUERY_IMAGE_EXPANSION_TIMEOUT_MS",
     "UNSTRUCTURED_API_URL",
     "UNSTRUCTURED_API_KEY",
+    "UNSTRUCTURED_MAX_CONCURRENCY",
+    "UNSTRUCTURED_REQUEST_TIMEOUT_MS",
+    "UNSTRUCTURED_MAX_RESPONSE_BYTES",
+    "DIFY_OBJECT_STORAGE_REQUEST_TIMEOUT_MS",
   ]);
   assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_DOCUMENT_COMPILATION_RUNTIME=on$/m);
+  assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_PDF_RASTERIZER=poppler$/m);
+  assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_PDF_RASTERIZER_DPI=144$/m);
+  assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_PDF_RASTERIZER_THUMBNAIL_DPI=48$/m);
+  assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_PDF_RASTERIZER_TIMEOUT_MS=30000$/m);
+  assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_PDF_RASTERIZER_MAX_ASSETS=500$/m);
+  assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY=2$/m);
   assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_FS_CAPABILITY_V2_ENABLED=false$/m);
   assert.doesNotMatch(difyKnowledgeFsEnv, /^MINIO_/m);
 });
@@ -205,6 +335,12 @@ test("deployment examples keep Dify KnowledgeFS rollout capabilities disabled", 
   assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_LEGACY_AUTHORIZATION_REMOVED: "false"$/m);
   assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_DIRECT_UPLOAD_ENABLED: "off"$/m);
   assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_DIRECT_STREAM_ENABLED: "off"$/m);
+  assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_PDF_RASTERIZER: poppler$/m);
+  assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_PDF_RASTERIZER_DPI: "144"$/m);
+  assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_PDF_RASTERIZER_THUMBNAIL_DPI: "48"$/m);
+  assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_PDF_RASTERIZER_TIMEOUT_MS: "30000"$/m);
+  assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_PDF_RASTERIZER_MAX_ASSETS: "500"$/m);
+  assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY: "2"$/m);
 });
 
 test("Kubernetes baseline starts at zero replicas with internal-only service and fail-closed probes", () => {

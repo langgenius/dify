@@ -3,6 +3,7 @@ import {
   type DatabaseExecuteInput,
   type DatabaseExecuteResult,
   type DatabaseRow,
+  type DatabaseTransactionCallback,
   type ParseArtifact,
   ParseArtifactSchema,
 } from "@knowledge/core";
@@ -34,6 +35,84 @@ const artifact = ParseArtifactSchema.parse({
 }) satisfies ParseArtifact;
 
 describe("parse artifact repositories", () => {
+  it("atomically reports created, unchanged, and replaced materialization", async () => {
+    const memory = createInMemoryParseArtifactRepository({ maxArtifacts: 2 });
+    const fake = createFakeParseArtifactExecutor();
+    const database = createDatabaseParseArtifactRepository({
+      database: createSchemaDatabaseAdapter({
+        executor: fake.executor,
+        kind: "postgres",
+        transaction: fake.transaction,
+      }),
+    });
+
+    for (const repository of [memory, database]) {
+      const materialized = ParseArtifactSchema.parse({
+        ...artifact,
+        elements: [
+          {
+            ...artifact.elements[0],
+            metadata: { assetRef: { objectKey: "objects/first.png" } },
+          },
+        ],
+      });
+      await expect(repository.materialize(materialized)).resolves.toEqual({
+        artifact: materialized,
+        disposition: "created",
+      });
+
+      const sameHashRetry = ParseArtifactSchema.parse({
+        ...materialized,
+        createdAt: "2026-05-09T11:05:01.000Z",
+        elements: [
+          {
+            ...materialized.elements[0],
+            metadata: { assetRef: { objectKey: "objects/retry-must-not-win.png" } },
+          },
+        ],
+        id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c99",
+      });
+      await expect(repository.materialize(sameHashRetry)).resolves.toEqual({
+        artifact: materialized,
+        disposition: "unchanged",
+      });
+
+      const changedHash = ParseArtifactSchema.parse({
+        ...sameHashRetry,
+        artifactHash: "e".repeat(64),
+        elements: [
+          {
+            ...sameHashRetry.elements[0],
+            metadata: { assetRef: { objectKey: "objects/replacement.png" } },
+          },
+        ],
+      });
+      await expect(repository.materialize(changedHash)).resolves.toEqual({
+        artifact: expect.objectContaining({
+          artifactHash: changedHash.artifactHash,
+          createdAt: materialized.createdAt,
+          elements: [
+            expect.objectContaining({
+              metadata: { assetRef: { objectKey: "objects/replacement.png" } },
+            }),
+          ],
+          id: materialized.id,
+        }),
+        disposition: "replaced",
+      });
+      await expect(
+        repository.getByDocumentVersion({
+          documentAssetId: materialized.documentAssetId,
+          version: materialized.version,
+        }),
+      ).resolves.toMatchObject({
+        artifactHash: changedHash.artifactHash,
+        elements: [{ metadata: { assetRef: { objectKey: "objects/replacement.png" } } }],
+        id: materialized.id,
+      });
+    }
+  });
+
   it("keeps generated element ids bound to the first persisted artifact on retry", async () => {
     const retryArtifactId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c46";
     const first = ParseArtifactSchema.parse({
@@ -59,7 +138,11 @@ describe("parse artifact repositories", () => {
     const memory = createInMemoryParseArtifactRepository({ maxArtifacts: 2 });
     const fake = createFakeParseArtifactExecutor();
     const database = createDatabaseParseArtifactRepository({
-      database: createSchemaDatabaseAdapter({ executor: fake.executor, kind: "postgres" }),
+      database: createSchemaDatabaseAdapter({
+        executor: fake.executor,
+        kind: "postgres",
+        transaction: fake.transaction,
+      }),
     });
 
     for (const repository of [memory, database]) {
@@ -83,7 +166,7 @@ describe("parse artifact repositories", () => {
     }
   });
 
-  it("fails closed when a concurrent row change prevents generated id repair", async () => {
+  it("does not rewrite a canonical same-hash row when the retry uses new generated ids", async () => {
     const retryArtifactId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c46";
     const first = ParseArtifactSchema.parse({
       ...artifact,
@@ -91,7 +174,11 @@ describe("parse artifact repositories", () => {
     });
     const fake = createFakeParseArtifactExecutor({ failUpdates: true });
     const repository = createDatabaseParseArtifactRepository({
-      database: createSchemaDatabaseAdapter({ executor: fake.executor, kind: "postgres" }),
+      database: createSchemaDatabaseAdapter({
+        executor: fake.executor,
+        kind: "postgres",
+        transaction: fake.transaction,
+      }),
     });
     await repository.create(first);
 
@@ -101,9 +188,14 @@ describe("parse artifact repositories", () => {
       id: retryArtifactId,
     });
 
-    await expect(repository.create(retry)).rejects.toThrow(
-      "generated element ids could not be canonicalized",
-    );
+    await expect(repository.materialize(retry)).resolves.toMatchObject({
+      artifact: {
+        elements: [{ id: `${first.id}:element-1` }],
+        id: first.id,
+      },
+      disposition: "unchanged",
+    });
+    expect(fake.calls.filter((call) => call.operation === "update")).toEqual([]);
   });
 
   it("stores clone-isolated artifacts and bounds in-memory capacity", async () => {
@@ -150,7 +242,11 @@ describe("parse artifact repositories", () => {
   it("uses parameterized database writes and bounded deletes", async () => {
     const fake = createFakeParseArtifactExecutor();
     const repository = createDatabaseParseArtifactRepository({
-      database: createSchemaDatabaseAdapter({ executor: fake.executor, kind: "postgres" }),
+      database: createSchemaDatabaseAdapter({
+        executor: fake.executor,
+        kind: "postgres",
+        transaction: fake.transaction,
+      }),
     });
 
     await expect(repository.create(artifact)).resolves.toEqual(artifact);
@@ -169,16 +265,26 @@ describe("parse artifact repositories", () => {
       }),
     ).resolves.toBe(0);
 
-    expect(fake.calls[0]).toEqual(
+    const insert = fake.calls.find((call) => call.operation === "insert");
+    expect(insert).toEqual(
       expect.objectContaining({
         maxRows: 1,
         operation: "insert",
         tableName: "parse_artifacts",
       }),
     );
-    expect(fake.calls[0]?.sql).not.toContain("hello.md");
-    expect(fake.calls[0]?.params).toContain(JSON.stringify(artifact.elements));
-    expect(fake.calls[0]?.params).toContain(JSON.stringify(artifact.metadata));
+    expect(insert?.sql).not.toContain("hello.md");
+    expect(insert?.params).toContain(JSON.stringify(artifact.elements));
+    expect(insert?.params).toContain(JSON.stringify(artifact.metadata));
+    expect(fake.calls[0]).toEqual(
+      expect.objectContaining({
+        operation: "select",
+        params: [artifact.documentAssetId],
+        tableName: "document_assets",
+      }),
+    );
+    expect(fake.calls[0]?.sql).toContain("FOR UPDATE");
+    expect(fake.calls[1]?.sql).toContain("FOR UPDATE");
     expect(fake.calls).toContainEqual(
       expect.objectContaining({
         maxRows: 1,
@@ -198,24 +304,26 @@ describe("parse artifact repositories", () => {
     expect(fake.calls.at(-1)?.sql).not.toContain(artifact.documentAssetId);
   });
 
-  it("fails closed when an upsert cannot resolve exactly one canonical artifact", async () => {
+  it("fails closed when a locked lookup resolves duplicate or mismatched artifacts", async () => {
     const row = parseArtifactRow(artifact);
-    const repositoryForRows = (rows: readonly DatabaseRow[]) =>
-      createDatabaseParseArtifactRepository({
-        database: createSchemaDatabaseAdapter({
-          executor: async (input) => ({
-            rows: input.operation === "select" ? [...rows] : [],
-            rowsAffected: input.operation === "insert" ? 1 : 0,
-          }),
-          kind: "tidb",
-        }),
+    const repositoryForRows = (rows: readonly DatabaseRow[]) => {
+      const executor = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => ({
+        rows:
+          input.operation === "select" && input.tableName === "parse_artifacts" ? [...rows] : [],
+        rowsAffected: input.operation === "insert" ? 1 : 0,
       });
 
-    await expect(repositoryForRows([]).create(artifact)).rejects.toThrow(
-      "Parse artifact upsert did not persist its logical row",
-    );
-    await expect(repositoryForRows([row, { ...row }]).create(artifact)).rejects.toThrow(
-      "Parse artifact upsert resolved multiple persisted logical rows",
+      return createDatabaseParseArtifactRepository({
+        database: createSchemaDatabaseAdapter({
+          executor,
+          kind: "tidb",
+          transaction: async (callback) => callback({ execute: executor }),
+        }),
+      });
+    };
+
+    await expect(repositoryForRows([row, { ...row }]).materialize(artifact)).rejects.toThrow(
+      "materialization resolved multiple persisted logical rows",
     );
     await expect(
       repositoryForRows([
@@ -223,8 +331,8 @@ describe("parse artifact repositories", () => {
           ...row,
           document_asset_id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2cff",
         },
-      ]).create(artifact),
-    ).rejects.toThrow("Parse artifact upsert resolved a mismatched persisted logical row");
+      ]).materialize(artifact),
+    ).rejects.toThrow("materialization resolved a mismatched persisted row");
   });
 
   it("guards memory prune overflow and database document deletes", async () => {
@@ -250,7 +358,11 @@ describe("parse artifact repositories", () => {
 
     const fake = createFakeParseArtifactExecutor();
     const database = createDatabaseParseArtifactRepository({
-      database: createSchemaDatabaseAdapter({ executor: fake.executor, kind: "postgres" }),
+      database: createSchemaDatabaseAdapter({
+        executor: fake.executor,
+        kind: "postgres",
+        transaction: fake.transaction,
+      }),
     });
 
     await expect(
@@ -342,6 +454,35 @@ function createFakeParseArtifactExecutor({
       if (failUpdates) {
         return { rows: [], rowsAffected: 0 };
       }
+
+      if (input.params.length === 8) {
+        const [
+          parser,
+          contentType,
+          artifactHash,
+          elements,
+          metadata,
+          id,
+          documentAssetId,
+          version,
+        ] = input.params;
+        const key = `${String(documentAssetId)}:${Number(version)}`;
+        const row = rows.get(key);
+        if (!row || row.id !== String(id)) {
+          return { rows: [], rowsAffected: 0 };
+        }
+        rows.set(key, {
+          ...row,
+          artifact_hash: String(artifactHash),
+          content_type: String(contentType),
+          elements: typeof elements === "string" ? JSON.parse(elements) : elements,
+          metadata: typeof metadata === "string" ? JSON.parse(metadata) : metadata,
+          parser: String(parser),
+        });
+
+        return { rows: [], rowsAffected: 1 };
+      }
+
       const [elements, id, documentAssetId, version] = input.params;
       const key = `${String(documentAssetId)}:${Number(version)}`;
       const row = rows.get(key);
@@ -359,7 +500,12 @@ function createFakeParseArtifactExecutor({
     return { rows: [], rowsAffected: 0 };
   };
 
-  return { calls, executor };
+  return {
+    calls,
+    executor,
+    transaction: async <T>(callback: DatabaseTransactionCallback<T>) =>
+      callback({ execute: executor }),
+  };
 }
 
 function parseArtifactRow(input: ParseArtifact): DatabaseRow {

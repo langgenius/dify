@@ -51,6 +51,7 @@ import {
   type ProjectionSetPublicationMemberRepository,
   type ProjectionSetPublicationRepository,
   type SemanticChunker,
+  createConcurrencyGate,
   createDatabaseDocumentCompilationCandidateValidator,
   createDatabaseDocumentCompilationIndexOverrideResolver,
   createDatabaseDocumentLogicalMutationReconciler,
@@ -157,7 +158,7 @@ export interface CreateApiDocumentCompilationRuntimeOptions {
       }
     | undefined;
   readonly multimodal?:
-    | Pick<
+    | (Pick<
         KnowledgeGatewayOptions,
         | "documentMultimodalImageVariantGenerator"
         | "documentMultimodalLocalAssetAllowlist"
@@ -165,7 +166,7 @@ export interface CreateApiDocumentCompilationRuntimeOptions {
         | "documentMultimodalMaxLocalAssetBytes"
         | "documentMultimodalMaxPdfRasterizedAssets"
         | "documentPdfRasterizer"
-      >
+      > & { readonly documentMultimodalMaxConcurrency?: number | undefined })
     | undefined;
   readonly repositories: Partial<ApiDocumentCompilationRuntimeRepositories>;
   readonly semantic?:
@@ -298,6 +299,9 @@ export function createApiDocumentCompilationRuntime({
       "Document compilation runtime requires bounded projection getMany and status updates",
     );
   }
+  const multimodalMaterializationGate = createConcurrencyGate(
+    multimodal?.documentMultimodalMaxConcurrency ?? 2,
+  );
 
   const compilationJobs = createDurableDocumentCompilationJobStateMachine({
     assertCompilationAdmission: (input) =>
@@ -576,6 +580,7 @@ export function createApiDocumentCompilationRuntime({
               multimodalImageVariantGenerator: multimodal.documentMultimodalImageVariantGenerator,
             }
           : {}),
+        multimodalMaterializationGate,
         ...(multimodal?.documentMultimodalLocalAssetAllowlist
           ? {
               multimodalLocalAssetAllowlist: multimodal.documentMultimodalLocalAssetAllowlist,
@@ -585,6 +590,9 @@ export function createApiDocumentCompilationRuntime({
           ? {
               multimodalMaxExtractedAssets: multimodal.documentMultimodalMaxExtractedAssets,
             }
+          : {}),
+        ...(multimodal
+          ? { multimodalMaxConcurrency: multimodal.documentMultimodalMaxConcurrency }
           : {}),
         ...(multimodal?.documentMultimodalMaxLocalAssetBytes
           ? {

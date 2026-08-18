@@ -130,5 +130,15 @@ describe("createApiDocumentParser", () => {
         env: { UNSTRUCTURED_API_URL: "http://parser", UNSTRUCTURED_MAX_RESPONSE_BYTES: "0" },
       }),
     ).toThrow("UNSTRUCTURED_MAX_RESPONSE_BYTES must be at least 1");
+    expect(() =>
+      createApiDocumentParser({
+        env: { UNSTRUCTURED_API_URL: "http://parser", UNSTRUCTURED_MAX_CONCURRENCY: "33" },
+      }),
+    ).toThrow("UNSTRUCTURED_MAX_CONCURRENCY must be between 1 and 32");
+    expect(() =>
+      createApiDocumentParser({
+        env: { UNSTRUCTURED_API_URL: "http://parser", UNSTRUCTURED_REQUEST_TIMEOUT_MS: "600001" },
+      }),
+    ).toThrow("UNSTRUCTURED_REQUEST_TIMEOUT_MS must be between 1 and 600000");
   });
 });
