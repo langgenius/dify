@@ -489,6 +489,37 @@ def test_run_succeeded_event_round_trips_usage() -> None:
     assert b'"usage"' in payload
 
 
+def test_run_failed_event_round_trips_usage() -> None:
+    usage = AgentRunUsage(prompt_tokens=13, completion_tokens=8)
+    event = RunFailedEvent(run_id="run-partial-usage", data=RunFailedEventData(error="boom", usage=usage))
+
+    payload = RUN_EVENT_ADAPTER.dump_json(event)
+    decoded = RUN_EVENT_ADAPTER.validate_json(payload)
+
+    assert isinstance(decoded, RunFailedEvent)
+    assert decoded.data.usage is not None
+    assert decoded.data.usage.prompt_tokens == 13
+    assert decoded.data.usage.completion_tokens == 8
+    assert decoded.data.usage.total_tokens == 21
+
+
+def test_run_cancelled_event_round_trips_usage() -> None:
+    usage = AgentRunUsage(prompt_tokens=13, completion_tokens=8)
+    event = RunCancelledEvent(
+        run_id="run-partial-usage",
+        data=RunCancelledEventData(reason="user_cancelled", usage=usage),
+    )
+
+    payload = RUN_EVENT_ADAPTER.dump_json(event)
+    decoded = RUN_EVENT_ADAPTER.validate_json(payload)
+
+    assert isinstance(decoded, RunCancelledEvent)
+    assert decoded.data.usage is not None
+    assert decoded.data.usage.prompt_tokens == 13
+    assert decoded.data.usage.completion_tokens == 8
+    assert decoded.data.usage.total_tokens == 21
+
+
 def test_run_succeeded_event_round_trips_complete_pricing_usage() -> None:
     event = RunSucceededEvent(
         run_id="run-priced-usage",
