@@ -114,9 +114,10 @@ def test_encrypt_tool_parameters():
 
 def test_decrypt_tool_parameters_cache_hit_and_miss(monkeypatch: pytest.MonkeyPatch):
     manager = _build_manager()
+    fingerprint = manager._secret_input_fingerprint({"secret": "enc"}, manager._merge_parameters())
 
     with (
-        patch.object(ToolParameterCache, "get", return_value={"secret": "cached"}),
+        patch.object(ToolParameterCache, "get", return_value={"secret": "cached", "__cache_fingerprint": fingerprint}),
         patch.object(ToolParameterCache, "set") as mock_set,
     ):
         assert manager.decrypt_tool_parameters({"secret": "enc"}) == {"secret": "cached"}
@@ -130,6 +131,22 @@ def test_decrypt_tool_parameters_cache_hit_and_miss(monkeypatch: pytest.MonkeyPa
         decrypted = manager.decrypt_tool_parameters({"secret": "enc", "plain": "x"})
         assert decrypted["secret"] == "dec"
         mock_set.assert_called_once()
+
+
+def test_decrypt_tool_parameters_ignores_stale_cache_for_different_secret_input():
+    """A cached decrypt keyed only by node identity must not leak across different
+    secret-input values, e.g. successive loop/iteration executions of the same node."""
+    manager = _build_manager()
+
+    with (
+        patch.object(ToolParameterCache, "get", return_value={"secret": "cached-from-first-call"}),
+        patch.object(ToolParameterCache, "set") as mock_set,
+        patch("core.tools.utils.configuration.encrypter.decrypt_token", return_value="dec-second"),
+    ):
+        decrypted = manager.decrypt_tool_parameters({"secret": "enc-2", "plain": "x"})
+
+    assert decrypted["secret"] == "dec-second"
+    mock_set.assert_called_once()
 
 
 def test_delete_tool_parameters_cache():

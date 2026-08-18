@@ -1,4 +1,6 @@
 import contextlib
+import hashlib
+import json
 from copy import deepcopy
 from typing import Any
 
@@ -9,6 +11,8 @@ from core.tools.entities.tool_entities import (
     ToolParameter,
     ToolProviderType,
 )
+
+_CACHE_FINGERPRINT_KEY = "__cache_fingerprint"
 
 
 class ToolParameterConfigurationManager:
@@ -110,6 +114,22 @@ class ToolParameterConfigurationManager:
 
         return parameters
 
+    def _secret_input_fingerprint(self, parameters: dict[str, Any], current_parameters: list[ToolParameter]) -> str:
+        """
+        fingerprint the secret-form input values so a cache entry is only reused when it was
+        built from the same secret inputs. Without this, a dynamically bound secret-input
+        parameter (e.g. inside a loop/iteration node) would keep the first call's decrypted
+        value cached and silently reuse it for every later call with a different value.
+        """
+        material = {
+            parameter.name: parameters.get(parameter.name)
+            for parameter in current_parameters
+            if parameter.form == ToolParameter.ToolParameterForm.FORM
+            and parameter.type == ToolParameter.ToolParameterType.SECRET_INPUT
+        }
+        canonical = json.dumps(material, sort_keys=True, default=str)
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
     def decrypt_tool_parameters(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """
         decrypt tool parameters with tenant id
@@ -117,6 +137,10 @@ class ToolParameterConfigurationManager:
         return a deep copy of parameters with decrypted values
         """
         parameters = self._deep_copy(parameters)
+
+        # override parameters
+        current_parameters = self._merge_parameters()
+        fingerprint = self._secret_input_fingerprint(parameters, current_parameters)
 
         cache = ToolParameterCache(
             tenant_id=self.tenant_id,
@@ -126,11 +150,10 @@ class ToolParameterConfigurationManager:
             identity_id=self.identity_id,
         )
         cached_parameters = cache.get()
-        if cached_parameters:
+        if cached_parameters and cached_parameters.get(_CACHE_FINGERPRINT_KEY) == fingerprint:
+            cached_parameters.pop(_CACHE_FINGERPRINT_KEY, None)
             return cached_parameters
 
-        # override parameters
-        current_parameters = self._merge_parameters()
         has_secret_input = False
 
         for parameter in current_parameters:
@@ -144,7 +167,7 @@ class ToolParameterConfigurationManager:
                         parameters[parameter.name] = encrypter.decrypt_token(self.tenant_id, parameters[parameter.name])
 
         if has_secret_input:
-            cache.set(parameters)
+            cache.set({**parameters, _CACHE_FINGERPRINT_KEY: fingerprint})
 
         return parameters
 
