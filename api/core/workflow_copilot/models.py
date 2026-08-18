@@ -18,12 +18,12 @@ Deltas from the Go source (per the P1 port plan's Global Constraints / ADR):
   fields have no meaningful "empty" value (an empty string is not a valid
   ``PcState``/``EntryMode`` member) and are always set explicitly in the Go
   suite, so they stay required here.
-- ``FixContext.diagnosis`` / ``.risk`` / ``.change_set`` / ``.staged_repair``
-  reference ``Diagnosis`` / ``Risk`` / ``ChangeSet`` / ``MutationIntent``.
-  In Go those live in the same package as this file; in Python they are
-  defined in ``ports.py`` (a later task) and importing them here would
-  create a models<->ports import cycle (ports.py imports these models). They
-  are typed ``Any`` for now.
+- ``Diagnosis`` / ``Risk`` / ``MutationIntent`` / ``ChangeSet`` / ``NodeEvent``
+  / ``ApplyResult`` (Go: ``ports.go``) live here rather than in ``ports.py``.
+  ``FixContext`` embeds ``Diagnosis``/``Risk``/``ChangeSet``/
+  ``MutationIntent`` directly, and defining them in ``ports.py`` (which
+  imports the rest of these models) would create a models<->ports import
+  cycle; ``ports.py`` imports them back out of this module instead.
 """
 
 from dataclasses import dataclass, field
@@ -138,14 +138,58 @@ class ConversationItem:
 
 
 @dataclass(kw_only=True)
+class Diagnosis:
+    culprit_node_id: str = ""
+    root_cause: str = ""
+    severity: str = ""
+
+
+@dataclass(kw_only=True)
+class Risk:
+    level: str = ""  # low | high
+    reason: str = ""
+    has_external_side_effect: bool = False
+
+
+@dataclass(kw_only=True)
+class MutationIntent:
+    op: str = ""  # set_node_config | connect | insert_between
+    args: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(kw_only=True)
+class ChangeSet:
+    changed_nodes: list[str] = field(default_factory=list)
+    diff: str = ""
+
+
+@dataclass(kw_only=True)
+class NodeEvent:
+    """A per-node progress event emitted while a draft run streams."""
+
+    node_id: str = ""
+    title: str = ""
+    status: str = ""
+    error: str = ""
+
+
+@dataclass(kw_only=True)
+class ApplyResult:
+    """Reports what a repair changed and the draft's new hash."""
+
+    changed_nodes: list[str] = field(default_factory=list)
+    new_hash: str = ""
+
+
+@dataclass(kw_only=True)
 class FixContext:
     """Per-session working state persisted as the commit context."""
 
     failed_run_id: str = ""
-    diagnosis: Any | None = None  # Diagnosis, defined in ports.py (Task 3)
-    staged_repair: list[Any] = field(default_factory=list)  # list[MutationIntent] (Task 3)
-    risk: Any | None = None  # Risk (Task 3)
-    change_set: Any | None = None  # ChangeSet (Task 3)
+    diagnosis: Diagnosis | None = None
+    staged_repair: list[MutationIntent] = field(default_factory=list)
+    risk: Risk | None = None
+    change_set: ChangeSet | None = None
     checkpoint_id: str = ""
     verify_run_id: str = ""
     test_input_ref: str = ""
