@@ -36,38 +36,6 @@ function responseStatus(error: unknown) {
   }
 }
 
-function recordProperty(value: unknown, key: string) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return
-
-  const property = (value as Record<string, unknown>)[key]
-  if (!property || typeof property !== 'object' || Array.isArray(property)) return
-
-  return property as Record<string, unknown>
-}
-
-function stringProperty(value: unknown, ...keys: string[]) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return
-
-  for (const key of keys) {
-    const property = (value as Record<string, unknown>)[key]
-    if (typeof property === 'string' && property.length > 0) return property
-  }
-}
-
-function retrievalModeFromProfile(modelProfile: unknown) {
-  const pendingConfiguration =
-    recordProperty(modelProfile, 'pendingModelConfiguration') ??
-    recordProperty(modelProfile, 'pending_model_configuration')
-  const retrievalProfile =
-    recordProperty(modelProfile, 'retrievalProfile') ??
-    recordProperty(modelProfile, 'retrieval_profile') ??
-    recordProperty(pendingConfiguration, 'retrievalProfile') ??
-    recordProperty(pendingConfiguration, 'retrieval_profile')
-  const mode = stringProperty(retrievalProfile, 'defaultMode', 'default_mode')
-
-  if (mode === 'deep' || mode === 'fast' || mode === 'research') return mode
-}
-
 const knowledgeSpacePageTitle = (
   pathname: string,
   t: ReturnType<typeof useTranslation<'dataset'>>['t'],
@@ -139,8 +107,6 @@ export function KnowledgeSpaceShell({
     externalAccessQuery.data.agent_enabled === true
   const knowledgeSpaceName =
     knowledgeSpaceQuery.data?.technical_summary?.name ?? t(($) => $.knowledge)
-  const modelProfile = knowledgeSpaceQuery.data?.technical_summary?.model_profile
-  const retrievalMode = retrievalModeFromProfile(modelProfile)
   const pageTitle = knowledgeSpacePageTitle(pathname, t, tCommon)
   const documentTitle = `${pageTitle} · ${knowledgeSpaceName}`
   const documentTitleOwnedByChild =
@@ -296,17 +262,10 @@ export function KnowledgeSpaceShell({
                 size="medium"
               />
               {sidebarExpanded && (
-                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <div className="flex min-w-0 flex-1">
                   <h1 className="truncate system-md-semibold text-text-secondary">
                     {knowledgeSpaceName}
                   </h1>
-                  {retrievalMode && (
-                    <div className="flex min-w-0 items-center gap-2 system-2xs-medium-uppercase text-text-tertiary">
-                      <span className="truncate">
-                        {t(($) => $[`newKnowledge.settings.retrievalMode.${retrievalMode}`])}
-                      </span>
-                    </div>
-                  )}
                 </div>
               )}
             </div>

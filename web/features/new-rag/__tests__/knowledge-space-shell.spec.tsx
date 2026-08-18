@@ -188,7 +188,9 @@ describe('KnowledgeSpaceShell', () => {
     )
 
     expect(screen.getByRole('heading', { name: 'Support knowledge' })).toBeInTheDocument()
-    expect(screen.getByText('dataset.newKnowledge.settings.retrievalMode.fast')).toBeInTheDocument()
+    expect(
+      screen.queryByText('dataset.newKnowledge.settings.retrievalMode.fast'),
+    ).not.toBeInTheDocument()
     expect(screen.queryByText('text-embedding-3-large')).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'common.mainNav.home' })).toHaveAttribute('href', '/')
     expect(screen.getByRole('link', { name: 'dataset.knowledge' })).toHaveAttribute(
@@ -267,20 +269,6 @@ describe('KnowledgeSpaceShell', () => {
     expect(screen.getByRole('dialog', { name: 'knowledge-fs-api-access' })).toHaveTextContent(
       'true:true',
     )
-  })
-
-  it('does not invent sidebar metadata when the summary profile is unavailable', () => {
-    queryMock.data = {
-      control_space_id: 'space-1',
-      state: 'active',
-      technical_summary: { name: 'Support knowledge' },
-    }
-
-    render(<KnowledgeSpaceShell knowledgeSpaceId="space-1">source content</KnowledgeSpaceShell>)
-
-    expect(
-      screen.queryByText('dataset.newKnowledge.settings.retrievalMode.fast'),
-    ).not.toBeInTheDocument()
   })
 
   it('marks settings as the current navigation item', () => {
