@@ -2614,9 +2614,7 @@ class KnowledgeFSRetrievalCustomMetadataCondition(BaseModel):
             return self
         if self.value is None:
             raise ValueError("Retrieval custom metadata condition value is required")
-        if self.field_type == "number" and (
-            isinstance(self.value, bool) or not isinstance(self.value, int | float)
-        ):
+        if self.field_type == "number" and (isinstance(self.value, bool) or not isinstance(self.value, int | float)):
             raise ValueError("Retrieval custom metadata number conditions require a numeric value")
         if self.field_type == "string" and not isinstance(self.value, str):
             raise ValueError("Retrieval custom metadata string conditions require a string value")
