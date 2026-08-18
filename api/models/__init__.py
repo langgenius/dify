@@ -151,6 +151,15 @@ from .workflow import (
     WorkflowVersionCounter,
     resolve_workflow_kind,
 )
+from .workflow_copilot import (
+    CopilotCheckpoint,
+    CopilotConversationItem,
+    CopilotRun,
+    CopilotSession,
+    CopilotSessionCommit,
+    CopilotSnapshot,
+    CopilotTestInput,
+)
 
 __all__ = [
     "APIBasedExtension",
@@ -199,6 +208,13 @@ __all__ = [
     "CeleryTaskSet",
     "Conversation",
     "ConversationVariable",
+    "CopilotCheckpoint",
+    "CopilotConversationItem",
+    "CopilotRun",
+    "CopilotSession",
+    "CopilotSessionCommit",
+    "CopilotSnapshot",
+    "CopilotTestInput",
     "CreatorUserRole",
     "CredentialPermission",
     "CredentialPermissionType",
