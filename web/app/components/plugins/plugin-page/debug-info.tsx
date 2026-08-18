@@ -29,6 +29,7 @@ function DebugInfo({
   const { t } = useTranslation()
   const docLink = useDocLink()
   const { data: info, isLoading } = useDebugKey()
+  const title = t(($) => $[`${i18nPrefix}.title`], { ns: 'plugin' })
   const trigger = triggerContent ?? <span aria-hidden className="i-ri-bug-line size-4" />
   const triggerClassNames = cn(
     !triggerClassName && 'size-full p-2 text-components-button-secondary-text',
@@ -42,7 +43,7 @@ function DebugInfo({
 
   if (!info) {
     return (
-      <Button variant={triggerVariant} className={triggerClassNames} disabled>
+      <Button variant={triggerVariant} className={triggerClassNames} aria-label={title} disabled>
         {trigger}
       </Button>
     )
@@ -52,7 +53,7 @@ function DebugInfo({
     <Popover>
       <PopoverTrigger
         render={
-          <Button variant={triggerVariant} className={triggerClassNames}>
+          <Button variant={triggerVariant} className={triggerClassNames} aria-label={title}>
             {trigger}
           </Button>
         }
@@ -62,7 +63,7 @@ function DebugInfo({
         popupClassName="border-0 bg-transparent p-0 shadow-none"
       >
         <PluginSidecarPanel
-          title={t(($) => $[`${i18nPrefix}.title`], { ns: 'plugin' })}
+          title={title}
           footer={
             <div className="flex w-full shrink-0 flex-col items-start">
               <div className="flex w-full shrink-0 items-center justify-end gap-2 px-4 pt-2 pb-4">

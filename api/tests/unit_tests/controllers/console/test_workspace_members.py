@@ -7,6 +7,7 @@ from flask import Flask, g
 
 from controllers.console.workspace.error import InvalidMemberRoleError
 from controllers.console.workspace.members import MemberInviteEmailApi
+from enums import DeploymentEdition
 from models.account import Account, TenantAccountRole
 
 
@@ -53,8 +54,7 @@ class TestMemberInviteEmailApi:
             patch("controllers.console.workspace.members.dify_config.RBAC_ENABLED", False),
             patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "https://console.example.com"),
             patch("controllers.console.workspace.members._count_new_member_invites", return_value=(1, 1)),
-            patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", False),
-            patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
+            patch("controllers.console.workspace.members.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
         ):
             with app.test_request_context(
                 "/workspaces/current/members/invite-email",

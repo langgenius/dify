@@ -1,9 +1,12 @@
 'use client'
+
 import type { FC } from 'react'
 import type { DocumentDisplayStatus, FileItem, FullDocumentDetail } from '@/models/datasets'
 import type { SegmentImportStatus } from '@/types/dataset'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
@@ -12,10 +15,11 @@ import Divider from '@/app/components/base/divider'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import Loading from '@/app/components/base/loading'
 import Metadata from '@/app/components/datasets/metadata/metadata-document'
-import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { ChunkingMode, DisplayStatusList } from '@/models/datasets'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import {
@@ -40,7 +44,6 @@ import { DocumentContext } from './context'
 import { DocumentTitle } from './document-title'
 import Embedding from './embedding'
 import { SegmentAdd } from './segment-add'
-import style from './style.module.css'
 
 type DocumentDetailProps = {
   datasetId: string
@@ -60,7 +63,10 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const isMobile = media === MediaType.mobile
 
   const dataset = useDatasetDetailContextWithSelector((s) => s.dataset)
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const embeddingAvailable = !!dataset?.embedding_available
   const datasetACLCapabilities = useMemo(
@@ -143,6 +149,10 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
       return false
     },
   })
+  const documentTitle =
+    documentDetail?.name || t(($) => $['datasetMenus.documents'], { ns: 'common' })
+  const datasetTitle = dataset?.name || t(($) => $['menus.datasets'], { ns: 'common' })
+  useDocumentTitle(`${documentTitle} · ${datasetTitle}`)
 
   const { data: documentMetadata } = useDocumentMetadata({
     datasetId,
@@ -257,6 +267,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   } ${t(($) => $['metadata.title'], { ns: 'datasetDocuments' })}`
 
   return (
+    // oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector contexts are not React 19 context components.
     <DocumentContext.Provider value={contextValue}>
       <div className="flex h-full flex-col bg-background-default">
         <div className="flex min-h-16 flex-wrap items-center justify-between border-b border-b-divider-subtle py-2.5 pr-4 pl-3">
@@ -319,12 +330,13 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               canDelete={datasetACLCapabilities.canDeleteFile}
               canViewSettings={canEditDocument}
             />
-            <button
-              type="button"
+            <IconButton
+              variant="secondary"
+              size="lg"
               aria-label={metadataToggleLabel}
-              aria-pressed={showMetadata}
+              aria-expanded={showMetadata}
               title={metadataToggleLabel}
-              className={style.layoutRightIcon}
+              className="ml-2"
               onClick={() => setShowMetadata(!showMetadata)}
             >
               {showMetadata ? (
@@ -338,7 +350,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
                   className="i-ri-layout-right-2-line size-4 text-components-button-secondary-text"
                 />
               )}
-            </button>
+            </IconButton>
           </div>
         </div>
         <div className="flex flex-1 flex-row" style={{ height: 'calc(100% - 4rem)' }}>

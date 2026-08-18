@@ -1,14 +1,13 @@
 from typing import Any
 from uuid import UUID
 
-from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, RootModel, computed_field, field_validator
 
 from constants.languages import languages
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.wraps import account_initialization_required, with_current_user
+from controllers.console.wraps import account_initialization_required, model_validate, with_current_user
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import build_icon_url, dump_response
@@ -114,10 +113,10 @@ class RecommendedAppListApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    def get(self, current_user: Account):
+    @model_validate(RecommendedAppsQuery)
+    def get(self, req_data: RecommendedAppsQuery, current_user: Account):
         # language args
-        args = RecommendedAppsQuery.model_validate(request.args.to_dict(flat=True))
-        language_prefix = _resolve_language(args.language, current_user)
+        language_prefix = _resolve_language(req_data.language, current_user)
 
         return dump_response(
             RecommendedAppListResponse,
@@ -132,9 +131,9 @@ class LearnDifyAppListApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    def get(self, current_user: Account):
-        args = RecommendedAppsQuery.model_validate(request.args.to_dict(flat=True))
-        language_prefix = _resolve_language(args.language, current_user)
+    @model_validate(RecommendedAppsQuery)
+    def get(self, req_data: RecommendedAppsQuery, current_user: Account):
+        language_prefix = _resolve_language(req_data.language, current_user)
 
         return dump_response(
             LearnDifyAppListResponse,

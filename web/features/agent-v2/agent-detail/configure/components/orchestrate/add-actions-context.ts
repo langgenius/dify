@@ -51,7 +51,9 @@ export function useRegisterAgentOrchestrateAddAction(
   const registerAction = context?.registerAction
   const actionRef = useRef(action)
 
-  actionRef.current = action
+  useEffect(() => {
+    actionRef.current = action
+  }, [action])
 
   const stableAction = useCallback<AgentOrchestrateAddAction>((options) => {
     actionRef.current(options)

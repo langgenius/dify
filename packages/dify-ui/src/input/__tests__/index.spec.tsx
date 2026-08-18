@@ -1,9 +1,21 @@
+import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { Field, FieldError, FieldLabel } from '../../field'
 import { Form } from '../../form'
 import { Input } from '../index'
 
 describe('Input', () => {
+  it('should show keyboard focus when read-only', async () => {
+    const screen = await render(<Input aria-label="API key" defaultValue="sk-test" readOnly />)
+    const input = screen.getByRole('textbox', { name: 'API key' })
+    const restingBoxShadow = getComputedStyle(input.element()).boxShadow
+
+    await userEvent.keyboard('{Tab}')
+
+    await expect.element(input).toHaveFocus()
+    await expect.poll(() => getComputedStyle(input.element()).boxShadow).not.toBe(restingBoxShadow)
+  })
+
   it('should use Field invalid state', async () => {
     const screen = await render(
       <Field name="repositoryUrl" invalid>

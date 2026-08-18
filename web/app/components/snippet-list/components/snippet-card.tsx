@@ -177,7 +177,6 @@ const SnippetCard = ({
           <div className="flex w-0 grow items-center gap-1">
             <div className="mr-10.25 min-w-0 grow">
               <TagSelector
-                placement="bottom-start"
                 type="snippet"
                 targetId={snippet.id}
                 value={snippet.tags}

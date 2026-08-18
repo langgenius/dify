@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
@@ -15,6 +15,7 @@ import {
   agentComposerSavedDraftAtom,
   isAgentComposerDirtyAtom,
 } from '@/features/agent-v2/agent-composer/store'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import {
   AgentOrchestrateReadOnlyContext,
   AgentOrchestrateViewingVersionContext,
@@ -50,13 +51,6 @@ const pluginInstallState = vi.hoisted(() => ({
 vi.mock('@/app/components/workflow/block-selector/tool-picker', () => ({
   ToolPickerContent: () => <div>Mock tool picker</div>,
 }))
-
-vi.mock('@/context/account-state', async () => {
-  const { atom } = await vi.importActual<typeof import('jotai')>('jotai')
-  return {
-    userProfileIdAtom: atom('user-1'),
-  }
-})
 
 vi.mock('@/app/components/workflow/block-icon', () => ({
   default: ({ toolIcon }: { toolIcon?: string | { content: string; background: string } }) => (
@@ -116,18 +110,21 @@ vi.mock('@/utils/get-icon', () => ({
 
 vi.mock('@/app/components/plugins/plugin-auth/authorize/add-oauth-button', () => ({
   default: ({ buttonText, onUpdate, renderTrigger }: AddOAuthButtonProps) => {
-    if (renderTrigger) {
-      return renderTrigger({
-        isConfigured: false,
-        onClick: () => onUpdate?.(),
-      })
-    }
-
-    return (
+    const trigger = (
       <button type="button" onClick={onUpdate}>
         {buttonText}
       </button>
     )
+
+    if (renderTrigger) {
+      return renderTrigger({
+        isConfigured: false,
+        onClick: () => onUpdate?.(),
+        trigger,
+      })
+    }
+
+    return trigger
   },
 }))
 
@@ -395,6 +392,7 @@ function renderAgentTools(initialDraft: AgentSoulConfigFormState = agentToolsDra
       },
     },
   })
+  seedAccountProfileQuery(queryClient, { id: 'user-1' })
 
   return render(
     <QueryClientProvider client={queryClient}>
@@ -413,6 +411,7 @@ function renderAgentToolsWithStore(initialDraft: AgentSoulConfigFormState = agen
       },
     },
   })
+  seedAccountProfileQuery(queryClient, { id: 'user-1' })
   const store = createStore()
   store.set(agentComposerDraftAtom, initialDraft)
   store.set(agentComposerSavedDraftAtom, initialDraft)
@@ -445,6 +444,7 @@ function renderReadonlyAgentTools({
       },
     },
   })
+  seedAccountProfileQuery(queryClient, { id: 'user-1' })
 
   return render(
     <QueryClientProvider client={queryClient}>

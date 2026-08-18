@@ -9,6 +9,8 @@ import {
 import { SERVICE_API_RUNTIME_STEP_TIMEOUT_MS } from '../../agent-v2/support/service-api-sse'
 import { getCurrentAgentId, getServiceApiCard } from './access-point-helpers'
 
+const API_KEY_DIALOG_NAME = /^API Key$/i
+
 async function createAgentApiKey(world: DifyWorld) {
   const agentId = getCurrentAgentId(world)
   const client = world.getConsoleClient()
@@ -61,7 +63,7 @@ When('I open Agent v2 API key management', async function (this: DifyWorld) {
 
 Then('Agent v2 API keys should not expose a secret by default', async function (this: DifyWorld) {
   const page = this.getPage()
-  const dialog = page.getByRole('dialog', { name: /API Secret key/i })
+  const dialog = page.getByRole('dialog', { name: API_KEY_DIALOG_NAME })
   const existingSecret = this.agentBuilder.accessPoint.generatedApiKey
 
   await expect(dialog).toBeVisible()
@@ -76,14 +78,14 @@ Then('Agent v2 API keys should not expose a secret by default', async function (
 })
 
 When('I create a new Agent v2 API key', async function (this: DifyWorld) {
-  const dialog = this.getPage().getByRole('dialog', { name: /API Secret key/i })
+  const dialog = this.getPage().getByRole('dialog', { name: API_KEY_DIALOG_NAME })
 
   await dialog.getByRole('button', { name: 'Create new Secret key' }).click()
 })
 
 Then('I should see the newly generated Agent v2 API key once', async function (this: DifyWorld) {
   const generatedKeyDialog = this.getPage()
-    .getByRole('dialog', { name: /API Secret key/i })
+    .getByRole('dialog', { name: API_KEY_DIALOG_NAME })
     .last()
   const generatedKey = generatedKeyDialog.getByText(/^app-/)
 
@@ -101,7 +103,7 @@ Then('I should see the newly generated Agent v2 API key once', async function (t
 
 When('I copy the newly generated Agent v2 API key', async function (this: DifyWorld) {
   const generatedKeyDialog = this.getPage()
-    .getByRole('dialog', { name: /API Secret key/i })
+    .getByRole('dialog', { name: API_KEY_DIALOG_NAME })
     .last()
 
   await generatedKeyDialog.getByLabel('Copy').first().click()
@@ -111,7 +113,7 @@ Then(
   'the newly generated Agent v2 API key should show it was copied',
   async function (this: DifyWorld) {
     const generatedKeyDialog = this.getPage()
-      .getByRole('dialog', { name: /API Secret key/i })
+      .getByRole('dialog', { name: API_KEY_DIALOG_NAME })
       .last()
 
     await expect(generatedKeyDialog.getByLabel('Copied')).toBeVisible()
@@ -120,7 +122,7 @@ Then(
 
 When('I close the newly generated Agent v2 API key', async function (this: DifyWorld) {
   const page = this.getPage()
-  const generatedKeyDialog = page.getByRole('dialog', { name: /API Secret key/i }).last()
+  const generatedKeyDialog = page.getByRole('dialog', { name: API_KEY_DIALOG_NAME }).last()
 
   await generatedKeyDialog.getByRole('button', { name: 'OK' }).click()
   await expect(page.getByText('Keep this key in a secure and accessible place.')).not.toBeVisible()
@@ -132,7 +134,7 @@ Then(
     const fullSecret = this.agentBuilder.accessPoint.generatedApiKey
     if (!fullSecret) throw new Error('No generated Agent v2 API key found.')
 
-    const apiKeyDialog = this.getPage().getByRole('dialog', { name: /API Secret key/i })
+    const apiKeyDialog = this.getPage().getByRole('dialog', { name: API_KEY_DIALOG_NAME })
 
     await expect(apiKeyDialog).toBeVisible()
     await expect(apiKeyDialog.getByText(fullSecret, { exact: true })).not.toBeVisible()

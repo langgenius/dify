@@ -81,7 +81,7 @@ def test_get_pipeline_template_detail_returns_detail(monkeypatch: pytest.MonkeyP
     monkeypatch.setattr("models.dataset.db", SimpleNamespace(session=sqlite_session))
     retrieval = CustomizedPipelineTemplateRetrieval()
 
-    detail = retrieval.get_pipeline_template_detail(TEMPLATE_ID, session=sqlite_session)
+    detail = retrieval.get_pipeline_template_detail(TEMPLATE_ID, TENANT_ID, session=sqlite_session)
 
     assert detail == {
         "id": TEMPLATE_ID,
@@ -97,10 +97,12 @@ def test_get_pipeline_template_detail_returns_detail(monkeypatch: pytest.MonkeyP
 
 
 @pytest.mark.parametrize("sqlite_session", [(PipelineCustomizedTemplate,)], indirect=True)
-def test_get_pipeline_template_detail_returns_none_when_not_found(sqlite_session: Session) -> None:
+def test_get_pipeline_template_detail_rejects_other_tenant(sqlite_session: Session) -> None:
+    sqlite_session.add(_template(tenant_id=OTHER_TENANT_ID))
+    sqlite_session.commit()
     retrieval = CustomizedPipelineTemplateRetrieval()
 
-    result = retrieval.get_pipeline_template_detail(TEMPLATE_ID, session=sqlite_session)
+    result = retrieval.get_pipeline_template_detail(TEMPLATE_ID, TENANT_ID, session=sqlite_session)
 
     assert result is None
     assert sqlite_session.in_transaction()

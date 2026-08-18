@@ -782,6 +782,11 @@ export const zSwitchWorkspacePayload = z.object({
 })
 
 /**
+ * CloudPlan
+ */
+export const zCloudPlan = z.enum(['professional', 'sandbox', 'team'])
+
+/**
  * TenantListItemResponse
  */
 export const zTenantListItemResponse = z.object({
@@ -790,7 +795,7 @@ export const zTenantListItemResponse = z.object({
   id: z.string(),
   last_opened_at: z.int().nullish(),
   name: z.string().nullish(),
-  plan: z.string().nullish(),
+  plan: zCloudPlan.nullish(),
   status: z.string().nullish(),
 })
 
@@ -1616,7 +1621,7 @@ export const zCurrentWorkspaceSummaryResponse = z.object({
   credits: z.int().nullable(),
   id: z.string(),
   name: z.string(),
-  plan: z.string().nullable(),
+  plan: zCloudPlan.nullable(),
   role: zTenantAccountRole,
 })
 
@@ -1939,7 +1944,7 @@ export const zTenantInfoResponse = z.object({
   in_trial: z.boolean().nullish(),
   name: z.string().nullish(),
   next_credit_reset_date: z.int().nullish(),
-  plan: z.string().nullish(),
+  plan: zCloudPlan.nullish(),
   role: z.string().nullish(),
   status: z.string().nullish(),
   trial_credits: z.int().nullish(),
@@ -2914,6 +2919,8 @@ export const zToolParameterType = z.enum([
   'array',
   'boolean',
   'checkbox',
+  'date',
+  'date-range',
   'dynamic-select',
   'file',
   'files',

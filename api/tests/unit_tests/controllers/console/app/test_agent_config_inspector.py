@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from inspect import unwrap
 from types import SimpleNamespace
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock, patch
 
 from flask import Flask
 from sqlalchemy import event
@@ -28,7 +28,6 @@ from controllers.console.app.agent_config_inspector import (
     AgentConfigSkillInspectByAgentApi,
     AgentConfigSkillsApi,
     AgentConfigSkillUploadByAgentApi,
-    console_ns,
 )
 from services.agent_config_service import AgentConfigServiceError
 
@@ -212,13 +211,10 @@ def test_skill_upload_by_agent_delegates_after_version_resolution():
 
 def test_file_upload_by_agent_delegates_to_service_owned_upload_lookup():
     raw = _raw(AgentConfigFilesByAgentApi.post)
-    with app.test_request_context("/?draft_type=debug_build"):
+    with app.test_request_context("/?draft_type=debug_build", json={"upload_file_id": "upload-1"}):
         with (
             patch(f"{_MOD}.resolve_agent_runtime_app_model", return_value=_APP),
             patch(f"{_MOD}.AgentComposerService") as composer,
-            patch.object(
-                type(console_ns), "payload", new_callable=PropertyMock, return_value={"upload_file_id": "upload-1"}
-            ),
             patch(f"{_MOD}.AgentConfigService") as config_service,
         ):
             composer.load_agent_app_build_draft.return_value = {"draft": {"id": "build-draft-1"}}
@@ -226,7 +222,14 @@ def test_file_upload_by_agent_delegates_to_service_owned_upload_lookup():
                 "file": {"id": "guide.txt", "name": "guide.txt", "file_id": "upload-1"},
                 "config_version": {"id": "build-draft-1", "kind": "build_draft", "writable": True},
             }
-            body, status = raw(AgentConfigFilesByAgentApi(), MagicMock(), "tenant-1", _USER, "agent-1")
+            body, status = raw(
+                AgentConfigFilesByAgentApi(),
+                inspector.AgentConfigFileUploadPayload(upload_file_id="upload-1"),
+                MagicMock(),
+                "tenant-1",
+                _USER,
+                "agent-1",
+            )
     assert status == 201
     assert body["file"]["name"] == "guide.txt"
     assert config_service.return_value.push_file_for_console.call_args.kwargs["upload_file_id"] == "upload-1"

@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import Any
 
 import pytest
 from dify_agent.layers.config import DifyConfigSkillConfig
@@ -36,6 +35,21 @@ def _no_runtime_agent_skills(monkeypatch: pytest.MonkeyPatch):
         "core.app.apps.agent_app.runtime_request_builder.load_runtime_agent_skill_configs",
         lambda **_kwargs: [],
     )
+
+
+@pytest.fixture(autouse=True)
+def model_context_window_calls(monkeypatch: pytest.MonkeyPatch) -> list[tuple[object, str, str]]:
+    calls: list[tuple[object, str, str]] = []
+
+    def resolve(*, run_context: object, provider_name: str, model_name: str) -> int:
+        calls.append((run_context, provider_name, model_name))
+        return 32_768
+
+    monkeypatch.setattr(
+        "core.app.apps.agent_app.runtime_request_builder.resolve_model_context_window",
+        resolve,
+    )
+    return calls
 
 
 def _exec_ctx() -> DifyExecutionContextLayerConfig:
@@ -89,11 +103,6 @@ class TestBuildForAgentApp:
             )
         )
         assert [layer.name for layer in request.composition.layers][0] == "agent_app_user_prompt"
-
-
-class _FakeCredentialsProvider:
-    def fetch(self, provider_name: str, model_name: str) -> dict[str, Any]:
-        return {"openai_api_key": "sk-test", "max": 5}
 
 
 class _NoToolsBuilder:
@@ -190,12 +199,12 @@ def _soul_with_model() -> AgentSoulConfig:
 
 
 class TestAgentAppRuntimeRequestBuilder:
-    def test_build_maps_soul_to_run_request(self):
+    def test_build_maps_soul_to_run_request(self, model_context_window_calls: list[tuple[object, str, str]]):
         builder = AgentAppRuntimeRequestBuilder(
-            credentials_provider=_FakeCredentialsProvider(),
             dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         )
-        result = builder.build(_ctx(_soul_with_model()))
+        context = _ctx(_soul_with_model())
+        result = builder.build(context)
 
         req = result.request
         names = [layer.name for layer in req.composition.layers]
@@ -213,6 +222,8 @@ class TestAgentAppRuntimeRequestBuilder:
         llm = next(layer for layer in req.composition.layers if layer.name == "llm")
         assert llm.config.plugin_id == "langgenius/openai"
         assert llm.config.model_provider == "openai"
+        assert llm.config.context_window_tokens == 32_768
+        assert model_context_window_calls == [(context.dify_context, "langgenius/openai/openai", "gpt-4o-mini")]
         # execution context carries conversation + agent_app invoke source.
         exec_ctx = next(layer for layer in req.composition.layers if layer.name == "execution_context")
         assert exec_ctx.config.conversation_id == "conv-1"
@@ -221,13 +232,12 @@ class TestAgentAppRuntimeRequestBuilder:
         assert exec_ctx.config.invoke_from == "web-app"
         assert exec_ctx.config.agent_mode == "agent_app"
         assert req.on_exit.default.value == "suspend"
-        # credentials are redacted in the log-safe view.
-        assert result.redacted_request["composition"]["layers"][-1]["config"]["credentials"] == "[REDACTED]"
+        # LLM credentials are resolved by API and never enter the Agent request.
+        assert "credentials" not in result.redacted_request["composition"]["layers"][-1]["config"]
         assert result.metadata["conversation_id"] == "conv-1"
 
     def test_build_wraps_agent_soul_prompt_for_build_draft(self):
         builder = AgentAppRuntimeRequestBuilder(
-            credentials_provider=_FakeCredentialsProvider(),
             dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         )
 
@@ -240,7 +250,6 @@ class TestAgentAppRuntimeRequestBuilder:
 
     def test_build_propagates_draft_version_kind_without_wrapping_prompt(self):
         builder = AgentAppRuntimeRequestBuilder(
-            credentials_provider=_FakeCredentialsProvider(),
             dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         )
 
@@ -267,7 +276,6 @@ class TestAgentAppRuntimeRequestBuilder:
         ]
         tools_builder = _PluginLayerBuilder()
         builder = AgentAppRuntimeRequestBuilder(
-            credentials_provider=_FakeCredentialsProvider(),
             dify_tools_builder=tools_builder,  # type: ignore[arg-type]
         )
 
@@ -288,7 +296,6 @@ class TestAgentAppRuntimeRequestBuilder:
         ]
         tools_builder = _PluginLayerBuilder()
         builder = AgentAppRuntimeRequestBuilder(
-            credentials_provider=_FakeCredentialsProvider(),
             dify_tools_builder=tools_builder,  # type: ignore[arg-type]
         )
 
@@ -308,7 +315,6 @@ class TestAgentAppRuntimeRequestBuilder:
             }
         ]
         builder = AgentAppRuntimeRequestBuilder(
-            credentials_provider=_FakeCredentialsProvider(),
             dify_tools_builder=_CoreLayerBuilder(),  # type: ignore[arg-type]
         )
 
@@ -324,7 +330,19 @@ class TestAgentAppRuntimeRequestBuilder:
             "langgenius/openai:0.4.2@21195ee1321849e0a7d4b3f6b2fd8c2be23ea6c7182e1b444ecc4c1711b52468"
         )
         builder = AgentAppRuntimeRequestBuilder(
-            credentials_provider=_FakeCredentialsProvider(),
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(soul))
+
+        llm = next(layer for layer in result.request.composition.layers if layer.name == "llm")
+        assert llm.config.plugin_id == "langgenius/openai"
+        assert llm.config.model_provider == "openai"
+
+    def test_build_normalizes_legacy_three_segment_model_plugin_id(self):
+        soul = _soul_with_model()
+        soul.model.plugin_id = "langgenius/openai/openai"
+        builder = AgentAppRuntimeRequestBuilder(
             dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         )
 
@@ -360,7 +378,6 @@ class TestAgentAppRuntimeRequestBuilder:
             }
         )
         builder = AgentAppRuntimeRequestBuilder(
-            credentials_provider=_FakeCredentialsProvider(),
             dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         )
 
@@ -379,7 +396,6 @@ class TestAgentAppRuntimeRequestBuilder:
 
     def test_build_raises_when_model_missing(self):
         builder = AgentAppRuntimeRequestBuilder(
-            credentials_provider=_FakeCredentialsProvider(),
             dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         )
         with pytest.raises(AgentAppRuntimeRequestBuildError) as exc:
@@ -401,7 +417,6 @@ class TestAgentAppRuntimeRequestBuilder:
             }
         )
         builder = AgentAppRuntimeRequestBuilder(
-            credentials_provider=_FakeCredentialsProvider(),
             dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         )
 
@@ -443,7 +458,6 @@ def _soul_with_model_and_skill() -> AgentSoulConfig:
 class TestAgentAppConfigLayer:
     def test_config_layer_injected(self):
         builder = AgentAppRuntimeRequestBuilder(
-            credentials_provider=_FakeCredentialsProvider(),
             dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         )
 
@@ -470,7 +484,6 @@ class TestAgentAppConfigLayer:
     def test_config_layer_present_when_agent_soul_has_no_config_assets(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_SHELL_ENABLED", True)
         builder = AgentAppRuntimeRequestBuilder(
-            credentials_provider=_FakeCredentialsProvider(),
             dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         )
 
@@ -495,7 +508,6 @@ class TestAgentAppConfigLayer:
 
     def test_config_layer_for_build_draft_marks_config_writable(self):
         builder = AgentAppRuntimeRequestBuilder(
-            credentials_provider=_FakeCredentialsProvider(),
             dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         )
 
@@ -535,7 +547,6 @@ class TestAgentAppConfigLayer:
         soul = _soul_with_model()
         soul.prompt.system_prompt = "Use [§skill:workspace-skill:Workspace Skill§]."
         builder = AgentAppRuntimeRequestBuilder(
-            credentials_provider=_FakeCredentialsProvider(),
             dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         )
 
@@ -568,7 +579,6 @@ class TestAgentAppConfigLayer:
         soul = _soul_with_model_and_skill()
         soul.prompt.system_prompt = system_prompt
         builder = AgentAppRuntimeRequestBuilder(
-            credentials_provider=_FakeCredentialsProvider(),
             dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         )
 
@@ -586,7 +596,6 @@ class TestAgentAppConfigLayer:
             "Use [§skill:ghost-skill:Ghost Skill§], [§file:ghost.txt:Ghost File§], and [§file:no-label.txt§]."
         )
         builder = AgentAppRuntimeRequestBuilder(
-            credentials_provider=_FakeCredentialsProvider(),
             dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         )
 

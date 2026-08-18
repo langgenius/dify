@@ -1586,6 +1586,7 @@ export type AgentSoulModelSettings = {
   stop?: Array<string> | null
   temperature?: number | null
   top_p?: number | null
+  [key: string]: unknown
 }
 
 export type AgentSandboxProviderConfig = {
@@ -1882,6 +1883,8 @@ export type AgentKnowledgeMetadataCondition = {
     | '≠'
     | '≤'
     | '≥'
+  id?: string | null
+  metadata_id?: string | null
   name: string
   value?: string | Array<string> | number | null
 }
@@ -2036,6 +2039,7 @@ export type PostAgentData = {
 export type PostAgentErrors = {
   400: unknown
   403: unknown
+  409: unknown
 }
 
 export type PostAgentResponses = {

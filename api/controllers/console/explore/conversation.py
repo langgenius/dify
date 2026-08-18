@@ -11,7 +11,7 @@ from controllers.common.schema import query_params_from_model, register_response
 from controllers.console.app.error import AppUnavailableError
 from controllers.console.explore.error import NotChatAppError
 from controllers.console.explore.wraps import InstalledAppResource
-from controllers.console.wraps import with_current_user
+from controllers.console.wraps import model_validate, with_current_user
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from fields.conversation_fields import (
@@ -133,7 +133,8 @@ class ConversationRenameApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[ConversationRenamePayload.__name__])
     @console_ns.response(200, "Conversation renamed successfully", console_ns.models[SimpleConversation.__name__])
     @with_current_user
-    def post(self, current_user: Account, installed_app: InstalledApp, c_id: UUID):
+    @model_validate(ConversationRenamePayload)
+    def post(self, req_data: ConversationRenamePayload, current_user: Account, installed_app: InstalledApp, c_id: UUID):
         app_model = installed_app.app_with_session(session=db.session())
         if app_model is None:
             raise AppUnavailableError()
@@ -143,12 +144,10 @@ class ConversationRenameApi(InstalledAppResource):
 
         conversation_id = str(c_id)
 
-        payload = ConversationRenamePayload.model_validate(console_ns.payload or {})
-
         try:
             session = db.session()
             conversation = ConversationService.rename(
-                app_model, conversation_id, current_user, payload.name, payload.auto_generate, session=session
+                app_model, conversation_id, current_user, req_data.name, req_data.auto_generate, session=session
             )
             return (
                 TypeAdapter(SimpleConversation)

@@ -636,6 +636,7 @@ class TestMyPermissions:
         assert not any(key.startswith("billing.") for key in out.workspace.permission_keys)
         if role == "editor":
             assert "app.acl.log_and_annotation" in out.app.default_permission_keys
+        assert "app.acl.deploy" not in out.app.default_permission_keys
 
     @pytest.mark.parametrize(
         ("role", "expected_snippet_keys"),
@@ -743,6 +744,7 @@ class TestMemberRoles:
         assert "snippets.create_and_modify" in out.roles[0].permission_keys
         assert "app.acl.preview" in out.roles[0].permission_keys
         assert "dataset.acl.preview" in out.roles[0].permission_keys
+        assert "app.acl.deploy" not in out.roles[0].permission_keys
 
     def test_replace(self, mock_send: MagicMock, sqlite_session: Session):
         mock_send.return_value = {"account_id": "acct-2", "roles": []}
@@ -838,7 +840,10 @@ class TestResourcePermissions:
     def test_app_permissions_batch_get(self, mock_send: MagicMock, sqlite_session: Session):
         mock_send.return_value = {
             "data": [
-                {"resource_id": "app-1", "permission_keys": ["app.acl.view_layout", "app.acl.edit"]},
+                {
+                    "resource_id": "app-1",
+                    "permission_keys": ["app.acl.view_layout", "app.acl.edit", "app.acl.deploy"],
+                },
                 {"resource_id": "app-2", "permission_keys": []},
             ]
         }
@@ -853,7 +858,7 @@ class TestResourcePermissions:
         assert call.endpoint == "/rbac/apps/permission-keys/batch"
         assert call.json == {"app_ids": ["app-1", "app-2"]}
         assert out == {
-            "app-1": ["app.acl.view_layout", "app.acl.edit"],
+            "app-1": ["app.acl.view_layout", "app.acl.edit", "app.acl.deploy"],
             "app-2": [],
         }
 
@@ -874,6 +879,7 @@ class TestResourcePermissions:
             "app-1": svc._LEGACY_APP_EDITOR_KEYS,
             "app-2": svc._LEGACY_APP_EDITOR_KEYS,
         }
+        assert all("app.acl.deploy" not in permission_keys for permission_keys in out.values())
 
     def test_dataset_permissions_batch_get(self, mock_send: MagicMock, sqlite_session: Session):
         mock_send.return_value = {

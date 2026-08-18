@@ -8,6 +8,7 @@ from uuid import uuid4
 
 import pytest
 from flask import Flask, current_app
+from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -3894,6 +3895,96 @@ class TestKnowledgeRetrievalRegression:
         assert cancel_event.is_set()
         assert thread_exceptions == [expected_error]
 
+    def test_run_retriever_thread_safely_skips_failed_dataset_when_requested(self, caplog):
+        dataset_retrieval = DatasetRetrieval()
+        all_documents: list[Document] = []
+        cancel_event = threading.Event()
+        thread_exceptions: list[Exception] = []
+        expected_error = RuntimeError("retrieval failed")
+
+        with _patched_retriever_session():
+            with patch.object(dataset_retrieval, "_retriever", side_effect=expected_error):
+                dataset_retrieval._run_retriever_thread_safely(
+                    flask_app=_FakeFlaskApp(),
+                    dataset_id="dataset-1",
+                    query="test query",
+                    top_k=3,
+                    all_documents=all_documents,
+                    document_ids_filter=None,
+                    metadata_condition=None,
+                    attachment_ids=None,
+                    cancel_event=cancel_event,
+                    thread_exceptions=thread_exceptions,
+                    skip_on_error=True,
+                )
+
+        assert not cancel_event.is_set()
+        assert thread_exceptions == []
+        assert "dataset_id=dataset-1" in caplog.text
+        assert "Skipping dataset retrieval because retriever failed" in caplog.text
+
+    def test_multiple_retrieve_thread_skips_failed_dataset(self, mock_dataset, caplog):
+        dataset_retrieval = DatasetRetrieval()
+        flask_app = Flask(__name__)
+        successful_dataset = Dataset(
+            id=str(uuid4()),
+            provider="dify",
+            indexing_technique="high_quality",
+        )
+        document = Document(
+            page_content="successful doc",
+            metadata={
+                "doc_id": "doc1",
+                "score": 0.95,
+                "document_id": str(uuid4()),
+                "dataset_id": successful_dataset.id,
+            },
+            provider="dify",
+        )
+
+        def fake_retriever(
+            flask_app,
+            session,
+            dataset_id,
+            query,
+            top_k,
+            all_documents,
+            document_ids_filter,
+            metadata_condition,
+            attachment_ids,
+        ):
+            if dataset_id == mock_dataset.id:
+                raise RuntimeError("dataset unavailable")
+            all_documents.append(document)
+
+        all_documents: list[Document] = []
+
+        with (
+            patch.object(dataset_retrieval, "_retriever", side_effect=fake_retriever),
+            _patched_retriever_session(),
+        ):
+            dataset_retrieval._multiple_retrieve_thread(
+                flask_app=flask_app,
+                available_datasets=[mock_dataset, successful_dataset],
+                metadata_condition=None,
+                metadata_filter_document_ids=None,
+                all_documents=all_documents,
+                tenant_id=str(uuid4()),
+                reranking_enable=False,
+                reranking_mode="reranking_model",
+                reranking_model=None,
+                weights=None,
+                top_k=3,
+                score_threshold=0.0,
+                query="test query",
+                attachment_id=None,
+                dataset_count=2,
+            )
+
+        assert all_documents == [document]
+        assert f"dataset_id={mock_dataset.id}" in caplog.text
+        assert "Skipping dataset retrieval because retriever failed" in caplog.text
+
 
 class _FakeFlaskApp:
     def app_context(self):
@@ -4871,6 +4962,7 @@ class TestSingleAndMultipleRetrieveCoverage:
 
         assert len(result) == 1
         assert result[0].provider == "external"
+        session.scalar.assert_called_once()
         mock_end.assert_called_once()
         assert retrieval.llm_usage.total_tokens == 2
 
@@ -4946,6 +5038,95 @@ class TestSingleAndMultipleRetrieveCoverage:
                 planning_strategy=PlanningStrategy.REACT_ROUTER,
             )
         assert results == []
+
+    def test_single_retrieve_rejects_dataset_outside_available_datasets(self, retrieval: DatasetRetrieval) -> None:
+        available_dataset = _dataset(id="ds-1", name="Available DS", description=None)
+        session = MagicMock()
+        session.scalar.return_value = _dataset(
+            id="ds-2",
+            name="Foreign DS",
+            provider="external",
+            tenant_id="tenant-2",
+            retrieval_model={},
+        )
+
+        with (
+            patch("core.rag.retrieval.dataset_retrieval.ReactMultiDatasetRouter") as mock_router_cls,
+            patch(
+                "core.rag.retrieval.dataset_retrieval.ExternalDatasetService.fetch_external_knowledge_retrieval",
+                return_value=[],
+            ) as mock_external_retrieve,
+            patch.object(retrieval, "_on_query") as mock_on_query,
+        ):
+            mock_router_cls.return_value.invoke.return_value = ("ds-2", LLMUsage.empty_usage())
+            results = retrieval.single_retrieve(
+                session,
+                app_id="app-1",
+                tenant_id="tenant-1",
+                user_id="user-1",
+                user_from="workflow",
+                query="python",
+                available_datasets=[available_dataset],
+                model_instance=Mock(),
+                model_config=Mock(),
+                planning_strategy=PlanningStrategy.REACT_ROUTER,
+            )
+
+        assert results == []
+        session.scalar.assert_not_called()
+        mock_external_retrieve.assert_not_called()
+        mock_on_query.assert_not_called()
+
+    def test_single_retrieve_rejects_allowlisted_dataset_owned_by_another_tenant(
+        self, retrieval: DatasetRetrieval, sqlite_session: Session
+    ) -> None:
+        dataset_id = str(uuid4())
+        caller_tenant_id = str(uuid4())
+        foreign_dataset = Dataset(
+            id=dataset_id,
+            tenant_id=str(uuid4()),
+            name="Foreign DS",
+            provider="external",
+            indexing_technique="high_quality",
+            retrieval_model={},
+            created_by=str(uuid4()),
+        )
+        sqlite_session.add(foreign_dataset)
+        available_dataset = _dataset(
+            id=dataset_id,
+            tenant_id=caller_tenant_id,
+            name="Available DS",
+            description=None,
+        )
+
+        with (
+            patch("core.rag.retrieval.dataset_retrieval.ReactMultiDatasetRouter") as mock_router_cls,
+            patch(
+                "core.rag.retrieval.dataset_retrieval.ExternalDatasetService.fetch_external_knowledge_retrieval",
+            ) as mock_external_retrieve,
+            patch(
+                "core.rag.retrieval.dataset_retrieval.RetrievalService.retrieve",
+            ) as mock_internal_retrieve,
+            patch.object(retrieval, "_on_query") as mock_on_query,
+        ):
+            mock_router_cls.return_value.invoke.return_value = (dataset_id, LLMUsage.empty_usage())
+            results = retrieval.single_retrieve(
+                sqlite_session,
+                app_id="app-1",
+                tenant_id=caller_tenant_id,
+                user_id="user-1",
+                user_from="workflow",
+                query="python",
+                available_datasets=[available_dataset],
+                model_instance=Mock(),
+                model_config=Mock(),
+                planning_strategy=PlanningStrategy.REACT_ROUTER,
+            )
+
+        assert results == []
+        mock_internal_retrieve.assert_not_called()
+        mock_external_retrieve.assert_not_called()
+        mock_on_query.assert_not_called()
 
     def test_single_retrieve_respects_metadata_filter_shortcuts(self, retrieval: DatasetRetrieval) -> None:
         dataset = _dataset(

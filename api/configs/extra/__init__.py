@@ -3,6 +3,7 @@ from configs.extra.archive_config import ArchiveStorageConfig
 from configs.extra.knowledge_fs_config import KnowledgeFSConfig
 from configs.extra.notion_config import NotionConfig
 from configs.extra.sentry_config import SentryConfig
+from configs.extra.turnstile_config import TurnstileConfig
 
 
 class ExtraServiceConfig(
@@ -12,5 +13,6 @@ class ExtraServiceConfig(
     KnowledgeFSConfig,
     NotionConfig,
     SentryConfig,
+    TurnstileConfig,
 ):
     pass

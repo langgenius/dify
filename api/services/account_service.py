@@ -22,6 +22,7 @@ from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
 from constants.languages import get_valid_language, language_timezone_mapping
+from enums import DeploymentEdition
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client, redis_fallback
@@ -119,7 +120,7 @@ class InvitationDetailDict(TypedDict):
 
 def _try_join_enterprise_default_workspace(account_id: str) -> None:
     """Best-effort join to enterprise default workspace."""
-    if not dify_config.ENTERPRISE_ENABLED:
+    if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
         return
 
     from services.enterprise.enterprise_service import try_join_default_workspace
@@ -378,7 +379,7 @@ class AccountService:
         payload = {
             "user_id": account.id,
             "exp": exp,
-            "iss": dify_config.EDITION,
+            "iss": dify_config.DEPLOYMENT_EDITION.value,
             "sub": "Console API Passport",
         }
 
@@ -447,6 +448,7 @@ class AccountService:
         interface_theme: str = "light",
         is_setup: bool | None = False,
         timezone: str | None = None,
+        ip_address: str | None = None,
         *,
         session: Session,
     ) -> Account:
@@ -463,7 +465,7 @@ class AccountService:
         if not FeatureService.get_license().seats.is_available():
             raise SeatsLimitExceededError("licensed seats limit exceeded")
 
-        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(email):
             raise AccountRegisterError(
                 description=(
                     "This email account has been deleted within the past "
@@ -499,6 +501,7 @@ class AccountService:
             interface_language=interface_language,
             interface_theme=interface_theme,
             timezone=resolved_timezone,
+            last_login_ip=ip_address,
         )
 
         session.add(account)
@@ -512,6 +515,7 @@ class AccountService:
         interface_language: str,
         password: str | None = None,
         timezone: str | None = None,
+        ip_address: str | None = None,
         *,
         session: Session,
     ) -> Account:
@@ -522,6 +526,7 @@ class AccountService:
             interface_language=interface_language,
             password=password,
             timezone=timezone,
+            ip_address=ip_address,
             session=session,
         )
 
@@ -1053,7 +1058,7 @@ class AccountService:
 
     @classmethod
     def get_user_through_email(cls, email: str, *, session: Session):
-        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(email):
             raise AccountRegisterError(
                 description=(
                     "This email account has been deleted within the past "
@@ -1072,7 +1077,7 @@ class AccountService:
 
     @classmethod
     def is_account_in_freeze(cls, email: str) -> bool:
-        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(email):
             return True
         return False
 
@@ -1395,7 +1400,7 @@ class TenantService:
             session.add(ta)
 
         session.commit()
-        if dify_config.BILLING_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             BillingService.clean_billing_info_cache(tenant.id)
         return ta
 
@@ -1828,7 +1833,7 @@ class TenantService:
                 account_email,
             )
 
-        if dify_config.BILLING_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             BillingService.clean_billing_info_cache(tenant.id)
 
         # Queue account deletion sync task for enterprise backend to reassign resources (enterprise only)
@@ -1960,10 +1965,10 @@ class RegisterService:
                 interface_language=get_valid_language(language),
                 password=password,
                 is_setup=True,
+                ip_address=ip_address,
                 session=session,
             )
 
-            account.last_login_ip = ip_address
             account.initialized_at = naive_utc_now()
 
             TenantService.create_owner_tenant_if_not_exist(account=account, is_setup=True, session=session)
@@ -1999,6 +2004,7 @@ class RegisterService:
         is_setup: bool | None = False,
         create_workspace_required: bool | None = True,
         timezone: str | None = None,
+        ip_address: str | None = None,
         *,
         session: Session,
     ) -> Account:
@@ -2013,6 +2019,7 @@ class RegisterService:
                 password=password,
                 is_setup=is_setup,
                 timezone=timezone,
+                ip_address=ip_address,
                 session=session,
             )
             account.status = status or AccountStatus.ACTIVE

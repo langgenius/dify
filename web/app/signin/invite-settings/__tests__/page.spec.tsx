@@ -1,13 +1,25 @@
-import type { MockedFunction } from 'vitest'
+import type { MockedFunction } from 'vite-plus/test'
 import { useQuery } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useLocale } from '@/context/i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { activateMember } from '@/service/common'
 import { useInvitationCheck } from '@/service/use-common'
 import { getBrowserTimezone } from '@/utils/timezone'
 import InviteSettingsPage from '../page'
+
+vi.mock('react-i18next', async () => {
+  const actual = await vi.importActual<typeof import('react-i18next')>('react-i18next')
+  const { createReactI18nextMock } = await import('@/test/i18n-mock')
+
+  return {
+    ...actual,
+    ...createReactI18nextMock({
+      'login.joinWorkspace': 'Rejoindre {{workspaceName}}',
+    }),
+  }
+})
 
 vi.mock('@tanstack/react-query', async () => {
   const actual =
@@ -21,6 +33,7 @@ vi.mock('@tanstack/react-query', async () => {
     useSuspenseQuery: vi.fn(() => ({
       data: {
         branding: {
+          application_title: 'Acme AI',
           enabled: true,
         },
       },
@@ -78,6 +91,7 @@ const mockGetBrowserTimezone = getBrowserTimezone as unknown as MockedFunction<
 describe('InviteSettingsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    document.title = ''
     mockUseLocale.mockReturnValue('zh-Hans')
     mockUseRouter.mockReturnValue({ replace: mockReplace } as unknown as ReturnType<
       typeof useRouter
@@ -113,6 +127,33 @@ describe('InviteSettingsPage', () => {
     mockActivateMember.mockResolvedValue({ result: 'success' })
   })
 
+  it('exposes the page title as the main heading', () => {
+    render(<InviteSettingsPage />)
+
+    expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
+    expect(document.title).toBe('login.setYourAccount - Acme AI')
+  })
+
+  it('uses the workspace invitation as the page title for an active account', () => {
+    mockUseInvitationCheck.mockReturnValue({
+      data: {
+        is_valid: true,
+        data: {
+          workspace_name: 'Acme',
+          workspace_id: 'workspace-id',
+          email: 'invitee@example.com',
+          account_status: 'active',
+          requires_setup: false,
+        },
+      },
+      refetch: mockRefetch,
+    } as unknown as ReturnType<typeof useInvitationCheck>)
+
+    render(<InviteSettingsPage />)
+
+    expect(document.title).toBe('Rejoindre Acme - Acme AI')
+  })
+
   describe('Activation payload', () => {
     it('should default language to the current UI locale', async () => {
       render(<InviteSettingsPage />)
@@ -120,7 +161,7 @@ describe('InviteSettingsPage', () => {
       fireEvent.change(screen.getByLabelText('login.name'), {
         target: { value: 'Invitee' },
       })
-      fireEvent.click(screen.getByRole('button', { name: 'login.join Acme' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Rejoindre Acme' }))
 
       await waitFor(() => {
         expect(mockActivateMember).toHaveBeenCalledWith({
@@ -143,7 +184,7 @@ describe('InviteSettingsPage', () => {
       fireEvent.change(screen.getByLabelText('login.name'), {
         target: { value: 'Invitee' },
       })
-      fireEvent.click(screen.getByRole('button', { name: 'login.join Acme' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Rejoindre Acme' }))
 
       await waitFor(() => {
         expect(mockActivateMember).toHaveBeenCalledWith({
@@ -176,7 +217,7 @@ describe('InviteSettingsPage', () => {
       render(<InviteSettingsPage />)
 
       expect(screen.queryByLabelText('login.name')).not.toBeInTheDocument()
-      fireEvent.click(screen.getByRole('button', { name: 'login.join Acme' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Rejoindre Acme' }))
 
       await waitFor(() => {
         expect(mockActivateMember).toHaveBeenCalledWith({
@@ -205,7 +246,7 @@ describe('InviteSettingsPage', () => {
       render(<InviteSettingsPage />)
 
       expect(screen.queryByLabelText('login.name')).not.toBeInTheDocument()
-      fireEvent.click(screen.getByRole('button', { name: 'login.join Acme' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Rejoindre Acme' }))
 
       await waitFor(() => {
         expect(mockActivateMember).toHaveBeenCalledWith({
@@ -237,7 +278,7 @@ describe('InviteSettingsPage', () => {
       fireEvent.change(screen.getByLabelText('login.name'), {
         target: { value: 'Invitee' },
       })
-      fireEvent.click(screen.getByRole('button', { name: 'login.join Acme' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Rejoindre Acme' }))
 
       await waitFor(() => {
         expect(mockActivateMember).toHaveBeenCalledWith({
@@ -266,7 +307,7 @@ describe('InviteSettingsPage', () => {
       fireEvent.change(screen.getByLabelText('login.name'), {
         target: { value: 'Invitee' },
       })
-      fireEvent.click(screen.getByRole('button', { name: 'login.join Acme' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Rejoindre Acme' }))
 
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/')
@@ -292,7 +333,7 @@ describe('InviteSettingsPage', () => {
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/signin?invite_token=invite-token')
       })
-      expect(screen.queryByRole('button', { name: 'login.join Acme' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Rejoindre Acme' })).not.toBeInTheDocument()
       expect(mockActivateMember).not.toHaveBeenCalled()
     })
 
@@ -310,7 +351,7 @@ describe('InviteSettingsPage', () => {
 
       render(<InviteSettingsPage />)
 
-      expect(screen.getByRole('button', { name: 'login.join Acme' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Rejoindre Acme' })).toBeInTheDocument()
       expect(mockReplace).not.toHaveBeenCalled()
     })
   })

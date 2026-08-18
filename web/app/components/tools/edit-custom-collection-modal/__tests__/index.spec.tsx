@@ -2,8 +2,7 @@ import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
 import { toast } from '@langgenius/dify-ui/toast'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { Plan } from '@/app/components/billing/type'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { AuthHeaderPrefix, AuthType } from '@/app/components/tools/types'
 import { parseParamsSchema } from '@/service/tools'
 import EditCustomCollectionModal from '../index'
@@ -65,7 +64,7 @@ describe('EditCustomCollectionModal', () => {
     })
     mockUseProviderContext.mockReturnValue({
       plan: {
-        type: Plan.sandbox,
+        type: 'sandbox',
       },
       enableBilling: false,
       webappCopyrightEnabled: true,
