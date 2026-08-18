@@ -103,5 +103,6 @@ class TestClickZettaVolumeStorage(unittest.TestCase):
         storage.delete(test_filename)
         assert not storage.exists(test_filename)
 
+
 if __name__ == "__main__":
     unittest.main()

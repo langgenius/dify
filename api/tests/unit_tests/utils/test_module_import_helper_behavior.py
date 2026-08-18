@@ -6,7 +6,7 @@ from tests.unit_tests.utils.module_import_fixtures.parent_class import ParentCla
 FIXTURE_DIR = Path(__file__).parent / "module_import_fixtures"
 
 
-def test_loading_subclass_from_source():
+def test_loading_subclass_from_source() -> None:
     module = load_single_subclass_from_source(
         module_name="ChildClass", script_path=str(FIXTURE_DIR / "child_class.py"), parent_type=ParentClass
     )
@@ -14,13 +14,13 @@ def test_loading_subclass_from_source():
     assert module.__name__ == "ChildClass"
 
 
-def test_load_import_module_from_source():
+def test_load_import_module_from_source() -> None:
     module = import_module_from_source(module_name="ChildClass", py_file_path=str(FIXTURE_DIR / "child_class.py"))
     assert module
     assert module.__name__ == "ChildClass"
 
 
-def test_lazy_loading_subclass_from_source():
+def test_lazy_loading_subclass_from_source() -> None:
     clz = load_single_subclass_from_source(
         module_name="LazyLoadChildClass",
         script_path=str(FIXTURE_DIR / "lazy_load_class.py"),

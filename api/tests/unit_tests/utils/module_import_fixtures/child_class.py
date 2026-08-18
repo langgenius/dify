@@ -2,6 +2,6 @@ from tests.unit_tests.utils.module_import_fixtures.parent_class import ParentCla
 
 
 class ChildClass(ParentClass):
-    def __init__(self, name: str):
+    def __init__(self, name: str) -> None:
         super().__init__(name)
         self.name = name
