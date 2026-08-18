@@ -27,6 +27,7 @@ type CapturedProps = {
   rehypePlugins?: StreamdownProps['rehypePlugins']
   isAnimating?: StreamdownProps['isAnimating']
   mode?: StreamdownProps['mode']
+  renderSoftBreaks?: boolean
 }
 
 const getLastWrapperProps = (): CapturedProps => {
@@ -121,5 +122,11 @@ describe('Markdown', () => {
     render(<Markdown content="content" mode="streaming" />)
     const props = getLastWrapperProps()
     expect(props.mode).toBe('streaming')
+  })
+
+  it('should pass renderSoftBreaks through', () => {
+    render(<Markdown content={'first line\nsecond line'} renderSoftBreaks={false} />)
+    const props = getLastWrapperProps()
+    expect(props.renderSoftBreaks).toBe(false)
   })
 })

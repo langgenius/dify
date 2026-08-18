@@ -30,6 +30,7 @@ export type MarkdownProps = {
   | 'rehypePlugins'
   | 'isAnimating'
   | 'mode'
+  | 'renderSoftBreaks'
 >
 
 export const Markdown = memo((props: MarkdownProps) => {
@@ -43,6 +44,7 @@ export const Markdown = memo((props: MarkdownProps) => {
     rehypePlugins,
     mode,
     className,
+    renderSoftBreaks,
   } = props
   const latexContent = useMemo(() => preprocess(content), [content])
 
@@ -60,6 +62,7 @@ export const Markdown = memo((props: MarkdownProps) => {
         rehypePlugins={rehypePlugins}
         isAnimating={isAnimating}
         mode={mode}
+        renderSoftBreaks={renderSoftBreaks}
       />
     </div>
   )

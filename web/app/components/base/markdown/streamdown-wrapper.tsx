@@ -158,6 +158,7 @@ export type StreamdownWrapperProps = {
   isAnimating?: boolean
   className?: string
   mode?: StreamdownProps['mode']
+  renderSoftBreaks?: boolean
 }
 
 const StreamdownWrapper = (props: StreamdownWrapperProps) => {
@@ -168,6 +169,7 @@ const StreamdownWrapper = (props: StreamdownWrapperProps) => {
     isAnimating,
     className,
     mode = 'streaming',
+    renderSoftBreaks = true,
   } = props
   // Remend treats Markdown punctuation inside raw HTML attributes as incomplete syntax.
   // Form markup must reach the HTML parser unchanged or a field name such as `field()!*&-`
@@ -182,10 +184,10 @@ const StreamdownWrapper = (props: StreamdownWrapperProps) => {
           : defaultRemarkPlugins.gfm,
         { singleTilde: false },
       ] as Pluggable,
-      RemarkBreaks,
+      ...(renderSoftBreaks ? [RemarkBreaks] : []),
       ...(props.remarkPlugins ?? []),
     ],
-    [props.remarkPlugins],
+    [props.remarkPlugins, renderSoftBreaks],
   )
 
   const rehypePlugins = useMemo(

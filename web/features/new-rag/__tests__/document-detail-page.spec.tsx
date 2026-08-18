@@ -930,6 +930,7 @@ describe('DocumentDetailPage', () => {
     expect(screen.getByRole('article')).toHaveTextContent(
       'This first line is source content, not a title.',
     )
+    expect(screen.getByRole('article').querySelector('br')).toBeNull()
   })
 
   it('renders collapsible outline summaries and semantic heading levels', async () => {

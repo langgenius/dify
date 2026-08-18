@@ -92,6 +92,26 @@ describe('StreamdownWrapper', () => {
       expect(screen.getByText('Hello World'))!.toBeInTheDocument()
     })
 
+    it('should render soft line breaks by default', () => {
+      render(<StreamdownWrapper latexContent={'first line\nsecond line'} />)
+
+      expect(document.querySelector('br')).not.toBeNull()
+    })
+
+    it('should collapse soft line breaks when disabled and preserve paragraph breaks', () => {
+      render(
+        <StreamdownWrapper
+          latexContent={'first line\nsecond line\n\nnext paragraph'}
+          renderSoftBreaks={false}
+        />,
+      )
+
+      expect(document.querySelector('br')).toBeNull()
+      expect(screen.getAllByTestId('paragraph')).toHaveLength(2)
+      expect(screen.getAllByTestId('paragraph')[0]).toHaveTextContent('first line second line')
+      expect(screen.getAllByTestId('paragraph')[1]).toHaveTextContent('next paragraph')
+    })
+
     it('should render bold text', () => {
       // Arrange
       const content = '**bold text**'
@@ -164,7 +184,11 @@ describe('StreamdownWrapper', () => {
     it('should use customComponents if provided', () => {
       // Arrange
       const customComponents = {
-        a: ({ children }: PropsWithChildren) => <a data-testid="custom-link">{children}</a>,
+        a: ({ children }: PropsWithChildren) => (
+          <a data-testid="custom-link" href="/test">
+            {children}
+          </a>
+        ),
       }
 
       // Act

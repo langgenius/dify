@@ -57,7 +57,7 @@ function formatDateOnly(value: string | undefined, locale: string) {
 
 function ChunkMarker({ label }: { label: string }) {
   return (
-    <span className="mt-0.75 inline-flex shrink-0 rounded bg-background-section-burn px-1 py-0.5 system-2xs-medium text-text-tertiary">
+    <span className="float-left mt-0.75 mr-1 inline-flex shrink-0 rounded bg-background-section-burn px-1 py-0.5 system-2xs-medium text-text-tertiary">
       {label}
     </span>
   )
@@ -249,11 +249,12 @@ export function DocumentChunkDetail({
                         </div>
                       )}
                       {block.body && (
-                        <div className="mt-3 flex items-start gap-1">
+                        <div className="mt-3 flow-root">
                           {block.markerLabel && <ChunkMarker label={block.markerLabel} />}
                           <Markdown
-                            className="min-w-0 flex-1 text-[13px]! leading-5.5! wrap-break-word text-text-secondary!"
+                            className="min-w-0 text-[13px]! leading-5.5! wrap-break-word text-text-secondary! before:hidden after:hidden"
                             content={block.body}
+                            renderSoftBreaks={false}
                           />
                         </div>
                       )}
