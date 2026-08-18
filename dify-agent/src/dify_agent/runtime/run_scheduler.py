@@ -91,12 +91,6 @@ class RunnableRun(Protocol):
 type RunRunnerFactory = Callable[[RunRecord, CreateRunRequest], RunnableRun]
 
 
-def _runner_terminal_usage(runner: RunnableRun) -> AgentRunUsage | None:
-    """Read optional usage while keeping injected pre-usage runners compatible."""
-    usage = getattr(runner, "terminal_usage", None)
-    return usage if isinstance(usage, AgentRunUsage) else None
-
-
 class RunScheduler:
     """Owns process-local run tasks and best-effort graceful shutdown.
 
@@ -210,7 +204,7 @@ class RunScheduler:
                         error=f"run cancellation observer failed: {exc}",
                         reason="cancellation_observer",
                         session_snapshot=runner.terminal_session_snapshot,
-                        usage=_runner_terminal_usage(runner),
+                        usage=runner.terminal_usage,
                     )
                     if not finalization.applied and finalization.status == "running":
                         intent = await self.store.get_cancellation_intent(record.run_id)
@@ -219,7 +213,7 @@ class RunScheduler:
                                 record.run_id,
                                 intent,
                                 session_snapshot=runner.terminal_session_snapshot,
-                                usage=_runner_terminal_usage(runner),
+                                usage=runner.terminal_usage,
                             )
                     raise
 
@@ -228,7 +222,7 @@ class RunScheduler:
                     record.run_id,
                     intent,
                     session_snapshot=runner.terminal_session_snapshot,
-                    usage=_runner_terminal_usage(runner),
+                    usage=runner.terminal_usage,
                 )
             else:
                 runner_error: Exception | None = None
@@ -243,7 +237,7 @@ class RunScheduler:
                         record.run_id,
                         intent,
                         session_snapshot=runner.terminal_session_snapshot,
-                        usage=_runner_terminal_usage(runner),
+                        usage=runner.terminal_usage,
                     )
                 if runner_error is not None:
                     raise runner_error
@@ -256,13 +250,13 @@ class RunScheduler:
                     record.run_id,
                     intent,
                     session_snapshot=runner.terminal_session_snapshot,
-                    usage=_runner_terminal_usage(runner),
+                    usage=runner.terminal_usage,
                 )
             else:
                 finalization = await self._mark_cancelled_run_failed(
                     record.run_id,
                     session_snapshot=runner.terminal_session_snapshot,
-                    usage=_runner_terminal_usage(runner),
+                    usage=runner.terminal_usage,
                 )
                 if finalization is not None and not finalization.applied and finalization.status == "running":
                     intent = await self.store.get_cancellation_intent(record.run_id)
@@ -271,7 +265,7 @@ class RunScheduler:
                             record.run_id,
                             intent,
                             session_snapshot=runner.terminal_session_snapshot,
-                            usage=_runner_terminal_usage(runner),
+                            usage=runner.terminal_usage,
                         )
             raise
         except Exception:
