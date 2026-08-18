@@ -3500,14 +3500,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/_base/components/__tests__/node-handle.spec.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/_base/components/add-variable-popup-with-position.tsx": {
     "typescript/no-explicit-any": {
       "count": 2
