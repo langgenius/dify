@@ -1,13 +1,14 @@
-"""Tests for the run-fix handlers (Task 6).
+"""Tests for the run-fix + checklist handlers (Tasks 6-7).
 
-Port of the run-fix subset of dify-enterprise/server/pkg/enterprise/biz/copilot/handlers_fix_test.go.
-Checklist handlers (``handle_checklist_diagnose`` / ``handle_await_recheck`` /
-``decode_checklist_errors``) and ``fix_registry()`` are Task 7 — not covered here.
+Port of dify-enterprise/server/pkg/enterprise/biz/copilot/handlers_fix_test.go
+— both the run-fix cases and the checklist-fix flow / ``fix_registry()``
+cases (``## ---- checklist-fix flow ----``).
 """
 
 from datetime import datetime
 
 from core.workflow_copilot.handlers_fix import (
+    fix_registry,
     handle_apply,
     handle_await_approval,
     handle_await_decision,
@@ -18,7 +19,17 @@ from core.workflow_copilot.handlers_fix import (
     handle_publish,
     handle_verify,
 )
-from core.workflow_copilot.models import Action, Actor, ConversationItem, EntryMode, FixContext, Run, Session, Turn
+from core.workflow_copilot.models import (
+    Action,
+    Actor,
+    ChecklistError,
+    ConversationItem,
+    EntryMode,
+    FixContext,
+    Run,
+    Session,
+    Turn,
+)
 from core.workflow_copilot.runner import Env, Runner
 from core.workflow_copilot.state import PcState, canvas_read_only
 from tests.unit_tests.core.workflow_copilot.fakes import FakeDifyPort, InMemoryRepository, StubAgent
@@ -298,3 +309,118 @@ def test_decision_re_fix_loops_back_to_diagnose_and_clears_repair_state():
     _, fc = repo.get_session(s.id)
     assert fc.verify_run_id == ""
     assert fc.test_input_ref == ""
+
+
+# ---- checklist-fix flow ----------------------------------------------------
+
+
+def _seed_checklist_session(repo: InMemoryRepository, errors: list[ChecklistError]) -> Session:
+    s = _session(entry_mode=EntryMode.FIX_CHECKLIST, current_state=PcState.CHECKLIST_DIAGNOSE)
+    repo.create_session(
+        s,
+        FixContext(source="checklist", checklist_errors=errors),
+        [ConversationItem(kind="run-context", seq=0)],
+    )
+    return s
+
+
+def _drive_checklist_to_await_recheck(env: Env, repo: InMemoryRepository) -> tuple[Runner, Session]:
+    errors = [ChecklistError(node_id="n1", node_type="llm", title="LLM", messages=["missing prompt"])]
+    s = _seed_checklist_session(repo, errors)
+
+    runner = Runner(env, fix_registry())
+    turn = Turn(action=Action(kind="request_fix", base_version=1), actor=_actor())
+    out = runner.advance(s.id, turn)
+    # low-risk stub => auto-advance checklist.diagnose -> checklist.propose -> fix.apply -> checklist.await_recheck
+    assert out.current_state == PcState.CHECKLIST_AWAIT_RECHECK
+    return runner, out
+
+
+def test_checklist_fix_diagnose_to_apply_reaches_await_recheck():
+    env, repo = _new_env()
+    fake = env.dify
+    runner, s = _drive_checklist_to_await_recheck(env, repo)
+    assert runner is not None
+
+    assert fake.applied, "checklist apply must call the adapter with the staged repair"
+
+    _, fc = repo.get_session(s.id)
+    assert fc.diagnosis is not None
+    assert fc.diagnosis.culprit_node_id == "n1"
+    assert fc.staged_repair
+
+    items = repo.list_conversation(s.id)
+    found = False
+    for item in items:
+        if item.kind == "diagnosis":
+            assert item.payload["source"] == "checklist"
+            found = True
+    assert found, "diagnosis item must be recorded with source=checklist"
+
+
+def test_checklist_fix_recheck_passed_reaches_success_via_publish():
+    env, repo = _new_env()
+    fake = env.dify
+    runner, s = _drive_checklist_to_await_recheck(env, repo)
+
+    turn = Turn(action=Action(kind="recheck", payload={"passed": True}, base_version=s.version), actor=_actor())
+    out = runner.advance(s.id, turn)
+    assert out.current_state == PcState.FIX_AWAIT_DECISION
+
+    turn = Turn(action=Action(kind="publish", base_version=out.version), actor=_actor())
+    out = runner.advance(s.id, turn)
+    assert out.current_state == PcState.SUCCESS
+    assert fake.published
+
+
+def test_checklist_fix_recheck_failed_loops_back_to_diagnose():
+    env, repo = _new_env()
+    runner, s = _drive_checklist_to_await_recheck(env, repo)
+
+    remaining = [{"node_id": "n2", "node_type": "llm", "title": "LLM", "messages": ["still broken"]}]
+    turn = Turn(
+        action=Action(kind="recheck", payload={"passed": False, "remaining": remaining}, base_version=s.version),
+        actor=_actor(),
+    )
+    out = runner.advance(s.id, turn)
+    # low-risk stub => auto-advances checklist.diagnose -> checklist.propose
+    # -> fix.apply -> checklist.await_recheck again
+    assert out.current_state == PcState.CHECKLIST_AWAIT_RECHECK
+
+    _, fc = repo.get_session(s.id)
+    assert len(fc.checklist_errors) == 1
+    assert fc.checklist_errors[0].node_id == "n2"
+    assert fc.checklist_errors[0].messages == ["still broken"]
+
+
+def test_checklist_fix_await_recheck_undo_reaches_success():
+    env, repo = _new_env()
+    runner, s = _drive_checklist_to_await_recheck(env, repo)
+
+    turn = Turn(action=Action(kind="undo", base_version=s.version), actor=_actor())
+    out = runner.advance(s.id, turn)
+    assert out.current_state == PcState.SUCCESS
+
+
+# ---- fix_registry -----------------------------------------------------------
+
+
+def test_fix_registry_has_exactly_twelve_states():
+    registry = fix_registry()
+
+    assert set(registry.keys()) == {
+        PcState.FIX_DIAGNOSE,
+        PcState.FIX_PROPOSE,
+        PcState.FIX_AWAIT_APPROVAL,
+        PcState.FIX_APPLY,
+        PcState.FIX_AWAIT_VERIFY,
+        PcState.FIX_AWAIT_TESTDATA,
+        PcState.FIX_VERIFY,
+        PcState.FIX_AWAIT_DECISION,
+        PcState.FIX_PUBLISH,
+        PcState.CHECKLIST_DIAGNOSE,
+        PcState.CHECKLIST_PROPOSE,
+        PcState.CHECKLIST_AWAIT_RECHECK,
+    }
+    # checklist.propose reuses the run-fix propose handler, as Go does.
+    assert registry[PcState.CHECKLIST_PROPOSE] is handle_propose
