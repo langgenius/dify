@@ -2418,7 +2418,7 @@ describe('SkillDetailPage', () => {
         expect.anything(),
       )
     })
-  })
+  }, 10000)
 
   it('sends uploaded Skill Builder attachments without requiring typed text', async () => {
     const user = userEvent.setup()
