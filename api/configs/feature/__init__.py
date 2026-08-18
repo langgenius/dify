@@ -929,6 +929,14 @@ class WorkflowConfig(BaseSettings):
         ge=0.1,
     )
 
+    WORKFLOW_COPILOT_MAX_ADVANCE_SECONDS: PositiveInt = Field(
+        description=(
+            "Max wall-clock seconds for one copilot advance; "
+            "also the advance-lock TTL and Celery soft_time_limit."
+        ),
+        default=600,
+    )
+
 
 class WorkflowNodeExecutionConfig(BaseSettings):
     """
