@@ -26,8 +26,8 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Badge from '@/app/components/base/badge'
 import Loading from '@/app/components/base/loading'
-import Tag from '@/app/components/base/tag'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { newKnowledgeQualityPath, newKnowledgeRetrievalTestPath } from '../routes'
@@ -537,9 +537,9 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                 />
                 <div className="flex min-w-0 gap-1 overflow-hidden">
                   {visibleTags(item.tags).map((tag) => (
-                    <Tag key={tag} color="gray" bordered className="max-w-full min-w-0 truncate">
-                      {tag}
-                    </Tag>
+                    <Badge key={tag} size="xs" variant="dimm" className="max-w-full min-w-0">
+                      <span className="min-w-0 truncate system-2xs-medium normal-case">{tag}</span>
+                    </Badge>
                   ))}
                 </div>
                 <Popover>
