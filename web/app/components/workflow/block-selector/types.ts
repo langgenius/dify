@@ -1,4 +1,5 @@
 import type { AgentInviteOptionResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type { DatasourceProviderType } from '@dify/contracts/api/console/workspaces/types.gen'
 import type {
   ParametersSchema,
   PluginMeta,
@@ -6,7 +7,7 @@ import type {
   SupportedCreationMethods,
   TriggerEvent,
 } from '../../plugins/types'
-import type { Collection, Event } from '../../tools/types'
+import type { Collection, CollectionProviderType, Event } from '../../tools/types'
 import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 export const TabType = {
@@ -29,6 +30,13 @@ export const ToolType = {
 
 export type ToolType = (typeof ToolType)[keyof typeof ToolType]
 
+export const ViewType = {
+  flat: 'flat',
+  tree: 'tree',
+} as const
+
+export type ViewType = (typeof ViewType)[keyof typeof ViewType]
+
 export const BlockClassification = {
   Default: '-',
   QuestionUnderstand: 'question-understand',
@@ -41,7 +49,7 @@ export type BlockClassification = (typeof BlockClassification)[keyof typeof Bloc
 
 type PluginCommonDefaultValue = {
   provider_id: string
-  provider_type: string
+  provider_type: CollectionProviderType
   provider_name: string
 }
 
@@ -80,7 +88,6 @@ export type ToolDefaultValue = PluginCommonDefaultValue & {
 
 export type DataSourceDefaultValue = Omit<PluginCommonDefaultValue, 'provider_id'> & {
   plugin_id: string
-  provider_type: string
   provider_name: string
   datasource_name: string
   datasource_label: string
@@ -138,7 +145,7 @@ export type DataSourceItem = {
   provider: string
   declaration: {
     credentials_schema: unknown[]
-    provider_type: string
+    provider_type: DatasourceProviderType
     identity: {
       author: string
       description: TypeWithI18N

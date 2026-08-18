@@ -1,7 +1,7 @@
 import type { PropsWithChildren } from 'react'
 import type { Edge, Node, Viewport } from 'reactflow'
 import { cleanup, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { DatasetACLPermission } from '@/utils/permission'
 import RagPipelineMain from '../rag-pipeline-main'
@@ -17,19 +17,24 @@ vi.mock('@/context/workspace-state', async () => {
   }))
 })
 
-vi.mock('../../hooks', () => ({
+vi.mock('../../hooks/use-available-nodes-meta-data', () => ({
   useAvailableNodesMetaData: () => ({ nodes: [], nodesMap: {} }),
-  useDSL: () => ({
-    exportCheck: vi.fn(),
-    handleExportDSL: vi.fn(),
-  }),
+}))
+
+vi.mock('../../hooks/use-DSL', () => ({
   useDSLByCanEdit: () => ({
     exportCheck: vi.fn(),
     handleExportDSL: vi.fn(),
   }),
+}))
+
+vi.mock('../../hooks/use-get-run-and-trace-url', () => ({
   useGetRunAndTraceUrl: () => ({
     getWorkflowRunAndTraceUrl: vi.fn(),
   }),
+}))
+
+vi.mock('../../hooks/use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => ({
     doSyncWorkflowDraft: vi.fn(),
     syncWorkflowDraftWhenPageClose: vi.fn(),
@@ -38,16 +43,15 @@ vi.mock('../../hooks', () => ({
     doSyncWorkflowDraft: vi.fn(),
     syncWorkflowDraftWhenPageClose: vi.fn(),
   }),
+}))
+
+vi.mock('../../hooks/use-pipeline-refresh-draft', () => ({
   usePipelineRefreshDraft: () => ({
     handleRefreshWorkflowDraft: vi.fn(),
   }),
-  usePipelineRun: () => ({
-    handleBackupDraft: vi.fn(),
-    handleLoadBackupDraft: vi.fn(),
-    handleRestoreFromPublishedWorkflow: vi.fn(),
-    handleRun: vi.fn(),
-    handleStopRun: vi.fn(),
-  }),
+}))
+
+vi.mock('../../hooks/use-pipeline-run', () => ({
   usePipelineRunByCanEdit: () => ({
     handleBackupDraft: vi.fn(),
     handleLoadBackupDraft: vi.fn(),
@@ -55,10 +59,9 @@ vi.mock('../../hooks', () => ({
     handleRun: vi.fn(),
     handleStopRun: vi.fn(),
   }),
-  usePipelineStartRun: () => ({
-    handleStartWorkflowRun: vi.fn(),
-    handleWorkflowStartRunInWorkflow: vi.fn(),
-  }),
+}))
+
+vi.mock('../../hooks/use-pipeline-start-run', () => ({
   usePipelineStartRunByCanEdit: () => ({
     handleStartWorkflowRun: vi.fn(),
     handleWorkflowStartRunInWorkflow: vi.fn(),

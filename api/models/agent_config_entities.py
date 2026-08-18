@@ -7,6 +7,7 @@ from typing import Annotated, Any, Final, Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, WithJsonSchema, field_validator, model_validator
 
 from core.rag.entities.metadata_entities import ConditionValue, SupportedComparisonOperator
+from core.tools.entities.tool_entities import ToolProviderType
 from core.workflow.file_reference import is_canonical_file_reference
 from graphon.file import FileTransferMethod, FileType
 
@@ -43,18 +44,28 @@ _DECLARED_OUTPUT_CHILDREN_JSON_SCHEMA = {
             },
             "description": {"anyOf": [{"type": "string"}, {"type": "null"}]},
             "required": {"type": "boolean"},
-            "file": {"type": "object", "additionalProperties": True},
+            "file": {
+                "anyOf": [
+                    {"type": "object", "additionalProperties": True},
+                    {"type": "null"},
+                ]
+            },
             "array_item": {
-                "type": "object",
-                "additionalProperties": True,
-                "properties": {
-                    "type": {
-                        "type": "string",
-                        "enum": [item.value for item in DeclaredOutputType],
+                "anyOf": [
+                    {
+                        "type": "object",
+                        "additionalProperties": True,
+                        "properties": {
+                            "type": {
+                                "type": "string",
+                                "enum": [item.value for item in DeclaredOutputType],
+                            },
+                            "description": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+                            "children": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
+                        },
                     },
-                    "description": {"anyOf": [{"type": "string"}, {"type": "null"}]},
-                    "children": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
-                },
+                    {"type": "null"},
+                ]
             },
             "children": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
         },
@@ -409,8 +420,19 @@ class AgentKnowledgeRetrievalConfig(BaseModel):
 
 
 class AgentKnowledgeMetadataCondition(BaseModel):
+    """One manual metadata filter clause.
+
+    ``id`` and ``metadata_id`` are UI-only bookkeeping the composer sends on
+    every save (a stable row key and a reference to the selected metadata
+    field). They are persisted here for round-tripping the composer's draft
+    state but are stripped before building the Agent runtime request, whose
+    DTO only accepts ``name``/``comparison_operator``/``value``.
+    """
+
     model_config = ConfigDict(extra="forbid")
 
+    id: str | None = None
+    metadata_id: str | None = None
     name: str = Field(min_length=1, max_length=255)
     comparison_operator: SupportedComparisonOperator
     value: ConditionValue = None
@@ -516,8 +538,14 @@ class AgentModelResponseFormatConfig(AgentFlexibleConfig):
     type: str | None = Field(default=None, max_length=64)
 
 
-class AgentSoulModelSettings(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+class AgentSoulModelSettings(AgentFlexibleConfig):
+    """Model parameters for the Agent Soul model.
+
+    Model plugins can declare arbitrary parameters via ``parameter_rules``
+    (e.g. Qwen/Tongyi's ``enable_thinking``) beyond the common OpenAI-style
+    fields typed below, so extra keys must round-trip through persistence
+    rather than being dropped.
+    """
 
     temperature: float | None = None
     top_p: float | None = None
@@ -653,11 +681,7 @@ class AgentSoulDifyToolConfig(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     enabled: bool = True
-    # ``plugin`` remains the default for legacy Agent Soul payloads. The runtime
-    # now also accepts ``builtin`` / ``api`` / ``workflow`` / ``mcp`` here and
-    # routes them through ``dify.core.tools``; keeping the default narrow still
-    # makes a missing field resolve against the plugin provider table.
-    provider_type: str = "plugin"
+    provider_type: ToolProviderType
     provider_id: str | None = Field(default=None, max_length=255)
     plugin_id: str | None = Field(default=None, max_length=255)
     provider: str | None = Field(default=None, max_length=255)

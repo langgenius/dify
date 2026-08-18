@@ -10,17 +10,21 @@ import type {
   UploadFileIdInfo,
   WebsiteCrawlInfo,
 } from '@/models/datasets'
+import { useQueryState } from 'nuqs'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
 import StepTwo from '@/app/components/datasets/create/step-two'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import DatasetDetailContext from '@/context/dataset-detail'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
 import {
   useDocumentDetail,
@@ -36,12 +40,12 @@ type DocumentSettingsProps = {
 const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
   const { t } = useTranslation()
   const router = useRouter()
-  const openIntegrationsSetting = useIntegrationsSetting()
+  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const { indexingTechnique, dataset } = useContext(DatasetDetailContext)
   const { data: embeddingsDefaultModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
   const handleOpenAccountSetting = useCallback(() => {
-    openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
-  }, [openIntegrationsSetting])
+    setSettingsDestination('provider')
+  }, [setSettingsDestination])
 
   const invalidDocumentList = useInvalidDocumentList(datasetId)
   const invalidDocumentDetail = useInvalidDocumentDetail()
@@ -58,6 +62,11 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
     documentId,
     params: { metadata: 'without' },
   })
+  const settingsTitle = t(($) => $['documentSettings.title'], { ns: 'datasetPipeline' })
+  const documentTitle =
+    documentDetail?.name || t(($) => $['datasetMenus.documents'], { ns: 'common' })
+  const datasetTitle = dataset?.name || t(($) => $['menus.datasets'], { ns: 'common' })
+  useDocumentTitle(`${settingsTitle} · ${documentTitle} · ${datasetTitle}`)
 
   const dataSourceInfo = documentDetail?.data_source_info
 

@@ -1,4 +1,4 @@
-import type { Theme } from '../../embedded-chatbot/theme/theme-context'
+import type { Theme } from '../../embedded-chatbot/theme/theme'
 import type { ChatConfig, ChatItem, OnRegenerate } from '../../types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -6,7 +6,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
-import { ThemeBuilder } from '../../embedded-chatbot/theme/theme-context'
+import { createTheme } from '../../embedded-chatbot/theme/theme'
 import { ChatContextProvider } from '../context-provider'
 import Question from '../question'
 
@@ -402,9 +402,7 @@ describe('Question component', () => {
   })
 
   it('should apply theme bubble styles when theme provided', () => {
-    const themeBuilder = new ThemeBuilder()
-    themeBuilder.buildTheme('#ff0000', false)
-    const theme = themeBuilder.theme
+    const theme = createTheme('#ff0000')
 
     renderWithProvider(makeItem(), vi.fn() as unknown as OnRegenerate, { theme })
 
@@ -783,9 +781,7 @@ describe('Question component', () => {
   })
 
   it('should render theme styles only in non-edit mode', () => {
-    const themeBuilder = new ThemeBuilder()
-    themeBuilder.buildTheme('#00ff00', true)
-    const theme = themeBuilder.theme
+    const theme = createTheme('#00ff00', true)
 
     renderWithProvider(makeItem(), vi.fn() as unknown as OnRegenerate, { theme })
 

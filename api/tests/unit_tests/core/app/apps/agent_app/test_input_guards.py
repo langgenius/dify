@@ -10,9 +10,9 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy.orm import Session
 
 import core.app.features.annotation_reply.annotation_reply as annotation_mod
 import core.moderation.input_moderation as input_moderation_mod
@@ -75,13 +75,13 @@ def _saved_user_query(events: list[Any]) -> str:
 
 
 class TestRunInputGuards:
-    def test_no_guards_passes_through(self, monkeypatch: pytest.MonkeyPatch):
+    def test_no_guards_passes_through(self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
         _patch_moderation(monkeypatch, returns=(False, {}, "hello"))
         _patch_annotation(monkeypatch, reply=None)
         qm = _FakeQueueManager()
 
         handled, query, annotation_reply = AgentAppGenerator()._run_input_guards(
-            session=MagicMock(),
+            session=sqlite_session,
             application_generate_entity=_make_entity("hello"),
             app_model=SimpleNamespace(id="app-1"),
             message=SimpleNamespace(id="msg-1"),
@@ -93,13 +93,13 @@ class TestRunInputGuards:
         assert annotation_reply is None
         assert qm.events == []
 
-    def test_moderation_override_sanitizes_query(self, monkeypatch: pytest.MonkeyPatch):
+    def test_moderation_override_sanitizes_query(self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
         _patch_moderation(monkeypatch, returns=(True, {}, "[redacted]"))
         _patch_annotation(monkeypatch, reply=None)
         qm = _FakeQueueManager()
 
         handled, query, annotation_reply = AgentAppGenerator()._run_input_guards(
-            session=MagicMock(),
+            session=sqlite_session,
             application_generate_entity=_make_entity("leak my secret"),
             app_model=SimpleNamespace(id="app-1"),
             message=SimpleNamespace(id="msg-1"),
@@ -111,13 +111,13 @@ class TestRunInputGuards:
         assert annotation_reply is None
         assert qm.events == []
 
-    def test_moderation_block_short_circuits(self, monkeypatch: pytest.MonkeyPatch):
+    def test_moderation_block_short_circuits(self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
         _patch_moderation(monkeypatch, raises=ModerationError("blocked preset answer"))
         _patch_annotation(monkeypatch, reply=None)
         qm = _FakeQueueManager()
 
         handled, _, annotation_reply = AgentAppGenerator()._run_input_guards(
-            session=MagicMock(),
+            session=sqlite_session,
             application_generate_entity=_make_entity("forbidden"),
             app_model=SimpleNamespace(id="app-1"),
             message=SimpleNamespace(id="msg-1"),
@@ -130,13 +130,13 @@ class TestRunInputGuards:
         assert _answer_text(qm.events) == "blocked preset answer"
         assert _saved_user_query(qm.events) == "forbidden"
 
-    def test_annotation_hit_short_circuits(self, monkeypatch: pytest.MonkeyPatch):
+    def test_annotation_hit_short_circuits(self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
         _patch_moderation(monkeypatch, returns=(False, {}, "what is your name"))
         _patch_annotation(monkeypatch, reply=SimpleNamespace(id="anno-1", content="I am the annotated Iris."))
         qm = _FakeQueueManager()
 
         handled, _, annotation_reply = AgentAppGenerator()._run_input_guards(
-            session=MagicMock(),
+            session=sqlite_session,
             application_generate_entity=_make_entity("what is your name"),
             app_model=SimpleNamespace(id="app-1"),
             message=SimpleNamespace(id="msg-1"),

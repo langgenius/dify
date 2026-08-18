@@ -67,7 +67,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
 
   return (
     <Dialog open={isShow} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[640px] flex-col overflow-hidden!">
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-160 flex-col overflow-hidden!">
         <DialogTitle className="shrink-0 title-2xl-semi-bold text-text-primary">
           {t(($) => $[`${prefixCustomize}.title`], { ns: 'appOverview' })}
         </DialogTitle>
@@ -109,7 +109,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
                     />
                   }
                 >
-                  <GithubIcon className="mr-2 text-text-secondary" />
+                  <GithubIcon className="text-text-secondary" />
                   {t(($) => $[`${prefixCustomize}.way1.step1Operation`], { ns: 'appOverview' })}
                 </Button>
               </div>
@@ -136,7 +136,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
                     />
                   }
                 >
-                  <div className="mr-1.5 border-t-0 border-r-[7px] border-b-12 border-l-[7px] border-solid border-text-primary border-t-transparent border-r-transparent border-l-transparent"></div>
+                  <div className="border-t-0 border-r-[7px] border-b-12 border-l-[7px] border-solid border-text-primary border-t-transparent border-r-transparent border-l-transparent"></div>
                   <span>
                     {t(($) => $[`${prefixCustomize}.way1.step2Operation`], { ns: 'appOverview' })}
                   </span>
@@ -193,7 +193,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
               </span>
               <span
                 aria-hidden="true"
-                className="ml-1 i-heroicons-arrow-top-right-on-square size-4 shrink-0 text-text-secondary"
+                className="i-heroicons-arrow-top-right-on-square size-4 shrink-0 text-text-secondary"
               />
             </Button>
           </div>

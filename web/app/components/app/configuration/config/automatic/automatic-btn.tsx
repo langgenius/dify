@@ -13,8 +13,8 @@ const AutomaticBtn: FC<IAutomaticBtnProps> = ({ onClick }) => {
 
   return (
     <Button variant="secondary-accent" size="small" onClick={onClick}>
-      <RiSparklingFill className="mr-1 size-3.5" />
-      <span className="">{t(($) => $['operation.automatic'], { ns: 'appDebug' })}</span>
+      <RiSparklingFill className="size-3.5" />
+      <span>{t(($) => $['operation.automatic'], { ns: 'appDebug' })}</span>
     </Button>
   )
 }

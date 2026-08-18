@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react'
 import { act } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { usePipeline } from '../use-pipeline'
 
 const mockGetNodes = vi.fn()
@@ -26,12 +26,12 @@ vi.mock('reactflow', () => ({
 
 const mockFindUsedVarNodes = vi.fn()
 const mockUpdateNodeVars = vi.fn()
-vi.mock('../../../workflow/nodes/_base/components/variable/utils', () => ({
+vi.mock('@/app/components/workflow/nodes/_base/components/variable/utils', () => ({
   findUsedVarNodes: (...args: unknown[]) => mockFindUsedVarNodes(...args),
   updateNodeVars: (...args: unknown[]) => mockUpdateNodeVars(...args),
 }))
 
-vi.mock('../../../workflow/types', () => ({
+vi.mock('@/app/components/workflow/types', () => ({
   BlockEnum: {
     DataSource: 'data-source',
   },

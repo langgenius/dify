@@ -12,14 +12,8 @@ type AudioPlayerCtorArgs = [
 
 type MockAudioPlayerInstance = {
   setCallback: ReturnType<typeof vi.fn>
-  pauseAudio: ReturnType<typeof vi.fn>
+  destroy: ReturnType<typeof vi.fn>
   resetMsgId: ReturnType<typeof vi.fn>
-  cacheBuffers: Array<ArrayBuffer>
-  sourceBuffer:
-    | {
-        abort: ReturnType<typeof vi.fn>
-      }
-    | undefined
 }
 
 const mockState = vi.hoisted(() => ({
@@ -31,10 +25,8 @@ const mockAudioPlayerConstructor = vi.hoisted(() => vi.fn())
 const MockAudioPlayer = vi.hoisted(() => {
   return class MockAudioPlayerClass {
     setCallback = vi.fn()
-    pauseAudio = vi.fn()
+    destroy = vi.fn()
     resetMsgId = vi.fn()
-    cacheBuffers = [new ArrayBuffer(1)]
-    sourceBuffer = { abort: vi.fn() }
 
     constructor(...args: AudioPlayerCtorArgs) {
       mockAudioPlayerConstructor(...args)
@@ -132,9 +124,7 @@ describe('AudioPlayerManager', () => {
         callback,
       )
 
-      expect(previous!.pauseAudio).toHaveBeenCalledTimes(1)
-      expect(previous!.cacheBuffers).toEqual([])
-      expect(previous!.sourceBuffer?.abort).toHaveBeenCalledTimes(1)
+      expect(previous!.destroy).toHaveBeenCalledTimes(1)
       expect(mockAudioPlayerConstructor).toHaveBeenCalledTimes(2)
       expect(next).toBe(mockState.instances[1])
     })
@@ -144,7 +134,7 @@ describe('AudioPlayerManager', () => {
       const callback = vi.fn()
       manager.getAudioPlayer('/text-to-audio', false, 'msg-1', 'hello', 'en-US', callback)
       const previous = mockState.instances[0]
-      previous!.pauseAudio.mockImplementation(() => {
+      previous!.destroy.mockImplementation(() => {
         throw new Error('cleanup failure')
       })
 
@@ -152,7 +142,7 @@ describe('AudioPlayerManager', () => {
         manager.getAudioPlayer('/apps/1/text-to-audio', false, 'msg-2', 'world', 'en-US', callback)
       }).not.toThrow()
 
-      expect(previous!.pauseAudio).toHaveBeenCalledTimes(1)
+      expect(previous!.destroy).toHaveBeenCalledTimes(1)
       expect(mockAudioPlayerConstructor).toHaveBeenCalledTimes(2)
     })
   })

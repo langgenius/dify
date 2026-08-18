@@ -1,21 +1,28 @@
+import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
 import type { MemberInviteResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { vi } from 'vitest'
-import { useProviderContextSelector } from '@/context/provider-context'
+import { vi } from 'vite-plus/test'
 import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
+import { seedFeatures } from '@/test/console/query-data'
 import { InviteModal } from '../index'
 
-const { inviteMember } = vi.hoisted(() => ({ inviteMember: vi.fn() }))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: vi.fn(),
+const { fetchFeatures, inviteMember } = vi.hoisted(() => ({
+  fetchFeatures: vi.fn(),
+  inviteMember: vi.fn(),
 }))
+
 vi.mock('@/service/access-control/use-workspace-roles')
 vi.mock('@/service/client', () => ({
   consoleQuery: {
+    features: {
+      get: {
+        queryKey: () => ['features'],
+        queryOptions: () => ({ queryKey: ['features'], queryFn: fetchFeatures }),
+      },
+    },
     workspaces: {
       current: {
         members: {
@@ -33,7 +40,6 @@ vi.mock('@/service/client', () => ({
 describe('InviteModal', () => {
   const onOpenChange = vi.fn()
   const onSend = vi.fn()
-  const refreshLicenseLimit = vi.fn()
 
   const createQueryClient = () =>
     new QueryClient({
@@ -89,24 +95,23 @@ describe('InviteModal', () => {
       isFetchingNextPage: false,
       fetchNextPage: vi.fn(),
     } as unknown as ReturnType<typeof useWorkspaceRoleList>)
-    vi.mocked(useProviderContextSelector).mockImplementation((selector) =>
-      selector({
-        licenseLimit: { workspace_members: { size: 5, limit: 10 } },
-        refreshLicenseLimit,
-      } as unknown as Parameters<typeof selector>[0]),
-    )
   })
 
   const renderModal = ({
     open = true,
     isEmailSetup = true,
     queryClient = createQueryClient(),
+    workspaceMembers = { enabled: true, size: 5, limit: 10 },
   }: {
     open?: boolean
     isEmailSetup?: boolean
     queryClient?: QueryClient
-  } = {}) =>
-    render(
+    workspaceMembers?: GetFeaturesResponse['workspace_members']
+  } = {}) => {
+    const features = seedFeatures(queryClient, { workspace_members: workspaceMembers })
+    fetchFeatures.mockResolvedValue(features)
+
+    return render(
       <QueryClientProvider client={queryClient}>
         <InviteModal
           open={open}
@@ -117,6 +122,7 @@ describe('InviteModal', () => {
         />
       </QueryClientProvider>,
     )
+  }
 
   const selectAdminRole = async (user: ReturnType<typeof userEvent.setup>) => {
     await user.click(screen.getByRole('combobox', { name: /members\.role/i }))
@@ -181,7 +187,9 @@ describe('InviteModal', () => {
       invitation_results: [],
       tenant_id: 'tenant-id',
     } satisfies MemberInviteResponse)
-    renderModal()
+    const queryClient = createQueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    renderModal({ queryClient })
 
     await addRecipients(user, 'First@Example.com, second@example.com; first@example.com')
     await selectAdminRole(user)
@@ -196,7 +204,7 @@ describe('InviteModal', () => {
         },
       })
     })
-    expect(refreshLicenseLimit).toHaveBeenCalled()
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['features'] })
     expect(onOpenChange).toHaveBeenCalledWith(false)
     expect(onSend).toHaveBeenCalledWith([])
   })
@@ -466,18 +474,12 @@ describe('InviteModal', () => {
 
   it('warns but lets the backend decide whether recipients consume remaining seats', async () => {
     const user = userEvent.setup()
-    vi.mocked(useProviderContextSelector).mockImplementation((selector) =>
-      selector({
-        licenseLimit: { workspace_members: { size: 9, limit: 10 } },
-        refreshLicenseLimit,
-      } as unknown as Parameters<typeof selector>[0]),
-    )
     inviteMember.mockResolvedValue({
       result: 'success',
       invitation_results: [],
       tenant_id: 'tenant-id',
     } satisfies MemberInviteResponse)
-    renderModal()
+    renderModal({ workspaceMembers: { enabled: true, size: 9, limit: 10 } })
 
     await addRecipients(user, 'one@example.com, two@example.com')
     await selectAdminRole(user)
@@ -491,13 +493,7 @@ describe('InviteModal', () => {
 
   it('counts a manually typed recipient list before it is committed', async () => {
     const user = userEvent.setup()
-    vi.mocked(useProviderContextSelector).mockImplementation((selector) =>
-      selector({
-        licenseLimit: { workspace_members: { size: 9, limit: 10 } },
-        refreshLicenseLimit,
-      } as unknown as Parameters<typeof selector>[0]),
-    )
-    renderModal()
+    renderModal({ workspaceMembers: { enabled: true, size: 9, limit: 10 } })
 
     const input = screen.getByRole('textbox', { name: /members\.emailRecipients/i })
     await user.type(input, 'one@example.com,two@example.com')
@@ -662,6 +658,8 @@ describe('InviteModal', () => {
   it('resets the form after a controlled close', async () => {
     const user = userEvent.setup()
     const queryClient = createQueryClient()
+    const features = seedFeatures(queryClient)
+    fetchFeatures.mockResolvedValue(features)
     const ControlledInviteModal = () => {
       const [open, setOpen] = useState(false)
 

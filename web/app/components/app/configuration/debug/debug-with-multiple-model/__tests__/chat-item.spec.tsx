@@ -18,6 +18,9 @@ const mockUseEventEmitterContextContext = vi.fn()
 const mockFetchConversationMessages = vi.fn()
 const mockFetchSuggestedQuestions = vi.fn()
 const mockStopChatMessageResponding = vi.fn()
+const { mockToastError } = vi.hoisted(() => ({
+  mockToastError: vi.fn(),
+}))
 
 let capturedChatProps: {
   config: ChatConfig
@@ -64,6 +67,12 @@ vi.mock('@/service/debug', () => ({
   stopChatMessageResponding: (...args: unknown[]) => mockStopChatMessageResponding(...args),
 }))
 
+vi.mock('@/app/components/app/configuration/toast', () => ({
+  toast: {
+    error: mockToastError,
+  },
+}))
+
 vi.mock('@/app/components/base/chat/utils', () => ({
   getLastAnswer: (chatList: ChatItemType[]) => chatList.find((item) => item.isAnswer),
 }))
@@ -100,10 +109,6 @@ vi.mock('@/app/components/base/chat/chat', () => ({
       </div>
     )
   },
-}))
-
-vi.mock('@langgenius/dify-ui/avatar', () => ({
-  Avatar: ({ name }: { name: string }) => <div data-testid="avatar">{name}</div>,
 }))
 
 const createModelAndParameter = (
@@ -342,8 +347,16 @@ describe('ChatItem', () => {
           query: 'Hello',
           inputs: { key: 'value' },
         }),
-        expect.any(Object),
+        expect.objectContaining({
+          onNotifyError: expect.any(Function),
+        }),
       )
+
+      const callbacks = handleSend.mock.calls[0]![2] as {
+        onNotifyError: (message: string) => void
+      }
+      callbacks.onNotifyError('Base model not found')
+      expect(mockToastError).toHaveBeenCalledWith('Base model not found')
     })
 
     it('should handle APP_CHAT_WITH_MULTIPLE_MODEL_RESTART event', () => {

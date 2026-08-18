@@ -2,6 +2,7 @@ from typing import Any, override
 
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy.orm import scoped_session
 
 from core.extension.api_based_extension_requestor import APIBasedExtensionPoint, APIBasedExtensionRequestor
 from core.helper.encrypter import decrypt_token
@@ -40,7 +41,7 @@ class ApiModeration(Moderation):
         if not api_based_extension_id:
             raise ValueError("api_based_extension_id is required")
 
-        extension = cls._get_api_based_extension(tenant_id, api_based_extension_id)
+        extension = cls._get_api_based_extension(tenant_id, api_based_extension_id, db.session)
         if not extension:
             raise ValueError("API-based Extension not found. Please check it again.")
 
@@ -81,7 +82,9 @@ class ApiModeration(Moderation):
     def _get_config_by_requestor(self, extension_point: APIBasedExtensionPoint, params: dict[str, Any]):
         if self.config is None:
             raise ValueError("The config is not set.")
-        extension = self._get_api_based_extension(self.tenant_id, self.config.get("api_based_extension_id", ""))
+        extension = self._get_api_based_extension(
+            self.tenant_id, self.config.get("api_based_extension_id", ""), db.session
+        )
         if not extension:
             raise ValueError("API-based Extension not found. Please check it again.")
         requestor = APIBasedExtensionRequestor(extension.api_endpoint, decrypt_token(self.tenant_id, extension.api_key))
@@ -90,10 +93,12 @@ class ApiModeration(Moderation):
         return result
 
     @staticmethod
-    def _get_api_based_extension(tenant_id: str, api_based_extension_id: str) -> APIBasedExtension | None:
+    def _get_api_based_extension(
+        tenant_id: str, api_based_extension_id: str, session: scoped_session
+    ) -> APIBasedExtension | None:
         stmt = select(APIBasedExtension).where(
             APIBasedExtension.tenant_id == tenant_id, APIBasedExtension.id == api_based_extension_id
         )
-        extension = db.session.scalar(stmt)
+        extension = session.scalar(stmt)
 
         return extension

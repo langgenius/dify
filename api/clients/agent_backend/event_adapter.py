@@ -22,6 +22,7 @@ from dify_agent.protocol import (
     RunCancelledEvent,
     RunEvent,
     RunFailedEvent,
+    RunFailureType,
     RunStartedEvent,
     RunSucceededEvent,
 )
@@ -96,7 +97,9 @@ class AgentBackendRunFailedInternalEvent(AgentBackendInternalEventBase):
 
     type: Literal[AgentBackendInternalEventType.RUN_FAILED] = AgentBackendInternalEventType.RUN_FAILED
     error: str
+    error_type: RunFailureType | None = None
     reason: str | None = None
+    session_snapshot: CompositorSessionSnapshot | None = None
 
 
 class AgentBackendRunCancelledInternalEvent(AgentBackendInternalEventBase):
@@ -105,6 +108,7 @@ class AgentBackendRunCancelledInternalEvent(AgentBackendInternalEventBase):
     type: Literal[AgentBackendInternalEventType.RUN_CANCELLED] = AgentBackendInternalEventType.RUN_CANCELLED
     reason: str | None = None
     message: str | None = None
+    session_snapshot: CompositorSessionSnapshot | None = None
 
 
 type AgentBackendInternalEvent = Annotated[
@@ -180,7 +184,9 @@ class AgentBackendRunEventAdapter:
                         run_id=event.run_id,
                         source_event_id=event.id,
                         error=event.data.error,
+                        error_type=event.data.error_type,
                         reason=event.data.reason,
+                        session_snapshot=event.data.session_snapshot,
                     )
                 ]
             case RunCancelledEvent():
@@ -190,6 +196,7 @@ class AgentBackendRunEventAdapter:
                         source_event_id=event.id,
                         reason=event.data.reason,
                         message=event.data.message,
+                        session_snapshot=event.data.session_snapshot,
                     )
                 ]
         raise TypeError(f"unsupported agent backend run event: {type(event).__name__}")

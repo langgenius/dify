@@ -1,3 +1,4 @@
+import logging
 from unittest.mock import patch
 
 import pytest
@@ -71,3 +72,11 @@ class TestTriggerEndpoint:
 
         assert status == 500
         assert response["error"] == "Internal server error"
+
+    @patch.object(module.TriggerService, "process_endpoint", side_effect=Exception("boom"))
+    def test_unexpected_exception_logs_endpoint_id(self, mock_trigger, caplog):
+        with caplog.at_level(logging.ERROR, logger=module.logger.name):
+            module.trigger_endpoint(VALID_UUID)
+
+        assert VALID_UUID in caplog.text
+        assert "{endpoint_id}" not in caplog.text

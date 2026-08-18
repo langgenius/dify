@@ -162,7 +162,7 @@
   "mcp.server.modal.parametersPlaceholder": "매개변수의 목적 및 제한 사항",
   "mcp.server.modal.parametersTip": "각 매개변수의 설명을 추가하여 LLM이 목적과 제한 사항을 이해할 수 있도록 도와주세요.",
   "mcp.server.publishTip": "앱이 게시되지 않았습니다. 먼저 앱을 게시하십시오.",
-  "mcp.server.reGen": "서버 URL을 다시 생성하시겠습니까?",
+  "mcp.server.reGen": "서버 URL을 다시 생성하시겠습니까? 현재 URL은 즉시 작동이 중지됩니다.",
   "mcp.server.title": "MCP 서버",
   "mcp.server.url": "서버 URL",
   "mcp.toolItem.noDescription": "설명 없음",

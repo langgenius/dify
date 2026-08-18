@@ -33,7 +33,7 @@ const AnnotationFullModal: FC<Props> = ({ show, onHide }) => {
         >
           <div className="mt-6 flex cursor-pointer flex-col rounded-lg border-2 border-solid border-transparent px-7 py-6 shadow-md transition-all duration-200 ease-in-out">
             <div className="flex items-center justify-between">
-              <div className={cn(s.textGradient, 'text-[18px] leading-[27px] font-semibold')}>
+              <div className={cn(s.textGradient, 'text-[18px] leading-6.75 font-semibold')}>
                 <div>{t(($) => $['annotatedResponse.fullTipLine1'], { ns: 'billing' })}</div>
                 <div>{t(($) => $['annotatedResponse.fullTipLine2'], { ns: 'billing' })}</div>
               </div>

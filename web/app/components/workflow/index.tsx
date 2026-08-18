@@ -4,6 +4,7 @@ import type { FC } from 'react'
 import type { Viewport } from 'reactflow'
 import type { CursorPosition, OnlineUser } from './collaboration/types/collaboration'
 import type { Shape as HooksStoreShape } from './hooks-store'
+import type { WorkflowHistoryState } from './store/workflow/history-slice'
 import type { WorkflowSliceShape } from './store/workflow/workflow-slice'
 import type { ConversationVariable, Edge, EnvironmentVariable, Node } from './types'
 import type { EventEmitterValue } from '@/context/event-emitter'
@@ -22,7 +23,18 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useEventListener } from 'ahooks'
 import { isEqual } from 'es-toolkit/predicate'
 import { setAutoFreeze } from 'immer'
-import { Fragment, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  Fragment,
+  memo,
+  Suspense,
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import ReactFlow, {
   Background,
@@ -57,20 +69,17 @@ import CustomConnectionLine from './custom-connection-line'
 import CustomEdge from './custom-edge'
 import DatasetsDetailProvider from './datasets-detail-store/provider'
 import HelpLine from './help-line'
-import {
-  useEdgesInteractions,
-  useNodesInteractions,
-  useNodesReadOnly,
-  useNodesSyncDraft,
-  usePanelInteractions,
-  useSelectionInteractions,
-  useSetWorkflowVarsWithValue,
-  useWorkflow,
-  useWorkflowReadOnly,
-  useWorkflowRefreshDraft,
-} from './hooks'
 import { HooksStoreContextProvider, useHooksStore } from './hooks-store'
+import { useEdgesInteractions } from './hooks/use-edges-interactions'
+import { useLocateNode } from './hooks/use-locate-node'
+import { useNodesInteractions } from './hooks/use-nodes-interactions'
+import { useNodesSyncDraft } from './hooks/use-nodes-sync-draft'
+import { usePanelInteractions } from './hooks/use-panel-interactions'
+import { useSelectionInteractions } from './hooks/use-selection-interactions'
+import { useSetWorkflowVarsWithValue } from './hooks/use-set-workflow-vars-with-value'
+import { useNodesReadOnly, useWorkflow, useWorkflowReadOnly } from './hooks/use-workflow'
 import { useWorkflowComment } from './hooks/use-workflow-comment'
+import { useWorkflowRefreshDraft } from './hooks/use-workflow-refresh-draft'
 import { useWorkflowSearch } from './hooks/use-workflow-search'
 import { shouldPreventWorkflowBrowserDefault } from './hotkeys'
 import CustomNode from './nodes'
@@ -364,22 +373,35 @@ export const Workflow: FC<WorkflowProps> = memo(
       }
     }, [])
 
+    const syncWorkflowDraftOnUnmount = useEffectEvent(() => {
+      const { debouncedSyncWorkflowDraft, isWorkflowDataLoaded } = workflowStore.getState()
+      if (!isWorkflowDataLoaded) return
+
+      debouncedSyncWorkflowDraft.cancel?.()
+
+      if (isCollaborationEnabled && collaborationManager.canUseLocalDraftFallback()) {
+        syncWorkflowDraftWhenPageClose()
+        return
+      }
+
+      if (isCollaborationEnabled && !collaborationManager.canFlushGraphOnPageClose()) return
+
+      handleSyncWorkflowDraft(true, true, {
+        onError: () => {
+          toast.error(
+            t(($) => $['common.draftSaveFailed'], { ns: 'workflow' }),
+            {
+              timeout: 0,
+            },
+          )
+        },
+      })
+    })
     useEffect(() => {
       return () => {
-        if (isCollaborationEnabled && !collaborationManager.canPersistLocalGraph()) return
-
-        handleSyncWorkflowDraft(true, true, {
-          onError: () => {
-            toast.error(
-              t(($) => $['common.draftSaveFailed'], { ns: 'workflow' }),
-              {
-                timeout: 0,
-              },
-            )
-          },
-        })
+        syncWorkflowDraftOnUnmount()
       }
-    }, [handleSyncWorkflowDraft, isCollaborationEnabled, t])
+    }, [])
 
     const handlePendingCommentPositionChange = useCallback(
       (position: NonNullable<WorkflowSliceShape['pendingComment']>) => {
@@ -565,6 +587,9 @@ export const Workflow: FC<WorkflowProps> = memo(
     // Initialize workflow node search functionality
     useWorkflowSearch()
 
+    // Locate a node by ID from URL query parameter `node_id`
+    useLocateNode(nodes)
+
     // Set up scroll to node event listener using the utility function
     useEffect(() => {
       return setupScrollToNodeListener(nodes, reactflow)
@@ -627,7 +652,7 @@ export const Workflow: FC<WorkflowProps> = memo(
       <div
         id="workflow-container"
         className={cn(
-          'relative isolate h-full w-full min-w-[960px] overflow-hidden',
+          'relative isolate h-full w-full min-w-240 overflow-hidden',
           workflowReadOnly && 'workflow-panel-animation',
           nodeAnimation && 'workflow-node-animation',
         )}
@@ -828,20 +853,23 @@ const WorkflowHistoryStoreInitializer = ({
   children,
 }: WorkflowWithDefaultContextProps) => {
   const workflowStore = useWorkflowStore()
-  const initializedRef = useRef(false)
+  const initializedWorkflowHistory = useStore((state) => state.initializedWorkflowHistory)
+  const [initialWorkflowHistory] = useState<WorkflowHistoryState>(() => ({
+    nodes,
+    edges,
+    workflowHistoryEvent: undefined,
+    workflowHistoryEventMeta: undefined,
+  }))
 
-  if (!initializedRef.current) {
-    workflowStore.temporal.getState().pause()
-    workflowStore.getState().setWorkflowHistory({
-      nodes,
-      edges,
-      workflowHistoryEvent: undefined,
-      workflowHistoryEventMeta: undefined,
-    })
-    workflowStore.temporal.getState().clear()
-    workflowStore.temporal.getState().resume()
-    initializedRef.current = true
-  }
+  useLayoutEffect(() => {
+    const temporalStore = workflowStore.temporal.getState()
+    temporalStore.pause()
+    workflowStore.getState().initializeWorkflowHistory(initialWorkflowHistory)
+    temporalStore.clear()
+    temporalStore.resume()
+  }, [initialWorkflowHistory, workflowStore])
+
+  if (initializedWorkflowHistory !== initialWorkflowHistory) return null
 
   return children
 }

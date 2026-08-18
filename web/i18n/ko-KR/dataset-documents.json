@@ -13,6 +13,8 @@
   "embedding.segmentLength": "청크의 길이",
   "embedding.segments": "세그먼트",
   "embedding.textCleaning": "텍스트 전처리",
+  "embedding.vectorSpaceEstimateExceeded.description": "문서를 받았지만 예상 벡터 저장 공간이 {{estimated}} MB로 요금제 한도인 {{limit}} MB를 초과하여 벡터가 기록되지 않았습니다. 다른 문서가 처리 중이거나 방금 처리에 실패했다면 잠시 후 다시 시도하세요. 그렇지 않으면 파일 크기나 청크 수를 줄이세요.",
+  "embedding.vectorSpaceEstimateExceeded.title": "업로드 후 예상 벡터 저장 공간이 요금제 용량을 초과합니다",
   "embedding.waiting": "임베딩 대기 중...",
   "list.action.addButton": "청크 추가",
   "list.action.archive": "아카이브",

@@ -23,9 +23,8 @@ def new_run_id() -> str:
 class RunRecord(BaseModel):
     """Internal representation persisted for status reads.
 
-    Only status metadata is persisted. Create-run requests can contain model
-    credentials in layer config and must remain in scheduler memory rather than
-    being written to Redis.
+    Only status metadata is persisted. Create-run requests can contain sensitive
+    layer configuration and must remain in scheduler memory rather than Redis.
     """
 
     run_id: str
@@ -33,6 +32,7 @@ class RunRecord(BaseModel):
     created_at: datetime = Field(default_factory=_protocol_schemas.utc_now)
     updated_at: datetime = Field(default_factory=_protocol_schemas.utc_now)
     error: str | None = None
+    error_type: _protocol_schemas.RunFailureType | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 

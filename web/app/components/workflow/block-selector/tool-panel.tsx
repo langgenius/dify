@@ -12,7 +12,7 @@ import {
 } from '@/service/use-tools'
 import { basePath } from '@/utils/var'
 import { useWorkflowStore } from '../store'
-import AllTools from './all-tools'
+import ToolBrowser from './tool-browser'
 
 function normalizeToolList(list: ToolWithProvider[] | undefined, currentBasePath?: string) {
   if (!list || !currentBasePath) return list
@@ -131,7 +131,7 @@ export function ToolPanel({
   ])
 
   return (
-    <AllTools
+    <ToolBrowser
       searchText={searchText}
       onSelect={onSelect}
       tags={tags}

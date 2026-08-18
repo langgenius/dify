@@ -127,7 +127,7 @@ const Installed: FC<Props> = ({
       <div className="flex items-center justify-end gap-2 self-stretch p-6 pt-5">
         <Button
           variant="primary"
-          className="min-w-[72px]"
+          className="min-w-18"
           render={categoryTarget ? <Link href={categoryTarget.path} /> : undefined}
           onClick={handleClose}
         >

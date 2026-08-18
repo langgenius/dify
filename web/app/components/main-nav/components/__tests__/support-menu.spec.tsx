@@ -1,4 +1,4 @@
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -6,17 +6,16 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { fireEvent, screen } from '@testing-library/react'
 import { openZendeskWindow } from '@/app/components/base/zendesk/utils'
-import { Plan } from '@/app/components/billing/type'
 import { mailToSupport } from '@/app/components/header/utils/util'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import SupportMenu from '../support-menu'
 
 const { mockConfig, mockOpenZendeskWindow, mockMailToSupport, mockSetShowPricingModal } =
   vi.hoisted(() => ({
     mockConfig: {
-      isCloudEdition: true,
       supportEmailAddress: '',
       zendeskWidgetKey: 'zendesk-key',
     },
@@ -43,9 +42,6 @@ vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
   return {
     ...actual,
-    get IS_CLOUD_EDITION() {
-      return mockConfig.isCloudEdition
-    },
     get SUPPORT_EMAIL_ADDRESS() {
       return mockConfig.supportEmailAddress
     },
@@ -53,15 +49,6 @@ vi.mock('@/config', async (importOriginal) => {
       return mockConfig.zendeskWidgetKey
     },
   }
-})
-
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState.current)
-})
-vi.mock('@/context/version-state', async () => {
-  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createVersionStateModuleMock(() => mockConsoleState.current)
 })
 
 vi.mock('@/context/modal-context', () => ({
@@ -73,9 +60,11 @@ vi.mock('@/context/provider-context', () => ({
 }))
 
 describe('SupportMenu', () => {
+  let deploymentEdition: 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD' = 'CLOUD'
+
   beforeEach(() => {
     vi.clearAllMocks()
-    mockConfig.isCloudEdition = true
+    deploymentEdition = 'CLOUD'
     mockConfig.supportEmailAddress = ''
     mockConfig.zendeskWidgetKey = 'zendesk-key'
     mockConsoleState.current = {
@@ -84,7 +73,7 @@ describe('SupportMenu', () => {
     }
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: true,
-      plan: { type: Plan.team },
+      plan: { type: 'team' },
     })
     ;(useModalContext as Mock).mockReturnValue({
       setShowPricingModal: mockSetShowPricingModal,
@@ -92,20 +81,27 @@ describe('SupportMenu', () => {
     ;(mailToSupport as Mock).mockReturnValue('mailto:support@example.com')
   })
 
-  const renderSupportMenu = (onContactUsClick = vi.fn()) => {
+  const renderSupportMenu = () => {
+    const { wrapper } = createConsoleQueryWrapper({
+      accountProfile: mockConsoleState.current.userProfile,
+      accountProfileMeta: {
+        currentVersion: mockConsoleState.current.langGeniusVersionInfo.current_version,
+      },
+      systemFeatures: { deployment_edition: deploymentEdition },
+    })
     return render(
       <DropdownMenu open={true} onOpenChange={() => {}}>
         <DropdownMenuTrigger>open</DropdownMenuTrigger>
         <DropdownMenuContent>
-          <SupportMenu onContactUsClick={onContactUsClick} />
+          <SupportMenu />
         </DropdownMenuContent>
       </DropdownMenu>,
+      { wrapper },
     )
   }
 
   it('renders contact us before community support entries when Zendesk is configured', () => {
-    const onContactUsClick = vi.fn()
-    renderSupportMenu(onContactUsClick)
+    renderSupportMenu()
 
     expect(screen.getByText('common.userProfile.contactUs')).toBeInTheDocument()
     expect(screen.getByText('common.userProfile.forum')).toBeInTheDocument()
@@ -122,18 +118,16 @@ describe('SupportMenu', () => {
 
     fireEvent.click(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' }))
 
-    expect(openZendeskWindow).toHaveBeenCalled()
-    expect(onContactUsClick).toHaveBeenCalled()
+    expect(openZendeskWindow).toHaveBeenCalledWith('CLOUD')
   })
 
   it('renders contact us with upgrade badge for Cloud sandbox plan without dedicated support', () => {
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: true,
-      plan: { type: Plan.sandbox },
+      plan: { type: 'sandbox' },
     })
 
-    const onContactUsClick = vi.fn()
-    renderSupportMenu(onContactUsClick)
+    renderSupportMenu()
 
     expect(screen.getByText('common.userProfile.contactUs')).toHaveClass('text-text-disabled')
     expect(screen.getByText('billing.upgradeBtn.encourageShort')).toHaveClass(
@@ -153,13 +147,12 @@ describe('SupportMenu', () => {
 
     expect(mockSetShowPricingModal).toHaveBeenCalled()
     expect(openZendeskWindow).not.toHaveBeenCalled()
-    expect(onContactUsClick).toHaveBeenCalled()
   })
 
   it('hides upgrade contact for Cloud sandbox plan when billing is disabled', () => {
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: false,
-      plan: { type: Plan.sandbox },
+      plan: { type: 'sandbox' },
     })
 
     renderSupportMenu()
@@ -174,7 +167,7 @@ describe('SupportMenu', () => {
     mockConfig.supportEmailAddress = 'support@example.com'
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: true,
-      plan: { type: Plan.sandbox },
+      plan: { type: 'sandbox' },
     })
 
     renderSupportMenu()
@@ -183,7 +176,7 @@ describe('SupportMenu', () => {
     expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' }))
 
-    expect(openZendeskWindow).toHaveBeenCalled()
+    expect(openZendeskWindow).toHaveBeenCalledWith('CLOUD')
     expect(mockSetShowPricingModal).not.toHaveBeenCalled()
   })
 
@@ -192,7 +185,7 @@ describe('SupportMenu', () => {
     mockConfig.zendeskWidgetKey = ''
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: true,
-      plan: { type: Plan.sandbox },
+      plan: { type: 'sandbox' },
     })
 
     renderSupportMenu()
@@ -202,17 +195,17 @@ describe('SupportMenu', () => {
     expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
     expect(mailToSupport).toHaveBeenCalledWith(
       'user@example.com',
-      Plan.sandbox,
+      'sandbox',
       '1.0.0',
       'support@example.com',
     )
   })
 
   it('hides dedicated support channels for non-Cloud sandbox plan without support email', () => {
-    mockConfig.isCloudEdition = false
+    deploymentEdition = 'COMMUNITY'
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: true,
-      plan: { type: Plan.sandbox },
+      plan: { type: 'sandbox' },
     })
 
     renderSupportMenu()
@@ -229,7 +222,7 @@ describe('SupportMenu', () => {
 
     expect(screen.queryByText('common.userProfile.contactUs')).not.toBeInTheDocument()
     expect(screen.getByText('common.userProfile.emailSupport')).toBeInTheDocument()
-    expect(mailToSupport).toHaveBeenCalledWith('user@example.com', Plan.team, '1.0.0', '')
+    expect(mailToSupport).toHaveBeenCalledWith('user@example.com', 'team', '1.0.0', '')
     expect(
       screen.getByRole('menuitem', { name: 'common.userProfile.emailSupport' }),
     ).toHaveAttribute('href', 'mailto:support@example.com')

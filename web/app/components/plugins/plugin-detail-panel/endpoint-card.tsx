@@ -8,6 +8,7 @@ import {
   AlertDialogContent,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -17,8 +18,6 @@ import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
-import { CopyCheck } from '@/app/components/base/icons/src/vender/line/files'
 import {
   addDefaultValue,
   toolCredentialToFormSchemas,
@@ -154,16 +153,20 @@ const EndpointCard = ({ pluginDetail, data, handleChange }: Props) => {
             <span aria-hidden className="i-ri-login-circle-line size-4" />
             <div>{data.name}</div>
           </div>
-          <div className="hidden items-center group-hover:flex">
-            <ActionButton onClick={showEndpointModalConfirm}>
+          <div className="flex w-0 items-center overflow-hidden opacity-0 group-hover:w-auto group-hover:overflow-visible group-hover:opacity-100 focus-within:w-auto focus-within:overflow-visible focus-within:opacity-100">
+            <IconButton
+              aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
+              onClick={showEndpointModalConfirm}
+            >
               <span aria-hidden className="i-ri-edit-line size-4" />
-            </ActionButton>
-            <ActionButton
+            </IconButton>
+            <IconButton
+              aria-label={t(($) => $['operation.delete'], { ns: 'common' })}
+              tone="destructive"
               onClick={showDeleteConfirm}
-              className="text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
             >
               <span aria-hidden className="i-ri-delete-bin-line size-4" />
-            </ActionButton>
+            </IconButton>
           </div>
         </div>
         {(data.declaration.endpoints ?? [])
@@ -178,20 +181,23 @@ const EndpointCard = ({ pluginDetail, data, handleChange }: Props) => {
                 <Tooltip>
                   <TooltipTrigger
                     render={
-                      <ActionButton
+                      <IconButton
                         aria-label={copyLabel}
                         className="ml-2 hidden shrink-0 group-hover/item:flex"
                         onClick={() => handleCopy(`${data.url}${endpoint.path}`)}
                       >
                         {isCopied ? (
-                          <CopyCheck aria-hidden className="size-3.5 text-text-tertiary" />
+                          <span
+                            aria-hidden
+                            className="i-custom-vender-line-files-copy-check size-3.5 text-text-tertiary"
+                          />
                         ) : (
                           <span
                             aria-hidden
                             className="i-ri-clipboard-line size-3.5 text-text-tertiary"
                           />
                         )}
-                      </ActionButton>
+                      </IconButton>
                     }
                   />
                   <TooltipContent placement="top">{copyLabel}</TooltipContent>

@@ -1,12 +1,13 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { SegmentImportStatus } from '@/types/dataset'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { Plan } from '@/app/components/billing/type'
+import { fireEvent, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { segmentImportStatus } from '@/types/dataset'
 import { SegmentAdd } from '../index'
 
 // Mock provider context
-let mockPlan = { type: Plan.professional }
+let mockPlan: { type: CloudPlan } = { type: 'professional' }
 let mockEnableBilling = true
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
@@ -18,7 +19,7 @@ vi.mock('@/context/provider-context', () => ({
 describe('SegmentAdd', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPlan = { type: Plan.professional }
+    mockPlan = { type: 'professional' }
     mockEnableBilling = true
   })
 
@@ -140,7 +141,7 @@ describe('SegmentAdd', () => {
     })
 
     it('should show plan upgrade modal instead of batch modal for sandbox users', async () => {
-      mockPlan = { type: Plan.sandbox }
+      mockPlan = { type: 'sandbox' }
       const mockShowBatchModal = vi.fn()
       render(<SegmentAdd {...defaultProps} showBatchModal={mockShowBatchModal} />)
 
@@ -171,7 +172,7 @@ describe('SegmentAdd', () => {
   // Plan upgrade modal
   describe('Plan Upgrade Modal', () => {
     it('should show plan upgrade modal when sandbox user tries to add', () => {
-      mockPlan = { type: Plan.sandbox }
+      mockPlan = { type: 'sandbox' }
       render(<SegmentAdd {...defaultProps} />)
 
       fireEvent.click(screen.getByText(/list\.action\.addButton/i))
@@ -180,7 +181,7 @@ describe('SegmentAdd', () => {
     })
 
     it('should not call showNewSegmentModal for sandbox users', () => {
-      mockPlan = { type: Plan.sandbox }
+      mockPlan = { type: 'sandbox' }
       const mockShowNewSegmentModal = vi.fn()
       render(<SegmentAdd {...defaultProps} showNewSegmentModal={mockShowNewSegmentModal} />)
 
@@ -190,7 +191,7 @@ describe('SegmentAdd', () => {
     })
 
     it('should allow add when billing is disabled regardless of plan', () => {
-      mockPlan = { type: Plan.sandbox }
+      mockPlan = { type: 'sandbox' }
       mockEnableBilling = false
       const mockShowNewSegmentModal = vi.fn()
       render(<SegmentAdd {...defaultProps} showNewSegmentModal={mockShowNewSegmentModal} />)
@@ -201,7 +202,7 @@ describe('SegmentAdd', () => {
     })
 
     it('should close plan upgrade modal when close button is clicked', () => {
-      mockPlan = { type: Plan.sandbox }
+      mockPlan = { type: 'sandbox' }
       render(<SegmentAdd {...defaultProps} />)
 
       // Show modal

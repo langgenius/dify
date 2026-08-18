@@ -80,7 +80,7 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
         <button
           type="button"
           className={cn(
-            'mr-6 cursor-pointer border-x-0 border-t-0 border-b-2 border-transparent bg-transparent px-0 py-3 text-left text-[13px] leading-[18px] font-semibold text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
+            'mr-6 cursor-pointer border-x-0 border-t-0 border-b-2 border-transparent bg-transparent px-0 py-3 text-left text-[13px] leading-4.5 font-semibold text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
             currentTab === 'DETAIL' && 'border-[rgb(21,94,239)]! text-text-secondary',
           )}
           data-active={currentTab === 'DETAIL'}
@@ -91,7 +91,7 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
         <button
           type="button"
           className={cn(
-            'mr-6 cursor-pointer border-x-0 border-t-0 border-b-2 border-transparent bg-transparent px-0 py-3 text-left text-[13px] leading-[18px] font-semibold text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
+            'mr-6 cursor-pointer border-x-0 border-t-0 border-b-2 border-transparent bg-transparent px-0 py-3 text-left text-[13px] leading-4.5 font-semibold text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
             currentTab === 'TRACING' && 'border-[rgb(21,94,239)]! text-text-secondary',
           )}
           data-active={currentTab === 'TRACING'}

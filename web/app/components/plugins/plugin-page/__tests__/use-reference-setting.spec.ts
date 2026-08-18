@@ -3,7 +3,7 @@ import type { LangGeniusVersionInfo } from '@/context/app-context-types'
 import type { ConsoleStateFixture as BaseConsoleStateFixture } from '@/test/console/state-fixture'
 import { toast } from '@langgenius/dify-ui/toast'
 import { waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import {
   useInvalidateReferenceSettings,
   useMutationPluginPermissionSettings,
@@ -11,7 +11,7 @@ import {
   usePluginAutoUpgradeSettings,
   usePluginPermissionSettings,
 } from '@/service/use-plugins'
-import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
+import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { PermissionType, PluginCategoryEnum } from '../../types'
 import useReferenceSetting, { useCanInstallPluginFromMarketplace } from '../use-reference-setting'
 
@@ -19,14 +19,8 @@ const defaultLangGeniusVersionInfo: LangGeniusVersionInfo = {
   current_env: '',
   current_version: '1.0.0',
   latest_version: '',
-  release_date: '',
   release_notes: '',
   version: '',
-  features: {
-    can_replace_logo: false,
-    model_load_balancing_enabled: false,
-  },
-  can_auto_update: false,
 }
 
 type ConsoleStateFixture = Omit<BaseConsoleStateFixture, 'langGeniusVersionInfo'> & {
@@ -45,6 +39,18 @@ const setConsoleState = (state: ConsoleStateFixture) => {
   }
 }
 
+function renderHook<Result, Props = void>(
+  callback: (props: Props) => Result,
+  options: Parameters<typeof renderHookWithConsoleQuery<Result, Props>>[1] = {},
+) {
+  return renderHookWithConsoleQuery(callback, {
+    ...options,
+    accountProfileMeta: {
+      currentVersion: mockConsoleState.langGeniusVersionInfo?.current_version ?? null,
+    },
+  })
+}
+
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState)
@@ -53,11 +59,6 @@ vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/version-state', async () => {
-  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createVersionStateModuleMock(() => mockConsoleState)
-})
-
 vi.mock('@/service/use-plugins', () => ({
   usePluginAutoUpgradeSettings: vi.fn(),
   usePluginPermissionSettings: vi.fn(),

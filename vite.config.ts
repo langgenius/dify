@@ -5,13 +5,13 @@ const lintFiles = '*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}'
 const eslintFiles = '*.{json,jsonc,json5,md,yml,yaml,toml}'
 const formatOnlyFiles = '*.{mdx,css,scss,less,html,vue,svelte,gql,graphql,hbs,handlebars}'
 const checkFix = 'vp check --fix --no-error-on-unmatched-pattern'
+const formatFix = 'vp fmt --no-error-on-unmatched-pattern'
 const eslintFix =
   'eslint --fix --pass-on-unpruned-suppressions --no-error-on-unmatched-pattern --no-warn-ignored'
 
 const nonFrontendIgnores = [
   '.agents/**',
   '.devcontainer/**',
-  '.github/**',
   '/*.md',
   'api/**',
   'codecov.yml',
@@ -19,7 +19,8 @@ const nonFrontendIgnores = [
   'dify-agent/**',
   'docker/**',
   'docs/**',
-  'scripts/**',
+  'scripts/**/*',
+  '!scripts/check-web-production-unused-after-knip-fix.mjs',
   'sdks/php-client/**',
   'sdks/python-client/**',
 ]
@@ -47,8 +48,9 @@ export default defineConfig({
   lint: lintConfig,
   staged: {
     [lintFiles]: checkFix,
-    [eslintFiles]: [eslintFix, checkFix],
-    [formatOnlyFiles]: checkFix,
+    [eslintFiles]: [eslintFix, formatFix],
+    [formatOnlyFiles]: formatFix,
+    '.vite-hooks/*': 'sh -n',
   },
   fmt: {
     ignorePatterns: [...nonFrontendIgnores, ...generatedIgnores, ...formatterUnstableInputs],

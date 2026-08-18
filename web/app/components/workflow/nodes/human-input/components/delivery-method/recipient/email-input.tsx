@@ -136,7 +136,7 @@ const EmailInput = ({ email, value, list, onDelete, onSelect, onAdd, disabled = 
           <Popover open={open} onOpenChange={setOpen}>
             <input
               ref={inputRef}
-              className="h-6 min-w-[166px] appearance-none bg-transparent p-1 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder"
+              className="h-6 min-w-41.5 appearance-none bg-transparent p-1 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder"
               placeholder={placeholder}
               onFocus={() => setIsFocus(true)}
               onBlur={handleInputBlur}

@@ -45,7 +45,7 @@ const Footer: FC<DatePickerFooterProps> = ({
           className="flex items-center justify-center px-1.5 py-1 system-xs-medium text-components-button-secondary-accent-text"
           onClick={handleSelectCurrentDate}
         >
-          <span className="px-[3px]">{t(($) => $['operation.now'], { ns: 'time' })}</span>
+          <span className="px-0.75">{t(($) => $['operation.now'], { ns: 'time' })}</span>
         </button>
         {/* Confirm Button */}
         <Button

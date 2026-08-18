@@ -3,7 +3,7 @@ import type { ChatWithHistoryContextValue } from '../context'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { AppData, AppMeta, ConversationItem } from '@/models/share'
 import type { HumanInputFormData } from '@/types/workflow'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { InputVarType } from '@/app/components/workflow/types'
 import {
   fetchChatList,
@@ -16,6 +16,12 @@ import { useChat } from '../../chat/hooks'
 import { isValidGeneratedAnswer } from '../../utils'
 import ChatWrapper from '../chat-wrapper'
 import { useChatWithHistoryContext } from '../context'
+
+const mockTrackEvent = vi.hoisted(() => vi.fn())
+
+vi.mock('@/app/components/base/amplitude', () => ({
+  trackEvent: mockTrackEvent,
+}))
 
 vi.mock('../../chat/hooks', () => ({
   useChat: vi.fn(),
@@ -75,6 +81,7 @@ vi.mock('@/hooks/use-timestamp', () => ({
 type ChatHookReturn = ReturnType<typeof useChat>
 
 const mockAppData = {
+  mode: 'advanced-chat',
   site: {
     title: 'Test Chat',
     chat_color_theme: 'blue',
@@ -137,6 +144,7 @@ const defaultChatHookReturn: Partial<ChatHookReturn> = {
   handleSend: vi.fn(),
   handleStop: vi.fn(),
   handleSwitchSibling: vi.fn(),
+  prepareHumanInputSubmission: vi.fn().mockResolvedValue(true),
   isResponding: false,
   suggestedQuestions: [],
 }
@@ -745,7 +753,34 @@ describe('ChatWrapper', () => {
     expect(fetchChatList).toHaveBeenCalledWith('conversation-1', 'webApp', 'test-app-id')
   })
 
-  it('should not fetch current conversation messages for non-new-agent chat', async () => {
+  it('should track the start action when a new agent web app sends a message', async () => {
+    const handleSend = vi.fn()
+    vi.mocked(useChat).mockReturnValue({
+      ...defaultChatHookReturn,
+      handleSend,
+      chatList: [
+        { id: '1', isOpeningStatement: true, content: 'Welcome', suggestedQuestions: ['Q1'] },
+      ],
+      suggestedQuestions: ['Q1'],
+    } as unknown as ChatHookReturn)
+    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+      ...defaultContextValue,
+      currentConversationId: '',
+      isInstalledApp: false,
+      isNewAgent: true,
+    })
+
+    render(<ChatWrapper />)
+
+    fireEvent.click(await screen.findByText('Q1'))
+
+    expect(handleSend).toHaveBeenCalled()
+    expect(mockTrackEvent).toHaveBeenCalledWith('webapp_run', {
+      app_mode: 'agent-v2',
+    })
+  })
+
+  it('should track the site response mode without fetching messages for a regular web app', async () => {
     const handleSend = vi.fn()
     vi.mocked(useChat).mockReturnValue({
       ...defaultChatHookReturn,
@@ -768,6 +803,9 @@ describe('ChatWrapper', () => {
 
     const options = handleSend.mock.calls[0]![2]
     expect(options.onGetConversationMessages).toBeUndefined()
+    expect(mockTrackEvent).toHaveBeenCalledWith('webapp_run', {
+      app_mode: 'advanced-chat',
+    })
   })
 
   it('should call fetchSuggestedQuestions in doSwitchSibling', async () => {
@@ -873,6 +911,13 @@ describe('ChatWrapper', () => {
   it('should handle human input form submission for installed app', async () => {
     const { submitHumanInputForm: submitWorkflowForm } = await import('@/service/workflow')
     vi.mocked(submitWorkflowForm).mockResolvedValue({} as unknown as void)
+    let resolveWorkflowEventsReady: (isReady: boolean) => void = () => {}
+    const prepareHumanInputSubmission = vi.fn(
+      () =>
+        new Promise<boolean>((resolve) => {
+          resolveWorkflowEventsReady = resolve
+        }),
+    )
 
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,
@@ -881,6 +926,7 @@ describe('ChatWrapper', () => {
 
     vi.mocked(useChat).mockReturnValue({
       ...defaultChatHookReturn,
+      prepareHumanInputSubmission,
       chatList: [
         { id: 'q1', content: 'Question' },
         {
@@ -924,6 +970,12 @@ describe('ChatWrapper', () => {
     const runButton = screen.getByText('Run')
     fireEvent.click(runButton)
 
+    expect(prepareHumanInputSubmission).toHaveBeenCalledOnce()
+    expect(submitWorkflowForm).not.toHaveBeenCalled()
+
+    await act(async () => {
+      resolveWorkflowEventsReady(true)
+    })
     await waitFor(() => {
       expect(submitWorkflowForm).toHaveBeenCalled()
     })

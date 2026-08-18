@@ -1,4 +1,5 @@
 'use client'
+
 import type { NotionPage } from '@/models/common'
 import type {
   CrawlOptions,
@@ -7,21 +8,25 @@ import type {
   FileItem,
 } from '@/models/datasets'
 import type { RETRIEVE_METHOD } from '@/types/app'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
+import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
-import { userProfileIdAtom } from '@/context/account-state'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import {
   workspacePermissionKeysAtom,
   workspacePermissionKeysLoadingAtom,
 } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { DataSourceProvider } from '@/models/common'
 import { DataSourceType } from '@/models/datasets'
 import { useRouter } from '@/next/navigation'
@@ -51,9 +56,12 @@ const DEFAULT_CRAWL_OPTIONS: CrawlOptions = {
 const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   const { t } = useTranslation()
   const router = useRouter()
-  const openIntegrationsSetting = useIntegrationsSetting()
+  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const datasetDetail = useDatasetDetailContextWithSelector((state) => state.dataset)
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: embeddingsDefaultModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
@@ -159,9 +167,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
             {step === 1 && (
               <StepOne
                 authedDataSourceList={dataSourceList?.result || []}
-                onSetting={() =>
-                  openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.DATA_SOURCE })
-                }
+                onSetting={() => setSettingsDestination('data-source')}
                 datasetId={datasetId}
                 dataSourceType={dataSourceType}
                 dataSourceTypeDisable={!!datasetDetail?.data_source_type}
@@ -185,7 +191,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
             {step === 2 && (!datasetId || (datasetId && !!datasetDetail)) && (
               <StepTwo
                 isAPIKeySet={!!embeddingsDefaultModel}
-                onSetting={() => openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}
+                onSetting={() => setSettingsDestination('provider')}
                 indexingType={datasetDetail?.indexing_technique}
                 datasetId={datasetId}
                 dataSourceType={dataSourceType}

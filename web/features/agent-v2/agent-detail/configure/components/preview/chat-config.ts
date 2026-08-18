@@ -132,7 +132,7 @@ export const getAgentSoulInputs = (inputsForm: InputForm[]) => {
 
 const toAgentTool = (tool: AgentSoulDifyToolConfig) => ({
   provider_id: tool.provider_id ?? tool.provider ?? tool.plugin_id ?? '',
-  provider_type: tool.provider_type ?? 'builtin',
+  provider_type: tool.provider_type,
   provider_name: tool.provider ?? '',
   tool_name: tool.tool_name,
   tool_label: tool.name ?? tool.tool_name,

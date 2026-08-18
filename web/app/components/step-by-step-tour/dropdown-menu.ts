@@ -1,5 +1,5 @@
-import type { DropdownMenuContent } from '@langgenius/dify-ui/dropdown-menu'
-import type { ComponentProps, SyntheticEvent } from 'react'
+import type { DropdownMenuContentProps } from '@langgenius/dify-ui/dropdown-menu'
+import type { SyntheticEvent } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useState } from 'react'
 
@@ -8,7 +8,6 @@ const STEP_BY_STEP_TOUR_MENU_POPUP_NO_MOTION_CLASS_NAME =
   'transition-none data-starting-style:scale-100 data-starting-style:opacity-100 data-ending-style:scale-100 data-ending-style:opacity-100'
 const STEP_BY_STEP_TOUR_MENU_PRESENTATION_CLASS_NAME = 'pointer-events-none cursor-default'
 
-type DropdownMenuContentProps = ComponentProps<typeof DropdownMenuContent>
 type DropdownMenuPositionerProps = DropdownMenuContentProps['positionerProps']
 type DropdownMenuPopupProps = DropdownMenuContentProps['popupProps']
 

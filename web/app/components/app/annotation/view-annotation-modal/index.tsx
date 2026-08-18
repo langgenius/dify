@@ -144,7 +144,7 @@ const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, o
       <HitHistoryNoData />
     ) : (
       <div>
-        <table className={cn('w-full min-w-[440px] border-collapse border-0')}>
+        <table className={cn('w-full min-w-110 border-collapse border-0')}>
           <thead className="system-xs-medium-uppercase text-text-tertiary">
             <tr>
               <td className="w-5 rounded-l-lg bg-background-section-burn pr-1 pl-2 whitespace-nowrap">
@@ -162,7 +162,7 @@ const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, o
               <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
                 {t(($) => $['hitHistoryTable.score'], { ns: 'appAnnotation' })}
               </td>
-              <td className="w-[160px] rounded-r-lg bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
+              <td className="w-40 rounded-r-lg bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
                 {t(($) => $['hitHistoryTable.time'], { ns: 'appAnnotation' })}
               </td>
             </tr>
@@ -174,19 +174,19 @@ const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, o
                 className="cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover"
               >
                 <td
-                  className="max-w-[250px] overflow-hidden p-3 pr-2 text-ellipsis whitespace-nowrap"
+                  className="max-w-62.5 overflow-hidden p-3 pr-2 text-ellipsis whitespace-nowrap"
                   title={item.question}
                 >
                   {item.question}
                 </td>
                 <td
-                  className="max-w-[250px] overflow-hidden p-3 pr-2 text-ellipsis whitespace-nowrap"
+                  className="max-w-62.5 overflow-hidden p-3 pr-2 text-ellipsis whitespace-nowrap"
                   title={item.match}
                 >
                   {item.match}
                 </td>
                 <td
-                  className="max-w-[250px] overflow-hidden p-3 pr-2 text-ellipsis whitespace-nowrap"
+                  className="max-w-62.5 overflow-hidden p-3 pr-2 text-ellipsis whitespace-nowrap"
                   title={item.response}
                 >
                   {item.response}
@@ -241,7 +241,7 @@ const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, o
                   <div className="flex h-6 items-center justify-between pr-5 pl-6">
                     <DrawerTitle render={<div />} className="min-w-0">
                       <TabSlider
-                        className="relative top-[9px] shrink-0"
+                        className="relative top-2.25 shrink-0"
                         value={activeTab}
                         onChange={(v) => setActiveTab(v as TabType)}
                         options={tabs}

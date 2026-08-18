@@ -36,10 +36,12 @@ from controllers.console.snippets.snippet_workflow import get_snippet
 from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
+    model_validate,
     setup_required,
     with_current_user,
 )
 from core.app.file_access import DatabaseFileAccessController
+from core.workflow.llm_environment_variable import environment_variable_value_type
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping, build_from_mappings
@@ -185,9 +187,15 @@ class SnippetVariableApi(Resource):
     @console_ns.response(404, "Variable not found")
     @_snippet_draft_var_prerequisite
     @marshal_with(workflow_draft_variable_model)
-    def patch(self, current_user: Account, snippet: CustomizedSnippet, variable_id: str) -> WorkflowDraftVariable:
+    @model_validate(WorkflowDraftVariableUpdatePayload)
+    def patch(
+        self,
+        req_data: WorkflowDraftVariableUpdatePayload,
+        current_user: Account,
+        snippet: CustomizedSnippet,
+        variable_id: str,
+    ) -> WorkflowDraftVariable:
         draft_var_srv = WorkflowDraftVariableService(session=db.session())
-        args_model = WorkflowDraftVariableUpdatePayload.model_validate(console_ns.payload or {})
 
         variable = ensure_variable_access(
             variable=draft_var_srv.get_variable(variable_id=variable_id),
@@ -197,8 +205,8 @@ class SnippetVariableApi(Resource):
         )
         _ensure_snippet_draft_variable_row_allowed(variable=variable, variable_id=variable_id)
 
-        new_name = args_model.name
-        raw_value = args_model.value
+        new_name = req_data.name
+        raw_value = req_data.value
         if new_name is None and raw_value is None:
             return variable
 
@@ -329,7 +337,7 @@ class SnippetEnvironmentVariableCollectionApi(Resource):
                     "name": v.name,
                     "description": v.description,
                     "selector": v.selector,
-                    "value_type": v.value_type.exposed_type().value,
+                    "value_type": environment_variable_value_type(v),
                     "value": v.value,
                     "edited": False,
                     "visible": True,

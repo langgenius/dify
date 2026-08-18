@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useCallback, useEffect, useRef } from 'react'
 import { SCROLL_BOTTOM_THRESHOLD } from '@/app/components/plugins/marketplace/constants'
 import {
   useMarketplaceCollectionsAndPlugins,
@@ -6,16 +7,20 @@ import {
 } from '@/app/components/plugins/marketplace/hooks'
 import { getMarketplaceListCondition } from '@/app/components/plugins/marketplace/utils'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { useAllToolProviders } from '@/service/use-tools'
+import { consoleQuery } from '@/service/client'
 
-export const useMarketplace = (searchPluginText: string, filterPluginTags: string[]) => {
-  const { data: toolProvidersData, isSuccess } = useAllToolProviders()
-  const exclude = useMemo(() => {
-    if (isSuccess)
-      return toolProvidersData
-        ?.filter((toolProvider) => !!toolProvider.plugin_id)
-        .map((toolProvider) => toolProvider.plugin_id!)
-  }, [isSuccess, toolProvidersData])
+export const useMarketplace = (
+  searchPluginText: string,
+  filterPluginTags: string[],
+  enabled = true,
+) => {
+  const { data: installedPluginIds, isSuccess } = useQuery(
+    consoleQuery.workspaces.current.plugin.installedIds.get.queryOptions({
+      input: { query: { category: 'tool' } },
+      enabled,
+    }),
+  )
+  const exclude = installedPluginIds?.plugin_ids
   const {
     isLoading,
     marketplaceCollections,
@@ -26,7 +31,6 @@ export const useMarketplace = (searchPluginText: string, filterPluginTags: strin
     plugins,
     resetPlugins,
     queryPlugins,
-    queryPluginsWithDebounced,
     isLoading: isPluginsLoading,
     fetchNextPage,
     hasNextPage,
@@ -40,9 +44,11 @@ export const useMarketplace = (searchPluginText: string, filterPluginTags: strin
     filterPluginTagsRef.current = filterPluginTags
   }, [searchPluginText, filterPluginTags])
   useEffect(() => {
+    if (!enabled) return
+
     if ((searchPluginText || filterPluginTags.length) && isSuccess) {
       if (searchPluginText) {
-        queryPluginsWithDebounced({
+        queryPlugins({
           category: PluginCategoryEnum.tool,
           query: searchPluginText,
           tags: filterPluginTags,
@@ -74,9 +80,9 @@ export const useMarketplace = (searchPluginText: string, filterPluginTags: strin
     filterPluginTags,
     queryPlugins,
     queryMarketplaceCollectionsAndPlugins,
-    queryPluginsWithDebounced,
     resetPlugins,
     exclude,
+    enabled,
     isSuccess,
   ])
 
@@ -87,14 +93,15 @@ export const useMarketplace = (searchPluginText: string, filterPluginTags: strin
       if (scrollTop + clientHeight >= scrollHeight - SCROLL_BOTTOM_THRESHOLD && scrollTop > 0) {
         const searchPluginText = searchPluginTextRef.current
         const filterPluginTags = filterPluginTagsRef.current
-        if (hasNextPage && (!!searchPluginText || !!filterPluginTags.length)) fetchNextPage()
+        if (enabled && hasNextPage && (!!searchPluginText || !!filterPluginTags.length))
+          fetchNextPage()
       }
     },
-    [exclude, fetchNextPage, hasNextPage, plugins, queryPlugins],
+    [enabled, fetchNextPage, hasNextPage],
   )
 
   return {
-    isLoading: isLoading || isPluginsLoading,
+    isLoading: enabled && (isLoading || isPluginsLoading),
     marketplaceCollections,
     marketplaceCollectionPluginsMap,
     plugins,

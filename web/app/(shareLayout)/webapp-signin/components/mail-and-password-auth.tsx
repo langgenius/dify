@@ -1,11 +1,14 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Input } from '@langgenius/dify-ui/input'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { toast } from '@langgenius/dify-ui/toast'
-import { noop } from 'es-toolkit/function'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resolveWebAppLoginRedirect } from '@/app/(shareLayout)/webapp-signin/login-redirect'
-import Input from '@/app/components/base/input'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { useWebAppStore } from '@/context/web-app-context'
@@ -83,7 +86,7 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
           appCode: loginRedirect.appCode,
           userId: embeddedUserId || undefined,
         })
-        setWebAppPassport(loginRedirect.appCode, access_token)
+        setWebAppPassport(loginRedirect.address, access_token)
         replaceLoginRedirect(loginRedirect.target, router.replace, basePath)
       } else {
         toast.error(res.data)
@@ -101,29 +104,33 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
   }
 
   return (
-    <form onSubmit={noop}>
-      <div className="mb-3">
-        <label htmlFor="email" className="my-2 system-md-semibold text-text-secondary">
+    <Form
+      onFormSubmit={() => {
+        void handleEmailPasswordLogin()
+      }}
+    >
+      <Field name="email" className="mb-3 block">
+        <FieldLabel className="my-2 py-0 text-sm leading-5 font-semibold text-text-secondary">
           {t(($) => $.email, { ns: 'login' })}
-        </label>
+        </FieldLabel>
         <div className="mt-1">
           <Input
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onValueChange={setEmail}
             id="email"
             type="email"
             autoComplete="email"
+            spellCheck={false}
             placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) || ''}
-            tabIndex={1}
           />
         </div>
-      </div>
+      </Field>
 
-      <div className="mb-3">
-        <label htmlFor="password" className="my-2 flex items-center justify-between">
-          <span className="system-md-semibold text-text-secondary">
+      <Field name="password" className="mb-3 block">
+        <div className="my-2 flex items-center justify-between">
+          <FieldLabel className="py-0 text-sm leading-5 font-semibold text-text-secondary">
             {t(($) => $.password, { ns: 'login' })}
-          </span>
+          </FieldLabel>
           <Link
             href={`/webapp-reset-password?${searchParams.toString()}`}
             className={`system-xs-regular ${isEmailSetup ? 'text-components-button-secondary-accent-text' : 'pointer-events-none text-components-button-secondary-accent-text-disabled'}`}
@@ -132,39 +139,42 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
           >
             {t(($) => $.forget, { ns: 'login' })}
           </Link>
-        </label>
-        <div className="relative mt-1">
-          <Input
+        </div>
+        <InputGroup className="mt-1">
+          <InputGroupInput
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onValueChange={setPassword}
             id="password"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleEmailPasswordLogin()
-            }}
             type={showPassword ? 'text' : 'password'}
             autoComplete="current-password"
+            spellCheck={false}
             placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
-            tabIndex={2}
           />
-          <div className="absolute inset-y-0 right-0 flex items-center">
-            <Button type="button" variant="ghost" onClick={() => setShowPassword(!showPassword)}>
-              {showPassword ? '👀' : '😝'}
-            </Button>
-          </div>
-        </div>
-      </div>
+          <InputGroupAddon align="inline-end">
+            <IconButton
+              size="lg"
+              variant="ghost"
+              aria-label={t(($) => $[showPassword ? 'hidePassword' : 'showPassword'], {
+                ns: 'login',
+              })}
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              <span aria-hidden="true">{showPassword ? '👀' : '😝'}</span>
+            </IconButton>
+          </InputGroupAddon>
+        </InputGroup>
+      </Field>
 
       <div className="mb-2">
         <Button
-          tabIndex={2}
+          type="submit"
           variant="primary"
-          onClick={handleEmailPasswordLogin}
           disabled={isLoading || !email || !password}
           className="w-full"
         >
           {t(($) => $.signBtn, { ns: 'login' })}
         </Button>
       </div>
-    </form>
+    </Form>
   )
 }

@@ -17,6 +17,7 @@
   "accessControlDialog.operateGroupAndMember.searchPlaceholder": "Buscar grupos y miembros",
   "accessControlDialog.title": "Control de Acceso a la Aplicación Web",
   "accessControlDialog.updateSuccess": "Actualización exitosa",
+  "accessControlDialog.webAppPublicAccessDisabledTip": "El acceso público ha sido deshabilitado por su administrador.",
   "accessControlDialog.webAppSSONotEnabledTip": "Por favor, contacte al administrador de la empresa para configurar el método de autenticación de la aplicación web.",
   "accessItemsDescription.anyone": "Cualquiera puede acceder a la aplicación web.",
   "accessItemsDescription.external": "Solo los usuarios externos autenticados pueden acceder a la aplicación web.",

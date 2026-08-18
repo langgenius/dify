@@ -87,7 +87,10 @@ def _graph(edges: list[dict]) -> dict:
         "nodes": [
             {"id": "start", "data": {"type": "start"}},
             {"id": "previous-node", "data": {"type": "llm"}},
-            {"id": "agent-node", "data": {"type": "agent", "version": "2"}},
+            {
+                "id": "agent-node",
+                "data": {"type": "agent", "version": "2", "agent_node_kind": "dify_agent"},
+            },
             {"id": "later-node", "data": {"type": "llm"}},
         ],
         "edges": edges,
@@ -116,6 +119,18 @@ def _tool_graph(tool_data: dict) -> dict:
         ],
         "edges": [{"source": "start", "target": "tool-node"}],
     }
+
+
+def test_historical_agent_version_two_is_not_validated_as_dify_agent() -> None:
+    graph = {
+        "nodes": [{"id": "legacy-agent", "data": {"type": "agent", "version": "2"}}],
+        "edges": [],
+    }
+    session = Mock()
+
+    WorkflowAgentNodeValidator.validate_published_workflow(session=session, workflow=_workflow(graph))
+
+    session.scalar.assert_not_called()
 
 
 def test_publish_validation_accepts_upstream_previous_output_ref():
@@ -154,6 +169,19 @@ def test_publish_validation_uses_active_snapshot_for_roster_agent():
         session=session,
         workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
     )
+
+
+def test_publish_validation_rejects_unpublished_roster_agent():
+    binding = _binding(WorkflowNodeJobConfig())
+    binding.binding_type = WorkflowAgentBindingType.ROSTER_AGENT
+    session = Mock()
+    session.scalar.side_effect = [binding, None]
+
+    with pytest.raises(WorkflowAgentNodeValidationError, match="unpublished roster agent"):
+        WorkflowAgentNodeValidator.validate_published_workflow(
+            session=session,
+            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        )
 
 
 def test_publish_validation_rejects_non_upstream_previous_output_ref():
@@ -295,8 +323,16 @@ def test_publish_validation_dedupes_provider_level_tool_entries():
         ),
         tools={
             "dify_tools": [
-                {"provider_id": "langgenius/duckduckgo/duckduckgo", "credential_type": "unauthorized"},
-                {"provider_id": "langgenius/duckduckgo/duckduckgo", "credential_type": "unauthorized"},
+                {
+                    "provider_id": "langgenius/duckduckgo/duckduckgo",
+                    "provider_type": "plugin",
+                    "credential_type": "unauthorized",
+                },
+                {
+                    "provider_id": "langgenius/duckduckgo/duckduckgo",
+                    "provider_type": "plugin",
+                    "credential_type": "unauthorized",
+                },
             ]
         },
     )
@@ -321,9 +357,14 @@ def test_publish_validation_accepts_provider_level_plus_explicit_tool_entry():
         ),
         tools={
             "dify_tools": [
-                {"provider_id": "langgenius/duckduckgo/duckduckgo", "credential_type": "unauthorized"},
                 {
                     "provider_id": "langgenius/duckduckgo/duckduckgo",
+                    "provider_type": "plugin",
+                    "credential_type": "unauthorized",
+                },
+                {
+                    "provider_id": "langgenius/duckduckgo/duckduckgo",
+                    "provider_type": "plugin",
                     "tool_name": "ddg_search",
                     "credential_type": "unauthorized",
                 },

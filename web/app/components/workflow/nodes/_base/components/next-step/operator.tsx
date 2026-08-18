@@ -5,12 +5,14 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { intersection } from 'es-toolkit/array'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import BlockSelector from '@/app/components/workflow/block-selector'
-import { useAvailableBlocks, useNodesInteractions } from '@/app/components/workflow/hooks'
 import { getNodeCatalogType } from '@/app/components/workflow/utils'
+import { useAvailableBlocks } from '../../../../hooks/use-available-blocks'
+import { useNodesInteractions } from '../../../../hooks/use-nodes-interactions'
 
 type ChangeItemProps = {
   data: CommonNodeType
@@ -34,23 +36,19 @@ const ChangeItem = ({ data, nodeId, sourceHandle }: ChangeItemProps) => {
     [nodeId, sourceHandle, handleNodeChange],
   )
 
-  const renderTrigger = useCallback(() => {
-    return (
-      <div className="flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover">
-        {t(($) => $['panel.change'], { ns: 'workflow' })}
-      </div>
-    )
-  }, [t])
+  const triggerElement = (
+    <Button variant="ghost" size="medium" className="w-full justify-start px-2">
+      {t(($) => $['panel.change'], { ns: 'workflow' })}
+    </Button>
+  )
 
   return (
     <BlockSelector
       onSelect={handleSelect}
       placement="top-end"
-      offset={{
-        mainAxis: 6,
-        crossAxis: 8,
-      }}
-      trigger={renderTrigger}
+      sideOffset={6}
+      alignOffset={8}
+      trigger={triggerElement}
       popupClassName="w-[328px]!"
       availableBlocksTypes={intersection(availablePrevBlocks, availableNextBlocks).filter(
         (item) => item !== nodeCatalogType,
@@ -74,12 +72,14 @@ const Operator = ({ open, onOpenChange, data, nodeId, sourceHandle }: OperatorPr
     <DropdownMenu open={open} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger
         render={
-          <Button
-            className="size-6 p-0"
+          <IconButton
+            variant="secondary"
+            size="md"
+            className="rounded-lg"
             aria-label={t(($) => $['common.moreActions'], { ns: 'workflow' })}
           >
             <span aria-hidden className="i-ri-more-fill size-4" />
-          </Button>
+          </IconButton>
         }
       />
       <DropdownMenuContent
@@ -88,7 +88,7 @@ const Operator = ({ open, onOpenChange, data, nodeId, sourceHandle }: OperatorPr
         alignOffset={-4}
         popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
       >
-        <div className="min-w-[120px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur system-md-regular text-text-secondary shadow-lg">
+        <div className="min-w-30 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur system-md-regular text-text-secondary shadow-lg">
           <div className="p-1">
             <ChangeItem data={data} nodeId={nodeId} sourceHandle={sourceHandle} />
             <div

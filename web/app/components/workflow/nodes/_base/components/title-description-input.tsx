@@ -68,7 +68,7 @@ export const DescriptionInput = memo(({ value, onChange }: DescriptionInputProps
 
   return (
     <div
-      className={`group flex max-h-[60px] overflow-y-auto rounded-lg bg-components-panel-bg px-2 py-[5px] leading-0 ${focus && 'shadow-xs!'} `}
+      className={`group flex max-h-15 overflow-y-auto rounded-lg bg-components-panel-bg px-2 py-1.25 leading-0 ${focus && 'shadow-xs!'} `}
     >
       <Textarea
         value={value}
@@ -76,7 +76,7 @@ export const DescriptionInput = memo(({ value, onChange }: DescriptionInputProps
         minRows={1}
         onFocus={handleFocus}
         onBlur={handleBlur}
-        className={`w-full resize-none appearance-none bg-transparent text-xs leading-[18px] text-text-primary caret-[#295EFF] outline-hidden placeholder:text-text-quaternary`}
+        className={`w-full resize-none appearance-none bg-transparent text-xs leading-4.5 text-text-primary caret-[#295EFF] outline-hidden placeholder:text-text-quaternary`}
         placeholder={t(($) => $['common.addDescription'], { ns: 'workflow' }) || ''}
       />
     </div>

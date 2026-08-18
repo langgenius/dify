@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import (
     AppAdditionalFeatures,
@@ -12,11 +12,10 @@ from core.app.app_config.entities import (
     ModelConfigEntity,
     PromptTemplateEntity,
 )
-from core.app.apps import message_based_app_generator
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom
-from models.model import AppMode, Conversation, Message
+from models.model import AppMode
 from services.errors.app_model_config import AppModelConfigBrokenError
 
 
@@ -84,25 +83,7 @@ def _make_chat_generate_entity(app_config: EasyUIBasedAppConfig) -> ChatAppGener
     )
 
 
-@pytest.fixture(autouse=True)
-def mock_db_session(monkeypatch: pytest.MonkeyPatch):
-    session = MagicMock()
-
-    def refresh_side_effect(obj):
-        if isinstance(obj, Conversation) and obj.id is None:
-            obj.id = "generated-conversation-id"
-        if isinstance(obj, Message) and obj.id is None:
-            obj.id = "generated-message-id"
-
-    session.refresh.side_effect = refresh_side_effect
-    session.add.return_value = None
-    session.commit.return_value = None
-
-    monkeypatch.setattr(message_based_app_generator, "db", SimpleNamespace(session=session))
-    return session
-
-
-def test_init_generate_records_skips_conversation_fields_for_non_conversation_entity(mock_db_session):
+def test_init_generate_records_skips_conversation_fields_for_non_conversation_entity(sqlite_session: Session):
     app_config = _make_app_config(AppMode.COMPLETION)
     entity = DummyCompletionGenerateEntity(app_config=app_config)
 
@@ -111,16 +92,16 @@ def test_init_generate_records_skips_conversation_fields_for_non_conversation_en
     conversation, message = generator._init_generate_records(
         entity,
         conversation=None,
-        session=mock_db_session,
+        session=sqlite_session,
     )
 
-    assert conversation.id == "generated-conversation-id"
-    assert message.id == "generated-message-id"
+    assert conversation.id is not None
+    assert message.id is not None
     assert hasattr(entity, "conversation_id") is False
     assert hasattr(entity, "is_new_conversation") is False
 
 
-def test_init_generate_records_sets_conversation_fields_for_chat_entity(mock_db_session):
+def test_init_generate_records_sets_conversation_fields_for_chat_entity(sqlite_session: Session):
     app_config = _make_app_config(AppMode.CHAT)
     entity = _make_chat_generate_entity(app_config)
 
@@ -129,12 +110,12 @@ def test_init_generate_records_sets_conversation_fields_for_chat_entity(mock_db_
     conversation, _ = generator._init_generate_records(
         entity,
         conversation=None,
-        session=mock_db_session,
+        session=sqlite_session,
     )
 
-    assert entity.conversation_id == "generated-conversation-id"
+    assert entity.conversation_id == conversation.id
     assert entity.is_new_conversation is True
-    assert conversation.id == "generated-conversation-id"
+    assert conversation.id is not None
 
 
 class TestMessageBasedAppGeneratorExtras:
@@ -163,17 +144,15 @@ class TestMessageBasedAppGeneratorExtras:
                 stream=False,
             )
 
-    def test_get_app_model_config_requires_valid_config(self):
+    def test_get_app_model_config_requires_valid_config(self, sqlite_session: Session):
         generator = MessageBasedAppGenerator()
         app_model = SimpleNamespace(id="app", app_model_config_id=None, app_model_config=None)
-        session = MagicMock()
+        session = sqlite_session
 
         with pytest.raises(AppModelConfigBrokenError):
             generator._get_app_model_config(app_model, conversation=None, session=session)
 
         conversation = SimpleNamespace(app_model_config_id="missing-id")
-        session.scalar.return_value = None
-
         with pytest.raises(AppModelConfigBrokenError):
             generator._get_app_model_config(
                 app_model=SimpleNamespace(id="app"),

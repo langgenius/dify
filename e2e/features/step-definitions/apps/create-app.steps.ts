@@ -1,5 +1,6 @@
 import type { DifyWorld } from '../../support/world'
 import { Then, When } from '@cucumber/cucumber'
+import { zPostAppsResponse } from '@dify/contracts/api/console/apps/zod.gen'
 import { expect } from '@playwright/test'
 import { openBlankAppCreation } from '../../../support/apps'
 import { createE2EResourceName } from '../../../support/naming'
@@ -43,7 +44,7 @@ When('I confirm app creation', async function (this: DifyWorld) {
 
   const response = await responsePromise
   expect(response.ok()).toBe(true)
-  const createdApp = (await response.json()) as { id?: string; mode?: string }
+  const createdApp = zPostAppsResponse.parse(await response.json())
   if (!createdApp.id) throw new Error('Create app response did not include an app ID.')
 
   const expectedMode = this.lastSelectedAppType

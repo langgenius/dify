@@ -5,8 +5,9 @@ import type { InstallState } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent } from '@langgenius/dify-ui/dialog'
-import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
+import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -32,7 +33,7 @@ type InstallFromGitHubProps = {
   updatePayload?: UpdateFromGitHubPayload
   installContextCategory?: PluginCategoryEnum
   onClose: () => void
-  onSuccess: () => void
+  onSuccess: () => void | Promise<void>
 }
 
 const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({
@@ -138,11 +139,11 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({
   }, [])
 
   const handleInstalled = useCallback(
-    (notRefresh?: boolean) => {
-      setState((prevState) => ({ ...prevState, step: InstallStepFromGitHub.installed }))
+    async (notRefresh?: boolean) => {
       if (!notRefresh) refreshPluginList(manifest)
+      await onSuccess()
+      setState((prevState) => ({ ...prevState, step: InstallStepFromGitHub.installed }))
       setIsInstalling(false)
-      onSuccess()
     },
     [manifest, onSuccess, refreshPluginList, setIsInstalling],
   )
@@ -179,10 +180,10 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({
       <DialogContent
         backdropProps={{ forceRender: true }}
         className={cn(
-          'w-[560px] max-w-none! overflow-hidden! text-left align-middle',
+          'w-140 max-w-none! overflow-hidden! text-left align-middle',
           cn(
             modalClassName,
-            `shadows-shadow-xl flex max-h-[calc(100dvh-48px)] min-w-[560px] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0`,
+            `shadows-shadow-xl flex max-h-[calc(100dvh-48px)] min-w-140 flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0`,
           ),
         )}
       >
@@ -231,10 +232,13 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({
                       {t(($) => $['installFromGitHub.gitHubRepo'], { ns: 'plugin' })}
                     </span>
                   </FieldLabel>
-                  <FieldControl
+                  <Input
+                    // oxlint-disable-next-line jsx-a11y/no-autofocus -- The dialog opens from an explicit install command, and the repository URL is its primary field.
                     autoFocus
                     type="text"
                     inputMode="url"
+                    autoComplete="off"
+                    spellCheck={false}
                     value={state.repoUrl}
                     onValueChange={(value) =>
                       setState((prevState) => ({ ...prevState, repoUrl: value }))

@@ -25,7 +25,9 @@ const reactFlowBridge = vi.hoisted(() => ({
 }))
 
 const collaborationBridge = vi.hoisted(() => ({
-  canPersistLocalGraph: vi.fn(),
+  canFlushGraphOnPageClose: vi.fn(),
+  canUseLocalDraftFallback: vi.fn(),
+  isConnected: vi.fn(),
   graphImportHandler: null as null | ((payload: { nodes: Node[]; edges: Edge[] }) => void),
   historyActionHandler: null as null | ((payload: unknown) => void),
   restoreIntentHandler: null as
@@ -83,6 +85,7 @@ const workflowHookMocks = vi.hoisted(() => ({
   handleSelectionContextMenu: vi.fn(),
   handlePaneContextMenu: vi.fn(),
   handleSyncWorkflowDraft: vi.fn(),
+  syncWorkflowDraftWhenPageClose: vi.fn(),
   fetchInspectVars: vi.fn(),
   isValidConnection: vi.fn(),
   useShortcuts: vi.fn(),
@@ -165,6 +168,7 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: vi.fn(),
   }),
+  useSearchParams: () => new URLSearchParams(),
 }))
 
 vi.mock('@/context/event-emitter', () => ({
@@ -197,7 +201,9 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 
 vi.mock('../collaboration/core/collaboration-manager', () => ({
   collaborationManager: {
-    canPersistLocalGraph: collaborationBridge.canPersistLocalGraph,
+    canFlushGraphOnPageClose: collaborationBridge.canFlushGraphOnPageClose,
+    canUseLocalDraftFallback: collaborationBridge.canUseLocalDraftFallback,
+    isConnected: collaborationBridge.isConnected,
     onGraphImport: (handler: (payload: { nodes: Node[]; edges: Edge[] }) => void) => {
       collaborationBridge.graphImportHandler = handler
       return vi.fn()
@@ -373,13 +379,16 @@ vi.mock('../shortcuts/use-workflow-hotkeys', () => ({
   useWorkflowHotkeys: workflowHookMocks.useShortcuts,
 }))
 
-vi.mock('../hooks', () => ({
+vi.mock('../hooks/use-edges-interactions', () => ({
   useEdgesInteractions: () => ({
     handleEdgeEnter: workflowHookMocks.handleEdgeEnter,
     handleEdgeLeave: workflowHookMocks.handleEdgeLeave,
     handleEdgesChange: workflowHookMocks.handleEdgesChange,
     handleEdgeContextMenu: workflowHookMocks.handleEdgeContextMenu,
   }),
+}))
+
+vi.mock('../hooks/use-nodes-interactions', () => ({
   useNodesInteractions: () => ({
     handleNodesCopy: vi.fn(),
     handleNodesDelete: vi.fn(),
@@ -398,43 +407,69 @@ vi.mock('../hooks', () => ({
     handleHistoryBack: workflowHookMocks.handleHistoryBack,
     handleHistoryForward: workflowHookMocks.handleHistoryForward,
   }),
+}))
+
+vi.mock('../hooks/use-workflow', () => ({
   useNodesReadOnly: () => ({
     nodesReadOnly: false,
     getNodesReadOnly: () => false,
   }),
-  useNodesSyncDraft: () => ({
-    handleSyncWorkflowDraft: workflowHookMocks.handleSyncWorkflowDraft,
-    syncWorkflowDraftWhenPageClose: vi.fn(),
-  }),
-  usePanelInteractions: () => ({
-    handlePaneContextMenu: workflowHookMocks.handlePaneContextMenu,
-  }),
-  useDSL: () => ({
-    exportCheck: vi.fn(),
-  }),
   useIsChatMode: () => false,
-  useSelectionInteractions: () => ({
-    handleSelectionStart: workflowHookMocks.handleSelectionStart,
-    handleSelectionChange: workflowHookMocks.handleSelectionChange,
-    handleSelectionDrag: workflowHookMocks.handleSelectionDrag,
-    handleSelectionContextMenu: workflowHookMocks.handleSelectionContextMenu,
-  }),
-  useSetWorkflowVarsWithValue: () => ({
-    fetchInspectVars: workflowHookMocks.fetchInspectVars,
-  }),
-  useShortcuts: workflowHookMocks.useShortcuts,
   useWorkflow: () => ({
     isValidConnection: workflowHookMocks.isValidConnection,
   }),
   useWorkflowReadOnly: () => ({
     workflowReadOnly: false,
   }),
+}))
+
+vi.mock('../hooks/use-nodes-sync-draft', () => ({
+  useNodesSyncDraft: () => ({
+    handleSyncWorkflowDraft: workflowHookMocks.handleSyncWorkflowDraft,
+    syncWorkflowDraftWhenPageClose: workflowHookMocks.syncWorkflowDraftWhenPageClose,
+  }),
+}))
+
+vi.mock('../hooks/use-panel-interactions', () => ({
+  usePanelInteractions: () => ({
+    handlePaneContextMenu: workflowHookMocks.handlePaneContextMenu,
+  }),
+}))
+
+vi.mock('../hooks/use-DSL', () => ({
+  useDSL: () => ({
+    exportCheck: vi.fn(),
+  }),
+}))
+
+vi.mock('../hooks/use-selection-interactions', () => ({
+  useSelectionInteractions: () => ({
+    handleSelectionStart: workflowHookMocks.handleSelectionStart,
+    handleSelectionChange: workflowHookMocks.handleSelectionChange,
+    handleSelectionDrag: workflowHookMocks.handleSelectionDrag,
+    handleSelectionContextMenu: workflowHookMocks.handleSelectionContextMenu,
+  }),
+}))
+
+vi.mock('../hooks/use-set-workflow-vars-with-value', () => ({
+  useSetWorkflowVarsWithValue: () => ({
+    fetchInspectVars: workflowHookMocks.fetchInspectVars,
+  }),
+}))
+
+vi.mock('../hooks/use-workflow-panel-interactions', () => ({
   useWorkflowMoveMode: () => ({
     isCommentModeAvailable: false,
   }),
+}))
+
+vi.mock('../hooks/use-workflow-refresh-draft', () => ({
   useWorkflowRefreshDraft: () => ({
     handleRefreshWorkflowDraft: vi.fn(),
   }),
+}))
+
+vi.mock('../hooks/use-workflow-start-run', () => ({
   useWorkflowStartRun: () => ({
     handleStartWorkflowRun: vi.fn(),
     handleWorkflowStartRunInChatflow: vi.fn(),
@@ -443,6 +478,10 @@ vi.mock('../hooks', () => ({
 
 vi.mock('../hooks/use-workflow-search', () => ({
   useWorkflowSearch: workflowHookMocks.useWorkflowSearch,
+}))
+
+vi.mock('../hooks/use-locate-node', () => ({
+  useLocateNode: vi.fn(),
 }))
 
 vi.mock('../nodes/_base/components/variable/use-match-schema-type', () => ({
@@ -522,7 +561,9 @@ vi.mock('@/context/permission-state', async () => {
 describe('Workflow edge event wiring', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    collaborationBridge.canPersistLocalGraph.mockReturnValue(true)
+    collaborationBridge.canFlushGraphOnPageClose.mockReturnValue(true)
+    collaborationBridge.canUseLocalDraftFallback.mockReturnValue(false)
+    collaborationBridge.isConnected.mockReturnValue(true)
     eventEmitterState.subscription = null
     reactFlowBridge.store = null
     collaborationBridge.graphImportHandler = null
@@ -624,7 +665,10 @@ describe('Workflow edge event wiring', () => {
       },
     )
 
-    const { unmount } = renderSubject({ isCollaborationEnabled: true })
+    const { unmount } = renderSubject({
+      initialStoreState: { isWorkflowDataLoaded: true },
+      isCollaborationEnabled: true,
+    })
 
     unmount()
 
@@ -633,15 +677,98 @@ describe('Workflow edge event wiring', () => {
     })
   })
 
-  it('should skip the unmount save while the collaborative graph is not ready', () => {
-    collaborationBridge.canPersistLocalGraph.mockReturnValue(false)
+  it('should cancel the pending debounced save before the final unmount sync', () => {
+    vi.useFakeTimers()
+    try {
+      const pendingSync = vi.fn()
+      const { store, unmount } = renderSubject({
+        initialStoreState: { isWorkflowDataLoaded: true },
+      })
+      store.getState().debouncedSyncWorkflowDraft(pendingSync)
 
-    const { unmount } = renderSubject({ isCollaborationEnabled: true })
+      unmount()
+      vi.advanceTimersByTime(5000)
+
+      expect(workflowHookMocks.handleSyncWorkflowDraft).toHaveBeenCalledTimes(1)
+      expect(pendingSync).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('should skip the unmount save before workflow data has loaded', () => {
+    const { unmount } = renderSubject()
 
     unmount()
 
     expect(workflowHookMocks.handleSyncWorkflowDraft).not.toHaveBeenCalled()
     expect(toastErrorMock).not.toHaveBeenCalled()
+  })
+
+  it('should not save the draft when the workflow rerenders', () => {
+    const { rerender } = renderSubject({
+      initialStoreState: { isWorkflowDataLoaded: true },
+      isCollaborationEnabled: false,
+    })
+
+    rerender(
+      <ReactFlowProvider>
+        <Workflow nodes={baseNodes} edges={baseEdges} isCollaborationEnabled>
+          <ReactFlowEdgeBootstrap nodes={baseNodes} edges={baseEdges} />
+        </Workflow>
+      </ReactFlowProvider>,
+    )
+
+    expect(workflowHookMocks.handleSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(toastErrorMock).not.toHaveBeenCalled()
+  })
+
+  it('should skip the unmount save when the current collaborator is not the draft leader', () => {
+    collaborationBridge.canFlushGraphOnPageClose.mockReturnValue(false)
+
+    const { unmount } = renderSubject({
+      initialStoreState: { isWorkflowDataLoaded: true },
+      isCollaborationEnabled: true,
+    })
+
+    unmount()
+
+    expect(workflowHookMocks.handleSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(toastErrorMock).not.toHaveBeenCalled()
+  })
+
+  it('should still save on unmount when collaboration is enabled but never connected', () => {
+    // No connection means no leader election, so the collaborative flush guard can never be
+    // satisfied. Skipping the save here would silently discard unsaved edits.
+    collaborationBridge.isConnected.mockReturnValue(false)
+    collaborationBridge.canFlushGraphOnPageClose.mockReturnValue(false)
+    collaborationBridge.canUseLocalDraftFallback.mockReturnValue(true)
+
+    const { unmount } = renderSubject({
+      initialStoreState: { isWorkflowDataLoaded: true },
+      isCollaborationEnabled: true,
+    })
+
+    unmount()
+
+    expect(workflowHookMocks.syncWorkflowDraftWhenPageClose).toHaveBeenCalledTimes(1)
+    expect(workflowHookMocks.handleSyncWorkflowDraft).not.toHaveBeenCalled()
+  })
+
+  it('should skip the unmount save after an established collaboration disconnects', () => {
+    collaborationBridge.isConnected.mockReturnValue(false)
+    collaborationBridge.canFlushGraphOnPageClose.mockReturnValue(false)
+    collaborationBridge.canUseLocalDraftFallback.mockReturnValue(false)
+
+    const { unmount } = renderSubject({
+      initialStoreState: { isWorkflowDataLoaded: true },
+      isCollaborationEnabled: true,
+    })
+
+    unmount()
+
+    expect(workflowHookMocks.syncWorkflowDraftWhenPageClose).not.toHaveBeenCalled()
+    expect(workflowHookMocks.handleSyncWorkflowDraft).not.toHaveBeenCalled()
   })
 
   it('should render confirm description and clear showConfirm when cancelled', async () => {

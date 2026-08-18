@@ -13,7 +13,6 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -21,6 +20,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
 import { useContext } from 'use-context-selector'
+import { toast } from '@/app/components/app/configuration/toast'
 import { Infotip } from '@/app/components/base/infotip'
 import { InputVarType } from '@/app/components/workflow/types'
 import ConfigContext from '@/context/debug-configuration'
@@ -280,6 +280,17 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       }),
     [promptVariables],
   )
+  const handlePromptVariablesReorder = useCallback(
+    (list: typeof promptVariablesWithIds) => {
+      const hasOrderChanged =
+        list.length !== promptVariables.length ||
+        list.some((item, index) => item.id !== promptVariables[index]?.key)
+      if (!hasOrderChanged) return
+
+      onPromptVariablesChange?.(list.map((item) => item.variable))
+    },
+    [onPromptVariablesChange, promptVariables],
+  )
 
   const canDrag = !readonly && promptVariables.length > 1
 
@@ -314,9 +325,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
           <ReactSortable
             className={cn('grid-col-1 grid space-y-1', readonly && 'grid-cols-2 gap-1 space-y-0')}
             list={promptVariablesWithIds}
-            setList={(list) => {
-              onPromptVariablesChange?.(list.map((item) => item.variable))
-            }}
+            setList={handlePromptVariablesReorder}
             handle=".handle"
             ghostClass="opacity-50"
             animation={150}

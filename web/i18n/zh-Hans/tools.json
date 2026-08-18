@@ -162,7 +162,7 @@
   "mcp.server.modal.parametersPlaceholder": "参数的用途和约束条件",
   "mcp.server.modal.parametersTip": "为每个参数添加描述，以帮助 LLM 理解其目的和约束条件。",
   "mcp.server.publishTip": "应用未发布。请先发布应用。",
-  "mcp.server.reGen": "你想要重新生成服务端点 URL 吗？",
+  "mcp.server.reGen": "你想要重新生成服务端点 URL 吗？当前 URL 将立即失效。",
   "mcp.server.title": "MCP 服务",
   "mcp.server.url": "服务端点 URL",
   "mcp.toolItem.noDescription": "暂无描述",

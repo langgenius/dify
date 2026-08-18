@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import CreateCard from '../create-card'
 
 const mockPush = vi.fn()
@@ -164,7 +164,7 @@ describe('CreateCard', () => {
     it('should have fixed height', () => {
       const { container } = render(<CreateCard />)
       const card = container.firstChild as HTMLElement
-      expect(card).toHaveClass('h-[132px]')
+      expect(card).toHaveClass('h-33')
     })
 
     it('should have shadow and border', () => {

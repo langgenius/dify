@@ -17,7 +17,7 @@ re-fetch and re-merge tool declarations at execution time.
 from enum import StrEnum
 from typing import ClassVar, Final, Literal, TypeAlias
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator, model_validator
 from pydantic_ai.settings import ModelSettings
 
 from agenton.layers import LayerConfig
@@ -108,10 +108,19 @@ class DifyPluginLLMLayerConfig(LayerConfig):
     plugin_id: str
     model_provider: str
     model: str
-    credentials: dict[str, DifyPluginCredentialValue] = Field(default_factory=dict)
     model_settings: ModelSettings | None = None
+    context_window_tokens: int | None = Field(default=None, gt=0)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
+
+    @model_validator(mode="before")
+    @classmethod
+    def discard_legacy_credentials(cls, value: object) -> object:
+        """Accept old clients without retaining or forwarding their LLM credentials."""
+        if isinstance(value, dict) and "credentials" in value:
+            value = dict(value)
+            value.pop("credentials", None)
+        return value
 
 
 class DifyPluginToolConfig(LayerConfig):

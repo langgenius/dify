@@ -14,13 +14,20 @@ const { mockHandleNodeSelect, mockCanRunBySingle, mockUseNodesReadOnly } = vi.ho
 
 let mockPluginInstallLocked = false
 
-vi.mock('../../../../hooks', async () => {
-  const actual = await vi.importActual<typeof import('../../../../hooks')>('../../../../hooks')
+vi.mock('../../../../hooks/use-nodes-interactions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../hooks/use-nodes-interactions')>()
   return {
     ...actual,
     useNodesInteractions: () => ({
       handleNodeSelect: mockHandleNodeSelect,
     }),
+  }
+})
+
+vi.mock('../../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../hooks/use-workflow')>()
+  return {
+    ...actual,
     useNodesReadOnly: mockUseNodesReadOnly,
   }
 })

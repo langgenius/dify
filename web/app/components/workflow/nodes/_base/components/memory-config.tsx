@@ -37,7 +37,7 @@ const RoleItem: FC<RoleItemProps> = ({ readonly, title, value, onChange }) => {
         readOnly={readonly}
         value={value}
         onChange={handleChange}
-        className="h-8 w-[200px]"
+        className="h-8 w-50"
         type="text"
       />
     </div>
@@ -168,7 +168,7 @@ const MemoryConfig: FC<Props> = ({
               <Fieldset className="flex h-8 items-center space-x-2">
                 <FieldsetLegend className="sr-only">{windowSizeLabel}</FieldsetLegend>
                 <Slider
-                  className="w-[144px]"
+                  className="w-36"
                   value={(payload.window?.size || WINDOW_SIZE_DEFAULT) as number}
                   min={WINDOW_SIZE_MIN}
                   max={WINDOW_SIZE_MAX}

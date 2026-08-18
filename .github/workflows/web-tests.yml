@@ -9,10 +9,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: web-tests-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: true
-
 jobs:
   test:
     name: Web Tests (${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
@@ -29,7 +25,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -48,6 +44,31 @@ jobs:
           include-hidden-files: true
           retention-days: 1
 
+  browser-test:
+    name: Web Browser Tests
+    runs-on: depot-ubuntu-24.04-4
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./web
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup web environment
+        uses: ./.github/actions/setup-web
+
+      - name: Install Chromium for Browser Mode
+        timeout-minutes: 15
+        run: vp exec playwright install --with-deps --only-shell chromium
+
+      - name: Run browser tests
+        run: vp test run --config vitest.browser.config.ts --silent=passed-only
+
   merge-reports:
     name: Merge Test Reports
     if: ${{ !cancelled() }}
@@ -62,7 +83,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -91,6 +112,7 @@ jobs:
   dify-ui-test:
     name: dify-ui Tests
     runs-on: depot-ubuntu-24.04-4
+    timeout-minutes: 20
     env:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     defaults:
@@ -100,7 +122,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -108,7 +130,8 @@ jobs:
         uses: ./.github/actions/setup-web
 
       - name: Install Chromium for Browser Mode
-        run: vp exec playwright install --with-deps chromium
+        timeout-minutes: 15
+        run: vp exec playwright install --with-deps --only-shell chromium
 
       - name: Run dify-ui tests
         run: vp test run --project unit --coverage --silent=passed-only
@@ -125,6 +148,7 @@ jobs:
   dify-ui-storybook-test:
     name: dify-ui Storybook Tests
     runs-on: depot-ubuntu-24.04-4
+    timeout-minutes: 20
     defaults:
       run:
         shell: bash
@@ -132,7 +156,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -140,7 +164,8 @@ jobs:
         uses: ./.github/actions/setup-web
 
       - name: Install Chromium for Browser Mode
-        run: vp exec playwright install --with-deps chromium
+        timeout-minutes: 15
+        run: vp exec playwright install --with-deps --only-shell chromium
 
       - name: Run dify-ui Storybook tests
         run: vp run test:storybook

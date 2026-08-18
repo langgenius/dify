@@ -122,7 +122,7 @@ class ErrorBoundaryInner extends React.Component<
         <div
           className={cn(
             'border-state-critical-border bg-state-critical-hover-alt flex flex-col items-center justify-center rounded-lg border p-8',
-            isolate && 'min-h-[200px]',
+            isolate && 'min-h-50',
             className,
           )}
         >

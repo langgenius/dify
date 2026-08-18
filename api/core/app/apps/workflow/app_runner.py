@@ -4,17 +4,18 @@ from collections.abc import Sequence
 from typing import cast
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.apps.execution_coordinator import app_task_command_channel_key
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
 from core.app.apps.workflow.command_channels import (
     CelerySignalCommandChannel,
     CombinedCommandChannel,
 )
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, WorkflowAppGenerateEntity
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.workflow.node_factory import get_default_root_node_id
-from core.workflow.nodes.agent_v2.session_cleanup_layer import build_workflow_agent_session_cleanup_layer
+from core.workflow.nodes.agent_v2.workspace_retirement_layer import build_workflow_agent_workspace_retirement_layer
 from core.workflow.snippet_start import get_compatible_start_aliases
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
@@ -153,7 +154,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         # RUN WORKFLOW
         # Create Redis command channel for this workflow execution
         task_id = self.application_generate_entity.task_id
-        channel_key = f"workflow:{task_id}:commands"
+        channel_key = app_task_command_channel_key(task_id)
         celery_signal_channel = CelerySignalCommandChannel(
             shutdown_state_getter=celery_warm_shutdown_started,
             abort_reason=WORKFLOW_WARM_SHUTDOWN_ABORT_REASON,
@@ -197,7 +198,18 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         )
 
         workflow_entry.graph_engine.layer(persistence_layer)
-        workflow_entry.graph_engine.layer(build_workflow_agent_session_cleanup_layer())
+        workflow_entry.graph_engine.layer(
+            build_workflow_agent_workspace_retirement_layer(
+                dify_run_context=DifyRunContext(
+                    tenant_id=self._workflow.tenant_id,
+                    app_id=self._workflow.app_id,
+                    user_id=self.application_generate_entity.user_id,
+                    user_from=user_from,
+                    invoke_from=invoke_from,
+                    trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
+                )
+            )
+        )
         for layer in self._graph_engine_layers:
             workflow_entry.graph_engine.layer(layer)
 

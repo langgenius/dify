@@ -16,7 +16,7 @@ const Header = ({ onClose }: HeaderProps) => {
         className="absolute top-5 right-5 flex size-8 cursor-pointer items-center"
         onClick={onClose}
       >
-        <RiCloseLine className="size-[18px] text-text-tertiary" />
+        <RiCloseLine className="size-4.5 text-text-tertiary" />
       </div>
     </div>
   )

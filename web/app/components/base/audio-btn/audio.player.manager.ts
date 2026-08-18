@@ -35,9 +35,7 @@ export class AudioPlayerManager {
     } else {
       if (this.audioPlayers) {
         try {
-          this.audioPlayers.pauseAudio()
-          this.audioPlayers.cacheBuffers = []
-          this.audioPlayers.sourceBuffer?.abort()
+          this.audioPlayers.destroy()
         } catch {}
       }
 

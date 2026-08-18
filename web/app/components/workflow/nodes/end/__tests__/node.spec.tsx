@@ -2,17 +2,27 @@ import type { EndNodeType } from '../types'
 import { screen } from '@testing-library/react'
 import { createNode, createStartNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderNodeComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
-import { useIsChatMode, useWorkflow, useWorkflowVariables } from '@/app/components/workflow/hooks'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { useIsChatMode, useWorkflow } from '../../../hooks/use-workflow'
+import { useWorkflowVariables } from '../../../hooks/use-workflow-variables'
 import Node from '../node'
 
-vi.mock('@/app/components/workflow/hooks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/workflow/hooks')>()
+vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
+
   return {
     ...actual,
     useWorkflow: vi.fn(),
-    useWorkflowVariables: vi.fn(),
     useIsChatMode: vi.fn(),
+  }
+})
+
+vi.mock('../../../hooks/use-workflow-variables', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow-variables')>()
+
+  return {
+    ...actual,
+    useWorkflowVariables: vi.fn(),
   }
 })
 
