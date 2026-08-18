@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import type { WorkflowVariableBlockType } from '@/app/components/base/prompt-editor/types'
 import * as React from 'react'
-import { useEffect } from 'react'
 import PromptEditor from '@/app/components/base/prompt-editor'
 
 type Props = Readonly<{
@@ -10,15 +9,10 @@ type Props = Readonly<{
   workflowVariableBlock: WorkflowVariableBlockType
 }>
 
-const keyIdPrefix = 'prompt-res-editor'
 const PromptRes: FC<Props> = ({ value, workflowVariableBlock }) => {
-  const [editorKey, setEditorKey] = React.useState<string>('keyIdPrefix-0')
-  useEffect(() => {
-    setEditorKey(`${keyIdPrefix}-${Date.now()}`)
-  }, [value])
   return (
     <PromptEditor
-      key={editorKey}
+      key={value}
       value={value}
       editable={false}
       className="h-full bg-transparent pt-0"

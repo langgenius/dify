@@ -1,6 +1,5 @@
 import type { FC } from 'react'
 import type { RetrievalTranslate } from './retrieval-section'
-import type { Member } from '@/models/common'
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
@@ -9,7 +8,7 @@ import { Textarea } from '@langgenius/dify-ui/textarea'
 import { RiCloseLine } from '@remixicon/react'
 import { isEqual } from 'es-toolkit/predicate'
 import { useQueryState } from 'nuqs'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/components/app/configuration/toast'
 import Input from '@/app/components/base/input'
@@ -72,8 +71,8 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>(
     currentDataset.partial_member_list || [],
   )
-  const [memberList, setMemberList] = useState<Member[]>([])
   const { data: membersData } = useMembers()
+  const memberList = membersData?.accounts ?? []
 
   const [indexMethod, setIndexMethod] = useState(currentDataset.indexing_technique)
   const [retrievalConfig, setRetrievalConfig] = useState(
@@ -176,11 +175,6 @@ const SettingsModal: FC<SettingsModalProps> = ({
       setLoading(false)
     }
   }
-
-  useEffect(() => {
-    if (!membersData?.accounts) setMemberList([])
-    else setMemberList(membersData.accounts)
-  }, [membersData])
 
   const showMultiModalTip = useMemo(() => {
     return checkShowMultiModalTip({
