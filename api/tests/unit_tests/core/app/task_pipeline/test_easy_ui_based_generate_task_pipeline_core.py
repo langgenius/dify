@@ -665,6 +665,52 @@ class TestEasyUiBasedGenerateTaskPipeline:
         assert isinstance(responses[-1].err, ValueError)
         assert pipeline._task_state.llm_result.message.content == "annotated"
 
+    def test_process_stream_response_error_event_adds_trace_task(self, monkeypatch: pytest.MonkeyPatch):
+        conversation = _make_conversation(AppMode.CHAT)
+        message = _make_message()
+        application_generate_entity = _make_entity(ChatAppGenerateEntity, AppMode.CHAT)
+        application_generate_entity.extras = {"trace_session_id": "session-1"}
+
+        pipeline = EasyUIBasedGenerateTaskPipeline(
+            application_generate_entity=application_generate_entity,
+            queue_manager=_FakeQueueManager(),
+            conversation=conversation,
+            message=message,
+            stream=True,
+        )
+        _set_queue_events(pipeline, [_queue_message(QueueErrorEvent(error=ValueError("boom")))])
+        _set_method(pipeline, "handle_error", lambda **kwargs: ValueError("boom"))
+        _set_method(pipeline, "error_to_stream_response", lambda err: ErrorStreamResponse(task_id="task", err=err))
+
+        trace_manager_double = _TraceManagerDouble()
+        trace_manager = cast(TraceQueueManager, trace_manager_double)
+
+        class _Session:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def commit(self):
+                return None
+
+        monkeypatch.setattr(
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.session_factory.create_session",
+            lambda: _Session(),
+        )
+
+        responses = list(pipeline._process_stream_response(publisher=None, trace_manager=trace_manager))
+
+        assert len(responses) == 1
+        assert isinstance(responses[0], ErrorStreamResponse)
+        trace_manager_double.add_trace_task.assert_called_once()
+        trace_task = trace_manager_double.add_trace_task.call_args.args[0]
+        assert trace_task.trace_type == TraceTaskName.MESSAGE_TRACE
+        assert trace_task.conversation_id == "conv"
+        assert trace_task.message_id == "msg"
+        assert trace_task.kwargs["trace_session_id"] == "session-1"
+
     def test_agent_thought_to_stream_response_returns_payload(self, monkeypatch: pytest.MonkeyPatch):
         conversation = _make_conversation(AppMode.CHAT)
         message = _make_message()

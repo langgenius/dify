@@ -279,6 +279,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                                 TraceTaskName.MESSAGE_TRACE,
                                 conversation_id=self._conversation_id,
                                 message_id=self._message_id,
+                                trace_session_id=self._application_generate_entity.extras.get("trace_session_id"),
                             )
                         )
 
