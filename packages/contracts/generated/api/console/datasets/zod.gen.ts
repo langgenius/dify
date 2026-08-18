@@ -245,6 +245,14 @@ export const zExternalHitTestingPayload = z.object({
 })
 
 /**
+ * KnowledgeFSUpgradeRetryResponse
+ */
+export const zKnowledgeFsUpgradeRetryResponse = z.object({
+  id: z.string(),
+  status: z.literal('queued').optional().default('queued'),
+})
+
+/**
  * MetadataArgs
  */
 export const zMetadataArgs = z.object({
@@ -752,6 +760,43 @@ export const zExternalHitTestingResponse = z.object({
  */
 export const zHitTestingQuery = z.object({
   content: z.string(),
+})
+
+/**
+ * KnowledgeFSUpgradeStage
+ */
+export const zKnowledgeFsUpgradeStage = z.enum([
+  'completed',
+  'creating_sources',
+  'finalizing',
+  'migrating_access',
+  'submitting_documents',
+  'validating',
+  'waiting_for_space',
+])
+
+/**
+ * KnowledgeFSUpgradeJobStatus
+ */
+export const zKnowledgeFsUpgradeJobStatus = z.enum(['failed', 'queued', 'running', 'succeeded'])
+
+/**
+ * KnowledgeFSUpgradeJobResponse
+ */
+export const zKnowledgeFsUpgradeJobResponse = z.object({
+  completed_at: z.iso.datetime().nullish(),
+  completed_documents: z.int().gte(0),
+  completed_sources: z.int().gte(0),
+  id: z.string(),
+  last_error_code: z.string().nullish(),
+  last_error_message: z.string().nullish(),
+  new_control_space_id: z.string().nullish(),
+  old_dataset_id: z.string(),
+  snapshot_at: z.iso.datetime(),
+  stage: zKnowledgeFsUpgradeStage,
+  status: zKnowledgeFsUpgradeJobStatus,
+  total_documents: z.int().gte(0),
+  total_sources: z.int().gte(0),
 })
 
 /**
@@ -2175,6 +2220,37 @@ export const zGetDatasetsByDatasetIdIndexingStatusPath = z.object({
  * Indexing status retrieved successfully
  */
 export const zGetDatasetsByDatasetIdIndexingStatusResponse = zDocumentStatusListResponse
+
+export const zPostDatasetsByDatasetIdKnowledgeFsUpgradesPath = z.object({
+  dataset_id: z.uuid(),
+})
+
+/**
+ * KnowledgeFS Dataset upgrade accepted
+ */
+export const zPostDatasetsByDatasetIdKnowledgeFsUpgradesResponse = zKnowledgeFsUpgradeJobResponse
+
+export const zGetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdPath = z.object({
+  dataset_id: z.uuid(),
+  job_id: z.string(),
+})
+
+/**
+ * KnowledgeFS Dataset upgrade status
+ */
+export const zGetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponse =
+  zKnowledgeFsUpgradeJobResponse
+
+export const zPostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdPath = z.object({
+  dataset_id: z.uuid(),
+  job_id: z.string(),
+})
+
+/**
+ * KnowledgeFS Dataset upgrade retry accepted
+ */
+export const zPostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponse =
+  zKnowledgeFsUpgradeRetryResponse
 
 export const zGetDatasetsByDatasetIdMetadataPath = z.object({
   dataset_id: z.uuid(),
