@@ -599,6 +599,7 @@ class AgentAppListApi(Resource):
 
     @console_ns.expect(console_ns.models[AgentAppCreatePayload.__name__])
     @console_ns.response(201, "Agent app created successfully", console_ns.models[AgentAppDetailWithSite.__name__])
+    @console_ns.response(409, "Agent name already exists")
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(400, "Invalid request parameters")
     @setup_required

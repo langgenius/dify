@@ -1,6 +1,7 @@
 import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { PluginPayload } from '../types'
 import type { FormSchema } from '@/app/components/base/form/types'
+import type { CredentialPermission } from '@/models/permission'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -10,11 +11,14 @@ import Badge from '@/app/components/base/badge'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { openOAuthPopup } from '@/hooks/use-oauth'
+import { PermissionLevel } from '@/models/permission'
 import {
   useGetPluginOAuthClientSchemaHook,
   useGetPluginOAuthUrlHook,
 } from '../hooks/use-credential'
+import { AuthCategory } from '../types'
 import OAuthClientSettings from './oauth-client-settings'
+import OAuthVisibilityDialog from './oauth-visibility-dialog'
 
 export type AddOAuthButtonProps = {
   pluginPayload: PluginPayload
@@ -30,6 +34,7 @@ export type AddOAuthButtonProps = {
     disabled?: boolean
     isConfigured: boolean
     onClick: () => void
+    trigger: React.ReactNode
   }) => React.ReactNode
   oAuthData?: {
     schema?: FormSchema[]
@@ -58,8 +63,17 @@ const AddOAuthButton = ({
   const renderI18nObject = useRenderI18nObject()
   const [isOAuthSettingsOpen, setIsOAuthSettingsOpen] = useState(false)
   const [isOAuthSettingsMounted, setIsOAuthSettingsMounted] = useState(false)
-  const { mutateAsync: getPluginOAuthUrl } = useGetPluginOAuthUrlHook(pluginPayload)
-  const { data, isLoading } = useGetPluginOAuthClientSchemaHook(pluginPayload)
+  // Only expose the picker where the OAuth callback persists the selection.
+  const isVisibilityPickerSupported =
+    pluginPayload.category === AuthCategory.tool ||
+    pluginPayload.category === AuthCategory.datasource
+  const [isVisibilityModalOpen, setIsVisibilityModalOpen] = useState(false)
+  const [pendingVisibility, setPendingVisibility] = useState<CredentialPermission>(
+    PermissionLevel.onlyMe,
+  )
+  const { mutateAsync: getPluginOAuthUrl, isPending: isGettingOAuthUrl } =
+    useGetPluginOAuthUrlHook(pluginPayload)
+  const { data, isLoading } = useGetPluginOAuthClientSchemaHook(pluginPayload, !oAuthData)
   const mergedOAuthData = useMemo<OAuthData>(() => {
     if (oAuthData) return oAuthData
 
@@ -78,12 +92,50 @@ const AddOAuthButton = ({
     setIsOAuthSettingsOpen(true)
   }, [])
   const handleOAuth = useCallback(async () => {
-    const { authorization_url } = await getPluginOAuthUrl()
+    try {
+      const { authorization_url } = await getPluginOAuthUrl(
+        isVisibilityPickerSupported ? { visibility: pendingVisibility } : undefined,
+      )
 
-    if (authorization_url) {
+      if (!authorization_url) return false
+
       openOAuthPopup(authorization_url, () => onUpdate?.())
+      return true
+    } catch {
+      // The request layer surfaces the error. Keep the current UI state so the
+      // user can retry without losing their visibility selection.
+      return false
     }
-  }, [getPluginOAuthUrl, onUpdate])
+  }, [getPluginOAuthUrl, onUpdate, pendingVisibility, isVisibilityPickerSupported])
+  // Providers without a usable OAuth client first open settings. Once those
+  // settings are saved, authorization continues through the same visibility
+  // dialog used by configured providers.
+  const openVisibilityModal = useCallback(() => {
+    if (!isVisibilityPickerSupported) {
+      if (isConfigured) void handleOAuth()
+      else openOAuthSettings()
+      return
+    }
+    if (isConfigured) {
+      setPendingVisibility(PermissionLevel.onlyMe)
+      setIsVisibilityModalOpen(true)
+    } else {
+      openOAuthSettings()
+    }
+  }, [isConfigured, isVisibilityPickerSupported, openOAuthSettings, handleOAuth])
+  const handleAuthorizationRequest = useCallback(async () => {
+    if (!isVisibilityPickerSupported) {
+      await handleOAuth()
+      return
+    }
+
+    setPendingVisibility(PermissionLevel.onlyMe)
+    setIsVisibilityModalOpen(true)
+  }, [handleOAuth, isVisibilityPickerSupported])
+  const handleVisibilityConfirm = useCallback(async () => {
+    const didOpenOAuthPopup = await handleOAuth()
+    if (didOpenOAuthPopup) setIsVisibilityModalOpen(false)
+  }, [handleOAuth])
 
   const renderCustomLabel = useCallback(
     (item: FormSchema) => {
@@ -181,71 +233,72 @@ const AddOAuthButton = ({
     }
   }, [isConfigured, is_oauth_custom_client_enabled, is_system_oauth_params_exists])
 
+  const trigger = isConfigured ? (
+    <div className={cn('flex w-full', className)}>
+      <Button
+        variant={buttonVariant}
+        className={cn(
+          'h-8 min-w-0 flex-1 rounded-r-none p-0 hover:bg-components-button-primary-bg-hover',
+          buttonLeftClassName,
+        )}
+        disabled={disabled}
+        onClick={openVisibilityModal}
+      >
+        <div className="truncate">{buttonText}</div>
+        {is_oauth_custom_client_enabled && (
+          <Badge
+            className={cn(
+              'mr-0.5',
+              buttonVariant === 'primary' &&
+                'border-text-primary-on-surface bg-components-badge-bg-dimm text-text-primary-on-surface',
+            )}
+          >
+            {t(($) => $['auth.custom'], { ns: 'plugin' })}
+          </Badge>
+        )}
+      </Button>
+      <div
+        className={cn(
+          'h-4 w-px shrink-0 self-center bg-text-primary-on-surface opacity-[0.15]',
+          dividerClassName,
+        )}
+      ></div>
+      <IconButton
+        variant={buttonVariant}
+        aria-label={t(($) => $['auth.oauthClientSettings'], { ns: 'plugin' })}
+        size="lg"
+        className={cn(
+          'shrink-0 rounded-l-none hover:bg-components-button-primary-bg-hover',
+          buttonRightClassName,
+        )}
+        disabled={disabled}
+        onClick={openOAuthSettings}
+      >
+        <span className="i-ri-equalizer-2-line size-4" aria-hidden="true" />
+      </IconButton>
+    </div>
+  ) : (
+    <Button
+      variant={buttonVariant}
+      onClick={openVisibilityModal}
+      disabled={disabled}
+      className="w-full"
+    >
+      <span className="i-ri-equalizer-2-line size-4" />
+      {t(($) => $['auth.setupOAuth'], { ns: 'plugin' })}
+    </Button>
+  )
+
   return (
     <>
-      {renderTrigger?.({
-        disabled,
-        isConfigured,
-        onClick: isConfigured ? handleOAuth : openOAuthSettings,
-      })}
-      {!renderTrigger && isConfigured && (
-        <div className={cn('flex w-full', className)}>
-          <Button
-            variant={buttonVariant}
-            className={cn(
-              'h-8 min-w-0 flex-1 rounded-r-none p-0 hover:bg-components-button-primary-bg-hover',
-              buttonLeftClassName,
-            )}
-            disabled={disabled}
-            onClick={handleOAuth}
-          >
-            <div className="truncate">{buttonText}</div>
-            {is_oauth_custom_client_enabled && (
-              <Badge
-                className={cn(
-                  'mr-0.5',
-                  buttonVariant === 'primary' &&
-                    'border-text-primary-on-surface bg-components-badge-bg-dimm text-text-primary-on-surface',
-                )}
-              >
-                {t(($) => $['auth.custom'], { ns: 'plugin' })}
-              </Badge>
-            )}
-          </Button>
-          <div
-            className={cn(
-              'h-4 w-px shrink-0 self-center bg-text-primary-on-surface opacity-[0.15]',
-              dividerClassName,
-            )}
-          ></div>
-          <IconButton
-            variant={buttonVariant}
-            aria-label={t(($) => $['auth.oauthClientSettings'], { ns: 'plugin' })}
-            size="lg"
-            className={cn(
-              'shrink-0 rounded-l-none hover:bg-components-button-primary-bg-hover',
-              buttonRightClassName,
-            )}
-            disabled={disabled}
-            onClick={() => {
-              openOAuthSettings()
-            }}
-          >
-            <span className="i-ri-equalizer-2-line size-4" aria-hidden="true" />
-          </IconButton>
-        </div>
-      )}
-      {!renderTrigger && !isConfigured && (
-        <Button
-          variant={buttonVariant}
-          onClick={openOAuthSettings}
-          disabled={disabled}
-          className="w-full"
-        >
-          <span className="i-ri-equalizer-2-line size-4" />
-          {t(($) => $['auth.setupOAuth'], { ns: 'plugin' })}
-        </Button>
-      )}
+      {renderTrigger
+        ? renderTrigger({
+            disabled,
+            isConfigured,
+            onClick: openVisibilityModal,
+            trigger,
+          })
+        : trigger}
       {isOAuthSettingsMounted && (
         <OAuthClientSettings
           open={isOAuthSettingsOpen}
@@ -254,7 +307,7 @@ const AddOAuthButton = ({
           onClose={() => setIsOAuthSettingsOpen(false)}
           disabled={disabled || isLoading}
           schemas={memorizedSchemas}
-          onAuth={handleOAuth}
+          onRequestAuthorization={handleAuthorizationRequest}
           editValues={{
             ...client_params,
             __oauth_client__: __auth_client__,
@@ -263,6 +316,14 @@ const AddOAuthButton = ({
           onUpdate={onUpdate}
         />
       )}
+      <OAuthVisibilityDialog
+        open={isVisibilityModalOpen}
+        onOpenChange={setIsVisibilityModalOpen}
+        permission={pendingVisibility}
+        onPermissionChange={setPendingVisibility}
+        onConfirm={handleVisibilityConfirm}
+        loading={isGettingOAuthUrl}
+      />
     </>
   )
 }

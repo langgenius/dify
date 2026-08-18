@@ -10,12 +10,10 @@ the repository root with:
 from __future__ import annotations
 
 import asyncio
-import json
 import os
 from dataclasses import dataclass
 
 from pydantic_ai import Agent, RunContext
-from pydantic_ai.messages import BuiltinToolCallPart, ModelMessage, ToolCallPart
 from pydantic_ai.models.openai import OpenAIChatModel  # pyright: ignore[reportDeprecated]
 from pydantic_ai.models.test import TestModel
 
@@ -113,20 +111,8 @@ async def main() -> None:
         bridge_layer = run.get_layer("pydantic_ai_bridge", PydanticAIBridgeLayer)
         result = await agent.run(run.user_prompts, deps=bridge_layer.run_deps)
 
-    for line in _format_messages(result.all_messages()):
-        print(line)
-
-
-def _format_messages(messages: list[ModelMessage]) -> list[str]:
-    lines: list[str] = []
-    for message in messages:
-        for part in message.parts:
-            if isinstance(part, ToolCallPart | BuiltinToolCallPart):
-                args = json.dumps(part.args, ensure_ascii=False)
-                lines.append(f"{type(part).__name__}: {part.tool_name}({args})")
-            else:
-                lines.append(f"{type(part).__name__}: {part.content}")
-    return lines
+    for message in result.all_messages():
+        print(message)
 
 
 if __name__ == "__main__":

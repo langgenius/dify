@@ -10,120 +10,86 @@ from flask import Flask
 
 from controllers.web.app import AppAccessMode, AppMeta, AppParameterApi, AppWebAuthPermission
 from controllers.web.error import AgentNotPublishedError, AppUnavailableError
-from core.app.apps.agent_app.errors import AgentAppNotPublishedError
+from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
+from services.app_definition_query_service import AppDefinitionNotPublishedError, AppDefinitionUnavailableError
 
 
 # ---------------------------------------------------------------------------
 # AppParameterApi
 # ---------------------------------------------------------------------------
 class TestAppParameterApi:
-    def test_advanced_chat_mode_uses_workflow(self, app: Flask) -> None:
-        features_dict = {"opening_statement": "Hello"}
-        workflow = SimpleNamespace(
-            features_dict=features_dict,
-            user_input_form=lambda to_old_structure=False: [],
+    @patch("controllers.web.app.application_services")
+    def test_get_returns_public_parameters(self, application_services: MagicMock, app: Flask) -> None:
+        app_definitions = MagicMock()
+        app_definitions.get_public_parameters.return_value = get_parameters_from_feature_dict(
+            features_dict={"opening_statement": "Hello"},
+            user_input_form=[],
         )
-        app_model = SimpleNamespace(
-            mode="advanced-chat",
-            workflow_with_session=lambda *, session: workflow,
-        )
+        application_services.return_value = SimpleNamespace(app_definitions=app_definitions)
+        app_model = SimpleNamespace(id="app-1")
 
-        with (
-            app.test_request_context("/parameters"),
-            patch("controllers.web.app.get_parameters_from_feature_dict", return_value={}) as mock_params,
-            patch("controllers.web.app.fields.Parameters") as mock_fields,
-        ):
-            mock_fields.model_validate.return_value.model_dump.return_value = {"result": "ok"}
+        with app.test_request_context("/parameters"):
             result = AppParameterApi().get(app_model, SimpleNamespace())
 
-        mock_params.assert_called_once_with(features_dict=features_dict, user_input_form=[])
-        assert result == {"result": "ok"}
+        assert result["opening_statement"] == "Hello"
+        app_definitions.get_public_parameters.assert_called_once_with("app-1")
 
-    def test_workflow_mode_uses_workflow(self, app: Flask) -> None:
-        features_dict = {}
-        workflow = SimpleNamespace(
-            features_dict=features_dict,
-            user_input_form=lambda to_old_structure=False: [{"var": "x"}],
-        )
-        app_model = SimpleNamespace(
-            mode="workflow",
-            workflow_with_session=lambda *, session: workflow,
-        )
+    @pytest.mark.parametrize(
+        ("service_error", "http_error"),
+        [
+            pytest.param(AppDefinitionNotPublishedError(), AgentNotPublishedError, id="not-published"),
+            pytest.param(AppDefinitionUnavailableError(), AppUnavailableError, id="unavailable"),
+        ],
+    )
+    @patch("controllers.web.app.application_services")
+    def test_get_maps_query_errors(
+        self,
+        application_services: MagicMock,
+        service_error: Exception,
+        http_error: type[Exception],
+        app: Flask,
+    ) -> None:
+        app_definitions = MagicMock()
+        app_definitions.get_public_parameters.side_effect = service_error
+        application_services.return_value = SimpleNamespace(app_definitions=app_definitions)
 
-        with (
-            app.test_request_context("/parameters"),
-            patch("controllers.web.app.get_parameters_from_feature_dict", return_value={}) as mock_params,
-            patch("controllers.web.app.fields.Parameters") as mock_fields,
-        ):
-            mock_fields.model_validate.return_value.model_dump.return_value = {}
-            AppParameterApi().get(app_model, SimpleNamespace())
-
-        mock_params.assert_called_once_with(features_dict=features_dict, user_input_form=[{"var": "x"}])
-
-    def test_advanced_chat_mode_no_workflow_raises(self, app: Flask) -> None:
-        app_model = SimpleNamespace(
-            mode="advanced-chat",
-            workflow_with_session=lambda *, session: None,
-        )
         with app.test_request_context("/parameters"):
-            with pytest.raises(AppUnavailableError):
-                AppParameterApi().get(app_model, SimpleNamespace())
-
-    def test_standard_mode_uses_app_model_config(self, app: Flask) -> None:
-        config = SimpleNamespace(to_dict=lambda **_kwargs: {"user_input_form": [{"var": "y"}], "key": "val"})
-        app_model = SimpleNamespace(
-            id="app-1",
-            mode="chat",
-            app_model_config_with_session=lambda *, session: config,
-        )
-
-        with (
-            app.test_request_context("/parameters"),
-            patch("controllers.web.app.get_parameters_from_feature_dict", return_value={}) as mock_params,
-            patch("controllers.web.app.fields.Parameters") as mock_fields,
-            patch("controllers.web.app.load_annotation_reply_config", return_value={"enabled": False}),
-        ):
-            mock_fields.model_validate.return_value.model_dump.return_value = {}
-            AppParameterApi().get(app_model, SimpleNamespace())
-
-        call_kwargs = mock_params.call_args
-        assert call_kwargs.kwargs["user_input_form"] == [{"var": "y"}]
-
-    def test_standard_mode_no_config_raises(self, app: Flask) -> None:
-        app_model = SimpleNamespace(
-            mode="chat",
-            app_model_config_with_session=lambda *, session: None,
-        )
-        with app.test_request_context("/parameters"):
-            with pytest.raises(AppUnavailableError):
-                AppParameterApi().get(app_model, SimpleNamespace())
-
-    def test_agent_mode_unpublished_raises_friendly_error(self, app: Flask) -> None:
-        app_model = SimpleNamespace(mode="agent")
-        with (
-            app.test_request_context("/parameters"),
-            patch(
-                "controllers.web.app.get_published_agent_app_feature_dict_and_user_input_form",
-                side_effect=AgentAppNotPublishedError("Agent has not been published"),
-            ),
-        ):
-            with pytest.raises(AgentNotPublishedError):
-                AppParameterApi().get(app_model, SimpleNamespace())
+            with pytest.raises(http_error):
+                AppParameterApi().get(SimpleNamespace(id="app-1"), SimpleNamespace())
 
 
 # ---------------------------------------------------------------------------
 # AppMeta
 # ---------------------------------------------------------------------------
 class TestAppMeta:
-    @patch("controllers.web.app.AppService")
-    def test_get_returns_meta(self, mock_service_cls: MagicMock, app: Flask) -> None:
-        mock_service_cls.return_value.get_app_meta.return_value = {"tool_icons": {}}
+    @patch("controllers.web.app.application_services")
+    def test_get_returns_meta(self, application_services: MagicMock, app: Flask) -> None:
+        app_definitions = MagicMock()
+        app_definitions.get_tool_icons.return_value = {}
+        application_services.return_value = SimpleNamespace(app_definitions=app_definitions)
         app_model = SimpleNamespace(id="app-1")
 
         with app.test_request_context("/meta"):
             result = AppMeta().get(app_model, SimpleNamespace())
 
         assert result == {"tool_icons": {}}
+        app_definitions.get_tool_icons.assert_called_once_with("app-1")
+
+    @patch("controllers.web.app.application_services")
+    def test_maps_unavailable_definition_to_app_unavailable(self, application_services: MagicMock, app: Flask) -> None:
+        app_definitions = MagicMock()
+        app_definitions.get_tool_icons.side_effect = AppDefinitionUnavailableError
+        application_services.return_value = SimpleNamespace(app_definitions=app_definitions)
+
+        with app.test_request_context("/meta"):
+            with pytest.raises(AppUnavailableError) as raised:
+                AppMeta().get(SimpleNamespace(id="app-1"), SimpleNamespace())
+
+        assert raised.value.data == {
+            "code": "app_unavailable",
+            "message": "App unavailable, please check your app configurations.",
+            "status": 400,
+        }
 
 
 # ---------------------------------------------------------------------------

@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import event
+from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
 from enums import DeploymentEdition
@@ -16,7 +16,6 @@ from models import Account, Tenant
 from models.account import TenantAccountJoin, TenantAccountRole
 from models.agent import Agent, AgentIconType, AgentScope, AgentSource, AgentStatus
 from models.model import App, AppMode, AppModelConfig, IconType
-from models.workflow import Workflow
 from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
 from services.app_service import AppListParams, AppService, CreateAppParams
 
@@ -124,6 +123,36 @@ class TestCreateAppTransactionBoundary:
 
         assert phase_events == ["commit", "signal", "commit", "external"]
         assert sqlite_session.get(App, app.id) is app
+
+    def test_duplicate_agent_name_rolls_back_and_raises_conflict(self, sqlite_session: Session) -> None:
+        account = _persist_account(sqlite_session)
+        tenant_id = account.current_tenant_id or ""
+        existing_agent = Agent(
+            tenant_id=tenant_id,
+            name="Existing Agent",
+            description="existing",
+            role="",
+            scope=AgentScope.ROSTER,
+            source=AgentSource.ROSTER,
+            status=AgentStatus.ACTIVE,
+        )
+        sqlite_session.add(existing_agent)
+        sqlite_session.commit()
+        rollback_events: list[str] = []
+        event.listen(sqlite_session, "after_rollback", lambda _session: rollback_events.append("rollback"))
+
+        with pytest.raises(AgentNameConflictError):
+            AppService().create_app(
+                tenant_id,
+                CreateAppParams(name="Existing Agent", mode=AppMode.AGENT.value),
+                account,
+                session=sqlite_session,
+            )
+
+        assert rollback_events == ["rollback"]
+        assert sqlite_session.scalars(select(App).where(App.tenant_id == tenant_id)).all() == []
+        assert sqlite_session.scalars(select(AppModelConfig)).all() == []
+        assert sqlite_session.get(Agent, existing_agent.id) is existing_agent
 
     def test_falls_back_when_default_model_schema_is_unavailable(self, sqlite_session: Session) -> None:
         account = _persist_account(sqlite_session)
@@ -394,38 +423,6 @@ def test_get_recent_apps_uses_one_tenant_scoped_projection_query(sqlite_session:
     assert len(select_statements) == 1
     assert "count(" not in select_statements[0].lower()
     assert "app_model_configs" not in select_statements[0].lower()
-
-
-class TestAppMeta:
-    def test_loads_workflow_with_caller_session(self, sqlite_session: Session):
-        tenant_id = str(uuid4())
-        app = _persist_app(sqlite_session, tenant_id=tenant_id)
-        app.mode = AppMode.WORKFLOW
-        workflow = Workflow(
-            id=str(uuid4()),
-            tenant_id=tenant_id,
-            app_id=app.id,
-            type="workflow",
-            version="draft",
-            graph='{"nodes": []}',
-            features="{}",
-            created_by=str(uuid4()),
-        )
-        app.workflow_id = workflow.id
-        sqlite_session.add(workflow)
-        sqlite_session.commit()
-
-        assert AppService().get_app_meta(app, session=sqlite_session) == {"tool_icons": {}}
-
-    def test_loads_app_model_config_with_caller_session(self, sqlite_session: Session):
-        app = _persist_app(sqlite_session, tenant_id=str(uuid4()))
-        config = AppModelConfig(app_id=app.id, agent_mode='{"tools": []}')
-        sqlite_session.add(config)
-        sqlite_session.flush()
-        app.app_model_config_id = config.id
-        sqlite_session.commit()
-
-        assert AppService().get_app_meta(app, session=sqlite_session) == {"tool_icons": {}}
 
 
 class TestGetApp:

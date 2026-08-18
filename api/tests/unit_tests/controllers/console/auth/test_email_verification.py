@@ -462,16 +462,19 @@ class TestEmailCodeLoginApi:
         mock_login.return_value = mock_token_pair
 
         # Act
-        with app.test_request_context(
-            "/email-code-login/validity",
-            method="POST",
-            json={
-                "email": "newuser@example.com",
-                "code": encode_code("123456"),
-                "token": "valid_token",
-                "language": "en-US",
-                "timezone": "Asia/Shanghai",
-            },
+        with (
+            patch("controllers.console.auth.login.extract_remote_ip", return_value="203.0.113.10"),
+            app.test_request_context(
+                "/email-code-login/validity",
+                method="POST",
+                json={
+                    "email": "newuser@example.com",
+                    "code": encode_code("123456"),
+                    "token": "valid_token",
+                    "language": "en-US",
+                    "timezone": "Asia/Shanghai",
+                },
+            ),
         ):
             api = EmailCodeLoginApi()
             response = api.post()
@@ -483,6 +486,7 @@ class TestEmailCodeLoginApi:
             name="newuser@example.com",
             interface_language="en-US",
             timezone="Asia/Shanghai",
+            ip_address="203.0.113.10",
             session=ANY,
         )
 

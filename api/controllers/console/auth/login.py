@@ -346,6 +346,7 @@ class EmailCodeLoginApi(Resource):
                 else:
                     TenantService.create_owner_tenant(account, session=db.session())
 
+        ip_address = extract_remote_ip(request)
         if account is None:
             try:
                 account = AccountService.create_account_and_tenant(
@@ -353,6 +354,7 @@ class EmailCodeLoginApi(Resource):
                     name=user_email,
                     interface_language=get_valid_language(language),
                     timezone=req_data.timezone,
+                    ip_address=ip_address,
                     session=db.session(),
                 )
             except WorkSpaceNotAllowedCreateError:
@@ -364,7 +366,7 @@ class EmailCodeLoginApi(Resource):
                 raise AccountInFreezeError()
             except WorkspacesLimitExceededError:
                 raise WorkspacesLimitExceeded()
-        token_pair = AccountService.login(account, session=db.session(), ip_address=extract_remote_ip(request))
+        token_pair = AccountService.login(account, session=db.session(), ip_address=ip_address)
         AccountService.reset_login_error_rate_limit(user_email)
 
         # Create response with cookies instead of returning tokens in body

@@ -156,6 +156,7 @@
   "agentDetail.configure.preview.empty.description": "เรียกใช้เอเจนต์เป็นแชทที่เสร็จสมบูรณ์ เหมือนที่ผู้ใช้จะได้รับหลังเผยแพร่",
   "agentDetail.configure.preview.empty.title": "แสดงตัวอย่าง {{name}}",
   "agentDetail.configure.preview.endUserAuth": "การยืนยันตัวตนของผู้ใช้ปลายทาง",
+  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "การเรียกใช้ Agent นี้หยุดลงหลังจากถึงจำนวนคำขอโมเดลสูงสุด โปรดลองอีกครั้ง หรือแบ่งงานออกเป็นขั้นตอนที่เล็กลง",
   "agentDetail.configure.preview.errors.agentRunLimitExceeded": "การเรียกใช้ Agent นี้หยุดลงเนื่องจากถึงขีดจำกัดเวลา โปรดลองอีกครั้ง หรือแบ่งงานออกเป็นขั้นตอนที่เล็กลง",
   "agentDetail.configure.preview.inputPlaceholder": "ส่งข้อความถึง {{name}}",
   "agentDetail.configure.preview.restart": "เริ่มใหม่",

@@ -1,4 +1,5 @@
 import types
+from datetime import UTC, datetime
 from inspect import unwrap
 from unittest.mock import patch
 
@@ -6,6 +7,9 @@ import pytest
 from werkzeug.exceptions import NotFound
 
 import controllers.files.image_preview as module
+from extensions.storage.storage_type import StorageType
+from models.enums import CreatorUserRole
+from models.model import UploadFile
 
 
 @pytest.fixture(autouse=True)
@@ -18,12 +22,24 @@ def mock_db():
     module.db = fake_db
 
 
-class DummyUploadFile:
-    def __init__(self, mime_type="text/plain", size=10, name="test.txt", extension="txt"):
-        self.mime_type = mime_type
-        self.size = size
-        self.name = name
-        self.extension = extension
+def _upload_file(
+    *, mime_type: str = "text/plain", size: int = 10, name: str = "test.txt", extension: str = "txt"
+) -> UploadFile:
+    upload_file = UploadFile(
+        tenant_id="tenant-1",
+        storage_type=StorageType.LOCAL,
+        key="uploads/file-id",
+        name=name,
+        size=size,
+        extension=extension,
+        mime_type=mime_type,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account-1",
+        created_at=datetime.now(UTC),
+        used=False,
+    )
+    upload_file.id = "file-id"
+    return upload_file
 
 
 def fake_request(args: dict):
@@ -90,7 +106,7 @@ class TestFilePreviewApi:
         )
 
         generator = iter([b"data"])
-        upload_file = DummyUploadFile(
+        upload_file = _upload_file(
             mime_type="application/pdf",
             size=100,
             name="doc.pdf",
@@ -134,7 +150,7 @@ class TestFilePreviewApi:
         )
 
         generator = iter([b"<svg></svg>"])
-        upload_file = DummyUploadFile(
+        upload_file = _upload_file(
             mime_type=mime_type,
             size=11,
             name=name,
@@ -167,7 +183,7 @@ class TestFilePreviewApi:
         )
 
         generator = iter([b"<script>alert(1)</script>"])
-        upload_file = DummyUploadFile(
+        upload_file = _upload_file(
             mime_type="text/html",
             size=25,
             name="unsafe.html",
@@ -201,7 +217,7 @@ class TestFilePreviewApi:
         )
 
         generator = iter([b"data"])
-        upload_file = DummyUploadFile(
+        upload_file = _upload_file(
             mime_type="application/pdf",
             name="doc.pdf",
             extension="pdf",

@@ -26,7 +26,18 @@ from dify_agent.agent_stub.protocol.agent_stub import (
 from dify_agent.agent_stub.server.agent_stub_config import AgentStubConfigRequestError, AgentStubConfigRequestHandler
 from dify_agent.agent_stub.server.agent_stub_drive import AgentStubDriveRequestError, AgentStubDriveRequestHandler
 from dify_agent.agent_stub.server.agent_stub_files import AgentStubFileRequestError, AgentStubFileRequestHandler
-from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubPrincipal, AgentStubTokenCodec, AgentStubTokenError
+from dify_agent.agent_stub.server.tokens.agent_stub import (
+    AgentStubPrincipal,
+    AgentStubTokenCodec,
+    AgentStubTokenError,
+    AgentStubTokenExpiredError,
+)
+
+
+_AGENT_STUB_AUTHORIZATION_EXPIRED_DETAIL = {
+    "code": "agent_stub_authorization_expired",
+    "message": "Agent Stub authorization expired after 5 minutes; start a new shell tool call and retry the command.",
+}
 
 
 class AgentStubControlPlaneError(RuntimeError):
@@ -65,7 +76,7 @@ class AgentStubControlPlaneService:
 
     async def connect(self, *, authorization: str | None) -> AgentStubConnectResponse:
         """Authenticate and handle one connect request."""
-        _ = self._authenticate(authorization)
+        _ = self._authenticate(authorization, expose_expiration=True)
         return AgentStubConnectResponse(connection_id=self.connection_id_factory(), status="connected")
 
     async def create_file_upload_request(
@@ -73,9 +84,10 @@ class AgentStubControlPlaneService:
         *,
         request: AgentStubFileUploadRequest,
         authorization: str | None,
+        expose_expiration: bool = False,
     ) -> AgentStubFileUploadResponse:
         """Authenticate and delegate one already-validated file-upload request."""
-        principal = self._authenticate(authorization)
+        principal = self._authenticate(authorization, expose_expiration=expose_expiration)
         handler = self._require_file_request_handler()
         try:
             return await handler.create_upload_request(principal=principal, request=request)
@@ -89,7 +101,7 @@ class AgentStubControlPlaneService:
         authorization: str | None,
     ) -> AgentStubFileDownloadResponse:
         """Authenticate and delegate one already-validated file-download request."""
-        principal = self._authenticate(authorization)
+        principal = self._authenticate(authorization, expose_expiration=True)
         if request.config is not None:
             handler = self._require_config_request_handler()
             try:
@@ -127,7 +139,7 @@ class AgentStubControlPlaneService:
         *,
         authorization: str | None,
     ) -> AgentStubConfigManifestResponse:
-        principal = self._authenticate(authorization)
+        principal = self._authenticate(authorization, expose_expiration=True)
         handler = self._require_config_request_handler()
         try:
             return await handler.manifest(principal=principal)
@@ -140,7 +152,7 @@ class AgentStubControlPlaneService:
         name: str,
         authorization: str | None,
     ) -> dict[str, object]:
-        principal = self._authenticate(authorization)
+        principal = self._authenticate(authorization, expose_expiration=True)
         handler = self._require_config_request_handler()
         try:
             return await handler.inspect_skill(principal=principal, name=name)
@@ -153,7 +165,7 @@ class AgentStubControlPlaneService:
         request: AgentStubConfigPushRequest,
         authorization: str | None,
     ) -> AgentStubConfigPushResponse:
-        principal = self._authenticate(authorization)
+        principal = self._authenticate(authorization, expose_expiration=True)
         handler = self._require_config_request_handler()
         try:
             return await handler.push(principal=principal, request=request)
@@ -166,7 +178,7 @@ class AgentStubControlPlaneService:
         env_text: str,
         authorization: str | None,
     ) -> dict[str, object]:
-        principal = self._authenticate(authorization)
+        principal = self._authenticate(authorization, expose_expiration=True)
         handler = self._require_config_request_handler()
         try:
             return await handler.update_env(principal=principal, env_text=env_text)
@@ -179,7 +191,7 @@ class AgentStubControlPlaneService:
         note: str,
         authorization: str | None,
     ) -> dict[str, object]:
-        principal = self._authenticate(authorization)
+        principal = self._authenticate(authorization, expose_expiration=True)
         handler = self._require_config_request_handler()
         try:
             return await handler.update_note(principal=principal, note=note)
@@ -200,12 +212,19 @@ class AgentStubControlPlaneService:
         except AgentStubDriveRequestError as exc:
             raise AgentStubControlPlaneError(exc.status_code, exc.detail) from exc
 
-    def _authenticate(self, authorization: str | None) -> AgentStubPrincipal:
+    def _authenticate(self, authorization: str | None, *, expose_expiration: bool = False) -> AgentStubPrincipal:
         token_codec = self.token_codec
         if token_codec is None:
             raise AgentStubConfigurationError(503, "Agent Stub is not configured")
         try:
             return token_codec.decode_authorization_header(authorization)
+        except AgentStubTokenExpiredError as exc:
+            detail = (
+                _AGENT_STUB_AUTHORIZATION_EXPIRED_DETAIL
+                if expose_expiration
+                else "invalid or missing Agent Stub authorization"
+            )
+            raise AgentStubAuthenticationError(401, detail) from exc
         except AgentStubTokenError as exc:
             raise AgentStubAuthenticationError(401, "invalid or missing Agent Stub authorization") from exc
 

@@ -163,6 +163,7 @@ class TestEmailRegisterResetApi:
             password="ValidPass123!",
             timezone=None,
             language=None,
+            ip_address="127.0.0.1",
         )
         mock_reset_login_rate.assert_called_once_with("invitee@example.com")
         mock_revoke_token.assert_called_once_with("token-123")
@@ -223,6 +224,7 @@ class TestEmailRegisterResetApi:
             password="ValidPass123!",
             timezone="Asia/Shanghai",
             language=None,
+            ip_address="127.0.0.1",
         )
         mock_reset_login_rate.assert_called_once_with("invitee@example.com")
         mock_revoke_token.assert_called_once_with("token-123")
@@ -283,6 +285,7 @@ class TestEmailRegisterResetApi:
             password="ValidPass123!",
             timezone=None,
             language="zh-Hans",
+            ip_address="127.0.0.1",
         )
         mock_reset_login_rate.assert_called_once_with("invitee@example.com")
         mock_revoke_token.assert_called_once_with("token-123")

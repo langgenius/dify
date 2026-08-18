@@ -211,11 +211,21 @@ class TestOAuthCallback:
         mock_generate_account.return_value = (oauth_setup["account"], True)
         mock_account_service.login.return_value = oauth_setup["token_pair"]
 
-        with app.test_request_context("/auth/oauth/github/callback?code=test_code"):
+        with (
+            patch("controllers.console.auth.oauth.extract_remote_ip", return_value="203.0.113.10"),
+            app.test_request_context("/auth/oauth/github/callback?code=test_code"),
+        ):
             resource.get("github")
 
         oauth_setup["provider"].get_access_token.assert_called_once_with("test_code")
         oauth_setup["provider"].get_user_info.assert_called_once_with("access_token")
+        mock_generate_account.assert_called_once_with(
+            "github",
+            oauth_setup["provider"].get_user_info.return_value,
+            timezone=None,
+            language=None,
+            ip_address="203.0.113.10",
+        )
         mock_redirect.assert_called_once_with("http://localhost:3000?oauth_new_user=true")
 
     @pytest.mark.parametrize(
@@ -529,6 +539,7 @@ class TestAccountGeneration:
                         provider="github",
                         language="en-US",
                         timezone=None,
+                        ip_address=None,
                         session=ANY,
                     )
                 else:
@@ -563,6 +574,7 @@ class TestAccountGeneration:
             provider="github",
             language="en-US",
             timezone=None,
+            ip_address=None,
             session=ANY,
         )
 
@@ -595,6 +607,7 @@ class TestAccountGeneration:
             provider="github",
             language="zh-Hans",
             timezone="Asia/Shanghai",
+            ip_address=None,
             session=ANY,
         )
 
@@ -627,6 +640,7 @@ class TestAccountGeneration:
             provider="github",
             language="zh-Hans",
             timezone=None,
+            ip_address=None,
             session=ANY,
         )
 
