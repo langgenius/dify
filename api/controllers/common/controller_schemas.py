@@ -182,13 +182,28 @@ class WorkflowUpdatePayload(BaseModel):
 
 DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS = 100
 
+# Per-request cap on a child chunk's `content` field. The default child chunk
+# size is ~1024 tokens (~4096 chars at ~4 chars/token); the cap sits well
+# above that and above the existing 10000-char "very long content" test
+# (tests/unit_tests/controllers/service_api/dataset/test_dataset_segment.py:222)
+# while still bounding embedding cost and DB row size.
+CHILD_CHUNK_CONTENT_MAX_LENGTH = 16384
+
 
 class ChildChunkCreatePayload(BaseModel):
-    content: str = Field(description="Child chunk text content.")
+    content: str = Field(
+        ...,
+        max_length=CHILD_CHUNK_CONTENT_MAX_LENGTH,
+        description="Child chunk text content.",
+    )
 
 
 class ChildChunkUpdatePayload(BaseModel):
-    content: str = Field(description="Child chunk text content.")
+    content: str = Field(
+        ...,
+        max_length=CHILD_CHUNK_CONTENT_MAX_LENGTH,
+        description="Child chunk text content.",
+    )
 
 
 class DocumentBatchDownloadZipPayload(BaseModel):
