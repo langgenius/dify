@@ -15,7 +15,16 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
 from core.workflow_copilot.errors import BusyError, ConflictError, NotFoundError
-from core.workflow_copilot.models import Action, Actor, ChecklistError
+from core.workflow_copilot.models import (
+    Action,
+    Actor,
+    ChecklistError,
+    ConversationItem,
+    EntryMode,
+    FixContext,
+    Session,
+)
+from core.workflow_copilot.state import PcState
 from models.base import Base
 from services.workflow_copilot.repository import SqlCopilotRepository
 from services.workflow_copilot.service import WorkflowCopilotService
@@ -197,3 +206,62 @@ def test_submit_message_wraps_submit_action(service: WorkflowCopilotService) -> 
     # dispatch just like a plain action would.
     with pytest.raises(BusyError):
         service.submit_message(view.session_id, actor, "hello", base_version=1)
+
+
+def _seed_free_session(repo: SqlCopilotRepository) -> Session:
+    """Create a session directly via the repo (bypassing ``create_fix_session``,
+    which would itself call ``dispatch`` -- and hold or fail on the lock)
+    so callers get a FREE-lock session with ``version == 1``."""
+    s = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.FIX,
+        current_state=PcState.FIX_DIAGNOSE,
+    )
+    repo.create_session(s, FixContext(failed_run_id="TR-1"), [ConversationItem(kind="run-context", seq=0)])
+    return s
+
+
+def test_dispatch_releases_lock_when_enqueue_fails(repo: SqlCopilotRepository) -> None:
+    lock = FakeSessionLock()
+
+    def raising_enqueue(*_args) -> None:
+        raise RuntimeError("boom")
+
+    s = _seed_free_session(repo)
+    svc = WorkflowCopilotService(repo, lock, raising_enqueue)
+    actor = _actor()
+
+    # dispatch must propagate the enqueue's original exception, not swallow
+    # it or turn it into BusyError.
+    with pytest.raises(RuntimeError):
+        svc.submit_action(s.id, actor, Action(kind="run_verify", base_version=1))
+
+    # ...and it must release the lock it acquired, so the session isn't
+    # wedged by a failed enqueue.
+    assert lock.exists(s.id) is False
+    assert lock.acquire(s.id) is not None
+
+
+def test_submit_message_constructs_message_action(repo: SqlCopilotRepository) -> None:
+    lock = FakeSessionLock()
+    captured: list[tuple] = []
+
+    def capturing_enqueue(session_id, action, actor, token) -> None:
+        captured.append((session_id, action, actor, token))
+
+    # seeded directly so the lock is FREE and dispatch actually reaches
+    # enqueue_fn (after create_fix_session the lock would already be held,
+    # and dispatch would raise BusyError before capturing anything).
+    s = _seed_free_session(repo)
+    svc = WorkflowCopilotService(repo, lock, capturing_enqueue)
+    actor = _actor()
+
+    svc.submit_message(s.id, actor, "hello", base_version=1)
+
+    assert len(captured) == 1
+    _sid, action, _dispatched_actor, _token = captured[0]
+    assert action.kind == "message"
+    assert action.payload == {"text": "hello"}
+    assert action.base_version == 1
