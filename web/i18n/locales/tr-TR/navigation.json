@@ -28,6 +28,8 @@
   "menus.plugins": "Entegrasyonlar",
   "menus.status": "beta",
   "menus.tools": "Araçlar",
+  "settings.accessToken": "Access Tokens",
+  "settings.accessTokenDescription": "Create service API tokens that grant access only to selected apps and knowledge bases.",
   "settings.agentStrategy": "Agent strategy",
   "settings.billing": "Faturalandırma",
   "settings.customEndpoint": "Özel Uç Nokta",

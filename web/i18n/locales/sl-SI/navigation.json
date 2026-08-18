@@ -28,6 +28,8 @@
   "menus.plugins": "Integracije",
   "menus.status": "beta",
   "menus.tools": "Orodja",
+  "settings.accessToken": "Access Tokens",
+  "settings.accessTokenDescription": "Create service API tokens that grant access only to selected apps and knowledge bases.",
   "settings.agentStrategy": "Agent strategy",
   "settings.billing": "Zaračunavanje",
   "settings.customEndpoint": "Končna točka po meri",

@@ -100,6 +100,7 @@ from services.knowledge.segments.application import (
     validate_segment_values,
 )
 from services.rag_pipeline.rag_pipeline import RagPipelineService
+from services.resource_access_token_service import ResourceAccessTokenService
 from services.tag_application_service import TagTargetQuery
 from tasks.add_document_to_index_task import add_document_to_index_task
 from tasks.batch_clean_document_task import batch_clean_document_task
@@ -1256,6 +1257,7 @@ class DatasetService:
         # silently degrade to unrestricted (access-all) once its last binding is gone.
         dataset_api_key_bindings.delete_keys_scoped_only_to(session, str(dataset.id))
 
+        ResourceAccessTokenService.delete_relations_for_dataset(dataset_id=dataset.id, session=session)
         session.delete(dataset)
         session.commit()
         return True
