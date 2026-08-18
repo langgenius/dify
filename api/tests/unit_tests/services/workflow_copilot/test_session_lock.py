@@ -10,6 +10,8 @@ compare-del contract directly.
 
 from unittest.mock import patch
 
+from configs import dify_config
+from extensions.redis_names import serialize_redis_name
 from services.workflow_copilot import session_lock
 
 SESSION_ID = "11111111-1111-1111-1111-111111111111"
@@ -19,19 +21,27 @@ class FakeRedis:
     """Minimal stateful fake modeling the subset of the redis contract
     ``session_lock`` relies on: NX-set, get, and a Lua compare-del emulated
     without actually running Lua.
+
+    ``set``/``get`` store/read under ``serialize_redis_name(name)`` to model
+    ``RedisClientWrapper`` prefixing those calls internally with
+    ``REDIS_KEY_PREFIX``. ``eval`` is NOT wrapped in production (it falls
+    through to the raw client), so it uses its ``key`` argument as-is —
+    the caller (``session_lock.release``) is responsible for pre-serializing
+    the key it passes to ``eval``.
     """
 
     def __init__(self) -> None:
         self.store: dict[str, str] = {}
 
     def set(self, name: str, value: str, nx: bool = False, px: int | None = None) -> bool | None:  # noqa: ARG002
+        name = serialize_redis_name(name)
         if nx and name in self.store:
             return None
         self.store[name] = value
         return True
 
     def get(self, name: str) -> str | None:
-        return self.store.get(name)
+        return self.store.get(serialize_redis_name(name))
 
     def eval(self, script: str, numkeys: int, *args: str) -> int:  # noqa: ARG002
         key, token = args[0], args[1]
@@ -95,3 +105,25 @@ def test_exists_reflects_held_and_free_state() -> None:
 
         session_lock.release(SESSION_ID, token)
         assert session_lock.exists(SESSION_ID) is False
+
+
+def test_release_frees_the_lock_when_redis_key_prefix_is_set(monkeypatch) -> None:
+    """Regression test for the release()/eval key-prefix bug: RedisClientWrapper prefixes
+    .set/.get with REDIS_KEY_PREFIX internally, but .eval is delegated to the raw client, so
+    release() must serialize the key itself to match the key acquire() actually wrote. Without
+    that serialization, release()'s eval reads the unprefixed key (always nil), the compare-del
+    never matches, and the lock is never freed until its TTL expires.
+    """
+    monkeypatch.setattr(dify_config, "REDIS_KEY_PREFIX", "px")
+    fake = FakeRedis()
+    with patch("services.workflow_copilot.session_lock.redis_client", fake):
+        token = session_lock.acquire(SESSION_ID)
+        assert token is not None
+        assert session_lock.exists(SESSION_ID) is True
+
+        session_lock.release(SESSION_ID, token)
+
+        reacquired = session_lock.acquire(SESSION_ID)
+
+    assert reacquired is not None
+    assert reacquired != token
