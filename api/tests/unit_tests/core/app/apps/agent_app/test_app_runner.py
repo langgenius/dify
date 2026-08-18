@@ -778,6 +778,25 @@ def test_successful_turn_routes_stream_text_to_agent_message_and_uses_terminal_o
     assert store.saved
 
 
+def test_successful_turn_persists_usage_without_a_queue_consumer(sqlite_session: Session) -> None:
+    sqlite_session.add(_message_record())
+    sqlite_session.flush()
+
+    _run(
+        _runner(_StreamingFakeAgentBackendRunClient(), _FakeSessionStore()),
+        _FakeQueueManager(),
+    )
+
+    sqlite_session.expire_all()
+    message = sqlite_session.get(Message, "msg-1")
+    assert message is not None
+    assert message.message_tokens == 3
+    assert message.answer_tokens == 5
+    assert message.total_price == Decimal("0.000165")
+    assert message.message_metadata is not None
+    assert json.loads(message.message_metadata)["usage"]["total_tokens"] == 8
+
+
 def test_successful_turn_routes_single_agent_message_delta(sqlite_session: Session) -> None:
     client = _StreamingSingleAgentMessageDeltaFakeAgentBackendRunClient()
     store = _FakeSessionStore()

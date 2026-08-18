@@ -703,11 +703,20 @@ class AgentAppRunner:
             )
             return
 
-        if isinstance(terminal, AgentBackendRunFailedInternalEvent | AgentBackendRunCancelledInternalEvent):
+        terminal_usage = None
+        if isinstance(
+            terminal,
+            AgentBackendRunSucceededInternalEvent
+            | AgentBackendRunFailedInternalEvent
+            | AgentBackendRunCancelledInternalEvent,
+        ):
+            terminal_usage = _llm_usage_from_agent_backend(terminal.usage)
             self._persist_message_usage(
                 message_id=message_id,
-                usage=_llm_usage_from_agent_backend(terminal.usage),
+                usage=terminal_usage,
             )
+
+        if isinstance(terminal, AgentBackendRunFailedInternalEvent | AgentBackendRunCancelledInternalEvent):
             # None means no post-exit snapshot was produced; leave the previously stored session snapshot untouched.
             if terminal.session_snapshot is not None:
                 self._save_session(
@@ -740,7 +749,7 @@ class AgentAppRunner:
             model_name=model_name,
             answer=answer,
             query=query,
-            usage=_llm_usage_from_agent_backend(terminal.usage),
+            usage=terminal_usage,
         )
         self._save_session(
             scope=scope,
@@ -1106,7 +1115,7 @@ class AgentAppRunner:
 
     @staticmethod
     def _persist_message_usage(*, message_id: str, usage: LLMUsage | None) -> None:
-        """Best-effort persistence for usage from failed or cancelled Agent runs."""
+        """Persist terminal usage independently of the client-facing stream lifecycle."""
         if usage is None or (usage.total_tokens <= 0 and usage.total_price <= 0):
             return
         try:
