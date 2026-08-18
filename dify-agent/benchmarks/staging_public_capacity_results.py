@@ -67,6 +67,83 @@ def finalize_staging_public_capacity_point(
     if execution.setup.e2b_inventory_limited:
         return _finalize_e2b_inventory_limited_point(execution)
 
+    invalid |= _validate_setup_and_load_contract(
+        execution,
+        basic_warmup_operational_boundary=basic_warmup_operational_boundary,
+        e2b_limited=e2b_limited,
+        errors=errors,
+    )
+
+    invalid |= _validate_cleanup_evidence(execution, errors)
+
+    e2b_limited, e2b_invalid, e2b_saturated = _validate_e2b_limit_evidence(
+        execution,
+        basic_warmup_operational_boundary=basic_warmup_operational_boundary,
+        warmup_e2b_limited=warmup_e2b_limited,
+        e2b_limited=e2b_limited,
+        errors=errors,
+    )
+    invalid |= e2b_invalid
+    saturated |= e2b_saturated
+
+    observation_invalid, observation_saturated = _validate_warmup_and_measurement_observations(
+        execution,
+        e2b_limited=e2b_limited,
+        warmup_failed=warmup_failed,
+        warmup_outcomes_accounted=warmup_outcomes_accounted,
+        basic_warmup_operational_boundary=basic_warmup_operational_boundary,
+        warmup_e2b_limited=warmup_e2b_limited,
+        errors=errors,
+    )
+    invalid |= observation_invalid
+    saturated |= observation_saturated
+
+    metrics, metrics_invalid, metrics_saturated = _classify_measurement_metrics(
+        execution,
+        e2b_limited=e2b_limited,
+        errors=errors,
+    )
+    invalid |= metrics_invalid
+    saturated |= metrics_saturated
+    if load.correctness_failures:
+        invalid = True
+        errors.append(f"observed {load.correctness_failures} correctness failure(s)")
+    invalid |= _validate_measurement_counters(execution, errors)
+    if warmup_failed and execution.scenario_id != "basic" and not e2b_limited:
+        invalid = True
+        errors.append("Runtime warmup contained an operational failure without an E2B limit signal")
+
+    status = "invalid" if invalid else "e2b_limited" if e2b_limited else "saturated" if saturated else "valid_scaling"
+    return StagingPublicCapacityPoint(
+        scenario_id=execution.scenario_id,
+        requested_concurrency=concurrency,
+        backend_replicas=execution.backend_replicas,
+        block_index=execution.block_index,
+        phase=execution.phase,
+        status=status,
+        setup=execution.setup.model_copy(deep=True),
+        observations=[item.model_copy(deep=True) for item in execution.observations],
+        cleanup=[item.model_copy(deep=True) for item in execution.cleanup],
+        load=load.model_copy(deep=True),
+        metrics=metrics,
+        e2b_observation=(execution.e2b_observation.model_copy(deep=True) if execution.e2b_observation else None),
+        physical_cleanup=execution.physical_cleanup.model_copy(deep=True),
+        errors=list(dict.fromkeys(errors)),
+    )
+
+
+def _validate_setup_and_load_contract(
+    execution: StagingPublicCapacityExecution,
+    *,
+    basic_warmup_operational_boundary: bool,
+    e2b_limited: bool,
+    errors: list[str],
+) -> bool:
+    """Validate replica, setup, worker, and measurement-window invariants."""
+
+    invalid = False
+    concurrency = execution.requested_concurrency
+    load = execution.load
     if execution.backend_replicas is None:
         invalid = True
         errors.append("observed Agent Backend replica count was missing")
@@ -98,10 +175,23 @@ def finalize_staging_public_capacity_point(
     ):
         invalid = True
         errors.append("measurement UTC time window was missing")
+    return invalid
 
-    invalid |= _validate_cleanup_evidence(execution, errors)
 
-    request_level_e2b_limit = warmup_e2b_limited or any(
+def _validate_e2b_limit_evidence(
+    execution: StagingPublicCapacityExecution,
+    *,
+    basic_warmup_operational_boundary: bool,
+    warmup_e2b_limited: bool,
+    e2b_limited: bool,
+    errors: list[str],
+) -> tuple[bool, bool, bool]:
+    """Classify independent E2B evidence without over-attributing request failures."""
+
+    invalid = False
+    saturated = False
+    e2b = execution.e2b_observation
+    request_level_limit = warmup_e2b_limited or any(
         observation.sample.error_type == "e2b_inventory_limited" for observation in execution.observations
     )
     if e2b is None and not basic_warmup_operational_boundary:
@@ -124,7 +214,7 @@ def finalize_staging_public_capacity_point(
         if not e2b.observation_complete and not throttle_only_gap:
             invalid = True
             errors.append("measurement-window E2B count observation was incomplete")
-    if request_level_e2b_limit:
+    if request_level_limit:
         errors.append("the public Runtime transaction reported an E2B Sandbox inventory limit")
         # Request-level errors are diagnostic only. Runtime limit attribution
         # requires the independent count observer to show running=20 for three
@@ -135,7 +225,24 @@ def finalize_staging_public_capacity_point(
                 saturated = True
             else:
                 invalid = True
+    return e2b_limited, invalid, saturated
 
+
+def _validate_warmup_and_measurement_observations(
+    execution: StagingPublicCapacityExecution,
+    *,
+    e2b_limited: bool,
+    warmup_failed: bool,
+    warmup_outcomes_accounted: bool,
+    basic_warmup_operational_boundary: bool,
+    warmup_e2b_limited: bool,
+    errors: list[str],
+) -> tuple[bool, bool]:
+    """Validate warmup accounting and classify terminal observation failures."""
+
+    invalid = False
+    saturated = False
+    load = execution.load
     if load.warmup_correctness_failures:
         invalid = True
         errors.append(f"observed {load.warmup_correctness_failures} warmup correctness failure(s)")
@@ -164,53 +271,41 @@ def finalize_staging_public_capacity_point(
         elif not sample.succeeded:
             invalid = True
             errors.append(_sample_failure(sample))
+    return invalid, saturated
+
+
+def _classify_measurement_metrics(
+    execution: StagingPublicCapacityExecution,
+    *,
+    e2b_limited: bool,
+    errors: list[str],
+) -> tuple[StagingPublicCapacityMetrics, bool, bool]:
+    """Aggregate measurement metrics and apply scenario-specific operational thresholds."""
 
     metrics = _aggregate_metrics(execution)
-    required_active = math.ceil(concurrency * 0.9)
-    if load.measurement_started_at is not None and (
+    load = execution.load
+    required_active = math.ceil(execution.requested_concurrency * 0.9)
+    has_operational_failure = load.measurement_started_at is not None and (
         load.timed_out
         or load.throttled_requests > 0
         or load.timeout_requests > 0
         or metrics.success_rate < 0.95
         or load.observed_max_active < required_active
-    ):
-        if execution.scenario_id == "basic":
-            saturated = True
-        elif not e2b_limited:
-            invalid = True
-        if load.observed_max_active < required_active:
-            errors.append(f"observed max active {load.observed_max_active}/{concurrency} was below 90%")
-        if metrics.success_rate < 0.95:
-            errors.append(f"success rate {metrics.success_rate:.2%} was below 95%")
-        if load.timed_out or load.timeout_requests:
-            errors.append(f"observed {load.timeout_requests} timeout request(s)")
-        if load.throttled_requests:
-            errors.append(f"observed {load.throttled_requests} throttled request(s)")
-    if load.correctness_failures:
-        invalid = True
-        errors.append(f"observed {load.correctness_failures} correctness failure(s)")
-    invalid |= _validate_measurement_counters(execution, errors)
-    if warmup_failed and execution.scenario_id != "basic" and not e2b_limited:
-        invalid = True
-        errors.append("Runtime warmup contained an operational failure without an E2B limit signal")
-
-    status = "invalid" if invalid else "e2b_limited" if e2b_limited else "saturated" if saturated else "valid_scaling"
-    return StagingPublicCapacityPoint(
-        scenario_id=execution.scenario_id,
-        requested_concurrency=concurrency,
-        backend_replicas=execution.backend_replicas,
-        block_index=execution.block_index,
-        phase=execution.phase,
-        status=status,
-        setup=execution.setup.model_copy(deep=True),
-        observations=[item.model_copy(deep=True) for item in execution.observations],
-        cleanup=[item.model_copy(deep=True) for item in execution.cleanup],
-        load=load.model_copy(deep=True),
-        metrics=metrics,
-        e2b_observation=(execution.e2b_observation.model_copy(deep=True) if execution.e2b_observation else None),
-        physical_cleanup=execution.physical_cleanup.model_copy(deep=True),
-        errors=list(dict.fromkeys(errors)),
     )
+    if not has_operational_failure:
+        return metrics, False, False
+
+    invalid = execution.scenario_id != "basic" and not e2b_limited
+    saturated = execution.scenario_id == "basic"
+    if load.observed_max_active < required_active:
+        errors.append(f"observed max active {load.observed_max_active}/{execution.requested_concurrency} was below 90%")
+    if metrics.success_rate < 0.95:
+        errors.append(f"success rate {metrics.success_rate:.2%} was below 95%")
+    if load.timed_out or load.timeout_requests:
+        errors.append(f"observed {load.timeout_requests} timeout request(s)")
+    if load.throttled_requests:
+        errors.append(f"observed {load.throttled_requests} throttled request(s)")
+    return metrics, invalid, saturated
 
 
 def _validate_cleanup_evidence(
