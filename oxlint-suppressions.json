@@ -2495,21 +2495,6 @@
       "count": 1
     }
   },
-  "web/app/components/develop/code.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 6
-    }
-  },
-  "web/app/components/develop/doc.tsx": {
-    "eslint-react/static-components": {
-      "count": 2
-    }
-  },
-  "web/app/components/develop/md.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/explore/item-operation/__tests__/index.spec.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1

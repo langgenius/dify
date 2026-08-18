@@ -1,14 +1,14 @@
 import type { ApiKeyList as AppApiKeyList } from '@dify/contracts/api/console/apps/types.gen'
 import type { ApiKeyList as DatasetApiKeyList } from '@dify/contracts/api/console/datasets/types.gen'
 import type { EnvironmentApiKey } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import type { SecretKeyScope } from '../secret-key-modal'
-import { QueryClientProvider } from '@tanstack/react-query'
+import type { ComponentProps } from 'react'
+import { QueryClientProvider, skipToken } from '@tanstack/react-query'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach } from 'vite-plus/test'
 import { render } from '@/test/console/render'
 import { createTestQueryClient } from '@/test/query-client'
-import SecretKeyModal from '../secret-key-modal'
+import { ApiKeyModal } from '../api-key-modal'
 
 const apiMocks = vi.hoisted(() => ({
   appKeys: [] as AppApiKeyList['data'],
@@ -33,10 +33,13 @@ vi.mock('@/service/client', () => ({
           get: {
             queryOptions: ({ input }: { input: unknown }) => ({
               queryKey: ['apps', 'api-keys', input],
-              queryFn: () => {
-                apiMocks.listApp(input)
-                return Promise.resolve({ data: apiMocks.appKeys })
-              },
+              queryFn:
+                input === skipToken
+                  ? skipToken
+                  : () => {
+                      apiMocks.listApp(input)
+                      return Promise.resolve({ data: apiMocks.appKeys })
+                    },
             }),
           },
           post: {
@@ -83,13 +86,15 @@ vi.mock('@/service/client', () => ({
       appDeploy: {
         accessService: {
           listEnvironmentApiKeys: {
-            queryOptions: ({ input, enabled }: { input: unknown; enabled?: boolean }) => ({
+            queryOptions: ({ input }: { input: unknown }) => ({
               queryKey: ['environment', 'api-keys', input],
-              queryFn: () => {
-                apiMocks.listEnvironment(input)
-                return Promise.resolve({ data: apiMocks.environmentKeys })
-              },
-              enabled,
+              queryFn:
+                input === skipToken
+                  ? skipToken
+                  : () => {
+                      apiMocks.listEnvironment(input)
+                      return Promise.resolve({ data: apiMocks.environmentKeys })
+                    },
             }),
           },
           createEnvironmentApiKey: {
@@ -136,23 +141,26 @@ const environmentScope = {
   environmentId: 'staging',
 } as const
 
-async function renderModal(scope: SecretKeyScope, overrides: { canManage?: boolean } = {}) {
+async function renderModal(
+  scope: ComponentProps<typeof ApiKeyModal>['scope'],
+  overrides: { canManage?: boolean } = {},
+) {
   const queryClient = createTestQueryClient()
-  const onClose = vi.fn()
+  const onOpenChange = vi.fn()
   const result = render(
     <QueryClientProvider client={queryClient}>
-      <SecretKeyModal
-        isShow
+      <ApiKeyModal
+        open
         canManage={overrides.canManage ?? true}
         scope={scope}
-        onClose={onClose}
+        onOpenChange={onOpenChange}
       />
     </QueryClientProvider>,
   )
   await act(async () => {
     vi.runAllTimers()
   })
-  return { ...result, onClose }
+  return { ...result, onOpenChange }
 }
 
 async function confirmKeyDeletion(accessibleName: string) {
@@ -165,7 +173,7 @@ async function confirmKeyDeletion(accessibleName: string) {
   await user.click(await screen.findByText('common.operation.confirm'))
 }
 
-describe('SecretKeyModal', () => {
+describe('ApiKeyModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers({ shouldAdvanceTime: true })
@@ -236,7 +244,9 @@ describe('SecretKeyModal', () => {
         params: { resource_id: 'app-123' },
       })
     })
-    expect(await screen.findByText('new-app-token-123')).toBeInTheDocument()
+    expect(
+      await screen.findByRole('textbox', { name: 'appApi.apiKeyModal.secretKey' }),
+    ).toHaveValue('new-app-token-123')
   })
 
   it('creates a dataset API key through the generated mutation', async () => {
@@ -248,7 +258,9 @@ describe('SecretKeyModal', () => {
     await waitFor(() => {
       expect(apiMocks.createDataset).toHaveBeenCalledWith()
     })
-    expect(await screen.findByText('new-dataset-token-123')).toBeInTheDocument()
+    expect(
+      await screen.findByRole('textbox', { name: 'appApi.apiKeyModal.secretKey' }),
+    ).toHaveValue('new-dataset-token-123')
   })
 
   it('deletes an app API key through the generated mutation input', async () => {
@@ -342,8 +354,8 @@ describe('SecretKeyModal', () => {
       })
     })
     expect(
-      await screen.findByText('env-created-secret-key-abcdefghijklmnopqrst'),
-    ).toBeInTheDocument()
+      await screen.findByRole('textbox', { name: 'appApi.apiKeyModal.secretKey' }),
+    ).toHaveValue('env-created-secret-key-abcdefghijklmnopqrst')
   })
 
   it('deletes an environment-scoped API key', async () => {
@@ -382,11 +394,11 @@ describe('SecretKeyModal', () => {
   })
 
   it('exposes an accessible close button', async () => {
-    const { onClose } = await renderModal(datasetScope)
+    const { onOpenChange } = await renderModal(datasetScope)
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
 
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
-    expect(onClose).toHaveBeenCalled()
+    expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 })
