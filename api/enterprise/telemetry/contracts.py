@@ -32,7 +32,23 @@ class TelemetryCase(StrEnum):
 
 
 class SignalType(StrEnum):
-    """Signal routing type for telemetry cases."""
+    """Signal routing type for telemetry cases.
+
+    TRACE:
+        Events routed through ``TraceQueueManager`` → ``ops_trace_task``.
+        The Celery worker builds a typed ``TraceInfo``, then dispatches it
+        to both third-party trace providers (Langfuse, LangSmith, …) and
+        ``EnterpriseOtelTrace``.  The enterprise handler may emit
+        structured logs, counters, **and** histograms in one pass, so
+        "TRACE" here means "event that travels the trace pipeline", not
+        strictly "distributed trace span".
+
+    METRIC_LOG:
+        Events routed through ``process_enterprise_telemetry`` Celery
+        task → ``metric_handler``.  Used for lightweight signal-driven
+        counters (app created/deleted, feedback) that don't need the
+        full ``TraceInfo`` data model.
+    """
 
     TRACE = "trace"
     METRIC_LOG = "metric_log"
