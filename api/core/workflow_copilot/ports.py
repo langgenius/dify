@@ -120,7 +120,17 @@ class Repository(Protocol):
 
     def get_checkpoint(self, id: str) -> tuple[Checkpoint, Snapshot]: ...
 
-    def save_run(self, session_id: str, run: Run) -> None: ...
+    def save_run(self, session_id: str, run: Run) -> None:
+        """Persist a run.
+
+        Implementations MUST preserve a caller-supplied non-empty ``run.id``
+        (do not regenerate it): ``handle_verify`` pre-generates the id and sets
+        ``fc.verify_run_id`` to the same value, so a regenerated id would
+        silently desync the persisted row from the session context (surfacing
+        later as a wrong-run / not-found lookup). If ``run.id`` is empty the
+        implementation assigns one.
+        """
+        ...
 
     def get_run(self, id: str) -> Run: ...
 
