@@ -43,7 +43,7 @@ def _db_provider() -> ApiToolProvider:
             name="provider-a",
             description="desc",
             icon="icon.svg",
-            user=SimpleNamespace(name="Alice"),
+            user=lambda session: SimpleNamespace(name="Alice"),
             tools=[bundle],
         ),
     )
