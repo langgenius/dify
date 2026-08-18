@@ -2580,11 +2580,6 @@
       "count": 2
     }
   },
-  "web/app/components/header/account-setting/members-page/transfer-ownership-modal/member-selector.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/header/account-setting/model-provider-page/declarations.ts": {
     "erasable-syntax-only/enums": {
       "count": 11
@@ -2975,16 +2970,6 @@
   },
   "web/app/components/plugins/plugin-page/context.ts": {
     "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/plugins/plugin-page/filter-management/category-filter.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/plugins/plugin-page/filter-management/search-box.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -4128,17 +4113,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/human-input/components/delivery-method/recipient/member-list.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    },
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/human-input/components/delivery-method/test-email-sender.tsx": {
     "jsx-a11y/no-autofocus": {
       "count": 1
@@ -4243,17 +4217,6 @@
   },
   "web/app/components/workflow/nodes/knowledge-base/utils.ts": {
     "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/knowledge-retrieval/components/metadata/add-condition.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    },
-    "no-restricted-imports": {
       "count": 1
     }
   },
