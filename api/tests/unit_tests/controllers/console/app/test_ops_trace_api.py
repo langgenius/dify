@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from contextlib import nullcontext
-from types import SimpleNamespace
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -14,7 +13,9 @@ from controllers.console import console_ns
 from controllers.console import wraps as console_wraps
 from controllers.console.app import ops_trace as ops_trace_module
 from controllers.console.app import wraps as app_wraps
+from enums import DeploymentEdition
 from libs import login as login_lib
+from models import Tenant
 from models.account import Account, AccountStatus, TenantAccountRole
 from models.model import App, AppMode, IconType
 
@@ -24,25 +25,39 @@ def _make_account(role: TenantAccountRole) -> Account:
     account.id = "account-123"  # type: ignore[assignment]
     account.status = AccountStatus.ACTIVE
     account.role = role
-    account._current_tenant = SimpleNamespace(id="tenant-123")  # type: ignore[assignment]
+    tenant = Tenant(name="Test tenant")
+    tenant.id = "tenant-123"
+    account._current_tenant = tenant
     account._get_current_object = lambda: account  # type: ignore[attr-defined]
     return account
 
 
-def _make_app() -> SimpleNamespace:
-    return SimpleNamespace(id="app-123", tenant_id="tenant-123", status="normal", mode="chat")
+def _make_app() -> App:
+    return App(
+        id="app-123",
+        tenant_id="tenant-123",
+        name="Trace app",
+        description="",
+        mode=AppMode.CHAT,
+        icon_type=IconType.EMOJI,
+        icon="robot",
+        icon_background="#FFFFFF",
+        enable_site=True,
+        enable_api=True,
+        max_active_requests=None,
+    )
 
 
 def _patch_console_guards(
     monkeypatch: pytest.MonkeyPatch,
     account: Account,
-    app_model: SimpleNamespace,
+    app_model: App,
     *,
     rbac_enabled: bool = False,
 ) -> None:
     monkeypatch.setattr(login_lib.dify_config, "LOGIN_DISABLED", True)
     monkeypatch.setattr(login_lib.dify_config, "RBAC_ENABLED", rbac_enabled)
-    monkeypatch.setattr(console_wraps.dify_config, "EDITION", "CLOUD")
+    monkeypatch.setattr(console_wraps.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     monkeypatch.setattr(login_lib, "current_user", account)
     monkeypatch.setattr(login_lib, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
     monkeypatch.setattr(console_wraps, "current_account_with_tenant", lambda: (account, account.current_tenant_id))

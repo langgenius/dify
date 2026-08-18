@@ -18,7 +18,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 import httpx
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 from redis.asyncio import Redis
 
 from dify_agent.agent_stub.shell_env import ShellAgentStubTokenFactory
@@ -31,9 +31,9 @@ from dify_agent.server.observability import configure_server_observability
 from dify_agent.server.routes.runs import create_runs_router
 from dify_agent.server.routes.execution_bindings import create_execution_bindings_router
 from dify_agent.server.routes.home_snapshots import create_home_snapshots_router
-from dify_agent.server.routes.workspace_files import create_workspace_files_router
+from dify_agent.server.routes.binding_files import create_binding_files_router
 from dify_agent.server.execution_bindings import ExecutionBindingService
-from dify_agent.server.workspace_files import AgentStubWorkspaceFileUploader, WorkspaceFileService
+from dify_agent.server.binding_files import BindingFileService
 from dify_agent.server.home_snapshots import HomeSnapshotService
 from dify_agent.server.settings import ServerSettings
 from dify_agent.storage.redis_run_store import RedisRunStore
@@ -72,15 +72,11 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         agent_stub_api_base_url=resolved_settings.agent_stub_api_base_url,
         agent_stub_token_factory=agent_stub_token_factory,
     )
-    workspace_file_service = (
-        WorkspaceFileService(
+    binding_file_service = (
+        BindingFileService(
             execution_bindings=runtime_backend_profile.execution_bindings,
-            upload_max_bytes=resolved_settings.sandbox_file_upload_max_bytes,
-            file_uploader=(
-                AgentStubWorkspaceFileUploader(file_request_handler=agent_stub_file_request_handler)
-                if agent_stub_file_request_handler is not None
-                else None
-            ),
+            agent_stub_api_base_url=resolved_settings.agent_stub_api_base_url,
+            agent_stub_token_factory=agent_stub_token_factory,
         )
         if runtime_backend_profile is not None
         else None
@@ -115,6 +111,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
             plugin_daemon_http_client=plugin_daemon_http_client,
             dify_api_http_client=dify_api_inner_http_client,
             shutdown_grace_seconds=resolved_settings.shutdown_grace_seconds,
+            run_timeout_seconds=resolved_settings.run_timeout_seconds,
             layer_providers=layer_providers,
         )
         state["store"] = store
@@ -136,16 +133,14 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     def get_scheduler() -> RunScheduler:
         return state["scheduler"]  # pyright: ignore[reportReturnType]
 
-    app.include_router(
-        create_runs_router(
-            get_store,
-            get_scheduler,
-            auth_dependency=create_bearer_token_dependency(resolved_settings.api_token),
-        )
+    control_plane_router = APIRouter(
+        dependencies=[create_bearer_token_dependency(resolved_settings.api_token)],
     )
-    app.include_router(create_execution_bindings_router(lambda: execution_binding_service))
-    app.include_router(create_home_snapshots_router(lambda: home_snapshot_service))
-    app.include_router(create_workspace_files_router(lambda: workspace_file_service))
+    control_plane_router.include_router(create_runs_router(get_store, get_scheduler))
+    control_plane_router.include_router(create_execution_bindings_router(lambda: execution_binding_service))
+    control_plane_router.include_router(create_home_snapshots_router(lambda: home_snapshot_service))
+    control_plane_router.include_router(create_binding_files_router(lambda: binding_file_service))
+    app.include_router(control_plane_router)
     app.include_router(
         create_agent_stub_router(
             token_codec=agent_stub_token_codec,

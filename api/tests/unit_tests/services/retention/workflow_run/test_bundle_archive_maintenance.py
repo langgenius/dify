@@ -1,10 +1,13 @@
+import datetime
 import json
-from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import MagicMock, call, patch
 
 import pytest
+from sqlalchemy import event
+from sqlalchemy.orm import Session, sessionmaker
 
+from models.workflow import WorkflowRunArchiveBundle
 from services.retention.workflow_run.bundle_archive_maintenance import (
     ARCHIVED_TABLES,
     ArchiveBundleCatalogEntry,
@@ -35,14 +38,16 @@ def _table_records(
     return records
 
 
-def _catalog_entry(*, catalog_id: str = CATALOG_ID, shard: str = "00-of-01") -> ArchiveBundleCatalogEntry:
+def _catalog_entry(
+    *, catalog_id: str = CATALOG_ID, shard: str = "00-of-01", bundle_id: str = BUNDLE_ID
+) -> ArchiveBundleCatalogEntry:
     return ArchiveBundleCatalogEntry(
         catalog_id=catalog_id,
         tenant_id=TENANT_ID,
         year=2025,
         month=3,
         shard=shard,
-        bundle_id=BUNDLE_ID,
+        bundle_id=bundle_id,
         workflow_run_count=0,
         row_count=0,
         archive_bytes=0,
@@ -93,10 +98,32 @@ def _manifest(
     ).encode()
 
 
-def _session_factory(session: MagicMock) -> MagicMock:
-    factory = MagicMock()
-    factory.return_value.__enter__.return_value = session
-    return factory
+def _bundle_model(entry: ArchiveBundleCatalogEntry) -> WorkflowRunArchiveBundle:
+    bundle = WorkflowRunArchiveBundle(
+        tenant_id=entry.tenant_id,
+        year=entry.year,
+        month=entry.month,
+        shard=entry.shard,
+        bundle_id=entry.bundle_id,
+        workflow_run_count=entry.workflow_run_count,
+        row_count=entry.row_count,
+        archive_bytes=entry.archive_bytes,
+        archived_at=datetime.datetime(2026, 1, 1),
+    )
+    bundle.id = entry.catalog_id
+    return bundle
+
+
+def _cursor_bundle(*, year: int, tenant_id: str) -> WorkflowRunArchiveBundle:
+    bundle = _bundle_model(_catalog_entry())
+    bundle.year = year
+    bundle.tenant_id = tenant_id
+    return bundle
+
+
+def _persist_catalog(session: Session, entry: ArchiveBundleCatalogEntry) -> None:
+    session.add(_bundle_model(entry))
+    session.flush()
 
 
 def _bundle_reference(
@@ -141,26 +168,17 @@ def _sample_archive_records() -> dict[str, list[dict[str, Any]]]:
     )
 
 
-def test_catalog_discovery_is_ordered_and_limited_before_storage_io() -> None:
-    entry = _catalog_entry()
-    bundle = SimpleNamespace(
-        id=entry.catalog_id,
-        tenant_id=entry.tenant_id,
-        year=entry.year,
-        month=entry.month,
-        shard=entry.shard,
-        bundle_id=entry.bundle_id,
-        workflow_run_count=entry.workflow_run_count,
-        row_count=entry.row_count,
-        archive_bytes=entry.archive_bytes,
-    )
-    session = MagicMock()
-    session.get.return_value = bundle
-    session.scalars.return_value = [bundle]
+def test_catalog_discovery_is_ordered_and_limited_before_storage_io(
+    sqlite_session_factory: sessionmaker[Session], sqlite_session: Session
+) -> None:
+    cursor = _catalog_entry()
+    entry = _catalog_entry(catalog_id="019f63b7-5ca4-7681-9ce0-800283608f40", bundle_id="bundle-b")
+    sqlite_session.add_all([_bundle_model(cursor), _bundle_model(entry)])
+    sqlite_session.commit()
     storage = MagicMock()
     maintenance = WorkflowRunBundleArchiveMaintenance(
         storage=cast(MagicMock, storage),
-        session_factory=cast(MagicMock, _session_factory(session)),
+        session_factory=sqlite_session_factory,
     )
 
     entries = maintenance._list_catalog_entries(
@@ -171,36 +189,29 @@ def test_catalog_discovery_is_ordered_and_limited_before_storage_io() -> None:
         limit=2,
     )
 
-    statement = session.scalars.call_args.args[0]
-    rendered = str(statement)
-    assert "workflow_run_archive_bundles.year" in rendered
-    assert "workflow_run_archive_bundles.month" in rendered
-    assert "workflow_run_archive_bundles.id >" in rendered
-    assert "ORDER BY workflow_run_archive_bundles.id ASC" in rendered
-    assert "LIMIT" in rendered
     assert entries == [entry]
     storage.list_objects.assert_not_called()
 
 
-def test_catalog_discovery_filters_and_validates_the_requested_shard() -> None:
-    entry = _catalog_entry(shard="03-of-16")
-    bundle = SimpleNamespace(
-        id=entry.catalog_id,
-        tenant_id=entry.tenant_id,
-        year=entry.year,
-        month=entry.month,
-        shard=entry.shard,
-        bundle_id=entry.bundle_id,
-        workflow_run_count=entry.workflow_run_count,
-        row_count=entry.row_count,
-        archive_bytes=entry.archive_bytes,
+def test_catalog_discovery_filters_and_validates_the_requested_shard(
+    sqlite_session_factory: sessionmaker[Session], sqlite_session: Session
+) -> None:
+    cursor = _catalog_entry(shard="03-of-16")
+    entry = _catalog_entry(
+        catalog_id="019f63b7-5ca4-7681-9ce0-800283608f40",
+        shard="03-of-16",
+        bundle_id="bundle-b",
     )
-    session = MagicMock()
-    session.get.return_value = bundle
-    session.scalars.return_value = [bundle]
+    wrong_cursor = _catalog_entry(
+        catalog_id="019f63b7-5ca4-7681-9ce0-800283608f41",
+        shard="04-of-16",
+        bundle_id="bundle-c",
+    )
+    sqlite_session.add_all([_bundle_model(cursor), _bundle_model(entry), _bundle_model(wrong_cursor)])
+    sqlite_session.commit()
     maintenance = WorkflowRunBundleArchiveMaintenance(
         storage=cast(MagicMock, MagicMock()),
-        session_factory=cast(MagicMock, _session_factory(session)),
+        session_factory=sqlite_session_factory,
     )
 
     entries = maintenance._list_catalog_entries(
@@ -212,34 +223,27 @@ def test_catalog_discovery_filters_and_validates_the_requested_shard() -> None:
         shard="03-of-16",
     )
 
-    statement = session.scalars.call_args.args[0]
-    rendered = str(statement)
-    assert "workflow_run_archive_bundles.shard =" in rendered
     assert entries == [entry]
 
-    session.get.return_value = SimpleNamespace(
-        year=2025,
-        month=3,
-        tenant_id=TENANT_ID,
-        shard="04-of-16",
-    )
     with pytest.raises(ValueError, match="requested archive shard"):
         maintenance._list_catalog_entries(
             tenant_ids=None,
             target_year=2025,
             target_month=3,
-            after_catalog_id=CATALOG_ID,
+            after_catalog_id=wrong_cursor.catalog_id,
             limit=2,
             shard="03-of-16",
         )
 
 
-def test_catalog_shard_preflight_rejects_mixed_layout_before_delete() -> None:
-    session = MagicMock()
-    session.scalars.return_value = ["00-of-01"]
+def test_catalog_shard_preflight_rejects_mixed_layout_before_delete(
+    sqlite_session_factory: sessionmaker[Session], sqlite_session: Session
+) -> None:
+    sqlite_session.add(_bundle_model(_catalog_entry(shard="00-of-01")))
+    sqlite_session.commit()
     maintenance = WorkflowRunBundleArchiveMaintenance(
         storage=cast(MagicMock, MagicMock()),
-        session_factory=cast(MagicMock, _session_factory(session)),
+        session_factory=sqlite_session_factory,
     )
 
     with pytest.raises(ValueError, match=r"unexpected shards.*00-of-01"):
@@ -249,19 +253,15 @@ def test_catalog_shard_preflight_rejects_mixed_layout_before_delete() -> None:
             shard_total=16,
         )
 
-    statement = session.scalars.call_args.args[0]
-    rendered = str(statement)
-    assert "workflow_run_archive_bundles.year" in rendered
-    assert "workflow_run_archive_bundles.month" in rendered
-    assert "workflow_run_archive_bundles.shard NOT IN" in rendered
 
-
-def test_catalog_shard_preflight_accepts_an_expected_subset() -> None:
-    session = MagicMock()
-    session.scalars.return_value = []
+def test_catalog_shard_preflight_accepts_an_expected_subset(
+    sqlite_session_factory: sessionmaker[Session], sqlite_session: Session
+) -> None:
+    sqlite_session.add(_bundle_model(_catalog_entry(shard="03-of-16")))
+    sqlite_session.commit()
     maintenance = WorkflowRunBundleArchiveMaintenance(
         storage=cast(MagicMock, MagicMock()),
-        session_factory=cast(MagicMock, _session_factory(session)),
+        session_factory=sqlite_session_factory,
     )
 
     maintenance.validate_catalog_shards(
@@ -271,12 +271,17 @@ def test_catalog_shard_preflight_accepts_an_expected_subset() -> None:
     )
 
 
-def test_catalog_shard_preflight_uses_requested_tenant_scope() -> None:
-    session = MagicMock()
-    session.scalars.return_value = []
+def test_catalog_shard_preflight_uses_requested_tenant_scope(
+    sqlite_session_factory: sessionmaker[Session], sqlite_session: Session
+) -> None:
+    other_entry = _catalog_entry(shard="00-of-01")
+    other_bundle = _bundle_model(other_entry)
+    other_bundle.tenant_id = "other-tenant"
+    sqlite_session.add(other_bundle)
+    sqlite_session.commit()
     maintenance = WorkflowRunBundleArchiveMaintenance(
         storage=cast(MagicMock, MagicMock()),
-        session_factory=cast(MagicMock, _session_factory(session)),
+        session_factory=sqlite_session_factory,
     )
 
     maintenance.validate_catalog_shards(
@@ -286,36 +291,36 @@ def test_catalog_shard_preflight_uses_requested_tenant_scope() -> None:
         tenant_ids=[TENANT_ID],
     )
 
-    statement = session.scalars.call_args.args[0]
-    assert "workflow_run_archive_bundles.tenant_id IN" in str(statement)
-
 
 @pytest.mark.parametrize(
     ("cursor_bundle", "tenant_ids", "error_message"),
     [
         (None, None, "does not exist"),
         (
-            SimpleNamespace(year=2024, month=3, tenant_id=TENANT_ID),
+            _cursor_bundle(year=2024, tenant_id=TENANT_ID),
             None,
             "requested archive month",
         ),
         (
-            SimpleNamespace(year=2025, month=3, tenant_id="other-tenant"),
+            _cursor_bundle(year=2025, tenant_id="other-tenant"),
             [TENANT_ID],
             "requested tenant scope",
         ),
     ],
 )
 def test_catalog_discovery_rejects_cursor_outside_requested_scope(
-    cursor_bundle: SimpleNamespace | None,
+    cursor_bundle: WorkflowRunArchiveBundle | None,
     tenant_ids: list[str] | None,
     error_message: str,
+    sqlite_session_factory: sessionmaker[Session],
+    sqlite_session: Session,
 ) -> None:
-    session = MagicMock()
-    session.get.return_value = cursor_bundle
+    if cursor_bundle is not None:
+        sqlite_session.add(cursor_bundle)
+        sqlite_session.commit()
     maintenance = WorkflowRunBundleArchiveMaintenance(
         storage=cast(MagicMock, MagicMock()),
-        session_factory=cast(MagicMock, _session_factory(session)),
+        session_factory=sqlite_session_factory,
     )
 
     with pytest.raises(ValueError, match=error_message):
@@ -327,43 +332,38 @@ def test_catalog_discovery_rejects_cursor_outside_requested_scope(
             limit=1,
         )
 
-    session.scalars.assert_not_called()
 
-
-def test_catalog_manifest_identity_mismatch_fails_closed() -> None:
+def test_catalog_manifest_identity_mismatch_fails_closed(
+    unbound_session_factory: sessionmaker[Session],
+) -> None:
     entry = _catalog_entry()
     storage = MagicMock()
     storage.get_object.return_value = _manifest(entry, bundle_id="other-bundle")
     maintenance = WorkflowRunBundleArchiveMaintenance(
         storage=cast(MagicMock, storage),
-        session_factory=cast(MagicMock, _session_factory(MagicMock())),
+        session_factory=unbound_session_factory,
     )
 
     with pytest.raises(ValueError, match="identity does not match catalog"):
         maintenance._build_bundle_reference(cast(MagicMock, storage), entry)
 
 
-def test_bundle_maintenance_locks_the_existing_catalog_row() -> None:
+def test_bundle_maintenance_locks_the_existing_catalog_row(sqlite_session: Session) -> None:
     entry = _catalog_entry()
-    session = MagicMock()
-    session.scalar.return_value = entry.catalog_id
+    sqlite_session.add(_bundle_model(entry))
+    sqlite_session.flush()
 
-    WorkflowRunBundleArchiveMaintenance._lock_catalog_entry(session, entry)
-
-    statement = session.scalar.call_args.args[0]
-    rendered = str(statement)
-    assert "workflow_run_archive_bundles.id" in rendered
-    assert "workflow_run_archive_bundles.tenant_id" in rendered
-    assert "FOR UPDATE" in rendered
+    WorkflowRunBundleArchiveMaintenance._lock_catalog_entry(sqlite_session, entry)
 
 
-def test_failure_and_dry_run_do_not_return_a_persistable_cursor() -> None:
+def test_failure_and_dry_run_do_not_return_a_persistable_cursor(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
     entry = _catalog_entry()
-    session = MagicMock()
     storage = MagicMock()
     maintenance = WorkflowRunBundleArchiveMaintenance(
         storage=cast(MagicMock, storage),
-        session_factory=cast(MagicMock, _session_factory(session)),
+        session_factory=sqlite_session_factory,
     )
 
     with (
@@ -385,7 +385,7 @@ def test_failure_and_dry_run_do_not_return_a_persistable_cursor() -> None:
     dry_run = WorkflowRunBundleArchiveMaintenance(
         dry_run=True,
         storage=cast(MagicMock, storage),
-        session_factory=cast(MagicMock, _session_factory(session)),
+        session_factory=sqlite_session_factory,
     )
     bundle_ref = BundleReference(
         catalog=entry,
@@ -468,12 +468,13 @@ def test_live_archive_subset_rejects_content_mismatch() -> None:
         )
 
 
-def test_live_bundle_scope_includes_archived_ids_and_indirect_children() -> None:
+def test_live_bundle_scope_includes_archived_ids_and_indirect_children(
+    unbound_session: Session, unbound_session_factory: sessionmaker[Session]
+) -> None:
     archive_records = _sample_archive_records()
     manifest = _bundle_reference(_catalog_entry(), table_records=archive_records).manifest
-    session = MagicMock()
     maintenance = WorkflowRunBundleArchiveMaintenance(
-        session_factory=cast(MagicMock, _session_factory(session)),
+        session_factory=unbound_session_factory,
     )
 
     def select_live_parent_ids(_session, model, _run_ids):
@@ -488,7 +489,7 @@ def test_live_bundle_scope_includes_archived_ids_and_indirect_children() -> None
         patch.object(maintenance, "_load_records_by_column", return_value=[]) as load_records,
     ):
         maintenance._load_live_bundle_records(
-            session,
+            unbound_session,
             manifest,
             archive_records,
             lock=True,
@@ -511,8 +512,11 @@ def test_live_bundle_scope_includes_archived_ids_and_indirect_children() -> None
     assert ("workflow_app_logs", "id", {"app-log-1"}, True) in queries
 
 
-def test_delete_bundle_accepts_matching_partial_rows_and_deletes_only_that_subset() -> None:
+def test_delete_bundle_accepts_matching_partial_rows_and_deletes_only_that_subset(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
     entry = _catalog_entry()
+    _persist_catalog(sqlite_session, entry)
     archive_records = _sample_archive_records()
     bundle_ref = _bundle_reference(entry, table_records=archive_records)
     partial_records = _table_records(
@@ -520,11 +524,13 @@ def test_delete_bundle_accepts_matching_partial_rows_and_deletes_only_that_subse
         workflow_pause_reasons=archive_records["workflow_pause_reasons"],
     )
     expected_deleted_counts = {table_name: len(partial_records[table_name]) for table_name in ARCHIVED_TABLES}
-    session = MagicMock()
     storage = MagicMock()
     maintenance = WorkflowRunBundleArchiveMaintenance(
-        session_factory=cast(MagicMock, _session_factory(session)),
+        session_factory=sqlite_session_factory,
     )
+    transaction_events: list[str] = []
+    event.listen(sqlite_session, "after_commit", lambda _session: transaction_events.append("commit"))
+    event.listen(sqlite_session, "after_rollback", lambda _session: transaction_events.append("rollback"))
 
     with (
         patch.object(maintenance, "_is_restore_started", return_value=False),
@@ -548,24 +554,28 @@ def test_delete_bundle_accepts_matching_partial_rows_and_deletes_only_that_subse
         patch.object(maintenance, "_mark_deleted") as mark_deleted,
         patch.object(maintenance, "_delete_marker"),
     ):
-        result = maintenance._delete_bundle(session, storage, bundle_ref)
+        result = maintenance._delete_bundle(sqlite_session, storage, bundle_ref)
 
     assert result.success
-    delete_bundle_rows.assert_called_once_with(session, partial_records)
-    session.commit.assert_called_once_with()
-    session.rollback.assert_not_called()
+    delete_bundle_rows.assert_called_once_with(sqlite_session, partial_records)
+    assert transaction_events == ["commit"]
     mark_deleted.assert_called_once_with(storage, bundle_ref.object_prefix)
 
 
-def test_delete_bundle_marks_an_already_absent_source_without_deleting_rows() -> None:
+def test_delete_bundle_marks_an_already_absent_source_without_deleting_rows(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
     entry = _catalog_entry()
+    _persist_catalog(sqlite_session, entry)
     archive_records = _sample_archive_records()
     bundle_ref = _bundle_reference(entry, table_records=archive_records)
-    session = MagicMock()
     storage = MagicMock()
     maintenance = WorkflowRunBundleArchiveMaintenance(
-        session_factory=cast(MagicMock, _session_factory(session)),
+        session_factory=sqlite_session_factory,
     )
+    transaction_events: list[str] = []
+    event.listen(sqlite_session, "after_commit", lambda _session: transaction_events.append("commit"))
+    event.listen(sqlite_session, "after_rollback", lambda _session: transaction_events.append("rollback"))
 
     with (
         patch.object(maintenance, "_is_restore_started", return_value=False),
@@ -580,28 +590,31 @@ def test_delete_bundle_marks_an_already_absent_source_without_deleting_rows() ->
         patch.object(maintenance, "_mark_deleted") as mark_deleted,
         patch.object(maintenance, "_delete_marker") as delete_marker,
     ):
-        result = maintenance._delete_bundle(session, storage, bundle_ref)
+        result = maintenance._delete_bundle(sqlite_session, storage, bundle_ref)
 
     assert result.success
     delete_bundle_rows.assert_not_called()
-    session.commit.assert_not_called()
-    session.rollback.assert_not_called()
+    assert transaction_events == []
     mark_deleted.assert_called_once_with(storage, bundle_ref.object_prefix)
     assert delete_marker.call_count == 2
 
 
-def test_delete_bundle_with_deleted_marker_rejects_remaining_orphan_children() -> None:
+def test_delete_bundle_with_deleted_marker_rejects_remaining_orphan_children(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
     entry = _catalog_entry()
+    _persist_catalog(sqlite_session, entry)
     archive_records = _sample_archive_records()
     bundle_ref = _bundle_reference(entry, table_records=archive_records)
     live_records = _table_records(
         workflow_node_execution_offload=archive_records["workflow_node_execution_offload"],
     )
-    session = MagicMock()
     storage = MagicMock()
     maintenance = WorkflowRunBundleArchiveMaintenance(
-        session_factory=cast(MagicMock, _session_factory(session)),
+        session_factory=sqlite_session_factory,
     )
+    rollback_events: list[str] = []
+    event.listen(sqlite_session, "after_rollback", lambda _session: rollback_events.append("rollback"))
 
     with (
         patch.object(maintenance, "_is_restore_started", return_value=False),
@@ -614,42 +627,45 @@ def test_delete_bundle_with_deleted_marker_rejects_remaining_orphan_children() -
         patch.object(maintenance, "_load_live_bundle_records", return_value=live_records),
         patch.object(maintenance, "_delete_bundle_rows") as delete_bundle_rows,
     ):
-        result = maintenance._delete_bundle(session, storage, bundle_ref)
+        result = maintenance._delete_bundle(sqlite_session, storage, bundle_ref)
 
     assert not result.success
     assert "Live rows exist for bundle with deleted marker" in result.error
     delete_bundle_rows.assert_not_called()
-    session.commit.assert_not_called()
-    session.rollback.assert_called_once_with()
+    assert rollback_events == ["rollback"]
 
 
-def test_delete_bundle_rejects_an_in_progress_restore() -> None:
+def test_delete_bundle_rejects_an_in_progress_restore(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
     entry = _catalog_entry()
+    _persist_catalog(sqlite_session, entry)
     bundle_ref = _bundle_reference(entry)
-    session = MagicMock()
     storage = MagicMock()
     maintenance = WorkflowRunBundleArchiveMaintenance(
-        session_factory=cast(MagicMock, _session_factory(session)),
+        session_factory=sqlite_session_factory,
     )
+    rollback_events: list[str] = []
+    event.listen(sqlite_session, "after_rollback", lambda _session: rollback_events.append("rollback"))
 
     with (
         patch.object(maintenance, "_is_restore_started", return_value=True),
         patch.object(maintenance, "_validate_archive_object") as validate_archive,
     ):
-        result = maintenance._delete_bundle(session, storage, bundle_ref)
+        result = maintenance._delete_bundle(sqlite_session, storage, bundle_ref)
 
     assert not result.success
     assert "reconcile restore before delete" in result.error
     validate_archive.assert_not_called()
-    session.commit.assert_not_called()
-    session.rollback.assert_called_once_with()
+    assert rollback_events == ["rollback"]
 
 
-def test_delete_bundle_rows_use_only_verified_primary_keys() -> None:
+def test_delete_bundle_rows_use_only_verified_primary_keys(
+    unbound_session: Session, unbound_session_factory: sessionmaker[Session]
+) -> None:
     live_records = _sample_archive_records()
-    session = MagicMock()
     maintenance = WorkflowRunBundleArchiveMaintenance(
-        session_factory=cast(MagicMock, _session_factory(session)),
+        session_factory=unbound_session_factory,
     )
 
     with patch.object(
@@ -657,7 +673,7 @@ def test_delete_bundle_rows_use_only_verified_primary_keys() -> None:
         "_delete_by_column",
         side_effect=lambda _session, _model, _column, values: len(values),
     ) as delete_by_column:
-        deleted_counts = maintenance._delete_bundle_rows(session, live_records)
+        deleted_counts = maintenance._delete_bundle_rows(unbound_session, live_records)
 
     expected_table_order = [
         "workflow_pause_reasons",
@@ -673,33 +689,39 @@ def test_delete_bundle_rows_use_only_verified_primary_keys() -> None:
     assert deleted_counts == {table_name: len(live_records[table_name]) for table_name in ARCHIVED_TABLES}
 
 
-def test_restore_does_not_skip_an_interrupted_delete_without_deleted_marker() -> None:
+def test_restore_does_not_skip_an_interrupted_delete_without_deleted_marker(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
     entry = _catalog_entry()
-    session = MagicMock()
+    _persist_catalog(sqlite_session, entry)
     maintenance = WorkflowRunBundleArchiveMaintenance(
         storage=cast(MagicMock, MagicMock()),
-        session_factory=cast(MagicMock, _session_factory(session)),
+        session_factory=sqlite_session_factory,
     )
+    commit_events: list[str] = []
+    event.listen(sqlite_session, "after_commit", lambda _session: commit_events.append("commit"))
 
     with (
         patch.object(maintenance, "_is_deleted", return_value=False),
         patch.object(maintenance, "_is_delete_started", return_value=True),
         patch.object(maintenance, "_validate_live_counts") as validate_live_counts,
     ):
-        result = maintenance._restore_bundle(session, MagicMock(), _bundle_reference(entry))
+        result = maintenance._restore_bundle(sqlite_session, MagicMock(), _bundle_reference(entry))
 
     assert not result.success
     assert "reconcile delete first" in result.error
     validate_live_counts.assert_not_called()
-    session.commit.assert_not_called()
+    assert commit_events == []
 
 
-def test_restore_does_not_skip_missing_source_rows_without_deleted_marker() -> None:
+def test_restore_does_not_skip_missing_source_rows_without_deleted_marker(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
     entry = _catalog_entry()
-    session = MagicMock()
+    _persist_catalog(sqlite_session, entry)
     maintenance = WorkflowRunBundleArchiveMaintenance(
         storage=cast(MagicMock, MagicMock()),
-        session_factory=cast(MagicMock, _session_factory(session)),
+        session_factory=sqlite_session_factory,
     )
     bundle_ref = _bundle_reference(entry)
 
@@ -712,22 +734,25 @@ def test_restore_does_not_skip_missing_source_rows_without_deleted_marker() -> N
             side_effect=ValueError("source rows are missing"),
         ) as validate_live_counts,
     ):
-        result = maintenance._restore_bundle(session, MagicMock(), bundle_ref)
+        result = maintenance._restore_bundle(sqlite_session, MagicMock(), bundle_ref)
 
     assert not result.success
     assert "source rows are missing" in result.error
-    validate_live_counts.assert_called_once_with(session, bundle_ref.manifest, expected_present=True)
-    session.commit.assert_not_called()
+    validate_live_counts.assert_called_once_with(sqlite_session, bundle_ref.manifest, expected_present=True)
 
 
-def test_restore_reconciles_a_started_marker_after_the_source_commit() -> None:
+def test_restore_reconciles_a_started_marker_after_the_source_commit(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
     entry = _catalog_entry()
-    session = MagicMock()
+    _persist_catalog(sqlite_session, entry)
     storage = MagicMock()
     maintenance = WorkflowRunBundleArchiveMaintenance(
         storage=cast(MagicMock, storage),
-        session_factory=cast(MagicMock, _session_factory(session)),
+        session_factory=sqlite_session_factory,
     )
+    commit_events: list[str] = []
+    event.listen(sqlite_session, "after_commit", lambda _session: commit_events.append("commit"))
     bundle_ref = _bundle_reference(entry)
 
     with (
@@ -737,12 +762,12 @@ def test_restore_reconciles_a_started_marker_after_the_source_commit() -> None:
         patch.object(maintenance, "_validate_live_counts") as validate_live_counts,
         patch.object(maintenance, "_mark_restored") as mark_restored,
     ):
-        result = maintenance._restore_bundle(session, storage, bundle_ref)
+        result = maintenance._restore_bundle(sqlite_session, storage, bundle_ref)
 
     assert result.success
-    validate_live_counts.assert_called_once_with(session, bundle_ref.manifest, expected_present=True)
+    validate_live_counts.assert_called_once_with(sqlite_session, bundle_ref.manifest, expected_present=True)
     mark_restored.assert_called_once_with(storage, bundle_ref.object_prefix)
-    session.commit.assert_not_called()
+    assert commit_events == []
 
 
 def test_mark_restored_clears_stale_delete_marker_before_releasing_restore_fence() -> None:

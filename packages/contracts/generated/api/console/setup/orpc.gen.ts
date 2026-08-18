@@ -31,7 +31,7 @@ export const get = oc
  * Initialize system setup with admin account.
  *
  * NOTE: This endpoint is unauthenticated by design for first-time bootstrap.
- * Access is restricted by deployment mode (`SELF_HOSTED`), one-time setup guards,
+ * Access is restricted to self-hosted editions (`COMMUNITY` and `ENTERPRISE`), one-time setup guards,
  * and init-password validation rather than user session authentication.
  *
  */
@@ -43,7 +43,7 @@ export const post = oc
     path: '/setup',
     successStatus: 201,
     summary:
-      'Initialize system setup with admin account.\n\n    NOTE: This endpoint is unauthenticated by design for first-time bootstrap.\n    Access is restricted by deployment mode (`SELF_HOSTED`), one-time setup guards,\n    and init-password validation rather than user session authentication.\n    ',
+      'Initialize system setup with admin account.\n\n    NOTE: This endpoint is unauthenticated by design for first-time bootstrap.\n    Access is restricted to self-hosted editions (`COMMUNITY` and `ENTERPRISE`), one-time setup guards,\n    and init-password validation rather than user session authentication.\n    ',
     tags: ['console'],
   })
   .input(z.object({ body: zPostSetupBody }))

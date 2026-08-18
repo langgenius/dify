@@ -1,12 +1,12 @@
 import type { BannerResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { ComponentProps, FocusEvent } from 'react'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { Carousel, useCarousel } from '@/app/components/base/carousel'
-import { userProfileAtom } from '@/context/account-state'
 import { useLocale } from '@/context/i18n'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { BannerItem } from './banner-item'
 import { IndicatorButton } from './indicator-button'
 
@@ -190,7 +190,10 @@ type BannerProps = {
 export function Banner({ banners }: BannerProps) {
   const { t } = useTranslation()
   const locale = useLocale()
-  const userProfile = useAtomValue(userProfileAtom)
+  const { data: userProfile } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile,
+  })
   const [carouselPlugins] = useState(() => [
     Carousel.Plugin.Fade(),
     Carousel.Plugin.Autoplay({

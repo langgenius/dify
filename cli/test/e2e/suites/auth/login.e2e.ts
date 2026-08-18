@@ -23,7 +23,7 @@ import type { Buffer } from 'node:buffer'
 import { spawn } from 'node:child_process'
 import { stat } from 'node:fs/promises'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, inject, it } from 'vite-plus/test'
 import { BIN, BUN, injectAuth, run, withTempConfig } from '../../helpers/cli.js'
 import { resolveEnv } from '../../setup/env.js'
 

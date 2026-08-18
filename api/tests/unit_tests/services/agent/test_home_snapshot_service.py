@@ -129,27 +129,23 @@ def test_build_apply_fails_fast_without_source_binding() -> None:
         )
 
 
-def test_home_snapshot_collection_database_failure_is_best_effort(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_home_snapshot_collection_database_failure_propagates(monkeypatch: pytest.MonkeyPatch) -> None:
     context = MagicMock()
     session = context.__enter__.return_value
-    session.scalar.side_effect = RuntimeError("database unavailable")
-    log_exception = MagicMock()
+    error = RuntimeError("database unavailable")
+    session.scalar.side_effect = error
     monkeypatch.setattr(
         "services.agent.home_snapshot_service.session_factory.create_session",
         lambda: context,
     )
-    monkeypatch.setattr("services.agent.home_snapshot_service.logger.exception", log_exception)
 
-    AgentHomeSnapshotService.collect_retired_home_snapshot(
-        tenant_id="tenant-1",
-        home_snapshot_id="home-1",
-    )
+    with pytest.raises(RuntimeError) as exc_info:
+        AgentHomeSnapshotService.collect_retired_home_snapshot(
+            tenant_id="tenant-1",
+            home_snapshot_id="home-1",
+        )
 
-    session.scalar.assert_called_once()
-    log_exception.assert_called_once_with(
-        "Failed to collect retired Agent Home Snapshot",
-        extra={"tenant_id": "tenant-1", "home_snapshot_id": "home-1"},
-    )
+    assert exc_info.value is error
 
 
 @pytest.mark.parametrize(
@@ -157,7 +153,7 @@ def test_home_snapshot_collection_database_failure_is_best_effort(monkeypatch: p
     [(AgentHomeSnapshot, AgentConfigDraft, AgentConfigSnapshot)],
     indirect=True,
 )
-def test_home_snapshot_collection_final_delete_failure_is_best_effort(
+def test_home_snapshot_collection_backend_failure_propagates_and_preserves_retired_snapshot(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     snapshot = AgentHomeSnapshot(
@@ -169,7 +165,45 @@ def test_home_snapshot_collection_final_delete_failure_is_best_effort(
     )
     sqlite_session.add(snapshot)
     sqlite_session.commit()
-    commit = MagicMock(side_effect=RuntimeError("database unavailable"))
+    error = RuntimeError("Agent backend unavailable")
+    delete = MagicMock(side_effect=error)
+    monkeypatch.setattr(
+        "services.agent.home_snapshot_service.session_factory.create_session",
+        lambda: nullcontext(sqlite_session),
+    )
+    monkeypatch.setattr(AgentHomeSnapshotService, "delete", delete)
+
+    with pytest.raises(RuntimeError) as exc_info:
+        AgentHomeSnapshotService.collect_retired_home_snapshot(
+            tenant_id="tenant-1",
+            home_snapshot_id=snapshot.id,
+        )
+
+    assert exc_info.value is error
+    stored_snapshot = sqlite_session.get(AgentHomeSnapshot, snapshot.id)
+    assert stored_snapshot is not None
+    assert stored_snapshot.status is AgentWorkingResourceStatus.RETIRED
+
+
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(AgentHomeSnapshot, AgentConfigDraft, AgentConfigSnapshot)],
+    indirect=True,
+)
+def test_home_snapshot_collection_final_delete_failure_propagates(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    snapshot = AgentHomeSnapshot(
+        id="home-1",
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        snapshot_ref="snapshot-ref-1",
+        status=AgentWorkingResourceStatus.RETIRED,
+    )
+    sqlite_session.add(snapshot)
+    sqlite_session.commit()
+    error = RuntimeError("database unavailable")
+    commit = MagicMock(side_effect=error)
     delete = MagicMock()
     monkeypatch.setattr(
         "services.agent.home_snapshot_service.session_factory.create_session",
@@ -178,9 +212,11 @@ def test_home_snapshot_collection_final_delete_failure_is_best_effort(
     monkeypatch.setattr(sqlite_session, "commit", commit)
     monkeypatch.setattr(AgentHomeSnapshotService, "delete", delete)
 
-    AgentHomeSnapshotService.collect_retired_home_snapshot(
-        tenant_id="tenant-1",
-        home_snapshot_id="home-1",
-    )
+    with pytest.raises(RuntimeError) as exc_info:
+        AgentHomeSnapshotService.collect_retired_home_snapshot(
+            tenant_id="tenant-1",
+            home_snapshot_id="home-1",
+        )
 
+    assert exc_info.value is error
     delete.assert_called_once_with(snapshot_ref="snapshot-ref-1")

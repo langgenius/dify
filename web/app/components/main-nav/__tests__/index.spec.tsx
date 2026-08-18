@@ -3,22 +3,23 @@ import type {
   StepByStepTourStatePatchPayload,
   StepByStepTourStateResponse,
 } from '@dify/contracts/api/console/onboarding/types.gen'
+import type { GetVersionResponse } from '@dify/contracts/api/console/version/types.gen'
 import type {
   GetWorkspacesCurrentSummaryResponse,
   TenantListItemResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
+import type { UserProfileWithMeta } from '@/features/account-profile/client'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
-import { Plan } from '@/app/components/billing/type'
 import { DETAIL_SIDEBAR_STORAGE_KEY } from '@/app/components/detail-sidebar/storage'
 import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '@/app/components/explore/learn-dify/storage'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
@@ -156,8 +157,13 @@ const mockStepByStepTour = vi.hoisted(() => {
     stateQueryKey,
   }
 })
+type MainNavConsoleState = ConsoleStateFixture & {
+  profileMeta: UserProfileWithMeta['meta']
+  versionData: GetVersionResponse
+}
+
 const mockConsoleState = vi.hoisted(() => ({
-  current: undefined as ConsoleStateFixture | undefined,
+  current: undefined as MainNavConsoleState | undefined,
 }))
 
 vi.mock('@/features/agent-v2/feature-flag', () => ({
@@ -168,10 +174,6 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: mockTrackEvent,
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState.current ?? {})
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState.current ?? {})
@@ -180,11 +182,6 @@ vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState.current ?? {})
 })
-vi.mock('@/context/version-state', async () => {
-  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createVersionStateModuleMock(() => mockConsoleState.current ?? {})
-})
-
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
 }))
@@ -377,6 +374,14 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
 }))
 
+vi.mock('@/next/dynamic', async () => {
+  const { default: WebAppsSection } = await import('../components/web-apps-section')
+
+  return {
+    default: () => WebAppsSection,
+  }
+})
+
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
   return {
@@ -398,6 +403,40 @@ let mockInstalledApps: InstalledAppResponse[] = []
 let mockInstalledAppsPending = false
 let mockInstalledAppsHasNextPage = false
 let mockWorkspaces: TenantListItemResponse[] = []
+
+function stubScrollRootIntersectionObserver() {
+  const observers: Array<{
+    callback: IntersectionObserverCallback
+    root: Element | Document | null | undefined
+  }> = []
+  vi.stubGlobal(
+    'IntersectionObserver',
+    class MockIntersectionObserver {
+      constructor(nextCallback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+        observers.push({ callback: nextCallback, root: options?.root })
+      }
+
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  )
+
+  return async () => {
+    await waitFor(() => {
+      expect(observers.some(({ root }) => root instanceof Element)).toBe(true)
+    })
+    const observer = observers.find(({ root }) => root instanceof Element)
+    if (!observer) throw new Error('The scroll root observer was not created')
+
+    act(() => {
+      observer.callback(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      )
+    })
+  }
+}
 
 const ownerWorkspacePermissionKeys = [
   'workspace.member.manage',
@@ -448,13 +487,12 @@ const mainNavUserProfile = {
   is_password_set: true,
 }
 
-const consoleState: ConsoleStateFixture = {
+const consoleState: MainNavConsoleState = {
   userProfile: mainNavUserProfile,
-  refreshUserProfile: vi.fn(),
   currentWorkspace: {
     id: 'workspace-1',
     name: 'Solar Studio',
-    plan: Plan.team,
+    plan: 'team',
     credits: 7500,
     role: 'owner',
   },
@@ -463,14 +501,13 @@ const consoleState: ConsoleStateFixture = {
   isCurrentWorkspaceEditor: true,
   isCurrentWorkspaceDatasetOperator: false,
   refreshCurrentWorkspace: vi.fn(),
-  langGeniusVersionInfo: {
-    current_env: 'testing',
-    current_version: '1.0.0',
-    latest_version: '1.0.0',
-    release_date: '',
-    release_notes: '',
+  profileMeta: {
+    currentEnv: 'testing',
+    currentVersion: '1.0.0',
+  },
+  versionData: {
     version: '1.0.0',
-    can_auto_update: false,
+    release_notes: '',
   },
   isLoadingCurrentWorkspace: false,
   isLoadingWorkspacePermissionKeys: false,
@@ -510,10 +547,19 @@ const renderMainNav = (
       ...(currentConsoleState.userProfile ?? {}),
     },
     meta: {
-      currentVersion: null,
-      currentEnv: null,
+      currentVersion: currentConsoleState.profileMeta.currentVersion,
+      currentEnv: currentConsoleState.profileMeta.currentEnv,
     },
   })
+  const currentVersion = currentConsoleState.profileMeta.currentVersion
+  if (currentVersion) {
+    queryClient.setQueryData(
+      consoleQuery.version.get.queryOptions({
+        input: { query: { current_version: currentVersion } },
+      }).queryKey,
+      currentConsoleState.versionData,
+    )
+  }
   queryClient.setQueryData(consoleQuery.workspaces.get.queryKey(), { workspaces: mockWorkspaces })
   queryClient.setQueryData(mockStepByStepTour.stateQueryKey, mockStepByStepTour.state)
   const store = options.store ?? createStore()
@@ -555,7 +601,7 @@ describe('MainNav', () => {
       {
         id: 'workspace-1',
         name: 'Solar Studio',
-        plan: Plan.team,
+        plan: 'team',
         status: 'normal',
         created_at: 0,
         current: true,
@@ -563,7 +609,7 @@ describe('MainNav', () => {
       {
         id: 'workspace-2',
         name: 'Evan Workspace',
-        plan: Plan.sandbox,
+        plan: 'sandbox',
         status: 'normal',
         created_at: 0,
         current: false,
@@ -585,9 +631,8 @@ describe('MainNav', () => {
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: true,
       enableEducationPlan: false,
-      isEducationWorkspace: false,
       isFetchedPlan: true,
-      plan: { type: Plan.sandbox },
+      plan: { type: 'sandbox' },
     } as ProviderContextState)
     ;(useModalContext as Mock).mockReturnValue({
       setShowPricingModal: mockSetShowPricingModal,
@@ -620,9 +665,9 @@ describe('MainNav', () => {
   it('renders primary navigation with the planned routes', () => {
     renderMainNav()
 
-    expect(screen.getAllByText(Plan.team)).toHaveLength(1)
+    expect(screen.getAllByText('team')).toHaveLength(1)
     expect(screen.getByRole('button', { name: 'common.account.account' })).not.toHaveTextContent(
-      Plan.team,
+      'team',
     )
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toHaveAttribute('href', '/')
     expect(screen.getByRole('link', { name: /common.menus.apps/ })).toHaveAttribute('href', '/apps')
@@ -675,24 +720,6 @@ describe('MainNav', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('renders deployments in primary navigation when app deploy is enabled', () => {
-    renderMainNav({ branding: { enabled: false }, enable_app_deploy: true })
-
-    const marketplaceLink = screen.getByRole('link', { name: /common.mainNav.marketplace/ })
-    const deploymentsLink = screen.getByRole('link', { name: /common.menus.deployments/ })
-
-    expect(deploymentsLink).toHaveAttribute('href', '/deployments')
-    expect(marketplaceLink.compareDocumentPosition(deploymentsLink)).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING,
-    )
-  })
-
-  it('hides deployments in primary navigation when app deploy is disabled', () => {
-    renderMainNav({ branding: { enabled: false }, enable_app_deploy: false })
-
-    expect(screen.queryByRole('link', { name: /common.menus.deployments/ })).not.toBeInTheDocument()
-  })
-
   it('orders the Step-by-step Tour before the account and help actions', async () => {
     localStorage.setItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY, 'collapsed')
 
@@ -732,9 +759,8 @@ describe('MainNav', () => {
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: true,
       enableEducationPlan: true,
-      isEducationWorkspace: false,
       isFetchedPlan: true,
-      plan: { type: Plan.sandbox },
+      plan: { type: 'sandbox' },
     } as ProviderContextState)
 
     renderMainNav(defaultMainNavSystemFeatures, {
@@ -745,7 +771,7 @@ describe('MainNav', () => {
 
     expect(await screen.findByText('EDU')).toBeInTheDocument()
     expect(screen.getByText('evan@example.com')).toBeInTheDocument()
-    expect(screen.getAllByText(Plan.team)).toHaveLength(1)
+    expect(screen.getAllByText('team')).toHaveLength(1)
   })
 
   it('keeps unrestricted main routes visible for dataset operators while hiding roster', () => {
@@ -779,7 +805,6 @@ describe('MainNav', () => {
       'href',
       '/marketplace',
     )
-    expect(screen.queryByRole('link', { name: /common.menus.deployments/ })).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'explore.sidebar.webApps' }),
     ).not.toBeInTheDocument()
@@ -799,14 +824,13 @@ describe('MainNav', () => {
       workspacePermissionKeys: ['app_library.access', 'tool.manage', 'agent.manage'],
     }
 
-    renderMainNav({ branding: { enabled: false }, enable_app_deploy: true })
+    renderMainNav({ branding: { enabled: false } })
 
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.menus.apps/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Agents/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: /common.menus.deployments/ })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toBeInTheDocument()
   })
 
@@ -860,25 +884,6 @@ describe('MainNav', () => {
     expect(screen.getByRole('link', { name: /common.menus.apps/ })).toHaveAttribute('href', '/apps')
   })
 
-  it.each(['/deployments', '/deployments/create'])(
-    'keeps global navigation on deployment collection route %s',
-    (pathname) => {
-      mockPathname = pathname
-
-      renderMainNav({ branding: { enabled: false }, enable_app_deploy: true })
-
-      expect(screen.queryByTestId('deployment-detail-top')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('deployment-detail-section')).not.toBeInTheDocument()
-      expect(
-        screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }),
-      ).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: /common.menus.deployments/ })).toHaveAttribute(
-        'href',
-        '/deployments',
-      )
-    },
-  )
-
   it.each([
     '/datasets/create',
     '/datasets/create-from-pipeline',
@@ -929,22 +934,6 @@ describe('MainNav', () => {
 
     expect(homeLink).toHaveClass(activeGradientMaskClassName)
     expect(homeLink).toHaveClass(activeStackingClassName)
-  })
-
-  it('keeps Home active on the legacy explore apps route only', () => {
-    mockPathname = '/explore/apps'
-
-    const { rerender } = renderMainNav()
-
-    const homeLink = screen.getByRole('link', { name: /common.mainNav.home/ })
-    expect(homeLink).toHaveAttribute('aria-current', 'page')
-
-    mockPathname = '/installed/installed-1'
-    rerender(<MainNav />)
-
-    expect(screen.getByRole('link', { name: /common.mainNav.home/ })).not.toHaveAttribute(
-      'aria-current',
-    )
   })
 
   it('opens goto anything from the search button', async () => {
@@ -1118,9 +1107,8 @@ describe('MainNav', () => {
     const user = userEvent.setup()
     mockConsoleState.current = {
       ...consoleState,
-      langGeniusVersionInfo: {
-        ...consoleState.langGeniusVersionInfo,
-        latest_version: '1.1.0',
+      versionData: {
+        version: '1.1.0',
         release_notes: 'https://github.com/langgenius/dify/releases/tag/1.1.0',
       },
     }
@@ -1231,7 +1219,7 @@ describe('MainNav', () => {
       ...consoleState,
       currentWorkspace: {
         ...consoleState.currentWorkspace,
-        plan: Plan.sandbox,
+        plan: 'sandbox',
       },
     }
 
@@ -1246,7 +1234,7 @@ describe('MainNav', () => {
       ...consoleState,
       currentWorkspace: {
         ...consoleState.currentWorkspace,
-        plan: Plan.professional,
+        plan: 'professional',
       },
     }
 
@@ -1325,7 +1313,12 @@ describe('MainNav', () => {
       const top = typeof optionsOrX === 'object' ? optionsOrX.top : y
       scrollViewport.scrollTop = Number(top ?? 0)
     }
-    await user.click(await screen.findByRole('button', { name: 'common.operation.search' }))
+    const searchButton = await screen.findByRole('button', { name: 'common.operation.search' })
+    expect(searchButton).toHaveAttribute('aria-expanded', 'false')
+
+    await user.click(searchButton)
+    expect(searchButton).toHaveAttribute('aria-expanded', 'true')
+
     const searchInput = screen.getByPlaceholderText('common.mainNav.webApps.searchPlaceholder')
     await user.type(searchInput, 'beta')
 
@@ -1338,6 +1331,19 @@ describe('MainNav', () => {
     expect(
       screen.getByRole('link', { name: 'common.mainNav.webApps.openApp:{"name":"Beta Tool"}' }),
     ).toHaveAttribute('href', '/installed/installed-2')
+
+    const webAppsButton = screen.getByRole('button', { name: 'explore.sidebar.webApps' })
+    await user.click(webAppsButton)
+    expect(searchButton).toHaveAttribute('aria-expanded', 'false')
+    expect(
+      screen.queryByPlaceholderText('common.mainNav.webApps.searchPlaceholder'),
+    ).not.toBeInTheDocument()
+
+    await user.click(webAppsButton)
+    expect(searchButton).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByPlaceholderText('common.mainNav.webApps.searchPlaceholder')).toHaveValue(
+      'beta',
+    )
   })
 
   it('hides the installed web apps section while installed apps are loading', () => {
@@ -1369,7 +1375,6 @@ describe('MainNav', () => {
         screen.queryByRole('region', { name: 'explore.sidebar.webApps' }),
       ).not.toBeInTheDocument()
     })
-    expect(screen.queryByText('explore.sidebar.noApps.title')).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'common.operation.search' }),
     ).not.toBeInTheDocument()
@@ -1411,34 +1416,90 @@ describe('MainNav', () => {
   })
 
   it('fetches the next installed web app page when the bottom sentinel enters the viewport', async () => {
-    let intersectionCallback: IntersectionObserverCallback | undefined
-    vi.stubGlobal(
-      'IntersectionObserver',
-      class MockIntersectionObserver {
-        constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
-          if (options?.root) intersectionCallback = callback
-        }
-
-        observe() {}
-        unobserve() {}
-        disconnect() {}
-      },
-    )
+    const triggerIntersection = stubScrollRootIntersectionObserver()
     mockInstalledApps = [createInstalledApp()]
     mockInstalledAppsHasNextPage = true
     renderMainNav()
     await screen.findByText('Alpha App')
 
-    act(() => {
-      intersectionCallback?.(
-        [{ isIntersecting: true } as IntersectionObserverEntry],
-        {} as IntersectionObserver,
-      )
-    })
+    await triggerIntersection()
 
     await waitFor(() => {
       expect(mockFetchNextInstalledAppsPage).toHaveBeenCalledWith('next-page')
     })
+  })
+
+  it('shows next-page errors at the pagination boundary and retries from there', async () => {
+    const user = userEvent.setup()
+    let nextPageAttempts = 0
+    let resolveNextPage: (() => void) | undefined
+    const nextPagePending = new Promise<void>((resolve) => {
+      resolveNextPage = resolve
+    })
+    const triggerIntersection = stubScrollRootIntersectionObserver()
+    mockInstalledApps = [createInstalledApp()]
+    mockInstalledAppsRequest.mockImplementation(
+      async ({ query }: { query: { cursor?: string; name?: string } }) => {
+        if (!query.cursor) {
+          return {
+            installed_apps: mockInstalledApps,
+            has_more: true,
+            next_cursor: 'next-page',
+          }
+        }
+
+        nextPageAttempts += 1
+        if (nextPageAttempts === 1) throw new Error('Failed to load the next page')
+
+        await nextPagePending
+
+        return {
+          installed_apps: [
+            createInstalledApp({
+              id: 'installed-2',
+              app: { ...createInstalledApp().app, name: 'Beta Tool' },
+            }),
+          ],
+          has_more: false,
+          next_cursor: null,
+        }
+      },
+    )
+    renderMainNav()
+    const firstAppLink = await screen.findByRole('link', {
+      name: 'common.mainNav.webApps.openApp:{"name":"Alpha App"}',
+    })
+
+    await triggerIntersection()
+
+    const paginationError = await screen.findByRole('alert')
+    expect(
+      firstAppLink.compareDocumentPosition(paginationError) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+
+    const retryButton = screen.getByRole('button', { name: 'common.operation.retry' })
+    const webAppsRegion = screen.getByRole('region', { name: 'explore.sidebar.webApps' })
+    retryButton.focus()
+    expect(retryButton).toHaveFocus()
+
+    await user.keyboard('{Enter}')
+
+    await waitFor(() => {
+      expect(webAppsRegion).toHaveAttribute('aria-busy', 'true')
+      expect(retryButton).toBeInTheDocument()
+      expect(retryButton).toHaveFocus()
+      expect(retryButton).toHaveAttribute('aria-disabled', 'true')
+    })
+
+    await user.keyboard('{Enter}')
+    expect(nextPageAttempts).toBe(2)
+
+    act(() => {
+      resolveNextPage?.()
+    })
+
+    expect(await screen.findByText('Beta Tool')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('collapses and expands installed web apps from the section arrow', async () => {

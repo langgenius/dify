@@ -11,24 +11,30 @@ from agenton_collections.layers.plain import PromptLayerConfig
 from dify_agent.layers.dify_plugin import DifyPluginLLMLayerConfig
 from dify_agent.layers.execution_context import DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID, DifyExecutionContextLayerConfig
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerConfig
-from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID, DIFY_AGENT_OUTPUT_LAYER_ID
+from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID, DIFY_AGENT_OUTPUT_LAYER_ID, RunFailureType
 from dify_agent.protocol.schemas import (
     CancelRunRequest,
     CreateRunRequest,
+    RunCancelledEvent,
+    RunCancelledEventData,
     RunComposition,
     RunEvent,
+    RunFailedEvent,
     RunLayerSpec,
     RunStatus,
+    utc_now,
 )
+from dify_agent.runtime.cancellation import RunCancellationIntent
 from dify_agent.runtime.event_sink import (
     NonTerminalRunEvent,
     RunFinalizationResult,
     TerminalRunEvent,
     emit_run_failed,
     emit_run_succeeded,
-    terminal_event_status_and_error,
+    terminal_event_status_fields,
 )
 from dify_agent.runtime.run_scheduler import RunCancellationConflictError, RunScheduler, SchedulerStoppingError
+from dify_agent.runtime.runner import AgentRunRunner
 from dify_agent.server.schemas import RunRecord
 
 
@@ -57,7 +63,6 @@ def _request(
                 plugin_id="langgenius/openai",
                 model_provider="openai",
                 model="demo-model",
-                credentials={"api_key": "secret"},
             ),
         ),
     ]
@@ -93,21 +98,25 @@ class FakeStore:
     events: dict[str, list[RunEvent]]
     statuses: dict[str, RunStatus]
     errors: dict[str, str | None]
-    terminal_changes: dict[str, asyncio.Event]
+    error_types: dict[str, RunFailureType | None]
+    cancellation_changes: dict[str, asyncio.Event]
+    cancellation_intents: dict[str, RunCancellationIntent]
 
     def __init__(self) -> None:
         self.records = {}
         self.events = defaultdict(list)
         self.statuses = {}
         self.errors = {}
-        self.terminal_changes = {}
+        self.error_types = {}
+        self.cancellation_changes = {}
+        self.cancellation_intents = {}
 
     async def create_run(self) -> RunRecord:
         run_id = f"run-{len(self.records) + 1}"
         record = RunRecord(run_id=run_id, status="running")
         self.records[run_id] = record
         self.statuses[run_id] = "running"
-        self.terminal_changes[run_id] = asyncio.Event()
+        self.cancellation_changes[run_id] = asyncio.Event()
         return record
 
     async def append_event(self, event: NonTerminalRunEvent) -> str:
@@ -117,26 +126,75 @@ class FakeStore:
 
     async def get_run(self, run_id: str) -> RunRecord:
         return self.records[run_id].model_copy(
-            update={"status": self.statuses[run_id], "error": self.errors.get(run_id)},
+            update={
+                "status": self.statuses[run_id],
+                "error": self.errors.get(run_id),
+                "error_type": self.error_types.get(run_id),
+            },
         )
 
     async def finalize_run(self, event: TerminalRunEvent) -> RunFinalizationResult:
         current_status = self.statuses[event.run_id]
         if current_status != "running":
             return RunFinalizationResult(applied=False, status=current_status)
+        if event.run_id in self.cancellation_intents:
+            return RunFinalizationResult(applied=False, status="running")
 
-        status, error = terminal_event_status_and_error(event)
+        status, error, error_type = terminal_event_status_fields(event)
         event_id = str(len(self.events[event.run_id]) + 1)
         self.events[event.run_id].append(event.model_copy(update={"id": event_id}))
         self.statuses[event.run_id] = status
         self.errors[event.run_id] = error
-        self.terminal_changes[event.run_id].set()
+        self.error_types[event.run_id] = error_type
         return RunFinalizationResult(applied=True, status=status, event_id=event_id)
 
-    async def wait_for_cancellation(self, run_id: str) -> bool:
-        while self.statuses[run_id] == "running":
-            await self.terminal_changes[run_id].wait()
-        return self.statuses[run_id] == "cancelled"
+    async def request_cancellation(self, run_id: str, request: CancelRunRequest) -> RunStatus:
+        status = self.statuses[run_id]
+        if status != "running":
+            return status
+        if run_id not in self.cancellation_intents:
+            self.cancellation_intents[run_id] = RunCancellationIntent(
+                reason=request.reason,
+                message=request.message,
+                requested_at=utc_now(),
+            )
+            self.cancellation_changes[run_id].set()
+        return "running"
+
+    async def get_cancellation_intent(self, run_id: str) -> RunCancellationIntent | None:
+        return self.cancellation_intents.get(run_id)
+
+    async def wait_for_cancellation(self, run_id: str) -> RunCancellationIntent:
+        await self.cancellation_changes[run_id].wait()
+        return self.cancellation_intents[run_id]
+
+    async def finalize_cancellation(
+        self,
+        run_id: str,
+        intent: RunCancellationIntent,
+        *,
+        session_snapshot: CompositorSessionSnapshot | None = None,
+    ) -> RunFinalizationResult:
+        current_status = self.statuses[run_id]
+        if current_status != "running":
+            return RunFinalizationResult(applied=False, status=current_status)
+        if run_id not in self.cancellation_intents:
+            return RunFinalizationResult(applied=False, status="running")
+        event = RunCancelledEvent(
+            run_id=run_id,
+            data=RunCancelledEventData(
+                reason=intent.reason,
+                message=intent.message,
+                session_snapshot=session_snapshot,
+            ),
+        )
+        event_id = str(len(self.events[run_id]) + 1)
+        self.events[run_id].append(event.model_copy(update={"id": event_id}))
+        self.statuses[run_id] = "cancelled"
+        self.errors[run_id] = intent.message or intent.reason
+        self.error_types[run_id] = None
+        del self.cancellation_intents[run_id]
+        return RunFinalizationResult(applied=True, status="cancelled", event_id=event_id)
 
 
 class SlowCreateStore(FakeStore):
@@ -167,7 +225,7 @@ class TrackingStore(FakeStore):
         if not pause_observer:
             self.release_observer.set()
 
-    async def wait_for_cancellation(self, run_id: str) -> bool:
+    async def wait_for_cancellation(self, run_id: str) -> RunCancellationIntent:
         self.observer_started.set()
         try:
             await self.release_observer.wait()
@@ -185,7 +243,7 @@ class FailingObserverStore(FakeStore):
         self.fail_observer = fail_observer
         self.observer_finished = asyncio.Event()
 
-    async def wait_for_cancellation(self, run_id: str) -> bool:
+    async def wait_for_cancellation(self, run_id: str) -> RunCancellationIntent:
         del run_id
         try:
             await self.fail_observer.wait()
@@ -194,10 +252,27 @@ class FailingObserverStore(FakeStore):
             self.observer_finished.set()
 
 
+class CancellationDuringShutdownFailureStore(FakeStore):
+    async def finalize_run(self, event: TerminalRunEvent) -> RunFinalizationResult:
+        if isinstance(event, RunFailedEvent) and event.data.reason == "shutdown":
+            _ = await self.request_cancellation(
+                event.run_id,
+                CancelRunRequest(reason="concurrent_shutdown_cancel"),
+            )
+        return await super().finalize_run(event)
+
+
+class SnapshotlessRunner:
+    @property
+    def terminal_session_snapshot(self) -> CompositorSessionSnapshot | None:
+        return None
+
+
 class ControlledRunner:
     started: asyncio.Event
     release: asyncio.Event
     finished: asyncio.Event | None
+    _terminal_session_snapshot: CompositorSessionSnapshot
 
     def __init__(
         self,
@@ -209,6 +284,11 @@ class ControlledRunner:
         self.started = started
         self.release = release
         self.finished = finished
+        self._terminal_session_snapshot = CompositorSessionSnapshot(layers=[])
+
+    @property
+    def terminal_session_snapshot(self) -> CompositorSessionSnapshot:
+        return self._terminal_session_snapshot
 
     async def run(self) -> None:
         _ = self.started.set()
@@ -219,24 +299,16 @@ class ControlledRunner:
                 self.finished.set()
 
 
-class SwallowOneCancellationRunner:
-    started: asyncio.Event
-    first_cancellation: asyncio.Event
-
-    def __init__(self, *, started: asyncio.Event, first_cancellation: asyncio.Event) -> None:
+class PreEnterBlockingRunner(SnapshotlessRunner):
+    def __init__(self, *, started: asyncio.Event) -> None:
         self.started = started
-        self.first_cancellation = first_cancellation
 
     async def run(self) -> None:
-        _ = self.started.set()
-        try:
-            await asyncio.Event().wait()
-        except asyncio.CancelledError:
-            _ = self.first_cancellation.set()
-            await asyncio.Event().wait()
+        self.started.set()
+        await asyncio.Event().wait()
 
 
-class SuccessThenWaitRunner:
+class SuccessThenWaitRunner(SnapshotlessRunner):
     def __init__(
         self,
         *,
@@ -262,7 +334,7 @@ class SuccessThenWaitRunner:
         await self.release.wait()
 
 
-class IgnoreCancellationThenSucceedRunner:
+class IgnoreCancellationThenSucceedRunner(SnapshotlessRunner):
     def __init__(
         self,
         *,
@@ -293,12 +365,12 @@ class IgnoreCancellationThenSucceedRunner:
                 session_snapshot=CompositorSessionSnapshot(layers=[]),
             )
             assert result.applied is False
-            assert result.status == "cancelled"
+            assert result.status == "running"
         finally:
             self.finished.set()
 
 
-class ReleaseThenSucceedRunner:
+class ReleaseThenSucceedRunner(SnapshotlessRunner):
     def __init__(
         self,
         *,
@@ -329,7 +401,7 @@ class ReleaseThenSucceedRunner:
             self.finished.set()
 
 
-class CompetingFailureRunner:
+class CompetingFailureRunner(SnapshotlessRunner):
     def __init__(
         self,
         *,
@@ -355,7 +427,7 @@ class CompetingFailureRunner:
         self.failure_attempted.set()
 
 
-class FinalizeSuccessOnCancellationRunner:
+class FinalizeSuccessOnCancellationRunner(SnapshotlessRunner):
     def __init__(self, *, store: FakeStore, run_id: str, started: asyncio.Event) -> None:
         self.store = store
         self.run_id = run_id
@@ -373,6 +445,26 @@ class FinalizeSuccessOnCancellationRunner:
                 session_snapshot=CompositorSessionSnapshot(layers=[]),
             )
             assert result.applied is True
+
+
+def test_default_runner_factory_passes_run_timeout_to_runner() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        record = await store.create_run()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+                run_timeout_seconds=17,
+            )
+
+            runner = scheduler._default_runner_factory(record, _request(), is_cancelled=lambda: False)
+
+        assert isinstance(runner, AgentRunRunner)
+        assert runner.run_timeout_seconds == 17
+
+    asyncio.run(scenario())
 
 
 def test_create_run_starts_background_task_and_returns_running() -> None:
@@ -427,6 +519,37 @@ def test_shutdown_marks_unfinished_runs_failed_and_appends_event() -> None:
     asyncio.run(scenario())
 
 
+def test_shutdown_failure_finalization_yields_to_concurrent_cancellation_intent() -> None:
+    async def scenario() -> None:
+        store = CancellationDuringShutdownFailureStore()
+        started = asyncio.Event()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+                shutdown_grace_seconds=0,
+                runner_factory=lambda _record, _request: ControlledRunner(
+                    started=started,
+                    release=asyncio.Event(),
+                ),
+            )
+            record = await scheduler.create_run(_request())
+            await asyncio.wait_for(started.wait(), timeout=1)
+
+            await scheduler.shutdown()
+
+            assert store.statuses[record.run_id] == "cancelled"
+            assert record.run_id not in store.cancellation_intents
+            assert [event.type for event in store.events[record.run_id]] == ["run_cancelled"]
+            terminal = store.events[record.run_id][0]
+            assert isinstance(terminal, RunCancelledEvent)
+            assert terminal.data.reason == "concurrent_shutdown_cancel"
+            assert terminal.data.session_snapshot == CompositorSessionSnapshot(layers=[])
+
+    asyncio.run(scenario())
+
+
 def test_cancellation_observer_failure_stops_runner_and_finalizes_failed() -> None:
     async def scenario() -> None:
         fail_observer = asyncio.Event()
@@ -458,6 +581,46 @@ def test_cancellation_observer_failure_stops_runner_and_finalizes_failed() -> No
             assert store.observer_finished.is_set()
             await asyncio.sleep(0)
             assert scheduler.active_tasks == {}
+
+    asyncio.run(scenario())
+
+
+def test_cancellation_observer_failure_finalizes_concurrent_intent_after_runner_exit() -> None:
+    async def scenario() -> None:
+        fail_observer = asyncio.Event()
+        store = FailingObserverStore(fail_observer=fail_observer)
+        runner_started = asyncio.Event()
+        runner_finished = asyncio.Event()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+                runner_factory=lambda _record, _request: ControlledRunner(
+                    started=runner_started,
+                    release=asyncio.Event(),
+                    finished=runner_finished,
+                ),
+            )
+            record = await scheduler.create_run(_request())
+            supervisor_task = scheduler.active_tasks[record.run_id]
+            await asyncio.wait_for(runner_started.wait(), timeout=1)
+
+            response = await scheduler.cancel_run(
+                record.run_id,
+                CancelRunRequest(reason="workflow_aborted", message="outer workflow stopped"),
+            )
+            fail_observer.set()
+            await asyncio.wait_for(supervisor_task, timeout=1)
+
+            assert response.status == "cancelled"
+            assert runner_finished.is_set()
+            assert store.statuses[record.run_id] == "cancelled"
+            assert record.run_id not in store.cancellation_intents
+            assert [event.type for event in store.events[record.run_id]] == ["run_cancelled"]
+            terminal = store.events[record.run_id][0]
+            assert isinstance(terminal, RunCancelledEvent)
+            assert terminal.data.session_snapshot == CompositorSessionSnapshot(layers=[])
 
     asyncio.run(scenario())
 
@@ -495,10 +658,13 @@ def test_non_owner_cancel_run_stops_owner_task_and_persists_cancelled_terminal()
 
             assert response.status == "cancelled"
             assert remote_scheduler.active_tasks == {}
+            await asyncio.wait_for(owner_task, timeout=1)
             assert store.statuses[record.run_id] == "cancelled"
             assert store.errors[record.run_id] == "outer workflow stopped"
             assert [event.type for event in store.events[record.run_id]] == ["run_cancelled"]
-            await asyncio.wait_for(owner_task, timeout=1)
+            terminal = store.events[record.run_id][0]
+            assert isinstance(terminal, RunCancelledEvent)
+            assert terminal.data.session_snapshot == CompositorSessionSnapshot(layers=[])
             assert runner_finished.is_set()
             assert store.observer_finished.is_set()
             await asyncio.sleep(0)
@@ -511,37 +677,38 @@ def test_non_owner_cancel_run_stops_owner_task_and_persists_cancelled_terminal()
     asyncio.run(scenario())
 
 
-def test_owner_observer_reinjects_cancellation_consumed_by_runner() -> None:
+def test_pre_enter_cancellation_does_not_copy_input_session_snapshot() -> None:
     async def scenario() -> None:
         store = FakeStore()
         started = asyncio.Event()
-        first_cancellation = asyncio.Event()
+        request = _request()
+        request.session_snapshot = CompositorSessionSnapshot(
+            layers=[
+                LayerSessionSnapshot(
+                    name="prior",
+                    lifecycle_state=LifecycleState.SUSPENDED,
+                    runtime_state={"value": "prior"},
+                )
+            ]
+        )
         async with httpx.AsyncClient() as client:
             scheduler = RunScheduler(
                 store=store,
                 plugin_daemon_http_client=client,
                 dify_api_http_client=client,
-                runner_factory=lambda _record, _request: SwallowOneCancellationRunner(
-                    started=started,
-                    first_cancellation=first_cancellation,
-                ),
+                runner_factory=lambda _record, _request: PreEnterBlockingRunner(started=started),
             )
-            record = await scheduler.create_run(_request())
-            supervisor_task = scheduler.active_tasks[record.run_id]
+            record = await scheduler.create_run(request)
+            supervisor = scheduler.active_tasks[record.run_id]
             await asyncio.wait_for(started.wait(), timeout=1)
 
-            response = await asyncio.wait_for(
-                scheduler.cancel_run(record.run_id, CancelRunRequest(reason="workflow_aborted")),
-                timeout=1,
-            )
+            _ = await scheduler.cancel_run(record.run_id, CancelRunRequest(reason="pre_enter_cancel"))
+            await asyncio.wait_for(supervisor, timeout=1)
 
-            assert response.status == "cancelled"
-            assert store.statuses[record.run_id] == "cancelled"
-            assert [event.type for event in store.events[record.run_id]] == ["run_cancelled"]
-            await asyncio.wait_for(first_cancellation.wait(), timeout=1)
-            await asyncio.wait_for(supervisor_task, timeout=1)
-            await asyncio.sleep(0)
-            assert scheduler.active_tasks == {}
+            terminal = store.events[record.run_id][0]
+            assert isinstance(terminal, RunCancelledEvent)
+            assert request.session_snapshot is not None
+            assert terminal.data.session_snapshot is None
 
     asyncio.run(scenario())
 
@@ -607,8 +774,9 @@ def test_cancelled_terminal_survives_shutdown_while_runner_cleanup_is_pending() 
             response = await scheduler.cancel_run(record.run_id, CancelRunRequest(reason="workflow_aborted"))
 
             assert response.status == "cancelled"
-            assert store.statuses[record.run_id] == "cancelled"
-            assert [event.type for event in store.events[record.run_id]] == ["run_cancelled"]
+            assert store.statuses[record.run_id] == "running"
+            assert store.events[record.run_id] == []
+            assert record.run_id in store.cancellation_intents
             await asyncio.wait_for(store.observer_finished.wait(), timeout=1)
             assert supervisor_task.done() is False
             shutdown_task = asyncio.create_task(scheduler.shutdown())

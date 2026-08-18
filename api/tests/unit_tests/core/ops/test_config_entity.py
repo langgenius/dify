@@ -48,11 +48,17 @@ class TestConfigIntegration:
         aliyun_config = AliyunConfig(
             license_key="test_license", endpoint="https://tracing-analysis-dc-hz.aliyuncs.com/api/v1/traces"
         )
+        langsmith_config = LangSmithConfig(
+            api_key="key", project="project", endpoint="https://langsmith.internal/api/v1"
+        )
+        weave_config = WeaveConfig(api_key="key", project="project", endpoint="https://weave.internal/wandb")
 
         assert arize_config.endpoint == "https://arize.com"
         assert phoenix_with_path_config.endpoint == "https://app.phoenix.arize.com/s/dify-integration"
         assert phoenix_without_path_config.endpoint == "https://app.phoenix.arize.com"
         assert aliyun_config.endpoint == "https://tracing-analysis-dc-hz.aliyuncs.com/api/v1/traces"
+        assert langsmith_config.endpoint == "https://langsmith.internal/api/v1"
+        assert weave_config.endpoint == "https://weave.internal/wandb"
 
     def test_project_default_values(self):
         """Test that project default values are set correctly"""

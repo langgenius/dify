@@ -6,8 +6,7 @@ import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
 import { useAtomValue } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { EducationExpireNotice } from '@/app/education-apply/expire-notice'
-import { EducationExternalActionBoundary } from '@/app/education-apply/external-action-boundary'
+import { EducationExpireNotice } from '@/app/education/expire-notice'
 import AppListContext from '@/context/app-list-context'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -233,9 +232,5 @@ const AppsContent = () => {
 }
 
 export function Apps() {
-  return (
-    <EducationExternalActionBoundary>
-      <AppsContent />
-    </EducationExternalActionBoundary>
-  )
+  return <AppsContent />
 }

@@ -5,7 +5,6 @@ import type {
 import type {
   DefaultModelResponse,
   Model,
-  ModelItem,
   ModelParameterRule,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -153,10 +152,6 @@ export const activateMember = ({
   return post<LoginResponse>(url, { body })
 }
 
-export const fetchModelProviderModelList = (url: string): Promise<{ data: ModelItem[] }> => {
-  return get<{ data: ModelItem[] }>(url)
-}
-
 export const fetchModelList = (url: string): Promise<{ data: Model[] }> => {
   return get<{ data: Model[] }>(url)
 }
@@ -228,8 +223,15 @@ export const uploadRemoteFileInfo = (
 export const sendEMailLoginCode = (
   email: string,
   language = 'en-US',
+  turnstileToken?: string,
 ): Promise<CommonResponse & { data: string }> =>
-  post<CommonResponse & { data: string }>('/email-code-login', { body: { email, language } })
+  post<CommonResponse & { data: string }>('/email-code-login', {
+    body: {
+      email,
+      language,
+      ...(turnstileToken === undefined ? {} : { turnstile_token: turnstileToken }),
+    },
+  })
 
 export const emailLoginWithCode = (data: {
   email: string

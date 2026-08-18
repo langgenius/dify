@@ -5,6 +5,7 @@ import pytest
 from flask import Flask
 from werkzeug.exceptions import InternalServerError
 
+from controllers.common.controller_schemas import WorkflowRunPayload
 from controllers.console.explore.error import NotWorkflowAppError
 from controllers.console.explore.workflow import (
     InstalledAppWorkflowRunApi,
@@ -62,11 +63,18 @@ class TestInstalledAppWorkflowRunApi:
 
         with app.test_request_context("/"):
             with pytest.raises(NotWorkflowAppError):
-                method(api, MagicMock(), MagicMock(), non_workflow_installed_app)
+                method(
+                    api,
+                    WorkflowRunPayload.model_validate({"inputs": {}}),
+                    MagicMock(),
+                    MagicMock(),
+                    non_workflow_installed_app,
+                )
 
     def test_success(self, app: Flask, installed_workflow_app, user, payload):
         api = InstalledAppWorkflowRunApi()
         method = unwrap(api.post)
+        req_data = WorkflowRunPayload.model_validate(payload)
 
         with (
             app.test_request_context("/", json=payload),
@@ -75,7 +83,7 @@ class TestInstalledAppWorkflowRunApi:
                 return_value=MagicMock(),
             ) as generate_mock,
         ):
-            result = method(api, MagicMock(), user, installed_workflow_app)
+            result = method(api, req_data, MagicMock(), user, installed_workflow_app)
 
             generate_mock.assert_called_once()
             assert generate_mock.call_args.kwargs["user"] is user
@@ -84,6 +92,7 @@ class TestInstalledAppWorkflowRunApi:
     def test_rate_limit_error(self, app: Flask, installed_workflow_app, user, payload):
         api = InstalledAppWorkflowRunApi()
         method = unwrap(api.post)
+        req_data = WorkflowRunPayload.model_validate(payload)
 
         with (
             app.test_request_context("/", json=payload),
@@ -93,11 +102,12 @@ class TestInstalledAppWorkflowRunApi:
             ),
         ):
             with pytest.raises(InvokeRateLimitHttpError):
-                method(api, MagicMock(), user, installed_workflow_app)
+                method(api, req_data, MagicMock(), user, installed_workflow_app)
 
     def test_unexpected_exception(self, app: Flask, installed_workflow_app, user, payload):
         api = InstalledAppWorkflowRunApi()
         method = unwrap(api.post)
+        req_data = WorkflowRunPayload.model_validate(payload)
 
         with (
             app.test_request_context("/", json=payload),
@@ -107,7 +117,7 @@ class TestInstalledAppWorkflowRunApi:
             ),
         ):
             with pytest.raises(InternalServerError):
-                method(api, MagicMock(), user, installed_workflow_app)
+                method(api, req_data, MagicMock(), user, installed_workflow_app)
 
 
 class TestInstalledAppWorkflowTaskStopApi:

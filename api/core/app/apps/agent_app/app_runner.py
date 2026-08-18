@@ -24,6 +24,7 @@ from clients.agent_backend import (
     AgentBackendDeferredToolCallInternalEvent,
     AgentBackendError,
     AgentBackendInternalEventType,
+    AgentBackendRunCancelledInternalEvent,
     AgentBackendRunClient,
     AgentBackendRunEventAdapter,
     AgentBackendRunFailedError,
@@ -89,9 +90,10 @@ _AGENT_BACKEND_INVOKE_ERROR_BY_REASON: Mapping[str, type[InvokeError]] = {
 
 
 def _agent_backend_failure_to_exception(event: AgentBackendRunFailedInternalEvent) -> Exception:
-    err_cls = _AGENT_BACKEND_INVOKE_ERROR_BY_REASON.get(event.reason or "")
-    if err_cls is not None:
-        return err_cls(event.error)
+    if event.error_type is None:
+        err_cls = _AGENT_BACKEND_INVOKE_ERROR_BY_REASON.get(event.reason or "")
+        if err_cls is not None:
+            return err_cls(event.error)
     message = event.error or "Agent backend run did not complete successfully."
     return AgentBackendRunFailedError(
         event.run_id,
@@ -101,6 +103,7 @@ def _agent_backend_failure_to_exception(event: AgentBackendRunFailedInternalEven
             "source_event_id": event.source_event_id,
         },
         message=message,
+        error_type=event.error_type,
         reason=event.reason,
         source_event_id=event.source_event_id,
     )
@@ -679,6 +682,8 @@ class AgentAppRunner:
             queue_manager=queue_manager,
             model_name=model_name,
             query=query,
+            session_scope=scope,
+            binding_id=runtime.binding_id,
         )
 
         if isinstance(terminal, AgentBackendDeferredToolCallInternalEvent):
@@ -698,10 +703,19 @@ class AgentAppRunner:
             )
             return
 
+        if isinstance(terminal, AgentBackendRunFailedInternalEvent | AgentBackendRunCancelledInternalEvent):
+            # None means no post-exit snapshot was produced; leave the previously stored session snapshot untouched.
+            if terminal.session_snapshot is not None:
+                self._save_session(
+                    scope=scope,
+                    binding_id=runtime.binding_id,
+                    snapshot=terminal.session_snapshot,
+                )
+
         if not isinstance(terminal, AgentBackendRunSucceededInternalEvent):
             if isinstance(terminal, AgentBackendRunFailedInternalEvent):
                 reason = terminal.reason
-                if reason == "binding_lost":
+                if terminal.error_type is None and reason == "binding_lost":
                     raise AgentBackendError("The retained agent working environment is no longer available.")
                 raise _agent_backend_failure_to_exception(terminal)
             raise AgentBackendError("Agent backend run did not complete successfully.")
@@ -893,6 +907,8 @@ class AgentAppRunner:
         queue_manager: AppQueueManager,
         model_name: str,
         query: str | None,
+        session_scope: AgentAppSessionScope,
+        binding_id: str,
     ):
         """Consume backend events while preserving raw recorder granularity."""
         terminal = None
@@ -902,6 +918,7 @@ class AgentAppRunner:
             queue_manager=queue_manager,
         )
         text_delta_debouncer = _TextDeltaDebouncer(debounce_seconds=self._text_delta_debounce_seconds)
+        last_event_id: str | None = None
 
         def persist_answer_text(content_delta: str) -> None:
             try:
@@ -932,14 +949,26 @@ class AgentAppRunner:
                 should_stop=queue_manager.is_stopped,
             )
             for public_event in public_events:
+                if public_event.id is not None:
+                    last_event_id = public_event.id
                 if queue_manager.is_stopped():
                     flush_pending_agent_message_text()
-                    self._cancel_run(run_id)
+                    self._cancel_run(
+                        run_id,
+                        after=last_event_id,
+                        session_scope=session_scope,
+                        binding_id=binding_id,
+                    )
                     raise GenerateTaskStoppedError()
                 for internal_event in self._event_adapter.adapt(public_event):
                     if queue_manager.is_stopped():
                         flush_pending_agent_message_text()
-                        self._cancel_run(run_id)
+                        self._cancel_run(
+                            run_id,
+                            after=last_event_id,
+                            session_scope=session_scope,
+                            binding_id=binding_id,
+                        )
                         raise GenerateTaskStoppedError()
                     if internal_event.type in (
                         AgentBackendInternalEventType.RUN_STARTED,
@@ -976,21 +1005,52 @@ class AgentAppRunner:
             raise
         except Exception as error:
             flush_pending_agent_message_text()
-            self._cancel_run(run_id)
+            self._cancel_run(
+                run_id,
+                after=last_event_id,
+                session_scope=session_scope,
+                binding_id=binding_id,
+            )
             if queue_manager.is_stopped():
                 raise GenerateTaskStoppedError() from error
             raise
         flush_pending_agent_message_text()
         if queue_manager.is_stopped():
-            self._cancel_run(run_id)
+            self._cancel_run(
+                run_id,
+                after=last_event_id,
+                session_scope=session_scope,
+                binding_id=binding_id,
+            )
             raise GenerateTaskStoppedError()
         return terminal, process_recorder
 
-    def _cancel_run(self, run_id: str) -> None:
+    def _cancel_run(
+        self,
+        run_id: str,
+        *,
+        after: str | None,
+        session_scope: AgentAppSessionScope,
+        binding_id: str,
+    ) -> None:
         try:
-            self._agent_backend_client.cancel_run(run_id)
+            public_event = self._agent_backend_client.cancel_run_and_wait(run_id, after=after)
+            for internal_event in self._event_adapter.adapt(public_event):
+                if (
+                    isinstance(internal_event, AgentBackendRunCancelledInternalEvent)
+                    and internal_event.session_snapshot is not None
+                ):
+                    self._save_session(
+                        scope=session_scope,
+                        binding_id=binding_id,
+                        snapshot=internal_event.session_snapshot,
+                    )
         except Exception:
-            logger.warning("Failed to cancel stopped Agent App backend run: run_id=%s", run_id, exc_info=True)
+            logger.warning(
+                "Failed to finish cancelling stopped Agent App backend run: run_id=%s",
+                run_id,
+                exc_info=True,
+            )
 
     def _publish_answer(
         self, *, queue_manager: AppQueueManager, model_name: str, answer: str, query: str | None

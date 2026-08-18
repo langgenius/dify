@@ -1,11 +1,10 @@
 import type { FC } from 'react'
 import type { UserAction } from '../types'
-import { Button } from '@langgenius/dify-ui/button'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import ButtonStyleDropdown from './button-style-dropdown'
 
 const i18nPrefix = 'nodes.humanInput'
@@ -75,7 +74,10 @@ const UserActionItem: FC<UserActionItemProps> = ({ data, onChange, onDelete, rea
     <div className="flex items-center gap-1">
       <div className="shrink-0">
         <Input
-          wrapperClassName="w-[120px]"
+          aria-label={t(($) => $[`${i18nPrefix}.userActions.actionNamePlaceholder`], {
+            ns: 'workflow',
+          })}
+          className="w-30"
           value={data.id}
           placeholder={t(($) => $[`${i18nPrefix}.userActions.actionNamePlaceholder`], {
             ns: 'workflow',
@@ -86,6 +88,9 @@ const UserActionItem: FC<UserActionItemProps> = ({ data, onChange, onDelete, rea
       </div>
       <div className="grow">
         <Input
+          aria-label={t(($) => $[`${i18nPrefix}.userActions.buttonTextPlaceholder`], {
+            ns: 'workflow',
+          })}
           value={data.title}
           placeholder={t(($) => $[`${i18nPrefix}.userActions.buttonTextPlaceholder`], {
             ns: 'workflow',
@@ -101,9 +106,14 @@ const UserActionItem: FC<UserActionItemProps> = ({ data, onChange, onDelete, rea
         readonly={readonly}
       />
       {!readonly && (
-        <Button className="px-2" variant="tertiary" onClick={() => onDelete(data.id)}>
-          <RiDeleteBinLine className="size-4" />
-        </Button>
+        <IconButton
+          aria-label={t(($) => $['operation.delete'], { ns: 'common' })}
+          size="lg"
+          variant="tertiary"
+          onClick={() => onDelete(data.id)}
+        >
+          <span aria-hidden className="i-ri-delete-bin-line size-4" />
+        </IconButton>
       )}
     </div>
   )

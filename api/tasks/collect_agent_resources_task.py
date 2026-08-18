@@ -45,6 +45,7 @@ def collect_agent_resources(
                         "resource_id": resource_id,
                     },
                 )
+                raise
 
 
 def enqueue_agent_resource_collection(

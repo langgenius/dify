@@ -76,7 +76,7 @@ func RunConfigSkillsPull(env *Environment, names []string, localDir string, json
 	for _, name := range names {
 		download, err := client.CreateConfigDownloadURL(ctx, "skill", name)
 		if err != nil {
-			return err
+			return fmt.Errorf("request config skill %q download URL: %w", name, err)
 		}
 		archiveBytes, err := client.DownloadFromURL(download.DownloadURL)
 		if err != nil {
@@ -174,7 +174,7 @@ func RunConfigFilesPull(env *Environment, names []string, localDir string, jsonO
 	for _, name := range names {
 		download, err := client.CreateConfigDownloadURL(ctx, "file", name)
 		if err != nil {
-			return err
+			return fmt.Errorf("request config file %q download URL: %w", name, err)
 		}
 		payload, err := client.DownloadFromURL(download.DownloadURL)
 		if err != nil {
@@ -243,14 +243,14 @@ func RunConfigSkillsPush(env *Environment, paths []string) error {
 		defer func() { _ = os.Remove(archivePath) }()
 
 		name := filepath.Base(absPath)
-		commitItem, err := uploadAndPrepareCommitItem(client, archivePath, name)
+		fileRef, err := uploadAndPrepareConfigItem(client, archivePath)
 		if err != nil {
-			return err
+			return fmt.Errorf("upload config skill %q: %w", name, err)
 		}
 
 		skills = append(skills, skillPushItem{
 			Name:    name,
-			FileRef: &DriveFileRef{Kind: commitItem.FileRef.Kind, ID: commitItem.FileRef.ID},
+			FileRef: fileRef,
 		})
 	}
 
@@ -261,7 +261,7 @@ func RunConfigSkillsPush(env *Environment, paths []string) error {
 
 	body, err := client.PushConfig(context.Background(), payload)
 	if err != nil {
-		return err
+		return fmt.Errorf("push config skills: %w", err)
 	}
 	fmt.Println(string(body))
 	return nil
@@ -296,14 +296,14 @@ func RunConfigFilesPush(env *Environment, paths []string) error {
 		}
 
 		name := filepath.Base(absPath)
-		commitItem, err := uploadAndPrepareCommitItem(client, absPath, name)
+		fileRef, err := uploadAndPrepareConfigItem(client, absPath)
 		if err != nil {
-			return err
+			return fmt.Errorf("upload config file %q: %w", name, err)
 		}
 
 		files = append(files, filePushItem{
 			Name:    name,
-			FileRef: &DriveFileRef{Kind: commitItem.FileRef.Kind, ID: commitItem.FileRef.ID},
+			FileRef: fileRef,
 		})
 	}
 
@@ -314,10 +314,33 @@ func RunConfigFilesPush(env *Environment, paths []string) error {
 
 	body, err := client.PushConfig(context.Background(), payload)
 	if err != nil {
-		return err
+		return fmt.Errorf("push config files: %w", err)
 	}
 	fmt.Println(string(body))
 	return nil
+}
+
+func uploadAndPrepareConfigItem(client StubClient, filePath string) (*DriveFileRef, error) {
+	filename := filepath.Base(filePath)
+	mimetype := guessMIMEType(filename)
+	uploadURL, err := client.CreateToolFileUploadURL(context.Background(), filename, mimetype)
+	if err != nil {
+		return nil, fmt.Errorf("request upload URL: %w", err)
+	}
+	uploadBody, err := client.UploadFileToURL(uploadURL, filePath, filename, mimetype)
+	if err != nil {
+		return nil, fmt.Errorf("upload data: %w", err)
+	}
+
+	var uploadResult map[string]any
+	if err := json.Unmarshal(uploadBody, &uploadResult); err != nil {
+		return nil, fmt.Errorf("parse upload result: %w", err)
+	}
+	toolFileID, _ := uploadResult["id"].(string)
+	if toolFileID == "" {
+		return nil, fmt.Errorf("upload response is missing id")
+	}
+	return &DriveFileRef{Kind: "tool_file", ID: toolFileID}, nil
 }
 
 // RunConfigSkillsDelete executes the `config skills delete` command.

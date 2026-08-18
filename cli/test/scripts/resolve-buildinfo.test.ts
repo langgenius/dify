@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { resolveBuildInfo } from '../../scripts/lib/resolve-buildinfo.js'
 
 const FIXED_DATE = new Date('2026-05-09T12:00:00.000Z')

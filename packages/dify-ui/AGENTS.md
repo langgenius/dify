@@ -15,6 +15,8 @@ This package owns shared design tokens, CSS-first Tailwind styles, the `cn()` ut
 
 Use the README sections as the detailed owners:
 
+- [Button and icon-button contracts]
+- [Form and input composition]
 - [Imports and public boundaries]
 - [Typed value contracts]
 - [Search and picker selection]
@@ -22,7 +24,9 @@ Use the README sections as the detailed owners:
 - [Overlay and portal contracts]
 - [Development and test boundaries]
 
+[Button and icon-button contracts]: README.md#button-loading-and-disabled-contract
 [Development and test boundaries]: README.md#development
+[Form and input composition]: README.md#form-contract
 [Imports and public boundaries]: README.md#imports
 [Overlay and portal contracts]: README.md#overlay--portal-contract
 [Search and picker selection]: README.md#search-and-picker-selection
