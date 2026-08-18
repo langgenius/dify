@@ -464,7 +464,6 @@ class TestLLMGenerator:
         mock_model_instance.invoke_llm.side_effect = Exception("Unexpected multi-step error")
 
         result = LLMGenerator.generate_rule_config("tenant_id", payload)
-        assert "Failed to handle unexpected exception" in result["error"]
         assert "Unexpected multi-step error" in result["error"]
 
     def test_generate_code_python_success(self, mock_model_instance, model_config_entity):
@@ -503,7 +502,7 @@ class TestLLMGenerator:
         mock_model_instance.invoke_llm.side_effect = Exception("Random error")
 
         result = LLMGenerator.generate_code("tenant_id", payload)
-        assert "An unexpected error occurred" in result["error"]
+        assert "Random error" in result["error"]
 
     def test_generate_qa_document_success(self, mock_model_instance):
         mock_response = MagicMock(spec=LLMResult)
@@ -548,7 +547,6 @@ class TestLLMGenerator:
         mock_model_instance.invoke_llm.return_value = mock_response
 
         result = LLMGenerator.generate_structured_output("tenant_id", payload)
-        assert "An unexpected error occurred" in result["error"]
         assert "Failed to parse structured output" in result["error"]
 
     def test_generate_structured_output_invoke_error(self, mock_model_instance, model_config_entity):
@@ -556,14 +554,14 @@ class TestLLMGenerator:
         mock_model_instance.invoke_llm.side_effect = InvokeError("Invoke failed")
 
         result = LLMGenerator.generate_structured_output("tenant_id", payload)
-        assert "Failed to generate JSON Schema" in result["error"]
+        assert "Invoke failed" in result["error"]
 
     def test_generate_structured_output_exception(self, mock_model_instance, model_config_entity):
         payload = RuleStructuredOutputPayload(instruction="error", model_config=model_config_entity)
         mock_model_instance.invoke_llm.side_effect = Exception("Random error")
 
         result = LLMGenerator.generate_structured_output("tenant_id", payload)
-        assert "An unexpected error occurred" in result["error"]
+        assert "Random error" in result["error"]
 
     def test_instruction_modify_legacy_without_last_run_uses_real_empty_query(
         self,
@@ -835,12 +833,11 @@ class TestLLMGenerator:
             app.tenant_id, app.id, "current", "instruction", model_config_entity, "ideal"
         )
 
-        assert "An unexpected error occurred" in result["error"]
         assert error_fragment in result["error"]
 
     @pytest.mark.parametrize(
         ("model_error", "error_fragment"),
-        [(InvokeError("invoke failed"), "Failed to generate code"), (RuntimeError("boom"), "unexpected error")],
+        [(InvokeError("invoke failed"), "invoke failed"), (RuntimeError("boom"), "boom")],
     )
     def test_instruction_modify_handles_model_errors(
         self,

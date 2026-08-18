@@ -46,6 +46,26 @@ class AppDeletedPayload(TypedDict):
     app_id: str | None
 
 
+class PromptGenerationPayload(TypedDict):
+    """``payload`` shape for ``TelemetryCase.PROMPT_GENERATION``."""
+
+    tenant_id: str
+    app_id: NotRequired[str | None]
+    operation_type: str
+    instruction: str
+    generated_output: str
+    model_provider: str
+    model_name: str
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+    latency: float
+    total_price: NotRequired[float | None]
+    currency: NotRequired[str | None]
+    timer: NotRequired[dict]
+    error: NotRequired[str | None]
+
+
 class FeedbackCreatedPayload(TypedDict):
     """``payload`` shape for ``TelemetryCase.FEEDBACK_CREATED``."""
 
@@ -95,6 +115,13 @@ class AppDeletedEvent:
 
 
 @dataclass(frozen=True)
+class PromptGenerationEvent:
+    context: TelemetryContext
+    payload: PromptGenerationPayload
+    case: TelemetryCase = TelemetryCase.PROMPT_GENERATION
+
+
+@dataclass(frozen=True)
 class FeedbackCreatedEvent:
     context: TelemetryContext
     payload: FeedbackCreatedPayload
@@ -102,5 +129,10 @@ class FeedbackCreatedEvent:
 
 
 type TelemetryEvent = (
-    DraftNodeExecutionTraceEvent | AppCreatedEvent | AppUpdatedEvent | AppDeletedEvent | FeedbackCreatedEvent
+    DraftNodeExecutionTraceEvent
+    | PromptGenerationEvent
+    | AppCreatedEvent
+    | AppUpdatedEvent
+    | AppDeletedEvent
+    | FeedbackCreatedEvent
 )
