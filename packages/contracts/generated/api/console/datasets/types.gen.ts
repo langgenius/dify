@@ -513,6 +513,13 @@ export type HitTestingResponse = {
   records: Array<HitTestingRecord>
 }
 
+export type KnowledgeFsUpgradeDiscoveryResponse = {
+  block_reason?: KnowledgeFsUpgradeBlockReason | null
+  can_retry: boolean
+  can_upgrade: boolean
+  job?: KnowledgeFsUpgradeJobResponse | null
+}
+
 export type KnowledgeFsUpgradeJobResponse = {
   completed_at?: string | null
   completed_documents: number
@@ -602,6 +609,7 @@ export type DatasetListItemResponse = {
   indexing_technique: string | null
   is_multimodal: boolean
   is_published: boolean
+  knowledge_fs_upgrade: KnowledgeFsUpgradeDiscoveryResponse
   maintainer?: string | null
   name: string
   partial_member_list: Array<string>
@@ -868,6 +876,13 @@ export type HitTestingRecord = {
   summary: string | null
   tsne_position: unknown | null
 }
+
+export type KnowledgeFsUpgradeBlockReason =
+  | 'already_upgraded'
+  | 'feature_disabled'
+  | 'retry_required'
+  | 'unsupported_dataset_provider'
+  | 'upgrade_in_progress'
 
 export type KnowledgeFsUpgradeStage =
   | 'completed'
@@ -2334,8 +2349,27 @@ export type GetDatasetsByDatasetIdIndexingStatusResponses = {
 export type GetDatasetsByDatasetIdIndexingStatusResponse =
   GetDatasetsByDatasetIdIndexingStatusResponses[keyof GetDatasetsByDatasetIdIndexingStatusResponses]
 
+export type GetDatasetsByDatasetIdKnowledgeFsUpgradesData = {
+  body?: never
+  path: {
+    dataset_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/knowledge-fs-upgrades'
+}
+
+export type GetDatasetsByDatasetIdKnowledgeFsUpgradesResponses = {
+  200: KnowledgeFsUpgradeDiscoveryResponse
+}
+
+export type GetDatasetsByDatasetIdKnowledgeFsUpgradesResponse =
+  GetDatasetsByDatasetIdKnowledgeFsUpgradesResponses[keyof GetDatasetsByDatasetIdKnowledgeFsUpgradesResponses]
+
 export type PostDatasetsByDatasetIdKnowledgeFsUpgradesData = {
   body?: never
+  headers: {
+    'Idempotency-Key': string
+  }
   path: {
     dataset_id: string
   }

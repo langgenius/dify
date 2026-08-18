@@ -152,6 +152,110 @@ def test_retry_restores_failed_items_and_unreleased_file_lease(
         assert persisted_lease.expires_at > naive_utc_now()
 
 
+def test_create_reuses_the_dataset_job_after_success(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    tenant = Tenant(name="Once-only workspace")
+    owner = Account(name="Owner", email="upgrade-once-only@example.com")
+    with sqlite_session_factory.begin() as session:
+        session.add_all([tenant, owner])
+        session.flush()
+        dataset = Dataset(
+            tenant_id=tenant.id,
+            name="Legacy once-only",
+            description="Already upgraded",
+            data_source_type=DataSourceType.UPLOAD_FILE,
+            permission=DatasetPermissionEnum.ONLY_ME,
+            created_by=owner.id,
+        )
+        session.add(dataset)
+        session.flush()
+        succeeded = _job(
+            tenant_id=tenant.id,
+            old_dataset_id=dataset.id,
+            requested_by_account_id=owner.id,
+            owner_account_id=owner.id,
+            idempotency_key="first-upgrade",
+            status=KnowledgeFSUpgradeJobStatus.SUCCEEDED,
+            stage=KnowledgeFSUpgradeStage.COMPLETED,
+            new_control_space_id=None,
+            completed_at=naive_utc_now(),
+        )
+        session.add(succeeded)
+        tenant_id = tenant.id
+        dataset_id = dataset.id
+        owner_id = owner.id
+
+    result = KnowledgeFSUpgradeSnapshotService(sqlite_session_factory).create(
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        requested_by_account_id=owner_id,
+        idempotency_key="second-upgrade-intent",
+    )
+
+    assert result.id == succeeded.id
+    with sqlite_session_factory() as session:
+        assert len(list(session.scalars(select(KnowledgeFSUpgradeJob)))) == 1
+
+
+def test_latest_upgrade_lookup_batches_dataset_ids(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    first = _job(old_dataset_id=_DATASET_ID, idempotency_key="latest-first")
+    second_dataset_id = "00000000-0000-0000-0000-000000000098"
+    second = _job(
+        old_dataset_id=second_dataset_id,
+        idempotency_key="latest-second",
+        status=KnowledgeFSUpgradeJobStatus.FAILED,
+    )
+    with sqlite_session_factory.begin() as session:
+        session.add_all([first, second])
+
+    service = KnowledgeFSUpgradeSnapshotService(sqlite_session_factory)
+    latest = service.get_latest_by_dataset_ids(
+        tenant_id=_TENANT_ID,
+        dataset_ids=[_DATASET_ID, second_dataset_id],
+    )
+
+    assert latest[_DATASET_ID].id == first.id
+    assert latest[second_dataset_id].id == second.id
+    assert service.get_latest(tenant_id=_TENANT_ID, dataset_id="00000000-0000-0000-0000-000000000099") is None
+
+
+@pytest.mark.parametrize(
+    ("job_status", "feature_enabled", "provider", "can_upgrade", "can_retry", "reason"),
+    [
+        (None, True, "vendor", True, False, None),
+        (KnowledgeFSUpgradeJobStatus.QUEUED, True, "vendor", False, False, "upgrade_in_progress"),
+        (KnowledgeFSUpgradeJobStatus.RUNNING, True, "vendor", False, False, "upgrade_in_progress"),
+        (KnowledgeFSUpgradeJobStatus.FAILED, True, "vendor", False, True, "retry_required"),
+        (KnowledgeFSUpgradeJobStatus.SUCCEEDED, True, "vendor", False, False, "already_upgraded"),
+        (None, False, "vendor", False, False, "feature_disabled"),
+        (None, True, "external", False, False, "unsupported_dataset_provider"),
+    ],
+)
+def test_upgrade_discovery_exposes_allowed_action(
+    job_status: KnowledgeFSUpgradeJobStatus | None,
+    feature_enabled: bool,
+    provider: str,
+    can_upgrade: bool,
+    can_retry: bool,
+    reason: str | None,
+) -> None:
+    job = _job(status=job_status) if job_status else None
+
+    response = upgrade_module.upgrade_discovery_response(
+        job,
+        feature_enabled=feature_enabled,
+        dataset_provider=provider,
+    )
+
+    assert response.can_upgrade is can_upgrade
+    assert response.can_retry is can_retry
+    assert response.block_reason == reason
+    assert (response.job is None) is (job is None)
+
+
 def test_snapshot_is_immutable_after_the_legacy_dataset_changes(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:

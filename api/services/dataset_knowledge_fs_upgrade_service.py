@@ -54,6 +54,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSRetrievalProfileIntent,
     KnowledgeFSScoreThresholdIntent,
     KnowledgeFSSpaceCreatePayload,
+    KnowledgeFSUpgradeDiscoveryResponse,
     KnowledgeFSUpgradeJobResponse,
 )
 from services.knowledge_fs.runtime import get_knowledge_fs_runtime
@@ -122,7 +123,6 @@ class KnowledgeFSUpgradeSnapshotService:
                 .where(
                     KnowledgeFSUpgradeJob.tenant_id == tenant_id,
                     KnowledgeFSUpgradeJob.old_dataset_id == dataset_id,
-                    KnowledgeFSUpgradeJob.status.in_(_ACTIVE_JOB_STATUSES),
                 )
                 .order_by(KnowledgeFSUpgradeJob.created_at.desc())
                 .limit(1)
@@ -285,6 +285,57 @@ class KnowledgeFSUpgradeSnapshotService:
                 raise KnowledgeFSUpgradeNotFoundError("Upgrade job was not found")
             session.expunge(job)
             return job
+
+    def get_latest(self, *, tenant_id: str, dataset_id: str) -> KnowledgeFSUpgradeJob | None:
+        jobs = self.get_latest_by_dataset_ids(tenant_id=tenant_id, dataset_ids=[dataset_id])
+        return jobs.get(dataset_id)
+
+    def get_latest_by_dataset_ids(
+        self,
+        *,
+        tenant_id: str,
+        dataset_ids: list[str],
+        session: Session | None = None,
+    ) -> dict[str, KnowledgeFSUpgradeJob]:
+        if not dataset_ids:
+            return {}
+        if session is not None:
+            return self._latest_jobs_from_session(session, tenant_id=tenant_id, dataset_ids=dataset_ids, detach=False)
+        with self._session_maker() as owned_session:
+            return self._latest_jobs_from_session(
+                owned_session,
+                tenant_id=tenant_id,
+                dataset_ids=dataset_ids,
+                detach=True,
+            )
+
+    @staticmethod
+    def _latest_jobs_from_session(
+        session: Session,
+        *,
+        tenant_id: str,
+        dataset_ids: list[str],
+        detach: bool,
+    ) -> dict[str, KnowledgeFSUpgradeJob]:
+        jobs = session.scalars(
+            sa.select(KnowledgeFSUpgradeJob)
+            .where(
+                KnowledgeFSUpgradeJob.tenant_id == tenant_id,
+                KnowledgeFSUpgradeJob.old_dataset_id.in_(dataset_ids),
+            )
+            .order_by(
+                KnowledgeFSUpgradeJob.old_dataset_id,
+                KnowledgeFSUpgradeJob.created_at.desc(),
+                KnowledgeFSUpgradeJob.id.desc(),
+            )
+        )
+        latest: dict[str, KnowledgeFSUpgradeJob] = {}
+        for job in jobs:
+            if job.old_dataset_id not in latest:
+                if detach:
+                    session.expunge(job)
+                latest[job.old_dataset_id] = job
+        return latest
 
     def retry(self, *, tenant_id: str, job_id: str) -> KnowledgeFSUpgradeJob:
         lease_expires_at = naive_utc_now() + _FILE_LEASE_TTL
@@ -906,6 +957,50 @@ def upgrade_job_response(job: KnowledgeFSUpgradeJob) -> KnowledgeFSUpgradeJobRes
     )
 
 
+def upgrade_discovery_response(
+    job: KnowledgeFSUpgradeJob | None,
+    *,
+    feature_enabled: bool,
+    dataset_provider: str,
+) -> KnowledgeFSUpgradeDiscoveryResponse:
+    if not feature_enabled:
+        return KnowledgeFSUpgradeDiscoveryResponse(
+            job=upgrade_job_response(job) if job else None,
+            can_upgrade=False,
+            can_retry=False,
+            block_reason="feature_disabled",
+        )
+    if dataset_provider == "external":
+        return KnowledgeFSUpgradeDiscoveryResponse(
+            job=upgrade_job_response(job) if job else None,
+            can_upgrade=False,
+            can_retry=False,
+            block_reason="unsupported_dataset_provider",
+        )
+    if job is None:
+        return KnowledgeFSUpgradeDiscoveryResponse(can_upgrade=True, can_retry=False)
+    if job.status in _ACTIVE_JOB_STATUSES:
+        return KnowledgeFSUpgradeDiscoveryResponse(
+            job=upgrade_job_response(job),
+            can_upgrade=False,
+            can_retry=False,
+            block_reason="upgrade_in_progress",
+        )
+    if job.status is KnowledgeFSUpgradeJobStatus.FAILED:
+        return KnowledgeFSUpgradeDiscoveryResponse(
+            job=upgrade_job_response(job),
+            can_upgrade=False,
+            can_retry=True,
+            block_reason="retry_required",
+        )
+    return KnowledgeFSUpgradeDiscoveryResponse(
+        job=upgrade_job_response(job),
+        can_upgrade=False,
+        can_retry=False,
+        block_reason="already_upgraded",
+    )
+
+
 def _migrate_metadata_fields(job: KnowledgeFSUpgradeJob, facade: Any) -> None:
     expected_fields = cast(list[dict[str, str]], job.config_snapshot.get("metadata_fields") or [])
     if not expected_fields:
@@ -1174,5 +1269,6 @@ __all__ = [
     "KnowledgeFSUpgradeNotReadyError",
     "KnowledgeFSUpgradeRunner",
     "KnowledgeFSUpgradeSnapshotService",
+    "upgrade_discovery_response",
     "upgrade_job_response",
 ]

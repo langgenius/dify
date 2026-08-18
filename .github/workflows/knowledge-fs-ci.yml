@@ -256,6 +256,7 @@ jobs:
             api/app_factory.py
             api/commands/__init__.py
             api/controllers/console/__init__.py
+            api/controllers/console/datasets/datasets.py
             api/controllers/console/workspace/rbac.py
             api/controllers/service_api/__init__.py
             api/core/agent/base_agent_runner.py
@@ -300,6 +301,7 @@ jobs:
           done < <(find api/tests/unit_tests -type f -name '*.py' -print0)
 
           test_touchpoints=(
+            api/tests/unit_tests/controllers/console/datasets/test_datasets.py
             api/tests/unit_tests/controllers/console/workspace/test_rbac.py
             api/tests/unit_tests/core/agent/test_base_agent_runner.py
             api/tests/unit_tests/core/app/apps/agent_app/test_runtime_request_builder.py

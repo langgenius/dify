@@ -317,6 +317,22 @@ class KnowledgeFSUpgradeRetryResponse(ResponseModel):
     status: Literal["queued"] = "queued"
 
 
+type KnowledgeFSUpgradeBlockReason = Literal[
+    "feature_disabled",
+    "unsupported_dataset_provider",
+    "upgrade_in_progress",
+    "retry_required",
+    "already_upgraded",
+]
+
+
+class KnowledgeFSUpgradeDiscoveryResponse(ResponseModel):
+    job: KnowledgeFSUpgradeJobResponse | None = None
+    can_upgrade: bool
+    can_retry: bool
+    block_reason: KnowledgeFSUpgradeBlockReason | None = None
+
+
 class KnowledgeFSSpaceUpdatePayload(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=40)
     icon: KnowledgeFSIconIdentity | None = None

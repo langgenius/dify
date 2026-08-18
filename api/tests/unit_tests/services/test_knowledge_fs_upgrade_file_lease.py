@@ -77,7 +77,7 @@ def test_cleanup_request_is_persisted_on_every_active_lease(
     jobs = [
         KnowledgeFSUpgradeJob(
             tenant_id=_TENANT_ID,
-            old_dataset_id=_DATASET_ID,
+            old_dataset_id=f"00000000-0000-0000-0000-00000000001{index}",
             requested_by_account_id=_ACCOUNT_ID,
             owner_account_id=_ACCOUNT_ID,
             idempotency_key=f"upgrade-cleanup-request-{index}",

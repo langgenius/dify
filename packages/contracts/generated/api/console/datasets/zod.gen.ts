@@ -762,6 +762,14 @@ export const zHitTestingQuery = z.object({
   content: z.string(),
 })
 
+export const zKnowledgeFsUpgradeBlockReason = z.enum([
+  'already_upgraded',
+  'feature_disabled',
+  'retry_required',
+  'unsupported_dataset_provider',
+  'upgrade_in_progress',
+])
+
 /**
  * KnowledgeFSUpgradeStage
  */
@@ -797,6 +805,16 @@ export const zKnowledgeFsUpgradeJobResponse = z.object({
   status: zKnowledgeFsUpgradeJobStatus,
   total_documents: z.int().gte(0),
   total_sources: z.int().gte(0),
+})
+
+/**
+ * KnowledgeFSUpgradeDiscoveryResponse
+ */
+export const zKnowledgeFsUpgradeDiscoveryResponse = z.object({
+  block_reason: zKnowledgeFsUpgradeBlockReason.nullish(),
+  can_retry: z.boolean(),
+  can_upgrade: z.boolean(),
+  job: zKnowledgeFsUpgradeJobResponse.nullish(),
 })
 
 /**
@@ -1174,6 +1192,7 @@ export const zDatasetListItemResponse = z.object({
   indexing_technique: z.string().nullable(),
   is_multimodal: z.boolean(),
   is_published: z.boolean(),
+  knowledge_fs_upgrade: zKnowledgeFsUpgradeDiscoveryResponse,
   maintainer: z.string().nullish(),
   name: z.string(),
   partial_member_list: z.array(z.string()),
@@ -2220,6 +2239,20 @@ export const zGetDatasetsByDatasetIdIndexingStatusPath = z.object({
  * Indexing status retrieved successfully
  */
 export const zGetDatasetsByDatasetIdIndexingStatusResponse = zDocumentStatusListResponse
+
+export const zGetDatasetsByDatasetIdKnowledgeFsUpgradesPath = z.object({
+  dataset_id: z.uuid(),
+})
+
+/**
+ * KnowledgeFS Dataset upgrade discovery
+ */
+export const zGetDatasetsByDatasetIdKnowledgeFsUpgradesResponse =
+  zKnowledgeFsUpgradeDiscoveryResponse
+
+export const zPostDatasetsByDatasetIdKnowledgeFsUpgradesHeaders = z.object({
+  'Idempotency-Key': z.string().min(8).max(255),
+})
 
 export const zPostDatasetsByDatasetIdKnowledgeFsUpgradesPath = z.object({
   dataset_id: z.uuid(),

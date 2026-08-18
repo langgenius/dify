@@ -850,6 +850,7 @@ class KnowledgeFSUpgradeJob(DefaultFieldsDCMixin, TypeBase):
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="kfs_upgrade_job_pkey"),
         UniqueConstraint("tenant_id", "idempotency_key", name="kfs_upgrade_job_idempotency_uq"),
+        UniqueConstraint("tenant_id", "old_dataset_id", name="kfs_upgrade_job_dataset_uq"),
         sa.ForeignKeyConstraint(
             ["tenant_id"],
             ["tenants.id"],

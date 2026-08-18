@@ -5,10 +5,10 @@ from uuid import UUID, uuid4
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Conflict, Forbidden, NotFound
+from werkzeug.exceptions import BadRequest, Conflict, Forbidden, NotFound
 
 import services
 from configs import dify_config
@@ -58,18 +58,34 @@ from services.dataset_knowledge_fs_upgrade_service import (
     KnowledgeFSUpgradeConflictError,
     KnowledgeFSUpgradeNotFoundError,
     KnowledgeFSUpgradeSnapshotService,
+    upgrade_discovery_response,
     upgrade_job_response,
 )
 from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.rbac_service import RBACResourceWhitelistScope, ReplaceMemberBindings
-from services.knowledge_fs.product_dto import KnowledgeFSUpgradeJobResponse, KnowledgeFSUpgradeRetryResponse
+from services.knowledge_fs.product_dto import (
+    KnowledgeFSIdempotencyHeader,
+    KnowledgeFSUpgradeDiscoveryResponse,
+    KnowledgeFSUpgradeJobResponse,
+    KnowledgeFSUpgradeRetryResponse,
+)
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 register_response_schema_models(console_ns, ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse)
 
 DATASET_LIST_PERMISSION_KEYS = frozenset({"dataset.preview", "dataset.acl.preview", "dataset.full_access"})
+_KNOWLEDGE_FS_UPGRADE_IDEMPOTENCY_HEADER_PARAMS = {
+    "Idempotency-Key": {
+        "description": "Stable key used to make the Dataset upgrade safe to retry",
+        "in": "header",
+        "maxLength": 255,
+        "minLength": 8,
+        "required": True,
+        "type": "string",
+    }
+}
 
 
 def _has_dataset_list_permission(permission_keys: list[str]) -> bool:
@@ -86,6 +102,16 @@ def _get_accessible_dataset(dataset_id: UUID, tenant_id: str, current_user: Acco
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
     return dataset
+
+
+def _knowledge_fs_upgrade_idempotency_key() -> str:
+    try:
+        header = KnowledgeFSIdempotencyHeader.model_validate(
+            {"idempotency-key": request.headers.get("Idempotency-Key")}
+        )
+    except ValidationError as error:
+        raise BadRequest("A valid Idempotency-Key header is required") from error
+    return header.idempotency_key
 
 
 def _validate_indexing_technique(value: str | None) -> str | None:
@@ -189,6 +215,7 @@ class ConsoleDatasetListQuery(BaseModel):
 
 class DatasetListItemResponse(DatasetDetailResponse):
     partial_member_list: list[str]
+    knowledge_fs_upgrade: KnowledgeFSUpgradeDiscoveryResponse
 
 
 class DatasetListResponse(ResponseModel):
@@ -366,6 +393,7 @@ register_response_schema_models(
     AutoDisableLogsResponse,
     KnowledgeFSUpgradeJobResponse,
     KnowledgeFSUpgradeRetryResponse,
+    KnowledgeFSUpgradeDiscoveryResponse,
 )
 
 
@@ -550,6 +578,11 @@ class DatasetListApi(Resource):
             dump_response(DatasetDetailResponse, dataset_detail_response_source(dataset, session=session))
             for dataset in datasets
         ]
+        upgrade_jobs = KnowledgeFSUpgradeSnapshotService(session_factory.get_session_maker()).get_latest_by_dataset_ids(
+            tenant_id=current_tenant_id,
+            dataset_ids=[str(dataset.id) for dataset in datasets],
+            session=session,
+        )
         dataset_ids = [item["id"] for item in data if item.get("permission") == "partial_members"]
         partial_members_map: dict[str, list[str]] = {}
         if dataset_ids:
@@ -579,6 +612,11 @@ class DatasetListApi(Resource):
             else:
                 item.update({"partial_member_list": []})
             item["permission_keys"] = permission_keys_map.get(str(item["id"]), [])
+            item["knowledge_fs_upgrade"] = upgrade_discovery_response(
+                upgrade_jobs.get(str(item["id"])),
+                feature_enabled=dify_config.KNOWLEDGE_FS_ENABLED,
+                dataset_provider=str(item["provider"]),
+            ).model_dump(mode="json")
 
         response = {
             "data": data,
@@ -832,6 +870,32 @@ class DatasetApi(Resource):
 @console_ns.route("/datasets/<uuid:dataset_id>/knowledge-fs-upgrades")
 class DatasetKnowledgeFSUpgradeApi(Resource):
     @console_ns.response(
+        200,
+        "KnowledgeFS Dataset upgrade discovery",
+        console_ns.models[KnowledgeFSUpgradeDiscoveryResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, current_user: Account, dataset_id: UUID):
+        with session_factory.create_session() as session:
+            dataset = _get_accessible_dataset(dataset_id, current_tenant_id, current_user, session)
+        snapshots = KnowledgeFSUpgradeSnapshotService(session_factory.get_session_maker())
+        job = snapshots.get_latest(tenant_id=current_tenant_id, dataset_id=str(dataset_id))
+        return dump_response(
+            KnowledgeFSUpgradeDiscoveryResponse,
+            upgrade_discovery_response(
+                job,
+                feature_enabled=dify_config.KNOWLEDGE_FS_ENABLED,
+                dataset_provider=dataset.provider,
+            ),
+        )
+
+    @console_ns.doc(params=_KNOWLEDGE_FS_UPGRADE_IDEMPOTENCY_HEADER_PARAMS)
+    @console_ns.response(
         202,
         "KnowledgeFS Dataset upgrade accepted",
         console_ns.models[KnowledgeFSUpgradeJobResponse.__name__],
@@ -863,7 +927,7 @@ class DatasetKnowledgeFSUpgradeApi(Resource):
                 tenant_id=current_tenant_id,
                 dataset_id=dataset_id_str,
                 requested_by_account_id=current_user.id,
-                idempotency_key=request.headers.get("Idempotency-Key"),
+                idempotency_key=_knowledge_fs_upgrade_idempotency_key(),
             )
         except KnowledgeFSUpgradeNotFoundError as error:
             raise NotFound(str(error)) from error

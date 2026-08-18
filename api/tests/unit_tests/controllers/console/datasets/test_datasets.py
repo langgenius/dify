@@ -184,6 +184,7 @@ class TestDatasetList:
         datasets = [make_dataset(icon_info={"icon": "📙", "icon_type": "emoji"})]
         with app.test_request_context("/datasets"):
             with (
+                patch("controllers.console.datasets.datasets.dify_config.KNOWLEDGE_FS_ENABLED", True),
                 patch.object(DatasetService, "get_datasets", return_value=(datasets, 1)),
                 patch.object(ProviderManager, "get_configurations", return_value=MagicMock(get_models=lambda **_: [])),
             ):
@@ -197,6 +198,50 @@ class TestDatasetList:
             "icon_type": "emoji",
             "icon_url": None,
         }
+        assert resp["data"][0]["knowledge_fs_upgrade"] == {
+            "job": None,
+            "can_upgrade": True,
+            "can_retry": False,
+            "block_reason": None,
+        }
+
+    def test_get_attaches_upgrade_summaries_with_one_batch_lookup(self, app: Flask):
+        api = DatasetListApi()
+        method = unwrap(api.get)
+        current_user = self._mock_user()
+        datasets = [make_dataset(id="dataset-1"), make_dataset(id="dataset-2")]
+        succeeded = SimpleNamespace(
+            id="upgrade-job-1",
+            old_dataset_id="dataset-1",
+            new_control_space_id="space-1",
+            status=KnowledgeFSUpgradeJobStatus.SUCCEEDED,
+            stage=KnowledgeFSUpgradeStage.COMPLETED,
+            snapshot_at=datetime.datetime(2026, 8, 18, tzinfo=datetime.UTC),
+            total_documents=2,
+            completed_documents=2,
+            total_sources=1,
+            completed_sources=1,
+            last_error_code=None,
+            last_error_message=None,
+            completed_at=datetime.datetime(2026, 8, 18, tzinfo=datetime.UTC),
+        )
+        with app.test_request_context("/datasets"):
+            with (
+                patch("controllers.console.datasets.datasets.dify_config.KNOWLEDGE_FS_ENABLED", True),
+                patch.object(DatasetService, "get_datasets", return_value=(datasets, 2)),
+                patch.object(ProviderManager, "get_configurations", return_value=MagicMock(get_models=lambda **_: [])),
+                patch(
+                    "controllers.console.datasets.datasets.KnowledgeFSUpgradeSnapshotService.get_latest_by_dataset_ids",
+                    return_value={"dataset-1": succeeded},
+                ) as get_latest,
+            ):
+                resp, status = method(api, MagicMock(), "tenant-1", current_user)
+
+        assert status == 200
+        get_latest.assert_called_once()
+        assert resp["data"][0]["knowledge_fs_upgrade"]["block_reason"] == "already_upgraded"
+        assert resp["data"][0]["knowledge_fs_upgrade"]["job"]["new_control_space_id"] == "space-1"
+        assert resp["data"][1]["knowledge_fs_upgrade"]["can_upgrade"] is True
 
     def test_get_serializes_database_fields_with_caller_session(self, app: Flask, dataset_model_property_defaults):
         api = DatasetListApi()
@@ -889,6 +934,57 @@ class TestDatasetKnowledgeFSUpgradeApi:
             idempotency_key="upgrade-request-1",
         )
         enqueue.assert_called_once_with(snapshots, tenant_id="tenant-1", job_id="upgrade-job-1")
+
+    def test_create_requires_idempotency_key(self, app: Flask):
+        dataset_id = "123e4567-e89b-12d3-a456-426614174000"
+        dataset = make_dataset(id=dataset_id, tenant_id="tenant-1")
+        session_context = MagicMock()
+        session_context.__enter__.return_value = MagicMock()
+        api = DatasetKnowledgeFSUpgradeApi()
+        method = unwrap(api.post)
+        with (
+            app.test_request_context(f"/datasets/{dataset_id}/knowledge-fs-upgrades"),
+            patch("controllers.console.datasets.datasets.dify_config.KNOWLEDGE_FS_ENABLED", True),
+            patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", True),
+            patch("controllers.console.datasets.datasets.session_factory.create_session", return_value=session_context),
+            patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset),
+            pytest.raises(BadRequest, match="Idempotency-Key"),
+        ):
+            method(api, "tenant-1", make_account(), dataset_id)
+
+    def test_discovery_returns_latest_job_and_allowed_action(self, app: Flask):
+        dataset_id = "123e4567-e89b-12d3-a456-426614174000"
+        dataset = make_dataset(id=dataset_id, tenant_id="tenant-1")
+        snapshots = MagicMock()
+        snapshots.get_latest.return_value = self._job(
+            dataset_id,
+            status=KnowledgeFSUpgradeJobStatus.FAILED,
+            last_error_code="RuntimeError",
+            last_error_message="source failed",
+        )
+        session_context = MagicMock()
+        session_context.__enter__.return_value = MagicMock()
+        api = DatasetKnowledgeFSUpgradeApi()
+        method = unwrap(api.get)
+        with (
+            app.test_request_context(f"/datasets/{dataset_id}/knowledge-fs-upgrades"),
+            patch("controllers.console.datasets.datasets.dify_config.KNOWLEDGE_FS_ENABLED", True),
+            patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", True),
+            patch("controllers.console.datasets.datasets.session_factory.create_session", return_value=session_context),
+            patch("controllers.console.datasets.datasets.session_factory.get_session_maker", return_value="maker"),
+            patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset),
+            patch(
+                "controllers.console.datasets.datasets.KnowledgeFSUpgradeSnapshotService",
+                return_value=snapshots,
+            ),
+        ):
+            response = method(api, "tenant-1", make_account(), dataset_id)
+
+        assert response["can_upgrade"] is False
+        assert response["can_retry"] is True
+        assert response["block_reason"] == "retry_required"
+        assert response["job"]["last_error_message"] == "source failed"
+        snapshots.get_latest.assert_called_once_with(tenant_id="tenant-1", dataset_id=dataset_id)
 
     def test_status_uses_legacy_dataset_permission_in_community_edition(self, app: Flask):
         dataset_id = "123e4567-e89b-12d3-a456-426614174000"
