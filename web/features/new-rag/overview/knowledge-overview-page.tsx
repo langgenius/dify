@@ -1575,7 +1575,7 @@ function Onboarding({
         <span className="i-custom-public-llm-jina size-4" />
         <span className="i-custom-public-common-notion size-4" />
         <span className="i-custom-public-common-google-drive size-4" />
-        <span className="i-custom-public-common-confluence size-4" />
+        <span className="i-custom-public-new-rag-confluence size-4" />
         <span className="i-ri-more-fill size-4" />
       </div>
       <div className="mt-3 h-10.5">
