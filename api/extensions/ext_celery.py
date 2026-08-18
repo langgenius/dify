@@ -224,6 +224,7 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.trace_delivery_task",  # trace delivery and provider export retries
         "tasks.ops_trace_task",  # retired endpoint; old workers must drain pre-upgrade tasks
         "tasks.evaluation_task",  # evaluation run execution
+        "tasks.workflow_copilot_advance_task",  # workflow copilot session advance
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 
