@@ -734,7 +734,7 @@ class TestDifyNodeFactoryCreateNode:
                 "vision": {"enabled": False},
             }
         )
-        wrapped_model_instance = sentinel.wrapped_model_instance
+        wrapped_model_instance = MagicMock(spec=DifyPreparedLLM)
         factory._build_model_instance_for_llm_node = MagicMock(return_value=sentinel.model_instance)
         factory._build_memory_for_llm_node = MagicMock(return_value=sentinel.memory)
 
