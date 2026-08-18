@@ -9,6 +9,7 @@ import pytest
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
+from core.app.app_config.easy_ui_based_app import workflow_graph_builder as graph_builder_module
 from core.app.app_config.entities import (
     AdvancedChatMessageEntity,
     AdvancedChatPromptTemplateEntity,
@@ -274,7 +275,7 @@ def test__convert_to_llm_node_for_chatbot_simple_chat_model_with_empty_template(
         simple_prompt_template="ignored",
     )
     monkeypatch.setattr(
-        converter_module.SimplePromptTransform,
+        graph_builder_module.SimplePromptTransform,
         "get_prompt_template",
         lambda self, **kwargs: {"prompt_template": PromptTemplateParser(""), "prompt_rules": {}},
     )
@@ -674,7 +675,7 @@ def test_build_graph_from_app_config_preserves_api_based_variable_nodes(
         api_key="encrypted-token",
     )
     monkeypatch.setattr(converter, "_get_api_based_extension", MagicMock(return_value=extension))
-    monkeypatch.setattr(converter_module.encrypter, "decrypt_token", MagicMock(return_value="plain-token"))
+    monkeypatch.setattr(graph_builder_module.encrypter, "decrypt_token", MagicMock(return_value="plain-token"))
 
     graph, _ = converter.build_graph_from_app_config(
         app_model=app_model,
@@ -841,7 +842,7 @@ def test_convert_to_llm_node_should_raise_when_prompt_template_parser_type_is_in
         simple_prompt_template="Hello {{name}}",
     )
     monkeypatch.setattr(
-        converter_module.SimplePromptTransform,
+        graph_builder_module.SimplePromptTransform,
         "get_prompt_template",
         lambda self, **kwargs: {"prompt_template": "invalid"},
     )
@@ -884,7 +885,7 @@ def test_convert_to_llm_node_should_raise_when_completion_prompt_rules_type_is_i
         simple_prompt_template="Hello {{name}}",
     )
     monkeypatch.setattr(
-        converter_module.SimplePromptTransform,
+        graph_builder_module.SimplePromptTransform,
         "get_prompt_template",
         lambda self, **kwargs: {"prompt_template": PromptTemplateParser("Hello {{name}}"), "prompt_rules": "invalid"},
     )

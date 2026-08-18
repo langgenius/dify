@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from core.app.app_config.easy_ui_based_app.workflow_graph_builder import WorkflowGraph
 from core.app.apps.completion.workflow_runner import CompletionWorkflowRunner
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import CompletionAppGenerateEntity, InvokeFrom, UserFrom
@@ -13,7 +14,6 @@ from core.workflow.node_runtime import DIFY_BEFORE_LLM_INVOKE_KEY
 from graphon.file import FileUploadConfig, ImageConfig
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent, UserPromptMessage
 from models.model import App, AppMode, Message
-from services.workflow.workflow_converter import WorkflowGraph
 
 
 def _entity() -> CompletionAppGenerateEntity:

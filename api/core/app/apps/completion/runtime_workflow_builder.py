@@ -1,8 +1,8 @@
 from sqlalchemy.orm import Session
 
+from core.app.app_config.easy_ui_based_app.workflow_graph_builder import WorkflowGraph, WorkflowGraphBuilder
 from core.app.apps.completion.app_config_manager import CompletionAppConfig
 from models.model import App, AppMode
-from services.workflow.workflow_converter import WorkflowConverter, WorkflowGraph
 
 
 def build_runtime_completion_workflow(
@@ -12,7 +12,7 @@ def build_runtime_completion_workflow(
     session: Session,
 ) -> WorkflowGraph:
     """Build the transient WorkflowEntry graph used by Completion execution."""
-    graph, _ = WorkflowConverter().build_graph_from_app_config(
+    graph, _ = WorkflowGraphBuilder().build_graph_from_app_config(
         app_model=app_model,
         app_config=app_config,
         target_app_mode=AppMode.WORKFLOW,
