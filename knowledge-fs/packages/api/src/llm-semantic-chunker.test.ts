@@ -32,13 +32,17 @@ const GENERATION_A = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c44";
 const GENERATION_B = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c45";
 
 interface PromptUnit {
+  readonly boundaryPolicy?: "isolated";
   readonly graphemeLength: number;
   readonly id: string;
+  readonly sourceElementId?: string;
+  readonly sourceSectionPath?: readonly string[];
   readonly text: string;
   readonly type: string;
 }
 
 interface PromptPayload {
+  readonly atomicDocument?: boolean;
   readonly lookAheadUnits?: readonly PromptUnit[];
   readonly sectionPath: readonly string[];
   readonly units: readonly PromptUnit[];
@@ -235,7 +239,7 @@ describe("LLM semantic chunker", () => {
         completed: true,
         entityCount: 2,
         model: "reasoner-model",
-        promptVersion: "semantic-chunking-v1",
+        promptVersion: "semantic-chunking-v2",
       },
       relationExtraction: { completed: true, relationCount: 1 },
       semanticChunking: {
@@ -346,14 +350,8 @@ describe("LLM semantic chunker", () => {
     });
   });
 
-  it("never crosses sections and isolates table/image windows without degrading later context", async () => {
-    const provider = new ScriptedProvider([
-      echoWholeWindow,
-      echoWholeWindow,
-      echoWholeWindow,
-      echoWholeWindow,
-      echoWholeWindow,
-    ]);
+  it("batches source sections into one request while preserving table and image output boundaries", async () => {
+    const provider = new ScriptedProvider([echoSemanticBoundaries]);
     const chunker = createLlmSemanticChunker({ reasoningProviderFactory: () => provider });
     const nodes = await chunker.chunk({
       knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
@@ -404,16 +402,25 @@ describe("LLM semantic chunker", () => {
       retrievalProfile: profile(),
     });
 
-    expect(provider.calls).toHaveLength(5);
+    expect(provider.calls).toHaveLength(1);
     const promptWindows = provider.calls.map((call) =>
       JSON.parse(call.messages.find((message) => message.role === "user")?.content ?? "{}"),
     ) as PromptPayload[];
-    expect(promptWindows.map((window) => window.units.map((unit) => unit.type))).toEqual([
-      ["paragraph"],
-      ["paragraph"],
-      ["table"],
-      ["image"],
-      ["paragraph", "paragraph"],
+    expect(promptWindows[0]?.units.map((unit) => unit.type)).toEqual([
+      "paragraph",
+      "paragraph",
+      "table",
+      "image",
+      "paragraph",
+      "paragraph",
+    ]);
+    expect(promptWindows[0]?.units.map((unit) => unit.sourceSectionPath)).toEqual([
+      ["A"],
+      ["B"],
+      ["B"],
+      ["B"],
+      ["B"],
+      ["B"],
     ]);
     expect(nodes.map((node) => node.kind)).toEqual(["chunk", "chunk", "table", "image", "chunk"]);
     expect(nodes[2]?.metadata).toMatchObject({ table: { rows: 1 }, title: "Metrics" });
@@ -422,6 +429,226 @@ describe("LLM semantic chunker", () => {
       caption: "Architecture",
     });
     expect(nodes[4]?.text).toBe("After image one.\nAfter image two.");
+    expect(nodes[2]?.metadata.semanticChunking).toMatchObject({
+      sourceSpans: [
+        {
+          elementId: "table-1",
+          elementType: "table",
+          sectionPath: ["B"],
+        },
+      ],
+      windowPlanning: {
+        atomicDocument: false,
+        sourceSectionPathCount: 2,
+        version: "v2",
+      },
+    });
+  });
+
+  it("keeps a one-page short structured record atomic across its table boundary", async () => {
+    const parseArtifact = artifact([
+      {
+        id: "invoice-title",
+        metadata: {},
+        pageNumber: 1,
+        sectionPath: ["电子发票"],
+        text: "电子发票（普通发票）",
+        type: "title",
+      },
+      {
+        id: "invoice-number",
+        metadata: {},
+        pageNumber: 1,
+        sectionPath: ["电子发票"],
+        text: "发票号码：26322000006288006226",
+        type: "paragraph",
+      },
+      {
+        id: "invoice-table",
+        metadata: { table: { rows: 1 }, title: "商品明细" },
+        pageNumber: 1,
+        sectionPath: ["电子发票"],
+        text: "项目名称 | 金额 | 税额\n餐饮服务 | 533.96 | 32.04",
+        type: "table",
+      },
+      {
+        id: "invoice-total",
+        metadata: {},
+        pageNumber: 1,
+        sectionPath: ["电子发票"],
+        text: "价税合计：¥566.00",
+        type: "paragraph",
+      },
+    ]);
+    const preflight = preflightLlmSemanticWindows({ parseArtifact });
+    const legacyPreflight = preflightLlmSemanticWindows({
+      parseArtifact,
+      promptVersion: "semantic-chunking-v1",
+    });
+    const provider = new ScriptedProvider([
+      ({ units }) => ({
+        chunks: [
+          {
+            ...chunkRange(units[0]?.id, units.at(-1)?.id),
+            entities: [
+              {
+                confidence: 0.99,
+                id: "e-invoice",
+                text: "26322000006288006226",
+                type: "term",
+              },
+            ],
+            sectionPath: ["电子发票"],
+            sectionSummary: "发票号码、商品明细与价税合计。",
+          },
+        ],
+      }),
+    ]);
+    const nodes = await createLlmSemanticChunker({
+      reasoningProviderFactory: () => provider,
+    }).chunk({
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      parseArtifact,
+      retrievalProfile: profile(),
+    });
+
+    expect(preflight).toEqual({ maximumWindowCount: 1, unitCount: 4 });
+    expect(legacyPreflight).toEqual({ maximumWindowCount: 3, unitCount: 4 });
+    expect(
+      preflightLlmSemanticWindows({ parseArtifact, promptVersion: "custom-semantic-v1" }),
+    ).toEqual(legacyPreflight);
+    expect(provider.calls).toHaveLength(1);
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0]).toMatchObject({
+      kind: "chunk",
+      sourceLocation: { pageNumber: 1, sectionPath: ["电子发票"] },
+      text: parseArtifact.elements.map((element) => element.text?.trim() ?? "").join("\n"),
+    });
+    expect(nodes[0]?.metadata.semanticChunking).toMatchObject({
+      section: {
+        path: ["电子发票"],
+        summary: "发票号码、商品明细与价税合计。",
+      },
+      sourceSpans: [
+        { elementId: "invoice-title", elementType: "title", pageNumber: 1 },
+        { elementId: "invoice-number", elementType: "paragraph", pageNumber: 1 },
+        { elementId: "invoice-table", elementType: "table", pageNumber: 1 },
+        { elementId: "invoice-total", elementType: "paragraph", pageNumber: 1 },
+      ],
+      windowPlanning: {
+        atomicDocument: true,
+        sourceSectionPathCount: 1,
+        version: "v2",
+      },
+    });
+    expect(nodes[0]?.metadata.extractedEntities).toEqual([
+      expect.objectContaining({ text: "26322000006288006226", type: "term" }),
+    ]);
+  });
+
+  it("fails closed when model output violates atomic-record or special-element boundaries", async () => {
+    const atomicArtifact = artifact([
+      {
+        id: "atomic-text",
+        metadata: {},
+        pageNumber: 1,
+        sectionPath: ["Record"],
+        text: "Record header.",
+        type: "paragraph",
+      },
+      {
+        id: "atomic-table",
+        metadata: {},
+        pageNumber: 1,
+        sectionPath: ["Record"],
+        text: "Name | Value",
+        type: "table",
+      },
+    ]);
+    await expect(
+      createLlmSemanticChunker({
+        reasoningProviderFactory: () => new ScriptedProvider([echoEachUnit]),
+      }).chunk({
+        knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+        parseArtifact: atomicArtifact,
+        retrievalProfile: profile(),
+      }),
+    ).rejects.toThrow("atomic document must produce exactly one chunk");
+
+    const ordinaryArtifact = artifact([
+      {
+        id: "ordinary-text",
+        metadata: {},
+        sectionPath: ["Document"],
+        text: "Context before table.",
+        type: "paragraph",
+      },
+      {
+        id: "ordinary-table",
+        metadata: {},
+        sectionPath: ["Document"],
+        text: "Name | Value",
+        type: "table",
+      },
+    ]);
+    await expect(
+      createLlmSemanticChunker({
+        reasoningProviderFactory: () => new ScriptedProvider([echoWholeWindow]),
+      }).chunk({
+        knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+        parseArtifact: ordinaryArtifact,
+        retrievalProfile: profile(),
+      }),
+    ).rejects.toThrow("must keep table and image elements in isolated chunks");
+  });
+
+  it("budgets many parser section paths and tables by context instead of path count", async () => {
+    const elements: Array<ParseArtifact["elements"][number]> = [];
+    for (let index = 0; index < 68; index += 1) {
+      elements.push({
+        id: `section-${index}`,
+        metadata: {},
+        sectionPath: [`Section ${index}`],
+        text: `Section ${index} policy details ${"x".repeat(96)}.`,
+        type: "paragraph",
+      });
+      if (index % 10 === 0) {
+        elements.push({
+          id: `table-${index}`,
+          metadata: { table: { rows: 1 } },
+          sectionPath: [`Section ${index}`],
+          text: `Metric ${index} | Value ${index}`,
+          type: "table",
+        });
+      }
+    }
+    const parseArtifact = artifact(elements);
+    const preflight = preflightLlmSemanticWindows({ parseArtifact });
+    const legacyPreflight = preflightLlmSemanticWindows({
+      parseArtifact,
+      promptVersion: "semantic-chunking-v1",
+    });
+    const provider = new ScriptedProvider([echoSemanticBoundaries]);
+    const nodes = await createLlmSemanticChunker({
+      reasoningProviderFactory: () => provider,
+    }).chunk({
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      parseArtifact,
+      retrievalProfile: profile(),
+    });
+
+    expect(preflight.maximumWindowCount).toBeLessThanOrEqual(3);
+    expect(legacyPreflight.maximumWindowCount).toBe(75);
+    expect(provider.calls).toHaveLength(preflight.maximumWindowCount);
+    expect(nodes.filter((node) => node.kind === "table")).toHaveLength(7);
+    expect(nodes.map((node) => node.text).join("\n")).toBe(
+      parseArtifact.elements.map((element) => element.text?.trim() ?? "").join("\n"),
+    );
+    expect(
+      nodes.every((node) =>
+        Array.isArray((node.metadata.semanticChunking as { sourceSpans?: unknown }).sourceSpans),
+      ),
+    ).toBe(true);
   });
 
   it("lets the reasoning model replace unproven Unstructured title boundaries", async () => {
@@ -1058,6 +1285,8 @@ describe("LLM semantic chunker", () => {
       },
     ]);
     const nodes = await createLlmSemanticChunker({
+      maxChunkChars: 14,
+      maxWindowChars: 14,
       reasoningProviderFactory: () =>
         new ScriptedProvider([echoWholeWindow], undefined, "plugin-daemon"),
     }).chunk({
@@ -1071,6 +1300,7 @@ describe("LLM semantic chunker", () => {
     expect(() =>
       assertValidLlmSemanticWindowManifestReplay({
         completionCatalog: receipt.completionCatalog,
+        config: { maxChunkChars: 14, maxWindowChars: 14 },
         documentChunkCount: nodes.length,
         modelSelection: profile().reasoningModel,
         parseArtifact,
@@ -1466,12 +1696,15 @@ describe("LLM semantic chunker", () => {
         type: "paragraph" as const,
       })),
     );
-    expect(() => preflightLlmSemanticWindows({ parseArtifact })).toThrow(
+    const config = { maxChunkChars: 1, maxWindowChars: 1 } as const;
+    expect(() => preflightLlmSemanticWindows({ config, parseArtifact })).toThrow(
       `maxSemanticWindows=${DEFAULT_MAX_SEMANTIC_WINDOWS}`,
     );
     let providerConstructions = 0;
     await expect(
       createLlmSemanticChunker({
+        maxChunkChars: 1,
+        maxWindowChars: 1,
         reasoningProviderFactory: () => {
           providerConstructions += 1;
           return new ScriptedProvider([echoWholeWindow]);
@@ -1500,6 +1733,9 @@ describe("LLM semantic chunker", () => {
     expect(() =>
       createLlmSemanticChunker({ promptVersion: " ", reasoningProviderFactory: factory }),
     ).toThrow("promptVersion is required");
+    expect(() =>
+      preflightLlmSemanticWindows({ parseArtifact: artifact([]), promptVersion: " " }),
+    ).toThrow("preflight promptVersion is required");
     expect(() =>
       createLlmSemanticChunker({ reasoningProviderFactory: factory, temperature: -1 }),
     ).toThrow("temperature must be non-negative");
@@ -1730,7 +1966,11 @@ describe("LLM semantic chunker", () => {
       },
     };
     await expect(
-      createLlmSemanticChunker({ reasoningProviderFactory: () => provider }).chunk({
+      createLlmSemanticChunker({
+        maxChunkChars: 20,
+        maxWindowChars: 20,
+        reasoningProviderFactory: () => provider,
+      }).chunk({
         knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
         parseArtifact: artifact(
           Array.from({ length: 65 }, (_, index) => ({
@@ -2177,6 +2417,28 @@ function echoWholeWindow({ units }: PromptPayload) {
   return {
     chunks: [chunkRange(units[0]?.id, units.at(-1)?.id)],
   };
+}
+
+function echoSemanticBoundaries({ atomicDocument, units }: PromptPayload) {
+  if (atomicDocument) {
+    return { chunks: [chunkRange(units[0]?.id, units.at(-1)?.id)] };
+  }
+  const chunks: ReturnType<typeof chunkRange>[] = [];
+  let start = 0;
+  for (let index = 0; index < units.length; index += 1) {
+    const unit = units[index] as PromptUnit;
+    const next = units[index + 1];
+    const isolated = unit.boundaryPolicy === "isolated";
+    const nextStartsBoundary = next?.boundaryPolicy === "isolated";
+    const sectionChanges =
+      next !== undefined &&
+      JSON.stringify(unit.sourceSectionPath ?? []) !== JSON.stringify(next.sourceSectionPath ?? []);
+    if (isolated || nextStartsBoundary || sectionChanges || next === undefined) {
+      chunks.push(chunkRange((units[start] as PromptUnit).id, unit.id));
+      start = index + 1;
+    }
+  }
+  return { chunks };
 }
 
 function chunkRange(startUnitId: string | undefined, endUnitId: string | undefined) {

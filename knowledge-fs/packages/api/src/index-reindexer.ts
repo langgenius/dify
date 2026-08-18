@@ -379,6 +379,7 @@ export function createIncrementalReindexer({
               overlapChars: semanticReceiptRequest.semanticConfig.overlapChars,
             },
             parseArtifact: storedArtifact,
+            promptVersion: semanticReceiptRequest.semanticConfig.promptVersion,
           });
           assertSemanticGenerationReceiptAdmission({
             maximumChunkCount: Math.min(
@@ -641,7 +642,7 @@ function semanticOutlineArtifact(
       ...parseArtifact.metadata,
       semanticCompilation: {
         nodeCount: nodes.length,
-        source: "llm-semantic-v1",
+        source: "llm-semantic-v2",
       },
     },
   });
