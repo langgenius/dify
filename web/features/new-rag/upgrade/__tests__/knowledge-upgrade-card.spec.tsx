@@ -1,7 +1,8 @@
 import type { KnowledgeFsUpgradeJobResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { KnowledgeUpgrade } from '../knowledge-upgrade-context-value'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { KnowledgeUpgradeCard } from '../knowledge-upgrade-card'
 import { KnowledgeUpgradeContext } from '../knowledge-upgrade-context-value'
 
@@ -23,6 +24,7 @@ const job = {
 } satisfies KnowledgeFsUpgradeJobResponse
 
 const upgrade = {
+  canRetry: false,
   dataset: {
     app_count: 2,
     description: 'Support articles',
@@ -35,10 +37,9 @@ const upgrade = {
 } as unknown as KnowledgeUpgrade
 
 const renderCard = (value: KnowledgeUpgrade) =>
-  render(
+  renderWithConsoleQuery(
     <KnowledgeUpgradeContext
       value={{
-        dismissUpgrade: vi.fn(),
         enabled: true,
         requestUpgrade: vi.fn(),
         upgrades: [value],
@@ -71,4 +72,21 @@ describe('KnowledgeUpgradeCard', () => {
       expect(screen.queryByText('52/52')).not.toBeInTheDocument()
     },
   )
+
+  it('shows the backend failure message and only offers retry when discovery allows it', () => {
+    const failedUpgrade: KnowledgeUpgrade = {
+      ...upgrade,
+      canRetry: true,
+      job: {
+        ...job,
+        last_error_message: 'The source could not be migrated',
+        status: 'failed',
+      },
+    }
+
+    renderCard(failedUpgrade)
+
+    expect(screen.getByText('The source could not be migrated')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBeInTheDocument()
+  })
 })

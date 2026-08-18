@@ -13,6 +13,7 @@ type DatasetCardField =
   | 'indexing_technique'
   | 'is_multimodal'
   | 'is_published'
+  | 'knowledge_fs_upgrade'
   | 'maintainer'
   | 'name'
   | 'permission_keys'
@@ -26,4 +27,6 @@ type DatasetCardField =
 
 export type DatasetCardItem =
   | Pick<DatasetListItemResponse, DatasetCardField>
-  | Pick<DataSet, DatasetCardField>
+  | (Pick<DataSet, Exclude<DatasetCardField, 'knowledge_fs_upgrade'>> & {
+      knowledge_fs_upgrade?: DatasetListItemResponse['knowledge_fs_upgrade']
+    })

@@ -94,7 +94,38 @@ const queryMock = vi.hoisted(() => ({
   refetch: vi.fn(),
 }))
 
+const datasetListMock = vi.hoisted(() => ({
+  data: undefined as
+    | {
+        data: Array<{
+          description: string
+          id: string
+          knowledge_fs_upgrade: {
+            can_retry: boolean
+            can_upgrade: boolean
+            job?: {
+              completed_documents: number
+              completed_sources: number
+              id: string
+              new_control_space_id?: string | null
+              old_dataset_id: string
+              snapshot_at: string
+              stage: 'completed' | 'submitting_documents'
+              status: 'failed' | 'succeeded'
+              total_documents: number
+              total_sources: number
+            } | null
+          }
+          name: string
+          tags: Array<{ id: string; name: string }>
+        }>
+      }
+    | undefined,
+}))
+
 const consoleQueryMock = vi.hoisted(() => ({
+  datasetsKey: ['datasets'],
+  datasetsQueryOptions: vi.fn(() => ({ testQuery: 'datasets' })),
   deleteMutationOptions: vi.fn(() => ({ mutationFn: deleteSpaceMock })),
   infiniteOptions: vi.fn((_options: ListKnowledgeSpacesInfiniteOptions) => ({})),
   listKey: ['knowledge-fs', 'spaces'],
@@ -186,7 +217,8 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
           }
         : undefined,
     }),
-    useQuery: () => ({ ...membersMock }),
+    useQuery: (options: { testQuery?: string }) =>
+      options.testQuery === 'datasets' ? { data: datasetListMock.data } : { ...membersMock },
     useQueryClient: () => ({
       invalidateQueries: invalidateQueriesMock,
     }),
@@ -249,6 +281,14 @@ vi.mock('@/features/account-profile/client', () => ({
   userProfileQueryOptions: () => ({}),
 }))
 
+vi.mock('../upgrade/knowledge-upgrade-card', () => ({
+  KnowledgeUpgradeCard: ({
+    upgrade,
+  }: {
+    upgrade: { dataset: { id: string }; job: { status: string } }
+  }) => <li>{`upgrade:${upgrade.dataset.id}:${upgrade.job.status}`}</li>,
+}))
+
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     workspaces: {
@@ -273,6 +313,12 @@ vi.mock('@/service/client', () => ({
         },
       },
     },
+    datasets: {
+      get: {
+        key: () => consoleQueryMock.datasetsKey,
+        queryOptions: consoleQueryMock.datasetsQueryOptions,
+      },
+    },
   },
 }))
 
@@ -292,6 +338,7 @@ describe('NewKnowledgeList', () => {
     queryMock.isFetchNextPageError = false
     queryMock.isFetchingNextPage = false
     queryMock.isPending = false
+    datasetListMock.data = undefined
     membersMock.data = resolvedMembers
     membersMock.isError = false
     membersMock.isPending = false
@@ -327,6 +374,88 @@ describe('NewKnowledgeList', () => {
     })
     expect(options?.getNextPageParam({ has_more: true, page: 1 })).toBe(2)
     expect(options?.getNextPageParam({ has_more: false, page: 1 })).toBeUndefined()
+  })
+
+  it('restores an upgrade task from the dataset list summary', () => {
+    setResolvedPage()
+    datasetListMock.data = {
+      data: [
+        {
+          description: 'Support articles',
+          id: 'dataset-1',
+          knowledge_fs_upgrade: {
+            can_retry: true,
+            can_upgrade: false,
+            job: {
+              completed_documents: 4,
+              completed_sources: 1,
+              id: 'upgrade-1',
+              old_dataset_id: 'dataset-1',
+              snapshot_at: '2026-08-18T00:00:00Z',
+              stage: 'submitting_documents',
+              status: 'failed',
+              total_documents: 10,
+              total_sources: 1,
+            },
+          },
+          name: 'Support knowledge',
+          tags: [],
+        },
+      ],
+    }
+
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+
+    expect(screen.getByText('upgrade:dataset-1:failed')).toBeInTheDocument()
+    expect(consoleQueryMock.datasetsQueryOptions).toHaveBeenCalledWith({
+      input: { query: { limit: 30, page: 1 } },
+    })
+  })
+
+  it('does not highlight a knowledge space for a historical successful upgrade', () => {
+    setResolvedPage([
+      {
+        createdAt: '2026-08-18T00:00:00Z',
+        id: 'space-1',
+        name: 'Upgraded knowledge',
+        revision: 1,
+        slug: 'upgraded-knowledge',
+        tenantId: 'tenant-1',
+        updatedAt: '2026-08-18T00:00:00Z',
+      },
+    ])
+    datasetListMock.data = {
+      data: [
+        {
+          description: 'Legacy knowledge',
+          id: 'dataset-1',
+          knowledge_fs_upgrade: {
+            can_retry: false,
+            can_upgrade: false,
+            job: {
+              completed_documents: 10,
+              completed_sources: 1,
+              id: 'upgrade-1',
+              new_control_space_id: 'space-1',
+              old_dataset_id: 'dataset-1',
+              snapshot_at: '2026-08-18T00:00:00Z',
+              stage: 'completed',
+              status: 'succeeded',
+              total_documents: 10,
+              total_sources: 1,
+            },
+          },
+          name: 'Upgraded knowledge',
+          tags: [],
+        },
+      ],
+    }
+
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+
+    expect(screen.getByRole('link', { name: 'Upgraded knowledge' }).closest('li')).not.toHaveClass(
+      'border-state-accent-solid',
+    )
   })
 
   it('links real knowledge spaces to the new detail shell', () => {

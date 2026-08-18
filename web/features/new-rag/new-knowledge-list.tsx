@@ -1,12 +1,13 @@
 'use client'
 
+import type { KnowledgeUpgrade } from './upgrade/knowledge-upgrade-context-value'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { createParser, parseAsString, useQueryState } from 'nuqs'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { CreatorFilter } from '@/app/components/datasets/creator-filter'
@@ -34,6 +35,7 @@ import { useKnowledgeUpgrade } from './upgrade/knowledge-upgrade-context-value'
 import { matchesKnowledgeUpgradeFilters } from './upgrade/knowledge-upgrade-filters'
 
 const PAGE_SIZE = 30
+const UPGRADE_HIGHLIGHT_DURATION = 5_000
 const TAG_FILTER_MAX_ID_LENGTH = 255
 const TAG_FILTER_MAX_SELECTION = 100
 const searchParser = parseAsString.withDefault('').withOptions({
@@ -79,6 +81,7 @@ export function NewKnowledgeList({
   const { data: apiBaseInfo } = useDatasetApiBaseUrl()
   const [showExternalApiPanel, setShowExternalApiPanel] = useState(false)
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
+  const [highlightedControlSpaceId, setHighlightedControlSpaceId] = useState<string>()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const uploadAvailable = useAtomValue(knowledgeFsUploadEnabledAtom)
   const { upgrades } = useKnowledgeUpgrade()
@@ -104,13 +107,34 @@ export function NewKnowledgeList({
       initialPageParam: 1,
     }),
   )
-  const knowledgeSpaces = knowledgeSpacesQuery.data?.pages.flatMap((page) => page.data) ?? []
-  const succeededControlSpaceIds = new Set(
-    upgrades.flatMap(({ job }) =>
-      job.status === 'succeeded' && job.new_control_space_id ? [job.new_control_space_id] : [],
-    ),
+  const legacyDatasetsQuery = useQuery(
+    consoleQuery.datasets.get.queryOptions({
+      input: {
+        query: {
+          limit: PAGE_SIZE,
+          page: 1,
+          ...(creatorIds.length > 0 ? { creator_ids: creatorIds } : {}),
+          ...(tagIds.length > 0 ? { tag_ids: tagIds } : {}),
+          ...(debouncedSearchValue ? { keyword: debouncedSearchValue } : {}),
+        },
+      },
+    }),
   )
-  const pendingUpgradeCards = upgrades.filter(
+  const knowledgeSpaces = knowledgeSpacesQuery.data?.pages.flatMap((page) => page.data) ?? []
+  const discoveredUpgrades =
+    legacyDatasetsQuery.data?.data?.flatMap((dataset) => {
+      const discovery = dataset.knowledge_fs_upgrade
+      return discovery.job ? [{ canRetry: discovery.can_retry, dataset, job: discovery.job }] : []
+    }) ?? []
+  const upgradesByDatasetId = new Map<string, KnowledgeUpgrade>(
+    discoveredUpgrades.map((upgrade) => [upgrade.dataset.id, upgrade]),
+  )
+  upgrades.forEach((upgrade) => {
+    if (!upgradesByDatasetId.has(upgrade.dataset.id))
+      upgradesByDatasetId.set(upgrade.dataset.id, upgrade)
+  })
+  const visibleUpgrades = [...upgradesByDatasetId.values()]
+  const pendingUpgradeCards = visibleUpgrades.filter(
     (upgrade) =>
       matchesKnowledgeUpgradeFilters(upgrade, {
         creatorIds,
@@ -123,6 +147,16 @@ export function NewKnowledgeList({
         )),
   )
   const hasVisibleKnowledge = knowledgeSpaces.length > 0 || pendingUpgradeCards.length > 0
+
+  useEffect(() => {
+    if (!highlightedControlSpaceId) return
+
+    const timeoutId = window.setTimeout(
+      () => setHighlightedControlSpaceId(undefined),
+      UPGRADE_HIGHLIGHT_DURATION,
+    )
+    return () => window.clearTimeout(timeoutId)
+  }, [highlightedControlSpaceId])
 
   return (
     <section
@@ -245,13 +279,18 @@ export function NewKnowledgeList({
           <div className="px-4 pt-2 pb-8 sm:px-8">
             <ul className={KNOWLEDGE_SPACE_GRID_CLASS_NAME} aria-label={t(($) => $.knowledge)}>
               {pendingUpgradeCards.map((upgrade) => (
-                <KnowledgeUpgradeCard key={upgrade.job.id} upgrade={upgrade} />
+                <KnowledgeUpgradeCard
+                  key={upgrade.job.id}
+                  upgrade={upgrade}
+                  highlighted={highlightedControlSpaceId === upgrade.job.new_control_space_id}
+                  onSucceeded={setHighlightedControlSpaceId}
+                />
               ))}
               {knowledgeSpaces.map((knowledgeSpace) => (
                 <KnowledgeSpaceCard
                   key={knowledgeSpace.control_space_id}
                   knowledgeSpace={knowledgeSpace}
-                  highlighted={succeededControlSpaceIds.has(knowledgeSpace.control_space_id)}
+                  highlighted={highlightedControlSpaceId === knowledgeSpace.control_space_id}
                   onOpenTagManagement={() => setShowTagManagementModal(true)}
                 />
               ))}

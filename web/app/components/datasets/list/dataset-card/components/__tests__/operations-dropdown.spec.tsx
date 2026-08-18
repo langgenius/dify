@@ -1,13 +1,16 @@
-import type { KnowledgeFsUpgradeJobResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type {
+  KnowledgeFsUpgradeDiscoveryResponse,
+  KnowledgeFsUpgradeJobResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import type { DataSet } from '@/models/datasets'
 import { createEvent, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
-import { KNOWLEDGE_UPGRADE_RECOVERY_STORAGE_KEY } from '@/features/new-rag/storage'
 import { KnowledgeUpgradeProvider } from '@/features/new-rag/upgrade/knowledge-upgrade-context'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/client'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { DatasetACLPermission } from '@/utils/permission'
 import OperationsDropdown from '../operations-dropdown'
 
@@ -19,12 +22,25 @@ const mockConsoleState = vi.hoisted(() => ({
 let mockIsRbacEnabled = true
 const noopKeyboardHandler = () => {}
 
-const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
-  renderWithConsoleQuery(ui, {
+const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
+  const queryClient = createConsoleQueryClient()
+  const discoveryOptions = consoleQuery.datasets.byDatasetId.knowledgeFsUpgrades.get.queryOptions({
+    input: { params: { dataset_id: 'dataset-1' } },
+  })
+  queryClient.setQueryDefaults(discoveryOptions.queryKey, { staleTime: Infinity })
+  queryClient.setQueryData(discoveryOptions.queryKey, {
+    can_retry: false,
+    can_upgrade: true,
+    job: null,
+  })
+
+  return renderWithConsoleQuery(ui, {
+    queryClient,
     systemFeatures: {
       rbac_enabled: mockIsRbacEnabled,
     },
   })
+}
 
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
@@ -37,7 +53,11 @@ vi.mock('@/context/permission-state', async () => {
   return createPermissionStateModuleMock(() => mockConsoleState)
 })
 describe('OperationsDropdown', () => {
-  const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet =>
+  const createMockDataset = (
+    overrides: Partial<DataSet> & {
+      knowledge_fs_upgrade?: KnowledgeFsUpgradeDiscoveryResponse
+    } = {},
+  ): DataSet & { knowledge_fs_upgrade: KnowledgeFsUpgradeDiscoveryResponse } =>
     ({
       id: 'dataset-1',
       name: 'Test Dataset',
@@ -63,8 +83,13 @@ describe('OperationsDropdown', () => {
         DatasetACLPermission.ImportExportDSL,
         DatasetACLPermission.AccessConfig,
       ],
+      knowledge_fs_upgrade: {
+        can_retry: false,
+        can_upgrade: true,
+        job: null,
+      },
       ...overrides,
-    }) as DataSet
+    }) as DataSet & { knowledge_fs_upgrade: KnowledgeFsUpgradeDiscoveryResponse }
 
   const defaultProps = {
     dataset: createMockDataset(),
@@ -272,7 +297,7 @@ describe('OperationsDropdown', () => {
       await waitFor(() => expect(operationsTrigger).toHaveFocus())
     })
 
-    it('does not offer another upgrade after a completed job is restored on refresh', async () => {
+    it('does not offer another upgrade when the dataset summary reports completion', async () => {
       const completedJob: KnowledgeFsUpgradeJobResponse = {
         completed_documents: 10,
         completed_sources: 1,
@@ -285,17 +310,20 @@ describe('OperationsDropdown', () => {
         total_documents: 10,
         total_sources: 1,
       }
-      localStorage.setItem(
-        KNOWLEDGE_UPGRADE_RECOVERY_STORAGE_KEY,
-        JSON.stringify({
-          'workspace-1': [{ dataset: defaultProps.dataset, job: completedJob, notified: true }],
-        }),
-      )
-
       const user = userEvent.setup()
       render(
         <KnowledgeUpgradeProvider onUpgradeStarted={vi.fn()}>
-          <OperationsDropdown {...defaultProps} />
+          <OperationsDropdown
+            {...defaultProps}
+            dataset={createMockDataset({
+              knowledge_fs_upgrade: {
+                block_reason: 'already_upgraded',
+                can_retry: false,
+                can_upgrade: false,
+                job: completedJob,
+              },
+            })}
+          />
         </KnowledgeUpgradeProvider>,
       )
       await user.click(screen.getByLabelText('Dataset operations'))

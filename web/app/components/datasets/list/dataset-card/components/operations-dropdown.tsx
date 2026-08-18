@@ -74,8 +74,7 @@ const OperationsDropdown = ({
   const canUpgrade =
     knowledgeUpgrade.enabled &&
     datasetACLCapabilities.canEdit &&
-    dataset.provider !== 'external' &&
-    !knowledgeUpgrade.upgrades.some((upgrade) => upgrade.dataset.id === dataset.id)
+    dataset.knowledge_fs_upgrade?.can_upgrade === true
   const canShowOperations =
     datasetACLCapabilities.canEdit ||
     datasetACLCapabilities.canImportExportDSL ||

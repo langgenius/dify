@@ -4,6 +4,7 @@ import type { DatasetCardItem } from '@/app/components/datasets/list/dataset-car
 import { createContext, use } from 'react'
 
 export type KnowledgeUpgrade = {
+  canRetry: boolean
   dataset: DatasetCardItem
   job: KnowledgeFsUpgradeJobResponse
 }
@@ -11,14 +12,12 @@ export type KnowledgeUpgrade = {
 type KnowledgeUpgradeContextValue = {
   enabled: boolean
   upgrades: KnowledgeUpgrade[]
-  dismissUpgrade: (datasetId: string) => void
   requestUpgrade: (dataset: DatasetCardItem, finalFocus?: RefObject<HTMLElement | null>) => void
 }
 
 export const KnowledgeUpgradeContext = createContext<KnowledgeUpgradeContextValue>({
   enabled: false,
   upgrades: [],
-  dismissUpgrade: () => {},
   requestUpgrade: () => {},
 })
 

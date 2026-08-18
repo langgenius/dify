@@ -12,9 +12,10 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { useMutation } from '@tanstack/react-query'
+import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import { useRef } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
+import { createRequestId } from '@/features/new-rag/request-id'
 import { consoleQuery } from '@/service/client'
 
 export function KnowledgeUpgradeDialog({
@@ -31,9 +32,16 @@ export function KnowledgeUpgradeDialog({
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const cancelRef = useRef<HTMLButtonElement>(null)
+  const idempotencyKeyRef = useRef<string | undefined>(undefined)
+  const discoveryQuery = useQuery(
+    consoleQuery.datasets.byDatasetId.knowledgeFsUpgrades.get.queryOptions({
+      input: dataset ? { params: { dataset_id: dataset.id } } : skipToken,
+    }),
+  )
   const startMutation = useMutation({
     ...consoleQuery.datasets.byDatasetId.knowledgeFsUpgrades.post.mutationOptions(),
     onSuccess: (job) => {
+      idempotencyKeyRef.current = undefined
       if (dataset) onStarted(dataset, job)
     },
   })
@@ -41,12 +49,23 @@ export function KnowledgeUpgradeDialog({
   const closeDialog = () => {
     if (startMutation.isPending) return
     startMutation.reset()
+    idempotencyKeyRef.current = undefined
     onCancel()
   }
 
   const startUpgrade = () => {
-    if (!dataset || startMutation.isPending) return
-    startMutation.mutate({ params: { dataset_id: dataset.id } })
+    if (
+      !dataset ||
+      discoveryQuery.isFetching ||
+      discoveryQuery.data?.can_upgrade !== true ||
+      startMutation.isPending
+    )
+      return
+    idempotencyKeyRef.current ??= createRequestId()
+    startMutation.mutate({
+      headers: { 'Idempotency-Key': idempotencyKeyRef.current },
+      params: { dataset_id: dataset.id },
+    })
   }
 
   return (
@@ -87,7 +106,7 @@ export function KnowledgeUpgradeDialog({
                 />
               </li>
             </ul>
-            {startMutation.isError && (
+            {(discoveryQuery.isError || startMutation.isError) && (
               <p role="alert" className="mt-3 system-sm-regular text-text-destructive">
                 {t(($) => $['newKnowledge.upgrade.startFailed'])}
               </p>
@@ -100,8 +119,12 @@ export function KnowledgeUpgradeDialog({
           </AlertDialogCancelButton>
           <AlertDialogConfirmButton
             tone="default"
-            loading={startMutation.isPending}
-            disabled={startMutation.isPending}
+            loading={discoveryQuery.isFetching || startMutation.isPending}
+            disabled={
+              discoveryQuery.isFetching ||
+              discoveryQuery.data?.can_upgrade !== true ||
+              startMutation.isPending
+            }
             onClick={startUpgrade}
           >
             {t(($) => $['newKnowledge.upgrade.start'])}
