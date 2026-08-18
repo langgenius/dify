@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  createDocumentMultimodalAssetObjectKey,
+  createDocumentMultimodalAssetVariantObjectKey,
   createDocumentObjectKey,
   normalizeSourceFsPath,
   sanitizeFilename,
@@ -64,5 +66,35 @@ describe("storage path utilities", () => {
         tenantId: "tenant-1",
       }),
     ).toBe("tenant-1/spaces/space-1/documents/asset-1/q2-report-final-.pdf");
+  });
+
+  it("isolates multimodal writes under an execution-owned namespace", () => {
+    expect(
+      createDocumentMultimodalAssetObjectKey({
+        assetId: "asset-1",
+        contentType: "image/png",
+        elementId: "artifact:element-1",
+        knowledgeSpaceId: "space-1",
+        sha256: "a".repeat(64),
+        tenantId: "tenant-1",
+        writeOwnerId: "Attempt/One",
+      }),
+    ).toBe(
+      "tenant-1/spaces/space-1/documents/asset-1/assets/one/artifact-element-1-aaaaaaaaaaaa.png",
+    );
+    expect(
+      createDocumentMultimodalAssetVariantObjectKey({
+        assetId: "asset-1",
+        contentType: "image/png",
+        elementId: "artifact:element-1",
+        knowledgeSpaceId: "space-1",
+        sha256: "b".repeat(64),
+        tenantId: "tenant-1",
+        variant: "Thumb Nail",
+        writeOwnerId: "Attempt/One",
+      }),
+    ).toBe(
+      "tenant-1/spaces/space-1/documents/asset-1/assets/one/artifact-element-1-thumb-nail-bbbbbbbbbbbb.png",
+    );
   });
 });

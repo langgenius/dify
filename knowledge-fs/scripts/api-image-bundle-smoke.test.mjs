@@ -21,6 +21,10 @@ test("isolated API bundle smoke starts the container and checks compute health",
   assert.match(smokeScript, /components\?\.compute === true/);
   assert.match(smokeScript, /components\?\.objectStorage === false/);
   assert.match(smokeScript, /difyDependencyConnected/);
+  assert.match(smokeScript, /verifyPdfRasterizerRuntime/);
+  assert.match(smokeScript, /pdftoppm/);
+  assert.match(smokeScript, /KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY/);
+  assert.match(smokeScript, /maxConcurrency !== 2/);
   assert.match(smokeScript, /verifySharpRuntime/);
   assert.match(smokeScript, /await import\("sharp"\)/);
   assert.match(smokeScript, /sharp\.versions\.vips/);
@@ -38,4 +42,16 @@ test("production API image carries and executes the target platform sharp runtim
   assert.match(apiDockerfile, /COPY --from=builder \/runtime\/node_modules \.\/node_modules/);
   assert.match(apiDockerfile, /await import\('sharp'\)/);
   assert.match(apiDockerfile, /sharp native runtime smoke failed/);
+});
+
+test("production API image carries and executes the Poppler PDF rasterizer", () => {
+  assert.match(apiDockerfile, /apt-get install --yes --no-install-recommends poppler-utils/);
+  assert.match(apiDockerfile, /KNOWLEDGE_PDF_RASTERIZER=poppler/);
+  assert.match(apiDockerfile, /KNOWLEDGE_PDF_RASTERIZER_DPI=144/);
+  assert.match(apiDockerfile, /KNOWLEDGE_PDF_RASTERIZER_THUMBNAIL_DPI=48/);
+  assert.match(apiDockerfile, /KNOWLEDGE_PDF_RASTERIZER_TIMEOUT_MS=30000/);
+  assert.match(apiDockerfile, /KNOWLEDGE_PDF_RASTERIZER_MAX_ASSETS=500/);
+  assert.match(apiDockerfile, /KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY=2/);
+  assert.match(apiDockerfile, /command -v pdftoppm/);
+  assert.match(apiDockerfile, /pdftoppm -v/);
 });

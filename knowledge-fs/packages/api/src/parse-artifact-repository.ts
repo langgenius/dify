@@ -1,5 +1,6 @@
 import {
   type DatabaseAdapter,
+  type DatabaseExecutor,
   type DatabaseQueryValue,
   type DatabaseRow,
   type ParseArtifact,
@@ -28,7 +29,15 @@ export interface ParseArtifactRepository {
   deleteByDocumentAsset(input: DeleteParseArtifactsByDocumentAssetInput): Promise<number>;
   getById(input: ParseArtifactIdLookupInput): Promise<ParseArtifact | null>;
   getByDocumentVersion(input: ParseArtifactLookupInput): Promise<ParseArtifact | null>;
+  materialize(input: ParseArtifact): Promise<MaterializeParseArtifactResult>;
   pruneDocumentVersions(input: PruneParseArtifactVersionsInput): Promise<number>;
+}
+
+export type ParseArtifactMaterializationDisposition = "created" | "replaced" | "unchanged";
+
+export interface MaterializeParseArtifactResult {
+  readonly artifact: ParseArtifact;
+  readonly disposition: ParseArtifactMaterializationDisposition;
 }
 
 export interface DeleteParseArtifactsByDocumentAssetInput {
@@ -129,24 +138,40 @@ export function createInMemoryParseArtifactRepository({
 
   const artifacts = new Map<string, ParseArtifact>();
 
-  return {
-    create: async (input) => {
-      const artifact = cloneParseArtifact(ParseArtifactSchema.parse(input));
-      const key = parseArtifactKey(artifact.documentAssetId, artifact.version);
-      const existing = artifacts.get(key);
+  const materialize = async (input: ParseArtifact): Promise<MaterializeParseArtifactResult> => {
+    const artifact = cloneParseArtifact(ParseArtifactSchema.parse(input));
+    const key = parseArtifactKey(artifact.documentAssetId, artifact.version);
+    const existing = artifacts.get(key);
 
-      if (!existing && artifacts.size >= maxArtifacts) {
-        throw new ParseArtifactCapacityExceededError(maxArtifacts);
-      }
+    if (existing?.artifactHash === artifact.artifactHash) {
+      return { artifact: cloneParseArtifact(existing), disposition: "unchanged" };
+    }
 
+    if (existing) {
       const stored = bindGeneratedElementIdsToArtifact(
-        existing ? { ...artifact, createdAt: existing.createdAt } : artifact,
-        existing?.id ?? artifact.id,
+        { ...artifact, createdAt: existing.createdAt },
+        existing.id,
       );
       artifacts.set(key, stored);
 
-      return cloneParseArtifact(stored);
-    },
+      return { artifact: cloneParseArtifact(stored), disposition: "replaced" };
+    }
+
+    if (artifacts.size >= maxArtifacts) {
+      throw new ParseArtifactCapacityExceededError(maxArtifacts);
+    }
+
+    const stored = bindGeneratedElementIdsToArtifact(artifact, artifact.id);
+    artifacts.set(key, stored);
+
+    return {
+      artifact: cloneParseArtifact(stored),
+      disposition: "created",
+    };
+  };
+
+  return {
+    create: async (input) => (await materialize(input)).artifact,
     getByDocumentVersion: async ({ documentAssetId, version }) => {
       const artifact = artifacts.get(parseArtifactKey(documentAssetId, version));
 
@@ -157,6 +182,7 @@ export function createInMemoryParseArtifactRepository({
 
       return artifact ? cloneParseArtifact(artifact) : null;
     },
+    materialize,
     deleteByDocumentAsset: async ({ documentAssetId, maxArtifacts }) => {
       if (!Number.isInteger(maxArtifacts) || maxArtifacts < 1) {
         throw new Error("Parse artifact delete maxArtifacts must be at least 1");
@@ -201,13 +227,16 @@ export function createDatabaseParseArtifactRepository({
   database,
 }: DatabaseParseArtifactRepositoryOptions): ParseArtifactRepository {
   const tableName = "parse_artifacts";
-  const repairGeneratedElementIds = async (persisted: ParseArtifact): Promise<ParseArtifact> => {
+  const repairGeneratedElementIds = async (
+    executor: DatabaseExecutor,
+    persisted: ParseArtifact,
+  ): Promise<ParseArtifact> => {
     const canonical = bindGeneratedElementIdsToArtifact(persisted, persisted.id);
     if (JSON.stringify(canonical.elements) === JSON.stringify(persisted.elements)) {
       return canonical;
     }
 
-    const repaired = await database.execute({
+    const repaired = await executor.execute({
       maxRows: 1,
       operation: "update",
       params: [
@@ -242,80 +271,24 @@ export function createDatabaseParseArtifactRepository({
     return canonical;
   };
 
-  return {
-    create: async (input) => {
-      const artifact = ParseArtifactSchema.parse(input);
-      const elements = JSON.stringify(artifact.elements);
-      const metadata = JSON.stringify(artifact.metadata);
-      const params = [
-        artifact.id,
-        artifact.documentAssetId,
-        artifact.version,
-        artifact.parser,
-        artifact.contentType,
-        artifact.artifactHash,
-        elements,
-        metadata,
-        artifact.createdAt,
-      ] satisfies readonly DatabaseQueryValue[];
-      const columns = [
-        "id",
-        "document_asset_id",
-        "version",
-        "parser",
-        "content_type",
-        "artifact_hash",
-        "elements",
-        "metadata",
-        "created_at",
-      ];
-      const mutableColumns = columns.filter(
-        (column) =>
-          column !== "id" &&
-          column !== "document_asset_id" &&
-          column !== "version" &&
-          column !== "created_at",
-      );
-      const upsertClause =
-        database.dialect === "postgres"
-          ? ` ON CONFLICT (${quoteDatabaseIdentifier(
-              database,
-              "document_asset_id",
-            )}, ${quoteDatabaseIdentifier(database, "version")}) DO UPDATE SET ${mutableColumns
-              .map(
-                (column) =>
-                  `${quoteDatabaseIdentifier(database, column)} = EXCLUDED.${quoteDatabaseIdentifier(
-                    database,
-                    column,
-                  )}`,
-              )
-              .join(", ")} RETURNING *`
-          : ` ON DUPLICATE KEY UPDATE ${mutableColumns
-              .map(
-                (column) =>
-                  `${quoteDatabaseIdentifier(database, column)} = VALUES(${quoteDatabaseIdentifier(
-                    database,
-                    column,
-                  )})`,
-              )
-              .join(", ")}`;
-      const result = await database.execute({
+  const materialize = async (input: ParseArtifact): Promise<MaterializeParseArtifactResult> => {
+    const artifact = ParseArtifactSchema.parse(input);
+
+    return database.transaction(async (executor) => {
+      await executor.execute({
         maxRows: 1,
-        operation: "insert",
-        params,
-        sql: `INSERT INTO ${quoteDatabaseIdentifier(database, tableName)} (${columns
-          .map((column) => quoteDatabaseIdentifier(database, column))
-          .join(", ")}) VALUES (${params
-          .map((_, index) => jsonInsertPlaceholder(database, index + 1, columns[index]))
-          .join(", ")})${upsertClause};`,
-        tableName,
+        operation: "select",
+        params: [artifact.documentAssetId],
+        sql: `SELECT ${quoteDatabaseIdentifier(database, "id")} FROM ${quoteDatabaseIdentifier(
+          database,
+          "document_assets",
+        )} WHERE ${quoteDatabaseIdentifier(database, "id")} = ${databasePlaceholder(
+          database,
+          1,
+        )} LIMIT 1 FOR UPDATE;`,
+        tableName: "document_assets",
       });
-
-      if (result.rows[0]) {
-        return repairGeneratedElementIds(mapParseArtifactRow(result.rows[0]));
-      }
-
-      const stored = await database.execute({
+      const locked = await executor.execute({
         maxRows: 2,
         operation: "select",
         params: [artifact.documentAssetId, artifact.version],
@@ -328,28 +301,133 @@ export function createDatabaseParseArtifactRepository({
         )} = ${databasePlaceholder(database, 1)} AND ${quoteDatabaseIdentifier(
           database,
           "version",
-        )} = ${databasePlaceholder(database, 2)} LIMIT 2;`,
+        )} = ${databasePlaceholder(database, 2)} LIMIT 2 FOR UPDATE;`,
+        tableName,
+      });
+      const [row, duplicate] = locked.rows;
+
+      if (duplicate) {
+        throw new Error("Parse artifact materialization resolved multiple persisted logical rows");
+      }
+
+      if (row) {
+        const persisted = mapParseArtifactRow(row);
+
+        if (
+          persisted.documentAssetId !== artifact.documentAssetId ||
+          persisted.version !== artifact.version
+        ) {
+          throw new Error("Parse artifact materialization resolved a mismatched persisted row");
+        }
+
+        if (persisted.artifactHash === artifact.artifactHash) {
+          return {
+            artifact: await repairGeneratedElementIds(executor, persisted),
+            disposition: "unchanged" as const,
+          };
+        }
+
+        const replaced = bindGeneratedElementIdsToArtifact(
+          { ...artifact, createdAt: persisted.createdAt },
+          persisted.id,
+        );
+        const updated = await executor.execute({
+          maxRows: 1,
+          operation: "update",
+          params: [
+            replaced.parser,
+            replaced.contentType,
+            replaced.artifactHash,
+            JSON.stringify(replaced.elements),
+            JSON.stringify(replaced.metadata),
+            replaced.id,
+            replaced.documentAssetId,
+            replaced.version,
+          ],
+          sql: `UPDATE ${quoteDatabaseIdentifier(database, tableName)} SET ${quoteDatabaseIdentifier(
+            database,
+            "parser",
+          )} = ${databasePlaceholder(database, 1)}, ${quoteDatabaseIdentifier(
+            database,
+            "content_type",
+          )} = ${databasePlaceholder(database, 2)}, ${quoteDatabaseIdentifier(
+            database,
+            "artifact_hash",
+          )} = ${databasePlaceholder(database, 3)}, ${quoteDatabaseIdentifier(
+            database,
+            "elements",
+          )} = ${jsonInsertPlaceholder(
+            database,
+            4,
+            "elements",
+          )}, ${quoteDatabaseIdentifier(database, "metadata")} = ${jsonInsertPlaceholder(
+            database,
+            5,
+            "metadata",
+          )} WHERE ${quoteDatabaseIdentifier(database, "id")} = ${databasePlaceholder(
+            database,
+            6,
+          )} AND ${quoteDatabaseIdentifier(
+            database,
+            "document_asset_id",
+          )} = ${databasePlaceholder(database, 7)} AND ${quoteDatabaseIdentifier(
+            database,
+            "version",
+          )} = ${databasePlaceholder(database, 8)};`,
+          tableName,
+        });
+        if (updated.rowsAffected !== 1) {
+          throw new Error("Parse artifact materialization could not replace its logical row");
+        }
+
+        return { artifact: replaced, disposition: "replaced" as const };
+      }
+
+      const created = bindGeneratedElementIdsToArtifact(artifact, artifact.id);
+      const columns = [
+        "id",
+        "document_asset_id",
+        "version",
+        "parser",
+        "content_type",
+        "artifact_hash",
+        "elements",
+        "metadata",
+        "created_at",
+      ];
+      const params = [
+        created.id,
+        created.documentAssetId,
+        created.version,
+        created.parser,
+        created.contentType,
+        created.artifactHash,
+        JSON.stringify(created.elements),
+        JSON.stringify(created.metadata),
+        created.createdAt,
+      ] satisfies readonly DatabaseQueryValue[];
+      const inserted = await executor.execute({
+        maxRows: 1,
+        operation: "insert",
+        params,
+        sql: `INSERT INTO ${quoteDatabaseIdentifier(database, tableName)} (${columns
+          .map((column) => quoteDatabaseIdentifier(database, column))
+          .join(", ")}) VALUES (${params
+          .map((_, index) => jsonInsertPlaceholder(database, index + 1, columns[index]))
+          .join(", ")});`,
         tableName,
       });
 
-      const [row, duplicate] = stored.rows;
-      if (!row) {
-        throw new Error("Parse artifact upsert did not persist its logical row");
-      }
-      if (duplicate) {
-        throw new Error("Parse artifact upsert resolved multiple persisted logical rows");
+      if (inserted.rowsAffected !== 1) {
+        throw new Error("Parse artifact materialization did not create its logical row");
       }
 
-      const persisted = mapParseArtifactRow(row);
-      if (
-        persisted.documentAssetId !== artifact.documentAssetId ||
-        persisted.version !== artifact.version
-      ) {
-        throw new Error("Parse artifact upsert resolved a mismatched persisted logical row");
-      }
+      return { artifact: created, disposition: "created" as const };
+    });
+  };
 
-      return repairGeneratedElementIds(persisted);
-    },
+  return {
+    create: async (input) => (await materialize(input)).artifact,
     getByDocumentVersion: async ({ documentAssetId, version }) => {
       const result = await database.execute({
         maxRows: 1,
@@ -381,6 +459,7 @@ export function createDatabaseParseArtifactRepository({
 
       return result.rows[0] ? mapParseArtifactRow(result.rows[0]) : null;
     },
+    materialize,
     deleteByDocumentAsset: async ({ documentAssetId, maxArtifacts }) => {
       if (!Number.isInteger(maxArtifacts) || maxArtifacts < 1) {
         throw new Error("Parse artifact delete maxArtifacts must be at least 1");

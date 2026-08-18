@@ -11,10 +11,12 @@ export interface ApiParserEnv {
   readonly NODE_ENV?: string | undefined;
   readonly UNSTRUCTURED_API_KEY?: string | undefined;
   readonly UNSTRUCTURED_API_URL?: string | undefined;
+  readonly UNSTRUCTURED_MAX_CONCURRENCY?: string | undefined;
   readonly UNSTRUCTURED_MAX_RESPONSE_BYTES?: string | undefined;
   readonly UNSTRUCTURED_MAX_RETRIES?: string | undefined;
   readonly UNSTRUCTURED_PORT?: string | undefined;
   readonly UNSTRUCTURED_RETRY_DELAY_MS?: string | undefined;
+  readonly UNSTRUCTURED_REQUEST_TIMEOUT_MS?: string | undefined;
 }
 
 export interface CreateApiDocumentParserOptions {
@@ -61,6 +63,15 @@ function createApiUnstructuredParser({
     endpoint,
     ...(env.UNSTRUCTURED_API_KEY?.trim() ? { apiKey: env.UNSTRUCTURED_API_KEY.trim() } : {}),
     ...(fetchImpl ? { fetch: fetchImpl } : {}),
+    ...(env.UNSTRUCTURED_MAX_CONCURRENCY !== undefined
+      ? {
+          maxConcurrency: parseBoundedPositiveInteger(
+            env.UNSTRUCTURED_MAX_CONCURRENCY,
+            "UNSTRUCTURED_MAX_CONCURRENCY",
+            32,
+          ),
+        }
+      : {}),
     ...(env.UNSTRUCTURED_MAX_RESPONSE_BYTES !== undefined
       ? {
           maxResponseBytes: parsePositiveInteger(
@@ -82,6 +93,15 @@ function createApiUnstructuredParser({
           retryDelayMs: parseNonNegativeInteger(
             env.UNSTRUCTURED_RETRY_DELAY_MS,
             "UNSTRUCTURED_RETRY_DELAY_MS",
+          ),
+        }
+      : {}),
+    ...(env.UNSTRUCTURED_REQUEST_TIMEOUT_MS !== undefined
+      ? {
+          requestTimeoutMs: parseBoundedPositiveInteger(
+            env.UNSTRUCTURED_REQUEST_TIMEOUT_MS,
+            "UNSTRUCTURED_REQUEST_TIMEOUT_MS",
+            600_000,
           ),
         }
       : {}),
@@ -114,6 +134,16 @@ function parsePort(value: string, name: string): number {
   }
 
   return port;
+}
+
+function parseBoundedPositiveInteger(value: string, name: string, max: number): number {
+  const parsed = parsePositiveInteger(value, name);
+
+  if (parsed > max) {
+    throw new Error(`${name} must be between 1 and ${max}`);
+  }
+
+  return parsed;
 }
 
 function parsePositiveInteger(value: string, name: string): number {

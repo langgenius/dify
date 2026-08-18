@@ -119,6 +119,32 @@ describe("createDocumentCompilationRuntime", () => {
     });
   });
 
+  it.each([
+    ["provider_input", false, "DOCUMENT_PARSER_INPUT_INVALID"],
+    ["provider_rate_limited", true, "DOCUMENT_PARSER_RATE_LIMITED"],
+    ["provider_request_failed", true, "DOCUMENT_PARSER_UNAVAILABLE"],
+    ["provider_response_invalid", false, "DOCUMENT_PARSER_RESPONSE_INVALID"],
+  ] as const)("maps %s to the parser-specific durable failure", (code, retryable, expectedCode) => {
+    const error = Object.assign(new Error(code), { code, retryable });
+
+    expect(defaultDocumentCompilationErrorClassifier(error)).toMatchObject({
+      code: expectedCode,
+      retryable,
+    });
+  });
+
+  it("keeps transient object-storage failures retryable", () => {
+    const error = Object.assign(new Error("storage unavailable"), {
+      code: "dify_object_storage_request_failed",
+      retryable: true,
+    });
+
+    expect(defaultDocumentCompilationErrorClassifier(error)).toMatchObject({
+      code: "DOCUMENT_COMPILATION_RETRYABLE",
+      retryable: true,
+    });
+  });
+
   it.each([null, [], {}, { attemptId: 42 }, { attemptId: "not-a-uuid" }])(
     "rejects malformed attempt locator payload %j",
     async (payload) => {

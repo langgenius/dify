@@ -104,6 +104,7 @@ export function createDocumentMultimodalAssetObjectKey({
   knowledgeSpaceId,
   sha256,
   tenantId,
+  writeOwnerId,
 }: {
   readonly assetId: string;
   readonly contentType: string;
@@ -111,11 +112,13 @@ export function createDocumentMultimodalAssetObjectKey({
   readonly knowledgeSpaceId: string;
   readonly sha256: string;
   readonly tenantId: string;
+  readonly writeOwnerId?: string | undefined;
 }): string {
   const extension = imageExtension(contentType);
   const safeElementId = sanitizeFilename(elementId).replace(/\.[a-z0-9]+$/u, "") || "asset";
+  const ownerPrefix = multimodalWriteOwnerPrefix(writeOwnerId);
 
-  return `${tenantId}/spaces/${knowledgeSpaceId}/documents/${assetId}/assets/${safeElementId}-${sha256.slice(0, 12)}.${extension}`;
+  return `${tenantId}/spaces/${knowledgeSpaceId}/documents/${assetId}/assets/${ownerPrefix}${safeElementId}-${sha256.slice(0, 12)}.${extension}`;
 }
 
 export function createDocumentMultimodalAssetVariantObjectKey({
@@ -126,6 +129,7 @@ export function createDocumentMultimodalAssetVariantObjectKey({
   sha256,
   tenantId,
   variant,
+  writeOwnerId,
 }: {
   readonly assetId: string;
   readonly contentType: string;
@@ -134,12 +138,24 @@ export function createDocumentMultimodalAssetVariantObjectKey({
   readonly sha256: string;
   readonly tenantId: string;
   readonly variant: string;
+  readonly writeOwnerId?: string | undefined;
 }): string {
   const extension = imageExtension(contentType);
   const safeElementId = sanitizeFilename(elementId).replace(/\.[a-z0-9]+$/u, "") || "asset";
   const safeVariant = sanitizeFilename(variant).replace(/\.[a-z0-9]+$/u, "") || "variant";
+  const ownerPrefix = multimodalWriteOwnerPrefix(writeOwnerId);
 
-  return `${tenantId}/spaces/${knowledgeSpaceId}/documents/${assetId}/assets/${safeElementId}-${safeVariant}-${sha256.slice(0, 12)}.${extension}`;
+  return `${tenantId}/spaces/${knowledgeSpaceId}/documents/${assetId}/assets/${ownerPrefix}${safeElementId}-${safeVariant}-${sha256.slice(0, 12)}.${extension}`;
+}
+
+function multimodalWriteOwnerPrefix(writeOwnerId: string | undefined): string {
+  if (!writeOwnerId) {
+    return "";
+  }
+
+  const safeOwnerId = sanitizeFilename(writeOwnerId).replace(/\.[a-z0-9]+$/u, "");
+
+  return `${safeOwnerId || "write"}/`;
 }
 
 export function sanitizeFilename(filename: string): string {

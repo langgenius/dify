@@ -1,7 +1,7 @@
 import { createMemoryObjectStorageAdapter } from "@knowledge/adapters";
 import { createNodePlatformAdapter } from "@knowledge/adapters/node";
 import { ParseArtifactSchema, type PlatformAdapter } from "@knowledge/core";
-import type { ParserAdapter } from "@knowledge/parsers";
+import type { ParserAdapter, ParserRouteHints } from "@knowledge/parsers";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -11,6 +11,7 @@ import {
 } from "./deletion-lifecycle-fence";
 
 import {
+  createConcurrencyGate,
   createDocumentCompilationJobStateMachine,
   createDocumentCompilationWorker,
   createDocumentMultimodalManifestBuilder,
@@ -995,7 +996,7 @@ describe("createDocumentCompilationWorker lease integration", () => {
           }),
       },
       reindexer: {
-        canonicalizeArtifact: async (input) => artifacts.create(input),
+        canonicalizeArtifact: async (input) => artifacts.materialize(input),
         reindex: async (input) => {
           reindexInputArtifactIds.push(input.parseArtifact.id);
           const canonicalArtifact = await artifacts.create(input.parseArtifact);
@@ -1039,7 +1040,7 @@ describe("createDocumentCompilationWorker lease integration", () => {
     expect(semanticArtifactIds).toEqual([canonicalArtifactId]);
     await expect(
       artifacts.getByDocumentVersion({ documentAssetId: asset.id, version: asset.version }),
-    ).resolves.toMatchObject({ id: canonicalArtifactId });
+    ).resolves.toMatchObject({ artifactHash: "2".repeat(64), id: canonicalArtifactId });
     await expect(artifacts.getById({ id: retryArtifactId })).resolves.toBeNull();
     await expect(
       outlines.getByDocumentVersion({ documentAssetId: asset.id, version: asset.version }),
@@ -1100,7 +1101,7 @@ describe("createDocumentCompilationWorker lease integration", () => {
       outlines: createInMemoryDocumentOutlineRepository({ maxOutlines: 1 }),
       parser: parser(),
       reindexer: {
-        canonicalizeArtifact: async (input) => input,
+        canonicalizeArtifact: async (input) => ({ artifact: input, disposition: "created" }),
         reindex: async (input) => {
           reindexCalls += 1;
           return {
@@ -1367,15 +1368,16 @@ describe("createDocumentCompilationWorker lease integration", () => {
       expect.objectContaining({
         metadata: expect.objectContaining({
           contentKind: "document-multimodal-asset",
-          itemId: "018f0d60-7a49-7cc2-9c1b-5b36f18f6a02:1:figure-1",
+          itemId: expect.stringMatching(/^[0-9a-f-]{36}:1:figure-1$/u),
           modality: "image",
           objectKey: expect.stringMatching(
-            /^tenant-1\/spaces\/018f0d60-7a49-7cc2-9c1b-5b36f18f2c42\/documents\/018f0d60-7a49-7cc2-9c1b-5b36f18f6a01\/assets\/figure-1-[a-f0-9]{12}\.png$/u,
+            /^tenant-1\/spaces\/018f0d60-7a49-7cc2-9c1b-5b36f18f2c42\/documents\/018f0d60-7a49-7cc2-9c1b-5b36f18f6a01\/assets\/[a-f0-9-]+\/figure-1-[a-f0-9]{12}\.png$/u,
           ),
         }),
         targetId: asset.id,
-        virtualPath:
-          "/knowledge/docs/Worker.md--018f0d60/assets/image-Worker-diagram--018f0d60.json",
+        virtualPath: expect.stringMatching(
+          /^\/knowledge\/docs\/Worker\.md--018f0d60\/assets\/image-Worker-diagram--[a-f0-9]{8}\.json$/u,
+        ),
       }),
     ]);
     await expect(
@@ -1636,7 +1638,7 @@ describe("createDocumentCompilationWorker lease integration", () => {
       filename: "Paper.pdf",
       id: "018f0d60-7a49-7cc2-9c1b-5b36f18f6b01",
       knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
-      mimeType: "application/pdf",
+      mimeType: "application/pdf; charset=binary",
       objectKey: "tenant-1/spaces/space/documents/asset/Paper.pdf",
       sha256: "c".repeat(64),
       sizeBytes: 12,
@@ -1662,6 +1664,11 @@ describe("createDocumentCompilationWorker lease integration", () => {
       maxListLimit: 10,
       maxPaths: 10,
     });
+    const multimodalManifests = createInMemoryDocumentMultimodalManifestRepository({
+      maxManifests: 4,
+    });
+    const parserHints: (ParserRouteHints | undefined)[] = [];
+    const basePdfParser = pdfParser();
     const worker = createDocumentCompilationWorker({
       assets,
       generateKnowledgePathId: sequenceIds([
@@ -1671,13 +1678,18 @@ describe("createDocumentCompilationWorker lease integration", () => {
         "018f0d60-7a49-7cc2-9c1b-5b36f18f6b08",
         "018f0d60-7a49-7cc2-9c1b-5b36f18f6b09",
       ]),
+      generateMultimodalWriteOwnerId: () => "pdf-write-owner",
       jobs: compilationJobs,
       knowledgePaths,
-      multimodalManifests: createInMemoryDocumentMultimodalManifestRepository({
-        maxManifests: 4,
-      }),
+      multimodalManifests,
       objectStorage: adapter.objectStorage,
-      parser: pdfParser(),
+      parser: {
+        ...basePdfParser,
+        parse: async (input) => {
+          parserHints.push(input.parserHints);
+          return basePdfParser.parse(input);
+        },
+      },
       pdfRasterizer: {
         render: async (input) => {
           expect(input).toMatchObject({
@@ -1722,6 +1734,20 @@ describe("createDocumentCompilationWorker lease integration", () => {
         version: asset.version,
       }),
     ).resolves.toMatchObject({ stage: "published" });
+    expect(parserHints).toEqual([
+      expect.objectContaining({ imagesHandledExternally: true, requiresImages: true }),
+    ]);
+    const manifest = await multimodalManifests.getByDocumentVersion({
+      documentAssetId: asset.id,
+      version: asset.version,
+    });
+    expect(manifest).toMatchObject({
+      items: [
+        expect.objectContaining({ id: expect.stringContaining(String(manifest?.parseArtifactId)) }),
+      ],
+      parseArtifactId: expect.stringMatching(/^[a-f0-9-]{36}$/u),
+    });
+    expect(manifest?.artifactHash).not.toBe("d".repeat(64));
 
     const assetPaths = await knowledgePaths.listPhysicalDescendants({
       knowledgeSpaceId: asset.knowledgeSpaceId,
@@ -1734,13 +1760,556 @@ describe("createDocumentCompilationWorker lease integration", () => {
         metadata: expect.objectContaining({
           contentKind: "document-multimodal-asset",
           modality: "image",
-          objectKey: expect.stringMatching(/figure-1-[a-f0-9]{12}\.png$/u),
+          objectKey: expect.stringMatching(/assets\/pdf-write-owner\/figure-1-[a-f0-9]{12}\.png$/u),
         }),
       }),
     ]);
     await expect(
       adapter.objectStorage.getObject(String(assetPaths.items[0]?.metadata.objectKey)),
     ).resolves.toEqual(new Uint8Array([9, 8, 7, 6]));
+  });
+
+  it("reuses canonical multimodal objects when the same PDF materialization is retried", async () => {
+    const adapter = createTestPlatformAdapter();
+    const assets = createInMemoryDocumentAssetRepository({ maxAssets: 1 });
+    const asset = await assets.create({
+      filename: "Stable.pdf",
+      id: "018f0d60-7a49-7cc2-9c1b-5b36f18f8b01",
+      knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
+      mimeType: "application/pdf",
+      objectKey: "tenant-1/spaces/space/documents/asset/Stable.pdf",
+      sha256: "b".repeat(64),
+      sizeBytes: 8,
+    });
+    await adapter.objectStorage.putObject({
+      body: new TextEncoder().encode("%PDF-1.7"),
+      contentType: asset.mimeType,
+      key: asset.objectKey,
+      metadata: {},
+    });
+    const compilationJobs = createDocumentCompilationJobStateMachine({
+      generateId: sequenceIds(["stable-job-1", "stable-job-2"]),
+      jobs: adapter.jobs,
+      repository: createInMemoryDocumentCompilationJobRepository({ maxJobs: 2 }),
+    });
+    const artifacts = createInMemoryParseArtifactRepository({ maxArtifacts: 1 });
+    const multimodalManifests = createInMemoryDocumentMultimodalManifestRepository({
+      maxManifests: 1,
+    });
+    let simulateCommitAcknowledgementFailure = true;
+    const worker = createDocumentCompilationWorker({
+      assets,
+      failureManagement: "caller",
+      generateMultimodalWriteOwnerId: sequenceIds(["owner-a", "owner-b"]),
+      jobs: compilationJobs,
+      multimodalManifests,
+      objectStorage: adapter.objectStorage,
+      parser: pdfParser(),
+      pdfRasterizer: {
+        render: async () => ({
+          body: new Uint8Array([9, 8, 7, 6]),
+          contentType: "image/png",
+        }),
+      },
+      reindexer: {
+        canonicalizeArtifact: async (input) => {
+          const materialized = await artifacts.materialize(input);
+          if (simulateCommitAcknowledgementFailure) {
+            simulateCommitAcknowledgementFailure = false;
+            throw Object.assign(new Error("artifact commit acknowledgement was lost"), {
+              retryable: true,
+            });
+          }
+          return materialized;
+        },
+        getCanonicalArtifact: (input) => artifacts.getByDocumentVersion(input),
+        reindex: async (input) => ({
+          artifact: input.parseArtifact,
+          nodesCreated: 1,
+          projectionsCreated: 1,
+          status: "rebuilt",
+        }),
+      },
+    });
+    const process = async () => {
+      const job = await compilationJobs.start({
+        documentAssetId: asset.id,
+        knowledgeSpaceId: asset.knowledgeSpaceId,
+        tenantId: "tenant-1",
+        version: asset.version,
+      });
+      return worker.process({
+        documentAssetId: asset.id,
+        documentCompilationJobId: job.id,
+        knowledgeSpaceId: asset.knowledgeSpaceId,
+        tenantId: "tenant-1",
+        version: asset.version,
+      });
+    };
+
+    await expect(process()).resolves.toMatchObject({ stage: "published" });
+    await expect(process()).resolves.toMatchObject({ stage: "published" });
+
+    const stored = await adapter.objectStorage.listObjects({ limit: 20, prefix: "tenant-1/" });
+    const multimodalObjects = stored.objects.filter(({ key }) => key.includes("/assets/"));
+    expect(multimodalObjects).toHaveLength(1);
+    expect(multimodalObjects[0]?.key).toContain("/assets/owner-a/");
+    const manifest = await multimodalManifests.getByDocumentVersion({
+      documentAssetId: asset.id,
+      version: asset.version,
+    });
+    expect(manifest?.items[0]?.assetRef?.objectKey).toBe(multimodalObjects[0]?.key);
+  });
+
+  it.each([
+    [
+      "a renderer error",
+      async () => {
+        throw new Error("pdftoppm is unavailable");
+      },
+    ],
+    ["an unresolved renderer result", async () => null],
+  ])("falls back to provider image payloads after %s", async (_scenario, render) => {
+    const adapter = createTestPlatformAdapter();
+    const assets = createInMemoryDocumentAssetRepository({ maxAssets: 1 });
+    const asset = await assets.create({
+      filename: "Fallback.pdf",
+      id: "018f0d60-7a49-7cc2-9c1b-5b36f18f7b01",
+      knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
+      mimeType: "application/pdf; charset=binary",
+      objectKey: "tenant-1/spaces/space/documents/asset/Fallback.pdf",
+      sha256: "e".repeat(64),
+      sizeBytes: 12,
+    });
+    await adapter.objectStorage.putObject({
+      body: new TextEncoder().encode("%PDF-1.7"),
+      contentType: asset.mimeType,
+      key: asset.objectKey,
+      metadata: {},
+    });
+    const compilationJobs = createDocumentCompilationJobStateMachine({
+      generateId: () => "document-compilation-job-pdf-fallback-1",
+      jobs: adapter.jobs,
+      repository: createInMemoryDocumentCompilationJobRepository({ maxJobs: 1 }),
+    });
+    const compilationJob = await compilationJobs.start({
+      documentAssetId: asset.id,
+      knowledgeSpaceId: asset.knowledgeSpaceId,
+      tenantId: "tenant-1",
+      version: asset.version,
+    });
+    const multimodalManifests = createInMemoryDocumentMultimodalManifestRepository({
+      maxManifests: 1,
+    });
+    const parserHints: (ParserRouteHints | undefined)[] = [];
+    const basePdfParser = pdfParser();
+    const worker = createDocumentCompilationWorker({
+      assets,
+      jobs: compilationJobs,
+      multimodalManifests,
+      objectStorage: adapter.objectStorage,
+      parser: {
+        ...basePdfParser,
+        parse: async (input) => {
+          parserHints.push(input.parserHints);
+          const parsed = await basePdfParser.parse(input);
+
+          if (input.parserHints?.imagesHandledExternally) {
+            return parsed;
+          }
+
+          return ParseArtifactSchema.parse({
+            ...parsed,
+            elements: [
+              ...parsed.elements.map((element) =>
+                element.id === "figure-1"
+                  ? {
+                      ...element,
+                      metadata: {
+                        ...element.metadata,
+                        assetRef: {
+                          contentType: "image/png",
+                          uri: "data:image/png;base64,AQIDBA==",
+                        },
+                      },
+                    }
+                  : element,
+              ),
+              {
+                id: "table-1",
+                metadata: {
+                  assetRef: {
+                    contentType: "image/png",
+                    uri: "data:image/png;base64,BQYHCA==",
+                  },
+                  table: { html: "<table><tr><td>42</td></tr></table>" },
+                },
+                pageNumber: 2,
+                sectionPath: ["Paper"],
+                text: "42",
+                type: "table",
+              },
+            ],
+          });
+        },
+      },
+      pdfRasterizer: {
+        render,
+      },
+      reindexer: {
+        reindex: async (input) => ({
+          artifact: input.parseArtifact,
+          nodesCreated: 1,
+          projectionsCreated: 1,
+          status: "rebuilt",
+        }),
+      },
+    });
+
+    await expect(
+      worker.process({
+        documentAssetId: asset.id,
+        documentCompilationJobId: compilationJob.id,
+        knowledgeSpaceId: asset.knowledgeSpaceId,
+        tenantId: "tenant-1",
+        version: asset.version,
+      }),
+    ).resolves.toMatchObject({ stage: "published" });
+    expect(parserHints).toEqual([
+      expect.objectContaining({ imagesHandledExternally: true, requiresImages: true }),
+      expect.objectContaining({ imagesHandledExternally: false, requiresImages: true }),
+    ]);
+    const manifest = await multimodalManifests.getByDocumentVersion({
+      documentAssetId: asset.id,
+      version: asset.version,
+    });
+    expect(manifest?.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assetRef: expect.objectContaining({
+            contentType: "image/png",
+            objectKey: expect.stringMatching(/figure-1-[a-f0-9]{12}\.png$/u),
+          }),
+          enrichment: expect.objectContaining({ asset: "provided" }),
+          parseElementId: "figure-1",
+        }),
+        expect.objectContaining({
+          assetRef: expect.objectContaining({
+            contentType: "image/png",
+            objectKey: expect.stringMatching(/table-1-[a-f0-9]{12}\.png$/u),
+          }),
+          enrichment: expect.objectContaining({ asset: "provided" }),
+          parseElementId: "table-1",
+        }),
+      ]),
+    );
+    const imageObjectKey = manifest?.items.find((item) => item.parseElementId === "figure-1")
+      ?.assetRef?.objectKey;
+    const tableObjectKey = manifest?.items.find((item) => item.parseElementId === "table-1")
+      ?.assetRef?.objectKey;
+    expect(imageObjectKey).toBeDefined();
+    expect(tableObjectKey).toBeDefined();
+    await expect(adapter.objectStorage.getObject(String(imageObjectKey))).resolves.toEqual(
+      new Uint8Array([1, 2, 3, 4]),
+    );
+    await expect(adapter.objectStorage.getObject(String(tableObjectKey))).resolves.toEqual(
+      new Uint8Array([5, 6, 7, 8]),
+    );
+  });
+
+  it("compensates an execution-owned asset when object storage commits and then throws", async () => {
+    const adapter = createTestPlatformAdapter();
+    const assets = createInMemoryDocumentAssetRepository({ maxAssets: 1 });
+    const asset = await assets.create({
+      filename: "Ambiguous.md",
+      id: "018f0d60-7a49-7cc2-9c1b-5b36f18f7c01",
+      knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
+      mimeType: "text/markdown",
+      objectKey: "tenant-1/spaces/space/documents/asset/Ambiguous.md",
+      sha256: "f".repeat(64),
+      sizeBytes: 12,
+    });
+    await adapter.objectStorage.putObject({
+      body: new TextEncoder().encode("# Ambiguous"),
+      contentType: asset.mimeType,
+      key: asset.objectKey,
+      metadata: {},
+    });
+    const compilationJobs = createDocumentCompilationJobStateMachine({
+      generateId: () => "document-compilation-job-object-ambiguity-1",
+      jobs: adapter.jobs,
+      repository: createInMemoryDocumentCompilationJobRepository({ maxJobs: 1 }),
+    });
+    const compilationJob = await compilationJobs.start({
+      documentAssetId: asset.id,
+      knowledgeSpaceId: asset.knowledgeSpaceId,
+      tenantId: "tenant-1",
+      version: asset.version,
+    });
+    const ambiguousStorage: PlatformAdapter["objectStorage"] = {
+      ...adapter.objectStorage,
+      putObject: async (input) => {
+        const result = await adapter.objectStorage.putObject(input);
+        if (input.key.includes("/assets/failed-write-owner/")) {
+          throw new Error("object committed before transport failure");
+        }
+        return result;
+      },
+    };
+    const worker = createDocumentCompilationWorker({
+      assets,
+      failureManagement: "caller",
+      generateMultimodalWriteOwnerId: () => "failed-write-owner",
+      jobs: compilationJobs,
+      multimodalManifests: createInMemoryDocumentMultimodalManifestRepository({ maxManifests: 1 }),
+      objectStorage: ambiguousStorage,
+      parser: parser(),
+      reindexer: {
+        reindex: async (input) => ({
+          artifact: input.parseArtifact,
+          nodesCreated: 1,
+          projectionsCreated: 1,
+          status: "rebuilt",
+        }),
+      },
+    });
+
+    await expect(
+      worker.process({
+        documentAssetId: asset.id,
+        documentCompilationJobId: compilationJob.id,
+        knowledgeSpaceId: asset.knowledgeSpaceId,
+        tenantId: "tenant-1",
+        version: asset.version,
+      }),
+    ).rejects.toThrow("object committed before transport failure");
+    await expect(
+      adapter.objectStorage.listObjects({
+        limit: 10,
+        prefix: `tenant-1/spaces/${asset.knowledgeSpaceId}/documents/${asset.id}/assets/failed-write-owner/`,
+      }),
+    ).resolves.toMatchObject({ objects: [] });
+  });
+
+  it("keeps incomplete multimodal compensation retryable", async () => {
+    const adapter = createTestPlatformAdapter();
+    const assets = createInMemoryDocumentAssetRepository({ maxAssets: 1 });
+    const asset = await assets.create({
+      filename: "Retry-cleanup.md",
+      id: "018f0d60-7a49-7cc2-9c1b-5b36f18f7c02",
+      knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
+      mimeType: "text/markdown",
+      objectKey: "tenant-1/spaces/space/documents/asset/Retry-cleanup.md",
+      sha256: "e".repeat(64),
+      sizeBytes: 15,
+    });
+    await adapter.objectStorage.putObject({
+      body: new TextEncoder().encode("# Retry cleanup"),
+      contentType: asset.mimeType,
+      key: asset.objectKey,
+      metadata: {},
+    });
+    const compilationJobs = createDocumentCompilationJobStateMachine({
+      generateId: () => "document-compilation-job-cleanup-retry-1",
+      jobs: adapter.jobs,
+      repository: createInMemoryDocumentCompilationJobRepository({ maxJobs: 1 }),
+    });
+    const compilationJob = await compilationJobs.start({
+      documentAssetId: asset.id,
+      knowledgeSpaceId: asset.knowledgeSpaceId,
+      tenantId: "tenant-1",
+      version: asset.version,
+    });
+    const unavailableStorage: PlatformAdapter["objectStorage"] = {
+      ...adapter.objectStorage,
+      deleteObject: async (key) => {
+        if (key.includes("/assets/cleanup-retry-owner/")) {
+          throw Object.assign(new Error("cleanup storage unavailable"), { retryable: true });
+        }
+        return adapter.objectStorage.deleteObject(key);
+      },
+      putObject: async (input) => {
+        const result = await adapter.objectStorage.putObject(input);
+        if (input.key.includes("/assets/cleanup-retry-owner/")) {
+          throw Object.assign(new Error("object write acknowledgement was lost"), {
+            retryable: true,
+          });
+        }
+        return result;
+      },
+    };
+    const worker = createDocumentCompilationWorker({
+      assets,
+      failureManagement: "caller",
+      generateMultimodalWriteOwnerId: () => "cleanup-retry-owner",
+      jobs: compilationJobs,
+      multimodalManifests: createInMemoryDocumentMultimodalManifestRepository({ maxManifests: 1 }),
+      objectStorage: unavailableStorage,
+      parser: parser(),
+      reindexer: {
+        reindex: async (input) => ({
+          artifact: input.parseArtifact,
+          nodesCreated: 1,
+          projectionsCreated: 1,
+          status: "rebuilt",
+        }),
+      },
+    });
+
+    const error = await worker
+      .process({
+        documentAssetId: asset.id,
+        documentCompilationJobId: compilationJob.id,
+        knowledgeSpaceId: asset.knowledgeSpaceId,
+        tenantId: "tenant-1",
+        version: asset.version,
+      })
+      .catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(AggregateError);
+    expect(error).toMatchObject({
+      code: "DOCUMENT_COMPILATION_RETRYABLE",
+      retryable: true,
+    });
+    await expect(
+      adapter.objectStorage.listObjects({
+        limit: 10,
+        prefix: `tenant-1/spaces/${asset.knowledgeSpaceId}/documents/${asset.id}/assets/cleanup-retry-owner/`,
+      }),
+    ).resolves.toMatchObject({ objects: [expect.any(Object)] });
+  });
+
+  it("limits PDF provider materialization even when the local rasterizer is disabled", async () => {
+    const adapter = createTestPlatformAdapter();
+    const assets = createInMemoryDocumentAssetRepository({ maxAssets: 3 });
+    const assetIds = [
+      "018f0d60-7a49-7cc2-9c1b-5b36f18f7d01",
+      "018f0d60-7a49-7cc2-9c1b-5b36f18f7d02",
+      "018f0d60-7a49-7cc2-9c1b-5b36f18f7d03",
+    ] as const;
+    const artifactIds = [
+      "018f0d60-7a49-7cc2-9c1b-5b36f18f7e01",
+      "018f0d60-7a49-7cc2-9c1b-5b36f18f7e02",
+      "018f0d60-7a49-7cc2-9c1b-5b36f18f7e03",
+    ] as const;
+    const createdAssets = [];
+    for (const [index, id] of assetIds.entries()) {
+      const asset = await assets.create({
+        filename: `Queued-${index + 1}.pdf`,
+        id,
+        knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
+        mimeType: "application/pdf",
+        objectKey: `tenant-1/spaces/space/documents/${id}/source.pdf`,
+        sha256: String(index + 1).repeat(64),
+        sizeBytes: 8,
+      });
+      createdAssets.push(asset);
+      await adapter.objectStorage.putObject({
+        body: new TextEncoder().encode("%PDF-1.7"),
+        contentType: asset.mimeType,
+        key: asset.objectKey,
+        metadata: {},
+      });
+    }
+    const compilationJobs = createDocumentCompilationJobStateMachine({
+      generateId: sequenceIds(["pdf-provider-job-1", "pdf-provider-job-2", "pdf-provider-job-3"]),
+      jobs: adapter.jobs,
+      repository: createInMemoryDocumentCompilationJobRepository({ maxJobs: 3 }),
+    });
+    const jobs: Awaited<ReturnType<typeof compilationJobs.start>>[] = [];
+    for (const asset of createdAssets) {
+      jobs.push(
+        await compilationJobs.start({
+          documentAssetId: asset.id,
+          knowledgeSpaceId: asset.knowledgeSpaceId,
+          tenantId: "tenant-1",
+          version: asset.version,
+        }),
+      );
+    }
+    let activeParses = 0;
+    let enteredParses = 0;
+    let maxActiveParses = 0;
+    let releaseParses!: () => void;
+    let resolveTwoEntered!: () => void;
+    const parseBarrier = new Promise<void>((resolve) => {
+      releaseParses = resolve;
+    });
+    const twoEntered = new Promise<void>((resolve) => {
+      resolveTwoEntered = resolve;
+    });
+    const multimodalMaterializationGate = createConcurrencyGate(2);
+    const multimodalManifests = createInMemoryDocumentMultimodalManifestRepository({
+      maxManifests: 3,
+    });
+    const createWorker = () =>
+      createDocumentCompilationWorker({
+        assets,
+        jobs: compilationJobs,
+        multimodalImageVariantGenerator: { generate: async () => [] },
+        multimodalManifests,
+        multimodalMaterializationGate,
+        objectStorage: adapter.objectStorage,
+        parser: {
+          kind: "unstructured",
+          parse: async (input) => {
+            expect(input.parserHints).toMatchObject({
+              imagesHandledExternally: false,
+              requiresImages: true,
+            });
+            activeParses += 1;
+            enteredParses += 1;
+            maxActiveParses = Math.max(maxActiveParses, activeParses);
+            if (enteredParses === 2) resolveTwoEntered();
+            await parseBarrier;
+            activeParses -= 1;
+            const artifactId =
+              artifactIds[assetIds.indexOf(input.documentAssetId as (typeof assetIds)[number])];
+            if (!artifactId) throw new Error("Missing test parse artifact id");
+            return ParseArtifactSchema.parse({
+              artifactHash: input.documentAssetId.replaceAll("-", "").padEnd(64, "0").slice(0, 64),
+              contentType: "text",
+              createdAt: "2026-08-18T12:00:00.000Z",
+              documentAssetId: input.documentAssetId,
+              elements: [],
+              id: artifactId,
+              metadata: {},
+              parser: "unstructured",
+              version: input.version,
+            });
+          },
+        },
+        reindexer: {
+          reindex: async (input) => ({
+            artifact: input.parseArtifact,
+            nodesCreated: 0,
+            projectionIds: [],
+            projectionsCreated: 0,
+            status: "rebuilt",
+          }),
+        },
+      });
+
+    const processes = createdAssets.map((asset, index) =>
+      createWorker().process({
+        documentAssetId: asset.id,
+        documentCompilationJobId: jobs[index]?.id ?? "missing-job",
+        knowledgeSpaceId: asset.knowledgeSpaceId,
+        tenantId: "tenant-1",
+        version: asset.version,
+      }),
+    );
+    await twoEntered;
+    await Promise.resolve();
+    expect(enteredParses).toBe(2);
+    expect(maxActiveParses).toBe(2);
+    releaseParses();
+    await expect(Promise.all(processes)).resolves.toEqual([
+      expect.objectContaining({ stage: "published" }),
+      expect.objectContaining({ stage: "published" }),
+      expect.objectContaining({ stage: "published" }),
+    ]);
+    expect(maxActiveParses).toBe(2);
   });
 });
 

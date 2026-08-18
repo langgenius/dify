@@ -51,6 +51,7 @@ try {
 
   const port = await dockerPort(containerId);
   const imageProcessing = await verifySharpRuntime(containerId);
+  const pdfRasterizer = await verifyPdfRasterizerRuntime(containerId);
   const health = await waitForHealth(`http://127.0.0.1:${port}/health`);
 
   console.log(
@@ -61,6 +62,7 @@ try {
       imageTag,
       imageProcessing,
       ok: true,
+      pdfRasterizer,
       port,
       productionConfigValidated: false,
       runtime: health.runtime,
@@ -71,6 +73,29 @@ try {
   if (containerId) {
     await dockerStop(containerId);
   }
+}
+
+async function verifyPdfRasterizerRuntime(containerId) {
+  const [{ stderr, stdout }, concurrencyResult] = await Promise.all([
+    execFileAsync(docker, ["exec", containerId, "pdftoppm", "-v"]),
+    execFileAsync(docker, [
+      "exec",
+      containerId,
+      "printenv",
+      "KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY",
+    ]),
+  ]);
+  const version = `${stdout}${stderr}`.trim();
+  const maxConcurrency = Number(concurrencyResult.stdout.trim());
+
+  if (!/^pdftoppm version\b/m.test(version)) {
+    throw new Error(`Unexpected Poppler PDF rasterizer version output: ${version}`);
+  }
+  if (maxConcurrency !== 2) {
+    throw new Error(`Unexpected Poppler PDF rasterizer max concurrency: ${maxConcurrency}`);
+  }
+
+  return { command: "pdftoppm", maxConcurrency, version: version.split("\n")[0] };
 }
 
 async function verifySharpRuntime(containerId) {

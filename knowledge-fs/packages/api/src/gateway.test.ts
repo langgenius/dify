@@ -6,6 +6,7 @@ import {
   type CacheAdapter,
   type DatabaseExecuteInput,
   type DatabaseExecuteResult,
+  type DatabaseTransactionCallback,
   type EmbeddingModel,
   EmbeddingModelSchema,
   EvidenceBundleSchema,
@@ -682,7 +683,13 @@ function createFakeParseArtifactExecutor() {
     return { rows: [], rowsAffected: 0 };
   };
 
-  return { calls, executor, rows };
+  return {
+    calls,
+    executor,
+    rows,
+    transaction: async <T>(callback: DatabaseTransactionCallback<T>) =>
+      callback({ execute: executor }),
+  };
 }
 
 function createFakeKnowledgeNodeExecutor() {
@@ -6350,6 +6357,7 @@ describe("createKnowledgeGateway", () => {
       database: createSchemaDatabaseAdapter({
         executor: fake.executor,
         kind: "postgres",
+        transaction: fake.transaction,
       }),
     });
 
@@ -6367,9 +6375,10 @@ describe("createKnowledgeGateway", () => {
         tableName: "parse_artifacts",
       }),
     );
-    expect(fake.calls[0]?.sql).not.toContain("hello.md");
-    expect(fake.calls[0]?.params).toContain(JSON.stringify(artifact.elements));
-    expect(fake.calls[0]?.params).toContain(JSON.stringify(artifact.metadata));
+    const parseArtifactInsert = fake.calls.find((call) => call.operation === "insert");
+    expect(parseArtifactInsert?.sql).not.toContain("hello.md");
+    expect(parseArtifactInsert?.params).toContain(JSON.stringify(artifact.elements));
+    expect(parseArtifactInsert?.params).toContain(JSON.stringify(artifact.metadata));
     expect(fake.calls).toContainEqual(
       expect.objectContaining({
         maxRows: 1,
@@ -6384,12 +6393,14 @@ describe("createKnowledgeGateway", () => {
       database: createSchemaDatabaseAdapter({
         executor: tidbFake.executor,
         kind: "tidb",
+        transaction: tidbFake.transaction,
       }),
     });
     await expect(tidbRepository.create(artifact)).resolves.toEqual(artifact);
-    expect(tidbFake.calls[0]?.sql).toContain("INSERT INTO `parse_artifacts`");
-    expect(tidbFake.calls[0]?.sql).toContain("CAST(? AS JSON)");
-    expect(tidbFake.calls[0]?.sql).not.toContain("RETURNING");
+    const tidbParseArtifactInsert = tidbFake.calls.find((call) => call.operation === "insert");
+    expect(tidbParseArtifactInsert?.sql).toContain("INSERT INTO `parse_artifacts`");
+    expect(tidbParseArtifactInsert?.sql).toContain("CAST(? AS JSON)");
+    expect(tidbParseArtifactInsert?.sql).not.toContain("RETURNING");
 
     const cleanupRepository = createInMemoryParseArtifactRepository({
       maxArtifacts: 4,

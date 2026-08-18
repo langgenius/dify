@@ -1,3 +1,5 @@
+import { createHash, randomUUID } from "node:crypto";
+
 import { z } from "@hono/zod-openapi";
 import type { ChunkConfig } from "@knowledge/compute";
 import {
@@ -9,12 +11,18 @@ import {
   type KnowledgeSpaceEmbeddingProfile,
   type KnowledgeSpaceRetrievalProfile,
   type ParseArtifact,
+  ParseArtifactSchema,
   type PlatformAdapter,
   PublicationGenerationIdSchema,
   TenantIdSchema,
 } from "@knowledge/core";
 import type { ParserAdapter, ParserRouteHints } from "@knowledge/parsers";
 
+import {
+  type ConcurrencyGate,
+  createConcurrencyGate,
+  mapWithConcurrency,
+} from "./bounded-concurrency";
 import {
   DeletionLifecycleFenceActiveError,
   type DeletionLifecycleFenceGuard,
@@ -40,6 +48,7 @@ import {
   buildDocumentSectionKnowledgePaths,
 } from "./document-knowledge-paths";
 import type { DocumentModelBudget } from "./document-model-budget";
+import { finalizeDocumentMultimodalArtifact } from "./document-multimodal-artifact";
 import { extractDocumentMultimodalAssets } from "./document-multimodal-asset-extractor";
 import { createDocumentMultimodalManifestBuilder } from "./document-multimodal-manifest-builder";
 import type { DocumentMultimodalManifestRepository } from "./document-multimodal-manifest-repository";
@@ -48,6 +57,7 @@ import type { DocumentOutlineRepository } from "./document-outline-repository";
 import type { DocumentOutlineSummaryEnhancer } from "./document-outline-summary-enhancer";
 import {
   type DocumentPdfRasterizer,
+  DocumentPdfRenderError,
   rasterizeDocumentPdfMultimodalAssets,
 } from "./document-pdf-rasterizer";
 import type { JointSemanticGraphMaterializer } from "./document-semantic-enrichment-processor";
@@ -90,12 +100,15 @@ export interface DocumentCompilationWorkerOptions {
    */
   readonly failureManagement?: "caller" | "worker" | undefined;
   readonly generateKnowledgePathId?: (() => string) | undefined;
+  readonly generateMultimodalWriteOwnerId?: (() => string) | undefined;
   readonly jobs: DocumentCompilationJobStateMachine;
   readonly jointSemanticGraph?: JointSemanticGraphMaterializer | undefined;
   readonly knowledgePaths?: KnowledgePathRepository | undefined;
   readonly multimodalImageVariantGenerator?: DocumentImageVariantGenerator | undefined;
+  readonly multimodalMaterializationGate?: ConcurrencyGate | undefined;
   readonly multimodalLocalAssetAllowlist?: readonly string[] | undefined;
   readonly multimodalMaxExtractedAssets?: number | undefined;
+  readonly multimodalMaxConcurrency?: number | undefined;
   readonly multimodalMaxLocalAssetBytes?: number | undefined;
   readonly multimodalMaxPdfRasterizedAssets?: number | undefined;
   readonly multimodalManifests: DocumentMultimodalManifestRepository;
@@ -223,12 +236,15 @@ export function createDocumentCompilationWorker({
   indexOverrides,
   failureManagement = "worker",
   generateKnowledgePathId,
+  generateMultimodalWriteOwnerId = randomUUID,
   jobs,
   jointSemanticGraph,
   knowledgePaths,
   multimodalImageVariantGenerator,
+  multimodalMaterializationGate,
   multimodalLocalAssetAllowlist,
   multimodalMaxExtractedAssets,
+  multimodalMaxConcurrency = 2,
   multimodalMaxLocalAssetBytes,
   multimodalMaxPdfRasterizedAssets,
   multimodalManifests,
@@ -248,6 +264,8 @@ export function createDocumentCompilationWorker({
   smokeEvaluation,
   visualEmbeddingModel,
 }: DocumentCompilationWorkerOptions): DocumentCompilationWorker {
+  const effectiveMultimodalMaterializationGate =
+    multimodalMaterializationGate ?? createConcurrencyGate(multimodalMaxConcurrency);
   const stagedProjectionPublication =
     reindexer.publishProjections && reindexer.failProjections
       ? {
@@ -271,6 +289,7 @@ export function createDocumentCompilationWorker({
         signal?.throwIfAborted();
       };
       let cleanupStaleObjectWrites = async (): Promise<void> => undefined;
+      let multimodalWritesDurable = false;
 
       try {
         await assertDocumentAvailable?.({
@@ -307,6 +326,7 @@ export function createDocumentCompilationWorker({
         }
 
         const activeAsset = asset;
+        const multimodalWriteOwnerId = generateMultimodalWriteOwnerId();
         const deletionToken = await deletionFence?.captureDeletionFence({
           documentAssetId: activeAsset.id,
           knowledgeSpaceId: input.knowledgeSpaceId,
@@ -320,18 +340,15 @@ export function createDocumentCompilationWorker({
           }
           signal?.throwIfAborted();
         };
-        const multimodalObjectStorage =
-          deletionToken || objectWriteAdmission
-            ? createDeletionFencedCompilationObjectStorage({
-                assertWritable,
-                objectWriteAdmission,
-                objectStorage,
-                onCleanupReady: (cleanup) => {
-                  cleanupStaleObjectWrites = cleanup;
-                },
-                scope: { knowledgeSpaceId: input.knowledgeSpaceId, tenantId: input.tenantId },
-              })
-            : objectStorage;
+        const multimodalObjectStorage = createDeletionFencedCompilationObjectStorage({
+          assertWritable,
+          objectWriteAdmission,
+          objectStorage,
+          onCleanupReady: (cleanup) => {
+            cleanupStaleObjectWrites = cleanup;
+          },
+          scope: { knowledgeSpaceId: input.knowledgeSpaceId, tenantId: input.tenantId },
+        });
         const compile = async () => {
           const initialJob = await jobs.get(input.documentCompilationJobId);
           if (!initialJob) {
@@ -361,62 +378,146 @@ export function createDocumentCompilationWorker({
             }
             canonicalArtifact = persistedArtifact;
           } else {
-            const body = await objectStorage.getObject(activeAsset.objectKey);
+            const requiresImages = Boolean(
+              visualEmbeddingModel || multimodalImageVariantGenerator || pdfRasterizer,
+            );
+            const materializeSource = async (): Promise<ParseArtifact> => {
+              signal?.throwIfAborted();
+              const body = await objectStorage.getObject(activeAsset.objectKey);
 
-            if (!body) {
-              throw new Error("Document compilation object not found");
-            }
+              if (!body) {
+                throw new Error("Document compilation object not found");
+              }
 
-            const parsedArtifact = await parser.parse({
-              body,
-              documentAssetId: activeAsset.id,
-              filename: activeAsset.filename,
-              mimeType: activeAsset.mimeType,
-              parserHints: documentParserHints({
-                assetMetadata: activeAsset.metadata,
-                requiresImages: Boolean(
-                  visualEmbeddingModel || multimodalImageVariantGenerator || pdfRasterizer,
-                ),
-              }),
-              ...(signal ? { signal } : {}),
-              version: activeAsset.version,
-            });
-            await assertWritable();
-            const rasterized = await rasterizeDocumentPdfMultimodalAssets({
-              artifact: parsedArtifact,
-              documentBody: body,
-              documentMimeType: activeAsset.mimeType,
-              knowledgeSpaceId: input.knowledgeSpaceId,
-              ...(multimodalMaxPdfRasterizedAssets
-                ? { maxRasterizedAssets: multimodalMaxPdfRasterizedAssets }
-                : {}),
-              objectStorage: multimodalObjectStorage,
-              ...(pdfRasterizer ? { rasterizer: pdfRasterizer } : {}),
-              tenantId: input.tenantId,
-            });
-            await assertWritable();
-            const { artifact } = await extractDocumentMultimodalAssets({
-              ...(multimodalLocalAssetAllowlist
-                ? { allowLocalAssetPaths: multimodalLocalAssetAllowlist }
-                : {}),
-              artifact: rasterized.artifact,
-              knowledgeSpaceId: input.knowledgeSpaceId,
-              ...(multimodalMaxExtractedAssets
-                ? { maxExtractedAssets: multimodalMaxExtractedAssets }
-                : {}),
-              ...(multimodalMaxLocalAssetBytes
-                ? { maxLocalAssetBytes: multimodalMaxLocalAssetBytes }
-                : {}),
-              ...(multimodalImageVariantGenerator
-                ? { imageVariantGenerator: multimodalImageVariantGenerator }
-                : {}),
-              objectStorage: multimodalObjectStorage,
-              tenantId: input.tenantId,
-            });
-            await assertWritable();
-            canonicalArtifact = reindexer.canonicalizeArtifact
-              ? await reindexer.canonicalizeArtifact(artifact)
-              : artifact;
+              const parseDocument = (imagesHandledExternally: boolean) =>
+                parser.parse({
+                  body,
+                  documentAssetId: activeAsset.id,
+                  filename: activeAsset.filename,
+                  mimeType: activeAsset.mimeType,
+                  parserHints: documentParserHints({
+                    assetMetadata: activeAsset.metadata,
+                    imagesHandledExternally,
+                    requiresImages,
+                  }),
+                  ...(signal ? { signal } : {}),
+                  version: activeAsset.version,
+                });
+              const materializationArtifactId = await resolveMaterializationArtifactId({
+                documentAssetId: activeAsset.id,
+                reindexer,
+                version: activeAsset.version,
+              });
+              const bindMaterializationIdentity = (artifact: ParseArtifact) =>
+                bindParseArtifactIdentity(artifact, materializationArtifactId);
+              const parsedArtifact = bindMaterializationIdentity(
+                await parseDocument(Boolean(pdfRasterizer) && isPdfDocument(activeAsset.mimeType)),
+              );
+              await assertWritable();
+              let multimodalArtifact: ParseArtifact;
+
+              try {
+                const rasterized = await rasterizeDocumentPdfMultimodalAssets({
+                  artifact: parsedArtifact,
+                  documentBody: body,
+                  documentMimeType: activeAsset.mimeType,
+                  knowledgeSpaceId: input.knowledgeSpaceId,
+                  ...(multimodalMaxPdfRasterizedAssets
+                    ? { maxRasterizedAssets: multimodalMaxPdfRasterizedAssets }
+                    : {}),
+                  objectStorage: multimodalObjectStorage,
+                  ...(pdfRasterizer ? { rasterizer: pdfRasterizer } : {}),
+                  ...(signal ? { signal } : {}),
+                  tenantId: input.tenantId,
+                  writeOwnerId: multimodalWriteOwnerId,
+                });
+                const providerFallbackRequired =
+                  Boolean(pdfRasterizer) &&
+                  requiresImages &&
+                  isPdfDocument(activeAsset.mimeType) &&
+                  rasterized.rasterizedCount === 0 &&
+                  rasterized.unresolvedCount > 0;
+                multimodalArtifact = providerFallbackRequired
+                  ? bindMaterializationIdentity(await parseDocument(false))
+                  : rasterized.artifact;
+              } catch (error) {
+                if (
+                  !(error instanceof DocumentPdfRenderError) ||
+                  !pdfRasterizer ||
+                  !requiresImages ||
+                  !isPdfDocument(activeAsset.mimeType)
+                ) {
+                  throw error;
+                }
+
+                multimodalArtifact = bindMaterializationIdentity(await parseDocument(false));
+              }
+              await assertWritable();
+              const { artifact } = await extractDocumentMultimodalAssets({
+                ...(multimodalLocalAssetAllowlist
+                  ? { allowLocalAssetPaths: multimodalLocalAssetAllowlist }
+                  : {}),
+                artifact: multimodalArtifact,
+                knowledgeSpaceId: input.knowledgeSpaceId,
+                ...(multimodalMaxExtractedAssets
+                  ? { maxExtractedAssets: multimodalMaxExtractedAssets }
+                  : {}),
+                ...(multimodalMaxLocalAssetBytes
+                  ? { maxLocalAssetBytes: multimodalMaxLocalAssetBytes }
+                  : {}),
+                ...(multimodalImageVariantGenerator
+                  ? { imageVariantGenerator: multimodalImageVariantGenerator }
+                  : {}),
+                objectStorage: multimodalObjectStorage,
+                tenantId: input.tenantId,
+                writeOwnerId: multimodalWriteOwnerId,
+              });
+              await assertWritable();
+              const finalizedArtifact = finalizeDocumentMultimodalArtifact(artifact);
+              if (reindexer.canonicalizeArtifact) {
+                let materialized: Awaited<
+                  ReturnType<NonNullable<IncrementalReindexer["canonicalizeArtifact"]>>
+                >;
+                try {
+                  materialized = await reindexer.canonicalizeArtifact(finalizedArtifact);
+                } catch (error) {
+                  if (!reindexer.getCanonicalArtifact) {
+                    multimodalWritesDurable = true;
+                    throw ambiguousArtifactMaterializationError(error);
+                  }
+                  let reconciled: ParseArtifact | null;
+                  try {
+                    reconciled = await reindexer.getCanonicalArtifact({
+                      documentAssetId: activeAsset.id,
+                      version: activeAsset.version,
+                    });
+                  } catch (reconciliationError) {
+                    multimodalWritesDurable = true;
+                    throw ambiguousArtifactMaterializationError(error, reconciliationError);
+                  }
+                  if (reconciled?.artifactHash !== finalizedArtifact.artifactHash) {
+                    throw error;
+                  }
+                  if (sameArtifactObjectReferences(reconciled, finalizedArtifact)) {
+                    multimodalWritesDurable = true;
+                  } else {
+                    await cleanupStaleObjectWrites();
+                  }
+                  return reconciled;
+                }
+                if (materialized.disposition === "unchanged") {
+                  await cleanupStaleObjectWrites();
+                } else {
+                  multimodalWritesDurable = true;
+                }
+                return materialized.artifact;
+              }
+              return finalizedArtifact;
+            };
+            canonicalArtifact =
+              requiresImages && isPdfDocument(activeAsset.mimeType)
+                ? await effectiveMultimodalMaterializationGate.run(materializeSource)
+                : await materializeSource();
           }
           const documentIndexOverrides = indexOverrides
             ? await indexOverrides.resolve({
@@ -523,6 +624,9 @@ export function createDocumentCompilationWorker({
             }
             await assertWritable();
             persistedManifest = await multimodalManifests.upsert(multimodalManifest);
+            if (!reindexer.canonicalizeArtifact) {
+              multimodalWritesDurable = true;
+            }
             if (!deferOutlineUntilSemanticNodes) {
               await assertWritable();
               await jobs.advance(input.documentCompilationJobId, "outline_built");
@@ -827,8 +931,15 @@ export function createDocumentCompilationWorker({
             }
           }
         }
-        if (isDeletionWriteBlocked(effectiveError)) {
-          await cleanupStaleObjectWrites();
+        const deletionWriteBlocked = isDeletionWriteBlocked(effectiveError);
+        if (deletionWriteBlocked || !multimodalWritesDurable) {
+          try {
+            await cleanupStaleObjectWrites();
+          } catch (cleanupError) {
+            effectiveError = retryableMultimodalCleanupError(effectiveError, cleanupError);
+          }
+        }
+        if (deletionWriteBlocked) {
           throw effectiveError;
         }
         if (legacyStagedProjectionPublication && stagedProjectionIds.length > 0) {
@@ -863,8 +974,13 @@ export function createDocumentCompilationWorker({
   };
 }
 
+function isPdfDocument(mimeType: string): boolean {
+  return mimeType.split(";", 1)[0]?.trim().toLowerCase() === "application/pdf";
+}
+
 function documentParserHints(input: {
   readonly assetMetadata: Readonly<Record<string, unknown>>;
+  readonly imagesHandledExternally: boolean;
   readonly requiresImages: boolean;
 }): ParserRouteHints {
   const language =
@@ -877,12 +993,114 @@ function documentParserHints(input: {
       ? input.assetMetadata.layoutComplexity
       : undefined;
   return {
+    imagesHandledExternally: input.imagesHandledExternally,
     ...(language ? { language } : {}),
     ...(layoutComplexity ? { layoutComplexity } : {}),
     requiresImages: input.requiresImages,
     ...(input.assetMetadata.requiresOcr === true ? { requiresOcr: true } : {}),
     ...(input.assetMetadata.requiresTables === true ? { requiresTables: true } : {}),
   };
+}
+
+async function resolveMaterializationArtifactId({
+  documentAssetId,
+  reindexer,
+  version,
+}: {
+  readonly documentAssetId: string;
+  readonly reindexer: IncrementalReindexer;
+  readonly version: number;
+}): Promise<string> {
+  const existing = await reindexer.getCanonicalArtifact?.({ documentAssetId, version });
+
+  return existing?.id ?? deterministicParseArtifactId(documentAssetId, version);
+}
+
+function deterministicParseArtifactId(documentAssetId: string, version: number): string {
+  const bytes = createHash("sha256")
+    .update(`knowledge-fs:parse-artifact:${documentAssetId}:${version}`)
+    .digest()
+    .subarray(0, 16);
+  bytes[6] = ((bytes[6] ?? 0) & 0x0f) | 0x50;
+  bytes[8] = ((bytes[8] ?? 0) & 0x3f) | 0x80;
+  const hex = bytes.toString("hex");
+
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+function bindParseArtifactIdentity(artifact: ParseArtifact, artifactId: string): ParseArtifact {
+  const generatedElementIds = artifact.elements.every((element, index) => {
+    const match = element.id.match(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}:element-(\d+)$/iu,
+    );
+
+    return match?.[1] === String(index + 1);
+  });
+
+  return ParseArtifactSchema.parse({
+    ...artifact,
+    elements: generatedElementIds
+      ? artifact.elements.map((element, index) => ({
+          ...element,
+          id: `${artifactId}:element-${index + 1}`,
+        }))
+      : artifact.elements,
+    id: artifactId,
+  });
+}
+
+function sameArtifactObjectReferences(left: ParseArtifact, right: ParseArtifact): boolean {
+  return (
+    JSON.stringify(artifactObjectReferences(left)) ===
+    JSON.stringify(artifactObjectReferences(right))
+  );
+}
+
+function artifactObjectReferences(artifact: ParseArtifact): readonly string[] {
+  const keys = new Set<string>();
+  const visit = (value: unknown): void => {
+    if (Array.isArray(value)) {
+      for (const item of value) visit(item);
+      return;
+    }
+    if (!value || typeof value !== "object") return;
+    for (const [key, nested] of Object.entries(value)) {
+      if (key === "objectKey" && typeof nested === "string") keys.add(nested);
+      else visit(nested);
+    }
+  };
+  for (const element of artifact.elements) visit(element.metadata);
+  return [...keys].sort();
+}
+
+function ambiguousArtifactMaterializationError(
+  materializationError: unknown,
+  reconciliationError?: unknown,
+): Error & { readonly code: string; readonly retryable: true } {
+  return Object.assign(
+    new AggregateError(
+      reconciliationError === undefined
+        ? [materializationError]
+        : [materializationError, reconciliationError],
+      "Parse artifact materialization outcome is ambiguous; execution-owned objects were retained",
+      { cause: materializationError },
+    ),
+    { code: "DOCUMENT_COMPILATION_RETRYABLE", retryable: true as const },
+  );
+}
+
+function retryableMultimodalCleanupError(
+  originalError: unknown,
+  cleanupError: unknown,
+): Error & { readonly code: string; readonly retryable: true } {
+  return Object.assign(
+    new AggregateError(
+      [originalError, cleanupError],
+      "Document compilation failed and could not compensate multimodal object writes",
+      { cause: originalError },
+    ),
+    { code: "DOCUMENT_COMPILATION_RETRYABLE", retryable: true as const },
+  );
 }
 
 function isDeletionWriteBlocked(error: unknown): boolean {
@@ -914,27 +1132,46 @@ function createDeletionFencedCompilationObjectStorage({
   const createdKeys = new Set<string>();
   const cleanup = async (): Promise<void> => {
     const failures: unknown[] = [];
-    for (const key of [...createdKeys]) {
-      const keyFailures: unknown[] = [];
-      for (let attempt = 1; attempt <= 3; attempt += 1) {
-        try {
-          await objectStorage.deleteObject(key);
+    const deadlineAt = Date.now() + 60_000;
+    let skippedForDeadline = 0;
+    await mapWithConcurrency([...createdKeys], 4, async (key) => {
+      if (Date.now() >= deadlineAt) {
+        skippedForDeadline += 1;
+        return;
+      }
+      try {
+        if ((await objectStorage.headObject(key)) === null) {
           createdKeys.delete(key);
-          break;
-        } catch (error) {
-          keyFailures.push(error);
+          return;
+        }
+        if (Date.now() >= deadlineAt) {
+          skippedForDeadline += 1;
+          return;
+        }
+        await objectStorage.deleteObject(key);
+        createdKeys.delete(key);
+      } catch (error) {
+        if (failures.length < 16) {
+          failures.push(
+            new AggregateError([error], `Failed to compensate late object write key=${key}`),
+          );
         }
       }
-      if (createdKeys.has(key)) {
-        failures.push(
-          new AggregateError(keyFailures, `Failed to compensate late object write key=${key}`),
-        );
-      }
+    });
+    if (skippedForDeadline > 0) {
+      failures.push(
+        new Error(
+          `Document compilation object cleanup exceeded 60000ms with ${skippedForDeadline} key(s) unattempted`,
+        ),
+      );
     }
     if (failures.length > 0) {
-      throw new AggregateError(
-        failures,
-        `Document compilation could not compensate ${failures.length} late object write(s)`,
+      throw Object.assign(
+        new AggregateError(
+          failures,
+          `Document compilation could not compensate ${failures.length} late object write(s)`,
+        ),
+        { code: "DOCUMENT_COMPILATION_RETRYABLE", retryable: true as const },
       );
     }
   };
@@ -946,7 +1183,11 @@ function createDeletionFencedCompilationObjectStorage({
           close: () => objectStorage.close?.() ?? Promise.resolve(),
         }
       : {}),
-    deleteObject: (key) => objectStorage.deleteObject(key),
+    deleteObject: async (key) => {
+      const result = await objectStorage.deleteObject(key);
+      createdKeys.delete(key);
+      return result;
+    },
     getObject: (key) => objectStorage.getObject(key),
     getObjectStream: (key) => objectStorage.getObjectStream(key),
     headObject: (key) => objectStorage.headObject(key),
@@ -956,11 +1197,12 @@ function createDeletionFencedCompilationObjectStorage({
     putObject: async (input) => {
       await assertWritable();
       const existedBefore = (await objectStorage.headObject(input.key)) !== null;
+      // Register ownership before PUT so a committed write with a lost response is still cleaned.
+      if (!existedBefore) createdKeys.add(input.key);
       await assertWritable();
       const stored = await withDeletionObjectWriteAdmission(objectWriteAdmission, scope, () =>
         objectStorage.putObject(input),
       );
-      if (!existedBefore) createdKeys.add(input.key);
       try {
         await assertWritable();
       } catch (error) {

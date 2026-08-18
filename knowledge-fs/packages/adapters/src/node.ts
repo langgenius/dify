@@ -22,6 +22,7 @@ export interface NodePlatformAdapterOptions {
 }
 
 const maxObjectBytes = 64 * 1024 * 1024;
+const defaultObjectStorageRequestTimeoutMs = 60_000;
 const defaultDifyInnerApiUrl = "http://localhost:5001";
 const defaultDifyInnerApiKey = "QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1";
 
@@ -87,6 +88,10 @@ function createNodeObjectStorageAdapter(
     baseUrl: env.DIFY_INNER_API_URL?.trim() || defaultDifyInnerApiUrl,
     ...(difyStorageFetch ? { fetch: difyStorageFetch } : {}),
     maxObjectBytes,
+    requestTimeoutMs: parsePositiveInteger(
+      env.DIFY_OBJECT_STORAGE_REQUEST_TIMEOUT_MS,
+      defaultObjectStorageRequestTimeoutMs,
+    ),
   });
 }
 

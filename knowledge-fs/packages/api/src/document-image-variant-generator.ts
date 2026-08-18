@@ -20,18 +20,32 @@ export interface DocumentImageVariantGenerator {
 
 export interface SharpImageThumbnailVariantGeneratorOptions {
   readonly maxDimension?: number | undefined;
+  readonly maxInputPixels?: number | undefined;
+  readonly maxOutputBytes?: number | undefined;
   readonly variantName?: string | undefined;
 }
 
 const defaultThumbnailMaxDimension = 320;
+const defaultThumbnailMaxInputPixels = 20_000_000;
+const defaultThumbnailMaxOutputBytes = 8 * 1024 * 1024;
 const defaultThumbnailVariantName = "thumbnail";
 
 export function createSharpImageThumbnailVariantGenerator({
   maxDimension = defaultThumbnailMaxDimension,
+  maxInputPixels = defaultThumbnailMaxInputPixels,
+  maxOutputBytes = defaultThumbnailMaxOutputBytes,
   variantName = defaultThumbnailVariantName,
 }: SharpImageThumbnailVariantGeneratorOptions = {}): DocumentImageVariantGenerator {
   if (!Number.isSafeInteger(maxDimension) || maxDimension < 1) {
     throw new Error("Sharp image thumbnail maxDimension must be at least 1");
+  }
+
+  if (!Number.isSafeInteger(maxInputPixels) || maxInputPixels < 1) {
+    throw new Error("Sharp image thumbnail maxInputPixels must be at least 1");
+  }
+
+  if (!Number.isSafeInteger(maxOutputBytes) || maxOutputBytes < 1) {
+    throw new Error("Sharp image thumbnail maxOutputBytes must be at least 1");
   }
 
   if (!variantName.trim()) {
@@ -45,7 +59,7 @@ export function createSharpImageThumbnailVariantGenerator({
       }
 
       const sharp = (await import("sharp")).default;
-      const { data, info } = await sharp(body)
+      const { data, info } = await sharp(body, { limitInputPixels: maxInputPixels })
         .rotate()
         .resize({
           fit: "inside",
@@ -55,6 +69,12 @@ export function createSharpImageThumbnailVariantGenerator({
         })
         .png()
         .toBuffer({ resolveWithObject: true });
+
+      if (data.byteLength > maxOutputBytes) {
+        throw new Error(
+          `Sharp image thumbnail output exceeds maxOutputBytes (${data.byteLength} > ${maxOutputBytes})`,
+        );
+      }
 
       return [
         {

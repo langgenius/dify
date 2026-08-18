@@ -16,6 +16,12 @@ production verifier. The baseline keeps Capability v2, integrated mode, direct u
 streaming explicitly disabled, so any unchanged pod reports `503` from `/ready` even if `/health`
 is `200`.
 
+The API image bundles Poppler. The baseline ConfigMap enables `pdftoppm` with 144 DPI images, 48
+DPI thumbnails, a 30-second subprocess timeout, a 500-asset per-document cap, and at most two
+concurrent Poppler page batches per API replica. Set
+`KNOWLEDGE_PDF_RASTERIZER=off` in the downstream ConfigMap as an explicit incident or low-resource
+kill switch; do not add a host-specific command path to the container configuration.
+
 Before a later controlled scale-up, replace the image with an immutable digest and create the
 `knowledge-fs-runtime` Secret with dedicated `DATABASE_URL` and `DIFY_INNER_API_KEY`. Model,
 datasource, and object-storage credentials stay in Dify and are never copied into KnowledgeFS.

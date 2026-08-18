@@ -9,6 +9,7 @@ model/plugin credentials, and datasource invocation.
 - A running Dify API reachable through `DIFY_INNER_API_URL`.
 - The matching Dify inner API key in `DIFY_INNER_API_KEY`.
 - Docker for the local PostgreSQL and Unstructured dependencies.
+- Poppler (`pdftoppm`) when processing PDFs with `pnpm dev:api`; the API container already includes it.
 
 Copy `infra/local/.env.example` to the ignored `infra/local/.env` and set the Dify URL and key.
 Do not add MinIO, cloud-storage credentials, model-provider keys, or datasource credentials to the
@@ -85,6 +86,11 @@ Default local endpoints:
 - KnowledgeFS API health: `http://localhost:8788/health`
 - KnowledgeFS API readiness: `http://localhost:8788/ready`
 - Unstructured API: `http://localhost:8000`
+
+The app-profile API enables its bundled Poppler rasterizer with the same bounded defaults as the
+production image, including at most two concurrent Poppler page batches. Set
+`KNOWLEDGE_PDF_RASTERIZER=off` in the ignored `infra/local/.env` to disable
+it, or install Poppler on the host before using the source-run API for PDFs.
 
 This Compose file is not a supported KnowledgeFS deployment topology. Production KnowledgeFS must
 be started by Dify's Compose or Kubernetes deployment so the internal URL, authentication, storage,

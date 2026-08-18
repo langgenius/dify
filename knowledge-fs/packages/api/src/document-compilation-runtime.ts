@@ -694,6 +694,12 @@ export function defaultDocumentCompilationErrorClassifier(
     });
     return { code: failure.code, message: failure.message, retryable: error.retryable };
   }
+  if (isParserProviderError(error)) {
+    const failure = knowledgeFsFailureForCode(error.code, {
+      ...(stage ? { stage } : {}),
+    });
+    return { code: failure.code, message: failure.message, retryable: error.retryable === true };
+  }
   if (isRetryableProviderError(error)) {
     const failure = knowledgeFsFailureForCode(
       typeof error.code === "string" && error.code.trim()
@@ -715,6 +721,22 @@ export function defaultDocumentCompilationErrorClassifier(
     message: failure.message,
     retryable: false,
   };
+}
+
+function isParserProviderError(
+  error: unknown,
+): error is Error & { readonly code: string; readonly retryable?: boolean } {
+  return (
+    error instanceof Error &&
+    "code" in error &&
+    typeof (error as { readonly code?: unknown }).code === "string" &&
+    [
+      "provider_input",
+      "provider_rate_limited",
+      "provider_request_failed",
+      "provider_response_invalid",
+    ].includes((error as { readonly code: string }).code)
+  );
 }
 
 function isRetryableProviderError(

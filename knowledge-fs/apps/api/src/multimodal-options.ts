@@ -6,6 +6,12 @@ import {
 } from "@knowledge/api";
 
 export interface ApiMultimodalEnv {
+  readonly DIFY_ROOT_KNOWLEDGE_PDF_RASTERIZER_DPI_OVERRIDE?: string | undefined;
+  readonly DIFY_ROOT_KNOWLEDGE_PDF_RASTERIZER_MAX_ASSETS_OVERRIDE?: string | undefined;
+  readonly DIFY_ROOT_KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY_OVERRIDE?: string | undefined;
+  readonly DIFY_ROOT_KNOWLEDGE_PDF_RASTERIZER_OVERRIDE?: string | undefined;
+  readonly DIFY_ROOT_KNOWLEDGE_PDF_RASTERIZER_THUMBNAIL_DPI_OVERRIDE?: string | undefined;
+  readonly DIFY_ROOT_KNOWLEDGE_PDF_RASTERIZER_TIMEOUT_MS_OVERRIDE?: string | undefined;
   readonly KNOWLEDGE_IMAGE_THUMBNAILS?: string | undefined;
   readonly KNOWLEDGE_IMAGE_THUMBNAIL_MAX_DIMENSION?: string | undefined;
   readonly KNOWLEDGE_IMAGE_THUMBNAIL_VARIANT?: string | undefined;
@@ -16,10 +22,12 @@ export interface ApiMultimodalEnv {
   readonly KNOWLEDGE_PDF_RASTERIZER_THUMBNAIL_VARIANT?: string | undefined;
   readonly KNOWLEDGE_PDF_RASTERIZER_TIMEOUT_MS?: string | undefined;
   readonly KNOWLEDGE_PDF_RASTERIZER_MAX_ASSETS?: string | undefined;
+  readonly KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY?: string | undefined;
 }
 
 export interface ApiMultimodalOptions {
   readonly documentMultimodalImageVariantGenerator?: DocumentImageVariantGenerator;
+  readonly documentMultimodalMaxConcurrency: number;
   readonly documentMultimodalMaxPdfRasterizedAssets?: number;
   readonly documentPdfRasterizer?: DocumentPdfRasterizer;
 }
@@ -27,14 +35,43 @@ export interface ApiMultimodalOptions {
 export function createApiMultimodalOptions(
   env: ApiMultimodalEnv = process.env,
 ): ApiMultimodalOptions {
-  const rasterizerName = normalizedRasterizer(env.KNOWLEDGE_PDF_RASTERIZER);
+  const rasterizerMode = rootOverride(
+    env.DIFY_ROOT_KNOWLEDGE_PDF_RASTERIZER_OVERRIDE,
+    env.KNOWLEDGE_PDF_RASTERIZER,
+  );
+  const rasterizerDpi = rootOverride(
+    env.DIFY_ROOT_KNOWLEDGE_PDF_RASTERIZER_DPI_OVERRIDE,
+    env.KNOWLEDGE_PDF_RASTERIZER_DPI,
+  );
+  const rasterizerThumbnailDpi = rootOverride(
+    env.DIFY_ROOT_KNOWLEDGE_PDF_RASTERIZER_THUMBNAIL_DPI_OVERRIDE,
+    env.KNOWLEDGE_PDF_RASTERIZER_THUMBNAIL_DPI,
+  );
+  const rasterizerTimeoutMs = rootOverride(
+    env.DIFY_ROOT_KNOWLEDGE_PDF_RASTERIZER_TIMEOUT_MS_OVERRIDE,
+    env.KNOWLEDGE_PDF_RASTERIZER_TIMEOUT_MS,
+  );
+  const rasterizerMaxAssets = rootOverride(
+    env.DIFY_ROOT_KNOWLEDGE_PDF_RASTERIZER_MAX_ASSETS_OVERRIDE,
+    env.KNOWLEDGE_PDF_RASTERIZER_MAX_ASSETS,
+  );
+  const rasterizerMaxConcurrency = rootOverride(
+    env.DIFY_ROOT_KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY_OVERRIDE,
+    env.KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY,
+  );
+  const rasterizerName = normalizedRasterizer(rasterizerMode);
   const command = trimmed(env.KNOWLEDGE_PDF_RASTERIZER_COMMAND);
   const imageVariantOptions = imageThumbnailOptions(env);
+  const maxConcurrency = boundedPositiveIntegerEnv(
+    rasterizerMaxConcurrency ?? "2",
+    "KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY",
+    8,
+  );
   const maxAssets =
-    env.KNOWLEDGE_PDF_RASTERIZER_MAX_ASSETS !== undefined
+    rasterizerMaxAssets !== undefined
       ? {
           documentMultimodalMaxPdfRasterizedAssets: positiveIntegerEnv(
-            env.KNOWLEDGE_PDF_RASTERIZER_MAX_ASSETS,
+            rasterizerMaxAssets,
             "KNOWLEDGE_PDF_RASTERIZER_MAX_ASSETS",
           ),
         }
@@ -44,26 +81,25 @@ export function createApiMultimodalOptions(
     return {
       ...imageVariantOptions,
       ...maxAssets,
+      documentMultimodalMaxConcurrency: maxConcurrency,
     };
   }
 
   return {
     ...imageVariantOptions,
     ...maxAssets,
+    documentMultimodalMaxConcurrency: maxConcurrency,
     documentPdfRasterizer: createPopplerPdfRasterizer({
       ...(command ? { command } : {}),
-      ...(env.KNOWLEDGE_PDF_RASTERIZER_DPI !== undefined
+      ...(rasterizerDpi !== undefined
         ? {
-            dpi: positiveIntegerEnv(
-              env.KNOWLEDGE_PDF_RASTERIZER_DPI,
-              "KNOWLEDGE_PDF_RASTERIZER_DPI",
-            ),
+            dpi: positiveIntegerEnv(rasterizerDpi, "KNOWLEDGE_PDF_RASTERIZER_DPI"),
           }
         : {}),
-      ...(env.KNOWLEDGE_PDF_RASTERIZER_THUMBNAIL_DPI !== undefined
+      ...(rasterizerThumbnailDpi !== undefined
         ? {
             thumbnailDpi: positiveIntegerEnv(
-              env.KNOWLEDGE_PDF_RASTERIZER_THUMBNAIL_DPI,
+              rasterizerThumbnailDpi,
               "KNOWLEDGE_PDF_RASTERIZER_THUMBNAIL_DPI",
             ),
           }
@@ -71,14 +107,15 @@ export function createApiMultimodalOptions(
       ...(trimmed(env.KNOWLEDGE_PDF_RASTERIZER_THUMBNAIL_VARIANT)
         ? { thumbnailVariantName: trimmed(env.KNOWLEDGE_PDF_RASTERIZER_THUMBNAIL_VARIANT) }
         : {}),
-      ...(env.KNOWLEDGE_PDF_RASTERIZER_TIMEOUT_MS !== undefined
+      ...(rasterizerTimeoutMs !== undefined
         ? {
             timeoutMs: positiveIntegerEnv(
-              env.KNOWLEDGE_PDF_RASTERIZER_TIMEOUT_MS,
+              rasterizerTimeoutMs,
               "KNOWLEDGE_PDF_RASTERIZER_TIMEOUT_MS",
             ),
           }
         : {}),
+      maxConcurrency,
     }),
   };
 }
@@ -161,8 +198,25 @@ function positiveIntegerEnv(value: string | undefined, name: string): number {
   return parsed;
 }
 
+function boundedPositiveIntegerEnv(value: string | undefined, name: string, max: number): number {
+  const parsed = positiveIntegerEnv(value, name);
+
+  if (parsed > max) {
+    throw new Error(`${name} must be an integer between 1 and ${max}`);
+  }
+
+  return parsed;
+}
+
 function trimmed(value: string | undefined): string | undefined {
   const text = value?.trim();
 
   return text ? text : undefined;
+}
+
+function rootOverride(
+  proxyValue: string | undefined,
+  serviceValue: string | undefined,
+): string | undefined {
+  return trimmed(proxyValue) ?? serviceValue;
 }

@@ -54,6 +54,32 @@ describe("document pdf rasterizer coverage", () => {
         tenantId: "tenant-1",
       }),
     ).rejects.toThrow("Document PDF rasterized asset max count must be at least 1");
+
+    await expect(
+      rasterizeDocumentPdfMultimodalAssets({
+        artifact: artifact([]),
+        documentBody,
+        documentMimeType: "application/pdf",
+        knowledgeSpaceId,
+        maxDurationMs: 0,
+        objectStorage: adapter.objectStorage,
+        rasterizer: recordingRasterizer([]),
+        tenantId: "tenant-1",
+      }),
+    ).rejects.toThrow("Document PDF rasterization maxDurationMs must be at least 1");
+
+    await expect(
+      rasterizeDocumentPdfMultimodalAssets({
+        artifact: artifact([]),
+        documentBody,
+        documentMimeType: "application/pdf",
+        knowledgeSpaceId,
+        maxRasterizedBytes: 0,
+        objectStorage: adapter.objectStorage,
+        rasterizer: recordingRasterizer([]),
+        tenantId: "tenant-1",
+      }),
+    ).rejects.toThrow("Document PDF rasterized byte max must be at least 1");
   });
 
   it("keeps elements unchanged when the renderer yields no image", async () => {
@@ -85,7 +111,7 @@ describe("document pdf rasterizer coverage", () => {
     expect(result.artifact.metadata).not.toHaveProperty("pdfRasterAssets");
   });
 
-  it("skips elements without pages or boxes and elements that already have assets", async () => {
+  it("reports unresolved images without pages or boxes before rendering partial assets", async () => {
     const adapter = createNodePlatformAdapter({ env: {} });
     const calls: RenderDocumentPdfPageInput[] = [];
     const boundingBox = { height: 10, width: 10, x: 0, y: 0 };
@@ -124,11 +150,46 @@ describe("document pdf rasterizer coverage", () => {
       tenantId: "tenant-1",
     });
 
-    expect(calls.map((call) => call.elementId)).toEqual(["empty-asset-ref"]);
-    expect(result.rasterizedCount).toBe(1);
+    expect(calls).toEqual([]);
+    expect(result).toMatchObject({
+      candidateCount: 1,
+      rasterizedCount: 0,
+      unresolvedCount: 3,
+    });
     expect(result.artifact.elements[0]?.metadata).not.toHaveProperty("assetRef");
-    expect(result.artifact.elements[4]?.metadata.assetRef).toMatchObject({
-      source: "pdf-raster",
+    expect(result.artifact.elements[4]?.metadata.assetRef).toEqual({
+      note: "not a stored asset yet",
+    });
+  });
+
+  it("forces provider fallback for a table without a bounding box", async () => {
+    const adapter = createNodePlatformAdapter({ env: {} });
+    const calls: RenderDocumentPdfPageInput[] = [];
+
+    const result = await rasterizeDocumentPdfMultimodalAssets({
+      artifact: artifact([
+        { id: "table-no-box", metadata: {}, pageNumber: 1, sectionPath: [], type: "table" },
+        {
+          id: "figure-1",
+          metadata: { boundingBox: { height: 10, width: 10, x: 0, y: 0 } },
+          pageNumber: 1,
+          sectionPath: [],
+          type: "image",
+        },
+      ]),
+      documentBody,
+      documentMimeType: "application/pdf",
+      knowledgeSpaceId,
+      objectStorage: adapter.objectStorage,
+      rasterizer: recordingRasterizer(calls),
+      tenantId: "tenant-1",
+    });
+
+    expect(calls).toEqual([]);
+    expect(result).toMatchObject({
+      candidateCount: 1,
+      rasterizedCount: 0,
+      unresolvedCount: 2,
     });
   });
 
@@ -172,6 +233,27 @@ describe("document pdf rasterizer coverage", () => {
     );
     expect(() => createPopplerPdfRasterizer({ timeoutMs: 0 })).toThrow(
       "Poppler PDF rasterizer timeoutMs must be at least 1",
+    );
+    expect(() => createPopplerPdfRasterizer({ maxConcurrency: 0 })).toThrow(
+      "Poppler PDF rasterizer maxConcurrency must be at least 1",
+    );
+    expect(() => createPopplerPdfRasterizer({ maxPageDimension: 0 })).toThrow(
+      "Poppler PDF rasterizer maxPageDimension must be at least 1",
+    );
+    expect(() => createPopplerPdfRasterizer({ maxPagePixels: 0 })).toThrow(
+      "Poppler PDF rasterizer maxPagePixels must be at least 1",
+    );
+    expect(() => createPopplerPdfRasterizer({ maxEncodedPageBytes: 0 })).toThrow(
+      "Poppler PDF rasterizer maxEncodedPageBytes must be at least 1",
+    );
+    expect(() => createPopplerPdfRasterizer({ maxEncodedImageBytes: 0 })).toThrow(
+      "Poppler PDF rasterizer maxEncodedImageBytes must be at least 1",
+    );
+    expect(() => createPopplerPdfRasterizer({ maxEncodedCropBytes: 0 })).toThrow(
+      "Poppler PDF rasterizer maxEncodedCropBytes must be at least 1",
+    );
+    expect(() => createPopplerPdfRasterizer({ pdfInfoCommand: "" })).toThrow(
+      "Poppler PDF rasterizer pdfInfoCommand must be non-empty",
     );
   });
 
@@ -306,7 +388,7 @@ describe("document pdf rasterizer coverage", () => {
     });
   });
 
-  it("rejects malformed bounding boxes so their elements are skipped", async () => {
+  it("rejects malformed image boxes and avoids publishing a partial raster set", async () => {
     const adapter = createNodePlatformAdapter({ env: {} });
     const calls: RenderDocumentPdfPageInput[] = [];
 
@@ -370,13 +452,12 @@ describe("document pdf rasterizer coverage", () => {
       tenantId: "tenant-1",
     });
 
-    // Only the element with a valid box (unknown units default to pixel) rasterizes.
-    expect(calls.map((call) => call.elementId)).toEqual(["unknown-unit"]);
-    expect(calls[0]).toMatchObject({
-      boundingBox: { height: 4, width: 3, x: 1, y: 2 },
-      boundingBoxGeometry: { coordinateSystem: "pixel" },
+    expect(calls).toEqual([]);
+    expect(result).toMatchObject({
+      candidateCount: 1,
+      rasterizedCount: 0,
+      unresolvedCount: 7,
     });
-    expect(result.rasterizedCount).toBe(1);
   });
 
   it("leaves bounding boxes unchanged for identity geometries", () => {
