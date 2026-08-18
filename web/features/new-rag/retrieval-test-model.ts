@@ -311,34 +311,30 @@ export function retrievalTestRecords(
   return [
     ...traces
       .filter((trace) => trace.mode !== 'research')
-      .map(
-        (trace): RetrievalTestRecord => ({
-          createdAt: new Date(trace.created_at).getTime(),
-          ...(trace.duration_ms !== null && trace.duration_ms !== undefined
-            ? { durationMs: trace.duration_ms }
-            : {}),
-          id: trace.id,
-          kind: 'trace',
-          mode: trace.mode === 'research' || trace.mode === 'deep' ? trace.mode : 'fast',
-          query: trace.query,
-          ...(trace.result_count !== null && trace.result_count !== undefined
-            ? { resultCount: trace.result_count }
-            : {}),
-          status: trace.completed ? 'completed' : 'failed',
-        }),
-      ),
-    ...researchTasks.map(
-      (task): RetrievalTestRecord => ({
-        createdAt: epochMilliseconds(task.created_at),
-        id: task.id,
-        kind: 'research',
-        mode: 'research',
-        query: task.query,
-        stage: task.stage,
-        status: researchTaskStatus(task.stage),
-        updatedAt: epochMilliseconds(task.updated_at),
-      }),
-    ),
+      .map((trace): RetrievalTestRecord => ({
+        createdAt: new Date(trace.created_at).getTime(),
+        ...(trace.duration_ms !== null && trace.duration_ms !== undefined
+          ? { durationMs: trace.duration_ms }
+          : {}),
+        id: trace.id,
+        kind: 'trace',
+        mode: trace.mode === 'research' || trace.mode === 'deep' ? trace.mode : 'fast',
+        query: trace.query,
+        ...(trace.result_count !== null && trace.result_count !== undefined
+          ? { resultCount: trace.result_count }
+          : {}),
+        status: trace.completed ? 'completed' : 'failed',
+      })),
+    ...researchTasks.map((task): RetrievalTestRecord => ({
+      createdAt: epochMilliseconds(task.created_at),
+      id: task.id,
+      kind: 'research',
+      mode: 'research',
+      query: task.query,
+      stage: task.stage,
+      status: researchTaskStatus(task.stage),
+      updatedAt: epochMilliseconds(task.updated_at),
+    })),
   ].sort((left, right) => right.createdAt - left.createdAt)
 }
 
