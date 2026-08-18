@@ -5,6 +5,8 @@ from typing import Any
 from pydantic import TypeAdapter, ValidationError
 from yarl import URL
 
+from extensions.ext_database import db
+
 from configs import dify_config
 from core.helper.provider_cache import ToolProviderCredentialsCache
 from core.mcp.types import Tool as MCPTool
@@ -251,7 +253,7 @@ class ToolTransformService:
 
         # Use provided user_name to avoid N+1 query, fallback to load_user() if not provided
         if user_name is None:
-            user = db_provider.load_user()
+            user = db_provider.load_user(session=db.session())
             user_name = user.name if user else None
 
         # Convert to entity and use its API response method
@@ -282,7 +284,7 @@ class ToolTransformService:
     ) -> list[ToolApiEntity]:
         # Use provided user_name to avoid N+1 query, fallback to load_user() if not provided
         if user_name is None:
-            user = mcp_provider.load_user()
+            user = mcp_provider.load_user(session=db.session())
             user_name = user.name if user else "Anonymous"
 
         return [
@@ -310,10 +312,10 @@ class ToolTransformService:
         convert provider controller to user provider
         """
         username = "Anonymous"
-        if db_provider.user is None:
+        if db_provider.user(session=db.session()) is None:
             raise ValueError(f"user is None for api provider {db_provider.id}")
         try:
-            user = db_provider.user
+            user = db_provider.user(session=db.session())
             if not user:
                 raise ValueError("user not found")
 
