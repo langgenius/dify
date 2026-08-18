@@ -92,8 +92,7 @@ def release_upgrade_file_lease(
     current.released_at = released_at
     cleanup_requested = any(lease.cleanup_requested_at is not None for lease in leases)
     still_protected = any(
-        lease.status == KnowledgeFSUpgradeFileLeaseStatus.ACTIVE and lease.expires_at > released_at
-        for lease in leases
+        lease.status == KnowledgeFSUpgradeFileLeaseStatus.ACTIVE and lease.expires_at > released_at for lease in leases
     )
     if not cleanup_requested or still_protected or _legacy_document_references_file(session, upload_file_id):
         return False
@@ -145,10 +144,7 @@ def cleanup_deferred_upgrade_files(
                 )
             )
             for lease in leases:
-                if (
-                    lease.status == KnowledgeFSUpgradeFileLeaseStatus.ACTIVE
-                    and lease.expires_at <= cleanup_at
-                ):
+                if lease.status == KnowledgeFSUpgradeFileLeaseStatus.ACTIVE and lease.expires_at <= cleanup_at:
                     lease.status = KnowledgeFSUpgradeFileLeaseStatus.EXPIRED
             if any(
                 lease.status == KnowledgeFSUpgradeFileLeaseStatus.ACTIVE and lease.expires_at > cleanup_at
