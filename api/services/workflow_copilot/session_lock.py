@@ -14,6 +14,7 @@ from uuid import uuid4
 
 from configs import dify_config
 from extensions.ext_redis import redis_client
+from extensions.redis_names import serialize_redis_name
 
 _KEY_FMT = "workflow_copilot:advance:{session_id}"
 
@@ -47,7 +48,9 @@ def release(session_id: str, token: str) -> None:
     holder currently recorded in Redis (compare-del). A no-op if the lock
     was already released, expired, or is held by a different token.
     """
-    redis_client.eval(_RELEASE_LUA, 1, _key(session_id), token)
+    # RedisClientWrapper prefixes .set/.get, but .eval is delegated to the raw client — serialize
+    # the key ourselves so it matches acquire()'s written key.
+    redis_client.eval(_RELEASE_LUA, 1, serialize_redis_name(_key(session_id)), token)
 
 
 def exists(session_id: str) -> bool:
