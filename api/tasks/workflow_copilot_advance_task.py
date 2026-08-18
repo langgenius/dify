@@ -53,19 +53,19 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
     advance lock held under ``token``. Always releases the lock, even on a
     lost CAS race or an unexpected engine failure -- a stuck lock would wedge
     the session for its full TTL (``WORKFLOW_COPILOT_MAX_ADVANCE_SECONDS``)."""
-    repo = _build_repo()
-    dify = WorkflowServiceDifyPort()
-    agent = PlaceholderAgent()  # P3c: replace with agent factory
-
-    def emit(ne: NodeEvent) -> None:
-        progress_bus.publish(
-            session_id,
-            {"kind": "node", "node_id": ne.node_id, "title": ne.title, "status": ne.status, "error": ne.error},
-        )
-
-    env = Env(dify=dify, agent=agent, repo=repo, now=naive_utc_now, emit=emit)
-    runner = Runner(env, fix_registry())
     try:
+        repo = _build_repo()
+        dify = WorkflowServiceDifyPort()
+        agent = PlaceholderAgent()  # P3c: replace with agent factory
+
+        def emit(ne: NodeEvent) -> None:
+            progress_bus.publish(
+                session_id,
+                {"kind": "node", "node_id": ne.node_id, "title": ne.title, "status": ne.status, "error": ne.error},
+            )
+
+        env = Env(dify=dify, agent=agent, repo=repo, now=naive_utc_now, emit=emit)
+        runner = Runner(env, fix_registry())
         settled = runner.advance(session_id, Turn(action=Action(**action_dict), actor=Actor(**actor_dict)))
         progress_bus.publish(
             session_id,

@@ -181,3 +181,31 @@ def test_advance_session_generic_exception_publishes_generic_error_and_releases_
         assert (s.id, "tok-y") in released
     finally:
         engine.dispose()
+
+
+def test_advance_session_setup_failure_still_releases_lock(monkeypatch) -> None:
+    """A failure while constructing the task's dependencies (before the engine
+    ever runs) must still fall into the generic ``except`` and release the
+    lock in ``finally`` -- otherwise the lock leaks until its TTL and the
+    session is stuck ``busy`` for up to ``MAX_ADVANCE``."""
+
+    def _boom():
+        raise RuntimeError("db down")
+
+    monkeypatch.setattr(mod, "_build_repo", _boom)
+
+    events: list[tuple[str, dict]] = []
+    released: list[tuple[str, str]] = []
+    monkeypatch.setattr(mod.progress_bus, "publish", lambda sid, ev: events.append((sid, ev)))
+    monkeypatch.setattr(mod.session_lock, "release", lambda sid, tok: released.append((sid, tok)))
+
+    mod.advance_session("sess-setup", _act("request_fix", 1), _ACTOR_DICT, "tok-setup")
+
+    assert next((ev["kind"], ev["error"]) for _sid, ev in events if ev["kind"] == "error") == (
+        "error",
+        "step failed",
+    )
+    # no exception detail must leak into the published event.
+    assert all("db down" not in str(ev) for _sid, ev in events)
+
+    assert ("sess-setup", "tok-setup") in released
