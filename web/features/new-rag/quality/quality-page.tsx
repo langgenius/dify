@@ -480,7 +480,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
         {activeTab === 'golden' && goldenQuestions.length > 0 && (
           <div className="flex gap-2">
             <Button className="gap-1" onClick={() => setImportOpen(true)}>
-              <span aria-hidden className="i-ri-upload-2-line size-4" />
+              <span aria-hidden className="i-ri-download-line size-4" />
               {t(($) => $['newKnowledge.qualityPage.importCsv'])}
             </Button>
             <Button
@@ -633,7 +633,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             </p>
             <div className="mt-4 flex gap-2">
               <Button className="gap-1" onClick={() => setImportOpen(true)}>
-                <span aria-hidden className="i-ri-upload-2-line size-4" />
+                <span aria-hidden className="i-ri-download-line size-4" />
                 {t(($) => $['newKnowledge.qualityPage.importCsv'])}
               </Button>
               <Button
