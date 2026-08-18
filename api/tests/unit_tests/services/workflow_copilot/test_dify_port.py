@@ -103,6 +103,55 @@ def test_read_graph_raises_when_no_draft_workflow(mock_session: MagicMock):
             WorkflowServiceDifyPort().read_graph("app-1", _actor())
 
 
+# ---- node_outputs --------------------------------------------------------------
+
+
+def test_node_outputs_maps_executions_and_falls_back_to_empty_dicts(mock_session: MagicMock):
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    _configure_session_get(mock_session, app=app)
+
+    node_exec_with_io = SimpleNamespace(
+        node_id="node-1",
+        node_type="code",
+        title="Code",
+        status="succeeded",
+        error=None,
+        inputs_dict={"x": 1},
+        outputs_dict={"y": 2},
+    )
+    node_exec_without_io = SimpleNamespace(
+        node_id="node-2",
+        node_type="llm",
+        title="LLM",
+        status="failed",
+        error="boom",
+        inputs_dict=None,
+        outputs_dict=None,
+    )
+
+    with patch("services.workflow_copilot.dify_port.DifyAPIRepositoryFactory") as mock_repo_factory:
+        mock_node_exec_repo = mock_repo_factory.create_api_workflow_node_execution_repository.return_value
+        mock_node_exec_repo.get_executions_by_workflow_run.return_value = [node_exec_with_io, node_exec_without_io]
+
+        outputs = WorkflowServiceDifyPort().node_outputs("app-1", _actor(), "run-1")
+
+    mock_node_exec_repo.get_executions_by_workflow_run.assert_called_once_with("tenant-1", "app-1", "run-1")
+
+    assert len(outputs) == 2
+
+    assert outputs[0].node_id == "node-1"
+    assert outputs[0].status == "succeeded"
+    assert outputs[0].error == ""
+    assert outputs[0].outputs == {"y": 2}
+
+    assert outputs[1].node_id == "node-2"
+    assert outputs[1].status == "failed"
+    assert outputs[1].error == "boom"
+    # None inputs/outputs fall back to {} rather than staying None.
+    assert outputs[1].inputs == {}
+    assert outputs[1].outputs == {}
+
+
 # ---- apply_repair --------------------------------------------------------------
 
 
@@ -131,16 +180,19 @@ def test_apply_repair_syncs_mutated_graph_with_graph_only_and_no_agent_binding_s
     assert result.new_hash == "hash-2"
 
     _, kwargs = mock_ws_cls.return_value.sync_draft_workflow.call_args
+    # graph_only=True means sync_draft_workflow IGNORES the features/conversation_variables
+    # kwargs entirely -- what actually protects the rest of the draft from being clobbered
+    # is this combination: graph-only sync, no agent-binding sync, and environment variables
+    # preserved (not overwritten by the `environment_variables=[]` we pass).
     assert kwargs["graph_only"] is True
     assert kwargs["sync_agent_bindings"] is False
     assert kwargs["commit"] is True
     assert kwargs["preserve_environment_variables"] is True
+    assert kwargs["environment_variables"] == []
     assert kwargs["unique_hash"] == "hash-1"
     assert kwargs["account"] is account
     assert kwargs["app_model"] is app
     assert kwargs["session"] is mock_session
-    assert kwargs["features"] == {"feature": True}
-    assert kwargs["conversation_variables"] == ["conv-var"]
 
     mutated_node = next(n for n in kwargs["graph"]["nodes"] if n["id"] == "node-1")
     assert mutated_node["data"]["code"] == "new"
@@ -159,16 +211,19 @@ def test_apply_repair_ignores_non_set_node_config_intents(mock_session: MagicMoc
         features_dict={},
         conversation_variables=[],
     )
-    updated_workflow = SimpleNamespace(unique_hash="hash-1")
     intents = [MutationIntent(op="connect", args={"from": "node-1", "to": "node-2"})]
 
     with patch("services.workflow_copilot.dify_port.WorkflowService") as mock_ws_cls:
         mock_ws_cls.return_value.get_draft_workflow.return_value = workflow
-        mock_ws_cls.return_value.sync_draft_workflow.return_value = updated_workflow
 
         result = WorkflowServiceDifyPort().apply_repair("app-1", _actor(), intents)
 
     assert result.changed_nodes == []
+    # No node changed -> no reason to write the draft back: sync_draft_workflow must not
+    # be called at all (avoids a wasteful no-op DB write + signal), and the hash returned
+    # is simply the one that was read.
+    mock_ws_cls.return_value.sync_draft_workflow.assert_not_called()
+    assert result.new_hash == "hash-1"
 
 
 def test_apply_repair_maps_hash_mismatch_to_domain_error(mock_session: MagicMock):
@@ -254,12 +309,22 @@ def test_run_draft_invokes_generate_with_debugger_blocking_and_emits_node_events
 
 def test_publish_publishes_workflow_updates_app_workflow_id_and_commits(mock_session: MagicMock):
     account = SimpleNamespace(id="acc-1")
-    app = SimpleNamespace(id="app-1", tenant_id="tenant-1", workflow_id="old-wf-id")
+    app = SimpleNamespace(
+        id="app-1",
+        tenant_id="tenant-1",
+        workflow_id="old-wf-id",
+        updated_by="old-updater",
+        updated_at=None,
+    )
     _configure_session_get(mock_session, account=account, app=app)
     published_workflow = SimpleNamespace(id="new-wf-id")
 
-    with patch("services.workflow_copilot.dify_port.WorkflowService") as mock_ws_cls:
+    with (
+        patch("services.workflow_copilot.dify_port.WorkflowService") as mock_ws_cls,
+        patch("services.workflow_copilot.dify_port.naive_utc_now") as mock_naive_utc_now,
+    ):
         mock_ws_cls.return_value.publish_workflow.return_value = (published_workflow, set())
+        mock_naive_utc_now.return_value = "the-now"
 
         WorkflowServiceDifyPort().publish("app-1", _actor())
 
@@ -267,6 +332,11 @@ def test_publish_publishes_workflow_updates_app_workflow_id_and_commits(mock_ses
         session=mock_session, app_model=app, account=account
     )
     assert app.workflow_id == "new-wf-id"
+    # Publish must also advance the app's audit fields -- mirrors the console idiom at
+    # controllers/console/app/workflow.py (~1315) so publishing via the copilot leaves the
+    # same trail as publishing via the console UI.
+    assert app.updated_by == "acc-1"
+    assert app.updated_at == "the-now"
     mock_session.commit.assert_called_once()
 
 
