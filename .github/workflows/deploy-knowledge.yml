@@ -68,4 +68,26 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            set -euo pipefail
+
+            deploy_script="$(mktemp)"
+            normalized_script="${deploy_script}.normalized"
+            cleanup() {
+              rm -f "$deploy_script" "$normalized_script"
+            }
+            trap cleanup EXIT
+
+            cat > "$deploy_script" <<'DIFY_KNOWLEDGE_DEPLOY_SCRIPT'
             ${{ vars.SSH_KNOWLEDGE_SCRIPT || secrets.SSH_KNOWLEDGE_SCRIPT }}
+            DIFY_KNOWLEDGE_DEPLOY_SCRIPT
+
+            if [[ ! -s "$deploy_script" ]]; then
+              echo "KnowledgeFS deploy script is empty." >&2
+              exit 1
+            fi
+
+            # GitHub variables and secrets can retain Windows CRLF line endings.
+            # Normalize them before Bash parses options such as `set -eu`.
+            tr -d '\r' < "$deploy_script" > "$normalized_script"
+            mv "$normalized_script" "$deploy_script"
+            bash -e -u -o pipefail "$deploy_script"

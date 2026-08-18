@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { parse } from "yaml";
@@ -12,6 +13,10 @@ const workflow = readFileSync(
   new URL("../../.github/workflows/knowledge-fs-ci.yml", import.meta.url),
   "utf8",
 );
+const deployWorkflow = readFileSync(
+  new URL("../../.github/workflows/deploy-knowledge.yml", import.meta.url),
+  "utf8",
+);
 const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 const apiPackageJson = JSON.parse(
   readFileSync(new URL("../packages/api/package.json", import.meta.url), "utf8"),
@@ -19,6 +24,7 @@ const apiPackageJson = JSON.parse(
 const lockfile = readFileSync(new URL("../pnpm-lock.yaml", import.meta.url), "utf8");
 const dependabot = readFileSync(new URL("../../.github/dependabot.yml", import.meta.url), "utf8");
 const workflowDocument = parse(workflow);
+const deployWorkflowDocument = parse(deployWorkflow);
 const pathsFilterStep = workflowDocument.jobs["check-changes"].steps.find((step) =>
   step.uses?.startsWith("dorny/paths-filter@"),
 );
@@ -76,6 +82,7 @@ test("root workflow scopes expensive checks internally", () => {
   assert.match(workflow, /- 'api\/pyproject\.toml'/);
   assert.match(workflow, /- 'api\/uv\.lock'/);
   assert.match(workflow, /- '\.github\/dependabot\.yml'/);
+  assert.match(workflow, /- '\.github\/workflows\/deploy-knowledge\.yml'/);
   assert.match(workflow, /needs\.check-changes\.outputs\.knowledge-fs == 'true'/);
   assert.match(workflow, /^ {2}skip:$/m);
 });
@@ -94,7 +101,38 @@ test("workflow paths stay in parity with every auditable integration touchpoint"
 
 test("root workflow and Dependabot configuration are valid YAML", () => {
   assert.doesNotThrow(() => parse(workflow));
+  assert.doesNotThrow(() => parse(deployWorkflow));
   assert.doesNotThrow(() => parse(dependabot));
+});
+
+test("deploy workflow normalizes CRLF scripts and fails closed", () => {
+  const deployStep = deployWorkflowDocument.jobs.deploy.steps.find(
+    (step) => step.name === "Deploy to server",
+  );
+  assert.ok(deployStep, "workflow is missing the deploy step");
+  assert.match(deployStep.uses, /^appleboy\/ssh-action@[0-9a-f]{40}$/);
+
+  const scriptExpression = "${{ vars.SSH_KNOWLEDGE_SCRIPT || secrets.SSH_KNOWLEDGE_SCRIPT }}";
+  const wrapper = deployStep.with.script;
+  assert.equal(wrapper.split(scriptExpression).length - 1, 1);
+  assert.match(wrapper, /^set -euo pipefail$/m);
+  assert.match(wrapper, /tr -d '\\r'/);
+  assert.match(wrapper, /bash -e -u -o pipefail "\$deploy_script"/);
+
+  const execute = (injectedScript) => {
+    assert.ok(wrapper.includes(scriptExpression));
+    return spawnSync("bash", ["-c", wrapper.replace(scriptExpression, injectedScript)], {
+      encoding: "utf8",
+    });
+  };
+
+  const success = execute("set -eu\r\nprintf 'normalized\\n'\r\n");
+  assert.equal(success.status, 0, success.stderr);
+  assert.equal(success.stdout, "normalized\n");
+
+  const failure = execute("set -eu\r\nfalse\r\nprintf 'must-not-run\\n'\r\n");
+  assert.notEqual(failure.status, 0);
+  assert.doesNotMatch(failure.stdout, /must-not-run/);
 });
 
 test("root workflow preserves the independent KnowledgeFS pnpm workspace", () => {

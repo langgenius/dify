@@ -107,6 +107,7 @@ jobs:
               - 'docker/generate_docker_compose'
               - 'docs/design/knowledge-fs*'
               - '.github/dependabot.yml'
+              - '.github/workflows/deploy-knowledge.yml'
               - '.github/workflows/knowledge-fs-ci.yml'
 
   build:
