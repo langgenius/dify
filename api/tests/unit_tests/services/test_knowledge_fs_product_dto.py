@@ -429,6 +429,23 @@ def test_retrieval_test_payload_serializes_typed_custom_metadata_conditions() ->
         )
 
 
+@pytest.mark.parametrize(
+    ("condition", "message"),
+    [
+        ({"comparison_operator": "contains", "field_type": "number", "name": "priority", "value": 3}, "invalid"),
+        ({"comparison_operator": ">", "field_type": "number", "name": "priority"}, "required"),
+        ({"comparison_operator": ">", "field_type": "number", "name": "priority", "value": "3"}, "numeric"),
+        ({"comparison_operator": "is", "field_type": "string", "name": "department", "value": 3}, "string"),
+        ({"comparison_operator": "after", "field_type": "time", "name": "reviewed_at", "value": "later"}, "timestamp"),
+        ({"comparison_operator": "is", "field_type": "string", "name": "department", "value": "x" * 513}, "512"),
+        ({"comparison_operator": ">", "field_type": "number", "name": "priority", "value": float("inf")}, "finite"),
+    ],
+)
+def test_retrieval_custom_metadata_condition_rejects_invalid_values(condition: dict[str, object], message: str) -> None:
+    with pytest.raises(ValidationError, match=message):
+        KnowledgeFSRetrievalCustomMetadataCondition.model_validate(condition)
+
+
 def test_retrieval_test_response_validates_evidence_text_and_metrics() -> None:
     response = KnowledgeFSRetrievalTestResponse.model_validate(
         {
