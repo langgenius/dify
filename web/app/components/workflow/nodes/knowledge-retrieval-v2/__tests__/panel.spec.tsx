@@ -5,8 +5,11 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import Panel from '../panel'
 
 const mockUseInfiniteQuery = vi.hoisted(() => vi.fn())
+const mockUseQueries = vi.hoisted(() => vi.fn())
 const mockInfiniteOptions = vi.hoisted(() => vi.fn((options: unknown) => options))
+const mockMetadataQueryOptions = vi.hoisted(() => vi.fn((options: unknown) => options))
 const mockHandleMetadataFilterChange = vi.hoisted(() => vi.fn())
+const mockMetadataFilterProps = vi.hoisted(() => vi.fn())
 const mockHandleSpaceToggle = vi.hoisted(() => vi.fn())
 const mockHandleTopNChange = vi.hoisted(() => vi.fn())
 const mockInputs = vi.hoisted(() => ({
@@ -21,12 +24,16 @@ const mockInputs = vi.hoisted(() => ({
 
 vi.mock('@tanstack/react-query', () => ({
   useInfiniteQuery: mockUseInfiniteQuery,
+  useQueries: mockUseQueries,
 }))
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     knowledgeFs: {
       spaces: {
+        byControlSpaceId: {
+          metadata: { get: { queryOptions: mockMetadataQueryOptions } },
+        },
         get: { infiniteOptions: mockInfiniteOptions },
       },
     },
@@ -37,15 +44,42 @@ vi.mock('../use-config', () => ({
   default: () => ({
     readOnly: false,
     inputs: mockInputs,
+    availableNumberNodesWithParent: [],
+    availableNumberVars: [],
+    availableStringNodesWithParent: [],
+    availableStringVars: [],
     filterStringVar: vi.fn(),
+    handleAddCondition: vi.fn(),
     handleMetadataFilterChange: mockHandleMetadataFilterChange,
+    handleMetadataFilterModeChange: vi.fn(),
     handleModeChange: vi.fn(),
     handleNodeKindToggle: vi.fn(),
     handleQueryVarChange: vi.fn(),
+    handleRemoveCondition: vi.fn(),
     handleSpaceToggle: mockHandleSpaceToggle,
     handleTopNChange: mockHandleTopNChange,
+    handleToggleConditionLogicalOperator: vi.fn(),
+    handleUpdateCondition: vi.fn(),
   }),
 }))
+
+vi.mock(
+  '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter',
+  () => ({
+    default: (props: {
+      allowedModes: string[]
+      metadataList: Array<{ name: string; type: string }>
+      selectedDatasetsLoaded: boolean
+    }) => {
+      mockMetadataFilterProps(props)
+      return (
+        <div data-testid="metadata-filter">
+          {props.metadataList.map((metadata) => `${metadata.name}:${metadata.type}`).join(',')}
+        </div>
+      )
+    },
+  }),
+)
 
 vi.mock('@langgenius/dify-ui/checkbox', () => ({
   Checkbox: ({
@@ -109,6 +143,22 @@ describe('KnowledgeRetrievalV2Panel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockInputs.control_space_ids = ['space-1']
+    mockUseQueries.mockReturnValue([
+      {
+        data: [
+          {
+            count: 2,
+            createdAt: '2026-08-18T00:00:00.000Z',
+            id: 'field-1',
+            name: 'department',
+            rowVersion: 1,
+            type: 'string',
+            updatedAt: '2026-08-18T00:00:00.000Z',
+          },
+        ],
+        isSuccess: true,
+      },
+    ])
     mockUseInfiniteQuery.mockReturnValue({
       data: {
         pages: [
@@ -182,13 +232,80 @@ describe('KnowledgeRetrievalV2Panel', () => {
       expect.objectContaining({ control_space_id: 'space-1', default_mode: 'deep', top_k: 8 }),
     )
 
-    fireEvent.blur(screen.getByLabelText('workflow.nodes.knowledgeRetrievalV2.filters.tags'), {
-      target: { value: 'policy, policy, finance' },
-    })
-    expect(mockHandleMetadataFilterChange).toHaveBeenCalledWith('tags', ['policy', 'finance'])
+    expect(screen.getByTestId('metadata-filter')).toHaveTextContent('department:string')
+    expect(screen.queryByText('workflow.nodes.knowledgeRetrievalV2.filters.tags')).toBeNull()
+    expect(mockMetadataFilterProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        allowedModes: ['disabled', 'manual'],
+        selectedDatasetsLoaded: true,
+      }),
+    )
 
     fireEvent.change(screen.getByDisplayValue('10'), { target: { value: '12' } })
     expect(mockHandleTopNChange).toHaveBeenCalledWith(12)
+  })
+
+  it('only offers user metadata shared by every selected knowledge space with the same type', () => {
+    mockInputs.control_space_ids = ['space-1', 'space-2']
+    mockUseQueries.mockReturnValue([
+      {
+        data: [
+          { id: 'a', name: 'department', type: 'string' },
+          { id: 'b', name: 'priority', type: 'number' },
+          { id: 'c', name: 'space_one_only', type: 'string' },
+        ],
+        isSuccess: true,
+      },
+      {
+        data: [
+          { id: 'd', name: 'department', type: 'string' },
+          { id: 'e', name: 'priority', type: 'string' },
+        ],
+        isSuccess: true,
+      },
+    ])
+
+    render(
+      <Panel
+        id="knowledge-retrieval-v2-1"
+        data={{
+          title: 'Knowledge Retrieval v2',
+          desc: '',
+          type: BlockEnum.KnowledgeRetrievalV2,
+          query_variable_selector: ['start', 'query'],
+          control_space_ids: ['space-1', 'space-2'],
+          top_n: 10,
+        }}
+        panelProps={panelProps}
+      />,
+    )
+
+    expect(screen.getByTestId('metadata-filter')).toHaveTextContent('department:string')
+    expect(screen.getByTestId('metadata-filter')).not.toHaveTextContent('priority')
+    expect(screen.getByTestId('metadata-filter')).not.toHaveTextContent('space_one_only')
+  })
+
+  it('does not treat a failed metadata catalog request as a completed empty catalog', () => {
+    mockUseQueries.mockReturnValue([{ data: undefined, isSuccess: false }])
+
+    render(
+      <Panel
+        id="knowledge-retrieval-v2-1"
+        data={{
+          title: 'Knowledge Retrieval v2',
+          desc: '',
+          type: BlockEnum.KnowledgeRetrievalV2,
+          query_variable_selector: ['start', 'query'],
+          control_space_ids: ['space-1'],
+          top_n: 10,
+        }}
+        panelProps={panelProps}
+      />,
+    )
+
+    expect(mockMetadataFilterProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({ metadataList: [], selectedDatasetsLoaded: false }),
+    )
   })
 
   it('allows a selected space to be removed after it becomes unavailable', () => {

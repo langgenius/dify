@@ -37,6 +37,8 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSRerankIntent,
     KnowledgeFSResearchTaskCreatePayload,
     KnowledgeFSResearchTaskPartialListResponse,
+    KnowledgeFSRetrievalCustomMetadataCondition,
+    KnowledgeFSRetrievalCustomMetadataFilter,
     KnowledgeFSRetrievalMetadataFilters,
     KnowledgeFSRetrievalProfileIntent,
     KnowledgeFSRetrievalTestPayload,
@@ -344,6 +346,87 @@ def test_retrieval_test_payload_uses_bounded_kfs_filters_and_resolved_modes() ->
         KnowledgeFSRetrievalTestPayload(query="camera", mode="auto")  # type: ignore[arg-type]
     with pytest.raises(ValidationError):
         KnowledgeFSRetrievalMetadataFilters(tags=[f"tag-{index}" for index in range(101)])
+
+
+def test_retrieval_test_payload_serializes_typed_custom_metadata_conditions() -> None:
+    payload = KnowledgeFSRetrievalTestPayload.model_validate(
+        {
+            "filters": {
+                "customMetadata": {
+                    "conditions": [
+                        {
+                            "comparisonOperator": "is",
+                            "fieldType": "string",
+                            "name": "department",
+                            "value": "finance",
+                        },
+                        {
+                            "comparisonOperator": ">",
+                            "fieldType": "number",
+                            "name": "priority",
+                            "value": 3,
+                        },
+                    ],
+                    "logicalOperator": "and",
+                }
+            },
+            "query": "policy",
+        }
+    )
+
+    assert payload.filters == KnowledgeFSRetrievalMetadataFilters(
+        custom_metadata=KnowledgeFSRetrievalCustomMetadataFilter(
+            logical_operator="and",
+            conditions=[
+                KnowledgeFSRetrievalCustomMetadataCondition(
+                    comparison_operator="is",
+                    field_type="string",
+                    name="department",
+                    value="finance",
+                ),
+                KnowledgeFSRetrievalCustomMetadataCondition(
+                    comparison_operator=">",
+                    field_type="number",
+                    name="priority",
+                    value=3,
+                ),
+            ],
+        )
+    )
+    assert payload.model_dump(mode="json", by_alias=True, exclude_none=True)["filters"] == {
+        "customMetadata": {
+            "conditions": [
+                {
+                    "comparisonOperator": "is",
+                    "fieldType": "string",
+                    "name": "department",
+                    "value": "finance",
+                },
+                {
+                    "comparisonOperator": ">",
+                    "fieldType": "number",
+                    "name": "priority",
+                    "value": 3,
+                },
+            ],
+            "logicalOperator": "and",
+        }
+    }
+
+    with pytest.raises(ValidationError, match="reserved"):
+        KnowledgeFSRetrievalCustomMetadataCondition(
+            comparison_operator="is",
+            field_type="string",
+            name="system",
+            value="internal",
+        )
+    with pytest.raises(ValidationError, match="valid timestamp"):
+        KnowledgeFSRetrievalCustomMetadataCondition(
+            comparison_operator="after",
+            field_type="time",
+            name="reviewed_at",
+            value=10**30,
+        )
 
 
 def test_retrieval_test_response_validates_evidence_text_and_metrics() -> None:

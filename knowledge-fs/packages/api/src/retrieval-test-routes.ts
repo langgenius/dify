@@ -11,6 +11,11 @@ import {
   RetrievalProfileModeErrorResponseSchema,
 } from "./gateway-route-schemas";
 import { KnowledgeSpaceParamsSchema } from "./knowledge-space-golden-question-schemas";
+import {
+  RetrievalCustomMetadataComparisonOperators,
+  RetrievalCustomMetadataFieldTypes,
+  normalizeRetrievalCustomMetadataFilter,
+} from "./retrieval-custom-metadata";
 import { RetrievalTestStageNames } from "./retrieval-test";
 
 const RetrievalQuerySchema = z
@@ -23,6 +28,52 @@ const RetrievalTextSchema = z
   .string()
   .max(16_384)
   .refine((value) => Array.from(value).length <= 8_192, "Text exceeds 8192 Unicode characters");
+const RetrievalCustomMetadataStringValueSchema = z
+  .string()
+  .max(1_024)
+  .refine(
+    (value) => Array.from(value).length <= 512,
+    "Metadata value exceeds 512 Unicode characters",
+  );
+
+const RetrievalCustomMetadataFilterSchema = z
+  .object({
+    conditions: z
+      .array(
+        z
+          .object({
+            comparisonOperator: z.enum(RetrievalCustomMetadataComparisonOperators),
+            fieldType: z.enum(RetrievalCustomMetadataFieldTypes),
+            name: z.string().regex(/^[a-z][a-z0-9_]{0,254}$/u),
+            value: z
+              .union([RetrievalCustomMetadataStringValueSchema, z.number().finite()])
+              .optional(),
+          })
+          .strict()
+          .superRefine((condition, context) => {
+            try {
+              const normalized = normalizeRetrievalCustomMetadataFilter({
+                conditions: [condition],
+                logicalOperator: "and",
+              });
+              if (!normalized) {
+                context.addIssue({
+                  code: "custom",
+                  message: "Metadata condition value is required",
+                });
+              }
+            } catch (error) {
+              context.addIssue({
+                code: "custom",
+                message: error instanceof Error ? error.message : "Invalid metadata condition",
+              });
+            }
+          }),
+      )
+      .max(50),
+    logicalOperator: z.enum(["and", "or"]),
+  })
+  .strict();
 
 export const RetrievalTestRequestSchema = z
   .object({
@@ -40,6 +91,7 @@ export const RetrievalTestRequestSchema = z
           .min(1)
           .max(64)
           .refine((value) => !Number.isNaN(Date.parse(value)), "Invalid date"),
+        customMetadata: RetrievalCustomMetadataFilterSchema,
         documentTypes: z.array(z.string().trim().min(1).max(512)).max(100),
         entities: z.array(z.string().trim().min(1).max(512)).max(100),
         freshnessStatuses: z.array(z.string().trim().min(1).max(512)).max(100),

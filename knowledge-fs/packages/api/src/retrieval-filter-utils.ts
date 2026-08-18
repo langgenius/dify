@@ -1,6 +1,7 @@
 import type { KnowledgeNode } from "@knowledge/core";
 
 import type { RetrievalMetadataFilters } from "./retrieval-candidates";
+import { normalizeRetrievalCustomMetadataFilter } from "./retrieval-custom-metadata";
 
 export function normalizeRetrievalMetadataFilters(
   filters: RetrievalMetadataFilters | undefined,
@@ -16,6 +17,7 @@ export function normalizeRetrievalMetadataFilters(
     ...(filters.createdBefore === undefined
       ? {}
       : { createdBefore: normalizeIsoDateFilter("createdBefore", filters.createdBefore) }),
+    customMetadata: normalizeRetrievalCustomMetadataFilter(filters.customMetadata),
     documentTypes: normalizeStringFilterValues("documentTypes", filters.documentTypes),
     entities: normalizeStringFilterValues("entities", filters.entities),
     freshnessStatuses: normalizeStringFilterValues("freshnessStatuses", filters.freshnessStatuses),

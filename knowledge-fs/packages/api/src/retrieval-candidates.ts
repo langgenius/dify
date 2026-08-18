@@ -7,6 +7,17 @@ import {
   jsonObjectColumn,
   jsonStringArrayColumn,
 } from "./json-utils";
+import {
+  type RetrievalCustomMetadataFilter,
+  createRetrievalCustomMetadataMatcher,
+} from "./retrieval-custom-metadata";
+
+export type {
+  RetrievalCustomMetadataComparisonOperator,
+  RetrievalCustomMetadataCondition,
+  RetrievalCustomMetadataFieldType,
+  RetrievalCustomMetadataFilter,
+} from "./retrieval-custom-metadata";
 
 export type RetrievalSource = "dense" | "fts" | "pageindex" | "visual";
 
@@ -69,6 +80,7 @@ export interface SearchFtsInput {
 export interface RetrievalMetadataFilters {
   readonly createdAfter?: string | undefined;
   readonly createdBefore?: string | undefined;
+  readonly customMetadata?: RetrievalCustomMetadataFilter | undefined;
   readonly documentTypes?: readonly string[] | undefined;
   readonly entities?: readonly string[] | undefined;
   readonly freshnessStatuses?: readonly string[] | undefined;
@@ -101,8 +113,11 @@ export function filterRetrievalCandidatesByMetadata(
     return candidates.map((candidate) => cloneRetrievalCandidate(candidate));
   }
 
+  const customMetadataMatcher = createRetrievalCustomMetadataMatcher(filters.customMetadata);
   return candidates
-    .filter((candidate) => candidateMatchesRetrievalMetadataFilters(candidate, filters))
+    .filter((candidate) =>
+      candidateMatchesRetrievalMetadataFilters(candidate, filters, customMetadataMatcher),
+    )
     .map((candidate) => cloneRetrievalCandidate(candidate));
 }
 
@@ -218,6 +233,7 @@ function hasRetrievalMetadataFilters(filters: RetrievalMetadataFilters): boolean
   return Boolean(
     filters.createdAfter ||
       filters.createdBefore ||
+      filters.customMetadata?.conditions.length ||
       filters.documentTypes?.length ||
       filters.entities?.length ||
       filters.freshnessStatuses?.length ||
@@ -232,6 +248,7 @@ function hasRetrievalMetadataFilters(filters: RetrievalMetadataFilters): boolean
 function candidateMatchesRetrievalMetadataFilters(
   candidate: RetrievalCandidate,
   filters: RetrievalMetadataFilters,
+  customMetadataMatcher: (userMetadata: Readonly<Record<string, unknown>>) => boolean,
 ): boolean {
   const metadata = retrievalMetadataContainers(candidate.metadata);
 
@@ -264,7 +281,8 @@ function candidateMatchesRetrievalMetadataFilters(
       metadataString(candidate.metadata, "documentCreatedAt"),
       filters.createdAfter,
       filters.createdBefore,
-    )
+    ) &&
+    customMetadataMatcher(retrievalUserMetadata(candidate.metadata))
   );
 }
 
@@ -352,6 +370,15 @@ function retrievalMetadataContainers(metadata: Record<string, unknown>): Record<
       ? [documentMetadata.userMetadata]
       : []),
   ];
+}
+
+function retrievalUserMetadata(metadata: Record<string, unknown>): Record<string, unknown> {
+  const documentMetadata = isPlainObject(metadata.documentMetadata)
+    ? metadata.documentMetadata
+    : undefined;
+  return documentMetadata && isPlainObject(documentMetadata.userMetadata)
+    ? documentMetadata.userMetadata
+    : {};
 }
 
 function canReadRetrievalCandidate(

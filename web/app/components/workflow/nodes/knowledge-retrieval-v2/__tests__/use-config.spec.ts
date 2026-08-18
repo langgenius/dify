@@ -1,6 +1,12 @@
 import type { KnowledgeRetrievalV2NodeType } from '../types'
 import { act, renderHook } from '@testing-library/react'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import {
+  ComparisonOperator,
+  LogicalOperator,
+  MetadataFilteringModeEnum,
+  MetadataFilteringVariableType,
+} from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import useConfig from '../use-config'
 
@@ -8,6 +14,10 @@ const mockSetInputs = vi.fn()
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   default: vi.fn(),
+}))
+
+vi.mock('@/app/components/workflow/nodes/_base/hooks/use-available-var-list', () => ({
+  default: () => ({ availableNodesWithParent: [], availableVars: [] }),
 }))
 
 vi.mock('../../../hooks/use-workflow', () => ({
@@ -80,6 +90,152 @@ describe('knowledge-retrieval-v2/use-config', () => {
       expect.not.objectContaining({
         metadata_filters: expect.anything(),
       }),
+    )
+  })
+
+  it('adds a typed user metadata condition and enables manual filtering', () => {
+    const { result } = setup()
+
+    act(() => result.current.handleMetadataFilterModeChange(MetadataFilteringModeEnum.manual))
+    expect(mockSetInputs).toHaveBeenLastCalledWith(
+      expect.objectContaining({ metadata_filtering_mode: MetadataFilteringModeEnum.manual }),
+    )
+
+    act(() =>
+      result.current.handleAddCondition({
+        id: 'knowledge-fs:number:priority',
+        name: 'priority',
+        type: MetadataFilteringVariableType.number,
+        value: 'priority',
+      }),
+    )
+
+    expect(mockSetInputs).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        metadata_filtering_conditions: {
+          logical_operator: LogicalOperator.and,
+          conditions: [
+            expect.objectContaining({
+              comparison_operator: ComparisonOperator.equal,
+              metadata_id: 'knowledge-fs:number:priority',
+              metadata_type: MetadataFilteringVariableType.number,
+              name: 'priority',
+            }),
+          ],
+        },
+      }),
+    )
+  })
+
+  it('updates and combines custom metadata conditions without touching legacy filters', () => {
+    const firstCondition = {
+      comparison_operator: ComparisonOperator.is,
+      id: 'condition-1',
+      metadata_id: 'knowledge-fs:string:department',
+      metadata_type: MetadataFilteringVariableType.string,
+      name: 'department',
+      value: 'finance',
+    }
+    const { result } = setup(
+      createData({
+        metadata_filters: { tags: ['legacy'] },
+        metadata_filtering_conditions: {
+          conditions: [firstCondition],
+          logical_operator: LogicalOperator.and,
+        },
+      }),
+    )
+
+    act(() =>
+      result.current.handleUpdateCondition('condition-1', {
+        ...firstCondition,
+        value: 'legal',
+      }),
+    )
+    expect(mockSetInputs).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        metadata_filters: { tags: ['legacy'] },
+        metadata_filtering_conditions: expect.objectContaining({
+          conditions: [expect.objectContaining({ value: 'legal' })],
+        }),
+      }),
+    )
+
+    act(() => result.current.handleToggleConditionLogicalOperator())
+    expect(mockSetInputs).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        metadata_filtering_conditions: expect.objectContaining({
+          logical_operator: LogicalOperator.or,
+        }),
+      }),
+    )
+  })
+
+  it('appends and removes custom metadata conditions without changing their field identity', () => {
+    const firstCondition = {
+      comparison_operator: ComparisonOperator.is,
+      id: 'condition-1',
+      metadata_id: 'knowledge-fs:string:department',
+      metadata_type: MetadataFilteringVariableType.string,
+      name: 'department',
+      value: 'finance',
+    }
+    const secondCondition = {
+      comparison_operator: ComparisonOperator.equal,
+      id: 'condition-2',
+      metadata_id: 'knowledge-fs:number:priority',
+      metadata_type: MetadataFilteringVariableType.number,
+      name: 'priority',
+      value: 3,
+    }
+    const { result } = setup(
+      createData({
+        metadata_filtering_conditions: {
+          conditions: [firstCondition, secondCondition],
+          logical_operator: LogicalOperator.and,
+        },
+      }),
+    )
+
+    act(() =>
+      result.current.handleAddCondition({
+        id: 'knowledge-fs:time:reviewed_at',
+        name: 'reviewed_at',
+        type: MetadataFilteringVariableType.time,
+        value: 'reviewed_at',
+      }),
+    )
+    expect(mockSetInputs).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        metadata_filtering_conditions: expect.objectContaining({
+          conditions: expect.arrayContaining([
+            expect.objectContaining({
+              comparison_operator: ComparisonOperator.is,
+              metadata_id: 'knowledge-fs:time:reviewed_at',
+              metadata_type: MetadataFilteringVariableType.time,
+            }),
+          ]),
+        }),
+      }),
+    )
+
+    act(() => result.current.handleRemoveCondition('condition-1'))
+    expect(mockSetInputs).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        metadata_filtering_conditions: expect.objectContaining({
+          conditions: [expect.objectContaining({ id: 'condition-2' })],
+        }),
+      }),
+    )
+  })
+
+  it('normalizes every non-manual metadata mode to disabled', () => {
+    const { result } = setup()
+
+    act(() => result.current.handleMetadataFilterModeChange(MetadataFilteringModeEnum.automatic))
+
+    expect(mockSetInputs).toHaveBeenLastCalledWith(
+      expect.objectContaining({ metadata_filtering_mode: MetadataFilteringModeEnum.disabled }),
     )
   })
 

@@ -481,6 +481,71 @@ describe("createBasicHybridRetriever projection set filtering", () => {
     expect(calls[0]?.sql).toContain('p."model" = $5');
     expect(calls[0]?.sql).toContain('p."projection_version" = $6');
   });
+
+  it.each(["postgres", "tidb"] as const)(
+    "pushes typed custom document metadata filters into every %s retrieval leg before LIMIT",
+    async (kind) => {
+      const calls: DatabaseExecuteInput[] = [];
+      const repository = createDatabaseHybridRetrievalRepository({
+        database: createSchemaDatabaseAdapter({
+          executor: async (input) => {
+            calls.push(input);
+            return { rows: [], rowsAffected: 0 };
+          },
+          kind,
+        }),
+        maxTopK: 10,
+      });
+      const filters = {
+        customMetadata: {
+          conditions: [
+            {
+              comparisonOperator: "contains" as const,
+              fieldType: "string" as const,
+              name: "department",
+              value: "finance",
+            },
+            {
+              comparisonOperator: "≥" as const,
+              fieldType: "number" as const,
+              name: "priority",
+              value: 3,
+            },
+            {
+              comparisonOperator: "after" as const,
+              fieldType: "time" as const,
+              name: "reviewed_at",
+              value: 1_776_427_200,
+            },
+          ],
+          logicalOperator: "and" as const,
+        },
+      };
+
+      await repository.searchDense({
+        denseProjectionModel: "space-model@1",
+        denseProjectionStatuses: ["ready"],
+        denseProjectionVersion: 1,
+        filters,
+        knowledgeSpaceId,
+        queryVector: [0.1, 0.2],
+        topK: 2,
+      });
+      await repository.searchFts({ filters, knowledgeSpaceId, query: "policy", topK: 2 });
+
+      expect(calls).toHaveLength(2);
+      for (const call of calls) {
+        expect(call.sql).toContain("userMetadata");
+        expect(call.sql).toContain("department");
+        expect(call.sql).toContain("priority");
+        expect(call.sql).toContain("reviewed_at");
+        expect(call.sql.indexOf("userMetadata")).toBeLessThan(call.sql.lastIndexOf("LIMIT"));
+        expect(call.params).toContain("finance");
+        expect(call.params).toContain(3);
+        expect(call.params).toContain("2026-04-17T12:00:00.000Z");
+      }
+    },
+  );
 });
 
 function retrievalRepository(candidates: readonly RetrievalCandidate[]): HybridRetrievalRepository {

@@ -18,6 +18,7 @@ from graphon.node_events import NodeRunResult
 from graphon.nodes.base.node import Node
 from graphon.variables import StringSegment
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment
+from graphon.variables.template_resolution import convert_template
 from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
 from services.knowledge_fs.app_admission_service import (
     KnowledgeFSAppAdmissionError,
@@ -31,6 +32,9 @@ from services.knowledge_fs.app_execution_capability import (
 )
 from services.knowledge_fs.product_dto import (
     KnowledgeFSAppBindingPayload,
+    KnowledgeFSRetrievalCustomMetadataCondition,
+    KnowledgeFSRetrievalCustomMetadataFilter,
+    KnowledgeFSRetrievalMetadataFilters,
     KnowledgeFSRetrievalTestItemResponse,
     KnowledgeFSRetrievalTestPayload,
     KnowledgeFSRetrievalTestResponse,
@@ -56,6 +60,14 @@ if TYPE_CHECKING:
     from graphon.runtime import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
+
+
+def _normalize_metadata_filter_scalar(value: object) -> str | int | float | None:
+    if value is None or isinstance(value, (str, float)):
+        return value
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value
+    return str(value)
 
 
 class _RetrievalCapability(Protocol):
@@ -201,7 +213,7 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
             query=query,
             mode=self._node_data.mode,
             include_text=True,
-            filters=self._node_data.metadata_filters,
+            filters=self._resolved_retrieval_filters(),
         )
 
         def retrieve(control_space_id: str) -> KnowledgeFSRetrievalTestResponse:
@@ -262,6 +274,41 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
                 (space_id, future.result())
                 for space_id, future in zip(self._node_data.control_space_ids, futures, strict=True)
             ]
+
+    def _resolved_retrieval_filters(self) -> KnowledgeFSRetrievalMetadataFilters | None:
+        filters = self._node_data.metadata_filters.model_copy(deep=True) if self._node_data.metadata_filters else None
+        configured = self._node_data.metadata_filtering_conditions
+        if self._node_data.metadata_filtering_mode != "manual" or not configured or not configured.conditions:
+            return filters
+
+        resolved_conditions: list[KnowledgeFSRetrievalCustomMetadataCondition] = []
+        for condition in configured.conditions:
+            value = condition.value
+            if isinstance(value, str):
+                segment_group = convert_template(self.graph_runtime_state.variable_pool, value)
+                if len(segment_group.value) == 1:
+                    value = _normalize_metadata_filter_scalar(segment_group.value[0].to_object())
+                else:
+                    value = segment_group.text
+            if value is None and condition.comparison_operator not in {"empty", "not empty"}:
+                continue
+            resolved_conditions.append(
+                KnowledgeFSRetrievalCustomMetadataCondition(
+                    name=condition.name,
+                    field_type=condition.metadata_type,
+                    comparison_operator=condition.comparison_operator,
+                    value=value,
+                )
+            )
+
+        if not resolved_conditions:
+            return filters
+        filters = filters or KnowledgeFSRetrievalMetadataFilters()
+        filters.custom_metadata = KnowledgeFSRetrievalCustomMetadataFilter(
+            logical_operator=configured.logical_operator,
+            conditions=resolved_conditions,
+        )
+        return filters
 
     def _merge_items(
         self,

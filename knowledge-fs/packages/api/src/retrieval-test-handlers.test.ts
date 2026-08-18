@@ -63,6 +63,17 @@ describe("retrieval test route", () => {
     const response = await app.request(`/knowledge-spaces/${SPACE_ID}/retrieval-tests`, {
       body: JSON.stringify({
         filters: {
+          customMetadata: {
+            conditions: [
+              {
+                comparisonOperator: "is",
+                fieldType: "string",
+                name: "department",
+                value: "finance",
+              },
+            ],
+            logicalOperator: "and",
+          },
           documentTypes: [" handbook ", "handbook"],
           nodeKinds: ["section"],
           tags: ["camera"],
@@ -109,6 +120,17 @@ describe("retrieval test route", () => {
       expect.objectContaining({
         knowledgeSpaceId: SPACE_ID,
         filters: {
+          customMetadata: {
+            conditions: [
+              {
+                comparisonOperator: "is",
+                fieldType: "string",
+                name: "department",
+                value: "finance",
+              },
+            ],
+            logicalOperator: "and",
+          },
           documentTypes: ["handbook"],
           nodeKinds: ["section"],
           tags: ["camera"],
@@ -138,6 +160,71 @@ describe("retrieval test route", () => {
       false,
     );
     expect(RetrievalTestRequestSchema.safeParse({ query: "😀".repeat(16_000) }).success).toBe(true);
+    expect(
+      RetrievalTestRequestSchema.safeParse({
+        filters: {
+          customMetadata: {
+            conditions: [
+              {
+                comparisonOperator: ">",
+                fieldType: "string",
+                name: "department",
+                value: "finance",
+              },
+            ],
+            logicalOperator: "and",
+          },
+        },
+        query: "camera",
+      }).success,
+    ).toBe(false);
+    expect(
+      RetrievalTestRequestSchema.safeParse({
+        filters: {
+          customMetadata: {
+            conditions: [{ comparisonOperator: "is", fieldType: "string", name: "Display Name" }],
+            logicalOperator: "and",
+          },
+        },
+        query: "camera",
+      }).success,
+    ).toBe(false);
+    expect(
+      RetrievalTestRequestSchema.safeParse({
+        filters: {
+          customMetadata: {
+            conditions: [
+              {
+                comparisonOperator: "is",
+                fieldType: "string",
+                name: "department",
+                value: "😀".repeat(512),
+              },
+            ],
+            logicalOperator: "and",
+          },
+        },
+        query: "camera",
+      }).success,
+    ).toBe(true);
+    expect(
+      RetrievalTestRequestSchema.safeParse({
+        filters: {
+          customMetadata: {
+            conditions: [
+              {
+                comparisonOperator: "is",
+                fieldType: "string",
+                name: "department",
+                value: "😀".repeat(513),
+              },
+            ],
+            logicalOperator: "and",
+          },
+        },
+        query: "camera",
+      }).success,
+    ).toBe(false);
   });
 
   it("validates the text limit in Unicode characters rather than UTF-16 code units", async () => {

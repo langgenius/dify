@@ -137,4 +137,50 @@ describe("retrieval candidates", () => {
       }),
     ).toHaveLength(1);
   });
+
+  it("filters candidates by typed document user metadata conditions", () => {
+    const matching = candidate({
+      metadata: {
+        documentCreatedAt: "2026-05-12T12:00:00.000Z",
+        documentMetadata: {
+          userMetadata: {
+            department: "finance-emea",
+            priority: 4,
+            reviewed_at: "2026-08-18T12:00:00.000Z",
+          },
+        },
+        documentType: "pdf",
+        nodeKind: "chunk",
+      },
+    });
+    const rejected = candidate({
+      metadata: {
+        documentMetadata: { userMetadata: { department: "legal", priority: 1 } },
+      },
+      nodeId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c48",
+    });
+
+    expect(
+      filterRetrievalCandidatesByMetadata([matching, rejected], {
+        customMetadata: {
+          conditions: [
+            {
+              comparisonOperator: "contains",
+              fieldType: "string",
+              name: "department",
+              value: "finance",
+            },
+            { comparisonOperator: "≥", fieldType: "number", name: "priority", value: 3 },
+            {
+              comparisonOperator: "after",
+              fieldType: "time",
+              name: "reviewed_at",
+              value: 1_776_427_200,
+            },
+          ],
+          logicalOperator: "and",
+        },
+      }),
+    ).toEqual([expect.objectContaining({ nodeId: matching.nodeId })]);
+  });
 });

@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from pydantic import Field, field_validator
+from pydantic import BaseModel, Field, field_validator
 
+from core.rag.entities import SupportedComparisonOperator
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import NodeType
 from services.knowledge_fs.product_dto import KnowledgeFSRetrievalMetadataFilters
@@ -14,6 +15,20 @@ ControlSpaceId = Annotated[str, Field(min_length=1, max_length=1_000)]
 VariableSelectorPart = Annotated[str, Field(min_length=1, max_length=255)]
 
 
+class KnowledgeRetrievalV2MetadataCondition(BaseModel):
+    id: str = Field(min_length=1, max_length=255)
+    metadata_id: str | None = Field(default=None, min_length=1, max_length=512)
+    metadata_type: Literal["string", "number", "time"]
+    name: str = Field(min_length=1, max_length=255, pattern=r"^[a-z][a-z0-9_]*$")
+    comparison_operator: SupportedComparisonOperator
+    value: str | int | float | None = None
+
+
+class KnowledgeRetrievalV2MetadataFilteringConditions(BaseModel):
+    logical_operator: Literal["and", "or"] = "and"
+    conditions: list[KnowledgeRetrievalV2MetadataCondition] = Field(default_factory=list, max_length=50)
+
+
 class KnowledgeRetrievalV2NodeData(BaseNodeData):
     """Bounded, KnowledgeFS-native workflow node configuration."""
 
@@ -22,6 +37,8 @@ class KnowledgeRetrievalV2NodeData(BaseNodeData):
     query_variable_selector: list[VariableSelectorPart] = Field(min_length=2, max_length=10)
     mode: Literal["deep", "fast", "research"] | None = None
     top_n: int = Field(default=10, ge=1, le=100)
+    metadata_filtering_mode: Literal["disabled", "manual"] = "disabled"
+    metadata_filtering_conditions: KnowledgeRetrievalV2MetadataFilteringConditions | None = None
     metadata_filters: KnowledgeFSRetrievalMetadataFilters | None = None
 
     @field_validator("control_space_ids")
@@ -43,5 +60,7 @@ class KnowledgeRetrievalV2NodeData(BaseNodeData):
 
 __all__ = [
     "KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE",
+    "KnowledgeRetrievalV2MetadataCondition",
+    "KnowledgeRetrievalV2MetadataFilteringConditions",
     "KnowledgeRetrievalV2NodeData",
 ]

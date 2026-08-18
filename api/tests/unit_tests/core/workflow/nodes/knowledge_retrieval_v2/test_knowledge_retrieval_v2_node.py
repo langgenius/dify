@@ -131,20 +131,21 @@ def _node(
     binding_service: RecordingBindingService | None = None,
     invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
     user_from: UserFrom = UserFrom.ACCOUNT,
+    node_data_overrides: Mapping[str, object] | None = None,
 ) -> KnowledgeRetrievalV2Node:
+    node_data: dict[str, object] = {
+        "control_space_ids": spaces,
+        "metadata_filters": {"documentTypes": [" handbook ", "handbook"]},
+        "mode": mode,
+        "query_variable_selector": ["start", "query"],
+        "title": "KnowledgeFS Retrieval",
+        "top_n": top_n,
+        "type": "knowledge-retrieval-v2",
+    }
+    node_data.update(node_data_overrides or {})
     return KnowledgeRetrievalV2Node(
         node_id="retrieval-v2",
-        data=KnowledgeRetrievalV2NodeData.model_validate(
-            {
-                "control_space_ids": spaces,
-                "metadata_filters": {"documentTypes": [" handbook ", "handbook"]},
-                "mode": mode,
-                "query_variable_selector": ["start", "query"],
-                "title": "KnowledgeFS Retrieval",
-                "top_n": top_n,
-                "type": "knowledge-retrieval-v2",
-            }
-        ),
+        data=KnowledgeRetrievalV2NodeData.model_validate(node_data),
         graph_init_params=build_test_graph_init_params(
             tenant_id="tenant-1",
             app_id="app-1",
@@ -261,6 +262,80 @@ def test_multi_space_retrieval_preserves_final_scores_and_returns_mixed_metrics(
         call["payload"].filters.document_types == ["handbook"]  # type: ignore[attr-defined]
         for call in service.calls
     )
+
+
+def test_manual_user_metadata_conditions_are_resolved_and_sent_with_legacy_filters() -> None:
+    runtime_state = _runtime_state()
+    runtime_state.variable_pool.add(["start", "department"], StringSegment(value="finance"))
+    service = RecordingCapabilityService(
+        {"space-a": _response(mode="fast", score=0.7, space="space-a", text="A")}
+    )
+
+    result = _node(
+        service=service,
+        spaces=["space-a"],
+        runtime_state=runtime_state,
+        node_data_overrides={
+            "metadata_filtering_mode": "manual",
+            "metadata_filtering_conditions": {
+                "logical_operator": "and",
+                "conditions": [
+                    {
+                        "comparison_operator": "is",
+                        "id": "condition-1",
+                        "metadata_id": "knowledge-fs:string:department",
+                        "metadata_type": "string",
+                        "name": "department",
+                        "value": "{{#start.department#}}",
+                    }
+                ],
+            },
+        },
+    )._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    payload = service.calls[0]["payload"]
+    assert payload.filters.document_types == ["handbook"]  # type: ignore[attr-defined]
+    assert payload.filters.custom_metadata.model_dump(by_alias=True, exclude_none=True) == {  # type: ignore[attr-defined]
+        "conditions": [
+            {
+                "comparisonOperator": "is",
+                "fieldType": "string",
+                "name": "department",
+                "value": "finance",
+            }
+        ],
+        "logicalOperator": "and",
+    }
+
+
+def test_disabled_user_metadata_conditions_do_not_change_existing_retrievals() -> None:
+    service = RecordingCapabilityService(
+        {"space-a": _response(mode="fast", score=0.7, space="space-a", text="A")}
+    )
+
+    _node(
+        service=service,
+        spaces=["space-a"],
+        node_data_overrides={
+            "metadata_filtering_mode": "disabled",
+            "metadata_filtering_conditions": {
+                "logical_operator": "and",
+                "conditions": [
+                    {
+                        "comparison_operator": "is",
+                        "id": "condition-1",
+                        "metadata_type": "string",
+                        "name": "department",
+                        "value": "finance",
+                    }
+                ],
+            },
+        },
+    )._run()
+
+    payload = service.calls[0]["payload"]
+    assert payload.filters.custom_metadata is None  # type: ignore[attr-defined]
 
 
 def test_empty_retrieval_is_successful_and_dispatches_quality_capture(

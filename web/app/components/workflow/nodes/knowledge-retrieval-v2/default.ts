@@ -1,6 +1,7 @@
 import type { TFunction } from 'i18next'
 import type { NodeDefault } from '../../types'
 import type { KnowledgeRetrievalV2NodeType } from './types'
+import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { KNOWLEDGE_RETRIEVAL_V2_OUTPUT_STRUCT } from './constants'
@@ -14,6 +15,7 @@ const nodeDefault: NodeDefault<KnowledgeRetrievalV2NodeType> = {
   metaData,
   defaultValue: {
     control_space_ids: [],
+    metadata_filtering_mode: MetadataFilteringModeEnum.disabled,
     query_variable_selector: [],
     top_n: 10,
   },

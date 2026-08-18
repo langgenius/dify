@@ -538,6 +538,31 @@ describe('knowledge-retrieval path', () => {
       expect(onSelect.mock.calls[0]?.[0]).toBe(MetadataFilteringModeEnum.manual)
     })
 
+    it('can limit the reusable selector to manual metadata filtering', async () => {
+      const user = userEvent.setup()
+
+      render(
+        <MetadataFilterSelector
+          allowedModes={[MetadataFilteringModeEnum.disabled, MetadataFilteringModeEnum.manual]}
+          value={MetadataFilteringModeEnum.disabled}
+          onSelect={vi.fn()}
+        />,
+      )
+
+      await user.click(
+        screen.getByRole('button', {
+          name: /workflow.nodes.knowledgeRetrieval.metadata.options.disabled.title/i,
+        }),
+      )
+
+      expect(
+        screen.queryByText('workflow.nodes.knowledgeRetrieval.metadata.options.automatic.title'),
+      ).toBeNull()
+      expect(
+        screen.getByText('workflow.nodes.knowledgeRetrieval.metadata.options.manual.title'),
+      ).toBeInTheDocument()
+    })
+
     it('should remove stale metadata conditions and open the manual metadata panel', async () => {
       const user = userEvent.setup()
       const handleRemoveCondition = vi.fn()
@@ -773,7 +798,7 @@ describe('knowledge-retrieval path', () => {
 
       const renderNode = (datasetIds: string[]) =>
         renderWithAccountProfile(
-          <DatasetsDetailContext.Provider value={store}>
+          <DatasetsDetailContext value={store}>
             <Node
               id="knowledge-node"
               data={{
@@ -786,7 +811,7 @@ describe('knowledge-retrieval path', () => {
                 retrieval_mode: RETRIEVE_TYPE.multiWay,
               }}
             />
-          </DatasetsDetailContext.Provider>,
+          </DatasetsDetailContext>,
         )
 
       const { rerender, container } = renderNode(['dataset-1'])
@@ -794,7 +819,7 @@ describe('knowledge-retrieval path', () => {
       expect(screen.getByText('Dataset Name')).toBeInTheDocument()
 
       rerender(
-        <DatasetsDetailContext.Provider value={store}>
+        <DatasetsDetailContext value={store}>
           <Node
             id="knowledge-node"
             data={{
@@ -807,7 +832,7 @@ describe('knowledge-retrieval path', () => {
               retrieval_mode: RETRIEVE_TYPE.multiWay,
             }}
           />
-        </DatasetsDetailContext.Provider>,
+        </DatasetsDetailContext>,
       )
 
       expect(container).toBeEmptyDOMElement()

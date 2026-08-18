@@ -1,4 +1,5 @@
 import type { KnowledgeRetrievalV2NodeType } from '../types'
+import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { withSelectorKey } from '@/test/i18n-mock'
 import nodeDefault from '../default'
@@ -23,6 +24,7 @@ describe('knowledge-retrieval-v2/default', () => {
     expect(nodeDefault.defaultValue).toMatchObject({
       query_variable_selector: [],
       control_space_ids: [],
+      metadata_filtering_mode: MetadataFilteringModeEnum.disabled,
       top_n: 10,
     })
     expect(nodeDefault.defaultValue.mode).toBeUndefined()

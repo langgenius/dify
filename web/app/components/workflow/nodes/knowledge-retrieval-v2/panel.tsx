@@ -1,10 +1,5 @@
 import type { FC } from 'react'
-import type {
-  KnowledgeRetrievalV2MetadataFilters,
-  KnowledgeRetrievalV2Mode,
-  KnowledgeRetrievalV2NodeKind,
-  KnowledgeRetrievalV2NodeType,
-} from './types'
+import type { KnowledgeRetrievalV2Mode, KnowledgeRetrievalV2NodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Input } from '@langgenius/dify-ui/input'
@@ -16,47 +11,27 @@ import {
   SelectItemText,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { useInfiniteQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useQueries } from '@tanstack/react-query'
 import { memo, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
+import MetadataFilter from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter'
+import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import { documentMetadataFieldsQueryOptions } from '@/features/new-rag/document-metadata-model'
 import { consoleQuery } from '@/service/client'
-import { parseMetadataFilterValues, toControlSpaceSummary } from './config-helpers'
-import { KNOWLEDGE_RETRIEVAL_V2_NODE_KINDS } from './constants'
+import { toControlSpaceSummary } from './config-helpers'
+import { intersectKnowledgeFsMetadataFields } from './metadata-filtering'
 import useConfig from './use-config'
 
 const i18nPrefix = 'nodes.knowledgeRetrievalV2'
 const SPACE_PAGE_SIZE = 50
-
-type MetadataArrayKey = Exclude<
-  keyof KnowledgeRetrievalV2MetadataFilters,
-  'created_after' | 'created_before' | 'node_kinds'
->
-
-const MetadataValuesInput = ({
-  disabled,
-  label,
-  onCommit,
-  value,
-}: {
-  disabled: boolean
-  label: string
-  onCommit: (value: string[]) => void
-  value?: string[]
-}) => (
-  <label className="block space-y-1">
-    <span className="system-xs-medium text-text-secondary">{label}</span>
-    <Input
-      key={(value ?? []).join('\u0000')}
-      defaultValue={(value ?? []).join(', ')}
-      disabled={disabled}
-      onBlur={(event) => onCommit(parseMetadataFilterValues(event.currentTarget.value))}
-    />
-  </label>
-)
+const KNOWLEDGE_FS_METADATA_FILTER_MODES = [
+  MetadataFilteringModeEnum.disabled,
+  MetadataFilteringModeEnum.manual,
+] as const
 
 const Panel: FC<NodePanelProps<KnowledgeRetrievalV2NodeType>> = ({ id, data }) => {
   const { t } = useTranslation()
@@ -64,13 +39,20 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalV2NodeType>> = ({ id, data }) =
   const {
     readOnly,
     inputs,
+    availableNumberNodesWithParent,
+    availableNumberVars,
+    availableStringNodesWithParent,
+    availableStringVars,
     filterStringVar,
-    handleMetadataFilterChange,
+    handleAddCondition,
+    handleMetadataFilterModeChange,
     handleModeChange,
-    handleNodeKindToggle,
     handleQueryVarChange,
+    handleRemoveCondition,
     handleSpaceToggle,
     handleTopNChange,
+    handleToggleConditionLogicalOperator,
+    handleUpdateCondition,
   } = useConfig(id, data)
   const spacesQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.get.infiniteOptions({
@@ -84,6 +66,16 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalV2NodeType>> = ({ id, data }) =
     [spacesQuery.data?.pages],
   )
   const loadedSummaries = useMemo(() => loadedSpaces.map(toControlSpaceSummary), [loadedSpaces])
+  const metadataQueries = useQueries({
+    queries: inputs.control_space_ids.map((controlSpaceId) =>
+      documentMetadataFieldsQueryOptions(controlSpaceId),
+    ),
+  })
+  const metadataList = intersectKnowledgeFsMetadataFields(
+    metadataQueries.map((query) => query.data ?? []),
+  )
+  const selectedSpacesMetadataLoaded =
+    inputs.control_space_ids.length > 0 && metadataQueries.every((query) => query.isSuccess)
   const loadedSummaryMap = useMemo(
     () => new Map(loadedSummaries.map((space) => [space.control_space_id, space])),
     [loadedSummaries],
@@ -113,23 +105,10 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalV2NodeType>> = ({ id, data }) =
     { label: t(($) => $[`${i18nPrefix}.mode.research`], { ns: 'workflow' }), value: 'research' },
   ]
   const selectedMode = modes.find((item) => item.value === (inputs.mode ?? 'space-default'))!
-  const metadataArrayFields: Array<{ key: MetadataArrayKey; label: string }> = [
-    {
-      key: 'document_types',
-      label: t(($) => $[`${i18nPrefix}.filters.documentTypes`], { ns: 'workflow' }),
-    },
-    { key: 'entities', label: t(($) => $[`${i18nPrefix}.filters.entities`], { ns: 'workflow' }) },
-    {
-      key: 'freshness_statuses',
-      label: t(($) => $[`${i18nPrefix}.filters.freshnessStatuses`], { ns: 'workflow' }),
-    },
-    { key: 'languages', label: t(($) => $[`${i18nPrefix}.filters.languages`], { ns: 'workflow' }) },
-    {
-      key: 'source_ids',
-      label: t(($) => $[`${i18nPrefix}.filters.sourceIds`], { ns: 'workflow' }),
-    },
-    { key: 'tags', label: t(($) => $[`${i18nPrefix}.filters.tags`], { ns: 'workflow' }) },
-  ]
+  const metadataFilterMode =
+    inputs.metadata_filtering_mode === MetadataFilteringModeEnum.manual
+      ? MetadataFilteringModeEnum.manual
+      : MetadataFilteringModeEnum.disabled
 
   return (
     <div className="pt-2">
@@ -263,79 +242,25 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalV2NodeType>> = ({ id, data }) =
             onChange={(event) => handleTopNChange(Number(event.currentTarget.value))}
           />
         </Field>
+      </div>
 
-        <Field title={t(($) => $[`${i18nPrefix}.filters.title`], { ns: 'workflow' })}>
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-2">
-              <label className="space-y-1">
-                <span className="system-xs-medium text-text-secondary">
-                  {t(($) => $[`${i18nPrefix}.filters.createdAfter`], { ns: 'workflow' })}
-                </span>
-                <Input
-                  type="datetime-local"
-                  value={inputs.metadata_filters?.created_after ?? ''}
-                  disabled={readOnly}
-                  onChange={(event) =>
-                    handleMetadataFilterChange(
-                      'created_after',
-                      event.currentTarget.value || undefined,
-                    )
-                  }
-                />
-              </label>
-              <label className="space-y-1">
-                <span className="system-xs-medium text-text-secondary">
-                  {t(($) => $[`${i18nPrefix}.filters.createdBefore`], { ns: 'workflow' })}
-                </span>
-                <Input
-                  type="datetime-local"
-                  value={inputs.metadata_filters?.created_before ?? ''}
-                  disabled={readOnly}
-                  onChange={(event) =>
-                    handleMetadataFilterChange(
-                      'created_before',
-                      event.currentTarget.value || undefined,
-                    )
-                  }
-                />
-              </label>
-            </div>
-            {metadataArrayFields.map((field) => (
-              <MetadataValuesInput
-                key={field.key}
-                disabled={readOnly}
-                label={field.label}
-                value={inputs.metadata_filters?.[field.key]}
-                onCommit={(value) => handleMetadataFilterChange(field.key, value)}
-              />
-            ))}
-            <div className="space-y-1">
-              <div className="system-xs-medium text-text-secondary">
-                {t(($) => $[`${i18nPrefix}.filters.nodeKinds`], { ns: 'workflow' })}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {KNOWLEDGE_RETRIEVAL_V2_NODE_KINDS.map((nodeKind) => (
-                  <label
-                    key={nodeKind}
-                    className="flex items-center gap-1.5 system-xs-regular text-text-secondary"
-                  >
-                    <Checkbox
-                      checked={inputs.metadata_filters?.node_kinds?.includes(nodeKind)}
-                      disabled={readOnly}
-                      onCheckedChange={() =>
-                        handleNodeKindToggle(nodeKind as KnowledgeRetrievalV2NodeKind)
-                      }
-                    />
-                    {nodeKind}
-                  </label>
-                ))}
-              </div>
-            </div>
-            <div className="system-xs-regular text-text-tertiary">
-              {t(($) => $[`${i18nPrefix}.filters.hint`], { ns: 'workflow' })}
-            </div>
-          </div>
-        </Field>
+      <div className="mb-2 py-2">
+        <MetadataFilter
+          allowedModes={KNOWLEDGE_FS_METADATA_FILTER_MODES}
+          metadataList={metadataList}
+          selectedDatasetsLoaded={selectedSpacesMetadataLoaded}
+          metadataFilterMode={metadataFilterMode}
+          metadataFilteringConditions={inputs.metadata_filtering_conditions}
+          handleAddCondition={handleAddCondition}
+          handleMetadataFilterModeChange={handleMetadataFilterModeChange}
+          handleRemoveCondition={handleRemoveCondition}
+          handleToggleConditionLogicalOperator={handleToggleConditionLogicalOperator}
+          handleUpdateCondition={handleUpdateCondition}
+          availableStringVars={availableStringVars}
+          availableStringNodesWithParent={availableStringNodesWithParent}
+          availableNumberVars={availableNumberVars}
+          availableNumberNodesWithParent={availableNumberNodesWithParent}
+        />
       </div>
 
       <Split />

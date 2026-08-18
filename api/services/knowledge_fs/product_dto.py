@@ -2533,6 +2533,119 @@ class KnowledgeFSQueryResponse(ResponseModel):
 
 KnowledgeFSRetrievalFilterValue = Annotated[str, Field(min_length=1, max_length=512)]
 
+KnowledgeFSRetrievalCustomMetadataOperator = Literal[
+    "contains",
+    "not contains",
+    "start with",
+    "end with",
+    "is",
+    "is not",
+    "empty",
+    "not empty",
+    "in",
+    "not in",
+    "=",
+    "≠",
+    ">",
+    "<",
+    "≥",
+    "≤",
+    "before",
+    "after",
+]
+KnowledgeFSRetrievalReservedMetadataNames = frozenset(
+    {"displayName", "provenance", "retrievalCount", "sourceName", "system"}
+)
+
+
+class KnowledgeFSRetrievalCustomMetadataCondition(BaseModel):
+    name: str = Field(min_length=1, max_length=255, pattern=r"^[a-z][a-z0-9_]*$")
+    field_type: Literal["string", "number", "time"] = Field(
+        validation_alias=AliasChoices("field_type", "fieldType"),
+        serialization_alias="fieldType",
+    )
+    comparison_operator: KnowledgeFSRetrievalCustomMetadataOperator = Field(
+        validation_alias=AliasChoices("comparison_operator", "comparisonOperator"),
+        serialization_alias="comparisonOperator",
+    )
+    value: str | int | float | None = Field(default=None, exclude_if=lambda value: value is None)
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True, serialize_by_alias=True)
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        if value in KnowledgeFSRetrievalReservedMetadataNames:
+            raise ValueError("Retrieval custom metadata field name must be non-reserved")
+        return value
+
+    @field_validator("value")
+    @classmethod
+    def validate_value(cls, value: str | int | float | None) -> str | int | float | None:
+        if isinstance(value, bool):
+            raise ValueError("Retrieval custom metadata values must not be booleans")
+        if isinstance(value, str) and len(value) > 512:
+            raise ValueError("Retrieval custom metadata string values must contain at most 512 characters")
+        if isinstance(value, float) and not math.isfinite(value):
+            raise ValueError("Retrieval custom metadata numeric values must be finite")
+        return value
+
+    @model_validator(mode="after")
+    def validate_operator_and_value(self) -> KnowledgeFSRetrievalCustomMetadataCondition:
+        operators = {
+            "number": {"=", "≠", ">", "<", "≥", "≤", "empty", "not empty"},
+            "string": {
+                "contains",
+                "not contains",
+                "start with",
+                "end with",
+                "is",
+                "is not",
+                "empty",
+                "not empty",
+                "in",
+                "not in",
+            },
+            "time": {"is", "before", "after", "empty", "not empty"},
+        }
+        if self.comparison_operator not in operators[self.field_type]:
+            raise ValueError(f"Retrieval custom metadata operator is invalid for {self.field_type}")
+        if self.comparison_operator in {"empty", "not empty"}:
+            return self
+        if self.value is None:
+            raise ValueError("Retrieval custom metadata condition value is required")
+        if self.field_type == "number" and (
+            isinstance(self.value, bool) or not isinstance(self.value, int | float)
+        ):
+            raise ValueError("Retrieval custom metadata number conditions require a numeric value")
+        if self.field_type == "string" and not isinstance(self.value, str):
+            raise ValueError("Retrieval custom metadata string conditions require a string value")
+        if self.field_type == "time":
+            if isinstance(self.value, bool) or not isinstance(self.value, str | int | float):
+                raise ValueError("Retrieval custom metadata time conditions require a timestamp value")
+            if isinstance(self.value, str):
+                try:
+                    datetime.fromisoformat(self.value)
+                except ValueError as exc:
+                    raise ValueError("Retrieval custom metadata time conditions require a valid timestamp") from exc
+            else:
+                try:
+                    datetime.fromtimestamp(self.value, tz=UTC)
+                except (OverflowError, OSError, ValueError) as exc:
+                    raise ValueError("Retrieval custom metadata time conditions require a valid timestamp") from exc
+        return self
+
+
+class KnowledgeFSRetrievalCustomMetadataFilter(BaseModel):
+    logical_operator: Literal["and", "or"] = Field(
+        default="and",
+        validation_alias=AliasChoices("logical_operator", "logicalOperator"),
+        serialization_alias="logicalOperator",
+    )
+    conditions: list[KnowledgeFSRetrievalCustomMetadataCondition] = Field(default_factory=list, max_length=50)
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True, serialize_by_alias=True)
+
 
 class KnowledgeFSRetrievalMetadataFilters(BaseModel):
     created_after: str | None = Field(
@@ -2546,6 +2659,11 @@ class KnowledgeFSRetrievalMetadataFilters(BaseModel):
         max_length=64,
         validation_alias=AliasChoices("created_before", "createdBefore"),
         serialization_alias="createdBefore",
+    )
+    custom_metadata: KnowledgeFSRetrievalCustomMetadataFilter | None = Field(
+        default=None,
+        validation_alias=AliasChoices("custom_metadata", "customMetadata"),
+        serialization_alias="customMetadata",
     )
     document_types: list[KnowledgeFSRetrievalFilterValue] | None = Field(
         default=None,

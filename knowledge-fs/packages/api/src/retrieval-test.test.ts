@@ -148,6 +148,17 @@ describe("createRetrievalTestExecutor", () => {
     const result = await executor.execute({
       embeddingProfile,
       filters: {
+        customMetadata: {
+          conditions: [
+            {
+              comparisonOperator: "is",
+              fieldType: "string",
+              name: "department",
+              value: " finance ",
+            },
+          ],
+          logicalOperator: "and",
+        },
         documentTypes: [" handbook ", "handbook"],
         nodeKinds: ["section"],
         tags: [" camera ", "camera"],
@@ -164,6 +175,17 @@ describe("createRetrievalTestExecutor", () => {
     });
 
     expect(calls[0]?.filters).toEqual({
+      customMetadata: {
+        conditions: [
+          {
+            comparisonOperator: "is",
+            fieldType: "string",
+            name: "department",
+            value: " finance ",
+          },
+        ],
+        logicalOperator: "and",
+      },
       documentTypes: ["handbook"],
       entities: undefined,
       freshnessStatuses: undefined,

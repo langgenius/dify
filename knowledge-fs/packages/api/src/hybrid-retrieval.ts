@@ -24,6 +24,11 @@ import {
   mapRetrievalCandidateRow,
   normalizeRetrievalPermissionScope,
 } from "./retrieval-candidates";
+import {
+  type RetrievalCustomMetadataCondition,
+  type RetrievalCustomMetadataFilter,
+  normalizeRetrievalCustomMetadataFilter,
+} from "./retrieval-custom-metadata";
 import { normalizeRetrievalMetadataFilters } from "./retrieval-filter-utils";
 import { type HybridRetrievalItem, fuseRetrievalCandidates } from "./retrieval-fusion";
 import { type RetrievalPlanner, defaultRetrievalPlan } from "./retrieval-planner";
@@ -1223,6 +1228,13 @@ function retrievalMetadataFilterSql(
     predicates,
     values: filters.freshnessStatuses,
   });
+  addCustomMetadataFilterSql({
+    database,
+    documentAlias,
+    filter: filters.customMetadata,
+    params,
+    predicates,
+  });
 
   return predicates.length === 0 ? "" : ` AND ${predicates.join(" AND ")}`;
 }
@@ -1455,6 +1467,155 @@ function addMetadataOverlapFilterSql({
   }
 
   predicates.push(`(${matches.join(" OR ")})`);
+}
+
+function addCustomMetadataFilterSql({
+  database,
+  documentAlias,
+  filter,
+  params,
+  predicates,
+}: {
+  readonly database: DatabaseAdapter;
+  readonly documentAlias: string;
+  readonly filter: RetrievalCustomMetadataFilter | undefined;
+  readonly params: DatabaseQueryValue[];
+  readonly predicates: string[];
+}): void {
+  const normalized = normalizeRetrievalCustomMetadataFilter(filter);
+  if (!normalized) return;
+  const conditionPredicates = normalized.conditions.map((condition) =>
+    customMetadataConditionSql(database, documentAlias, condition, params),
+  );
+  predicates.push(
+    `(${conditionPredicates.join(normalized.logicalOperator === "or" ? " OR " : " AND ")})`,
+  );
+}
+
+function customMetadataConditionSql(
+  database: DatabaseAdapter,
+  documentAlias: string,
+  condition: RetrievalCustomMetadataCondition,
+  params: DatabaseQueryValue[],
+): string {
+  const metadata = qualifiedDatabaseIdentifier(database, documentAlias, "metadata");
+  const path = `$.userMetadata.${condition.name}`;
+  const valueJson =
+    database.dialect === "postgres"
+      ? `${metadata} -> 'userMetadata' -> '${condition.name}'`
+      : `JSON_EXTRACT(${metadata}, '${path}')`;
+  const valueText =
+    database.dialect === "postgres"
+      ? `${metadata} -> 'userMetadata' ->> '${condition.name}'`
+      : `JSON_UNQUOTE(${valueJson})`;
+  const exists =
+    database.dialect === "postgres"
+      ? `COALESCE((${metadata} -> 'userMetadata') ? '${condition.name}', FALSE)`
+      : `COALESCE(JSON_CONTAINS_PATH(${metadata}, 'one', '${path}') = 1, FALSE)`;
+  const jsonType =
+    database.dialect === "postgres" ? `jsonb_typeof(${valueJson})` : `JSON_TYPE(${valueJson})`;
+
+  if (condition.comparisonOperator === "empty") {
+    return database.dialect === "postgres"
+      ? `(NOT (${exists}) OR ${jsonType} = 'null')`
+      : `(NOT (${exists}) OR ${jsonType} = 'NULL')`;
+  }
+  if (condition.comparisonOperator === "not empty") {
+    return database.dialect === "postgres"
+      ? `((${exists}) AND ${jsonType} <> 'null')`
+      : `((${exists}) AND ${jsonType} <> 'NULL')`;
+  }
+
+  if (condition.fieldType === "string") {
+    const expected = condition.value as string;
+    const values = expected
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean);
+    if (condition.comparisonOperator === "in" || condition.comparisonOperator === "not in") {
+      if (values.length === 0) return condition.comparisonOperator === "not in" ? "TRUE" : "FALSE";
+      const placeholders = values.map((value) => pushRetrievalFilterParam(database, params, value));
+      return `(${jsonType} = ${database.dialect === "postgres" ? "'string'" : "'STRING'"} AND ${valueText} ${condition.comparisonOperator === "in" ? "IN" : "NOT IN"} (${placeholders.join(", ")}))`;
+    }
+    const placeholder = pushRetrievalFilterParam(database, params, expected);
+    const comparison = customMetadataStringComparisonSql(
+      database,
+      valueText,
+      placeholder,
+      condition.comparisonOperator,
+    );
+    return `(${jsonType} = ${database.dialect === "postgres" ? "'string'" : "'STRING'"} AND ${comparison})`;
+  }
+
+  const placeholder = pushRetrievalFilterParam(
+    database,
+    params,
+    condition.value as number | string,
+  );
+  if (condition.fieldType === "number") {
+    const numericValue =
+      database.dialect === "postgres"
+        ? `CASE WHEN ${jsonType} = 'number' THEN CAST(${valueText} AS DOUBLE PRECISION) END`
+        : `CASE WHEN ${jsonType} IN ('INTEGER', 'UNSIGNED INTEGER', 'DOUBLE', 'DECIMAL') THEN CAST(${valueText} AS DECIMAL(65, 30)) END`;
+    return `${numericValue} ${customMetadataNumericOperator(condition.comparisonOperator)} ${placeholder}`;
+  }
+
+  const timestampValue =
+    database.dialect === "postgres"
+      ? `CASE WHEN ${jsonType} = 'string' THEN CAST(${valueText} AS TIMESTAMPTZ) END`
+      : `COALESCE(STR_TO_DATE(${valueText}, '%Y-%m-%dT%H:%i:%s.%fZ'), STR_TO_DATE(${valueText}, '%Y-%m-%dT%H:%i:%sZ'))`;
+  const timestampExpected =
+    database.dialect === "postgres"
+      ? `CAST(${placeholder} AS TIMESTAMPTZ)`
+      : `STR_TO_DATE(${placeholder}, '%Y-%m-%dT%H:%i:%s.%fZ')`;
+  return `${timestampValue} ${customMetadataTimeOperator(condition.comparisonOperator)} ${timestampExpected}`;
+}
+
+function customMetadataStringComparisonSql(
+  database: DatabaseAdapter,
+  valueText: string,
+  placeholder: string,
+  operator: RetrievalCustomMetadataCondition["comparisonOperator"],
+): string {
+  if (operator === "is") return `${valueText} = ${placeholder}`;
+  if (operator === "is not") return `${valueText} <> ${placeholder}`;
+  if (operator === "contains" || operator === "not contains") {
+    const contains =
+      database.dialect === "postgres"
+        ? `POSITION(${placeholder} IN ${valueText}) > 0`
+        : `LOCATE(${placeholder}, ${valueText}) > 0`;
+    return operator === "contains" ? contains : `NOT (${contains})`;
+  }
+  if (operator === "start with") {
+    return `LEFT(${valueText}, CHAR_LENGTH(${placeholder})) = ${placeholder}`;
+  }
+  return `RIGHT(${valueText}, CHAR_LENGTH(${placeholder})) = ${placeholder}`;
+}
+
+function customMetadataNumericOperator(
+  operator: RetrievalCustomMetadataCondition["comparisonOperator"],
+): string {
+  if (operator === "≠") return "<>";
+  if (operator === "≥") return ">=";
+  if (operator === "≤") return "<=";
+  return operator;
+}
+
+function customMetadataTimeOperator(
+  operator: RetrievalCustomMetadataCondition["comparisonOperator"],
+): string {
+  if (operator === "is") return "=";
+  if (operator === "before") return "<";
+  return ">";
+}
+
+function pushRetrievalFilterParam(
+  database: DatabaseAdapter,
+  params: DatabaseQueryValue[],
+  value: DatabaseQueryValue,
+): string {
+  params.push(value);
+  return databasePlaceholder(database, params.length);
 }
 
 function addInFilterSql(

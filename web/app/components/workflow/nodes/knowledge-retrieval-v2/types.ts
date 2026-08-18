@@ -1,3 +1,9 @@
+import type {
+  MetadataFilteringCondition,
+  MetadataFilteringConditions,
+  MetadataFilteringModeEnum,
+  MetadataFilteringVariableType,
+} from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { CommonNodeType, ValueSelector } from '@/app/components/workflow/types'
 
 export type KnowledgeRetrievalV2Mode = 'fast' | 'deep' | 'research'
@@ -24,11 +30,24 @@ export type KnowledgeRetrievalV2SpaceSummary = {
   top_k?: number
 }
 
+export type KnowledgeRetrievalV2MetadataFilteringConditions = Omit<
+  MetadataFilteringConditions,
+  'conditions'
+> & {
+  conditions: Array<
+    MetadataFilteringCondition & {
+      metadata_type?: MetadataFilteringVariableType
+    }
+  >
+}
+
 export type KnowledgeRetrievalV2NodeType = CommonNodeType & {
   control_space_ids: string[]
   query_variable_selector: ValueSelector
   mode?: KnowledgeRetrievalV2Mode
   top_n: number
+  metadata_filtering_mode?: MetadataFilteringModeEnum
+  metadata_filtering_conditions?: KnowledgeRetrievalV2MetadataFilteringConditions
   metadata_filters?: KnowledgeRetrievalV2MetadataFilters
   _control_spaces?: KnowledgeRetrievalV2SpaceSummary[]
 }
