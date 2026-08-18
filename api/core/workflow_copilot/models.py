@@ -1,0 +1,187 @@
+"""Workflow Copilot domain models.
+
+Port of dify-enterprise/server/pkg/enterprise/biz/copilot/models.go.
+
+Deltas from the Go source (per the P1 port plan's Global Constraints / ADR):
+
+- ``ForwardAuth`` is dropped entirely. ``Turn`` carries an ``Actor``
+  (``account_id``, ``tenant_id``) instead of a forwarded console token, which
+  is never persisted and only ever valid for a single ``Advance`` call.
+- Every field except ``PcState``/``EntryMode``-typed fields
+  (``Session.entry_mode``, ``Session.current_state``, ``Checkpoint.state``)
+  and ``Turn.actor`` gets a default matching the Go zero value (``""``,
+  ``0``, ``False``, empty list/dict, ``datetime.min``). This mirrors how the
+  Go test suite constructs these structs: almost every struct literal in
+  ``*_test.go`` sets only a handful of fields and relies on Go's implicit
+  zero-initialization for the rest (e.g. ``&Session{AppID: "app", ...}``,
+  ``&FixContext{}``, ``&FixContext{FailedRunID: "TR-1"}``). The excepted
+  fields have no meaningful "empty" value (an empty string is not a valid
+  ``PcState``/``EntryMode`` member) and are always set explicitly in the Go
+  suite, so they stay required here.
+- ``FixContext.diagnosis`` / ``.risk`` / ``.change_set`` / ``.staged_repair``
+  reference ``Diagnosis`` / ``Risk`` / ``ChangeSet`` / ``MutationIntent``.
+  In Go those live in the same package as this file; in Python they are
+  defined in ``ports.py`` (a later task) and importing them here would
+  create a models<->ports import cycle (ports.py imports these models). They
+  are typed ``Any`` for now.
+"""
+
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import StrEnum
+from typing import Any
+
+from core.workflow_copilot.state import PcState
+
+
+class EntryMode(StrEnum):
+    FIX = "fix"
+    FIX_CHECKLIST = "fix_checklist"
+
+
+@dataclass(kw_only=True)
+class ChecklistError:
+    """One pre-publish checklist finding for a node.
+
+    Config errors (``messages``) are fixable via ``set_node_config``;
+    ``unconnected`` and ``plugin_missing`` are structural — surfaced to the
+    user, not auto-fixed in v1.
+    """
+
+    node_id: str = ""
+    node_type: str = ""
+    title: str = ""
+    messages: list[str] = field(default_factory=list)
+    unconnected: bool = False
+    plugin_missing: bool = False
+
+
+@dataclass(kw_only=True)
+class Session:
+    id: str = ""
+    app_id: str = ""
+    tenant_id: str = ""
+    owner_account_id: str = ""
+    entry_mode: EntryMode
+    current_state: PcState
+    version: int = 0
+    created_at: datetime = field(default_factory=lambda: datetime.min)
+    updated_at: datetime = field(default_factory=lambda: datetime.min)
+
+
+# Graph, Inputs and StartSchema are opaque JSON blobs the engine passes
+# through; only the Dify adapter and the agent interpret them.
+Graph = dict[str, Any]
+Inputs = dict[str, Any]
+StartSchema = dict[str, Any]
+
+
+@dataclass(kw_only=True)
+class NodeOutput:
+    node_id: str = ""
+    title: str = ""
+    status: str = ""  # success | failed | skip
+    error: str = ""
+    inputs: Inputs = field(default_factory=dict)
+    outputs: Inputs = field(default_factory=dict)
+
+
+@dataclass(kw_only=True)
+class Run:
+    id: str = ""
+    kind: str = ""  # original-failed | verify
+    dify_run_id: str = ""
+    status: str = ""  # running | succeeded | failed
+    per_node: list[NodeOutput] = field(default_factory=list)
+    culprit_node_id: str = ""
+    inputs_ref: str = ""
+    tokens: int = 0
+    elapsed_ms: int = 0
+    immutable: bool = False
+
+
+@dataclass(kw_only=True)
+class Snapshot:
+    id: str = ""
+    session_id: str = ""
+    hash: str = ""
+    graph: Graph = field(default_factory=dict)
+
+
+@dataclass(kw_only=True)
+class Checkpoint:
+    id: str = ""
+    session_id: str = ""
+    state: PcState
+    snapshot_id: str = ""
+
+
+@dataclass(kw_only=True)
+class TestInput:
+    # Not a pytest test class; ``__test__`` (unannotated, so not a dataclass
+    # field) tells pytest's Test*-name collector to skip it.
+    __test__ = False
+
+    id: str = ""
+    session_id: str = ""
+    source: str = ""  # reuse | mock | upload
+    inputs: Inputs = field(default_factory=dict)
+    start_schema_hash: str = ""
+
+
+@dataclass(kw_only=True)
+class ConversationItem:
+    seq: int = 0
+    kind: str = ""  # run-context | assistant-turn | user | notice | diagnosis | change-set | verify-result
+    payload: dict[str, Any] = field(default_factory=dict)
+    at_version: int = 0
+
+
+@dataclass(kw_only=True)
+class FixContext:
+    """Per-session working state persisted as the commit context."""
+
+    failed_run_id: str = ""
+    diagnosis: Any | None = None  # Diagnosis, defined in ports.py (Task 3)
+    staged_repair: list[Any] = field(default_factory=list)  # list[MutationIntent] (Task 3)
+    risk: Any | None = None  # Risk (Task 3)
+    change_set: Any | None = None  # ChangeSet (Task 3)
+    checkpoint_id: str = ""
+    verify_run_id: str = ""
+    test_input_ref: str = ""
+    last_snapshot_hash: str = ""
+    next_seq: int = 0
+    # source distinguishes diagnosis origin: "" (run, default) | "checklist".
+    source: str = ""
+    checklist_errors: list[ChecklistError] = field(default_factory=list)
+
+
+@dataclass(kw_only=True)
+class Action:
+    """A user-driven event entering the machine."""
+
+    # request_fix | approve_repair | reject_repair | run_verify | provide_testdata |
+    # publish | keep_draft | undo | re_fix | message
+    kind: str = ""
+    payload: dict[str, Any] = field(default_factory=dict)
+    base_version: int = 0
+
+
+@dataclass(kw_only=True)
+class Actor:
+    """The acting console identity for one Advance call. Never persisted."""
+
+    account_id: str
+    tenant_id: str
+
+
+@dataclass(kw_only=True)
+class Turn:
+    """Per-request data carried through one Advance.
+
+    Replaces Go's ``Turn.Auth ForwardAuth`` — there is no forwarded console
+    token in this port; ``actor`` identifies who is driving this turn.
+    """
+
+    action: Action | None = None
+    actor: Actor
