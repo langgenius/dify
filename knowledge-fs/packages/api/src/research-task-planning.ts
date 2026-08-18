@@ -144,7 +144,7 @@ export function createResearchTaskDryRunPlanner({
   llmPricing = DefaultResearchTaskLlmPricing,
   maxQueryBytes = defaultMaxQueryBytes,
   maxTopK = defaultMaxTopK,
-  researchPolicy = DurableResearchRetrievalPolicy,
+  researchPolicy = DurableResearchEvidenceRetrievalPolicy,
   retrievalPlanner,
 }: ResearchTaskDryRunPlannerOptions): ResearchTaskDryRunPlanner {
   if (!Number.isSafeInteger(maxQueryBytes) || maxQueryBytes < 1) {
@@ -344,7 +344,7 @@ function estimateSteps(
       estimatedToolCalls: 1,
       name: "plan",
     },
-    ...(shouldInspectDocumentStructure
+    ...(shouldInspectDocumentStructure && retrievalWork.inspectToolCalls > 0
       ? [
           {
             estimatedCostUsd: estimateLlmCost(
@@ -426,17 +426,22 @@ function estimateRetrievalWork(
       const policyWork = estimateResearchRetrievalWork(researchPolicy, {
         includeFinalSynthesis: true,
       });
-      const inspectionModelCalls = Math.max(0, policyWork.expected.modelCalls - 1);
+      const legacyInspectionModelCalls =
+        researchPolicy.strategyVersion === "pageindex-v2"
+          ? Math.max(0, policyWork.expected.modelCalls - 1)
+          : 0;
+      const estimatedRecallLists = Math.min(4, policyWork.expected.retrievalSteps);
       return {
-        inspectToolCalls: inspectionModelCalls,
+        inspectToolCalls: legacyInspectionModelCalls,
         retrievalLatencyMs:
           120 +
-          retrievalPlan.denseTopK * 2 +
+          baseHybridScans * 2 +
           policyWork.expected.openedResources * 4 +
-          inspectionModelCalls * 350,
+          legacyInspectionModelCalls * 350,
         retrievalSteps: policyWork.expected.retrievalSteps,
         retrieveToolCalls: policyWork.expected.retrievalSteps,
-        scannedResources: retrievalPlan.denseTopK + policyWork.expected.openedResources,
+        scannedResources:
+          baseHybridScans * estimatedRecallLists + policyWork.expected.openedResources,
         workBounds: {
           modelCalls: estimateBound(
             policyWork.minimum.modelCalls,
@@ -556,7 +561,7 @@ function roundProbability(value: number): number {
   return Math.min(1, Math.max(0, Math.round(value * 100) / 100));
 }
 import {
-  DurableResearchRetrievalPolicy,
+  DurableResearchEvidenceRetrievalPolicy,
   type ResearchRetrievalExecutionPolicy,
   estimateResearchRetrievalWork,
 } from "./research-retrieval-policy";

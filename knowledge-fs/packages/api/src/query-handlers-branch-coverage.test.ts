@@ -159,13 +159,13 @@ describe("query handler branch coverage", () => {
     );
   });
 
-  it("bypasses lexical readiness for research mode", async () => {
+  it("requires lexical readiness for Research Evidence V3", async () => {
     const fixture = queryFixture({
       body: { mode: "research" },
-      readinessError: new Error("must not run"),
+      readinessError: new TidbFtsPostingBackfillNotReadyError("running"),
     });
-    expect((await fixture.invoke()).status).toBe(200);
-    expect(fixture.assertReady).not.toHaveBeenCalled();
+    expect((await fixture.invoke()).status).toBe(503);
+    expect(fixture.assertReady).toHaveBeenCalledOnce();
   });
 
   it("builds legacy-default, request, profile-default, and auto route metadata", async () => {

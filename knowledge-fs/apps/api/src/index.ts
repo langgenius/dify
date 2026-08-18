@@ -32,6 +32,8 @@ import {
   createPublishedProjectionReadSnapshotResolver,
   createQueryImageAwareQueryGenerator,
   createResearchAwareQueryGenerator,
+  createResearchEvidenceReasoning,
+  createResearchQueryVectorizer,
   createRetrievalExecutionLeaseCoordinator,
   createRetrievalPlanner,
   createRetrievalTestExecutor,
@@ -507,6 +509,12 @@ const embeddingResolver =
         providerFactory: embeddingOptions.knowledgeSpaceEmbeddingProviderFactory,
       })
     : undefined;
+const researchEvidenceReasoning = createResearchEvidenceReasoning({
+  maxOutputTokens: Math.min(profileReasoningCapability.maxOutputTokens, 512),
+  modelRequestGate: ingestionModelRuntimeOptions.modelRequestGate,
+  providerFactory: profileReasoningCapability.providerFactory,
+  timeoutMs: 30_000,
+});
 const documentCompilationRuntime = createApiDocumentCompilationRuntime({
   adapter,
   compute,
@@ -720,6 +728,14 @@ const retriever = retrievalRepository
           : {}),
       planner: retrievalPlanner,
       metrics: operationalMetrics.retrieval,
+      ...(embeddingResolver
+        ? {
+            researchEvidence: {
+              queryVectorizer: createResearchQueryVectorizer(embeddingResolver),
+              reasoning: researchEvidenceReasoning,
+            },
+          }
+        : {}),
       repository: retrievalRepository,
       ...(visualEmbeddingOptions?.queryImageEmbeddingProvider &&
       visualEmbeddingOptions.queryMode !== "off"
@@ -890,6 +906,23 @@ const researchTaskRuntime =
         generator: durableResearchAnswerQueryGenerator,
         manifests: knowledgeSpaceManifests,
         metrics: operationalMetrics.durableTasks,
+        onError: ({ error, researchTaskJob }) => {
+          process.stderr.write(
+            `${JSON.stringify({
+              errorClass: error instanceof Error ? error.name : typeof error,
+              errorCode:
+                error && typeof error === "object" && "code" in error
+                  ? String(error.code)
+                  : undefined,
+              errorMessage:
+                error instanceof Error ? error.message : "Unknown Research task runtime error",
+              event: "knowledge_fs.research_task.error",
+              ...(researchTaskJob
+                ? { researchTaskId: researchTaskJob.id, stage: researchTaskJob.stage }
+                : {}),
+            })}\n`,
+          );
+        },
         partials: databaseRepositories.researchTaskPartialResults,
         progress: databaseRepositories.researchTaskProgressEvents,
         ...(researchProjectionSnapshotResolver

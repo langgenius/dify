@@ -57,8 +57,8 @@ import {
   type ResearchRetrievalDurableCheckpoint,
   researchRetrievalDurableCheckpointFromMetadata,
   toResearchRetrievalDurableCheckpointPayload,
+  validateAnyResearchRetrievalSearchCheckpointScope,
   validateResearchRetrievalDurableCheckpoint,
-  validateResearchRetrievalSearchCheckpointScope,
 } from "./research-retrieval-checkpoint";
 import type {
   ResearchTaskDurableRepository,
@@ -272,6 +272,21 @@ export function createResearchTaskRuntime({
       return run;
     };
 
+    const serializeExecutionMutation = async (
+      operation: (job: ResearchTaskJob) => Promise<ResearchTaskJob | null>,
+    ): Promise<ResearchTaskJob | null> =>
+      serialize(async () => {
+        const updated = await operation(current);
+        if (updated) {
+          // Commit the durable row and the in-memory fence in the same serialized callback.
+          // A promise chained on `lane` may start before the caller continuation runs, so updating
+          // `current` after `await serialize(...)` lets a queued heartbeat/model observer reuse the
+          // previous rowVersion.
+          current = updated;
+        }
+        return updated;
+      });
+
     const heartbeat = async (): Promise<void> => {
       await serialize(async () => {
         if (abortController.signal.aborted) {
@@ -332,11 +347,12 @@ export function createResearchTaskRuntime({
       });
       current = result.job;
       await assertWritable();
-      const completed = await serialize(() => repository.completeExecution(fence(current, now())));
+      const completed = await serializeExecutionMutation((job) =>
+        repository.completeExecution(fence(job, now())),
+      );
       if (!completed) {
         throw new Error("Research task completion lost its lease fence");
       }
-      current = completed;
       recordDurableTaskOperationalMetric(metrics, {
         lifecycle: "terminal",
         outcome: "completed",
@@ -359,14 +375,13 @@ export function createResearchTaskRuntime({
         ) {
           current = refreshed;
         }
-        const canceled = await serialize(() =>
+        const canceled = await serializeExecutionMutation((job) =>
           repository.cancelExecution({
-            ...fence(current, now()),
+            ...fence(job, now()),
             reason: "RESEARCH_TASK_DELETION_FENCE_ACTIVE",
           }),
         );
         if (canceled) {
-          current = canceled;
           recordDurableTaskOperationalMetric(metrics, {
             lifecycle: "terminal",
             outcome: "canceled",
@@ -392,9 +407,9 @@ export function createResearchTaskRuntime({
           error instanceof CapabilityPublicationFencedError
             ? "RESEARCH_TASK_CAPABILITY_REVOKED"
             : "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID";
-        const failed = await serialize(() =>
+        const failed = await serializeExecutionMutation((job) =>
           repository.failExecution({
-            ...fence(current, now()),
+            ...fence(job, now()),
             error: authorizationError,
           }),
         );
@@ -412,9 +427,9 @@ export function createResearchTaskRuntime({
         return "deferred";
       }
       if (error instanceof ResearchTaskRuntimeSnapshotInvalidError) {
-        const failed = await serialize(() =>
+        const failed = await serializeExecutionMutation((job) =>
           repository.failExecution({
-            ...fence(current, now()),
+            ...fence(job, now()),
             error: RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID,
           }),
         );
@@ -432,14 +447,13 @@ export function createResearchTaskRuntime({
         return "deferred";
       }
       if (researchTaskBudgetExceededError(error)) {
-        const canceled = await serialize(() =>
+        const canceled = await serializeExecutionMutation((job) =>
           repository.cancelExecution({
-            ...fence(current, now()),
+            ...fence(job, now()),
             reason: "RESEARCH_TASK_BUDGET_EXHAUSTED",
           }),
         );
         if (canceled) {
-          current = canceled;
           recordDurableTaskOperationalMetric(metrics, {
             lifecycle: "terminal",
             outcome: "canceled",
@@ -454,9 +468,9 @@ export function createResearchTaskRuntime({
       }
 
       if (current.executionAttempts >= current.maxExecutionAttempts) {
-        const failed = await serialize(() =>
+        const failed = await serializeExecutionMutation((job) =>
           repository.failExecution({
-            ...fence(current, now()),
+            ...fence(job, now()),
             error: "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
           }),
         );
@@ -474,15 +488,41 @@ export function createResearchTaskRuntime({
       } else {
         const retryAt =
           now() + retryDelay(current.executionAttempts, retryDelayMs, maxRetryDelayMs);
-        const released = await serialize(() =>
+        let released = await serializeExecutionMutation((job) =>
           repository.releaseExecutionForRetry({
-            ...fence(current, now()),
+            ...fence(job, now()),
             error: errorMessage(error),
             retryAt,
           }),
         );
+        if (!released) {
+          // A checkpoint/heartbeat may have committed after the failing operation observed its
+          // fence. Reconcile once and retry only while this exact queue execution still owns the
+          // lease; a replacement worker must never be mutated by the stale execution.
+          const stillOwned = await serialize(async () => {
+            const refreshed = await repository.get(current.id);
+            if (
+              !refreshed ||
+              refreshed.queueJobId !== current.queueJobId ||
+              refreshed.leaseToken !== leaseToken ||
+              terminalStages.has(refreshed.stage)
+            ) {
+              return false;
+            }
+            current = refreshed;
+            return true;
+          });
+          if (stillOwned) {
+            released = await serializeExecutionMutation((job) =>
+              repository.releaseExecutionForRetry({
+                ...fence(job, now()),
+                error: errorMessage(error),
+                retryAt,
+              }),
+            );
+          }
+        }
         if (released) {
-          current = released;
           recordDurableTaskOperationalMetric(metrics, {
             lifecycle: "retry",
             taskKind: "research",
@@ -628,14 +668,16 @@ async function runResearchTask({
         ...fence(current, now()),
         nextStage,
       });
+      if (updated) {
+        current = updated;
+        updateCurrent(updated);
+      }
       return { previousStage, updated };
     });
     const { previousStage, updated } = transition;
     if (!updated) {
       throw new Error("Research task stage transition lost its lease fence");
     }
-    current = updated;
-    updateCurrent(updated);
     await assertWritable();
     await publishProgress(updated, "research_task.stage_changed", {
       ...(details ? { details } : {}),
@@ -728,7 +770,7 @@ async function runResearchTask({
       throw new Error("Research retrieval durable checkpoint requires a projection snapshot");
     }
     const durable = validateResearchRetrievalDurableCheckpoint(checkpoint);
-    const searchState = validateResearchRetrievalSearchCheckpointScope({
+    const searchState = validateAnyResearchRetrievalSearchCheckpointScope({
       checkpoint: durable.searchState,
       fingerprint: projectionSnapshot.fingerprint,
       knowledgeSpaceId: current.knowledgeSpaceId,
@@ -741,9 +783,9 @@ async function runResearchTask({
       evidenceBundle: durable.evidenceBundle,
       searchState,
     });
-    const updated = await serialize(async () => {
+    await serialize(async () => {
       current = getCurrent();
-      return repository.update({
+      const persisted = await repository.update({
         ...current,
         metadata: {
           ...current.metadata,
@@ -751,9 +793,10 @@ async function runResearchTask({
         },
         updatedAt: now(),
       });
+      current = persisted;
+      updateCurrent(persisted);
+      return persisted;
     });
-    current = updated;
-    updateCurrent(updated);
   };
   const persistQueryImageExpansion = async (expansion: string): Promise<void> => {
     const normalized = expansion.trim();
@@ -761,9 +804,9 @@ async function runResearchTask({
     await revalidate();
     await assertWritable();
     if (queryImageExpansionFromMetadata(current.metadata) === normalized) return;
-    const updated = await serialize(async () => {
+    await serialize(async () => {
       current = getCurrent();
-      return repository.update({
+      const persisted = await repository.update({
         ...current,
         metadata: {
           ...current.metadata,
@@ -771,9 +814,10 @@ async function runResearchTask({
         },
         updatedAt: now(),
       });
+      current = persisted;
+      updateCurrent(persisted);
+      return persisted;
     });
-    current = updated;
-    updateCurrent(updated);
   };
   const researchModelCallObserver = createResearchTaskModelCallObserver({
     assertWritable,
@@ -1002,7 +1046,7 @@ function loadResearchDurableCheckpoint({
   }
   return {
     evidenceBundle: checkpoint.evidenceBundle,
-    searchState: validateResearchRetrievalSearchCheckpointScope({
+    searchState: validateAnyResearchRetrievalSearchCheckpointScope({
       checkpoint: checkpoint.searchState,
       fingerprint: projectionSnapshot.fingerprint,
       knowledgeSpaceId: job.knowledgeSpaceId,
@@ -1062,7 +1106,7 @@ function createResearchTaskModelCallObserver({
         pricing,
       });
       const callId = durableCallId(input.callId);
-      const updated = await serialize(async () => {
+      await serialize(async () => {
         const job = getCurrent();
         if (findResearchModelCostEntryIndex(job, callId) !== -1) return job;
         if (job.cost.entries.length >= RESEARCH_TASK_MAX_COST_ENTRIES) {
@@ -1074,7 +1118,7 @@ function createResearchTaskModelCallObserver({
         if (job.budgetUsd !== undefined && projectedTotal > job.budgetUsd) {
           throw new ResearchTaskBudgetExceededError();
         }
-        return repository.update({
+        const persisted = await repository.update({
           ...job,
           cost: {
             ...(job.budgetUsd === undefined ? {} : { budgetUsd: job.budgetUsd }),
@@ -1098,8 +1142,9 @@ function createResearchTaskModelCallObserver({
           },
           updatedAt: now(),
         });
+        updateCurrent(persisted);
+        return persisted;
       });
-      updateCurrent(updated);
     },
     after: async (input) => {
       await revalidate();
@@ -1139,7 +1184,7 @@ function createResearchTaskModelCallObserver({
         };
         const totalUsd = roundCurrency(entries.reduce((total, entry) => total + entry.costUsd, 0));
         const budgetExceeded = job.budgetUsd !== undefined && totalUsd > job.budgetUsd;
-        return repository.update({
+        const persisted = await repository.update({
           ...job,
           cost: {
             ...(job.budgetUsd === undefined ? {} : { budgetUsd: job.budgetUsd }),
@@ -1149,8 +1194,10 @@ function createResearchTaskModelCallObserver({
           },
           updatedAt: now(),
         });
+        updateCurrent(persisted);
+        return persisted;
       });
-      updateCurrent(updated);
+      // `updateCurrent` already ran inside the serialized mutation before the lane was released.
       if (updated.cost.budgetExceeded) {
         throw new ResearchTaskBudgetExceededError();
       }

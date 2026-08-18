@@ -198,7 +198,7 @@ describe("createRetrievalTestExecutor", () => {
     expect(result.items[0]).toMatchObject({ text: "secret candidate text" });
   });
 
-  it("runs Research through semantic Value Search and LLM PageIndex scoring without FTS, Graph, or rerank", async () => {
+  it("runs Research through Evidence V3 hybrid recall, deterministic outline expansion, and rerank", async () => {
     const embed = vi.fn(async () => ({
       dense: [[0.1, 0.2, 0.3]],
       metadata: {
@@ -236,19 +236,21 @@ describe("createRetrievalTestExecutor", () => {
     });
     expect(result.plan).toMatchObject({
       denseTopK: 30,
-      ftsTopK: 0,
-      fusionLimit: 0,
-      rerankCandidateLimit: 0,
+      ftsTopK: 30,
+      fusionLimit: 15,
+      rerankCandidateLimit: 15,
       resolvedMode: "research",
+      strategyVersion: "retrieval-planner-v2",
     });
     expect(stageStatuses(result)).toMatchObject({
       dense: "executed",
       embedding: "executed",
-      fts: "skipped",
+      fts: "executed",
+      fusion: "executed",
       graph: "skipped",
       outline: "executed",
       pageindex: "executed",
-      rerank: "skipped",
+      rerank: "executed",
       summary: "skipped",
     });
   });
@@ -475,7 +477,7 @@ function recordingRetriever(
             permissionScope: ["tenant:tenant-1"],
             projectionIds: ["projection-1"],
             score: 0.8,
-            sources: mode === "research" ? ["pageindex"] : ["dense", "fts"],
+            sources: mode === "research" ? ["dense", "fts", "pageindex"] : ["dense", "fts"],
           },
         ],
         metrics,
@@ -513,13 +515,21 @@ function researchMetrics(): HybridRetrievalMetrics {
     denseCandidates: 4,
     denseMs: 2,
     documentOutlineMatchedItems: 1,
-    ftsCandidates: 0,
-    ftsMs: 0,
-    fusedCandidates: 1,
-    fusionMs: 0,
+    ftsCandidates: 3,
+    ftsMs: 1,
+    fusedCandidates: 5,
+    fusionMs: 1,
     pageIndexMatchedNodes: 4,
     pageIndexOpenedRanges: 1,
-    pageIndexScoreVersion: "pageindex-semantic-llm-v1",
+    rerankCandidates: 5,
+    rerankMs: 2,
+    researchCandidateLists: 1,
+    researchEvidenceJudgeMs: 2,
+    researchModelCalls: 1,
+    researchRounds: 1,
+    researchStrategyVersion: "research-evidence-v3",
+    researchSufficiencyReached: true,
+    researchSupplementalSearches: 0,
     scoreThresholdFilteredCandidates: 2,
     summaryCandidates: 0,
     summarySelectedSections: 1,

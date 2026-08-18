@@ -48,12 +48,12 @@ describe("research task dry-run planner", () => {
           p95: expect.any(Number),
         },
         retrievalSteps: 3,
-        scannedResources: 75,
-        toolCalls: 22,
+        scannedResources: 380,
+        toolCalls: 6,
         workBounds: {
-          modelCalls: { estimated: 17, max: 41, min: 1 },
-          openedResources: { estimated: 15, max: 60, min: 0 },
-          retrievalSteps: { estimated: 3, max: 20, min: 1 },
+          modelCalls: { estimated: 3, max: 3, min: 2 },
+          openedResources: { estimated: 20, max: 40, min: 0 },
+          retrievalSteps: { estimated: 3, max: 5, min: 1 },
         },
       },
       knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
@@ -69,14 +69,11 @@ describe("research task dry-run planner", () => {
     expect(plan.estimates.costUsd.max).toBeGreaterThanOrEqual(plan.estimates.costUsd.estimated);
     expect(plan.steps.map((step) => step.name)).toEqual([
       "plan",
-      "inspect",
       "retrieve",
       "analyze",
       "generate",
     ]);
-    expect(plan.steps.find((step) => step.name === "inspect")).toMatchObject({
-      estimatedToolCalls: 16,
-    });
+    expect(plan.steps.find((step) => step.name === "inspect")).toBeUndefined();
     expect(plan.steps.find((step) => step.name === "retrieve")).toMatchObject({
       estimatedToolCalls: 3,
     });
@@ -192,15 +189,14 @@ describe("research task dry-run planner", () => {
     expect(plan.steps.map((step) => step.name)).toEqual([
       "analyze",
       "plan",
-      "inspect",
       "retrieve",
       "analyze",
       "generate",
     ]);
     expect(plan.estimates.workBounds?.modelCalls).toMatchObject({
-      estimated: 18,
-      max: 42,
-      min: 2,
+      estimated: 4,
+      max: 4,
+      min: 3,
     });
   });
 

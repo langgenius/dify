@@ -581,6 +581,9 @@ describe("published PageIndex Research V2 retrieval", () => {
       ),
     ).rejects.toThrow("capture navigation checkpoint");
     if (!persisted) throw new Error("missing navigation checkpoint fixture");
+    if (persisted.checkpoint.version !== "research-retrieval-checkpoint-v2") {
+      throw new Error("expected V2 navigation checkpoint fixture");
+    }
     const navigation = persisted.checkpoint.navigation[0];
     if (!navigation) throw new Error("missing navigation state fixture");
     const resumeInput = input({

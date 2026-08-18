@@ -13,6 +13,8 @@ import {
   type PublishedGraphIndexRepository,
   type PublishedPageIndexRepository,
   QUERY_IMAGE_VISUAL_LEG_UNAVAILABLE,
+  type ResearchEvidenceReasoning,
+  type ResearchQueryVectorizer,
   type RetrievalCandidate,
   type RetrievalOperationalMetrics,
   type RetrievalPlanner,
@@ -24,6 +26,8 @@ import {
   createImageOcrRetrievalPath,
   createPublishedPageIndexRetrievalPath,
   createRequiredDeepGraphCapabilityGuard,
+  createResearchEvidenceRetrieval,
+  createResearchOutlineEvidenceRetrieval,
   createTableSpecificRetrievalPath,
   filterRetrievalCandidatesByMetadata,
   filterRetrievalCandidatesByPermission,
@@ -44,7 +48,7 @@ import type { ApiRerankerOptions } from "./reranker-options";
 export interface ApiRetrieverOptions {
   /** Whether a dense embedding provider is configured; gates the dense leg. */
   readonly embeddingEnabled: boolean;
-  /** Fail-closed latch for TiDB lexical postings. Research never depends on this index. */
+  /** Fail-closed latch for TiDB lexical postings used by every online retrieval mode. */
   readonly ftsReadiness?: TidbFtsPostingReadinessGate | undefined;
   /**
    * Knowledge graph. When provided, wraps the stack with graph-expanded
@@ -60,14 +64,14 @@ export interface ApiRetrieverOptions {
   readonly graphExpansion?: ApiGraphExpansionOptions | undefined;
   /** Aggregation-only retrieval result telemetry. */
   readonly metrics?: RetrievalOperationalMetrics | undefined;
-  /** PageIndex-style document outline traversal, used only by research mode. */
+  /** Compatibility outline path used when the strict published PageIndex repository is absent. */
   readonly outlines?: DocumentOutlineRepository | undefined;
   /** Strict publication-member scoped PageIndex capability used by production Research. */
   readonly pageIndex?: PublishedPageIndexRepository | undefined;
   readonly pageIndexFindability?: Pick<PageIndexFindabilityRepository, "getManyRoutes"> | undefined;
-  /** Profile-scoped LLM scorer for semantic Value Search candidates. */
+  /** V2-only profile-scoped LLM scorer retained for replaying old Research checkpoints. */
   readonly pageIndexSemanticTreeSearch?: PageIndexSemanticTreeSearch | undefined;
-  /** Book-like sibling-level PageIndex traversal used as the primary Research navigation lane. */
+  /** V2-only sibling-level traversal retained for replaying old Research checkpoints. */
   readonly pageIndexLayeredTreeSearch?: PageIndexLayeredTreeSearch | undefined;
   /** Compatibility selector used only if a lower-level caller omits layered navigation. */
   readonly pageIndexWholeTreeSelector?: PageIndexWholeTreeSelector | undefined;
@@ -85,6 +89,13 @@ export interface ApiRetrieverOptions {
   /** Strict graph view bound to the immutable query-start publication snapshot. */
   readonly publishedGraph?: PublishedGraphIndexRepository | undefined;
   readonly repository: HybridRetrievalRepository;
+  /** Online Research V3. Omission retains the V2 path for lower-level compatibility tests. */
+  readonly researchEvidence?:
+    | {
+        readonly queryVectorizer: ResearchQueryVectorizer;
+        readonly reasoning: ResearchEvidenceReasoning;
+      }
+    | undefined;
   readonly rerankerOptions?: ApiRerankerOptions | undefined;
   /** Require a fixed published projection snapshot before any retrieval leg runs. */
   readonly strictPublishedReads?: boolean | undefined;
@@ -119,13 +130,13 @@ export class HybridEmbeddingCapabilityUnavailableError extends Error {
 }
 
 /**
- * Builds the wired retrieval stack: final-rerank -> graph-expansion ->
- * PageIndex semantic tree search -> image-ocr -> table -> visual-dense +
- * text-hybrid. The mode gates keep graph expansion in deep mode and semantic
- * Value Search plus reasoning-model tree scoring in research mode. Final
- * reranking runs once for fast/deep after all candidate extensions have been
- * merged; research intentionally skips the ordinary reranker because the
- * reasoning model assigns its final comparable score.
+ * Builds the wired retrieval stack: final-rerank -> Research Evidence V3 ->
+ * graph-expansion -> deterministic published-outline expansion -> image-ocr ->
+ * table -> visual-dense + text-hybrid. Research V3 combines dense, FTS, outline,
+ * and optionally Graph candidates across the knowledge space, applies weighted
+ * RRF, then uses the profile reranker for comparable final scores. The reasoning
+ * model is called only for bounded query planning and one evidence-set judgement;
+ * retained V2 checkpoints alone use PageIndex LLM tree traversal.
  *
  * The `planner` is threaded into the basic hybrid retriever so the requested
  * mode actually changes recall depth / fusion width / rerank gating. Without it
@@ -149,6 +160,7 @@ export function createApiRetriever({
   publishedGraph,
   publishedProjectionMembership,
   repository,
+  researchEvidence,
   rerankerOptions,
   strictPublishedReads = false,
   visualQuery,
@@ -195,6 +207,7 @@ export function createApiRetriever({
     }),
   });
   let stack = multimodalStack;
+  let legacyResearchStack: BasicHybridRetriever | undefined;
   if (pageIndex) {
     if (!pageIndexSemanticTreeSearch) {
       throw new Error("Published PageIndex retrieval requires semantic LLM tree search");
@@ -206,7 +219,9 @@ export function createApiRetriever({
     if (!pageIndexPlanner) {
       throw new Error("Published PageIndex retrieval requires a mode-aware planner");
     }
-    stack = createPublishedPageIndexRetrievalPath({
+    // Keep V2 assembled behind a compatibility boundary so retained durable checkpoints remain
+    // replayable. Fresh V3 requests never enter this per-document LLM traversal.
+    legacyResearchStack = createPublishedPageIndexRetrievalPath({
       ...(pageIndexFindability ? { findability: pageIndexFindability } : {}),
       ...(pageIndexLayeredTreeSearch ? { layeredTreeSearch: pageIndexLayeredTreeSearch } : {}),
       // Research's planner already caps semantic recall at RETRIEVAL_MAX_TOP_K.
@@ -219,6 +234,12 @@ export function createApiRetriever({
       valueSearch: repository,
       wholeTreeSelector: pageIndexWholeTreeSelector,
     });
+    stack = researchEvidence
+      ? createResearchOutlineEvidenceRetrieval({
+          pageIndex,
+          retriever: multimodalStack,
+        })
+      : legacyResearchStack;
   } else if (outlines) {
     stack = createDocumentOutlineRetrievalPath({
       // This bounds outline I/O, not the final Top K. Research first keeps a
@@ -254,6 +275,21 @@ export function createApiRetriever({
   // would silently degrade to an un-reranked result. Legacy requests still use
   // the deployment default when one exists, and still skip reranking when it
   // does not.
+  const researchRetriever = researchEvidence
+    ? createResearchEvidenceRetrieval({
+        ...(legacyResearchStack ? { legacyResearchRetriever: legacyResearchStack } : {}),
+        planner,
+        queryVectorizer: researchEvidence.queryVectorizer,
+        reasoning: researchEvidence.reasoning,
+        rerankerFactory: (selection) => {
+          if (!rerankerOptions?.providerFactory) {
+            throw new Error("Research retrieval requires the reranker provider factory");
+          }
+          return rerankerOptions.providerFactory(selection);
+        },
+        retriever: extendedStack,
+      })
+    : extendedStack;
   const finalRetriever = createFinalRerankRetrieval({
     planner,
     ...(rerankerOptions?.providerFactory
@@ -265,7 +301,7 @@ export function createApiRetriever({
           rerankerModel: rerankerOptions.model,
         }
       : {}),
-    retriever: extendedStack,
+    retriever: researchRetriever,
   });
 
   return {
@@ -283,7 +319,7 @@ export function createApiRetriever({
         throw new HybridEmbeddingCapabilityUnavailableError();
       }
 
-      if (ftsReadiness && resolvedMode !== "research" && input.query.trim()) {
+      if (ftsReadiness && input.query.trim()) {
         if (!input.tenantId) {
           throw new Error("TiDB FTS readiness requires a tenant-scoped retrieval input");
         }

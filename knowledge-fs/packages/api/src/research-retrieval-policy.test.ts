@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  DurableResearchEvidenceRetrievalPolicy,
   DurableResearchRetrievalPolicy,
+  InteractiveResearchEvidenceRetrievalPolicy,
   InteractiveResearchRetrievalPolicy,
   createResearchRetrievalBudget,
   estimateResearchRetrievalWork,
@@ -29,6 +31,32 @@ describe("Research retrieval execution policy", () => {
         maxRounds: 2,
       }),
     ).toThrow("interactive maxRounds must equal 1");
+  });
+
+  it("caps fresh Evidence V3 retrieval at two model calls and one durable supplement", () => {
+    expect(InteractiveResearchEvidenceRetrievalPolicy).toMatchObject({
+      kind: "interactive",
+      maxModelCalls: 2,
+      maxRounds: 1,
+      maxSupplementalSearches: 0,
+      strategyVersion: "research-evidence-v3",
+    });
+    expect(DurableResearchEvidenceRetrievalPolicy).toMatchObject({
+      kind: "durable",
+      maxModelCalls: 2,
+      maxRounds: 2,
+      maxSupplementalSearches: 1,
+      strategyVersion: "research-evidence-v3",
+    });
+    expect(
+      estimateResearchRetrievalWork(DurableResearchEvidenceRetrievalPolicy, {
+        includeFinalSynthesis: true,
+      }),
+    ).toMatchObject({
+      expected: { modelCalls: 3 },
+      maximum: { modelCalls: 3 },
+      minimum: { modelCalls: 2 },
+    });
   });
 
   it("enforces actual runtime counters and wall time without exceeding a hard limit", () => {

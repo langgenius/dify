@@ -65,9 +65,13 @@ export class DeepGraphCapabilityUnavailableError extends Error {
   }
 }
 
+export const RESEARCH_GRAPH_CAPABILITY_UNAVAILABLE =
+  "research-graph-capability-unavailable" as const;
+
 /**
- * Keeps Fast and Research available when a deployment has no strict published Graph reader, while
- * making the Deep product contract fail closed instead of silently degrading to ordinary hybrid.
+ * Keeps Fast and Research available when a deployment has no strict published Graph reader. Deep
+ * fails closed; a Research plan that explicitly requested Graph continues with an observable
+ * degradation flag instead of silently pretending that the leg executed.
  */
 export function createRequiredDeepGraphCapabilityGuard({
   available,
@@ -85,7 +89,22 @@ export function createRequiredDeepGraphCapabilityGuard({
       if (input.mode === "deep") {
         throw new DeepGraphCapabilityUnavailableError();
       }
-      return retriever.retrieve(input);
+      const result = await retriever.retrieve(input);
+      if (input.mode !== "research" || input.researchGraphEnabled !== true || !result.metrics) {
+        return result;
+      }
+      return {
+        ...result,
+        metrics: {
+          ...result.metrics,
+          degradationFlags: [
+            ...new Set([
+              ...(result.metrics.degradationFlags ?? []),
+              RESEARCH_GRAPH_CAPABILITY_UNAVAILABLE,
+            ]),
+          ],
+        },
+      };
     },
   };
 }
@@ -452,7 +471,10 @@ export function createGraphExpandedRetrievalPath({
   return {
     retrieve: async (input) => {
       const baseResult = await retriever.retrieve(input);
-      if (!shouldRunModeExtension(input.mode, "graph-expansion")) {
+      if (
+        !shouldRunModeExtension(input.mode, "graph-expansion") ||
+        (input.mode === "research" && input.researchGraphEnabled !== true)
+      ) {
         return baseResult;
       }
       const snapshot = input.projectionSnapshot;
@@ -773,6 +795,7 @@ function shouldRunModeExtension(
     case "research":
       return (
         extension === "document-outline" ||
+        extension === "graph-expansion" ||
         extension === "summary-tree" ||
         extension === "table-specific" ||
         extension === "image-ocr"

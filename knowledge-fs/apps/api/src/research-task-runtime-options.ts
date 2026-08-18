@@ -37,6 +37,12 @@ export interface CreateApiResearchTaskRuntimeOptions {
   readonly generator: QueryGenerator;
   readonly manifests: KnowledgeSpaceManifestRepository;
   readonly metrics?: DurableTaskOperationalMetrics | undefined;
+  readonly onError?:
+    | ((input: {
+        readonly error: unknown;
+        readonly researchTaskJob?: { readonly id: string; readonly stage: string } | undefined;
+      }) => void)
+    | undefined;
   readonly partials: ResearchTaskPartialResultRepository;
   readonly progress: ResearchTaskProgressRepository;
   readonly projectionSnapshotResolver?: PublishedProjectionReadSnapshotResolver | undefined;
@@ -78,6 +84,7 @@ export function createApiResearchTaskRuntime({
   generator,
   manifests,
   metrics,
+  onError,
   partials,
   progress,
   projectionSnapshotResolver,
@@ -107,6 +114,7 @@ export function createApiResearchTaskRuntime({
     jobs: adapter.jobs,
     maxExecutionAttempts,
     ...(metrics ? { metrics } : {}),
+    ...(onError ? { onError } : {}),
     repository,
   });
   const runtime = createResearchTaskRuntime({

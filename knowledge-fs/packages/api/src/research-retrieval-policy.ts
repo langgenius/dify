@@ -32,6 +32,7 @@ export interface ResearchRetrievalExecutionPolicy {
   readonly maxTreeDepth: number;
   readonly maxTreeSelectionAttempts: number;
   readonly maxValueNodesPerOutline: number;
+  readonly strategyVersion: "pageindex-v2" | "research-evidence-v3";
   readonly wallClockMs: number;
 }
 
@@ -52,6 +53,7 @@ export const InteractiveResearchRetrievalPolicy: ResearchRetrievalExecutionPolic
   maxTreeDepth: 6,
   maxTreeSelectionAttempts: 2,
   maxValueNodesPerOutline: 2,
+  strategyVersion: "pageindex-v2",
   wallClockMs: 30_000,
 });
 
@@ -72,12 +74,69 @@ export const DurableResearchRetrievalPolicy: ResearchRetrievalExecutionPolicy = 
   maxTreeDepth: 12,
   maxTreeSelectionAttempts: 2,
   maxValueNodesPerOutline: 3,
+  strategyVersion: "pageindex-v2",
   wallClockMs: 300_000,
 });
+
+/**
+ * Research Evidence V3 policies. The legacy policies above remain frozen because an in-flight V2
+ * PageIndex checkpoint may already contain counters that exceed the V3 limits. Fresh requests and
+ * V3 checkpoints use these policies instead: at most one planner call, one set-level evidence
+ * judge, and (for durable work only) one deterministic supplemental retrieval round.
+ */
+export const InteractiveResearchEvidenceRetrievalPolicy: ResearchRetrievalExecutionPolicy =
+  Object.freeze({
+    checkpointMode: "none",
+    kind: "interactive",
+    maxConcurrentTreeSelections: 1,
+    maxDocuments: 10,
+    maxEvidencePerRange: 8,
+    maxFinalItems: 20,
+    maxHitsPerDocument: 8,
+    maxModelCalls: 2,
+    maxOpenedResources: 20,
+    maxQueueItems: 20,
+    maxRetrievalSteps: 4,
+    maxRounds: 1,
+    maxSupplementalSearches: 0,
+    maxTreeDepth: 1,
+    maxTreeSelectionAttempts: 1,
+    maxValueNodesPerOutline: 4,
+    strategyVersion: "research-evidence-v3",
+    wallClockMs: 60_000,
+  });
+
+export const DurableResearchEvidenceRetrievalPolicy: ResearchRetrievalExecutionPolicy =
+  Object.freeze({
+    checkpointMode: "replay-safe-boundaries",
+    kind: "durable",
+    maxConcurrentTreeSelections: 1,
+    maxDocuments: 20,
+    maxEvidencePerRange: 10,
+    maxFinalItems: 40,
+    maxHitsPerDocument: 10,
+    maxModelCalls: 2,
+    maxOpenedResources: 40,
+    maxQueueItems: 40,
+    maxRetrievalSteps: 5,
+    maxRounds: 2,
+    maxSupplementalSearches: 1,
+    maxTreeDepth: 1,
+    maxTreeSelectionAttempts: 1,
+    maxValueNodesPerOutline: 6,
+    strategyVersion: "research-evidence-v3",
+    wallClockMs: 180_000,
+  });
 
 export function validateResearchRetrievalPolicy(
   policy: ResearchRetrievalExecutionPolicy,
 ): ResearchRetrievalExecutionPolicy {
+  if (
+    policy.strategyVersion !== "pageindex-v2" &&
+    policy.strategyVersion !== "research-evidence-v3"
+  ) {
+    throw new Error("Research retrieval policy strategyVersion is unsupported");
+  }
   const integerFields = [
     "maxConcurrentTreeSelections",
     "maxDocuments",
@@ -227,6 +286,33 @@ export function estimateResearchRetrievalWork(
 ): ResearchRetrievalWorkEstimate {
   validateResearchRetrievalPolicy(policy);
   const synthesisCalls = options.includeFinalSynthesis ? 1 : 0;
+  if (policy.strategyVersion === "research-evidence-v3") {
+    const retrievalModelCalls = Math.min(policy.maxModelCalls, 2);
+    return {
+      expected: {
+        modelCalls: retrievalModelCalls + synthesisCalls,
+        openedResources: Math.min(
+          policy.maxOpenedResources,
+          Math.max(1, Math.ceil(policy.maxQueueItems / 2)),
+        ),
+        retrievalSteps: Math.min(
+          policy.maxRetrievalSteps,
+          2 + Math.min(policy.maxSupplementalSearches, 1),
+        ),
+      },
+      maximum: {
+        modelCalls: policy.maxModelCalls + synthesisCalls,
+        openedResources: policy.maxOpenedResources,
+        retrievalSteps: policy.maxRetrievalSteps,
+      },
+      minimum: {
+        // A simple query skips the planner model call, but still runs one evidence-set judge.
+        modelCalls: 1 + synthesisCalls,
+        openedResources: 0,
+        retrievalSteps: 1,
+      },
+    };
+  }
   const expectedDocuments = Math.max(1, Math.ceil(policy.maxDocuments / 2));
   // Most useful paths resolve within the root, chapter, and section levels. The hard maximum still
   // comes from maxModelCalls, but dry-run estimation must scale with layered traversal depth instead

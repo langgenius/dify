@@ -5,6 +5,7 @@ import { DocumentOutlineSchema } from "@knowledge/core";
 import { createInitialPageIndexLayeredTreeCheckpoint } from "./page-index-layered-tree-search";
 import {
   RESEARCH_RETRIEVAL_DURABLE_CHECKPOINT_METADATA_KEY,
+  ResearchEvidenceRetrievalCheckpointVersion,
   ResearchRetrievalCheckpointVersion,
   parseResearchRetrievalSearchCheckpoint,
   researchRetrievalDurableCheckpointFromMetadata,
@@ -23,6 +24,56 @@ const TRACE_ID = "40000000-0000-4000-8000-000000000001";
 const PUBLICATION_ID = "50000000-0000-4000-8000-000000000001";
 
 describe("Research retrieval durable search checkpoint", () => {
+  it("round-trips the Research V3 supplemental boundary without a tree frontier", () => {
+    const durable = validateResearchRetrievalDurableCheckpoint({
+      evidenceBundle: evidenceBundle(),
+      searchState: {
+        budget: {
+          elapsedMs: 10,
+          exhaustedReasons: [],
+          modelCalls: 2,
+          openedResources: 0,
+          retrievalSteps: 2,
+          rounds: 0,
+          supplementalSearches: 0,
+        },
+        fingerprint: `projection-set-sha256:${"b".repeat(64)}`,
+        judgement: {
+          coverage: 0.5,
+          coveredDimensions: ["retention"],
+          missingDimensions: ["exception"],
+          sufficient: false,
+          supplementalQuery: "invoice retention exceptions",
+        },
+        knowledgeSpaceId: SPACE_ID,
+        phase: "supplemental",
+        publicationId: PUBLICATION_ID,
+        query: "invoice retention",
+        queryPlan: {
+          evidenceDimensions: ["retention", "exception"],
+          intent: "multi-hop",
+          subqueries: ["invoice retention policy"],
+          useGraph: false,
+        },
+        sequence: 1,
+        tenantId: "tenant-1",
+        traceId: TRACE_ID,
+        version: ResearchEvidenceRetrievalCheckpointVersion,
+      },
+    });
+
+    expect(durable.searchState).toMatchObject({
+      phase: "supplemental",
+      version: ResearchEvidenceRetrievalCheckpointVersion,
+    });
+    expect(
+      researchRetrievalDurableCheckpointFromMetadata({
+        [RESEARCH_RETRIEVAL_DURABLE_CHECKPOINT_METADATA_KEY]:
+          toResearchRetrievalDurableCheckpointPayload(durable),
+      }),
+    ).toEqual(durable);
+  });
+
   it("round-trips a bounded layered frontier, decisions, queue, and budget counters", () => {
     const searchState = checkpoint();
     const durable = validateResearchRetrievalDurableCheckpoint({
@@ -36,6 +87,9 @@ describe("Research retrieval durable search checkpoint", () => {
       sequence: 2,
       version: ResearchRetrievalCheckpointVersion,
     });
+    if (durable.searchState.version !== ResearchRetrievalCheckpointVersion) {
+      throw new Error("expected V2 checkpoint fixture");
+    }
     expect(durable.searchState.navigation[0]?.layeredCheckpoint.frontier).toEqual([
       expect.objectContaining({ nodeId: "chapter" }),
     ]);

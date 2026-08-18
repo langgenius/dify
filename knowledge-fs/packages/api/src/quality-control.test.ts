@@ -408,7 +408,7 @@ function runtimeRetriever(
             score: 0.9,
             sources:
               mode === "research"
-                ? (["dense", "pageindex"] as const)
+                ? (["dense", "fts", "pageindex"] as const)
                 : mode === "deep"
                   ? (["dense", "fts", "graph"] as const)
                   : (["dense", "fts"] as const),
@@ -427,17 +427,19 @@ function runtimeMetrics(mode: "deep" | "fast" | "research"): HybridRetrievalMetr
       denseCandidates: 2,
       denseMs: 2,
       documentOutlineMatchedItems: 1,
-      ftsCandidates: 0,
-      ftsMs: 0,
-      fusedCandidates: 1,
-      fusionMs: 0,
+      ftsCandidates: 2,
+      ftsMs: 1,
+      fusedCandidates: 2,
+      fusionMs: 1,
       pageIndexMatchedNodes: 2,
       pageIndexOpenedRanges: 1,
-      pageIndexScoreVersion: "pageindex-semantic-llm-v1",
+      rerankCandidates: 2,
+      rerankMs: 1,
+      researchStrategyVersion: "research-evidence-v3",
       scoreThresholdFilteredCandidates: 0,
       summaryCandidates: 0,
       summarySelectedSections: 1,
-      totalMs: 5,
+      totalMs: 7,
     };
   }
   return {

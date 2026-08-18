@@ -38,12 +38,13 @@ describe("retrieval planner", () => {
     ).toEqual(
       expect.objectContaining({
         denseTopK: 40,
-        ftsTopK: 0,
-        fusionLimit: 0,
+        ftsTopK: 40,
+        fusionLimit: 20,
         queryLanguage: "mixed-cjk-latin",
         requestedMode: "auto",
-        rerankCandidateLimit: 0,
+        rerankCandidateLimit: 20,
         resolvedMode: "research",
+        strategyVersion: "retrieval-planner-v2",
         topK: 4,
       }),
     );
@@ -67,12 +68,12 @@ describe("retrieval planner", () => {
       {
         attributes: {
           denseTopK: 40,
-          ftsTopK: 0,
-          fusionLimit: 0,
+          ftsTopK: 40,
+          fusionLimit: 20,
           queryLanguage: "mixed-cjk-latin",
           requestedMode: "auto",
           resolvedMode: "research",
-          rerankCandidateLimit: 0,
+          rerankCandidateLimit: 20,
           topK: 4,
           traceId: "trace-auto",
         },
@@ -121,11 +122,12 @@ describe("retrieval planner", () => {
     ).toEqual(
       expect.objectContaining({
         denseTopK: 100,
-        ftsTopK: 0,
-        fusionLimit: 0,
+        ftsTopK: 100,
+        fusionLimit: 100,
         requestedMode: "research",
-        rerankCandidateLimit: 0,
+        rerankCandidateLimit: 100,
         resolvedMode: "research",
+        strategyVersion: "retrieval-planner-v2",
         topK: 30,
       }),
     );

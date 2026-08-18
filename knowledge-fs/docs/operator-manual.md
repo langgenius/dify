@@ -143,13 +143,12 @@ The service has three retrieval pipelines and one optional public router:
 
 - **Fast** runs ordinary dense + FTS hybrid recall, candidate fusion, and the configured final
   rerank.
-- **Research** embeds the query, runs published dense semantic Value Search, selects a bounded
-  document shortlist, reads those outlines in one batch, and asks the frozen reasoning model to
-  choose nodes from each fitting title-and-summary tree in one request per document. Value priors
-  propagate to outline nodes and merge with the LLM choices before bounded immutable ranges are
-  opened. Oversized or weak-summary trees use a bounded flattened fallback; repeated recoverable
-  provider failures use the Value lane. Research does not run FTS, Graph expansion, or the ordinary
-  candidate reranker.
+- **Research** runs Evidence Retrieval V3. Direct factual queries skip model planning; complex
+  queries use one bounded planner call and at most three batch-embedded semantic rewrites. Published
+  dense, FTS, deterministic outline ranges, and (only when requested by the plan) one Graph leg feed
+  weighted reciprocal-rank fusion. The knowledge-space rerank model produces the final comparable
+  relevance score. One reasoning call judges the evidence set as a whole; durable work may execute
+  one focused supplemental retrieval and rerank. No LLM walks documents or outline levels.
 - **Deep** runs ordinary hybrid recall, adds permission-scoped Graph expansion, merges both
   candidate sets, and then runs one unified final rerank.
 - An explicit `mode: "auto"` asks the knowledge space's published `reasoningModel` through the
@@ -186,17 +185,19 @@ Operate with these checks:
 
 Research-specific triage:
 
-- Compare `pageIndexSelectedDocuments`, `pageIndexLayeredDocuments`, `pageIndexLayeredSteps`, and
-  `pageIndexFallbackDocuments` to distinguish document recall, book-like traversal depth, and
-  quality fallback. `pageIndexWholeTreeDocuments` is compatibility-path telemetry, not the
-  production default.
-- Use `pageIndexSerializedTreeTokens`, `pageIndexScannedNodes`, `researchModelCalls`,
-  `researchRounds`, and `researchOpenedResources` when diagnosing latency or cost.
+- Confirm `researchStrategyVersion=research-evidence-v3`, then compare
+  `researchCandidateLists`, `researchRrfCandidates`, `researchOutlineLexicalCandidates`, and the
+  ordinary dense/FTS/Graph candidate counters to locate recall fan-out.
+- Use `researchPlanMs`, `researchEvidenceJudgeMs`, `rerankMs`, `researchModelCalls`,
+  `researchRounds`, and `researchSupplementalSearches` for latency and model-cost attribution.
+  Fresh V3 retrieval is capped at two reasoning calls (planner + judge); simple queries skip the
+  planner, and an empty evidence shortcut also avoids the judge provider call.
+- Durable V3 persists `planned`, `initial`, `supplemental`, and `complete` replay-safe boundaries.
+  A retry resumes after the last completed stage instead of repeating successful planning, recall,
+  rerank, or evidence judgement. V2 tree-frontier telemetry exists only for retained checkpoint
+  replay and should not appear on a fresh request.
 - Inspect `degradationFlags`, `researchBudgetExhaustedReasons`, and
   `researchSufficiencyReached` before treating a partial result as a provider outage.
-- Durable Research writes navigation checkpoints after every successful outline level and
-  evidence-only checkpoints at replay-safe round boundaries. Retrieval resumes from the saved
-  frontier; synthesis reuses the latest authorized evidence checkpoint.
 - The findability evaluator consumes existing human-maintained Golden Questions only. No labels
   means `not-evaluated`; it must not be treated as a failed tree or publication blocker.
 - A failed, sufficiently sampled findability result routes only that exact publication generation

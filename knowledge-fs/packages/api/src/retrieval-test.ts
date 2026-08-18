@@ -14,7 +14,6 @@ import {
   assertObservedEmbeddingDimension,
 } from "./knowledge-space-embedding-resolver";
 import { ModelCapabilitySnapshotSchema } from "./model-capability-preflight";
-import { PageIndexSemanticScoreVersion } from "./page-index-semantic-tree-search";
 import type { PublishedProjectionReadSnapshot } from "./published-projection-read-snapshot";
 import type { RetrievalMetadataFilters } from "./retrieval-candidates";
 import type { RetrievalSource } from "./retrieval-candidates";
@@ -352,15 +351,15 @@ function retrievalTestStages({
   readonly profile: KnowledgeSpaceRetrievalProfile;
   readonly resultCount: number;
 }): RetrievalTestStage[] {
-  const ordinary = mode !== "research";
   const research = mode === "research";
   const deep = mode === "deep";
-  const rerank = ordinary && profile.rerank.enabled;
+  const graph = deep || metrics.graphExpansionCandidates !== undefined;
+  const rerank = profile.rerank.enabled;
   return [
     stage("embedding", true, undefined, embeddingMs),
     stage("dense", true, metrics.denseCandidates, metrics.denseMs),
-    stage("fts", ordinary, metrics.ftsCandidates, metrics.ftsMs),
-    stage("fusion", ordinary, metrics.fusedCandidates, metrics.fusionMs),
+    stage("fts", true, metrics.ftsCandidates, metrics.ftsMs),
+    stage("fusion", true, metrics.fusedCandidates, metrics.fusionMs),
     stage("summary", false, metrics.summaryCandidates),
     stage("outline", research, metrics.documentOutlineMatchedItems),
     stage(
@@ -368,7 +367,7 @@ function retrievalTestStages({
       research,
       metrics.pageIndexMatchedNodes ?? metrics.documentOutlineMatchedItems ?? 0,
     ),
-    stage("graph", deep, metrics.graphExpansionCandidates ?? 0, metrics.graphExpansionMs),
+    stage("graph", graph, metrics.graphExpansionCandidates ?? 0, metrics.graphExpansionMs),
     stage("rerank", rerank, metrics.rerankCandidates ?? 0, metrics.rerankMs),
     {
       ...(metrics.permissionFilteredCandidates === undefined
@@ -475,14 +474,15 @@ function assertRetrievalTestModeEvidence({
 
   if (mode === "research") {
     if (
-      metrics.ftsCandidates !== 0 ||
-      metrics.pageIndexMatchedNodes === undefined ||
-      metrics.pageIndexScoreVersion !== PageIndexSemanticScoreVersion ||
-      metrics.graphExpansionCandidates !== undefined ||
-      metrics.rerankCandidates !== undefined
+      metrics.researchStrategyVersion !== "research-evidence-v3" ||
+      metrics.ftsCandidates === undefined ||
+      metrics.fusedCandidates === undefined ||
+      metrics.rerankCandidates === undefined ||
+      metrics.rerankMs === undefined ||
+      metrics.pageIndexScoreVersion !== undefined
     ) {
       throw new RetrievalTestUnavailableError(
-        "Research retrieval did not use semantic Value Search plus LLM PageIndex tree scoring",
+        "Research retrieval did not satisfy the Evidence V3 recall, fusion, and rerank contract",
       );
     }
     return;

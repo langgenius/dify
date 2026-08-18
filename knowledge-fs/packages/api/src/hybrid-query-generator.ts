@@ -28,12 +28,16 @@ import {
   notifyResearchModelCallBefore,
 } from "./research-model-usage";
 import {
+  ResearchEvidenceRetrievalCheckpointVersion,
+  ResearchRetrievalCheckpointVersion,
   retrievalResultFromResearchCheckpoint,
   validateResearchRetrievalCheckpointScope,
   validateResearchRetrievalDurableCheckpoint,
 } from "./research-retrieval-checkpoint";
 import {
+  DurableResearchEvidenceRetrievalPolicy,
   DurableResearchRetrievalPolicy,
+  InteractiveResearchEvidenceRetrievalPolicy,
   InteractiveResearchRetrievalPolicy,
 } from "./research-retrieval-policy";
 import type { HybridRetrievalItem } from "./retrieval-fusion";
@@ -182,6 +186,7 @@ export function createHybridQueryGenerator({
           ...(queryEmbedding.vectorSpaceId
             ? { denseProjectionModel: queryEmbedding.vectorSpaceId }
             : {}),
+          ...(input.embeddingProfile ? { embeddingProfile: input.embeddingProfile } : {}),
           knowledgeSpaceId: input.knowledgeSpaceId,
           limit: input.topK !== undefined || input.retrievalProfile ? retrievalTopK : limit,
           mode: input.mode,
@@ -237,9 +242,16 @@ export function createHybridQueryGenerator({
           ...(input.mode === "research"
             ? {
                 researchExecutionPolicy:
-                  input.researchExecutionKind === "durable"
-                    ? DurableResearchRetrievalPolicy
-                    : InteractiveResearchRetrievalPolicy,
+                  restoredDurableCheckpoint?.searchState.version ===
+                  ResearchRetrievalCheckpointVersion
+                    ? input.researchExecutionKind === "durable"
+                      ? DurableResearchRetrievalPolicy
+                      : InteractiveResearchRetrievalPolicy
+                    : input.researchExecutionKind === "durable" ||
+                        restoredDurableCheckpoint?.searchState.version ===
+                          ResearchEvidenceRetrievalCheckpointVersion
+                      ? DurableResearchEvidenceRetrievalPolicy
+                      : InteractiveResearchEvidenceRetrievalPolicy,
               }
             : {}),
           ...(restoredDurableCheckpoint

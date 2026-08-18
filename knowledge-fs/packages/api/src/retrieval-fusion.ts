@@ -51,6 +51,127 @@ export interface RetrievalFusionPlanShape {
   readonly fusionLimit: number;
 }
 
+export interface RankedHybridRetrievalList {
+  /** Stable diagnostic label such as query:0, outline, or supplemental. */
+  readonly label: string;
+  readonly items: readonly HybridRetrievalItem[];
+  readonly weight: number;
+}
+
+/**
+ * Fuses already-ranked heterogeneous evidence lists without comparing their raw score domains.
+ *
+ * RRF is used only as a bounded candidate prior. The online Research path always replaces this
+ * score with the configured reranker score before returning evidence to a caller.
+ */
+export function fuseRankedHybridRetrievalLists({
+  k = 60,
+  limit,
+  lists,
+}: {
+  readonly k?: number | undefined;
+  readonly limit: number;
+  readonly lists: readonly RankedHybridRetrievalList[];
+}): HybridRetrievalItem[] {
+  if (!Number.isSafeInteger(k) || k < 1) {
+    throw new Error("Ranked hybrid retrieval RRF k must be at least 1");
+  }
+  if (!Number.isSafeInteger(limit) || limit < 1) {
+    throw new Error("Ranked hybrid retrieval RRF limit must be at least 1");
+  }
+
+  const labels = new Set<string>();
+  let totalWeight = 0;
+  for (const list of lists) {
+    const label = list.label.trim();
+    if (!label || labels.has(label)) {
+      throw new Error("Ranked hybrid retrieval RRF list labels must be non-empty and unique");
+    }
+    if (!Number.isFinite(list.weight) || list.weight <= 0) {
+      throw new Error("Ranked hybrid retrieval RRF weights must be positive and finite");
+    }
+    labels.add(label);
+    totalWeight += list.weight;
+  }
+  if (totalWeight === 0) return [];
+
+  const maximumScore = totalWeight / (k + 1);
+  const aggregates = new Map<
+    string,
+    {
+      citation: RetrievalCitation;
+      metadata: Record<string, unknown>;
+      nodeId: string;
+      permissionScope?: readonly string[] | undefined;
+      projectionIds: Set<string>;
+      ranks: Array<{ readonly label: string; readonly rank: number; readonly weight: number }>;
+      score: number;
+      sources: Set<RetrievalSource>;
+    }
+  >();
+
+  for (const list of lists) {
+    const seen = new Set<string>();
+    for (const [index, item] of list.items.entries()) {
+      if (seen.has(item.nodeId)) continue;
+      seen.add(item.nodeId);
+      const rank = index + 1;
+      const contribution = list.weight / (k + rank);
+      const existing = aggregates.get(item.nodeId);
+      if (existing) {
+        existing.score += contribution;
+        existing.metadata = mergeRetrievalMetadata(existing.metadata, item.metadata);
+        for (const projectionId of item.projectionIds) {
+          existing.projectionIds.add(projectionId);
+        }
+        for (const source of item.sources) {
+          existing.sources.add(source);
+        }
+        existing.ranks.push({ label: list.label.trim(), rank, weight: list.weight });
+        continue;
+      }
+
+      aggregates.set(item.nodeId, {
+        citation: cloneRetrievalCitation(item.citation),
+        metadata: cloneJsonObject(item.metadata),
+        nodeId: item.nodeId,
+        ...(item.permissionScope === undefined
+          ? {}
+          : { permissionScope: [...item.permissionScope] }),
+        projectionIds: new Set(item.projectionIds),
+        ranks: [{ label: list.label.trim(), rank, weight: list.weight }],
+        score: contribution,
+        sources: new Set(item.sources),
+      });
+    }
+  }
+
+  return [...aggregates.values()]
+    .map(
+      (item): HybridRetrievalItem => ({
+        citation: cloneRetrievalCitation(item.citation),
+        metadata: {
+          ...cloneJsonObject(item.metadata),
+          researchRrf: {
+            ranks: item.ranks.map((rank) => ({ ...rank })),
+            version: "weighted-rrf-v1",
+          },
+        },
+        nodeId: item.nodeId,
+        ...(item.permissionScope === undefined
+          ? {}
+          : { permissionScope: [...item.permissionScope] }),
+        projectionIds: [...item.projectionIds],
+        score: Math.min(1, Math.max(0, item.score / maximumScore)),
+        sources: [...item.sources],
+      }),
+    )
+    .sort(
+      (first, second) => second.score - first.score || first.nodeId.localeCompare(second.nodeId),
+    )
+    .slice(0, limit);
+}
+
 export function fuseRetrievalCandidates({
   dense,
   fts,

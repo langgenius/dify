@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { RetrievalCandidate } from "./retrieval-candidates";
 import {
   type RetrievalFusionRuntime,
+  fuseRankedHybridRetrievalLists,
   fuseRetrievalCandidates,
   fuseRetrievalCandidatesWithRuntime,
 } from "./retrieval-fusion";
@@ -32,6 +33,42 @@ function candidate(
 }
 
 describe("retrieval fusion", () => {
+  it("rank-fuses heterogeneous Research lists without comparing their raw scores", () => {
+    const first = fuseRetrievalCandidates({
+      dense: [
+        candidate("node-a", "dense", "dense-a", -100),
+        candidate("node-b", "dense", "dense-b", -200),
+      ],
+      fts: [],
+      limit: 2,
+    });
+    const second = fuseRetrievalCandidates({
+      dense: [],
+      fts: [
+        candidate("node-b", "fts", "fts-b", 1_000_000),
+        candidate("node-c", "fts", "fts-c", 999_999),
+      ],
+      limit: 2,
+    });
+
+    const fused = fuseRankedHybridRetrievalLists({
+      k: 60,
+      limit: 3,
+      lists: [
+        { items: first, label: "semantic", weight: 1 },
+        { items: second, label: "lexical", weight: 1 },
+      ],
+    });
+
+    expect(fused.map((item) => item.nodeId)).toEqual(["node-b", "node-a", "node-c"]);
+    expect(fused[0]).toMatchObject({
+      projectionIds: ["dense-b", "fts-b"],
+      sources: ["dense", "fts"],
+    });
+    expect(fused[0]?.metadata.researchRrf).toMatchObject({ version: "weighted-rrf-v1" });
+    expect(fused.every((item) => item.score >= 0 && item.score <= 1)).toBe(true);
+  });
+
   it("normalizes each leg before deterministic score fusion and preserves clone isolation", () => {
     const denseA = candidate("018f0d60-7a49-7cc2-9c1b-5b36f18f2d01", "dense", "dense-a", 0.9);
     const denseB = candidate("018f0d60-7a49-7cc2-9c1b-5b36f18f2d02", "dense", "dense-b", 0.7);

@@ -240,7 +240,7 @@ describe("research task gateway integration", () => {
         knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
         limits: {
           maxRetrievalSteps: 10,
-          maxScannedResources: 200,
+          maxScannedResources: 400,
           maxToolCalls: 22,
           timeoutMs: 30_000,
         },
@@ -255,7 +255,7 @@ describe("research task gateway integration", () => {
     await expect(accepted.json()).resolves.toMatchObject({
       limits: {
         maxRetrievalSteps: 10,
-        maxScannedResources: 200,
+        maxScannedResources: 400,
         maxToolCalls: 22,
         timeoutMs: 30_000,
       },

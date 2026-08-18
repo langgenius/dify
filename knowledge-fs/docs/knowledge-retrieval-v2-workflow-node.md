@@ -13,7 +13,7 @@
 - Query 必须引用上游字符串变量，最长 16,000 个 Unicode 字符。
 - 可选 1–10 个 KnowledgeFS Space，实际执行最多 4 路并发。
 - Mode 留空时，每个 Space 分别使用自己已发布 Profile 的默认模式；也可固定为
-  `fast`、`deep` 或 `research`。`research` 可能启用 PageIndex 推理，延迟和模型成本更高。
+  `fast`、`deep` 或 `research`。`research` 使用 Evidence V3：直接问题只做一次证据集判断，复杂问题最多增加一次计划调用；不会再按文档/目录层级重复调用模型。
 - Top N 是多 Space 合并后的输出上限，范围 1–100。每个 Space 内的 Top K、阈值和
   rerank 仍由该 Space 已发布的 Retrieval Profile 管理。
 - Manual filters 只接受 KnowledgeFS 固定字段：创建时间、文档类型、实体、新鲜度、

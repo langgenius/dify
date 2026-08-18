@@ -419,8 +419,9 @@ Fast never performs image-to-text expansion. With query-image visual retrieval e
 Deep embed every image with multimodal `inputType: "query"`, search each image independently, and
 combine the equal-weight result lists. Deep additionally performs at most one bounded vision
 expansion so text dense, FTS, and rerank can participate. Research requires that expansion for a
-pure-image request, then performs document selection and bounded PageIndex navigation one outline
-level at a time before its final LLM synthesis. Text-only behavior is unchanged.
+pure-image request, then runs the same bounded Evidence V3 recall, RRF, deterministic outline
+expansion, profile rerank, and evidence-set judgement used by text queries. Text-only behavior is
+unchanged.
 
 `auto` is a public **routing selector**, not a fourth retrieval pipeline. Only an explicit
 `mode: "auto"` invokes the knowledge space's published `reasoningModel` through Dify's model
@@ -429,10 +430,10 @@ select exactly one concrete pipeline. Omitting `mode` does not invoke the router
 published `defaultMode`. Explicit `fast`, `research`, and `deep` requests also bypass routing.
 
 The model is instructed to select the least expensive sufficient pipeline: **Fast** for ordinary
-dense + FTS hybrid recall, fusion, and final rerank; **Research** for published semantic Value
-Search, bounded document selection, and book-like PageIndex navigation one outline level at a time,
-without FTS, Graph, or the ordinary reranker; and **Deep** for ordinary hybrid recall plus Graph expansion, followed by
-one unified final rerank. Selection is not implemented by hard-coded CJK/language, query-length,
+dense + FTS hybrid recall, fusion, and final rerank; **Research** for multi-query published
+dense/FTS recall, deterministic outline expansion, optional relationship Graph recall, weighted
+RRF, profile rerank, and one evidence-set sufficiency judgement; and **Deep** for ordinary hybrid
+recall plus Graph expansion, followed by one unified final rerank. Selection is not implemented by hard-coded CJK/language, query-length,
 word-count, or keyword rules. A timeout, provider failure, invalid response, or model-identity
 mismatch in the Auto router safely degrades to the published `defaultMode` and is recorded in the
 trace; it never falls back to the removed heuristic. A frozen-model identity mismatch inside the
@@ -533,16 +534,13 @@ and `totalMs`. Mode-specific fields are:
 
 - **Fast**: ordinary dense + FTS hybrid recall and candidate fusion, followed by the single final
   rerank pass when reranking is enabled by the published profile.
-- **Research**: dense candidate count/latency for semantic Value Search plus PageIndex fields such
-  as selected/layered/compatibility/fallback document counts, layered steps, serialized prompt-token
-  estimate, matched/scanned nodes, opened ranges, candidate truncation, rounds, continuation
-  searches, model calls, opened resources, retrieval steps, sufficiency, degradation, and
-  budget-exhaustion reasons. FTS,
-  ordinary fusion/rerank, and Graph expansion remain disabled. When the LLM selects a node, its
-  strict `[0,1]` relevance score is authoritative; Value priors schedule and supplement nodes and
-  are not presented as a separate user score. Recoverable selection failures can degrade to the
-  bounded Value lane, while permission, tenant, publication-snapshot, checkpoint-scope, and frozen
-  model-identity failures remain terminal.
+- **Research**: ordinary dense/FTS metrics plus `researchStrategyVersion`, candidate-list and RRF
+  counts, deterministic outline lexical/matched/opened counters, optional Graph counters,
+  `researchPlanMs`, `researchEvidenceJudgeMs`, model calls, rounds, supplemental searches,
+  sufficiency, degradation, and budget exhaustion. The configured reranker score in `[0,1]` is the
+  authoritative item score; RRF/channel ranks remain diagnostics. Fresh requests never invoke the
+  V2 per-document PageIndex LLM scorer. Retained V2 checkpoints may still expose legacy layered-tree
+  fields until they complete or expire.
 - **Deep**: ordinary hybrid fields plus `graphExpansionSeeds`, traversed entities, relations,
   candidates, latency, and timeout state, followed by the single final rerank pass when reranking
   is enabled by the published profile.

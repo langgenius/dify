@@ -863,6 +863,76 @@ describe("research task production runtime", () => {
     });
   });
 
+  it("serializes concurrent model accounting against the latest durable row version", async () => {
+    const frozenRuntime = publishedRuntimeSnapshot(SPACE_ID);
+    const repository = new MemoryDurableRepository({
+      ...baseJob(),
+      budgetUsd: 1,
+      cost: { budgetUsd: 1, entries: [], totalUsd: 0 },
+      metadata: {
+        [RESEARCH_TASK_RUNTIME_SNAPSHOT_METADATA_KEY]:
+          toResearchTaskRuntimeSnapshotPayload(frozenRuntime),
+      },
+      mode: "research",
+    });
+    const runtime = createResearchTaskRuntime({
+      ...runtimeOptions(repository),
+      generator: {
+        stream: async function* (input) {
+          const calls = ["document-a", "document-b"].map((document) => ({
+            callId: `outline:${document}:depth:1`,
+            estimatedPromptTokens: 100,
+            maxOutputTokens: 20,
+            model: "reason-v5",
+            provider: "provider-a",
+            step: "pageindex.layer" as const,
+          }));
+          await Promise.all(calls.map((call) => input.researchModelCallObserver?.before(call)));
+          await Promise.all(
+            calls.map((call, index) =>
+              input.researchModelCallObserver?.after({
+                ...call,
+                metadata: {
+                  usage: {
+                    completionTokens: 5 + index,
+                    promptTokens: 10 + index,
+                    totalTokens: 15 + index * 2,
+                  },
+                },
+                status: "succeeded",
+              }),
+            ),
+          );
+          yield traceStep("query.retrieve", { itemCount: 0 });
+          yield {
+            finishReason: "no-retrieval-evidence",
+            metadata: {
+              evidenceBundle: { ...evidenceBundle(), traceId: JOB_ID },
+            },
+            type: "done" as const,
+          };
+        },
+      },
+    });
+
+    await expect(runtime.tick()).resolves.toMatchObject({
+      retryScheduled: 0,
+      succeeded: 1,
+    });
+    expect(repository.job.cost.entries).toHaveLength(2);
+    expect(repository.job.cost.entries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ usage: expect.objectContaining({ status: "succeeded" }) }),
+        expect.objectContaining({ usage: expect.objectContaining({ status: "succeeded" }) }),
+      ]),
+    );
+    expect(repository.job.cost.entries).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ usage: expect.objectContaining({ reserved: true }) }),
+      ]),
+    );
+  });
+
   it("cancels before invoking a model when its conservative reservation exceeds budget", async () => {
     const frozenRuntime = publishedRuntimeSnapshot(SPACE_ID);
     const repository = new MemoryDurableRepository({
@@ -1308,7 +1378,7 @@ describe("research task production runtime", () => {
     },
     {
       configure(repository: MemoryDurableRepository) {
-        vi.spyOn(repository, "releaseExecutionForRetry").mockResolvedValueOnce(null);
+        vi.spyOn(repository, "releaseExecutionForRetry").mockResolvedValue(null);
       },
       expected: { deferred: 1, retryScheduled: 0 },
       name: "a lost retry fence",
@@ -1332,6 +1402,31 @@ describe("research task production runtime", () => {
     await expect(runtime.tick()).resolves.toMatchObject({
       leased: 1,
       ...scenario.expected,
+    });
+  });
+
+  it("reconciles the latest owned fence once before releasing a failed execution", async () => {
+    const repository = new MemoryDurableRepository(baseJob());
+    const release = vi.spyOn(repository, "releaseExecutionForRetry").mockResolvedValueOnce(null);
+    const runtime = createResearchTaskRuntime({
+      ...runtimeOptions(repository),
+      generator: {
+        stream: async function* () {
+          yield traceStep("query.retrieve");
+          throw new Error("transient");
+        },
+      },
+      now: () => 1_000,
+    });
+
+    await expect(runtime.tick()).resolves.toMatchObject({
+      deferred: 0,
+      retryScheduled: 1,
+    });
+    expect(release).toHaveBeenCalledTimes(2);
+    expect(repository.job).toMatchObject({
+      error: "transient",
+      stage: "analyzing",
     });
   });
 

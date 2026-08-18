@@ -32,9 +32,9 @@ export interface FinalRerankRetrievalOptions {
 }
 
 /**
- * Applies one final rerank after every mode-specific retrieval extension has
- * composed its candidates. Fast and deep use reranking; research intentionally
- * returns its PageIndex/outline result without reranking.
+ * Applies the outer final rerank after Fast/Deep mode extensions. Research bypasses this wrapper:
+ * Evidence V3 owns its RRF candidate window and profile rerank internally, while retained V2
+ * checkpoints preserve their historical PageIndex score domain.
  */
 export function createFinalRerankRetrieval({
   maxRerankCandidates = 200,
@@ -59,8 +59,8 @@ export function createFinalRerankRetrieval({
 
   return {
     retrieve: async (input) => {
-      // The explicit research contract never reranks. Avoid widening its
-      // structural retrieval merely to discover the same decision later.
+      // Research owns final scoring inside its versioned orchestrator. Do not rerank a second time
+      // at this generic outer boundary.
       if (input.mode === "research") {
         if (input.retrievalProfile) {
           assertKnowledgeSpaceRetrievalProfileForMode(input.retrievalProfile, "research");
@@ -80,7 +80,7 @@ export function createFinalRerankRetrieval({
       }
 
       // Resolve a knowledge-space provider only after the plan has confirmed
-      // that this request will rerank. Research never reaches this boundary;
+      // that this request will rerank. Research never reaches this outer boundary;
       // Fast/Deep profiles fail closed when their mandatory reranker is absent.
       const runtime = resolveFinalRerankRuntime({
         input,
@@ -145,7 +145,7 @@ export function createFinalRerankRetrieval({
   };
 }
 
-function resolveFinalRerankRuntime({
+export function resolveFinalRerankRuntime({
   input,
   reranker,
   rerankerFactory,

@@ -18,7 +18,7 @@ const subject = {
 };
 
 describe("TiDB FTS HTTP query preflight", () => {
-  it("returns stable JSON 503 before SSE/session generation for Fast/Deep and bypasses Research", async () => {
+  it("returns stable JSON 503 before SSE/session generation for every FTS-backed mode", async () => {
     const spaces = createInMemoryKnowledgeSpaceRepository({
       generateId: () => "10000000-0000-4000-8000-000000000001",
       maxListLimit: 10,
@@ -53,7 +53,7 @@ describe("TiDB FTS HTTP query preflight", () => {
       },
     });
 
-    for (const mode of ["fast", "deep"] as const) {
+    for (const mode of ["fast", "deep", "research"] as const) {
       const response = await app.request("/queries", {
         body: JSON.stringify({ knowledgeSpaceId: space.id, mode, query: "What changed?" }),
         headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
@@ -64,26 +64,11 @@ describe("TiDB FTS HTTP query preflight", () => {
       expect(response.headers.get("content-type")).not.toContain("text/event-stream");
       await expect(response.json()).resolves.toEqual({
         code: "TIDB_FTS_POSTINGS_NOT_READY",
-        error: "TiDB lexical postings are not ready for Fast or Deep retrieval",
+        error: "TiDB lexical postings are not ready for Fast, Deep, or Research retrieval",
         runState: "running",
       });
     }
-    expect(readinessCalls).toBe(2);
+    expect(readinessCalls).toBe(3);
     expect(generatorCalls).toBe(0);
-
-    const research = await app.request("/queries", {
-      body: JSON.stringify({
-        knowledgeSpaceId: space.id,
-        mode: "research",
-        query: "Open the outline",
-      }),
-      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-      method: "POST",
-    });
-    expect(research.status).toBe(200);
-    expect(research.headers.get("content-type")).toContain("text/event-stream");
-    await expect(research.text()).resolves.toContain("research answer");
-    expect(readinessCalls).toBe(2);
-    expect(generatorCalls).toBe(1);
   });
 });

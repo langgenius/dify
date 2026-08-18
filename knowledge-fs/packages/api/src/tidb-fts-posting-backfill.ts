@@ -139,7 +139,7 @@ export class TidbFtsPostingBackfillNotReadyError extends Error {
     super(
       runState === "failed"
         ? "TiDB lexical postings failed historical repair; retry the knowledge-space backfill"
-        : "TiDB lexical postings are not ready for Fast or Deep retrieval",
+        : "TiDB lexical postings are not ready for Fast, Deep, or Research retrieval",
     );
     this.name = "TidbFtsPostingBackfillNotReadyError";
     this.runState = runState;

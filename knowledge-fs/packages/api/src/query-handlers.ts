@@ -342,7 +342,7 @@ export function registerQueryHandlers({
       return context.json({ error: "Query generation unavailable" }, 503);
     }
 
-    if (tidbFtsPostingReadiness && resolvedMode !== "research" && query) {
+    if (tidbFtsPostingReadiness && query) {
       try {
         await tidbFtsPostingReadiness.assertReady({
           knowledgeSpaceId: space.id,

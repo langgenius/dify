@@ -23,7 +23,7 @@ const KNOWLEDGE_SPACE_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42";
  * The bug: `createBasicHybridRetriever` was wired without a `planner`, so every
  * request fell back to `defaultRetrievalPlan` ("fast"), making fast/deep/research
  * identical. With the planner threaded in, Deep expands dense recall while Research
- * reserves a wider dense fanout for semantic Value Search and skips FTS/fusion.
+ * reserves a wider candidate pool for Evidence V3 fusion.
  */
 async function maxDenseTopKForMode(mode: "deep" | "fast" | "research"): Promise<number> {
   const denseTopKs: number[] = [];
@@ -134,7 +134,7 @@ describe("createApiRetriever embedding capability", () => {
 });
 
 describe("createApiRetriever TiDB FTS readiness defense", () => {
-  it("gates Fast/Deep before hybrid legs and keeps Research independent", async () => {
+  it("gates every lexical retrieval mode before hybrid legs", async () => {
     const assertReady = vi.fn(async () => {
       throw new Error("posting repair pending");
     });
@@ -155,19 +155,14 @@ describe("createApiRetriever TiDB FTS readiness defense", () => {
       topK: 10,
     } as const;
 
-    for (const mode of ["fast", "deep"] as const) {
+    for (const mode of ["fast", "deep", "research"] as const) {
       await expect(retriever.retrieve({ ...input, mode })).rejects.toThrow(
         "posting repair pending",
       );
     }
-    expect(assertReady).toHaveBeenCalledTimes(2);
+    expect(assertReady).toHaveBeenCalledTimes(3);
     expect(searchDense).not.toHaveBeenCalled();
     expect(searchFts).not.toHaveBeenCalled();
-
-    await expect(retriever.retrieve({ ...input, mode: "research" })).resolves.toMatchObject({
-      items: [],
-    });
-    expect(assertReady).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -925,7 +920,7 @@ describe("createApiRetriever PageIndex outline wiring", () => {
     expect(outlineLookups).toHaveLength(1);
   });
 
-  it("uses published semantic Value Search plus LLM PageIndex scoring without FTS, Graph, or reranking", async () => {
+  it("keeps published PageIndex V2 behavior when the Evidence V3 capability is absent", async () => {
     const denseCandidate = {
       ...candidateWithGraphSeed(),
       metadata: { text: "Published camera warranty evidence" },
@@ -1020,6 +1015,121 @@ describe("createApiRetriever PageIndex outline wiring", () => {
       score: 0.96,
       sources: ["pageindex", "dense"],
     });
+  });
+
+  it("wires fresh Research through FTS, deterministic outlines, one judge, and profile rerank", async () => {
+    const dense = vi.fn(async () => [
+      {
+        ...candidateWithGraphSeed(),
+        metadata: { text: "Published camera warranty evidence" },
+      },
+    ]);
+    const fts = vi.fn(async () => [
+      {
+        ...candidateWithGraphSeed(),
+        metadata: { text: "Warranty terms from full-text search" },
+        score: 0.8,
+        source: "fts" as const,
+      },
+    ]);
+    const legacyScore = vi.fn();
+    const judge = vi.fn(async () => ({
+      coverage: 1,
+      coveredDimensions: ["warranty"],
+      missingDimensions: [],
+      sufficient: true,
+    }));
+    const rerankCalls: string[][] = [];
+    const selectedReranker = preferredReranker(candidateWithGraphSeed().nodeId, rerankCalls);
+    const providerFactory = vi.fn(() => selectedReranker);
+    const retriever = createApiRetriever({
+      embeddingEnabled: true,
+      pageIndex: publishedPageIndexFixture(),
+      pageIndexSemanticTreeSearch: { score: legacyScore },
+      pageIndexWholeTreeSelector: wholeTreeSelectorStub(0.9, "legacy selector"),
+      planner: createRetrievalPlanner({ maxTopK: 100 }),
+      repository: {
+        publishedMembershipEnforced: true,
+        searchDense: dense,
+        searchFts: fts,
+      },
+      researchEvidence: {
+        queryVectorizer: { vectorize: vi.fn() },
+        reasoning: {
+          judge,
+          plan: vi.fn(async () => ({
+            evidenceDimensions: ["warranty"],
+            intent: "direct" as const,
+            modelCalled: false,
+            subqueries: [],
+            useGraph: false,
+          })),
+        },
+      },
+      rerankerOptions: {
+        legacyDefaultConfigured: false,
+        model: "unused-default",
+        provider: selectedReranker,
+        providerFactory,
+      },
+    });
+
+    const vectorSpaceId = `embedding-space-sha256:${"a".repeat(64)}`;
+    const result = await retriever.retrieve({
+      denseProjectionModel: vectorSpaceId,
+      embeddingProfile: {
+        dimension: 3,
+        model: "embedding-model",
+        pluginId: "vendor/embedding",
+        provider: "vendor",
+        revision: 1,
+        vectorSpaceId,
+      },
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      limit: 5,
+      mode: "research",
+      permissionScope: [],
+      projectionSnapshot: {
+        fingerprint: `projection-set-sha256:${"b".repeat(64)}`,
+        headRevision: 2,
+        knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+        projectionVersion: 1,
+        publicationId: "publication-1",
+        tenantId: "tenant-1",
+      },
+      query: "camera warranty",
+      queryVector: [0.1, 0.2, 0.3],
+      retrievalProfile: retrievalProfile({
+        rerank: {
+          enabled: true,
+          model: {
+            model: "space-reranker",
+            pluginId: "vendor/reranker",
+            provider: "vendor",
+          },
+        },
+        scoreThreshold: { enabled: false, stage: "rerank" },
+      }),
+      tenantId: "tenant-1",
+      topK: 5,
+      traceId: "trace-v3",
+    });
+
+    expect(dense).toHaveBeenCalled();
+    expect(fts).toHaveBeenCalled();
+    expect(legacyScore).not.toHaveBeenCalled();
+    expect(judge).toHaveBeenCalledOnce();
+    expect(providerFactory).toHaveBeenCalledWith({
+      model: "space-reranker",
+      pluginId: "vendor/reranker",
+      provider: "vendor",
+    });
+    expect(rerankCalls).toHaveLength(1);
+    expect(result.metrics).toMatchObject({
+      researchStrategyVersion: "research-evidence-v3",
+      researchSupplementalSearches: 0,
+    });
+    expect(result.items[0]?.metadata.rerankScore).toBeDefined();
   });
 });
 

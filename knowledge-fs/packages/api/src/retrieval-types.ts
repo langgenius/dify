@@ -1,8 +1,11 @@
-import type { KnowledgeSpaceRetrievalProfile } from "@knowledge/core";
+import type {
+  KnowledgeSpaceEmbeddingProfile,
+  KnowledgeSpaceRetrievalProfile,
+} from "@knowledge/core";
 import type { PublishedProjectionReadSnapshot } from "./published-projection-read-snapshot";
 import type { ResolvedQueryImage } from "./query-images";
 import type { ResearchModelCallObserver } from "./research-model-usage";
-import type { ResearchRetrievalSearchCheckpoint } from "./research-retrieval-checkpoint";
+import type { AnyResearchRetrievalSearchCheckpoint } from "./research-retrieval-checkpoint";
 import type { ResearchRetrievalExecutionPolicy } from "./research-retrieval-policy";
 import type { SearchDenseInput } from "./retrieval-candidates";
 import type { HybridRetrievalItem } from "./retrieval-fusion";
@@ -21,7 +24,7 @@ export interface ResearchRetrievalRoundCheckpoint {
 }
 
 export interface ResearchRetrievalSearchCheckpointBoundary {
-  readonly checkpoint: ResearchRetrievalSearchCheckpoint;
+  readonly checkpoint: AnyResearchRetrievalSearchCheckpoint;
   readonly result: HybridRetrievalResult;
 }
 
@@ -62,6 +65,12 @@ export interface HybridRetrievalMetrics {
   readonly researchRetrievalSteps?: number | undefined;
   readonly researchSufficiencyReached?: boolean | undefined;
   readonly researchSupplementalSearches?: number | undefined;
+  readonly researchCandidateLists?: number | undefined;
+  readonly researchEvidenceJudgeMs?: number | undefined;
+  readonly researchOutlineLexicalCandidates?: number | undefined;
+  readonly researchPlanMs?: number | undefined;
+  readonly researchRrfCandidates?: number | undefined;
+  readonly researchStrategyVersion?: "research-evidence-v3" | undefined;
   readonly graphExpansionCandidates?: number | undefined;
   readonly graphExpansionMs?: number | undefined;
   readonly graphExpansionTimedOut?: boolean | undefined;
@@ -89,11 +98,13 @@ export interface RetrievalPlan {
   readonly requestedMode: RetrievalMode;
   readonly rerankCandidateLimit: number;
   readonly resolvedMode: ResolvedRetrievalMode;
-  readonly strategyVersion: "retrieval-planner-v1";
+  readonly strategyVersion: "retrieval-planner-v1" | "retrieval-planner-v2";
   readonly topK: number;
 }
 
 export interface RetrieveHybridInput extends SearchDenseInput {
+  /** Frozen embedding identity used for Research supplemental-query embeddings. */
+  readonly embeddingProfile?: KnowledgeSpaceEmbeddingProfile | undefined;
   readonly limit: number;
   /** Retrieval execution accepts only a mode already resolved at the request boundary. */
   readonly mode?: ResolvedRetrievalMode | undefined;
@@ -108,6 +119,8 @@ export interface RetrieveHybridInput extends SearchDenseInput {
   readonly requestedMode?: RetrievalMode | undefined;
   /** Internal execution envelope. Public interactive requests omit it and use the safe default. */
   readonly researchExecutionPolicy?: ResearchRetrievalExecutionPolicy | undefined;
+  /** Internal Research V3 routing decision; false suppresses the graph leg for direct queries. */
+  readonly researchGraphEnabled?: boolean | undefined;
   readonly researchModelCallObserver?: ResearchModelCallObserver | undefined;
   /** Durable-only replay boundary. Implementations call it after each safely opened evidence round. */
   readonly onResearchRound?:
@@ -118,7 +131,7 @@ export interface RetrieveHybridInput extends SearchDenseInput {
     | ((checkpoint: ResearchRetrievalSearchCheckpointBoundary) => Promise<void>)
     | undefined;
   /** Durable search state restored after a failed execution attempt. */
-  readonly researchSearchCheckpoint?: ResearchRetrievalSearchCheckpoint | undefined;
+  readonly researchSearchCheckpoint?: AnyResearchRetrievalSearchCheckpoint | undefined;
   /** Evidence items paired with `researchSearchCheckpoint` at the same durable boundary. */
   readonly researchSearchCheckpointResult?: HybridRetrievalResult | undefined;
   readonly retrievalProfile?: KnowledgeSpaceRetrievalProfile | undefined;

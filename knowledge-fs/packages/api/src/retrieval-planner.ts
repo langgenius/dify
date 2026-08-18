@@ -137,14 +137,9 @@ function buildRetrievalPlan({
   readonly topK: number;
 }): RetrievalPlan {
   const multipliers = retrievalModeMultipliers(resolvedMode);
-  const semanticTreeSearch = resolvedMode === "research";
   const denseTopK = boundedRetrievalFanout(topK, multipliers.recall, maxTopK);
-  const ftsTopK = semanticTreeSearch
-    ? 0
-    : boundedRetrievalFanout(topK, multipliers.recall, maxTopK);
-  const fusionLimit = semanticTreeSearch
-    ? 0
-    : boundedRetrievalFanout(topK, multipliers.fusion, maxTopK);
+  const ftsTopK = boundedRetrievalFanout(topK, multipliers.recall, maxTopK);
+  const fusionLimit = boundedRetrievalFanout(topK, multipliers.fusion, maxTopK);
 
   return {
     denseTopK,
@@ -152,11 +147,11 @@ function buildRetrievalPlan({
     fusionLimit,
     queryLanguage,
     requestedMode,
-    // Fast and deep both finish with a single rerank pass. Research uses dense
-    // semantic Value Search followed by profile-scoped LLM tree scoring.
-    rerankCandidateLimit: semanticTreeSearch ? 0 : fusionLimit,
+    // Every online mode ends in the same profile-scoped reranker score domain.
+    // Research widens recall first, then reranks the RRF candidate set once.
+    rerankCandidateLimit: fusionLimit,
     resolvedMode,
-    strategyVersion: "retrieval-planner-v1",
+    strategyVersion: resolvedMode === "research" ? "retrieval-planner-v2" : "retrieval-planner-v1",
     topK,
   };
 }

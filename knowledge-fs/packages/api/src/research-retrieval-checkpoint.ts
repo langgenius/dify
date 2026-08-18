@@ -13,6 +13,8 @@ import type { HybridRetrievalResult } from "./retrieval-types";
 const retrievalSources = new Set<RetrievalSource>(["dense", "fts", "pageindex", "visual"]);
 
 export const ResearchRetrievalCheckpointVersion = "research-retrieval-checkpoint-v2" as const;
+export const ResearchEvidenceRetrievalCheckpointVersion =
+  "research-evidence-retrieval-checkpoint-v3" as const;
 export const RESEARCH_RETRIEVAL_DURABLE_CHECKPOINT_METADATA_KEY =
   "__knowledgeFsResearchRetrievalCheckpointV2" as const;
 
@@ -65,9 +67,39 @@ export interface ResearchRetrievalSearchCheckpoint {
   readonly version: typeof ResearchRetrievalCheckpointVersion;
 }
 
+export interface ResearchEvidenceRetrievalSearchCheckpoint {
+  readonly budget: ResearchRetrievalBudgetSnapshot;
+  readonly fingerprint: string;
+  readonly judgement?: {
+    readonly coverage: number;
+    readonly coveredDimensions: readonly string[];
+    readonly missingDimensions: readonly string[];
+    readonly sufficient: boolean;
+    readonly supplementalQuery?: string | undefined;
+  };
+  readonly knowledgeSpaceId: string;
+  readonly phase: "complete" | "initial" | "planned" | "supplemental";
+  readonly publicationId: string;
+  readonly query: string;
+  readonly queryPlan: {
+    readonly evidenceDimensions: readonly string[];
+    readonly intent: "comparison" | "direct" | "multi-hop" | "overview";
+    readonly subqueries: readonly string[];
+    readonly useGraph: boolean;
+  };
+  readonly sequence: number;
+  readonly tenantId: string;
+  readonly traceId: string;
+  readonly version: typeof ResearchEvidenceRetrievalCheckpointVersion;
+}
+
+export type AnyResearchRetrievalSearchCheckpoint =
+  | ResearchEvidenceRetrievalSearchCheckpoint
+  | ResearchRetrievalSearchCheckpoint;
+
 export interface ResearchRetrievalDurableCheckpoint {
   readonly evidenceBundle: EvidenceBundle;
-  readonly searchState: ResearchRetrievalSearchCheckpoint;
+  readonly searchState: AnyResearchRetrievalSearchCheckpoint;
 }
 
 const durableCheckpointEnvelopeSchema = z
@@ -173,6 +205,51 @@ const searchCheckpointBaseSchema = z
   })
   .strict();
 
+const evidenceSearchCheckpointSchema = z
+  .object({
+    budget: budgetSchema,
+    fingerprint: z.string().min(1).max(512),
+    judgement: z
+      .object({
+        coverage: z.number().min(0).max(1),
+        coveredDimensions: z.array(z.string().trim().min(1).max(120)).max(12),
+        missingDimensions: z.array(z.string().trim().min(1).max(120)).max(12),
+        sufficient: z.boolean(),
+        supplementalQuery: z.string().trim().min(1).max(500).optional(),
+      })
+      .strict()
+      .optional(),
+    knowledgeSpaceId: z.string().min(1).max(512),
+    phase: z.enum(["complete", "initial", "planned", "supplemental"]),
+    publicationId: z.string().min(1).max(512),
+    query: z.string().trim().min(1).max(16_384),
+    queryPlan: z
+      .object({
+        evidenceDimensions: z.array(z.string().trim().min(1).max(120)).max(6),
+        intent: z.enum(["comparison", "direct", "multi-hop", "overview"]),
+        subqueries: z.array(z.string().trim().min(1).max(500)).max(3),
+        useGraph: z.boolean(),
+      })
+      .strict(),
+    sequence: z.number().int().nonnegative(),
+    tenantId: z.string().min(1).max(512),
+    traceId: z.string().min(1).max(512),
+    version: z.literal(ResearchEvidenceRetrievalCheckpointVersion),
+  })
+  .strict()
+  .superRefine((checkpoint, context) => {
+    if (
+      (checkpoint.phase === "complete" || checkpoint.phase === "supplemental") &&
+      checkpoint.judgement === undefined
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Research Evidence V3 ${checkpoint.phase} checkpoint requires judgement`,
+        path: ["judgement"],
+      });
+    }
+  });
+
 export function parseResearchRetrievalSearchCheckpoint(
   value: unknown,
 ): ResearchRetrievalSearchCheckpoint {
@@ -207,12 +284,29 @@ export function parseResearchRetrievalSearchCheckpoint(
   return { ...parsed.data, navigation };
 }
 
+export function parseAnyResearchRetrievalSearchCheckpoint(
+  value: unknown,
+): AnyResearchRetrievalSearchCheckpoint {
+  if (
+    value &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    (value as Readonly<Record<string, unknown>>).version ===
+      ResearchEvidenceRetrievalCheckpointVersion
+  ) {
+    const parsed = evidenceSearchCheckpointSchema.parse(value);
+    const { judgement, ...checkpoint } = parsed;
+    return judgement === undefined ? checkpoint : { ...checkpoint, judgement };
+  }
+  return parseResearchRetrievalSearchCheckpoint(value);
+}
+
 export function validateResearchRetrievalDurableCheckpoint(
   value: unknown,
 ): ResearchRetrievalDurableCheckpoint {
   const envelope = durableCheckpointEnvelopeSchema.parse(value);
   const evidenceBundle = EvidenceBundleSchema.parse(envelope.evidenceBundle);
-  const searchState = parseResearchRetrievalSearchCheckpoint(envelope.searchState);
+  const searchState = parseAnyResearchRetrievalSearchCheckpoint(envelope.searchState);
   if (
     evidenceBundle.query !== searchState.query ||
     (evidenceBundle.traceId !== undefined && evidenceBundle.traceId !== searchState.traceId)
@@ -246,7 +340,7 @@ export function validateResearchRetrievalSearchCheckpointScope({
   tenantId,
   traceId,
 }: {
-  readonly checkpoint: ResearchRetrievalSearchCheckpoint;
+  readonly checkpoint: unknown;
   readonly fingerprint: string;
   readonly knowledgeSpaceId: string;
   readonly publicationId: string;
@@ -255,6 +349,37 @@ export function validateResearchRetrievalSearchCheckpointScope({
   readonly traceId: string;
 }): ResearchRetrievalSearchCheckpoint {
   const parsed = parseResearchRetrievalSearchCheckpoint(checkpoint);
+  if (
+    parsed.fingerprint !== fingerprint ||
+    parsed.knowledgeSpaceId !== knowledgeSpaceId ||
+    parsed.publicationId !== publicationId ||
+    parsed.query !== query.trim() ||
+    parsed.tenantId !== tenantId ||
+    parsed.traceId !== traceId
+  ) {
+    throw new Error("Research retrieval search checkpoint scope mismatch");
+  }
+  return parsed;
+}
+
+export function validateAnyResearchRetrievalSearchCheckpointScope({
+  checkpoint,
+  fingerprint,
+  knowledgeSpaceId,
+  publicationId,
+  query,
+  tenantId,
+  traceId,
+}: {
+  readonly checkpoint: unknown;
+  readonly fingerprint: string;
+  readonly knowledgeSpaceId: string;
+  readonly publicationId: string;
+  readonly query: string;
+  readonly tenantId: string;
+  readonly traceId: string;
+}): AnyResearchRetrievalSearchCheckpoint {
+  const parsed = parseAnyResearchRetrievalSearchCheckpoint(checkpoint);
   if (
     parsed.fingerprint !== fingerprint ||
     parsed.knowledgeSpaceId !== knowledgeSpaceId ||

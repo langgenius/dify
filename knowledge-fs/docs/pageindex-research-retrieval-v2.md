@@ -1,6 +1,11 @@
 # PageIndex Research Retrieval V2
 
-Status: implemented on 2026-08-05 for the KnowledgeFS backend.
+Status: compatibility-only since Research Evidence Retrieval V3 (2026-08-18).
+
+Fresh online Research requests no longer enter this per-document LLM tree traversal. The code and
+checkpoint contract remain available only to replay retained V2 durable checkpoints and to support
+offline PageIndex/findability evaluation. See `research-evidence-retrieval-v3.md` for the active
+online architecture.
 
 ## Scope
 

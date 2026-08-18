@@ -8,9 +8,11 @@ import type {
 } from "./graph-index-repository";
 import type { HybridRetrievalItem } from "./retrieval-fusion";
 import {
+  RESEARCH_GRAPH_CAPABILITY_UNAVAILABLE,
   createDocumentOutlineRetrievalPath,
   createGraphExpandedRetrievalPath,
   createImageOcrRetrievalPath,
+  createRequiredDeepGraphCapabilityGuard,
   createSummaryTreeRetrievalPath,
   createTableSpecificRetrievalPath,
 } from "./retrieval-paths";
@@ -20,6 +22,27 @@ import type { BasicHybridRetriever } from "./retrieval-types";
 const KNOWLEDGE_SPACE_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42";
 const DOC_A = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c43";
 const DOC_B = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d99";
+
+it("reports an explicit Research degradation when a requested Graph leg is unavailable", async () => {
+  const retriever = createRequiredDeepGraphCapabilityGuard({
+    available: false,
+    retriever: {
+      retrieve: async () => ({ items: [retrievalItem()], metrics: baseMetrics() }),
+    },
+  });
+
+  const result = await retriever.retrieve({
+    knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+    limit: 1,
+    mode: "research",
+    query: "relationship between policies",
+    queryVector: [0.1],
+    researchGraphEnabled: true,
+    topK: 1,
+  });
+
+  expect(result.metrics?.degradationFlags).toEqual([RESEARCH_GRAPH_CAPABILITY_UNAVAILABLE]);
+});
 
 function retrievalItem(overrides: Partial<HybridRetrievalItem> = {}): HybridRetrievalItem {
   return {
@@ -609,14 +632,15 @@ describe("retrieval paths branch coverage", () => {
     });
 
     // The legacy outline compatibility path still inspects only the already-bounded caller
-    // window; the production Research path uses dense Value Search with a wider semantic fanout.
+    // window; the reported V3 plan still advertises the full multi-leg candidate widths.
     expect(baseLimits).toEqual([1]);
     expect(result.plan).toMatchObject({
       denseTopK: 20,
-      ftsTopK: 0,
-      fusionLimit: 0,
-      rerankCandidateLimit: 0,
+      ftsTopK: 20,
+      fusionLimit: 10,
+      rerankCandidateLimit: 10,
       resolvedMode: "research",
+      strategyVersion: "retrieval-planner-v2",
     });
     expect(result.items.map((item) => item.nodeId)).toEqual(["leaf-overview-wide-1"]);
     expect(result.items[0]?.metadata.reasoningTreeSearch).toMatchObject({
