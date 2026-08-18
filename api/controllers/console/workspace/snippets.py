@@ -5,7 +5,7 @@ from uuid import UUID
 from flask import Response, request
 from flask_restx import Resource
 from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.common.fields import TextFileResponse
 from controllers.common.schema import (
@@ -36,7 +36,13 @@ from controllers.console.wraps import (
 from core.plugin.entities.plugin import PluginDependency
 from extensions.ext_database import db
 from fields.base import ResponseModel
-from fields.snippet_fields import SnippetListItemResponse, SnippetPaginationResponse, SnippetResponse
+from fields.snippet_fields import (
+    SnippetListItemResponse,
+    SnippetPaginationResponse,
+    SnippetResponse,
+    snippet_list_item_responses,
+    snippet_response,
+)
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
@@ -112,14 +118,15 @@ class CustomizedSnippetsApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def get(self, current_tenant_id: str):
+    @with_session(write=False)
+    def get(self, session: Session, current_tenant_id: str):
         """List customized snippets with pagination and search."""
         query = _snippet_list_query_from_request()
 
         snippet_service = _snippet_service()
         snippets, total, has_more = snippet_service.get_snippets(
             tenant_id=current_tenant_id,
-            session=db.session(),
+            session=session,
             page=query.page,
             limit=query.limit,
             keyword=query.keyword,
@@ -131,7 +138,7 @@ class CustomizedSnippetsApi(Resource):
         return dump_response(
             SnippetPaginationResponse,
             {
-                "data": snippets,
+                "data": snippet_list_item_responses(snippets, session=session),
                 "page": query.page,
                 "limit": query.limit,
                 "total": total,
@@ -152,8 +159,9 @@ class CustomizedSnippetsApi(Resource):
     )
     @with_current_user
     @with_current_tenant_id
+    @with_session
     @model_validate(CreateSnippetPayload)
-    def post(self, req_data: CreateSnippetPayload, current_tenant_id: str, current_user: Account):
+    def post(self, req_data: CreateSnippetPayload, session: Session, current_tenant_id: str, current_user: Account):
         """Create a new customized snippet."""
         try:
             snippet_type = SnippetType(req_data.type)
@@ -177,7 +185,7 @@ class CustomizedSnippetsApi(Resource):
         except ValueError as e:
             return {"message": str(e)}, 400
 
-        return dump_response(SnippetResponse, snippet), 201
+        return dump_response(SnippetResponse, snippet_response(snippet, session=session)), 201
 
 
 @console_ns.route("/workspaces/current/customized-snippets/<uuid:snippet_id>")
@@ -189,7 +197,8 @@ class CustomizedSnippetDetailApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def get(self, current_tenant_id: str, snippet_id: UUID):
+    @with_session(write=False)
+    def get(self, session: Session, current_tenant_id: str, snippet_id: UUID):
         """Get customized snippet details."""
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
@@ -200,7 +209,7 @@ class CustomizedSnippetDetailApi(Resource):
         if not snippet:
             raise NotFound("Snippet not found")
 
-        return dump_response(SnippetResponse, snippet), 200
+        return dump_response(SnippetResponse, snippet_response(snippet, session=session)), 200
 
     @console_ns.doc("update_customized_snippet")
     @console_ns.expect(console_ns.models.get(UpdateSnippetPayload.__name__))
@@ -216,8 +225,16 @@ class CustomizedSnippetDetailApi(Resource):
     )
     @with_current_user
     @with_current_tenant_id
+    @with_session
     @model_validate(UpdateSnippetPayload)
-    def patch(self, req_data: UpdateSnippetPayload, current_tenant_id: str, current_user: Account, snippet_id: str):
+    def patch(
+        self,
+        req_data: UpdateSnippetPayload,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        snippet_id: str,
+    ):
         """Update customized snippet."""
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
@@ -236,20 +253,23 @@ class CustomizedSnippetDetailApi(Resource):
         if not update_data:
             return {"message": "No valid fields to update"}, 400
 
+        snippet = session.merge(snippet)
         try:
-            with Session(db.engine, expire_on_commit=False) as session:
-                snippet = session.merge(snippet)
-                snippet = SnippetService.update_snippet(
-                    session=session,
-                    snippet=snippet,
-                    account_id=current_user.id,
-                    data=update_data,
-                )
-                session.commit()
+            snippet = SnippetService.update_snippet(
+                session=session,
+                snippet=snippet,
+                account_id=current_user.id,
+                data=update_data,
+            )
+            session.commit()
         except ValueError as e:
-            return {"message": str(e)}, 400
+            # Raise rather than return: `with_session` commits on a normal return, so returning here
+            # would persist whatever the update wrote before it rejected the payload. Raising routes
+            # through the decorator's rollback. Status stays 400 and `message` is unchanged; the body
+            # picks up the standard error envelope, as on every other BadRequest in the console API.
+            raise BadRequest(str(e)) from e
 
-        return dump_response(SnippetResponse, snippet), 200
+        return dump_response(SnippetResponse, snippet_response(snippet, session=session)), 200
 
     @console_ns.doc("delete_customized_snippet")
     @console_ns.response(204, "Snippet deleted successfully")
