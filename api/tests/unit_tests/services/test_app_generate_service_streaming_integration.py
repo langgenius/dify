@@ -60,6 +60,7 @@ class _FakeStreams:
         # key -> list[(id, {field: value})]
         self._data: dict[str, list[tuple[str, dict]]] = defaultdict(list)
         self._seq: dict[str, int] = defaultdict(int)
+        self._dollar_snapshots: dict[str, int] = {}
 
     def xadd(self, key: str, fields: dict[str, Any], *, maxlen: int | None = None) -> str:
         # maxlen is accepted for API compatibility with redis-py; ignored in this test double
@@ -72,12 +73,18 @@ class _FakeStreams:
         # no-op for tests
         return None
 
+    def xrevrange(self, key: str, *, count: int | None = None) -> list[tuple[str, dict[str, Any]]]:
+        entries = list(reversed(self._data.get(key, [])))
+        return entries if count is None else entries[:count]
+
     def xread(self, streams: dict[str, Any], block: int | None = None, count: int | None = None):
         assert len(streams) == 1
         key, last_id = next(iter(streams.items()))
         entries = self._data.get(key, [])
         start = 0
-        if last_id != "0-0":
+        if last_id == "$":
+            start = self._dollar_snapshots.setdefault(key, len(entries))
+        elif last_id != "0-0":
             for i, (eid, _f) in enumerate(entries):
                 if eid == last_id:
                     start = i + 1
@@ -145,10 +152,18 @@ def test_streams_full_flow_prepublish_and_replay():
     def start_task():
         _publish_events(app_mode, run_id, events)
 
-    on_subscribe = AppGenerateService._build_streaming_task_on_subscribe(start_task)
+    topic = MessageGenerator.get_response_topic(app_mode, run_id)
+    on_subscribe, cursor = AppGenerateService._prepare_streaming_task(topic, start_task)
 
-    # Start retrieving BEFORE subscription is established; in streams mode, we also started immediately
-    gen = MessageGenerator.retrieve_events(app_mode, run_id, idle_timeout=2.0, on_subscribe=on_subscribe)
+    # The task starts before subscription, but the captured cursor replays only this invocation's events.
+    gen = MessageGenerator.retrieve_events(
+        app_mode,
+        run_id,
+        idle_timeout=2.0,
+        on_subscribe=on_subscribe,
+        topic=topic,
+        cursor=cursor,
+    )
 
     received = []
     for msg in gen:

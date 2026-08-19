@@ -28,12 +28,16 @@ class MessageGenerator:
         ping_interval: float = 10.0,
         on_subscribe: Callable[[], None] | None = None,
         terminal_events: Iterable[str | StreamEvent] | None = None,
+        *,
+        topic: Topic | None = None,
+        cursor: str | None = None,
     ) -> Generator[Mapping | str, None, None]:
-        topic = cls.get_response_topic(app_mode, workflow_run_id)
+        topic = topic if topic is not None else cls.get_response_topic(app_mode, workflow_run_id)
         return stream_topic_events(
             topic=topic,
             idle_timeout=idle_timeout,
             ping_interval=ping_interval,
             on_subscribe=on_subscribe,
             terminal_events=terminal_events,
+            cursor=cursor,
         )

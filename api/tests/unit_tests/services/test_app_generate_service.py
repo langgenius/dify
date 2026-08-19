@@ -25,6 +25,7 @@ from pytest_mock import MockerFixture
 import services.app_generate_service as ags_module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from enums import DeploymentEdition, QuotaType
+from libs.broadcast_channel.channel import CursorTopic
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowIdFormatError, WorkflowNotFoundError
@@ -380,6 +381,9 @@ class TestGenerate:
         # so the inner closure (line 165) actually executes.
         monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "streams")
         gen_instance = MagicMock()
+        topic = mocker.Mock(spec=CursorTopic)
+        topic.latest_cursor.return_value = "12-0"
+        gen_instance.get_response_topic.return_value = topic
         gen_instance.retrieve_events.return_value = iter([])
         gen_instance.convert_to_event_stream.side_effect = lambda x: x
         mocker.patch(
@@ -397,6 +401,8 @@ class TestGenerate:
         )
         # In streaming mode it should go through retrieve_events, not generate
         gen_instance.retrieve_events.assert_called_once()
+        assert gen_instance.retrieve_events.call_args.kwargs["topic"] is topic
+        assert gen_instance.retrieve_events.call_args.kwargs["cursor"] == "12-0"
         # The inner on_subscribe closure was invoked by _build_streaming_task_on_subscribe
         delay_spy.assert_called_once()
 
@@ -439,6 +445,12 @@ class TestGenerate:
         # Let _build_streaming_task_on_subscribe invoke the real on_subscribe
         # so the inner closure (line 216) actually executes.
         monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "streams")
+        topic = mocker.Mock(spec=CursorTopic)
+        topic.latest_cursor.return_value = "34-0"
+        mocker.patch(
+            "services.app_generate_service.MessageBasedAppGenerator.get_response_topic",
+            return_value=topic,
+        )
         retrieve_spy = mocker.patch(
             "services.app_generate_service.MessageBasedAppGenerator.retrieve_events",
             return_value=iter([]),
@@ -457,6 +469,8 @@ class TestGenerate:
             session=MagicMock(),
         )
         retrieve_spy.assert_called_once()
+        assert retrieve_spy.call_args.kwargs["topic"] is topic
+        assert retrieve_spy.call_args.kwargs["cursor"] == "34-0"
         # The inner on_subscribe closure was invoked by _build_streaming_task_on_subscribe
         delay_spy.assert_called_once()
 

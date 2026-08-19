@@ -321,10 +321,14 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         workflow_run_id: str,
         idle_timeout=300,
         on_subscribe: Callable[[], None] | None = None,
+        *,
+        topic: Topic | None = None,
+        cursor: str | None = None,
     ) -> Generator[Mapping | str, None, None]:
-        topic = cls.get_response_topic(app_mode, workflow_run_id)
+        topic = topic if topic is not None else cls.get_response_topic(app_mode, workflow_run_id)
         return stream_topic_events(
             topic=topic,
             idle_timeout=idle_timeout,
             on_subscribe=on_subscribe,
+            cursor=cursor,
         )

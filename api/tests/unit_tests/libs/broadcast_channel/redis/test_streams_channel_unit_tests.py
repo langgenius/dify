@@ -44,6 +44,10 @@ class FakeStreamsRedis:
     def expire(self, key: str, seconds: int) -> None:
         self._expire_calls[key] = self._expire_calls.get(key, 0) + 1
 
+    def xrevrange(self, key: str, *, count: int | None = None) -> list[tuple[str, dict[str, Any]]]:
+        entries = list(reversed(self._store.get(key, [])))
+        return entries if count is None else entries[:count]
+
     # Consumer API
     def xread(self, streams: dict[str, Any], block: int | None = None, count: int | None = None):
         # Expect a single key
@@ -189,6 +193,18 @@ class TestStreamsBroadcastChannel:
         assert topic.as_producer() is topic
         assert topic.as_subscriber() is topic
 
+    def test_latest_cursor_returns_beginning_for_empty_stream(self, streams_channel: StreamsBroadcastChannel) -> None:
+        topic = streams_channel.topic("empty")
+
+        assert topic.latest_cursor() == "0-0"
+
+    def test_latest_cursor_returns_most_recent_entry(self, streams_channel: StreamsBroadcastChannel) -> None:
+        topic = streams_channel.topic("cursor")
+        topic.publish(b"first")
+        topic.publish(b"second")
+
+        assert topic.latest_cursor() == "2-0"
+
     def test_publish_logs_warning_when_expire_fails(self, caplog: pytest.LogCaptureFixture):
         channel = StreamsBroadcastChannel(FailExpireRedis(), retention_seconds=60)
         topic = channel.topic("expire-warning")
@@ -199,6 +215,19 @@ class TestStreamsBroadcastChannel:
 
 
 class TestStreamsSubscription:
+    def test_explicit_cursor_receives_only_messages_published_after_capture(
+        self,
+        streams_channel: StreamsBroadcastChannel,
+    ) -> None:
+        topic = streams_channel.topic("cursor-subscription")
+        topic.publish(b"previous-invocation")
+        cursor = topic.latest_cursor()
+        topic.publish(b"current-invocation")
+
+        sub = topic.subscribe(cursor=cursor)
+        with sub:
+            assert sub.receive(timeout=0.1) == b"current-invocation"
+
     def test_subscribe_only_receives_messages_published_after_subscription_starts(
         self,
         streams_channel: StreamsBroadcastChannel,

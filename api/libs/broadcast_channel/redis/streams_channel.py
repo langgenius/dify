@@ -70,16 +70,24 @@ class StreamsTopic:
     def as_subscriber(self) -> Subscriber:
         return self
 
-    def subscribe(self) -> Subscription:
-        return _StreamsSubscription(self._client, self._key)
+    def subscribe(self, *, cursor: str | None = None) -> Subscription:
+        return _StreamsSubscription(self._client, self._key, cursor="$" if cursor is None else cursor)
+
+    def latest_cursor(self) -> str:
+        entries = self._client.xrevrange(self._key, count=1)
+        if not entries:
+            return "0-0"
+        entry_id, _ = entries[0]
+        return entry_id.decode() if isinstance(entry_id, bytes) else str(entry_id)
 
 
 class _StreamsSubscription(Subscription):
     _SENTINEL = object()
 
-    def __init__(self, client: Redis | RedisCluster, key: str):
+    def __init__(self, client: Redis | RedisCluster, key: str, *, cursor: str = "$"):
         self._client = client
         self._key = key
+        self._cursor = cursor
 
         self._queue: queue.Queue[object] = queue.Queue()
 
@@ -104,10 +112,7 @@ class _StreamsSubscription(Subscription):
         # since this method runs in a dedicated thread, acquiring `_lock` inside this method won't cause
         # deadlock.
 
-        # Setting initial last id to `$` to signal redis that we only want new messages.
-        #
-        # ref: https://redis.io/docs/latest/commands/xread/#the-special--id
-        last_id = "$"
+        last_id = self._cursor
         try:
             while True:
                 with self._lock:

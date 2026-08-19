@@ -8,7 +8,7 @@ import types
 from abc import abstractmethod
 from collections.abc import Iterator
 from contextlib import AbstractContextManager
-from typing import Protocol, Self, override
+from typing import Protocol, Self, override, runtime_checkable
 
 
 class Subscription(AbstractContextManager["Subscription"], Protocol):
@@ -115,6 +115,22 @@ class Topic(Producer, Subscriber, Protocol):
     @abstractmethod
     def as_subscriber(self) -> Subscriber:
         """as_subscriber create a read-only view for this topic."""
+        ...
+
+
+@runtime_checkable
+class CursorTopic(Topic, Protocol):
+    """A durable topic that can resume a subscription from a captured cursor."""
+
+    @abstractmethod
+    def latest_cursor(self) -> str:
+        """Return the latest published cursor, or the transport's beginning cursor when empty."""
+        ...
+
+    @override
+    @abstractmethod
+    def subscribe(self, *, cursor: str | None = None) -> Subscription:
+        """Subscribe after ``cursor``; omit it to retain the transport's live-subscription behavior."""
         ...
 
 
