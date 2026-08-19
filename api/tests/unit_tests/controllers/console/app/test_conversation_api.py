@@ -3,6 +3,7 @@ from __future__ import annotations
 from decimal import Decimal
 from inspect import unwrap
 from unittest.mock import MagicMock
+from uuid import UUID
 
 import pytest
 from flask import Flask
@@ -160,6 +161,20 @@ def test_get_conversation_missing_raises_not_found(sqlite_session: Session) -> N
     session = sqlite_session
     with pytest.raises(NotFound):
         conversation_module._get_conversation(session, _make_account(), _app(), "missing")
+
+
+def test_chat_conversation_detail_rejects_soft_deleted_conversation(app: Flask, sqlite_session: Session) -> None:
+    conversation_id = "550e8400-e29b-41d4-a716-446655440000"
+    conversation = _conversation(conversation_id=conversation_id)
+    conversation.is_deleted = True
+    sqlite_session.add(conversation)
+    sqlite_session.flush()
+
+    api = conversation_module.ChatConversationDetailApi()
+    method = unwrap(api.get)
+    with app.test_request_context():
+        with pytest.raises(NotFound):
+            method(api, sqlite_session, _make_account(), _app(), UUID(conversation_id))
 
 
 def test_conversation_response_source_uses_caller_session(sqlite_session: Session) -> None:

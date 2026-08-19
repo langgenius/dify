@@ -402,7 +402,11 @@ def _list_chat_messages(*, session: Session, app_model: App, current_user: Accou
     else:
         conversation = session.scalar(
             select(Conversation)
-            .where(Conversation.id == args.conversation_id, Conversation.app_id == app_model.id)
+            .where(
+                Conversation.id == args.conversation_id,
+                Conversation.app_id == app_model.id,
+                Conversation.is_deleted.is_(False),
+            )
             .limit(1)
         )
 
