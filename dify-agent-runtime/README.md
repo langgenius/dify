@@ -72,6 +72,27 @@ See [here](./internal/envvar/envvar.go)
 
 Requires Linux ≥ 5.13. On unsupported kernels, a warning is printed to stderr.
 
+## API Routes
+
+### Home snapshot
+
+Native save/restore of the runtime's Home directory (`$HOME`) as a tar+zstd
+stream. One snapshot operation runs at a time per runtime (`409 snapshot_busy`
+otherwise). **Neither endpoint imposes a size limit — callers own size policy
+and must bound the streams in their own logic** (count bytes while reading a
+save stream and abort at their cap; bound what they send to restore).
+
+- `POST /v1/snapshot/save` — no parameters. Streams the Home (minus the
+  top-level entries in `SHELLCTL_HOME_SNAPSHOT_EXCLUDES`, default `workspace`)
+  as `application/octet-stream` (chunked). `204` when the Home is empty after
+  exclusions. Success is signaled by trailers `X-Snapshot-Status: ok`,
+  `X-Snapshot-Sha256`, `X-Snapshot-Bytes`; a cleanly terminated stream WITHOUT
+  the `ok` trailer, or an aborted connection, is a failure.
+- `POST /v1/snapshot/restore` — raw tar+zstd body, no parameters. Extracts
+  into `$HOME` under `os.Root` (path traversal, absolute names, and symlink
+  escapes are refused). Returns `{"entries": N, "bytes_written": M}`;
+  `400 archive_malformed` for invalid input.
+
 ## Dependencies
 
 - Go 1.26
