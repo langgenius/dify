@@ -1,39 +1,19 @@
 import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import DebugInfo from '../debug-info'
-
-const mockDebugKey = vi.hoisted(() => ({
-  data: null as null | { key: string, host: string, port: number },
-  isLoading: false,
-}))
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.com${path}`,
 }))
 
+const mockDebugKey = vi.hoisted(() => ({
+  data: null as null | { key: string; host: string; port: number },
+  isLoading: false,
+}))
+
 vi.mock('@/service/use-plugins', () => ({
   useDebugKey: () => mockDebugKey,
-}))
-
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children }: { children: React.ReactNode }) => <button data-testid="debug-button">{children}</button>,
-}))
-
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({
-    children,
-    disabled,
-    popupContent,
-  }: {
-    children: React.ReactNode
-    disabled?: boolean
-    popupContent: React.ReactNode
-  }) => (
-    <div>
-      {children}
-      {!disabled && <div data-testid="tooltip-content">{popupContent}</div>}
-    </div>
-  ),
 }))
 
 vi.mock('../../base/key-value-item', () => ({
@@ -47,9 +27,7 @@ vi.mock('../../base/key-value-item', () => ({
     maskedValue?: string
   }) => (
     <div data-testid={`kv-${label}`}>
-      {label}
-      :
-      {maskedValue || value}
+      {label}:{maskedValue || value}
     </div>
   ),
 }))
@@ -68,22 +46,41 @@ describe('DebugInfo', () => {
     expect(container.innerHTML).toBe('')
   })
 
-  it('renders debug metadata and masks the key when info is available', () => {
+  it('renders a disabled trigger when debug info is unavailable', () => {
+    render(<DebugInfo />)
+
+    const trigger = screen.getByRole('button', { name: 'plugin.debugInfo.title' })
+    expect(trigger).toBeDisabled()
+  })
+
+  it('opens a popover with debug metadata and masks the key when info is available', async () => {
     mockDebugKey.data = {
       host: '127.0.0.1',
       port: 5001,
       key: '12345678abcdefghijklmnopqrst87654321',
     }
 
+    const user = userEvent.setup()
     render(<DebugInfo />)
 
-    expect(screen.getByTestId('debug-button')).toBeInTheDocument()
+    const trigger = screen.getByRole('button', { name: 'plugin.debugInfo.title' })
+    expect(trigger).toBeEnabled()
+
+    // Popover is closed initially — content not rendered yet
+    expect(screen.queryByText('plugin.debugInfo.title')).not.toBeInTheDocument()
+
+    await user.click(trigger)
+
     expect(screen.getByText('plugin.debugInfo.title')).toBeInTheDocument()
-    expect(screen.getByRole('link')).toHaveAttribute(
+    expect(screen.getByText('plugin.debugInfo.title').closest('.w-90')).toHaveClass(
+      'rounded-2xl',
+      'shadow-2xl',
+    )
+    expect(screen.getByRole('link', { name: 'plugin.debugInfo.viewDocs' })).toHaveAttribute(
       'href',
       'https://docs.example.com/develop-plugin/features-and-specs/plugin-types/remote-debug-a-plugin',
     )
-    expect(screen.getByTestId('kv-URL')).toHaveTextContent('URL:127.0.0.1:5001')
+    expect(screen.getByTestId('kv-Port')).toHaveTextContent('Port:127.0.0.1:5001')
     expect(screen.getByTestId('kv-Key')).toHaveTextContent('Key:12345678********87654321')
   })
 })

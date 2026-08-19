@@ -10,20 +10,16 @@ type TabProps<T> = {
   onClick: (value: T) => void
 }
 
-const Tab = <T,>({
-  Icon,
-  value,
-  label,
-  isActive,
-  onClick,
-}: TabProps<T>) => {
+const Tab = <T,>({ Icon, value, label, isActive, onClick }: TabProps<T>) => {
   const handleClick = useCallback(() => {
     onClick(value)
   }, [onClick, value])
 
   return (
-    <div
-      className="flex cursor-pointer items-center justify-center gap-x-2 px-5 py-3"
+    <button
+      type="button"
+      aria-pressed={isActive}
+      className="flex cursor-pointer appearance-none items-center justify-center gap-x-2 px-5 py-3 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
       onClick={handleClick}
     >
       <Icon isActive={isActive} />
@@ -35,7 +31,7 @@ const Tab = <T,>({
       >
         {label}
       </span>
-    </div>
+    </button>
   )
 }
 

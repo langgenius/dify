@@ -7,11 +7,7 @@ type WithIconListProps = WithIconCardListProps & {
 }
 
 function WithIconCardList({ children, className }: WithIconListProps) {
-  return (
-    <div className={cn('space-y-1', className)}>
-      {children}
-    </div>
-  )
+  return <div className={cn('space-y-1', className)}>{children}</div>
 }
 
 export default WithIconCardList

@@ -30,24 +30,32 @@ export const generateZodSchema = (fields: BaseConfiguration[]) => {
 
     if (field.maxLength) {
       if ([BaseFieldType.textInput, BaseFieldType.paragraph].includes(field.type))
-        zodType = (zodType as ZodString).max(field.maxLength, `${field.label} exceeds max length of ${field.maxLength}`)
+        zodType = (zodType as ZodString).max(
+          field.maxLength,
+          `${field.label} exceeds max length of ${field.maxLength}`,
+        )
     }
 
     if (field.min) {
       if ([BaseFieldType.numberInput].includes(field.type))
-        zodType = (zodType as ZodNumber).min(field.min, `${field.label} must be at least ${field.min}`)
+        zodType = (zodType as ZodNumber).min(
+          field.min,
+          `${field.label} must be at least ${field.min}`,
+        )
     }
 
     if (field.max) {
       if ([BaseFieldType.numberInput].includes(field.type))
-        zodType = (zodType as ZodNumber).max(field.max, `${field.label} exceeds max value of ${field.max}`)
+        zodType = (zodType as ZodNumber).max(
+          field.max,
+          `${field.label} exceeds max value of ${field.max}`,
+        )
     }
 
     if (field.required) {
       if ([BaseFieldType.textInput, BaseFieldType.paragraph].includes(field.type))
         zodType = (zodType as ZodString).nonempty(`${field.label} is required`)
-    }
-    else {
+    } else {
       zodType = zodType.optional().nullable()
     }
 

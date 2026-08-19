@@ -26,7 +26,7 @@ describe('goCommand', () => {
     it('returns all navigation items when query is empty', async () => {
       const results = await goCommand.search('', 'en')
 
-      expect(results.map(r => r.id)).toEqual([
+      expect(results.map((r) => r.id)).toEqual([
         'go-apps',
         'go-datasets',
         'go-plugins',

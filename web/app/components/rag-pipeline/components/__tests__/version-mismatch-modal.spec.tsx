@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import VersionMismatchModal from '../version-mismatch-modal'
 
 describe('VersionMismatchModal', () => {
@@ -31,13 +31,13 @@ describe('VersionMismatchModal', () => {
     it('should render dialog when isShow is true', () => {
       render(<VersionMismatchModal {...defaultProps} />)
 
-      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      expect(screen.getByRole('alertdialog')).toBeInTheDocument()
     })
 
     it('should not render dialog when isShow is false', () => {
       render(<VersionMismatchModal {...defaultProps} isShow={false} />)
 
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     })
 
     it('should render error title', () => {

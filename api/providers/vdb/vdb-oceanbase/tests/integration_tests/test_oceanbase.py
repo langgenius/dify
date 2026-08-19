@@ -1,3 +1,5 @@
+from typing import override
+
 import pytest
 from dify_vdb_oceanbase.oceanbase_vector import (
     OceanBaseVector,
@@ -30,6 +32,7 @@ class OceanBaseVectorTest(AbstractVectorTest):
         super().__init__()
         self.vector = vector
 
+    @override
     def get_ids_by_metadata_field(self):
         ids = self.vector.get_ids_by_metadata_field(key="document_id", value=self.example_doc_id)
         assert len(ids) == 1

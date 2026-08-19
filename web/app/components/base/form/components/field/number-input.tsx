@@ -1,4 +1,8 @@
-import type { NumberFieldInputProps, NumberFieldRootProps, NumberFieldSize } from '@langgenius/dify-ui/number-field'
+import type {
+  NumberFieldInputProps,
+  NumberFieldProps,
+  NumberFieldSize,
+} from '@langgenius/dify-ui/number-field'
 import type { ReactNode } from 'react'
 import type { LabelProps } from '../label'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -22,7 +26,11 @@ type NumberInputFieldProps = {
   inputClassName?: string
   unit?: ReactNode
   size?: NumberFieldSize
-} & Omit<NumberFieldRootProps, 'children' | 'className' | 'id' | 'value' | 'defaultValue' | 'onValueChange'> & Omit<NumberFieldInputProps, 'children' | 'size' | 'onBlur' | 'className' | 'onChange'>
+} & Omit<
+  NumberFieldProps,
+  'children' | 'className' | 'id' | 'value' | 'defaultValue' | 'onValueChange'
+> &
+  Omit<NumberFieldInputProps, 'children' | 'size' | 'onBlur' | 'className' | 'onChange'>
 
 const NumberInputField = ({
   label,
@@ -50,13 +58,8 @@ const NumberInputField = ({
 
   return (
     <div className={cn('flex flex-col gap-y-0.5', className)}>
-      <Label
-        htmlFor={field.name}
-        label={label}
-        {...(labelOptions ?? {})}
-      />
+      <Label htmlFor={field.name} label={label} {...(labelOptions ?? {})} />
       <NumberField
-        id={field.name}
         name={field.name}
         value={field.state.value}
         min={min}
@@ -65,20 +68,17 @@ const NumberInputField = ({
         disabled={disabled}
         readOnly={readOnly}
         required={required}
-        onValueChange={value => field.handleChange(value ?? emptyValue)}
+        onValueChange={(value) => field.handleChange(value ?? emptyValue)}
       >
         <NumberFieldGroup size={size}>
           <NumberFieldInput
+            id={field.name}
             {...inputProps}
             size={size}
             className={inputClassName}
             onBlur={field.handleBlur}
           />
-          {Boolean(unit) && (
-            <NumberFieldUnit size={size}>
-              {unit}
-            </NumberFieldUnit>
-          )}
+          {Boolean(unit) && <NumberFieldUnit size={size}>{unit}</NumberFieldUnit>}
           <NumberFieldControls>
             <NumberFieldIncrement size={size} />
             <NumberFieldDecrement size={size} />

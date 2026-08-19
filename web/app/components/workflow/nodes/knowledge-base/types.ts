@@ -1,5 +1,8 @@
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
-import type { Model, ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type {
+  Model,
+  ModelItem,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { CommonNodeType } from '@/app/components/workflow/types'
 import type { RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
 import type { RETRIEVE_METHOD } from '@/types/app'
@@ -32,7 +35,7 @@ export type WeightedScore = {
   }
 }
 
-export type RetrievalSetting = {
+type RetrievalSetting = {
   search_method?: RETRIEVE_METHOD
   reranking_enable?: boolean
   reranking_model?: RerankingModel

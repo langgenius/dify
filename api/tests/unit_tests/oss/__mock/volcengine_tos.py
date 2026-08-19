@@ -3,7 +3,6 @@ from collections import UserDict
 from unittest.mock import MagicMock
 
 import pytest
-from _pytest.monkeypatch import MonkeyPatch
 from tos import TosClientV2
 from tos.clientv2 import DeleteObjectOutput, GetObjectOutput, HeadObjectOutput, PutObjectOutput
 
@@ -76,7 +75,7 @@ MOCK = os.getenv("MOCK_SWITCH", "false").lower() == "true"
 
 
 @pytest.fixture
-def setup_volcengine_tos_mock(monkeypatch: MonkeyPatch):
+def setup_volcengine_tos_mock(monkeypatch: pytest.MonkeyPatch):
     if MOCK:
         monkeypatch.setattr(TosClientV2, "__init__", MockVolcengineTosClass.__init__)
         monkeypatch.setattr(TosClientV2, "put_object", MockVolcengineTosClass.put_object)

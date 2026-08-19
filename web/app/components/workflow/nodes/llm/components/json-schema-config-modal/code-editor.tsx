@@ -1,12 +1,11 @@
-import type { FC } from 'react'
+import type { ComponentProps, FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { Editor } from '@monaco-editor/react'
-import { RiClipboardLine, RiIndentIncrease } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 
@@ -22,6 +21,10 @@ type CodeEditorProps = {
   topContent?: React.ReactNode
 } & React.HTMLAttributes<HTMLDivElement>
 
+type EditorOnMount = NonNullable<ComponentProps<typeof Editor>['onMount']>
+type MonacoEditor = Parameters<EditorOnMount>[0]
+type Monaco = Parameters<EditorOnMount>[1]
+
 const CodeEditor: FC<CodeEditorProps> = ({
   value,
   onUpdate,
@@ -36,68 +39,69 @@ const CodeEditor: FC<CodeEditorProps> = ({
 }) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
-  const monacoRef = useRef<any>(null)
-  const editorRef = useRef<any>(null)
+  const monacoRef = useRef<Monaco | null>(null)
+  const editorRef = useRef<MonacoEditor | null>(null)
   const [isMounted, setIsMounted] = React.useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (monacoRef.current) {
-      if (theme === Theme.light)
-        monacoRef.current.editor.setTheme('light-theme')
-      else
-        monacoRef.current.editor.setTheme('dark-theme')
+      if (theme === Theme.light) monacoRef.current.editor.setTheme('light-theme')
+      else monacoRef.current.editor.setTheme('dark-theme')
     }
   }, [theme])
 
-  const handleEditorDidMount = useCallback((editor: any, monaco: any) => {
-    editorRef.current = editor
-    monacoRef.current = monaco
+  const handleEditorDidMount = useCallback<EditorOnMount>(
+    (editor, monaco) => {
+      editorRef.current = editor
+      monacoRef.current = monaco
 
-    editor.onDidFocusEditorText(() => {
-      onFocus?.()
-    })
-    editor.onDidBlurEditorText(() => {
-      onBlur?.()
-    })
+      editor.onDidFocusEditorText(() => {
+        onFocus?.()
+      })
+      editor.onDidBlurEditorText(() => {
+        onBlur?.()
+      })
 
-    monaco.editor.defineTheme('light-theme', {
-      base: 'vs',
-      inherit: true,
-      rules: [],
-      colors: {
-        'editor.background': '#00000000',
-        'editor.lineHighlightBackground': '#00000000',
-        'focusBorder': '#00000000',
-      },
-    })
-    monaco.editor.defineTheme('dark-theme', {
-      base: 'vs-dark',
-      inherit: true,
-      rules: [],
-      colors: {
-        'editor.background': '#00000000',
-        'editor.lineHighlightBackground': '#00000000',
-        'focusBorder': '#00000000',
-      },
-    })
-    monaco.editor.setTheme('light-theme')
-    setIsMounted(true)
-  }, [])
+      monaco.editor.defineTheme('light-theme', {
+        base: 'vs',
+        inherit: true,
+        rules: [],
+        colors: {
+          'editor.background': '#00000000',
+          'editor.lineHighlightBackground': '#00000000',
+          focusBorder: '#00000000',
+        },
+      })
+      monaco.editor.defineTheme('dark-theme', {
+        base: 'vs-dark',
+        inherit: true,
+        rules: [],
+        colors: {
+          'editor.background': '#00000000',
+          'editor.lineHighlightBackground': '#00000000',
+          focusBorder: '#00000000',
+        },
+      })
+      monaco.editor.setTheme('light-theme')
+      setIsMounted(true)
+    },
+    [onBlur, onFocus],
+  )
 
   const formatJsonContent = useCallback(() => {
-    if (editorRef.current)
-      editorRef.current.getAction('editor.action.formatDocument')?.run()
+    if (editorRef.current) editorRef.current.getAction('editor.action.formatDocument')?.run()
   }, [])
 
-  const handleEditorChange = useCallback((value: string | undefined) => {
-    if (value !== undefined)
-      onUpdate?.(value)
-  }, [onUpdate])
+  const handleEditorChange = useCallback(
+    (value: string | undefined) => {
+      if (value !== undefined) onUpdate?.(value)
+    },
+    [onUpdate],
+  )
 
   const editorTheme = useMemo(() => {
-    if (theme === Theme.light)
-      return 'light-theme'
+    if (theme === Theme.light) return 'light-theme'
     return 'dark-theme'
   }, [theme])
   useEffect(() => {
@@ -105,8 +109,7 @@ const CodeEditor: FC<CodeEditorProps> = ({
       editorRef.current?.layout()
     })
 
-    if (containerRef.current)
-      resizeObserver.observe(containerRef.current)
+    if (containerRef.current) resizeObserver.observe(containerRef.current)
 
     return () => {
       resizeObserver.disconnect()
@@ -114,7 +117,13 @@ const CodeEditor: FC<CodeEditorProps> = ({
   }, [])
 
   return (
-    <div className={cn('flex h-full flex-col overflow-hidden bg-components-input-bg-normal', hideTopMenu && 'pt-2', className)}>
+    <div
+      className={cn(
+        'flex h-full flex-col overflow-hidden bg-components-input-bg-normal',
+        hideTopMenu && 'pt-2',
+        className,
+      )}
+    >
       {!hideTopMenu && (
         <div className="flex items-center justify-between pt-1 pr-1 pl-2">
           <div className="py-0.5 system-xs-semibold-uppercase text-text-secondary">
@@ -122,24 +131,39 @@ const CodeEditor: FC<CodeEditorProps> = ({
           </div>
           <div className="flex items-center gap-x-0.5">
             {showFormatButton && (
-              <Tooltip popupContent={t('operation.format', { ns: 'common' })}>
-                <button
-                  type="button"
-                  className="flex h-6 w-6 items-center justify-center"
-                  onClick={formatJsonContent}
-                >
-                  <RiIndentIncrease className="h-4 w-4 text-text-tertiary" />
-                </button>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <button
+                      type="button"
+                      aria-label={t(($) => $['operation.format'], { ns: 'common' })}
+                      className="flex size-6 items-center justify-center"
+                      onClick={formatJsonContent}
+                    >
+                      <span
+                        aria-hidden
+                        className="i-ri-indent-increase size-4 text-text-tertiary"
+                      />
+                    </button>
+                  }
+                />
+                <TooltipContent>{t(($) => $['operation.format'], { ns: 'common' })}</TooltipContent>
               </Tooltip>
             )}
-            <Tooltip popupContent={t('operation.copy', { ns: 'common' })}>
-              <button
-                type="button"
-                className="flex h-6 w-6 items-center justify-center"
-                onClick={() => copy(value)}
-              >
-                <RiClipboardLine className="h-4 w-4 text-text-tertiary" />
-              </button>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <button
+                    type="button"
+                    aria-label={t(($) => $['operation.copy'], { ns: 'common' })}
+                    className="flex size-6 items-center justify-center"
+                    onClick={() => copy(value)}
+                  >
+                    <span aria-hidden className="i-ri-clipboard-line size-4 text-text-tertiary" />
+                  </button>
+                }
+              />
+              <TooltipContent>{t(($) => $['operation.copy'], { ns: 'common' })}</TooltipContent>
             </Tooltip>
           </div>
         </div>

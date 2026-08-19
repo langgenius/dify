@@ -20,38 +20,39 @@ describe('tool/copy-id', () => {
   it('should copy content and reset copied state when mouse leaves', () => {
     const { container } = render(<CopyId content="tool-123" />)
 
-    const trigger = screen.getByText('tool-123').parentElement as HTMLElement
-    const wrapper = container.querySelector('.inline-flex') as HTMLElement
-
-    act(() => {
-      fireEvent.mouseEnter(trigger)
+    const trigger = screen.getByRole('button', {
+      name: 'appOverview.overview.appInfo.embedded.copy',
     })
-    expect(screen.getByText('appOverview.overview.appInfo.embedded.copy')).toBeInTheDocument()
+    const wrapper = container.querySelector('.inline-flex') as HTMLElement
 
     act(() => {
       fireEvent.click(trigger)
       vi.advanceTimersByTime(100)
     })
     expect(copy).toHaveBeenCalledWith('tool-123')
-    expect(screen.getByText('appOverview.overview.appInfo.embedded.copied')).toBeInTheDocument()
+    expect(trigger).toHaveAccessibleName('appOverview.overview.appInfo.embedded.copied')
 
     act(() => {
       fireEvent.mouseLeave(wrapper)
       vi.advanceTimersByTime(100)
-      fireEvent.mouseEnter(trigger)
     })
-    expect(screen.getByText('appOverview.overview.appInfo.embedded.copy')).toBeInTheDocument()
+    expect(trigger).toHaveAccessibleName('appOverview.overview.appInfo.embedded.copy')
   })
 
-  it('should stop click propagation from the outer wrapper', () => {
+  it('should stop click propagation from the copy button', () => {
     const handleParentClick = vi.fn()
-    const { container } = render(
-      <div onClick={handleParentClick}>
-        <CopyId content="tool-123" />
-      </div>,
-    )
+    render(<CopyId content="tool-123" />)
+    document.body.addEventListener('click', handleParentClick)
 
-    fireEvent.click(container.querySelector('.inline-flex') as HTMLElement)
+    act(() => {
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'appOverview.overview.appInfo.embedded.copy',
+        }),
+      )
+      vi.advanceTimersByTime(100)
+    })
+    document.body.removeEventListener('click', handleParentClick)
 
     expect(handleParentClick).not.toHaveBeenCalled()
   })

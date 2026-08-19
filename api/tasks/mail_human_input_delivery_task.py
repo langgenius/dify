@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
-from core.workflow.human_input_compat import EmailDeliveryConfig, EmailDeliveryMethod
+from core.workflow.human_input_adapter import EmailDeliveryConfig, EmailDeliveryMethod
 from extensions.ext_database import db
 from extensions.ext_mail import mail
 from graphon.runtime import GraphRuntimeState, VariablePool
@@ -157,7 +157,7 @@ def dispatch_human_input_email_task(form_id: str, node_title: str | None = None,
             if form is None:
                 logger.warning("Human input form not found, form_id=%s", form_id)
                 return
-            features = FeatureService.get_features(form.tenant_id)
+            features = FeatureService.get_features(form.tenant_id, exclude_vector_space=True)
             if not features.human_input_email_delivery_enabled:
                 logger.info(
                     "Human input email delivery is not available for tenant=%s, form_id=%s",

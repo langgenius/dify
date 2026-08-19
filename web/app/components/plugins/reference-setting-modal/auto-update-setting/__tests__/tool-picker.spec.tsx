@@ -1,10 +1,8 @@
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { PluginSource } from '@/app/components/plugins/types'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
 import ToolPicker from '../tool-picker'
-
-let portalOpen = false
 
 const mockInstalledPluginList = vi.hoisted(() => ({
   data: {
@@ -20,36 +18,6 @@ vi.mock('@/service/use-plugins', () => ({
 vi.mock('@/app/components/base/loading', () => ({
   default: () => <div data-testid="loading">loading</div>,
 }))
-
-vi.mock('@/app/components/base/portal-to-follow-elem', async () => {
-  const React = await import('react')
-  return {
-    PortalToFollowElem: ({
-      open,
-      children,
-    }: {
-      open: boolean
-      children: React.ReactNode
-    }) => {
-      portalOpen = open
-      return <div>{children}</div>
-    },
-    PortalToFollowElemTrigger: ({
-      children,
-      onClick,
-    }: {
-      children: React.ReactNode
-      onClick: () => void
-    }) => <button data-testid="trigger" onClick={onClick}>{children}</button>,
-    PortalToFollowElemContent: ({
-      children,
-      className,
-    }: {
-      children: React.ReactNode
-      className?: string
-    }) => portalOpen ? <div data-testid="portal-content" className={className}>{children}</div> : null,
-  }
-})
 
 vi.mock('@/app/components/plugins/marketplace/search-box', () => ({
   default: ({
@@ -69,18 +37,20 @@ vi.mock('@/app/components/plugins/marketplace/search-box', () => ({
       <div>{placeholder}</div>
       <div data-testid="search-state">{search}</div>
       <div data-testid="tags-state">{tags.join(',')}</div>
-      <button data-testid="set-query" onClick={() => onSearchChange('tool-rag')}>set-query</button>
-      <button data-testid="set-tags" onClick={() => onTagsChange(['rag'])}>set-tags</button>
+      <button data-testid="set-query" onClick={() => onSearchChange('tool-rag')}>
+        set-query
+      </button>
+      <button data-testid="set-tags" onClick={() => onTagsChange(['rag'])}>
+        set-tags
+      </button>
     </div>
   ),
 }))
 
 vi.mock('../no-data-placeholder', () => ({
-  default: ({
-    noPlugins,
-  }: {
-    noPlugins?: boolean
-  }) => <div data-testid="no-data">{String(noPlugins)}</div>,
+  default: ({ noPlugins }: { noPlugins?: boolean }) => (
+    <div data-testid="no-data">{String(noPlugins)}</div>
+  ),
 }))
 
 vi.mock('../tool-item', () => ({
@@ -96,7 +66,9 @@ vi.mock('../tool-item', () => ({
     <div data-testid="tool-item">
       <span>{payload.plugin_id}</span>
       <span>{String(isChecked)}</span>
-      <button data-testid={`toggle-${payload.plugin_id}`} onClick={onCheckChange}>toggle</button>
+      <button data-testid={`toggle-${payload.plugin_id}`} onClick={onCheckChange}>
+        toggle
+      </button>
     </div>
   ),
 }))
@@ -106,19 +78,19 @@ const createPlugin = (
   source: PluginDetail['source'],
   category: string,
   tags: string[],
-): PluginDetail => ({
-  plugin_id: pluginId,
-  source,
-  declaration: {
-    category,
-    tags,
-  },
-} as PluginDetail)
+): PluginDetail =>
+  ({
+    plugin_id: pluginId,
+    source,
+    declaration: {
+      category,
+      tags,
+    },
+  }) as PluginDetail
 
 describe('ToolPicker', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    portalOpen = false
     mockInstalledPluginList.data = {
       plugins: [],
     }
@@ -129,7 +101,7 @@ describe('ToolPicker', () => {
     const onShowChange = vi.fn()
     render(
       <ToolPicker
-        trigger={<span>trigger</span>}
+        trigger={<button type="button">trigger</button>}
         value={[]}
         onChange={vi.fn()}
         isShow={false}
@@ -137,9 +109,9 @@ describe('ToolPicker', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('trigger'))
+    fireEvent.click(screen.getByText('trigger'))
 
-    expect(onShowChange).toHaveBeenCalledWith(true)
+    expect(onShowChange).toHaveBeenCalledWith(true, expect.any(Object))
   })
 
   it('renders loading content while installed plugins are loading', () => {
@@ -209,6 +181,35 @@ describe('ToolPicker', () => {
     fireEvent.click(screen.getByTestId('set-query'))
     expect(screen.getAllByTestId('tool-item')).toHaveLength(1)
     expect(screen.getByTestId('search-state')).toHaveTextContent('tool-rag')
+  })
+
+  it('limits selectable integrations to the provided integration category', () => {
+    mockInstalledPluginList.data = {
+      plugins: [
+        createPlugin('model-openai', PluginSource.marketplace, 'model', ['llm']),
+        createPlugin('tool-rag', PluginSource.marketplace, 'tool', ['rag']),
+        createPlugin('datasource-notion', PluginSource.marketplace, 'datasource', ['docs']),
+      ],
+    }
+
+    render(
+      <ToolPicker
+        trigger={<span>trigger</span>}
+        value={[]}
+        onChange={vi.fn()}
+        isShow
+        onShowChange={vi.fn()}
+        integrationCategory={PluginCategoryEnum.model}
+      />,
+    )
+
+    expect(screen.getByText('plugin.category.models')).toBeInTheDocument()
+    expect(screen.queryByText('plugin.category.all')).not.toBeInTheDocument()
+    expect(screen.queryByText('plugin.category.tools')).not.toBeInTheDocument()
+    expect(screen.getAllByTestId('tool-item')).toHaveLength(1)
+    expect(screen.getByText('model-openai')).toBeInTheDocument()
+    expect(screen.queryByText('tool-rag')).not.toBeInTheDocument()
+    expect(screen.queryByText('datasource-notion')).not.toBeInTheDocument()
   })
 
   it('adds and removes plugin ids from the selection', () => {

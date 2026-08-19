@@ -39,14 +39,7 @@ describe('OptionCard', () => {
       const user = userEvent.setup()
       const onClick = vi.fn()
 
-      render(
-        <OptionCard
-          id="economical"
-          title="Economical"
-          readonly
-          onClick={onClick}
-        />,
-      )
+      render(<OptionCard id="economical" title="Economical" readonly onClick={onClick} />)
 
       await user.click(screen.getByText('Economical'))
 
@@ -60,9 +53,11 @@ describe('OptionCard', () => {
           selectedId="qualified"
           title="Inactive card"
           enableSelect={false}
-          wrapperClassName={isActive => (isActive ? 'wrapper-active' : 'wrapper-inactive')}
-          className={isActive => (isActive ? 'body-active' : 'body-inactive')}
-          icon={isActive => <span data-testid="option-icon">{isActive ? 'active' : 'inactive'}</span>}
+          wrapperClassName={(isActive) => (isActive ? 'wrapper-active' : 'wrapper-inactive')}
+          className={(isActive) => (isActive ? 'body-active' : 'body-inactive')}
+          icon={(isActive) => (
+            <span data-testid="option-icon">{isActive ? 'active' : 'inactive'}</span>
+          )}
         />,
       )
 

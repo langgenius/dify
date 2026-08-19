@@ -7,7 +7,7 @@ from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotIni
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from graphon.model_runtime.entities.llm_entities import LLMMode
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
-from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 
 
 class ModelConfigConverter:

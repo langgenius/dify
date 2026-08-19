@@ -1,20 +1,15 @@
+import type { ReactElement } from 'react'
 import type { ToolWithProvider } from '../../types'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hooks'
+import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/query'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { CollectionType } from '@/app/components/tools/types'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { Theme } from '@/types/app'
-import { defaultSystemFeatures } from '@/types/feature'
 import { BlockEnum } from '../../types'
 import DataSources from '../data-sources'
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: vi.fn(),
-}))
 
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: vi.fn(),
@@ -24,14 +19,19 @@ vi.mock('@/hooks/use-theme', () => ({
   default: vi.fn(),
 }))
 
-vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
+vi.mock('@/app/components/plugins/marketplace/query', () => ({
   useMarketplacePlugins: vi.fn(),
 }))
 
-const mockUseGlobalPublicStore = vi.mocked(useGlobalPublicStore)
 const mockUseGetLanguage = vi.mocked(useGetLanguage)
 const mockUseTheme = vi.mocked(useTheme)
 const mockUseMarketplacePlugins = vi.mocked(useMarketplacePlugins)
+
+let enableMarketplaceForRender = false
+const render = (ui: ReactElement) =>
+  renderWithConsoleQuery(ui, {
+    systemFeatures: { enable_marketplace: enableMarketplaceForRender },
+  })
 
 type UseMarketplacePluginsReturn = ReturnType<typeof useMarketplacePlugins>
 
@@ -42,7 +42,7 @@ const createToolProvider = (overrides: Partial<ToolWithProvider> = {}): ToolWith
   description: { en_US: 'desc', zh_Hans: '描述' },
   icon: 'icon',
   label: { en_US: 'File Source', zh_Hans: '文件源' },
-  type: CollectionType.datasource,
+  type: 'local_file',
   team_credentials: {},
   is_team_authorization: false,
   allow_delete: false,
@@ -63,37 +63,18 @@ const createToolProvider = (overrides: Partial<ToolWithProvider> = {}): ToolWith
   ...overrides,
 })
 
-const createSystemFeatures = (enableMarketplace: boolean) => ({
-  ...defaultSystemFeatures,
-  enable_marketplace: enableMarketplace,
-})
-
-const createGlobalPublicStoreState = (enableMarketplace: boolean) => ({
-  systemFeatures: createSystemFeatures(enableMarketplace),
-  setSystemFeatures: vi.fn(),
-})
-
 const createMarketplacePluginsMock = (
   overrides: Partial<UseMarketplacePluginsReturn> = {},
-): UseMarketplacePluginsReturn => ({
-  plugins: [],
-  total: 0,
-  resetPlugins: vi.fn(),
-  queryPlugins: vi.fn(),
-  queryPluginsWithDebounced: vi.fn(),
-  cancelQueryPluginsWithDebounced: vi.fn(),
-  isLoading: false,
-  isFetchingNextPage: false,
-  hasNextPage: false,
-  fetchNextPage: vi.fn(),
-  page: 0,
-  ...overrides,
-})
+): UseMarketplacePluginsReturn =>
+  ({
+    data: undefined,
+    ...overrides,
+  }) as UseMarketplacePluginsReturn
 
 describe('DataSources', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseGlobalPublicStore.mockImplementation(selector => selector(createGlobalPublicStoreState(false)))
+    enableMarketplaceForRender = false
     mockUseGetLanguage.mockReturnValue('en_US')
     mockUseTheme.mockReturnValue({ theme: Theme.light } as ReturnType<typeof useTheme>)
     mockUseMarketplacePlugins.mockReturnValue(createMarketplacePluginsMock())
@@ -105,23 +86,20 @@ describe('DataSources', () => {
       const user = userEvent.setup()
       const onSelect = vi.fn()
 
-      render(
-        <DataSources
-          searchText=""
-          onSelect={onSelect}
-          dataSources={[createToolProvider()]}
-        />,
-      )
+      render(<DataSources searchText="" onSelect={onSelect} dataSources={[createToolProvider()]} />)
 
       await user.click(screen.getByText('File Source'))
       await user.click(screen.getByText('Local File'))
 
-      expect(onSelect).toHaveBeenCalledWith(BlockEnum.DataSource, expect.objectContaining({
-        provider_name: 'file',
-        datasource_name: 'local-file',
-        datasource_label: 'Local File',
-        fileExtensions: expect.arrayContaining(['txt', 'pdf', 'md']),
-      }))
+      expect(onSelect).toHaveBeenCalledWith(
+        BlockEnum.DataSource,
+        expect.objectContaining({
+          provider_name: 'file',
+          datasource_name: 'local-file',
+          datasource_label: 'Local File',
+          fileExtensions: expect.arrayContaining(['txt', 'pdf', 'md']),
+        }),
+      )
     })
 
     it('should filter providers by search text', () => {
@@ -134,15 +112,17 @@ describe('DataSources', () => {
               id: 'searchable-provider',
               name: 'searchable-provider',
               label: { en_US: 'Searchable Source', zh_Hans: '可搜索源' },
-              tools: [{
-                name: 'searchable-tool',
-                author: 'Dify',
-                label: { en_US: 'Searchable Tool', zh_Hans: '可搜索工具' },
-                description: { en_US: 'desc', zh_Hans: '描述' },
-                parameters: [],
-                labels: [],
-                output_schema: {},
-              }],
+              tools: [
+                {
+                  name: 'searchable-tool',
+                  author: 'Dify',
+                  label: { en_US: 'Searchable Tool', zh_Hans: '可搜索工具' },
+                  description: { en_US: 'desc', zh_Hans: '描述' },
+                  parameters: [],
+                  labels: [],
+                  output_schema: {},
+                },
+              ],
             }),
             createToolProvider({
               id: 'other-provider',
@@ -160,23 +140,30 @@ describe('DataSources', () => {
 
   // Marketplace search should only run when enabled and a search term is present.
   describe('Marketplace Search', () => {
-    it('should query marketplace plugins for datasource search results', async () => {
-      const queryPluginsWithDebounced = vi.fn()
-      mockUseGlobalPublicStore.mockImplementation(selector => selector(createGlobalPublicStoreState(true)))
-      mockUseMarketplacePlugins.mockReturnValue(createMarketplacePluginsMock({
-        queryPluginsWithDebounced,
-      }))
+    it('should debounce marketplace requests while keeping datasource filtering responsive', async () => {
+      enableMarketplaceForRender = true
 
-      render(
-        <DataSources
-          searchText="invoice"
-          onSelect={vi.fn()}
-          dataSources={[]}
-        />,
+      const onSelect = vi.fn()
+      const dataSources = [createToolProvider()]
+      const { rerender } = render(
+        <DataSources searchText="" onSelect={onSelect} dataSources={dataSources} />,
       )
 
+      rerender(<DataSources searchText="i" onSelect={onSelect} dataSources={dataSources} />)
+      expect(
+        screen.queryByRole('link', { name: /plugin\.findMoreInMarketplace/ }),
+      ).not.toBeInTheDocument()
+      rerender(<DataSources searchText="in" onSelect={onSelect} dataSources={dataSources} />)
+      rerender(<DataSources searchText="invoice" onSelect={onSelect} dataSources={dataSources} />)
+
+      expect(
+        mockUseMarketplacePlugins.mock.calls
+          .map(([params]) => params)
+          .filter((params) => params?.query && params.query !== 'invoice'),
+      ).toEqual([])
+
       await waitFor(() => {
-        expect(queryPluginsWithDebounced).toHaveBeenCalledWith({
+        expect(mockUseMarketplacePlugins).toHaveBeenLastCalledWith({
           query: 'invoice',
           category: PluginCategoryEnum.datasource,
         })

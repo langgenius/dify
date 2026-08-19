@@ -1,5 +1,5 @@
-import type { UserProfile } from '@/service/workflow-comment'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { UserProfile } from '@/app/components/workflow/comment/types'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
 import { MentionInput } from './mention-input'
 
@@ -19,19 +19,24 @@ const mentionStoreState = vi.hoisted(() => ({
     mentionStoreState.mentionableUsersCache[appId] = users
   },
 }))
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
-
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ appId: 'app-1' }),
 }))
 
-vi.mock('@/service/workflow-comment', () => ({
-  fetchMentionableUsers: (...args: unknown[]) => mockFetchMentionableUsers(...args),
+vi.mock('@/service/client', () => ({
+  consoleClient: {
+    apps: {
+      byAppId: {
+        workflow: {
+          comments: {
+            mentionUsers: {
+              get: (...args: unknown[]) => mockFetchMentionableUsers(...args),
+            },
+          },
+        },
+      },
+    },
+  },
 }))
 
 vi.mock('../store', () => ({
@@ -39,10 +44,6 @@ vi.mock('../store', () => ({
   useWorkflowStore: () => ({
     getState: () => mentionStoreState,
   }),
-}))
-
-vi.mock('@langgenius/dify-ui/avatar', () => ({
-  Avatar: ({ name }: { name: string }) => <div data-testid="mention-avatar">{name}</div>,
 }))
 
 const mentionUsers: UserProfile[] = [
@@ -66,13 +67,7 @@ function ControlledMentionInput({
   onSubmit: (content: string, mentionedUserIds: string[]) => void
 }) {
   const [value, setValue] = useState('')
-  return (
-    <MentionInput
-      value={value}
-      onChange={setValue}
-      onSubmit={onSubmit}
-    />
-  )
+  return <MentionInput value={value} onChange={setValue} onSubmit={onSubmit} />
 }
 
 describe('MentionInput', () => {
@@ -80,20 +75,16 @@ describe('MentionInput', () => {
     vi.clearAllMocks()
     mentionStoreState.mentionableUsersCache = {}
     mentionStoreState.mentionableUsersLoading = {}
-    mockFetchMentionableUsers.mockResolvedValue(mentionUsers)
+    mockFetchMentionableUsers.mockResolvedValue({ users: mentionUsers })
   })
 
   it('loads mentionable users when cache is empty', async () => {
-    render(
-      <MentionInput
-        value=""
-        onChange={vi.fn()}
-        onSubmit={vi.fn()}
-      />,
-    )
+    render(<MentionInput value="" onChange={vi.fn()} onSubmit={vi.fn()} />)
 
     await waitFor(() => {
-      expect(mockFetchMentionableUsers).toHaveBeenCalledWith('app-1')
+      expect(mockFetchMentionableUsers).toHaveBeenCalledWith({
+        params: { app_id: 'app-1' },
+      })
     })
 
     expect(mockSetMentionableUsersLoading).toHaveBeenCalledWith('app-1', true)
@@ -107,7 +98,9 @@ describe('MentionInput', () => {
 
     render(<ControlledMentionInput onSubmit={onSubmit} />)
 
-    const textarea = screen.getByPlaceholderText('workflow.comments.placeholder.add') as HTMLTextAreaElement
+    const textarea = screen.getByPlaceholderText(
+      'workflow.comments.placeholder.add',
+    ) as HTMLTextAreaElement
     textarea.focus()
     textarea.setSelectionRange(4, 4)
     fireEvent.change(textarea, { target: { value: '@Ali' } })
@@ -147,5 +140,32 @@ describe('MentionInput', () => {
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith('updated reply', [])
     })
+  })
+
+  it('focuses the textarea at the end when autoFocus is enabled', () => {
+    vi.useFakeTimers()
+    try {
+      mentionStoreState.mentionableUsersCache['app-1'] = mentionUsers
+
+      const { unmount } = render(
+        <MentionInput value="draft" onChange={vi.fn()} onSubmit={vi.fn()} autoFocus />,
+      )
+
+      const textarea = screen.getByPlaceholderText(
+        'workflow.comments.placeholder.add',
+      ) as HTMLTextAreaElement
+
+      act(() => {
+        vi.runOnlyPendingTimers()
+      })
+
+      expect(document.activeElement).toBe(textarea)
+      expect(textarea.selectionStart).toBe(5)
+      expect(textarea.selectionEnd).toBe(5)
+
+      unmount()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

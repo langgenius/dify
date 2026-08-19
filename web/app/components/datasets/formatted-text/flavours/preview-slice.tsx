@@ -1,6 +1,16 @@
 import type { FC, ReactNode } from 'react'
 import type { SliceProps } from './type'
-import { autoUpdate, flip, inline, shift, useDismiss, useFloating, useHover, useInteractions, useRole } from '@floating-ui/react'
+import {
+  autoUpdate,
+  flip,
+  inline,
+  shift,
+  useDismiss,
+  useFloating,
+  useHover,
+  useInteractions,
+  useRole,
+} from '@floating-ui/react'
 import { useState } from 'react'
 import { SliceContainer, SliceContent, SliceDivider, SliceLabel } from './shared'
 
@@ -19,11 +29,7 @@ export const PreviewSlice: FC<PreviewSliceProps> = (props) => {
     onOpenChange: setTooltipOpen,
     whileElementsMounted: autoUpdate,
     placement: 'top',
-    middleware: [
-      inline(),
-      flip(),
-      shift(),
-    ],
+    middleware: [inline(), flip(), shift()],
   })
   const hover = useHover(context, {
     delay: { open: 500 },

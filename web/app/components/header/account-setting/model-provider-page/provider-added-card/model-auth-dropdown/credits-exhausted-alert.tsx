@@ -1,17 +1,32 @@
+import { Meter, MeterIndicator, MeterLabel, MeterTrack } from '@langgenius/dify-ui/meter'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { Trans, useTranslation } from 'react-i18next'
 import { CreditsCoin } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import { useModalContextSelector } from '@/context/modal-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { formatNumber } from '@/utils/format'
 import { useTrialCredits } from '../use-trial-credits'
 
 type CreditsExhaustedAlertProps = {
   hasApiKeyFallback: boolean
+  credits?: number
+  totalCredits?: number
 }
 
-export default function CreditsExhaustedAlert({ hasApiKeyFallback }: CreditsExhaustedAlertProps) {
+export default function CreditsExhaustedAlert({
+  hasApiKeyFallback,
+  credits: creditsOverride,
+  totalCredits: totalCreditsOverride,
+}: CreditsExhaustedAlertProps) {
   const { t } = useTranslation()
-  const setShowPricingModal = useModalContextSelector(s => s.setShowPricingModal)
-  const { credits, totalCredits } = useTrialCredits()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+  const setShowPricingModal = useModalContextSelector((s) => s.setShowPricingModal)
+  const trialCredits = useTrialCredits()
+  const credits = creditsOverride ?? trialCredits.credits
+  const totalCredits = totalCreditsOverride ?? trialCredits.totalCredits
 
   const titleKey = hasApiKeyFallback
     ? 'modelProvider.card.creditsExhaustedFallback'
@@ -21,51 +36,52 @@ export default function CreditsExhaustedAlert({ hasApiKeyFallback }: CreditsExha
     : 'modelProvider.card.creditsExhaustedDescription'
 
   const usedCredits = totalCredits - credits
-  const usagePercent = totalCredits > 0 ? Math.min((usedCredits / totalCredits) * 100, 100) : 100
+  const hasTotal = totalCredits > 0
+  const meterValue = hasTotal ? Math.min(usedCredits, totalCredits) : 1
+  const meterMax = hasTotal ? totalCredits : 1
 
   return (
     <div className="mx-2 mt-0.5 mb-1 rounded-lg bg-background-section-burn p-3">
       <div className="flex flex-col gap-1">
         <div className="system-sm-medium text-text-primary">
-          {t(titleKey, { ns: 'common' })}
+          {t(($) => $[titleKey], { ns: 'common' })}
         </div>
         <div className="system-xs-regular text-text-tertiary">
           <Trans
-            i18nKey={descriptionKey}
+            i18nKey={($) => $[descriptionKey]}
             ns="common"
             components={{
-              upgradeLink: (
-                <button
-                  type="button"
-                  className="cursor-pointer border-0 bg-transparent p-0 text-left system-xs-medium text-text-accent"
-                  onClick={() => setShowPricingModal()}
-                />
-              ),
+              upgradeLink:
+                deploymentEdition === 'CLOUD' ? (
+                  <button
+                    type="button"
+                    className="cursor-pointer border-0 bg-transparent p-0 text-left system-xs-medium text-text-accent"
+                    onClick={() => setShowPricingModal()}
+                  />
+                ) : (
+                  <span />
+                ),
             }}
           />
         </div>
       </div>
-      <div className="mt-3 flex flex-col gap-1">
+      <Meter value={meterValue} max={meterMax} className="mt-3 flex flex-col gap-1">
         <div className="flex items-center justify-between">
-          <span className="system-xs-medium text-text-tertiary">
-            {t('modelProvider.card.usageLabel', { ns: 'common' })}
-          </span>
+          <MeterLabel className="system-xs-medium text-text-tertiary">
+            {t(($) => $['modelProvider.card.usageLabel'], { ns: 'common' })}
+          </MeterLabel>
           <div className="flex items-center gap-0.5 system-xs-regular text-text-tertiary">
-            <CreditsCoin className="h-3 w-3" />
+            {/* oxlint-disable-next-line hyoban/prefer-tailwind-icons -- This generated icon class is not available to Tailwind. */}
+            <CreditsCoin className="size-3" />
             <span>
-              {formatNumber(usedCredits)}
-              /
-              {formatNumber(totalCredits)}
+              {formatNumber(usedCredits)}/{formatNumber(totalCredits)}
             </span>
           </div>
         </div>
-        <div className="h-1 overflow-hidden rounded-md bg-components-progress-error-bg">
-          <div
-            className="h-full rounded-l-[6px] bg-components-progress-error-progress"
-            style={{ width: `${usagePercent}%` }}
-          />
-        </div>
-      </div>
+        <MeterTrack className="bg-components-progress-error-bg">
+          <MeterIndicator tone="error" />
+        </MeterTrack>
+      </Meter>
     </div>
   )
 }

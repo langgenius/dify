@@ -1,16 +1,11 @@
 import types
+from inspect import unwrap
 from unittest.mock import patch
 
 import pytest
 from werkzeug.exceptions import Forbidden, NotFound
 
 import controllers.files.tool_files as module
-
-
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
 
 
 def fake_request(args: dict):

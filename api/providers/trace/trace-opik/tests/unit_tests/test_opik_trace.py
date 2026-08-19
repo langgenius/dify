@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 from dify_trace_opik.opik_trace import OpikDataTrace, _seed_to_uuid4, prepare_opik_uuid
@@ -67,6 +68,14 @@ def _make_opik_trace_instance() -> OpikDataTrace:
     instance.add_span = MagicMock()
     instance.get_service_account_with_tenant = MagicMock(return_value=MagicMock())
     return instance
+
+
+def _add_trace_mock(instance: OpikDataTrace) -> MagicMock:
+    return cast(MagicMock, instance.add_trace)
+
+
+def _add_span_mock(instance: OpikDataTrace) -> MagicMock:
+    return cast(MagicMock, instance.add_span)
 
 
 # ---------------------------------------------------------------------------
@@ -155,21 +164,21 @@ class TestWorkflowTraceWithoutMessageId:
     def test_root_span_is_created(self):
         trace_info = _make_workflow_trace_info(message_id=None)
         instance = self._run(trace_info)
-        assert instance.add_span.called
+        assert _add_span_mock(instance).called
 
     def test_root_span_id_matches_expected(self):
         trace_info = _make_workflow_trace_info(message_id=None)
         instance = self._run(trace_info)
 
         expected = self._expected_root_span_id(trace_info)
-        root_span_kwargs = instance.add_span.call_args_list[0][0][0]
+        root_span_kwargs = _add_span_mock(instance).call_args_list[0][0][0]
         assert root_span_kwargs["id"] == expected
 
     def test_root_span_has_no_parent(self):
         trace_info = _make_workflow_trace_info(message_id=None)
         instance = self._run(trace_info)
 
-        root_span_kwargs = instance.add_span.call_args_list[0][0][0]
+        root_span_kwargs = _add_span_mock(instance).call_args_list[0][0][0]
         assert root_span_kwargs["parent_span_id"] is None
 
     def test_trace_name_is_workflow_trace(self):
@@ -177,21 +186,21 @@ class TestWorkflowTraceWithoutMessageId:
         trace_info = _make_workflow_trace_info(message_id=None)
         instance = self._run(trace_info)
 
-        trace_kwargs = instance.add_trace.call_args_list[0][0][0]
+        trace_kwargs = _add_trace_mock(instance).call_args_list[0][0][0]
         assert trace_kwargs["name"] == TraceTaskName.WORKFLOW_TRACE
 
     def test_root_span_name_is_workflow_trace(self):
         trace_info = _make_workflow_trace_info(message_id=None)
         instance = self._run(trace_info)
 
-        root_span_kwargs = instance.add_span.call_args_list[0][0][0]
+        root_span_kwargs = _add_span_mock(instance).call_args_list[0][0][0]
         assert root_span_kwargs["name"] == TraceTaskName.WORKFLOW_TRACE
 
     def test_root_span_has_workflow_tag(self):
         trace_info = _make_workflow_trace_info(message_id=None)
         instance = self._run(trace_info)
 
-        root_span_kwargs = instance.add_span.call_args_list[0][0][0]
+        root_span_kwargs = _add_span_mock(instance).call_args_list[0][0][0]
         assert "workflow" in root_span_kwargs["tags"]
 
     def test_node_execution_spans_are_parented_to_root(self):
@@ -214,8 +223,9 @@ class TestWorkflowTraceWithoutMessageId:
         instance = self._run(trace_info, node_executions=[node_exec])
 
         # call_args_list[0] = root span, [1] = node execution span
-        assert instance.add_span.call_count == 2
-        node_span_kwargs = instance.add_span.call_args_list[1][0][0]
+        add_span = _add_span_mock(instance)
+        assert add_span.call_count == 2
+        node_span_kwargs = add_span.call_args_list[1][0][0]
         assert node_span_kwargs["parent_span_id"] == expected_root_span_id
 
     def test_node_span_not_parented_to_workflow_app_log_id(self):
@@ -240,7 +250,7 @@ class TestWorkflowTraceWithoutMessageId:
         instance = self._run(trace_info, node_executions=[node_exec])
 
         old_parent_id = prepare_opik_uuid(trace_info.start_time, trace_info.workflow_app_log_id)
-        node_span_kwargs = instance.add_span.call_args_list[1][0][0]
+        node_span_kwargs = _add_span_mock(instance).call_args_list[1][0][0]
         assert node_span_kwargs["parent_span_id"] != old_parent_id
 
     def test_root_span_id_differs_from_trace_id(self):
@@ -283,7 +293,7 @@ class TestWorkflowTraceWithMessageId:
         trace_info = _make_workflow_trace_info(message_id=self._MESSAGE_ID)
         instance = self._run(trace_info)
 
-        trace_kwargs = instance.add_trace.call_args_list[0][0][0]
+        trace_kwargs = _add_trace_mock(instance).call_args_list[0][0][0]
         assert trace_kwargs["name"] == TraceTaskName.MESSAGE_TRACE
 
     def test_root_span_uses_workflow_run_id_directly(self):
@@ -292,7 +302,7 @@ class TestWorkflowTraceWithMessageId:
         instance = self._run(trace_info)
 
         expected_root_span_id = prepare_opik_uuid(trace_info.start_time, trace_info.workflow_run_id)
-        root_span_kwargs = instance.add_span.call_args_list[0][0][0]
+        root_span_kwargs = _add_span_mock(instance).call_args_list[0][0][0]
         assert root_span_kwargs["id"] == expected_root_span_id
 
     def test_root_span_id_differs_from_no_message_id_case(self):
@@ -326,5 +336,5 @@ class TestWorkflowTraceWithMessageId:
 
         instance = self._run(trace_info, node_executions=[node_exec])
 
-        node_span_kwargs = instance.add_span.call_args_list[1][0][0]
+        node_span_kwargs = _add_span_mock(instance).call_args_list[1][0][0]
         assert node_span_kwargs["parent_span_id"] == expected_root_span_id

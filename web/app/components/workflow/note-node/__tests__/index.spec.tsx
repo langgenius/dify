@@ -14,7 +14,6 @@ const {
   mockHandleNodesDuplicate,
   mockHandleShowAuthorChange,
   mockHandleThemeChange,
-  mockSetShortcutsEnabled,
 } = vi.hoisted(() => ({
   mockHandleEditorChange: vi.fn(),
   mockHandleNodeDataUpdateWithSyncDraft: vi.fn(),
@@ -23,16 +22,22 @@ const {
   mockHandleNodesDuplicate: vi.fn(),
   mockHandleShowAuthorChange: vi.fn(),
   mockHandleThemeChange: vi.fn(),
-  mockSetShortcutsEnabled: vi.fn(),
 }))
 
-vi.mock('../../hooks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../hooks')>()
+vi.mock('../../hooks/use-node-data-update', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-node-data-update')>()
   return {
     ...actual,
     useNodeDataUpdate: () => ({
       handleNodeDataUpdateWithSyncDraft: mockHandleNodeDataUpdateWithSyncDraft,
     }),
+  }
+})
+
+vi.mock('../../hooks/use-nodes-interactions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-nodes-interactions')>()
+  return {
+    ...actual,
     useNodesInteractions: () => ({
       handleNodesCopy: mockHandleNodesCopy,
       handleNodesDuplicate: mockHandleNodesDuplicate,
@@ -46,12 +51,6 @@ vi.mock('../hooks', () => ({
     handleThemeChange: mockHandleThemeChange,
     handleEditorChange: mockHandleEditorChange,
     handleShowAuthorChange: mockHandleShowAuthorChange,
-  }),
-}))
-
-vi.mock('../../workflow-history-store', () => ({
-  useWorkflowHistoryStore: () => ({
-    setShortcutsEnabled: mockSetShortcutsEnabled,
   }),
 }))
 
@@ -80,21 +79,18 @@ const renderNoteNode = (dataOverrides: Partial<NoteNodeType> = {}) => {
     }),
   ]
 
-  return renderWorkflowFlowComponent(
-    <div />,
-    {
-      nodes,
-      edges: [],
-      reactFlowProps: {
-        nodeTypes: {
-          [CUSTOM_NOTE_NODE]: NoteNode,
-        },
-      },
-      initialStoreState: {
-        controlPromptEditorRerenderKey: 0,
+  return renderWorkflowFlowComponent(<div />, {
+    nodes,
+    edges: [],
+    reactFlowProps: {
+      nodeTypes: {
+        [CUSTOM_NOTE_NODE]: NoteNode,
       },
     },
-  )
+    initialStoreState: {
+      controlPromptEditorRerenderKey: 0,
+    },
+  })
 }
 
 describe('NoteNode', () => {
@@ -111,7 +107,9 @@ describe('NoteNode', () => {
       expect(screen.getByText('workflow.nodes.note.editor.small')).toBeInTheDocument()
     })
 
-    expect(screen.getByText('workflow.nodes.note.editor.small').closest('.nodrag.nopan.nowheel')).toBeInTheDocument()
+    expect(
+      screen.getByText('workflow.nodes.note.editor.small').closest('.nodrag.nopan.nowheel'),
+    ).toBeInTheDocument()
   })
 
   it('should hide the toolbar for temporary notes', () => {

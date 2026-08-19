@@ -64,7 +64,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         db_session_with_containers.commit()
         return execution
 
-    def test_get_node_last_execution_found(self, db_session_with_containers):
+    def test_get_node_last_execution_found(self, db_session_with_containers: Session):
         """Test getting the last execution for a node when it exists."""
         # Arrange
         tenant_id = str(uuid4())
@@ -110,7 +110,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         assert result.id == expected.id
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
 
-    def test_get_node_last_execution_not_found(self, db_session_with_containers):
+    def test_get_node_last_execution_not_found(self, db_session_with_containers: Session):
         """Test getting the last execution for a node when it doesn't exist."""
         # Arrange
         tenant_id = str(uuid4())
@@ -129,7 +129,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         # Assert
         assert result is None
 
-    def test_get_executions_by_workflow_run_empty(self, db_session_with_containers):
+    def test_get_executions_by_workflow_run_empty(self, db_session_with_containers: Session):
         """Test getting executions for a workflow run when none exist."""
         # Arrange
         tenant_id = str(uuid4())
@@ -147,7 +147,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         # Assert
         assert result == []
 
-    def test_get_execution_by_id_found(self, db_session_with_containers):
+    def test_get_execution_by_id_found(self, db_session_with_containers: Session):
         """Test getting execution by ID when it exists."""
         # Arrange
         execution = self._create_execution(
@@ -170,7 +170,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         assert result is not None
         assert result.id == execution.id
 
-    def test_get_execution_by_id_not_found(self, db_session_with_containers):
+    def test_get_execution_by_id_not_found(self, db_session_with_containers: Session):
         """Test getting execution by ID when it doesn't exist."""
         # Arrange
         repository = self._create_repository(db_session_with_containers)
@@ -182,7 +182,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         # Assert
         assert result is None
 
-    def test_delete_expired_executions(self, db_session_with_containers):
+    def test_delete_expired_executions(self, db_session_with_containers: Session):
         """Test deleting expired executions."""
         # Arrange
         tenant_id = str(uuid4())
@@ -248,7 +248,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         assert old_execution_2_id not in remaining_ids
         assert kept_execution_id in remaining_ids
 
-    def test_delete_executions_by_app(self, db_session_with_containers):
+    def test_delete_executions_by_app(self, db_session_with_containers: Session):
         """Test deleting executions by app."""
         # Arrange
         tenant_id = str(uuid4())
@@ -313,7 +313,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         assert deleted_2_id not in remaining_ids
         assert kept_id in remaining_ids
 
-    def test_get_expired_executions_batch(self, db_session_with_containers):
+    def test_get_expired_executions_batch(self, db_session_with_containers: Session):
         """Test getting expired executions batch for backup."""
         # Arrange
         tenant_id = str(uuid4())
@@ -370,7 +370,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         assert old_execution_1.id in result_ids
         assert old_execution_2.id in result_ids
 
-    def test_delete_executions_by_ids(self, db_session_with_containers):
+    def test_delete_executions_by_ids(self, db_session_with_containers: Session):
         """Test deleting executions by IDs."""
         # Arrange
         tenant_id = str(uuid4())
@@ -424,7 +424,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         ).all()
         assert remaining == []
 
-    def test_delete_executions_by_ids_empty_list(self, db_session_with_containers):
+    def test_delete_executions_by_ids_empty_list(self, db_session_with_containers: Session):
         """Test deleting executions with empty ID list."""
         # Arrange
         repository = self._create_repository(db_session_with_containers)

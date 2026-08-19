@@ -1,12 +1,12 @@
 import type { JSX } from 'react'
 import type { BundledLanguage, BundledTheme } from 'shiki/bundle/web'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Toggle } from '@langgenius/dify-ui/toggle'
 import ReactEcharts from 'echarts-for-react'
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import ActionButton from '@/app/components/base/action-button'
 import CopyIcon from '@/app/components/base/copy-icon'
 import MarkdownMusic from '@/app/components/base/markdown-blocks/music'
 import ErrorBoundary from '@/app/components/base/markdown/error-boundary'
-import SVGBtn from '@/app/components/base/svg'
 import useTheme from '@/hooks/use-theme'
 import dynamic from '@/next/dynamic'
 import { Theme } from '@/types/app'
@@ -39,11 +39,9 @@ const capitalizationLanguageNameMap: Record<string, string> = {
   abc: 'ABC',
 }
 const getCorrectCapitalizationLanguageName = (language: string) => {
-  if (!language)
-    return 'Plain'
+  if (!language) return 'Plain'
 
-  if (language in capitalizationLanguageNameMap)
-    return capitalizationLanguageNameMap[language]
+  if (language in capitalizationLanguageNameMap) return capitalizationLanguageNameMap[language]
 
   return language.charAt(0).toUpperCase() + language.substring(1)
 }
@@ -61,59 +59,72 @@ const getCorrectCapitalizationLanguageName = (language: string) => {
 // visit https://reactjs.org/docs/error-decoder.html?invariant=185 for the full message
 // or use the non-minified dev environment for full errors and additional helpful warnings.
 
-const ShikiCodeBlock = memo(({ code, language, theme, initial }: { code: string, language: string, theme: BundledTheme, initial?: JSX.Element }) => {
-  const [nodes, setNodes] = useState(initial)
+const ShikiCodeBlock = memo(
+  ({
+    code,
+    language,
+    theme,
+    initial,
+  }: {
+    code: string
+    language: string
+    theme: BundledTheme
+    initial?: JSX.Element
+  }) => {
+    const [nodes, setNodes] = useState(initial)
 
-  useLayoutEffect(() => {
-    let cancelled = false
+    useLayoutEffect(() => {
+      let cancelled = false
 
-    void highlightCode({
-      code,
-      language: language as BundledLanguage,
-      theme,
-    }).then((result) => {
-      if (!cancelled)
-        setNodes(result)
-    }).catch((error) => {
-      console.error('Shiki highlighting failed:', error)
-      if (!cancelled)
-        setNodes(undefined)
-    })
+      void highlightCode({
+        code,
+        language: language as BundledLanguage,
+        theme,
+      })
+        .then((result) => {
+          if (!cancelled) setNodes(result)
+        })
+        .catch((error) => {
+          console.error('Shiki highlighting failed:', error)
+          if (!cancelled) setNodes(undefined)
+        })
 
-    return () => {
-      cancelled = true
+      return () => {
+        cancelled = true
+      }
+    }, [code, language, theme])
+
+    if (!nodes) {
+      return (
+        <pre
+          style={{
+            paddingLeft: 12,
+            borderBottomLeftRadius: '10px',
+            borderBottomRightRadius: '10px',
+            backgroundColor: 'var(--color-components-input-bg-normal)',
+            margin: 0,
+            overflow: 'auto',
+          }}
+        >
+          <code>{code}</code>
+        </pre>
+      )
     }
-  }, [code, language, theme])
 
-  if (!nodes) {
     return (
-      <pre style={{
-        paddingLeft: 12,
-        borderBottomLeftRadius: '10px',
-        borderBottomRightRadius: '10px',
-        backgroundColor: 'var(--color-components-input-bg-normal)',
-        margin: 0,
-        overflow: 'auto',
-      }}
+      <div
+        style={{
+          borderBottomLeftRadius: '10px',
+          borderBottomRightRadius: '10px',
+          overflow: 'auto',
+        }}
+        className="shiki-line-numbers [&_pre]:m-0! [&_pre]:rounded-t-none! [&_pre]:rounded-b-[10px]! [&_pre]:bg-components-input-bg-normal! [&_pre]:py-2!"
       >
-        <code>{code}</code>
-      </pre>
+        {nodes}
+      </div>
     )
-  }
-
-  return (
-    <div
-      style={{
-        borderBottomLeftRadius: '10px',
-        borderBottomRightRadius: '10px',
-        overflow: 'auto',
-      }}
-      className="shiki-line-numbers [&_pre]:m-0! [&_pre]:rounded-t-none! [&_pre]:rounded-b-[10px]! [&_pre]:bg-components-input-bg-normal! [&_pre]:py-2!"
-    >
-      {nodes}
-    </div>
-  )
-})
+  },
+)
 ShikiCodeBlock.displayName = 'ShikiCodeBlock'
 
 // Define ECharts event parameter types
@@ -127,7 +138,7 @@ type EChartsEventParams = {
   [key: string]: any
 }
 
-const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any) => {
+export const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any) => {
   const { theme } = useTheme()
   const [isSVG, setIsSVG] = useState(true)
   const [chartState, setChartState] = useState<'loading' | 'success' | 'error'>('loading')
@@ -146,76 +157,84 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
   const isDarkMode = theme === Theme.dark
 
   const clearResizeTimer = useCallback(() => {
-    if (!resizeTimerRef.current)
-      return
+    if (!resizeTimerRef.current) return
 
     clearTimeout(resizeTimerRef.current)
     resizeTimerRef.current = null
   }, [])
 
   const clearChartReadyTimer = useCallback(() => {
-    if (!chartReadyTimerRef.current)
-      return
+    if (!chartReadyTimerRef.current) return
 
     clearTimeout(chartReadyTimerRef.current)
     chartReadyTimerRef.current = null
   }, [])
 
-  const echartsStyle = useMemo(() => ({
-    height: '350px',
-    width: '100%',
-  }), [])
+  const echartsStyle = useMemo(
+    () => ({
+      height: '350px',
+      width: '100%',
+    }),
+    [],
+  )
 
-  const echartsOpts = useMemo(() => ({
-    renderer: 'canvas',
-    width: 'auto',
-  }) as any, [])
+  const echartsOpts = useMemo(
+    () =>
+      ({
+        renderer: 'canvas',
+        width: 'auto',
+      }) as any,
+    [],
+  )
 
   // Debounce resize operations
   const debouncedResize = useCallback(() => {
     clearResizeTimer()
 
     resizeTimerRef.current = setTimeout(() => {
-      if (chartInstanceRef.current)
-        chartInstanceRef.current.resize()
+      if (chartInstanceRef.current) chartInstanceRef.current.resize()
       resizeTimerRef.current = null
     }, 200)
   }, [clearResizeTimer])
 
   // Handle ECharts instance initialization
-  const handleChartReady = useCallback((instance: any) => {
-    chartInstanceRef.current = instance
+  const handleChartReady = useCallback(
+    (instance: any) => {
+      chartInstanceRef.current = instance
 
-    // Force resize to ensure timeline displays correctly
-    clearChartReadyTimer()
-    chartReadyTimerRef.current = setTimeout(() => {
-      if (chartInstanceRef.current)
-        chartInstanceRef.current.resize()
-      chartReadyTimerRef.current = null
-    }, 200)
-  }, [clearChartReadyTimer])
+      // Force resize to ensure timeline displays correctly
+      clearChartReadyTimer()
+      chartReadyTimerRef.current = setTimeout(() => {
+        if (chartInstanceRef.current) chartInstanceRef.current.resize()
+        chartReadyTimerRef.current = null
+      }, 200)
+    },
+    [clearChartReadyTimer],
+  )
 
   // Store event handlers in useMemo to avoid recreating them
-  const echartsEvents = useMemo(() => ({
-    finished: (_params: EChartsEventParams) => {
-      // Limit finished event frequency to avoid infinite loops
-      finishedEventCountRef.current++
-      if (finishedEventCountRef.current > 3) {
-        // Stop processing after 3 times to avoid infinite loops
-        return
-      }
+  const echartsEvents = useMemo(
+    () => ({
+      finished: (_params: EChartsEventParams) => {
+        // Limit finished event frequency to avoid infinite loops
+        finishedEventCountRef.current++
+        if (finishedEventCountRef.current > 3) {
+          // Stop processing after 3 times to avoid infinite loops
+          return
+        }
 
-      if (chartInstanceRef.current) {
-        // Use debounced resize
-        debouncedResize()
-      }
-    },
-  }), [debouncedResize])
+        if (chartInstanceRef.current) {
+          // Use debounced resize
+          debouncedResize()
+        }
+      },
+    }),
+    [debouncedResize],
+  )
 
   // Handle container resize for echarts
   useEffect(() => {
-    if (language !== 'echarts' || !chartInstanceRef.current)
-      return
+    if (language !== 'echarts' || !chartInstanceRef.current) return
 
     const handleResize = () => {
       if (chartInstanceRef.current)
@@ -244,8 +263,7 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
   // Process chart data when content changes
   useEffect(() => {
     // Only process echarts content
-    if (language !== 'echarts')
-      return
+    if (language !== 'echarts') return
 
     // Reset state when new content is detected
     if (!contentRef.current) {
@@ -256,21 +274,21 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
     const newContent = String(children).replace(/\n$/, '')
 
     // Skip if content hasn't changed
-    if (contentRef.current === newContent)
-      return
+    if (contentRef.current === newContent) return
     contentRef.current = newContent
 
     const trimmedContent = newContent.trim()
-    if (!trimmedContent)
-      return
+    if (!trimmedContent) return
 
     // Detect if this is historical data (already complete)
     // Historical data typically comes as a complete code block with complete JSON
-    const isCompleteJson
-      = (trimmedContent.startsWith('{') && trimmedContent.endsWith('}')
-        && trimmedContent.split('{').length === trimmedContent.split('}').length)
-      || (trimmedContent.startsWith('[') && trimmedContent.endsWith(']')
-        && trimmedContent.split('[').length === trimmedContent.split(']').length)
+    const isCompleteJson =
+      (trimmedContent.startsWith('{') &&
+        trimmedContent.endsWith('}') &&
+        trimmedContent.split('{').length === trimmedContent.split('}').length) ||
+      (trimmedContent.startsWith('[') &&
+        trimmedContent.endsWith(']') &&
+        trimmedContent.split('[').length === trimmedContent.split(']').length)
 
     // If the JSON structure looks complete, try to parse it right away
     if (isCompleteJson && !processedRef.current) {
@@ -278,12 +296,12 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
         const parsed = JSON.parse(trimmedContent)
         if (typeof parsed === 'object' && parsed !== null) {
           setFinalChartOption(parsed)
+          finishedEventCountRef.current = 0
           setChartState('success')
           processedRef.current = true
           return
         }
-      }
-      catch {
+      } catch {
         // Avoid executing arbitrary code; require valid JSON for chart options.
         setChartState('error')
         processedRef.current = true
@@ -293,16 +311,16 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
 
     // If we get here, either the JSON isn't complete yet, or we failed to parse it
     // Check more conditions for streaming data
-    const isIncomplete
-      = trimmedContent.length < 5
-        || (trimmedContent.startsWith('{')
-          && (!trimmedContent.endsWith('}')
-            || trimmedContent.split('{').length !== trimmedContent.split('}').length))
-          || (trimmedContent.startsWith('[')
-            && (!trimmedContent.endsWith(']')
-              || trimmedContent.split('[').length !== trimmedContent.split('}').length))
-            || (trimmedContent.split('"').length % 2 !== 1)
-            || (trimmedContent.includes('{"') && !trimmedContent.includes('"}'))
+    const isIncomplete =
+      trimmedContent.length < 5 ||
+      (trimmedContent.startsWith('{') &&
+        (!trimmedContent.endsWith('}') ||
+          trimmedContent.split('{').length !== trimmedContent.split('}').length)) ||
+      (trimmedContent.startsWith('[') &&
+        (!trimmedContent.endsWith(']') ||
+          trimmedContent.split('[').length !== trimmedContent.split('}').length)) ||
+      trimmedContent.split('"').length % 2 !== 1 ||
+      (trimmedContent.includes('{"') && !trimmedContent.includes('"}'))
 
     // Only try to parse streaming data if it looks complete and hasn't been processed
     if (!isIncomplete && !processedRef.current) {
@@ -314,14 +332,14 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
           setFinalChartOption(parsed)
           isValidOption = true
         }
-      }
-      catch {
+      } catch {
         // Only accept JSON to avoid executing arbitrary code from the message.
         setChartState('error')
         processedRef.current = true
       }
 
       if (isValidOption) {
+        finishedEventCountRef.current = 0
         setChartState('success')
         processedRef.current = true
       }
@@ -338,27 +356,38 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
         // Loading state: show loading indicator
         if (chartState === 'loading') {
           return (
-            <div style={{
-              minHeight: '350px',
-              width: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderBottomLeftRadius: '10px',
-              borderBottomRightRadius: '10px',
-              backgroundColor: isDarkMode ? 'var(--color-components-input-bg-normal)' : 'transparent',
-              color: 'var(--color-text-secondary)',
-            }}
-            >
-              <div style={{
-                marginBottom: '12px',
-                width: '24px',
-                height: '24px',
+            <div
+              style={{
+                minHeight: '350px',
+                width: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderBottomLeftRadius: '10px',
+                borderBottomRightRadius: '10px',
+                backgroundColor: isDarkMode
+                  ? 'var(--color-components-input-bg-normal)'
+                  : 'transparent',
+                color: 'var(--color-text-secondary)',
               }}
+            >
+              <div
+                style={{
+                  marginBottom: '12px',
+                  width: '24px',
+                  height: '24px',
+                }}
               >
                 {/* Rotating spinner that works in both light and dark modes */}
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ animation: 'spin 1.5s linear infinite' }}>
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  style={{ animation: 'spin 1.5s linear infinite' }}
+                >
                   <style>
                     {`
                       @keyframes spin {
@@ -367,14 +396,27 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
                       }
                     `}
                   </style>
-                  <circle opacity="0.2" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
-                  <path d="M12 2C6.47715 2 2 6.47715 2 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  <circle
+                    opacity="0.2"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  />
+                  <path
+                    d="M12 2C6.47715 2 2 6.47715 2 12"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
                 </svg>
               </div>
-              <div style={{
-                fontFamily: 'var(--font-family)',
-                fontSize: '14px',
-              }}
+              <div
+                style={{
+                  fontFamily: 'var(--font-family)',
+                  fontSize: '14px',
+                }}
               >
                 Chart loading...
               </div>
@@ -384,19 +426,17 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
 
         // Success state: show the chart
         if (chartState === 'success' && finalChartOption) {
-          // Reset finished event counter
-          finishedEventCountRef.current = 0
-
           return (
-            <div style={{
-              minWidth: '300px',
-              minHeight: '350px',
-              width: '100%',
-              overflowX: 'auto',
-              borderBottomLeftRadius: '10px',
-              borderBottomRightRadius: '10px',
-              transition: 'background-color 0.3s ease',
-            }}
+            <div
+              style={{
+                minWidth: '300px',
+                minHeight: '350px',
+                width: '100%',
+                overflowX: 'auto',
+                borderBottomLeftRadius: '10px',
+                borderBottomRightRadius: '10px',
+                transition: 'background-color 0.3s ease',
+              }}
             >
               <ErrorBoundary>
                 <ReactEcharts
@@ -428,15 +468,16 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
         }
 
         return (
-          <div style={{
-            minWidth: '300px',
-            minHeight: '350px',
-            width: '100%',
-            overflowX: 'auto',
-            borderBottomLeftRadius: '10px',
-            borderBottomRightRadius: '10px',
-            transition: 'background-color 0.3s ease',
-          }}
+          <div
+            style={{
+              minWidth: '300px',
+              minHeight: '350px',
+              width: '100%',
+              overflowX: 'auto',
+              borderBottomLeftRadius: '10px',
+              borderBottomRightRadius: '10px',
+              transition: 'background-color 0.3s ease',
+            }}
           >
             <ErrorBoundary>
               <ReactEcharts
@@ -475,20 +516,49 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
           />
         )
     }
-  }, [children, language, isSVG, finalChartOption, props, theme, match, chartState, isDarkMode, echartsStyle, echartsOpts, handleChartReady, echartsEvents])
+  }, [
+    children,
+    language,
+    isSVG,
+    finalChartOption,
+    props,
+    theme,
+    match,
+    chartState,
+    isDarkMode,
+    echartsStyle,
+    echartsOpts,
+    handleChartReady,
+    echartsEvents,
+  ])
 
   if (inline || !match)
-    return <code {...props} className={className}>{children}</code>
+    return (
+      <code {...props} className={className}>
+        {children}
+      </code>
+    )
 
   return (
     <div className="relative">
       <div className="flex h-8 items-center justify-between rounded-t-[10px] border-b border-divider-subtle bg-components-input-bg-normal p-1 pl-3">
         <div className="system-xs-semibold-uppercase text-text-secondary">{languageShowName}</div>
         <div className="flex items-center gap-1">
-          {language === 'svg' && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG} />}
-          <ActionButton>
-            <CopyIcon content={String(children).replace(/\n$/, '')} />
-          </ActionButton>
+          {language === 'svg' && (
+            <Toggle
+              pressed={isSVG}
+              onPressedChange={setIsSVG}
+              render={
+                <IconButton aria-label="SVG">
+                  <span
+                    aria-hidden
+                    className={isSVG ? 'i-ri-file-code-fill size-4' : 'i-ri-file-code-line size-4'}
+                  />
+                </IconButton>
+              }
+            />
+          )}
+          <CopyIcon content={String(children).replace(/\n$/, '')} />
         </div>
       </div>
       {renderCodeContent}
@@ -496,5 +566,3 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
   )
 })
 CodeBlock.displayName = 'CodeBlock'
-
-export default CodeBlock

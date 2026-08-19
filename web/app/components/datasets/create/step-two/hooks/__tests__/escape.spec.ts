@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import escape from '../escape'
 
 describe('escape', () => {
@@ -32,7 +32,7 @@ describe('escape', () => {
   })
 
   it('should escape single quote', () => {
-    expect(escape('\'')).toBe('\\\'')
+    expect(escape("'")).toBe("\\'")
   })
 
   // Multiple special characters in one string

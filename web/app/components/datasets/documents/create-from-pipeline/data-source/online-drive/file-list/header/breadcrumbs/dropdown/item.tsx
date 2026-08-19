@@ -1,5 +1,5 @@
+import { DropdownMenuItem } from '@langgenius/dify-ui/dropdown-menu'
 import * as React from 'react'
-import { useCallback } from 'react'
 
 type ItemProps = {
   name: string
@@ -7,22 +7,14 @@ type ItemProps = {
   onBreadcrumbClick: (index: number) => void
 }
 
-const Item = ({
-  name,
-  index,
-  onBreadcrumbClick,
-}: ItemProps) => {
-  const handleClick = useCallback(() => {
-    onBreadcrumbClick(index)
-  }, [index, onBreadcrumbClick])
-
+const Item = ({ name, index, onBreadcrumbClick }: ItemProps) => {
   return (
-    <div
+    <DropdownMenuItem
       className="rounded-lg px-3 py-1.5 system-md-regular text-text-secondary hover:bg-state-base-hover"
-      onClick={handleClick}
+      onClick={() => onBreadcrumbClick(index)}
     >
       {name}
-    </div>
+    </DropdownMenuItem>
   )
 }
 

@@ -5,8 +5,9 @@ import os
 import queue
 import threading
 import time
+from collections.abc import Mapping
 from datetime import timedelta
-from typing import TYPE_CHECKING, Any, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict, override
 from uuid import UUID, uuid4
 
 from cachetools import LRUCache
@@ -16,6 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.helper.encrypter import batch_decrypt_token, encrypt_token, obfuscated_token
+from core.helper.trace_id_helper import ParentTraceContext
 from core.ops.entities.config_entity import (
     OPS_FILE_PATH,
     BaseTracingConfig,
@@ -50,6 +52,22 @@ if TYPE_CHECKING:
     from graphon.entities import WorkflowExecution
 
 logger = logging.getLogger(__name__)
+
+
+def _dump_parent_trace_context(parent_trace_context: Any) -> dict[str, str] | None:
+    if isinstance(parent_trace_context, ParentTraceContext):
+        return parent_trace_context.model_dump(exclude_none=True)
+    if isinstance(parent_trace_context, dict):
+        try:
+            return ParentTraceContext.model_validate(parent_trace_context).model_dump(exclude_none=True)
+        except ValueError:
+            return None
+    return None
+
+
+def _get_trace_session_id(kwargs: Mapping[str, Any]) -> str | None:
+    value = kwargs.get("trace_session_id")
+    return value if isinstance(value, str) and value else None
 
 
 class _AppTracingConfig(TypedDict, total=False):
@@ -203,9 +221,10 @@ class TracingProviderConfigEntry(TypedDict):
 
 
 class OpsTraceProviderConfigMap(collections.UserDict[str, TracingProviderConfigEntry]):
-    def __getitem__(self, provider: str) -> TracingProviderConfigEntry:
+    @override
+    def __getitem__(self, key: str) -> TracingProviderConfigEntry:
         try:
-            match provider:
+            match key:
                 case TracingProviderEnum.LANGFUSE:
                     from dify_trace_langfuse.config import LangfuseConfig
                     from dify_trace_langfuse.langfuse_trace import LangFuseDataTrace
@@ -312,9 +331,9 @@ class OpsTraceProviderConfigMap(collections.UserDict[str, TracingProviderConfigE
                     }
 
                 case _:
-                    raise KeyError(f"Unsupported tracing provider: {provider}")
+                    raise KeyError(f"Unsupported tracing provider: {key}")
         except ImportError:
-            raise ImportError(f"Provider {provider} is not installed.")
+            raise ImportError(f"Provider {key} is not installed.")
 
 
 provider_config_map = OpsTraceProviderConfigMap()
@@ -569,13 +588,13 @@ class OpsTraceManager:
         db.session.commit()
 
     @classmethod
-    def get_app_tracing_config(cls, app_id: str):
+    def get_app_tracing_config(cls, app_id: str, session: Session):
         """
         Get app tracing config
         :param app_id: app id
         :return:
         """
-        app: App | None = db.session.get(App, app_id)
+        app: App | None = session.get(App, app_id)
         if not app:
             raise ValueError("App not found")
         if not app.tracing:
@@ -857,8 +876,13 @@ class TraceTask:
         }
 
         parent_trace_context = self.kwargs.get("parent_trace_context")
-        if parent_trace_context:
-            metadata["parent_trace_context"] = parent_trace_context
+        dumped_parent_trace_context = _dump_parent_trace_context(parent_trace_context)
+        if dumped_parent_trace_context:
+            metadata["parent_trace_context"] = dumped_parent_trace_context
+
+        trace_session_id = _get_trace_session_id(self.kwargs)
+        if trace_session_id:
+            metadata["trace_session_id"] = trace_session_id
 
         workflow_trace_info = WorkflowTraceInfo(
             trace_id=self.trace_id,
@@ -942,6 +966,10 @@ class TraceTask:
         }
         if node_execution_id := kwargs.get("node_execution_id"):
             metadata["node_execution_id"] = node_execution_id
+
+        trace_session_id = _get_trace_session_id(kwargs)
+        if trace_session_id:
+            metadata["trace_session_id"] = trace_session_id
 
         message_tokens = message_data.message_tokens
 
@@ -1371,13 +1399,14 @@ class TraceTask:
         }
 
         parent_trace_context = node_data.get("parent_trace_context")
-        if parent_trace_context:
-            metadata["parent_trace_context"] = parent_trace_context
+        dumped_parent_trace_context = _dump_parent_trace_context(parent_trace_context)
+        if dumped_parent_trace_context:
+            metadata["parent_trace_context"] = dumped_parent_trace_context
 
         message_id: str | None = None
         conversation_id = node_data.get("conversation_id")
         workflow_execution_id = node_data.get("workflow_execution_id")
-        if conversation_id and workflow_execution_id and not parent_trace_context:
+        if conversation_id and workflow_execution_id and not dumped_parent_trace_context:
             with Session(db.engine) as session:
                 msg_id = session.scalar(
                     select(Message.id).where(

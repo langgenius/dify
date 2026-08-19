@@ -21,15 +21,25 @@ class TestLangSmithConfig:
     def test_missing_required_fields(self):
         """Test that required fields are enforced"""
         with pytest.raises(ValidationError):
-            LangSmithConfig()
+            LangSmithConfig.model_validate({})
 
         with pytest.raises(ValidationError):
-            LangSmithConfig(api_key="key")
+            LangSmithConfig.model_validate({"api_key": "key"})
 
         with pytest.raises(ValidationError):
-            LangSmithConfig(project="project")
+            LangSmithConfig.model_validate({"project": "project"})
 
     def test_endpoint_validation_https_only(self):
         """Test endpoint validation only allows HTTPS"""
-        with pytest.raises(ValidationError, match="URL scheme must be one of"):
+        with pytest.raises(ValidationError, match="URL must start with https://"):
             LangSmithConfig(api_key="key", project="project", endpoint="http://insecure.com")
+
+    def test_endpoint_preserves_path(self):
+        """Self-hosted LangSmith endpoints keep their API path prefix"""
+        config = LangSmithConfig(api_key="key", project="project", endpoint="https://langsmith.internal/api")
+        assert config.endpoint == "https://langsmith.internal/api"
+
+    def test_endpoint_preserves_versioned_path(self):
+        """Self-hosted LangSmith endpoints keep multi-segment API paths"""
+        config = LangSmithConfig(api_key="key", project="project", endpoint="https://langsmith.internal/api/v1")
+        assert config.endpoint == "https://langsmith.internal/api/v1"

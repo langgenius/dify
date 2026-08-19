@@ -1,86 +1,113 @@
-import type { FC } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
-import { RiCloseCircleFill, RiSearchLine } from '@remixicon/react'
-import { useRef, useState } from 'react'
+import type { InputGroupInputProps } from '@langgenius/dify-ui/input-group'
+import type { Ref } from 'react'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
+import { useImperativeHandle, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 type SearchInputProps = {
+  ref?: Ref<HTMLInputElement>
+  value: string
+  onValueChange: (value: string) => void
   placeholder?: string
   className?: string
-  value: string
-  onChange: (v: string) => void
-  white?: boolean
-}
+} & Pick<
+  InputGroupInputProps,
+  'aria-describedby' | 'aria-label' | 'autoFocus' | 'disabled' | 'name'
+>
 
-const SearchInput: FC<SearchInputProps> = ({
+export function SearchInput({
+  ref,
   placeholder,
   className,
   value,
-  onChange,
-  white,
-}) => {
+  onValueChange,
+  name = 'query',
+  autoFocus,
+  disabled,
+  'aria-describedby': ariaDescribedBy,
+  'aria-label': ariaLabel,
+}: SearchInputProps) {
   const { t } = useTranslation()
   const inputRef = useRef<HTMLInputElement>(null)
-  const [focus, setFocus] = useState<boolean>(false)
-  const isComposing = useRef<boolean>(false)
-  const [compositionValue, setCompositionValue] = useState<string>('')
+  const isComposingRef = useRef<boolean>(false)
+  const compositionCommitRef = useRef<string | null>(null)
+  const [compositionValue, setCompositionValue] = useState('')
+  const inputValue = isComposingRef.current ? compositionValue : value
+  useImperativeHandle(ref, () => inputRef.current as HTMLInputElement, [])
+
+  const handleClear = () => {
+    isComposingRef.current = false
+    compositionCommitRef.current = null
+    setCompositionValue('')
+    onValueChange('')
+    inputRef.current?.focus()
+  }
 
   return (
-    <div className={cn(
-      'group flex h-8 items-center overflow-hidden rounded-lg border-none bg-components-input-bg-normal px-2 hover:bg-components-input-bg-hover',
-      focus && 'bg-components-input-bg-active!',
-      white && 'border-gray-300! bg-white! shadow-xs hover:border-gray-300! hover:bg-white!',
-      className,
-    )}
-    >
-      <div className="pointer-events-none mr-1.5 flex h-4 w-4 shrink-0 items-center justify-center">
-        <RiSearchLine className="h-4 w-4 text-components-input-text-placeholder" aria-hidden="true" />
-      </div>
-      <input
+    <InputGroup className={className}>
+      <InputGroupInput
         ref={inputRef}
-        type="text"
-        name="query"
-        className={cn(
-          'caret-#295EFF block h-[18px] grow appearance-none border-0 bg-transparent system-sm-regular text-components-input-text-filled outline-hidden placeholder:text-components-input-text-placeholder',
-          white && 'bg-white! group-hover:bg-white! placeholder:text-gray-400! hover:bg-white!',
-        )}
-        placeholder={placeholder || t('operation.search', { ns: 'common' })!}
-        value={isComposing.current ? compositionValue : value}
-        onChange={(e) => {
-          const newValue = e.target.value
-          if (isComposing.current)
-            setCompositionValue(newValue)
-          else
-            onChange(newValue)
+        type="search"
+        name={name}
+        aria-describedby={ariaDescribedBy}
+        aria-label={ariaLabel ?? t(($) => $['operation.search'], { ns: 'common' })}
+        className="[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
+        placeholder={placeholder ?? t(($) => $['operation.search'], { ns: 'common' })}
+        value={inputValue}
+        disabled={disabled}
+        onValueChange={(nextValue) => {
+          if (isComposingRef.current) {
+            setCompositionValue(nextValue)
+            return
+          }
+          if (compositionCommitRef.current !== null) {
+            if (compositionCommitRef.current !== nextValue) {
+              compositionCommitRef.current = null
+              onValueChange(nextValue)
+              return
+            }
+            compositionCommitRef.current = null
+            return
+          }
+          onValueChange(nextValue)
         }}
         onCompositionStart={() => {
-          isComposing.current = true
+          isComposingRef.current = true
+          compositionCommitRef.current = null
           setCompositionValue(value)
         }}
         onCompositionEnd={(e) => {
-          isComposing.current = false
+          if (!isComposingRef.current) return
+
+          isComposingRef.current = false
           setCompositionValue('')
-          onChange(e.currentTarget.value)
+          compositionCommitRef.current = e.currentTarget.value
+          onValueChange(e.currentTarget.value)
         }}
-        onFocus={() => setFocus(true)}
-        onBlur={() => setFocus(false)}
         autoComplete="off"
+        // oxlint-disable-next-line jsx-a11y/no-autofocus
+        autoFocus={autoFocus}
+        enterKeyHint="search"
       />
-      {value && (
-        <button
-          type="button"
-          aria-label={t('operation.clear', { ns: 'common' })}
-          className="group/clear flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center border-none bg-transparent p-0"
-          onClick={() => {
-            onChange('')
-            inputRef.current?.focus()
-          }}
-        >
-          <RiCloseCircleFill className="h-4 w-4 text-text-quaternary group-hover/clear:text-text-tertiary" />
-        </button>
+      <InputGroupAddon className="ps-1.75 pe-1.25">
+        <span
+          className="i-ri-search-line size-4 text-components-input-text-placeholder"
+          aria-hidden="true"
+        />
+      </InputGroupAddon>
+      {!!inputValue && !disabled && (
+        <InputGroupAddon align="inline-end" className="ps-0.75 pe-1.25">
+          <IconButton
+            size="sm"
+            aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
+            className="text-text-quaternary hover:bg-transparent hover:text-text-tertiary focus-visible:bg-components-input-bg-hover focus-visible:ring-inset"
+            onClick={handleClear}
+          >
+            <span className="i-ri-close-circle-fill size-4" aria-hidden="true" />
+          </IconButton>
+        </InputGroupAddon>
       )}
-    </div>
+    </InputGroup>
   )
 }
-
-export default SearchInput

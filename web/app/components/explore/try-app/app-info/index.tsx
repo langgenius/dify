@@ -9,13 +9,15 @@ import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
 import useGetRequirements from './use-get-requirements'
 
-type Props = {
+type Props = Readonly<{
   appId: string
   appDetail: TryAppInfo
-  category?: string
+  canCreate?: boolean
+  categories?: string[]
   className?: string
+  createButtonStepByStepTourTarget?: string
   onCreate: () => void
-}
+}>
 
 const headerClassName = 'system-sm-semibold-uppercase text-text-secondary mb-3'
 const requirementIconSize = 20
@@ -51,13 +53,16 @@ const RequirementIcon: FC<RequirementIconProps> = ({ iconUrl }) => {
 
 const AppInfo: FC<Props> = ({
   appId,
+  canCreate = true,
   className,
-  category,
+  categories,
+  createButtonStepByStepTourTarget,
   appDetail,
   onCreate,
 }) => {
   const { t } = useTranslation()
   const mode = appDetail?.mode
+  const visibleCategories = Array.from(new Set(categories?.filter(Boolean) ?? []))
   const { requirements } = useGetRequirements({ appDetail, appId })
   return (
     <div className={cn('flex h-full flex-col px-4 pt-2', className)}>
@@ -67,57 +72,102 @@ const AppInfo: FC<Props> = ({
           <AppIcon
             size="large"
             iconType={appDetail.site.icon_type}
-            icon={appDetail.site.icon}
-            background={appDetail.site.icon_background}
-            imageUrl={appDetail.site.icon_url}
+            icon={appDetail.site.icon ?? undefined}
+            background={appDetail.site.icon_background ?? undefined}
+            imageUrl={appDetail.site.icon_url ?? undefined}
           />
           <AppTypeIcon
             wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 shadow-sm"
-            className="h-3 w-3"
+            className="size-3"
             type={mode}
           />
         </div>
         <div className="w-0 grow py-px">
-          <div className="flex items-center text-sm leading-5 font-semibold text-text-secondary">
-            <div className="truncate" title={appDetail.name}>{appDetail.name}</div>
+          <div className="flex items-center text-sm/5 font-semibold text-text-secondary">
+            <div className="truncate" title={appDetail.name}>
+              {appDetail.name}
+            </div>
           </div>
-          <div className="flex items-center text-[10px] leading-[18px] font-medium text-text-tertiary">
-            {mode === 'advanced-chat' && <div className="truncate">{t('types.advanced', { ns: 'app' }).toUpperCase()}</div>}
-            {mode === 'chat' && <div className="truncate">{t('types.chatbot', { ns: 'app' }).toUpperCase()}</div>}
-            {mode === 'agent-chat' && <div className="truncate">{t('types.agent', { ns: 'app' }).toUpperCase()}</div>}
-            {mode === 'workflow' && <div className="truncate">{t('types.workflow', { ns: 'app' }).toUpperCase()}</div>}
-            {mode === 'completion' && <div className="truncate">{t('types.completion', { ns: 'app' }).toUpperCase()}</div>}
+          <div className="flex items-center text-2xs leading-4.5 font-medium text-text-tertiary">
+            {mode === 'advanced-chat' && (
+              <div className="truncate">
+                {t(($) => $['types.advanced'], { ns: 'app' }).toUpperCase()}
+              </div>
+            )}
+            {mode === 'chat' && (
+              <div className="truncate">
+                {t(($) => $['types.chatbot'], { ns: 'app' }).toUpperCase()}
+              </div>
+            )}
+            {mode === 'agent-chat' && (
+              <div className="truncate">
+                {t(($) => $['types.agent'], { ns: 'app' }).toUpperCase()}
+              </div>
+            )}
+            {mode === 'workflow' && (
+              <div className="truncate">
+                {t(($) => $['types.workflow'], { ns: 'app' }).toUpperCase()}
+              </div>
+            )}
+            {mode === 'completion' && (
+              <div className="truncate">
+                {t(($) => $['types.completion'], { ns: 'app' }).toUpperCase()}
+              </div>
+            )}
           </div>
         </div>
       </div>
       {appDetail.description && (
-        <div className="mt-[14px] shrink-0 system-sm-regular text-text-secondary">{appDetail.description}</div>
+        <div className="mt-3.5 shrink-0 system-sm-regular text-text-secondary">
+          {appDetail.description}
+        </div>
       )}
-      <Button variant="primary" className="mt-3 flex w-full max-w-full" onClick={onCreate}>
-        <span className="mr-1 i-ri-add-line size-4 shrink-0" />
-        <span className="truncate">{t('tryApp.createFromSampleApp', { ns: 'explore' })}</span>
-      </Button>
+      {canCreate && (
+        <Button
+          variant="primary"
+          className="mt-3 flex w-full max-w-full"
+          data-step-by-step-tour-target={createButtonStepByStepTourTarget}
+          onClick={onCreate}
+        >
+          <span className="i-ri-add-line size-4 shrink-0" />
+          <span className="truncate">
+            {t(($) => $['tryApp.createFromSampleApp'], { ns: 'explore' })}
+          </span>
+        </Button>
+      )}
 
-      {category && (
+      {visibleCategories.length > 0 && (
         <div className="mt-6 shrink-0">
-          <div className={headerClassName}>{t('tryApp.category', { ns: 'explore' })}</div>
-          <div className="system-md-regular text-text-secondary">{category}</div>
+          <div className={headerClassName}>{t(($) => $['tryApp.category'], { ns: 'explore' })}</div>
+          <div className="flex flex-wrap gap-1.5">
+            {visibleCategories.map((category) => (
+              <span
+                key={category}
+                className="rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark px-2 py-0.5 system-xs-medium text-text-secondary shadow-xs"
+              >
+                {category}
+              </span>
+            ))}
+          </div>
         </div>
       )}
       {requirements.length > 0 && (
         <div className="mt-5 grow overflow-y-auto">
-          <div className={headerClassName}>{t('tryApp.requirements', { ns: 'explore' })}</div>
+          <div className={headerClassName}>
+            {t(($) => $['tryApp.requirements'], { ns: 'explore' })}
+          </div>
           <div className="space-y-0.5">
-            {requirements.map(item => (
+            {requirements.map((item) => (
               <div className="flex items-center space-x-2 py-1" key={item.name}>
                 <RequirementIcon iconUrl={item.iconUrl} />
-                <div className="w-0 grow truncate system-md-regular text-text-secondary">{item.name}</div>
+                <div className="w-0 grow truncate system-md-regular text-text-secondary">
+                  {item.name}
+                </div>
               </div>
             ))}
           </div>
         </div>
       )}
-
     </div>
   )
 }

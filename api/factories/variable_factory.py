@@ -9,6 +9,10 @@ from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
 from configs import dify_config
+from core.workflow.llm_environment_variable import (
+    LLM_ENVIRONMENT_VARIABLE_VALUE_TYPE,
+    LLMEnvironmentVariable,
+)
 from core.workflow.variable_prefixes import (
     CONVERSATION_VARIABLE_NODE_ID,
     ENVIRONMENT_VARIABLE_NODE_ID,
@@ -48,15 +52,35 @@ __all__ = [
 ]
 
 
+_MAX_VARIABLE_DESCRIPTION_LENGTH = 255
+
+
 def build_conversation_variable_from_mapping(mapping: Mapping[str, Any], /) -> VariableBase:
     if not mapping.get("name"):
         raise VariableError("missing name")
+    description = mapping.get("description", "")
+    if len(description) > _MAX_VARIABLE_DESCRIPTION_LENGTH:
+        raise VariableError(
+            f"description of variable '{mapping['name']}' is too long"
+            f" (max {_MAX_VARIABLE_DESCRIPTION_LENGTH} characters)"
+        )
     return _build_variable_from_mapping(mapping=mapping, selector=[CONVERSATION_VARIABLE_NODE_ID, mapping["name"]])
 
 
 def build_environment_variable_from_mapping(mapping: Mapping[str, Any], /) -> VariableBase:
     if not mapping.get("name"):
         raise VariableError("missing name")
+    if mapping.get("value_type") == LLM_ENVIRONMENT_VARIABLE_VALUE_TYPE:
+        llm_mapping = dict(mapping)
+        llm_mapping["value_type"] = SegmentType.OBJECT
+        llm_mapping["selector"] = [ENVIRONMENT_VARIABLE_NODE_ID, mapping["name"]]
+        try:
+            result = LLMEnvironmentVariable.model_validate(llm_mapping)
+        except ValueError as exc:
+            raise VariableError(f"invalid LLM environment variable: {exc}") from exc
+        if result.size > dify_config.MAX_VARIABLE_SIZE:
+            raise VariableError(f"variable size {result.size} exceeds limit {dify_config.MAX_VARIABLE_SIZE}")
+        return result
     return _build_variable_from_mapping(mapping=mapping, selector=[ENVIRONMENT_VARIABLE_NODE_ID, mapping["name"]])
 
 

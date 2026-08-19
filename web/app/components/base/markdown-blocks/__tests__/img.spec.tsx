@@ -33,10 +33,16 @@ describe('Img', () => {
 
     it('should render with different src values', () => {
       const { rerender } = render(<Img src="https://example.com/first.png" />)
-      expect(screen.getByTestId('gallery-image')).toHaveAttribute('src', 'https://example.com/first.png')
+      expect(screen.getByTestId('gallery-image')).toHaveAttribute(
+        'src',
+        'https://example.com/first.png',
+      )
 
       rerender(<Img src="https://example.com/second.jpg" />)
-      expect(screen.getByTestId('gallery-image')).toHaveAttribute('src', 'https://example.com/second.jpg')
+      expect(screen.getByTestId('gallery-image')).toHaveAttribute(
+        'src',
+        'https://example.com/second.jpg',
+      )
     })
   })
 
@@ -51,7 +57,9 @@ describe('Img', () => {
       expect(container2.querySelector('.markdown-img-wrapper')).toBeInTheDocument()
 
       // Test with data URL
-      const { container: container3 } = render(<Img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" />)
+      const { container: container3 } = render(
+        <Img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" />,
+      )
       expect(container3.querySelector('.markdown-img-wrapper')).toBeInTheDocument()
 
       // Test with relative URL

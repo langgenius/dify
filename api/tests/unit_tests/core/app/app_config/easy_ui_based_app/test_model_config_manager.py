@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
 
 # Target
 from core.app.app_config.easy_ui_based_app.model_config.manager import ModelConfigManager
@@ -107,7 +108,9 @@ class TestModelConfigManager:
     # validate_and_set_defaults
     # ==========================================================
 
-    def test_validate_and_set_defaults_success(self, mocker, valid_config, provider_entities, valid_model_list):
+    def test_validate_and_set_defaults_success(
+        self, mocker: MockerFixture, valid_config, provider_entities, valid_model_list
+    ):
         self._patch_model_assembly(
             mocker,
             provider_entities=provider_entities,
@@ -127,35 +130,37 @@ class TestModelConfigManager:
         with pytest.raises(ValueError, match="object type"):
             ModelConfigManager.validate_and_set_defaults("tenant1", {"model": "invalid"})
 
-    def test_validate_and_set_defaults_missing_provider(self, mocker, provider_entities):
+    def test_validate_and_set_defaults_missing_provider(self, mocker: MockerFixture, provider_entities):
         config = {"model": {"name": "gpt-4", "completion_params": {}}}
         self._patch_model_assembly(mocker, provider_entities=provider_entities, model_list=[])
 
         with pytest.raises(ValueError, match="model.provider is required"):
             ModelConfigManager.validate_and_set_defaults("tenant1", config)
 
-    def test_validate_and_set_defaults_invalid_provider(self, mocker, provider_entities):
+    def test_validate_and_set_defaults_invalid_provider(self, mocker: MockerFixture, provider_entities):
         config = {"model": {"provider": "invalid/provider", "name": "gpt-4", "completion_params": {}}}
         self._patch_model_assembly(mocker, provider_entities=provider_entities, model_list=[])
 
         with pytest.raises(ValueError, match="model.provider is required"):
             ModelConfigManager.validate_and_set_defaults("tenant1", config)
 
-    def test_validate_and_set_defaults_missing_name(self, mocker, provider_entities):
+    def test_validate_and_set_defaults_missing_name(self, mocker: MockerFixture, provider_entities):
         config = {"model": {"provider": "openai/gpt", "completion_params": {}}}
         self._patch_model_assembly(mocker, provider_entities=provider_entities, model_list=[])
 
         with pytest.raises(ValueError, match="model.name is required"):
             ModelConfigManager.validate_and_set_defaults("tenant1", config)
 
-    def test_validate_and_set_defaults_empty_models(self, mocker, provider_entities):
+    def test_validate_and_set_defaults_empty_models(self, mocker: MockerFixture, provider_entities):
         config = {"model": {"provider": "openai/gpt", "name": "gpt-4", "completion_params": {}}}
         self._patch_model_assembly(mocker, provider_entities=provider_entities, model_list=[])
 
         with pytest.raises(ValueError, match="must be in the specified model list"):
             ModelConfigManager.validate_and_set_defaults("tenant1", config)
 
-    def test_validate_and_set_defaults_invalid_model_name(self, mocker, provider_entities, valid_model_list):
+    def test_validate_and_set_defaults_invalid_model_name(
+        self, mocker: MockerFixture, provider_entities, valid_model_list
+    ):
         config = {"model": {"provider": "openai/gpt", "name": "invalid", "completion_params": {}}}
         self._patch_model_assembly(
             mocker,
@@ -166,7 +171,7 @@ class TestModelConfigManager:
         with pytest.raises(ValueError, match="must be in the specified model list"):
             ModelConfigManager.validate_and_set_defaults("tenant1", config)
 
-    def test_validate_and_set_defaults_default_mode_when_missing(self, mocker, provider_entities):
+    def test_validate_and_set_defaults_default_mode_when_missing(self, mocker: MockerFixture, provider_entities):
         model = MagicMock()
         model.model = "gpt-4"
         model.model_properties = {}
@@ -178,7 +183,9 @@ class TestModelConfigManager:
 
         assert updated_config["model"]["mode"] == "completion"
 
-    def test_validate_and_set_defaults_missing_completion_params(self, mocker, provider_entities, valid_model_list):
+    def test_validate_and_set_defaults_missing_completion_params(
+        self, mocker: MockerFixture, provider_entities, valid_model_list
+    ):
         config = {"model": {"provider": "openai/gpt", "name": "gpt-4"}}
         self._patch_model_assembly(
             mocker,
@@ -189,7 +196,7 @@ class TestModelConfigManager:
         with pytest.raises(ValueError, match="completion_params is required"):
             ModelConfigManager.validate_and_set_defaults("tenant1", config)
 
-    def test_validate_and_set_defaults_provider_without_slash_converted(self, mocker, valid_model_list):
+    def test_validate_and_set_defaults_provider_without_slash_converted(self, mocker: MockerFixture, valid_model_list):
         """
         Covers branch where provider does not contain '/' and
         ModelProviderID conversion is triggered (line 64).

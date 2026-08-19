@@ -1,73 +1,48 @@
 ---
 name: frontend-code-review
-description: "Trigger when the user requests a review of frontend files (e.g., `.tsx`, `.ts`, `.js`). Support both pending-change reviews and focused file reviews while applying the checklist rules."
+description: Use only when the user explicitly requests a review or audit of frontend code under `web/` or `packages/dify-ui/`. Supports pending-change, file-focused, and pasted-diff reviews. Do not use for implementation-only requests, diagnosis without review intent, or backend-only code.
 ---
 
 # Frontend Code Review
 
-## Intent
-Use this skill whenever the user asks to review frontend code (especially `.tsx`, `.ts`, or `.js` files). Support two review modes:
+Review the requested scope for concrete, reproducible regressions. This skill owns the review phase and routes directly to its bundled rule packs. For a combined review-and-fix request, establish findings before applying implementation or testing guidance.
 
-1. **Pending-change review** – inspect staged/working-tree files slated for commit and flag checklist violations before submission.
-2. **File-targeted review** – review the specific file(s) the user names and report the relevant checklist findings.
+## Evidence First
 
-Stick to the checklist below for every applicable file and mode.
+1. Establish the review scope from the requested files or current diff.
+2. Read the changed lines, their behavior owner, and the nearest scoped `AGENTS.md`.
+3. Trace public consumers, generated contracts, primitive APIs, or runtime configuration only when they decide correctness.
+4. Report only findings tied to an observable failure, violated contract, security boundary, or demonstrated maintenance risk.
 
-## Checklist
-See [references/code-quality.md](references/code-quality.md), [references/performance.md](references/performance.md), [references/business-logic.md](references/business-logic.md) for the living checklist split by category—treat it as the canonical set of rules to follow.
+## Rule Routing
 
-Flag each rule violation with urgency metadata so future reviewers can prioritize fixes.
+Read only the packs matched by the diff:
 
-## Review Process
-1. Open the relevant component/module. Gather lines that relate to class names, React Flow hooks, prop memoization, and styling.
-2. For each rule in the review point, note where the code deviates and capture a representative snippet.
-3. Compose the review section per the template below. Group violations first by **Urgent** flag, then by category order (Code Quality, Performance, Business Logic).
+- DOM semantics, focus, keyboard, forms, disabled state, or visible interaction: [`references/accessibility-ui.md`][accessibility]
+- Dify UI imports, Base UI wrappers, overlays, tokens, or primitive contracts: [`references/dify-ui.md`][dify-ui]
+- Component ownership, props, state, Effects, navigation, or module boundaries: [`references/component-architecture.md`][component-architecture]
+- Generated clients, Query, mutations, auth, SSR, URL state, or persistence: [`references/data-query-contracts.md`][data-query]
+- Test files or a concrete missing-regression-test finding: [`references/testing.md`][testing]
+- Bundle, waterfall, rendering, or subscription cost supported by evidence: [`references/performance.md`][performance]
+- Stable Dify runtime invariants in the named paths: [`references/dify-invariants.md`][dify-invariants]
+- General TypeScript or styling quality not owned above: [`references/code-quality.md`][code-quality]
 
-## Required output
-When invoked, the response must exactly follow one of the two templates:
+Read `packages/dify-ui/README.md`, `packages/dify-ui/AGENTS.md`, `web/docs/overlay.md`, or `web/docs/test.md` only when the reviewed code falls under that contract. Check current official documentation when local code and bundled references do not settle a framework, browser, or accessibility behavior.
 
-### Template A (any findings)
-```
-# Code review
-Found <N> urgent issues need to be fixed:
+## Severity And Output
 
-## 1 <brief description of bug>
-FilePath: <path> line <line>
-<relevant code snippet or pointer>
+- **P0**: security or privacy leak, data loss, production crash, or inaccessible critical workflow.
+- **P1**: user-visible regression, invalid API or authorization contract, hydration failure, or broken primary interaction.
+- **P2**: concrete maintainability, performance, test, or accessibility defect likely to cause incorrect behavior.
+- **P3**: minor actionable cleanup; omit unless the user requested a thorough audit.
 
+Lead with findings ordered by severity. Include a tight file and line reference, the failing contract or reproduction path, impact, and a concrete fix direction. If there are no findings, say `No issues found.` and state any material verification gap. Do not add praise sections, speculative risks, or an unsolicited offer to implement fixes.
 
-### Suggested fix
-<brief description of suggested fix>
-
----
-... (repeat for each urgent issue) ...
-
-Found <M> suggestions for improvement:
-
-## 1 <brief description of suggestion>
-FilePath: <path> line <line>
-<relevant code snippet or pointer>
-
-
-### Suggested fix
-<brief description of suggested fix>
-
----
-
-... (repeat for each suggestion) ...
-```
-
-If there are no urgent issues, omit that section. If there are no suggestions, omit that section.
-
-If the issue number is more than 10, summarize as "10+ urgent issues" or "10+ suggestions" and just output the first 10 issues.
-
-Don't compress the blank lines between sections; keep them as-is for readability.
-
-If you use Template A (i.e., there are issues to fix) and at least one issue requires code changes, append a brief follow-up question after the structured output asking whether the user wants you to apply the suggested fix(es). For example: "Would you like me to use the Suggested fix section to address these issues?"
-
-### Template B (no issues)
-```
-## Code review
-No issues found.
-```
-
+[accessibility]: references/accessibility-ui.md
+[code-quality]: references/code-quality.md
+[component-architecture]: references/component-architecture.md
+[data-query]: references/data-query-contracts.md
+[dify-invariants]: references/dify-invariants.md
+[dify-ui]: references/dify-ui.md
+[performance]: references/performance.md
+[testing]: references/testing.md

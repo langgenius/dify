@@ -98,8 +98,6 @@ Dify'ın tüm özellikleri ilgili API'lerle birlikte gelir, böylece Dify'ı ken
 - **Kurumlar / organizasyonlar için Dify</br>**
   Ek kurumsal odaklı özellikler sunuyoruz. Kurumsal ihtiyaçları görüşmek için [bize bir e-posta gönderin](mailto:business@dify.ai?subject=%5BGitHub%5DBusiness%20License%20Inquiry). </br>
 
-  > AWS kullanan startuplar ve küçük işletmeler için, [AWS Marketplace'deki Dify Premium'a](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6) göz atın ve tek tıklamayla kendi AWS VPC'nize dağıtın. Bu, özel logo ve marka ile uygulamalar oluşturma seçeneğine sahip uygun fiyatlı bir AMI teklifdir.
-
 ## Güncel Kalma
 
 GitHub'da Dify'a yıldız verin ve yeni sürümlerden anında haberdar olun.
@@ -134,7 +132,7 @@ Yapılandırmayı özelleştirmeniz gerekiyorsa, lütfen [.env.example](../../do
 
 Uygulamalar, kiracılar, mesajlar ve daha fazlasının granularitesinde metrikleri izlemek için Dify'nin PostgreSQL veritabanını veri kaynağı olarak kullanarak panoyu Grafana'ya aktarın.
 
-- [@bowenliang123 tarafından Grafana Panosu](%E9%93%BE%E6%8E%A5)
+- [@bowenliang123 tarafından Grafana Panosu](https://github.com/bowenliang123/dify-grafana-dashboard)
 
 ### Kubernetes ile Dağıtım
 

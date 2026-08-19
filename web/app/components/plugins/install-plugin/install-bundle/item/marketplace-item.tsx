@@ -6,13 +6,13 @@ import * as React from 'react'
 import Loading from '../../base/loading'
 import LoadedItem from './loaded-item'
 
-type Props = {
+type Props = Readonly<{
   checked: boolean
   onCheckedChange: (plugin: Plugin) => void
   payload?: Plugin
   version: string
   versionInfo: VersionProps
-}
+}>
 
 const MarketPlaceItem: FC<Props> = ({
   checked,
@@ -21,8 +21,7 @@ const MarketPlaceItem: FC<Props> = ({
   version,
   versionInfo,
 }) => {
-  if (!payload)
-    return <Loading />
+  if (!payload) return <Loading />
   return (
     <LoadedItem
       checked={checked}

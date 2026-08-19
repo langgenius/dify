@@ -40,8 +40,22 @@ describe('ChatRecord', () => {
           metadata: {},
           message_files: [],
         },
-        { id: 'msg-2', query: 'Question 2', answer: 'Answer 2', parent_message_id: 'msg-1', metadata: {}, message_files: [] },
-        { id: 'msg-3', query: 'Question 3', answer: 'Answer 3', parent_message_id: 'msg-1', metadata: {}, message_files: [] },
+        {
+          id: 'msg-2',
+          query: 'Question 2',
+          answer: 'Answer 2',
+          parent_message_id: 'msg-1',
+          metadata: {},
+          message_files: [],
+        },
+        {
+          id: 'msg-3',
+          query: 'Question 3',
+          answer: 'Answer 3',
+          parent_message_id: 'msg-1',
+          metadata: {},
+          message_files: [],
+        },
       ],
     } as never)
 
@@ -88,7 +102,7 @@ describe('ChatRecord', () => {
 
     await screen.findByText('Question 1')
 
-    await user.click(container.querySelector('.h-6.w-6.cursor-pointer') as HTMLElement)
+    await user.click(container.querySelector('.size-6.cursor-pointer') as HTMLElement)
 
     expect(handleLoadBackupDraft).toHaveBeenCalledTimes(1)
     expect(store.getState().historyWorkflowData).toBeUndefined()

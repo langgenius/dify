@@ -1,9 +1,9 @@
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { BucketsGray } from '@/app/components/base/icons/src/public/knowledge/online-drive'
-import Tooltip from '@/app/components/base/tooltip'
 
 type BucketProps = {
   bucketName: string
@@ -24,29 +24,42 @@ const Bucket = ({
 }: BucketProps) => {
   const { t } = useTranslation()
   const handleClickItem = useCallback(() => {
-    if (!disabled)
-      handleClickBucketName()
+    if (!disabled) handleClickBucketName()
   }, [disabled, handleClickBucketName])
+  const allBucketsLabel = t(($) => $['onlineDrive.breadcrumbs.allBuckets'], {
+    ns: 'datasetPipeline',
+  })
 
   return (
     <>
-      <Tooltip
-        popupContent={t('onlineDrive.breadcrumbs.allBuckets', { ns: 'datasetPipeline' })}
-      >
-        <button
-          type="button"
-          className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover"
-          onClick={handleBackToBucketList}
-        >
-          <BucketsGray />
-        </button>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <IconButton
+              type="button"
+              variant="ghost"
+              size="md"
+              aria-label={allBucketsLabel}
+              className="shrink-0"
+              onClick={handleBackToBucketList}
+            >
+              <span
+                aria-hidden
+                className="i-custom-public-knowledge-online-drive-buckets-gray h-4.75 w-4.5"
+              />
+            </IconButton>
+          }
+        />
+        <TooltipContent>{allBucketsLabel}</TooltipContent>
       </Tooltip>
       <span className="system-xs-regular text-divider-deep">/</span>
       <button
         type="button"
         className={cn(
-          'max-w-full shrink truncate rounded-md px-[5px] py-1',
-          isActive ? 'system-sm-medium text-text-secondary' : 'system-sm-regular text-text-tertiary',
+          'max-w-full shrink truncate rounded-md px-1.25 py-1',
+          isActive
+            ? 'system-sm-medium text-text-secondary'
+            : 'system-sm-regular text-text-tertiary',
           !disabled && 'hover:bg-state-base-hover',
         )}
         disabled={disabled}

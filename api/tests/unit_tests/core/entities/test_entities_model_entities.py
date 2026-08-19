@@ -46,7 +46,7 @@ def test_simple_model_provider_entity_maps_from_provider_entity() -> None:
 
     # Assert
     assert simple_provider.provider == "openai"
-    assert simple_provider.label.en_US == "OpenAI"
+    assert simple_provider.label.en_us == "OpenAI"
     assert simple_provider.supported_model_types == [ModelType.LLM]
 
 

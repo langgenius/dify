@@ -14,18 +14,20 @@ class AttachmentService:
     _session_maker: sessionmaker
 
     def __init__(self, session_factory: sessionmaker | Engine | None = None):
-        if isinstance(session_factory, Engine):
-            self._session_maker = sessionmaker(bind=session_factory)
-        elif isinstance(session_factory, sessionmaker):
-            self._session_maker = session_factory
-        else:
-            raise AssertionError("must be a sessionmaker or an Engine.")
+        match session_factory:
+            case Engine():
+                self._session_maker = sessionmaker(bind=session_factory)
+            case sessionmaker():
+                self._session_maker = session_factory
+            case _:
+                raise AssertionError("must be a sessionmaker or an Engine.")
 
     def get_file_base64(self, file_id: str) -> str:
-        upload_file = self._session_maker(expire_on_commit=False).scalar(
-            select(UploadFile).where(UploadFile.id == file_id).limit(1)
-        )
-        if not upload_file:
-            raise NotFound("File not found")
-        blob = storage.load_once(upload_file.key)
+        with self._session_maker(expire_on_commit=False) as session:
+            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
+            if not upload_file:
+                raise NotFound("File not found")
+            upload_file_key = upload_file.key
+
+        blob = storage.load_once(upload_file_key)
         return base64.b64encode(blob).decode()

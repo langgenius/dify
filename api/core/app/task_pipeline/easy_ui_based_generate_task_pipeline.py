@@ -1,11 +1,12 @@
+import json
 import logging
 import time
-from collections.abc import Generator
+from collections.abc import Generator, Mapping, Sequence
 from threading import Thread
 from typing import Any, cast
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
@@ -46,38 +47,39 @@ from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTas
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.app.task_pipeline.message_file_utils import prepare_file_dict
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
+from core.db.session_factory import session_factory
 from core.model_manager import ModelInstance
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from events.message_event import message_was_created
-from extensions.ext_database import db
 from graphon.file import FileTransferMethod
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     TextPromptMessageContent,
 )
-from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from libs.datetime_utils import naive_utc_now
 from models.model import AppMode, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
 
 logger = logging.getLogger(__name__)
 
+type EasyUIAppGenerateEntity = ChatAppGenerateEntity | CompletionAppGenerateEntity | AgentChatAppGenerateEntity
 
-class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
+
+class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerateEntity]):
     """
     EasyUIBasedGenerateTaskPipeline is a class that generate stream output and state management for Application.
     """
 
     _task_state: EasyUITaskState
-    _application_generate_entity: ChatAppGenerateEntity | CompletionAppGenerateEntity | AgentChatAppGenerateEntity
     _precomputed_event_type: StreamEvent | None = None
 
     def __init__(
         self,
-        application_generate_entity: ChatAppGenerateEntity | CompletionAppGenerateEntity | AgentChatAppGenerateEntity,
+        application_generate_entity: EasyUIAppGenerateEntity,
         queue_manager: AppQueueManager,
         conversation: Conversation,
         message: Message,
@@ -140,42 +142,43 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         :return:
         """
         for stream_response in generator:
-            if isinstance(stream_response, ErrorStreamResponse):
-                raise stream_response.err
-            elif isinstance(stream_response, MessageEndStreamResponse):
-                extras = {"usage": self._task_state.llm_result.usage.model_dump()}
-                if self._task_state.metadata:
-                    extras["metadata"] = self._task_state.metadata.model_dump()
-                response: ChatbotAppBlockingResponse | CompletionAppBlockingResponse
-                if self._conversation_mode == AppMode.COMPLETION:
-                    response = CompletionAppBlockingResponse(
-                        task_id=self._application_generate_entity.task_id,
-                        data=CompletionAppBlockingResponse.Data(
-                            id=self._message_id,
-                            mode=self._conversation_mode,
-                            message_id=self._message_id,
-                            answer=self._task_state.llm_result.message.get_text_content(),
-                            created_at=self._message_created_at,
-                            **extras,
-                        ),
-                    )
-                else:
-                    response = ChatbotAppBlockingResponse(
-                        task_id=self._application_generate_entity.task_id,
-                        data=ChatbotAppBlockingResponse.Data(
-                            id=self._message_id,
-                            mode=self._conversation_mode,
-                            conversation_id=self._conversation_id,
-                            message_id=self._message_id,
-                            answer=self._task_state.llm_result.message.get_text_content(),
-                            created_at=self._message_created_at,
-                            **extras,
-                        ),
-                    )
+            match stream_response:
+                case ErrorStreamResponse():
+                    raise stream_response.err
+                case MessageEndStreamResponse():
+                    extras = {"usage": self._task_state.llm_result.usage.model_dump()}
+                    if self._task_state.metadata:
+                        extras["metadata"] = self._task_state.metadata.model_dump()
+                    response: ChatbotAppBlockingResponse | CompletionAppBlockingResponse
+                    if self._conversation_mode == AppMode.COMPLETION:
+                        response = CompletionAppBlockingResponse(
+                            task_id=self._application_generate_entity.task_id,
+                            data=CompletionAppBlockingResponse.Data(
+                                id=self._message_id,
+                                mode=self._conversation_mode,
+                                message_id=self._message_id,
+                                answer=self._task_state.llm_result.message.get_text_content(),
+                                created_at=self._message_created_at,
+                                **extras,
+                            ),
+                        )
+                    else:
+                        response = ChatbotAppBlockingResponse(
+                            task_id=self._application_generate_entity.task_id,
+                            data=ChatbotAppBlockingResponse.Data(
+                                id=self._message_id,
+                                mode=self._conversation_mode,
+                                conversation_id=self._conversation_id,
+                                message_id=self._message_id,
+                                answer=self._task_state.llm_result.message.get_text_content(),
+                                created_at=self._message_created_at,
+                                **extras,
+                            ),
+                        )
 
-                return response
-            else:
-                continue
+                    return response
+                case _:
+                    continue
 
         raise RuntimeError("queue listening stopped unexpectedly.")
 
@@ -265,110 +268,143 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                 publisher.publish(message)
             event = message.event
 
-            if isinstance(event, QueueErrorEvent):
-                with sessionmaker(bind=db.engine).begin() as session:
-                    err = self.handle_error(event=event, session=session, message_id=self._message_id)
-                yield self.error_to_stream_response(err)
-                break
-            elif isinstance(event, QueueStopEvent | QueueMessageEndEvent):
-                if isinstance(event, QueueMessageEndEvent):
-                    if event.llm_result:
-                        self._task_state.llm_result = event.llm_result
-                else:
-                    self._handle_stop(event)
+            match event:
+                case QueueErrorEvent():
+                    with session_factory.create_session() as session:
+                        err = self.handle_error(event=event, session=session, message_id=self._message_id)
+                        session.commit()
+                    yield self.error_to_stream_response(err)
+                    break
+                case QueueStopEvent() | QueueMessageEndEvent():
+                    if isinstance(event, QueueMessageEndEvent):
+                        if event.llm_result:
+                            self._task_state.llm_result = event.llm_result
+                    else:
+                        self._handle_stop(event)
 
-                # handle output moderation
-                output_moderation_answer = self.handle_output_moderation_when_task_finished(
-                    self._task_state.llm_result.message.get_text_content()
-                )
-                if output_moderation_answer:
-                    self._task_state.llm_result.message.content = output_moderation_answer
-                    yield self._message_cycle_manager.message_replace_to_stream_response(
-                        answer=output_moderation_answer
+                    # handle output moderation
+                    output_moderation_answer = self.handle_output_moderation_when_task_finished(
+                        self._task_state.llm_result.message.get_text_content()
                     )
-
-                with sessionmaker(bind=db.engine).begin() as session:
-                    # Save message
-                    self._save_message(session=session, trace_manager=trace_manager)
-                message_end_resp = self._message_end_to_stream_response()
-                yield message_end_resp
-            elif isinstance(event, QueueRetrieverResourcesEvent):
-                self._message_cycle_manager.handle_retriever_resources(event)
-            elif isinstance(event, QueueAnnotationReplyEvent):
-                annotation = self._message_cycle_manager.handle_annotation_reply(event)
-                if annotation:
-                    self._task_state.llm_result.message.content = annotation.content
-            elif isinstance(event, QueueAgentThoughtEvent):
-                agent_thought_response = self._agent_thought_to_stream_response(event)
-                if agent_thought_response is not None:
-                    yield agent_thought_response
-            elif isinstance(event, QueueMessageFileEvent):
-                response = self._message_cycle_manager.message_file_to_stream_response(event)
-                if response:
-                    yield response
-            elif isinstance(event, QueueLLMChunkEvent | QueueAgentMessageEvent):
-                chunk = event.chunk
-                delta_text = chunk.delta.message.content
-                if delta_text is None:
-                    continue
-                if isinstance(chunk.delta.message.content, list):
-                    delta_text = ""
-                    for content in chunk.delta.message.content:
-                        logger.debug(
-                            "The content type %s in LLM chunk delta message content.: %r", type(content), content
+                    if output_moderation_answer:
+                        self._task_state.llm_result.message.content = output_moderation_answer
+                        yield self._message_cycle_manager.message_replace_to_stream_response(
+                            answer=output_moderation_answer
                         )
-                        if isinstance(content, TextPromptMessageContent):
-                            delta_text += content.data
-                        elif isinstance(content, str):
-                            delta_text += content  # failback to str
-                        else:
-                            logger.warning(
-                                "Unsupported content type %s in LLM chunk delta message content.: %r",
-                                type(content),
-                                content,
+
+                    with session_factory.create_session() as session:
+                        # A stopped Agent run may persist provider-reported usage after
+                        # cancellation completes. Do not replace it with local token estimates.
+                        if isinstance(event, QueueStopEvent):
+                            self._save_message(
+                                session=session,
+                                trace_manager=trace_manager,
+                                preserve_existing_usage=True,
                             )
-                            continue
+                        else:
+                            self._save_message(session=session, trace_manager=trace_manager)
+                        session.commit()
+                    message_end_resp = self._message_end_to_stream_response()
+                    yield message_end_resp
+                case QueueRetrieverResourcesEvent():
+                    self._message_cycle_manager.handle_retriever_resources(event)
+                case QueueAnnotationReplyEvent():
+                    annotation_content = None
+                    with session_factory.create_session() as session:
+                        annotation = self._message_cycle_manager.handle_annotation_reply(event, session)
+                        if annotation:
+                            annotation_content = annotation.content
+                    if annotation_content:
+                        self._task_state.llm_result.message.content = annotation_content
+                case QueueAgentThoughtEvent():
+                    agent_thought_response = self._agent_thought_to_stream_response(event)
+                    if agent_thought_response is not None:
+                        yield agent_thought_response
+                case QueueMessageFileEvent():
+                    response = self._message_cycle_manager.message_file_to_stream_response(event)
+                    if response:
+                        yield response
+                case QueueAgentMessageEvent():
+                    chunk = event.chunk
+                    delta_text = self._chunk_delta_text(chunk)
+                    if delta_text is None:
+                        continue
+                    yield self._agent_message_to_stream_response(
+                        answer=delta_text,
+                        message_id=self._message_id,
+                    )
+                case QueueLLMChunkEvent():
+                    chunk = event.chunk
+                    delta_text = self._chunk_delta_text(chunk)
+                    if delta_text is None:
+                        continue
 
-                if not self._task_state.llm_result.prompt_messages:
-                    self._task_state.llm_result.prompt_messages = chunk.prompt_messages
+                    if not self._task_state.llm_result.prompt_messages:
+                        self._task_state.llm_result.prompt_messages = chunk.prompt_messages
 
-                # handle output moderation chunk
-                should_direct_answer = self._handle_output_moderation_chunk(cast(str, delta_text))
-                if should_direct_answer:
-                    continue
+                    # handle output moderation chunk
+                    should_direct_answer = self._handle_output_moderation_chunk(delta_text)
+                    if should_direct_answer:
+                        continue
 
-                current_content = cast(str, self._task_state.llm_result.message.content)
-                current_content += cast(str, delta_text)
-                self._task_state.llm_result.message.content = current_content
+                    current_content = cast(str, self._task_state.llm_result.message.content)
+                    current_content += delta_text
+                    self._task_state.llm_result.message.content = current_content
 
-                if isinstance(event, QueueLLMChunkEvent):
                     # Determine the event type once, on first LLM chunk, and reuse for subsequent chunks
                     if not hasattr(self, "_precomputed_event_type") or self._precomputed_event_type is None:
                         self._precomputed_event_type = self._message_cycle_manager.get_message_event_type(
                             message_id=self._message_id
                         )
                     yield self._message_cycle_manager.message_to_stream_response(
-                        answer=cast(str, delta_text),
+                        answer=delta_text,
                         message_id=self._message_id,
                         event_type=self._precomputed_event_type,
                     )
-                else:
-                    yield self._agent_message_to_stream_response(
-                        answer=cast(str, delta_text),
-                        message_id=self._message_id,
-                    )
-            elif isinstance(event, QueueMessageReplaceEvent):
-                yield self._message_cycle_manager.message_replace_to_stream_response(answer=event.text)
-            elif isinstance(event, QueuePingEvent):
-                yield self.ping_stream_response()
-            else:
-                continue
+                case QueueMessageReplaceEvent():
+                    yield self._message_cycle_manager.message_replace_to_stream_response(answer=event.text)
+                case QueuePingEvent():
+                    yield self.ping_stream_response()
+                case _:
+                    continue
         if publisher:
             publisher.publish(None)
         if self._conversation_name_generate_thread:
             logger.debug("Conversation name generation running as daemon thread")
 
-    def _save_message(self, *, session: Session, trace_manager: TraceQueueManager | None = None):
+    @staticmethod
+    def _chunk_delta_text(chunk: LLMResultChunk) -> str | None:
+        delta_content = chunk.delta.message.content
+        if delta_content is None:
+            return None
+        if not isinstance(delta_content, list):
+            return delta_content
+
+        delta_text = ""
+        # EasyUI streams text only; structured multimodal chunks contribute their text parts.
+        for content in cast(list[object], delta_content):
+            logger.debug("The content type %s in LLM chunk delta message content.: %r", type(content), content)
+            match content:
+                case TextPromptMessageContent():
+                    delta_text += content.data
+                case str():
+                    delta_text += content
+                case _:
+                    logger.warning(
+                        "Unsupported content type %s in LLM chunk delta message content.: %r",
+                        type(content),
+                        content,
+                    )
+                    continue
+        return delta_text
+
+    def _save_message(
+        self,
+        *,
+        session: Session,
+        trace_manager: TraceQueueManager | None = None,
+        preserve_existing_usage: bool = False,
+    ):
         """
         Save message.
         :return:
@@ -385,31 +421,51 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         if not conversation:
             raise ValueError(f"Conversation {self._conversation_id} not found")
 
-        message.message = PromptMessageUtil.prompt_messages_to_prompt_for_saving(
+        saved_prompt = PromptMessageUtil.prompt_messages_to_prompt_for_saving(
             self._model_config.mode, self._task_state.llm_result.prompt_messages
         )
-        message.message_tokens = usage.prompt_tokens
-        message.message_unit_price = usage.prompt_unit_price
-        message.message_price_unit = usage.prompt_price_unit
+        object.__setattr__(message, "message", saved_prompt)
+        try:
+            existing_metadata = json.loads(message.message_metadata) if message.message_metadata else {}
+        except (json.JSONDecodeError, TypeError):
+            existing_metadata = {}
+        if not isinstance(existing_metadata, dict):
+            existing_metadata = {}
+        has_persisted_usage = preserve_existing_usage and (
+            int(message.message_tokens or 0) + int(message.answer_tokens or 0) > 0 or bool(message.total_price)
+        )
+        if not has_persisted_usage:
+            message.message_tokens = usage.prompt_tokens
+            message.message_unit_price = usage.prompt_unit_price
+            message.message_price_unit = usage.prompt_price_unit
         message.answer = (
             PromptTemplateParser.remove_template_variables(llm_result.message.get_text_content().strip())
             if llm_result.message.content
             else ""
         )
         message.updated_at = naive_utc_now()
-        message.answer_tokens = usage.completion_tokens
-        message.answer_unit_price = usage.completion_unit_price
-        message.answer_price_unit = usage.completion_price_unit
-        message.provider_response_latency = time.perf_counter() - self.start_at
-        message.total_price = usage.total_price
-        message.currency = usage.currency
-        self._task_state.llm_result.usage.latency = message.provider_response_latency
-        message.message_metadata = self._task_state.metadata.model_dump_json()
+        if not has_persisted_usage:
+            message.answer_tokens = usage.completion_tokens
+            message.answer_unit_price = usage.completion_unit_price
+            message.answer_price_unit = usage.completion_price_unit
+            message.provider_response_latency = time.perf_counter() - self.start_at
+            message.total_price = usage.total_price
+            message.currency = usage.currency
+            self._task_state.llm_result.usage.latency = message.provider_response_latency
+            self._task_state.metadata.usage = self._task_state.llm_result.usage
+
+        metadata = self._task_state.metadata.model_dump(mode="json")
+        if has_persisted_usage and "usage" in existing_metadata:
+            metadata["usage"] = existing_metadata["usage"]
+        message.message_metadata = json.dumps(metadata, ensure_ascii=False)
 
         if trace_manager:
             trace_manager.add_trace_task(
                 TraceTask(
-                    TraceTaskName.MESSAGE_TRACE, conversation_id=self._conversation_id, message_id=self._message_id
+                    TraceTaskName.MESSAGE_TRACE,
+                    conversation_id=self._conversation_id,
+                    message_id=self._message_id,
+                    trace_session_id=self._application_generate_entity.extras.get("trace_session_id"),
                 )
             )
 
@@ -454,11 +510,11 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         :return:
         """
         self._task_state.metadata.usage = self._task_state.llm_result.usage
-        metadata_dict = self._task_state.metadata.model_dump()
+        metadata_dict = self._task_state.metadata.model_dump(exclude_none=True)
 
         # Fetch files associated with this message
-        files = None
-        with Session(db.engine, expire_on_commit=False) as session:
+        files: Sequence[Mapping[str, Any]] = []
+        with session_factory.create_session() as session:
             message_files = session.scalars(select(MessageFile).where(MessageFile.message_id == self._message_id)).all()
 
             if message_files:
@@ -480,7 +536,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                     file_dict = prepare_file_dict(message_file, upload_files_map)
                     files_list.append(file_dict)
 
-                files = files_list or None
+                files = cast(Sequence[Mapping[str, Any]], files_list)
 
         return MessageEndStreamResponse(
             task_id=self._application_generate_entity.task_id,
@@ -506,7 +562,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         :param event: agent thought event
         :return:
         """
-        with Session(db.engine, expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             agent_thought: MessageAgentThought | None = session.scalar(
                 select(MessageAgentThought).where(MessageAgentThought.id == event.agent_thought_id).limit(1)
             )
@@ -516,11 +572,11 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                 task_id=self._application_generate_entity.task_id,
                 id=agent_thought.id,
                 position=agent_thought.position,
-                thought=agent_thought.thought,
-                observation=agent_thought.observation,
-                tool=agent_thought.tool,
+                thought=agent_thought.thought or "",
+                observation=agent_thought.observation or "",
+                tool=agent_thought.tool or "",
                 tool_labels=agent_thought.tool_labels,
-                tool_input=agent_thought.tool_input,
+                tool_input=agent_thought.tool_input or "",
                 message_files=agent_thought.files,
             )
 

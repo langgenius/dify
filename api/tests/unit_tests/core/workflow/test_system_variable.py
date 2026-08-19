@@ -40,7 +40,7 @@ def test_build_system_variables_preserves_explicit_workflow_run_id():
 
 def test_build_system_variables_preserves_file_values():
     file = File(
-        type=FileType.DOCUMENT,
+        file_type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.LOCAL_FILE,
         related_id="file-id",
         filename="test.txt",

@@ -2,6 +2,7 @@
 
 import re
 from pathlib import Path
+from typing import override
 
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.extractor.helpers import detect_file_encodings
@@ -31,6 +32,7 @@ class MarkdownExtractor(BaseExtractor):
         self._encoding = encoding
         self._autodetect_encoding = autodetect_encoding
 
+    @override
     def extract(self) -> list[Document]:
         """Load from file path."""
         tups = self.parse_tups(self._file_path)

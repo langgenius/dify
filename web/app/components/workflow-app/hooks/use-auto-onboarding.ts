@@ -12,14 +12,16 @@ export const useAutoOnboarding = () => {
       showOnboarding,
       hasShownOnboarding,
       notInitialWorkflow,
+      isWorkflowDataLoaded,
       setShowOnboarding,
       setHasShownOnboarding,
       setShouldAutoOpenStartNodeSelector,
     } = workflowStore.getState()
 
+    if (!isWorkflowDataLoaded) return
+
     // Skip if already showing onboarding or it's the initial workflow creation
-    if (showOnboarding || notInitialWorkflow)
-      return
+    if (showOnboarding || notInitialWorkflow) return
 
     const nodes = getNodes()
 
@@ -45,10 +47,8 @@ export const useAutoOnboarding = () => {
     } = workflowStore.getState()
     setShowOnboarding?.(false)
     setHasShownOnboarding?.(true)
-    if (hasSelectedStartNode)
-      setHasSelectedStartNode?.(false)
-    else
-      setShouldAutoOpenStartNodeSelector?.(false)
+    if (hasSelectedStartNode) setHasSelectedStartNode?.(false)
+    else setShouldAutoOpenStartNodeSelector?.(false)
   }, [workflowStore])
 
   // Check on mount and when nodes change

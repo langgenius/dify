@@ -34,8 +34,12 @@ describe('useWorkflowNodeFinished', () => {
     expect(trace!.status).toBe(NodeRunningStatus.Succeeded)
 
     await waitFor(() => {
-      expect(getNodeRuntimeState(result.current.nodes[0])._runningStatus).toBe(NodeRunningStatus.Succeeded)
-      expect(getEdgeRuntimeState(result.current.edges[0])._targetRunningStatus).toBe(NodeRunningStatus.Succeeded)
+      expect(getNodeRuntimeState(result.current.nodes[0])._runningStatus).toBe(
+        NodeRunningStatus.Succeeded,
+      )
+      expect(getEdgeRuntimeState(result.current.edges[0])._targetRunningStatus).toBe(
+        NodeRunningStatus.Succeeded,
+      )
     })
   })
 
@@ -55,15 +59,17 @@ describe('useWorkflowNodeFinished', () => {
     })
 
     act(() => {
-      result.current.handleWorkflowNodeFinished(createNodeFinishedResponse({
-        data: {
-          id: 'trace-1',
-          node_id: 'n1',
-          node_type: BlockEnum.IfElse,
-          status: NodeRunningStatus.Succeeded,
-          outputs: { selected_case_id: 'branch-a' },
-        } as never,
-      }))
+      result.current.handleWorkflowNodeFinished(
+        createNodeFinishedResponse({
+          data: {
+            id: 'trace-1',
+            node_id: 'n1',
+            node_type: BlockEnum.IfElse,
+            status: NodeRunningStatus.Succeeded,
+            outputs: { selected_case_id: 'branch-a' },
+          } as never,
+        }),
+      )
     })
 
     await waitFor(() => {

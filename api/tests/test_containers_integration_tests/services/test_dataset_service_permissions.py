@@ -6,8 +6,8 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
+from flask import Flask
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound
 
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
@@ -20,6 +20,7 @@ from models.dataset import (
     DatasetPermissionEnum,
 )
 from models.enums import DataSourceType
+from services.dataset_ref_service import DatasetRef, DatasetRefService
 from services.dataset_service import DatasetCollectionBindingService, DatasetPermissionService, DatasetService
 from services.errors.account import NoPermissionError
 
@@ -99,6 +100,7 @@ class DatasetPermissionIntegrationFactory:
             data_source_type=DataSourceType.UPLOAD_FILE,
             indexing_technique=indexing_technique,
             created_by=created_by,
+            maintainer=created_by,
             provider="vendor",
             permission=permission,
             retrieval_model={"top_k": 2},
@@ -180,7 +182,7 @@ class TestDatasetServicePermissionsAndLifecycle:
     def test_delete_dataset_returns_false_when_dataset_is_missing(self, db_session_with_containers: Session):
         owner, _tenant = DatasetPermissionIntegrationFactory.create_account_with_tenant(db_session_with_containers)
 
-        result = DatasetService.delete_dataset(str(uuid4()), user=owner)
+        result = DatasetService.delete_dataset(str(uuid4()), user=owner, session=db_session_with_containers)
 
         assert result is False
 
@@ -193,7 +195,7 @@ class TestDatasetServicePermissionsAndLifecycle:
         )
 
         with patch("services.dataset_service.dataset_was_deleted.send") as send_deleted_signal:
-            result = DatasetService.delete_dataset(dataset.id, user=owner)
+            result = DatasetService.delete_dataset(dataset.id, user=owner, session=db_session_with_containers)
 
         assert result is True
         assert db_session_with_containers.get(Dataset, dataset.id) is None
@@ -211,7 +213,9 @@ class TestDatasetServicePermissionsAndLifecycle:
             dataset_id=dataset.id,
         )
 
-        assert DatasetService.dataset_use_check(dataset.id) is True
+        dataset_ref = DatasetRefService.create_dataset_ref(dataset)
+
+        assert DatasetService.dataset_use_check(dataset_ref, session=db_session_with_containers) is True
 
     def test_dataset_use_check_returns_false_when_join_missing(self, db_session_with_containers: Session):
         owner, tenant = DatasetPermissionIntegrationFactory.create_account_with_tenant(db_session_with_containers)
@@ -221,7 +225,9 @@ class TestDatasetServicePermissionsAndLifecycle:
             created_by=owner.id,
         )
 
-        assert DatasetService.dataset_use_check(dataset.id) is False
+        dataset_ref = DatasetRefService.create_dataset_ref(dataset)
+
+        assert DatasetService.dataset_use_check(dataset_ref, session=db_session_with_containers) is False
 
     def test_check_dataset_permission_rejects_cross_tenant_access(self, db_session_with_containers: Session):
         owner, tenant = DatasetPermissionIntegrationFactory.create_account_with_tenant(db_session_with_containers)
@@ -235,7 +241,7 @@ class TestDatasetServicePermissionsAndLifecycle:
         )
 
         with pytest.raises(NoPermissionError, match="do not have permission"):
-            DatasetService.check_dataset_permission(dataset, outsider)
+            DatasetService.check_dataset_permission(dataset, outsider, db_session_with_containers)
 
     def test_check_dataset_permission_rejects_only_me_dataset_for_non_creator(
         self, db_session_with_containers: Session
@@ -250,7 +256,7 @@ class TestDatasetServicePermissionsAndLifecycle:
         )
 
         with pytest.raises(NoPermissionError, match="do not have permission"):
-            DatasetService.check_dataset_permission(dataset, member)
+            DatasetService.check_dataset_permission(dataset, member, db_session_with_containers)
 
     def test_check_dataset_permission_rejects_partial_team_user_without_binding(
         self, db_session_with_containers: Session
@@ -265,7 +271,7 @@ class TestDatasetServicePermissionsAndLifecycle:
         )
 
         with pytest.raises(NoPermissionError, match="do not have permission"):
-            DatasetService.check_dataset_permission(dataset, member)
+            DatasetService.check_dataset_permission(dataset, member, db_session_with_containers)
 
     def test_check_dataset_permission_allows_partial_team_creator(self, db_session_with_containers: Session):
         creator, tenant = DatasetPermissionIntegrationFactory.create_account_with_tenant(
@@ -279,7 +285,7 @@ class TestDatasetServicePermissionsAndLifecycle:
             permission=DatasetPermissionEnum.PARTIAL_TEAM,
         )
 
-        DatasetService.check_dataset_permission(dataset, creator)
+        DatasetService.check_dataset_permission(dataset, creator, db_session_with_containers)
 
     def test_check_dataset_permission_allows_partial_team_member_with_binding(
         self, db_session_with_containers: Session
@@ -299,7 +305,7 @@ class TestDatasetServicePermissionsAndLifecycle:
             account_id=member.id,
         )
 
-        DatasetService.check_dataset_permission(dataset, member)
+        DatasetService.check_dataset_permission(dataset, member, db_session_with_containers)
 
     def test_check_dataset_operator_permission_rejects_only_me_for_non_creator(
         self, db_session_with_containers: Session
@@ -318,7 +324,9 @@ class TestDatasetServicePermissionsAndLifecycle:
         )
 
         with pytest.raises(NoPermissionError, match="do not have permission"):
-            DatasetService.check_dataset_operator_permission(user=operator, dataset=dataset)
+            DatasetService.check_dataset_operator_permission(
+                user=operator, dataset=dataset, session=db_session_with_containers
+            )
 
     def test_check_dataset_operator_permission_rejects_partial_team_without_binding(
         self, db_session_with_containers: Session
@@ -337,7 +345,9 @@ class TestDatasetServicePermissionsAndLifecycle:
         )
 
         with pytest.raises(NoPermissionError, match="do not have permission"):
-            DatasetService.check_dataset_operator_permission(user=operator, dataset=dataset)
+            DatasetService.check_dataset_operator_permission(
+                user=operator, dataset=dataset, session=db_session_with_containers
+            )
 
     def test_check_dataset_operator_permission_allows_partial_team_with_binding(
         self, db_session_with_containers: Session
@@ -361,12 +371,9 @@ class TestDatasetServicePermissionsAndLifecycle:
             account_id=operator.id,
         )
 
-        DatasetService.check_dataset_operator_permission(user=operator, dataset=dataset)
-
-    def test_update_dataset_api_status_raises_not_found_for_missing_dataset(self, flask_app_with_containers):
-        with flask_app_with_containers.app_context():
-            with pytest.raises(NotFound, match="Dataset not found"):
-                DatasetService.update_dataset_api_status(str(uuid4()), True)
+        DatasetService.check_dataset_operator_permission(
+            user=operator, dataset=dataset, session=db_session_with_containers
+        )
 
     def test_update_dataset_api_status_requires_current_user_id(self, db_session_with_containers: Session):
         owner, tenant = DatasetPermissionIntegrationFactory.create_account_with_tenant(db_session_with_containers)
@@ -376,10 +383,10 @@ class TestDatasetServicePermissionsAndLifecycle:
             created_by=owner.id,
             enable_api=False,
         )
-
-        with patch("services.dataset_service.current_user", SimpleNamespace(id=None)):
-            with pytest.raises(ValueError, match="Current user or current user id not found"):
-                DatasetService.update_dataset_api_status(dataset.id, True)
+        actor = Account(name="missing-id", email="missing-id@example.com")
+        actor.id = ""
+        with pytest.raises(ValueError, match="Current user or current user id not found"):
+            DatasetService.update_dataset_api_status(dataset, True, actor, session=db_session_with_containers)
 
     def test_update_dataset_api_status_updates_fields_and_commits(self, db_session_with_containers: Session):
         owner, tenant = DatasetPermissionIntegrationFactory.create_account_with_tenant(db_session_with_containers)
@@ -391,11 +398,8 @@ class TestDatasetServicePermissionsAndLifecycle:
         )
         now = datetime(2026, 4, 14, 18, 0, 0)
 
-        with (
-            patch("services.dataset_service.current_user", owner),
-            patch("services.dataset_service.naive_utc_now", return_value=now),
-        ):
-            DatasetService.update_dataset_api_status(dataset.id, True)
+        with patch("services.dataset_service.naive_utc_now", return_value=now):
+            DatasetService.update_dataset_api_status(dataset, True, owner, session=db_session_with_containers)
 
         db_session_with_containers.refresh(dataset)
         assert dataset.enable_api is True
@@ -409,12 +413,10 @@ class TestDatasetServicePermissionsAndLifecycle:
         features = SimpleNamespace(
             billing=SimpleNamespace(enabled=False, subscription=SimpleNamespace(plan="professional"))
         )
+        dataset_ref = DatasetRef(tenant_id=tenant.id, dataset_id=str(uuid4()))
 
-        with (
-            patch("services.dataset_service.current_user", owner),
-            patch("services.dataset_service.FeatureService.get_features", return_value=features),
-        ):
-            result = DatasetService.get_dataset_auto_disable_logs(str(uuid4()))
+        with patch("services.dataset_service.FeatureService.get_features", return_value=features):
+            result = DatasetService.get_dataset_auto_disable_logs(dataset_ref, session=db_session_with_containers)
 
         assert result == {"document_ids": [], "count": 0}
 
@@ -440,12 +442,10 @@ class TestDatasetServicePermissionsAndLifecycle:
         features = SimpleNamespace(
             billing=SimpleNamespace(enabled=True, subscription=SimpleNamespace(plan="professional"))
         )
+        dataset_ref = DatasetRefService.create_dataset_ref(dataset)
 
-        with (
-            patch("services.dataset_service.current_user", owner),
-            patch("services.dataset_service.FeatureService.get_features", return_value=features),
-        ):
-            result = DatasetService.get_dataset_auto_disable_logs(dataset.id)
+        with patch("services.dataset_service.FeatureService.get_features", return_value=features):
+            result = DatasetService.get_dataset_auto_disable_logs(dataset_ref, session=db_session_with_containers)
 
         assert result["count"] == 2
         assert len(result["document_ids"]) == 2
@@ -459,12 +459,16 @@ class TestDatasetCollectionBindingServiceIntegration:
             model_name="model",
         )
 
-        result = DatasetCollectionBindingService.get_dataset_collection_binding("provider", "model")
+        result = DatasetCollectionBindingService.get_dataset_collection_binding(
+            "provider", "model", session=db_session_with_containers
+        )
 
         assert result.id == binding.id
 
     def test_get_dataset_collection_binding_creates_binding_when_missing(self, db_session_with_containers: Session):
-        result = DatasetCollectionBindingService.get_dataset_collection_binding("provider", "missing-model")
+        result = DatasetCollectionBindingService.get_dataset_collection_binding(
+            "provider", "missing-model", session=db_session_with_containers
+        )
 
         persisted = db_session_with_containers.get(DatasetCollectionBinding, result.id)
         assert persisted is not None
@@ -473,10 +477,14 @@ class TestDatasetCollectionBindingServiceIntegration:
         assert persisted.type == "dataset"
         assert persisted.collection_name
 
-    def test_get_dataset_collection_binding_by_id_and_type_raises_when_missing(self, flask_app_with_containers):
+    def test_get_dataset_collection_binding_by_id_and_type_raises_when_missing(
+        self, flask_app_with_containers: Flask, db_session_with_containers: Session
+    ):
         with flask_app_with_containers.app_context():
             with pytest.raises(ValueError, match="Dataset collection binding not found"):
-                DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(str(uuid4()))
+                DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
+                    str(uuid4()), session=db_session_with_containers
+                )
 
     def test_get_dataset_collection_binding_by_id_and_type_returns_binding(self, db_session_with_containers: Session):
         binding = DatasetPermissionIntegrationFactory.create_collection_binding(
@@ -485,7 +493,9 @@ class TestDatasetCollectionBindingServiceIntegration:
             model_name="model",
         )
 
-        result = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(binding.id)
+        result = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
+            binding.id, session=db_session_with_containers
+        )
 
         assert result.id == binding.id
 
@@ -514,7 +524,9 @@ class TestDatasetPermissionServiceIntegration:
             account_id=member_b.id,
         )
 
-        result = DatasetPermissionService.get_dataset_partial_member_list(dataset.id)
+        result = DatasetPermissionService.get_dataset_partial_member_list(
+            dataset.id, session=db_session_with_containers
+        )
 
         assert set(result) == {member_a.id, member_b.id}
 
@@ -540,33 +552,44 @@ class TestDatasetPermissionServiceIntegration:
             tenant.id,
             dataset.id,
             [{"user_id": member_a.id}, {"user_id": member_b.id}],
+            session=db_session_with_containers,
         )
 
         permissions = db_session_with_containers.query(DatasetPermission).filter_by(dataset_id=dataset.id).all()
         assert {permission.account_id for permission in permissions} == {member_a.id, member_b.id}
 
-    def test_check_permission_requires_dataset_editor(self):
+    def test_check_permission_requires_dataset_editor(self, db_session_with_containers: Session):
         user = SimpleNamespace(is_dataset_editor=False, is_dataset_operator=False)
         dataset = SimpleNamespace(id="dataset-1", permission=DatasetPermissionEnum.ALL_TEAM)
 
         with pytest.raises(NoPermissionError, match="does not have permission"):
-            DatasetPermissionService.check_permission(user, dataset, DatasetPermissionEnum.ALL_TEAM, [])
+            DatasetPermissionService.check_permission(
+                user, dataset, DatasetPermissionEnum.ALL_TEAM, [], session=db_session_with_containers
+            )
 
-    def test_check_permission_prevents_dataset_operator_from_changing_permission_mode(self):
+    def test_check_permission_prevents_dataset_operator_from_changing_permission_mode(
+        self, db_session_with_containers: Session
+    ):
         user = SimpleNamespace(is_dataset_editor=True, is_dataset_operator=True)
         dataset = SimpleNamespace(id="dataset-1", permission=DatasetPermissionEnum.ALL_TEAM)
 
         with pytest.raises(NoPermissionError, match="cannot change the dataset permissions"):
-            DatasetPermissionService.check_permission(user, dataset, DatasetPermissionEnum.ONLY_ME, [])
+            DatasetPermissionService.check_permission(
+                user, dataset, DatasetPermissionEnum.ONLY_ME, [], session=db_session_with_containers
+            )
 
-    def test_check_permission_requires_partial_member_list_for_partial_members_mode(self):
+    def test_check_permission_requires_partial_member_list_for_partial_members_mode(
+        self, db_session_with_containers: Session
+    ):
         user = SimpleNamespace(is_dataset_editor=True, is_dataset_operator=True)
         dataset = SimpleNamespace(id="dataset-1", permission=DatasetPermissionEnum.PARTIAL_TEAM)
 
         with pytest.raises(ValueError, match="Partial member list is required"):
-            DatasetPermissionService.check_permission(user, dataset, DatasetPermissionEnum.PARTIAL_TEAM, [])
+            DatasetPermissionService.check_permission(
+                user, dataset, DatasetPermissionEnum.PARTIAL_TEAM, [], session=db_session_with_containers
+            )
 
-    def test_check_permission_rejects_dataset_operator_member_list_changes(self):
+    def test_check_permission_rejects_dataset_operator_member_list_changes(self, db_session_with_containers: Session):
         user = SimpleNamespace(is_dataset_editor=True, is_dataset_operator=True)
         dataset = SimpleNamespace(id="dataset-1", permission=DatasetPermissionEnum.PARTIAL_TEAM)
 
@@ -577,9 +600,12 @@ class TestDatasetPermissionServiceIntegration:
                     dataset,
                     DatasetPermissionEnum.PARTIAL_TEAM,
                     [{"user_id": "user-2"}],
+                    session=db_session_with_containers,
                 )
 
-    def test_check_permission_allows_dataset_operator_when_member_list_is_unchanged(self):
+    def test_check_permission_allows_dataset_operator_when_member_list_is_unchanged(
+        self, db_session_with_containers: Session
+    ):
         user = SimpleNamespace(is_dataset_editor=True, is_dataset_operator=True)
         dataset = SimpleNamespace(id="dataset-1", permission=DatasetPermissionEnum.PARTIAL_TEAM)
 
@@ -589,6 +615,7 @@ class TestDatasetPermissionServiceIntegration:
                 dataset,
                 DatasetPermissionEnum.PARTIAL_TEAM,
                 [{"user_id": "user-1"}],
+                session=db_session_with_containers,
             )
 
     def test_clear_partial_member_list_deletes_permissions_and_commits(self, db_session_with_containers: Session):
@@ -607,7 +634,7 @@ class TestDatasetPermissionServiceIntegration:
             account_id=member.id,
         )
 
-        DatasetPermissionService.clear_partial_member_list(dataset.id)
+        DatasetPermissionService.clear_partial_member_list(dataset.id, session=db_session_with_containers)
 
         remaining = db_session_with_containers.query(DatasetPermission).filter_by(dataset_id=dataset.id).all()
         assert remaining == []

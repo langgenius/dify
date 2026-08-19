@@ -33,7 +33,12 @@ const advancedColumns = [
     title: 'Preview',
     type: 'custom' as const,
     width: 'w-[120px]',
-    render: (_value: unknown, row: { method?: string }, index: number, onChange: (value: unknown) => void) => (
+    render: (
+      _value: unknown,
+      row: { method?: string },
+      index: number,
+      onChange: (value: unknown) => void,
+    ) => (
       <button type="button" onClick={() => onChange(`${index}:${row.method || 'empty'}`)}>
         custom-render
       </button>
@@ -55,7 +60,8 @@ describe('GenericTable', () => {
 
   const selectOption = async (triggerName: string, optionName: string) => {
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: triggerName }))
+      expect(screen.getByText(triggerName)).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('combobox'))
     })
 
     await act(async () => {
@@ -144,21 +150,19 @@ describe('GenericTable', () => {
           emptyRowData={{ method: '', preview: '' }}
           onChange={(nextData) => {
             onChange(nextData)
-            setData(nextData as { method: string, preview: string }[])
+            setData(nextData as { method: string; preview: string }[])
           }}
         />
       )
     }
 
-    render(
-      <ControlledTable />,
-    )
+    render(<ControlledTable />)
 
     await selectOption('Choose method', 'POST')
 
     await waitFor(() => {
       expect(onChange).toHaveBeenCalledWith([{ method: 'post', preview: '' }])
-      expect(screen.getByRole('button', { name: 'POST' }))!.toBeInTheDocument()
+      expect(screen.getAllByRole('combobox')[0])!.toHaveTextContent('POST')
     })
 
     onChange.mockClear()

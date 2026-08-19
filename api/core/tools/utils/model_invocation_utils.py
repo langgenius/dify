@@ -21,7 +21,7 @@ from graphon.model_runtime.errors.invoke import (
     InvokeRateLimitError,
     InvokeServerUnavailableError,
 )
-from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from models.tools import ToolModelInvoke
 

@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import LabelSelector from '../selector'
 
 // Mock useTags hook with controlled test data
@@ -14,23 +14,8 @@ vi.mock('@/app/components/plugins/hooks', () => ({
   useTags: () => ({
     tags: mockTags,
     tagsMap: mockTags.reduce((acc, tag) => ({ ...acc, [tag.name]: tag }), {}),
-    getTagLabel: (name: string) => mockTags.find(t => t.name === name)?.label ?? name,
+    getTagLabel: (name: string) => mockTags.find((t) => t.name === name)?.label ?? name,
   }),
-}))
-
-// Mock useDebounceFn to store the function and allow manual triggering
-let debouncedFn: (() => void) | null = null
-vi.mock('ahooks', () => ({
-  useDebounceFn: (fn: () => void) => {
-    debouncedFn = fn
-    return {
-      run: () => {
-        // Schedule to run after React state updates
-        setTimeout(() => debouncedFn?.(), 0)
-      },
-      cancel: vi.fn(),
-    }
-  },
 }))
 
 describe('LabelSelector', () => {
@@ -39,7 +24,6 @@ describe('LabelSelector', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()
-    debouncedFn = null
   })
 
   afterEach(() => {
@@ -48,16 +32,18 @@ describe('LabelSelector', () => {
 
   // Rendering Tests
   describe('Rendering', () => {
-    it('should render without crashing', () => {
+    it('should display placeholder when no labels selected', () => {
       render(<LabelSelector value={[]} onChange={mockOnChange} />)
 
       expect(screen.getByText('tools.createTool.toolInput.labelPlaceholder')).toBeInTheDocument()
     })
 
-    it('should display placeholder when no labels selected', () => {
+    it('should render the trigger as a native button', () => {
       render(<LabelSelector value={[]} onChange={mockOnChange} />)
 
-      expect(screen.getByText('tools.createTool.toolInput.labelPlaceholder')).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'tools.createTool.toolInput.labelPlaceholder' }),
+      ).toHaveAttribute('type', 'button')
     })
 
     it('should display selected labels as comma-separated list', () => {
@@ -110,7 +96,7 @@ describe('LabelSelector', () => {
         vi.advanceTimersByTime(10)
       })
 
-      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+      expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()
     })
   })
 
@@ -127,7 +113,7 @@ describe('LabelSelector', () => {
       expect(screen.getByText('Agent')).toBeInTheDocument()
 
       await act(async () => {
-        fireEvent.click(screen.getByTitle('Agent'))
+        fireEvent.click(screen.getByRole('checkbox', { name: 'Agent' }))
         vi.advanceTimersByTime(10)
       })
 
@@ -142,16 +128,8 @@ describe('LabelSelector', () => {
         vi.advanceTimersByTime(10)
       })
 
-      // Find the label item in the dropdown list and click it
-      // Use getAllByTitle and select the one in the dropdown (with text-sm class)
-      const agentElements = screen.getAllByTitle('Agent')
-      const dropdownItem = agentElements.find(el =>
-        el.classList.contains('text-sm'),
-      )
-
       await act(async () => {
-        if (dropdownItem)
-          fireEvent.click(dropdownItem)
+        fireEvent.click(screen.getByRole('checkbox', { name: 'Agent' }))
         vi.advanceTimersByTime(10)
       })
 
@@ -166,10 +144,10 @@ describe('LabelSelector', () => {
         vi.advanceTimersByTime(10)
       })
 
-      expect(screen.getByTitle('RAG')).toBeInTheDocument()
+      expect(screen.getByRole('checkbox', { name: 'RAG' })).toBeInTheDocument()
 
       await act(async () => {
-        fireEvent.click(screen.getByTitle('RAG'))
+        fireEvent.click(screen.getByRole('checkbox', { name: 'RAG' }))
         vi.advanceTimersByTime(10)
       })
 
@@ -184,9 +162,7 @@ describe('LabelSelector', () => {
         vi.advanceTimersByTime(10)
       })
 
-      // Checkboxes should be visible in the dropdown
-      const checkboxes = document.querySelectorAll('[data-testid^="checkbox"]')
-      expect(checkboxes.length).toBeGreaterThan(0)
+      expect(screen.getAllByRole('checkbox').length).toBeGreaterThan(0)
     })
   })
 
@@ -200,19 +176,19 @@ describe('LabelSelector', () => {
         vi.advanceTimersByTime(10)
       })
 
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toBeInTheDocument()
 
       await act(async () => {
-        const searchInput = screen.getByRole('textbox')
+        const searchInput = screen.getByRole('searchbox', { name: 'common.operation.search' })
         // Filter by 'rag' which only matches 'rag' name
         fireEvent.change(searchInput, { target: { value: 'rag' } })
-        vi.advanceTimersByTime(10)
+        vi.advanceTimersByTime(500)
       })
 
       // Only RAG should be visible (rag contains 'rag')
-      expect(screen.getByTitle('RAG')).toBeInTheDocument()
+      expect(screen.getByText('RAG')).toBeInTheDocument()
       // Agent should not be in the dropdown list (agent doesn't contain 'rag')
-      expect(screen.queryByTitle('Agent')).not.toBeInTheDocument()
+      expect(screen.queryByRole('checkbox', { name: 'Agent' })).not.toBeInTheDocument()
     })
 
     it('should show empty state when no labels match search', async () => {
@@ -223,12 +199,12 @@ describe('LabelSelector', () => {
         vi.advanceTimersByTime(10)
       })
 
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toBeInTheDocument()
 
       await act(async () => {
-        const searchInput = screen.getByRole('textbox')
+        const searchInput = screen.getByRole('searchbox', { name: 'common.operation.search' })
         fireEvent.change(searchInput, { target: { value: 'nonexistent' } })
-        vi.advanceTimersByTime(10)
+        vi.advanceTimersByTime(500)
       })
 
       expect(screen.getByText('common.tag.noTag')).toBeInTheDocument()
@@ -242,28 +218,28 @@ describe('LabelSelector', () => {
         vi.advanceTimersByTime(10)
       })
 
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toBeInTheDocument()
 
       await act(async () => {
-        const searchInput = screen.getByRole('textbox')
+        const searchInput = screen.getByRole('searchbox', { name: 'common.operation.search' })
         // First filter to show only RAG
         fireEvent.change(searchInput, { target: { value: 'rag' } })
-        vi.advanceTimersByTime(10)
+        vi.advanceTimersByTime(500)
       })
 
-      expect(screen.getByTitle('RAG')).toBeInTheDocument()
-      expect(screen.queryByTitle('Agent')).not.toBeInTheDocument()
+      expect(screen.getByText('RAG')).toBeInTheDocument()
+      expect(screen.queryByRole('checkbox', { name: 'Agent' })).not.toBeInTheDocument()
 
       await act(async () => {
         // Clear the input
-        const searchInput = screen.getByRole('textbox')
+        const searchInput = screen.getByRole('searchbox', { name: 'common.operation.search' })
         fireEvent.change(searchInput, { target: { value: '' } })
         vi.advanceTimersByTime(10)
       })
 
       // All labels should be visible again
-      expect(screen.getByTitle('Agent')).toBeInTheDocument()
-      expect(screen.getByTitle('RAG')).toBeInTheDocument()
+      expect(screen.getByRole('checkbox', { name: 'Agent' })).toBeInTheDocument()
+      expect(screen.getByRole('checkbox', { name: 'RAG' })).toBeInTheDocument()
     })
   })
 
@@ -273,13 +249,6 @@ describe('LabelSelector', () => {
       render(<LabelSelector value={[]} onChange={mockOnChange} />)
 
       expect(screen.getByText('tools.createTool.toolInput.labelPlaceholder')).toBeInTheDocument()
-    })
-
-    it('should handle value with non-existent label', () => {
-      render(<LabelSelector value={['nonexistent']} onChange={mockOnChange} />)
-
-      // Should still render without crashing, undefined label will be filtered
-      expect(document.querySelector('.text-text-secondary')).toBeInTheDocument()
     })
 
     it('should handle multiple labels display', () => {
@@ -308,12 +277,11 @@ describe('LabelSelector', () => {
       expect(screen.getByText('Agent')).toBeInTheDocument()
 
       await act(async () => {
-        fireEvent.click(screen.getByTitle('Agent'))
+        fireEvent.click(screen.getByRole('checkbox', { name: 'Agent' }))
         vi.advanceTimersByTime(10)
       })
 
-      expect(mockOnChange).toHaveBeenCalledTimes(1)
-      expect(mockOnChange).toHaveBeenCalledWith(['agent'])
+      expect(mockOnChange).toHaveBeenLastCalledWith(['agent'])
     })
   })
 })

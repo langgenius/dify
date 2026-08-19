@@ -1,7 +1,8 @@
-"""
-Tencent APM tracing implementation with separated concerns
-"""
+from typing import override
 
+"""Tencent APM tracing with idempotent client cleanup."""
+
+import inspect
 import logging
 
 from sqlalchemy import select
@@ -38,10 +39,18 @@ class TencentDataTrace(BaseTraceInstance):
     """
     Tencent APM trace implementation with single responsibility principle.
     Acts as a coordinator that delegates specific tasks to specialized classes.
+
+    The instance owns a long-lived ``TencentTraceClient``. Cleanup may happen
+    explicitly in tests or implicitly during garbage collection, so shutdown
+    must be safe to call multiple times.
     """
+
+    trace_client: TencentTraceClient
+    _closed: bool
 
     def __init__(self, tencent_config: TencentConfig):
         super().__init__(tencent_config)
+        self._closed = False
         self.trace_client = TencentTraceClient(
             service_name=tencent_config.service_name,
             endpoint=tencent_config.endpoint,
@@ -49,22 +58,24 @@ class TencentDataTrace(BaseTraceInstance):
             metrics_export_interval_sec=5,
         )
 
+    @override
     def trace(self, trace_info: BaseTraceInfo) -> None:
         """Main tracing entry point - coordinates different trace types."""
-        if isinstance(trace_info, WorkflowTraceInfo):
-            self.workflow_trace(trace_info)
-        elif isinstance(trace_info, MessageTraceInfo):
-            self.message_trace(trace_info)
-        elif isinstance(trace_info, ModerationTraceInfo):
-            pass
-        elif isinstance(trace_info, SuggestedQuestionTraceInfo):
-            self.suggested_question_trace(trace_info)
-        elif isinstance(trace_info, DatasetRetrievalTraceInfo):
-            self.dataset_retrieval_trace(trace_info)
-        elif isinstance(trace_info, ToolTraceInfo):
-            self.tool_trace(trace_info)
-        elif isinstance(trace_info, GenerateNameTraceInfo):
-            pass
+        match trace_info:
+            case WorkflowTraceInfo():
+                self.workflow_trace(trace_info)
+            case MessageTraceInfo():
+                self.message_trace(trace_info)
+            case ModerationTraceInfo():
+                pass
+            case SuggestedQuestionTraceInfo():
+                self.suggested_question_trace(trace_info)
+            case DatasetRetrievalTraceInfo():
+                self.dataset_retrieval_trace(trace_info)
+            case ToolTraceInfo():
+                self.tool_trace(trace_info)
+            case GenerateNameTraceInfo():
+                pass
 
     def api_check(self) -> bool:
         return self.trace_client.api_check()
@@ -241,18 +252,9 @@ class TencentDataTrace(BaseTraceInstance):
                 if not service_account:
                     raise ValueError(f"Creator account not found for app {app_id}")
 
-                current_tenant = session.scalar(
-                    select(TenantAccountJoin)
-                    .where(TenantAccountJoin.account_id == service_account.id, TenantAccountJoin.current.is_(True))
-                    .limit(1)
-                )
-                if not current_tenant:
-                    raise ValueError(f"Current tenant not found for account {service_account.id}")
-
-                service_account.set_tenant_id(current_tenant.tenant_id)
-
             repository = SQLAlchemyWorkflowNodeExecutionRepository(
                 session_factory=session_maker,
+                tenant_id=app.tenant_id,
                 user=service_account,
                 app_id=trace_info.metadata.get("app_id"),
                 triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -513,10 +515,25 @@ class TencentDataTrace(BaseTraceInstance):
         except Exception:
             logger.debug("[Tencent APM] Failed to record message trace duration")
 
-    def __del__(self):
-        """Ensure proper cleanup on garbage collection."""
+    def close(self) -> None:
+        """Synchronously and idempotently shutdown the underlying trace client."""
+        if getattr(self, "_closed", False):
+            return
+
+        self._closed = True
+        trace_client = getattr(self, "trace_client", None)
+        if trace_client is None:
+            return
+
         try:
-            if hasattr(self, "trace_client"):
-                self.trace_client.shutdown()
+            shutdown_result = trace_client.shutdown()
+            if inspect.isawaitable(shutdown_result):
+                close_awaitable = getattr(shutdown_result, "close", None)
+                if callable(close_awaitable):
+                    close_awaitable()
         except Exception:
             logger.exception("[Tencent APM] Failed to shutdown trace client during cleanup")
+
+    def __del__(self):
+        """Ensure best-effort cleanup on garbage collection without retrying shutdown."""
+        self.close()

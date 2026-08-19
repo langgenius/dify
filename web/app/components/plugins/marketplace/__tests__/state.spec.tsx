@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor } from '@testing-library/react'
 import { Provider as JotaiProvider } from 'jotai'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 
 vi.mock('@/config', () => ({
@@ -46,9 +46,7 @@ const createWrapper = (searchParams = '') => {
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <JotaiProvider>
       <QueryClientProvider client={queryClient}>
-        <NuqsWrapper>
-          {children}
-        </NuqsWrapper>
+        <NuqsWrapper>{children}</NuqsWrapper>
       </QueryClientProvider>
     </JotaiProvider>
   )
@@ -185,9 +183,21 @@ describe('useMarketplaceData', () => {
     container.id = 'marketplace-container'
     document.body.appendChild(container)
 
-    Object.defineProperty(container, 'scrollTop', { value: 900, writable: true, configurable: true })
-    Object.defineProperty(container, 'scrollHeight', { value: 1000, writable: true, configurable: true })
-    Object.defineProperty(container, 'clientHeight', { value: 200, writable: true, configurable: true })
+    Object.defineProperty(container, 'scrollTop', {
+      value: 900,
+      writable: true,
+      configurable: true,
+    })
+    Object.defineProperty(container, 'scrollHeight', {
+      value: 1000,
+      writable: true,
+      configurable: true,
+    })
+    Object.defineProperty(container, 'clientHeight', {
+      value: 200,
+      writable: true,
+      configurable: true,
+    })
 
     const { result } = renderHook(() => useMarketplaceData(), { wrapper: Wrapper })
 
@@ -245,9 +255,21 @@ describe('useMarketplaceData', () => {
     container.id = 'marketplace-container'
     document.body.appendChild(container)
 
-    Object.defineProperty(container, 'scrollTop', { value: 900, writable: true, configurable: true })
-    Object.defineProperty(container, 'scrollHeight', { value: 1000, writable: true, configurable: true })
-    Object.defineProperty(container, 'clientHeight', { value: 200, writable: true, configurable: true })
+    Object.defineProperty(container, 'scrollTop', {
+      value: 900,
+      writable: true,
+      configurable: true,
+    })
+    Object.defineProperty(container, 'scrollHeight', {
+      value: 1000,
+      writable: true,
+      configurable: true,
+    })
+    Object.defineProperty(container, 'clientHeight', {
+      value: 200,
+      writable: true,
+      configurable: true,
+    })
 
     const { result } = renderHook(() => useMarketplaceData(), { wrapper: Wrapper })
 

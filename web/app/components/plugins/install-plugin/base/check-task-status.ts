@@ -4,6 +4,8 @@ import { sleep } from '@/utils'
 import { TaskStatus } from '../../types'
 
 const INTERVAL = 10 * 1000 // 10 seconds
+const isUnfinishedStatus = (status: TaskStatus) =>
+  status === TaskStatus.pending || status === TaskStatus.running
 
 type Params = {
   taskId: string
@@ -14,10 +16,7 @@ function checkTaskStatus() {
   let nextStatus = TaskStatus.running
   let isStop = false
 
-  const doCheckStatus = async ({
-    taskId,
-    pluginUniqueIdentifier,
-  }: Params) => {
+  const doCheckStatus = async ({ taskId, pluginUniqueIdentifier }: Params) => {
     if (isStop) {
       return {
         status: TaskStatus.success,
@@ -25,7 +24,9 @@ function checkTaskStatus() {
     }
     const res = await fetchCheckTaskStatus(taskId)
     const { plugins } = res.task
-    const plugin = plugins.find((p: PluginStatus) => p.plugin_unique_identifier === pluginUniqueIdentifier)
+    const plugin = plugins.find(
+      (p: PluginStatus) => p.plugin_unique_identifier === pluginUniqueIdentifier,
+    )
     if (!plugin) {
       nextStatus = TaskStatus.failed
       return {
@@ -34,7 +35,7 @@ function checkTaskStatus() {
       }
     }
     nextStatus = plugin.status
-    if (nextStatus === TaskStatus.running) {
+    if (isUnfinishedStatus(nextStatus)) {
       await sleep(INTERVAL)
       return await doCheckStatus({
         taskId,
@@ -47,9 +48,9 @@ function checkTaskStatus() {
         error: plugin.message,
       }
     }
-    return ({
+    return {
       status: TaskStatus.success,
-    })
+    }
   }
 
   return {

@@ -2,15 +2,13 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { NoteTheme } from '../../../types'
 import Toolbar from '../index'
 
-const {
-  mockHandleCommand,
-  mockHandleFontSize,
-  mockHandleOpenFontSizeSelector,
-} = vi.hoisted(() => ({
-  mockHandleCommand: vi.fn(),
-  mockHandleFontSize: vi.fn(),
-  mockHandleOpenFontSizeSelector: vi.fn(),
-}))
+const { mockHandleCommand, mockHandleFontSize, mockHandleOpenFontSizeSelector } = vi.hoisted(
+  () => ({
+    mockHandleCommand: vi.fn(),
+    mockHandleFontSize: vi.fn(),
+    mockHandleOpenFontSizeSelector: vi.fn(),
+  }),
+)
 
 let mockFontSizeSelectorShow = false
 let mockFontSize = '14px'
@@ -76,11 +74,14 @@ describe('NoteEditor Toolbar', () => {
 
     expect(screen.getByText('workflow.nodes.note.editor.medium')).toBeInTheDocument()
 
-    const triggers = container.querySelectorAll('[data-state="closed"]')
+    const buttons = container.querySelectorAll('button[type="button"]')
+    fireEvent.click(buttons[0] as HTMLElement)
 
-    fireEvent.click(triggers[0] as HTMLElement)
+    await waitFor(() => {
+      expect(document.body.querySelectorAll('.group.relative').length).toBeGreaterThan(0)
+    })
 
-    const colorOptions = document.body.querySelectorAll('[role="tooltip"] .group.relative')
+    const colorOptions = document.body.querySelectorAll('.group.relative')
 
     fireEvent.click(colorOptions[colorOptions.length - 1] as Element)
 

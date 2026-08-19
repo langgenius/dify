@@ -3,6 +3,7 @@ import time
 from typing import cast
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.pipeline.pipeline_config_manager import PipelineConfig
@@ -14,21 +15,22 @@ from core.app.entities.app_invoke_entities import (
     build_dify_run_context,
 )
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
+from core.db.session_factory import create_session
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.workflow.node_factory import DifyGraphInitContext, DifyNodeFactory, get_default_root_node_id
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
-from extensions.ext_database import db
 from graphon.enums import WorkflowType
 from graphon.graph import Graph
 from graphon.graph_events import GraphEngineEvent, GraphRunFailedEvent
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variable_loader import VariableLoader
 from graphon.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput
-from models.dataset import Document, Pipeline
+from models.dataset import Pipeline
 from models.model import EndUser
 from models.workflow import Workflow
+from services.dataset_ref_service import DatasetRefService, DocumentRef
 
 logger = logging.getLogger(__name__)
 
@@ -83,22 +85,53 @@ class PipelineRunner(WorkflowBasedAppRunner):
         user_from = self._resolve_user_from(invoke_from)
 
         user_id = None
-        if invoke_from in {InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API}:
-            end_user = db.session.get(EndUser, self.application_generate_entity.user_id)
-            if end_user:
-                user_id = end_user.session_id
-        else:
-            user_id = self.application_generate_entity.user_id
+        with create_session() as session:
+            if invoke_from in {InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API}:
+                end_user = session.get(EndUser, self.application_generate_entity.user_id)
+                if end_user:
+                    user_id = end_user.session_id
+            else:
+                user_id = self.application_generate_entity.user_id
 
-        pipeline = db.session.get(Pipeline, app_config.app_id)
-        if not pipeline:
-            raise ValueError("Pipeline not found")
+            pipeline = session.get(Pipeline, app_config.app_id)
+            if not pipeline or pipeline.tenant_id != app_config.tenant_id:
+                raise ValueError("Pipeline not found")
 
-        workflow = self.get_workflow(pipeline=pipeline, workflow_id=app_config.workflow_id)
-        if not workflow:
-            raise ValueError("Workflow not initialized")
+            dataset = pipeline.retrieve_dataset(session)
+            if (
+                not dataset
+                or dataset.tenant_id != pipeline.tenant_id
+                or dataset.id != self.application_generate_entity.dataset_id
+            ):
+                raise ValueError("Pipeline dataset not found")
 
-        db.session.close()
+            document_id = self.application_generate_entity.document_id
+            original_document_id = self.application_generate_entity.original_document_id
+            dataset_ref = DatasetRefService.create_dataset_ref(dataset)
+            document_ref = (
+                DatasetRefService.create_document_ref_from_id(
+                    dataset_ref,
+                    document_id,
+                )
+                if document_id
+                else None
+            )
+            if document_ref and DatasetRefService.get_document_by_ref(document_ref, session=session) is None:
+                raise ValueError("Pipeline document not found")
+            if original_document_id and original_document_id != document_id:
+                original_document_ref = DatasetRefService.create_document_ref_from_id(
+                    dataset_ref,
+                    original_document_id,
+                )
+                if DatasetRefService.get_document_by_ref(original_document_ref, session=session) is None:
+                    raise ValueError("Pipeline original document not found")
+
+            workflow = self.get_workflow(session=session, pipeline=pipeline, workflow_id=app_config.workflow_id)
+            if not workflow:
+                raise ValueError("Workflow not initialized")
+
+            session.expunge(pipeline)
+            session.expunge(workflow)
 
         # if only single iteration run is requested
         if self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
@@ -203,17 +236,15 @@ class PipelineRunner(WorkflowBasedAppRunner):
         generator = workflow_entry.run()
 
         for event in generator:
-            self._update_document_status(
-                event, self.application_generate_entity.document_id, self.application_generate_entity.dataset_id
-            )
+            self._update_document_status(event, document_ref)
             self._handle_event(workflow_entry, event)
 
-    def get_workflow(self, pipeline: Pipeline, workflow_id: str) -> Workflow | None:
+    def get_workflow(self, session: Session, pipeline: Pipeline, workflow_id: str) -> Workflow | None:
         """
         Get workflow
         """
         # fetch workflow by workflow_id
-        workflow = db.session.scalar(
+        workflow = session.scalar(
             select(Workflow)
             .where(Workflow.tenant_id == pipeline.tenant_id, Workflow.app_id == pipeline.id, Workflow.id == workflow_id)
             .limit(1)
@@ -292,17 +323,14 @@ class PipelineRunner(WorkflowBasedAppRunner):
 
         return graph
 
-    def _update_document_status(self, event: GraphEngineEvent, document_id: str | None, dataset_id: str | None) -> None:
-        """
-        Update document status
-        """
-        if isinstance(event, GraphRunFailedEvent):
-            if document_id and dataset_id:
-                document = db.session.scalar(
-                    select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
-                )
-                if document:
-                    document.indexing_status = "error"
-                    document.error = event.error or "Unknown error"
-                    db.session.add(document)
-                    db.session.commit()
+    def _update_document_status(self, event: GraphEngineEvent, document_ref: DocumentRef | None) -> None:
+        """Set an owner-bound document to error after a failed graph run, if it exists."""
+        if not isinstance(event, GraphRunFailedEvent) or document_ref is None:
+            return
+
+        with create_session() as session, session.begin():
+            document = DatasetRefService.get_document_by_ref(document_ref, session=session)
+            if document:
+                document.indexing_status = "error"
+                document.error = event.error or "Unknown error"
+                session.add(document)

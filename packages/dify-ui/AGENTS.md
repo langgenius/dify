@@ -1,36 +1,35 @@
 # @langgenius/dify-ui
 
-Shared design tokens, the `cn()` utility, a Tailwind CSS preset, and headless primitive components consumed by `web/`.
+This package owns shared design tokens, CSS-first Tailwind styles, the `cn()` utility, and headless primitives consumed by `web/`. Read only the matching topic in [`README.md`] for public imports, forms, typed values, pickers, overlays, tokens, or tests.
 
 ## Component Authoring Rules
 
-- Use `@base-ui/react` primitives + `cva` + `cn`.
-- Inside dify-ui, cross-component imports use relative paths (`../button`). External consumers use subpath exports (`@langgenius/dify-ui/button`).
-- No imports from `web/`. No dependencies on next / i18next / ky / jotai / zustand.
-- One component per folder: `src/<name>/index.tsx`, optional `index.stories.tsx` and `__tests__/index.spec.tsx`. Add a matching `./<name>` subpath to `package.json#exports`.
-- Props pattern: `Omit<BaseXxx.Root.Props, 'className' | ...> & VariantProps<typeof xxxVariants> & { /* custom */ }`.
-- When a component accepts a prop typed from a shared internal module, `export type` it from that component so consumers import it from the component subpath.
+- Build primitives from `@base-ui/react`, `cva`, and `cn`.
+- Use relative cross-component imports inside the package and subpath exports such as `@langgenius/dify-ui/button` from consumers. Add a matching `package.json#exports` entry for each public primitive.
+- Keep one primitive per `src/<name>/` folder with optional colocated stories and tests.
+- Do not import from `web/` or depend on Next.js, i18n, application state, or data-fetching libraries.
+- Preserve upstream Base UI anatomy and generic value contracts. Use discriminated unions when one prop changes the valid shape of related props; do not flatten those relationships or hard-code selectable values to `string`.
+- Export shared public types from the owning component subpath.
+- Prefer Base UI data attributes and CSS variables for visual states; do not mirror primitive state in React solely to add classes.
+- When a Base UI API or selector contract is unclear, read the current official documentation and local `@base-ui/react` type declarations before coding.
 
-## Border Radius: Figma Token → Tailwind Class Mapping
+Use the README sections as the detailed owners:
 
-The Figma design system uses `--radius/*` tokens whose scale is **offset by one step** from Tailwind CSS v4 defaults. When translating Figma specs to code, always use this mapping — never use `radius-*` as a CSS class, and never extend `borderRadius` in the preset.
+- [Button and icon-button contracts]
+- [Form and input composition]
+- [Imports and public boundaries]
+- [Typed value contracts]
+- [Search and picker selection]
+- [Tailwind and Figma radius mapping]
+- [Overlay and portal contracts]
+- [Development and test boundaries]
 
-| Figma Token     | Value | Tailwind Class   |
-| --------------- | ----- | ---------------- |
-| `--radius/2xs`  | 2px   | `rounded-xs`     |
-| `--radius/xs`   | 4px   | `rounded-sm`     |
-| `--radius/sm`   | 6px   | `rounded-md`     |
-| `--radius/md`   | 8px   | `rounded-lg`     |
-| `--radius/lg`   | 10px  | `rounded-[10px]` |
-| `--radius/xl`   | 12px  | `rounded-xl`     |
-| `--radius/2xl`  | 16px  | `rounded-2xl`    |
-| `--radius/3xl`  | 20px  | `rounded-[20px]` |
-| `--radius/6xl`  | 28px  | `rounded-[28px]` |
-| `--radius/full` | 999px | `rounded-full`   |
-
-### Rules
-
-- **Do not** add custom `borderRadius` values to `tailwind-preset.ts`. We use Tailwind v4 defaults and arbitrary values (`rounded-[Npx]`) for sizes without a standard equivalent.
-- **Do not** use `radius-*` as CSS class names. The old `@utility radius-*` definitions have been removed.
-- When the Figma MCP returns `rounded-[var(--radius/sm, 6px)]`, convert it to the standard Tailwind class from the table above (e.g. `rounded-md`).
-- For values without a standard Tailwind equivalent (10px, 20px, 28px), use arbitrary values like `rounded-[10px]`.
+[Button and icon-button contracts]: README.md#button-loading-and-disabled-contract
+[Development and test boundaries]: README.md#development
+[Form and input composition]: README.md#form-contract
+[Imports and public boundaries]: README.md#imports
+[Overlay and portal contracts]: README.md#overlay--portal-contract
+[Search and picker selection]: README.md#search-and-picker-selection
+[Tailwind and Figma radius mapping]: README.md#tailwind-css-v4-integration
+[Typed value contracts]: README.md#typed-value-contracts
+[`README.md`]: README.md

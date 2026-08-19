@@ -34,6 +34,17 @@ def test_sse_message_id_coercion():
     assert msg.root.jsonrpc == expected.root.jsonrpc
 
 
+def test_sse_message_without_id_stays_notification():
+    """Test that method messages without an ID still parse as notifications."""
+    json_message = '{"jsonrpc": "2.0", "method": "ping", "params": null}'
+
+    msg = types.JSONRPCMessage.model_validate_json(json_message)
+
+    assert isinstance(msg.root, types.JSONRPCNotification)
+    assert msg.root.method == "ping"
+    assert msg.root.jsonrpc == "2.0"
+
+
 class MockSSEClient:
     """Mock SSE client for testing."""
 

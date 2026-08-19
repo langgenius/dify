@@ -1,5 +1,6 @@
 {
   "allTags": "Todas as tags",
+  "clearSelectedTags": "Limpar tags selecionadas: {{tags}}",
   "searchTags": "Tags de pesquisa",
   "tags.agent": "Agente",
   "tags.business": "Negócio",

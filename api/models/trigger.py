@@ -8,7 +8,7 @@ from uuid import uuid4
 
 import sqlalchemy as sa
 from sqlalchemy import DateTime, Index, Integer, String, UniqueConstraint, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.trigger.entities.api_entities import TriggerProviderSubscriptionApiEntity
@@ -18,8 +18,7 @@ from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 
 from .base import TypeBase
-from .engine import db
-from .enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, WorkflowTriggerStatus
+from .enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, PermissionEnum, WorkflowTriggerStatus
 from .model import Account
 from .types import EnumText, LongText, StringUUID
 
@@ -111,6 +110,12 @@ class TriggerSubscription(TypeBase):
     expires_at: Mapped[int] = mapped_column(
         Integer, default=-1, comment="Subscription instance expiration timestamp, -1 for never"
     )
+    visibility: Mapped[PermissionEnum] = mapped_column(
+        EnumText(PermissionEnum, length=40),
+        nullable=False,
+        server_default=sa.text("'all_team_members'"),
+        default=PermissionEnum.ALL_TEAM,
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
@@ -119,7 +124,7 @@ class TriggerSubscription(TypeBase):
         DateTime,
         nullable=False,
         server_default=func.current_timestamp(),
-        server_onupdate=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
         init=False,
     )
 
@@ -174,7 +179,7 @@ class TriggerOAuthSystemClient(TypeBase):
         DateTime,
         nullable=False,
         server_default=func.current_timestamp(),
-        server_onupdate=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
         init=False,
     )
 
@@ -204,7 +209,7 @@ class TriggerOAuthTenantClient(TypeBase):
         DateTime,
         nullable=False,
         server_default=func.current_timestamp(),
-        server_onupdate=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
         init=False,
     )
 
@@ -285,17 +290,15 @@ class WorkflowTriggerLog(TypeBase):
     triggered_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
 
-    @property
-    def created_by_account(self):
+    def created_by_account(self, session: Session) -> Account | None:
         created_by_role = CreatorUserRole(self.created_by_role)
-        return db.session.get(Account, self.created_by) if created_by_role == CreatorUserRole.ACCOUNT else None
+        return session.get(Account, self.created_by) if created_by_role == CreatorUserRole.ACCOUNT else None
 
-    @property
-    def created_by_end_user(self):
+    def created_by_end_user(self, session: Session):
         from .model import EndUser
 
         created_by_role = CreatorUserRole(self.created_by_role)
-        return db.session.get(EndUser, self.created_by) if created_by_role == CreatorUserRole.END_USER else None
+        return session.get(EndUser, self.created_by) if created_by_role == CreatorUserRole.END_USER else None
 
     def to_dict(self) -> WorkflowTriggerLogDict:
         """Convert to dictionary for API responses"""
@@ -364,7 +367,7 @@ class WorkflowWebhookTrigger(TypeBase):
         DateTime,
         nullable=False,
         server_default=func.current_timestamp(),
-        server_onupdate=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
         init=False,
     )
 
@@ -424,7 +427,7 @@ class WorkflowPluginTrigger(TypeBase):
         DateTime,
         nullable=False,
         server_default=func.current_timestamp(),
-        server_onupdate=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
         init=False,
     )
 
@@ -473,7 +476,7 @@ class AppTrigger(TypeBase):
         DateTime,
         nullable=False,
         default=naive_utc_now(),
-        server_onupdate=func.current_timestamp(),
+        onupdate=naive_utc_now(),
         init=False,
     )
 

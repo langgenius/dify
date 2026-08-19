@@ -14,22 +14,17 @@ const ICON_CONTAINER_CLASSNAME_SIZE_MAP: Record<string, string> = {
   md: 'w-6 h-6 rounded-lg shadow-md',
 }
 
-const DatasourceIcon: FC<DatasourceIconProps> = ({
-  size = 'sm',
-  className,
-  iconUrl,
-}) => {
+const DatasourceIcon: FC<DatasourceIconProps> = ({ size = 'sm', className, iconUrl }) => {
   return (
-    <div className={
-      cn(
+    <div
+      className={cn(
         'flex items-center justify-center shadow-none',
         ICON_CONTAINER_CLASSNAME_SIZE_MAP[size],
         className,
-      )
-    }
+      )}
     >
       <div
-        className="h-full w-full shrink-0 rounded-md bg-cover bg-center"
+        className="size-full shrink-0 rounded-md bg-cover bg-center"
         style={{
           backgroundImage: `url(${iconUrl})`,
         }}

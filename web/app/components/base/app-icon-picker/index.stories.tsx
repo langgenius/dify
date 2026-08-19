@@ -10,7 +10,8 @@ const meta = {
     layout: 'fullscreen',
     docs: {
       description: {
-        component: 'Modal workflow for choosing an application avatar. Users can switch between emoji selections and image uploads (when enabled).',
+        component:
+          'Modal workflow for choosing an application avatar. Users can switch between emoji selections and image uploads (when enabled).',
       },
     },
     nextjs: {
@@ -32,7 +33,7 @@ const AppIconPickerDemo = () => {
   const [selection, setSelection] = useState<AppIconSelection | null>(null)
 
   return (
-    <div className="flex min-h-[320px] flex-col items-start gap-4 px-6 py-8 md:px-12">
+    <div className="flex min-h-80 flex-col items-start gap-4 px-6 py-8 md:px-12">
       <button
         type="button"
         className="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-700"
@@ -43,25 +44,21 @@ const AppIconPickerDemo = () => {
 
       <div className="rounded-lg border border-divider-subtle bg-components-panel-bg p-4 text-sm text-text-secondary shadow-sm">
         <div className="font-medium text-text-primary">Selection preview</div>
-        <pre className="mt-2 max-h-44 overflow-auto rounded-md bg-background-default-subtle p-3 font-mono text-xs leading-tight text-text-primary">
+        <pre className="mt-2 max-h-44 overflow-auto rounded-md bg-background-default-subtle p-3 font-mono text-xs/tight text-text-primary">
           {selection ? JSON.stringify(selection, null, 2) : 'No icon selected yet.'}
         </pre>
       </div>
 
-      {open && (
-        <AppIconPicker
-          onSelect={(result) => {
-            setSelection(result)
-            setOpen(false)
-          }}
-          onClose={() => setOpen(false)}
-        />
-      )}
+      <AppIconPicker open={open} onOpenChange={setOpen} onSelect={setSelection} />
     </div>
   )
 }
 
 export const Playground: Story = {
+  args: {
+    open: false,
+    onOpenChange: () => {},
+  },
   render: () => <AppIconPickerDemo />,
   parameters: {
     docs: {
@@ -74,15 +71,11 @@ const [selection, setSelection] = useState<AppIconSelection | null>(null)
 return (
   <>
     <button onClick={() => setOpen(true)}>Choose icon…</button>
-    {open && (
-      <AppIconPicker
-        onSelect={(result) => {
-          setSelection(result)
-          setOpen(false)
-        }}
-        onClose={() => setOpen(false)}
-      />
-    )}
+    <AppIconPicker
+      open={open}
+      onOpenChange={setOpen}
+      onSelect={setSelection}
+    />
   </>
 )
         `.trim(),

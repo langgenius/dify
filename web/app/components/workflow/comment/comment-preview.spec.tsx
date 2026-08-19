@@ -1,9 +1,9 @@
-import type { WorkflowCommentList } from '@/service/workflow-comment'
+import type { WorkflowCommentList } from '@/app/components/workflow/comment/types'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import CommentPreview from './comment-preview'
 
-type UserProfile = WorkflowCommentList['created_by_account']
+type UserProfile = NonNullable<WorkflowCommentList['created_by_account']>
 
 const mockSetHovering = vi.fn()
 let capturedUsers: UserProfile[] = []
@@ -11,7 +11,7 @@ let capturedUsers: UserProfile[] = []
 vi.mock('@/app/components/base/user-avatar-list', () => ({
   UserAvatarList: ({ users }: { users: UserProfile[] }) => {
     capturedUsers = users
-    return <div data-testid="avatar-list">{users.map(user => user.id).join(',')}</div>
+    return <div data-testid="avatar-list">{users.map((user) => user.id).join(',')}</div>
   },
 }))
 
@@ -22,13 +22,14 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
 }))
 
 vi.mock('../store', () => ({
-  useStore: (selector: (state: { setCommentPreviewHovering: (value: boolean) => void }) => unknown) =>
-    selector({ setCommentPreviewHovering: mockSetHovering }),
+  useStore: (
+    selector: (state: { setCommentPreviewHovering: (value: boolean) => void }) => unknown,
+  ) => selector({ setCommentPreviewHovering: mockSetHovering }),
 }))
 
 const createComment = (overrides: Partial<WorkflowCommentList> = {}): WorkflowCommentList => {
-  const author = { id: 'user-1', name: 'Alice', email: 'alice@example.com' }
-  const participant = { id: 'user-2', name: 'Bob', email: 'bob@example.com' }
+  const author = { id: 'user-1', name: 'Alice', email: 'alice@example.com', avatar_url: null }
+  const participant = { id: 'user-2', name: 'Bob', email: 'bob@example.com', avatar_url: null }
 
   return {
     id: 'comment-1',
@@ -58,7 +59,7 @@ describe('CommentPreview', () => {
 
     render(<CommentPreview comment={comment} />)
 
-    expect(capturedUsers.map(user => user.id)).toEqual(['user-1', 'user-2'])
+    expect(capturedUsers.map((user) => user.id)).toEqual(['user-1', 'user-2'])
     expect(screen.getByText('Hello')).toBeInTheDocument()
     expect(screen.getByText('time:10000')).toBeInTheDocument()
   })

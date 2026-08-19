@@ -1,5 +1,6 @@
 import type { DatePickerProps } from '../../types'
-import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import dayjs from '../../utils/dayjs'
 import DatePicker from '../index'
 
@@ -108,20 +109,18 @@ describe('DatePicker', () => {
       expect(screen.getByText(/2024/))!.toBeInTheDocument()
     })
 
-    it('should close when clicking outside the container', () => {
+    it('should close when clicking outside the container', async () => {
+      const user = userEvent.setup()
       const props = createDatePickerProps()
       render(<DatePicker {...props} />)
 
       openPicker()
+      expect(screen.getAllByText(/daysInWeek/).length).toBeGreaterThan(0)
 
-      // Simulate a mousedown event outside the container
-      act(() => {
-        document.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
-      })
+      await user.click(document.body)
 
-      // The picker should now be closed - input shows its value
-      // The picker should now be closed - input shows its value
-      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.queryAllByText(/daysInWeek/)).toHaveLength(0)
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
     })
   })
 
@@ -175,7 +174,10 @@ describe('DatePicker', () => {
     })
 
     it('should render time picker options in time view', () => {
-      const props = createDatePickerProps({ needTimePicker: true, value: dayjs('2024-06-15T14:30:00') })
+      const props = createDatePickerProps({
+        needTimePicker: true,
+        value: dayjs('2024-06-15T14:30:00'),
+      })
       render(<DatePicker {...props} />)
 
       openPicker()
@@ -190,7 +192,10 @@ describe('DatePicker', () => {
     })
 
     it('should update selected time when hour is selected in time view', () => {
-      const props = createDatePickerProps({ needTimePicker: true, value: dayjs('2024-06-15T14:30:00') })
+      const props = createDatePickerProps({
+        needTimePicker: true,
+        value: dayjs('2024-06-15T14:30:00'),
+      })
       render(<DatePicker {...props} />)
 
       openPicker()
@@ -209,7 +214,10 @@ describe('DatePicker', () => {
     })
 
     it('should update selected time when minute is selected in time view', () => {
-      const props = createDatePickerProps({ needTimePicker: true, value: dayjs('2024-06-15T14:30:00') })
+      const props = createDatePickerProps({
+        needTimePicker: true,
+        value: dayjs('2024-06-15T14:30:00'),
+      })
       render(<DatePicker {...props} />)
 
       openPicker()
@@ -226,7 +234,10 @@ describe('DatePicker', () => {
     })
 
     it('should update selected time when period is changed in time view', () => {
-      const props = createDatePickerProps({ needTimePicker: true, value: dayjs('2024-06-15T14:30:00') })
+      const props = createDatePickerProps({
+        needTimePicker: true,
+        value: dayjs('2024-06-15T14:30:00'),
+      })
       render(<DatePicker {...props} />)
 
       openPicker()
@@ -366,8 +377,16 @@ describe('DatePicker', () => {
   describe('Clear Behavior', () => {
     it('should call onClear when clear is clicked while picker is closed', () => {
       const onClear = vi.fn()
-      const renderTrigger = vi.fn(({ handleClear }) => (
-        <button data-testid="clear-trigger" onClick={handleClear}>
+      const renderTrigger = vi.fn((triggerProps, _state, { handleClear }) => (
+        <button
+          {...triggerProps}
+          data-testid="clear-trigger"
+          onClick={(event) => {
+            event.preventDefault()
+            handleClear(event)
+            triggerProps.onClick?.(event)
+          }}
+        >
           Clear
         </button>
       ))
@@ -386,8 +405,8 @@ describe('DatePicker', () => {
     it('should clear selected date without calling onClear when picker is open', () => {
       const onClear = vi.fn()
       const onChange = vi.fn()
-      const renderTrigger = vi.fn(({ handleClickTrigger, handleClear }) => (
-        <div>
+      const renderTrigger = vi.fn((triggerProps, _state, { handleClickTrigger, handleClear }) => (
+        <div {...triggerProps}>
           <button data-testid="open-trigger" onClick={handleClickTrigger}>
             Open
           </button>
@@ -500,10 +519,7 @@ describe('DatePicker', () => {
       // Open year/month picker
       fireEvent.click(screen.getByText(/2024/))
 
-      // The header in year/month view shows selected month/year with an up arrow
-      // Clicking it closes the year/month picker
-      const headerButtons = screen.getAllByRole('button')
-      fireEvent.click(headerButtons[0]!) // First button in year/month view is the header
+      fireEvent.click(screen.getByRole('button', { name: /time\.months\.June 2024/ }))
 
       // Should return to date view
       expect(screen.getAllByText(/daysInWeek/).length).toBeGreaterThan(0)
@@ -545,8 +561,8 @@ describe('DatePicker', () => {
   // Custom trigger
   describe('Custom Trigger', () => {
     it('should use renderTrigger when provided', () => {
-      const renderTrigger = vi.fn(({ handleClickTrigger }) => (
-        <button data-testid="custom-trigger" onClick={handleClickTrigger}>
+      const renderTrigger = vi.fn((triggerProps, _state, { handleClickTrigger }) => (
+        <button {...triggerProps} data-testid="custom-trigger" onClick={handleClickTrigger}>
           Custom
         </button>
       ))
@@ -558,8 +574,8 @@ describe('DatePicker', () => {
     })
 
     it('should open picker when custom trigger is clicked', () => {
-      const renderTrigger = vi.fn(({ handleClickTrigger }) => (
-        <button data-testid="custom-trigger" onClick={handleClickTrigger}>
+      const renderTrigger = vi.fn((triggerProps, _state, { handleClickTrigger }) => (
+        <button {...triggerProps} data-testid="custom-trigger" onClick={handleClickTrigger}>
           Custom
         </button>
       ))
@@ -570,6 +586,24 @@ describe('DatePicker', () => {
       fireEvent.click(screen.getByTestId('custom-trigger'))
 
       expect(screen.getAllByText(/daysInWeek/).length).toBeGreaterThan(0)
+    })
+
+    it('should expose Base UI trigger state and props to a custom trigger', () => {
+      const renderTrigger = vi.fn((triggerProps, state) => (
+        <button {...triggerProps} data-testid="state-trigger">
+          {state.open ? 'Open' : 'Closed'}
+        </button>
+      ))
+
+      render(<DatePicker {...createDatePickerProps({ renderTrigger })} />)
+
+      expect(screen.getByTestId('state-trigger')).toHaveTextContent('Closed')
+      expect(screen.getByTestId('state-trigger')).not.toHaveAttribute('data-popup-open')
+
+      fireEvent.click(screen.getByTestId('state-trigger'))
+
+      expect(screen.getByTestId('state-trigger')).toHaveTextContent('Open')
+      expect(screen.getByTestId('state-trigger')).toHaveAttribute('data-popup-open')
     })
   })
 

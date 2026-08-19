@@ -1,12 +1,12 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useLocale } from '@/context/i18n'
 import ToolCallItem from '../tool-call'
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ title, value }: { title: React.ReactNode, value: string | object }) => (
+  default: ({ title, value }: { title: React.ReactNode; value: string | object }) => (
     <div data-testid="code-editor">
       <div data-testid="code-editor-title">{title}</div>
       <div data-testid="code-editor-value">{JSON.stringify(value)}</div>
@@ -120,7 +120,7 @@ describe('ToolCallItem', () => {
     fireEvent.click(screen.getByText('LLM'))
 
     const titles = screen.getAllByTestId('code-editor-title')
-    const titleTexts = titles.map(t => t.textContent)
+    const titleTexts = titles.map((t) => t.textContent)
 
     expect(titleTexts).toContain('INPUT')
     expect(titleTexts).toContain('OUTPUT')

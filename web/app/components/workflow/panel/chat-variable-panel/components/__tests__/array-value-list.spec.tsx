@@ -7,11 +7,7 @@ describe('ArrayValueList', () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
     const { container } = render(
-      <ArrayValueList
-        isString
-        list={['alpha', 'beta']}
-        onChange={onChange}
-      />,
+      <ArrayValueList isString list={['alpha', 'beta']} onChange={onChange} />,
     )
 
     fireEvent.change(screen.getByDisplayValue('alpha'), { target: { value: 'updated' } })
@@ -26,13 +22,7 @@ describe('ArrayValueList', () => {
   it('coerces number inputs and appends an undefined slot', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
-    render(
-      <ArrayValueList
-        isString={false}
-        list={[1]}
-        onChange={onChange}
-      />,
-    )
+    render(<ArrayValueList isString={false} list={[1]} onChange={onChange} />)
 
     fireEvent.change(screen.getByDisplayValue('1'), { target: { value: '7' } })
     await user.click(screen.getByText('workflow.chatVariable.modal.addArrayValue'))

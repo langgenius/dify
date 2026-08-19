@@ -1,55 +1,38 @@
 import type { MouseEvent } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
-import {
-  RiAspectRatioFill,
-  RiAspectRatioLine,
-  RiCursorLine,
-  RiFunctionAddLine,
-  RiHand,
-  RiStickyNoteAddLine,
-} from '@remixicon/react'
-import {
-  memo,
-} from 'react'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Toggle } from '@langgenius/dify-ui/toggle'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Comment } from '@/app/components/base/icons/src/public/other'
 import Divider from '../../base/divider'
-import {
-  useNodesReadOnly,
-  useWorkflowCanvasMaximize,
-  useWorkflowMoveMode,
-  useWorkflowOrganize,
-} from '../hooks'
+import { useNodesReadOnly } from '../hooks/use-workflow'
+import { useWorkflowOrganize } from '../hooks/use-workflow-organize'
+import { useWorkflowMoveMode } from '../hooks/use-workflow-panel-interactions'
 import { useStore } from '../store'
-import {
-  ControlMode,
-} from '../types'
+import { ControlMode } from '../types'
 import AddBlock from './add-block'
 import { useOperator } from './hooks'
 import MoreActions from './more-actions'
 import TipPopup from './tip-popup'
 
+const pressedModeClassName =
+  'data-pressed:bg-state-accent-active data-pressed:text-text-accent data-pressed:hover:bg-state-base-hover data-pressed:hover:text-text-secondary data-disabled:data-pressed:text-text-disabled data-disabled:data-pressed:hover:bg-transparent data-disabled:data-pressed:hover:text-text-disabled'
+
 const Control = () => {
   const { t } = useTranslation()
-  const controlMode = useStore(s => s.controlMode)
-  const maximizeCanvas = useStore(s => s.maximizeCanvas)
+  const controlMode = useStore((s) => s.controlMode)
   const {
     handleModePointer,
     handleModeHand,
     handleModeComment,
     isCommentModeAvailable,
+    canUseCommentMode,
   } = useWorkflowMoveMode()
   const { handleLayout } = useWorkflowOrganize()
   const { handleAddNote } = useOperator()
-  const {
-    nodesReadOnly,
-    getNodesReadOnly,
-  } = useNodesReadOnly()
-  const { handleToggleMaximizeCanvas } = useWorkflowCanvasMaximize()
+  const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
 
-  const addNote = (e: MouseEvent<HTMLDivElement>) => {
-    if (getNodesReadOnly())
-      return
+  const addNote = (e: MouseEvent<HTMLButtonElement>) => {
+    if (getNodesReadOnly()) return
 
     e.stopPropagation()
     handleAddNote()
@@ -58,80 +41,102 @@ const Control = () => {
   return (
     <div className="pointer-events-auto flex flex-col items-center rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 text-text-tertiary shadow-lg">
       <AddBlock />
-      <TipPopup title={t('nodes.note.addNote', { ns: 'workflow' })}>
-        <div
-          className={cn(
-            'ml-px flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover hover:text-text-secondary',
-            `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
-          )}
+      <TipPopup title={t(($) => $['nodes.note.addNote'], { ns: 'workflow' })}>
+        <IconButton
+          size="lg"
+          aria-label={t(($) => $['nodes.note.addNote'], { ns: 'workflow' })}
+          disabled={nodesReadOnly}
+          focusableWhenDisabled
+          className="ml-px rounded-md"
           onClick={addNote}
         >
-          <RiStickyNoteAddLine className="h-4 w-4" />
-        </div>
+          <span aria-hidden className="i-ri-sticky-note-add-line size-4" />
+        </IconButton>
       </TipPopup>
       <Divider className="my-1 w-3.5" />
-      <TipPopup title={t('common.pointerMode', { ns: 'workflow' })} shortcuts={['v']}>
-        <div
-          className={cn(
-            'mr-px flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg',
-            controlMode === ControlMode.Pointer ? 'bg-state-accent-active text-text-accent' : 'hover:bg-state-base-hover hover:text-text-secondary',
-            `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
-          )}
-          onClick={handleModePointer}
-        >
-          <RiCursorLine className="h-4 w-4" />
-        </div>
+      <TipPopup
+        title={t(($) => $['common.pointerMode'], { ns: 'workflow' })}
+        shortcut="workflow.pointer-mode"
+      >
+        <Toggle
+          pressed={controlMode === ControlMode.Pointer}
+          onPressedChange={handleModePointer}
+          disabled={nodesReadOnly}
+          className={pressedModeClassName}
+          render={
+            <IconButton
+              size="lg"
+              aria-label={t(($) => $['common.pointerMode'], { ns: 'workflow' })}
+              disabled={nodesReadOnly}
+              focusableWhenDisabled
+              className="mr-px rounded-md"
+            >
+              <span aria-hidden className="i-ri-cursor-line size-4" />
+            </IconButton>
+          }
+        />
       </TipPopup>
-      <TipPopup title={t('common.handMode', { ns: 'workflow' })} shortcuts={['h']}>
-        <div
-          className={cn(
-            'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg',
-            controlMode === ControlMode.Hand ? 'bg-state-accent-active text-text-accent' : 'hover:bg-state-base-hover hover:text-text-secondary',
-            `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
-          )}
-          onClick={handleModeHand}
-        >
-          <RiHand className="h-4 w-4" />
-        </div>
+      <TipPopup
+        title={t(($) => $['common.handMode'], { ns: 'workflow' })}
+        shortcut="workflow.hand-mode"
+      >
+        <Toggle
+          pressed={controlMode === ControlMode.Hand}
+          onPressedChange={handleModeHand}
+          disabled={nodesReadOnly}
+          className={pressedModeClassName}
+          render={
+            <IconButton
+              size="lg"
+              aria-label={t(($) => $['common.handMode'], { ns: 'workflow' })}
+              disabled={nodesReadOnly}
+              focusableWhenDisabled
+              className="rounded-md"
+            >
+              <span aria-hidden className="i-ri-hand size-4" />
+            </IconButton>
+          }
+        />
       </TipPopup>
       {isCommentModeAvailable && (
-        <TipPopup title={t('common.commentMode', { ns: 'workflow' })} shortcuts={['c']}>
-          <div
-            className={cn(
-              'ml-[1px] flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg',
-              controlMode === ControlMode.Comment ? 'bg-state-accent-active text-text-accent' : 'hover:bg-state-base-hover hover:text-text-secondary',
-              `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
-            )}
-            onClick={handleModeComment}
-          >
-            <Comment className="h-4 w-4" />
-          </div>
+        <TipPopup
+          title={t(($) => $['common.commentMode'], { ns: 'workflow' })}
+          shortcut="workflow.comment-mode"
+        >
+          <Toggle
+            pressed={controlMode === ControlMode.Comment}
+            onPressedChange={handleModeComment}
+            disabled={!canUseCommentMode}
+            className={pressedModeClassName}
+            render={
+              <IconButton
+                size="lg"
+                aria-label={t(($) => $['common.commentMode'], { ns: 'workflow' })}
+                disabled={!canUseCommentMode}
+                focusableWhenDisabled
+                className="ml-px rounded-md"
+              >
+                <span aria-hidden className="i-custom-public-other-comment size-4" />
+              </IconButton>
+            }
+          />
         </TipPopup>
       )}
       <Divider className="my-1 w-3.5" />
-      <TipPopup title={t('panel.organizeBlocks', { ns: 'workflow' })} shortcuts={['ctrl', 'o']}>
-        <div
-          className={cn(
-            'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover hover:text-text-secondary',
-            `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
-          )}
+      <TipPopup
+        title={t(($) => $['panel.organizeBlocks'], { ns: 'workflow' })}
+        shortcut="workflow.organize"
+      >
+        <IconButton
+          size="lg"
+          aria-label={t(($) => $['panel.organizeBlocks'], { ns: 'workflow' })}
+          disabled={nodesReadOnly}
+          focusableWhenDisabled
+          className="rounded-md"
           onClick={handleLayout}
         >
-          <RiFunctionAddLine className="h-4 w-4" />
-        </div>
-      </TipPopup>
-      <TipPopup title={maximizeCanvas ? t('panel.minimize', { ns: 'workflow' }) : t('panel.maximize', { ns: 'workflow' })} shortcuts={['f']}>
-        <div
-          className={cn(
-            'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover hover:text-text-secondary',
-            maximizeCanvas ? 'bg-state-accent-active text-text-accent hover:text-text-accent' : 'hover:bg-state-base-hover hover:text-text-secondary',
-            `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
-          )}
-          onClick={handleToggleMaximizeCanvas}
-        >
-          {maximizeCanvas && <RiAspectRatioFill className="h-4 w-4" />}
-          {!maximizeCanvas && <RiAspectRatioLine className="h-4 w-4" />}
-        </div>
+          <span aria-hidden className="i-ri-function-add-line size-4" />
+        </IconButton>
       </TipPopup>
       <MoreActions />
     </div>

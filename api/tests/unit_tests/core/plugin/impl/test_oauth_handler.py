@@ -2,6 +2,7 @@ from io import BytesIO
 from types import SimpleNamespace
 
 import pytest
+from pytest_mock import MockerFixture
 from werkzeug import Request
 
 from core.plugin.impl.oauth import OAuthHandler
@@ -25,7 +26,7 @@ def _build_request(body: bytes = b"payload") -> Request:
 
 
 class TestOAuthHandler:
-    def test_get_authorization_url(self, mocker):
+    def test_get_authorization_url(self, mocker: MockerFixture):
         handler = OAuthHandler()
         stream_mock = mocker.patch.object(
             handler,
@@ -45,7 +46,7 @@ class TestOAuthHandler:
         assert response.authorization_url == "https://auth.example.com"
         assert stream_mock.call_count == 1
 
-    def test_get_authorization_url_no_response_raises(self, mocker):
+    def test_get_authorization_url_no_response_raises(self, mocker: MockerFixture):
         handler = OAuthHandler()
         mocker.patch.object(handler, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
@@ -59,7 +60,7 @@ class TestOAuthHandler:
                 system_credentials={},
             )
 
-    def test_get_credentials(self, mocker):
+    def test_get_credentials(self, mocker: MockerFixture):
         handler = OAuthHandler()
         captured_data = {}
 
@@ -85,7 +86,7 @@ class TestOAuthHandler:
         assert "raw_http_request" in captured_data["data"]
         assert stream_mock.call_count == 1
 
-    def test_get_credentials_no_response_raises(self, mocker):
+    def test_get_credentials_no_response_raises(self, mocker: MockerFixture):
         handler = OAuthHandler()
         mocker.patch.object(handler, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
@@ -100,7 +101,7 @@ class TestOAuthHandler:
                 request=_build_request(),
             )
 
-    def test_refresh_credentials(self, mocker):
+    def test_refresh_credentials(self, mocker: MockerFixture):
         handler = OAuthHandler()
         stream_mock = mocker.patch.object(
             handler,
@@ -121,7 +122,7 @@ class TestOAuthHandler:
         assert response.credentials == {"token": "new"}
         assert stream_mock.call_count == 1
 
-    def test_refresh_credentials_no_response_raises(self, mocker):
+    def test_refresh_credentials_no_response_raises(self, mocker: MockerFixture):
         handler = OAuthHandler()
         mocker.patch.object(handler, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 

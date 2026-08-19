@@ -6,6 +6,7 @@ from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.system_variables import build_system_variables
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.graph import Graph
+from graphon.nodes.template_transform.entities import TemplateTransformNodeData
 from graphon.nodes.template_transform.template_transform_node import TemplateTransformNode
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.template_rendering import TemplateRenderError
@@ -16,10 +17,11 @@ class _SimpleJinja2Renderer:
     """Minimal Jinja2-based renderer for integration tests (no code executor)."""
 
     def render_template(self, template: str, variables: dict[str, object]) -> str:
-        from jinja2 import Template
+        from jinja2.sandbox import SandboxedEnvironment
 
         try:
-            return Template(template).render(**variables)
+            env = SandboxedEnvironment()
+            return env.from_string(template).render(**variables)
         except Exception as exc:
             raise TemplateRenderError(str(exc)) from exc
 
@@ -65,7 +67,7 @@ def test_execute_template_transform():
     )
 
     # construct variable pool
-    variable_pool = VariablePool(
+    variable_pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(user_id="aaa", files=[]),
         user_inputs={},
         environment_variables=[],
@@ -86,8 +88,8 @@ def test_execute_template_transform():
     assert graph is not None
 
     node = TemplateTransformNode(
-        id=str(uuid.uuid4()),
-        config=config,
+        node_id=str(uuid.uuid4()),
+        data=TemplateTransformNodeData.model_validate(config["data"]),
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
         jinja2_template_renderer=_SimpleJinja2Renderer(),

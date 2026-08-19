@@ -1,5 +1,4 @@
 {
-  "actionLogs": "Dzienniki akcji",
   "circularInvocationTip": "W bieżącym przepływie pracy istnieje cykliczne wywoływanie narzędzi/węzłów.",
   "detail": "SZCZEGÓŁY",
   "input": "WEJŚCIE",
@@ -10,7 +9,6 @@
   "meta.time": "Czas trwania",
   "meta.title": "METADANE",
   "meta.tokens": "Liczba tokenów",
-  "meta.version": "Wersja",
   "result": "WYNIK",
   "resultEmpty.link": "panelu szczegółów",
   "resultEmpty.tipLeft": "proszę przejdź do ",

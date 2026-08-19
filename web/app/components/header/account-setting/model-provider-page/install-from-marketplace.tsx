@@ -1,84 +1,144 @@
-import type {
-  ModelProvider,
-} from './declarations'
 import type { Plugin } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useQuery } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import Loading from '@/app/components/base/loading'
 import List from '@/app/components/plugins/marketplace/list'
+import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
+import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import ProviderCard from '@/app/components/plugins/provider-card'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import Link from '@/next/link'
-import { getMarketplaceUrl } from '@/utils/var'
-import {
-  useMarketplaceAllPlugins,
-} from './hooks'
+import { consoleQuery } from '@/service/client'
+import { useMarketplaceAllPlugins } from './hooks'
 
 type InstallFromMarketplaceProps = {
-  providers: ModelProvider[]
+  onOpenMarketplace?: () => void
   searchText: string
+  stepByStepTourTarget?: string
 }
 const InstallFromMarketplace = ({
-  providers,
+  onOpenMarketplace,
   searchText,
+  stepByStepTourTarget,
 }: InstallFromMarketplaceProps) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
+  const { canInstallPlugin } = usePluginSettingsAccess()
   const [collapse, setCollapse] = useState(false)
-  const {
-    plugins: allPlugins,
-    isLoading: isAllPluginsLoading,
-  } = useMarketplaceAllPlugins(providers, searchText)
+  const [hasEnteredViewport, setHasEnteredViewport] = useState(
+    () => !globalThis.IntersectionObserver,
+  )
+  const [hasBeenReopened, setHasBeenReopened] = useState(false)
+  const sectionRef = useRef<HTMLDivElement>(null)
+  const shouldLoadMarketplace = !collapse && (hasEnteredViewport || !!searchText || hasBeenReopened)
+  const { data: installedPluginIds, isSuccess: hasLoadedInstalledPluginIds } = useQuery({
+    ...consoleQuery.workspaces.current.plugin.installedIds.get.queryOptions({
+      input: { query: { category: 'model' } },
+      enabled: shouldLoadMarketplace,
+    }),
+    select: (data) => data.plugin_ids,
+  })
+  const { plugins: allPlugins, isLoading: isAllPluginsLoading } = useMarketplaceAllPlugins(
+    searchText,
+    installedPluginIds ?? [],
+    shouldLoadMarketplace && hasLoadedInstalledPluginIds,
+  )
+
+  useEffect(() => {
+    const section = sectionRef.current
+    if (!section || hasEnteredViewport) return
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry?.isIntersecting) return
+      setHasEnteredViewport(true)
+      observer.disconnect()
+    })
+    observer.observe(section)
+    return () => observer.disconnect()
+  }, [hasEnteredViewport])
+
+  const handleToggle = () => {
+    setCollapse((previous) => {
+      if (previous) setHasBeenReopened(true)
+      return !previous
+    })
+  }
 
   const cardRender = useCallback((plugin: Plugin) => {
-    if (plugin.type === 'bundle')
-      return null
+    if (plugin.type === 'bundle') return null
 
-    return <ProviderCard key={plugin.plugin_id} payload={plugin} />
+    return <ProviderCard key={plugin.plugin_id} className="h-36.5" payload={plugin} />
   }, [])
 
   return (
-    <div className="mb-2">
-      <Divider className="mt-4! h-px" />
-      <div className="flex items-center justify-between">
-        <button
-          type="button"
-          className="flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-left system-md-semibold text-text-primary"
-          onClick={() => setCollapse(prev => !prev)}
-          aria-expanded={!collapse}
-        >
-          <span className={cn('i-ri-arrow-down-s-line h-4 w-4', collapse && '-rotate-90')} />
-          {t('modelProvider.installProvider', { ns: 'common' })}
-        </button>
-        <div className="mb-2 flex items-center pt-2">
-          <span className="pr-1 system-sm-regular text-text-tertiary">{t('modelProvider.discoverMore', { ns: 'common' })}</span>
-          <Link
-            target="_blank"
-            rel="noopener noreferrer"
-            href={getMarketplaceUrl('', { theme })}
-            className="inline-flex items-center system-sm-medium text-text-accent"
+    <div
+      ref={sectionRef}
+      id="model-provider-marketplace"
+      className="flex scroll-mt-4 flex-col gap-2"
+    >
+      <Divider className="my-2! h-px" />
+      <div className="relative flex flex-col gap-2">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-43.5"
+          data-step-by-step-tour-target={stepByStepTourTarget}
+        />
+        <div className="flex h-5 items-center justify-between">
+          <button
+            type="button"
+            className="flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-left system-md-semibold text-text-primary"
+            onClick={handleToggle}
+            aria-expanded={!collapse}
           >
-            {t('marketplace.difyMarketplace', { ns: 'plugin' })}
-            <span className="i-ri-arrow-right-up-line h-4 w-4" />
-          </Link>
+            <span className={cn('i-ri-arrow-down-s-line size-4', collapse && '-rotate-90')} />
+            {t(($) => $['modelProvider.installProvider'], { ns: 'common' })}
+          </button>
+          <div className="flex items-center gap-1">
+            <span className="system-sm-regular text-text-tertiary">
+              {t(($) => $['modelProvider.discoverMore'], { ns: 'common' })}
+            </span>
+            {onOpenMarketplace ? (
+              <button
+                type="button"
+                className="inline-flex items-center border-0 bg-transparent p-0 system-sm-medium text-text-accent"
+                onClick={onOpenMarketplace}
+              >
+                {t(($) => $['marketplace.difyMarketplace'], { ns: 'plugin' })}
+                <span className="i-ri-arrow-right-up-line size-4" aria-hidden="true" />
+              </button>
+            ) : (
+              <Link
+                target="_blank"
+                rel="noopener noreferrer"
+                href={getMarketplaceCategoryUrl(PluginCategoryEnum.model, { theme })}
+                className="inline-flex items-center system-sm-medium text-text-accent"
+              >
+                {t(($) => $['marketplace.difyMarketplace'], { ns: 'plugin' })}
+                <span className="i-ri-arrow-right-up-line size-4" aria-hidden="true" />
+              </Link>
+            )}
+          </div>
         </div>
-      </div>
-      {!collapse && isAllPluginsLoading && <Loading type="area" />}
-      {
-        !isAllPluginsLoading && !collapse && (
+        {!collapse && shouldLoadMarketplace && !hasLoadedInstalledPluginIds && (
+          <Loading type="area" />
+        )}
+        {!collapse && hasLoadedInstalledPluginIds && isAllPluginsLoading && <Loading type="area" />}
+        {!isAllPluginsLoading && !collapse && hasLoadedInstalledPluginIds && (
           <List
             marketplaceCollections={[]}
             marketplaceCollectionPluginsMap={{}}
             plugins={allPlugins}
-            showInstallButton
-            cardContainerClassName="grid grid-cols-2 gap-2"
+            showInstallButton={canInstallPlugin}
+            cardContainerClassName="grid grid-cols-3 gap-2"
             cardRender={cardRender}
             emptyClassName="h-auto"
           />
-        )
-      }
+        )}
+      </div>
     </div>
   )
 }

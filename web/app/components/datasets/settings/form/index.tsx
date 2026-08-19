@@ -12,7 +12,7 @@ const Form = () => {
   const {
     // Context values
     currentDataset,
-    isCurrentWorkspaceDatasetOperator,
+    canEditSettings,
 
     // Loading state
     loading,
@@ -26,9 +26,9 @@ const Form = () => {
     // Icon
     iconInfo,
     showAppIconPicker,
+    setShowAppIconPicker,
     handleOpenAppIconPicker,
     handleSelectAppIcon,
-    handleCloseAppIconPicker,
 
     // Permission
     permission,
@@ -66,70 +66,71 @@ const Form = () => {
   } = useFormState()
 
   const isExternalProvider = currentDataset?.provider === 'external'
+  const readonly = !canEditSettings
 
   return (
-    <div className="flex w-full flex-col gap-y-4 px-20 py-8 sm:w-[960px]">
+    <div className="flex w-full flex-col gap-y-4 px-20 py-8 sm:w-240">
       <BasicInfoSection
         currentDataset={currentDataset}
-        isCurrentWorkspaceDatasetOperator={isCurrentWorkspaceDatasetOperator}
         name={name}
         setName={setName}
         description={description}
         setDescription={setDescription}
         iconInfo={iconInfo}
         showAppIconPicker={showAppIconPicker}
+        setShowAppIconPicker={setShowAppIconPicker}
         handleOpenAppIconPicker={handleOpenAppIconPicker}
         handleSelectAppIcon={handleSelectAppIcon}
-        handleCloseAppIconPicker={handleCloseAppIconPicker}
         permission={permission}
         setPermission={setPermission}
         selectedMemberIDs={selectedMemberIDs}
         setSelectedMemberIDs={setSelectedMemberIDs}
         memberList={memberList}
+        readonly={readonly}
       />
 
-      {isExternalProvider
-        ? (
-            <ExternalKnowledgeSection
-              currentDataset={currentDataset}
-              topK={topK}
-              scoreThreshold={scoreThreshold}
-              scoreThresholdEnabled={scoreThresholdEnabled}
-              handleSettingsChange={handleSettingsChange}
-            />
-          )
-        : (
-            <IndexingSection
-              currentDataset={currentDataset}
-              indexMethod={indexMethod}
-              setIndexMethod={setIndexMethod}
-              keywordNumber={keywordNumber}
-              setKeywordNumber={setKeywordNumber}
-              embeddingModel={embeddingModel}
-              setEmbeddingModel={setEmbeddingModel}
-              embeddingModelList={embeddingModelList}
-              retrievalConfig={retrievalConfig}
-              setRetrievalConfig={setRetrievalConfig}
-              summaryIndexSetting={summaryIndexSetting}
-              handleSummaryIndexSettingChange={handleSummaryIndexSettingChange}
-              showMultiModalTip={showMultiModalTip}
-            />
-          )}
+      {isExternalProvider ? (
+        <ExternalKnowledgeSection
+          currentDataset={currentDataset}
+          topK={topK}
+          scoreThreshold={scoreThreshold}
+          scoreThresholdEnabled={scoreThresholdEnabled}
+          handleSettingsChange={handleSettingsChange}
+          readonly={readonly}
+        />
+      ) : (
+        <IndexingSection
+          currentDataset={currentDataset}
+          indexMethod={indexMethod}
+          setIndexMethod={setIndexMethod}
+          keywordNumber={keywordNumber}
+          setKeywordNumber={setKeywordNumber}
+          embeddingModel={embeddingModel}
+          setEmbeddingModel={setEmbeddingModel}
+          embeddingModelList={embeddingModelList}
+          retrievalConfig={retrievalConfig}
+          setRetrievalConfig={setRetrievalConfig}
+          summaryIndexSetting={summaryIndexSetting}
+          handleSummaryIndexSettingChange={handleSummaryIndexSettingChange}
+          showMultiModalTip={showMultiModalTip}
+          readonly={readonly}
+        />
+      )}
 
       <Divider type="horizontal" className="my-1 h-px bg-divider-subtle" />
 
       {/* Save Button */}
       <div className="flex gap-x-1">
-        <div className="flex h-7 w-[180px] shrink-0 items-center pt-1" />
+        <div className="flex h-7 w-45 shrink-0 items-center pt-1" />
         <div className="grow">
           <Button
             className="min-w-24"
             variant="primary"
             loading={loading}
-            disabled={loading}
+            disabled={loading || readonly}
             onClick={handleSave}
           >
-            {t('form.save', { ns: 'datasetSettings' })}
+            {t(($) => $['form.save'], { ns: 'datasetSettings' })}
           </Button>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import inspect
 import json
-from unittest.mock import patch
+from collections.abc import Iterator
+from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
@@ -10,16 +11,18 @@ from sqlalchemy.orm import Session
 from core.tools.entities.tool_entities import ApiProviderSchemaType
 from core.tools.errors import ApiToolProviderNotFoundError
 from core.tools.tool_label_manager import ToolLabelManager
-from models import Account, Tenant
+from models import Account, AccountStatus, Tenant, TenantStatus
 from models.tools import ApiToolProvider
 from services.tools.api_tools_manage_service import ApiToolManageService
+
+MockDependencies = dict[str, MagicMock]
 
 
 class TestApiToolManageService:
     """Integration tests for ApiToolManageService using testcontainers."""
 
     @pytest.fixture
-    def mock_external_service_dependencies(self):
+    def mock_external_service_dependencies(self) -> Iterator[MockDependencies]:
         """Mock setup for external service dependencies."""
         with (
             patch("services.tools.api_tools_manage_service.ToolLabelManager") as mock_tool_label_manager,
@@ -39,7 +42,9 @@ class TestApiToolManageService:
                 "provider_controller": mock_provider_controller,
             }
 
-    def _create_test_account_and_tenant(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def _create_test_account_and_tenant(
+        self, db_session_with_containers: Session, mock_external_service_dependencies: MockDependencies
+    ) -> tuple[Account, Tenant]:
         """
         Helper method to create a test account and tenant for testing.
 
@@ -57,7 +62,7 @@ class TestApiToolManageService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
 
         db_session_with_containers.add(account)
@@ -66,7 +71,7 @@ class TestApiToolManageService:
         # Create tenant for the account
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
@@ -88,7 +93,7 @@ class TestApiToolManageService:
 
         return account, tenant
 
-    def _create_test_openapi_schema(self):
+    def _create_test_openapi_schema(self) -> str:
         """Helper method to create a test OpenAPI schema."""
         return """
         {
@@ -121,8 +126,11 @@ class TestApiToolManageService:
         """
 
     def test_parser_api_schema_success(
-        self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self,
+        flask_req_ctx_with_containers: object,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies: MockDependencies,
+    ) -> None:
         """
         Test successful parsing of API schema.
 
@@ -148,6 +156,8 @@ class TestApiToolManageService:
         # Verify credentials schema structure
         credentials_schema = result["credentials_schema"]
         assert len(credentials_schema) == 3
+        assert all(isinstance(field, dict) for field in credentials_schema)
+        assert all(isinstance(tool, dict) for tool in result["parameters_schema"])
 
         # Check auth_type field
         auth_type_field = next(field for field in credentials_schema if field["name"] == "auth_type")
@@ -166,8 +176,11 @@ class TestApiToolManageService:
         assert api_key_value_field["default"] == ""
 
     def test_parser_api_schema_invalid_schema(
-        self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self,
+        flask_req_ctx_with_containers: object,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies: MockDependencies,
+    ) -> None:
         """
         Test parsing of invalid API schema.
 
@@ -186,8 +199,11 @@ class TestApiToolManageService:
         assert "invalid schema" in str(exc_info.value)
 
     def test_parser_api_schema_malformed_json(
-        self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self,
+        flask_req_ctx_with_containers: object,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies: MockDependencies,
+    ) -> None:
         """
         Test parsing of malformed JSON schema.
 
@@ -206,8 +222,11 @@ class TestApiToolManageService:
         assert "invalid schema" in str(exc_info.value)
 
     def test_convert_schema_to_tool_bundles_success(
-        self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self,
+        flask_req_ctx_with_containers: object,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies: MockDependencies,
+    ) -> None:
         """
         Test successful conversion of schema to tool bundles.
 
@@ -236,8 +255,11 @@ class TestApiToolManageService:
         assert tool_bundle.operation_id == "testOperation"
 
     def test_convert_schema_to_tool_bundles_with_extra_info(
-        self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self,
+        flask_req_ctx_with_containers: object,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies: MockDependencies,
+    ) -> None:
         """
         Test successful conversion of schema to tool bundles with extra info.
 
@@ -262,8 +284,11 @@ class TestApiToolManageService:
         assert isinstance(schema_type, str)
 
     def test_convert_schema_to_tool_bundles_invalid_schema(
-        self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self,
+        flask_req_ctx_with_containers: object,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies: MockDependencies,
+    ) -> None:
         """
         Test conversion of invalid schema to tool bundles.
 
@@ -282,8 +307,11 @@ class TestApiToolManageService:
         assert "invalid schema" in str(exc_info.value)
 
     def test_create_api_tool_provider_success(
-        self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self,
+        flask_req_ctx_with_containers: object,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies: MockDependencies,
+    ) -> None:
         """
         Test successful creation of API tool provider.
 
@@ -301,7 +329,7 @@ class TestApiToolManageService:
         )
 
         provider_name = fake.company()
-        icon = {"type": "emoji", "value": "🔧"}
+        icon = {"content": "🔧", "background": "#FFF"}
         credentials = {"auth_type": "none", "api_key_header": "X-API-Key", "api_key_value": ""}
         schema_type = ApiProviderSchemaType.OPENAPI
         schema = self._create_test_openapi_schema()
@@ -341,6 +369,7 @@ class TestApiToolManageService:
         assert provider.schema_type_str == schema_type
         assert provider.privacy_policy == privacy_policy
         assert provider.custom_disclaimer == custom_disclaimer
+        assert json.loads(provider.icon) == icon
 
         # Verify mock interactions
         mock_external_service_dependencies["tool_label_manager"].update_tool_labels.assert_called_once()
@@ -349,8 +378,11 @@ class TestApiToolManageService:
         mock_external_service_dependencies["provider_controller"].load_bundled_tools.assert_called_once()
 
     def test_create_api_tool_provider_duplicate_name(
-        self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self,
+        flask_req_ctx_with_containers: object,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies: MockDependencies,
+    ) -> None:
         """
         Test creation of API tool provider with duplicate name.
 
@@ -366,7 +398,7 @@ class TestApiToolManageService:
         )
 
         provider_name = fake.company()
-        icon = {"type": "emoji", "value": "🔧"}
+        icon = {"content": "🔧", "background": "#FFF"}
         credentials = {"auth_type": "none"}
         schema_type = ApiProviderSchemaType.OPENAPI
         schema = self._create_test_openapi_schema()
@@ -406,8 +438,11 @@ class TestApiToolManageService:
         assert f"provider {provider_name} already exists" in str(exc_info.value)
 
     def test_create_api_tool_provider_invalid_schema_type(
-        self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self,
+        flask_req_ctx_with_containers: object,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies: MockDependencies,
+    ) -> None:
         """
         Test creation of API tool provider with invalid schema type.
 
@@ -423,7 +458,7 @@ class TestApiToolManageService:
         )
 
         provider_name = fake.company()
-        icon = {"type": "emoji", "value": "🔧"}
+        icon = {"content": "🔧", "background": "#FFF"}
         credentials = {"auth_type": "none"}
         schema_type = "invalid_type"
         schema = self._create_test_openapi_schema()
@@ -438,8 +473,11 @@ class TestApiToolManageService:
         assert "validation error" in str(exc_info.value)
 
     def test_create_api_tool_provider_missing_auth_type(
-        self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self,
+        flask_req_ctx_with_containers: object,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies: MockDependencies,
+    ) -> None:
         """
         Test creation of API tool provider with missing auth type.
 
@@ -455,7 +493,7 @@ class TestApiToolManageService:
         )
 
         provider_name = fake.company()
-        icon = {"type": "emoji", "value": "🔧"}
+        icon = {"content": "🔧", "background": "#FFF"}
         credentials = {}  # Missing auth_type
         schema_type = ApiProviderSchemaType.OPENAPI
         schema = self._create_test_openapi_schema()
@@ -481,8 +519,11 @@ class TestApiToolManageService:
         assert "auth_type is required" in str(exc_info.value)
 
     def test_create_api_tool_provider_with_api_key_auth(
-        self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self,
+        flask_req_ctx_with_containers: object,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies: MockDependencies,
+    ) -> None:
         """
         Test successful creation of API tool provider with API key authentication.
 
@@ -498,7 +539,7 @@ class TestApiToolManageService:
         )
 
         provider_name = fake.company()
-        icon = {"type": "emoji", "value": "🔑"}
+        icon = {"content": "🔑", "background": "#FFF"}
         credentials = {"auth_type": "api_key", "api_key_header": "X-API-Key", "api_key_value": fake.uuid4()}
         schema_type = ApiProviderSchemaType.OPENAPI
         schema = self._create_test_openapi_schema()
@@ -542,8 +583,11 @@ class TestApiToolManageService:
         mock_external_service_dependencies["provider_controller"].from_db.assert_called_once()
 
     def test_delete_api_tool_provider_success(
-        self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self,
+        flask_req_ctx_with_containers: object,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies: MockDependencies,
+    ) -> None:
         """Test successful deletion of an API tool provider."""
         fake = Faker()
         account, tenant = self._create_test_account_and_tenant(
@@ -583,8 +627,8 @@ class TestApiToolManageService:
         assert deleted is None
 
     def test_delete_api_tool_provider_not_found(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self, db_session_with_containers: Session, mock_external_service_dependencies: MockDependencies
+    ) -> None:
         """Test deletion raises ValueError when provider not found."""
         fake = Faker()
         account, tenant = self._create_test_account_and_tenant(
@@ -595,14 +639,15 @@ class TestApiToolManageService:
             ApiToolManageService.delete_api_tool_provider(account.id, tenant.id, "nonexistent")
 
     def test_update_api_tool_provider_success(
-        self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self,
+        flask_req_ctx_with_containers: object,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies: MockDependencies,
+    ) -> None:
         fake = Faker()
 
         # Firmware fix for cache.delete() in update flow
         mock_encrypter = mock_external_service_dependencies["encrypter"]
-        from unittest.mock import MagicMock
-
         mock_cache = MagicMock()
         mock_cache.delete.return_value = None
         mock_encrypter.return_value = (mock_encrypter, mock_cache)
@@ -620,7 +665,7 @@ class TestApiToolManageService:
             user_id=account.id,
             tenant_id=tenant.id,
             provider_name=original_name,
-            icon={"type": "emoji", "value": "🔧"},
+            icon={"content": "🔧", "background": "#FFF"},
             credentials={"auth_type": "none"},
             schema_type=ApiProviderSchemaType.OPENAPI,
             schema=self._create_test_openapi_schema(),
@@ -646,7 +691,7 @@ class TestApiToolManageService:
             provider_name=new_name,
             original_provider=original_name,
             # new icon              - changed 2
-            icon={"type": "emoji", "value": "🚀"},
+            icon={"content": "🚀", "background": "#FFF"},
             credentials={"auth_type": "none"},
             _schema_type=ApiProviderSchemaType.OPENAPI,
             schema=self._create_test_openapi_schema(),
@@ -677,9 +722,7 @@ class TestApiToolManageService:
         # - changed 1
         assert updated_provider.name == new_name
         # - changed 2
-        icon_data = json.loads(updated_provider.icon)
-        assert icon_data["type"] == "emoji"
-        assert icon_data["value"] == "🚀"
+        assert json.loads(updated_provider.icon) == {"content": "🚀", "background": "#FFF"}
         # - changed 3
         assert updated_provider.privacy_policy == "https://new-policy.com"
         # - changed 4
@@ -712,8 +755,11 @@ class TestApiToolManageService:
         )
 
     def test_update_api_tool_provider_not_found(
-        self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self,
+        flask_req_ctx_with_containers: object,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies: MockDependencies,
+    ) -> None:
         """
         Test update raises ValueError when original provider not found.
 
@@ -733,7 +779,7 @@ class TestApiToolManageService:
             user_id=account.id,
             tenant_id=tenant.id,
             provider_name=existing_provider_name,
-            icon={"type": "emoji", "value": "🔧"},
+            icon={"content": "🔧", "background": "#FFF"},
             credentials={"auth_type": "none"},
             schema_type=ApiProviderSchemaType.OPENAPI,
             schema=self._create_test_openapi_schema(),
@@ -756,7 +802,7 @@ class TestApiToolManageService:
                 tenant_id=tenant.id,
                 provider_name=target_new_name,
                 original_provider=missing_original_name,
-                icon={"type": "emoji", "value": "🚀"},
+                icon={"content": "🚀", "background": "#FFF"},
                 credentials={"auth_type": "none"},
                 _schema_type=ApiProviderSchemaType.OPENAPI,
                 schema=self._create_test_openapi_schema(),
@@ -793,8 +839,11 @@ class TestApiToolManageService:
         mock_external_service_dependencies["provider_controller"].from_db.assert_not_called()
 
     def test_update_api_tool_provider_missing_auth_type(
-        self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self,
+        flask_req_ctx_with_containers: object,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies: MockDependencies,
+    ) -> None:
         """Test update raises ValueError when auth_type is missing from credentials."""
         fake = Faker()
         account, tenant = self._create_test_account_and_tenant(
@@ -822,7 +871,7 @@ class TestApiToolManageService:
                 tenant_id=tenant.id,
                 provider_name=provider_name,
                 original_provider=provider_name,
-                icon={},
+                icon={"content": "🔧", "background": "#FFF"},
                 credentials={},
                 _schema_type=ApiProviderSchemaType.OPENAPI,
                 schema=schema,
@@ -832,8 +881,8 @@ class TestApiToolManageService:
             )
 
     def test_list_api_tool_provider_tools_not_found(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self, db_session_with_containers: Session, mock_external_service_dependencies: MockDependencies
+    ) -> None:
         """Test listing tools raises ValueError when provider not found."""
         fake = Faker()
         account, tenant = self._create_test_account_and_tenant(
@@ -844,8 +893,8 @@ class TestApiToolManageService:
             ApiToolManageService.list_api_tool_provider_tools(account.id, tenant.id, "nonexistent")
 
     def test_test_api_tool_preview_invalid_schema_type(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self, db_session_with_containers: Session, mock_external_service_dependencies: MockDependencies
+    ) -> None:
         """Test preview raises ValueError for invalid schema type."""
         fake = Faker()
         account, tenant = self._create_test_account_and_tenant(

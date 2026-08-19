@@ -1,8 +1,22 @@
+import json
+
 import pytest
+from pytest_mock import MockerFixture
 
 from core.app.app_config.workflow_ui_based_app.variables.manager import (
     WorkflowVariablesConfigManager,
 )
+from models.workflow import Workflow, WorkflowType
+
+
+def _rag_variable(variable: str, belong_to_node_id: str) -> dict[str, object]:
+    return {
+        "variable": variable,
+        "belong_to_node_id": belong_to_node_id,
+        "type": "text-input",
+        "label": variable,
+    }
+
 
 # =============================
 # Fixtures
@@ -10,19 +24,30 @@ from core.app.app_config.workflow_ui_based_app.variables.manager import (
 
 
 @pytest.fixture
-def mock_workflow(mocker):
-    workflow = mocker.MagicMock()
-    workflow.graph_dict = {"nodes": []}
+def mock_workflow(mocker: MockerFixture):
+    workflow = Workflow.new(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        type=WorkflowType.WORKFLOW,
+        version=Workflow.VERSION_DRAFT,
+        graph=json.dumps({"nodes": []}),
+        features="{}",
+        created_by="account-1",
+        environment_variables=[],
+        conversation_variables=[],
+        rag_pipeline_variables=[],
+    )
+    mocker.patch.object(workflow, "user_input_form")
     return workflow
 
 
 @pytest.fixture
-def mock_variable_entity(mocker):
+def mock_variable_entity(mocker: MockerFixture):
     return mocker.patch("core.app.app_config.workflow_ui_based_app.variables.manager.VariableEntity")
 
 
 @pytest.fixture
-def mock_rag_entity(mocker):
+def mock_rag_entity(mocker: MockerFixture):
     return mocker.patch("core.app.app_config.workflow_ui_based_app.variables.manager.RagPipelineVariableEntity")
 
 
@@ -73,6 +98,85 @@ class TestWorkflowVariablesConfigManagerConvert:
         with pytest.raises(ValueError):
             WorkflowVariablesConfigManager.convert(mock_workflow)
 
+    def test_convert_normalizes_json_schema_string_to_dict(self, mock_workflow, mock_variable_entity):
+        """Regression test for #36766: json_schema stored as a JSON string."""
+        schema_dict = {"type": "object", "properties": {"name": {"type": "string"}}}
+        input_variables = [
+            {
+                "variable": "profile",
+                "label": "Profile",
+                "type": "json_object",
+                "json_schema": json.dumps(schema_dict),
+            }
+        ]
+        mock_workflow.user_input_form.return_value = input_variables
+        mock_variable_entity.model_validate.side_effect = lambda x: x
+
+        # Act
+        result = WorkflowVariablesConfigManager.convert(mock_workflow)
+
+        # Assert — the string was deserialized before reaching model_validate
+        assert result[0]["json_schema"] == schema_dict
+        assert isinstance(result[0]["json_schema"], dict)
+
+    def test_convert_normalizes_json_schema_dict_passthrough(self, mock_workflow, mock_variable_entity):
+        """json_schema already a dict should pass through unchanged."""
+        schema_dict = {"type": "object", "properties": {"age": {"type": "number"}}}
+        input_variables = [
+            {
+                "variable": "profile",
+                "label": "Profile",
+                "type": "json_object",
+                "json_schema": schema_dict,
+            }
+        ]
+        mock_workflow.user_input_form.return_value = input_variables
+        mock_variable_entity.model_validate.side_effect = lambda x: x
+
+        # Act
+        result = WorkflowVariablesConfigManager.convert(mock_workflow)
+
+        # Assert
+        assert result[0]["json_schema"] == schema_dict
+
+    def test_convert_normalizes_json_schema_none_passthrough(self, mock_workflow, mock_variable_entity):
+        """json_schema=None should pass through unchanged."""
+        input_variables = [
+            {
+                "variable": "name",
+                "label": "Name",
+                "type": "text-input",
+                "json_schema": None,
+            }
+        ]
+        mock_workflow.user_input_form.return_value = input_variables
+        mock_variable_entity.model_validate.side_effect = lambda x: x
+
+        # Act
+        result = WorkflowVariablesConfigManager.convert(mock_workflow)
+
+        # Assert
+        assert result[0]["json_schema"] is None
+
+    def test_convert_normalizes_json_schema_invalid_string_passthrough(self, mock_workflow, mock_variable_entity):
+        """Invalid JSON string should be left as-is for Pydantic to reject."""
+        input_variables = [
+            {
+                "variable": "profile",
+                "label": "Profile",
+                "type": "json_object",
+                "json_schema": "{invalid-json",
+            }
+        ]
+        mock_workflow.user_input_form.return_value = input_variables
+        mock_variable_entity.model_validate.side_effect = lambda x: x
+
+        # Act
+        result = WorkflowVariablesConfigManager.convert(mock_workflow)
+
+        # Assert — string left as-is
+        assert result[0]["json_schema"] == "{invalid-json"
+
 
 # =============================
 # Test convert_rag_pipeline_variable
@@ -92,7 +196,7 @@ class TestWorkflowVariablesConfigManagerConvertRag:
 
     def test_rag_pipeline_none(self, mock_workflow):
         # Arrange
-        mock_workflow.rag_pipeline_variables = None
+        mock_workflow._rag_pipeline_variables = None
 
         # Act
         result = WorkflowVariablesConfigManager.convert_rag_pipeline_variable(mock_workflow, "node1")
@@ -103,9 +207,9 @@ class TestWorkflowVariablesConfigManagerConvertRag:
     def test_no_matching_node_keeps_all(self, mock_workflow, mock_rag_entity):
         # Arrange
         mock_workflow.rag_pipeline_variables = [
-            {"variable": "var1", "belong_to_node_id": "node1"},
+            _rag_variable("var1", "node1"),
         ]
-        mock_workflow.graph_dict = {"nodes": []}
+        mock_workflow.graph = json.dumps({"nodes": []})
         mock_rag_entity.model_validate.side_effect = lambda x: {"validated": x}
 
         # Act
@@ -117,18 +221,20 @@ class TestWorkflowVariablesConfigManagerConvertRag:
     def test_string_pattern_removes_variable(self, mock_workflow, mock_rag_entity):
         # Arrange
         mock_workflow.rag_pipeline_variables = [
-            {"variable": "var1", "belong_to_node_id": "node1"},
-            {"variable": "var2", "belong_to_node_id": "node1"},
+            _rag_variable("var1", "node1"),
+            _rag_variable("var2", "node1"),
         ]
 
-        mock_workflow.graph_dict = {
-            "nodes": [
-                {
-                    "id": "node1",
-                    "data": {"datasource_parameters": {"param1": {"value": "{{#parent.var1#}}"}}},
-                }
-            ]
-        }
+        mock_workflow.graph = json.dumps(
+            {
+                "nodes": [
+                    {
+                        "id": "node1",
+                        "data": {"datasource_parameters": {"param1": {"value": "{{#parent.var1#}}"}}},
+                    }
+                ]
+            }
+        )
 
         mock_rag_entity.model_validate.side_effect = lambda x: {"validated": x}
 
@@ -142,18 +248,20 @@ class TestWorkflowVariablesConfigManagerConvertRag:
     def test_list_value_removes_variable(self, mock_workflow, mock_rag_entity):
         # Arrange
         mock_workflow.rag_pipeline_variables = [
-            {"variable": "var1", "belong_to_node_id": "node1"},
-            {"variable": "var2", "belong_to_node_id": "node1"},
+            _rag_variable("var1", "node1"),
+            _rag_variable("var2", "node1"),
         ]
 
-        mock_workflow.graph_dict = {
-            "nodes": [
-                {
-                    "id": "node1",
-                    "data": {"datasource_parameters": {"param1": {"value": ["x", "var1"]}}},
-                }
-            ]
-        }
+        mock_workflow.graph = json.dumps(
+            {
+                "nodes": [
+                    {
+                        "id": "node1",
+                        "data": {"datasource_parameters": {"param1": {"value": ["x", "var1"]}}},
+                    }
+                ]
+            }
+        )
 
         mock_rag_entity.model_validate.side_effect = lambda x: {"validated": x}
 
@@ -175,9 +283,9 @@ class TestWorkflowVariablesConfigManagerConvertRag:
     def test_belong_to_node_filtering(self, mock_workflow, mock_rag_entity, belong_to_node_id, expected_count):
         # Arrange
         mock_workflow.rag_pipeline_variables = [
-            {"variable": "var1", "belong_to_node_id": belong_to_node_id},
+            _rag_variable("var1", belong_to_node_id),
         ]
-        mock_workflow.graph_dict = {"nodes": []}
+        mock_workflow.graph = json.dumps({"nodes": []})
         mock_rag_entity.model_validate.side_effect = lambda x: {"validated": x}
 
         # Act
@@ -189,17 +297,19 @@ class TestWorkflowVariablesConfigManagerConvertRag:
     def test_invalid_pattern_does_not_remove(self, mock_workflow, mock_rag_entity):
         # Arrange
         mock_workflow.rag_pipeline_variables = [
-            {"variable": "var1", "belong_to_node_id": "node1"},
+            _rag_variable("var1", "node1"),
         ]
 
-        mock_workflow.graph_dict = {
-            "nodes": [
-                {
-                    "id": "node1",
-                    "data": {"datasource_parameters": {"param1": {"value": "invalid_pattern"}}},
-                }
-            ]
-        }
+        mock_workflow.graph = json.dumps(
+            {
+                "nodes": [
+                    {
+                        "id": "node1",
+                        "data": {"datasource_parameters": {"param1": {"value": "invalid_pattern"}}},
+                    }
+                ]
+            }
+        )
 
         mock_rag_entity.model_validate.side_effect = lambda x: {"validated": x}
 
@@ -212,9 +322,9 @@ class TestWorkflowVariablesConfigManagerConvertRag:
     def test_validation_error_propagates(self, mock_workflow, mock_rag_entity):
         # Arrange
         mock_workflow.rag_pipeline_variables = [
-            {"variable": "var1", "belong_to_node_id": "node1"},
+            _rag_variable("var1", "node1"),
         ]
-        mock_workflow.graph_dict = {"nodes": []}
+        mock_workflow.graph = json.dumps({"nodes": []})
         mock_rag_entity.model_validate.side_effect = RuntimeError("validation failed")
 
         # Act & Assert

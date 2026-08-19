@@ -9,7 +9,11 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
 from configs import dify_config
-from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, ChatAppGenerateEntity
+from core.app.entities.app_invoke_entities import (
+    AgentAppGenerateEntity,
+    AgentChatAppGenerateEntity,
+    ChatAppGenerateEntity,
+)
 from core.entities.provider_entities import ProviderQuotaType, QuotaUnit, SystemConfiguration
 from events.message_event import message_was_created
 from extensions.ext_database import db
@@ -121,8 +125,13 @@ def handle(sender: Message, **kwargs):
     provider_model_bundle = model_config.provider_model_bundle
     provider_configuration = provider_model_bundle.configuration
 
+    agent_gateway_metered = (
+        isinstance(application_generate_entity, AgentAppGenerateEntity)
+        and application_generate_entity.agent_llm_gateway_enabled
+    )
     if (
-        provider_configuration.using_provider_type == ProviderType.SYSTEM
+        not agent_gateway_metered
+        and provider_configuration.using_provider_type == ProviderType.SYSTEM
         and provider_configuration.system_configuration
         and provider_configuration.system_configuration.current_quota_type is not None
     ):
@@ -137,17 +146,13 @@ def handle(sender: Message, **kwargs):
         if used_quota is not None:
             match provider_configuration.system_configuration.current_quota_type:
                 case ProviderQuotaType.TRIAL:
-                    from services.credit_pool_service import CreditPoolService
-
-                    CreditPoolService.check_and_deduct_credits(
+                    _deduct_credit_pool_quota_capped(
                         tenant_id=tenant_id,
                         credits_required=used_quota,
                         pool_type="trial",
                     )
                 case ProviderQuotaType.PAID:
-                    from services.credit_pool_service import CreditPoolService
-
-                    CreditPoolService.check_and_deduct_credits(
+                    _deduct_credit_pool_quota_capped(
                         tenant_id=tenant_id,
                         credits_required=used_quota,
                         pool_type="paid",
@@ -198,6 +203,27 @@ def handle(sender: Message, **kwargs):
             provider_name,
         )
         raise
+
+
+def _deduct_credit_pool_quota_capped(*, tenant_id: str, credits_required: int, pool_type: str) -> None:
+    """Apply post-generation credit accounting without failing message persistence on quota exhaustion."""
+    from services.credit_pool_service import CreditPoolService
+
+    deducted_credits = CreditPoolService.deduct_credits_capped(
+        tenant_id=tenant_id,
+        credits_required=credits_required,
+        pool_type=pool_type,
+        session=db.session(),
+    )
+    if deducted_credits < credits_required:
+        logger.warning(
+            "Credit pool exhausted during message-created accounting, "
+            "tenant_id=%s, pool_type=%s, credits_required=%s, credits_deducted=%s",
+            tenant_id,
+            pool_type,
+            credits_required,
+            deducted_credits,
+        )
 
 
 def _calculate_quota_usage(

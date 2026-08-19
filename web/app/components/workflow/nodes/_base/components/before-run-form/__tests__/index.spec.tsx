@@ -12,11 +12,13 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 }))
 
 vi.mock('../form', () => ({
-  default: ({ values }: { values: Record<string, unknown> }) => <div>{Object.keys(values).join(',')}</div>,
+  default: ({ values }: { values: Record<string, unknown> }) => (
+    <div>{Object.keys(values).join(',')}</div>
+  ),
 }))
 
 vi.mock('../panel-wrap', () => ({
-  default: ({ children, nodeName }: { children: React.ReactNode, nodeName: string }) => (
+  default: ({ children, nodeName }: { children: React.ReactNode; nodeName: string }) => (
     <div>
       <div>{nodeName}</div>
       {children}
@@ -25,7 +27,13 @@ vi.mock('../panel-wrap', () => ({
 }))
 
 vi.mock('@/app/components/workflow/nodes/human-input/components/single-run-form', () => ({
-  default: ({ onSubmit, handleBack }: { onSubmit: (data: Record<string, unknown>) => void, handleBack?: () => void }) => (
+  default: ({
+    onSubmit,
+    handleBack,
+  }: {
+    onSubmit: (data: Record<string, unknown>) => void
+    handleBack?: () => void
+  }) => (
     <div>
       <div>single-run-form</div>
       <button onClick={() => onSubmit({ approved: true })}>submit-generated-form</button>
@@ -77,14 +85,22 @@ describe('BeforeRunForm', () => {
     render(
       <BeforeRunForm
         {...createProps({
-          forms: [createForm({
-            inputs: [{ variable: 'query', label: 'Query', type: InputVarType.textInput, required: true }],
-            values: { query: '' },
-          })],
-          filteredExistVarForms: [createForm({
-            inputs: [{ variable: 'query', label: 'Query', type: InputVarType.textInput, required: true }],
-            values: { query: '' },
-          })],
+          forms: [
+            createForm({
+              inputs: [
+                { variable: 'query', label: 'Query', type: InputVarType.textInput, required: true },
+              ],
+              values: { query: '' },
+            }),
+          ],
+          filteredExistVarForms: [
+            createForm({
+              inputs: [
+                { variable: 'query', label: 'Query', type: InputVarType.textInput, required: true },
+              ],
+              values: { query: '' },
+            }),
+          ],
           existVarValuesInForms: [{}],
         })}
       />,
@@ -103,21 +119,31 @@ describe('BeforeRunForm', () => {
         {...createProps({
           nodeName: 'Human input',
           nodeType: BlockEnum.HumanInput,
-          forms: [createForm({
-            inputs: [{ variable: 'query', label: 'Query', type: InputVarType.textInput, required: true }],
-            values: { query: 'hello' },
-          })],
-          filteredExistVarForms: [createForm({
-            inputs: [{ variable: 'query', label: 'Query', type: InputVarType.textInput, required: true }],
-            values: { query: 'hello' },
-          })],
+          forms: [
+            createForm({
+              inputs: [
+                { variable: 'query', label: 'Query', type: InputVarType.textInput, required: true },
+              ],
+              values: { query: 'hello' },
+            }),
+          ],
+          filteredExistVarForms: [
+            createForm({
+              inputs: [
+                { variable: 'query', label: 'Query', type: InputVarType.textInput, required: true },
+              ],
+              values: { query: 'hello' },
+            }),
+          ],
           existVarValuesInForms: [{}],
           handleShowGeneratedForm,
         })}
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.humanInput.singleRun.button' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'workflow.nodes.humanInput.singleRun.button' }),
+    )
 
     expect(handleShowGeneratedForm).toHaveBeenCalledWith({ query: 'hello' })
   })
@@ -132,14 +158,22 @@ describe('BeforeRunForm', () => {
         {...createProps({
           nodeName: 'Human input',
           nodeType: BlockEnum.HumanInput,
-          forms: [createForm({
-            inputs: [{ variable: 'query', label: 'Query', type: InputVarType.textInput, required: true }],
-            values: { query: 'hello' },
-          })],
-          filteredExistVarForms: [createForm({
-            inputs: [{ variable: 'query', label: 'Query', type: InputVarType.textInput, required: true }],
-            values: { query: 'hello' },
-          })],
+          forms: [
+            createForm({
+              inputs: [
+                { variable: 'query', label: 'Query', type: InputVarType.textInput, required: true },
+              ],
+              values: { query: 'hello' },
+            }),
+          ],
+          filteredExistVarForms: [
+            createForm({
+              inputs: [
+                { variable: 'query', label: 'Query', type: InputVarType.textInput, required: true },
+              ],
+              values: { query: 'hello' },
+            }),
+          ],
           existVarValuesInForms: [{}],
           showGeneratedForm: true,
           formData: {} as BeforeRunFormProps['formData'],
@@ -168,14 +202,22 @@ describe('BeforeRunForm', () => {
       <BeforeRunForm
         {...createProps({
           onRun,
-          forms: [createForm({
-            inputs: [{ variable: 'query', label: 'Query', type: InputVarType.textInput, required: true }],
-            values: { query: 'hello' },
-          })],
-          filteredExistVarForms: [createForm({
-            inputs: [{ variable: 'query', label: 'Query', type: InputVarType.textInput, required: true }],
-            values: { query: 'hello' },
-          })],
+          forms: [
+            createForm({
+              inputs: [
+                { variable: 'query', label: 'Query', type: InputVarType.textInput, required: true },
+              ],
+              values: { query: 'hello' },
+            }),
+          ],
+          filteredExistVarForms: [
+            createForm({
+              inputs: [
+                { variable: 'query', label: 'Query', type: InputVarType.textInput, required: true },
+              ],
+              values: { query: 'hello' },
+            }),
+          ],
           existVarValuesInForms: [{}],
         })}
       />,
@@ -199,21 +241,31 @@ describe('BeforeRunForm', () => {
     )
 
     expect(handleShowGeneratedForm).toHaveBeenCalledWith({})
-    expect(screen.getByRole('button', { name: 'workflow.nodes.humanInput.singleRun.button' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'workflow.nodes.humanInput.singleRun.button' }),
+    ).toBeInTheDocument()
   })
 
   it('should show an error toast when json input is invalid', () => {
     render(
       <BeforeRunForm
         {...createProps({
-          forms: [createForm({
-            inputs: [{ variable: 'payload', label: 'Payload', type: InputVarType.json, required: true }],
-            values: { payload: '{' },
-          })],
-          filteredExistVarForms: [createForm({
-            inputs: [{ variable: 'payload', label: 'Payload', type: InputVarType.json, required: true }],
-            values: { payload: '{' },
-          })],
+          forms: [
+            createForm({
+              inputs: [
+                { variable: 'payload', label: 'Payload', type: InputVarType.json, required: true },
+              ],
+              values: { payload: '{' },
+            }),
+          ],
+          filteredExistVarForms: [
+            createForm({
+              inputs: [
+                { variable: 'payload', label: 'Payload', type: InputVarType.json, required: true },
+              ],
+              values: { payload: '{' },
+            }),
+          ],
           existVarValuesInForms: [{}],
         })}
       />,

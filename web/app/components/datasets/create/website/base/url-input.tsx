@@ -5,19 +5,16 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
-import Input from './input'
+import Input from './text-input'
 
 const I18N_PREFIX = 'stepOne.website'
 
-type Props = {
+type Props = Readonly<{
   isRunning: boolean
   onRun: (url: string) => void
-}
+}>
 
-const UrlInput: FC<Props> = ({
-  isRunning,
-  onRun,
-}) => {
+const UrlInput: FC<Props> = ({ isRunning, onRun }) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const [url, setUrl] = useState('')
@@ -25,24 +22,15 @@ const UrlInput: FC<Props> = ({
     setUrl(url as string)
   }, [])
   const handleOnRun = useCallback(() => {
-    if (isRunning)
-      return
+    if (isRunning) return
     onRun(url)
   }, [isRunning, onRun, url])
 
   return (
     <div className="flex items-center justify-between gap-x-2">
-      <Input
-        value={url}
-        onChange={handleUrlChange}
-        placeholder={docLink()}
-      />
-      <Button
-        variant="primary"
-        onClick={handleOnRun}
-        loading={isRunning}
-      >
-        {!isRunning ? t(`${I18N_PREFIX}.run`, { ns: 'datasetCreation' }) : ''}
+      <Input value={url} onChange={handleUrlChange} placeholder={docLink()} />
+      <Button variant="primary" onClick={handleOnRun} loading={isRunning}>
+        {!isRunning ? t(($) => $[`${I18N_PREFIX}.run`], { ns: 'datasetCreation' }) : ''}
       </Button>
     </div>
   )

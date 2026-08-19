@@ -5,7 +5,7 @@ from functools import cached_property
 
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan
 from extensions.ext_database import db
 from services.feature_service import FeatureService
 from services.file_service import FileService
@@ -29,7 +29,7 @@ class RagPipelineTaskProxy:
 
     @cached_property
     def features(self):
-        return FeatureService.get_features(self._dataset_tenant_id)
+        return FeatureService.get_features(self._dataset_tenant_id, exclude_vector_space=True)
 
     def _upload_invoke_entities(self) -> str:
         text = [item.model_dump() for item in self._rag_pipeline_invoke_entities]

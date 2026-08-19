@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import ZoomInOut from '../zoom-in-out'
 
 const {
@@ -36,37 +37,46 @@ vi.mock('reactflow', () => ({
   useViewport: () => mockViewport,
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesSyncDraft: () => ({
-    handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
-  }),
-  useWorkflowReadOnly: () => ({
-    workflowReadOnly,
-    getWorkflowReadOnly: () => workflowReadOnly,
-  }),
-}))
+vi.mock('../../hooks/use-nodes-sync-draft', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-nodes-sync-draft')>()
 
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (state: { systemFeatures: { enable_collaboration_mode: boolean } }) => unknown) => selector({
-    systemFeatures: {
-      enable_collaboration_mode: collaborationEnabled,
-    },
-  }),
-}))
+  return {
+    ...actual,
+    useNodesSyncDraft: () => ({
+      handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
+    }),
+  }
+})
+
+vi.mock('../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useWorkflowReadOnly: () => ({
+      workflowReadOnly,
+      getWorkflowReadOnly: () => workflowReadOnly,
+    }),
+  }
+})
 
 vi.mock('../tip-popup', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 
+const renderZoomInOut = (ui: React.ReactElement = <ZoomInOut />) =>
+  renderWithConsoleQuery(ui, {
+    systemFeatures: { enable_collaboration_mode: collaborationEnabled },
+  })
+
 const getZoomControls = () => {
   const label = Array.from(document.querySelectorAll('button')).find((element) => {
-    return /^\d+%$/.test(element.textContent ?? '') && element.className.includes('w-[34px]')
+    return /^\d+%$/.test(element.textContent ?? '') && element.className.includes('w-8.5')
   })
   const zoomOutIcon = document.querySelector('.i-ri-zoom-out-line')
   const zoomInIcon = document.querySelector('.i-ri-zoom-in-line')
 
-  if (!label || !zoomOutIcon || !zoomInIcon)
-    throw new Error('Missing zoom controls')
+  if (!label || !zoomOutIcon || !zoomInIcon) throw new Error('Missing zoom controls')
 
   return {
     zoomOutTrigger: zoomOutIcon.parentElement as HTMLElement,
@@ -89,7 +99,7 @@ describe('workflow zoom controls', () => {
   })
 
   it('zooms out and zooms in when the viewport is within the supported range', () => {
-    render(<ZoomInOut />)
+    renderZoomInOut()
 
     const { zoomOutTrigger, zoomInTrigger } = getZoomControls()
 
@@ -101,7 +111,7 @@ describe('workflow zoom controls', () => {
   })
 
   it('zooms to a preset value and syncs the draft', () => {
-    render(<ZoomInOut />)
+    renderZoomInOut()
 
     const menu = openZoomMenu()
     fireEvent.click(menu.getByText('50%'))
@@ -114,7 +124,7 @@ describe('workflow zoom controls', () => {
     ['100%', 1],
     ['200%', 2],
   ])('zooms to %s and syncs the draft', (label, zoom) => {
-    render(<ZoomInOut />)
+    renderZoomInOut()
 
     const menu = openZoomMenu()
     fireEvent.click(menu.getByText(label))
@@ -124,7 +134,7 @@ describe('workflow zoom controls', () => {
   })
 
   it('toggles collaboration options without syncing the draft', () => {
-    render(
+    renderZoomInOut(
       <ZoomInOut
         onToggleMiniMap={mockToggleMiniMap}
         onToggleUserComments={mockToggleUserComments}
@@ -147,12 +157,7 @@ describe('workflow zoom controls', () => {
   })
 
   it('keeps the show-user-comments action disabled in comment mode', () => {
-    render(
-      <ZoomInOut
-        isCommentMode
-        onToggleUserComments={mockToggleUserComments}
-      />,
-    )
+    renderZoomInOut(<ZoomInOut isCommentMode onToggleUserComments={mockToggleUserComments} />)
 
     const menu = openZoomMenu()
     fireEvent.click(menu.getByText('workflow.operator.showUserComments'))
@@ -162,7 +167,7 @@ describe('workflow zoom controls', () => {
 
   it('does not open the menu when the workflow is read only', () => {
     workflowReadOnly = true
-    render(<ZoomInOut />)
+    renderZoomInOut()
 
     fireEvent.click(getZoomControls().label)
 
@@ -171,7 +176,7 @@ describe('workflow zoom controls', () => {
 
   it('blocks inline zooming out at the minimum viewport scale', () => {
     mockViewport.zoom = 0.25
-    render(<ZoomInOut />)
+    renderZoomInOut()
 
     fireEvent.click(getZoomControls().zoomOutTrigger)
     expect(mockZoomOut).not.toHaveBeenCalled()
@@ -179,7 +184,7 @@ describe('workflow zoom controls', () => {
 
   it('blocks inline zooming in at the maximum viewport scale', () => {
     mockViewport.zoom = 2
-    render(<ZoomInOut />)
+    renderZoomInOut()
 
     fireEvent.click(getZoomControls().zoomInTrigger)
     expect(mockZoomIn).not.toHaveBeenCalled()
@@ -187,7 +192,7 @@ describe('workflow zoom controls', () => {
 
   it('renders collaboration menu entries only when collaboration is enabled', () => {
     collaborationEnabled = false
-    render(<ZoomInOut />)
+    renderZoomInOut()
 
     const menu = openZoomMenu()
     expect(menu.getByText('workflow.operator.showMiniMap')).toBeInTheDocument()

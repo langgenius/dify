@@ -1,4 +1,4 @@
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 import type { IBatchModalProps } from '../index'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
@@ -22,7 +22,7 @@ vi.mock('../csv-downloader', () => ({
 let lastUploadedFile: File | undefined
 
 vi.mock('../csv-uploader', () => ({
-  default: ({ file, updateFile }: { file?: File, updateFile: (file?: File) => void }) => (
+  default: ({ file, updateFile }: { file?: File; updateFile: (file?: File) => void }) => (
     <div>
       <button
         data-testid="mock-uploader"
@@ -115,6 +115,14 @@ describe('BatchModal', () => {
     expect(props.onCancel).toHaveBeenCalledTimes(1)
   })
 
+  it('should call onCancel when close button is clicked', () => {
+    const { props } = renderComponent()
+
+    fireEvent.click(screen.getByRole('button', { name: /operation\.close$/ }))
+
+    expect(props.onCancel).toHaveBeenCalledTimes(1)
+  })
+
   it('should submit the csv file, poll status, and notify when import completes', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     const { props } = renderComponent()
@@ -124,7 +132,10 @@ describe('BatchModal', () => {
     const runButton = screen.getByRole('button', { name: 'appAnnotation.batchModal.run' })
     expect(runButton).not.toBeDisabled()
 
-    annotationBatchImportMock.mockResolvedValue({ job_id: 'job-1', job_status: ProcessStatus.PROCESSING })
+    annotationBatchImportMock.mockResolvedValue({
+      job_id: 'job-1',
+      job_status: ProcessStatus.PROCESSING,
+    })
     checkAnnotationBatchImportProgressMock
       .mockResolvedValueOnce({ job_id: 'job-1', job_status: ProcessStatus.PROCESSING })
       .mockResolvedValueOnce({ job_id: 'job-1', job_status: ProcessStatus.COMPLETED })

@@ -1,20 +1,22 @@
+from inspect import unwrap
 from unittest.mock import MagicMock, patch
 
 import pytest
-from werkzeug.exceptions import Forbidden
+from flask import Flask
 
 from controllers.console import console_ns
 from controllers.console.datasets.rag_pipeline.datasource_content_preview import (
     DataSourceContentPreviewApi,
+    Parser,
 )
 from models import Account
 from models.dataset import Pipeline
 
 
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
+def make_account() -> Account:
+    account = Account(name="Test User", email="user@example.com")
+    account.id = "account-1"
+    return account
 
 
 class TestDataSourceContentPreviewApi:
@@ -25,15 +27,15 @@ class TestDataSourceContentPreviewApi:
             "credential_id": "cred-1",
         }
 
-    def test_post_success(self, app):
+    def test_post_success(self, app: Flask):
         api = DataSourceContentPreviewApi()
         method = unwrap(api.post)
 
         payload = self._valid_payload()
 
-        pipeline = MagicMock(spec=Pipeline)
+        pipeline = Pipeline(tenant_id="tenant-id", name="Test Pipeline")
         node_id = "node-1"
-        account = MagicMock(spec=Account)
+        account = make_account()
 
         preview_result = {"content": "preview data"}
 
@@ -44,15 +46,12 @@ class TestDataSourceContentPreviewApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
             patch(
-                "controllers.console.datasets.rag_pipeline.datasource_content_preview.current_user",
-                account,
-            ),
-            patch(
                 "controllers.console.datasets.rag_pipeline.datasource_content_preview.RagPipelineService",
                 return_value=service_instance,
             ),
         ):
-            response, status = method(api, pipeline, node_id)
+            req_data = Parser.model_validate(payload)
+            response, status = method(api, req_data, account, pipeline, node_id)
 
         service_instance.run_datasource_node_preview.assert_called_once_with(
             pipeline=pipeline,
@@ -66,26 +65,7 @@ class TestDataSourceContentPreviewApi:
         assert status == 200
         assert response == preview_result
 
-    def test_post_forbidden_non_account_user(self, app):
-        api = DataSourceContentPreviewApi()
-        method = unwrap(api.post)
-
-        payload = self._valid_payload()
-
-        pipeline = MagicMock(spec=Pipeline)
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.rag_pipeline.datasource_content_preview.current_user",
-                MagicMock(),  # NOT Account
-            ),
-        ):
-            with pytest.raises(Forbidden):
-                method(api, pipeline, "node-1")
-
-    def test_post_invalid_payload(self, app):
+    def test_post_invalid_payload(self, app: Flask):
         api = DataSourceContentPreviewApi()
         method = unwrap(api.post)
 
@@ -94,21 +74,17 @@ class TestDataSourceContentPreviewApi:
             # datasource_type missing
         }
 
-        pipeline = MagicMock(spec=Pipeline)
-        account = MagicMock(spec=Account)
+        pipeline = Pipeline(tenant_id="tenant-id", name="Test Pipeline")
+        account = make_account()
 
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.rag_pipeline.datasource_content_preview.current_user",
-                account,
-            ),
         ):
             with pytest.raises(ValueError):
-                method(api, pipeline, "node-1")
+                method(api, Parser.model_validate(payload), account, pipeline, "node-1")
 
-    def test_post_without_credential_id(self, app):
+    def test_post_without_credential_id(self, app: Flask):
         api = DataSourceContentPreviewApi()
         method = unwrap(api.post)
 
@@ -118,8 +94,8 @@ class TestDataSourceContentPreviewApi:
             "credential_id": None,
         }
 
-        pipeline = MagicMock(spec=Pipeline)
-        account = MagicMock(spec=Account)
+        pipeline = Pipeline(tenant_id="tenant-id", name="Test Pipeline")
+        account = make_account()
 
         service_instance = MagicMock()
         service_instance.run_datasource_node_preview.return_value = {"ok": True}
@@ -128,15 +104,12 @@ class TestDataSourceContentPreviewApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
             patch(
-                "controllers.console.datasets.rag_pipeline.datasource_content_preview.current_user",
-                account,
-            ),
-            patch(
                 "controllers.console.datasets.rag_pipeline.datasource_content_preview.RagPipelineService",
                 return_value=service_instance,
             ),
         ):
-            response, status = method(api, pipeline, "node-1")
+            req_data = Parser.model_validate(payload)
+            response, status = method(api, req_data, account, pipeline, "node-1")
 
         service_instance.run_datasource_node_preview.assert_called_once()
         assert status == 200

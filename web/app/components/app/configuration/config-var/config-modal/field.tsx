@@ -4,19 +4,14 @@ import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   title: string
   isOptional?: boolean
   children: React.JSX.Element
-}
+}>
 
-const Field: FC<Props> = ({
-  className,
-  title,
-  isOptional,
-  children,
-}) => {
+const Field: FC<Props> = ({ className, title, isOptional, children }) => {
   const { t } = useTranslation()
   return (
     <div className={cn(className)}>
@@ -24,9 +19,7 @@ const Field: FC<Props> = ({
         {title}
         {isOptional && (
           <span className="ml-1 system-xs-regular text-text-tertiary">
-            (
-            {t('variableConfig.optional', { ns: 'appDebug' })}
-            )
+            ({t(($) => $['variableConfig.optional'], { ns: 'appDebug' })})
           </span>
         )}
       </div>

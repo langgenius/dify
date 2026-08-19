@@ -15,6 +15,7 @@ import RenameDatasetModal from '../../../rename-modal'
 type ModalState = {
   showRenameModal: boolean
   showConfirmDelete: boolean
+  showAccessConfig: boolean
   confirmMessage: string
 }
 
@@ -23,6 +24,7 @@ type DatasetCardModalsProps = {
   modalState: ModalState
   onCloseRename: () => void
   onCloseConfirm: () => void
+  onCloseAccessConfig: () => void
   onConfirmDelete: () => void
   onSuccess?: () => void
 }
@@ -47,11 +49,14 @@ const DatasetCardModals = ({
           onSuccess={onSuccess}
         />
       )}
-      <AlertDialog open={modalState.showConfirmDelete} onOpenChange={open => !open && onCloseConfirm()}>
+      <AlertDialog
+        open={modalState.showConfirmDelete}
+        onOpenChange={(open) => !open && onCloseConfirm()}
+      >
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t('deleteDatasetConfirmTitle', { ns: 'dataset' })}
+              {t(($) => $.deleteDatasetConfirmTitle, { ns: 'dataset' })}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
               {modalState.confirmMessage}
@@ -59,10 +64,10 @@ const DatasetCardModals = ({
           </div>
           <AlertDialogActions>
             <AlertDialogCancelButton>
-              {t('operation.cancel', { ns: 'common' })}
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton onClick={onConfirmDelete}>
-              {t('operation.confirm', { ns: 'common' })}
+              {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

@@ -11,6 +11,7 @@ from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.graph import Graph
 from graphon.node_events import NodeRunResult
 from graphon.nodes.code.code_node import CodeNode
+from graphon.nodes.code.entities import CodeNodeData
 from graphon.nodes.code.limits import CodeNodeLimits
 from graphon.runtime import GraphRuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_graph_init_params
@@ -44,7 +45,7 @@ def init_code_node(code_config: dict):
     )
 
     # construct variable pool
-    variable_pool = VariablePool(
+    variable_pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(user_id="aaa", files=[]),
         user_inputs={},
         environment_variables=[],
@@ -64,8 +65,8 @@ def init_code_node(code_config: dict):
     graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
 
     node = CodeNode(
-        id=str(uuid.uuid4()),
-        config=code_config,
+        node_id=str(uuid.uuid4()),
+        data=CodeNodeData.model_validate(code_config["data"]),
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
         code_executor=node_factory._code_executor,

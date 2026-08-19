@@ -23,7 +23,9 @@ const mockToolFormItem = vi.fn<(props: MockToolFormItemProps) => void>()
 vi.mock('../item', () => ({
   default: (props: MockToolFormItemProps) => {
     mockToolFormItem(props)
-    return <div data-testid={`tool-form-item-${props.schema.variable}`}>{props.schema.label.en_US}</div>
+    return (
+      <div data-testid={`tool-form-item-${props.schema.variable}`}>{props.schema.label.en_US}</div>
+    )
   },
 }))
 
@@ -98,13 +100,7 @@ describe('tool/tool-form', () => {
 
   it('should render an empty container when schema is empty', () => {
     const { container } = render(
-      <ToolForm
-        readOnly={false}
-        nodeId="tool-node"
-        schema={[]}
-        value={{}}
-        onChange={vi.fn()}
-      />,
+      <ToolForm readOnly={false} nodeId="tool-node" schema={[]} value={{}} onChange={vi.fn()} />,
     )
 
     expect(container.firstChild)!.toHaveClass('space-y-1')
