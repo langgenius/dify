@@ -1567,7 +1567,6 @@ describe('RetrievalTestPage', () => {
       expect(apiMock.createGolden).toHaveBeenCalledWith({
         body: {
           annotation: 'The answer must cite the retrieved useEffect evidence.',
-          evidence_text: '',
           expected_evidence_ids: ['chunk-1'],
           match_policy: 'all',
           question: 'What is useEffect?',

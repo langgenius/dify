@@ -20,6 +20,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSDocumentReindexPayload,
     KnowledgeFSDocumentReindexResponse,
     KnowledgeFSFindQuery,
+    KnowledgeFSGoldenQuestionEvidenceMatchPayload,
     KnowledgeFSGoldenQuestionPayload,
     KnowledgeFSGoldenQuestionResponse,
     KnowledgeFSGrepQuery,
@@ -64,6 +65,19 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSWorkflowFailedRetrievalCapturePayload,
     KnowledgeFSWorkflowFailedRetrievalCaptureResponse,
 )
+
+
+def test_golden_question_evidence_match_requires_exactly_one_lookup_mode() -> None:
+    assert KnowledgeFSGoldenQuestionEvidenceMatchPayload(evidence="  permissions  ").evidence == "permissions"
+    assert KnowledgeFSGoldenQuestionEvidenceMatchPayload(node_ids=[" node-1 ", "node-1", "node-2"]).node_ids == [
+        "node-1",
+        "node-2",
+    ]
+
+    with pytest.raises(ValidationError, match="Provide exactly one of evidence or node_ids"):
+        KnowledgeFSGoldenQuestionEvidenceMatchPayload()
+    with pytest.raises(ValidationError, match="Provide exactly one of evidence or node_ids"):
+        KnowledgeFSGoldenQuestionEvidenceMatchPayload(evidence="permissions", node_ids=["node-1"])
 
 
 def test_settings_response_serializes_rerank_plugin_id_with_its_public_alias() -> None:

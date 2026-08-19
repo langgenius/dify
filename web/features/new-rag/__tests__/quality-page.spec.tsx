@@ -224,7 +224,6 @@ describe('QualityPage', () => {
     expect(serviceMock.createGolden.mock.calls[0]?.[0]).toEqual({
       body: {
         annotation: 'Expected answer',
-        evidence_text: '',
         expected_evidence_ids: [],
         match_policy: 'all',
         question: 'New question',
@@ -263,7 +262,6 @@ describe('QualityPage', () => {
       expect(serviceMock.createGolden.mock.calls[0]?.[0]).toEqual({
         body: {
           annotation: 'Expected answer',
-          evidence_text: '',
           expected_evidence_ids: [],
           match_policy: 'all',
           question: 'New question',
@@ -274,7 +272,7 @@ describe('QualityPage', () => {
     )
   })
 
-  it('matches a human-readable evidence passage and stores the selected node id', async () => {
+  it('uses a human-readable search only to select the persisted evidence node id', async () => {
     serviceMock.matchEvidence.mockResolvedValue({
       candidates: [
         {
@@ -322,7 +320,6 @@ describe('QualityPage', () => {
       expect(serviceMock.createGolden.mock.calls[0]?.[0]).toEqual({
         body: {
           annotation: 'The answer must cite the refund window.',
-          evidence_text: 'refund within 30 days',
           expected_evidence_ids: ['node-1'],
           match_policy: 'all',
           question: 'When can I request a refund?',
@@ -417,7 +414,6 @@ describe('QualityPage', () => {
       expect(serviceMock.createGolden.mock.calls[0]?.[0]).toEqual({
         body: {
           annotation: 'The answer must cite both policies.',
-          evidence_text: 'refund and cancellation policy',
           expected_evidence_ids: ['node-1', 'node-2'],
           match_policy: 'any',
           question: 'When can I request a refund?',
@@ -580,7 +576,6 @@ describe('QualityPage', () => {
         {
           body: {
             annotation: 'Updated expected answer',
-            evidence_text: '',
             expected_evidence_ids: [],
             match_policy: 'all',
             question: 'What is the refund policy?',
@@ -594,6 +589,100 @@ describe('QualityPage', () => {
     expect(
       screen.queryByRole('dialog', { name: 'dataset.newKnowledge.qualityPage.editTitle' }),
     ).not.toBeInTheDocument()
+  })
+
+  it('resolves and displays saved evidence passages while keeping the search query ephemeral', async () => {
+    serviceMock.getGolden.mockResolvedValue({
+      data: [
+        {
+          annotation: 'Must cite both permission rules.',
+          created_at: '2026-07-28T00:00:00Z',
+          evidence_text: '权限',
+          expected_evidence_ids: ['node-1', 'node-2'],
+          id: 'golden-1',
+          match_policy: 'all',
+          question: 'Who can change permissions?',
+          status: 'active',
+          tags: ['permissions'],
+          updated_at: '2026-07-28T00:00:00Z',
+        },
+      ],
+      next_cursor: null,
+    })
+    serviceMock.matchEvidence.mockImplementation(
+      async ({ body }: { body: { evidence?: string; node_ids?: string[] } }) => {
+        if (body.node_ids) {
+          return {
+            candidates: [
+              {
+                document_asset_id: 'document-1',
+                node_id: 'node-1',
+                section_path: ['Permissions', 'Owners'],
+                text: 'Workspace owners can change member permissions.',
+              },
+              {
+                document_asset_id: 'document-1',
+                node_id: 'node-2',
+                section_path: ['Permissions', 'Admins'],
+                text: 'Administrators can assign application roles.',
+              },
+            ],
+            evidence: '',
+            matched: false,
+          }
+        }
+        return { candidates: [], evidence: body.evidence ?? '', matched: false }
+      },
+    )
+    serviceMock.updateGolden.mockResolvedValue({})
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('Who can change permissions?')
+    await user.click(
+      screen.getByRole('button', {
+        name: /dataset\.newKnowledge\.qualityPage\.questionActions/,
+      }),
+    )
+    await user.click(
+      await screen.findByRole('menuitem', { name: 'dataset.newKnowledge.qualityPage.edit' }),
+    )
+
+    expect(await screen.findByText('Workspace owners can change member permissions.')).toBeVisible()
+    expect(screen.getByText('Administrators can assign application roles.')).toBeVisible()
+    expect(serviceMock.matchEvidence.mock.calls[0]?.[0]).toEqual({
+      body: { node_ids: ['node-1', 'node-2'] },
+      params: { control_space_id: 'space-1' },
+    })
+
+    const search = screen.getByRole('searchbox', {
+      name: 'dataset.newKnowledge.qualityPage.findEvidence',
+    })
+    expect(search).toHaveValue('')
+    await user.type(search, '权限')
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.qualityPage.findEvidence' }),
+    )
+    await waitFor(() => expect(search).toHaveValue(''))
+    expect(screen.getByText('Workspace owners can change member permissions.')).toBeVisible()
+    expect(screen.getByText('Administrators can assign application roles.')).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.qualityPage.save' }))
+    await waitFor(() =>
+      expect(serviceMock.updateGolden).toHaveBeenCalledWith(
+        {
+          body: {
+            annotation: 'Must cite both permission rules.',
+            expected_evidence_ids: ['node-1', 'node-2'],
+            match_policy: 'all',
+            question: 'Who can change permissions?',
+            tags: ['permissions'],
+          },
+          params: { control_space_id: 'space-1', question_id: 'golden-1' },
+        },
+        expect.anything(),
+      ),
+    )
   })
 
   it('resolves the protected trace reference before navigating', async () => {
@@ -892,7 +981,6 @@ describe('QualityPage', () => {
     expect(serviceMock.createGolden.mock.calls[0]?.[0]).toEqual({
       body: {
         annotation: 'coverage gap',
-        evidence_text: '',
         expected_evidence_ids: [],
         match_policy: 'all',
         question: 'Refund after activation',

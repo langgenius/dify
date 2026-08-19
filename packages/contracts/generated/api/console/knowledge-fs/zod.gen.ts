@@ -213,8 +213,9 @@ export const zKnowledgeFsGoldenQuestionListResponse = z.object({
  * KnowledgeFSGoldenQuestionEvidenceMatchPayload
  */
 export const zKnowledgeFsGoldenQuestionEvidenceMatchPayload = z.object({
-  evidence: z.string().min(1).max(8000),
+  evidence: z.string().min(1).max(8000).nullish(),
   minimum_similarity: z.number().gte(0).lte(1).optional().default(0.7),
+  node_ids: z.array(z.string()).max(50).optional(),
   top_k: z.int().gte(1).lte(10).optional().default(5),
 })
 
@@ -1521,8 +1522,8 @@ export const zKnowledgeFsGoldenQuestionEvidenceCandidateResponse = z.object({
   document_asset_id: z.string(),
   node_id: z.string(),
   page_number: z.int().nullish(),
-  projection_id: z.string(),
-  score: z.number().gte(0).lte(1),
+  projection_id: z.string().nullish(),
+  score: z.number().gte(0).lte(1).nullish(),
   section_path: z.array(z.string()),
   text: z.string(),
 })

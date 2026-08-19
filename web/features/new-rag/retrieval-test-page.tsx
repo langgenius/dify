@@ -1601,7 +1601,6 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
         resultKey,
         value: {
           annotation: '',
-          evidenceText: '',
           expectedEvidenceIds: [],
           matchPolicy: 'all',
           question: selectedQuery,
@@ -1641,7 +1640,6 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
       await consoleClient.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.post({
         body: {
           annotation: draft.annotation,
-          evidence_text: draft.evidenceText,
           expected_evidence_ids: draft.expectedEvidenceIds,
           match_policy: draft.matchPolicy,
           question: draft.question,

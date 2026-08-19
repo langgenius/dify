@@ -1665,7 +1665,9 @@ def test_golden_question_facade_matches_evidence_and_forwards_csv_as_one_batch()
         "matchGoldenQuestionEvidence",
         "bulkImportGoldenQuestions",
     ]
-    assert interactive.call_args_list[0].kwargs["payload"].model_dump(mode="json", by_alias=True) == {
+    assert interactive.call_args_list[0].kwargs["payload"].model_dump(
+        mode="json", by_alias=True, exclude_none=True
+    ) == {
         "evidenceTexts": ["Refund policy"],
         "minimumSimilarity": 0.7,
         "topK": 5,
@@ -1684,6 +1686,43 @@ def test_golden_question_facade_matches_evidence_and_forwards_csv_as_one_batch()
                 "tags": ["billing"],
             }
         ],
+    }
+
+
+def test_golden_question_facade_resolves_saved_evidence_ids_without_a_search_term() -> None:
+    facade = KnowledgeFSDataFacade(broker=MagicMock(), remote=MagicMock())
+    interactive = MagicMock(
+        return_value={
+            "items": [],
+            "resolvedEvidence": [
+                {
+                    "documentAssetId": "document-1",
+                    "nodeId": "node-1",
+                    "pageNumber": 2,
+                    "sectionPath": ["Permissions", "Roles"],
+                    "text": "Only workspace owners can change permissions.",
+                }
+            ],
+        }
+    )
+
+    with patch.object(facade, "_interactive", interactive):
+        result = facade.match_golden_question_evidence(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-1",
+            payload=KnowledgeFSGoldenQuestionEvidenceMatchPayload(node_ids=[" node-1 ", "node-1"]),
+        )
+
+    assert result.evidence == ""
+    assert result.matched is False
+    assert result.candidates[0].node_id == "node-1"
+    assert result.candidates[0].projection_id is None
+    assert result.candidates[0].score is None
+    assert interactive.call_args.kwargs["payload"].model_dump(mode="json", by_alias=True, exclude_none=True) == {
+        "minimumSimilarity": 0.7,
+        "nodeIds": ["node-1"],
+        "topK": 5,
     }
 
 

@@ -36,7 +36,6 @@ import { GoldenQuestionImportDialog } from './golden-question-import-dialog'
 
 const emptyDraft: GoldenQuestionDraft = {
   annotation: '',
-  evidenceText: '',
   expectedEvidenceIds: [],
   matchPolicy: 'all',
   question: '',
@@ -128,7 +127,6 @@ function GoldenStatus({ status }: { status: 'active' | 'draft' | 'stale' }) {
 function goldenQuestionPayload(draft: GoldenQuestionDraft) {
   return {
     annotation: draft.annotation,
-    evidence_text: draft.evidenceText,
     expected_evidence_ids: draft.expectedEvidenceIds,
     match_policy: draft.matchPolicy,
     question: draft.question,
@@ -345,7 +343,6 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
     try {
       const { badCase, goldenQuestionId } = await ensureLinkedGoldenQuestion(item, {
         annotation: item.reason,
-        evidenceText: '',
         expectedEvidenceIds: [],
         matchPolicy: 'all',
         question: item.question ?? '',
@@ -585,7 +582,6 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                           mode: 'edit',
                           value: {
                             annotation: item.annotation,
-                            evidenceText: item.evidence_text ?? '',
                             expectedEvidenceIds: item.expected_evidence_ids ?? [],
                             matchPolicy: item.match_policy ?? 'all',
                             question: item.question,
@@ -695,7 +691,6 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                             mode: 'promote',
                             value: {
                               annotation: '',
-                              evidenceText: '',
                               expectedEvidenceIds: [],
                               matchPolicy: 'all',
                               question: item.question ?? '',
@@ -736,7 +731,6 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                             mode: 'promote',
                             value: {
                               annotation: '',
-                              evidenceText: '',
                               expectedEvidenceIds: [],
                               matchPolicy: 'all',
                               question: item.question ?? '',
