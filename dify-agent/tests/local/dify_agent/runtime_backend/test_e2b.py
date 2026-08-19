@@ -336,7 +336,8 @@ async def test_e2b_acquire_retries_transient_shellctl_failures_until_ready(
     def handler(request: httpx.Request) -> httpx.Response:
         nonlocal attempts
         attempts += 1
-        assert request.headers["X-Access-Token"] == "traffic-token"
+        assert request.headers["e2b-traffic-access-token"] == "traffic-token"
+        assert "X-Access-Token" not in request.headers
         assert "Authorization" not in request.headers
         if attempts == 1:
             raise httpx.ReadTimeout("shellctl starting", request=request)

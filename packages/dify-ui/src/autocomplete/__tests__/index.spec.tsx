@@ -1,9 +1,9 @@
 import * as React from 'react'
+import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import {
   Autocomplete,
   AutocompleteClear,
-  AutocompleteContent,
   AutocompleteEmpty,
   AutocompleteGroup,
   AutocompleteGroupLabel,
@@ -13,6 +13,9 @@ import {
   AutocompleteItemIndicator,
   AutocompleteItemText,
   AutocompleteList,
+  AutocompletePopup,
+  AutocompletePortal,
+  AutocompletePositioner,
   AutocompleteSeparator,
   AutocompleteStatus,
   AutocompleteTrigger,
@@ -41,28 +44,23 @@ const renderAutocomplete = ({
             <AutocompleteClear data-testid="clear" />
             <AutocompleteTrigger data-testid="trigger" />
           </AutocompleteInputGroup>
-          <AutocompleteContent
-            positionerProps={{
-              role: 'group',
-              'aria-label': 'autocomplete positioner',
-            }}
-            popupProps={{
-              role: 'dialog',
-              'aria-label': 'autocomplete popup',
-            }}
-          >
-            <AutocompleteStatus data-testid="status">2 suggestions</AutocompleteStatus>
-            <AutocompleteList role="listbox" aria-label="autocomplete list" data-testid="list">
-              <AutocompleteItem value="workflow">
-                <AutocompleteItemText>Workflow</AutocompleteItemText>
-                <AutocompleteItemIndicator />
-              </AutocompleteItem>
-              <AutocompleteItem value="dataset">
-                <AutocompleteItemText>Dataset</AutocompleteItemText>
-              </AutocompleteItem>
-            </AutocompleteList>
-            <AutocompleteEmpty data-testid="empty">No suggestions</AutocompleteEmpty>
-          </AutocompleteContent>
+          <AutocompletePortal>
+            <AutocompletePositioner role="group" aria-label="autocomplete positioner">
+              <AutocompletePopup role="dialog" aria-label="autocomplete popup">
+                <AutocompleteStatus data-testid="status">2 suggestions</AutocompleteStatus>
+                <AutocompleteList role="listbox" aria-label="autocomplete list" data-testid="list">
+                  <AutocompleteItem value="workflow">
+                    <AutocompleteItemText>Workflow</AutocompleteItemText>
+                    <AutocompleteItemIndicator />
+                  </AutocompleteItem>
+                  <AutocompleteItem value="dataset">
+                    <AutocompleteItemText>Dataset</AutocompleteItemText>
+                  </AutocompleteItem>
+                </AutocompleteList>
+                <AutocompleteEmpty data-testid="empty">No suggestions</AutocompleteEmpty>
+              </AutocompletePopup>
+            </AutocompletePositioner>
+          </AutocompletePortal>
         </React.Fragment>
       )}
     </Autocomplete>,
@@ -70,6 +68,20 @@ const renderAutocomplete = ({
 
 describe('Autocomplete wrappers', () => {
   describe('Input group and input', () => {
+    it('should show the compound focus surface when keyboard users enter without Field', async () => {
+      const screen = await renderAutocomplete()
+      const inputGroup = screen.getByTestId('input-group')
+      const input = screen.getByTestId('input')
+      const restingBoxShadow = getComputedStyle(inputGroup.element()).boxShadow
+
+      await userEvent.keyboard('{Tab}')
+
+      await expect.element(input).toHaveFocus()
+      await expect
+        .poll(() => getComputedStyle(inputGroup.element()).boxShadow)
+        .not.toBe(restingBoxShadow)
+    })
+
     it('should set input defaults and forward passthrough props', async () => {
       const screen = await renderAutocomplete({
         children: (
@@ -182,30 +194,34 @@ describe('Autocomplete wrappers', () => {
         .toHaveAttribute('data-align', 'start')
     })
 
-    it('should apply custom placement side and passthrough popup props', async () => {
+    it('should apply custom placement and popup props to their owning parts', async () => {
       const onPopupClick = vi.fn()
       const screen = await renderWithSafeViewport(
         <Autocomplete open defaultValue="workflow" items={['workflow']}>
           <AutocompleteInputGroup>
             <AutocompleteInput aria-label="Search suggestions" />
           </AutocompleteInputGroup>
-          <AutocompleteContent
-            placement="top-end"
-            sideOffset={12}
-            alignOffset={6}
-            positionerProps={{ role: 'group', 'aria-label': 'autocomplete positioner' }}
-            popupProps={{
-              role: 'dialog',
-              'aria-label': 'autocomplete popup',
-              onClick: onPopupClick,
-            }}
-          >
-            <AutocompleteList role="listbox" aria-label="autocomplete list">
-              <AutocompleteItem value="workflow">
-                <AutocompleteItemText>Workflow</AutocompleteItemText>
-              </AutocompleteItem>
-            </AutocompleteList>
-          </AutocompleteContent>
+          <AutocompletePortal>
+            <AutocompletePositioner
+              placement="top-end"
+              sideOffset={12}
+              alignOffset={6}
+              role="group"
+              aria-label="autocomplete positioner"
+            >
+              <AutocompletePopup
+                role="dialog"
+                aria-label="autocomplete popup"
+                onClick={onPopupClick}
+              >
+                <AutocompleteList role="listbox" aria-label="autocomplete list">
+                  <AutocompleteItem value="workflow">
+                    <AutocompleteItemText>Workflow</AutocompleteItemText>
+                  </AutocompleteItem>
+                </AutocompleteList>
+              </AutocompletePopup>
+            </AutocompletePositioner>
+          </AutocompletePortal>
         </Autocomplete>,
       )
 
@@ -223,18 +239,27 @@ describe('Autocomplete wrappers', () => {
           <AutocompleteInputGroup>
             <AutocompleteInput aria-label="Search suggestions" />
           </AutocompleteInputGroup>
-          <AutocompleteContent popupProps={{ role: 'dialog', 'aria-label': 'autocomplete popup' }}>
-            <AutocompleteList role="listbox" aria-label="autocomplete list">
-              <AutocompleteGroup items={['workflow']}>
-                <AutocompleteGroupLabel className="custom-label">Resources</AutocompleteGroupLabel>
-                <AutocompleteSeparator className="custom-separator" data-testid="separator" />
-                <AutocompleteItem value="workflow" className="custom-item">
-                  <AutocompleteItemText className="custom-text">Workflow</AutocompleteItemText>
-                  <AutocompleteItemIndicator className="custom-indicator" data-testid="indicator" />
-                </AutocompleteItem>
-              </AutocompleteGroup>
-            </AutocompleteList>
-          </AutocompleteContent>
+          <AutocompletePortal>
+            <AutocompletePositioner>
+              <AutocompletePopup role="dialog" aria-label="autocomplete popup">
+                <AutocompleteList role="listbox" aria-label="autocomplete list">
+                  <AutocompleteGroup items={['workflow']}>
+                    <AutocompleteGroupLabel className="custom-label">
+                      Resources
+                    </AutocompleteGroupLabel>
+                    <AutocompleteSeparator className="custom-separator" data-testid="separator" />
+                    <AutocompleteItem value="workflow" className="custom-item">
+                      <AutocompleteItemText className="custom-text">Workflow</AutocompleteItemText>
+                      <AutocompleteItemIndicator
+                        className="custom-indicator"
+                        data-testid="indicator"
+                      />
+                    </AutocompleteItem>
+                  </AutocompleteGroup>
+                </AutocompleteList>
+              </AutocompletePopup>
+            </AutocompletePositioner>
+          </AutocompletePortal>
         </Autocomplete>,
       )
 
@@ -253,15 +278,19 @@ describe('Autocomplete wrappers', () => {
           <AutocompleteInputGroup>
             <AutocompleteInput aria-label="Search resources" />
           </AutocompleteInputGroup>
-          <AutocompleteContent>
-            <AutocompleteList<string>>
-              {(item) => (
-                <AutocompleteItem key={item} value={item}>
-                  <AutocompleteItemText>{item}</AutocompleteItemText>
-                </AutocompleteItem>
-              )}
-            </AutocompleteList>
-          </AutocompleteContent>
+          <AutocompletePortal>
+            <AutocompletePositioner>
+              <AutocompletePopup>
+                <AutocompleteList<string>>
+                  {(item) => (
+                    <AutocompleteItem key={item} value={item}>
+                      <AutocompleteItemText>{item}</AutocompleteItemText>
+                    </AutocompleteItem>
+                  )}
+                </AutocompleteList>
+              </AutocompletePopup>
+            </AutocompletePositioner>
+          </AutocompletePortal>
         </Autocomplete>,
       )
 

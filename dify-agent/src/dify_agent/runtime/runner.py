@@ -185,6 +185,7 @@ class AgentRunRunner:
     is_cancelled: Callable[[], bool]
     run_timeout_seconds: float
     _terminal_session_snapshot: CompositorSessionSnapshot | None
+    _terminal_usage: AgentRunUsage | None
 
     def __init__(
         self,
@@ -207,15 +208,22 @@ class AgentRunRunner:
         self.is_cancelled = is_cancelled or (lambda: False)
         self.run_timeout_seconds = run_timeout_seconds
         self._terminal_session_snapshot = None
+        self._terminal_usage = None
 
     @property
     def terminal_session_snapshot(self) -> CompositorSessionSnapshot | None:
         """Return the snapshot captured after the current compositor context exited."""
         return self._terminal_session_snapshot
 
+    @property
+    def terminal_usage(self) -> AgentRunUsage | None:
+        """Return usage accumulated before the current run reached any terminal state."""
+        return self._terminal_usage
+
     async def run(self) -> None:
         """Execute the run and emit the documented event sequence."""
         self._terminal_session_snapshot = None
+        self._terminal_usage = None
         if self.is_cancelled():
             return
         _ = await emit_run_started(self.sink, run_id=self.run_id)
@@ -233,6 +241,7 @@ class AgentRunRunner:
                 error_type=error_type,
                 reason=reason,
                 session_snapshot=self._terminal_session_snapshot,
+                usage=self._terminal_usage,
             )
             if finalization.applied:
                 raise
@@ -296,6 +305,7 @@ class AgentRunRunner:
         deferred_tool_call: DeferredToolCallPayload | None = None
         result_kind: Literal["output", "deferred_tool_call"] | None = None
         usage: AgentRunUsage | None = None
+        model: Any = None
         run = None
         try:
             async with compositor.enter(configs=layer_configs, session_snapshot=self.request.session_snapshot) as run:
@@ -370,6 +380,7 @@ class AgentRunRunner:
                     ) from exc
                 complete_usage = model.accumulated_usage if isinstance(model, _HasAccumulatedUsage) else None
                 usage = _serialize_agent_usage(complete_usage if complete_usage is not None else _result_usage(result))
+                self._terminal_usage = usage
                 replace_successful_run_history(history_layer, result.all_messages())
                 if isinstance(result.output, DeferredToolRequests):
                     if ask_human_layer is None:
@@ -396,6 +407,10 @@ class AgentRunRunner:
         finally:
             if entered_run and run is not None:
                 self._terminal_session_snapshot = run.session_snapshot
+            if isinstance(model, _HasAccumulatedUsage):
+                accumulated_usage = _serialize_agent_usage(model.accumulated_usage)
+                if accumulated_usage is not None:
+                    self._terminal_usage = accumulated_usage
 
         if run is None or run.session_snapshot is None:
             raise RuntimeError("Agenton run did not produce a session snapshot after exit.")

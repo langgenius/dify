@@ -26,11 +26,6 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Switch Ubuntu mirror
-        run: |
-          sudo sed -i 's|http://us-east-1.ec2.archive.ubuntu.com/ubuntu|http://azure.archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources
-          sudo apt-get update
-
       - name: Setup web dependencies
         uses: ./.github/actions/setup-web
 

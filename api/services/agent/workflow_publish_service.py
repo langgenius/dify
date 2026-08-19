@@ -186,22 +186,17 @@ class WorkflowAgentPublishService:
             node_job=node_job,
         )
         ComposerConfigValidator.validate_publish_payload(payload)
-        # ENG-623 §4.4: drive-backed refs must point at real drive rows before
-        # publishing. This stays out of composer save so autosave/save-draft can
-        # persist incomplete refs and surface them as non-blocking findings.
-        cls._require_drive_refs_resolved_for_publish(session=session, binding=binding, agent_soul=agent_soul)
+        cls._require_config_asset_refs_resolved_for_publish(binding=binding, agent_soul=agent_soul)
 
     @classmethod
-    def _require_drive_refs_resolved_for_publish(
+    def _require_config_asset_refs_resolved_for_publish(
         cls,
         *,
-        session: Session,
         binding: WorkflowAgentNodeBinding,
         agent_soul: AgentSoulConfig,
     ) -> None:
         from services.agent.prompt_mentions import MentionKind, parse_prompt_mentions
 
-        del session
         configured_skill_names = {item.name for item in agent_soul.config_skills if not item.is_missing}
         configured_file_names = {item.name for item in agent_soul.config_files if not item.is_missing}
         missing_refs: list[str] = []
@@ -359,7 +354,6 @@ class WorkflowAgentPublishService:
                         node_id=node_id,
                         source_agent_id=agent_id,
                         source_snapshot_id=current_snapshot_id,
-                        node_job=node_job_config,
                         account_id=account_id,
                     )
             resolved_binding_type = WorkflowAgentBindingType.INLINE_AGENT
@@ -422,7 +416,6 @@ class WorkflowAgentPublishService:
         node_id: str,
         source_agent_id: str,
         source_snapshot_id: str,
-        node_job: WorkflowNodeJobConfig,
         account_id: str,
     ) -> tuple[Agent, str]:
         source_agent = session.scalar(
@@ -456,7 +449,6 @@ class WorkflowAgentPublishService:
             node_id=node_id,
             source_agent=source_agent,
             source_snapshot=source_snapshot,
-            node_job=node_job,
             account_id=account_id,
         )
         return agent, snapshot.id
@@ -709,7 +701,6 @@ class WorkflowAgentPublishService:
                         node_id=source.node_id,
                         source_agent_id=agent_id,
                         source_snapshot_id=snapshot_id,
-                        node_job=WorkflowNodeJobConfig.model_validate(source.node_job_config_dict),
                         account_id=account_id,
                     )
                     agent_id = agent.id
