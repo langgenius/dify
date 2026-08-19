@@ -146,10 +146,6 @@ func defaultStateDir() string {
 	return filepath.Join(home, ".local", "share", "shellctl")
 }
 
-// parseHomeSnapshotExcludes splits the comma-separated env value into excludes
-// applied on top of the workspace directory, which SaveHome always skips.
-// Entries must be single path segments: SaveHome only matches top-level names,
-// so anything else would be silently inert.
 func parseHomeSnapshotExcludes(raw string) ([]string, error) {
 	var excludes []string
 	for _, part := range strings.Split(raw, ",") {
