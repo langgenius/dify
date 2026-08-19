@@ -132,6 +132,28 @@ export function useCopilotSession({
     setProgressLog((prev) => [...prev, { id: progressIdRef.current, event, data }])
   }, [])
 
+  // Keep `view` in sync with the live session via the SSE stream. The `snapshot`
+  // frame carries a full SessionView; `state` frames carry an incremental
+  // { version, state, canvas_read_only }. Without this the held `view.version`
+  // stays frozen at the create-time value, so the next action's base_version CAS
+  // 409s the moment the engine has auto-advanced (diagnose→propose→apply→await_verify).
+  const reconcileView = useCallback((data: unknown) => {
+    if (!data || typeof data !== 'object') return
+    const d = data as Partial<SessionView>
+    if (typeof d.version !== 'number') return // only versioned frames (snapshot / state)
+    const full = isSessionView(data)
+    setView((prev) => {
+      if (prev && d.version! < prev.version) return prev // never regress the version
+      if (full) return data as SessionView
+      if (!prev) return prev // incremental frame with no base view: nothing to merge
+      const next: SessionView = { ...prev, version: d.version! }
+      if (typeof d.state === 'string') next.state = d.state
+      if (typeof d.canvas_read_only === 'boolean') next.canvas_read_only = d.canvas_read_only
+      if (typeof d.run_status === 'string') next.run_status = d.run_status
+      return next
+    })
+  }, [])
+
   const applyResponse = useCallback(async (res: Response): Promise<unknown> => {
     const text = await res.text()
     let parsed: unknown = text
@@ -170,7 +192,9 @@ export function useCopilotSession({
             buffer = frames.pop() ?? ''
             frames.forEach((frame) => {
               const parsed = parseSSEFrame(frame)
-              if (parsed) pushProgress(parsed.event, parsed.data)
+              if (!parsed) return
+              pushProgress(parsed.event, parsed.data)
+              reconcileView(parsed.data)
             })
           }
         })
@@ -179,7 +203,7 @@ export function useCopilotSession({
           pushProgress('error', String(err))
         })
     },
-    [api, pushProgress],
+    [api, pushProgress, reconcileView],
   )
 
   const beginSession = useCallback(
