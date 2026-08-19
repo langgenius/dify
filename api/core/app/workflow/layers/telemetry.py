@@ -1,14 +1,3 @@
-"""Telemetry layer for GraphEngine.
-
-Emits per-node trace tasks so that enterprise telemetry metrics
-(``dify_requests_total{type="node"}``, ``dify_node_duration_seconds``)
-and Jaeger spans (``dify.node.execution``) are produced in production.
-
-This layer is independent of persistence — it builds its payload directly
-from graph engine events and enqueues a ``NODE_EXECUTION_TRACE`` task to
-the existing ``TraceQueueManager`` ops trace pipeline.
-"""
-
 from __future__ import annotations
 
 import logging
