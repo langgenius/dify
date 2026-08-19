@@ -688,8 +688,12 @@ class TestDatasetServiceCreationAndUpdate:
         with pytest.raises(ValueError, match="External knowledge binding not found"):
             DatasetService._update_external_knowledge_binding("dataset-1", "knowledge-1", "api-1", session)
 
-    def test_update_internal_dataset_updates_fields_and_dispatches_regeneration_tasks(self):
+    def test_update_internal_dataset_updates_fields_and_dispatches_regeneration_tasks(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
         session = MagicMock()
+        listen = MagicMock()
+        monkeypatch.setattr("services.dataset_service.event.listen", listen)
         dataset = DatasetServiceUnitDataFactory.create_dataset_mock(dataset_id="dataset-1")
         user = SimpleNamespace(id="user-1")
         now = object()
@@ -714,6 +718,23 @@ class TestDatasetServiceCreationAndUpdate:
         ):
             result = DatasetService._update_internal_dataset(dataset, update_payload.copy(), user, session)
 
+            # Dispatch is deferred until the transaction actually commits, so the
+            # worker (which re-reads the Dataset row on its own session) can't race
+            # ahead of the update becoming durable (#40961).
+            vector_task.delay.assert_not_called()
+            regenerate_task.delay.assert_not_called()
+            listen.assert_called_once_with(session, "after_commit", listen.call_args.args[2], once=True)
+
+            after_commit_callback = listen.call_args.args[2]
+            after_commit_callback(session)
+
+            vector_task.delay.assert_called_once_with("dataset-1", "update")
+            regenerate_task.delay.assert_called_once_with(
+                "dataset-1",
+                regenerate_reason="embedding_model_changed",
+                regenerate_vectors_only=True,
+            )
+
         assert result is dataset
         updated_values = session.execute.call_args.args[0].compile().params
         assert updated_values["name"] == "Updated Dataset"
@@ -732,12 +753,6 @@ class TestDatasetServiceCreationAndUpdate:
         session.commit.assert_not_called()
         session.refresh.assert_called_once_with(dataset)
         update_pipeline.assert_called_once_with(dataset, "user-1", session)
-        vector_task.delay.assert_called_once_with("dataset-1", "update")
-        regenerate_task.delay.assert_called_once_with(
-            "dataset-1",
-            regenerate_reason="embedding_model_changed",
-            regenerate_vectors_only=True,
-        )
 
     def test_update_pipeline_knowledge_base_node_data_returns_early_for_non_pipeline_dataset(self):
         session = MagicMock()
