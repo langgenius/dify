@@ -205,6 +205,7 @@ class FeatureService:
         features.education.enabled = (
             dify_config.EDUCATION_ENABLED and dify_config.DEPLOYMENT_EDITION in EDUCATION_EDITIONS
         )
+        features.workflow_copilot_enabled = dify_config.WORKFLOW_COPILOT_ENABLED
         features.enable_skill = dify_config.ENABLE_SKILL
         features.enable_knowledge_fs = get_knowledge_fs_features().enabled
         features.enable_file_scan = dify_config.FILE_SCAN_ENABLED
