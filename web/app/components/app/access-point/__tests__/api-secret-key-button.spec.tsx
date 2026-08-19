@@ -1,6 +1,5 @@
 import type { ApiKeyList } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactElement } from 'react'
-import type { SecretKeyScope } from '@/app/components/develop/secret-key/secret-key-modal'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/client'
@@ -25,17 +24,20 @@ const render = (ui: ReactElement) => {
   return renderWithConsoleQuery(ui, { queryClient })
 }
 
-vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
-  default: ({
+vi.mock('@/app/components/api-key/api-key-modal', () => ({
+  ApiKeyModal: ({
     canManage,
-    isShow,
+    open,
     scope,
   }: {
     canManage: boolean
-    isShow: boolean
-    scope: SecretKeyScope
+    open: boolean
+    scope:
+      | { type: 'app'; appId: string }
+      | { type: 'dataset' }
+      | { type: 'environment'; appId: string; environmentId: string }
   }) =>
-    isShow ? (
+    open ? (
       <div role="dialog" aria-label="API key management">
         {scope.type === 'dataset' ? '' : scope.appId}:
         {scope.type === 'environment' ? scope.environmentId : ''}:{String(canManage)}

@@ -13,6 +13,117 @@ import (
 	"testing"
 )
 
+type configPushCapture struct {
+	payload map[string]any
+	upload  []byte
+}
+
+func newConfigPushServer(t *testing.T) (*httptest.Server, *configPushCapture) {
+	t.Helper()
+	capture := &configPushCapture{}
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/agent-stub/files/upload-request":
+			_ = json.NewEncoder(w).Encode(map[string]string{"upload_url": server.URL + "/uploads/config-asset"})
+		case "/uploads/config-asset":
+			file, _, err := r.FormFile("file")
+			if err != nil {
+				http.Error(w, "missing upload", http.StatusBadRequest)
+				return
+			}
+			defer func() { _ = file.Close() }()
+			capture.upload, err = io.ReadAll(file)
+			if err != nil {
+				http.Error(w, "bad upload", http.StatusBadRequest)
+				return
+			}
+			_ = json.NewEncoder(w).Encode(map[string]string{"id": "tool-file-1"})
+		case "/agent-stub/config/push":
+			if err := json.NewDecoder(r.Body).Decode(&capture.payload); err != nil {
+				http.Error(w, "bad config", http.StatusBadRequest)
+				return
+			}
+			_ = json.NewEncoder(w).Encode(map[string]string{"result": "success"})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	return server, capture
+}
+
+func assertConfigPushItem(t *testing.T, payload map[string]any, key string, name string) {
+	t.Helper()
+	items, ok := payload[key].([]any)
+	if !ok || len(items) != 1 {
+		t.Fatalf("%s = %#v, want one item", key, payload[key])
+	}
+	item, ok := items[0].(map[string]any)
+	if !ok || item["name"] != name {
+		t.Fatalf("%s item = %#v", key, items[0])
+	}
+	fileRef, ok := item["file_ref"].(map[string]any)
+	if !ok || fileRef["kind"] != "tool_file" || fileRef["id"] != "tool-file-1" {
+		t.Fatalf("file_ref = %#v", item["file_ref"])
+	}
+}
+
+func TestConfigFilesPushUploadsFileAndPushesToolFileRef(t *testing.T) {
+	server, capture := newConfigPushServer(t)
+	defer server.Close()
+
+	filePath := filepath.Join(t.TempDir(), "guide.txt")
+	if err := os.WriteFile(filePath, []byte("guide"), 0o644); err != nil {
+		t.Fatalf("write config file: %v", err)
+	}
+	if err := RunConfigFilesPush(
+		&Environment{URL: server.URL + "/agent-stub", AuthJWE: "token"},
+		[]string{filePath},
+	); err != nil {
+		t.Fatalf("push config file: %v", err)
+	}
+
+	if string(capture.upload) != "guide" {
+		t.Fatalf("uploaded file = %q", capture.upload)
+	}
+	assertConfigPushItem(t, capture.payload, "files", "guide.txt")
+}
+
+func TestConfigSkillsPushUploadsArchiveAndPushesToolFileRef(t *testing.T) {
+	server, capture := newConfigPushServer(t)
+	defer server.Close()
+
+	skillDir := filepath.Join(t.TempDir(), "alpha")
+	if err := os.Mkdir(skillDir, 0o755); err != nil {
+		t.Fatalf("create skill directory: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("# Alpha\n"), 0o644); err != nil {
+		t.Fatalf("write SKILL.md: %v", err)
+	}
+	if err := RunConfigSkillsPush(
+		&Environment{URL: server.URL + "/agent-stub", AuthJWE: "token"},
+		[]string{skillDir},
+	); err != nil {
+		t.Fatalf("push config skill: %v", err)
+	}
+
+	archive, err := zip.NewReader(bytes.NewReader(capture.upload), int64(len(capture.upload)))
+	if err != nil {
+		t.Fatalf("open uploaded skill archive: %v", err)
+	}
+	foundSkillMD := false
+	for _, file := range archive.File {
+		if file.Name == "SKILL.md" {
+			foundSkillMD = true
+			break
+		}
+	}
+	if !foundSkillMD {
+		t.Fatalf("uploaded skill archive does not contain SKILL.md")
+	}
+	assertConfigPushItem(t, capture.payload, "skills", "alpha")
+}
+
 func TestConfigPullRequestsURLThenDownloadsFromDataPlane(t *testing.T) {
 	skillArchive := zipFixture(t, map[string]string{"SKILL.md": "# Alpha\n", "reference.md": "guide"})
 	tests := []struct {

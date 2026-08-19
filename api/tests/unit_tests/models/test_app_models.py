@@ -11,15 +11,15 @@ This test suite covers:
 import json
 from datetime import UTC, datetime
 from decimal import Decimal
-from types import SimpleNamespace
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import PropertyMock, patch
 from uuid import uuid4
 
 import pytest
-from sqlalchemy.dialects import postgresql
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, scoped_session
 
-from models.enums import ConversationFromSource
+from models import model as model_module
+from models.dataset import DatasetCollectionBinding
+from models.enums import CollectionBindingType, ConversationFromSource
 from models.model import (
     App,
     AppAnnotationHitHistory,
@@ -141,7 +141,8 @@ class TestAppModelValidation:
         # Assert
         assert result == "App description"
 
-    def test_app_desc_or_prompt_without_description(self):
+    @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
+    def test_app_desc_or_prompt_without_description(self, sqlite_session: Session):
         """Test desc_or_prompt property when description is empty."""
         # Arrange
         app = App(
@@ -153,17 +154,18 @@ class TestAppModelValidation:
             created_by=str(uuid4()),
             description="",
         )
+        decoy_config = AppModelConfig(app_id=str(uuid4()), pre_prompt="A decoy prompt")
+        sqlite_session.add_all([app, decoy_config])
+        sqlite_session.flush()
 
-        session = MagicMock()
-        with patch.object(App, "app_model_config_with_session", return_value=None) as get_model_config:
-            # Act
-            result = app.desc_or_prompt_with_session(session=session)
+        # Act
+        result = app.desc_or_prompt_with_session(session=sqlite_session)
 
-            # Assert
-            assert result == ""
-            get_model_config.assert_called_once_with(session=session)
+        # Assert
+        assert result == ""
 
-    def test_app_is_agent_property_false(self):
+    @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
+    def test_app_is_agent_property_false(self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch):
         """Test is_agent property returns False when not configured as agent."""
         # Arrange
         app = App(
@@ -173,40 +175,18 @@ class TestAppModelValidation:
             enable_site=True,
             enable_api=False,
             created_by=str(uuid4()),
+            app_model_config_id=str(uuid4()),
         )
+        sqlite_session.add(app)
+        sqlite_session.flush()
+        session_registry = scoped_session(lambda: sqlite_session)
+        monkeypatch.setattr(model_module.db, "session", session_registry)
 
-        with patch("models.model.db") as mock_db:
-            # Act
-            result = app.is_agent
+        # Act
+        result = app.is_agent
 
-            # Assert
-            assert result is False
-            mock_db.session.assert_called_once_with()
-
-    def test_app_is_agent_with_session_updates_legacy_agent_mode(self):
-        app = App(
-            tenant_id=str(uuid4()),
-            name="Test App",
-            mode=AppMode.CHAT,
-            enable_site=True,
-            enable_api=False,
-            created_by=str(uuid4()),
-            app_model_config_id="config-1",
-        )
-        app_model_config = AppModelConfig(
-            app_id="app-id",
-            agent_mode=json.dumps({"enabled": True, "strategy": "react"}),
-        )
-        session = MagicMock()
-        session.get.return_value = app_model_config
-
-        result = app.is_agent_with_session(session=session)
-
-        assert result is True
-        assert app.mode == AppMode.AGENT_CHAT
-        session.get.assert_called_once_with(AppModelConfig, "config-1")
-        session.execute.assert_called_once()
-        session.commit.assert_called_once_with()
+        # Assert
+        assert result is False
 
     @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
     def test_app_is_agent_with_session_persists_mode_across_sessions(self, sqlite_session: Session):
@@ -235,7 +215,8 @@ class TestAppModelValidation:
         sqlite_session.expire_all()
         assert sqlite_session.get(App, app.id).mode == AppMode.AGENT_CHAT
 
-    def test_app_mode_compatible_with_agent(self):
+    @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
+    def test_app_mode_compatible_with_agent(self, sqlite_session: Session):
         """Test mode_compatible_with_agent property."""
         # Arrange
         app = App(
@@ -246,17 +227,21 @@ class TestAppModelValidation:
             enable_api=False,
             created_by=str(uuid4()),
         )
+        decoy_config = AppModelConfig(
+            app_id=str(uuid4()),
+            agent_mode=json.dumps({"enabled": True, "strategy": "react"}),
+        )
+        sqlite_session.add_all([app, decoy_config])
+        sqlite_session.flush()
 
-        session = MagicMock()
-        with patch.object(App, "is_agent_with_session", return_value=False) as is_agent:
-            # Act
-            result = app.mode_compatible_with_agent_with_session(session=session)
+        # Act
+        result = app.mode_compatible_with_agent_with_session(session=sqlite_session)
 
-            # Assert
-            assert result == AppMode.CHAT
-            is_agent.assert_called_once_with(session=session)
+        # Assert
+        assert result == AppMode.CHAT
 
-    def test_deleted_tools_checks_plugin_builtin_providers_through_core_plugin_service(self):
+    @pytest.mark.parametrize("sqlite_session", [(App, AppModelConfig)], indirect=True)
+    def test_deleted_tools_checks_plugin_builtin_providers_through_core_plugin_service(self, sqlite_session: Session):
         """Plugin-backed built-in tools are checked through core PluginService."""
         # Arrange
         app = App(
@@ -267,8 +252,10 @@ class TestAppModelValidation:
             enable_api=False,
             created_by=str(uuid4()),
         )
+        sqlite_session.add(app)
+        sqlite_session.flush()
         app_model_config = AppModelConfig(
-            app_id=str(uuid4()),
+            app_id=app.id,
             agent_mode=json.dumps(
                 {
                     "enabled": True,
@@ -285,19 +272,20 @@ class TestAppModelValidation:
                 }
             ),
         )
-        session = MagicMock()
+        sqlite_session.add(app_model_config)
+        sqlite_session.flush()
+        app.app_model_config_id = app_model_config.id
+        sqlite_session.flush()
 
         # Act
         with (
-            patch.object(App, "app_model_config_with_session", return_value=app_model_config) as get_model_config,
             patch("core.tools.tool_manager.ToolManager.get_hardcoded_provider", side_effect=Exception),
             patch("core.plugin.plugin_service.PluginService.check_tools_existence", return_value=[False]) as exists,
         ):
-            result = app.deleted_tools_with_session(session=session)
+            result = app.deleted_tools_with_session(session=sqlite_session)
 
         # Assert
         assert result == [{"type": "builtin", "tool_name": "chat", "provider_id": "langgenius/openai/openai"}]
-        get_model_config.assert_called_once_with(session=session)
         exists.assert_called_once()
         assert exists.call_args.args[0] == "tenant-1"
         assert [str(provider_id) for provider_id in exists.call_args.args[1]] == ["langgenius/openai/openai"]
@@ -412,33 +400,55 @@ class TestAppModelConfig:
 
 
 class TestAnnotationReplyConfigLoader:
-    def test_load_annotation_reply_config_returns_disabled_when_setting_missing(self):
-        session = MagicMock()
-        session.scalar.return_value = None
+    @pytest.mark.parametrize("sqlite_session", [(AppAnnotationSetting, DatasetCollectionBinding)], indirect=True)
+    def test_load_annotation_reply_config_returns_disabled_when_setting_missing(self, sqlite_session: Session):
+        binding = DatasetCollectionBinding(
+            provider_name="decoy-provider",
+            model_name="decoy-model",
+            type=CollectionBindingType.ANNOTATION,
+            collection_name="decoy-collection",
+        )
+        sqlite_session.add(binding)
+        sqlite_session.flush()
+        sqlite_session.add(
+            AppAnnotationSetting(
+                app_id="other-app",
+                score_threshold=0.9,
+                collection_binding_id=binding.id,
+                created_user_id="user-1",
+                updated_user_id="user-1",
+            )
+        )
+        sqlite_session.flush()
 
-        result = load_annotation_reply_config(session, "app-1")
+        result = load_annotation_reply_config(sqlite_session, "app-1")
 
         assert result == {"enabled": False}
-        session.scalar.assert_called_once()
-        stmt = session.scalar.call_args.args[0]
-        compiled = str(stmt.compile(dialect=postgresql.dialect()))
-        assert "app_annotation_settings.app_id" in compiled
-        assert stmt.compile().params == {"app_id_1": "app-1"}
 
-    def test_load_annotation_reply_config_returns_embedding_model(self):
-        session = MagicMock()
-        annotation_setting = SimpleNamespace(
-            id="annotation-1",
-            score_threshold=0.7,
-            collection_binding_id="binding-1",
+    @pytest.mark.parametrize("sqlite_session", [(AppAnnotationSetting, DatasetCollectionBinding)], indirect=True)
+    def test_load_annotation_reply_config_returns_embedding_model(self, sqlite_session: Session):
+        collection_binding = DatasetCollectionBinding(
+            provider_name="provider",
+            model_name="embedding",
+            type=CollectionBindingType.ANNOTATION,
+            collection_name="annotation-collection",
         )
-        collection_binding = SimpleNamespace(provider_name="provider", model_name="embedding")
-        session.scalar.side_effect = [annotation_setting, collection_binding]
+        sqlite_session.add(collection_binding)
+        sqlite_session.flush()
+        annotation_setting = AppAnnotationSetting(
+            app_id="app-1",
+            score_threshold=0.7,
+            collection_binding_id=collection_binding.id,
+            created_user_id="user-1",
+            updated_user_id="user-1",
+        )
+        sqlite_session.add(annotation_setting)
+        sqlite_session.flush()
 
-        result = load_annotation_reply_config(session, "app-1")
+        result = load_annotation_reply_config(sqlite_session, "app-1")
 
         assert result == {
-            "id": "annotation-1",
+            "id": annotation_setting.id,
             "enabled": True,
             "score_threshold": 0.7,
             "embedding_model": {
@@ -446,19 +456,22 @@ class TestAnnotationReplyConfigLoader:
                 "embedding_model_name": "embedding",
             },
         }
-        assert session.scalar.call_count == 2
-        stmt = session.scalar.call_args_list[1].args[0]
-        compiled = str(stmt.compile(dialect=postgresql.dialect()))
-        assert "dataset_collection_bindings.id" in compiled
-        assert stmt.compile().params == {"id_1": "binding-1"}
 
-    def test_load_annotation_reply_config_raises_when_binding_missing(self):
-        session = MagicMock()
-        annotation_setting = SimpleNamespace(collection_binding_id="binding-1")
-        session.scalar.side_effect = [annotation_setting, None]
+    @pytest.mark.parametrize("sqlite_session", [(AppAnnotationSetting, DatasetCollectionBinding)], indirect=True)
+    def test_load_annotation_reply_config_raises_when_binding_missing(self, sqlite_session: Session):
+        sqlite_session.add(
+            AppAnnotationSetting(
+                app_id="app-1",
+                score_threshold=0.7,
+                collection_binding_id=str(uuid4()),
+                created_user_id="user-1",
+                updated_user_id="user-1",
+            )
+        )
+        sqlite_session.flush()
 
         with pytest.raises(ValueError, match="Collection binding detail not found"):
-            load_annotation_reply_config(session, "app-1")
+            load_annotation_reply_config(sqlite_session, "app-1")
 
 
 class TestConversationModel:
@@ -546,7 +559,8 @@ class TestConversationModel:
         # Assert
         assert result == "Test summary"
 
-    def test_conversation_summary_or_query_without_summary(self):
+    @pytest.mark.parametrize("sqlite_session", [(Conversation, Message)], indirect=True)
+    def test_conversation_summary_or_query_without_summary(self, sqlite_session: Session):
         """Test summary_or_query property when summary is empty."""
         # Arrange
         conversation = Conversation(
@@ -558,23 +572,53 @@ class TestConversationModel:
             from_end_user_id=str(uuid4()),
             summary=None,
         )
+        conversation._inputs = {}
+        sqlite_session.add(conversation)
+        sqlite_session.flush()
+        first_message = Message(
+            app_id=conversation.app_id,
+            conversation_id=conversation.id,
+            query="First message query",
+            message={"role": "user", "content": "First message query"},
+            answer="First answer",
+            message_unit_price=Decimal(0),
+            answer_unit_price=Decimal(0),
+            currency="USD",
+            from_source=ConversationFromSource.API,
+            created_at=datetime(2024, 1, 1),
+        )
+        first_message._inputs = {}
+        later_message = Message(
+            app_id=conversation.app_id,
+            conversation_id=conversation.id,
+            query="Later message query",
+            message={"role": "user", "content": "Later message query"},
+            answer="Later answer",
+            message_unit_price=Decimal(0),
+            answer_unit_price=Decimal(0),
+            currency="USD",
+            from_source=ConversationFromSource.API,
+            created_at=datetime(2024, 1, 2),
+        )
+        later_message._inputs = {}
+        sqlite_session.add_all([later_message, first_message])
+        sqlite_session.flush()
 
-        # Mock first_message to return a message with query
-        mock_message = MagicMock()
-        mock_message.query = "First message query"
-        session = MagicMock()
-        with patch.object(Conversation, "first_message_with_session", return_value=mock_message) as get_first_message:
-            # Act
-            result = conversation.summary_or_query_with_session(session=session)
+        # Act
+        result = conversation.summary_or_query_with_session(session=sqlite_session)
 
-            # Assert
-            assert result == "First message query"
-            get_first_message.assert_called_once_with(session=session)
+        # Assert
+        assert result == "First message query"
 
-    def test_model_config_uses_caller_session_for_annotation_reply(self):
+    @pytest.mark.parametrize("sqlite_session", [(Conversation, AppModelConfig, AppAnnotationSetting)], indirect=True)
+    def test_model_config_uses_caller_session_for_annotation_reply(self, sqlite_session: Session):
+        app_id = str(uuid4())
+        app_model_config = AppModelConfig(app_id=app_id, pre_prompt="Persisted prompt")
+        sqlite_session.add(app_model_config)
+        sqlite_session.flush()
         conversation = Conversation(
-            app_id="app-1",
-            app_model_config_id="config-1",
+            app_id=app_id,
+            app_model_config_id=app_model_config.id,
             mode=AppMode.CHAT,
             name="Test Conversation",
             status="normal",
@@ -583,46 +627,41 @@ class TestConversationModel:
             model_id="model-1",
             model_provider="provider-1",
         )
-        app_model_config = AppModelConfig(app_id="app-1")
-        session = MagicMock()
-        session.scalar.return_value = app_model_config
-        annotation_reply = {"enabled": False}
+        conversation._inputs = {}
+        sqlite_session.add(conversation)
+        sqlite_session.flush()
 
-        with (
-            patch.object(AppModelConfig, "to_dict", return_value={}) as to_dict,
-            patch("models.model.load_annotation_reply_config", return_value=annotation_reply) as load_config,
-        ):
-            result = conversation.model_config_with_session(session=session)
+        result = conversation.model_config_with_session(session=sqlite_session)
 
-        load_config.assert_called_once_with(session, "app-1")
-        to_dict.assert_called_once_with(annotation_reply=annotation_reply)
+        assert result["annotation_reply"] == {"enabled": False}
+        assert result["pre_prompt"] == "Persisted prompt"
         assert result["model_id"] == "model-1"
         assert result["provider"] == "provider-1"
 
-    def test_override_model_config_uses_caller_session_for_annotation_reply(self):
+    @pytest.mark.parametrize("sqlite_session", [(Conversation, AppAnnotationSetting)], indirect=True)
+    def test_override_model_config_uses_caller_session_for_annotation_reply(self, sqlite_session: Session):
+        app_id = str(uuid4())
         conversation = Conversation(
-            app_id="app-1",
+            app_id=app_id,
             mode=AppMode.CHAT,
             name="Test Conversation",
             status="normal",
             from_source=ConversationFromSource.API,
             from_end_user_id=str(uuid4()),
-            override_model_configs=json.dumps({"model": {}}),
+            override_model_configs=json.dumps({"model": {"provider": "openai", "name": "gpt-4"}}),
+            model_id="model-1",
+            model_provider="provider-1",
         )
-        app_model_config = AppModelConfig(app_id="app-1")
-        session = MagicMock()
-        annotation_reply = {"enabled": False}
+        conversation._inputs = {}
+        sqlite_session.add(conversation)
+        sqlite_session.flush()
 
-        with (
-            patch.object(AppModelConfig, "from_model_config_dict", return_value=app_model_config),
-            patch.object(AppModelConfig, "to_dict", return_value={}) as to_dict,
-            patch("models.model.load_annotation_reply_config", return_value=annotation_reply) as load_config,
-        ):
-            conversation.model_config_with_session(session=session)
+        result = conversation.model_config_with_session(session=sqlite_session)
 
-        load_config.assert_called_once_with(session, "app-1")
-        to_dict.assert_called_once_with(annotation_reply=annotation_reply)
-        session.scalar.assert_not_called()
+        assert result["annotation_reply"] == {"enabled": False}
+        assert result["model"] == {"provider": "openai", "name": "gpt-4"}
+        assert result["model_id"] == "model-1"
+        assert result["provider"] == "provider-1"
 
     def test_conversation_in_debug_mode(self):
         """Test in_debug_mode property."""

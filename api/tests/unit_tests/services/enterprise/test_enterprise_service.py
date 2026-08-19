@@ -269,13 +269,13 @@ class TestJoinDefaultWorkspace:
 
 
 class TestTryJoinDefaultWorkspace:
-    def test_try_join_default_workspace_non_enterprise_edition_noop(self):
-        with (
-            patch("services.enterprise.enterprise_service.dify_config") as mock_config,
-            patch("services.enterprise.enterprise_service.EnterpriseService.join_default_workspace") as mock_join,
-        ):
-            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
+    @pytest.fixture(autouse=True)
+    def _enterprise_edition(self, config_overrides) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
 
+    def test_try_join_default_workspace_non_enterprise_edition_noop(self, config_overrides):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+        with patch("services.enterprise.enterprise_service.EnterpriseService.join_default_workspace") as mock_join:
             try_join_default_workspace("11111111-1111-1111-1111-111111111111")
 
             mock_join.assert_not_called()
@@ -283,11 +283,7 @@ class TestTryJoinDefaultWorkspace:
     def test_try_join_default_workspace_successful_join_does_not_raise(self):
         account_id = "11111111-1111-1111-1111-111111111111"
 
-        with (
-            patch("services.enterprise.enterprise_service.dify_config") as mock_config,
-            patch("services.enterprise.enterprise_service.EnterpriseService.join_default_workspace") as mock_join,
-        ):
-            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
+        with patch("services.enterprise.enterprise_service.EnterpriseService.join_default_workspace") as mock_join:
             mock_join.return_value = DefaultWorkspaceJoinResult(
                 workspace_id="22222222-2222-2222-2222-222222222222",
                 joined=True,
@@ -302,11 +298,7 @@ class TestTryJoinDefaultWorkspace:
     def test_try_join_default_workspace_skipped_join_does_not_raise(self):
         account_id = "11111111-1111-1111-1111-111111111111"
 
-        with (
-            patch("services.enterprise.enterprise_service.dify_config") as mock_config,
-            patch("services.enterprise.enterprise_service.EnterpriseService.join_default_workspace") as mock_join,
-        ):
-            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
+        with patch("services.enterprise.enterprise_service.EnterpriseService.join_default_workspace") as mock_join:
             mock_join.return_value = DefaultWorkspaceJoinResult(
                 workspace_id="",
                 joined=False,
@@ -321,11 +313,7 @@ class TestTryJoinDefaultWorkspace:
     def test_try_join_default_workspace_api_failure_soft_fails(self):
         account_id = "11111111-1111-1111-1111-111111111111"
 
-        with (
-            patch("services.enterprise.enterprise_service.dify_config") as mock_config,
-            patch("services.enterprise.enterprise_service.EnterpriseService.join_default_workspace") as mock_join,
-        ):
-            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
+        with patch("services.enterprise.enterprise_service.EnterpriseService.join_default_workspace") as mock_join:
             mock_join.side_effect = Exception("network failure")
 
             # Should not raise
@@ -334,11 +322,8 @@ class TestTryJoinDefaultWorkspace:
             mock_join.assert_called_once_with(account_id=account_id)
 
     def test_try_join_default_workspace_invalid_account_id_soft_fails(self):
-        with patch("services.enterprise.enterprise_service.dify_config") as mock_config:
-            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
-
-            # Should not raise even though UUID parsing fails inside join_default_workspace
-            try_join_default_workspace("not-a-uuid")
+        # Should not raise even though UUID parsing fails inside join_default_workspace
+        try_join_default_workspace("not-a-uuid")
 
 
 # ---------------------------------------------------------------------------
@@ -351,19 +336,19 @@ _EE_SVC = "services.enterprise.enterprise_service"
 class TestGetCachedLicenseStatus:
     """Tests for EnterpriseService.get_cached_license_status."""
 
-    def test_returns_none_outside_enterprise_edition(self):
-        with patch(f"{_EE_SVC}.dify_config") as mock_config:
-            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
+    @pytest.fixture(autouse=True)
+    def _enterprise_edition(self, config_overrides) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
 
-            assert EnterpriseService.get_cached_license_status() is None
+    def test_returns_none_outside_enterprise_edition(self, config_overrides):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+        assert EnterpriseService.get_cached_license_status() is None
 
     def test_cache_hit_returns_license_status_enum(self):
         with (
-            patch(f"{_EE_SVC}.dify_config") as mock_config,
             patch(f"{_EE_SVC}.redis_client") as mock_redis,
             patch.object(EnterpriseService, "get_info") as mock_get_info,
         ):
-            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
             mock_redis.get.return_value = b"active"
 
             result = EnterpriseService.get_cached_license_status()
@@ -374,11 +359,9 @@ class TestGetCachedLicenseStatus:
 
     def test_cache_miss_fetches_api_and_caches_valid_status(self):
         with (
-            patch(f"{_EE_SVC}.dify_config") as mock_config,
             patch(f"{_EE_SVC}.redis_client") as mock_redis,
             patch.object(EnterpriseService, "get_info") as mock_get_info,
         ):
-            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
             mock_redis.get.return_value = None
             mock_get_info.return_value = {"License": {"status": "active"}}
 
@@ -391,11 +374,9 @@ class TestGetCachedLicenseStatus:
 
     def test_cache_miss_fetches_api_and_caches_invalid_status_with_short_ttl(self):
         with (
-            patch(f"{_EE_SVC}.dify_config") as mock_config,
             patch(f"{_EE_SVC}.redis_client") as mock_redis,
             patch.object(EnterpriseService, "get_info") as mock_get_info,
         ):
-            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
             mock_redis.get.return_value = None
             mock_get_info.return_value = {"License": {"status": "expired"}}
 
@@ -408,11 +389,9 @@ class TestGetCachedLicenseStatus:
 
     def test_redis_read_failure_falls_through_to_api(self):
         with (
-            patch(f"{_EE_SVC}.dify_config") as mock_config,
             patch(f"{_EE_SVC}.redis_client") as mock_redis,
             patch.object(EnterpriseService, "get_info") as mock_get_info,
         ):
-            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
             mock_redis.get.side_effect = ConnectionError("redis down")
             mock_get_info.return_value = {"License": {"status": "active"}}
 
@@ -423,11 +402,9 @@ class TestGetCachedLicenseStatus:
 
     def test_redis_write_failure_still_returns_status(self):
         with (
-            patch(f"{_EE_SVC}.dify_config") as mock_config,
             patch(f"{_EE_SVC}.redis_client") as mock_redis,
             patch.object(EnterpriseService, "get_info") as mock_get_info,
         ):
-            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
             mock_redis.get.return_value = None
             mock_redis.setex.side_effect = ConnectionError("redis down")
             mock_get_info.return_value = {"License": {"status": "expiring"}}
@@ -438,11 +415,9 @@ class TestGetCachedLicenseStatus:
 
     def test_api_failure_returns_none(self):
         with (
-            patch(f"{_EE_SVC}.dify_config") as mock_config,
             patch(f"{_EE_SVC}.redis_client") as mock_redis,
             patch.object(EnterpriseService, "get_info") as mock_get_info,
         ):
-            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
             mock_redis.get.return_value = None
             mock_get_info.side_effect = Exception("network failure")
 
@@ -450,11 +425,9 @@ class TestGetCachedLicenseStatus:
 
     def test_api_returns_no_license_info(self):
         with (
-            patch(f"{_EE_SVC}.dify_config") as mock_config,
             patch(f"{_EE_SVC}.redis_client") as mock_redis,
             patch.object(EnterpriseService, "get_info") as mock_get_info,
         ):
-            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
             mock_redis.get.return_value = None
             mock_get_info.return_value = {}  # no "License" key
 
