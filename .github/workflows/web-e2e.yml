@@ -48,7 +48,8 @@ jobs:
 
       - name: Install Playwright browsers for core E2E
         if: ${{ !inputs.run-external-runtime }}
-        timeout-minutes: 15
+        # Chromium and WebKit system dependencies are fetched through apt, whose mirror speed varies.
+        timeout-minutes: 30
         working-directory: ./e2e
         run: vp run e2e:install:ci
 
