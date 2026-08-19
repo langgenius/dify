@@ -501,6 +501,7 @@
   "newKnowledge.qualityPage.goldenStatus.draft": "Чернетка",
   "newKnowledge.qualityPage.goldenStatus.stale": "Застаріле",
   "newKnowledge.qualityPage.goldenTab": "Еталонні запитання",
+  "newKnowledge.qualityPage.ignore": "Ігнорувати",
   "newKnowledge.qualityPage.importComplete": "Імпорт завершено",
   "newKnowledge.qualityPage.importCsv": "Імпортувати CSV",
   "newKnowledge.qualityPage.importDescription": "Завантажте CSV-файл рівно з трьома стовпцями з назвами question, evidence і tags. Підтверджувальні уривки пакетно зіставляються з абзацами документів; рядки без збігів зберігаються як чернетки.",

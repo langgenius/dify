@@ -505,6 +505,7 @@
   "newKnowledge.qualityPage.goldenStatus.draft": "草稿",
   "newKnowledge.qualityPage.goldenStatus.stale": "已过时",
   "newKnowledge.qualityPage.goldenTab": "参考问题",
+  "newKnowledge.qualityPage.ignore": "忽略",
   "newKnowledge.qualityPage.importComplete": "导入完成",
   "newKnowledge.qualityPage.importCsv": "导入 CSV",
   "newKnowledge.qualityPage.importDescription": "上传仅包含问题、证据和标签三列的 CSV。系统会批量将证据匹配到文档段落；未匹配的行将保存为草稿。",

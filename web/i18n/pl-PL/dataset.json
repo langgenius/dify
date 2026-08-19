@@ -501,6 +501,7 @@
   "newKnowledge.qualityPage.goldenStatus.draft": "Wersja robocza",
   "newKnowledge.qualityPage.goldenStatus.stale": "Nieaktualne",
   "newKnowledge.qualityPage.goldenTab": "Pytania referencyjne",
+  "newKnowledge.qualityPage.ignore": "Ignoruj",
   "newKnowledge.qualityPage.importComplete": "Import zakończony",
   "newKnowledge.qualityPage.importCsv": "Importuj CSV",
   "newKnowledge.qualityPage.importDescription": "Prześlij plik CSV zawierający dokładnie trzy kolumny o nazwach question, evidence i tags. Fragmenty źródłowe są partiami dopasowywane do akapitów dokumentów; niedopasowane wiersze są zapisywane jako wersje robocze.",

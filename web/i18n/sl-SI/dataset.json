@@ -501,6 +501,7 @@
   "newKnowledge.qualityPage.goldenStatus.draft": "Osnutek",
   "newKnowledge.qualityPage.goldenStatus.stale": "Zastarelo",
   "newKnowledge.qualityPage.goldenTab": "Referenčna vprašanja",
+  "newKnowledge.qualityPage.ignore": "Prezri",
   "newKnowledge.qualityPage.importComplete": "Uvoz končan",
   "newKnowledge.qualityPage.importCsv": "Uvozi CSV",
   "newKnowledge.qualityPage.importDescription": "Naložite CSV z natanko tremi stolpci z imeni question, evidence in tags. Referenčni odlomki se paketno ujemajo z odstavki dokumentov; neujemajoče se vrstice se shranijo kot osnutki.",

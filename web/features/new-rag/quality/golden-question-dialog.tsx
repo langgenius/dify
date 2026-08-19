@@ -79,7 +79,6 @@ export function GoldenQuestionDialog({
   const [matchPolicy, setMatchPolicy] = useState(initialValue.matchPolicy)
   const [tags, setTags] = useState(initialValue.tags.join(', '))
   const [questionInvalid, setQuestionInvalid] = useState(false)
-  const [annotationInvalid, setAnnotationInvalid] = useState(false)
   const [matchError, setMatchError] = useState<'unavailable' | 'unknown'>()
   const mergeEvidenceOptions = useCallback((options: readonly GoldenQuestionEvidenceOption[]) => {
     setEvidenceByNodeId((current) => {
@@ -120,10 +119,8 @@ export function GoldenQuestionDialog({
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const nextQuestionInvalid = !question.trim()
-    const nextAnnotationInvalid = !annotation.trim()
     setQuestionInvalid(nextQuestionInvalid)
-    setAnnotationInvalid(nextAnnotationInvalid)
-    if (nextQuestionInvalid || nextAnnotationInvalid) return
+    if (nextQuestionInvalid) return
     await onSubmit({
       annotation: annotation.trim(),
       expectedEvidenceIds,
@@ -190,27 +187,16 @@ export function GoldenQuestionDialog({
                 </FieldError>
               )}
             </Field>
-            <Field name="annotation" invalid={annotationInvalid || Boolean(error)}>
-              <FieldLabel>
-                {t(($) => $['newKnowledge.qualityPage.annotation'])}
-                <span className="ml-0.5 text-text-destructive">*</span>
-              </FieldLabel>
+            <Field name="annotation" invalid={Boolean(error)}>
+              <FieldLabel>{t(($) => $['newKnowledge.qualityPage.annotation'])}</FieldLabel>
               <Textarea
-                aria-invalid={annotationInvalid}
+                aria-invalid={Boolean(error)}
                 className={mode === 'edit' ? 'h-22 min-h-22 resize-y' : 'h-16 min-h-16 resize-y'}
                 placeholder={t(($) => $['newKnowledge.qualityPage.annotationPlaceholder'])}
                 value={annotation}
-                onValueChange={(value) => {
-                  setAnnotation(value)
-                  if (value.trim()) setAnnotationInvalid(false)
-                }}
+                onValueChange={setAnnotation}
               />
-              {annotationInvalid && (
-                <FieldError match className="py-0.5 body-xs-regular text-text-destructive">
-                  {t(($) => $['newKnowledge.qualityPage.annotationRequired'])}
-                </FieldError>
-              )}
-              {!annotationInvalid && error && <FieldError match>{error}</FieldError>}
+              {error && <FieldError match>{error}</FieldError>}
             </Field>
             <div className="grid min-w-0 gap-4">
               <Field name="expectedEvidenceIds">

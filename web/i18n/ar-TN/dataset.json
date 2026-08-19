@@ -501,6 +501,7 @@
   "newKnowledge.qualityPage.goldenStatus.draft": "مسودة",
   "newKnowledge.qualityPage.goldenStatus.stale": "بحاجة إلى تحديث",
   "newKnowledge.qualityPage.goldenTab": "الأسئلة المرجعية",
+  "newKnowledge.qualityPage.ignore": "تجاهل",
   "newKnowledge.qualityPage.importComplete": "اكتمل الاستيراد",
   "newKnowledge.qualityPage.importCsv": "استيراد CSV",
   "newKnowledge.qualityPage.importDescription": "ارفع ملف CSV يحتوي على ثلاثة أعمدة فقط بالأسماء question وevidence وtags. تتم مطابقة الأدلة مع فقرات المستندات على دفعات، وتُحفظ الصفوف غير المتطابقة كمسودات.",

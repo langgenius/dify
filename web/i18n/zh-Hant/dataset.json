@@ -504,6 +504,7 @@
   "newKnowledge.qualityPage.goldenStatus.draft": "草稿",
   "newKnowledge.qualityPage.goldenStatus.stale": "已過時",
   "newKnowledge.qualityPage.goldenTab": "參考問題",
+  "newKnowledge.qualityPage.ignore": "忽略",
   "newKnowledge.qualityPage.importComplete": "匯入完成",
   "newKnowledge.qualityPage.importCsv": "匯入 CSV",
   "newKnowledge.qualityPage.importDescription": "上傳僅包含 question、evidence 和 tags 三欄的 CSV。系統會批次將依據配對至文件段落；未配對的資料列將儲存為草稿。",

@@ -501,6 +501,7 @@
   "newKnowledge.qualityPage.goldenStatus.draft": "Borrador",
   "newKnowledge.qualityPage.goldenStatus.stale": "Obsoleta",
   "newKnowledge.qualityPage.goldenTab": "Preguntas de referencia",
+  "newKnowledge.qualityPage.ignore": "Ignorar",
   "newKnowledge.qualityPage.importComplete": "Importación completada",
   "newKnowledge.qualityPage.importCsv": "Importar CSV",
   "newKnowledge.qualityPage.importDescription": "Sube un CSV con exactamente tres columnas llamadas question, evidence y tags. Las evidencias se relacionan por lotes con párrafos de los documentos; las filas sin coincidencia se guardan como borradores.",

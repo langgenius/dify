@@ -116,6 +116,31 @@ function GoldenStatus({ status }: { status: 'active' | 'draft' | 'stale' }) {
   )
 }
 
+function GoldenAnnotation({ annotation }: { annotation: string }) {
+  if (!annotation.trim()) return <span className="system-xs-regular text-text-tertiary">—</span>
+
+  return (
+    <Popover>
+      <PopoverTrigger
+        openOnHover
+        delay={300}
+        closeDelay={200}
+        render={
+          <button
+            type="button"
+            className="block w-fit max-w-full min-w-0 truncate text-left system-xs-regular text-text-secondary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          >
+            {annotation}
+          </button>
+        }
+      />
+      <PopoverContent placement="top" popupClassName="max-w-67 px-3 py-2">
+        <p className="system-xs-regular wrap-break-word text-text-tertiary">{annotation}</p>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 function goldenQuestionPayload(draft: GoldenQuestionDraft) {
   return {
     annotation: draft.annotation,
@@ -217,6 +242,25 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
       params: { bad_case_id: badCaseId, control_space_id: knowledgeSpaceId },
     })
 
+  const markBadCaseDismissed = async (
+    badCase: KnowledgeFsBadCaseResponse,
+    tags: string[] = badCase.tags,
+  ) => {
+    try {
+      await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.patch({
+        body: {
+          expected_revision: badCase.revision,
+          status: 'dismissed',
+          tags,
+        },
+        params: { bad_case_id: badCase.id, control_space_id: knowledgeSpaceId },
+      })
+    } catch (error) {
+      const refreshed = await getBadCase(badCase.id).catch(() => undefined)
+      if (refreshed?.status !== 'dismissed') throw error
+    }
+  }
+
   const submitDialog = async (draft: GoldenQuestionDraft) => {
     if (!dialog) return
     setDialogError(undefined)
@@ -243,21 +287,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
           },
           params: { control_space_id: knowledgeSpaceId },
         })
-        try {
-          await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.patch(
-            {
-              body: {
-                expected_revision: badCase.revision,
-                status: 'dismissed',
-                tags: visibleTags(badCase.tags),
-              },
-              params: { bad_case_id: badCase.id, control_space_id: knowledgeSpaceId },
-            },
-          )
-        } catch (error) {
-          const refreshed = await getBadCase(dialog.id).catch(() => undefined)
-          if (refreshed?.status !== 'dismissed') throw error
-        }
+        await markBadCaseDismissed(badCase, visibleTags(badCase.tags))
         toast.success(t(($) => $['newKnowledge.qualityPage.promotedToast']))
       }
       await invalidateQuality()
@@ -316,6 +346,19 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
         trace: reference.trace_id,
       })
       router.push(`${newKnowledgeRetrievalTestPath(knowledgeSpaceId)}?${search.toString()}`)
+    } catch {
+      toast.error(t(($) => $.unknownError))
+    } finally {
+      setPendingBadCaseId(undefined)
+    }
+  }
+
+  const ignoreBadCase = async (item: KnowledgeFsBadCaseResponse) => {
+    setPendingBadCaseId(item.id)
+    try {
+      const badCase = await getBadCase(item.id)
+      await markBadCaseDismissed(badCase)
+      await queryClient.invalidateQueries({ queryKey: badCaseQueryOptions.queryKey })
     } catch {
       toast.error(t(($) => $.unknownError))
     } finally {
@@ -478,26 +521,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                     </Badge>
                   ))}
                 </div>
-                <Popover>
-                  <PopoverTrigger
-                    openOnHover
-                    delay={300}
-                    closeDelay={200}
-                    render={
-                      <button
-                        type="button"
-                        className="block w-fit max-w-full min-w-0 truncate text-left system-xs-regular text-text-secondary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                      >
-                        {item.annotation}
-                      </button>
-                    }
-                  />
-                  <PopoverContent placement="top" popupClassName="max-w-67 px-3 py-2">
-                    <p className="system-xs-regular wrap-break-word text-text-tertiary">
-                      {item.annotation}
-                    </p>
-                  </PopoverContent>
-                </Popover>
+                <GoldenAnnotation annotation={item.annotation} />
                 <span className="system-xs-regular text-text-secondary">
                   {updated(item.updated_at)}
                 </span>
@@ -682,6 +706,15 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                         {t(($) => $['newKnowledge.qualityPage.toGolden'])}
                       </DropdownMenuItem>
                     )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="gap-2 px-3"
+                      disabled={pendingBadCaseId === item.id}
+                      onClick={() => void ignoreBadCase(item)}
+                    >
+                      <span aria-hidden className="i-ri-eye-off-line size-4" />
+                      {t(($) => $['newKnowledge.qualityPage.ignore'])}
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>

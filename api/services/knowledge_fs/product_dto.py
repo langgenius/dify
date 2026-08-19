@@ -3102,7 +3102,7 @@ class KnowledgeFSTraceListResponse(ResponseModel):
 
 
 class KnowledgeFSGoldenQuestionPayload(BaseModel):
-    annotation: str = Field(min_length=1, max_length=2_000)
+    annotation: str = Field(default="", max_length=2_000)
     evidence_text: str = Field(default="", max_length=8_000)
     expected_evidence_ids: list[str] = Field(default_factory=list, max_length=50)
     match_policy: Literal["all", "any"] = "all"
@@ -3114,7 +3114,7 @@ class KnowledgeFSGoldenQuestionPayload(BaseModel):
 
     @field_validator("annotation", "evidence_text", "question", mode="before")
     @classmethod
-    def strip_required_text(cls, value: object) -> object:
+    def strip_text(cls, value: object) -> object:
         return value.strip() if isinstance(value, str) else value
 
     @field_validator("expected_evidence_ids", "tags")

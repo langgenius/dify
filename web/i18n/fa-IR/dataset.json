@@ -501,6 +501,7 @@
   "newKnowledge.qualityPage.goldenStatus.draft": "پیش‌نویس",
   "newKnowledge.qualityPage.goldenStatus.stale": "نیازمند به‌روزرسانی",
   "newKnowledge.qualityPage.goldenTab": "سوالات مرجع",
+  "newKnowledge.qualityPage.ignore": "نادیده گرفتن",
   "newKnowledge.qualityPage.importComplete": "وارد کردن کامل شد",
   "newKnowledge.qualityPage.importCsv": "وارد کردن CSV",
   "newKnowledge.qualityPage.importDescription": "یک فایل CSV با دقیقاً سه ستون به نام‌های question، evidence و tags بارگذاری کنید. شواهد به‌صورت گروهی با بندهای سند تطبیق داده می‌شوند؛ ردیف‌های بدون تطبیق به‌عنوان پیش‌نویس ذخیره می‌شوند.",

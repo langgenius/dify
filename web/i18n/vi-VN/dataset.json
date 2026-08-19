@@ -501,6 +501,7 @@
   "newKnowledge.qualityPage.goldenStatus.draft": "Bản nháp",
   "newKnowledge.qualityPage.goldenStatus.stale": "Cần cập nhật",
   "newKnowledge.qualityPage.goldenTab": "Câu hỏi tham chiếu",
+  "newKnowledge.qualityPage.ignore": "Bỏ qua",
   "newKnowledge.qualityPage.importComplete": "Nhập hoàn tất",
   "newKnowledge.qualityPage.importCsv": "Nhập CSV",
   "newKnowledge.qualityPage.importDescription": "Tải lên CSV có đúng ba cột mang tên question, evidence và tags. Bằng chứng được đối chiếu theo lô với các đoạn trong tài liệu; hàng không khớp được lưu dưới dạng bản nháp.",

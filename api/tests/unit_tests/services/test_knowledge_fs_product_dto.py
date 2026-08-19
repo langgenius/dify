@@ -916,7 +916,6 @@ def test_upload_session_dtos_reject_invalid_sizes_and_part_numbers(
 
 def test_quality_dtos_normalize_tags_and_read_annotation_metadata() -> None:
     golden = KnowledgeFSGoldenQuestionPayload(
-        annotation="Annotation",
         question="Question",
         tags=[" tag-1 ", "", "tag-1"],
     )
@@ -937,6 +936,8 @@ def test_quality_dtos_normalize_tags_and_read_annotation_metadata() -> None:
     )
 
     assert golden.tags == ["tag-1"]
+    assert golden.annotation == ""
+    assert KnowledgeFSGoldenQuestionPayload(annotation="   ", question="Question").annotation == ""
     assert bad_case.tags == ["tag-1"]
     assert response.annotation == "Annotation"
     with pytest.raises(ValidationError):
@@ -1011,7 +1012,6 @@ def test_quality_list_query_matches_the_knowledge_fs_pagination_contract(
 @pytest.mark.parametrize(
     ("model", "payload"),
     [
-        (KnowledgeFSGoldenQuestionPayload, {"annotation": "   ", "question": "Question"}),
         (KnowledgeFSGoldenQuestionPayload, {"annotation": "Annotation", "question": "   "}),
         (KnowledgeFSBadCaseCreatePayload, {"reason": "   ", "trace_id": "trace-1"}),
         (

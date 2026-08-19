@@ -501,6 +501,7 @@
   "newKnowledge.qualityPage.goldenStatus.draft": "초안",
   "newKnowledge.qualityPage.goldenStatus.stale": "업데이트 필요",
   "newKnowledge.qualityPage.goldenTab": "참고 질문",
+  "newKnowledge.qualityPage.ignore": "무시",
   "newKnowledge.qualityPage.importComplete": "가져오기 완료",
   "newKnowledge.qualityPage.importCsv": "CSV 가져오기",
   "newKnowledge.qualityPage.importDescription": "question, evidence, tags라는 이름의 세 열만 포함된 CSV를 업로드하세요. 근거는 문서 문단과 일괄 매칭되며, 일치하지 않는 행은 초안으로 저장됩니다.",

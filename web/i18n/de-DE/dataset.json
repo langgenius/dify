@@ -501,6 +501,7 @@
   "newKnowledge.qualityPage.goldenStatus.draft": "Entwurf",
   "newKnowledge.qualityPage.goldenStatus.stale": "Veraltet",
   "newKnowledge.qualityPage.goldenTab": "Referenzfragen",
+  "newKnowledge.qualityPage.ignore": "Ignorieren",
   "newKnowledge.qualityPage.importComplete": "Import abgeschlossen",
   "newKnowledge.qualityPage.importCsv": "CSV importieren",
   "newKnowledge.qualityPage.importDescription": "Laden Sie eine CSV-Datei mit genau drei Spalten namens question, evidence und tags hoch. Belege werden stapelweise mit Dokumentabschnitten abgeglichen; nicht zugeordnete Zeilen werden als Entwürfe gespeichert.",

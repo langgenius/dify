@@ -501,6 +501,7 @@
   "newKnowledge.qualityPage.goldenStatus.draft": "Taslak",
   "newKnowledge.qualityPage.goldenStatus.stale": "Güncelleme gerekli",
   "newKnowledge.qualityPage.goldenTab": "Referans soruları",
+  "newKnowledge.qualityPage.ignore": "Yoksay",
   "newKnowledge.qualityPage.importComplete": "İçe aktarma tamamlandı",
   "newKnowledge.qualityPage.importCsv": "CSV içe aktar",
   "newKnowledge.qualityPage.importDescription": "Tam olarak question, evidence ve tags adlı üç sütun içeren bir CSV yükleyin. Kanıtlar belge paragraflarıyla toplu olarak eşleştirilir; eşleşmeyen satırlar taslak olarak kaydedilir.",

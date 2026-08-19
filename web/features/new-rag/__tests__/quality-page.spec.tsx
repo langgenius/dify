@@ -200,6 +200,28 @@ describe('QualityPage', () => {
     ).toBeInTheDocument()
   })
 
+  it('renders an empty golden-question annotation without an empty interactive control', async () => {
+    serviceMock.getGolden.mockResolvedValue({
+      data: [
+        {
+          annotation: '',
+          created_at: '2026-07-28T00:00:00Z',
+          id: 'golden-1',
+          question: 'What is the refund policy?',
+          tags: ['billing'],
+          updated_at: '2026-07-28T00:00:00Z',
+        },
+      ],
+      next_cursor: null,
+    })
+
+    renderPage()
+
+    await screen.findByText('What is the refund policy?')
+    expect(screen.getByText('—')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '' })).not.toBeInTheDocument()
+  })
+
   it('renders persisted quality data and creates a golden question through the API', async () => {
     const user = userEvent.setup()
     renderPage()
@@ -212,16 +234,12 @@ describe('QualityPage', () => {
       screen.getByPlaceholderText('dataset.newKnowledge.qualityPage.questionPlaceholder'),
       'New question',
     )
-    await user.type(
-      screen.getByPlaceholderText('dataset.newKnowledge.qualityPage.annotationPlaceholder'),
-      'Expected answer',
-    )
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.qualityPage.save' }))
 
     await waitFor(() => expect(serviceMock.createGolden).toHaveBeenCalled())
     expect(serviceMock.createGolden.mock.calls[0]?.[0]).toEqual({
       body: {
-        annotation: 'Expected answer',
+        annotation: '',
         expected_evidence_ids: [],
         match_policy: 'all',
         question: 'New question',
@@ -471,7 +489,7 @@ describe('QualityPage', () => {
     )
   })
 
-  it('clears each required-field message as soon as that field becomes valid', async () => {
+  it('requires only the question and allows an empty annotation', async () => {
     const user = userEvent.setup()
     renderPage()
 
@@ -485,8 +503,8 @@ describe('QualityPage', () => {
       screen.getByText('dataset.newKnowledge.qualityPage.questionRequired'),
     ).toBeInTheDocument()
     expect(
-      screen.getByText('dataset.newKnowledge.qualityPage.annotationRequired'),
-    ).toBeInTheDocument()
+      screen.queryByText('dataset.newKnowledge.qualityPage.annotationRequired'),
+    ).not.toBeInTheDocument()
     expect(serviceMock.createGolden).not.toHaveBeenCalled()
 
     await user.type(
@@ -496,21 +514,20 @@ describe('QualityPage', () => {
     expect(
       screen.queryByText('dataset.newKnowledge.qualityPage.questionRequired'),
     ).not.toBeInTheDocument()
-    expect(
-      screen.getByText('dataset.newKnowledge.qualityPage.annotationRequired'),
-    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.qualityPage.save' }))
 
-    await user.type(
-      screen.getByPlaceholderText('dataset.newKnowledge.qualityPage.annotationPlaceholder'),
-      'Expected answer',
+    await waitFor(() =>
+      expect(serviceMock.createGolden.mock.calls[0]?.[0]).toEqual({
+        body: {
+          annotation: '',
+          expected_evidence_ids: [],
+          match_policy: 'all',
+          question: 'New question',
+          tags: [],
+        },
+        params: { control_space_id: 'space-1' },
+      }),
     )
-    expect(
-      screen.queryByText('dataset.newKnowledge.qualityPage.questionRequired'),
-    ).not.toBeInTheDocument()
-    expect(
-      screen.queryByText('dataset.newKnowledge.qualityPage.annotationRequired'),
-    ).not.toBeInTheDocument()
-    expect(serviceMock.createGolden).not.toHaveBeenCalled()
   })
 
   it('explains when evidence matching is unavailable instead of showing an unknown error', async () => {
@@ -881,6 +898,63 @@ describe('QualityPage', () => {
     expect(serviceMock.updateBadCase).not.toHaveBeenCalled()
   })
 
+  it('ignores a bad case by dismissing it without creating a golden question', async () => {
+    let ignored = false
+    serviceMock.getBadCases.mockImplementation(async () => ({
+      data: [
+        {
+          created_at: '2026-07-28T00:00:00Z',
+          id: 'bad-1',
+          question: 'Refund after activation',
+          reason: 'coverage gap',
+          revision: ignored ? 2 : 1,
+          status: ignored ? 'dismissed' : 'open',
+          tags: ['billing'],
+          updated_at: '2026-07-28T00:00:00Z',
+        },
+      ],
+      next_cursor: null,
+    }))
+    serviceMock.updateBadCase.mockImplementation(async () => {
+      ignored = true
+      return {
+        ...(await serviceMock.getBadCase()),
+        revision: 2,
+        status: 'dismissed',
+      }
+    })
+    navigationMock.tab = 'bad-cases'
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('Refund after activation')
+    await user.click(
+      screen.getByRole('button', {
+        name: /dataset\.newKnowledge\.qualityPage\.questionActions/,
+      }),
+    )
+    await user.click(
+      await screen.findByRole('menuitem', {
+        name: 'dataset.newKnowledge.qualityPage.ignore',
+      }),
+    )
+
+    await waitFor(() =>
+      expect(serviceMock.updateBadCase).toHaveBeenCalledWith({
+        body: {
+          expected_revision: 1,
+          status: 'dismissed',
+          tags: ['billing'],
+        },
+        params: { bad_case_id: 'bad-1', control_space_id: 'space-1' },
+      }),
+    )
+    await waitFor(() =>
+      expect(screen.queryByText('Refund after activation')).not.toBeInTheDocument(),
+    )
+    expect(serviceMock.createGolden).not.toHaveBeenCalled()
+  })
+
   it('creates a golden question and dismisses its source bad case', async () => {
     serviceMock.getBadCase.mockResolvedValue({
       created_at: '2026-07-28T00:00:00Z',
@@ -922,10 +996,6 @@ describe('QualityPage', () => {
         name: 'dataset.newKnowledge.qualityPage.toGolden',
       }),
     )
-    await user.type(
-      screen.getByPlaceholderText('dataset.newKnowledge.qualityPage.annotationPlaceholder'),
-      'Expected answer',
-    )
     await user.click(
       screen.getByRole('button', { name: 'dataset.newKnowledge.qualityPage.promote' }),
     )
@@ -933,7 +1003,7 @@ describe('QualityPage', () => {
     await waitFor(() => expect(serviceMock.createGolden).toHaveBeenCalledTimes(1))
     expect(serviceMock.createGolden.mock.calls[0]?.[0]).toEqual({
       body: {
-        annotation: 'Expected answer',
+        annotation: '',
         expected_evidence_ids: [],
         match_policy: 'all',
         question: 'Refund after activation',

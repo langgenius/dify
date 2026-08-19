@@ -501,6 +501,7 @@
   "newKnowledge.qualityPage.goldenStatus.draft": "下書き",
   "newKnowledge.qualityPage.goldenStatus.stale": "要更新",
   "newKnowledge.qualityPage.goldenTab": "参考質問",
+  "newKnowledge.qualityPage.ignore": "無視",
   "newKnowledge.qualityPage.importComplete": "インポート完了",
   "newKnowledge.qualityPage.importCsv": "CSV をインポート",
   "newKnowledge.qualityPage.importDescription": "question、evidence、tags の 3 列のみを含む CSV をアップロードしてください。根拠はドキュメントの段落と一括で照合され、一致しない行は下書きとして保存されます。",

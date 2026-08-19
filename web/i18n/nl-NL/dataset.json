@@ -501,6 +501,7 @@
   "newKnowledge.qualityPage.goldenStatus.draft": "Concept",
   "newKnowledge.qualityPage.goldenStatus.stale": "Verouderd",
   "newKnowledge.qualityPage.goldenTab": "Referentievragen",
+  "newKnowledge.qualityPage.ignore": "Negeren",
   "newKnowledge.qualityPage.importComplete": "Import voltooid",
   "newKnowledge.qualityPage.importCsv": "CSV importeren",
   "newKnowledge.qualityPage.importDescription": "Upload een CSV met precies drie kolommen met de namen question, evidence en tags. Bewijs wordt in batches gekoppeld aan documentparagrafen; niet-overeenkomende rijen worden als concept opgeslagen.",

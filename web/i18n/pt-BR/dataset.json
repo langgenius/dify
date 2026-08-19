@@ -501,6 +501,7 @@
   "newKnowledge.qualityPage.goldenStatus.draft": "Rascunho",
   "newKnowledge.qualityPage.goldenStatus.stale": "Desatualizada",
   "newKnowledge.qualityPage.goldenTab": "Perguntas de referência",
+  "newKnowledge.qualityPage.ignore": "Ignorar",
   "newKnowledge.qualityPage.importComplete": "Importação concluída",
   "newKnowledge.qualityPage.importCsv": "Importar CSV",
   "newKnowledge.qualityPage.importDescription": "Envie um CSV com exatamente três colunas chamadas question, evidence e tags. As evidências são associadas em lotes aos parágrafos dos documentos; as linhas sem correspondência são salvas como rascunhos.",

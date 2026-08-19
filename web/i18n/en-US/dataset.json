@@ -505,6 +505,7 @@
   "newKnowledge.qualityPage.goldenStatus.draft": "Draft",
   "newKnowledge.qualityPage.goldenStatus.stale": "Stale",
   "newKnowledge.qualityPage.goldenTab": "Golden questions",
+  "newKnowledge.qualityPage.ignore": "Ignore",
   "newKnowledge.qualityPage.importComplete": "Import complete",
   "newKnowledge.qualityPage.importCsv": "Import CSV",
   "newKnowledge.qualityPage.importDescription": "Upload a CSV with exactly three columns: question, evidence, and tags. Evidence is matched to document paragraphs in batches; unmatched rows are saved as drafts.",

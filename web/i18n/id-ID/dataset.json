@@ -501,6 +501,7 @@
   "newKnowledge.qualityPage.goldenStatus.draft": "Draf",
   "newKnowledge.qualityPage.goldenStatus.stale": "Usang",
   "newKnowledge.qualityPage.goldenTab": "Pertanyaan referensi",
+  "newKnowledge.qualityPage.ignore": "Abaikan",
   "newKnowledge.qualityPage.importComplete": "Impor selesai",
   "newKnowledge.qualityPage.importCsv": "Impor CSV",
   "newKnowledge.qualityPage.importDescription": "Unggah CSV dengan tepat tiga kolom bernama question, evidence, dan tags. Bukti dicocokkan dengan paragraf dokumen secara bertahap; baris yang tidak cocok disimpan sebagai draf.",

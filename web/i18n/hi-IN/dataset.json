@@ -501,6 +501,7 @@
   "newKnowledge.qualityPage.goldenStatus.draft": "ड्राफ़्ट",
   "newKnowledge.qualityPage.goldenStatus.stale": "अपडेट आवश्यक",
   "newKnowledge.qualityPage.goldenTab": "संदर्भ प्रश्न",
+  "newKnowledge.qualityPage.ignore": "अनदेखा करें",
   "newKnowledge.qualityPage.importComplete": "इंपोर्ट पूरा हुआ",
   "newKnowledge.qualityPage.importCsv": "CSV इंपोर्ट करें",
   "newKnowledge.qualityPage.importDescription": "ठीक तीन कॉलम वाली CSV अपलोड करें, जिनके नाम question, evidence और tags हों। साक्ष्य का दस्तावेज़ के अनुच्छेदों से बैच में मिलान किया जाता है; जिन पंक्तियों का मिलान नहीं होता वे ड्राफ़्ट के रूप में सहेजी जाती हैं।",

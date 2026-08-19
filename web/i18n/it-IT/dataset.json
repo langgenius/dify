@@ -501,6 +501,7 @@
   "newKnowledge.qualityPage.goldenStatus.draft": "Bozza",
   "newKnowledge.qualityPage.goldenStatus.stale": "Obsoleta",
   "newKnowledge.qualityPage.goldenTab": "Domande di riferimento",
+  "newKnowledge.qualityPage.ignore": "Ignora",
   "newKnowledge.qualityPage.importComplete": "Importazione completata",
   "newKnowledge.qualityPage.importCsv": "Importa CSV",
   "newKnowledge.qualityPage.importDescription": "Carica un CSV con esattamente tre colonne denominate question, evidence e tags. I riscontri vengono abbinati in batch ai paragrafi dei documenti; le righe senza corrispondenza vengono salvate come bozze.",

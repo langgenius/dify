@@ -380,7 +380,7 @@ export type KnowledgeFsGoldenQuestionListResponse = {
 }
 
 export type KnowledgeFsGoldenQuestionPayload = {
-  annotation: string
+  annotation?: string
   evidence_text?: string
   expected_evidence_ids?: Array<string>
   match_policy?: 'all' | 'any'

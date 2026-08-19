@@ -176,7 +176,7 @@ export const zKnowledgeFsExternalAccessPayload = z.object({
  * KnowledgeFSGoldenQuestionPayload
  */
 export const zKnowledgeFsGoldenQuestionPayload = z.object({
-  annotation: z.string().min(1).max(2000),
+  annotation: z.string().max(2000).optional().default(''),
   evidence_text: z.string().max(8000).optional().default(''),
   expected_evidence_ids: z.array(z.string()).max(50).optional(),
   match_policy: z.enum(['all', 'any']).optional().default('all'),

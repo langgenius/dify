@@ -501,6 +501,7 @@
   "newKnowledge.qualityPage.goldenStatus.draft": "Черновик",
   "newKnowledge.qualityPage.goldenStatus.stale": "Устаревший",
   "newKnowledge.qualityPage.goldenTab": "Эталонные вопросы",
+  "newKnowledge.qualityPage.ignore": "Игнорировать",
   "newKnowledge.qualityPage.importComplete": "Импорт завершён",
   "newKnowledge.qualityPage.importCsv": "Импортировать CSV",
   "newKnowledge.qualityPage.importDescription": "Загрузите CSV-файл ровно с тремя столбцами с именами question, evidence и tags. Подтверждающие фрагменты пакетно сопоставляются с абзацами документов; строки без совпадений сохраняются как черновики.",

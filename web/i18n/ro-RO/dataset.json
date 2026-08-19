@@ -501,6 +501,7 @@
   "newKnowledge.qualityPage.goldenStatus.draft": "Ciornă",
   "newKnowledge.qualityPage.goldenStatus.stale": "Învechită",
   "newKnowledge.qualityPage.goldenTab": "Întrebări de referință",
+  "newKnowledge.qualityPage.ignore": "Ignoră",
   "newKnowledge.qualityPage.importComplete": "Import finalizat",
   "newKnowledge.qualityPage.importCsv": "Importă CSV",
   "newKnowledge.qualityPage.importDescription": "Încarcă un CSV cu exact trei coloane numite question, evidence și tags. Dovezile sunt asociate în loturi cu paragrafele documentelor; rândurile fără potrivire sunt salvate ca ciorne.",
