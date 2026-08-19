@@ -30,7 +30,7 @@ argument.
 import functools
 from collections.abc import Callable
 
-from flask import request
+from flask import Response, request
 from flask_restx import Resource
 
 from controllers.console.wraps import (
@@ -42,7 +42,13 @@ from controllers.console.wraps import (
 from core.workflow_copilot.models import Action, Actor
 from libs.login import login_required
 from services.feature_service import FeatureService
-from services.workflow_copilot.wiring import build_service, copilot_error_response, session_view_to_dict
+from services.workflow_copilot import progress_bus
+from services.workflow_copilot.wiring import (
+    build_service,
+    copilot_error_response,
+    session_view_to_dict,
+    stream_frames,
+)
 
 from . import console_ns
 
@@ -159,3 +165,29 @@ class WorkflowCopilotMessagesApi(Resource):
     @workflow_copilot_required
     def post(self, current_tenant_id, current_user, session_id):
         return _message(session_id, request.get_json(silent=True), _actor(current_user, current_tenant_id))
+
+
+@console_ns.route("/workflow-copilot/sessions/<string:session_id>/stream")
+class WorkflowCopilotStreamApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_user
+    @with_current_tenant_id
+    @workflow_copilot_required
+    def get(self, current_tenant_id, current_user, session_id):
+        actor = _actor(current_user, current_tenant_id)
+        # owner check + authoritative snapshot; non-owner/missing → NotFoundError → 404 (generic)
+        try:
+            view = build_service().get_session_view(session_id, actor)
+        except Exception as exc:  # re-raised below if not a known copilot error
+            mapped = copilot_error_response(exc)
+            if mapped is None:
+                raise
+            return mapped
+        subscription = progress_bus.subscribe(session_id)
+        return Response(
+            stream_frames(session_view_to_dict(view), subscription),
+            mimetype="text/event-stream",
+            headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
+        )
