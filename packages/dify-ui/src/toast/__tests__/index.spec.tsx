@@ -88,6 +88,81 @@ describe('@langgenius/dify-ui/toast', () => {
     )
   })
 
+  it('should reject a downward swipe and dismiss upward from the top-right viewport', async () => {
+    const baseUIAnimationGlobal = globalThis as BaseUIAnimationGlobal
+    const animationState = baseUIAnimationGlobal.BASE_UI_ANIMATIONS_DISABLED
+    baseUIAnimationGlobal.BASE_UI_ANIMATIONS_DISABLED = false
+
+    try {
+      const screen = await render(
+        <>
+          <style>
+            {`
+            [role="dialog"]:not([data-ending-style]) {
+              transition: none !important;
+            }
+            [role="dialog"][data-ending-style] {
+              transition: opacity 10000s !important;
+            }
+          `}
+          </style>
+          <button
+            type="button"
+            aria-label="Swipe up destination"
+            style={{
+              position: 'fixed',
+              top: 0,
+              right: 200,
+              zIndex: 1000,
+              width: 20,
+              height: 20,
+            }}
+          />
+          <button
+            type="button"
+            aria-label="Swipe down destination"
+            style={{
+              position: 'fixed',
+              top: 360,
+              right: 200,
+              zIndex: 1000,
+              width: 20,
+              height: 20,
+            }}
+          />
+          <ToastHost timeout={0} offset={{ top: 120 }} />
+        </>,
+      )
+
+      toast('Directional notification')
+
+      const toastDialog = screen.getByRole('dialog', { name: 'Directional notification' })
+      await expect.element(toastDialog).toBeInTheDocument()
+      const toastElement = toastDialog.element()
+      const initialBounds = toastElement.getBoundingClientRect()
+
+      await userEvent.dragAndDrop(toastElement, screen.getByLabelText('Swipe down destination'), {
+        steps: 10,
+      })
+
+      await expect.element(toastDialog).toBeInTheDocument()
+      expect(toastElement).not.toHaveAttribute('data-ending-style')
+      expect(toastElement.getBoundingClientRect().top).toBeCloseTo(initialBounds.top, 0)
+
+      await userEvent.dragAndDrop(toastElement, screen.getByLabelText('Swipe up destination'), {
+        steps: 10,
+      })
+
+      await vi.waitFor(() => {
+        expect(toastElement).toHaveAttribute('data-ending-style')
+        expect(toastElement).toHaveAttribute('data-swipe-direction', 'up')
+      })
+      expect(toastElement.getBoundingClientRect().bottom).toBeLessThan(initialBounds.top)
+    } finally {
+      baseUIAnimationGlobal.BASE_UI_ANIMATIONS_DISABLED = animationState
+    }
+  })
+
   it('should dismiss an expanded background toast from its current row when swiped right', async () => {
     const baseUIAnimationGlobal = globalThis as BaseUIAnimationGlobal
     const animationState = baseUIAnimationGlobal.BASE_UI_ANIMATIONS_DISABLED
