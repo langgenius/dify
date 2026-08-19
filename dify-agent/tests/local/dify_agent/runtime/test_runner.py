@@ -837,10 +837,23 @@ def test_runner_timeout_cancels_agent_and_releases_runtime_lease(monkeypatch: py
     agent_cancelled = False
     shell_client = FakeRunnerShellctlClient()
 
+    class FakeUsageModel(TestModel):
+        @property
+        def accumulated_usage(self) -> LLMUsage:
+            return LLMUsage.from_metadata(
+                {
+                    "prompt_tokens": 13,
+                    "completion_tokens": 8,
+                    "total_tokens": 21,
+                    "total_price": "0.000210",
+                    "currency": "USD",
+                }
+            )
+
     def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient, agent_run_id: str):
         assert http_client.is_closed is False
         assert agent_run_id == "run-timeout"
-        return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
+        return FakeUsageModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
 
     class FakeAgent:
         async def run(self, *_args: object, **_kwargs: object) -> None:
@@ -877,6 +890,11 @@ def test_runner_timeout_cancels_agent_and_releases_runtime_lease(monkeypatch: py
     terminal = sink.events["run-timeout"][-1]
     assert isinstance(terminal, RunFailedEvent)
     assert terminal.data.error_type is RunFailureType.AGENT_RUN_LIMIT_EXCEEDED
+    assert terminal.data.usage is not None
+    assert terminal.data.usage.prompt_tokens == 13
+    assert terminal.data.usage.completion_tokens == 8
+    assert terminal.data.usage.total_tokens == 21
+    assert terminal.data.usage.total_price == Decimal("0.000210")
     assert sink.statuses["run-timeout"] == "failed"
     assert agent_cancelled is True
     assert shell_client.closed is True
