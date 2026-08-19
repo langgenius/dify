@@ -1,4 +1,5 @@
 import json
+from collections.abc import Iterator
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -14,7 +15,7 @@ TOKEN = "00000000-0000-4000-8000-000000000001"
 
 
 @pytest.fixture
-def challenge_redis() -> MagicMock:
+def challenge_redis() -> Iterator[MagicMock]:
     with patch("services.email_code_login_challenge.redis_client") as mock_redis:
         yield mock_redis
 
