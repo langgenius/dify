@@ -1,6 +1,5 @@
 import sys
 import types
-from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -9,6 +8,7 @@ from sqlalchemy.orm import Session
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.keyword.keyword_type import KeyWordType
 from core.rag.models.document import Document
+from models.dataset import Dataset
 
 
 def test_get_keyword_factory_returns_jieba_factory(monkeypatch: pytest.MonkeyPatch):
@@ -29,7 +29,13 @@ def test_get_keyword_factory_raises_for_unsupported_type():
 
 
 def test_keyword_initialization_uses_configured_factory(monkeypatch: pytest.MonkeyPatch):
-    dataset = SimpleNamespace(id="dataset-1")
+    dataset = Dataset(
+        id="dataset-1",
+        tenant_id="tenant-1",
+        name="Test Dataset",
+        description="",
+        created_by="account-1",
+    )
     fake_processor = MagicMock()
 
     monkeypatch.setattr("core.rag.datasource.keyword.keyword_factory.dify_config.KEYWORD_STORE", KeyWordType.JIEBA)

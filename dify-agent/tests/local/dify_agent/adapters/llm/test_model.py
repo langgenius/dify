@@ -1,3 +1,4 @@
+import asyncio
 import json
 import unittest
 from contextlib import asynccontextmanager
@@ -6,16 +7,19 @@ from typing import cast
 from unittest.mock import patch
 
 import httpx
+import pytest
 from graphon.model_runtime.entities.message_entities import TextPromptMessageContent
-from pydantic_ai.exceptions import ModelHTTPError, UserError
+from pydantic_ai.exceptions import ModelHTTPError, UnexpectedModelBehavior, UserError
 from pydantic_ai.messages import (
     InstructionPart,
     ModelRequest,
     ModelResponse,
     RetryPromptPart,
+    SpeechPart,
     SystemPromptPart,
     TextPart,
     ThinkingPart,
+    ToolAvailabilityDeltaPart,
     ToolCallPart,
     ToolReturnPart,
     UserPromptPart,
@@ -617,7 +621,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
                             content="",
                             tool_calls=[
                                 AssistantPromptMessage.ToolCall(
-                                    id=None,
+                                    id=None,  # pyright: ignore[reportArgumentType]
                                     type="function",
                                     function=AssistantPromptMessage.ToolCall.ToolCallFunction(
                                         name="shell_run",
@@ -636,7 +640,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
                             content="",
                             tool_calls=[
                                 AssistantPromptMessage.ToolCall(
-                                    id=None,
+                                    id=None,  # pyright: ignore[reportArgumentType]
                                     type="function",
                                     function=AssistantPromptMessage.ToolCall.ToolCallFunction(
                                         name="shell_run",
@@ -762,3 +766,42 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
                 )
 
         self.assertEqual(str(context.exception), "missing endpoint config")
+
+
+@pytest.mark.parametrize(
+    "part",
+    [
+        pytest.param(SpeechPart(speaker="user", transcript="hello"), id="speech"),
+        pytest.param(ToolAvailabilityDeltaPart(tools_added=["lookup"]), id="tool-availability-delta"),
+    ],
+)
+def test_request_rejects_unsupported_pydantic_ai_request_parts(
+    part: SpeechPart | ToolAvailabilityDeltaPart,
+) -> None:
+    async def scenario() -> None:
+        async with httpx.AsyncClient(trust_env=False) as http_client:
+            provider = DifyApiLLMProvider(
+                plugin_id="langgenius/openai",
+                inner_api_url="http://dify-api",
+                inner_api_key="inner-secret",
+                execution_context=DifyExecutionContextLayerConfig(
+                    tenant_id="tenant-1",
+                    user_id="user-123",
+                    user_from="account",
+                    app_id="app-1",
+                    agent_mode="single_step",
+                    invoke_from="debugger",
+                ),
+                agent_run_id="run-1",
+                http_client=http_client,
+            )
+            adapter = DifyLLMAdapterModel("demo-model", provider, model_provider="openai")
+
+            with pytest.raises(UnexpectedModelBehavior, match=type(part).__name__):
+                _ = await adapter.request(
+                    [ModelRequest(parts=[part])],
+                    model_settings=None,
+                    model_request_parameters=ModelRequestParameters(),
+                )
+
+    asyncio.run(scenario())

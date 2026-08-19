@@ -13,8 +13,9 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { Field, FieldControl, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
+import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -187,7 +188,7 @@ export function CliToolDialog({
               <FieldDescription>
                 {t(($) => $['agentDetail.configure.tools.cliDialog.installCommand.description'])}
               </FieldDescription>
-              <FieldControl
+              <Input
                 autoComplete="off"
                 onValueChange={setInstallCommand}
                 placeholder={t(
@@ -200,7 +201,7 @@ export function CliToolDialog({
               <FieldLabel>
                 {t(($) => $['agentDetail.configure.tools.cliDialog.name.label'])}
               </FieldLabel>
-              <FieldControl
+              <Input
                 autoComplete="off"
                 onValueChange={setToolName}
                 placeholder={t(($) => $['agentDetail.configure.tools.cliDialog.name.placeholder'])}

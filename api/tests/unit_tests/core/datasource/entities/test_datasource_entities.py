@@ -1,5 +1,3 @@
-from unittest.mock import patch
-
 import pytest
 
 from core.datasource.entities.datasource_entities import (
@@ -110,7 +108,7 @@ def test_datasource_entity():
     assert entity_with_params.parameters == [param]
 
 
-def test_datasource_provider_identity():
+def test_datasource_provider_identity(config_overrides):
     label = I18nObject(en_US="label", zh_Hans="标签")
     description = I18nObject(en_US="desc", zh_Hans="描述")
     identity = DatasourceProviderIdentity(
@@ -125,12 +123,11 @@ def test_datasource_provider_identity():
     assert identity.tags == [ToolLabelEnum.SEARCH]
 
     # Test generate_datasource_icon_url
-    with patch("core.datasource.entities.datasource_entities.dify_config") as mock_config:
-        mock_config.CONSOLE_API_URL = "http://api.example.com"
-        url = identity.generate_datasource_icon_url("tenant123")
-        assert "http://api.example.com/console/api/workspaces/current/plugin/icon" in url
-        assert "tenant_id=tenant123" in url
-        assert "filename=icon.png" in url
+    config_overrides(CONSOLE_API_URL="http://api.example.com")
+    url = identity.generate_datasource_icon_url("tenant123")
+    assert "http://api.example.com/console/api/workspaces/current/plugin/icon" in url
+    assert "tenant_id=tenant123" in url
+    assert "filename=icon.png" in url
 
     # Test hardcoded icon
     identity.icon = "https://assets.dify.ai/images/File%20Upload.svg"
@@ -138,10 +135,9 @@ def test_datasource_provider_identity():
 
     # Test with empty CONSOLE_API_URL
     identity.icon = "test.png"
-    with patch("core.datasource.entities.datasource_entities.dify_config") as mock_config:
-        mock_config.CONSOLE_API_URL = None
-        url = identity.generate_datasource_icon_url("tenant123")
-        assert url.startswith("/console/api/workspaces/current/plugin/icon")
+    config_overrides(CONSOLE_API_URL=None)
+    url = identity.generate_datasource_icon_url("tenant123")
+    assert url.startswith("/console/api/workspaces/current/plugin/icon")
 
 
 def test_datasource_provider_entity():

@@ -87,7 +87,10 @@ def _graph(edges: list[dict]) -> dict:
         "nodes": [
             {"id": "start", "data": {"type": "start"}},
             {"id": "previous-node", "data": {"type": "llm"}},
-            {"id": "agent-node", "data": {"type": "agent", "version": "2"}},
+            {
+                "id": "agent-node",
+                "data": {"type": "agent", "version": "2", "agent_node_kind": "dify_agent"},
+            },
             {"id": "later-node", "data": {"type": "llm"}},
         ],
         "edges": edges,
@@ -116,6 +119,18 @@ def _tool_graph(tool_data: dict) -> dict:
         ],
         "edges": [{"source": "start", "target": "tool-node"}],
     }
+
+
+def test_historical_agent_version_two_is_not_validated_as_dify_agent() -> None:
+    graph = {
+        "nodes": [{"id": "legacy-agent", "data": {"type": "agent", "version": "2"}}],
+        "edges": [],
+    }
+    session = Mock()
+
+    WorkflowAgentNodeValidator.validate_published_workflow(session=session, workflow=_workflow(graph))
+
+    session.scalar.assert_not_called()
 
 
 def test_publish_validation_accepts_upstream_previous_output_ref():

@@ -8,7 +8,7 @@ in-memory SQLite sessions with persisted ORM rows.
 """
 
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import asc, desc, event
@@ -389,11 +389,10 @@ class TestConversationServiceConversationalVariable:
     """Test conversational variable operations."""
 
     @pytest.mark.parametrize("sqlite_session", [(Conversation, ConversationVariable)], indirect=True)
-    @patch("services.conversation_service.dify_config")
     def test_get_conversational_variable_with_name_filter_mysql(
         self,
-        mock_config,
         sqlite_session: Session,
+        config_overrides,
     ):
         """
         Test variable filtering by name for MySQL databases.
@@ -436,7 +435,7 @@ class TestConversationServiceConversationalVariable:
             ]
         )
         sqlite_session.commit()
-        mock_config.DB_TYPE = "mysql"
+        config_overrides(DB_TYPE="mysql")
 
         # Act
         result = ConversationService.get_conversational_variable(
