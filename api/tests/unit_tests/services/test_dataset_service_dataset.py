@@ -643,11 +643,21 @@ class TestDatasetServiceCreationAndUpdate:
                 sqlite_session,
             )
 
+            # Dispatch is deferred until the transaction actually commits, so the
+            # worker (which re-reads the Dataset row on its own session) can't race
+            # ahead of the update becoming durable (#40961).
+            assert transaction_events == []
+            vector_task.assert_not_called()
+            summary_task.assert_not_called()
+
+            sqlite_session.commit()
+
+            vector_task.assert_called_once_with(dataset.id, "update")
+            summary_task.assert_called_once()
+
         assert updated.name == "After"
         assert updated.description == "Changed"
-        assert transaction_events == []
-        vector_task.assert_called_once_with(dataset.id, "update")
-        summary_task.assert_called_once()
+        assert transaction_events == ["commit"]
 
     def test_update_pipeline_node_data_returns_for_non_pipeline_or_missing_pipeline(
         self, sqlite_session: Session
