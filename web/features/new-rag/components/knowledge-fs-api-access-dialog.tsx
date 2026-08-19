@@ -18,7 +18,7 @@ import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import CopyFeedback from '@/app/components/base/copy-feedback'
+import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { useDatasetApiBaseUrl } from '@/service/knowledge/use-dataset'
 

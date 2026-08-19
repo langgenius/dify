@@ -303,6 +303,7 @@ jobs:
 
           test_touchpoints=(
             api/tests/unit_tests/controllers/console/datasets/test_datasets.py
+            api/tests/unit_tests/controllers/console/test_wraps.py
             api/tests/unit_tests/controllers/console/workspace/test_rbac.py
             api/tests/unit_tests/core/agent/test_base_agent_runner.py
             api/tests/unit_tests/core/app/apps/agent_app/test_runtime_request_builder.py
