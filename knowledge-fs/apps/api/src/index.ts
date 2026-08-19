@@ -516,7 +516,6 @@ const researchEvidenceReasoning = createResearchEvidenceReasoning({
   maxOutputTokens: researchEvidenceReasoningOptions.maxOutputTokens,
   modelRequestGate: ingestionModelRuntimeOptions.modelRequestGate,
   providerFactory: profileReasoningCapability.providerFactory,
-  recoveryMaxOutputTokens: researchEvidenceReasoningOptions.recoveryMaxOutputTokens,
   timeoutMs: researchEvidenceReasoningOptions.timeoutMs,
 });
 const documentCompilationRuntime = createApiDocumentCompilationRuntime({

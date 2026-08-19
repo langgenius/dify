@@ -26,6 +26,8 @@ export interface GenerateTextInput {
   readonly maxOutputTokens?: number;
   readonly messages: readonly LlmMessage[];
   readonly model: string;
+  /** Optional provider reasoning budget for models that explicitly support this parameter. */
+  readonly reasoningEffort?: "high" | "low" | "max" | "medium" | "minimal" | "none" | "xhigh";
   readonly signal?: AbortSignal;
   readonly structuredOutputSchema?: Readonly<Record<string, unknown>>;
   readonly temperature?: number;
@@ -801,6 +803,7 @@ export function createDifyModelRuntimeLlmProvider(
     for await (const chunk of options.client.invokeLlm({
       completionParams: {
         ...(maxTokens === undefined ? {} : { max_tokens: maxTokens }),
+        ...(input.reasoningEffort === undefined ? {} : { reasoning_effort: input.reasoningEffort }),
         ...(input.temperature === undefined ? {} : { temperature: input.temperature }),
       },
       model: input.model,
