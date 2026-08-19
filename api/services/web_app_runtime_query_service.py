@@ -1,12 +1,11 @@
 """Application service for building the public Web app runtime bootstrap."""
 
 import json
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from typing import NamedTuple, Protocol, cast
 
-from configs import dify_config
 from services.app_definition_query_service import AppSiteConfiguration
-from services.feature_service import FeatureService
+from services.entities.feature_entities import FeatureModel
 from services.file_service import FileService
 
 
@@ -50,16 +49,20 @@ class WebAppRuntimeQueryService:
         *,
         runtime: WebAppRuntimeQuery,
         file_service: FileService,
+        workspace_features: Callable[[str], FeatureModel],
+        files_url: str,
     ) -> None:
         self._runtime = runtime
         self._file_service = file_service
+        self._workspace_features = workspace_features
+        self._files_url = files_url
 
     def get_bootstrap(self, app_id: str) -> WebAppBootstrap:
         record = self._runtime.get_runtime_record(app_id)
         if record is None or record.tenant_status == _ARCHIVED_TENANT_STATUS:
             raise WebAppRuntimeUnavailableError("Site not found")
 
-        features = FeatureService.get_features(record.tenant_id, exclude_vector_space=True)
+        features = self._workspace_features(record.tenant_id)
         mode = self._runtime.resolve_compatible_app_mode(app_id)
         if mode is None:
             raise WebAppRuntimeUnavailableError("Site not found")
@@ -83,7 +86,7 @@ class WebAppRuntimeQueryService:
                 else {}
             )
             replace_webapp_logo = (
-                f"{dify_config.FILES_URL}/files/workspaces/{record.tenant_id}/webapp-logo"
+                f"{self._files_url}/files/workspaces/{record.tenant_id}/webapp-logo"
                 if tenant_custom_config.get("replace_webapp_logo")
                 else None
             )

@@ -104,6 +104,7 @@ def build_application_services(
     installation_state = InstallationStateRepository(client=database_client)
     data_source_api_key_auth_bindings = SQLAlchemyDataSourceApiKeyAuthBindingRepository(session_factory=database_client)
     app_definition_repository = AppDefinitionQueryRepository(session_factory=database_client)
+    feature_gateway = FeatureServiceGateway()
     return ApplicationServices(
         account_activation=AccountActivationService(
             tokens=RegisterServiceInvitationTokenStore(),
@@ -136,6 +137,8 @@ def build_application_services(
         web_app_runtime=WebAppRuntimeQueryService(
             runtime=app_definition_repository,
             file_service=FileService(database_client),
+            workspace_features=feature_gateway.get_workspace_features,
+            files_url=dify_config.FILES_URL,
         ),
         explore_banner_queries=ExploreBannerQueryService(
             banners=ExploreBannerQueryRepository(client=database_client),
@@ -149,7 +152,7 @@ def build_application_services(
             setup_required=deployment_edition != DeploymentEdition.CLOUD,
         ),
         feature_queries=FeatureQueryService(
-            features=FeatureServiceGateway(),
+            features=feature_gateway,
             trial_models=FeatureService.get_trial_models(),
             app_dsl_version=CURRENT_APP_DSL_VERSION,
         ),
