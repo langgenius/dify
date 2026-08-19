@@ -34,6 +34,8 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSOverviewWindowQuery,
     KnowledgeFSPublicFailureResponse,
     KnowledgeFSQualityListQuery,
+    KnowledgeFSQualityReplayDetailQuery,
+    KnowledgeFSQualityReplayEvidenceDiff,
     KnowledgeFSQualityReplayPayload,
     KnowledgeFSQueryCreatePayload,
     KnowledgeFSRerankIntent,
@@ -76,6 +78,40 @@ def test_quality_replay_payload_requires_exactly_one_selection_mode() -> None:
         KnowledgeFSQualityReplayPayload()
     with pytest.raises(ValidationError, match="provide exactly one"):
         KnowledgeFSQualityReplayPayload(selection="all-active", golden_question_ids=["question-1"])
+
+
+def test_quality_replay_detail_query_requires_a_uuid_evidence_item_id() -> None:
+    value = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c50"
+
+    assert str(KnowledgeFSQualityReplayDetailQuery(evidence_item_id=value).evidence_item_id) == value
+    with pytest.raises(ValidationError):
+        KnowledgeFSQualityReplayDetailQuery(evidence_item_id="not-a-uuid")
+
+
+def test_quality_replay_evidence_diff_accepts_safe_detail_aliases() -> None:
+    diff = KnowledgeFSQualityReplayEvidenceDiff.model_validate(
+        {
+            "evidenceItems": [
+                {
+                    "available": True,
+                    "documentName": "Permissions.pdf",
+                    "matched": False,
+                    "ordinal": 1,
+                    "pageNumber": 3,
+                    "sectionPath": ["Permissions", "Limits"],
+                    "text": "Editors cannot promote themselves.",
+                }
+            ],
+            "expectedCount": 1,
+            "matchedCount": 0,
+            "missingCount": 1,
+            "retrievedCount": 10,
+        }
+    )
+
+    assert diff.evidence_items is not None
+    assert diff.evidence_items[0].document_name == "Permissions.pdf"
+    assert diff.evidence_items[0].section_path == ["Permissions", "Limits"]
 
 
 def test_golden_question_evidence_match_requires_exactly_one_lookup_mode() -> None:

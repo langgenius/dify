@@ -174,6 +174,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSPresignedUploadResponse,
     KnowledgeFSProfileMigrationResponse,
     KnowledgeFSQualityListQuery,
+    KnowledgeFSQualityReplayDetailQuery,
     KnowledgeFSQualityReplayListQuery,
     KnowledgeFSQualityReplayListResponse,
     KnowledgeFSQualityReplayPayload,
@@ -299,6 +300,7 @@ register_schema_models(
     KnowledgeFSAdmittedQueryRequest,
     KnowledgeFSQueryCreatePayload,
     KnowledgeFSQualityListQuery,
+    KnowledgeFSQualityReplayDetailQuery,
     KnowledgeFSQualityReplayListQuery,
     KnowledgeFSQualityReplayPayload,
     KnowledgeFSResearchTaskPartialsQuery,
@@ -3376,6 +3378,7 @@ class KnowledgeFSSpaceQualityReplayApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/quality/replay-runs/<string:run_id>")
 class KnowledgeFSSpaceQualityReplayDetailApi(Resource):
+    @console_ns.doc(params=query_params_from_model(KnowledgeFSQualityReplayDetailQuery))
     @console_ns.response(
         HTTPStatus.OK,
         "KnowledgeFS quality replay run",
@@ -3387,11 +3390,13 @@ class KnowledgeFSSpaceQualityReplayDetailApi(Resource):
     @_knowledge_fs_errors
     def get(self, control_space_id: str, run_id: str):
         actor_id, tenant_id = _actor()
+        query = KnowledgeFSQualityReplayDetailQuery.model_validate(request.args.to_dict())
         result = _console_services().facade.get_quality_replay(
             tenant_id=tenant_id,
             account_id=actor_id,
             control_space_id=control_space_id,
             run_id=run_id,
+            evidence_item_id=str(query.evidence_item_id) if query.evidence_item_id else None,
         )
         return dump_response(KnowledgeFSQualityReplayResponse, result)
 
