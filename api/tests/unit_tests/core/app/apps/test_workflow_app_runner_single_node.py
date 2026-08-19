@@ -244,6 +244,7 @@ def test_run_adds_inputs_with_snippet_compatible_start_aliases() -> None:
     app_generate_entity.user_id = "user"
     app_generate_entity.invoke_from = InvokeFrom.SERVICE_API
     app_generate_entity.workflow_execution_id = "execution-id"
+    app_generate_entity.is_bulk_execution = False
     app_generate_entity.task_id = "task-id"
     app_generate_entity.call_depth = 0
     app_generate_entity.trace_manager = None
