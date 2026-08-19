@@ -732,6 +732,42 @@ class TestDatasetServiceCreationAndUpdate:
         vector_task.assert_not_called()
         summary_task.assert_not_called()
 
+    def test_update_internal_dataset_dispatches_on_rag_pipeline_internal_commit(
+        self, sqlite_session: Session
+    ) -> None:
+        """RAG_PIPELINE helpers commit internally; the re-index must dispatch
+        on that commit, and the later outer commit must not dispatch twice."""
+        dataset = _dataset(name="Before")
+        sqlite_session.add(dataset)
+        sqlite_session.commit()
+
+        def commit_inside_helper(_dataset, _user_id, session: Session) -> None:
+            session.commit()
+
+        with (
+            patch.object(DatasetService, "_handle_indexing_technique_change", return_value="update"),
+            patch.object(
+                DatasetService, "_update_pipeline_knowledge_base_node_data", side_effect=commit_inside_helper
+            ),
+            patch("services.dataset_service.deal_dataset_vector_index_task.delay") as vector_task,
+            patch("services.dataset_service.regenerate_summary_index_task.delay") as summary_task,
+        ):
+            DatasetService._update_internal_dataset(dataset, {"name": "After"}, _account(), sqlite_session)
+
+            # Dispatched by the helper's internal commit already.
+            vector_task.assert_called_once_with(dataset.id, "update")
+            summary_task.assert_called_once_with(
+                dataset.id,
+                regenerate_reason="embedding_model_changed",
+                regenerate_vectors_only=True,
+            )
+
+            # The outer commit must not dispatch a second time.
+            sqlite_session.commit()
+
+        vector_task.assert_called_once_with(dataset.id, "update")
+        summary_task.assert_called_once()
+
     def test_update_pipeline_node_data_returns_for_non_pipeline_or_missing_pipeline(
         self, sqlite_session: Session
     ) -> None:

@@ -829,15 +829,21 @@ class DatasetService:
         # Reload dataset to get updated values
         session.refresh(dataset)
 
-        # update pipeline knowledge base node data
-        DatasetService._update_pipeline_knowledge_base_node_data(dataset, user.id, session)
-
         # Trigger vector index task if indexing technique changed. The worker
         # re-reads the datasets row in its own session, so publish only after
         # this transaction commits — firing now races the commit and the
         # re-index can run with the previous embedding model (#40961).
+        #
+        # Register BEFORE _update_pipeline_knowledge_base_node_data: for
+        # RAG_PIPELINE datasets that helper commits internally, and the
+        # re-index must dispatch on that commit. once=True keeps the later
+        # outer commit from dispatching twice, and normal datasets still
+        # dispatch on the outer commit as before.
         if action:
             DatasetService._register_index_tasks_after_commit(session, dataset.id, action)
+
+        # update pipeline knowledge base node data
+        DatasetService._update_pipeline_knowledge_base_node_data(dataset, user.id, session)
 
         # Note: summary_index_setting changes do not trigger automatic regeneration of existing summaries.
         # The new setting will only apply to:
