@@ -8,8 +8,17 @@ from werkzeug.exceptions import Unauthorized
 
 from constants import HEADER_NAME_APP_CODE
 from controllers.common import fields
-from controllers.common.fields import Parameters
+from controllers.common.errors import InvalidArgumentError
+from controllers.common.fields import AccessModeResponse, Parameters
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.web import web_ns
+from controllers.web.error import (
+    AgentNotPublishedError,
+    AppUnavailableError,
+    WebAppAccessServiceUnavailableError,
+    WebAppNotFoundError,
+)
+from controllers.web.wraps import WebApiResource
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from libs.helper import dump_response
@@ -17,14 +26,14 @@ from libs.passport import PassportService
 from libs.token import extract_webapp_passport
 from models.model import App, EndUser
 from services.app_definition_query_service import AppDefinitionNotPublishedError, AppDefinitionUnavailableError
-from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
+from services.webapp_access_query_service import (
+    WebAppAccessAppNotFoundError,
+    WebAppAccessReferenceRequiredError,
+    WebAppAccessUnavailableError,
+)
 from services.webapp_auth_service import WebAppAuthService
-
-from . import web_ns
-from .error import AgentNotPublishedError, AppUnavailableError
-from .wraps import WebApiResource
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +63,7 @@ register_response_schema_models(
     web_ns,
     Parameters,
     AppMetaResponse,
-    fields.AccessModeResponse,
+    AccessModeResponse,
     fields.BooleanResultResponse,
 )
 
@@ -122,28 +131,27 @@ class AppAccessMode(Resource):
         responses={
             200: "Success",
             400: "Bad Request",
+            404: "App Not Found",
             500: "Internal Server Error",
+            503: "Web App Access Service Unavailable",
         }
     )
-    @web_ns.response(200, "Success", web_ns.models[fields.AccessModeResponse.__name__])
+    @web_ns.response(200, "Success", web_ns.models[AccessModeResponse.__name__])
     def get(self):
         raw_args = request.args.to_dict()
         args = AppAccessModeQuery.model_validate(raw_args)
-
-        features = FeatureService.get_system_features()
-        if not features.webapp_auth.enabled:
-            return {"accessMode": "public"}
-
-        app_id = args.app_id
-        if args.app_code:
-            app_id = AppService.get_app_id_by_code(args.app_code, session=db.session())
-
-        if not app_id:
-            raise ValueError("appId or appCode must be provided")
-
-        res = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id)
-
-        return {"accessMode": res.access_mode}
+        try:
+            access_mode = application_services().webapp_access.get_access_mode(
+                app_id=args.app_id,
+                app_code=args.app_code,
+            )
+        except WebAppAccessReferenceRequiredError as e:
+            raise InvalidArgumentError(description=str(e)) from None
+        except WebAppAccessAppNotFoundError:
+            raise WebAppNotFoundError() from None
+        except WebAppAccessUnavailableError:
+            raise WebAppAccessServiceUnavailableError() from None
+        return dump_response(AccessModeResponse, {"access_mode": access_mode})
 
 
 @web_ns.route("/webapp/permission")
