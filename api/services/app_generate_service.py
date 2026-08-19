@@ -269,9 +269,7 @@ class AppGenerateService:
                     def on_subscribe():
                         workflow_based_app_execution_task.delay(payload_json)
 
-                    topic = AdvancedChatAppGenerator.get_response_topic(
-                        AppMode.ADVANCED_CHAT, payload.workflow_run_id
-                    )
+                    topic = AdvancedChatAppGenerator.get_response_topic(AppMode.ADVANCED_CHAT, payload.workflow_run_id)
                     on_subscribe, start_id = cls._build_streaming_task_on_subscribe(on_subscribe, topic=topic)
                     generator = AdvancedChatAppGenerator()
                     return rate_limit.generate(
