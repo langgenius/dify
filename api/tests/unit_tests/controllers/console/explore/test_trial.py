@@ -51,6 +51,14 @@ from services.errors.llm import InvokeRateLimitError
 unwrap: Any = inspect_unwrap
 
 
+def test_workflow_run_request_bulk_execution_defaults_to_false() -> None:
+    assert WorkflowRunRequest(inputs={}).is_bulk_execution is False
+
+
+def test_workflow_run_request_accepts_bulk_execution() -> None:
+    assert WorkflowRunRequest(inputs={}, is_bulk_execution=True).is_bulk_execution is True
+
+
 class _UsesSQLiteSession:
     sqlite_session: Session
 

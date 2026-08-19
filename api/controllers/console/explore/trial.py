@@ -104,6 +104,10 @@ logger = logging.getLogger(__name__)
 class WorkflowRunRequest(BaseModel):
     inputs: dict
     files: list | None = Field(default=None)
+    is_bulk_execution: bool = Field(
+        default=False,
+        description="Whether this workflow run is part of a bulk execution.",
+    )
 
 
 class ChatRequest(BaseModel):

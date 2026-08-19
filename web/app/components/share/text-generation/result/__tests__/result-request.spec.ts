@@ -235,6 +235,7 @@ describe('result-request', () => {
         files: [file, secondFile],
         name: 'Alice',
       },
+      isBulkExecution: true,
       promptConfig,
       visionConfig,
     })
@@ -251,6 +252,7 @@ describe('result-request', () => {
           url: 'https://example.com/remote.png',
         }),
       ],
+      is_bulk_execution: true,
       inputs: {
         enabled: true,
         file: {

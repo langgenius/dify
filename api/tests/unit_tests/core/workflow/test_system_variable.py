@@ -38,6 +38,14 @@ def test_build_system_variables_preserves_explicit_workflow_run_id():
     assert system_values["files"] == []
 
 
+def test_build_system_variables_keeps_bulk_execution_separate_from_rag_batch():
+    system_variables = build_system_variables(is_bulk_execution=True, batch="batch-123")
+    system_values = system_variables_to_mapping(system_variables)
+
+    assert system_values["is_bulk_execution"] is True
+    assert system_values["batch"] == "batch-123"
+
+
 def test_build_system_variables_preserves_file_values():
     file = File(
         file_type=FileType.DOCUMENT,

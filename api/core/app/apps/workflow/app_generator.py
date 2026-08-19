@@ -223,6 +223,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 call_depth=call_depth,
                 trace_manager=trace_manager,
                 workflow_execution_id=workflow_run_id,
+                is_bulk_execution=bool(args.get("is_bulk_execution", False)),
                 extras=extras,
             )
 
