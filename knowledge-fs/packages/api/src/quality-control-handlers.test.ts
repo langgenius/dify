@@ -340,7 +340,7 @@ describe("quality-control handlers", () => {
     });
   });
 
-  it("uses only the admitted capability locator for replay create, visibility and cancel", async () => {
+  it("uses the admitted capability for replay writes without pinning history reads to its id", async () => {
     const createPermissionSnapshot = vi.fn(async () => {
       throw new Error("legacy permission issuance must not run");
     });
@@ -415,7 +415,7 @@ describe("quality-control handlers", () => {
     );
     expect(canceled.status).toBe(200);
     expect(getReplay).toHaveBeenCalledWith(
-      expect.objectContaining({ capabilityGrantId: CAPABILITY_GRANT_ID }),
+      expect.not.objectContaining({ capabilityGrantId: expect.anything() }),
     );
     expect(cancelReplay).toHaveBeenCalledWith({
       actorSubjectId: "editor-1",
@@ -440,7 +440,7 @@ describe("quality-control handlers", () => {
     );
     expect(retried.status).toBe(202);
     expect(listReplays).toHaveBeenCalledWith(
-      expect.objectContaining({ capabilityGrantId: CAPABILITY_GRANT_ID }),
+      expect.not.objectContaining({ capabilityGrantId: expect.anything() }),
     );
     expect(retryReplay).toHaveBeenCalledWith(
       expect.objectContaining({ capabilityGrantId: CAPABILITY_GRANT_ID }),

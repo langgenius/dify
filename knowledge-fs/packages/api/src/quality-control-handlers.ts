@@ -506,7 +506,6 @@ export function registerQualityControlHandlers({
     if (!scope) return context.json({ error: "Knowledge space not found" }, 404);
     if (!repository) return context.json({ error: "Quality runtime unavailable" }, 503);
     const run = await repository.getReplay({
-      ...(scope.capabilityGrantId ? { capabilityGrantId: scope.capabilityGrantId } : {}),
       candidateGrants: scope.candidateGrants,
       id: context.req.valid("param").runId,
       knowledgeSpaceId: scope.knowledgeSpaceId,
@@ -525,7 +524,6 @@ export function registerQualityControlHandlers({
     const query = context.req.valid("query");
     try {
       const result = await repository.listReplays({
-        ...(scope.capabilityGrantId ? { capabilityGrantId: scope.capabilityGrantId } : {}),
         candidateGrants: scope.candidateGrants,
         ...(query.cursor ? { cursor: decodeQualityCursor(query.cursor) } : {}),
         ...(query.from ? { from: query.from } : {}),
@@ -555,7 +553,6 @@ export function registerQualityControlHandlers({
     if (!repository) return context.json({ error: "Quality runtime unavailable" }, 503);
     const params = context.req.valid("param");
     const visible = await repository.getReplay({
-      ...(scope.capabilityGrantId ? { capabilityGrantId: scope.capabilityGrantId } : {}),
       candidateGrants: scope.candidateGrants,
       id: params.runId,
       knowledgeSpaceId: scope.knowledgeSpaceId,
@@ -601,7 +598,6 @@ export function registerQualityControlHandlers({
     }
     const params = context.req.valid("param");
     const visible = await repository.getReplay({
-      ...(scope.capabilityGrantId ? { capabilityGrantId: scope.capabilityGrantId } : {}),
       candidateGrants: scope.candidateGrants,
       id: params.runId,
       knowledgeSpaceId: scope.knowledgeSpaceId,

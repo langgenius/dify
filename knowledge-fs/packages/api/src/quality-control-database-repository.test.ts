@@ -15,6 +15,7 @@ const OUTBOX_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c44";
 const PERMISSION_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c45";
 const TRACE_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c46";
 const CAPABILITY_GRANT_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c4a";
+const CURRENT_CAPABILITY_GRANT_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c4b";
 const NOW = "2026-07-14T15:00:00.000Z";
 
 function fixedQualityId(seed: number): () => string {
@@ -2406,7 +2407,70 @@ describe("database quality-control repository", () => {
     ).toContain("restored");
   });
 
-  it("uses capability replay read locators and rejects a mismatched trace requester", async () => {
+  it.each(["postgres", "tidb"] as const)(
+    "reads replay history through its original capability principal after grant rotation on %s",
+    async (dialect) => {
+      const calls: DatabaseExecuteInput[] = [];
+      const repository = createDatabaseQualityControlRepository({
+        database: testDatabase(dialect, async (input) => {
+          calls.push(input);
+          if (input.tableName === "quality_replay_runs" && input.operation === "select") {
+            const usesCurrentGrantAsHistoricalLocator = input.params.includes(
+              CURRENT_CAPABILITY_GRANT_ID,
+            );
+            const checksOriginalPrincipal =
+              input.sql.includes("capability_grants") &&
+              input.sql.includes("content_scope_ids") &&
+              input.params.includes("editor-1") &&
+              input.params.includes(JSON.stringify(["source:camera"]));
+            return !usesCurrentGrantAsHistoricalLocator && checksOriginalPrincipal
+              ? {
+                  rows: [replayRow({ capabilityGrantId: CAPABILITY_GRANT_ID })],
+                  rowsAffected: 1,
+                }
+              : { rows: [], rowsAffected: 0 };
+          }
+          return { rows: [], rowsAffected: 0 };
+        }),
+        maxListLimit: 10,
+      });
+      const capabilityScope = {
+        candidateGrants: ["source:camera"],
+        knowledgeSpaceId: SPACE_ID,
+        subjectId: "editor-1",
+        tenantId: "tenant-1",
+      } as const;
+
+      await expect(repository.getReplay({ ...capabilityScope, id: RUN_ID })).resolves.toMatchObject(
+        {
+          capabilityGrantId: CAPABILITY_GRANT_ID,
+          id: RUN_ID,
+        },
+      );
+      await expect(repository.listReplays({ ...capabilityScope, limit: 5 })).resolves.toMatchObject(
+        {
+          items: [expect.objectContaining({ capabilityGrantId: CAPABILITY_GRANT_ID, id: RUN_ID })],
+        },
+      );
+
+      for (const call of calls.filter(
+        (candidate) => candidate.tableName === "quality_replay_runs",
+      )) {
+        expect(call.params).not.toContain(CURRENT_CAPABILITY_GRANT_ID);
+        expect(call.params).toContain("editor-1");
+        expect(call.params).toContain(JSON.stringify(["source:camera"]));
+        expect(call.sql).toContain("capability_grants");
+        expect(call.sql).toContain("capability_grant_id");
+        expect(call.sql).toContain("content_scope_ids");
+        expect(call.sql).toContain("subject_id");
+        expect(call.sql).not.toMatch(
+          /run\.(?:"capability_grant_id"|`capability_grant_id`)\s*=\s*(?:\$\d+|\?)/u,
+        );
+      }
+    },
+  );
+
+  it("rejects a mismatched trace requester", async () => {
     const calls: DatabaseExecuteInput[] = [];
     const repository = createDatabaseQualityControlRepository({
       database: testDatabase("postgres", async (input) => {
@@ -2415,21 +2479,6 @@ describe("database quality-control repository", () => {
       }),
       maxListLimit: 10,
     });
-    const capabilityScope = {
-      candidateGrants: ["source:camera"],
-      capabilityGrantId: CAPABILITY_GRANT_ID,
-      knowledgeSpaceId: SPACE_ID,
-      subjectId: "editor-1",
-      tenantId: "tenant-1",
-    } as const;
-    await expect(repository.getReplay({ ...capabilityScope, id: RUN_ID })).resolves.toBeNull();
-    await expect(repository.listReplays({ ...capabilityScope, limit: 5 })).resolves.toEqual({
-      items: [],
-    });
-    for (const call of calls.filter((candidate) => candidate.tableName === "quality_replay_runs")) {
-      expect(call.params).toContain(CAPABILITY_GRANT_ID);
-      expect(call.sql).toContain("capability_grant_id");
-    }
     await expect(
       repository.listTraces({
         candidateGrants: [],
@@ -2519,7 +2568,7 @@ describe("database quality-control repository", () => {
     ).rejects.toBeInstanceOf(QualityControlRevisionConflictError);
   });
 
-  it("retries a failed replay through exact capability provenance", async () => {
+  it("retries a failed replay after rotating its capability grant", async () => {
     const calls: DatabaseExecuteInput[] = [];
     const database = testDatabase("postgres", async (input) => {
       calls.push(input);
@@ -2550,7 +2599,7 @@ describe("database quality-control repository", () => {
     await expect(
       repository.retryReplay({
         actorSubjectId: "editor-1",
-        capabilityGrantId: CAPABILITY_GRANT_ID,
+        capabilityGrantId: CURRENT_CAPABILITY_GRANT_ID,
         expectedRevision: 1,
         frozenSnapshot: frozenSnapshot(),
         id: RUN_ID,
@@ -2561,7 +2610,24 @@ describe("database quality-control repository", () => {
     const update = calls.find(
       (call) => call.tableName === "quality_replay_runs" && call.operation === "update",
     );
-    expect(update?.params.slice(0, 6)).toEqual([CAPABILITY_GRANT_ID, null, null, null, null, null]);
+    expect(update?.params.slice(0, 6)).toEqual([
+      CURRENT_CAPABILITY_GRANT_ID,
+      null,
+      null,
+      null,
+      null,
+      null,
+    ]);
+    const visibilityFence = calls.find(
+      (call) =>
+        call.tableName === "quality_replay_runs" &&
+        call.operation === "select" &&
+        call.sql.includes("FOR UPDATE OF run"),
+    );
+    expect(visibilityFence?.params).not.toContain(CURRENT_CAPABILITY_GRANT_ID);
+    expect(visibilityFence?.params).toContain("editor-1");
+    expect(visibilityFence?.sql).toContain("capability_grants");
+    expect(visibilityFence?.sql).toContain("content_scope_ids");
   });
 
   it("maps reasonless reviews and rejects invalid database booleans", async () => {
