@@ -3,17 +3,23 @@
 from __future__ import annotations
 
 import logging
+import math
 import time
 from collections.abc import Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol, override
 
 from pydantic import ValidationError
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, UserFrom
 from core.db.session_factory import session_factory
+from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError
+from core.model_manager import ModelInstance, ModelManager
 from graphon.entities import GraphInitParams
 from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.rerank_entities import RerankResult
 from graphon.node_events import NodeRunResult
 from graphon.nodes.base.node import Node
 from graphon.variables import StringSegment
@@ -61,6 +67,9 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+MAX_WORKFLOW_RERANK_CANDIDATES = 100
+WORKFLOW_RERANK_POOL_MULTIPLIER = 4
+
 
 def _normalize_metadata_filter_scalar(value: object) -> str | int | float | None:
     if value is None or isinstance(value, (str, float)):
@@ -92,6 +101,26 @@ class _BindingCapability(Protocol):
     ) -> object: ...
 
 
+class _RerankModelManager(Protocol):
+    def get_default_model_instance(self, tenant_id: str, model_type: ModelType) -> ModelInstance: ...
+
+    def get_model_instance(
+        self,
+        tenant_id: str,
+        provider: str,
+        model_type: ModelType,
+        model: str,
+    ) -> ModelInstance: ...
+
+
+@dataclass(frozen=True)
+class _WorkflowRerankCandidate:
+    control_space_id: str
+    item: KnowledgeFSRetrievalTestItemResponse
+    item_index: int
+    space_index: int
+
+
 class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
     node_type = KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE
 
@@ -104,6 +133,7 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
         graph_runtime_state: GraphRuntimeState,
         capability_service: _RetrievalCapability | None = None,
         binding_service: _BindingCapability | None = None,
+        rerank_model_manager: _RerankModelManager | None = None,
         max_concurrency: int = 4,
     ) -> None:
         super().__init__(
@@ -116,6 +146,7 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
             raise ValueError("KnowledgeFS retrieval concurrency must be between 1 and 10")
         self._capability_service = capability_service
         self._binding_service = binding_service
+        self._rerank_model_manager = rerank_model_manager
         self._max_concurrency = max_concurrency
 
     @classmethod
@@ -131,14 +162,22 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
             run_context = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
             self._ensure_draft_bindings(run_context)
             responses = self._retrieve_all_spaces(run_context=run_context, query=query)
-            result_items = self._merge_items(responses)
-            if not result_items:
+            result_items, rerank_metrics = self._merge_items(
+                responses,
+                query=query,
+                tenant_id=run_context.tenant_id,
+            )
+            if not result_items and all(not response.items for _, response in responses):
                 self._enqueue_failed_retrieval_captures(
                     run_context=run_context,
                     query=query,
                     responses=responses,
                 )
-            metrics = self._aggregate_metrics(responses, started_at=started_at)
+            metrics = self._aggregate_metrics(
+                responses,
+                rerank_metrics=rerank_metrics,
+                started_at=started_at,
+            )
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 inputs={"query": query},
@@ -313,16 +352,136 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
     def _merge_items(
         self,
         responses: Sequence[tuple[str, KnowledgeFSRetrievalTestResponse]],
-    ) -> list[dict[str, Any]]:
-        candidates: list[tuple[float, int, int, str, KnowledgeFSRetrievalTestItemResponse]] = []
-        for space_index, (control_space_id, response) in enumerate(responses):
-            for item_index, item in enumerate(response.items):
-                candidates.append((item.score, space_index, item_index, control_space_id, item))
-        candidates.sort(key=lambda row: (-row[0], row[1], row[2], row[4].node_id))
-        return [
-            self._output_item(control_space_id=control_space_id, item=item)
-            for _, _, _, control_space_id, item in candidates[: self._node_data.top_n]
+        *,
+        query: str,
+        tenant_id: str,
+    ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        candidates = self._balanced_candidate_pool(responses)
+        if not candidates:
+            return [], {
+                "applied": False,
+                "candidate_count": 0,
+                "duration_ms": 0.0,
+                "output_count": 0,
+                "score_threshold": self._node_data.score_threshold,
+                "source": "custom" if self._node_data.reranking_model else "system-default",
+                "top_k": self._node_data.top_n,
+            }
+
+        model_manager = self._rerank_model_manager or ModelManager.for_tenant(tenant_id=tenant_id)
+        selection = self._node_data.reranking_model
+        try:
+            if selection is None:
+                model_instance = model_manager.get_default_model_instance(tenant_id, ModelType.RERANK)
+                source = "system-default"
+            else:
+                model_instance = model_manager.get_model_instance(
+                    tenant_id=tenant_id,
+                    provider=selection.provider,
+                    model_type=ModelType.RERANK,
+                    model=selection.model,
+                )
+                source = "custom"
+        except (ModelCurrentlyNotSupportError, ProviderTokenNotInitError, ValueError) as exc:
+            raise KnowledgeFSRetrievalConfigurationError(
+                "Workflow rerank model is not configured or is unavailable"
+            ) from exc
+
+        documents = [self._rerank_text(candidate.item) for candidate in candidates]
+        rerank_started_at = time.perf_counter()
+        try:
+            result = model_instance.invoke_rerank(
+                query=query,
+                docs=documents,
+                score_threshold=self._node_data.score_threshold,
+                top_n=min(self._node_data.top_n, len(candidates)),
+            )
+        except Exception as exc:
+            raise KnowledgeFSRetrievalUnavailableError("Workflow rerank model invocation failed") from exc
+        duration_ms = round(max(0.0, (time.perf_counter() - rerank_started_at) * 1_000), 3)
+        ranked = self._validate_rerank_result(result=result, candidates=candidates)
+        threshold = self._node_data.score_threshold
+        if threshold is not None:
+            ranked = [row for row in ranked if row[0] >= threshold]
+        ranked.sort(
+            key=lambda row: (
+                -row[0],
+                row[1].space_index,
+                row[1].item_index,
+                row[1].item.node_id,
+            )
+        )
+        ranked = ranked[: self._node_data.top_n]
+        output = [
+            self._output_item(
+                control_space_id=candidate.control_space_id,
+                item=candidate.item,
+                score=score,
+            )
+            for score, candidate in ranked
         ]
+        return output, {
+            "applied": True,
+            "candidate_count": len(candidates),
+            "duration_ms": duration_ms,
+            "model": model_instance.model_name,
+            "output_count": len(output),
+            "provider": model_instance.provider,
+            "score_threshold": threshold,
+            "source": source,
+            "top_k": self._node_data.top_n,
+        }
+
+    def _balanced_candidate_pool(
+        self,
+        responses: Sequence[tuple[str, KnowledgeFSRetrievalTestResponse]],
+    ) -> list[_WorkflowRerankCandidate]:
+        limit = min(
+            MAX_WORKFLOW_RERANK_CANDIDATES,
+            max(self._node_data.top_n, self._node_data.top_n * WORKFLOW_RERANK_POOL_MULTIPLIER),
+        )
+        candidates: list[_WorkflowRerankCandidate] = []
+        max_items = max((len(response.items) for _, response in responses), default=0)
+        for item_index in range(max_items):
+            for space_index, (control_space_id, response) in enumerate(responses):
+                if item_index >= len(response.items):
+                    continue
+                candidates.append(
+                    _WorkflowRerankCandidate(
+                        control_space_id=control_space_id,
+                        item=response.items[item_index],
+                        item_index=item_index,
+                        space_index=space_index,
+                    )
+                )
+                if len(candidates) >= limit:
+                    return candidates
+        return candidates
+
+    @staticmethod
+    def _rerank_text(item: KnowledgeFSRetrievalTestItemResponse) -> str:
+        text = (item.text or "").strip()
+        if text:
+            return text
+        section_path = " / ".join(part.strip() for part in item.citation.section_path if part.strip())
+        return section_path or item.node_id
+
+    @staticmethod
+    def _validate_rerank_result(
+        *,
+        result: RerankResult,
+        candidates: Sequence[_WorkflowRerankCandidate],
+    ) -> list[tuple[float, _WorkflowRerankCandidate]]:
+        ranked: list[tuple[float, _WorkflowRerankCandidate]] = []
+        seen_indices: set[int] = set()
+        for document in result.docs:
+            if document.index in seen_indices or document.index < 0 or document.index >= len(candidates):
+                raise KnowledgeFSRetrievalContractError("Workflow rerank model returned invalid document indices")
+            if not math.isfinite(document.score):
+                raise KnowledgeFSRetrievalContractError("Workflow rerank model returned a non-finite score")
+            seen_indices.add(document.index)
+            ranked.append((document.score, candidates[document.index]))
+        return ranked
 
     @staticmethod
     def _enqueue_failed_retrieval_captures(
@@ -362,6 +521,7 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
         *,
         control_space_id: str,
         item: KnowledgeFSRetrievalTestItemResponse,
+        score: float,
     ) -> dict[str, Any]:
         citation = item.citation
         title = citation.section_path[-1] if citation.section_path else citation.document_asset_id
@@ -380,7 +540,8 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
                 },
                 "node_id": item.node_id,
                 "projection_ids": list(item.projection_ids),
-                "score": item.score,
+                "score": score,
+                "space_score": item.score,
                 "sources": list(item.sources),
                 "space_id": control_space_id,
             },
@@ -390,6 +551,7 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
         self,
         responses: Sequence[tuple[str, KnowledgeFSRetrievalTestResponse]],
         *,
+        rerank_metrics: Mapping[str, Any],
         started_at: float,
     ) -> dict[str, Any]:
         effective_modes = list(dict.fromkeys(response.mode for _, response in responses))
@@ -415,6 +577,7 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
             "per_space": per_space,
             "requested_mode": self._node_data.mode or "space-default",
             "total_ms": round(max(0.0, (time.perf_counter() - started_at) * 1_000), 3),
+            "workflow_rerank": dict(rerank_metrics),
         }
 
     @classmethod

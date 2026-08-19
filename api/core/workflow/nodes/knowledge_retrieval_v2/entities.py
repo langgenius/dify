@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
-from core.rag.entities import SupportedComparisonOperator
+from core.rag.entities import RerankingModelConfig, SupportedComparisonOperator
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import NodeType
 from services.knowledge_fs.product_dto import KnowledgeFSRetrievalMetadataFilters
@@ -36,6 +36,8 @@ class KnowledgeRetrievalV2NodeData(BaseNodeData):
     control_space_ids: list[ControlSpaceId] = Field(min_length=1, max_length=10)
     query_variable_selector: list[VariableSelectorPart] = Field(min_length=2, max_length=10)
     mode: Literal["deep", "fast", "research"] | None = None
+    reranking_model: RerankingModelConfig | None = None
+    score_threshold: float | None = Field(default=None, ge=0, le=1)
     top_n: int = Field(default=10, ge=1, le=100)
     metadata_filtering_mode: Literal["disabled", "manual"] = "disabled"
     metadata_filtering_conditions: KnowledgeRetrievalV2MetadataFilteringConditions | None = None

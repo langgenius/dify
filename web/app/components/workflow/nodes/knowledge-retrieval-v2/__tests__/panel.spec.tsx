@@ -1,4 +1,4 @@
-import type { ComponentProps, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import type { PanelProps } from '@/types/workflow'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -10,8 +10,12 @@ const mockInfiniteOptions = vi.hoisted(() => vi.fn((options: unknown) => options
 const mockMetadataQueryOptions = vi.hoisted(() => vi.fn((options: unknown) => options))
 const mockHandleMetadataFilterChange = vi.hoisted(() => vi.fn())
 const mockMetadataFilterProps = vi.hoisted(() => vi.fn())
-const mockHandleSpaceToggle = vi.hoisted(() => vi.fn())
+const mockHandleSpacesChange = vi.hoisted(() => vi.fn())
 const mockHandleTopNChange = vi.hoisted(() => vi.fn())
+const mockHandleRerankingModelChange = vi.hoisted(() => vi.fn())
+const mockHandleScoreThresholdChange = vi.hoisted(() => vi.fn())
+const mockRecallSettingsProps = vi.hoisted(() => vi.fn())
+const mockKnowledgeSpaceListProps = vi.hoisted(() => vi.fn())
 const mockInputs = vi.hoisted(() => ({
   title: 'Knowledge Retrieval v2',
   desc: '',
@@ -55,8 +59,10 @@ vi.mock('../use-config', () => ({
     handleModeChange: vi.fn(),
     handleNodeKindToggle: vi.fn(),
     handleQueryVarChange: vi.fn(),
+    handleRerankingModelChange: mockHandleRerankingModelChange,
     handleRemoveCondition: vi.fn(),
-    handleSpaceToggle: mockHandleSpaceToggle,
+    handleScoreThresholdChange: mockHandleScoreThresholdChange,
+    handleSpacesChange: mockHandleSpacesChange,
     handleTopNChange: mockHandleTopNChange,
     handleToggleConditionLogicalOperator: vi.fn(),
     handleUpdateCondition: vi.fn(),
@@ -81,40 +87,41 @@ vi.mock(
   }),
 )
 
-vi.mock('@langgenius/dify-ui/checkbox', () => ({
-  Checkbox: ({
-    checked,
-    disabled,
-    onCheckedChange,
-  }: ComponentProps<'input'> & {
-    onCheckedChange?: (checked: boolean) => void
-  }) => (
-    <input
-      type="checkbox"
-      checked={checked}
-      disabled={disabled}
-      onChange={(event) => onCheckedChange?.(event.currentTarget.checked)}
-    />
-  ),
+vi.mock('../components/add-knowledge-space', () => ({
+  default: () => <button type="button">add-space</button>,
 }))
 
-vi.mock('@langgenius/dify-ui/input', () => ({
-  Input: (props: ComponentProps<'input'>) => <input {...props} />,
+vi.mock('../components/knowledge-space-list', () => ({
+  default: (props: { list: Array<{ control_space_id: string; name: string }> }) => {
+    mockKnowledgeSpaceListProps(props)
+    return <div data-testid="space-list">{props.list.map((space) => space.name).join(',')}</div>
+  },
 }))
 
-vi.mock('@langgenius/dify-ui/select', () => ({
-  Select: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  SelectContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  SelectItem: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  SelectItemIndicator: () => null,
-  SelectItemText: ({ children }: { children: ReactNode }) => <>{children}</>,
-  SelectTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+vi.mock('../components/recall-settings', () => ({
+  default: (props: { onTopKChange: (value: number) => void; topK: number }) => {
+    mockRecallSettingsProps(props)
+    return (
+      <button type="button" onClick={() => props.onTopKChange(12)}>
+        recall-{props.topK}
+      </button>
+    )
+  },
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
-  default: ({ children, title }: { children: ReactNode; title: string }) => (
+  default: ({
+    children,
+    operations,
+    title,
+  }: {
+    children: ReactNode
+    operations?: ReactNode
+    title: string
+  }) => (
     <section>
       <div>{title}</div>
+      {operations}
       {children}
     </section>
   ),
@@ -192,7 +199,7 @@ describe('KnowledgeRetrievalV2Panel', () => {
     })
   })
 
-  it('shows space profiles and wires bounded retrieval controls', () => {
+  it('uses the legacy-style selected knowledge list and centralizes recall controls', () => {
     render(
       <Panel
         id="knowledge-retrieval-v2-1"
@@ -209,28 +216,19 @@ describe('KnowledgeRetrievalV2Panel', () => {
       />,
     )
 
-    expect(
-      screen.getByText((_, element) => {
-        const text = element?.textContent ?? ''
-        return (
-          element?.tagName === 'DIV' &&
-          element.childElementCount === 0 &&
-          text.includes('Product docs: deep') &&
-          text.includes('profile.topK 8') &&
-          text.includes('profile.rerank workflow.nodes.knowledgeRetrievalV2.profile.on')
-        )
+    expect(screen.getByTestId('space-list')).toHaveTextContent('Product docs')
+    expect(mockKnowledgeSpaceListProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        list: [
+          expect.objectContaining({
+            control_space_id: 'space-1',
+            default_mode: 'deep',
+            top_k: 8,
+          }),
+        ],
       }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText('workflow.nodes.knowledgeRetrievalV2.mode.researchHint'),
-    ).toBeInTheDocument()
-    expect(screen.getByRole('checkbox', { name: /Product docs/ })).toBeChecked()
-    expect(screen.getByRole('checkbox', { name: /Archived docs/ })).toBeDisabled()
-
-    fireEvent.click(screen.getByRole('checkbox', { name: /Product docs/ }))
-    expect(mockHandleSpaceToggle).toHaveBeenCalledWith(
-      expect.objectContaining({ control_space_id: 'space-1', default_mode: 'deep', top_k: 8 }),
     )
+    expect(screen.getByRole('button', { name: 'recall-10' })).toBeInTheDocument()
 
     expect(screen.getByTestId('metadata-filter')).toHaveTextContent('department:string')
     expect(screen.queryByText('workflow.nodes.knowledgeRetrievalV2.filters.tags')).toBeNull()
@@ -241,7 +239,7 @@ describe('KnowledgeRetrievalV2Panel', () => {
       }),
     )
 
-    fireEvent.change(screen.getByDisplayValue('10'), { target: { value: '12' } })
+    fireEvent.click(screen.getByRole('button', { name: 'recall-10' }))
     expect(mockHandleTopNChange).toHaveBeenCalledWith(12)
   })
 
@@ -308,7 +306,7 @@ describe('KnowledgeRetrievalV2Panel', () => {
     )
   })
 
-  it('allows a selected space to be removed after it becomes unavailable', () => {
+  it('keeps a selected space visible after it becomes unavailable so it can be removed', () => {
     mockInputs.control_space_ids = ['space-2']
 
     render(
@@ -326,8 +324,12 @@ describe('KnowledgeRetrievalV2Panel', () => {
       />,
     )
 
-    const selectedUnavailableSpace = screen.getByRole('checkbox', { name: /Archived docs/ })
-    expect(selectedUnavailableSpace).toBeChecked()
-    expect(selectedUnavailableSpace).toBeEnabled()
+    expect(screen.getByTestId('space-list')).toHaveTextContent('Archived docs')
+    expect(mockKnowledgeSpaceListProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        list: [expect.objectContaining({ control_space_id: 'space-2', name: 'Archived docs' })],
+        readonly: false,
+      }),
+    )
   })
 })

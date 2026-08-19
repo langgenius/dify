@@ -81,6 +81,77 @@ describe('knowledge-retrieval-v2/use-config', () => {
     )
   })
 
+  it('replaces the selected spaces in the same order returned by the selector', () => {
+    const { result } = setup()
+
+    act(() =>
+      result.current.handleSpacesChange([
+        { control_space_id: 'space-2', name: 'Policies' },
+        { control_space_id: 'space-1', name: 'Product docs' },
+      ]),
+    )
+
+    expect(mockSetInputs).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        control_space_ids: ['space-2', 'space-1'],
+        _control_spaces: [
+          { control_space_id: 'space-2', name: 'Policies' },
+          { control_space_id: 'space-1', name: 'Product docs' },
+        ],
+      }),
+    )
+  })
+
+  it('stores a custom rerank model and restores the system default by removing it', () => {
+    const { result } = setup()
+
+    act(() =>
+      result.current.handleRerankingModelChange({
+        provider: 'langgenius/cohere/cohere',
+        model: 'rerank-v3.5',
+      }),
+    )
+    expect(mockSetInputs).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        reranking_model: {
+          provider: 'langgenius/cohere/cohere',
+          model: 'rerank-v3.5',
+        },
+      }),
+    )
+
+    const { result: configuredResult } = setup(
+      createData({
+        reranking_model: {
+          provider: 'langgenius/cohere/cohere',
+          model: 'rerank-v3.5',
+        },
+      }),
+    )
+    act(() => configuredResult.current.handleRerankingModelChange(undefined))
+    expect(mockSetInputs).toHaveBeenLastCalledWith(
+      expect.not.objectContaining({ reranking_model: expect.anything() }),
+    )
+  })
+
+  it('stores a bounded score threshold and supports disabling it', () => {
+    const { result } = setup()
+
+    act(() => result.current.handleScoreThresholdChange(0.72))
+    expect(mockSetInputs).toHaveBeenLastCalledWith(
+      expect.objectContaining({ score_threshold: 0.72 }),
+    )
+
+    act(() => result.current.handleScoreThresholdChange(null))
+    expect(mockSetInputs).toHaveBeenLastCalledWith(
+      expect.objectContaining({ score_threshold: null }),
+    )
+
+    mockSetInputs.mockClear()
+    act(() => result.current.handleScoreThresholdChange(1.1))
+    expect(mockSetInputs).not.toHaveBeenCalled()
+  })
+
   it('removes empty metadata filter collections', () => {
     const { result } = setup(createData({ metadata_filters: { tags: ['policy'] } }))
 

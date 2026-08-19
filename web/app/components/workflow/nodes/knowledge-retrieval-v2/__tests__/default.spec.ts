@@ -25,6 +25,7 @@ describe('knowledge-retrieval-v2/default', () => {
       query_variable_selector: [],
       control_space_ids: [],
       metadata_filtering_mode: MetadataFilteringModeEnum.disabled,
+      score_threshold: null,
       top_n: 10,
     })
     expect(nodeDefault.defaultValue.mode).toBeUndefined()

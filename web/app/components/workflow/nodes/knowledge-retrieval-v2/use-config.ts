@@ -4,6 +4,7 @@ import type {
   KnowledgeRetrievalV2Mode,
   KnowledgeRetrievalV2NodeKind,
   KnowledgeRetrievalV2NodeType,
+  KnowledgeRetrievalV2RerankingModel,
   KnowledgeRetrievalV2SpaceSummary,
 } from './types'
 import type {
@@ -65,6 +66,18 @@ const useConfig = (id: string, payload: KnowledgeRetrievalV2NodeType) => {
     [inputs, setInputs],
   )
 
+  const handleSpacesChange = useCallback(
+    (spaces: KnowledgeRetrievalV2SpaceSummary[]) => {
+      setInputs(
+        produce(inputs, (draft) => {
+          draft.control_space_ids = spaces.map((space) => space.control_space_id)
+          draft._control_spaces = spaces
+        }),
+      )
+    },
+    [inputs, setInputs],
+  )
+
   const handleModeChange = useCallback(
     (mode?: KnowledgeRetrievalV2Mode) => {
       setInputs(
@@ -82,6 +95,34 @@ const useConfig = (id: string, payload: KnowledgeRetrievalV2NodeType) => {
       setInputs(
         produce(inputs, (draft) => {
           draft.top_n = topN
+        }),
+      )
+    },
+    [inputs, setInputs],
+  )
+
+  const handleRerankingModelChange = useCallback(
+    (model?: KnowledgeRetrievalV2RerankingModel) => {
+      setInputs(
+        produce(inputs, (draft) => {
+          if (model) draft.reranking_model = model
+          else delete draft.reranking_model
+        }),
+      )
+    },
+    [inputs, setInputs],
+  )
+
+  const handleScoreThresholdChange = useCallback(
+    (scoreThreshold: number | null) => {
+      if (
+        scoreThreshold !== null &&
+        (!Number.isFinite(scoreThreshold) || scoreThreshold < 0 || scoreThreshold > 1)
+      )
+        return
+      setInputs(
+        produce(inputs, (draft) => {
+          draft.score_threshold = scoreThreshold
         }),
       )
     },
@@ -225,8 +266,11 @@ const useConfig = (id: string, payload: KnowledgeRetrievalV2NodeType) => {
     handleModeChange,
     handleNodeKindToggle,
     handleQueryVarChange,
+    handleRerankingModelChange,
     handleRemoveCondition,
+    handleScoreThresholdChange,
     handleSpaceToggle,
+    handleSpacesChange,
     handleTopNChange,
     handleToggleConditionLogicalOperator,
     handleUpdateCondition,

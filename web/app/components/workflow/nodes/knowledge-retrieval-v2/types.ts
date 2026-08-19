@@ -9,6 +9,11 @@ import type { CommonNodeType, ValueSelector } from '@/app/components/workflow/ty
 export type KnowledgeRetrievalV2Mode = 'fast' | 'deep' | 'research'
 export type KnowledgeRetrievalV2NodeKind = 'chunk' | 'section' | 'table' | 'image' | 'summary'
 
+export type KnowledgeRetrievalV2RerankingModel = {
+  model: string
+  provider: string
+}
+
 export type KnowledgeRetrievalV2MetadataFilters = {
   created_after?: string
   created_before?: string
@@ -45,6 +50,8 @@ export type KnowledgeRetrievalV2NodeType = CommonNodeType & {
   control_space_ids: string[]
   query_variable_selector: ValueSelector
   mode?: KnowledgeRetrievalV2Mode
+  reranking_model?: KnowledgeRetrievalV2RerankingModel
+  score_threshold?: number | null
   top_n: number
   metadata_filtering_mode?: MetadataFilteringModeEnum
   metadata_filtering_conditions?: KnowledgeRetrievalV2MetadataFilteringConditions

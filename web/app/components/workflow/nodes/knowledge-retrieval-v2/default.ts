@@ -17,6 +17,7 @@ const nodeDefault: NodeDefault<KnowledgeRetrievalV2NodeType> = {
     control_space_ids: [],
     metadata_filtering_mode: MetadataFilteringModeEnum.disabled,
     query_variable_selector: [],
+    score_threshold: null,
     top_n: 10,
   },
   checkValid(payload, t: TFunction<'workflow'>) {

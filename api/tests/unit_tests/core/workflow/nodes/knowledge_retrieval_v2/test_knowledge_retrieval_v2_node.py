@@ -16,6 +16,7 @@ from core.workflow.nodes.knowledge_retrieval_v2.entities import KnowledgeRetriev
 from core.workflow.nodes.knowledge_retrieval_v2.knowledge_retrieval_v2_node import KnowledgeRetrievalV2Node
 from core.workflow.system_variables import build_system_variables
 from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.model_runtime.entities.rerank_entities import RerankDocument, RerankResult
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variables import StringSegment
 from services.knowledge_fs.app_admission_service import (
@@ -110,6 +111,47 @@ class ConcurrentCapabilityService(RecordingCapabilityService):
                 self.active -= 1
 
 
+class RecordingRerankModel:
+    provider = "system/rerank"
+    model_name = "system-rerank"
+
+    def __init__(self, scores: Mapping[str, float] | None = None) -> None:
+        self.calls: list[dict[str, object]] = []
+        self.scores = scores or {}
+
+    def invoke_rerank(self, **kwargs: object) -> RerankResult:
+        self.calls.append(kwargs)
+        docs = kwargs["docs"]
+        assert isinstance(docs, list)
+        threshold = kwargs.get("score_threshold")
+        top_n = kwargs.get("top_n")
+        ranked = [
+            RerankDocument(index=index, text=text, score=self.scores.get(text, 1 - index * 0.01))
+            for index, text in enumerate(docs)
+        ]
+        if isinstance(threshold, float):
+            ranked = [document for document in ranked if document.score >= threshold]
+        ranked.sort(key=lambda document: (-document.score, document.index))
+        if isinstance(top_n, int):
+            ranked = ranked[:top_n]
+        return RerankResult(model=self.model_name, docs=ranked)
+
+
+class RecordingRerankModelManager:
+    def __init__(self, model: RecordingRerankModel | None = None) -> None:
+        self.model = model or RecordingRerankModel()
+        self.default_calls: list[tuple[str, object]] = []
+        self.explicit_calls: list[dict[str, object]] = []
+
+    def get_default_model_instance(self, tenant_id: str, model_type: object) -> RecordingRerankModel:
+        self.default_calls.append((tenant_id, model_type))
+        return self.model
+
+    def get_model_instance(self, **kwargs: object) -> RecordingRerankModel:
+        self.explicit_calls.append(kwargs)
+        return self.model
+
+
 def _runtime_state(query: object = "camera") -> GraphRuntimeState:
     pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(user_id="user-1", files=[]),
@@ -132,6 +174,7 @@ def _node(
     invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
     user_from: UserFrom = UserFrom.ACCOUNT,
     node_data_overrides: Mapping[str, object] | None = None,
+    rerank_model_manager: RecordingRerankModelManager | None = None,
 ) -> KnowledgeRetrievalV2Node:
     node_data: dict[str, object] = {
         "control_space_ids": spaces,
@@ -156,6 +199,7 @@ def _node(
         graph_runtime_state=runtime_state or _runtime_state(),
         capability_service=service,  # type: ignore[arg-type]
         binding_service=binding_service,  # type: ignore[arg-type]
+        rerank_model_manager=rerank_model_manager or RecordingRerankModelManager(),  # type: ignore[arg-type]
     )
 
 
@@ -176,6 +220,16 @@ def test_node_data_normalizes_space_ids_and_rejects_auto_or_unbounded_spaces() -
                 "control_space_ids": ["space-a"],
                 "mode": "auto",
                 "query_variable_selector": ["start", "query"],
+                "title": "KnowledgeFS Retrieval",
+                "type": "knowledge-retrieval-v2",
+            }
+        )
+    with pytest.raises(ValidationError):
+        KnowledgeRetrievalV2NodeData.model_validate(
+            {
+                "control_space_ids": ["space-a"],
+                "query_variable_selector": ["start", "query"],
+                "score_threshold": 1.01,
                 "title": "KnowledgeFS Retrieval",
                 "type": "knowledge-retrieval-v2",
             }
@@ -210,7 +264,7 @@ def test_exported_dsl_fixture_keeps_the_v2_node_contract() -> None:
     assert node_data.top_n == 5
 
 
-def test_multi_space_retrieval_preserves_final_scores_and_returns_mixed_metrics() -> None:
+def test_multi_space_retrieval_uses_one_system_reranker_and_returns_mixed_metrics() -> None:
     service = RecordingCapabilityService(
         {
             "space-a": _response(mode="fast", score=0.7, space="space-a", text="A"),
@@ -218,11 +272,19 @@ def test_multi_space_retrieval_preserves_final_scores_and_returns_mixed_metrics(
             "space-c": _response(mode="fast", score=0.7, space="space-c", text="C"),
         }
     )
-    result = _node(service=service, spaces=["space-a", "space-b", "space-c"], top_n=2)._run()
+    rerank_model = RecordingRerankModel({"A": 0.72, "B": 0.96, "C": 0.71})
+    rerank_manager = RecordingRerankModelManager(rerank_model)
+    result = _node(
+        service=service,
+        spaces=["space-a", "space-b", "space-c"],
+        top_n=2,
+        rerank_model_manager=rerank_manager,
+    )._run()
 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert [item["content"] for item in result.outputs["result"].value] == ["B", "A"]
-    assert [item["metadata"]["score"] for item in result.outputs["result"].value] == [0.9, 0.7]
+    assert [item["metadata"]["score"] for item in result.outputs["result"].value] == [0.96, 0.72]
+    assert [item["metadata"]["space_score"] for item in result.outputs["result"].value] == [0.9, 0.7]
     assert result.outputs["metrics"].value == {
         "candidate_counts": {"space-a": 1, "space-b": 1, "space-c": 1},
         "degradation_flags": ["degraded-space-a", "degraded-space-b", "degraded-space-c"],
@@ -256,7 +318,21 @@ def test_multi_space_retrieval_preserves_final_scores_and_returns_mixed_metrics(
         ],
         "requested_mode": "space-default",
         "total_ms": pytest.approx(result.outputs["metrics"].value["total_ms"]),
+        "workflow_rerank": {
+            "applied": True,
+            "candidate_count": 3,
+            "duration_ms": pytest.approx(result.outputs["metrics"].value["workflow_rerank"]["duration_ms"]),
+            "model": "system-rerank",
+            "output_count": 2,
+            "provider": "system/rerank",
+            "score_threshold": None,
+            "source": "system-default",
+            "top_k": 2,
+        },
     }
+    assert len(rerank_model.calls) == 1
+    assert rerank_manager.default_calls
+    assert rerank_manager.explicit_calls == []
     assert all(call["payload"].include_text is True for call in service.calls)  # type: ignore[attr-defined]
     assert all(
         call["payload"].filters.document_types == ["handbook"]  # type: ignore[attr-defined]
@@ -267,9 +343,7 @@ def test_multi_space_retrieval_preserves_final_scores_and_returns_mixed_metrics(
 def test_manual_user_metadata_conditions_are_resolved_and_sent_with_legacy_filters() -> None:
     runtime_state = _runtime_state()
     runtime_state.variable_pool.add(["start", "department"], StringSegment(value="finance"))
-    service = RecordingCapabilityService(
-        {"space-a": _response(mode="fast", score=0.7, space="space-a", text="A")}
-    )
+    service = RecordingCapabilityService({"space-a": _response(mode="fast", score=0.7, space="space-a", text="A")})
 
     result = _node(
         service=service,
@@ -310,9 +384,7 @@ def test_manual_user_metadata_conditions_are_resolved_and_sent_with_legacy_filte
 
 
 def test_disabled_user_metadata_conditions_do_not_change_existing_retrievals() -> None:
-    service = RecordingCapabilityService(
-        {"space-a": _response(mode="fast", score=0.7, space="space-a", text="A")}
-    )
+    service = RecordingCapabilityService({"space-a": _response(mode="fast", score=0.7, space="space-a", text="A")})
 
     _node(
         service=service,
@@ -356,6 +428,15 @@ def test_empty_retrieval_is_successful_and_dispatches_quality_capture(
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs["result"].value == []
     assert result.outputs["metrics"].value["candidate_counts"] == {"space-a": 0}
+    assert result.outputs["metrics"].value["workflow_rerank"] == {
+        "applied": False,
+        "candidate_count": 0,
+        "duration_ms": 0.0,
+        "output_count": 0,
+        "score_threshold": None,
+        "source": "system-default",
+        "top_k": 10,
+    }
     assert dispatched == [
         {
             "tenant_id": "tenant-1",
@@ -420,6 +501,142 @@ def test_quality_capture_dispatch_failure_never_fails_an_empty_retrieval(
 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs["result"].value == []
+
+
+def test_custom_workflow_reranker_applies_threshold_and_top_k_without_recording_a_raw_miss(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    dispatched: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        node_module,
+        "enqueue_workflow_failed_retrieval_capture",
+        lambda **kwargs: dispatched.append(kwargs),
+    )
+    rerank_model = RecordingRerankModel({"A": 0.81, "B": 0.59, "C": 0.92})
+    rerank_manager = RecordingRerankModelManager(rerank_model)
+    result = _node(
+        service=RecordingCapabilityService(
+            {
+                "space-a": _response(mode="fast", score=0.99, space="a", text="A"),
+                "space-b": _response(mode="fast", score=0.20, space="b", text="B"),
+                "space-c": _response(mode="fast", score=0.10, space="c", text="C"),
+            }
+        ),
+        spaces=["space-a", "space-b", "space-c"],
+        top_n=2,
+        rerank_model_manager=rerank_manager,
+        node_data_overrides={
+            "reranking_model": {"provider": "cohere", "model": "rerank-v3.5"},
+            "score_threshold": 0.8,
+        },
+    )._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert [item["content"] for item in result.outputs["result"].value] == ["C", "A"]
+    assert [item["metadata"]["score"] for item in result.outputs["result"].value] == [0.92, 0.81]
+    assert rerank_manager.default_calls == []
+    assert rerank_manager.explicit_calls == [
+        {
+            "tenant_id": "tenant-1",
+            "provider": "cohere",
+            "model_type": node_module.ModelType.RERANK,
+            "model": "rerank-v3.5",
+        }
+    ]
+    assert result.outputs["metrics"].value["workflow_rerank"]["source"] == "custom"
+    assert dispatched == []
+
+
+def test_threshold_filtered_results_are_not_recorded_as_a_raw_retrieval_miss(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    dispatched: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        node_module,
+        "enqueue_workflow_failed_retrieval_capture",
+        lambda **kwargs: dispatched.append(kwargs),
+    )
+    result = _node(
+        service=RecordingCapabilityService({"space-a": _response(mode="fast", score=0.91, space="a", text="A")}),
+        spaces=["space-a"],
+        rerank_model_manager=RecordingRerankModelManager(RecordingRerankModel({"A": 0.42})),
+        node_data_overrides={"score_threshold": 0.8},
+    )._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs["result"].value == []
+    assert result.outputs["metrics"].value["workflow_rerank"]["output_count"] == 0
+    assert dispatched == []
+
+
+def test_missing_system_reranker_is_an_actionable_configuration_failure() -> None:
+    class MissingDefaultRerankManager(RecordingRerankModelManager):
+        def get_default_model_instance(self, tenant_id: str, model_type: object) -> RecordingRerankModel:
+            _ = tenant_id, model_type
+            raise node_module.ProviderTokenNotInitError("Default rerank model is missing")
+
+    result = _node(
+        service=RecordingCapabilityService({"space-a": _response(mode="fast", score=0.91, space="a", text="A")}),
+        spaces=["space-a"],
+        rerank_model_manager=MissingDefaultRerankManager(),
+    )._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    assert result.error_type == "KnowledgeFSRetrievalConfigurationError"
+    assert result.error == "Workflow rerank model is not configured or is unavailable"
+
+
+def test_invalid_global_rerank_indices_fail_closed_as_a_contract_error() -> None:
+    class InvalidRerankModel(RecordingRerankModel):
+        def invoke_rerank(self, **kwargs: object) -> RerankResult:
+            self.calls.append(kwargs)
+            return RerankResult(
+                model=self.model_name,
+                docs=[RerankDocument(index=2, text="unknown", score=0.9)],
+            )
+
+    result = _node(
+        service=RecordingCapabilityService({"space-a": _response(mode="fast", score=0.91, space="a", text="A")}),
+        spaces=["space-a"],
+        rerank_model_manager=RecordingRerankModelManager(InvalidRerankModel()),
+    )._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    assert result.error_type == "KnowledgeFSRetrievalContractError"
+    assert result.error == "Workflow rerank model returned invalid document indices"
+
+
+def test_balanced_pool_does_not_let_one_space_fill_the_global_rerank_budget() -> None:
+    def response_with_items(space: str, count: int) -> KnowledgeFSRetrievalTestResponse:
+        base = _response(mode="fast", score=0.9, space=space, text=f"{space}-0").model_dump(by_alias=True)
+        template = base["items"][0]
+        base["items"] = [
+            {
+                **template,
+                "nodeId": f"node-{space}-{index}",
+                "score": 1 - index * 0.001,
+                "text": f"{space}-{index}",
+            }
+            for index in range(count)
+        ]
+        return KnowledgeFSRetrievalTestResponse.model_validate(base)
+
+    rerank_model = RecordingRerankModel()
+    result = _node(
+        service=RecordingCapabilityService(
+            {
+                "space-a": response_with_items("a", 50),
+                "space-b": response_with_items("b", 3),
+            }
+        ),
+        spaces=["space-a", "space-b"],
+        top_n=10,
+        rerank_model_manager=RecordingRerankModelManager(rerank_model),
+    )._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert rerank_model.calls[0]["docs"][:6] == ["a-0", "b-0", "a-1", "b-1", "a-2", "b-2"]
+    assert len(rerank_model.calls[0]["docs"]) == 40
 
 
 def test_node_fails_closed_for_binding_rejection_and_invalid_query_type() -> None:
