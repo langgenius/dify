@@ -1,7 +1,7 @@
 'use client'
 
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 
 type SearchBoxProps = {
   searchQuery: string
@@ -10,18 +10,26 @@ type SearchBoxProps = {
 
 const SearchBox: React.FC<SearchBoxProps> = ({ searchQuery, onChange }) => {
   const { t } = useTranslation()
+  const searchLabel = t(($) => $.search, { ns: 'plugin' })
 
   return (
-    <Input
-      wrapperClassName="flex w-[200px] items-center rounded-lg"
-      className="bg-components-input-bg-normal"
-      showLeftIcon
-      value={searchQuery}
-      placeholder={t(($) => $.search, { ns: 'plugin' })}
-      onChange={(e) => {
-        onChange(e.target.value)
-      }}
-    />
+    <InputGroup className="w-50">
+      <InputGroupInput
+        type="search"
+        aria-label={searchLabel}
+        autoComplete="off"
+        className="[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
+        placeholder={searchLabel}
+        value={searchQuery}
+        onValueChange={onChange}
+      />
+      <InputGroupAddon className="ps-2 pe-0.5">
+        <span
+          aria-hidden="true"
+          className="i-ri-search-line size-4 text-components-input-text-placeholder"
+        />
+      </InputGroupAddon>
+    </InputGroup>
   )
 }
 

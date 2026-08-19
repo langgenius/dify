@@ -12,8 +12,12 @@ from flask import Flask
 from werkzeug.exceptions import NotFound
 
 from controllers.openapi.auth.data import AuthData
+from graphon.enums import WorkflowExecutionStatus
 from libs.oauth_bearer import Scope, TokenType
-from models.enums import CreatorUserRole
+from models.account import Account
+from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
+from models.model import App, AppMode, EndUser
+from models.workflow import WorkflowRun, WorkflowType
 
 
 def _make_auth_data(app_model, caller, caller_kind):
@@ -35,14 +39,48 @@ def _make_workflow_run(
     created_by_role=CreatorUserRole.ACCOUNT,
     created_by="acct-1",
     finished_at=None,
-):
-    return SimpleNamespace(
+) -> WorkflowRun:
+    return WorkflowRun(
         id="wf-run-1",
         app_id=app_id,
         tenant_id=tenant_id,
+        workflow_id="workflow-1",
+        type=WorkflowType.CHAT,
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        version="1",
+        graph="{}",
+        inputs="{}",
+        status=WorkflowExecutionStatus.SUCCEEDED,
         created_by_role=created_by_role,
         created_by=created_by,
         finished_at=finished_at,
+    )
+
+
+def _make_app() -> App:
+    return App(
+        id="app-1",
+        tenant_id="tenant-1",
+        name="Workflow events app",
+        mode=AppMode.WORKFLOW,
+        enable_site=True,
+        enable_api=True,
+    )
+
+
+def _make_account() -> Account:
+    account = Account(name="Workflow Events User", email="events@example.com")
+    account.id = "acct-1"
+    return account
+
+
+def _make_end_user() -> EndUser:
+    return EndUser(
+        id="eu-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        type=EndUserType.OPENAPI,
+        session_id="session-1",
     )
 
 
@@ -63,10 +101,9 @@ class TestOpenApiWorkflowEventsApi:
         monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
 
         api = self._get_api()
-        from models.model import AppMode
 
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
-        caller = SimpleNamespace(id="acct-1")
+        app_model = _make_app()
+        caller = _make_account()
 
         with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
             with pytest.raises(NotFound):
@@ -91,10 +128,9 @@ class TestOpenApiWorkflowEventsApi:
         monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
 
         api = self._get_api()
-        from models.model import AppMode
 
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
-        caller = SimpleNamespace(id="acct-1")
+        app_model = _make_app()
+        caller = _make_account()
 
         with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
             with pytest.raises(NotFound):
@@ -130,10 +166,8 @@ class TestOpenApiWorkflowEventsApi:
         msg_gen_mock.retrieve_events.return_value = iter([])
         monkeypatch.setattr(module, "MessageGenerator", lambda: msg_gen_mock)
 
-        from models.model import AppMode
-
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
-        caller = SimpleNamespace(id="acct-1")
+        app_model = _make_app()
+        caller = _make_account()
 
         api = self._get_api()
         with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
@@ -159,10 +193,8 @@ class TestOpenApiWorkflowEventsApi:
         monkeypatch.setattr(module, "sessionmaker", Mock(return_value=object()))
         monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
 
-        from models.model import AppMode
-
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
-        caller = SimpleNamespace(id="acct-1")
+        app_model = _make_app()
+        caller = _make_account()
 
         api = self._get_api()
         with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
@@ -196,10 +228,8 @@ class TestOpenApiWorkflowEventsApi:
         generator_mock.convert_to_event_stream.return_value = iter([])
         monkeypatch.setattr(module, "WorkflowAppGenerator", lambda: generator_mock)
 
-        from models.model import AppMode
-
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
-        caller = SimpleNamespace(id="eu-1")
+        app_model = _make_app()
+        caller = _make_end_user()
 
         api = self._get_api()
         with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
@@ -238,10 +268,8 @@ class TestOpenApiWorkflowEventsApi:
         converter_mock.workflow_run_result_to_finish_response.return_value = finish_response
         monkeypatch.setattr(module, "WorkflowResponseConverter", converter_mock)
 
-        from models.model import AppMode
-
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
-        caller = SimpleNamespace(id="acct-1")
+        app_model = _make_app()
+        caller = _make_account()
 
         api = self._get_api()
         with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):

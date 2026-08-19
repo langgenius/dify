@@ -175,7 +175,7 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
 }))
 
 vi.mock('@/app/components/datasets/extra-info/service-api', () => ({
-  default: () => <button type="button">dataset.serviceApi.title</button>,
+  ServiceApi: () => <button type="button">dataset.serviceApi.title</button>,
 }))
 
 vi.mock('@/app/components/datasets/external-api/external-api-panel', () => ({

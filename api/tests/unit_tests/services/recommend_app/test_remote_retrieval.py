@@ -117,10 +117,16 @@ class TestRemoteRecommendAppRetrieval:
 
 
 class TestFetchFromDifyOfficial:
-    @patch("services.recommend_app.remote.remote_retrieval.dify_config")
+    @pytest.fixture(autouse=True)
+    def _remote_config(self, config_overrides):
+        config_overrides(
+            HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN="https://example.com",
+            HOSTED_FETCH_APP_TEMPLATES_CACHE_TTL=300,
+            CONSOLE_WEB_URL="",
+        )
+
     @patch("services.recommend_app.remote.remote_retrieval.httpx.get")
-    def test_detail_returns_json_on_200(self, mock_get, mock_config):
-        mock_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN = "https://example.com"
+    def test_detail_returns_json_on_200(self, mock_get):
         mock_response = MagicMock(status_code=200)
         mock_response.json.return_value = {"id": "app-1", "name": "Test"}
         mock_get.return_value = mock_response
@@ -130,20 +136,16 @@ class TestFetchFromDifyOfficial:
         assert result == {"id": "app-1", "name": "Test"}
         mock_get.assert_called_once()
 
-    @patch("services.recommend_app.remote.remote_retrieval.dify_config")
     @patch("services.recommend_app.remote.remote_retrieval.httpx.get")
-    def test_detail_returns_none_on_non_200(self, mock_get, mock_config):
-        mock_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN = "https://example.com"
+    def test_detail_returns_none_on_non_200(self, mock_get):
         mock_get.return_value = MagicMock(status_code=404)
 
         result = RemoteRecommendAppRetrieval.fetch_recommended_app_detail_from_dify_official("app-1")
 
         assert result is None
 
-    @patch("services.recommend_app.remote.remote_retrieval.dify_config")
     @patch("services.recommend_app.remote.remote_retrieval.httpx.get")
-    def test_apps_preserves_remote_categories_order_on_200(self, mock_get, mock_config):
-        mock_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN = "https://example.com"
+    def test_apps_preserves_remote_categories_order_on_200(self, mock_get):
         mock_response = MagicMock(status_code=200)
         mock_response.json.return_value = {
             "recommended_apps": [],
@@ -155,19 +157,15 @@ class TestFetchFromDifyOfficial:
 
         assert result["categories"] == ["writing", "agent", "chat"]
 
-    @patch("services.recommend_app.remote.remote_retrieval.dify_config")
     @patch("services.recommend_app.remote.remote_retrieval.httpx.get")
-    def test_apps_raises_on_non_200(self, mock_get, mock_config):
-        mock_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN = "https://example.com"
+    def test_apps_raises_on_non_200(self, mock_get):
         mock_get.return_value = MagicMock(status_code=500)
 
         with pytest.raises(ValueError, match="fetch recommended apps failed"):
             RemoteRecommendAppRetrieval.fetch_recommended_apps_from_dify_official("en-US")
 
-    @patch("services.recommend_app.remote.remote_retrieval.dify_config")
     @patch("services.recommend_app.remote.remote_retrieval.httpx.get")
-    def test_apps_without_categories_key(self, mock_get, mock_config):
-        mock_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN = "https://example.com"
+    def test_apps_without_categories_key(self, mock_get):
         mock_response = MagicMock(status_code=200)
         mock_response.json.return_value = {"recommended_apps": []}
         mock_get.return_value = mock_response
@@ -177,11 +175,9 @@ class TestFetchFromDifyOfficial:
         assert "categories" not in result
         assert mock_get.call_args.kwargs["headers"] == {}
 
-    @patch("services.recommend_app.remote.remote_retrieval.dify_config")
     @patch("services.recommend_app.remote.remote_retrieval.httpx.get")
-    def test_apps_forwards_request_origin_header(self, mock_get, mock_config):
-        mock_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN = "https://example.com"
-        mock_config.CONSOLE_WEB_URL = "https://saas.dify.dev"
+    def test_apps_forwards_request_origin_header(self, mock_get, config_overrides):
+        config_overrides(CONSOLE_WEB_URL="https://saas.dify.dev")
         mock_response = MagicMock(status_code=200)
         mock_response.json.return_value = {"recommended_apps": []}
         mock_get.return_value = mock_response
@@ -192,11 +188,9 @@ class TestFetchFromDifyOfficial:
 
         assert mock_get.call_args.kwargs["headers"] == {"Origin": "https://cloud.example.com"}
 
-    @patch("services.recommend_app.remote.remote_retrieval.dify_config")
     @patch("services.recommend_app.remote.remote_retrieval.httpx.get")
-    def test_apps_falls_back_to_console_web_url_origin(self, mock_get, mock_config):
-        mock_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN = "https://example.com"
-        mock_config.CONSOLE_WEB_URL = "https://saas.dify.dev/console"
+    def test_apps_falls_back_to_console_web_url_origin(self, mock_get, config_overrides):
+        config_overrides(CONSOLE_WEB_URL="https://saas.dify.dev/console")
         mock_response = MagicMock(status_code=200)
         mock_response.json.return_value = {"recommended_apps": []}
         mock_get.return_value = mock_response
@@ -207,11 +201,9 @@ class TestFetchFromDifyOfficial:
 
         assert mock_get.call_args.kwargs["headers"] == {"Origin": "https://saas.dify.dev/console"}
 
-    @patch("services.recommend_app.remote.remote_retrieval.dify_config")
     @patch("services.recommend_app.remote.remote_retrieval.httpx.get")
-    def test_apps_falls_back_to_console_web_url_without_request_context(self, mock_get, mock_config):
-        mock_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN = "https://example.com"
-        mock_config.CONSOLE_WEB_URL = "http://localhost:3000/console"
+    def test_apps_falls_back_to_console_web_url_without_request_context(self, mock_get, config_overrides):
+        config_overrides(CONSOLE_WEB_URL="http://localhost:3000/console")
         mock_response = MagicMock(status_code=200)
         mock_response.json.return_value = {"recommended_apps": []}
         mock_get.return_value = mock_response
@@ -220,11 +212,9 @@ class TestFetchFromDifyOfficial:
 
         assert mock_get.call_args.kwargs["headers"] == {"Origin": "http://localhost:3000/console"}
 
-    @patch("services.recommend_app.remote.remote_retrieval.dify_config")
     @patch("services.recommend_app.remote.remote_retrieval.httpx.get")
-    def test_apps_uses_console_web_url_without_scheme(self, mock_get, mock_config):
-        mock_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN = "https://example.com"
-        mock_config.CONSOLE_WEB_URL = "saas.dify.dev"
+    def test_apps_uses_console_web_url_without_scheme(self, mock_get, config_overrides):
+        config_overrides(CONSOLE_WEB_URL="saas.dify.dev")
         mock_response = MagicMock(status_code=200)
         mock_response.json.return_value = {"recommended_apps": []}
         mock_get.return_value = mock_response
@@ -235,10 +225,8 @@ class TestFetchFromDifyOfficial:
 
         assert mock_get.call_args.kwargs["headers"] == {"Origin": "saas.dify.dev"}
 
-    @patch("services.recommend_app.remote.remote_retrieval.dify_config")
     @patch("services.recommend_app.remote.remote_retrieval.httpx.get")
-    def test_learn_dify_apps_returns_json_on_200(self, mock_get, mock_config):
-        mock_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN = "https://example.com"
+    def test_learn_dify_apps_returns_json_on_200(self, mock_get):
         mock_response = MagicMock(status_code=200)
         mock_response.json.return_value = {"recommended_apps": [{"id": "learn-dify-app"}]}
         mock_get.return_value = mock_response
@@ -248,20 +236,16 @@ class TestFetchFromDifyOfficial:
         assert result == {"recommended_apps": [{"id": "learn-dify-app"}]}
         assert mock_get.call_args.args[0] == "https://example.com/apps/learn-dify?language=en-US"
 
-    @patch("services.recommend_app.remote.remote_retrieval.dify_config")
     @patch("services.recommend_app.remote.remote_retrieval.httpx.get")
-    def test_learn_dify_apps_raises_on_non_200(self, mock_get, mock_config):
-        mock_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN = "https://example.com"
+    def test_learn_dify_apps_raises_on_non_200(self, mock_get):
         mock_get.return_value = MagicMock(status_code=500)
 
         with pytest.raises(ValueError, match="fetch learn dify apps failed"):
             RemoteRecommendAppRetrieval.fetch_learn_dify_apps_from_dify_official("en-US")
 
-    @patch("services.recommend_app.remote.remote_retrieval.dify_config")
     @patch("services.recommend_app.remote.remote_retrieval.httpx.get")
-    def test_apps_uses_cache_for_repeated_requests(self, mock_get, mock_config):
-        mock_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN = "https://example.com"
-        mock_config.HOSTED_FETCH_APP_TEMPLATES_CACHE_TTL = 600
+    def test_apps_uses_cache_for_repeated_requests(self, mock_get, config_overrides):
+        config_overrides(HOSTED_FETCH_APP_TEMPLATES_CACHE_TTL=600)
         mock_response = MagicMock(status_code=200)
         mock_response.json.return_value = {"recommended_apps": [{"id": "app-1"}]}
         mock_get.return_value = mock_response
@@ -272,11 +256,9 @@ class TestFetchFromDifyOfficial:
         assert first == second == {"recommended_apps": [{"id": "app-1"}]}
         mock_get.assert_called_once()
 
-    @patch("services.recommend_app.remote.remote_retrieval.dify_config")
     @patch("services.recommend_app.remote.remote_retrieval.httpx.get")
-    def test_apps_does_not_cache_failed_responses(self, mock_get, mock_config):
-        mock_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN = "https://example.com"
-        mock_config.HOSTED_FETCH_APP_TEMPLATES_CACHE_TTL = 600
+    def test_apps_does_not_cache_failed_responses(self, mock_get, config_overrides):
+        config_overrides(HOSTED_FETCH_APP_TEMPLATES_CACHE_TTL=600)
         mock_get.return_value = MagicMock(status_code=500)
 
         with pytest.raises(ValueError, match="fetch recommended apps failed"):
@@ -286,11 +268,9 @@ class TestFetchFromDifyOfficial:
 
         assert mock_get.call_count == 2
 
-    @patch("services.recommend_app.remote.remote_retrieval.dify_config")
     @patch("services.recommend_app.remote.remote_retrieval.httpx.get")
-    def test_apps_skips_cache_when_ttl_disabled(self, mock_get, mock_config):
-        mock_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN = "https://example.com"
-        mock_config.HOSTED_FETCH_APP_TEMPLATES_CACHE_TTL = 0
+    def test_apps_skips_cache_when_ttl_disabled(self, mock_get, config_overrides):
+        config_overrides(HOSTED_FETCH_APP_TEMPLATES_CACHE_TTL=0)
         mock_response = MagicMock(status_code=200)
         mock_response.json.return_value = {"recommended_apps": []}
         mock_get.return_value = mock_response
@@ -300,11 +280,9 @@ class TestFetchFromDifyOfficial:
 
         assert mock_get.call_count == 2
 
-    @patch("services.recommend_app.remote.remote_retrieval.dify_config")
     @patch("services.recommend_app.remote.remote_retrieval.httpx.get")
-    def test_apps_cache_isolated_by_origin_header(self, mock_get, mock_config):
-        mock_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN = "https://example.com"
-        mock_config.HOSTED_FETCH_APP_TEMPLATES_CACHE_TTL = 600
+    def test_apps_cache_isolated_by_origin_header(self, mock_get, config_overrides):
+        config_overrides(HOSTED_FETCH_APP_TEMPLATES_CACHE_TTL=600)
         mock_response = MagicMock(status_code=200)
         mock_response.json.return_value = {"recommended_apps": []}
         mock_get.return_value = mock_response

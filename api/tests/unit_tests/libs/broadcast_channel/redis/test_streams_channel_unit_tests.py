@@ -2,7 +2,6 @@ import threading
 import time
 from dataclasses import dataclass
 from typing import Any, cast
-from unittest.mock import patch
 
 import pytest
 
@@ -169,21 +168,17 @@ class TestStreamsBroadcastChannel:
         # Expire called after publish
         assert fake_redis._expire_calls.get("stream:beta", 0) >= 1
 
-    def test_topic_uses_prefixed_stream_key(self, fake_redis: FakeStreamsRedis):
-        with patch("extensions.redis_names.dify_config") as mock_config:
-            mock_config.REDIS_KEY_PREFIX = "enterprise-a"
-
-            topic = StreamsBroadcastChannel(fake_redis, retention_seconds=60).topic("alpha")
+    def test_topic_uses_prefixed_stream_key(self, fake_redis: FakeStreamsRedis, config_overrides):
+        config_overrides(REDIS_KEY_PREFIX="enterprise-a")
+        topic = StreamsBroadcastChannel(fake_redis, retention_seconds=60).topic("alpha")
 
         assert topic._topic == "alpha"
         assert topic._key == "enterprise-a:stream:alpha"
 
-    def test_publish_uses_prefixed_stream_key(self, fake_redis: FakeStreamsRedis):
-        with patch("extensions.redis_names.dify_config") as mock_config:
-            mock_config.REDIS_KEY_PREFIX = "enterprise-a"
-            topic = StreamsBroadcastChannel(fake_redis, retention_seconds=60).topic("beta")
-
-            topic.publish(b"hello")
+    def test_publish_uses_prefixed_stream_key(self, fake_redis: FakeStreamsRedis, config_overrides):
+        config_overrides(REDIS_KEY_PREFIX="enterprise-a")
+        topic = StreamsBroadcastChannel(fake_redis, retention_seconds=60).topic("beta")
+        topic.publish(b"hello")
 
         assert fake_redis._store["enterprise-a:stream:beta"][0][1] == {b"data": b"hello"}
         assert fake_redis._expire_calls.get("enterprise-a:stream:beta", 0) >= 1

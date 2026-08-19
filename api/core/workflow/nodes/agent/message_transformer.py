@@ -149,7 +149,10 @@ class AgentMessageTransformer:
                     json_list.append(message.message.json_object)
             elif message.type == ToolInvokeMessage.MessageType.LINK:
                 assert isinstance(message.message, ToolInvokeMessage.TextMessage)
-                stream_text = f"Link: {message.message.text}\n"
+                linked_file = self._file_from_link_message(message=message, tenant_id=tenant_id)
+                if linked_file is not None:
+                    files.append(linked_file)
+                stream_text = f"{'File' if linked_file is not None else 'Link'}: {message.message.text}\n"
                 text += stream_text
                 yield StreamChunkEvent(
                     selector=[node_id, "text"],
@@ -300,3 +303,43 @@ class AgentMessageTransformer:
                 llm_usage=llm_usage,
             )
         )
+
+    @staticmethod
+    def _file_from_link_message(*, message: ToolInvokeMessage, tenant_id: str) -> File | None:
+        if not isinstance(message.message, ToolInvokeMessage.TextMessage):
+            return None
+        meta = message.meta
+        if not isinstance(meta, Mapping):
+            return None
+
+        file_value = meta.get("file")
+        if isinstance(file_value, File):
+            return file_value
+
+        tool_file_id = meta.get("tool_file_id")
+        if isinstance(tool_file_id, str) and tool_file_id:
+            with Session(db.engine) as session:
+                tool_file = session.scalar(
+                    select(ToolFile).where(ToolFile.id == tool_file_id, ToolFile.tenant_id == tenant_id)
+                )
+                if tool_file is None:
+                    raise ToolFileNotFoundError(tool_file_id)
+
+            return file_factory.build_from_mapping(
+                mapping={
+                    "tool_file_id": tool_file_id,
+                    "type": get_file_type_by_mime_type(tool_file.mimetype),
+                    "transfer_method": meta.get("transfer_method", FileTransferMethod.TOOL_FILE),
+                    "url": message.message.text,
+                },
+                tenant_id=tenant_id,
+                access_controller=_file_access_controller,
+            )
+
+        if isinstance(file_value, Mapping):
+            return file_factory.build_from_mapping(
+                mapping=dict(file_value),
+                tenant_id=tenant_id,
+                access_controller=_file_access_controller,
+            )
+        return None

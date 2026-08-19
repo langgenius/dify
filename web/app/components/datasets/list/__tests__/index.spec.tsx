@@ -194,12 +194,11 @@ vi.mock('../../external-api/external-api-panel', () => ({
   ),
 }))
 
-// Mock SecretKeyModal — it depends on user profile context and service APIs
-// not configured in this test. ServiceApi always mounts the modal (controlled
-// by `isShow`) so we provide a lightweight stub.
-vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
-  default: ({ isShow }: { isShow: boolean }) =>
-    isShow ? <div data-testid="secret-key-modal" /> : null,
+// Mock ApiKeyModal — it depends on user profile context and service APIs
+// not configured in this test. ServiceApi always mounts the controlled modal,
+// so we provide a lightweight stub.
+vi.mock('@/app/components/api-key/api-key-modal', () => ({
+  ApiKeyModal: ({ open }: { open: boolean }) => (open ? <div data-testid="api-key-modal" /> : null),
 }))
 
 // Mock TagManagementModal
