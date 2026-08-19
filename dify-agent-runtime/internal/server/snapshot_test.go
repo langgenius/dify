@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -63,6 +64,9 @@ func TestSnapshotSaveSuccessWithTrailers(t *testing.T) {
 	sum := sha256.Sum256(body)
 	if got := resp.Trailer.Get(TrailerSnapshotSha256); got != hex.EncodeToString(sum[:]) {
 		t.Fatalf("sha trailer = %q, want %q", got, hex.EncodeToString(sum[:]))
+	}
+	if got := resp.Trailer.Get(TrailerSnapshotBytes); got != strconv.FormatInt(int64(len(body)), 10) {
+		t.Fatalf("bytes trailer = %q, want %d", got, len(body))
 	}
 
 	// The stream is a restorable archive.
@@ -132,12 +136,39 @@ func TestSnapshotBusy(t *testing.T) {
 	if w.Code != 409 {
 		t.Fatalf("busy save: status = %d, want 409", w.Code)
 	}
+	var savePayload ErrorResponse
+	if err := json.NewDecoder(w.Body).Decode(&savePayload); err != nil {
+		t.Fatal(err)
+	}
+	if savePayload.Error.Code != "snapshot_busy" {
+		t.Fatalf("busy save: error code = %q, want snapshot_busy", savePayload.Error.Code)
+	}
 
 	req = httptest.NewRequest("POST", "/v1/snapshot/restore", nil)
 	w = httptest.NewRecorder()
 	snap.handleSnapshotRestore()(w, req)
 	if w.Code != 409 {
 		t.Fatalf("busy restore: status = %d, want 409", w.Code)
+	}
+	var restorePayload ErrorResponse
+	if err := json.NewDecoder(w.Body).Decode(&restorePayload); err != nil {
+		t.Fatal(err)
+	}
+	if restorePayload.Error.Code != "snapshot_busy" {
+		t.Fatalf("busy restore: error code = %q, want snapshot_busy", restorePayload.Error.Code)
+	}
+}
+
+// TestSnapshotWireContract pins the literal wire strings remote clients parse.
+// If this test fails, the gateway protocol changed — that is a breaking change,
+// not a refactor.
+func TestSnapshotWireContract(t *testing.T) {
+	if TrailerSnapshotStatus != "X-Snapshot-Status" ||
+		TrailerSnapshotSha256 != "X-Snapshot-Sha256" ||
+		TrailerSnapshotBytes != "X-Snapshot-Bytes" ||
+		SnapshotStatusOK != "ok" {
+		t.Fatalf("snapshot trailer contract changed: %q %q %q %q",
+			TrailerSnapshotStatus, TrailerSnapshotSha256, TrailerSnapshotBytes, SnapshotStatusOK)
 	}
 }
 
