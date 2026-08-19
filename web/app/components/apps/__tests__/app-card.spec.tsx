@@ -1019,6 +1019,7 @@ describe('AppCard', () => {
       await waitFor(() => {
         expect(mockDeleteAppMutation).toHaveBeenCalled()
       })
+      expect(mockOnPlanInfoChanged).not.toHaveBeenCalled()
     })
 
     it('should handle delete failure', async () => {

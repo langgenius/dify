@@ -150,7 +150,6 @@ export const AppCardActionBar = memo(
           {
             onSuccess: () => {
               toast.success(t(($) => $.appDeleted, { ns: 'app' }))
-              onPlanInfoChanged()
               setShowConfirmDelete(false)
               setConfirmDeleteInput('')
             },
@@ -166,7 +165,7 @@ export const AppCardActionBar = memo(
         const message = error instanceof Error ? error.message : ''
         toast.error(`${t(($) => $.appDeleteFailed, { ns: 'app' })}${message ? `: ${message}` : ''}`)
       }
-    }, [app.id, deleteApp, onPlanInfoChanged, t])
+    }, [app.id, deleteApp, t])
 
     const onDeleteDialogOpenChange = useCallback(
       (open: boolean) => {

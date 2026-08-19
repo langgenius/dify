@@ -795,16 +795,21 @@ describe('consoleQuery app mutation defaults', () => {
     expect(synchronized).toBe(true)
   })
 
-  it('should keep a delete mutation pending until every app list synchronizes', async () => {
+  it('should refresh plan usage and keep a delete mutation pending until every app list synchronizes', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = new QueryClient()
-    const invalidationResolvers: Array<() => void> = []
-    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(
-      () =>
-        new Promise<void>((resolve) => {
-          invalidationResolvers.push(resolve)
-        }),
-    )
+    const appListInvalidationResolvers: Array<() => void> = []
+    const featuresQueryKey = consoleQuery.features.get.key()
+    const invalidateQueries = vi
+      .spyOn(queryClient, 'invalidateQueries')
+      .mockImplementation((filters) => {
+        if (JSON.stringify(filters?.queryKey) === JSON.stringify(featuresQueryKey))
+          return new Promise<void>(() => {})
+
+        return new Promise<void>((resolve) => {
+          appListInvalidationResolvers.push(resolve)
+        })
+      })
     const mutationOptions = consoleQuery.apps.byAppId.delete.mutationOptions()
 
     const synchronization = mutationOptions.onSuccess?.(
@@ -829,9 +834,12 @@ describe('consoleQuery app mutation defaults', () => {
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.apps.recent.get.key(),
     })
-    expect(invalidateQueries).toHaveBeenCalledTimes(3)
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.features.get.key(),
+    })
+    expect(invalidateQueries).toHaveBeenCalledTimes(4)
 
-    invalidationResolvers.forEach((resolve) => resolve())
+    appListInvalidationResolvers.forEach((resolve) => resolve())
     await synchronization
 
     expect(synchronized).toBe(true)

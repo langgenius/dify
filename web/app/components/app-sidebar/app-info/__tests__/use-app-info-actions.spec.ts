@@ -533,6 +533,7 @@ describe('useAppInfoActions', () => {
         type: 'error',
         message: expect.stringContaining('app.appDeleteFailed'),
       })
+      expect(mockOnPlanInfoChanged).not.toHaveBeenCalled()
     })
   })
 
