@@ -302,7 +302,7 @@ def test_create_or_update_app_flushes_new_model_config_before_signal(
 
 
 def test_create_or_update_app_forwards_imported_agent_purge_ids(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = SimpleNamespace(add=Mock(), flush=Mock(), commit=Mock(), get=Mock())
+    session = cast(Session, SimpleNamespace(add=Mock(), flush=Mock(), commit=Mock(), get=Mock()))
     service = AppDslService(session=session)
     app = SimpleNamespace(
         id="app-1",

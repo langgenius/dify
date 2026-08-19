@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Iterator
+from collections.abc import Generator, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
@@ -691,7 +691,7 @@ class TestRagPipelineByIdApi:
         transaction_factory = MagicMock()
 
         @contextmanager
-        def transaction():
+        def transaction() -> Generator[Session]:
             events.append("transaction-enter")
             yield MagicMock(spec=Session)
             events.append("transaction-exit")
