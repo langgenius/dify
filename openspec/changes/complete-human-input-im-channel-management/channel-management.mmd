@@ -1,0 +1,74 @@
+flowchart LR
+    Admin["Workspace owner or administrator"]
+
+    subgraph HTTP["Console API: /console/api/workspace/current/human-input/v2"]
+        CatalogRoute["GET /channel-providers"]
+        ListRoute["GET /channels"]
+        EmailRoutes["Email routes<br/>POST /channels/email<br/>POST /channels/email/test<br/>GET, PUT, DELETE /channels/email/:channel_id"]
+        IMRoutes["IM routes<br/>POST /channels/im<br/>POST /channels/im/test<br/>GET, PUT, DELETE /channels/im/:channel_id"]
+        ReplacementRoute["POST /channels/im/:channel_id/replacement"]
+    end
+
+    subgraph Transport["Canonical Console transport contracts"]
+        ProviderCatalog["ChannelProvider catalog<br/>email_providers + im_providers<br/>available custom_app providers only"]
+        Credentials["providers.py<br/>EmailProviderCredentials<br/>IMProviderCredentials<br/>complete input; secrets use SecretStr"]
+        Version["ConfigVersion<br/>client-opaque string"]
+        Summary["ChannelSummary<br/>connected | invalid_credentials | connection_failure<br/>safe display_identifier and status_description"]
+        TestResponse["ChannelTestResponse<br/>non-persistent candidate result"]
+        DeleteResponse["ChannelDeleteResponse<br/>deleted channel_id"]
+    end
+
+    Service["HumanInputChannelManagementService<br/>authorize scope and dispatch by email or im"]
+
+    subgraph Owners["Application owners"]
+        EmailOwner["Email Management owner<br/>Resend lifecycle and credential protection"]
+        IMOwner["IM Integration owner<br/>rotation, replacement, CAS, identity and binding invariants"]
+    end
+
+    ProviderIO["Provider adapters<br/>validate complete credentials before transaction"]
+    EmailStore[("Email configuration")]
+    IMStore[("IM Integration<br/>integration_id + numeric config_version")]
+    IMDependents[("IM identities and bindings")]
+
+    Admin --> CatalogRoute
+    Admin --> ListRoute
+    Admin --> EmailRoutes
+    Admin --> IMRoutes
+    Admin --> ReplacementRoute
+
+    CatalogRoute --> Service
+    ProviderCatalog --> Admin
+
+    ListRoute --> Service
+    EmailRoutes --> Credentials
+    IMRoutes --> Credentials
+    ReplacementRoute --> Credentials
+    Credentials --> Service
+
+    EmailRoutes -. "update or delete" .-> Version
+    IMRoutes -. "update or delete" .-> Version
+    ReplacementRoute -. "expected_config_version" .-> Version
+    Version --> Service
+
+    Service -->|"email"| EmailOwner
+    Service -->|"im"| IMOwner
+
+    EmailOwner --> ProviderIO
+    IMOwner --> ProviderIO
+    EmailOwner --> EmailStore
+    IMOwner -->|"complete CAS"| IMStore
+    IMOwner -->|"replacement or delete cleanup"| IMDependents
+
+    EmailOwner -->|"available providers"| ProviderCatalog
+    IMOwner -->|"available providers"| ProviderCatalog
+    EmailOwner -->|"list, get, create, update"| Summary
+    IMOwner -->|"list, get, create, update, replacement"| Summary
+    Summary --> Admin
+
+    EmailOwner -. "test only" .-> TestResponse
+    IMOwner -. "test only" .-> TestResponse
+    TestResponse --> Admin
+
+    EmailOwner -. "delete only" .-> DeleteResponse
+    IMOwner -. "delete only" .-> DeleteResponse
+    DeleteResponse --> Admin

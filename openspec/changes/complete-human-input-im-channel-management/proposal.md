@@ -1,19 +1,21 @@
 ## Why
 
-Canonical Human Input Channels facade 已支持 Resend 与 self-managed Slack，但 Feishu/DingTalk 仍为 unavailable implementation，Lark、Microsoft Teams 和 WeCom 尚未进入 management provider/candidate contract。完整 provider configuration lifecycle 必须先在 Channel Management owner 内收敛，不能由 sync runtime 或其他 transport adapter 补齐。
+当前 Channel Management 同时复制了 Email/IM aggregate、provider credential DTO、command 和 lifecycle orchestration，却没有隐藏两类 Channel 的配置差异。公开 API 又把 supported provider 当作 persisted Channel：读取某个未配置 provider 可以得到 `not_configured`，但对同一路径执行 PUT 可能替换另一个 provider 的 Integration。这个 shallow facade 造成 ownership 重复、resource identity 含混和 change amplification。
+
+Channel 仍适合作为 Console 的统一术语，但它应成为一个深 application boundary：统一 configured-resource discovery、provider discovery、authorization 和 safe result，同时把 Email 与 IM 的配置规则委托给各自唯一 owner。
 
 ## What Changes
 
-- 扩展 canonical `ChannelProvider`、provider-specific candidate types、provider manager composition 和 Workspace Console mappings，覆盖 Slack、Feishu/Lark、DingTalk、Microsoft Teams 与 WeCom。
-- 删除 `ChannelHandler`、`ChannelHandlerRegistry` 与 `DuplicateChannelHandlerError`；concrete route 在 composition time 绑定对应 provider manager，不再通过 `ChannelRef` runtime lookup。`feishu` 与 `lark` 保持独立 value，但共享 provider-family implementation。
-- 将 Workspace Console item/test surface 展开为 `email/resend` 和每个 `im/<provider>` 的 concrete route；未知 route 由 HTTP routing 直接返回 `404`，不进入 management facade。
-- 将 configuration create/update 分为 `POST` 与 `PUT`，并为每个 provider 注册 operation-specific request schema；公开 request 不再携带 provider discriminator 或 `PreserveOriginalValue`。
-- create、update 与 connection test 使用相同的完整 provider-specific candidate；所有 non-nullable fields（包括 secrets）都必须提交，nullable fields 可省略或提交 `null`。IM update 只额外携带完整 CAS 和 `replace_current`，后者显式授权可能使 identities/bindings 失效的 provider/provider-tenant replacement。
-- 所有 IM create/update path 在数据库 transaction 外完成 credential test、required-scope validation 和 provider tenant identity resolution。
-- successful create/update 将 credential-free connected diagnostic 与 trusted `last_checked_at` 和 configuration transition 原子持久化；diagnostic 不单独推进 `config_version`。
-- connection test 只验证 request 中提交的完整新 credentials，不读取或复用已保存 credentials，也不持久化任何 configuration state；failed create/update 不修改 credentials、diagnostics、revision、identities 或 bindings。
-- management wiring 复用现有 IM Control Plane credential owners 与 provider adapters，不新增 directory client、directory pagination 或 sync-specific credential model。
-- Workspace controllers 只负责 authorization、trusted context、DTO mapping 和 stable error translation；provider、credential protector 与 persistence 保持在 application service 下方。
+- 重写 Channel Management application boundary，删除 `ChannelHandler`、per-provider registry/manager hierarchy、重复 Email/IM aggregate、旧 provider candidate/credential transport DTO、重复 per-kind summary/view DTO 和重复 lifecycle orchestration。
+- 保留 Email Management 与 IM Integration application service 作为各自配置状态的唯一 owner；Channel Management 只按 `email` / `im` 委托，不按 provider 注册或分派 implementation。
+- 将 persisted Channel collection 与 provider catalog 分开：唯一的 `GET /channels` 返回已配置资源，唯一的 `GET /channel-providers` 按 Email/IM 分组返回当前 deployment 可用的 provider，不返回 unavailable placeholder 或 availability state。
+- 将 item route 改为 `/channels/<kind>/<channel_id>`。Provider 由 create/test request 的 discriminated configuration 选择，不再作为 persisted resource identity。
+- 保持当前 effective `DirectoryScope` 最多一个 IM Channel。普通 `POST /channels/im` 在达到当前 cardinality 时返回 conflict；跨 provider 或 provider tenant 切换使用 `POST /channels/im/<channel_id>/replacement` 执行显式 atomic replacement。
+- IM item update 只允许当前 provider 和 provider tenant 内的 credential rotation。Provider 或 provider tenant 变化是 resource replacement，不是隐式 PUT。
+- **BREAKING**：canonical HTTP prefix 改为 `/console/api/workspace/current/human-input/v2`，并移除旧 `/console/api/workspaces/current/human-input/im-integration` 与 `/im-integration/test` configuration routes。IM sync、identity search 和 workspace override APIs 保持原路径。
+- 将 `api/controllers/console/human_input_v2/providers.py` 定义为 Console provider credential DTO 的 canonical owner，并删除或迁移旧 controller transport DTO。所有 secret 字段使用 Pydantic `SecretStr`；create、update、replacement 和 test 都要求提交完整配置，不支持 `PreserveOriginalValue` 或 persisted-secret merge。
+- 将 `ChannelSummary` 定义为 configured Channel 的 canonical transport projection；HTTP `ConfigVersion` 是 client-opaque string，底层 IM owner 仍使用完整的 `integration_id + numeric config_version` CAS。
+- create、update 和 replacement 返回 `200` 与 `ChannelSummary`；delete 返回 `200` 与被删除的 `channel_id`。Configured Channel 只使用 `connected`、`invalid_credentials` 和 `connection_failure` 三种 status，并通过 `status_description` 提供安全说明。
 
 ## Capabilities
 
@@ -23,13 +25,15 @@ Canonical Human Input Channels facade 已支持 Resend 与 self-managed Slack，
 
 ### Modified Capabilities
 
-- `human-input-channel-management`: 将完整 IM provider set、provider-specific commands 和 verified connectivity persistence 纳入 canonical facade。
+- `human-input-channel-management`: 将 facade 收敛为 Email/IM owner 上方的 configured-resource 与 available-provider-catalog boundary，并保持当前单 IM transition。
+- `human-input-channel-management-console-api`: 用统一 collection、ID-addressed item、ID-addressed replacement subresource 和独立 provider catalog 替换 provider-addressed Channel routes。
+- `human-input-console-management-api`: 移除旧 `im-integration` management routes，同时保留 IM sync、identity search 和 workspace override routes。
 - `human-input-email-channel-management`: 要求 Resend create/update/test 都提交包含新 API key 的完整 candidate，移除 API key retention。
-- `human-input-console-management-api`: 将 concrete provider routes、create/update lifecycle、complete-candidate semantics 和显式 replacement authorization 纳入 Workspace Console contract。
 
 ## Impact
 
-- Backend: `api/core/human_input_v2/channel_management/`、`HumanInputChannelManagementService`、provider managers/direct composition、concrete Workspace Console resources/Pydantic contracts 和 backend tests。
-- Provider integration: 复用现有 credential structures 与 adapter construction；只有 failing contract test 证明必要时才允许在原 owner 中做最小兼容调整。
-- Dependencies: consumes `implement-human-input-channel-management-api`; `integrate-im-contact-sync-runtime` 只消费这里产生的 persisted connected Integration。
-- Excluded: OAuth lifecycle、provider directory synchronization、Celery queue 和 binding mutation。
+- Backend: `api/core/human_input_v2/channel_management/`、`api/services/human_input_channel_management_service.py`、Email/IM composition、Workspace Console resources/Pydantic contracts 和 backend tests。
+- Removed implementation: `ChannelHandler`/registry、per-provider Channel managers、provider-addressed routes、旧 `im-integration` resources、旧 controller provider DTO 和重复 per-kind Channel summary DTO。
+- Reused owners: existing Email Management aggregate/repository；existing IM Integration aggregate, adapters, complete CAS, identity/binding and sync invariants。Console transport DTO 由 `api/controllers/console/human_input_v2/` 独立拥有并映射到这些 application owners。
+- Dependencies: consumes `implement-human-input-channel-management-api`; `integrate-im-contact-sync-runtime` continues to consume persisted IM Integration revisions. `implement-saas-slack-oauth` must extend the ID-addressed Channel surface rather than restore provider-addressed or legacy routes.
+- Excluded: provider directory reconciliation、Celery dispatch、Slack OAuth lifecycle、frontend repository migration 和 EE transport。

@@ -2,21 +2,21 @@
 
 ### Requirement: Contacts 通讯录同步必须由管理员手动触发
 
-前端 MUST 只允许 mock context 中具备管理权限的用户手动触发 Contacts IM directory sync。同步入口 MUST 仅在当前 IM platform 为 `Connected` 且 provider definition 声明支持通讯录读取时可用；本 capability MUST NOT 引入定时或自动同步。
+前端 MUST 只允许 mock context 中具备管理权限的用户手动触发 Contacts IM directory sync。同步入口 MUST 仅在当前 IM Channel status 为 `connected` 且本地 provider sync adapter 支持通讯录读取时可用；本 capability MUST NOT 引入定时或自动同步。
 
 #### Scenario: 已连接且支持通讯录同步
 
-- **WHEN** 当前 provider 状态为 `Connected`、支持 directory sync，且 `can_manage` 为 true
+- **WHEN** 当前 IM Channel status 为 `connected`、本地 adapter 支持 directory sync，且 `can_manage` 为 true
 - **THEN** 前端 MUST 启用手动同步操作
 
 #### Scenario: Provider 尚未连接
 
-- **WHEN** 当前 provider 未配置、仅为 `Configured` 或处于任一错误状态
+- **WHEN** 当前 provider 未配置，或 Channel status 为 `invalid_credentials` 或 `connection_failure`
 - **THEN** 前端 MUST 禁用同步操作并提示先完成或修复连接
 
 #### Scenario: Provider 不支持通讯录同步
 
-- **WHEN** mock provider capability 声明不支持 directory sync
+- **WHEN** 本地 provider sync adapter 不支持 directory sync
 - **THEN** 前端 MUST 禁止触发同步并展示能力限制说明
 
 #### Scenario: 普通用户尝试同步

@@ -6,11 +6,11 @@
 
 - Email channel 可与一个尚未删除的 IM binding 同时配置；尚未删除即为 active，与 connection status 无关。
 - 该 workspace 入口只面向非企业版；CE / SaaS 由 workspace owner 或 workspace admin 管理，enterprise plan 不展示本入口。
-- 连接状态包含 `Not configured`、`Configured`、`Connected`、`Permission issue`、`Callback error`、`Connection error`。
+- `Not configured` 由 provider catalog 中存在但 configured Channels 中缺席推导；configured Channel status 只包含 `connected`、`invalid_credentials` 和 `connection_failure`。
 - 通讯录同步由管理员手动触发，不做自动同步。
 - 同步优先按 platform user ID 匹配已有 binding，再按 Email 匹配 Contact；未命中对象进入 unmatched，不能自动创建 External contact。
 
-本 change 的实现范围严格限定为前端。后端 contract 尚未就绪，因此页面、查询、mutation、权限、provider availability、同步任务和同步详情均由集中、类型安全、确定性的 mock repository 驱动。后续真实 API 接入必须通过独立 change 完成。
+本 change 的实现范围严格限定为前端。页面、查询、mutation、权限、同步任务和同步详情均由集中、类型安全、确定性的 mock repository 驱动；Channel mock shape 对齐已确认的 HTTP stub。后续真实 API 接入必须通过独立 change 完成。
 
 当前 web 中的 `web/features/agent-v2/roster/` 是 AI Agent 资产管理，不能作为 Contacts UI 的实现位置。Contacts feature 需要拥有自己的组件、数据访问抽象和路由边界，并由非企业版 CE / SaaS workspace 设置页挂载。
 
@@ -56,27 +56,21 @@ AI Agent Roster 与 Human Contacts 的数据、权限和生命周期完全不同
 组件不得直接 import 零散 JSON fixture，也不得在组件内按场景硬编码响应。feature 定义稳定的前端 view model 和 repository interface，例如：
 
 ```text
-ContactIMIntegrationView
-  organization_id
-  channel
+ContactChannelSummary
+  id
+  created_at
+  updated_at
+  kind
   provider
   status
-  safe_status_reason
-  last_checked_at
-  can_manage
-  capabilities.directory_sync
-  secret_configured
-  last_sync
+  status_description
+  display_identifier
+  webhook_url
+  config_version
 
-ContactIMProviderDefinition
-  channel
+ContactChannelProvider
   provider
-  display_name
-  availability
-  unavailable_reason
-  auth_mode
-  callback_url
-  required_fields
+  connection_mode
 
 ContactIMSyncRunView
   id
@@ -95,13 +89,13 @@ ContactIMSyncItemView
   safe_reason
 ```
 
-repository 暴露读取 channel integrations/provider definitions、保存 Email 或 IM provider 配置、mock 授权、测试连接、删除 channel、启动同步、读取 active run 和分页读取详情等方法。mock 实现通过命名 scenario 或 seed 创建状态，所有延迟、错误和状态迁移必须确定且可在测试中控制，不能依赖随机数或不可控的真实计时。
+repository 暴露读取统一 configured Channels collection、读取按 Email/IM 分组的 available provider catalog、保存完整 Email 或 IM 配置、mock 授权、测试连接、删除 channel、启动同步、读取 active run 和分页读取详情等方法。mock 实现通过命名 scenario 或 seed 创建状态，所有延迟、错误和状态迁移必须确定且可在测试中控制，不能依赖随机数或不可控的真实计时。
 
 后续真实后端就绪时，应新增实现相同 interface 的 API repository adapter，再由 composition root 切换依赖；页面组件和业务状态语义不应因此改写。
 
 ### 3. 使用共享 channel 列表、provider adapter 与 Email 专用配置弹窗
 
-Channels 页面以统一卡片展示可连接与已配置项。IM provider dialog 共享标题、状态、footer、错误反馈和 callback 区域，每个 provider 使用类型明确的 form adapter 处理自己的字段、帮助文案和认证方式。Email 使用专用 Resend adapter，字段固定为 sender email、可选 sender name 与 API key，并提供 Test connection。provider availability 和 capability 暂由 mock provider definition 提供。
+Channels 页面以统一卡片展示可连接与已配置项。IM provider dialog 共享标题、状态、footer、错误反馈和 callback 区域，每个 provider 使用类型明确的 form adapter 处理自己的字段、帮助文案和认证方式。Email 使用专用 Resend adapter，字段固定为必填 sender email、必填 sender name 与必填 API key，并提供 Test connection。Provider-specific form metadata 由前端 adapter 拥有；mock provider catalog 只返回可用 provider 和 `connection_mode`。
 
 已有 active IM binding 时，其他未配置 IM provider 显示 Replace。管理员必须先确认旧 provider 的 IM bindings 和 workspace overrides 将失效、且需要重新执行通讯录同步，随后 binding dialog 才能提交显式 replacement command。Email 不参与 replacement，始终使用普通 Connect / Configure 流程。
 
@@ -111,20 +105,20 @@ Channels 页面以统一卡片展示可连接与已配置项。IM provider dialo
 
 已配置 channel 卡片展示 provider 与脱敏配置摘要，右侧使用两个独立图标按钮：Configure 打开对应 adapter 的配置弹窗，Delete 打开破坏性确认弹窗。只有确认成功后才调用 mock delete mutation；取消或失败时保留原配置。删除 Email 不影响 IM channel，删除 IM channel 后再按剩余 IM provider 状态决定是否展示目录同步区域。
 
-### 5. 连接状态与 mutation 状态分层
+### 5. Configured Channel status 与 mutation 状态分层
 
-`Not configured` 等六种状态来自 repository 中持久化的 mock integration state。`saving`、`testing`、`authorizing`、`disconnecting` 是短暂的前端 mutation state，不写入 connection status。
+`Not configured` 不是持久化 status，而是 provider 没有出现在 configured Channels collection 中的派生 UI 状态。Configured Channel 只持久化 `connected`、`invalid_credentials` 或 `connection_failure`；错误说明来自安全的 `status_description`。`saving`、`testing`、`authorizing`、`disconnecting` 是短暂的前端 mutation state，不写入 connection status。
 
-- 保存凭据成功后刷新 integration，mock repository 可将状态推进到 `Configured`。
-- 测试连接或 mock OAuth 结束后刷新 integration，由当前 scenario 决定最终六态。
+- 保存凭据成功后使用 mutation 返回的 `ChannelSummary` 更新页面；create 不需要再读取 collection 才能获得 authoritative state。
+- 测试连接只显示本次 candidate test 的成功或失败，不修改已有 configured Channel status。
 - 所有 mutation pending 时阻止重复提交。
 - 不做会伪造成功结果的 optimistic update。
 
-### 6. Secret fixture 只表达配置状态，不保存真实 secret
+### 6. Configure 要求重新提交完整配置且不保存真实 secret
 
-已配置的 mock 数据只包含 `secret_configured: true` 或等价标识，不包含可回显 secret。用户输入新 secret 时，repository 只记录“已替换”的结果或版本标识，并立即丢弃原始文本；测试不得打印或快照 secret。
+已配置的 mock 数据不包含可回显 secret。Configure 可以预填非敏感字段，但所有 provider-required fields（包括 secret）必须由管理员重新填写后才能保存或测试。Repository 在完成 mutation 后立即丢弃 secret 输入；测试不得打印或快照 secret。
 
-编辑非 secret 字段时使用字段省略或明确的 retain-secret command，掩码文本不得进入 mutation payload。
+前端不定义 partial update 或 retain-secret command，掩码文本不得进入 mutation payload。
 
 ### 7. Mock sync run 使用 mutation 启动、query 恢复和有限 polling
 
@@ -151,7 +145,7 @@ Channels 页面以统一卡片展示可连接与已配置项。IM provider dialo
 
 ### 10. 权限和 provider gate 是 mock 展示状态，不是安全边界
 
-入口 shell 根据 mock `can_manage` 和 provider capability 隐藏或禁用绑定、测试、同步和解除绑定操作，并展示相应解释。由于本 change 没有后端，权限场景只用于验收前端降级行为，不可被视为真实授权机制。
+入口 shell 根据 mock `can_manage`、Channel kind/provider 和 configured state 隐藏或禁用绑定、测试、同步和解除绑定操作，并展示相应解释。由于本 change 没有后端，权限场景只用于验收前端降级行为，不可被视为真实授权机制。
 
 ### 11. 使用 React Query、repository 与局部表单状态
 
@@ -165,13 +159,13 @@ Channels 页面以统一卡片展示可连接与已配置项。IM provider dialo
 
 前端测试至少覆盖：
 
-- 无绑定、已配置、已连接和三类错误状态。
+- 无绑定、`connected`、`invalid_credentials` 和 `connection_failure` 状态。
 - Email 未配置、配置成功、测试失败、编辑与删除确认。
 - 已配置 channel 的 Configure / Delete 可访问名称、焦点恢复与 mutation 失败恢复。
 - credential 与 mock OAuth 两种认证路径。
 - Email 与单一 active IM binding 共存、不同 IM provider 替换确认，以及替换后旧 IM integration 被移除。
-- secret 不回显、掩码不提交、更新时保留原 secret。
-- 无权限、provider 不可用、保存 / 测试失败和重复提交。
+- secret 不回显、掩码不提交、更新时必须重新填写完整配置。
+- 无权限、保存 / 测试失败和重复提交。
 - 同步按钮 gate、active run 恢复、polling 停止、成功 / 部分成功 / 失败摘要。
 - 详情筛选、mock 分页、加载失败、unmatched 只读和敏感错误脱敏。
 - 关键 overlay 的焦点恢复、键盘提交和错误关联。
@@ -185,7 +179,7 @@ Channels 页面以统一卡片展示可连接与已配置项。IM provider dialo
 - [企业版误展示 mock 入口] → workspace shell 复用现有 `Plan.enterprise` 判断，深链同样回退到允许访问的 tab。
 - [不可控 polling 造成测试不稳定] → mock 状态迁移使用 fake timers 或显式推进，不使用随机延迟。
 - [大型详情 fixture 降低测试性能] → 用小型分页 fixture 验证增量加载，不生成大规模浏览器内数据。
-- [Secret 泄露到 fixture 或快照] → fixture 只保存配置标记，repository 丢弃输入文本，测试断言日志与 DOM 中无 secret。
+- [Secret 泄露到 fixture 或快照] → fixture 不保存 secret，repository 丢弃输入文本，测试断言日志与 DOM 中无 secret。
 
 ## Migration Plan
 
@@ -200,5 +194,5 @@ Channels 页面以统一卡片展示可连接与已配置项。IM provider dialo
 
 ## Open Questions
 
-- Email 与 IM channel 的最终后端 DTO、测试连接语义及删除影响必须由后续 Contacts / IM 后端 contract 决定；当前 mock 只用于展示确认交互。
+- 真实 API adapter 必须映射 `/workspace/current/human-input/v2` 的 `ChannelSummary`、provider catalog、完整 credential requests 与 opaque `ConfigVersion`；当前 change 只保留 mock repository implementation。
 - Figma 中 callback、权限说明和 provider 帮助链接的最终文案，需要在实现阶段通过已授权的 Figma 访问核对。

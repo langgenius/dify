@@ -2,144 +2,243 @@
 
 ### Requirement: Channel management MUST expose Email and IM through one facade
 
-The system MUST provide one management boundary for discovering, reading, testing, saving and deleting the Resend Email channel plus the current five IM provider families: Slack, Feishu/Lark, DingTalk, Microsoft Teams and WeCom. `feishu` and `lark` MUST remain separately addressable canonical provider values backed by the same provider family. Callers MUST NOT query provider persistence directly.
+The system MUST provide one Channel Management application boundary for listing configured Channels、listing available providers、testing candidates、creating Channels、reading Channels、updating Channels、replacing IM Channels and deleting Channels。It MUST support Resend Email and Slack、Feishu、Lark、DingTalk、Microsoft Teams and WeCom IM。It MUST delegate configuration state and transitions to the Email Management owner or IM Integration owner instead of reading their persistence directly。
 
-#### Scenario: Channels are listed
+#### Scenario: Configured Channels are listed
 
-- **WHEN** an authorized workspace administrator requests the current Channels collection
-- **THEN** the result MUST account for Resend and every current canonical IM provider in either `channels` or `failures`
-- **AND** every item in `channels` MUST be a credential-free persisted-state view
-- **AND** an unconfigured channel MUST appear in `channels` as a successful `not_configured` view
-- **AND** none of the current IM providers MAY be represented by an unavailable placeholder implementation
+- **WHEN** an authenticated caller requests configured Channels
+- **THEN** management MUST return the current persisted Email and IM Channels
+- **AND** it MUST NOT construct a `not_configured` Channel for an unconfigured provider
 
-#### Scenario: One channel is requested
+#### Scenario: Available providers are listed
 
-- **WHEN** a request reaches a supported concrete channel route
-- **THEN** that route MUST call its channel implementation directly
-- **AND** it MUST NOT look up the implementation through a runtime registry
+- **WHEN** an authenticated caller requests available Channel providers
+- **THEN** management MUST return only providers available in the effective deployment
+- **AND** each provider MUST remain separate from persisted Channel state
 
-### Requirement: Each ChannelProvider MUST define one provider-specific request type
+#### Scenario: One configured Channel is requested
 
-Resend and every current canonical IM provider MUST each define exactly one provider-specific request type. Create, update and connection-test operations for one provider MUST validate and pass that same request type to the bound provider manager rather than defining operation-specific request types or using untyped configuration maps. The request MUST contain the complete provider-specific configuration fields. Every non-nullable field, including every required secret, MUST contain a newly submitted value. If a nullable configuration field is omitted or explicitly set to `null`, the validated request MUST set that field to `None`. Management MUST NOT retain or merge persisted credentials into a create, update or connection-test request.
+- **WHEN** a caller supplies a kind and `channel_id`
+- **THEN** Channel Management MUST delegate the read to that kind's application owner
+- **AND** it MUST NOT select a provider implementation from a Channel registry
 
-#### Scenario: Create request is submitted
+### Requirement: Common channel views MUST be credential-free persisted-state snapshots
 
-- **WHEN** a create operation receives the request for a supported `ChannelProvider`
-- **THEN** management MUST validate that provider's complete request type before calling its bound provider manager
-- **AND** every required secret MUST be a new explicit value
+`ChannelSummary` MUST be the canonical configured-channel transport projection。Channel Management MUST project Email and IM owner state into this DTO and MUST NOT expose per-kind summary DTOs、provider credentials、aggregate objects or persistence records。Candidate test outcomes and provider catalog entries MUST NOT be represented as configured Channels。
 
-#### Scenario: Update request is submitted
+#### Scenario: Configured Email is viewed
 
-- **WHEN** an update operation receives the request for a supported `ChannelProvider`
-- **THEN** management MUST validate the same provider-specific request type used by create
-- **AND** every required secret MUST be a new explicit value
-- **AND** management MUST NOT read current credentials to complete the request
+- **WHEN** a configured Resend Email Channel is read
+- **THEN** its summary MUST include Email kind、Resend provider、safe sender identity、timestamps、status and opaque configuration version
+- **AND** it MUST NOT expose plaintext、encrypted or masked API-key material
 
-#### Scenario: Connection test request is submitted
+#### Scenario: Configured IM is viewed
 
-- **WHEN** a connection-test operation receives the request for a supported `ChannelProvider`
-- **THEN** management MUST validate the same provider-specific request type used by create and update
-- **AND** every required secret MUST be a new explicit value
-- **AND** management MUST NOT reveal, merge or reuse persisted credentials
+- **WHEN** a configured IM Channel is read
+- **THEN** its summary MUST include IM kind、provider、safe display identity、timestamps、status、applicable webhook URL and opaque configuration version
+- **AND** it MUST NOT expose credentials、provider raw payloads、identities、bindings or ORM records
 
-#### Scenario: A connection test succeeds
+#### Scenario: Channel status is projected
 
-- **WHEN** a provider-specific connection test succeeds
-- **THEN** the operation envelope MUST contain exactly one credential-free test result
-- **AND** it MUST contain neither a persisted-state view nor a failure
+- **WHEN** an Email or IM owner state is converted to `ChannelSummary`
+- **THEN** status MUST be `connected`、`invalid_credentials` or `connection_failure`
+- **AND** `status_description` MUST be empty for `connected` and contain only a safe explanation for an error
+- **AND** the summary MUST NOT contain `last_checked_at` or an asynchronous creation state
 
-### Requirement: Channel capabilities MUST define valid management operations
+#### Scenario: Display identity is projected
 
-Each channel view MUST advertise the management operations implemented for its provider. Capabilities MUST remain static provider-level declarations; credential validity and current provider health belong to the separate status snapshot. Management MUST reject operations that the selected channel does not support.
+- **WHEN** management creates `display_identifier`
+- **THEN** it MUST use only a safe app/client identifier、an optional provider tenant display name or Email sender name/address
+- **AND** it MUST NOT use an API key、secret、token、encrypt key or masked credential
 
-#### Scenario: Email capabilities are returned
+#### Scenario: Channel state is read
 
-- **WHEN** the Resend Email channel is listed
-- **THEN** its capabilities MUST describe configuration create/update, test and delete
-- **AND** it MUST NOT advertise secret retention
+- **WHEN** a Channel is listed or read
+- **THEN** management MUST treat its status as a stored snapshot
+- **AND** it MUST NOT perform provider I/O to refresh that snapshot
 
-#### Scenario: IM capabilities are returned
+### Requirement: Management commands MUST preserve provider-specific configuration types
 
-- **WHEN** a current IM provider is listed
-- **THEN** its capabilities MUST describe configuration create/update, test, delete and provider-replacement authorization
-- **AND** it MUST NOT advertise secret retention
+Email and IM operations MUST receive strict provider-discriminated inputs mapped from the canonical Console v2 DTOs。Channel Management MUST NOT define a second provider-specific credential union or accept an untyped configuration map。
 
-#### Scenario: Unsupported operation is requested
+#### Scenario: Resend candidate is submitted
 
-- **WHEN** a caller requests an operation absent from the channel capabilities
-- **THEN** management MUST return a stable unsupported-operation result before side effects
+- **WHEN** Email create、update or test receives a Resend candidate
+- **THEN** the candidate MUST contain required `sender_email`、`sender_name` and `api_key`
+- **AND** Channel Management MUST delegate the complete candidate to the Email owner
+
+#### Scenario: IM candidate is submitted
+
+- **WHEN** IM create、update、replacement or test receives provider credentials
+- **THEN** the selected provider variant MUST be validated through its `provider` discriminator
+- **AND** Channel Management MUST delegate the mapped input to the IM owner
+
+#### Scenario: Required configuration is not newly submitted
+
+- **WHEN** a candidate omits a required field or supplies `null` or a retention marker for a required secret
+- **THEN** validation MUST reject the candidate before provider or persistence work
+- **AND** management MUST NOT read persisted credentials to complete it
+
+#### Scenario: A nullable provider field is omitted
+
+- **WHEN** a complete candidate omits a nullable field or explicitly supplies `null`
+- **THEN** the final candidate value MUST be `null`
+- **AND** management MUST NOT retain the persisted field value
+
+### Requirement: Authenticated request scope MUST determine channel ownership
+
+Channel controllers MUST derive the existing owner-native `WorkspaceScope` or `DirectoryScope` from authenticated route state。They MUST NOT add a `*ManagementContext` transport/domain type or accept arbitrary tenant ownership from provider payloads。Each application owner MUST verify that the addressed aggregate belongs to the derived scope。
+
+#### Scenario: Email command is delegated
+
+- **WHEN** an Email command is handled
+- **THEN** Channel Management MUST scope it to the trusted current Workspace
+
+#### Scenario: IM command is delegated
+
+- **WHEN** an IM command is handled
+- **THEN** Channel Management MUST pass the effective existing `DirectoryScope` required by the IM owner
+
+#### Scenario: Cross-scope record is encountered
+
+- **WHEN** an Email or IM owner resolves a configuration belonging to another scope
+- **THEN** it MUST NOT expose or mutate that configuration
+
+### Requirement: Email and one active IM channel MUST coexist independently
+
+Channel Management MUST allow one Workspace Email Channel and at most one active IM Channel in the effective `DirectoryScope` to coexist。The application owners MUST enforce this cardinality。The unified collection MUST represent both kinds without creating one provider slot per supported provider。
+
+#### Scenario: Email and IM are configured
+
+- **WHEN** one Resend configuration and one active IM Integration exist
+- **THEN** both MUST appear in the configured Channels collection
+
+#### Scenario: Email changes
+
+- **WHEN** the Email Channel is created、updated or deleted
+- **THEN** management MUST NOT modify any IM Integration、identity、binding or sync state
+
+#### Scenario: IM changes
+
+- **WHEN** the IM Channel is created、updated、replaced or deleted
+- **THEN** management MUST NOT modify the Email configuration
+
+#### Scenario: A second IM Channel is created
+
+- **WHEN** one active IM Integration exists and ordinary create is requested
+- **THEN** the IM owner MUST reject create before provider I/O
+- **AND** it MUST NOT create a second active Integration
+
+### Requirement: IM management MUST delegate to the existing IM Control Plane
+
+Channel Management MUST delegate configuration revision、credential rotation、provider installation replacement、identity invalidation、binding and synchronization invariants to the existing IM Integration application owner。The Channel layer MUST NOT reimplement these transitions。
+
+#### Scenario: IM credentials rotate within one provider tenant
+
+- **WHEN** item update validates the same provider and provider tenant as the addressed IM Channel
+- **THEN** the IM owner MUST preserve the existing `integration_id`, IM identity records, and Contact bindings
+- **AND** it MUST advance its numeric configuration version exactly once
+
+#### Scenario: IM item update requires replacement
+
+- **WHEN** item update credentials select a different provider or provider tenant
+- **THEN** management MUST return `replacement_required` without persistence
+- **AND** it MUST preserve the current Channel、identities and bindings
+
+#### Scenario: One IM provider installation is explicitly replaced
+
+- **WHEN** replacement supplies the addressed `channel_id`、current expected configuration version and complete credentials
+- **THEN** the IM owner MUST atomically replace that resource
+- **AND** it MUST clear only identities and bindings owned by the replaced Channel
+
+#### Scenario: One IM Channel is deleted
+
+- **WHEN** a caller deletes one IM Channel with the matching identity and configuration version
+- **THEN** the IM owner MUST delete that Channel and clear only identities and bindings owned by it
+- **AND** it MUST preserve Email and unrelated IM state
+
+#### Scenario: IM write is stale
+
+- **WHEN** the IM owner rejects update、replacement or delete through its complete CAS token
+- **THEN** Channel Management MUST return `provider_configuration_updated`
+- **AND** it MUST not retry without a current `ChannelSummary`
+
+#### Scenario: HTTP version is mapped to domain CAS
+
+- **WHEN** Channel Management receives an opaque HTTP `ConfigVersion` with an IM `channel_id`
+- **THEN** it MUST map them to the owner-native integration identity and numeric version
+- **AND** it MUST NOT weaken the domain's complete `integration_id + numeric config_version` comparison
+
+### Requirement: Channel failures MUST be safe and attributable
+
+Management MUST expose only the failure categories required by clients。Configured status and candidate-test failures MUST use `invalid_credentials` for invalid credentials and `connection_failure` for other expected provider failures。Stable conflict codes MUST correspond to distinct client recovery behavior。This change defines only `replacement_required` and `provider_configuration_updated`；management MUST NOT introduce another stable conflict code without a concrete client recovery requirement。
+
+#### Scenario: Candidate credentials are rejected
+
+- **WHEN** an Email or IM provider classifies submitted credentials as invalid
+- **THEN** management MUST return `invalid_credentials`
+
+#### Scenario: Another expected provider failure occurs
+
+- **WHEN** an Email or IM provider returns another classified connection failure
+- **THEN** management MUST return `connection_failure`
+
+#### Scenario: Application owner raises an unexpected failure
+
+- **WHEN** an Email or IM owner cannot classify an unexpected failure
+- **THEN** management MUST return a generic internal failure
+- **AND** it MUST NOT expose credentials、provider raw responses、exceptions or persistence diagnostics
+
+#### Scenario: Channel operation is logged
+
+- **WHEN** management writes logs or metrics for a Channel operation
+- **THEN** records MAY contain safe scope、`channel_id`、kind、provider and operation identifiers
+- **AND** they MUST NOT contain credential values or provider payloads
 
 ## ADDED Requirements
 
-### Requirement: Production composition MUST bind concrete provider managers without a registry
+### Requirement: Provider catalog MUST remain separate from persisted Channel state
 
-Production composition MUST bind each concrete Workspace route directly to the `HumanInputEmailChannelManager` or `HumanInputIMChannelManager` configured for that route's complete channel reference. The implementation MUST remove `ChannelHandler`, `ChannelHandlerRegistry`, `DuplicateChannelHandlerError` and runtime register/resolve/handlers dispatch. Shared application logic MAY receive an already-bound provider manager, but MUST NOT select one from `ChannelRef` at runtime.
+Channel Management MUST build one provider catalog from the Email and IM owners' available providers。The catalog MUST return only available providers and MUST use collection membership as its only availability expression。It MUST NOT query provider configuration persistence to manufacture one Channel per provider or treat a provider value as a persisted resource identifier。
 
-#### Scenario: A concrete item operation is composed
+#### Scenario: Provider catalog is requested
 
-- **WHEN** production composition builds GET, POST, PUT, DELETE or connection-test behavior for one concrete route
-- **THEN** it MUST supply that route's provider manager directly
-- **AND** the operation MUST NOT perform registry registration or provider lookup
+- **WHEN** a caller requests the provider catalog
+- **THEN** the result MUST group available Email and IM providers separately
+- **AND** an unavailable provider MUST be omitted
+- **AND** no entry MUST claim to be configured or not configured
 
-#### Scenario: The Channels collection is composed
+#### Scenario: Configured Channel collection is requested
 
-- **WHEN** production composition builds the Channels collection reader
-- **THEN** it MUST supply the seven provider managers in fixed product order
-- **AND** the collection reader MUST isolate each manager's safe read result without discovering managers from a registry
+- **WHEN** a caller requests configured Channels
+- **THEN** management MUST read Email and IM owner state without external provider I/O
+- **AND** it MUST NOT infer provider availability from configured state
 
-#### Scenario: IM provider managers share dependencies
+### Requirement: IM configuration validation MUST precede atomic persistence
 
-- **WHEN** multiple IM provider managers use the same IM Control Plane repository or application dependencies
-- **THEN** direct composition MUST preserve the single-active Integration and provider-replacement invariants
-- **AND** shared dependencies MUST NOT introduce runtime provider registration
+Every IM create、credential rotation or replacement MUST validate complete credentials、required directory scopes and provider tenant identity before opening the persistence transaction。A candidate test MUST validate only submitted complete credentials and MUST NOT persist state。
 
-### Requirement: Successful IM configuration MUST persist verified connectivity
+#### Scenario: IM configuration validates successfully
 
-Every current IM create or update path MUST validate credentials, required directory scopes and provider tenant identity, then persist the resulting safe connectivity diagnostic together with the accepted configuration. A connection test MUST validate only the complete credentials submitted in that request, MUST NOT read persisted credentials and MUST NOT persist configuration state.
+- **WHEN** the provider accepts submitted credentials and required scope or tenant checks pass
+- **THEN** the IM owner MUST persist the accepted configuration transition atomically
+- **AND** the returned `ChannelSummary` MUST describe the committed revision
 
-#### Scenario: New IM configuration validates successfully
+#### Scenario: Provider validation fails
 
-- **WHEN** an IM provider accepts the request credentials, confirms required scopes and returns the provider tenant identity during create
-- **THEN** the persisted Integration MUST have connected status and a trusted `last_checked_at`
-- **AND** the returned safe channel view MUST be immediately eligible for directory sync
+- **WHEN** credential authentication、scope validation or tenant resolution fails
+- **THEN** no configuration、diagnostic、identity or binding state MUST change
 
-#### Scenario: Existing IM credentials rotate successfully
+#### Scenario: Connection test succeeds
 
-- **WHEN** a complete-revision update validates and persists replacement credentials for the same provider tenant
-- **THEN** the configuration transition MUST advance `config_version` exactly once
-- **AND** the connected diagnostic MUST be persisted atomically with that transition
-- **AND** persisting the diagnostic MUST NOT advance `config_version` separately
-- **AND** existing identities and bindings MUST remain governed by the credential-rotation invariant
-
-#### Scenario: Replacement is not explicitly authorized
-
-- **WHEN** an update targets a different provider or validation resolves a different provider tenant identity while replacement authorization is false
-- **THEN** management MUST return a stable replacement-confirmation-required failure
-- **AND** it MUST NOT modify credentials, diagnostics, revisions, identities or bindings
-
-#### Scenario: Replacement is explicitly authorized
-
-- **WHEN** an update carries explicit replacement authorization, a complete current revision and a complete target-provider request
-- **THEN** management MUST delegate the validated transition to the existing IM provider-replacement semantics
-- **AND** replacement authorization MUST permit but MUST NOT force a replacement when the validated transition is only credential rotation
-
-#### Scenario: Request validation fails
-
-- **WHEN** provider authentication, required scope validation or tenant identity resolution fails during create or update
-- **THEN** no configuration or connectivity diagnostic MUST be created or replaced
-- **AND** the response MUST contain only the stable safe provider failure
-
-#### Scenario: Connection test does not save configuration
-
-- **WHEN** a connection test succeeds for an unconfigured or configured IM channel
-- **THEN** management MUST return a credential-free `ChannelTestResult`
-- **AND** it MUST NOT read or reuse persisted credentials
-- **AND** it MUST NOT persist credentials, status, `last_checked_at` or a configuration revision
+- **WHEN** a submitted complete candidate passes provider validation
+- **THEN** management MUST return a credential-free test success
+- **AND** it MUST NOT read persisted credentials or persist configuration、diagnostics or revision
 
 ## REMOVED Requirements
 
 ### Requirement: The handler registry MUST route complete channel references directly
 
-**Reason**: Concrete kind/provider routes already select the provider manager. Runtime registration and `ChannelRef` lookup add an unused dispatch layer.
+**Reason**: Channel routes no longer select a provider slot, and Email/IM application owners already own provider dispatch and lifecycle invariants。A Channel-level handler registry duplicates ownership。
 
-**Migration**: Remove `ChannelHandler`, `ChannelHandlerRegistry`, `DuplicateChannelHandlerError` and their tests/exports. Bind item operations directly to their provider manager and pass the fixed product-ordered provider manager list to collection reads.
+**Migration**: Remove `ChannelHandler`、`ChannelHandlerRegistry`、`DuplicateChannelHandlerError`、per-provider Channel managers and their register/resolve tests。Inject one Email Management port and one IM Integration application port into `HumanInputChannelManagementService`。

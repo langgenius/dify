@@ -1,96 +1,149 @@
 ## Context
 
-Canonical Channel Management 已为 Resend 和 self-managed Slack 提供完整 operation，Feishu/DingTalk 仍使用 unavailable implementations，Lark、Microsoft Teams 和 WeCom 尚未进入 provider/candidate union。底层 IM Control Plane 与现有 provider adapters 已覆盖这些 provider family；缺口在 management contract、credential validation/persistence wiring 和 safe Console mapping，而不是 directory synchronization。
+现有 Channel Management 把 provider catalog 与 configured Channel 合并成同一个 model。Collection 为每个 provider 构造 configured 或 `not_configured` view，item path 也由 `(kind, provider)` 定位；但 IM persistence 当前只有一个 active Integration。因此 `GET /channels/im/feishu` 可以表示 Feishu 未配置，而同一路径的 PUT 可能替换 Slack，DELETE 又可能找不到 Feishu resource。
 
-本 change 只完成 backend configuration lifecycle。Manual sync runtime、OAuth lifecycle 和 provider directory read 由其他 owner 负责。
+实现层同时复制了 Email/IM candidate、credentials、commands、aggregate transition 和 per-provider manager。Channel layer 没有抹平 Email 与 IM 的 schema 或 invariant，却要求每次 provider field 变化在 IM owner、Channel candidate、manager、registry、controller 和 OpenAPI definition 多处同步。
+
+本 change 保留 Channel 作为 Console 的 canonical term。`api/controllers/console/human_input_v2/` 拥有 HTTP DTO，Email configuration 与 IM Integration configuration 仍由既有 application owner 管理。
 
 ## Goals / Non-Goals
 
 **Goals:**
 
-- 让 Resend 和当前完整 IM provider set 通过同一 canonical management facade 暴露。
-- 保持 provider-specific typed candidates、credential owner 和 Integration CAS invariants。
-- 让每个 complete channel reference 暴露 concrete Console route 和准确的 operation-specific schema。
-- 将 configuration create/update 和 destructive provider replacement 变成显式调用意图。
-- 让 successful IM create/update 产生可持久化、credential-free 的 connected diagnostic。
-- 保持 controller 为 thin transport adapter。
+- 让 configured Channel 与 available provider 成为两个语义独立的 resource collection，并各自只提供一个 list endpoint。
+- 让 item URL 永远定位一个已持久化 resource，而不是一个可能未配置的 provider slot。
+- 让 Channel Management 委托 Email/IM owner，并删除 provider-level pass-through hierarchy 与重复 contracts。
+- 保持现有 IM domain CAS、diagnostic、identity/binding ownership，同时让 HTTP `ConfigVersion` 对 client 保持 opaque。
+- 在当前 single-IM invariant 下提供 ID-addressed explicit replacement。
+- 移除旧 `im-integration` management API，并删除或迁移其重复 Console credential/request DTO。
 
 **Non-Goals:**
 
+- 不统一 Email 与 IM provider configuration fields 或 persistence model。
+- 不建立 generic Channel table、generic credential store 或 generic provider plugin registry。
 - 不读取 provider directory，不实现 reconciliation 或 Celery dispatch。
-- 不新增 credential schema，除非 existing adapter contract test 证明必要。
 - 不实现 Slack OAuth authorize/callback/token lifecycle。
-- 不实现 EE transport。
+- 不实现 frontend repository migration 或 EE transport。
 
 ## Decisions
 
-### 1. Remove the handler registry and bind concrete provider managers
+### 1. Channel is a facade over two application owners
 
-Concrete Workspace route 已经确定完整 `(kind, provider)`，因此 production composition 直接把对应 `HumanInputEmailChannelManager` 或 `HumanInputIMChannelManager` 绑定到 route operation。`HumanInputChannelManagementService` 可以保留共同的 safe result、capability 和 lifecycle orchestration，但不得通过 `ChannelRef` 查找 provider implementation。
+`HumanInputChannelManagementService` 只依赖一个 Email Management port 和一个 IM Integration application port。它可以统一 authenticated scope derivation、`ChannelSummary` projection、safe failure 和 provider catalog projection，但不得复制 Email/IM aggregate，或在 Channel layer 实现 credential rotation、provider replacement、domain CAS、identity invalidation、binding cleanup 或 Email key protection。
 
-本 change 删除 `ChannelHandler`、`ChannelHandlerRegistry`、`DuplicateChannelHandlerError` 及其 register/resolve/handlers flow。Channels collection 使用 production composition 中固定、按 product order 声明的七个 provider manager 读取 current view，并继续隔离单个 provider read failure。Feishu 与 Lark 可以共享 provider-family dependencies，但不通过 registry registration 表达 addressability。
+Dispatch 只发生在稳定的 `email` / `im` kind boundary。Provider discriminator 由对应 owner 的 typed request 处理。删除 `ChannelHandler`、`ChannelHandlerRegistry`、`DuplicateChannelHandlerError`、per-provider Channel manager 和 runtime register/resolve flow。
 
-### 2. Preserve provider-specific candidate types
+这使相邻层提供不同 abstraction：Channel layer 回答“当前配置了哪些 delivery channels、还能配置哪些 provider”；Email/IM owner 回答“该 kind 的 candidate 如何验证并改变 aggregate”。`api/controllers/console/human_input_v2/providers.py` 是 Console provider credential DTO 的 canonical owner，并负责把 HTTP DTO 映射到 owner-native application input。
 
-Application commands 保持 provider-specific typed candidate，而不是 untyped configuration map，但 create、update 与 test 使用独立 command。Concrete route 决定 provider 并调用已绑定的 provider manager；transport payload 不重复 provider discriminator，application service 也不执行 provider lookup。
+### 2. Configured Channels and provider catalog are separate resources
 
-Create、update 与 test 使用同一个完整 provider-specific candidate model。所有 non-nullable fields，包括每个 required secret，在三个 operation 中都必须显式提交；nullable fields 可以省略或提交 `null`，两者都表示 candidate 中的最终值为 `null`。Update 不读取 current credentials 做 retention/merge，也不暴露 `PreserveOriginalValue`。
+All paths are relative to `/console/api/workspace/current/human-input/v2`。Configured resources use:
 
-### 3. Expose one concrete Console route per complete channel reference
+| Method | Route | Meaning |
+| --- | --- | --- |
+| `GET` | `/channels` | List every configured Email and IM Channel |
+| `POST` | `/channels/email` | Create an Email Channel |
+| `POST` | `/channels/email/test` | Test an Email candidate without persistence |
+| `GET` | `/channels/email/<channel_id>` | Read one persisted Email Channel |
+| `PUT` | `/channels/email/<channel_id>` | Update that Email Channel |
+| `DELETE` | `/channels/email/<channel_id>` | Delete that Email Channel |
+| `POST` | `/channels/im` | Create an IM Channel |
+| `POST` | `/channels/im/test` | Test an IM candidate without persistence |
+| `GET` | `/channels/im/<channel_id>` | Read one persisted IM Channel |
+| `PUT` | `/channels/im/<channel_id>` | Rotate credentials for that IM Channel |
+| `DELETE` | `/channels/im/<channel_id>` | Delete that IM Channel |
+| `POST` | `/channels/im/<channel_id>/replacement` | Replace that IM Channel |
 
-Workspace Console 注册以下 concrete item/test paths：`email/resend`、`im/slack`、`im/feishu`、`im/lark`、`im/ding_talk`、`im/ms_teams` 与 `im/we_com`。Kind 与 provider 均不使用 dynamic route segment。未知 kind/provider 不注册 catch-all resource，由 HTTP routing 直接返回 `404`，且不得构造 management service。
+Provider discovery uses:
 
-每个 item route 使用 provider-specific create/update request schema 和 provider-specific credential-free current view。IM providers 共享一个 credential-free connection-test response 和 common safe error response；不为结构相同的 provider test result 复制 response type。Controllers 可以复用 transport helpers，但 concrete Resource 必须拥有静态 `ChannelRef` 和准确的 Swagger decorators。
+| Method | Route | Meaning |
+| --- | --- | --- |
+| `GET` | `/channel-providers` | List available Email and IM providers in separate response fields |
 
-### 4. Separate configuration create and update
+A `ChannelProvider` contains `provider` and `connection_mode`。The response contains `email_providers` and `im_providers` arrays。This change returns only `custom_app` as `connection_mode`。The entry has no availability field、configured state、resource identity、status or configuration revision。The catalog omits unavailable providers；availability is expressed only by collection membership。
 
-`POST` 创建 configuration，只在当前 owner 尚无该 channel kind 的 active configuration 时成功，且不接受 revision token。成功返回 `201` 和 authoritative configured view。`PUT` 更新现有 configuration，必须携带完整 `integration_id`/`config_version` CAS token；不存在 current configuration、缺失 token 或 stale token 时，必须在 provider I/O 前失败。成功返回 `200` 和 authoritative configured view。
+`ChannelSummary` is the canonical credential-free transport projection for every configured Channel。It contains `id`、`created_at`、`updated_at`、`kind`、`provider`、`status`、`status_description`、`display_identifier`、`webhook_url` and `config_version`。Collection、create、update and replacement use this same projection；per-kind `*ChannelSummary` DTOs and retained controller `IMIntegration` projections are removed。
 
-同一个 provider-specific current view 可以供 GET、POST、PUT 与 DELETE 复用；只有 wire shape 不同时才增加 operation-specific response type。
+`display_identifier` is derived only from non-secret identity fields。For IM it contains a safe app/client identifier and MAY append a provider tenant display name when available。For Email it contains a safe client/app identifier when the provider has one and `${sender_name} ${sender_email}` when sender fields are available；Resend therefore uses `${sender_name} ${sender_email}`。It MUST NOT contain an API key、secret、token、encrypt key or masked credential。
 
-### 5. Require explicit replacement authorization
+### 3. Kind collections preserve future cardinality
 
-IM update payload 包含 `replace_current: bool = false`。该字段是 destructive replacement consent：当 target route provider 不同于 current provider 时，`false` 必须在 provider I/O 前返回 stable conflict；当 credential validation 发现同 provider 的 provider tenant identity 已变化时，`false` 必须在任何 persistence 前返回 replacement-confirmation-required failure。
+In this change the Email owner permits at most one Workspace Email configuration and the IM owner permits at most one active IM Integration in the effective `DirectoryScope`。`GET /channels` can therefore return at most one item of each kind。This is an application invariant, not a singleton URL shape。
 
-`replace_current = true` 允许 IM Control Plane 根据 validated provider identity 决定 credential rotation 或 provider/provider-tenant replacement，但不强制一次本来属于 rotation 的 update 变成 replacement。跨 provider replacement 必须提交 target provider 的完整 candidate，并使用 current Integration 的完整 CAS token。
+The unified collection and ID-addressed item routes do not encode the current cardinality into the URL。This change does not define or pre-build multi-IM persistence behavior。
 
-### 6. Test only the submitted complete candidate
+### 4. Create, update and replacement express different transitions
 
-Connection test 是 save 前的 candidate validation。Test request 使用与 create/update 相同的完整 provider-specific candidate；test 不得 reveal、merge 或复用 persisted credentials，也不接受 `PreserveOriginalValue`。所有当前 IM provider 复用 common connection-test response，失败通过 stable safe category/code 和可安全展示的 message 表达。
+`POST /channels/im` means create。Under the current single-IM invariant it returns conflict before provider I/O when an IM Channel already exists。
 
-### 7. Validate provider connectivity before opening the persistence transaction
+Cross-provider or provider-tenant switching uses `POST /channels/im/<channel_id>/replacement` with complete credentials and `expected_config_version`。The operation validates the new complete candidate outside the write transaction, then atomically replaces the target and clears only identities/bindings owned by it。A stale or mismatched target leaves all state unchanged。
 
-Credential authentication、required-scope validation 和 provider tenant identity resolution 属于 external I/O，必须在 database transaction 外完成。Validated result 返回 credential-free metadata；manager 随后在一个 explicit transaction 中应用 configuration transition 与 connected diagnostic。
+`PUT /channels/im/<channel_id>` means credential rotation for the addressed resource。The request provider must equal the persisted provider。Validation must confirm the same provider tenant。Success preserves domain integration identity、identities and bindings and increments the numeric domain configuration version once。A different provider or provider tenant returns `replacement_required` without persistence。The caller then uses the ID-addressed replacement subresource。
 
-把 provider I/O 放入 transaction 会扩大 lock duration；让任一调用方从 submitted candidate 推断 connected state 会使其本地状态超前于 persisted facts，因此均拒绝。
+Stable conflict codes correspond to distinct client recovery behavior。This change defines only `replacement_required` and `provider_configuration_updated`。Another stable conflict code is introduced only when a concrete client recovery requirement needs to distinguish that conflict。
 
-### 8. Create and update persist configuration and diagnostics atomically
+### 5. Console v2 owns provider credential transport DTOs
 
-Create/update 成功时，configuration transition 推进 `config_version` 一次，`record_diagnostics(CONNECTED, checked_at, safe_metadata)` 与其同 transaction 持久化但不再次推进 version。Failed validation 或 replacement authorization failure 在进入 write transaction 前结束，不能修改 current state。Connection test 返回 `ChannelTestResult`，不写 credentials、diagnostics 或 configuration revision。
+`api/controllers/console/human_input_v2/providers.py` owns the Console v2 `IMProviderCredentials` and `EmailProviderCredentials` discriminated unions plus their Feishu、Lark、Slack、DingTalk、Microsoft Teams、WeCom and Resend variants。Old controller credential DTOs are deleted or migrated to this module。Domain credential and aggregate types may remain internal to their application owners, but they are not a second HTTP contract authority。
 
-### 9. Management reuses existing adapters without owning directory reads
+Create and test requests contain `credentials`。Update and replacement requests contain `credentials` and required `expected_config_version`。Delete requires `expected_config_version` as a query argument。The item path supplies `channel_id`；requests MUST NOT repeat an expected integration ID or replacement target ID。
 
-Provider manager 可以复用 existing provider adapter 的 credential validation/tenant identity capability，但不得调用 `directory.read_directory()`，也不得新增 provider directory HTTP client、pagination 或 normalization。Directory ownership 保持在 sync worker 的 `IMProviderAdapter` path。
+Create、update、replacement and test all require complete provider credentials。Every required secret must contain a newly submitted non-blank value。The DTOs do not accept `PreserveOriginalValue` or persisted-secret merging。They do not perform special masked-placeholder detection；submitted secret strings proceed through normal DTO and provider validation。Every secret field uses Pydantic `SecretStr` so DTO repr、logs and validation diagnostics do not expose its value。
 
-### 10. Controllers map trusted context into the facade
+Resend `sender_email`、`sender_name` and `api_key` are required。The Console DTO maps the complete candidate to the Email owner without creating a second Email aggregate。
 
-Workspace Console controller 只构造 trusted management context、解析 Pydantic DTO、调用 `HumanInputChannelManagementService` 并映射 stable safe errors。Repository、credential protector、provider adapter 和 provider payload 不得上浮到 controller。
+HTTP `ConfigVersion` is an opaque string。A client stores and returns it exactly as received and MUST NOT parse、decode、modify、interpret or synthesize it。For an IM write the server combines the path `channel_id` with the decoded numeric domain version to preserve the IM owner's complete `integration_id + numeric config_version` CAS invariant。
+
+### 6. Candidate tests do not address persisted resources
+
+Test routes live on kind create paths because a candidate may use an unconfigured provider and has no `channel_id`。Both accept the same complete provider credential DTO used by save operations。
+
+Tests use only submitted credentials, perform no persisted-credential read and write no configuration、status、diagnostics or revision。Success returns `200` with `ChannelTestResponse`。Invalid credentials map to `invalid_credentials`；all other expected provider failures map to `connection_failure`。An unexpected failure returns `500` with no provider error or internal diagnostic。
+
+### 7. Provider I/O precedes one atomic state transition
+
+IM create, rotation and replacement authenticate credentials, validate required directory scopes, resolve provider tenant identity and verify compatibility with the read-only effective deployment event transport before opening the database transaction. The validated result contains only protected credentials and credential-free metadata needed by the IM owner. `event_transport_mode` remains deployment configuration and is never accepted from a tenant request or persisted in an Integration.
+
+The IM owner then applies the configuration transition atomically。The transition advances the numeric domain configuration version once。Validation、authorization、CAS or persistence failure leaves credentials、diagnostics、identities and bindings unchanged。
+
+`ChannelSummary.status` has exactly `connected`、`invalid_credentials` and `connection_failure`。`status_description` is empty for `connected` and contains only a safe human-readable explanation for an error state。There is no asynchronous creation state and no `last_checked_at` transport field。
+
+Provider adapters may reuse existing credential validation. They must not call `directory.read_directory()` or create another directory client, pagination pipeline, normalization path or sync-specific credential model.
+
+### 8. Legacy management routes are removed, not aliased
+
+The Console blueprint removes:
+
+- `/workspaces/current/human-input/im-integration`
+- `/workspaces/current/human-input/im-integration/test`
+
+Requests to these paths receive route-level `404`. They do not redirect, proxy or dispatch to Channel Management. `im-sync-runs`, `im-identities` and Contact `im-override` routes remain unchanged and continue to use the existing IM Integration state internally.
+
+Keeping the old route as an alias would create two public lifecycle authorities and force future API changes to be maintained twice. Removing route registration and migrating reusable provider credential fields into the v2 controller package leaves one public transport authority.
+
+### 9. Controllers remain transport adapters
+
+Workspace Console controllers enforce authentication and owner/admin authorization on every route, including provider catalog and collection reads；derive the existing `WorkspaceScope` / `DirectoryScope` values required by each owner；validate Pydantic DTOs；call Channel Management；and translate stable safe outcomes。They do not construct a `*ManagementContext` wrapper and do not import repositories、credential protectors、provider SDKs or ORM records。
+
+Collection reads perform no provider I/O. Unexpected errors are isolated by configured resource where possible and never expose credentials, raw provider responses or persistence diagnostics.
 
 ## Risks / Trade-offs
 
-- [Concrete routes 增加 Resource 数量] → 复用 controller execution helpers，但保留 concrete Resource/schema registration 作为公开 contract。
-- [删除 registry 后 collection 仍需聚合七个 provider] → 在 production composition 中使用固定 product-order dependency list；禁止恢复 runtime registration 或 `ChannelRef` lookup。
-- [Update 无法从 credential-free response 重建 Secret] → 管理员更新配置时必须重新提交全部 required secrets，以换取单一、准确的 request schema 和无 retention/merge 分支的 credential flow。
-- [Provider replacement 可能误清理 identities/bindings] → 默认 `replace_current = false`，只有显式 consent 才允许 destructive aggregate transition。
-- [Validation succeeds but provider state changes before commit] → persisted diagnostic 表达 `checked_at` snapshot，不把它建模为 live health guarantee。
-- [Cloud could expose self-managed configuration before OAuth readiness] → 保持 Cloud new-connect gate 关闭；OAuth change 独立扩展 canonical facade。
+- [Two discovery collections add one API concept] → Their state semantics are disjoint: provider definitions are static possibilities; Channels are persisted facts. Combining them recreates ambiguous resource identity.
+- [Channel facade becomes less provider-oriented] → Provider-specific HTTP fields remain available through the typed credential unions in `providers.py`, while provider lifecycle stays in its actual owner.
+- [Current cross-provider switch uses an ID-addressed replacement subresource] → This makes resource replacement and destructive cleanup explicit；a PUT never silently changes the identity it addresses。
+- [Provider validation can discover a tenant change only after external I/O] → Return replacement-required without writing; a retry with explicit replacement target makes operator consent testable.
+- [Old clients use `/im-integration`] → Treat removal as a breaking migration and update callers atomically to `/channels/im`; do not retain a compatibility alias.
+- [Cloud self-managed configuration can precede OAuth readiness] → Keep new-connect rollout gates unchanged; OAuth remains a separate owner.
 
 ## Migration Plan
 
-1. 先落地 provider/candidate/manager completeness 和 create/update/test service tests。
-2. 用 concrete routes 和 operation-specific Pydantic contracts 替换 generic item/test routes，并完成 safe error mapping。
-3. 在无 live credentials 的 contract tests 中覆盖完整 provider set；真实 provider smoke 保持 opt-in。
-4. 该 backend change 可独立部署，但 downstream capability exposure 继续由各自 rollout gate 控制。
+1. Add contract tests for the unified configured collection, unified provider catalog, ID-addressed items/replacement and legacy-route `404` behavior.
+2. Make Email and IM Integration services expose the minimal application ports required by Channel Management.
+3. Move Console provider credential DTO ownership to `api/controllers/console/human_input_v2/providers.py`；delete duplicate DTOs and per-provider manager/registry code。
+4. Replace provider-addressed controllers with the `/workspace/current/human-input/v2` unified collection/catalog、ID-addressed item and replacement controllers。
+5. Move all configuration callers from `/im-integration` to `/workspace/current/human-input/v2/channels/im`, then remove the legacy route registration in the same deployment.
+6. Add transition, concurrency, rollback and security coverage before enabling production rollout.
 
 ## Open Questions
 

@@ -248,11 +248,11 @@ class _FeishuLarkIMIntegrationCredentialsBase(_RequestModel):
     """Shared credential fields for Feishu and Lark integrations."""
 
     app_id: str = Field(description="Feishu or Lark application identifier.")
-    app_secret: str | PreserveOriginalValue = Field(description="Feishu or Lark application secret.")
-    verification_token: str | PreserveOriginalValue | None = Field(
+    app_secret: str = Field(description="Feishu or Lark application secret.")
+    verification_token: str $ None = Field(
         default=None, description="Optional callback verification token."
     )
-    encrypt_key: str | PreserveOriginalValue | None = Field(default=None, description="Optional callback encrypt key.")
+    encrypt_key: str | None = Field(default=None, description="Optional callback encrypt key.")
 
 
 class FeishuIMIntegrationCredentials(_FeishuLarkIMIntegrationCredentialsBase):
@@ -272,13 +272,13 @@ class SlackIMIntegrationCredentials(_RequestModel):
 
     provider: Literal[IMProvider.SLACK] = Field(description="Discriminator for Slack integration credentials.")
     client_id: str = Field(description="Slack OAuth client identifier.")
-    client_secret: str | PreserveOriginalValue = Field(description="Slack OAuth client secret.")
-    signing_secret: str | PreserveOriginalValue = Field(description="Slack signing secret used to verify callbacks.")
-    bot_token: str | PreserveOriginalValue = Field(
+    client_secret: str = Field(description="Slack OAuth client secret.")
+    signing_secret: str = Field(description="Slack signing secret used to verify callbacks.")
+    bot_token: str = Field(
         description="Slack bot token used for API calls and message delivery."
     )
-    app_token: str | PreserveOriginalValue = Field(
-        description="Slack app-level token used exclusively for Socket Mode."
+    app_token: str | None = Field(
+        description="Slack app-level token used exclusively for Socket Mode. None if socket mode is not utilized."
     )
 
 
@@ -288,7 +288,7 @@ class DingTalkIMIntegrationCredentials(_RequestModel):
     provider: Literal[IMProvider.DING_TALK] = Field(description="Discriminator for DingTalk integration credentials.")
     corp_id: str = Field(description="DingTalk corporation identifier.")
     client_id: str = Field(description="DingTalk application client identifier.")
-    client_secret: str | PreserveOriginalValue = Field(
+    client_secret: str = Field(
         repr=False, description="DingTalk application client secret. This field will be masked in response."
     )
 
@@ -301,7 +301,7 @@ class MSTeamsIMIntegrationCredentials(_RequestModel):
     )
     tenant_id: str = Field(description="Microsoft Entra tenant identifier.")
     client_id: str = Field(description="Microsoft Teams application client identifier.")
-    client_secret: str | PreserveOriginalValue = Field(
+    client_secret: str = Field(
         description="Microsoft Teams application client secret. This field will be masked in response"
     )
 
@@ -312,7 +312,7 @@ class WeComIMIntegrationCredentials(_RequestModel):
     provider: Literal[IMProvider.WE_COM] = Field(description="Discriminator for WeCom integration credentials.")
     corp_id: str = Field(description="WeCom corporation identifier.")
     agent_id: str = Field(description="WeCom agent identifier.")
-    secret: str | PreserveOriginalValue = Field(
+    secret: str = Field(
         repr=False, description="WeCom application secret. This field will be masked in response"
     )
 
@@ -844,12 +844,9 @@ class PreserveOriginalValue(_RequestModel):
 class ResendProviderUpdateConfig(_RequestModel):
     type: Literal[EmailProviderType.RESEND] = EmailProviderType.RESEND
 
-    api_key: str | PreserveOriginalValue = Field(
+    api_key: str = Field(
         ...,
-        description=(
-            "Resend API key. "
-            "Setting this to `PreserveOriginalValue` while updating will preserve the previously set credential."
-        ),
+        description="Resend API key. "
     )
     sender_email: str = Field(
         ..., description="The email address shown as the sender. Its domain must be verified in Resend."

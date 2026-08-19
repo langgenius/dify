@@ -7,7 +7,7 @@
 #### Scenario: 尚未连接 channel
 
 - **WHEN** 具备 mock 管理权限的用户打开 Channels，且当前 scenario 没有 channel 配置
-- **THEN** 前端 MUST 展示 `Choose a channel to connect` 分组、Email 与可用 IM provider，以及每项的 Connect 操作
+- **THEN** 前端 MUST 展示 `Choose a channel to connect` 分组、provider catalog 返回的 Email 与 IM provider，以及每项的 Connect 操作
 
 #### Scenario: 已配置 channel
 
@@ -37,6 +37,18 @@
 
 - **WHEN** 后续 change 提供真实 API repository adapter
 - **THEN** 页面组件的 props、query keys 和业务状态语义 SHOULD 无需改写即可切换 adapter
+
+#### Scenario: Configuration mutation is submitted
+
+- **WHEN** mock repository updates、deletes or replaces a configured Channel
+- **THEN** command MUST return the exact opaque `config_version` received in `ChannelSummary`
+- **AND** frontend MUST NOT parse、decode、modify、interpret or synthesize that value
+
+#### Scenario: Configuration mutation succeeds
+
+- **WHEN** create、update or replacement mutation succeeds
+- **THEN** repository MUST return the resulting `ChannelSummary`
+- **AND** frontend MUST NOT require a follow-up collection read to discover the new identity or version
 
 #### Scenario: 前端操作不访问真实服务
 
@@ -69,7 +81,7 @@
 
 ### Requirement: 同一 Organization 最多只能有一个 active IM binding
 
-前端 MUST 允许 Email channel 与一个 active IM provider channel 同时存在。active IM binding 指尚未删除的非 Email integration，与其 connection status 是 `Configured`、`Connected` 或错误状态无关。已配置 provider MUST 从可连接列表移至已配置列表；已有 active IM binding 时，前端 MUST NOT 在未确认替换的情况下创建另一个 IM provider binding。
+前端 MUST 允许 Email channel 与一个 active IM provider channel 同时存在。active IM binding 指尚未删除的非 Email integration，与其 status 是 `connected`、`invalid_credentials` 或 `connection_failure` 无关。已配置 provider MUST 从可连接列表移至已配置列表；已有 active IM binding 时，前端 MUST NOT 在未确认替换的情况下创建另一个 IM provider binding。
 
 #### Scenario: 首次选择 provider
 
@@ -90,10 +102,11 @@
 
 - **WHEN** 管理员尝试将当前 IM provider 替换为另一个 IM provider
 - **THEN** 前端 MUST 在执行 mock mutation 前要求确认，并 MUST 明确说明旧 provider 的 IM bindings 和 workspace overrides 将失效，且管理员需要为新 provider 重新执行通讯录同步
+- **AND** replacement command MUST carry the current `channel_id`、opaque `config_version` and complete new credentials
 
 ### Requirement: Email channel 必须使用 Resend 专用配置流程
 
-前端 MUST 为 Email channel 提供独立的 Configure Email overlay。Email provider MUST 固定展示为不可编辑的 `Resend`，表单 MUST 包含必填 sender email、可选 sender name 与必填 API key，并 MUST 提供 Test connection、Cancel 和 Save 操作。
+前端 MUST 为 Email channel 提供独立的 Configure Email overlay。Email provider MUST 固定展示为不可编辑的 `Resend`，表单 MUST 包含必填 sender email、必填 sender name 与必填 API key，并 MUST 提供 Test connection、Cancel 和 Save 操作。
 
 #### Scenario: 首次连接 Email
 
@@ -102,23 +115,26 @@
 
 #### Scenario: Email 必填校验
 
-- **WHEN** 管理员缺少 sender email、输入无效 email 或缺少 API key 时保存或测试连接
+- **WHEN** 管理员缺少 sender email、sender name 或 API key，或输入无效 email 时保存或测试连接
 - **THEN** 前端 MUST 阻止 mock mutation，并 MUST 在对应字段附近展示国际化校验信息
 
 #### Scenario: Email 测试连接
 
 - **WHEN** 管理员提交合法 Email 配置并选择 Test connection
-- **THEN** 前端 MUST 调用可控的 mock test mutation、防止重复提交，并 MUST 展示成功或安全的失败反馈而不关闭弹窗
+- **THEN** 前端 MUST 调用可控的 mock test mutation、防止重复提交，并 MUST 展示 success、`invalid_credentials` 或 `connection_failure` 而不关闭弹窗
+- **AND** unexpected failure MUST use generic feedback without raw provider or internal error information
 
 #### Scenario: 保存 Email 配置
 
 - **WHEN** 管理员提交合法 Email 配置且 mock save mutation 成功
-- **THEN** 前端 MUST 关闭 overlay，将 Email 移入已配置列表，并 MUST 只展示 `Resend · <sender email>` 摘要
+- **THEN** 前端 MUST 关闭 overlay，并使用 mutation 返回的 `ChannelSummary` 将 Email 移入已配置列表
+- **AND** 卡片 MUST 直接使用 `ChannelSummary.display_identifier`，MUST NOT 在前端重新拼接其格式
 
 #### Scenario: 编辑已配置 Email
 
 - **WHEN** 管理员打开已配置 Email 的 Configure overlay
-- **THEN** 前端 MUST 预填非敏感 sender 字段，MUST NOT 回显 API key，并 MUST 允许在不替换 API key 时保留已有 secret
+- **THEN** 前端 MAY 预填非敏感 sender 字段，MUST NOT 回显 API key
+- **AND** 管理员 MUST 重新填写 API key 及所有 required fields 后才能保存或测试
 
 ### Requirement: 已配置 channel 必须提供 Configure 与 Delete 操作
 
@@ -127,7 +143,7 @@
 #### Scenario: 配置已连接的 IM provider
 
 - **WHEN** 管理员选择已配置 IM channel 的 Configure 操作
-- **THEN** 前端 MUST 打开该 provider 的配置 overlay，并 MUST 遵守已有 secret 不回显与 retain-secret 规则
+- **THEN** 前端 MUST 打开该 provider 的配置 overlay、保持已有 secret 不回显，并要求管理员重新填写完整配置
 
 #### Scenario: 取消删除 channel
 
@@ -137,16 +153,17 @@
 #### Scenario: 确认删除 channel
 
 - **WHEN** 管理员确认删除且 mock delete mutation 成功
-- **THEN** 前端 MUST 从已配置列表移除该 channel，并将其恢复到可连接列表
+- **THEN** repository MUST return the deleted `channel_id`
+- **AND** 前端 MUST 从已配置列表移除该 channel，并将其恢复到可连接列表
 
 #### Scenario: 删除 channel 失败
 
 - **WHEN** mock delete mutation 失败
 - **THEN** 前端 MUST 保留原 channel、展示安全错误并允许重试，MUST NOT 乐观显示删除成功
 
-### Requirement: 绑定流程必须适配 mock provider definition
+### Requirement: 绑定流程必须适配 available provider catalog 与本地 form adapter
 
-前端 MUST 根据 typed mock provider definition 展示可用 provider、认证方式、必填字段、callback 信息和能力说明。凭据型 provider MUST 使用 provider-specific 表单；OAuth 型 provider MUST 使用可控的 mock 授权流程。
+前端 MUST 只展示 typed mock provider catalog 返回的 provider。Catalog entry MUST 只包含 `provider` 与 `connection_mode`，且当前 MUST 只返回 `custom_app`；provider-specific 必填字段、callback 帮助和表单布局 MUST 由本地 form adapter 定义。凭据型 provider MUST 使用 provider-specific 表单；未来 OAuth 型 provider MAY 使用可控的 mock 授权流程。
 
 #### Scenario: 配置凭据型 provider
 
@@ -158,11 +175,6 @@
 - **WHEN** 管理员选择 OAuth 型 provider 并开始授权
 - **THEN** 前端 MUST 进入 mock authorization pending 状态，并在 scenario 返回后刷新 repository 中的绑定状态
 
-#### Scenario: Provider 当前不可用
-
-- **WHEN** mock provider definition 将某个 provider 标记为未发布、不受当前部署支持或缺少必要能力
-- **THEN** 前端 MUST 禁止开始该 provider 的绑定，并 MUST 展示可理解的不可用原因
-
 #### Scenario: 必填字段缺失
 
 - **WHEN** 管理员提交凭据表单但缺少 provider 要求的字段
@@ -170,51 +182,48 @@
 
 ### Requirement: Secret 必须在 mock 绑定 UI 中保持不可回显
 
-前端和 mock fixture MUST NOT 保存、返回或预填可回显的真实 secret。已有绑定只能通过 `secret_configured` 或等价状态表达。若管理员未提供替换值，前端 MUST NOT 把掩码或占位符作为新 secret 传给 repository。
+前端和 mock fixture MUST NOT 保存、返回或预填可回显的真实 secret。Configure MUST 要求管理员重新填写包括 secret 在内的完整配置。前端 MUST NOT 定义 partial update 或 retain-secret command，也 MUST NOT 把掩码或占位符作为新 secret 传给 repository。
 
 #### Scenario: 打开已有绑定配置
 
 - **WHEN** 管理员打开一个已配置 App Secret 的 mock provider
 - **THEN** DOM、fixture、日志、错误反馈和测试快照 MUST NOT 包含原 secret
 
-#### Scenario: 更新非 secret 字段
+#### Scenario: 更新配置
 
-- **WHEN** 管理员只修改非 secret 字段并保留原 secret
-- **THEN** 前端 MUST 省略替换值或发送 typed retain-secret command，MUST NOT 发送掩码文本
+- **WHEN** 管理员打开已配置 Channel 并执行保存或测试
+- **THEN** 前端 MUST 要求提交该 provider 的全部 required fields 和新的 secret value
+- **AND** 缺少任一 required field 时 MUST 阻止 mutation
 
 #### Scenario: 替换 secret
 
 - **WHEN** 管理员显式输入新的 secret 并执行保存
 - **THEN** mock repository MUST 只记录“secret 已替换”的状态并立即丢弃输入文本，提交完成后 UI MUST 恢复为不可回显状态
 
-### Requirement: UI 必须完整表达六种 IM connection status
+### Requirement: UI 必须表达 canonical Channel status
 
-前端 MUST 使用 mock repository state 区分 `Not configured`、`Configured`、`Connected`、`Permission issue`、`Callback error`、`Connection error`。错误状态 MUST 展示可安全公开的原因、最近检查时间以及适用的恢复操作。
+前端 MUST 从 configured Channels collection 的缺席推导 `Not configured`，不得把它作为 `ChannelSummary.status`。Configured Channel status MUST 只使用 `connected`、`invalid_credentials` 和 `connection_failure`。错误状态 MUST 展示安全的 `status_description` 与适用的恢复操作，MUST NOT 要求或展示 `last_checked_at`。
 
-#### Scenario: 配置已保存但尚未验证
+#### Scenario: Provider 尚未配置
 
-- **WHEN** mock provider 配置已保存但尚未完成连接测试
-- **THEN** 前端 MUST 展示 `Configured`，MUST NOT 将其误报为 `Connected`
+- **WHEN** provider 出现在 catalog 但没有对应 configured Channel
+- **THEN** 前端 MUST 将其展示为可连接，并 MUST NOT制造一条 `not_configured` Channel
 
 #### Scenario: Mock 连接测试成功
 
-- **WHEN** 当前 scenario 的测试连接 mutation 成功
-- **THEN** repository MUST 将状态推进为 `Connected`，前端 MUST 刷新并展示新的可用操作
+- **WHEN** 当前 candidate test mutation 成功
+- **THEN** 前端 MUST 展示本次测试成功
+- **AND** repository MUST NOT 修改已有 configured Channel status
 
-#### Scenario: Provider 权限不足
+#### Scenario: Credentials 无效
 
-- **WHEN** repository 返回 `Permission issue`
-- **THEN** 前端 MUST 展示缺失权限或修复指引，并 MUST 提供重新测试或更新配置入口
+- **WHEN** repository 返回 `invalid_credentials`
+- **THEN** 前端 MUST 展示安全的凭据错误说明，并 MUST 提供重新测试或更新配置入口
 
-#### Scenario: Callback 配置异常
+#### Scenario: Connection 失败
 
-- **WHEN** repository 返回 `Callback error`
-- **THEN** 前端 MUST 展示 callback 相关原因和可复制的正确 callback 信息
-
-#### Scenario: 其他连接失败
-
-- **WHEN** repository 返回 `Connection error`
-- **THEN** 前端 MUST 展示安全的失败原因和重试入口，MUST NOT 暴露凭据
+- **WHEN** repository 返回 `connection_failure`
+- **THEN** 前端 MUST 展示安全的 `status_description` 和重试入口，MUST NOT 暴露凭据或 raw provider error
 
 ### Requirement: 保存、测试、更新与解除绑定必须防止重复操作
 
@@ -233,7 +242,8 @@
 #### Scenario: 测试连接
 
 - **WHEN** 管理员触发 mock 测试连接
-- **THEN** 前端 MUST 防止并发重复测试，并 MUST 在 mutation 结束后重新读取 connection status
+- **THEN** 前端 MUST 防止并发重复测试，并 MUST 展示本次 `invalid_credentials` 或 `connection_failure` 结果
+- **AND** mutation MUST NOT 修改或重新解释 configured Channel status
 
 #### Scenario: 解除绑定
 

@@ -5,15 +5,16 @@ Contacts 目前缺少用于配置 Organization 级通知 Channels、触发 IM �
 ## What Changes
 
 - 在 Contacts 管理区域将原 IM platform 入口调整为 Channels，展示 Email、Slack、Feishu、DingTalk 等 channel 的可连接与已配置状态；Email 可与最多一个尚未删除的 IM provider binding 共存。
-- 增加 Email channel 的 Resend 专用配置弹窗，支持 sender email、可选 sender name、API key、测试连接和保存交互。
+- 增加 Email channel 的 Resend 专用配置弹窗，要求 sender email、sender name 和 API key，并支持测试连接和保存交互。
 - 已配置 channel 以卡片摘要展示，并在右侧提供 Configure 与 Delete 操作；删除必须经过破坏性确认弹窗。
 - 已有 active IM binding 时，其他 IM provider 使用 Replace 操作，并在确认旧 binding 与 workspace override 将失效、需要重新同步后才执行替换。
 - 提供首次绑定、补全配置、重新连接和更新配置的交互流程，并覆盖 provider 特定字段、表单校验、保存中状态与失败反馈。
-- 将连接状态映射为 `Not configured`、`Configured`、`Connected`、`Permission issue`、`Callback error`、`Connection error`，为异常状态提供可排查原因和恢复入口。
+- Configure 不回显 secret；管理员保存更新时必须重新填写包括 secret 在内的完整配置，不支持 partial update 或 retain-secret command。
+- 未配置状态由 provider catalog 中存在但 configured Channels 中缺席推导；已配置 Channel 使用 `connected`、`invalid_credentials` 和 `connection_failure`，并通过安全的 `status_description` 提供恢复信息。
 - 支持由具备权限的管理员手动触发 IM 联系人同步，并展示同步进行中、成功、部分成功和失败状态。
 - 增加同步详情视图，展示同步时间、发起人、结果汇总以及 matched、updated、unmatched、skipped、failed 等明细。
 - 补齐权限受限、空数据、加载、重复提交、mock mutation 失败和重试等 UI 状态，并确保 secret 不被回显或写入前端日志。
-- 本 change 只实现前端：所有展示与交互先通过集中、类型安全、可替换的 mock repository 驱动；真实后端 contract 与 API 接入留给后续独立 change。
+- 本 change 只实现前端：所有展示与交互先通过集中、类型安全、可替换的 mock repository 驱动；mock contract 对齐已确认的 HTTP stub，真实 API adapter 接入留给后续独立 change。
 - 以用户提供的 Channels、Email 配置、provider 配置和同步详情 Figma 节点作为布局、文案层级和交互验收基准。
 
 ## Capabilities
@@ -31,7 +32,7 @@ Contacts 目前缺少用于配置 Organization 级通知 Channels、触发 IM �
 
 - 前端需要在 Contacts feature 边界内实现管理界面、相关路由、typed mock repository、dify-ui 组件使用和 `web/i18n/*` 文案。现有 `web/features/agent-v2/roster/` 管理的是可复用 AI Agent 资产，不属于本 change。
 - 本 change 不修改后端 API、OpenAPI schema、生成式 client、数据模型、数据库迁移、任务队列、provider adapter 或真实 OAuth / credential 存储逻辑。
-- Channels 入口只在非企业版的 CE / SaaS workspace 管理面展示，并复用现有 workspace plan 判断隐藏 enterprise plan；角色权限、provider availability 和各类状态暂由 mock scenario 提供，仅用于前端行为展示，不构成安全边界。
+- Channels 入口只在非企业版的 CE / SaaS workspace 管理面展示，并复用现有 workspace plan 判断隐藏 enterprise plan；角色权限和 Channel 状态暂由 mock scenario 提供，仅用于前端行为展示，不构成安全边界。Provider catalog 只包含可用 provider。
 - 需要为权限、连接状态、表单提交、手动同步、匹配结果和同步详情补充 Vitest / Testing Library 测试，并使用确定性的 mock scenario 完成前端 smoke 验证。
 - 后续后端能力就绪时，应通过新的 change 用真实 repository adapter 替换 mock repository，而不改写页面组件的状态语义。
 - 设计验收来源：
