@@ -164,7 +164,7 @@ export function PendingWebsiteSetup({
       {backendBoundaryVisible && (
         <p
           role="alert"
-          className="rounded-md bg-components-badge-status-light-warning-bg px-3 py-2 system-xs-regular text-text-warning"
+          className="rounded-md bg-state-warning-hover px-3 py-2 system-xs-regular text-text-warning"
         >
           {t(($) => $['newKnowledge.sourceSetupBackendDependency'])}
         </p>
