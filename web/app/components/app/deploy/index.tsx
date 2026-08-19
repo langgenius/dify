@@ -17,9 +17,9 @@ import { getAppACLCapabilities } from '@/utils/permission'
 import { BuiltInEnvironmentCard } from './built-in-environment-card'
 import { DeploymentDialog } from './deployment-dialog'
 import { EnvironmentTable } from './environment-table'
+import { useRefreshAppEnvironmentsAfterDeploymentPolling } from './hooks/use-refresh-app-environments-after-deployment-polling'
+import { useUndeployWorkflow } from './hooks/use-undeploy-workflow'
 import { AppDeployStateBoundary, latestAppWorkflowVersionAtom } from './state'
-import { useRefreshAppEnvironmentsAfterDeploymentPolling } from './use-refresh-app-environments-after-deployment-polling'
-import { useUndeployWorkflow } from './use-undeploy-workflow'
 import { toDeploymentVersion } from './version'
 
 function AppDeployContent({ appId }: { appId: string }) {
