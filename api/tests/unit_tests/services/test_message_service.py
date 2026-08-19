@@ -878,7 +878,7 @@ class TestMessageServiceSuggestedQuestions:
             pending_form_id=None,
             pending_tool_call_id=None,
         )
-        binding.id = conversation.agent_workspace_binding_id
+        binding.id = "binding-123"
         _persist(sqlite_session, snapshot, binding)
         roster_service = MagicMock()
         roster_service.return_value.get_published_agent_soul_for_app.return_value = self._agent_soul(
