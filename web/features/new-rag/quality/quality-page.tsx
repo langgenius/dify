@@ -24,7 +24,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import Loading from '@/app/components/base/loading'
@@ -44,23 +44,15 @@ const emptyDraft: GoldenQuestionDraft = {
 const goldenLinkPrefix = 'golden-question:'
 const pageSize = 50
 
-function createIdempotencyKey() {
-  return `quality-replay-${
-    globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
-  }`
-}
-
 function visibleTags(tags: string[]) {
   return tags.filter((tag) => !tag.startsWith(goldenLinkPrefix))
-}
-
-function linkedGoldenQuestionId(tags: string[]) {
-  return tags.find((tag) => tag.startsWith(goldenLinkPrefix))?.slice(goldenLinkPrefix.length)
 }
 
 function Reason({ question, reason, tags }: { question?: string; reason: string; tags: string[] }) {
   const { t } = useTranslation('dataset')
   const normalized = reason.toLowerCase()
+  if (normalized === 'low-score' || (normalized.includes('low') && normalized.includes('score')))
+    return t(($) => $['newKnowledge.qualityPage.reasonValues.lowScore'])
   if (normalized.includes('outdated'))
     return t(($) => $['newKnowledge.qualityPage.reasonValues.outdatedContent'])
   if (
@@ -148,8 +140,6 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
   const [dialogSubmitting, setDialogSubmitting] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [pendingBadCaseId, setPendingBadCaseId] = useState<string>()
-  const replayIdempotencyKeysRef = useRef(new Map<string, string>())
-  const pendingGoldenQuestionIdsRef = useRef(new Map<string, string>())
   const [dialog, setDialog] = useState<
     | { key: string; mode: 'create'; value: GoldenQuestionDraft }
     | { id: string; key: string; mode: 'edit'; value: GoldenQuestionDraft }
@@ -227,52 +217,6 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
       params: { bad_case_id: badCaseId, control_space_id: knowledgeSpaceId },
     })
 
-  const ensureLinkedGoldenQuestion = async (
-    item: KnowledgeFsBadCaseResponse,
-    draft: GoldenQuestionDraft,
-  ) => {
-    const current = await getBadCase(item.id)
-    const linkedId = linkedGoldenQuestionId(current.tags)
-
-    let goldenQuestionId = pendingGoldenQuestionIdsRef.current.get(item.id)
-    if (!goldenQuestionId) {
-      const created = await createGoldenMutation.mutateAsync({
-        body: {
-          ...goldenQuestionPayload(draft),
-          source_bad_case_id: item.id,
-        },
-        params: { control_space_id: knowledgeSpaceId },
-      })
-      goldenQuestionId = created.id
-      pendingGoldenQuestionIdsRef.current.set(item.id, goldenQuestionId)
-    }
-    if (linkedId === goldenQuestionId) {
-      pendingGoldenQuestionIdsRef.current.delete(item.id)
-      return { badCase: current, goldenQuestionId }
-    }
-
-    try {
-      const badCase =
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.patch({
-          body: {
-            expected_revision: current.revision,
-            status: current.status,
-            tags: [...visibleTags(current.tags), `${goldenLinkPrefix}${goldenQuestionId}`],
-          },
-          params: { bad_case_id: current.id, control_space_id: knowledgeSpaceId },
-        })
-      pendingGoldenQuestionIdsRef.current.delete(item.id)
-      return { badCase, goldenQuestionId }
-    } catch (error) {
-      const refreshed = await getBadCase(item.id).catch(() => undefined)
-      if (refreshed && linkedGoldenQuestionId(refreshed.tags) === goldenQuestionId) {
-        pendingGoldenQuestionIdsRef.current.delete(item.id)
-        return { badCase: refreshed, goldenQuestionId }
-      }
-      throw error
-    }
-  }
-
   const submitDialog = async (draft: GoldenQuestionDraft) => {
     if (!dialog) return
     setDialogError(undefined)
@@ -291,9 +235,29 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
         })
         toast.success(t(($) => $['newKnowledge.qualityPage.createdToast']))
       } else {
-        const badCase = badCases.find((item) => item.id === dialog.id)
-        if (!badCase) throw new Error('Bad case is unavailable')
-        await ensureLinkedGoldenQuestion(badCase, draft)
+        const badCase = await getBadCase(dialog.id)
+        await createGoldenMutation.mutateAsync({
+          body: {
+            ...goldenQuestionPayload(draft),
+            source_bad_case_id: badCase.id,
+          },
+          params: { control_space_id: knowledgeSpaceId },
+        })
+        try {
+          await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.patch(
+            {
+              body: {
+                expected_revision: badCase.revision,
+                status: 'dismissed',
+                tags: visibleTags(badCase.tags),
+              },
+              params: { bad_case_id: badCase.id, control_space_id: knowledgeSpaceId },
+            },
+          )
+        } catch (error) {
+          const refreshed = await getBadCase(dialog.id).catch(() => undefined)
+          if (refreshed?.status !== 'dismissed') throw error
+        }
         toast.success(t(($) => $['newKnowledge.qualityPage.promotedToast']))
       }
       await invalidateQuality()
@@ -341,43 +305,18 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
   const replayBadCase = async (item: KnowledgeFsBadCaseResponse) => {
     setPendingBadCaseId(item.id)
     try {
-      const { badCase, goldenQuestionId } = await ensureLinkedGoldenQuestion(item, {
-        annotation: item.reason,
-        expectedEvidenceIds: [],
-        matchPolicy: 'all',
-        question: item.question ?? '',
-        tags: visibleTags(item.tags),
-      })
-      let idempotencyKey = replayIdempotencyKeysRef.current.get(item.id)
-      if (!idempotencyKey) {
-        idempotencyKey = createIdempotencyKey()
-        replayIdempotencyKeysRef.current.set(item.id, idempotencyKey)
-      }
-      const replay =
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.replayRuns.post({
-          body: { golden_question_ids: [goldenQuestionId] },
-          headers: { 'Idempotency-Key': idempotencyKey },
-          params: { control_space_id: knowledgeSpaceId },
-        })
-      try {
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.patch({
-          body: {
-            expected_revision: badCase.revision,
-            replay_run_id: replay.id,
-            status: 'replaying',
-            tags: badCase.tags,
+      const reference =
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.traceReference.get(
+          {
+            params: { bad_case_id: item.id, control_space_id: knowledgeSpaceId },
           },
-          params: { bad_case_id: badCase.id, control_space_id: knowledgeSpaceId },
-        })
-      } catch (error) {
-        const current = await getBadCase(item.id).catch(() => undefined)
-        if (current?.replay_run_id !== replay.id) throw error
-      }
-      replayIdempotencyKeysRef.current.delete(item.id)
-      await invalidateQuality()
-      toast.success(t(($) => $['newKnowledge.qualityPage.replayStartedToast']))
+        )
+      const search = new URLSearchParams({
+        retest: reference.trace_id,
+        trace: reference.trace_id,
+      })
+      router.push(`${newKnowledgeRetrievalTestPath(knowledgeSpaceId)}?${search.toString()}`)
     } catch {
-      await invalidateQuality()
       toast.error(t(($) => $.unknownError))
     } finally {
       setPendingBadCaseId(undefined)

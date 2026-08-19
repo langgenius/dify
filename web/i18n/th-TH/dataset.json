@@ -522,6 +522,7 @@
   "newKnowledge.qualityPage.questionRequired": "ต้องมีคำถาม",
   "newKnowledge.qualityPage.reason": "เหตุผล",
   "newKnowledge.qualityPage.reasonValues.coverageGap": "ช่องว่างความครอบคลุม",
+  "newKnowledge.qualityPage.reasonValues.lowScore": "Low score",
   "newKnowledge.qualityPage.reasonValues.outdatedContent": "เนื้อหาที่ล้าสมัย",
   "newKnowledge.qualityPage.reasonValues.retrievalMiss": "การเรียกค้นที่พลาด",
   "newKnowledge.qualityPage.replay": "ทดสอบอีกครั้ง",

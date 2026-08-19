@@ -8,7 +8,6 @@ import { QualityPage } from '../quality/quality-page'
 const serviceMock = vi.hoisted(() => ({
   bulkImport: vi.fn(),
   createGolden: vi.fn(),
-  createReplay: vi.fn(),
   deleteGolden: vi.fn(),
   getBadCase: vi.fn(),
   getBadCases: vi.fn(),
@@ -52,7 +51,6 @@ vi.mock('@/service/client', () => ({
                 traceReference: { get: serviceMock.getTraceReference },
               },
             },
-            replayRuns: { post: serviceMock.createReplay },
           },
         },
       },
@@ -857,71 +855,33 @@ describe('QualityPage', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('reuses the replay idempotency key after a partial failure', async () => {
-    let linked = false
-    let rejectReplayPatch = true
-    serviceMock.getBadCase.mockImplementation(async () => ({
-      created_at: '2026-07-28T00:00:00Z',
-      id: 'bad-1',
-      question: 'Refund after activation',
-      reason: 'coverage gap',
-      replay_run_id: null,
-      revision: linked ? 2 : 1,
-      status: 'open',
-      tags: linked ? ['billing', 'golden-question:golden-2'] : ['billing'],
-      updated_at: '2026-07-28T00:00:00Z',
-    }))
-    serviceMock.updateBadCase.mockImplementation(
-      async (input: { body: { status: string; tags?: string[] } }) => {
-        if (input.body.status === 'open') {
-          linked = true
-          return {
-            ...(await serviceMock.getBadCase()),
-            revision: 2,
-            tags: input.body.tags,
-          }
-        }
-        if (rejectReplayPatch) {
-          rejectReplayPatch = false
-          throw new Error('response lost')
-        }
-        return {
-          ...(await serviceMock.getBadCase()),
-          replay_run_id: 'replay-1',
-          revision: 3,
-          status: 'replaying',
-        }
-      },
-    )
-    serviceMock.createReplay.mockResolvedValue({ id: 'replay-1', revision: 1, state: 'queued' })
+  it('opens the source trace in retrieval test and requests one retest', async () => {
     navigationMock.tab = 'bad-cases'
     const user = userEvent.setup()
     renderPage()
 
     await screen.findByText('Refund after activation')
-    const replay = async () => {
-      await user.click(
-        screen.getByRole('button', {
-          name: /dataset\.newKnowledge\.qualityPage\.questionActions/,
-        }),
-      )
-      await user.click(
-        await screen.findByRole('menuitem', {
-          name: 'dataset.newKnowledge.qualityPage.replay',
-        }),
-      )
-    }
-    await replay()
-    await waitFor(() => expect(serviceMock.createReplay).toHaveBeenCalledTimes(1))
-    await replay()
-    await waitFor(() => expect(serviceMock.createReplay).toHaveBeenCalledTimes(2))
+    await user.click(
+      screen.getByRole('button', {
+        name: /dataset\.newKnowledge\.qualityPage\.questionActions/,
+      }),
+    )
+    await user.click(
+      await screen.findByRole('menuitem', {
+        name: 'dataset.newKnowledge.qualityPage.replay',
+      }),
+    )
 
-    expect(serviceMock.createGolden).toHaveBeenCalledTimes(2)
-    const firstHeaders = serviceMock.createReplay.mock.calls[0]?.[0].headers
-    expect(serviceMock.createReplay.mock.calls[1]?.[0].headers).toEqual(firstHeaders)
+    await waitFor(() =>
+      expect(routerMock.push).toHaveBeenCalledWith(
+        '/datasets/new/space-1/retrieval?retest=trace-42&trace=trace-42',
+      ),
+    )
+    expect(serviceMock.createGolden).not.toHaveBeenCalled()
+    expect(serviceMock.updateBadCase).not.toHaveBeenCalled()
   })
 
-  it('replaces a stale golden-question link before replaying a bad case', async () => {
+  it('creates a golden question and dismisses its source bad case', async () => {
     serviceMock.getBadCase.mockResolvedValue({
       created_at: '2026-07-28T00:00:00Z',
       id: 'bad-1',
@@ -941,20 +901,12 @@ describe('QualityPage', () => {
       tags: ['billing'],
       updated_at: '2026-07-29T00:00:00Z',
     })
-    serviceMock.updateBadCase
-      .mockResolvedValueOnce({
-        ...(await serviceMock.getBadCase()),
-        revision: 2,
-        tags: ['billing', 'golden-question:replacement-golden'],
-      })
-      .mockResolvedValueOnce({
-        ...(await serviceMock.getBadCase()),
-        replay_run_id: 'replay-1',
-        revision: 3,
-        status: 'replaying',
-        tags: ['billing', 'golden-question:replacement-golden'],
-      })
-    serviceMock.createReplay.mockResolvedValue({ id: 'replay-1', revision: 1, state: 'queued' })
+    serviceMock.updateBadCase.mockResolvedValue({
+      ...(await serviceMock.getBadCase()),
+      revision: 2,
+      status: 'dismissed',
+      tags: ['billing'],
+    })
     navigationMock.tab = 'bad-cases'
     const user = userEvent.setup()
     renderPage()
@@ -967,20 +919,21 @@ describe('QualityPage', () => {
     )
     await user.click(
       await screen.findByRole('menuitem', {
-        name: 'dataset.newKnowledge.qualityPage.replay',
+        name: 'dataset.newKnowledge.qualityPage.toGolden',
       }),
     )
-
-    await waitFor(() =>
-      expect(serviceMock.createReplay).toHaveBeenCalledWith(
-        expect.objectContaining({
-          body: { golden_question_ids: ['replacement-golden'] },
-        }),
-      ),
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.qualityPage.annotationPlaceholder'),
+      'Expected answer',
     )
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.qualityPage.promote' }),
+    )
+
+    await waitFor(() => expect(serviceMock.createGolden).toHaveBeenCalledTimes(1))
     expect(serviceMock.createGolden.mock.calls[0]?.[0]).toEqual({
       body: {
-        annotation: 'coverage gap',
+        annotation: 'Expected answer',
         expected_evidence_ids: [],
         match_policy: 'all',
         question: 'Refund after activation',
@@ -992,8 +945,8 @@ describe('QualityPage', () => {
     expect(serviceMock.updateBadCase.mock.calls[0]?.[0]).toEqual({
       body: {
         expected_revision: 1,
-        status: 'open',
-        tags: ['billing', 'golden-question:replacement-golden'],
+        status: 'dismissed',
+        tags: ['billing'],
       },
       params: { bad_case_id: 'bad-1', control_space_id: 'space-1' },
     })

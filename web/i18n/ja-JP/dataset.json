@@ -522,6 +522,7 @@
   "newKnowledge.qualityPage.questionRequired": "質問は必須です。",
   "newKnowledge.qualityPage.reason": "理由",
   "newKnowledge.qualityPage.reasonValues.coverageGap": "カバレッジギャップ",
+  "newKnowledge.qualityPage.reasonValues.lowScore": "Low score",
   "newKnowledge.qualityPage.reasonValues.outdatedContent": "内容が古いです",
   "newKnowledge.qualityPage.reasonValues.retrievalMiss": "取得ミス",
   "newKnowledge.qualityPage.replay": "再テスト",

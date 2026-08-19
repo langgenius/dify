@@ -522,6 +522,7 @@
   "newKnowledge.qualityPage.questionRequired": "질문이 필요합니다.",
   "newKnowledge.qualityPage.reason": "이유",
   "newKnowledge.qualityPage.reasonValues.coverageGap": "보장 공백",
+  "newKnowledge.qualityPage.reasonValues.lowScore": "Low score",
   "newKnowledge.qualityPage.reasonValues.outdatedContent": "오래된 콘텐츠",
   "newKnowledge.qualityPage.reasonValues.retrievalMiss": "검색 미스",
   "newKnowledge.qualityPage.replay": "다시 테스트",

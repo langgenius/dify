@@ -1488,11 +1488,17 @@ describe('RetrievalTestPage', () => {
     })
     expect(makeBadCaseButton).toHaveClass('bg-components-button-secondary-bg')
     await user.click(makeBadCaseButton)
+    expect(apiMock.createBadCase).not.toHaveBeenCalled()
+    await user.click(
+      await screen.findByRole('menuitem', {
+        name: 'dataset.newKnowledge.qualityPage.reasonValues.lowScore',
+      }),
+    )
 
     await waitFor(() =>
       expect(apiMock.createBadCase).toHaveBeenCalledWith({
         body: {
-          reason: 'retrieval-miss',
+          reason: 'low-score',
           tags: ['retrieval-test'],
           trace_id: 'trace-1',
         },
@@ -1609,6 +1615,11 @@ describe('RetrievalTestPage', () => {
         name: 'dataset.newKnowledge.retrievalTest.makeBadCase',
       }),
     )
+    await user.click(
+      await screen.findByRole('menuitem', {
+        name: 'dataset.newKnowledge.qualityPage.reasonValues.retrievalMiss',
+      }),
+    )
 
     await waitFor(() =>
       expect(apiMock.createBadCase).toHaveBeenCalledWith({
@@ -1620,6 +1631,31 @@ describe('RetrievalTestPage', () => {
         params: { control_space_id: 'space-1' },
       }),
     )
+  })
+
+  it('runs a one-shot retest from a linked production trace', async () => {
+    apiMock.traceDetail = {
+      completed: true,
+      created_at: '2026-07-01T00:00:00.000Z',
+      id: 'trace-old',
+      mode: 'deep',
+      profile: {},
+      query: 'Retest the refund exception',
+      scores: {},
+      stages: [],
+    }
+    const { onUrlUpdate } = renderPage({
+      searchParams: '?trace=trace-old&retest=trace-old',
+    })
+
+    await waitFor(() =>
+      expect(apiMock.queryAdmission).toHaveBeenCalledWith({
+        body: { mode: 'deep', query: 'Retest the refund exception' },
+        params: { control_space_id: 'space-1' },
+      }),
+    )
+    expect(apiMock.queryAdmission).toHaveBeenCalledTimes(1)
+    expect(onUrlUpdate).toHaveBeenCalled()
   })
 
   it('opens retrieval evidence through its logical document instead of its asset', async () => {

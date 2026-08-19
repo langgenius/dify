@@ -526,6 +526,7 @@
   "newKnowledge.qualityPage.questionRequired": "Question is required.",
   "newKnowledge.qualityPage.reason": "Reason",
   "newKnowledge.qualityPage.reasonValues.coverageGap": "Coverage gap",
+  "newKnowledge.qualityPage.reasonValues.lowScore": "Low score",
   "newKnowledge.qualityPage.reasonValues.outdatedContent": "Outdated content",
   "newKnowledge.qualityPage.reasonValues.retrievalMiss": "Retrieval miss",
   "newKnowledge.qualityPage.replay": "Replay",

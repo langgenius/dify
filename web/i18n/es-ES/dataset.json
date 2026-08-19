@@ -522,6 +522,7 @@
   "newKnowledge.qualityPage.questionRequired": "Se requiere pregunta.",
   "newKnowledge.qualityPage.reason": "Razón",
   "newKnowledge.qualityPage.reasonValues.coverageGap": "Brecha de cobertura",
+  "newKnowledge.qualityPage.reasonValues.lowScore": "Low score",
   "newKnowledge.qualityPage.reasonValues.outdatedContent": "Contenido obsoleto",
   "newKnowledge.qualityPage.reasonValues.retrievalMiss": "Error de recuperación",
   "newKnowledge.qualityPage.replay": "Volver a probar",

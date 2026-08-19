@@ -367,6 +367,7 @@
   "newKnowledge.providerNotConfiguredDescription": "ເພີ່ມລະຫັດ API ຫຼື URL ຈຸດສິ້ນສຸດເພື່ອລວບລວມຂໍ້ມູນເວັບໄຊທ໌ດ້ວຍ {{provider}}.",
   "newKnowledge.providerUnavailable": "ຜູ້ໃຫ້ບໍລິການນີ້ບໍ່ສາມາດໃຊ້ໄດ້.",
   "newKnowledge.quality": "ຄຸນະພາບ",
+  "newKnowledge.qualityPage.reasonValues.lowScore": "ຄະແນນຕໍ່າ",
   "newKnowledge.reCrawl": "ກວາດຄືນ",
   "newKnowledge.readOnlyEmpty": "ຂໍໃຫ້ຜູ້ແກ້ໄຂພື້ນທີ່ເຮັດວຽກສ້າງຖານຄວາມຮູ້ທຳອິດ.",
   "newKnowledge.refreshConnectionStatus": "ໂຫຼດສະຖານະຄືນໃໝ່",

@@ -522,6 +522,7 @@
   "newKnowledge.qualityPage.questionRequired": "سؤال مطلوب .",
   "newKnowledge.qualityPage.reason": "السبب",
   "newKnowledge.qualityPage.reasonValues.coverageGap": "فجوة التغطية",
+  "newKnowledge.qualityPage.reasonValues.lowScore": "Low score",
   "newKnowledge.qualityPage.reasonValues.outdatedContent": "محتوى قديم",
   "newKnowledge.qualityPage.reasonValues.retrievalMiss": "ملكة جمال الاسترجاع",
   "newKnowledge.qualityPage.replay": "إعادة الاختبار",

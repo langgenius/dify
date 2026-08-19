@@ -522,6 +522,7 @@
   "newKnowledge.qualityPage.questionRequired": "प्रश्न आवश्यक है।",
   "newKnowledge.qualityPage.reason": "कारण",
   "newKnowledge.qualityPage.reasonValues.coverageGap": "कवरेज गैप",
+  "newKnowledge.qualityPage.reasonValues.lowScore": "Low score",
   "newKnowledge.qualityPage.reasonValues.outdatedContent": "पुरानी सामग्री",
   "newKnowledge.qualityPage.reasonValues.retrievalMiss": "पुनर्प्राप्ति मिस",
   "newKnowledge.qualityPage.replay": "फिर से जाँचें",

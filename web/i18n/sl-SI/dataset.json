@@ -522,6 +522,7 @@
   "newKnowledge.qualityPage.questionRequired": "Vprašanje je obvezno.",
   "newKnowledge.qualityPage.reason": "Razlog",
   "newKnowledge.qualityPage.reasonValues.coverageGap": "Vrzel v kritju",
+  "newKnowledge.qualityPage.reasonValues.lowScore": "Low score",
   "newKnowledge.qualityPage.reasonValues.outdatedContent": "Zastarela vsebina",
   "newKnowledge.qualityPage.reasonValues.retrievalMiss": "Pogrešana vrnitev",
   "newKnowledge.qualityPage.replay": "Znova preizkusi",
