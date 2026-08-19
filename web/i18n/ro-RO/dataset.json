@@ -522,6 +522,7 @@
   "newKnowledge.qualityPage.questionRequired": "Este necesară întrebarea.",
   "newKnowledge.qualityPage.reason": "Motivul",
   "newKnowledge.qualityPage.reasonValues.coverageGap": "Decalaj de acoperire",
+  "newKnowledge.qualityPage.reasonValues.lowScore": "Low score",
   "newKnowledge.qualityPage.reasonValues.outdatedContent": "Conținut învechit",
   "newKnowledge.qualityPage.reasonValues.retrievalMiss": "Rata de recuperare",
   "newKnowledge.qualityPage.replay": "Testează din nou",

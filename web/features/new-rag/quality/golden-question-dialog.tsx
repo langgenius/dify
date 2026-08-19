@@ -1,6 +1,6 @@
 'use client'
 
-import type { FormEvent } from 'react'
+import type { FormEvent, KeyboardEvent } from 'react'
 import type { GoldenQuestionDraft, GoldenQuestionEvidenceOption } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
@@ -15,12 +15,14 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldError, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useMutation } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { SearchInput } from '@/app/components/base/search-input'
 import { consoleQuery } from '@/service/client'
 
 type DialogMode = 'create' | 'edit' | 'promote'
@@ -66,18 +68,44 @@ export function GoldenQuestionDialog({
   pending?: boolean
 }) {
   const { t } = useTranslation('dataset')
+  const { t: tCommon } = useTranslation('common')
   const [question, setQuestion] = useState(initialValue.question)
   const [annotation, setAnnotation] = useState(initialValue.annotation)
-  const [evidenceText, setEvidenceText] = useState(initialValue.evidenceText)
+  const [evidenceQuery, setEvidenceQuery] = useState('')
   const [expectedEvidenceIds, setExpectedEvidenceIds] = useState(initialValue.expectedEvidenceIds)
+  const [evidenceByNodeId, setEvidenceByNodeId] = useState(
+    () => new Map(evidenceOptions.map((option) => [option.node_id, option])),
+  )
   const [matchPolicy, setMatchPolicy] = useState(initialValue.matchPolicy)
   const [tags, setTags] = useState(initialValue.tags.join(', '))
   const [questionInvalid, setQuestionInvalid] = useState(false)
   const [annotationInvalid, setAnnotationInvalid] = useState(false)
   const [matchError, setMatchError] = useState<'unavailable' | 'unknown'>()
+  const mergeEvidenceOptions = useCallback((options: readonly GoldenQuestionEvidenceOption[]) => {
+    setEvidenceByNodeId((current) => {
+      const next = new Map(current)
+      for (const option of options) next.set(option.node_id, option)
+      return next
+    })
+  }, [])
   const matchMutation = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.evidenceMatches.post.mutationOptions(),
   )
+  const resolveMutation = useMutation({
+    ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.evidenceMatches.post.mutationOptions(),
+    onSuccess: (data) => mergeEvidenceOptions(data.candidates),
+  })
+  const unresolvedInitialEvidenceKey = initialValue.expectedEvidenceIds
+    .filter((nodeId) => !evidenceByNodeId.has(nodeId))
+    .join(',')
+  const resolveEvidence = resolveMutation.mutate
+  useEffect(() => {
+    if (!unresolvedInitialEvidenceKey) return
+    resolveEvidence({
+      body: { node_ids: unresolvedInitialEvidenceKey.split(',') },
+      params: { control_space_id: knowledgeSpaceId },
+    })
+  }, [knowledgeSpaceId, resolveEvidence, unresolvedInitialEvidenceKey])
   const title =
     mode === 'create'
       ? t(($) => $['newKnowledge.qualityPage.createTitle'])
@@ -98,7 +126,6 @@ export function GoldenQuestionDialog({
     if (nextQuestionInvalid || nextAnnotationInvalid) return
     await onSubmit({
       annotation: annotation.trim(),
-      evidenceText: evidenceText.trim(),
       expectedEvidenceIds,
       matchPolicy,
       question: question.trim(),
@@ -107,24 +134,28 @@ export function GoldenQuestionDialog({
   }
 
   const findEvidence = async () => {
-    if (!evidenceText.trim()) return
+    const query = evidenceQuery.trim()
+    if (!query) return
     setMatchError(undefined)
     try {
-      await matchMutation.mutateAsync({
-        body: { evidence: evidenceText.trim() },
+      const result = await matchMutation.mutateAsync({
+        body: { evidence: query },
         params: { control_space_id: knowledgeSpaceId },
       })
+      mergeEvidenceOptions(result.candidates)
+      setEvidenceQuery('')
     } catch (error) {
       setMatchError(errorStatus(error) === 503 ? 'unavailable' : 'unknown')
     }
   }
 
-  const candidatesByNodeId = new Map<string, GoldenQuestionEvidenceOption>(
-    evidenceOptions.map((candidate) => [candidate.node_id, candidate]),
-  )
-  for (const candidate of matchMutation.data?.candidates ?? [])
-    candidatesByNodeId.set(candidate.node_id, candidate)
-  const candidates = [...candidatesByNodeId.values()]
+  const handleEvidenceSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== 'Enter' || event.nativeEvent.isComposing) return
+    event.preventDefault()
+    void findEvidence()
+  }
+
+  const searchCandidates = matchMutation.data?.candidates ?? evidenceOptions
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogPortal>
@@ -181,47 +212,90 @@ export function GoldenQuestionDialog({
               )}
               {!annotationInvalid && error && <FieldError match>{error}</FieldError>}
             </Field>
-            <div className="grid min-w-0 gap-1">
-              <Field name="evidence">
-                <FieldLabel>{t(($) => $['newKnowledge.qualityPage.evidence'])}</FieldLabel>
-                <Textarea
-                  className="h-20 resize-y"
-                  placeholder={t(($) => $['newKnowledge.qualityPage.evidencePlaceholder'])}
-                  value={evidenceText}
-                  onValueChange={(value) => {
-                    setEvidenceText(value)
-                    setMatchError(undefined)
-                    matchMutation.reset()
-                  }}
-                />
-                <div className="mt-2 flex items-center justify-between gap-3">
-                  <span className="system-xs-regular text-text-tertiary">
-                    {expectedEvidenceIds.length > 0
-                      ? t(($) => $['newKnowledge.qualityPage.evidenceSelected'], {
-                          count: expectedEvidenceIds.length,
-                        })
-                      : t(($) => $['newKnowledge.qualityPage.noEvidenceSelected'])}
-                  </span>
-                  <div className="flex gap-2">
-                    {expectedEvidenceIds.length > 0 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        disabled={pending || matchMutation.isPending}
-                        onClick={() => setExpectedEvidenceIds([])}
-                      >
-                        {t(($) => $['newKnowledge.qualityPage.clearEvidence'])}
-                      </Button>
-                    )}
+            <div className="grid min-w-0 gap-4">
+              <Field name="expectedEvidenceIds">
+                <div className="flex items-center justify-between gap-3">
+                  <FieldLabel>{t(($) => $['newKnowledge.qualityPage.evidence'])}</FieldLabel>
+                  {expectedEvidenceIds.length > 0 && (
                     <Button
                       type="button"
-                      loading={matchMutation.isPending}
-                      disabled={!evidenceText.trim() || pending || matchMutation.isPending}
-                      onClick={() => void findEvidence()}
+                      variant="ghost"
+                      disabled={pending}
+                      onClick={() => setExpectedEvidenceIds([])}
                     >
-                      {t(($) => $['newKnowledge.qualityPage.findEvidence'])}
+                      {t(($) => $['newKnowledge.qualityPage.clearEvidence'])}
                     </Button>
+                  )}
+                </div>
+                <p className="body-xs-regular text-text-tertiary">
+                  {expectedEvidenceIds.length > 0
+                    ? t(($) => $['newKnowledge.qualityPage.evidenceSelected'], {
+                        count: expectedEvidenceIds.length,
+                      })
+                    : t(($) => $['newKnowledge.qualityPage.noEvidenceSelected'])}
+                </p>
+                {expectedEvidenceIds.length > 0 && (
+                  <div className="mt-2 flex max-h-52 flex-col gap-2 overflow-y-auto rounded-lg border border-divider-subtle p-2">
+                    {expectedEvidenceIds.map((nodeId) => {
+                      const evidence = evidenceByNodeId.get(nodeId)
+                      return (
+                        <div
+                          key={nodeId}
+                          className="flex items-start gap-2 rounded-md bg-background-section-burn p-2"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="body-xs-regular whitespace-pre-wrap text-text-secondary">
+                              {evidence?.text || nodeId}
+                            </p>
+                            <p className="mt-1 system-2xs-medium-uppercase text-text-tertiary">
+                              {evidence?.section_path.join(' / ') ||
+                                t(($) => $['newKnowledge.qualityPage.goldenStatus.stale'])}
+                            </p>
+                          </div>
+                          <IconButton
+                            type="button"
+                            size="sm"
+                            disabled={pending}
+                            aria-label={`${tCommon(($) => $['operation.remove'])}: ${evidence?.text || nodeId}`}
+                            onClick={() =>
+                              setExpectedEvidenceIds((current) =>
+                                current.filter((currentId) => currentId !== nodeId),
+                              )
+                            }
+                          >
+                            <span aria-hidden className="i-ri-close-line size-4" />
+                          </IconButton>
+                        </div>
+                      )
+                    })}
                   </div>
+                )}
+              </Field>
+              <Field name="evidenceSearch">
+                <FieldLabel>{t(($) => $['newKnowledge.qualityPage.findEvidence'])}</FieldLabel>
+                <div className="flex items-center gap-2">
+                  <SearchInput
+                    name="evidence-search"
+                    aria-label={t(($) => $['newKnowledge.qualityPage.findEvidence'])}
+                    className="min-w-0 flex-1"
+                    disabled={pending || matchMutation.isPending}
+                    placeholder={t(($) => $['newKnowledge.qualityPage.evidencePlaceholder'])}
+                    value={evidenceQuery}
+                    onKeyDown={handleEvidenceSearchKeyDown}
+                    onValueChange={(value) => {
+                      setEvidenceQuery(value)
+                      setMatchError(undefined)
+                      matchMutation.reset()
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    loading={matchMutation.isPending}
+                    disabled={!evidenceQuery.trim() || pending || matchMutation.isPending}
+                    onClick={() => void findEvidence()}
+                  >
+                    {t(($) => $['newKnowledge.qualityPage.findEvidence'])}
+                  </Button>
                 </div>
                 {matchError && (
                   <FieldError match>
@@ -230,16 +304,16 @@ export function GoldenQuestionDialog({
                       : t(($) => $.unknownError)}
                   </FieldError>
                 )}
-                {matchMutation.isSuccess && (matchMutation.data?.candidates.length ?? 0) === 0 && (
+                {matchMutation.isSuccess && searchCandidates.length === 0 && (
                   <p className="mt-2 body-xs-regular text-text-tertiary">
                     {t(($) => $['newKnowledge.qualityPage.noEvidenceMatch'])}
                   </p>
                 )}
               </Field>
-              {candidates.length > 0 && (
-                <Field name="expectedEvidenceIds">
+              {searchCandidates.length > 0 && (
+                <Field name="evidenceSearchResults">
                   <Fieldset
-                    className="mt-2 flex max-h-52 flex-col gap-2 overflow-y-auto rounded-lg border border-divider-subtle p-2"
+                    className="flex max-h-52 flex-col gap-2 overflow-y-auto rounded-lg border border-divider-subtle p-2"
                     render={
                       <CheckboxGroup
                         value={expectedEvidenceIds}
@@ -248,9 +322,9 @@ export function GoldenQuestionDialog({
                     }
                   >
                     <FieldsetLegend className="sr-only">
-                      {t(($) => $['newKnowledge.qualityPage.evidence'])}
+                      {t(($) => $['newKnowledge.qualityPage.findEvidence'])}
                     </FieldsetLegend>
-                    {candidates.map((candidate) => (
+                    {searchCandidates.map((candidate) => (
                       <FieldItem key={candidate.node_id}>
                         <FieldLabel className="flex w-full cursor-pointer items-start gap-2 rounded-md p-2 hover:bg-state-base-hover">
                           <Checkbox className="mt-0.5" value={candidate.node_id} />
@@ -261,7 +335,7 @@ export function GoldenQuestionDialog({
                             <span className="mt-1 block system-2xs-medium-uppercase text-text-tertiary">
                               {candidate.section_path.join(' / ') ||
                                 t(($) => $['newKnowledge.qualityPage.evidence'])}
-                              {candidate.score !== undefined && (
+                              {candidate.score !== undefined && candidate.score !== null && (
                                 <>
                                   {' · '}
                                   {Math.round(candidate.score * 100)}%

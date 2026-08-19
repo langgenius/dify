@@ -522,6 +522,7 @@
   "newKnowledge.qualityPage.questionRequired": "Требуется вопрос.",
   "newKnowledge.qualityPage.reason": "Причина",
   "newKnowledge.qualityPage.reasonValues.coverageGap": "Пробел в покрытии",
+  "newKnowledge.qualityPage.reasonValues.lowScore": "Low score",
   "newKnowledge.qualityPage.reasonValues.outdatedContent": "Устаревший контент",
   "newKnowledge.qualityPage.reasonValues.retrievalMiss": "Промах при поиске",
   "newKnowledge.qualityPage.replay": "Проверить повторно",

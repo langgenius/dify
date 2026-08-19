@@ -522,6 +522,7 @@
   "newKnowledge.qualityPage.questionRequired": "Pytanie jest wymagane.",
   "newKnowledge.qualityPage.reason": "Powód",
   "newKnowledge.qualityPage.reasonValues.coverageGap": "Luka w pokryciu",
+  "newKnowledge.qualityPage.reasonValues.lowScore": "Low score",
   "newKnowledge.qualityPage.reasonValues.outdatedContent": "Nieaktualna treść",
   "newKnowledge.qualityPage.reasonValues.retrievalMiss": "Panna odzyskania",
   "newKnowledge.qualityPage.replay": "Przetestuj ponownie",

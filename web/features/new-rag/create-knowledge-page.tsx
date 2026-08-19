@@ -453,7 +453,7 @@ export function CreateKnowledgePage() {
                 </DialogTitle>
               </header>
 
-              <div className="flex min-h-0 scrollbar-none flex-col gap-7 overflow-y-auto px-6 sm:px-10">
+              <div className="flex min-h-0 scrollbar-none flex-col gap-7 overflow-y-auto px-6 pb-7 sm:px-10">
                 <div className="flex flex-col gap-4">
                   <Field
                     name="name"
@@ -568,95 +568,97 @@ export function CreateKnowledgePage() {
                   </div>
                 </div>
 
-                <Fieldset>
-                  <FieldsetLegend className="py-0 system-md-semibold">
-                    {t(($) => $['newKnowledge.startWith'])}
-                  </FieldsetLegend>
-                  <p className="pb-1.5 body-xs-regular text-text-tertiary">
-                    {t(($) => $['newKnowledge.startWithHelp'])}
-                  </p>
-                  <RadioGroup<NewKnowledgeStartMode>
-                    value={startMode}
-                    aria-label={t(($) => $['newKnowledge.startWith'])}
-                    className="mt-2 flex-col items-stretch gap-2"
-                    disabled={submissionLocked}
-                    onValueChange={(value) => {
-                      setStartMode(value)
-                      resetUnsubmittedError()
-                    }}
-                  >
-                    <StartMode
-                      value="empty"
-                      icon="i-ri-folder-6-line"
-                      selected={startMode === 'empty'}
-                      title={t(($) => $['newKnowledge.startEmpty'])}
-                      description={t(($) => $['newKnowledge.startEmptyDescription'])}
-                    />
-                    <StartMode
-                      value="source"
-                      icon="i-custom-public-new-rag-connect-source"
-                      selected={startMode === 'source'}
-                      title={t(($) => $['newKnowledge.connectSource'])}
-                      description={t(($) => $['newKnowledge.connectSourceDescription'])}
-                      endAdornment={
-                        startMode === 'upload' ? (
-                          <span
-                            aria-hidden
-                            className="h-4 w-20.5 shrink-0 bg-[url('/images/new-rag/create-knowledge-connectors.svg')] bg-contain bg-center bg-no-repeat"
-                          />
-                        ) : undefined
-                      }
+                <div className="flex flex-col gap-3">
+                  <Fieldset>
+                    <FieldsetLegend className="py-0 system-md-semibold">
+                      {t(($) => $['newKnowledge.startWith'])}
+                    </FieldsetLegend>
+                    <p className="pb-1.5 body-xs-regular text-text-tertiary">
+                      {t(($) => $['newKnowledge.startWithHelp'])}
+                    </p>
+                    <RadioGroup<NewKnowledgeStartMode>
+                      value={startMode}
+                      aria-label={t(($) => $['newKnowledge.startWith'])}
+                      className="mt-2 flex-col items-stretch gap-2"
+                      disabled={submissionLocked}
+                      onValueChange={(value) => {
+                        setStartMode(value)
+                        resetUnsubmittedError()
+                      }}
                     >
-                      <CreateSourceSetup
-                        disabled={submissionLocked}
-                        draft={sourceDraft}
-                        onDraftChange={(value) => {
-                          setSourceDraft(value)
-                          resetUnsubmittedError()
-                        }}
-                        onInitialSourceChange={updateInitialSource}
-                        onSourceTypeChange={(value) => {
-                          setSourceDraft(createNewKnowledgeSourceDraft(value))
-                          updateInitialSource(undefined)
-                          resetUnsubmittedError()
-                        }}
+                      <StartMode
+                        value="empty"
+                        icon="i-ri-folder-6-line"
+                        selected={startMode === 'empty'}
+                        title={t(($) => $['newKnowledge.startEmpty'])}
+                        description={t(($) => $['newKnowledge.startEmptyDescription'])}
                       />
-                    </StartMode>
-                    <StartMode
-                      value="upload"
-                      icon="i-ri-file-text-line"
-                      selected={startMode === 'upload'}
-                      disabled={!uploadAvailable}
-                      title={t(($) => $['newKnowledge.uploadFiles'])}
-                      description={t(($) => $['newKnowledge.uploadFilesDescription'])}
-                    >
-                      <CreateUploadQueue
-                        disabled={submissionPending}
-                        uploads={uploads}
-                        uploadPhases={uploadPhases}
-                        uploading={uploading || stagingCount > 0}
-                        onChange={handleUploadsChange}
-                      />
-                    </StartMode>
-                  </RadioGroup>
-                </Fieldset>
+                      <StartMode
+                        value="source"
+                        icon="i-custom-public-new-rag-connect-source"
+                        selected={startMode === 'source'}
+                        title={t(($) => $['newKnowledge.connectSource'])}
+                        description={t(($) => $['newKnowledge.connectSourceDescription'])}
+                        endAdornment={
+                          startMode === 'upload' ? (
+                            <span
+                              aria-hidden
+                              className="h-4 w-20.5 shrink-0 bg-[url('/images/new-rag/create-knowledge-connectors.svg')] bg-contain bg-center bg-no-repeat"
+                            />
+                          ) : undefined
+                        }
+                      >
+                        <CreateSourceSetup
+                          disabled={submissionLocked}
+                          draft={sourceDraft}
+                          onDraftChange={(value) => {
+                            setSourceDraft(value)
+                            resetUnsubmittedError()
+                          }}
+                          onInitialSourceChange={updateInitialSource}
+                          onSourceTypeChange={(value) => {
+                            setSourceDraft(createNewKnowledgeSourceDraft(value))
+                            updateInitialSource(undefined)
+                            resetUnsubmittedError()
+                          }}
+                        />
+                      </StartMode>
+                      <StartMode
+                        value="upload"
+                        icon="i-ri-file-text-line"
+                        selected={startMode === 'upload'}
+                        disabled={!uploadAvailable}
+                        title={t(($) => $['newKnowledge.uploadFiles'])}
+                        description={t(($) => $['newKnowledge.uploadFilesDescription'])}
+                      >
+                        <CreateUploadQueue
+                          disabled={submissionPending}
+                          uploads={uploads}
+                          uploadPhases={uploadPhases}
+                          uploading={uploading || stagingCount > 0}
+                          onChange={handleUploadsChange}
+                        />
+                      </StartMode>
+                    </RadioGroup>
+                  </Fieldset>
 
-                {createMutation.isError && (
-                  <div
-                    className="mt-5 rounded-lg bg-components-badge-status-light-error-bg px-3 py-2 system-sm-regular text-text-destructive"
-                    role="alert"
-                  >
-                    {createErrorMessage}
-                  </div>
-                )}
-                {uploadError && (
-                  <div
-                    className="mt-5 rounded-lg bg-components-badge-status-light-error-bg px-3 py-2 system-sm-regular text-text-destructive"
-                    role="alert"
-                  >
-                    {t(($) => $['newKnowledge.documentUploadFailed'])}
-                  </div>
-                )}
+                  {createMutation.isError && (
+                    <div
+                      className="rounded-lg bg-state-destructive-hover px-3 py-2 system-sm-regular text-text-destructive"
+                      role="alert"
+                    >
+                      {createErrorMessage}
+                    </div>
+                  )}
+                  {uploadError && (
+                    <div
+                      className="rounded-lg bg-state-destructive-hover px-3 py-2 system-sm-regular text-text-destructive"
+                      role="alert"
+                    >
+                      {t(($) => $['newKnowledge.documentUploadFailed'])}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="shrink-0 border-t border-divider-subtle px-6 pt-7 pb-12 sm:px-10">

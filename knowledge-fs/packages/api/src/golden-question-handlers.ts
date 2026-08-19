@@ -145,12 +145,44 @@ export function registerGoldenQuestionHandlers({
         knowledgeSpaceId,
         now,
       });
+      const body = context.req.valid("json");
+      if (body.nodeIds) {
+        const resolvedNodes = await nodes.getManyByIdsAcrossGenerations({
+          ids: uniqueStrings(body.nodeIds),
+          knowledgeSpaceId,
+        });
+        const nodesById = new Map(
+          resolvedNodes
+            .filter((node) => candidatePermissionAllowsNode(node, permission.candidateGrants))
+            .map((node) => [node.id, node]),
+        );
+        return context.json(
+          {
+            items: [],
+            resolvedEvidence: body.nodeIds.flatMap((nodeId) => {
+              const node = nodesById.get(nodeId);
+              if (!node) return [];
+              return [
+                {
+                  documentAssetId: node.documentAssetId,
+                  nodeId: node.id,
+                  ...(node.sourceLocation.pageNumber === undefined
+                    ? {}
+                    : { pageNumber: node.sourceLocation.pageNumber }),
+                  sectionPath: [...node.sourceLocation.sectionPath],
+                  text: node.text,
+                },
+              ];
+            }),
+          },
+          200,
+        );
+      }
       if (!evidenceMatcher) {
         return context.json({ error: "Golden question evidence matching is unavailable" }, 503);
       }
-      const body = context.req.valid("json");
       const matches = await evidenceMatcher.match({
-        evidenceTexts: body.evidenceTexts,
+        evidenceTexts: body.evidenceTexts ?? [],
         knowledgeSpaceId,
         minimumSimilarity: body.minimumSimilarity,
         permissionScope: permission.candidateGrants,

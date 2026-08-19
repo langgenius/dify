@@ -1977,13 +1977,22 @@ class KnowledgeFSDataFacade:
             control_space_id=control_space_id,
             operation_id="matchGoldenQuestionEvidence",
             payload=KnowledgeFSGoldenQuestionEvidenceMatchRemotePayload(
-                evidence_texts=[payload.evidence],
+                evidence_texts=[payload.evidence] if payload.evidence else None,
                 minimum_similarity=payload.minimum_similarity,
+                node_ids=payload.node_ids or None,
                 top_k=payload.top_k,
             ),
         )
         if not isinstance(raw, dict):
             raise KnowledgeFSProductRemoteError("KnowledgeFS returned an invalid evidence match response")
+        if payload.node_ids:
+            return KnowledgeFSGoldenQuestionEvidenceMatchResponse.model_validate(
+                {
+                    "candidates": raw.get("resolvedEvidence", []),
+                    "evidence": "",
+                    "matched": False,
+                }
+            )
         items = raw.get("items")
         if not isinstance(items, list) or len(items) != 1 or not isinstance(items[0], dict):
             raise KnowledgeFSProductRemoteError("KnowledgeFS returned an invalid evidence match response")
@@ -1991,7 +2000,7 @@ class KnowledgeFSDataFacade:
         return KnowledgeFSGoldenQuestionEvidenceMatchResponse.model_validate(
             {
                 "candidates": item.get("candidates", []),
-                "evidence": item.get("evidenceText", payload.evidence),
+                "evidence": item.get("evidenceText", payload.evidence or ""),
                 "matched": item.get("matched", False),
             }
         )

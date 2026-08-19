@@ -522,6 +522,7 @@
   "newKnowledge.qualityPage.questionRequired": "Câu hỏi là bắt buộc.",
   "newKnowledge.qualityPage.reason": "Lý do",
   "newKnowledge.qualityPage.reasonValues.coverageGap": "Khoảng cách phủ sóng",
+  "newKnowledge.qualityPage.reasonValues.lowScore": "Low score",
   "newKnowledge.qualityPage.reasonValues.outdatedContent": "Nội dung đã lỗi thời",
   "newKnowledge.qualityPage.reasonValues.retrievalMiss": "Cuộc truy tìm thất bại",
   "newKnowledge.qualityPage.replay": "Kiểm tra lại",

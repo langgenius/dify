@@ -1,4 +1,4 @@
-import type { GoldenQuestion } from "@knowledge/core";
+import { type GoldenQuestion, KnowledgeNodeSchema } from "@knowledge/core";
 import { describe, expect, it, vi } from "vitest";
 
 import { encodeGoldenQuestionCursor } from "./cursor-utils";
@@ -16,6 +16,7 @@ import {
   deleteGoldenQuestionRoute,
   getGoldenQuestionRoute,
   listGoldenQuestionsRoute,
+  matchGoldenQuestionEvidenceRoute,
   updateGoldenQuestionRoute,
 } from "./golden-question-routes";
 import { KnowledgeFsValidationError } from "./knowledge-fs-errors";
@@ -109,6 +110,48 @@ describe("golden-question handler branch coverage", () => {
         400,
       );
     }
+  });
+
+  it("resolves the exact visible evidence nodes without running semantic matching", async () => {
+    const node = KnowledgeNodeSchema.parse({
+      artifactHash: "f".repeat(64),
+      documentAssetId: ASSET_ID,
+      endOffset: 26,
+      id: NODE_ID,
+      kind: "chunk",
+      knowledgeSpaceId: SPACE_ID,
+      metadata: {},
+      parseArtifactId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c46",
+      permissionScope: [],
+      sourceLocation: {
+        endOffset: 26,
+        pageNumber: 2,
+        sectionPath: ["Permissions", "Roles"],
+        startOffset: 0,
+      },
+      startOffset: 0,
+      text: "Only workspace owners can change permissions.",
+    });
+    const fixture = goldenFixture({
+      body: { nodeIds: [NODE_ID] },
+      nodes: [node],
+    });
+
+    expect(await fixture.invoke(matchGoldenQuestionEvidenceRoute)).toEqual({
+      body: {
+        items: [],
+        resolvedEvidence: [
+          {
+            documentAssetId: ASSET_ID,
+            nodeId: NODE_ID,
+            pageNumber: 2,
+            sectionPath: ["Permissions", "Roles"],
+            text: "Only workspace owners can change permissions.",
+          },
+        ],
+      },
+      status: 200,
+    });
   });
 
   it("gets existing questions and hides absent rows", async () => {
@@ -325,6 +368,7 @@ interface GoldenFixtureOptions {
   readonly keySpaceId?: string;
   readonly listError?: Error;
   readonly listResult?: { readonly items: GoldenQuestion[]; readonly nextCursor?: unknown };
+  readonly nodes?: readonly unknown[];
   readonly permissionError?: Error;
   readonly query?: Record<string, unknown>;
   readonly space?: unknown;
@@ -380,7 +424,9 @@ function goldenFixture(options: GoldenFixtureOptions = {}) {
       get: vi.fn(async () => (options.asset === undefined ? { metadata: {} } : options.asset)),
     } as never,
     authorization: { authorize } as never,
-    nodes: { getManyByIdsAcrossGenerations: vi.fn(async () => []) } as never,
+    nodes: {
+      getManyByIdsAcrossGenerations: vi.fn(async () => options.nodes ?? []),
+    } as never,
     now: () => "2026-07-14T12:00:00.000Z",
     questions: questions as never,
     spaces: {

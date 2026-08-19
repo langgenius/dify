@@ -522,6 +522,7 @@
   "newKnowledge.qualityPage.questionRequired": "La domanda è obbligatoria.",
   "newKnowledge.qualityPage.reason": "Motivo",
   "newKnowledge.qualityPage.reasonValues.coverageGap": "Divario di copertura",
+  "newKnowledge.qualityPage.reasonValues.lowScore": "Low score",
   "newKnowledge.qualityPage.reasonValues.outdatedContent": "Contenuti obsoleti",
   "newKnowledge.qualityPage.reasonValues.retrievalMiss": "Recupero mancato",
   "newKnowledge.qualityPage.replay": "Verifica di nuovo",

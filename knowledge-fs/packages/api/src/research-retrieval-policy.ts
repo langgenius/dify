@@ -82,7 +82,8 @@ export const DurableResearchRetrievalPolicy: ResearchRetrievalExecutionPolicy = 
  * Research Evidence V3 policies. The legacy policies above remain frozen because an in-flight V2
  * PageIndex checkpoint may already contain counters that exceed the V3 limits. Fresh requests and
  * V3 checkpoints use these policies instead: at most one planner call, one set-level evidence
- * judge, and (for durable work only) one deterministic supplemental retrieval round.
+ * judge, one bounded structured-output recovery call, and (for durable work only) one
+ * deterministic supplemental retrieval round.
  */
 export const InteractiveResearchEvidenceRetrievalPolicy: ResearchRetrievalExecutionPolicy =
   Object.freeze({
@@ -93,7 +94,7 @@ export const InteractiveResearchEvidenceRetrievalPolicy: ResearchRetrievalExecut
     maxEvidencePerRange: 8,
     maxFinalItems: 20,
     maxHitsPerDocument: 8,
-    maxModelCalls: 2,
+    maxModelCalls: 3,
     maxOpenedResources: 20,
     maxQueueItems: 20,
     maxRetrievalSteps: 4,
@@ -115,7 +116,7 @@ export const DurableResearchEvidenceRetrievalPolicy: ResearchRetrievalExecutionP
     maxEvidencePerRange: 10,
     maxFinalItems: 40,
     maxHitsPerDocument: 10,
-    maxModelCalls: 2,
+    maxModelCalls: 3,
     maxOpenedResources: 40,
     maxQueueItems: 40,
     maxRetrievalSteps: 5,

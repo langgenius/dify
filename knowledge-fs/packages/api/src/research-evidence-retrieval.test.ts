@@ -38,21 +38,16 @@ describe("Research evidence retrieval V3", () => {
         [0.4, 0.5],
       ])
       .mockResolvedValueOnce([[0.6, 0.7]]);
-    const judge = vi
-      .fn()
-      .mockResolvedValueOnce({
+    const judge = vi.fn(async (input: { readonly reserveModelCall?: (() => void) | undefined }) => {
+      input.reserveModelCall?.();
+      return {
         coverage: 0.5,
         coveredDimensions: ["renewal"],
         missingDimensions: ["termination"],
         sufficient: false,
         supplementalQuery: "termination notice",
-      })
-      .mockResolvedValueOnce({
-        coverage: 1,
-        coveredDimensions: ["renewal", "termination"],
-        missingDimensions: [],
-        sufficient: true,
-      });
+      };
+    });
     const rerank = vi.fn(async (input: Parameters<RerankerProvider["rerank"]>[0]) => ({
       items: input.documents.map((document, index) => ({
         document: { ...document, metadata: { ...(document.metadata ?? {}) } },
@@ -64,18 +59,22 @@ describe("Research evidence retrieval V3", () => {
     }));
     const onResearchRound = vi.fn();
     const onResearchSearchCheckpoint = vi.fn();
+    const onResearchStageChange = vi.fn();
     const retriever = createResearchEvidenceRetrieval({
       planner: createRetrievalPlanner({ maxTopK: 100 }),
       queryVectorizer: { vectorize },
       reasoning: {
         judge,
-        plan: vi.fn(async () => ({
-          evidenceDimensions: ["renewal", "termination"],
-          intent: "comparison" as const,
-          modelCalled: true,
-          subqueries: ["renewal terms", "termination terms"],
-          useGraph: true,
-        })),
+        plan: vi.fn(async (input: { readonly reserveModelCall?: (() => void) | undefined }) => {
+          input.reserveModelCall?.();
+          return {
+            evidenceDimensions: ["renewal", "termination"],
+            intent: "comparison" as const,
+            modelCalled: true,
+            subqueries: ["renewal terms", "termination terms"],
+            useGraph: true,
+          };
+        }),
       },
       rerankerFactory: () => ({ kind: "static", models: async () => [], rerank }),
       retriever: { retrieve },
@@ -85,6 +84,7 @@ describe("Research evidence retrieval V3", () => {
       ...researchInput(),
       onResearchRound,
       onResearchSearchCheckpoint,
+      onResearchStageChange,
       projectionSnapshot: {
         fingerprint: "fingerprint-1",
         headRevision: 1,
@@ -128,6 +128,17 @@ describe("Research evidence retrieval V3", () => {
     expect(
       onResearchSearchCheckpoint.mock.calls.map(([boundary]) => boundary.checkpoint.phase),
     ).toEqual(["planned", "initial", "supplemental", "complete"]);
+    expect(onResearchStageChange.mock.calls.map(([stage]) => stage)).toEqual([
+      "retrieving",
+      "analyzing",
+    ]);
+    expect(onResearchStageChange.mock.calls[0]?.[1]).toMatchObject({
+      questions: ["compare renewal and termination", "renewal terms", "termination terms"],
+    });
+    expect(onResearchStageChange.mock.calls[1]?.[1]).toMatchObject({
+      results: [{ chunkCount: 3, question: "compare renewal and termination" }],
+      retrievalCount: 3,
+    });
   });
 
   it("routes a retained V2 tree checkpoint only to the compatibility retriever", async () => {
@@ -282,13 +293,16 @@ describe("Research evidence retrieval V3", () => {
     const retrieve = vi.fn();
     const vectorize = vi.fn();
     const plan = vi.fn();
-    const judge = vi.fn(async () => ({
-      coverage: 1,
-      coveredDimensions: ["renewal"],
-      missingDimensions: [],
-      modelCalled: true,
-      sufficient: true,
-    }));
+    const judge = vi.fn(async (input: { readonly reserveModelCall?: (() => void) | undefined }) => {
+      input.reserveModelCall?.();
+      return {
+        coverage: 1,
+        coveredDimensions: ["renewal"],
+        missingDimensions: [],
+        modelCalled: true,
+        sufficient: true,
+      };
+    });
     const reranker = passThroughReranker();
     const rerank = vi.spyOn(reranker, "rerank");
     const checkpoints = vi.fn();
@@ -511,6 +525,41 @@ describe("Research evidence retrieval V3", () => {
       researchRounds: 1,
       researchSupplementalSearches: 0,
     });
+  });
+
+  it("counts a physical judgement recovery instead of hiding it behind one semantic step", async () => {
+    const retriever = createResearchEvidenceRetrieval({
+      queryVectorizer: { vectorize: vi.fn() },
+      reasoning: {
+        judge: vi.fn(async (input: { readonly reserveModelCall?: (() => void) | undefined }) => {
+          input.reserveModelCall?.();
+          input.reserveModelCall?.();
+          return {
+            coverage: 1,
+            coveredDimensions: [],
+            missingDimensions: [],
+            modelCalled: true,
+            sufficient: true,
+          };
+        }),
+        plan: vi.fn(async () => ({
+          evidenceDimensions: [],
+          intent: "direct" as const,
+          modelCalled: false,
+          subqueries: [],
+          useGraph: false,
+        })),
+      },
+      rerankerFactory: () => passThroughReranker(),
+      retriever: { retrieve: async () => ({ items: [item("node-1", "direct evidence")] }) },
+    });
+
+    const result = await retriever.retrieve({
+      ...researchInput(),
+      query: "direct fact",
+    });
+
+    expect(result.metrics).toMatchObject({ researchModelCalls: 2 });
   });
 
   it("rejects incompatible checkpoints and invalid rewrite embeddings before recall", async () => {

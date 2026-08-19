@@ -522,6 +522,7 @@
   "newKnowledge.qualityPage.questionRequired": "سوال مورد نیاز است.",
   "newKnowledge.qualityPage.reason": "دلیل",
   "newKnowledge.qualityPage.reasonValues.coverageGap": "شکاف پوشش",
+  "newKnowledge.qualityPage.reasonValues.lowScore": "Low score",
   "newKnowledge.qualityPage.reasonValues.outdatedContent": "محتوای قدیمی",
   "newKnowledge.qualityPage.reasonValues.retrievalMiss": "از دست دادن بازیابی",
   "newKnowledge.qualityPage.replay": "آزمایش دوباره",

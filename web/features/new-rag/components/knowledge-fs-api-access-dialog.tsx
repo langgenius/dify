@@ -189,7 +189,7 @@ export function KnowledgeFsApiAccessDialog({
 
                 {actionError === 'create' && (
                   <div
-                    className="rounded-lg bg-components-badge-status-light-error-bg px-3 py-2 body-xs-regular text-text-destructive"
+                    className="rounded-lg bg-state-destructive-hover px-3 py-2 body-xs-regular text-text-destructive"
                     role="alert"
                   >
                     {tCommon(($) => $['api.actionFailed'])}
@@ -217,7 +217,7 @@ export function KnowledgeFsApiAccessDialog({
                   </p>
                 ) : credentialsQuery.isError ? (
                   <div
-                    className="flex items-center justify-between gap-3 rounded-lg bg-components-badge-status-light-error-bg px-3 py-2"
+                    className="flex items-center justify-between gap-3 rounded-lg bg-state-destructive-hover px-3 py-2"
                     role="alert"
                   >
                     <span className="body-xs-regular text-text-destructive">
@@ -300,7 +300,7 @@ export function KnowledgeFsApiAccessDialog({
           </AlertDialogDescription>
           {actionError === 'revoke' && (
             <div
-              className="mx-6 mt-4 rounded-lg bg-components-badge-status-light-error-bg px-3 py-2 body-xs-regular text-text-destructive"
+              className="mx-6 mt-4 rounded-lg bg-state-destructive-hover px-3 py-2 body-xs-regular text-text-destructive"
               role="alert"
             >
               {tCommon(($) => $['api.actionFailed'])}

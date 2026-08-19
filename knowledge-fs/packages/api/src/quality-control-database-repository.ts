@@ -2058,7 +2058,7 @@ function mapHistoryEvent(row: DatabaseRow): QualityHistoryEvent {
 function validateBadCaseTransition(from: QualityBadCaseState, to: QualityBadCaseState) {
   const allowed: Readonly<Record<QualityBadCaseState, readonly QualityBadCaseState[]>> = {
     dismissed: ["open"],
-    fixed: ["open", "replaying"],
+    fixed: ["dismissed", "open", "replaying"],
     open: ["dismissed", "replaying"],
     replaying: ["dismissed", "fixed", "open"],
   };

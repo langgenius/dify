@@ -21,12 +21,12 @@ export function createApiResearchEvidenceReasoningOptions(
 ): ApiResearchEvidenceReasoningOptions {
   const maxOutputTokens = positiveIntegerEnv(
     env.KNOWLEDGE_RESEARCH_REASONING_MAX_OUTPUT_TOKENS,
-    1_024,
+    2_048,
     "KNOWLEDGE_RESEARCH_REASONING_MAX_OUTPUT_TOKENS",
   );
   const recoveryMaxOutputTokens = positiveIntegerEnv(
     env.KNOWLEDGE_RESEARCH_REASONING_RECOVERY_MAX_OUTPUT_TOKENS,
-    2_048,
+    4_096,
     "KNOWLEDGE_RESEARCH_REASONING_RECOVERY_MAX_OUTPUT_TOKENS",
   );
   if (recoveryMaxOutputTokens < maxOutputTokens) {

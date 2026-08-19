@@ -6,6 +6,7 @@ import {
   extractRetrievalEvidence,
   formatDuration,
   formatRetrievalDuration,
+  formatStageDuration,
   researchTaskIsActive,
   retrievalTestRecords,
   shouldRefreshResearchPartials,
@@ -194,6 +195,13 @@ describe('retrieval test model', () => {
   it('formats research durations in seconds and minutes', () => {
     expect(formatDuration(12_000)).toBe('12s')
     expect(formatDuration(303_000)).toBe('5min 3s')
+  })
+
+  it('keeps non-zero subsecond research stages visible', () => {
+    expect(formatStageDuration(7)).toBe('7 ms')
+    expect(formatStageDuration(21)).toBe('21 ms')
+    expect(formatStageDuration(0)).toBe('0s')
+    expect(formatStageDuration(6_900)).toBe('7s')
   })
 
   it('formats retrieval latency with millisecond precision below one second', () => {

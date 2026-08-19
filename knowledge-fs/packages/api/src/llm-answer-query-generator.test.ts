@@ -668,8 +668,10 @@ describe("llm answer query generator", () => {
   });
 
   it("emits trace-step events for the retrieve and llm answer stages", async () => {
+    const stages: string[] = [];
     const provider: LlmAnswerProvider = {
       stream: async function* () {
+        expect(stages).toEqual(["generating"]);
         yield { delta: "Grounded answer.", type: "delta" as const };
         yield { finishReason: "STOP", type: "done" as const };
       },
@@ -684,7 +686,12 @@ describe("llm answer query generator", () => {
     });
 
     const steps = [];
-    for await (const event of generator.stream(QUERY_INPUT)) {
+    for await (const event of generator.stream({
+      ...QUERY_INPUT,
+      onResearchStageChange: async (stage) => {
+        stages.push(stage);
+      },
+    })) {
       if (event.type === "trace-step") {
         steps.push(event.step);
       }
@@ -705,6 +712,7 @@ describe("llm answer query generator", () => {
       status: "ok",
     });
     expect(typeof steps[1]?.metadata.durationMs).toBe("number");
+    expect(stages).toEqual(["generating"]);
   });
 
   it("validates model, embedding model, and numeric bounds at construction time", () => {

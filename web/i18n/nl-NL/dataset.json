@@ -522,6 +522,7 @@
   "newKnowledge.qualityPage.questionRequired": "Vraag is verplicht.",
   "newKnowledge.qualityPage.reason": "Reden",
   "newKnowledge.qualityPage.reasonValues.coverageGap": "Dekkingstekort",
+  "newKnowledge.qualityPage.reasonValues.lowScore": "Low score",
   "newKnowledge.qualityPage.reasonValues.outdatedContent": "Verouderde inhoud",
   "newKnowledge.qualityPage.reasonValues.retrievalMiss": "Ophaalfout",
   "newKnowledge.qualityPage.replay": "Opnieuw testen",

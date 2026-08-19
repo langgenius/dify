@@ -415,8 +415,9 @@ export type KnowledgeFsGoldenQuestionBulkImportResponse = {
 }
 
 export type KnowledgeFsGoldenQuestionEvidenceMatchPayload = {
-  evidence: string
+  evidence?: string | null
   minimum_similarity?: number
+  node_ids?: Array<string>
   top_k?: number
 }
 
@@ -1590,8 +1591,8 @@ export type KnowledgeFsGoldenQuestionEvidenceCandidateResponse = {
   document_asset_id: string
   node_id: string
   page_number?: number | null
-  projection_id: string
-  score: number
+  projection_id?: string | null
+  score?: number | null
   section_path: Array<string>
   text: string
 }

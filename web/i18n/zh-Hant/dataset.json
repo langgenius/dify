@@ -525,6 +525,7 @@
   "newKnowledge.qualityPage.questionRequired": "必問問題。",
   "newKnowledge.qualityPage.reason": "原因",
   "newKnowledge.qualityPage.reasonValues.coverageGap": "覆蓋差距",
+  "newKnowledge.qualityPage.reasonValues.lowScore": "分數值低",
   "newKnowledge.qualityPage.reasonValues.outdatedContent": "過時的內容",
   "newKnowledge.qualityPage.reasonValues.retrievalMiss": "檢索失敗",
   "newKnowledge.qualityPage.replay": "重新測試",

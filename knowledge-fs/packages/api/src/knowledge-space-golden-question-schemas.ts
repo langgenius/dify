@@ -10,6 +10,7 @@ import {
 const MAX_GOLDEN_QUESTION_ANNOTATION_EVIDENCE = 50;
 export const MAX_GOLDEN_QUESTION_BULK_IMPORT_ROWS = 500;
 export const MAX_GOLDEN_QUESTION_EVIDENCE_MATCH_TEXTS = 500;
+export const MAX_GOLDEN_QUESTION_EXPECTED_EVIDENCE_IDS = 50;
 const DEFAULT_LIST_LIMIT = 100;
 const BoundedListLimitSchema = z.preprocess(
   (value) => (value === undefined ? DEFAULT_LIST_LIMIT : value),
@@ -148,11 +149,20 @@ export const MatchGoldenQuestionEvidenceSchema = z
     evidenceTexts: z
       .array(GoldenQuestionEvidenceTextSchema)
       .min(1)
-      .max(MAX_GOLDEN_QUESTION_EVIDENCE_MATCH_TEXTS),
+      .max(MAX_GOLDEN_QUESTION_EVIDENCE_MATCH_TEXTS)
+      .optional(),
     minimumSimilarity: GoldenQuestionMinimumSimilaritySchema,
+    nodeIds: z
+      .array(z.string().uuid())
+      .min(1)
+      .max(MAX_GOLDEN_QUESTION_EXPECTED_EVIDENCE_IDS)
+      .optional(),
     topK: GoldenQuestionEvidenceTopKSchema,
   })
-  .strict();
+  .strict()
+  .refine((value) => Boolean(value.evidenceTexts) !== Boolean(value.nodeIds), {
+    message: "Provide exactly one of evidenceTexts or nodeIds",
+  });
 
 export const GoldenQuestionEvidenceCandidateSchema = z
   .object({
@@ -174,9 +184,20 @@ export const GoldenQuestionEvidenceMatchSchema = z
   })
   .strict();
 
+export const GoldenQuestionResolvedEvidenceSchema = z
+  .object({
+    documentAssetId: z.string().uuid(),
+    nodeId: z.string().uuid(),
+    pageNumber: z.number().int().positive().optional(),
+    sectionPath: z.array(z.string()),
+    text: z.string(),
+  })
+  .strict();
+
 export const MatchGoldenQuestionEvidenceResponseSchema = z
   .object({
     items: z.array(GoldenQuestionEvidenceMatchSchema),
+    resolvedEvidence: z.array(GoldenQuestionResolvedEvidenceSchema).optional(),
   })
   .strict();
 

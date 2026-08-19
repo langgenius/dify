@@ -522,6 +522,7 @@
   "newKnowledge.qualityPage.questionRequired": "Soru zorunludur.",
   "newKnowledge.qualityPage.reason": "Sebep",
   "newKnowledge.qualityPage.reasonValues.coverageGap": "Kapsama açığı",
+  "newKnowledge.qualityPage.reasonValues.lowScore": "Low score",
   "newKnowledge.qualityPage.reasonValues.outdatedContent": "Güncel olmayan içerik",
   "newKnowledge.qualityPage.reasonValues.retrievalMiss": "Geri alma hatası",
   "newKnowledge.qualityPage.replay": "Yeniden test et",

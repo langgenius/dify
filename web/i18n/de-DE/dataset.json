@@ -522,6 +522,7 @@
   "newKnowledge.qualityPage.questionRequired": "Die Frage ist erforderlich.",
   "newKnowledge.qualityPage.reason": "Grund",
   "newKnowledge.qualityPage.reasonValues.coverageGap": "Deckungslücke",
+  "newKnowledge.qualityPage.reasonValues.lowScore": "Low score",
   "newKnowledge.qualityPage.reasonValues.outdatedContent": "Veralteter Inhalt",
   "newKnowledge.qualityPage.reasonValues.retrievalMiss": "Abholfehler",
   "newKnowledge.qualityPage.replay": "Erneut testen",

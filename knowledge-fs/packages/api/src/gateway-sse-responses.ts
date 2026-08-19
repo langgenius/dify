@@ -77,6 +77,13 @@ export interface QueryGenerationInput {
   readonly researchExecutionKind?: "durable" | "interactive" | undefined;
   /** Internal durable accounting hook; never supplied by public interactive requests. */
   readonly researchModelCallObserver?: ResearchModelCallObserver | undefined;
+  /** Internal durable progress hook; public interactive requests never supply it. */
+  readonly onResearchStageChange?:
+    | ((
+        stage: "retrieving" | "analyzing" | "generating",
+        details?: Record<string, unknown>,
+      ) => Promise<void>)
+    | undefined;
   readonly researchExecutionAttempt?: number | undefined;
   readonly retrievalProfile?: KnowledgeSpaceRetrievalProfile | undefined;
   readonly sessionContext?: QuerySessionContext | undefined;

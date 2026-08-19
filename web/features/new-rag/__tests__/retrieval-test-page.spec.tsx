@@ -736,14 +736,14 @@ describe('RetrievalTestPage', () => {
       }) => {
         const stages = [
           ['planning', 0],
-          ['retrieving', 2],
-          ['analyzing', 7],
-          ['generating', 14],
-          ['completed', 25],
+          ['retrieving', 7],
+          ['analyzing', 79_007],
+          ['generating', 86_007],
+          ['completed', 86_028],
         ] as const
-        stages.forEach(([stage, seconds], index) =>
+        stages.forEach(([stage, milliseconds], index) =>
           onEvent({
-            createdAt: new Date(1_800_000_000_000 + seconds * 1000).toISOString(),
+            createdAt: new Date(1_800_000_000_000 + milliseconds).toISOString(),
             id: `event-${index + 1}`,
             payload: {
               ...(stage === 'retrieving'
@@ -815,10 +815,10 @@ describe('RetrievalTestPage', () => {
         capability: expect.objectContaining({ operation_id: 'streamResearchTask' }),
       }),
     )
-    expect(await screen.findByText('2s')).toBeInTheDocument()
-    expect(screen.getByText('5s')).toBeInTheDocument()
+    expect(await screen.findByText('7 ms')).toBeInTheDocument()
+    expect(screen.getByText('1min 19s')).toBeInTheDocument()
     expect(screen.getByText('7s')).toBeInTheDocument()
-    expect(screen.getByText('11s')).toBeInTheDocument()
+    expect(screen.getByText('21 ms')).toBeInTheDocument()
     expect(screen.getAllByText('dataset.newKnowledge.sources: 2').length).toBeGreaterThan(0)
     expect(screen.getAllByText('dataset.newKnowledge.documents: 2').length).toBeGreaterThan(0)
     expect(screen.getAllByText('dataset.newKnowledge.chunkCount: 3').length).toBeGreaterThan(1)
@@ -1488,11 +1488,17 @@ describe('RetrievalTestPage', () => {
     })
     expect(makeBadCaseButton).toHaveClass('bg-components-button-secondary-bg')
     await user.click(makeBadCaseButton)
+    expect(apiMock.createBadCase).not.toHaveBeenCalled()
+    await user.click(
+      await screen.findByRole('menuitem', {
+        name: 'dataset.newKnowledge.qualityPage.reasonValues.lowScore',
+      }),
+    )
 
     await waitFor(() =>
       expect(apiMock.createBadCase).toHaveBeenCalledWith({
         body: {
-          reason: 'retrieval-miss',
+          reason: 'low-score',
           tags: ['retrieval-test'],
           trace_id: 'trace-1',
         },
@@ -1567,7 +1573,6 @@ describe('RetrievalTestPage', () => {
       expect(apiMock.createGolden).toHaveBeenCalledWith({
         body: {
           annotation: 'The answer must cite the retrieved useEffect evidence.',
-          evidence_text: '',
           expected_evidence_ids: ['chunk-1'],
           match_policy: 'all',
           question: 'What is useEffect?',
@@ -1610,6 +1615,11 @@ describe('RetrievalTestPage', () => {
         name: 'dataset.newKnowledge.retrievalTest.makeBadCase',
       }),
     )
+    await user.click(
+      await screen.findByRole('menuitem', {
+        name: 'dataset.newKnowledge.qualityPage.reasonValues.retrievalMiss',
+      }),
+    )
 
     await waitFor(() =>
       expect(apiMock.createBadCase).toHaveBeenCalledWith({
@@ -1621,6 +1631,31 @@ describe('RetrievalTestPage', () => {
         params: { control_space_id: 'space-1' },
       }),
     )
+  })
+
+  it('runs a one-shot retest from a linked production trace', async () => {
+    apiMock.traceDetail = {
+      completed: true,
+      created_at: '2026-07-01T00:00:00.000Z',
+      id: 'trace-old',
+      mode: 'deep',
+      profile: {},
+      query: 'Retest the refund exception',
+      scores: {},
+      stages: [],
+    }
+    const { onUrlUpdate } = renderPage({
+      searchParams: '?trace=trace-old&retest=trace-old',
+    })
+
+    await waitFor(() =>
+      expect(apiMock.queryAdmission).toHaveBeenCalledWith({
+        body: { mode: 'deep', query: 'Retest the refund exception' },
+        params: { control_space_id: 'space-1' },
+      }),
+    )
+    expect(apiMock.queryAdmission).toHaveBeenCalledTimes(1)
+    expect(onUrlUpdate).toHaveBeenCalled()
   })
 
   it('opens retrieval evidence through its logical document instead of its asset', async () => {

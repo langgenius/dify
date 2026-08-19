@@ -2142,6 +2142,11 @@ describe("database quality-control repository", () => {
       repositoryFor().repository.updateBadCase({ ...base, status: "fixed" }),
     ).rejects.toThrow("Invalid bad-case transition open -> fixed");
     await expect(
+      repositoryFor({ badCase: { ...badCaseRow(), status: "fixed" } }).repository.updateBadCase(
+        base,
+      ),
+    ).resolves.toMatchObject({ revision: 2, status: "dismissed" });
+    await expect(
       repositoryFor().repository.updateBadCase({ ...base, status: "replaying" }),
     ).rejects.toThrow("requires a replay run");
     await expect(

@@ -51,7 +51,7 @@ describe("research task dry-run planner", () => {
         scannedResources: 380,
         toolCalls: 6,
         workBounds: {
-          modelCalls: { estimated: 3, max: 3, min: 2 },
+          modelCalls: { estimated: 3, max: 4, min: 2 },
           openedResources: { estimated: 20, max: 40, min: 0 },
           retrievalSteps: { estimated: 3, max: 5, min: 1 },
         },
@@ -195,7 +195,7 @@ describe("research task dry-run planner", () => {
     ]);
     expect(plan.estimates.workBounds?.modelCalls).toMatchObject({
       estimated: 4,
-      max: 4,
+      max: 5,
       min: 3,
     });
   });

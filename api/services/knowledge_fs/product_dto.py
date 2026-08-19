@@ -3186,8 +3186,9 @@ class KnowledgeFSGoldenQuestionListResponse(ResponseModel):
 
 
 class KnowledgeFSGoldenQuestionEvidenceMatchPayload(BaseModel):
-    evidence: str = Field(min_length=1, max_length=8_000)
+    evidence: str | None = Field(default=None, min_length=1, max_length=8_000)
     minimum_similarity: float = Field(default=0.7, ge=0, le=1)
+    node_ids: list[str] = Field(default_factory=list, max_length=50)
     top_k: int = Field(default=5, ge=1, le=10)
 
     model_config = ConfigDict(extra="forbid")
@@ -3197,10 +3198,22 @@ class KnowledgeFSGoldenQuestionEvidenceMatchPayload(BaseModel):
     def strip_evidence(cls, value: object) -> object:
         return value.strip() if isinstance(value, str) else value
 
+    @field_validator("node_ids")
+    @classmethod
+    def normalize_node_ids(cls, value: list[str]) -> list[str]:
+        return list(dict.fromkeys(item.strip() for item in value if item.strip()))
+
+    @model_validator(mode="after")
+    def require_one_lookup(self) -> KnowledgeFSGoldenQuestionEvidenceMatchPayload:
+        if bool(self.evidence) == bool(self.node_ids):
+            raise ValueError("Provide exactly one of evidence or node_ids")
+        return self
+
 
 class KnowledgeFSGoldenQuestionEvidenceMatchRemotePayload(BaseModel):
-    evidence_texts: list[str] = Field(serialization_alias="evidenceTexts")
+    evidence_texts: list[str] | None = Field(default=None, serialization_alias="evidenceTexts")
     minimum_similarity: float = Field(serialization_alias="minimumSimilarity")
+    node_ids: list[str] | None = Field(default=None, serialization_alias="nodeIds")
     top_k: int = Field(serialization_alias="topK")
 
     model_config = ConfigDict(extra="forbid", serialize_by_alias=True)
@@ -3210,8 +3223,8 @@ class KnowledgeFSGoldenQuestionEvidenceCandidateResponse(ResponseModel):
     document_asset_id: str = Field(validation_alias=AliasChoices("document_asset_id", "documentAssetId"))
     node_id: str = Field(validation_alias=AliasChoices("node_id", "nodeId"))
     page_number: int | None = Field(default=None, validation_alias=AliasChoices("page_number", "pageNumber"))
-    projection_id: str = Field(validation_alias=AliasChoices("projection_id", "projectionId"))
-    score: float = Field(ge=0, le=1)
+    projection_id: str | None = Field(default=None, validation_alias=AliasChoices("projection_id", "projectionId"))
+    score: float | None = Field(default=None, ge=0, le=1)
     section_path: list[str] = Field(validation_alias=AliasChoices("section_path", "sectionPath"))
     text: str
 

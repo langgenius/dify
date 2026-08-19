@@ -526,6 +526,7 @@
   "newKnowledge.qualityPage.questionRequired": "必须填写问题。",
   "newKnowledge.qualityPage.reason": "原因",
   "newKnowledge.qualityPage.reasonValues.coverageGap": "内容覆盖不足",
+  "newKnowledge.qualityPage.reasonValues.lowScore": "分数值低",
   "newKnowledge.qualityPage.reasonValues.outdatedContent": "内容已过时",
   "newKnowledge.qualityPage.reasonValues.retrievalMiss": "检索未命中",
   "newKnowledge.qualityPage.replay": "重新测试",

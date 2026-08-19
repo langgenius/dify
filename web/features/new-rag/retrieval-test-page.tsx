@@ -17,11 +17,17 @@ import type { ResearchTaskProgressEvent } from './services/research-task-events'
 import type { MarkdownProps } from '@/app/components/base/markdown'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
 import { matchesKeyboardEvent } from '@tanstack/react-hotkeys'
 import { skipToken, useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { parseAsString, useQueryStates } from 'nuqs'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
 import { Link as MarkdownLink } from '@/app/components/base/markdown-blocks'
@@ -37,6 +43,7 @@ import {
   extractTraceId,
   formatDuration,
   formatRetrievalDuration,
+  formatStageDuration,
   researchTaskIsActive,
   retrievalTestRecords,
   shouldRefreshResearchPartials,
@@ -74,6 +81,8 @@ type ComposerDraft = {
 
 type QualityDecision = 'bad-case' | 'golden'
 
+type BadCaseReason = 'low-score' | 'retrieval-miss'
+
 type ResearchExpansionState = Partial<Record<'active' | 'terminal', boolean>>
 
 type GoldenQuestionPromotion = {
@@ -81,8 +90,6 @@ type GoldenQuestionPromotion = {
   resultKey: string
   value: GoldenQuestionDraft
 }
-
-const retrievalTestBadCaseReason = 'retrieval-miss'
 
 const researchStageOrder = ['planning', 'retrieving', 'analyzing', 'generating'] as const
 type ResearchStage = (typeof researchStageOrder)[number]
@@ -111,6 +118,11 @@ function goldenQuestionEvidenceOptions(
 
 function timeValue(value: number) {
   return value < 10_000_000_000 ? value * 1000 : value
+}
+
+function normalizedRetrievalTestMode(mode?: string): RetrievalTestMode {
+  if (mode === 'deep' || mode === 'research') return mode
+  return 'fast'
 }
 
 function formatRecordTime(value: number) {
@@ -343,7 +355,7 @@ function estimatedStageDuration(
     if (!stepNames[stage].has(typeof step.name === 'string' ? step.name : '')) return total
     return total + (typeof step.estimatedLatencyMs === 'number' ? step.estimatedLatencyMs : 0)
   }, 0)
-  return milliseconds > 0 ? formatDuration(milliseconds) : undefined
+  return milliseconds > 0 ? formatStageDuration(milliseconds) : undefined
 }
 
 function researchProgressTime(event: ResearchTaskProgressEvent) {
@@ -376,7 +388,7 @@ function actualStageDuration(
         ? timeValue(task.completed_at)
         : undefined
   if (endedAt === undefined || endedAt < startedAt) return
-  return formatDuration(endedAt - startedAt)
+  return formatStageDuration(endedAt - startedAt)
 }
 
 function mergeResearchProgressEvent(
@@ -735,14 +747,16 @@ function QualityActions({
   badCaseAvailable,
   decision,
   noResults,
-  onDecision,
+  onBadCase,
+  onGolden,
   pending,
   qualityHref,
 }: {
   badCaseAvailable: boolean
   decision?: QualityDecision
   noResults?: boolean
-  onDecision: (decision: QualityDecision) => Promise<void>
+  onBadCase: (reason: BadCaseReason) => Promise<void>
+  onGolden: () => void
   pending?: boolean
   qualityHref: string
 }) {
@@ -775,22 +789,30 @@ function QualityActions({
   return (
     <div className="flex shrink-0 items-center justify-end gap-3 border-t border-divider-regular pt-4 pb-1">
       {badCaseAvailable && (
-        <Button
-          disabled={pending}
-          loading={pending}
-          variant={noResults ? 'secondary' : 'ghost'}
-          onClick={() => void onDecision('bad-case')}
-        >
-          <span aria-hidden className="i-ri-thumb-down-line size-4" />
-          {t(($) => $['newKnowledge.retrievalTest.makeBadCase'])}
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            disabled={pending}
+            render={<Button loading={pending} variant={noResults ? 'secondary' : 'ghost'} />}
+          >
+            <span aria-hidden className="i-ri-thumb-down-line size-4" />
+            {t(($) => $['newKnowledge.retrievalTest.makeBadCase'])}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent placement="top-end" sideOffset={4} popupClassName="w-44">
+            <DropdownMenuItem onClick={() => void onBadCase('low-score')}>
+              {t(($) => $['newKnowledge.qualityPage.reasonValues.lowScore'])}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => void onBadCase('retrieval-miss')}>
+              {t(($) => $['newKnowledge.qualityPage.reasonValues.retrievalMiss'])}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       )}
       {!noResults && (
         <Button
           disabled={pending}
           loading={pending}
           variant="secondary"
-          onClick={() => void onDecision('golden')}
+          onClick={() => void onGolden()}
         >
           <span aria-hidden className="i-ri-thumb-up-line size-4" />
           {t(($) => $['newKnowledge.retrievalTest.keepGoldenQuestion'])}
@@ -1088,9 +1110,14 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
   } = useKnowledgeModelSetupGuard(knowledgeSpaceId)
   const [linkedSelection, setLinkedSelection] = useQueryStates({
     research: parseAsString,
+    retest: parseAsString,
     trace: parseAsString,
   })
-  const { research: linkedResearchId, trace: linkedTraceId } = linkedSelection
+  const {
+    research: linkedResearchId,
+    retest: linkedRetestTraceId,
+    trace: linkedTraceId,
+  } = linkedSelection
   const [composerDraft, setComposerDraft] = useState<ComposerDraft>({ mode: 'fast', query: '' })
   const [localRun, setLocalRun] = useState<LocalQueryRun>()
   const [localSelected, setLocalSelected] = useState<SelectedRun>()
@@ -1117,6 +1144,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     taskId: string
   }>()
   const queryAbortControllerRef = useRef<AbortController>(undefined)
+  const consumedRetestTraceIdRef = useRef<string | undefined>(undefined)
   const runInFlightRef = useRef(false)
 
   useEffect(
@@ -1236,37 +1264,12 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
       ? (selectedResearchTaskFromHistory ?? researchDetailQuery.data)
       : undefined
   const selectedHistoryRecord = selected?.kind === 'local' ? undefined : selectedRecord
-  const query =
-    composerDraft.selectionKey === selectedHistoryKey
-      ? composerDraft.query
-      : (selectedHistoryRecord?.query ?? selectedResearchTask?.query ?? '')
-  const mode =
-    composerDraft.selectionKey === selectedHistoryKey
-      ? composerDraft.mode
-      : (selectedHistoryRecord?.mode ??
-        (selectedResearchTask?.mode === 'research'
-          ? 'research'
-          : selectedResearchTask?.mode === 'deep'
-            ? 'deep'
-            : 'fast'))
-  const selectedResearchActive = researchTaskIsActive(selectedResearchTask)
-  const selectedResearchActiveRef = useRef(selectedResearchActive)
-  useEffect(() => {
-    selectedResearchActiveRef.current = selectedResearchActive
-  }, [selectedResearchActive])
-  const selectedResearchDefaultExpanded = researchTaskIsActive(selectedResearchTask)
-  const selectedResearchExpansionPhase = selectedResearchDefaultExpanded ? 'active' : 'terminal'
-  const selectedResearchExpanded = selectedResearchTask
-    ? (researchExpanded[selectedResearchTask.id]?.[selectedResearchExpansionPhase] ??
-      selectedResearchDefaultExpanded)
-    : false
   const selectedTraceId =
     selected?.kind === 'trace'
       ? selected.id
       : selected?.kind === 'local'
         ? localRun?.traceId
         : undefined
-
   const traceDetailQuery = useQuery({
     ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.traces.byTraceId.get.queryOptions({
       input: {
@@ -1278,6 +1281,30 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     }),
     enabled: Boolean(selectedTraceId) && !selectedFailed,
   })
+  const query =
+    composerDraft.selectionKey === selectedHistoryKey
+      ? composerDraft.query
+      : (selectedHistoryRecord?.query ??
+        selectedResearchTask?.query ??
+        traceDetailQuery.data?.query ??
+        '')
+  const mode: RetrievalTestMode =
+    composerDraft.selectionKey === selectedHistoryKey
+      ? composerDraft.mode
+      : normalizedRetrievalTestMode(
+          selectedHistoryRecord?.mode ?? selectedResearchTask?.mode ?? traceDetailQuery.data?.mode,
+        )
+  const selectedResearchActive = researchTaskIsActive(selectedResearchTask)
+  const selectedResearchActiveRef = useRef(selectedResearchActive)
+  useEffect(() => {
+    selectedResearchActiveRef.current = selectedResearchActive
+  }, [selectedResearchActive])
+  const selectedResearchDefaultExpanded = researchTaskIsActive(selectedResearchTask)
+  const selectedResearchExpansionPhase = selectedResearchDefaultExpanded ? 'active' : 'terminal'
+  const selectedResearchExpanded = selectedResearchTask
+    ? (researchExpanded[selectedResearchTask.id]?.[selectedResearchExpansionPhase] ??
+      selectedResearchDefaultExpanded)
+    : false
   const traceEvidenceQuery = useInfiniteQuery({
     ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.traces.byTraceId.evidence.get.infiniteOptions(
       {
@@ -1572,12 +1599,13 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
   const selectRecord = (record: RetrievalTestRecord) => {
     if (record.kind === 'local') {
       setLocalSelected({ id: record.id, kind: record.kind })
-      void setLinkedSelection({ research: null, trace: null }, { history: 'push' })
+      void setLinkedSelection({ research: null, retest: null, trace: null }, { history: 'push' })
     } else {
       setLocalSelected(undefined)
       void setLinkedSelection(
         {
           research: record.kind === 'research' ? record.id : null,
+          retest: null,
           trace: record.kind === 'trace' ? record.id : null,
         },
         { history: 'push', shallow: false },
@@ -1591,24 +1619,24 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     setShowAll(false)
   }
 
-  const saveQualityDecision = async (decision: QualityDecision) => {
+  const startGoldenPromotion = () => {
     if (!resultKey || !selectedQuery) return
-    if (decision === 'golden') {
-      setGoldenPromotionError(undefined)
-      setGoldenPromotion({
-        evidenceOptions: goldenQuestionEvidenceOptions(currentEvidence),
-        resultKey,
-        value: {
-          annotation: '',
-          evidenceText: '',
-          expectedEvidenceIds: [],
-          matchPolicy: 'all',
-          question: selectedQuery,
-          tags: ['retrieval-test'],
-        },
-      })
-      return
-    }
+    setGoldenPromotionError(undefined)
+    setGoldenPromotion({
+      evidenceOptions: goldenQuestionEvidenceOptions(currentEvidence),
+      resultKey,
+      value: {
+        annotation: '',
+        expectedEvidenceIds: [],
+        matchPolicy: 'all',
+        question: selectedQuery,
+        tags: ['retrieval-test'],
+      },
+    })
+  }
+
+  const saveBadCase = async (reason: BadCaseReason) => {
+    if (!resultKey || !selectedQuery) return
     setQualityPendingKey(resultKey)
     try {
       if (!selectedTraceId) {
@@ -1617,13 +1645,13 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
       }
       await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.post({
         body: {
-          reason: retrievalTestBadCaseReason,
+          reason,
           tags: ['retrieval-test'],
           trace_id: selectedTraceId,
         },
         params: { control_space_id: knowledgeSpaceId },
       })
-      setQualityDecisions((current) => ({ ...current, [resultKey]: decision }))
+      setQualityDecisions((current) => ({ ...current, [resultKey]: 'bad-case' }))
     } catch {
       toast.error(t(($) => $.unknownError))
     } finally {
@@ -1640,7 +1668,6 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
       await consoleClient.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.post({
         body: {
           annotation: draft.annotation,
-          evidence_text: draft.evidenceText,
           expected_evidence_ids: draft.expectedEvidenceIds,
           match_policy: draft.matchPolicy,
           question: draft.question,
@@ -1663,11 +1690,12 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     }
   }
 
-  const runFastQuery = async () => {
-    const cleanQuery = query.trim()
+  const runFastQuery = async (input?: { mode: RetrievalTestMode; query: string }) => {
+    const cleanQuery = (input?.query ?? query).trim()
     if (!cleanQuery || runInFlightRef.current) return
     runInFlightRef.current = true
-    const runMode = mode === 'deep' ? 'deep' : 'fast'
+    const requestedMode = input?.mode ?? mode
+    const runMode = requestedMode === 'deep' ? 'deep' : 'fast'
     if (
       (
         await ensureModelReady({
@@ -1694,7 +1722,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
       status: 'running',
     })
     setLocalSelected({ id, kind: 'local' })
-    void setLinkedSelection({ research: null, trace: null }, { history: 'replace' })
+    void setLinkedSelection({ research: null, retest: null, trace: null }, { history: 'replace' })
     setShowAll(false)
     const events: KnowledgeQueryEvent[] = []
     try {
@@ -1777,8 +1805,8 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     }
   }
 
-  const startResearch = async () => {
-    const cleanQuery = query.trim()
+  const startResearch = async (input?: { query: string }) => {
+    const cleanQuery = (input?.query ?? query).trim()
     if (!cleanQuery || runInFlightRef.current) return
     runInFlightRef.current = true
     try {
@@ -1809,7 +1837,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
       })
       setLocalSelected(undefined)
       void setLinkedSelection(
-        { research: task.id, trace: null },
+        { research: task.id, retest: null, trace: null },
         { history: 'push', shallow: false },
       )
       setShowAll(false)
@@ -1837,6 +1865,25 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     if (mode === 'research') void startResearch()
     else void runFastQuery()
   }
+
+  const runRetest = useEffectEvent((command: { mode: RetrievalTestMode; query: string }) => {
+    if (command.mode === 'research') void startResearch({ query: command.query })
+    else void runFastQuery(command)
+  })
+
+  useEffect(() => {
+    if (
+      !linkedRetestTraceId ||
+      linkedTraceId !== linkedRetestTraceId ||
+      selected?.kind !== 'trace' ||
+      selected.id !== linkedRetestTraceId ||
+      !query.trim() ||
+      consumedRetestTraceIdRef.current === linkedRetestTraceId
+    )
+      return
+    consumedRetestTraceIdRef.current = linkedRetestTraceId
+    runRetest({ mode, query })
+  }, [linkedRetestTraceId, linkedTraceId, mode, query, selected?.id, selected?.kind])
 
   const toggleSelectedResearchProcess = () => {
     if (!selectedResearchTask) return
@@ -2146,7 +2193,8 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                     badCaseAvailable={Boolean(selectedTraceId)}
                     noResults={currentEvidence.length === 0}
                     decision={qualityDecisions[resultKey]}
-                    onDecision={saveQualityDecision}
+                    onBadCase={saveBadCase}
+                    onGolden={startGoldenPromotion}
                     pending={qualityPendingKey === resultKey}
                     qualityHref={newKnowledgeQualityPath(knowledgeSpaceId)}
                   />

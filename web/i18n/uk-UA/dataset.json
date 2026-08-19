@@ -522,6 +522,7 @@
   "newKnowledge.qualityPage.questionRequired": "Питання обов’язкове.",
   "newKnowledge.qualityPage.reason": "Причина",
   "newKnowledge.qualityPage.reasonValues.coverageGap": "Розрив покриття",
+  "newKnowledge.qualityPage.reasonValues.lowScore": "Low score",
   "newKnowledge.qualityPage.reasonValues.outdatedContent": "Застарілий вміст",
   "newKnowledge.qualityPage.reasonValues.retrievalMiss": "Промах повернення",
   "newKnowledge.qualityPage.replay": "Перевірити повторно",

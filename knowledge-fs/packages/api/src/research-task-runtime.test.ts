@@ -482,6 +482,43 @@ describe("research task production runtime", () => {
     });
   });
 
+  it("starts durable Research stages at the actual orchestration boundaries", async () => {
+    const repository = new MemoryDurableRepository({ ...baseJob(), mode: "research" });
+    const observedStages: ResearchTaskJobStage[] = [];
+    const runtime = createResearchTaskRuntime({
+      ...runtimeOptions(repository),
+      generator: {
+        stream: async function* (input) {
+          observedStages.push(repository.job.stage);
+          await input.onResearchStageChange?.("retrieving", {
+            questions: [input.query],
+            topK: input.topK,
+          });
+          observedStages.push(repository.job.stage);
+          await input.onResearchStageChange?.("analyzing", {
+            results: [{ chunkCount: 2, question: input.query }],
+            retrievalCount: 5,
+          });
+          observedStages.push(repository.job.stage);
+          await input.onResearchStageChange?.("generating", {
+            chunks: 2,
+            retrievalCount: 5,
+          });
+          observedStages.push(repository.job.stage);
+          yield {
+            finishReason: "retrieval-evidence",
+            metadata: { evidenceBundle: evidenceBundle() },
+            type: "done" as const,
+          };
+        },
+      },
+    });
+
+    await expect(runtime.tick()).resolves.toMatchObject({ succeeded: 1 });
+    expect(observedStages).toEqual(["planning", "retrieving", "analyzing", "generating"]);
+    expect(repository.job.stage).toBe("completed");
+  });
+
   it("advances with the latest row version after a heartbeat during generation", async () => {
     const repository = new MemoryDurableRepository(baseJob());
     let heartbeatObserved: (() => void) | undefined;
