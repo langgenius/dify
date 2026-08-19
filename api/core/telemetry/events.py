@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Any, NotRequired, Protocol, TypedDict, runtime_checkable
 
 from core.ops.entities.trace_entity import TraceTaskName
@@ -32,67 +31,10 @@ class MetricLogContext(TypedDict):
 # ---------------------------------------------------------------------------
 
 
-class NodeExecutionData(TypedDict, total=False):
-    """Typed shape for the ``node_execution_data`` dict consumed by
-    ``TraceTask.node_execution_trace()`` and the enterprise OTel handler.
-    """
-
-    # Identity
-    workflow_id: str
-    workflow_execution_id: str
-    tenant_id: str
-    app_id: str
-    node_execution_id: str
-    node_id: str
-    node_type: str
-    title: str
-
-    # Status & timing
-    status: str
-    error: str | None
-    elapsed_time: float
-    index: int
-    predecessor_node_id: str | None
-    created_at: datetime | None
-    finished_at: datetime | None
-
-    # Token & cost
-    total_tokens: int
-    total_price: float
-    currency: str | None
-    prompt_tokens: int | None
-    completion_tokens: int | None
-
-    # Model
-    model_provider: str | None
-    model_name: str | None
-
-    # Tool
-    tool_name: str | None
-
-    # Container context
-    iteration_id: str | None
-    iteration_index: int | None
-    loop_id: str | None
-    loop_index: int | None
-    parallel_id: str | None
-
-    # Data
-    node_inputs: Mapping[str, Any] | None
-    node_outputs: Mapping[str, Any] | None
-    process_data: Mapping[str, Any] | None
-
-    # Invocation context
-    conversation_id: str | None
-    invoke_from: str
-    user_id: str
-    parent_trace_context: dict[str, Any] | None
-
-
 class NodeExecutionPayload(TypedDict):
     """``payload`` shape for ``TelemetryCase.NODE_EXECUTION`` and ``DRAFT_NODE_EXECUTION``."""
 
-    node_execution_data: NodeExecutionData
+    node_execution_data: dict[str, Any]
 
 
 class AppCreatedPayload(TypedDict):
@@ -191,19 +133,6 @@ class TelemetryEvent(Protocol):
 # ---------------------------------------------------------------------------
 # Concrete event classes
 # ---------------------------------------------------------------------------
-
-
-@dataclass(frozen=True)
-class NodeExecutionTraceEvent:
-    context: TelemetryContext
-    payload: NodeExecutionPayload
-    case: TelemetryCase = TelemetryCase.NODE_EXECUTION
-    signal_type: SignalType = SignalType.TRACE
-    # currently we disable this event for ops trace
-    # tracer implementations currently reconstruct node executions
-    # with a db query
-    ce_eligible: bool = False
-    trace_task_name: TraceTaskName | None = TraceTaskName.NODE_EXECUTION_TRACE
 
 
 @dataclass(frozen=True)

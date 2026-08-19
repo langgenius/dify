@@ -15,7 +15,6 @@ from core.app.entities.app_invoke_entities import (
     build_dify_run_context,
 )
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
-from core.app.workflow.layers.telemetry import NodeTelemetryLayer
 from core.db.session_factory import create_session
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.workflow.node_factory import DifyGraphInitContext, DifyNodeFactory, get_default_root_node_id
@@ -233,13 +232,6 @@ class PipelineRunner(WorkflowBasedAppRunner):
         )
 
         workflow_entry.graph_engine.layer(persistence_layer)
-        workflow_entry.graph_engine.layer(
-            NodeTelemetryLayer(
-                application_generate_entity=self.application_generate_entity,
-                workflow_id=workflow.id,
-                trace_manager=self.application_generate_entity.trace_manager,
-            )
-        )
 
         generator = workflow_entry.run()
 

@@ -27,7 +27,6 @@ from core.app.entities.queue_entities import (
 from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
 from core.app.layers.conversation_variable_persist_layer import ConversationVariablePersistenceLayer
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
-from core.app.workflow.layers.telemetry import NodeTelemetryLayer
 from core.db.session_factory import create_session, session_factory
 from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
@@ -269,13 +268,6 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         )
 
         workflow_entry.graph_engine.layer(persistence_layer)
-        workflow_entry.graph_engine.layer(
-            NodeTelemetryLayer(
-                application_generate_entity=self.application_generate_entity,
-                workflow_id=self._workflow.id,
-                trace_manager=self.application_generate_entity.trace_manager,
-            )
-        )
         workflow_entry.graph_engine.layer(
             build_workflow_agent_workspace_retirement_layer(
                 dify_run_context=DifyRunContext(

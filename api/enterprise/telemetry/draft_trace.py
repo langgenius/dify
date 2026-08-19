@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from core.telemetry import DraftNodeExecutionTraceEvent, NodeExecutionData, TelemetryContext
+from core.telemetry import DraftNodeExecutionTraceEvent, TelemetryContext
 from core.telemetry import emit as telemetry_emit
 from graphon.enums import WorkflowNodeExecutionMetadataKey
 from models.workflow import WorkflowNodeExecutionModel
@@ -38,7 +38,7 @@ def _build_node_execution_data(
     execution: WorkflowNodeExecutionModel,
     outputs: Mapping[str, Any] | None,
     workflow_execution_id: str | None,
-) -> NodeExecutionData:
+) -> dict[str, Any]:
     metadata = execution.execution_metadata_dict
     node_outputs = outputs if outputs is not None else execution.outputs_dict
     execution_id = workflow_execution_id or execution.workflow_run_id or execution.id

@@ -13,7 +13,6 @@ from core.app.apps.workflow.command_channels import (
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, WorkflowAppGenerateEntity
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
-from core.app.workflow.layers.telemetry import NodeTelemetryLayer
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.workflow.node_factory import get_default_root_node_id
 from core.workflow.nodes.agent_v2.workspace_retirement_layer import build_workflow_agent_workspace_retirement_layer
@@ -199,13 +198,6 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         )
 
         workflow_entry.graph_engine.layer(persistence_layer)
-        workflow_entry.graph_engine.layer(
-            NodeTelemetryLayer(
-                application_generate_entity=self.application_generate_entity,
-                workflow_id=self._workflow.id,
-                trace_manager=self.application_generate_entity.trace_manager,
-            )
-        )
         workflow_entry.graph_engine.layer(
             build_workflow_agent_workspace_retirement_layer(
                 dify_run_context=DifyRunContext(

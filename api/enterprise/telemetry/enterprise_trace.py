@@ -289,6 +289,112 @@ class EnterpriseOtelTrace:
                 ),
             )
 
+        # -- Emit child node execution spans from DB records --
+        self._emit_node_executions_for_workflow(info)
+
+    def _emit_node_executions_for_workflow(self, workflow_info: WorkflowTraceInfo) -> None:
+        """Query node executions from the DB and emit child spans under the workflow run."""
+        from collections.abc import Mapping as MappingABC
+
+        from sqlalchemy import select
+        from sqlalchemy.orm import Session
+
+        from extensions.ext_database import db
+        from graphon.enums import WorkflowNodeExecutionMetadataKey
+        from models.workflow import WorkflowNodeExecutionModel
+
+        metadata = self._metadata(workflow_info)
+        tenant_id, app_id, user_id = self._context_ids(workflow_info, metadata)
+
+        try:
+            with Session(db.engine) as session:
+                rows = (
+                    session.execute(
+                        select(WorkflowNodeExecutionModel).where(
+                            WorkflowNodeExecutionModel.workflow_run_id == workflow_info.workflow_run_id,
+                            WorkflowNodeExecutionModel.tenant_id == (tenant_id or ""),
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+        except Exception:
+            logger.exception("Failed to query node executions for workflow_run_id=%s", workflow_info.workflow_run_id)
+            return
+
+        for row in rows:
+            exec_metadata = row.execution_metadata_dict
+            process_data = row.process_data_dict or {}
+
+            # Extract token breakdown from outputs.usage (set by LLM node)
+            usage: MappingABC[str, Any] = {}
+            outputs = row.outputs_dict
+            if isinstance(outputs, MappingABC):
+                raw_usage = outputs.get("usage")
+                if isinstance(raw_usage, MappingABC):
+                    usage = raw_usage
+
+            tool_info = exec_metadata.get(WorkflowNodeExecutionMetadataKey.TOOL_INFO)
+            tool_name = tool_info.get("tool_name") if isinstance(tool_info, dict) else None
+
+            node_trace_metadata: dict[str, Any] = {
+                "tenant_id": tenant_id,
+                "app_id": app_id,
+                "app_name": metadata.get("app_name"),
+                "workspace_name": metadata.get("workspace_name"),
+                "user_id": user_id,
+                "invoke_from": metadata.get("triggered_from"),
+                "conversation_id": metadata.get("conversation_id"),
+            }
+
+            parent_trace_context = metadata.get("parent_trace_context")
+            if parent_trace_context:
+                node_trace_metadata["parent_trace_context"] = parent_trace_context
+
+            node_info = WorkflowNodeTraceInfo(
+                trace_id=workflow_info.trace_id,
+                message_id=workflow_info.message_id,
+                start_time=row.created_at,
+                end_time=row.finished_at,
+                metadata=node_trace_metadata,
+                workflow_id=workflow_info.workflow_id,
+                workflow_run_id=workflow_info.workflow_run_id,
+                tenant_id=tenant_id or "",
+                node_execution_id=row.node_execution_id or row.id,
+                node_id=row.node_id,
+                node_type=row.node_type,
+                title=row.title,
+                status=row.status,
+                error=row.error,
+                elapsed_time=row.elapsed_time,
+                index=row.index,
+                predecessor_node_id=row.predecessor_node_id,
+                total_tokens=int(exec_metadata.get(WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS, 0)),
+                total_price=float(exec_metadata.get(WorkflowNodeExecutionMetadataKey.TOTAL_PRICE, 0.0)),
+                currency=exec_metadata.get(WorkflowNodeExecutionMetadataKey.CURRENCY),
+                model_provider=process_data.get("model_provider"),
+                model_name=process_data.get("model_name"),
+                prompt_tokens=usage.get("prompt_tokens"),
+                completion_tokens=usage.get("completion_tokens"),
+                tool_name=tool_name,
+                iteration_id=exec_metadata.get(WorkflowNodeExecutionMetadataKey.ITERATION_ID),
+                iteration_index=exec_metadata.get(WorkflowNodeExecutionMetadataKey.ITERATION_INDEX),
+                loop_id=exec_metadata.get(WorkflowNodeExecutionMetadataKey.LOOP_ID),
+                loop_index=exec_metadata.get(WorkflowNodeExecutionMetadataKey.LOOP_INDEX),
+                parallel_id=exec_metadata.get(WorkflowNodeExecutionMetadataKey.PARALLEL_ID),
+                node_inputs=row.inputs_dict,
+                node_outputs=outputs,
+                process_data=process_data,
+                invoked_by=workflow_info.invoked_by,
+            )
+            try:
+                self._node_execution_trace(node_info)
+            except Exception:
+                logger.exception(
+                    "Failed to emit node execution trace: node_execution_id=%s",
+                    node_info.node_execution_id,
+                )
+
     def _node_execution_trace(self, info: WorkflowNodeTraceInfo) -> None:
         self._emit_node_execution_trace(info, EnterpriseTelemetrySpan.NODE_EXECUTION, "node")
 
