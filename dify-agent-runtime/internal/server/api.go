@@ -224,6 +224,10 @@ func (sr *statusRecorder) WriteHeader(code int) {
 	sr.ResponseWriter.WriteHeader(code)
 }
 
+// Unwrap exposes the underlying writer so http.ResponseController works
+// (flushes and per-request deadlines reach the real connection).
+func (sr *statusRecorder) Unwrap() http.ResponseWriter { return sr.ResponseWriter }
+
 func requestLoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -237,6 +241,11 @@ func recoveryMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if rec := recover(); rec != nil {
+				if rec == http.ErrAbortHandler {
+					// Deliberate connection abort (e.g. failed snapshot
+					// stream): let net/http tear the connection down.
+					panic(rec)
+				}
 				stack := debug.Stack()
 				log.Printf("PANIC %s %s: %v\n%s", r.Method, r.URL.Path, rec, stack)
 				writeError(w, 500, "internal_panic", fmt.Sprintf("internal server error: %v", rec))

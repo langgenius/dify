@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -166,5 +167,49 @@ func TestIsNotFound(t *testing.T) {
 	}
 	if isNotFound(NewServerError(500, "internal_error", "x")) {
 		t.Error("500 error should not be detected as not found")
+	}
+}
+
+func TestStatusRecorderUnwrap(t *testing.T) {
+	w := httptest.NewRecorder()
+	rec := &statusRecorder{ResponseWriter: w, statusCode: 200}
+	if rec.Unwrap() != w {
+		t.Fatal("Unwrap must return the wrapped ResponseWriter")
+	}
+}
+
+func TestRecoveryMiddlewareRepanicsAbortHandler(t *testing.T) {
+	srv := httptest.NewServer(requestLoggingMiddleware(recoveryMiddleware(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(200)
+			_, _ = w.Write([]byte("partial"))
+			panic(http.ErrAbortHandler)
+		}))))
+	defer srv.Close()
+
+	resp, err := http.Get(srv.URL)
+	if err == nil {
+		_, readErr := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if readErr == nil {
+			t.Fatal("expected aborted connection, got clean response")
+		}
+	}
+}
+
+func TestRecoveryMiddlewareStillCatchesOtherPanics(t *testing.T) {
+	srv := httptest.NewServer(recoveryMiddleware(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			panic("boom")
+		})))
+	defer srv.Close()
+
+	resp, err := http.Get(srv.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 500 {
+		t.Fatalf("expected 500, got %d", resp.StatusCode)
 	}
 }

@@ -4,7 +4,10 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
+
+	"github.com/langgenius/dify/dify-agent-runtime/internal/snapshot"
 )
 
 const (
@@ -27,6 +30,9 @@ const (
 	DefaultSQLiteBusyTimeoutMs           = 5000
 	DefaultAuthTokenEnv                  = "SHELLCTL_AUTH_TOKEN"
 	HealthStatus                         = "ok"
+	DefaultSnapshotTimeoutSeconds        = 600.0
+	DefaultHomeSnapshotExclude           = "workspace"
+	HomeSnapshotExcludesEnv              = "SHELLCTL_HOME_SNAPSHOT_EXCLUDES"
 )
 
 // Config holds runtime configuration for the shellctl server.
@@ -54,6 +60,8 @@ type Config struct {
 	SQLiteBusyTimeoutMs          int
 	SanitizePtyCommand           []string
 	RunnerExitCommand            []string
+	SnapshotTimeout              time.Duration
+	HomeSnapshotExcludes         []string
 }
 
 // DefaultConfig returns a Config with sensible defaults.
@@ -85,6 +93,8 @@ func DefaultConfig() *Config {
 		SQLiteBusyTimeoutMs:          DefaultSQLiteBusyTimeoutMs,
 		SanitizePtyCommand:           []string{"shellctl-sanitize-pty"},
 		RunnerExitCommand:            []string{"shellctl-runner-exit"},
+		SnapshotTimeout:              time.Duration(DefaultSnapshotTimeoutSeconds * float64(time.Second)),
+		HomeSnapshotExcludes:         parseHomeSnapshotExcludes(os.Getenv(HomeSnapshotExcludesEnv)),
 	}
 
 	// Auth token from environment if not set explicitly
@@ -125,4 +135,27 @@ func defaultStateDir() string {
 	}
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, ".local", "share", "shellctl")
+}
+
+// parseHomeSnapshotExcludes splits the comma-separated env value; empty input
+// falls back to the default exclude set.
+func parseHomeSnapshotExcludes(raw string) []string {
+	if raw == "" {
+		return []string{DefaultHomeSnapshotExclude}
+	}
+	var excludes []string
+	for _, part := range strings.Split(raw, ",") {
+		if trimmed := strings.TrimSpace(part); trimmed != "" {
+			excludes = append(excludes, trimmed)
+		}
+	}
+	return excludes
+}
+
+// Validate rejects configuration the server must not start with.
+func (c *Config) Validate() error {
+	if err := snapshot.ValidateExcludes(c.HomeSnapshotExcludes); err != nil {
+		return err
+	}
+	return nil
 }

@@ -50,6 +50,10 @@ func run() error {
 		config.AuthToken = *token
 	}
 
+	if err := config.Validate(); err != nil {
+		return fmt.Errorf("config: %w", err)
+	}
+
 	// Initialize service
 	svc := server.NewService(config)
 	if err := svc.Initialize(); err != nil {
