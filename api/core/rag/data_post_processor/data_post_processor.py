@@ -1,7 +1,6 @@
 from typing import TypedDict
 
-from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
+from sqlalchemy.orm import Session
 
 from core.model_manager import ModelInstance, ModelManager
 from core.rag.data_post_processor.reorder import ReorderRunner
@@ -11,6 +10,9 @@ from core.rag.rerank.entity.weight import KeywordSetting, VectorSetting, Weights
 from core.rag.rerank.rerank_base import BaseRerankRunner
 from core.rag.rerank.rerank_factory import RerankRunnerFactory
 from core.rag.rerank.rerank_type import RerankMode
+from extensions.otel import trace_span
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 
 
 class RerankingModelDict(TypedDict):
@@ -43,10 +45,15 @@ class DataPostProcessor:
         reranking_model: RerankingModelDict | None = None,
         weights: WeightsDict | None = None,
         reorder_enabled: bool = False,
+        *,
+        session: Session,
     ):
-        self.rerank_runner = self._get_rerank_runner(reranking_mode, tenant_id, reranking_model, weights)
+        self.rerank_runner = self._get_rerank_runner(
+            reranking_mode, tenant_id, reranking_model, weights, session=session
+        )
         self.reorder_runner = self._get_reorder_runner(reorder_enabled)
 
+    @trace_span()
     def invoke(
         self,
         query: str,
@@ -69,6 +76,8 @@ class DataPostProcessor:
         tenant_id: str,
         reranking_model: RerankingModelDict | None = None,
         weights: WeightsDict | None = None,
+        *,
+        session: Session,
     ) -> BaseRerankRunner | None:
         if reranking_mode == RerankMode.WEIGHTED_SCORE and weights:
             runner = RerankRunnerFactory.create_rerank_runner(
@@ -91,7 +100,9 @@ class DataPostProcessor:
             if rerank_model_instance is None:
                 return None
             runner = RerankRunnerFactory.create_rerank_runner(
-                runner_type=reranking_mode, rerank_model_instance=rerank_model_instance
+                runner_type=reranking_mode,
+                rerank_model_instance=rerank_model_instance,
+                session=session,
             )
             return runner
         return None

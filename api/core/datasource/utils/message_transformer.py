@@ -2,11 +2,10 @@ import logging
 from collections.abc import Generator
 from mimetypes import guess_extension, guess_type
 
-from graphon.file import File, FileTransferMethod, FileType
-
 from core.datasource.entities.datasource_entities import DatasourceMessage
 from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.file_reference import parse_file_reference
+from graphon.file import File, FileTransferMethod, FileType
 from models.tools import ToolFile
 
 logger = logging.getLogger(__name__)
@@ -71,8 +70,8 @@ class DatasourceFileMessageTransformer:
                 if not isinstance(message.message, DatasourceMessage.BlobMessage):
                     raise ValueError("unexpected message type")
 
-                # FIXME: should do a type check here.
-                assert isinstance(message.message.blob, bytes)
+                if not isinstance(message.message.blob, bytes):
+                    raise TypeError(f"Expected blob to be bytes, got {type(message.message.blob).__name__}")
                 tool_file_manager = ToolFileManager()
                 blob_tool_file: ToolFile | None = tool_file_manager.create_file_by_raw(
                     user_id=user_id,

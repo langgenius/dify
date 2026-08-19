@@ -21,7 +21,7 @@ class TestHelpers:
         # Assert the language field for full coverage
         assert encodings[0].language is not None
 
-    def test_detect_file_encodings_timeout(self, monkeypatch):
+    def test_detect_file_encodings_timeout(self, monkeypatch: pytest.MonkeyPatch):
         class FakeFuture:
             def result(self, timeout=None):
                 raise helpers.concurrent.futures.TimeoutError()
@@ -41,7 +41,7 @@ class TestHelpers:
         with pytest.raises(TimeoutError, match="Timeout reached while detecting encoding"):
             detect_file_encodings("file.txt", timeout=1)
 
-    def test_detect_file_encodings_raises_when_encoding_not_detected(self, monkeypatch):
+    def test_detect_file_encodings_raises_when_encoding_not_detected(self, monkeypatch: pytest.MonkeyPatch):
         class FakeResult:
             encoding = None
             coherence = 0.0

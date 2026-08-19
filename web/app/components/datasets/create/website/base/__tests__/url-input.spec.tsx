@@ -1,9 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { expectLoadingButton } from '@/test/button'
 // Component Imports (after mocks)
-
 import UrlInput from '../url-input'
 
 // Mock Setup
@@ -23,12 +22,6 @@ describe('UrlInput', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<UrlInput isRunning={false} onRun={mockOnRun} />)
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
-      expect(screen.getByRole('button')).toBeInTheDocument()
-    })
-
     it('should render input with placeholder from docLink', () => {
       render(<UrlInput isRunning={false} onRun={mockOnRun} />)
       const input = screen.getByRole('textbox')
@@ -50,15 +43,17 @@ describe('UrlInput', () => {
 
     it('should show loading state on button when running', () => {
       render(<UrlInput isRunning={true} onRun={mockOnRun} />)
-      // Button should show loading text when running
       const button = screen.getByRole('button')
-      expect(button).toHaveTextContent(/loading/i)
+      expectLoadingButton(button)
+      expect(button.querySelector('.animate-spin')).toBeInTheDocument()
     })
 
     it('should not show loading state on button when not running', () => {
       render(<UrlInput isRunning={false} onRun={mockOnRun} />)
       const button = screen.getByRole('button')
-      expect(button).not.toHaveTextContent(/loading/i)
+      expect(button).not.toBeDisabled()
+      expect(button).not.toHaveAttribute('aria-busy')
+      expect(button.querySelector('.animate-spin')).not.toBeInTheDocument()
     })
   })
 
@@ -308,14 +303,6 @@ describe('UrlInput', () => {
   })
 
   describe('Memoization', () => {
-    it('should be memoized with React.memo', () => {
-      const { rerender } = render(<UrlInput isRunning={false} onRun={mockOnRun} />)
-
-      rerender(<UrlInput isRunning={false} onRun={mockOnRun} />)
-
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
-    })
-
     it('should use useCallback for handleUrlChange', async () => {
       const user = userEvent.setup()
 

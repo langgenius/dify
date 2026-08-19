@@ -1,23 +1,61 @@
 import type { NodeTracing } from '@/types/workflow'
-import { noop } from 'es-toolkit/function'
-import format from '..'
-import graphToLogStruct from '../../graph-to-log-struct'
+import { addChildrenToIterationNode } from '..'
 
-describe('iteration', () => {
-  const list = graphToLogStruct('start -> (iteration, iterationNode, plainNode1 -> plainNode2)')
-  const result = format(list as NodeTracing[], noop)
-  it('result should have no nodes in iteration node', () => {
-    expect(result.find(item => !!item.execution_metadata?.iteration_id)).toBeUndefined()
+type ExecutionMetadata = NonNullable<NodeTracing['execution_metadata']>
+
+const createExecutionMetadata = (
+  overrides: Partial<ExecutionMetadata> = {},
+): ExecutionMetadata => ({
+  total_tokens: 0,
+  total_price: 0,
+  currency: 'USD',
+  ...overrides,
+})
+
+const createTrace = (nodeId: string, executionMetadata?: Partial<ExecutionMetadata>): NodeTracing =>
+  ({
+    node_id: nodeId,
+    execution_metadata: createExecutionMetadata(executionMetadata),
+  }) as NodeTracing
+
+describe('iteration format log', () => {
+  it('should place the first child of a new iteration at a new record when its index is missing', () => {
+    const parent = createTrace('iteration')
+    const child = createTrace('code', { iteration_id: 'iteration', iteration_index: 0 })
+    const streamingChild = createTrace('code', { iteration_id: 'iteration' })
+
+    const result = addChildrenToIterationNode(parent, [child, streamingChild])
+
+    expect(result.details).toEqual([[child], [streamingChild]])
   })
-  // test('iteration should put nodes in details', () => {
-  //   expect(result).toEqual([
-  //     startNode,
-  //     {
-  //       ...iterationNode,
-  //       details: [
-  //         [iterations[0], iterations[1]],
-  //       ],
-  //     },
-  //   ])
-  // })
+
+  it('should keep missing iteration index items in the current record when the node has not restarted', () => {
+    const parent = createTrace('iteration')
+    const firstRunChild = createTrace('code', { iteration_id: 'iteration', iteration_index: 0 })
+    const secondRunChild = createTrace('code', { iteration_id: 'iteration', iteration_index: 1 })
+    const streamingChild = createTrace('tool', { iteration_id: 'iteration' })
+
+    const result = addChildrenToIterationNode(parent, [
+      firstRunChild,
+      secondRunChild,
+      streamingChild,
+    ])
+
+    expect(result.details).toEqual([[firstRunChild], [secondRunChild, streamingChild]])
+  })
+
+  it('should not move an earlier missing iteration index item into the latest record', () => {
+    const parent = createTrace('iteration')
+    const firstRunChild = createTrace('code', { iteration_id: 'iteration', iteration_index: 0 })
+    const streamingChild = createTrace('tool', { iteration_id: 'iteration' })
+    const secondRunChild = createTrace('code', { iteration_id: 'iteration', iteration_index: 1 })
+
+    const result = addChildrenToIterationNode(parent, [
+      firstRunChild,
+      streamingChild,
+      secondRunChild,
+    ])
+
+    expect(result.details).toEqual([[firstRunChild, streamingChild], [secondRunChild]])
+  })
 })

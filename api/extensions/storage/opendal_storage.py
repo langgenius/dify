@@ -2,6 +2,7 @@ import logging
 import os
 from collections.abc import Generator
 from pathlib import Path
+from typing import Any, override
 
 import opendal
 from dotenv import dotenv_values
@@ -19,7 +20,7 @@ def _get_opendal_kwargs(*, scheme: str, env_file_path: str = ".env", prefix: str
         if key.startswith(config_prefix):
             kwargs[key[len(config_prefix) :].lower()] = value
 
-    file_env_vars: dict = dotenv_values(env_file_path) or {}
+    file_env_vars: dict[str, Any] = dotenv_values(env_file_path) or {}
     for key, value in file_env_vars.items():
         if key.startswith(config_prefix) and key[len(config_prefix) :].lower() not in kwargs and value:
             kwargs[key[len(config_prefix) :].lower()] = value
@@ -40,10 +41,12 @@ class OpenDALStorage(BaseStorage):
         logger.debug("opendal operator created with scheme %s", scheme)
         logger.debug("added retry layer to opendal operator")
 
+    @override
     def save(self, filename: str, data: bytes):
         self.op.write(path=filename, bs=data)
         logger.debug("file %s saved", filename)
 
+    @override
     def load_once(self, filename: str) -> bytes:
         if not self.exists(filename):
             raise FileNotFoundError("File not found")
@@ -52,6 +55,7 @@ class OpenDALStorage(BaseStorage):
         logger.debug("file %s loaded", filename)
         return content
 
+    @override
     def load_stream(self, filename: str) -> Generator:
         if not self.exists(filename):
             raise FileNotFoundError("File not found")
@@ -66,6 +70,7 @@ class OpenDALStorage(BaseStorage):
                 yield chunk
         logger.debug("file %s loaded as stream", filename)
 
+    @override
     def download(self, filename: str, target_filepath: str):
         if not self.exists(filename):
             raise FileNotFoundError("File not found")
@@ -73,9 +78,11 @@ class OpenDALStorage(BaseStorage):
         Path(target_filepath).write_bytes(self.op.read(path=filename))
         logger.debug("file %s downloaded to %s", filename, target_filepath)
 
+    @override
     def exists(self, filename: str) -> bool:
         return self.op.exists(path=filename)
 
+    @override
     def delete(self, filename: str):
         if self.exists(filename):
             self.op.delete(path=filename)
@@ -83,6 +90,7 @@ class OpenDALStorage(BaseStorage):
             return
         logger.debug("file %s not found, skip delete", filename)
 
+    @override
     def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
         if not self.exists(path):
             raise FileNotFoundError("Path not found")

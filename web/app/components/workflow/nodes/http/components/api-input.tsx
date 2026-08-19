@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
 import type { Var } from '../../../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
-import { cn } from '@/utils/classnames'
 import { VarType } from '../../../types'
 import Selector from '../../_base/components/selector'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
@@ -20,23 +20,16 @@ const MethodOptions = [
   { label: 'PUT', value: Method.put },
   { label: 'DELETE', value: Method.delete },
 ]
-type Props = {
+type Props = Readonly<{
   nodeId: string
   readonly: boolean
   method: Method
   onMethodChange: (method: Method) => void
   url: string
   onUrlChange: (url: string) => void
-}
+}>
 
-const ApiInput: FC<Props> = ({
-  nodeId,
-  readonly,
-  method,
-  onMethodChange,
-  url,
-  onUrlChange,
-}) => {
+const ApiInput: FC<Props> = ({ nodeId, readonly, method, onMethodChange, url, onUrlChange }) => {
   const { t } = useTranslation()
 
   const [isFocus, setIsFocus] = useState(false)
@@ -48,17 +41,24 @@ const ApiInput: FC<Props> = ({
   })
 
   return (
-    <div className="flex items-start  space-x-1">
+    <div className="flex items-start space-x-1">
       <Selector
         value={method}
         onChange={onMethodChange}
         options={MethodOptions}
-        trigger={(
-          <div className={cn(readonly && 'cursor-pointer', 'flex h-8 shrink-0 items-center rounded-lg border border-components-button-secondary-border bg-components-button-secondary-bg px-2.5')}>
-            <div className="w-12 pl-0.5 text-xs font-medium uppercase leading-[18px] text-text-primary">{method}</div>
-            {!readonly && <RiArrowDownSLine className="ml-1 h-3.5 w-3.5 text-text-secondary" />}
+        trigger={
+          <div
+            className={cn(
+              readonly && 'cursor-pointer',
+              'flex h-8 shrink-0 items-center rounded-lg border border-components-button-secondary-border bg-components-button-secondary-bg px-2.5',
+            )}
+          >
+            <div className="w-12 pl-0.5 text-xs leading-4.5 font-medium text-text-primary uppercase">
+              {method}
+            </div>
+            {!readonly && <RiArrowDownSLine className="ml-1 size-3.5 text-text-secondary" />}
           </div>
-        )}
+        }
         popupClassName="top-[34px] w-[108px]"
         showChecked
         readonly={readonly}
@@ -66,14 +66,19 @@ const ApiInput: FC<Props> = ({
 
       <Input
         instanceId="http-api-url"
-        className={cn(isFocus ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs' : 'border-components-input-border-hover bg-components-input-bg-normal', 'w-0 grow rounded-lg border px-3 py-[6px]')}
+        className={cn(
+          isFocus
+            ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs'
+            : 'border-components-input-border-hover bg-components-input-bg-normal',
+          'w-0 grow rounded-lg border px-3 py-1.5',
+        )}
         value={url}
         onChange={onUrlChange}
         readOnly={readonly}
         nodesOutputVars={availableVars}
         availableNodes={availableNodesWithParent}
         onFocusChange={setIsFocus}
-        placeholder={!readonly ? t('nodes.http.apiPlaceholder', { ns: 'workflow' })! : ''}
+        placeholder={!readonly ? t(($) => $['nodes.http.apiPlaceholder'], { ns: 'workflow' })! : ''}
         placeholderClassName="leading-[21px]!"
       />
     </div>

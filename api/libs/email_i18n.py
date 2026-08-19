@@ -16,7 +16,8 @@ from flask import render_template
 from pydantic import BaseModel, Field
 
 from extensions.ext_mail import mail
-from services.feature_service import BrandingModel, FeatureService
+from services.entities.feature_entities import BrandingModel
+from services.feature_service import FeatureService
 
 
 class EmailType(StrEnum):
@@ -37,6 +38,7 @@ class EmailType(StrEnum):
     ENTERPRISE_CUSTOM = auto()
     QUEUE_MONITOR_ALERT = auto()
     DOCUMENT_CLEAN_NOTIFY = auto()
+    WORKFLOW_COMMENT_MENTION = auto()
     EMAIL_REGISTER = auto()
     EMAIL_REGISTER_WHEN_ACCOUNT_EXIST = auto()
     RESET_PASSWORD_WHEN_ACCOUNT_NOT_EXIST_NO_REGISTER = auto()
@@ -451,6 +453,18 @@ def create_default_email_config() -> EmailI18nConfig:
                 subject="Dify 知识库自动禁用通知",
                 template_path="clean_document_job_mail_template_zh-CN.html",
                 branded_template_path="clean_document_job_mail_template_zh-CN.html",
+            ),
+        },
+        EmailType.WORKFLOW_COMMENT_MENTION: {
+            EmailLanguage.EN_US: EmailTemplate(
+                subject="You were mentioned in a workflow comment",
+                template_path="workflow_comment_mention_template_en-US.html",
+                branded_template_path="without-brand/workflow_comment_mention_template_en-US.html",
+            ),
+            EmailLanguage.ZH_HANS: EmailTemplate(
+                subject="你在工作流评论中被提及",
+                template_path="workflow_comment_mention_template_zh-CN.html",
+                branded_template_path="without-brand/workflow_comment_mention_template_zh-CN.html",
             ),
         },
         EmailType.TRIGGER_EVENTS_LIMIT_SANDBOX: {

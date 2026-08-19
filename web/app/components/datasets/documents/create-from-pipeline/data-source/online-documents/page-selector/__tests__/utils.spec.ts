@@ -1,6 +1,9 @@
-import type { NotionPageTreeItem, NotionPageTreeMap } from '@/app/components/base/notion-page-selector/page-selector/types'
+import type {
+  NotionPageTreeItem,
+  NotionPageTreeMap,
+} from '@/app/components/base/notion-page-selector/page-selector/types'
 import type { DataSourceNotionPageMap } from '@/models/common'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { recursivePushInParentDescendants } from '@/app/components/base/notion-page-selector/page-selector/utils'
 
 const makePageEntry = (overrides: Partial<NotionPageTreeItem>): NotionPageTreeItem => ({
@@ -28,11 +31,16 @@ describe('recursivePushInParentDescendants', () => {
       child1: makePageEntry({ page_id: 'child1', parent_id: 'parent1', page_name: 'Child' }),
     }
 
-    recursivePushInParentDescendants(pagesMap, listTreeMap, listTreeMap.child1, listTreeMap.child1)
+    recursivePushInParentDescendants(
+      pagesMap,
+      listTreeMap,
+      listTreeMap.child1!,
+      listTreeMap.child1!,
+    )
 
     expect(listTreeMap.parent1).toBeDefined()
-    expect(listTreeMap.parent1.children.has('child1')).toBe(true)
-    expect(listTreeMap.parent1.descendants.has('child1')).toBe(true)
+    expect(listTreeMap.parent1!.children.has('child1')).toBe(true)
+    expect(listTreeMap.parent1!.descendants.has('child1')).toBe(true)
   })
 
   it('should recursively populate ancestors for deeply nested items', () => {
@@ -47,11 +55,11 @@ describe('recursivePushInParentDescendants', () => {
       child: makePageEntry({ page_id: 'child', parent_id: 'parent', page_name: 'Child' }),
     }
 
-    recursivePushInParentDescendants(pagesMap, listTreeMap, listTreeMap.child, listTreeMap.child)
+    recursivePushInParentDescendants(pagesMap, listTreeMap, listTreeMap.child!, listTreeMap.child!)
 
-    expect(listTreeMap.child.depth).toBe(2)
-    expect(listTreeMap.child.ancestors).toContain('Grandparent')
-    expect(listTreeMap.child.ancestors).toContain('Parent')
+    expect(listTreeMap.child!.depth).toBe(2)
+    expect(listTreeMap.child!.ancestors).toContain('Grandparent')
+    expect(listTreeMap.child!.ancestors).toContain('Parent')
   })
 
   it('should do nothing for root parent', () => {
@@ -60,10 +68,19 @@ describe('recursivePushInParentDescendants', () => {
     } as unknown as DataSourceNotionPageMap
 
     const listTreeMap: NotionPageTreeMap = {
-      root_child: makePageEntry({ page_id: 'root_child', parent_id: 'root', page_name: 'Root Child' }),
+      root_child: makePageEntry({
+        page_id: 'root_child',
+        parent_id: 'root',
+        page_name: 'Root Child',
+      }),
     }
 
-    recursivePushInParentDescendants(pagesMap, listTreeMap, listTreeMap.root_child, listTreeMap.root_child)
+    recursivePushInParentDescendants(
+      pagesMap,
+      listTreeMap,
+      listTreeMap.root_child!,
+      listTreeMap.root_child!,
+    )
 
     // No new entries should be added since parent is root
     expect(Object.keys(listTreeMap)).toEqual(['root_child'])
@@ -76,7 +93,7 @@ describe('recursivePushInParentDescendants', () => {
 
     // Should not throw
     recursivePushInParentDescendants(pagesMap, listTreeMap, current, current)
-    expect(listTreeMap.orphan.depth).toBe(0)
+    expect(listTreeMap.orphan!.depth).toBe(0)
   })
 
   it('should add to existing parent entry when parent already in tree', () => {
@@ -87,14 +104,25 @@ describe('recursivePushInParentDescendants', () => {
     } as unknown as DataSourceNotionPageMap
 
     const listTreeMap: NotionPageTreeMap = {
-      parent: makePageEntry({ page_id: 'parent', parent_id: 'root', children: new Set(['child1']), descendants: new Set(['child1']), page_name: 'Parent' }),
+      parent: makePageEntry({
+        page_id: 'parent',
+        parent_id: 'root',
+        children: new Set(['child1']),
+        descendants: new Set(['child1']),
+        page_name: 'Parent',
+      }),
       child2: makePageEntry({ page_id: 'child2', parent_id: 'parent', page_name: 'Child2' }),
     }
 
-    recursivePushInParentDescendants(pagesMap, listTreeMap, listTreeMap.child2, listTreeMap.child2)
+    recursivePushInParentDescendants(
+      pagesMap,
+      listTreeMap,
+      listTreeMap.child2!,
+      listTreeMap.child2!,
+    )
 
-    expect(listTreeMap.parent.children.has('child2')).toBe(true)
-    expect(listTreeMap.parent.descendants.has('child2')).toBe(true)
-    expect(listTreeMap.parent.children.has('child1')).toBe(true)
+    expect(listTreeMap.parent!.children.has('child2')).toBe(true)
+    expect(listTreeMap.parent!.descendants.has('child2')).toBe(true)
+    expect(listTreeMap.parent!.children.has('child1')).toBe(true)
   })
 })

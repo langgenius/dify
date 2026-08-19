@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import type { ModelAndParameter } from '../../types'
-import type { Item } from '@/app/components/base/dropdown'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { ModelStatusEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { AppModeEnum } from '@/types/app'
 import DebugItem from '../debug-item'
@@ -9,12 +9,6 @@ import DebugItem from '../debug-item'
 const mockUseDebugConfigurationContext = vi.fn()
 const mockUseDebugWithMultipleModelContext = vi.fn()
 const mockUseProviderContext = vi.fn()
-
-let capturedDropdownProps: {
-  onSelect: (item: Item) => void
-  items: Item[]
-  secondItems?: Item[]
-} | null = null
 
 let capturedModelParameterTriggerProps: {
   modelAndParameter: ModelAndParameter
@@ -34,13 +28,17 @@ vi.mock('@/context/provider-context', () => ({
 
 vi.mock('../chat-item', () => ({
   default: ({ modelAndParameter }: { modelAndParameter: ModelAndParameter }) => (
-    <div data-testid="chat-item" data-model-id={modelAndParameter.id}>ChatItem</div>
+    <div data-testid="chat-item" data-model-id={modelAndParameter.id}>
+      ChatItem
+    </div>
   ),
 }))
 
 vi.mock('../text-generation-item', () => ({
   default: ({ modelAndParameter }: { modelAndParameter: ModelAndParameter }) => (
-    <div data-testid="text-generation-item" data-model-id={modelAndParameter.id}>TextGenerationItem</div>
+    <div data-testid="text-generation-item" data-model-id={modelAndParameter.id}>
+      TextGenerationItem
+    </div>
   ),
 }))
 
@@ -51,35 +49,9 @@ vi.mock('../model-parameter-trigger', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/dropdown', () => ({
-  default: (props: { onSelect: (item: Item) => void, items: Item[], secondItems?: Item[] }) => {
-    capturedDropdownProps = props
-    return (
-      <div data-testid="dropdown">
-        {props.items.map(item => (
-          <button
-            key={item.value}
-            data-testid={`dropdown-item-${item.value}`}
-            onClick={() => props.onSelect(item)}
-          >
-            {item.text}
-          </button>
-        ))}
-        {props.secondItems?.map(item => (
-          <button
-            key={item.value}
-            data-testid={`dropdown-second-item-${item.value}`}
-            onClick={() => props.onSelect(item)}
-          >
-            {item.text}
-          </button>
-        ))}
-      </div>
-    )
-  },
-}))
-
-const createModelAndParameter = (overrides: Partial<ModelAndParameter> = {}): ModelAndParameter => ({
+const createModelAndParameter = (
+  overrides: Partial<ModelAndParameter> = {},
+): ModelAndParameter => ({
   id: 'model-1',
   model: 'gpt-3.5-turbo',
   provider: 'openai',
@@ -87,8 +59,13 @@ const createModelAndParameter = (overrides: Partial<ModelAndParameter> = {}): Mo
   ...overrides,
 })
 
-const createTextGenerationModelList = (models: Array<{ provider: string, model: string, status?: ModelStatusEnum }> = []) => {
-  const providers: Record<string, { provider: string, models: Array<{ model: string, status: ModelStatusEnum }> }> = {}
+const createTextGenerationModelList = (
+  models: Array<{ provider: string; model: string; status?: ModelStatusEnum }> = [],
+) => {
+  const providers: Record<
+    string,
+    { provider: string; models: Array<{ model: string; status: ModelStatusEnum }> }
+  > = {}
 
   models.forEach(({ provider, model, status = ModelStatusEnum.active }) => {
     if (!providers[provider]) {
@@ -117,7 +94,6 @@ const renderComponent = (props: Partial<DebugItemProps> = {}) => {
 describe('DebugItem', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    capturedDropdownProps = null
     capturedModelParameterTriggerProps = null
 
     mockUseDebugConfigurationContext.mockReturnValue({
@@ -137,12 +113,18 @@ describe('DebugItem', () => {
     })
   })
 
+  const openMenu = async () => {
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button'))
+    return user
+  }
+
   describe('rendering', () => {
     it('should render with basic props', () => {
       renderComponent()
 
       expect(screen.getByTestId('model-parameter-trigger')).toBeInTheDocument()
-      expect(screen.getByTestId('dropdown')).toBeInTheDocument()
+      expect(screen.getByRole('button')).toBeInTheDocument()
     })
 
     it('should display correct index number', () => {
@@ -156,22 +138,13 @@ describe('DebugItem', () => {
         onDebugWithMultipleModelChange: vi.fn(),
       })
 
-      const { container } = renderComponent({ modelAndParameter: createModelAndParameter({ id: 'model-2' }) })
+      const { container } = renderComponent({
+        modelAndParameter: createModelAndParameter({ id: 'model-2' }),
+      })
 
       // The index is displayed as "#2" in the component
       const indexElement = container.querySelector('.font-medium.italic')
       expect(indexElement?.textContent?.trim()).toContain('2')
-    })
-
-    it('should apply className and style props', () => {
-      const { container } = renderComponent({
-        className: 'custom-class',
-        style: { backgroundColor: 'red' },
-      })
-
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('custom-class')
-      expect(wrapper.style.backgroundColor).toBe('red')
     })
 
     it('should pass modelAndParameter to ModelParameterTrigger', () => {
@@ -193,7 +166,7 @@ describe('DebugItem', () => {
 
       renderComponent()
 
-      expect(screen.getByTestId('chat-item')).toBeInTheDocument()
+      expect(screen.getByTestId('chat-item'))!.toBeInTheDocument()
       expect(screen.queryByTestId('text-generation-item')).not.toBeInTheDocument()
     })
 
@@ -207,7 +180,7 @@ describe('DebugItem', () => {
 
       renderComponent()
 
-      expect(screen.getByTestId('chat-item')).toBeInTheDocument()
+      expect(screen.getByTestId('chat-item'))!.toBeInTheDocument()
     })
 
     it('should not render ChatItem when model is not active', () => {
@@ -261,7 +234,7 @@ describe('DebugItem', () => {
 
       renderComponent()
 
-      expect(screen.getByTestId('text-generation-item')).toBeInTheDocument()
+      expect(screen.getByTestId('text-generation-item'))!.toBeInTheDocument()
       expect(screen.queryByTestId('chat-item')).not.toBeInTheDocument()
     })
 
@@ -280,7 +253,7 @@ describe('DebugItem', () => {
   })
 
   describe('dropdown menu', () => {
-    it('should show duplicate option when less than 4 models', () => {
+    it('should show duplicate option when less than 4 models', async () => {
       mockUseDebugWithMultipleModelContext.mockReturnValue({
         multipleModelConfigs: [createModelAndParameter()],
         onMultipleModelConfigsChange: vi.fn(),
@@ -288,13 +261,12 @@ describe('DebugItem', () => {
       })
 
       renderComponent()
+      await openMenu()
 
-      expect(capturedDropdownProps?.items).toContainEqual(
-        expect.objectContaining({ value: 'duplicate' }),
-      )
+      expect(screen.getByText('appDebug.duplicateModel')).toBeInTheDocument()
     })
 
-    it('should hide duplicate option when 4 or more models', () => {
+    it('should hide duplicate option when 4 or more models', async () => {
       mockUseDebugWithMultipleModelContext.mockReturnValue({
         multipleModelConfigs: [
           createModelAndParameter({ id: '1' }),
@@ -307,52 +279,48 @@ describe('DebugItem', () => {
       })
 
       renderComponent()
+      await openMenu()
 
-      expect(capturedDropdownProps?.items).not.toContainEqual(
-        expect.objectContaining({ value: 'duplicate' }),
-      )
+      expect(screen.queryByText('appDebug.duplicateModel')).not.toBeInTheDocument()
     })
 
-    it('should show debug-as-single-model option when provider and model are set', () => {
+    it('should show debug-as-single-model option when provider and model are set', async () => {
       renderComponent({
         modelAndParameter: createModelAndParameter({
           provider: 'openai',
           model: 'gpt-3.5-turbo',
         }),
       })
+      await openMenu()
 
-      expect(capturedDropdownProps?.items).toContainEqual(
-        expect.objectContaining({ value: 'debug-as-single-model' }),
-      )
+      expect(screen.getByText('appDebug.debugAsSingleModel')).toBeInTheDocument()
     })
 
-    it('should hide debug-as-single-model option when provider is missing', () => {
+    it('should hide debug-as-single-model option when provider is missing', async () => {
       renderComponent({
         modelAndParameter: createModelAndParameter({
           provider: '',
           model: 'gpt-3.5-turbo',
         }),
       })
+      await openMenu()
 
-      expect(capturedDropdownProps?.items).not.toContainEqual(
-        expect.objectContaining({ value: 'debug-as-single-model' }),
-      )
+      expect(screen.queryByText('appDebug.debugAsSingleModel')).not.toBeInTheDocument()
     })
 
-    it('should hide debug-as-single-model option when model is missing', () => {
+    it('should hide debug-as-single-model option when model is missing', async () => {
       renderComponent({
         modelAndParameter: createModelAndParameter({
           provider: 'openai',
           model: '',
         }),
       })
+      await openMenu()
 
-      expect(capturedDropdownProps?.items).not.toContainEqual(
-        expect.objectContaining({ value: 'debug-as-single-model' }),
-      )
+      expect(screen.queryByText('appDebug.debugAsSingleModel')).not.toBeInTheDocument()
     })
 
-    it('should show remove option in secondItems when more than 2 models', () => {
+    it('should show remove option in secondItems when more than 2 models', async () => {
       mockUseDebugWithMultipleModelContext.mockReturnValue({
         multipleModelConfigs: [
           createModelAndParameter({ id: '1' }),
@@ -364,13 +332,12 @@ describe('DebugItem', () => {
       })
 
       renderComponent()
+      await openMenu()
 
-      expect(capturedDropdownProps?.secondItems).toContainEqual(
-        expect.objectContaining({ value: 'remove' }),
-      )
+      expect(screen.getByText('common.operation.remove')).toBeInTheDocument()
     })
 
-    it('should not show remove option when 2 or fewer models', () => {
+    it('should not show remove option when 2 or fewer models', async () => {
       mockUseDebugWithMultipleModelContext.mockReturnValue({
         multipleModelConfigs: [
           createModelAndParameter({ id: '1' }),
@@ -381,13 +348,14 @@ describe('DebugItem', () => {
       })
 
       renderComponent()
+      await openMenu()
 
-      expect(capturedDropdownProps?.secondItems).toBeUndefined()
+      expect(screen.queryByText('common.operation.remove')).not.toBeInTheDocument()
     })
   })
 
   describe('dropdown actions', () => {
-    it('should duplicate model when duplicate is selected', () => {
+    it('should duplicate model when duplicate is selected', async () => {
       const onMultipleModelConfigsChange = vi.fn()
       const originalModel = createModelAndParameter({ id: 'original' })
 
@@ -399,7 +367,8 @@ describe('DebugItem', () => {
 
       renderComponent({ modelAndParameter: originalModel })
 
-      fireEvent.click(screen.getByTestId('dropdown-item-duplicate'))
+      const user = await openMenu()
+      await user.click(screen.getByText('appDebug.duplicateModel'))
 
       expect(onMultipleModelConfigsChange).toHaveBeenCalledWith(
         true,
@@ -414,7 +383,7 @@ describe('DebugItem', () => {
       )
     })
 
-    it('should not duplicate when already at 4 models', () => {
+    it('should not duplicate when already at 4 models', async () => {
       const onMultipleModelConfigsChange = vi.fn()
       const models = [
         createModelAndParameter({ id: '1' }),
@@ -430,14 +399,13 @@ describe('DebugItem', () => {
       })
 
       renderComponent({ modelAndParameter: models[0] })
-
-      // Since duplicate is not shown when >= 4 models, we need to manually call handleSelect
-      capturedDropdownProps?.onSelect({ value: 'duplicate', text: 'Duplicate' })
+      await openMenu()
 
       expect(onMultipleModelConfigsChange).not.toHaveBeenCalled()
+      expect(screen.queryByText('appDebug.duplicateModel')).not.toBeInTheDocument()
     })
 
-    it('should call onDebugWithMultipleModelChange when debug-as-single-model is selected', () => {
+    it('should call onDebugWithMultipleModelChange when debug-as-single-model is selected', async () => {
       const onDebugWithMultipleModelChange = vi.fn()
       const modelAndParameter = createModelAndParameter()
 
@@ -449,12 +417,13 @@ describe('DebugItem', () => {
 
       renderComponent({ modelAndParameter })
 
-      fireEvent.click(screen.getByTestId('dropdown-item-debug-as-single-model'))
+      const user = await openMenu()
+      await user.click(screen.getByText('appDebug.debugAsSingleModel'))
 
       expect(onDebugWithMultipleModelChange).toHaveBeenCalledWith(modelAndParameter)
     })
 
-    it('should remove model when remove is selected', () => {
+    it('should remove model when remove is selected', async () => {
       const onMultipleModelConfigsChange = vi.fn()
       const models = [
         createModelAndParameter({ id: '1' }),
@@ -470,15 +439,13 @@ describe('DebugItem', () => {
 
       renderComponent({ modelAndParameter: models[1] })
 
-      fireEvent.click(screen.getByTestId('dropdown-second-item-remove'))
+      const user = await openMenu()
+      await user.click(screen.getByText('common.operation.remove'))
 
-      expect(onMultipleModelConfigsChange).toHaveBeenCalledWith(
-        true,
-        [models[0], models[2]],
-      )
+      expect(onMultipleModelConfigsChange).toHaveBeenCalledWith(true, [models[0], models[2]])
     })
 
-    it('should insert duplicated model at correct position', () => {
+    it('should insert duplicated model at correct position', async () => {
       const onMultipleModelConfigsChange = vi.fn()
       const models = [
         createModelAndParameter({ id: '1' }),
@@ -495,14 +462,15 @@ describe('DebugItem', () => {
       // Duplicate the second model
       renderComponent({ modelAndParameter: models[1] })
 
-      fireEvent.click(screen.getByTestId('dropdown-item-duplicate'))
+      const user = await openMenu()
+      await user.click(screen.getByText('appDebug.duplicateModel'))
 
       expect(onMultipleModelConfigsChange).toHaveBeenCalledWith(
         true,
         expect.arrayContaining([
           models[0],
           models[1],
-          expect.objectContaining({ model: models[1].model }),
+          expect.objectContaining({ model: models[1]!.model }),
           models[2],
         ]),
       )
@@ -545,6 +513,37 @@ describe('DebugItem', () => {
 
       renderComponent()
 
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
+      // When provider/model doesn't match, ChatItem won't render
       // When provider/model doesn't match, ChatItem won't render
       expect(screen.queryByTestId('chat-item')).not.toBeInTheDocument()
     })

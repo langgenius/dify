@@ -7,7 +7,7 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import NotFound
 
 import services.attachment_service as attachment_service_module
@@ -19,7 +19,7 @@ from services.attachment_service import AttachmentService
 
 
 class TestAttachmentService:
-    def _create_upload_file(self, db_session_with_containers, *, tenant_id: str | None = None) -> UploadFile:
+    def _create_upload_file(self, db_session_with_containers: Session, *, tenant_id: str | None = None) -> UploadFile:
         upload_file = UploadFile(
             tenant_id=tenant_id or str(uuid4()),
             storage_type=StorageType.OPENDAL,
@@ -60,7 +60,7 @@ class TestAttachmentService:
         with pytest.raises(AssertionError, match="must be a sessionmaker or an Engine."):
             AttachmentService(session_factory=invalid_session_factory)
 
-    def test_should_return_base64_when_file_exists(self, db_session_with_containers):
+    def test_should_return_base64_when_file_exists(self, db_session_with_containers: Session):
         upload_file = self._create_upload_file(db_session_with_containers)
         service = AttachmentService(session_factory=sessionmaker(bind=db.engine))
 
@@ -70,7 +70,7 @@ class TestAttachmentService:
         assert result == base64.b64encode(b"binary-content").decode()
         mock_load.assert_called_once_with(upload_file.key)
 
-    def test_should_raise_not_found_when_file_missing(self, db_session_with_containers):
+    def test_should_raise_not_found_when_file_missing(self, db_session_with_containers: Session):
         service = AttachmentService(session_factory=sessionmaker(bind=db.engine))
 
         with patch.object(attachment_service_module.storage, "load_once") as mock_load:

@@ -5,30 +5,6 @@ import { act } from 'react'
 import * as React from 'react'
 import TestRunMenu, { TriggerType } from '../test-run-menu'
 
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({
-    children,
-  }: {
-    children: React.ReactNode
-  }) => <div>{children}</div>,
-  PortalToFollowElemTrigger: ({
-    children,
-    onClick,
-  }: {
-    children: React.ReactNode
-    onClick?: () => void
-  }) => <div onClick={onClick}>{children}</div>,
-  PortalToFollowElemContent: ({
-    children,
-  }: {
-    children: React.ReactNode
-  }) => <div>{children}</div>,
-}))
-
-vi.mock('../shortcuts-name', () => ({
-  default: ({ keys }: { keys: string[] }) => <span>{keys.join('+')}</span>,
-}))
-
 const createOption = (overrides: Partial<TriggerOption> = {}): TriggerOption => ({
   id: 'user-input',
   type: TriggerType.UserInput,
@@ -80,7 +56,13 @@ describe('TestRunMenu', () => {
             options={{
               userInput: createOption(),
               runAll: createOption({ id: 'run-all', type: TriggerType.All, name: 'Run All' }),
-              triggers: [createOption({ id: 'trigger-1', type: TriggerType.Webhook, name: 'Webhook Trigger' })],
+              triggers: [
+                createOption({
+                  id: 'trigger-1',
+                  type: TriggerType.Webhook,
+                  name: 'Webhook Trigger',
+                }),
+              ],
             }}
             onSelect={onSelect}
           >
@@ -95,10 +77,11 @@ describe('TestRunMenu', () => {
     act(() => {
       fireEvent.click(screen.getByRole('button', { name: 'Toggle via ref' }))
     })
+    expect(screen.getByText('~')).toBeInTheDocument()
+
     fireEvent.keyDown(window, { key: '0' })
 
     expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 'run-all' }))
-    expect(screen.getByText('~')).toBeInTheDocument()
   })
 
   it('should ignore disabled options in the rendered menu', async () => {
@@ -109,7 +92,9 @@ describe('TestRunMenu', () => {
         options={{
           userInput: createOption({ enabled: false }),
           runAll: createOption({ id: 'run-all', type: TriggerType.All, name: 'Run All' }),
-          triggers: [createOption({ id: 'trigger-1', type: TriggerType.Webhook, name: 'Webhook Trigger' })],
+          triggers: [
+            createOption({ id: 'trigger-1', type: TriggerType.Webhook, name: 'Webhook Trigger' }),
+          ],
         }}
         onSelect={vi.fn()}
       >

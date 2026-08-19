@@ -1,126 +1,106 @@
-"""Unit tests for controllers.web.site endpoints."""
-
-from __future__ import annotations
-
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-import pytest
-from flask import Flask
-from werkzeug.exceptions import Forbidden
+from configs import dify_config
+from controllers.web import site as site_module
+from enums import DeploymentEdition
+from extensions.storage.storage_type import StorageType
+from models.model import AppMode, IconType, Site
+from services.entities.feature_entities import FeatureModel
 
-from controllers.web.site import AppSiteApi, AppSiteInfo
 
+def test_app_site_api_returns_legacy_agent_compatible_mode() -> None:
+    app_model = MagicMock()
+    app_model.id = "app-id"
+    app_model.tenant_id = "tenant-id"
+    app_model.tenant = MagicMock(id="tenant-id", status="normal")
+    app_model.mode_compatible_with_agent_with_session.return_value = AppMode.AGENT_CHAT
+    end_user = MagicMock(id="end-user-id")
+    site = Site()
+    response = MagicMock()
+    response.model_dump.return_value = {"mode": AppMode.AGENT_CHAT}
 
-def _tenant(*, status: str = "normal") -> SimpleNamespace:
-    return SimpleNamespace(
-        id="tenant-1",
-        status=status,
-        plan="basic",
-        custom_config_dict={"remove_webapp_brand": False, "replace_webapp_logo": False},
+    with (
+        patch.object(site_module, "db") as mock_db,
+        patch.object(site_module.FeatureService, "get_features", return_value=FeatureModel(can_replace_logo=False)),
+        patch.object(site_module, "_build_site_icon_url", return_value=None),
+        patch.object(site_module.WebAppSiteResponse, "from_app_site", return_value=response) as mock_from_app_site,
+    ):
+        mock_db.session.scalar.return_value = site
+        result = site_module.AppSiteApi().get(app_model, end_user)
+
+    assert result["mode"] == AppMode.AGENT_CHAT
+    app_model.mode_compatible_with_agent_with_session.assert_called_once_with(session=mock_db.session())
+    mock_from_app_site.assert_called_once_with(
+        tenant=app_model.tenant,
+        app_model=app_model,
+        mode=AppMode.AGENT_CHAT,
+        site=site,
+        end_user_id=end_user.id,
+        features=FeatureModel(can_replace_logo=False),
+        can_replace_logo=False,
+        icon_url=None,
     )
 
 
-def _site() -> SimpleNamespace:
-    return SimpleNamespace(
-        title="Site",
-        icon_type="emoji",
-        icon="robot",
-        icon_background="#fff",
-        description="desc",
-        default_language="en",
-        chat_color_theme="light",
-        chat_color_theme_inverted=False,
-        copyright=None,
-        privacy_policy=None,
-        custom_disclaimer=None,
-        prompt_public=False,
-        show_workflow_steps=True,
-        use_icon_as_answer_icon=False,
+def test_build_site_icon_url_uses_s3_presigned_url() -> None:
+    site = Site(
+        icon_type=IconType.IMAGE,
+        icon="11111111-1111-4111-8111-111111111111",
     )
 
-
-# ---------------------------------------------------------------------------
-# AppSiteApi
-# ---------------------------------------------------------------------------
-class TestAppSiteApi:
-    @patch("controllers.web.site.FeatureService.get_features")
-    @patch("controllers.web.site.db")
-    def test_happy_path(self, mock_db: MagicMock, mock_features: MagicMock, app: Flask) -> None:
-        app.config["RESTX_MASK_HEADER"] = "X-Fields"
-        mock_features.return_value = SimpleNamespace(can_replace_logo=False)
-        site_obj = _site()
-        mock_db.session.scalar.return_value = site_obj
-        tenant = _tenant()
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", tenant=tenant, enable_site=True)
-        end_user = SimpleNamespace(id="eu-1")
-
-        with app.test_request_context("/site"):
-            result = AppSiteApi().get(app_model, end_user)
-
-        # marshal_with serializes AppSiteInfo to a dict
-        assert result["app_id"] == "app-1"
-        assert result["plan"] == "basic"
-        assert result["enable_site"] is True
-
-    @patch("controllers.web.site.db")
-    def test_missing_site_raises_forbidden(self, mock_db: MagicMock, app: Flask) -> None:
-        app.config["RESTX_MASK_HEADER"] = "X-Fields"
-        mock_db.session.scalar.return_value = None
-        tenant = _tenant()
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", tenant=tenant, enable_site=True)
-        end_user = SimpleNamespace(id="eu-1")
-
-        with app.test_request_context("/site"):
-            with pytest.raises(Forbidden):
-                AppSiteApi().get(app_model, end_user)
-
-    @patch("controllers.web.site.db")
-    def test_archived_tenant_raises_forbidden(self, mock_db: MagicMock, app: Flask) -> None:
-        app.config["RESTX_MASK_HEADER"] = "X-Fields"
-        from models.account import TenantStatus
-
-        mock_db.session.scalar.return_value = _site()
-        tenant = SimpleNamespace(
-            id="tenant-1",
-            status=TenantStatus.ARCHIVE,
-            plan="basic",
-            custom_config_dict={},
+    with (
+        patch.object(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
+        patch.object(dify_config, "STORAGE_TYPE", StorageType.S3),
+        patch.object(site_module, "db") as mock_db,
+        patch.object(site_module, "FileService") as mock_file_service,
+        patch.object(site_module, "build_icon_url") as mock_build_icon_url,
+    ):
+        mock_file_service.return_value.get_file_presigned_url.return_value = (
+            "https://s3.example.com/icon.png?signature=test"
         )
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", tenant=tenant)
-        end_user = SimpleNamespace(id="eu-1")
 
-        with app.test_request_context("/site"):
-            with pytest.raises(Forbidden):
-                AppSiteApi().get(app_model, end_user)
+        result = site_module._build_site_icon_url(site=site, tenant_id="tenant-id")
+
+    assert result == "https://s3.example.com/icon.png?signature=test"
+    mock_file_service.assert_called_once_with(mock_db.engine)
+    mock_file_service.return_value.get_file_presigned_url.assert_called_once_with(
+        file_id="11111111-1111-4111-8111-111111111111",
+        tenant_id="tenant-id",
+    )
+    mock_build_icon_url.assert_not_called()
 
 
-# ---------------------------------------------------------------------------
-# AppSiteInfo
-# ---------------------------------------------------------------------------
-class TestAppSiteInfo:
-    def test_basic_fields(self) -> None:
-        tenant = _tenant()
-        site_obj = _site()
-        info = AppSiteInfo(tenant, SimpleNamespace(id="app-1", enable_site=True), site_obj, "eu-1", False)
+def test_build_site_icon_url_keeps_preview_url_for_self_hosted_s3() -> None:
+    site = Site(
+        icon_type=IconType.IMAGE,
+        icon="11111111-1111-4111-8111-111111111111",
+    )
 
-        assert info.app_id == "app-1"
-        assert info.end_user_id == "eu-1"
-        assert info.enable_site is True
-        assert info.plan == "basic"
-        assert info.can_replace_logo is False
-        assert info.model_config is None
+    with (
+        patch.object(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
+        patch.object(dify_config, "STORAGE_TYPE", StorageType.S3),
+        patch.object(site_module, "FileService") as mock_file_service,
+        patch.object(site_module, "build_icon_url", return_value="https://api.example.com/files/icon/file-preview"),
+    ):
+        result = site_module._build_site_icon_url(site=site, tenant_id="tenant-id")
 
-    @patch("controllers.web.site.dify_config", SimpleNamespace(FILES_URL="https://files.example.com"))
-    def test_can_replace_logo_sets_custom_config(self) -> None:
-        tenant = SimpleNamespace(
-            id="tenant-1",
-            plan="pro",
-            custom_config_dict={"remove_webapp_brand": True, "replace_webapp_logo": True},
-        )
-        site_obj = _site()
-        info = AppSiteInfo(tenant, SimpleNamespace(id="app-1", enable_site=True), site_obj, "eu-1", True)
+    assert result == "https://api.example.com/files/icon/file-preview"
+    mock_file_service.assert_not_called()
 
-        assert info.can_replace_logo is True
-        assert info.custom_config["remove_webapp_brand"] is True
-        assert "webapp-logo" in info.custom_config["replace_webapp_logo"]
+
+def test_build_site_icon_url_keeps_preview_url_for_non_s3_storage() -> None:
+    site = Site(
+        icon_type=IconType.IMAGE,
+        icon="11111111-1111-4111-8111-111111111111",
+    )
+
+    with (
+        patch.object(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
+        patch.object(dify_config, "STORAGE_TYPE", StorageType.LOCAL),
+        patch.object(site_module, "FileService") as mock_file_service,
+        patch.object(site_module, "build_icon_url", return_value="https://api.example.com/files/icon/file-preview"),
+    ):
+        result = site_module._build_site_icon_url(site=site, tenant_id="tenant-id")
+
+    assert result == "https://api.example.com/files/icon/file-preview"
+    mock_file_service.assert_not_called()

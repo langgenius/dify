@@ -1,6 +1,7 @@
 import type { Shape, SliceFromInjection } from '../workflow'
 import { renderHook } from '@testing-library/react'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { createEdge, createNode } from '../../__tests__/fixtures'
 import { createTestWorkflowStore, renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { createWorkflowStore, useStore, useWorkflowStore } from '../workflow'
 
@@ -44,29 +45,62 @@ describe('createWorkflowStore', () => {
 
   describe('Workflow Slice Setters', () => {
     it.each<[StateKey, SetterKey, Shape[StateKey]]>([
-      ['workflowRunningData', 'setWorkflowRunningData', { result: { status: 'running', inputs_truncated: false, process_data_truncated: false, outputs_truncated: false } }],
+      [
+        'workflowRunningData',
+        'setWorkflowRunningData',
+        {
+          result: {
+            status: 'running',
+            inputs_truncated: false,
+            process_data_truncated: false,
+            outputs_truncated: false,
+          },
+        },
+      ],
       ['isListening', 'setIsListening', true],
       ['listeningTriggerType', 'setListeningTriggerType', BlockEnum.TriggerWebhook],
       ['listeningTriggerNodeId', 'setListeningTriggerNodeId', 'node-abc'],
       ['listeningTriggerNodeIds', 'setListeningTriggerNodeIds', ['n1', 'n2']],
       ['listeningTriggerIsAll', 'setListeningTriggerIsAll', true],
       ['clipboardElements', 'setClipboardElements', []],
+      ['clipboardEdges', 'setClipboardEdges', []],
       ['selection', 'setSelection', { x1: 0, y1: 0, x2: 100, y2: 100 }],
       ['bundleNodeSize', 'setBundleNodeSize', { width: 200, height: 100 }],
       ['mousePosition', 'setMousePosition', { pageX: 10, pageY: 20, elementX: 5, elementY: 15 }],
       ['showConfirm', 'setShowConfirm', { title: 'Delete?', onConfirm: vi.fn() }],
       ['controlPromptEditorRerenderKey', 'setControlPromptEditorRerenderKey', 42],
       ['showImportDSLModal', 'setShowImportDSLModal', true],
-      ['fileUploadConfig', 'setFileUploadConfig', { batch_count_limit: 5, image_file_batch_limit: 10, single_chunk_attachment_limit: 10, attachment_image_file_size_limit: 2, file_size_limit: 15, file_upload_limit: 5 }],
+      [
+        'fileUploadConfig',
+        'setFileUploadConfig',
+        {
+          batch_count_limit: 5,
+          image_file_batch_limit: 10,
+          single_chunk_attachment_limit: 10,
+          attachment_image_file_size_limit: 2,
+          file_size_limit: 15,
+          file_upload_limit: 5,
+        },
+      ],
     ])('should update %s', (stateKey, setter, value) => {
       testSetter(setter, stateKey, value)
     })
 
-    it('should persist controlMode to localStorage', () => {
+    it('should update controlMode in the workflow store', () => {
       const store = createStore()
       store.getState().setControlMode('pointer')
       expect(store.getState().controlMode).toBe('pointer')
-      expect(localStorage.setItem).toHaveBeenCalledWith('workflow-operation-mode', 'pointer')
+    })
+
+    it('should update clipboard nodes and edges with setClipboardData', () => {
+      const store = createStore()
+      const nodes = [createNode({ id: 'n-1' })]
+      const edges = [createEdge({ id: 'e-1', source: 'n-1', target: 'n-2' })]
+
+      store.getState().setClipboardData({ nodes, edges })
+
+      expect(store.getState().clipboardElements).toEqual(nodes)
+      expect(store.getState().clipboardEdges).toEqual(edges)
     })
   })
 
@@ -75,10 +109,13 @@ describe('createWorkflowStore', () => {
       ['showSingleRunPanel', 'setShowSingleRunPanel', true],
       ['nodeAnimation', 'setNodeAnimation', true],
       ['candidateNode', 'setCandidateNode', undefined],
-      ['nodeMenu', 'setNodeMenu', { top: 100, left: 200, nodeId: 'n1' }],
       ['showAssignVariablePopup', 'setShowAssignVariablePopup', undefined],
       ['hoveringAssignVariableGroupId', 'setHoveringAssignVariableGroupId', 'group-1'],
-      ['connectingNodePayload', 'setConnectingNodePayload', { nodeId: 'n1', nodeType: 'llm', handleType: 'source', handleId: 'h1' }],
+      [
+        'connectingNodePayload',
+        'setConnectingNodePayload',
+        { nodeId: 'n1', nodeType: 'llm', handleType: 'source', handleId: 'h1' },
+      ],
       ['enteringNodePayload', 'setEnteringNodePayload', undefined],
       ['iterTimes', 'setIterTimes', 5],
       ['loopTimes', 'setLoopTimes', 10],
@@ -95,9 +132,7 @@ describe('createWorkflowStore', () => {
       ['showWorkflowVersionHistoryPanel', 'setShowWorkflowVersionHistoryPanel', true],
       ['showInputsPanel', 'setShowInputsPanel', true],
       ['showDebugAndPreviewPanel', 'setShowDebugAndPreviewPanel', true],
-      ['panelMenu', 'setPanelMenu', { top: 10, left: 20 }],
-      ['selectionMenu', 'setSelectionMenu', { clientX: 50, clientY: 60 }],
-      ['edgeMenu', 'setEdgeMenu', { clientX: 320, clientY: 180, edgeId: 'e1' }],
+      ['contextMenuTarget', 'setContextMenuTarget', { type: 'edge', edgeId: 'e1' }],
       ['showVariableInspectPanel', 'setShowVariableInspectPanel', true],
       ['initShowLastRunTab', 'setInitShowLastRunTab', true],
     ])('should update %s', (stateKey, setter, value) => {
@@ -160,28 +195,27 @@ describe('createWorkflowStore', () => {
       ['bottomPanelWidth', 'setBottomPanelWidth', 600],
       ['bottomPanelHeight', 'setBottomPanelHeight', 500],
       ['variableInspectPanelHeight', 'setVariableInspectPanelHeight', 250],
-      ['maximizeCanvas', 'setMaximizeCanvas', true],
     ])('should update %s', (stateKey, setter, value) => {
       testSetter(setter, stateKey, value)
     })
   })
 
-  describe('localStorage Initialization', () => {
-    it('should read controlMode from localStorage', () => {
-      localStorage.setItem('workflow-operation-mode', 'pointer')
+  describe('Static defaults and legacy maximize initialization', () => {
+    it('should keep controlMode default in the store when localStorage has a value', () => {
+      localStorage.setItem('workflow-operation-mode', 'hand')
       const store = createStore()
       expect(store.getState().controlMode).toBe('pointer')
     })
 
-    it('should default controlMode to hand when localStorage has no value', () => {
+    it('should default controlMode to pointer when localStorage has no value', () => {
       const store = createStore()
-      expect(store.getState().controlMode).toBe('hand')
+      expect(store.getState().controlMode).toBe('pointer')
     })
 
-    it('should read panelWidth from localStorage', () => {
+    it('should keep panelWidth default in the store when localStorage has a value', () => {
       localStorage.setItem('workflow-node-panel-width', '500')
       const store = createStore()
-      expect(store.getState().panelWidth).toBe(500)
+      expect(store.getState().panelWidth).toBe(420)
     })
 
     it('should default panelWidth to 420 when localStorage is empty', () => {
@@ -189,43 +223,36 @@ describe('createWorkflowStore', () => {
       expect(store.getState().panelWidth).toBe(420)
     })
 
-    it('should read nodePanelWidth from localStorage', () => {
+    it('should keep nodePanelWidth default in the store when localStorage has a value', () => {
       localStorage.setItem('workflow-node-panel-width', '350')
       const store = createStore()
-      expect(store.getState().nodePanelWidth).toBe(350)
+      expect(store.getState().nodePanelWidth).toBe(400)
     })
 
-    it('should read previewPanelWidth from localStorage', () => {
+    it('should keep previewPanelWidth default in the store when localStorage has a value', () => {
       localStorage.setItem('debug-and-preview-panel-width', '450')
       const store = createStore()
-      expect(store.getState().previewPanelWidth).toBe(450)
+      expect(store.getState().previewPanelWidth).toBe(400)
     })
 
-    it('should read variableInspectPanelHeight from localStorage', () => {
+    it('should keep variableInspectPanelHeight default in the store when localStorage has a value', () => {
       localStorage.setItem('workflow-variable-inpsect-panel-height', '200')
       const store = createStore()
-      expect(store.getState().variableInspectPanelHeight).toBe(200)
-    })
-
-    it('should read maximizeCanvas from localStorage', () => {
-      localStorage.setItem('workflow-canvas-maximize', 'true')
-      const store = createStore()
-      expect(store.getState().maximizeCanvas).toBe(true)
+      expect(store.getState().variableInspectPanelHeight).toBe(320)
     })
   })
 
   describe('useStore hook', () => {
     it('should read state via selector when wrapped in WorkflowContext', () => {
-      const { result } = renderWorkflowHook(
-        () => useStore(s => s.showSingleRunPanel),
-        { initialStoreState: { showSingleRunPanel: true } },
-      )
+      const { result } = renderWorkflowHook(() => useStore((s) => s.showSingleRunPanel), {
+        initialStoreState: { showSingleRunPanel: true },
+      })
       expect(result.current).toBe(true)
     })
 
     it('should throw when used without WorkflowContext.Provider', () => {
       expect(() => {
-        renderHook(() => useStore(s => s.showSingleRunPanel))
+        renderHook(() => useStore((s) => s.showSingleRunPanel))
       }).toThrow('Missing WorkflowContext.Provider in the tree')
     })
   })

@@ -147,7 +147,9 @@ describe('SlashCommandRegistry', () => {
     })
 
     it('delegates to exact-match handler for "/theme dark"', async () => {
-      const mockResults = [{ id: 'dark', title: 'Dark', description: '', type: 'command' as const, data: {} }]
+      const mockResults = [
+        { id: 'dark', title: 'Dark', description: '', type: 'command' as const, data: {} },
+      ]
       const handler = createHandler({
         name: 'theme',
         search: vi.fn().mockResolvedValue(mockResults),
@@ -170,7 +172,9 @@ describe('SlashCommandRegistry', () => {
     })
 
     it('uses partial match when no exact match found', async () => {
-      const mockResults = [{ id: '1', title: 'T', description: '', type: 'command' as const, data: {} }]
+      const mockResults = [
+        { id: '1', title: 'T', description: '', type: 'command' as const, data: {} },
+      ]
       const handler = createHandler({
         name: 'theme',
         search: vi.fn().mockResolvedValue(mockResults),
@@ -183,7 +187,9 @@ describe('SlashCommandRegistry', () => {
     })
 
     it('uses alias partial match', async () => {
-      const mockResults = [{ id: '1', title: 'L', description: '', type: 'command' as const, data: {} }]
+      const mockResults = [
+        { id: '1', title: 'L', description: '', type: 'command' as const, data: {} },
+      ]
       const handler = createHandler({
         name: 'language',
         aliases: ['lang'],
@@ -202,11 +208,13 @@ describe('SlashCommandRegistry', () => {
       const results = await registry.search('/hem')
 
       expect(results).toHaveLength(1)
-      expect(results[0].title).toBe('/theme')
+      expect(results[0]!.title).toBe('/theme')
     })
 
     it('fuzzy search also matches aliases', async () => {
-      registry.register(createHandler({ name: 'language', aliases: ['lang'], description: 'Set language' }))
+      registry.register(
+        createHandler({ name: 'language', aliases: ['lang'], description: 'Set language' }),
+      )
 
       const handler = registry.findCommand('language')
       await registry.search('/lan')
@@ -217,7 +225,9 @@ describe('SlashCommandRegistry', () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
       const handler = createHandler({
         name: 'broken',
-        search: vi.fn().mockRejectedValue(new Error('fail')),
+        search: vi.fn(() => {
+          throw new Error('fail')
+        }),
       })
       registry.register(handler)
 
@@ -236,7 +246,7 @@ describe('SlashCommandRegistry', () => {
 
       const results = await registry.search('/')
       expect(results).toHaveLength(1)
-      expect(results[0].title).toBe('/docs')
+      expect(results[0]!.title).toBe('/docs')
     })
 
     it('skips unavailable handler in exact match', async () => {

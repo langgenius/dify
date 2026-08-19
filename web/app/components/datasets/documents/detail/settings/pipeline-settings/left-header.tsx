@@ -1,8 +1,7 @@
-import { RiArrowLeftLine } from '@remixicon/react'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Effect from '@/app/components/base/effect'
 import { useRouter } from '@/next/navigation'
 
@@ -10,9 +9,7 @@ type LeftHeaderProps = {
   title: string
 }
 
-const LeftHeader = ({
-  title,
-}: LeftHeaderProps) => {
+const LeftHeader = ({ title }: LeftHeaderProps) => {
   const { t } = useTranslation()
   const { back } = useRouter()
 
@@ -21,22 +18,23 @@ const LeftHeader = ({
   }, [back])
 
   return (
-    <div className="relative flex flex-col gap-y-0.5 pb-2 pt-4">
-      <div className="system-2xs-semibold-uppercase bg-pipeline-add-documents-title-bg bg-clip-text text-transparent">
+    <div className="relative flex flex-col gap-y-0.5 pt-4 pb-2">
+      <div className="bg-pipeline-add-documents-title-bg bg-clip-text system-2xs-semibold-uppercase text-transparent">
         {title}
       </div>
       <div className="system-md-semibold text-text-primary">
-        {t('addDocuments.steps.processDocuments', { ns: 'datasetPipeline' })}
+        {t(($) => $['addDocuments.steps.processDocuments'], { ns: 'datasetPipeline' })}
       </div>
-      <Button
+      <IconButton
         variant="secondary-accent"
-        className="absolute -left-11 top-3.5 size-9 rounded-full p-0"
+        size="xl"
+        className="absolute top-3.5 -left-11 rounded-full"
         onClick={navigateBack}
-        aria-label={t('operation.back', { ns: 'common' })}
+        aria-label={t(($) => $['operation.back'], { ns: 'common' })}
       >
-        <RiArrowLeftLine className="size-5 " />
-      </Button>
-      <Effect className="left-8 top-[-34px] opacity-20" />
+        <span aria-hidden className="i-ri-arrow-left-line size-5" />
+      </IconButton>
+      <Effect className="-top-8.5 left-8 opacity-20" />
     </div>
   )
 }

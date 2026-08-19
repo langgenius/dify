@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import { cn } from '@/utils/classnames'
 
 type InlineDeleteConfirmProps = {
   title?: string
@@ -25,27 +25,26 @@ const InlineDeleteConfirm: FC<InlineDeleteConfirmProps> = ({
 }) => {
   const { t } = useTranslation()
 
-  const titleText = title || t('operation.deleteConfirmTitle', { ns: 'common', defaultValue: 'Delete?' })
-  const confirmTxt = confirmText || t('operation.yes', { ns: 'common', defaultValue: 'Yes' })
-  const cancelTxt = cancelText || t('operation.no', { ns: 'common', defaultValue: 'No' })
+  const titleText =
+    title || t(($) => $['operation.deleteConfirmTitle'], { ns: 'common', defaultValue: 'Delete?' })
+  const confirmTxt =
+    confirmText || t(($) => $['operation.yes'], { ns: 'common', defaultValue: 'Yes' })
+  const cancelTxt = cancelText || t(($) => $['operation.no'], { ns: 'common', defaultValue: 'No' })
 
   return (
     <div
       aria-labelledby="inline-delete-confirm-title"
       aria-describedby="inline-delete-confirm-description"
       className={cn(
-        'flex w-[120px] flex-col justify-center gap-1.5',
-        'radius-lg border-[0.5px] border-components-panel-border-subtle',
-        'bg-components-panel-bg-blur px-2 pb-2 pt-1.5',
+        'flex w-30 flex-col justify-center gap-1.5',
+        'rounded-[10px] border-[0.5px] border-components-panel-border-subtle',
+        'bg-components-panel-bg-blur px-2 pt-1.5 pb-2',
         'backdrop-blur-[10px]',
         'shadow-lg',
         className,
       )}
     >
-      <div
-        id="inline-delete-confirm-title"
-        className="system-xs-semibold text-text-primary"
-      >
+      <div id="inline-delete-confirm-title" className="system-xs-semibold text-text-primary">
         {titleText}
       </div>
 
@@ -62,7 +61,7 @@ const InlineDeleteConfirm: FC<InlineDeleteConfirmProps> = ({
         <Button
           size="small"
           variant="primary"
-          destructive={variant === 'delete'}
+          tone={variant === 'delete' ? 'destructive' : 'default'}
           onClick={onConfirm}
           aria-label={confirmTxt}
           className="flex-1"
@@ -72,7 +71,10 @@ const InlineDeleteConfirm: FC<InlineDeleteConfirmProps> = ({
       </div>
 
       <span id="inline-delete-confirm-description" className="sr-only">
-        {t('operation.confirmAction', { ns: 'common', defaultValue: 'Please confirm your action.' })}
+        {t(($) => $['operation.confirmAction'], {
+          ns: 'common',
+          defaultValue: 'Please confirm your action.',
+        })}
       </span>
     </div>
   )

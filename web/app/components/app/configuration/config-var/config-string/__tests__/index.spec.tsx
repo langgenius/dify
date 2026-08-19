@@ -27,15 +27,15 @@ describe('ConfigString', () => {
 
       const input = screen.getByRole('spinbutton')
 
-      expect(input).toHaveValue(3)
-      expect(input).toHaveAttribute('min', '1')
-      expect(input).toHaveAttribute('max', '8')
+      expect(input)!.toHaveValue(3)
+      expect(input)!.toHaveAttribute('min', '1')
+      expect(input)!.toHaveAttribute('max', '8')
     })
 
     it('should render empty input when value is undefined', () => {
       const { onChange } = renderConfigString({ value: undefined })
 
-      expect(screen.getByRole('spinbutton')).toHaveValue(null)
+      expect(screen.getByRole('spinbutton'))!.toHaveValue(null)
       expect(onChange).not.toHaveBeenCalled()
     })
   })
@@ -43,14 +43,7 @@ describe('ConfigString', () => {
   describe('Effect behavior', () => {
     it('should clamp initial value to maxLength when it exceeds limit', async () => {
       const onChange = vi.fn()
-      render(
-        <ConfigString
-          value={15}
-          maxLength={10}
-          modelId="model-id"
-          onChange={onChange}
-        />,
-      )
+      render(<ConfigString value={15} maxLength={10} modelId="model-id" onChange={onChange} />)
 
       await waitFor(() => {
         expect(onChange).toHaveBeenCalledWith(10)
@@ -61,22 +54,10 @@ describe('ConfigString', () => {
     it('should clamp when updated prop value exceeds maxLength', async () => {
       const onChange = vi.fn()
       const { rerender } = render(
-        <ConfigString
-          value={4}
-          maxLength={6}
-          modelId="model-id"
-          onChange={onChange}
-        />,
+        <ConfigString value={4} maxLength={6} modelId="model-id" onChange={onChange} />,
       )
 
-      rerender(
-        <ConfigString
-          value={9}
-          maxLength={6}
-          modelId="model-id"
-          onChange={onChange}
-        />,
-      )
+      rerender(<ConfigString value={9} maxLength={6} modelId="model-id" onChange={onChange} />)
 
       await waitFor(() => {
         expect(onChange).toHaveBeenCalledWith(6)
@@ -116,7 +97,7 @@ describe('ConfigString', () => {
       fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '' } })
 
       expect(onChange).toHaveBeenCalledTimes(1)
-      expect(onChange.mock.calls[0][0]).toBeNaN()
+      expect(onChange.mock.calls[0]![0]).toBeNaN()
     })
   })
 })

@@ -3,10 +3,6 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import EditModal from '../edit-modal'
 
-vi.mock('@/app/components/base/modal', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}))
-
 describe('Conversation history edit modal', () => {
   const data: ConversationHistoriesRole = {
     user_prefix: 'user',

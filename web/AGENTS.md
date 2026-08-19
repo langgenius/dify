@@ -1,19 +1,29 @@
 ## Frontend Workflow
 
-- Refer to the `./docs/test.md` and `./docs/lint.md` for detailed frontend workflow instructions.
+- Read `docs/test.md` only for frontend test work and `docs/lint.md` only when running or changing static checks.
+- Use the repo-local `how-to-write-component` skill when implementation requires component ownership, state, data-flow, effect, or interaction-boundary decisions. Do not load it for test-only, copy-only, or styling-only changes.
+- Use `frontend-code-review` only for explicit frontend review or audit requests, including test reviews. Use `frontend-testing` when writing or changing Vitest or React Testing Library tests.
 
-## Overlay Components (Mandatory)
+## Package Contracts
 
-- `./docs/overlay-migration.md` is the source of truth for overlay-related work.
-- In new or modified code, use only overlay primitives from `@/app/components/base/ui/*`.
-- Do not introduce deprecated overlay imports from `@/app/components/base/*`; when touching legacy callers, prefer migrating them and keep the allowlist shrinking (never expanding).
+- User-facing strings must use `web/i18n/en-US/` keys. When adding or renaming a key, update every supported locale with the correct localized value.
+- For new backend calls and migrated surfaces, use generated `consoleQuery` / `consoleClient` APIs from `@/service/client`. Do not add handwritten REST helpers or DTO mirrors, mock-backed app state, or direct edits to generated contracts.
+- Prefer `@langgenius/dify-ui/*` primitives, data attributes, and design tokens. Preserve a visible focus indicator on the final focusable element.
+- Use Dify UI `Input` for a standalone text control and `InputGroup` when a prefix, suffix, or action shares its visual surface. Reuse the Web `SearchInput` composite for its standard search, clear, and IME behavior instead of rebuilding it. See the canonical [form and input composition contract].
+- Use `Button` for actions with visible text and `IconButton` for icon-only actions. Every `IconButton` needs an `aria-label` or `aria-labelledby`, and its decorative glyph must be `aria-hidden`. Compose Menu, Popover, Toggle, and Collapsible through `render` so those primitives keep ownership of their state. See the canonical [IconButton contract].
+- Follow `docs/overlay.md` for overlay selection. Do not introduce a generic web wrapper that recreates Dify UI portal, backdrop, positioning, or z-index behavior.
+- For custom SVG icons, follow `../packages/iconify-collections/README.md`; do not add generated React icons under `app/components/base/icons/src/`.
+- `docs/test.md` is the single source of truth for frontend automated-test policy. Skills may route and execute that policy but must not redefine it.
 
-## Query & Mutation (Mandatory)
+<!-- BEGIN:nextjs-agent-rules -->
 
-- `frontend-query-mutation` is the source of truth for Dify frontend contracts, query and mutation call-site patterns, conditional queries, invalidation, and mutation error handling.
+# This is NOT the Next.js you know
 
-## Automated Test Generation
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
 
-- Use `./docs/test.md` as the canonical instruction set for generating frontend automated tests.
-- When proposing or saving tests, re-read that document and follow every requirement.
-- All frontend tests MUST also comply with the `frontend-testing` skill. Treat the skill as a mandatory constraint, not optional guidance.
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
+
+[IconButton contract]: ../packages/dify-ui/README.md#icon-button-contract
+[form and input composition contract]: ../packages/dify-ui/README.md#form-contract

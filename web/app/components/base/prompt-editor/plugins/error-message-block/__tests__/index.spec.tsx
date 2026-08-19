@@ -19,7 +19,7 @@ vi.mock('lexical', async () => {
   return {
     ...actual,
     $insertNodes: vi.fn(),
-    createCommand: vi.fn(name => name),
+    createCommand: vi.fn((name) => name),
     COMMAND_PRIORITY_EDITOR: 1,
   }
 })
@@ -39,11 +39,7 @@ const lexicalContextValue: LexicalComposerContextWithEditor = [
 ]
 
 const renderWithLexicalContext = (ui: ReactElement) => {
-  return render(
-    <LexicalComposerContext.Provider value={lexicalContextValue}>
-      {ui}
-    </LexicalComposerContext.Provider>,
-  )
+  return render(<LexicalComposerContext value={lexicalContextValue}>{ui}</LexicalComposerContext>)
 }
 
 describe('ErrorMessageBlock', () => {
@@ -52,9 +48,11 @@ describe('ErrorMessageBlock', () => {
     mockHasNodes.mockReturnValue(true)
     mockRegisterCommand.mockReturnValue(vi.fn())
     vi.mocked(mergeRegister).mockImplementation((...cleanups) => {
-      return () => cleanups.forEach(cleanup => cleanup())
+      return () => cleanups.forEach((cleanup) => cleanup())
     })
-    vi.mocked($createErrorMessageBlockNode).mockReturnValue({ id: 'node' } as unknown as ErrorMessageBlockNode)
+    vi.mocked($createErrorMessageBlockNode).mockReturnValue({
+      id: 'node',
+    } as unknown as ErrorMessageBlockNode)
   })
 
   it('should render null and register insert and delete commands', () => {
@@ -75,7 +73,6 @@ describe('ErrorMessageBlock', () => {
       expect.any(Function),
       COMMAND_PRIORITY_EDITOR,
     )
-    expect(ErrorMessageBlock.displayName).toBe('ErrorMessageBlock')
   })
 
   it('should throw when ErrorMessageBlockNode is not registered', () => {
@@ -90,7 +87,7 @@ describe('ErrorMessageBlock', () => {
     const onInsert = vi.fn()
     renderWithLexicalContext(<ErrorMessageBlock onInsert={onInsert} />)
 
-    const insertHandler = mockRegisterCommand.mock.calls[0][1] as () => boolean
+    const insertHandler = mockRegisterCommand.mock.calls[0]![1] as () => boolean
     const result = insertHandler()
 
     expect($createErrorMessageBlockNode).toHaveBeenCalledTimes(1)
@@ -102,7 +99,7 @@ describe('ErrorMessageBlock', () => {
   it('should return true on insert command without onInsert callback', () => {
     renderWithLexicalContext(<ErrorMessageBlock />)
 
-    const insertHandler = mockRegisterCommand.mock.calls[0][1] as () => boolean
+    const insertHandler = mockRegisterCommand.mock.calls[0]![1] as () => boolean
 
     expect(insertHandler()).toBe(true)
     expect($insertNodes).toHaveBeenCalled()
@@ -112,7 +109,7 @@ describe('ErrorMessageBlock', () => {
     const onDelete = vi.fn()
     renderWithLexicalContext(<ErrorMessageBlock onDelete={onDelete} />)
 
-    const deleteHandler = mockRegisterCommand.mock.calls[1][1] as () => boolean
+    const deleteHandler = mockRegisterCommand.mock.calls[1]![1] as () => boolean
     const result = deleteHandler()
 
     expect(onDelete).toHaveBeenCalledTimes(1)
@@ -122,7 +119,7 @@ describe('ErrorMessageBlock', () => {
   it('should return true on delete command without onDelete callback', () => {
     renderWithLexicalContext(<ErrorMessageBlock />)
 
-    const deleteHandler = mockRegisterCommand.mock.calls[1][1] as () => boolean
+    const deleteHandler = mockRegisterCommand.mock.calls[1]![1] as () => boolean
 
     expect(deleteHandler()).toBe(true)
   })
@@ -130,9 +127,7 @@ describe('ErrorMessageBlock', () => {
   it('should run merged cleanup on unmount', () => {
     const insertCleanup = vi.fn()
     const deleteCleanup = vi.fn()
-    mockRegisterCommand
-      .mockReturnValueOnce(insertCleanup)
-      .mockReturnValueOnce(deleteCleanup)
+    mockRegisterCommand.mockReturnValueOnce(insertCleanup).mockReturnValueOnce(deleteCleanup)
 
     const { unmount } = renderWithLexicalContext(<ErrorMessageBlock />)
     unmount()

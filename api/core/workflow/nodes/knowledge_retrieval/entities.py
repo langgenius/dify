@@ -1,22 +1,13 @@
 from typing import Literal
 
+from pydantic import BaseModel, Field
+
+from core.rag.entities import Condition, MetadataFilteringCondition, RerankingModelConfig, WeightedScoreConfig
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import BuiltinNodeTypes, NodeType
 from graphon.nodes.llm.entities import ModelConfig, VisionConfig
-from pydantic import BaseModel, Field
-
-from core.rag.entities import Condition, MetadataFilteringCondition, WeightedScoreConfig
 
 __all__ = ["Condition"]
-
-
-class RerankingModelConfig(BaseModel):
-    """
-    Reranking Model Config.
-    """
-
-    provider: str
-    model: str
 
 
 class MultipleRetrievalConfig(BaseModel):

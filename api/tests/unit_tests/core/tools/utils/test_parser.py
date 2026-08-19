@@ -1,4 +1,5 @@
 from json.decoder import JSONDecodeError
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
@@ -16,7 +17,7 @@ def app():
     return app
 
 
-def test_parse_openapi_to_tool_bundle_operation_id(app):
+def test_parse_openapi_to_tool_bundle_operation_id(app: Flask):
     openapi = {
         "openapi": "3.0.0",
         "info": {"title": "Simple API", "version": "1.0.0"},
@@ -62,7 +63,7 @@ def test_parse_openapi_to_tool_bundle_operation_id(app):
     assert tool_bundles[2].operation_id == "createResource"
 
 
-def test_parse_openapi_to_tool_bundle_properties_all_of(app):
+def test_parse_openapi_to_tool_bundle_properties_all_of(app: Flask):
     openapi = {
         "openapi": "3.0.0",
         "info": {"title": "Simple API", "version": "1.0.0"},
@@ -117,7 +118,7 @@ def test_parse_openapi_to_tool_bundle_properties_all_of(app):
     # assert set(tool_bundles[0].parameters[0].options) == {"option1", "option2", "option3"}
 
 
-def test_parse_openapi_to_tool_bundle_default_value_type_casting(app):
+def test_parse_openapi_to_tool_bundle_default_value_type_casting(app: Flask):
     """
     Test that default values are properly cast to match parameter types.
     This addresses the issue where array default values like [] cause validation errors
@@ -259,8 +260,8 @@ def test_parse_openapi_to_tool_bundle_server_env_and_refs(app):
         },
     }
 
-    extra_info: dict = {}
-    warning: dict = {}
+    extra_info: dict[str, Any] = {}
+    warning: dict[str, Any] = {}
     with app.test_request_context(headers={"X-Request-Env": "prod"}):
         bundles = ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi, extra_info=extra_info, warning=warning)
 
@@ -298,7 +299,7 @@ def test_parse_swagger_to_openapi_branches():
             }
         )
 
-    warning: dict = {"seed": True}
+    warning: dict[str, Any] = {"seed": True}
     converted = ApiBasedToolSchemaParser.parse_swagger_to_openapi(
         {
             "servers": [{"url": "https://x"}],
@@ -326,7 +327,7 @@ def test_parse_openai_plugin_json_branches(app):
 def test_parse_openai_plugin_json_http_branches(app):
     with app.test_request_context():
         response = type("Resp", (), {"status_code": 500, "text": "", "close": Mock()})()
-        with patch("core.tools.utils.parser.httpx.get", return_value=response):
+        with patch("core.tools.utils.parser.ssrf_proxy.get", return_value=response):
             with pytest.raises(ToolProviderNotFoundError, match="cannot get openapi yaml"):
                 ApiBasedToolSchemaParser.parse_openai_plugin_json_to_tool_bundle(
                     '{"api": {"url": "https://x", "type": "openapi"}}'
@@ -334,7 +335,7 @@ def test_parse_openai_plugin_json_http_branches(app):
         response.close.assert_called_once()
 
         success_response = type("Resp", (), {"status_code": 200, "text": "openapi: 3.0.0", "close": Mock()})()
-        with patch("core.tools.utils.parser.httpx.get", return_value=success_response):
+        with patch("core.tools.utils.parser.ssrf_proxy.get", return_value=success_response):
             with patch(
                 "core.tools.utils.parser.ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle",
                 return_value=["bundle"],

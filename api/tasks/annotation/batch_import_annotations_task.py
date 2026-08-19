@@ -63,7 +63,7 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
                 if app_annotation_setting:
                     dataset_collection_binding = (
                         DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
-                            app_annotation_setting.collection_binding_id, "annotation"
+                            app_annotation_setting.collection_binding_id, session, "annotation"
                         )
                     )
                     if not dataset_collection_binding:
@@ -77,7 +77,7 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
                         collection_binding_id=dataset_collection_binding.id,
                     )
 
-                    vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"])
+                    vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"], session=session)
                     vector.create(documents, duplicate_check=True)
 
                 session.commit()

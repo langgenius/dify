@@ -1,4 +1,4 @@
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 import type { AnnotationItem, HitHistoryItem } from '../../type'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
@@ -23,7 +23,15 @@ vi.mock('../../edit-annotation-modal/edit-item', () => {
     Answer: 'answer',
   }
   return {
-    default: ({ type, content, onSave }: { type: string, content: string, onSave: (value: string) => void }) => (
+    default: ({
+      type,
+      content,
+      onSave,
+    }: {
+      type: string
+      content: string
+      onSave: (value: string) => void
+    }) => (
       <div>
         <div data-testid={`content-${type}`}>{content}</div>
         <button data-testid={`edit-${type}`} onClick={() => onSave(`${type}-updated`)}>
@@ -110,8 +118,7 @@ describe('ViewAnnotationModal', () => {
     // Assert
     await waitFor(() => {
       expect(props.onSave).toHaveBeenCalledWith(props.item.question, 'answer-updated')
-    },
-    )
+    })
   })
 
   it('should switch to hit history tab and show no data message', async () => {
@@ -126,28 +133,34 @@ describe('ViewAnnotationModal', () => {
     fireEvent.click(screen.getByText('appAnnotation.viewModal.hitHistory'))
 
     // Assert
-    expect(await screen.findByText('appAnnotation.viewModal.noHitHistory')).toBeInTheDocument()
+    // Assert
+    expect(await screen.findByText('appAnnotation.viewModal.noHitHistory'))!.toBeInTheDocument()
     expect(mockFormatTime).toHaveBeenCalledWith(props.item.created_at, 'appLog.dateTimeFormat')
   })
 
   it('should render hit history entries with pagination badge when data exists', async () => {
-    const hits = [createHitHistoryItem({ question: 'user input' }), createHitHistoryItem({ id: 'hit-2', question: 'second' })]
+    const hits = [
+      createHitHistoryItem({ question: 'user input' }),
+      createHitHistoryItem({ id: 'hit-2', question: 'second' }),
+    ]
     fetchHitHistoryListMock.mockResolvedValue({ data: hits, total: 15 })
 
     renderComponent()
 
     fireEvent.click(await screen.findByText('appAnnotation.viewModal.hitHistory'))
 
-    expect(await screen.findByText('user input')).toBeInTheDocument()
-    expect(screen.getByText('15 appAnnotation.viewModal.hits')).toBeInTheDocument()
-    expect(mockFormatTime).toHaveBeenCalledWith(hits[0].created_at, 'appLog.dateTimeFormat')
+    expect(await screen.findByText('user input'))!.toBeInTheDocument()
+    expect(screen.getByText('15 appAnnotation.viewModal.hits'))!.toBeInTheDocument()
+    expect(mockFormatTime).toHaveBeenCalledWith(hits[0]!.created_at, 'appLog.dateTimeFormat')
   })
 
   it('should confirm before removing the annotation and hide on success', async () => {
     const { props } = renderComponent()
 
     fireEvent.click(screen.getByText('appAnnotation.editModal.removeThisCache'))
-    expect(await screen.findByText('appDebug.feature.annotation.removeConfirm')).toBeInTheDocument()
+    expect(
+      await screen.findByText('appDebug.feature.annotation.removeConfirm'),
+    )!.toBeInTheDocument()
 
     const confirmButton = await screen.findByRole('button', { name: 'common.operation.confirm' })
     fireEvent.click(confirmButton)
@@ -155,6 +168,23 @@ describe('ViewAnnotationModal', () => {
     await waitFor(() => {
       expect(props.onRemove).toHaveBeenCalledTimes(1)
       expect(props.onHide).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  it('should close the remove confirmation when cancelled', async () => {
+    renderComponent()
+
+    fireEvent.click(screen.getByText('appAnnotation.editModal.removeThisCache'))
+    expect(
+      await screen.findByText('appDebug.feature.annotation.removeConfirm'),
+    )!.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText('appDebug.feature.annotation.removeConfirm'),
+      ).not.toBeInTheDocument()
     })
   })
 })

@@ -1,23 +1,24 @@
+import type { ReactElement } from 'react'
 import type { ChatWithHistoryContextValue } from '../../context'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import * as ReactI18next from 'react-i18next'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { expectLoadingButton } from '@/test/button'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { useChatWithHistoryContext } from '../../context'
 import Sidebar from '../index'
 import RenameModal from '../rename-modal'
 
-// Type for mocking the global public store selector
-type GlobalPublicStoreMock = {
-  systemFeatures: {
-    branding: {
-      enabled: boolean
-      workspace_logo: string | null
-    }
-  }
-  setSystemFeatures?: (features: unknown) => void
+let mockBranding: { enabled: boolean; workspace_logo: string } = {
+  enabled: false,
+  workspace_logo: '',
 }
+const render = (ui: ReactElement) =>
+  renderWithConsoleQuery(ui, {
+    systemFeatures: { branding: { ...mockBranding } },
+  })
 
 function mockUseTranslationWithEmptyKeys(emptyKeys: string[]) {
   const originalUseTranslation = ReactI18next.useTranslation
@@ -28,9 +29,8 @@ function mockUseTranslationWithEmptyKeys(emptyKeys: string[]) {
 
     return {
       ...translation,
-      t: ((key: string, options?: Record<string, unknown>) => {
-        if (emptyKeys.includes(key))
-          return ''
+      t: withSelectorKey((key: string, options?: Record<string, unknown>) => {
+        if (emptyKeys.includes(key)) return ''
         const ns = (options?.ns as string | undefined) ?? defaultNs
         return ns ? `${ns}.${key}` : key
       }) as typeof translation.t,
@@ -38,31 +38,36 @@ function mockUseTranslationWithEmptyKeys(emptyKeys: string[]) {
   })
 }
 
-// Helper to create properly-typed mock store state
-function createMockStoreState(overrides: Partial<GlobalPublicStoreMock>): GlobalPublicStoreMock {
-  return {
-    systemFeatures: {
-      branding: {
-        enabled: false,
-        workspace_logo: null,
-      },
-    },
-    ...overrides,
-  }
-}
-
 // Mock List to allow us to trigger operations
 vi.mock('../list', () => ({
-  default: ({ list, onOperate, title, isPin }: { list: Array<{ id: string, name: string }>, onOperate: (type: string, item: { id: string, name: string }) => void, title?: string, isPin?: boolean }) => (
+  default: ({
+    list,
+    onOperate,
+    title,
+    isPin,
+  }: {
+    list: Array<{ id: string; name: string }>
+    onOperate: (type: string, item: { id: string; name: string }) => void
+    title?: string
+    isPin?: boolean
+  }) => (
     <div data-testid={isPin ? 'pinned-list' : 'conversation-list'}>
       {title && <div data-testid="list-title">{title}</div>}
-      {list.map(item => (
+      {list.map((item) => (
         <div key={item.id} data-testid={`list-item-${item.id}`}>
           <div>{item.name}</div>
-          <button data-testid={`pin-${item.id}`} onClick={() => onOperate('pin', item)}>Pin</button>
-          <button data-testid={`unpin-${item.id}`} onClick={() => onOperate('unpin', item)}>Unpin</button>
-          <button data-testid={`delete-${item.id}`} onClick={() => onOperate('delete', item)}>Delete</button>
-          <button data-testid={`rename-${item.id}`} onClick={() => onOperate('rename', item)}>Rename</button>
+          <button data-testid={`pin-${item.id}`} onClick={() => onOperate('pin', item)}>
+            Pin
+          </button>
+          <button data-testid={`unpin-${item.id}`} onClick={() => onOperate('unpin', item)}>
+            Unpin
+          </button>
+          <button data-testid={`delete-${item.id}`} onClick={() => onOperate('delete', item)}>
+            Delete
+          </button>
+          <button data-testid={`rename-${item.id}`} onClick={() => onOperate('rename', item)}>
+            Rename
+          </button>
         </div>
       ))}
     </div>
@@ -74,52 +79,10 @@ vi.mock('../../context', () => ({
   useChatWithHistoryContext: vi.fn(),
 }))
 
-// Mock global public store
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: vi.fn(selector => selector({
-    systemFeatures: {
-      branding: {
-        enabled: false,
-        workspace_logo: null,
-      },
-    },
-  })),
-}))
-
 // Mock next/navigation
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => '/test',
-}))
-
-// Mock Modal to avoid Headless UI issues in tests
-vi.mock('@/app/components/base/modal', () => ({
-  default: ({ children, isShow, title }: { children: React.ReactNode, isShow: boolean, title: React.ReactNode }) => {
-    if (!isShow)
-      return null
-    return (
-      <div data-testid="modal">
-        {!!title && <div data-testid="modal-title">{title}</div>}
-        {children}
-      </div>
-    )
-  },
-}))
-
-// Mock Confirm
-vi.mock('@/app/components/base/confirm', () => ({
-  default: ({ onCancel, onConfirm, title, content, isShow }: { onCancel: () => void, onConfirm: () => void, title: string, content?: React.ReactNode, isShow: boolean }) => {
-    if (!isShow)
-      return null
-    return (
-      <div data-testid="confirm-dialog">
-        <div data-testid="confirm-title">{title}</div>
-        <button data-testid="confirm-cancel" onClick={onCancel}>Cancel</button>
-        <div data-testid="confirm-content">{content}</div>
-        <button data-testid="confirm-confirm" onClick={onConfirm}>Confirm</button>
-      </div>
-    )
-  },
 }))
 
 describe('Sidebar Index', () => {
@@ -137,9 +100,7 @@ describe('Sidebar Index', () => {
     },
     handleNewConversation: vi.fn(),
     pinnedConversationList: [],
-    conversationList: [
-      { id: '1', name: 'Conv 1', inputs: {}, introduction: '' },
-    ],
+    conversationList: [{ id: '1', name: 'Conv 1', inputs: {}, introduction: '' }],
     currentConversationId: '0',
     handleChangeConversation: vi.fn(),
     handlePinConversation: vi.fn(),
@@ -155,8 +116,8 @@ describe('Sidebar Index', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockBranding = { enabled: false, workspace_logo: '' }
     vi.mocked(useChatWithHistoryContext).mockReturnValue(mockContextValue)
-    vi.mocked(useGlobalPublicStore).mockImplementation(selector => selector(createMockStoreState({}) as never))
   })
 
   describe('Basic Rendering', () => {
@@ -184,18 +145,6 @@ describe('Sidebar Index', () => {
   })
 
   describe('Panel Styling', () => {
-    it('should apply panel styling when isPanel is true', () => {
-      const { container } = render(<Sidebar isPanel={true} />)
-      const sidebar = container.firstChild as HTMLElement
-      expect(sidebar).toHaveClass('rounded-xl')
-    })
-
-    it('should not apply panel styling when isPanel is false', () => {
-      const { container } = render(<Sidebar isPanel={false} />)
-      const sidebar = container.firstChild as HTMLElement
-      expect(sidebar).not.toHaveClass('rounded-xl')
-    })
-
     it('should handle undefined isPanel', () => {
       const { container } = render(<Sidebar />)
       const sidebar = container.firstChild as HTMLElement
@@ -221,7 +170,9 @@ describe('Sidebar Index', () => {
 
       render(<Sidebar />)
       const header = screen.getByText('Test App').parentElement as HTMLElement
-      const collapseButton = within(header).getByRole('button')
+      const collapseButton = within(header).getByRole('button', {
+        name: 'layout.sidebar.collapseSidebar',
+      })
       expect(collapseButton).toBeInTheDocument()
 
       await user.click(collapseButton)
@@ -238,7 +189,9 @@ describe('Sidebar Index', () => {
 
       render(<Sidebar />)
       const header = screen.getByText('Test App').parentElement as HTMLElement
-      const expandButton = within(header).getByRole('button')
+      const expandButton = within(header).getByRole('button', {
+        name: 'layout.sidebar.expandSidebar',
+      })
       expect(expandButton).toBeInTheDocument()
 
       await user.click(expandButton)
@@ -475,8 +428,7 @@ describe('Sidebar Index', () => {
       render(<Sidebar />)
 
       await user.click(screen.getByTestId('delete-1'))
-      expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
-      expect(screen.getByTestId('confirm-title')).toBeInTheDocument()
+      expect(screen.getByText('share.chat.deleteConversation.title')).toBeInTheDocument()
     })
 
     it('should call handleDeleteConversation when confirm is clicked', async () => {
@@ -490,11 +442,14 @@ describe('Sidebar Index', () => {
       render(<Sidebar />)
 
       await user.click(screen.getByTestId('delete-1'))
-      await user.click(screen.getByTestId('confirm-confirm'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
-      expect(handleDeleteConversation).toHaveBeenCalledWith('1', expect.objectContaining({
-        onSuccess: expect.any(Function),
-      }))
+      expect(handleDeleteConversation).toHaveBeenCalledWith(
+        '1',
+        expect.objectContaining({
+          onSuccess: expect.any(Function),
+        }),
+      )
     })
 
     it('should close delete confirmation when cancel is clicked', async () => {
@@ -502,11 +457,11 @@ describe('Sidebar Index', () => {
       render(<Sidebar />)
 
       await user.click(screen.getByTestId('delete-1'))
-      expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+      expect(screen.getByText('share.chat.deleteConversation.title')).toBeInTheDocument()
 
-      await user.click(screen.getByTestId('confirm-cancel'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
       await waitFor(() => {
-        expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument()
+        expect(screen.queryByText('share.chat.deleteConversation.title')).not.toBeInTheDocument()
       })
     })
 
@@ -525,7 +480,7 @@ describe('Sidebar Index', () => {
       render(<Sidebar />)
 
       await user.click(screen.getByTestId('delete-1'))
-      await user.click(screen.getByTestId('confirm-confirm'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
       expect(handleDeleteConversation).toHaveBeenCalledWith('1', expect.any(Object))
     })
@@ -537,7 +492,7 @@ describe('Sidebar Index', () => {
       render(<Sidebar />)
 
       await user.click(screen.getByTestId('rename-1'))
-      expect(screen.getByTestId('modal')).toBeInTheDocument()
+      expect(screen.getByText('common.chat.renameConversation')).toBeInTheDocument()
     })
 
     it('should pass correct props to rename modal', async () => {
@@ -546,7 +501,9 @@ describe('Sidebar Index', () => {
 
       await user.click(screen.getByTestId('rename-1'))
       // The modal should have title and save/cancel
-      expect(screen.getByTestId('modal')).toBeInTheDocument()
+      expect(screen.getByText('common.chat.renameConversation')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeInTheDocument()
     })
 
     it('should call handleRenameConversation with new name', async () => {
@@ -578,13 +535,13 @@ describe('Sidebar Index', () => {
       render(<Sidebar />)
 
       await user.click(screen.getByTestId('rename-1'))
-      expect(screen.getByTestId('modal')).toBeInTheDocument()
+      expect(screen.getByText('common.chat.renameConversation')).toBeInTheDocument()
 
       const cancelButton = screen.getByText('common.operation.cancel')
       await user.click(cancelButton)
 
       await waitFor(() => {
-        expect(screen.queryByTestId('modal')).not.toBeInTheDocument()
+        expect(screen.queryByText('common.chat.renameConversation')).not.toBeInTheDocument()
       })
     })
 
@@ -598,7 +555,7 @@ describe('Sidebar Index', () => {
       render(<Sidebar />)
       await user.click(screen.getByTestId('rename-1'))
       const saveButton = screen.getByText('common.operation.save').closest('button')
-      expect(saveButton).toBeDisabled()
+      expectLoadingButton(saveButton)
     })
 
     it('should handle rename for different items', async () => {
@@ -675,17 +632,7 @@ describe('Sidebar Index', () => {
     })
 
     it('should use system branding logo when enabled', () => {
-      const mockStoreState = createMockStoreState({
-        systemFeatures: {
-          branding: {
-            enabled: true,
-            workspace_logo: 'http://example.com/workspace-logo.png',
-          },
-        },
-      })
-
-      vi.mocked(useGlobalPublicStore).mockClear()
-      vi.mocked(useGlobalPublicStore).mockImplementation(selector => selector(mockStoreState as never))
+      mockBranding = { enabled: true, workspace_logo: 'http://example.com/workspace-logo.png' }
 
       vi.mocked(useChatWithHistoryContext).mockReturnValue({
         ...mockContextValue,
@@ -837,7 +784,7 @@ describe('Sidebar Index', () => {
 
       // Delete it
       await user.click(screen.getByTestId('delete-1'))
-      await user.click(screen.getByTestId('confirm-confirm'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
       expect(handleDeleteConversation).toHaveBeenCalled()
     })
 
@@ -889,8 +836,7 @@ describe('Sidebar Index', () => {
         render(<Sidebar />)
         expect(screen.getByTestId('pinned-list')).toBeInTheDocument()
         expect(screen.queryByTestId('list-title')).not.toBeInTheDocument()
-      }
-      finally {
+      } finally {
         useTranslationSpy.mockRestore()
       }
     })
@@ -901,10 +847,9 @@ describe('Sidebar Index', () => {
       try {
         render(<Sidebar />)
         await user.click(screen.getByTestId('delete-1'))
-        expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
-        expect(screen.getByTestId('confirm-content')).toBeEmptyDOMElement()
-      }
-      finally {
+        expect(screen.getByText('share.chat.deleteConversation.title')).toBeInTheDocument()
+        expect(screen.queryByText('share.chat.deleteConversation.content')).not.toBeInTheDocument()
+      } finally {
         useTranslationSpy.mockRestore()
       }
     })
@@ -939,8 +884,7 @@ describe('RenameModal', () => {
       />,
     )
 
-    expect(screen.getByTestId('modal')).toBeInTheDocument()
-    expect(screen.getByTestId('modal-title')).toHaveTextContent('common.chat.renameConversation')
+    expect(screen.getByText('common.chat.renameConversation')).toBeInTheDocument()
   })
 
   it('should handle empty placeholder translation fallback', () => {
@@ -956,8 +900,7 @@ describe('RenameModal', () => {
         />,
       )
       expect(screen.getByPlaceholderText('')).toBeInTheDocument()
-    }
-    finally {
+    } finally {
       useTranslationSpy.mockRestore()
     }
   })

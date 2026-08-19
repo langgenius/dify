@@ -17,10 +17,11 @@ vi.mock('@/next/navigation', () => ({
 
 // Mock useDocLink hook
 vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path?: string) => `https://docs.dify.ai/en${path || ''}`,
+  useDocLink: () => (path?: string) =>
+    `https://docs.dify.ai/en${path?.startsWith('/use-dify/') ? `/cloud${path}` : path || ''}`,
 }))
 
-// Mock external context providers (these are external dependencies)
+// Mock the shared modal owner.
 const mockSetShowExternalKnowledgeAPIModal = vi.fn()
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
@@ -58,24 +59,50 @@ const createDefaultMockApiList = (): ExternalAPIItem[] => [
   }),
 ]
 
-const mockMutateExternalKnowledgeApis = vi.fn()
+const mockInvalidateQueries = vi.fn()
+const externalKnowledgeApiQueryKey = ['console', 'datasets', 'externalKnowledgeApi', 'get']
 let mockExternalKnowledgeApiList: ExternalAPIItem[] = createDefaultMockApiList()
 
-vi.mock('@/context/external-knowledge-api-context', () => ({
-  useExternalKnowledgeApi: () => ({
-    externalKnowledgeApiList: mockExternalKnowledgeApiList,
-    mutateExternalKnowledgeApis: mockMutateExternalKnowledgeApis,
-    isLoading: false,
-  }),
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...original,
+    useQuery: () => ({ data: { data: mockExternalKnowledgeApiList } }),
+    useQueryClient: () => ({ invalidateQueries: mockInvalidateQueries }),
+  }
+})
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    datasets: {
+      externalKnowledgeApi: {
+        get: {
+          queryOptions: () => ({
+            queryKey: ['console', 'datasets', 'externalKnowledgeApi', 'get'],
+          }),
+        },
+      },
+    },
+  },
 }))
 
 // Helper to render component with default props
-const renderComponent = (props: Partial<React.ComponentProps<typeof ExternalKnowledgeBaseCreate>> = {}) => {
+const renderComponent = (
+  props: Partial<React.ComponentProps<typeof ExternalKnowledgeBaseCreate>> = {},
+) => {
   const defaultProps = {
     onConnect: vi.fn(),
     loading: false,
   }
   return render(<ExternalKnowledgeBaseCreate {...defaultProps} {...props} />)
+}
+
+const getVisibleText = (text: string) => {
+  const element = screen
+    .getAllByText(text)
+    .find((element) => !element.classList.contains('sr-only'))
+  expect(element).toBeDefined()
+  return element!
 }
 
 describe('ExternalKnowledgeBaseCreate', () => {
@@ -87,67 +114,68 @@ describe('ExternalKnowledgeBaseCreate', () => {
 
   // Tests for basic rendering
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      renderComponent()
-
-      expect(screen.getByText('dataset.connectDataset')).toBeInTheDocument()
-    })
-
     it('should render KnowledgeBaseInfo component with correct labels', () => {
       renderComponent()
 
       // KnowledgeBaseInfo renders these labels
-      expect(screen.getByText('dataset.externalKnowledgeName')).toBeInTheDocument()
-      expect(screen.getByText('dataset.externalKnowledgeDescription')).toBeInTheDocument()
+      // KnowledgeBaseInfo renders these labels
+      expect(screen.getByText('dataset.externalKnowledgeName'))!.toBeInTheDocument()
+      expect(screen.getByText('dataset.externalKnowledgeDescription'))!.toBeInTheDocument()
     })
 
     it('should render ExternalApiSelection component', () => {
       renderComponent()
 
       // ExternalApiSelection renders this label
-      expect(screen.getByText('dataset.externalAPIPanelTitle')).toBeInTheDocument()
-      expect(screen.getByText('dataset.externalKnowledgeId')).toBeInTheDocument()
+      // ExternalApiSelection renders this label
+      expect(screen.getByText('dataset.externalAPIPanelTitle'))!.toBeInTheDocument()
+      expect(screen.getByText('dataset.externalKnowledgeId'))!.toBeInTheDocument()
     })
 
     it('should render RetrievalSettings component', () => {
       renderComponent()
 
       // RetrievalSettings renders this label
-      expect(screen.getByText('dataset.retrievalSettings')).toBeInTheDocument()
+      // RetrievalSettings renders this label
+      expect(screen.getByText('dataset.retrievalSettings'))!.toBeInTheDocument()
     })
 
     it('should render InfoPanel component', () => {
       renderComponent()
 
       // InfoPanel renders these texts
-      expect(screen.getByText('dataset.connectDatasetIntro.title')).toBeInTheDocument()
-      expect(screen.getByText('dataset.connectDatasetIntro.learnMore')).toBeInTheDocument()
+      // InfoPanel renders these texts
+      expect(screen.getByText('dataset.connectDatasetIntro.title'))!.toBeInTheDocument()
+      expect(screen.getByText('dataset.connectDatasetIntro.learnMore'))!.toBeInTheDocument()
     })
 
     it('should render helper text with translation keys', () => {
       renderComponent()
 
-      expect(screen.getByText('dataset.connectHelper.helper1')).toBeInTheDocument()
-      expect(screen.getByText('dataset.connectHelper.helper2')).toBeInTheDocument()
-      expect(screen.getByText('dataset.connectHelper.helper3')).toBeInTheDocument()
-      expect(screen.getByText('dataset.connectHelper.helper4')).toBeInTheDocument()
-      expect(screen.getByText('dataset.connectHelper.helper5')).toBeInTheDocument()
+      expect(screen.getByText('dataset.connectHelper.helper1'))!.toBeInTheDocument()
+      expect(screen.getByText('dataset.connectHelper.helper2'))!.toBeInTheDocument()
+      expect(screen.getByText('dataset.connectHelper.helper3'))!.toBeInTheDocument()
+      expect(screen.getByText('dataset.connectHelper.helper4'))!.toBeInTheDocument()
+      expect(screen.getByText('dataset.connectHelper.helper5'))!.toBeInTheDocument()
     })
 
     it('should render cancel and connect buttons', () => {
       renderComponent()
 
-      expect(screen.getByText('dataset.externalKnowledgeForm.cancel')).toBeInTheDocument()
-      expect(screen.getByText('dataset.externalKnowledgeForm.connect')).toBeInTheDocument()
+      expect(screen.getByText('dataset.externalKnowledgeForm.cancel'))!.toBeInTheDocument()
+      expect(screen.getByText('dataset.externalKnowledgeForm.connect'))!.toBeInTheDocument()
     })
 
     it('should render documentation link with correct href', () => {
       renderComponent()
 
       const docLink = screen.getByText('dataset.connectHelper.helper4')
-      expect(docLink).toHaveAttribute('href', 'https://docs.dify.ai/en/use-dify/knowledge/connect-external-knowledge-base')
-      expect(docLink).toHaveAttribute('target', '_blank')
-      expect(docLink).toHaveAttribute('rel', 'noopener noreferrer')
+      expect(docLink)!.toHaveAttribute(
+        'href',
+        'https://docs.dify.ai/en/cloud/use-dify/knowledge/connect-external-knowledge-base',
+      )
+      expect(docLink)!.toHaveAttribute('target', '_blank')
+      expect(docLink)!.toHaveAttribute('rel', 'noopener noreferrer')
     })
   })
 
@@ -156,8 +184,10 @@ describe('ExternalKnowledgeBaseCreate', () => {
     it('should pass loading prop to connect button', () => {
       renderComponent({ loading: true })
 
-      const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
-      expect(connectButton).toBeInTheDocument()
+      const connectButton = screen
+        .getByText('dataset.externalKnowledgeForm.connect')
+        .closest('button')
+      expect(connectButton)!.toBeInTheDocument()
     })
 
     it('should call onConnect with form data when connect button is clicked', async () => {
@@ -175,11 +205,15 @@ describe('ExternalKnowledgeBaseCreate', () => {
 
       // Wait for useEffect to auto-select the first API
       await waitFor(() => {
-        const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
+        const connectButton = screen
+          .getByText('dataset.externalKnowledgeForm.connect')
+          .closest('button')
         expect(connectButton).not.toBeDisabled()
       })
 
-      const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
+      const connectButton = screen
+        .getByText('dataset.externalKnowledgeForm.connect')
+        .closest('button')
       await user.click(connectButton!)
 
       expect(onConnect).toHaveBeenCalledWith(
@@ -197,8 +231,10 @@ describe('ExternalKnowledgeBaseCreate', () => {
       const onConnect = vi.fn()
       renderComponent({ onConnect })
 
-      const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
-      expect(connectButton).toBeDisabled()
+      const connectButton = screen
+        .getByText('dataset.externalKnowledgeForm.connect')
+        .closest('button')
+      expect(connectButton)!.toBeDisabled()
 
       await user.click(connectButton!)
       expect(onConnect).not.toHaveBeenCalled()
@@ -210,8 +246,12 @@ describe('ExternalKnowledgeBaseCreate', () => {
     it('should initialize form data with default values', () => {
       renderComponent()
 
-      const nameInput = screen.getByPlaceholderText('dataset.externalKnowledgeNamePlaceholder') as HTMLInputElement
-      const descriptionInput = screen.getByPlaceholderText('dataset.externalKnowledgeDescriptionPlaceholder') as HTMLTextAreaElement
+      const nameInput = screen.getByPlaceholderText(
+        'dataset.externalKnowledgeNamePlaceholder',
+      ) as HTMLInputElement
+      const descriptionInput = screen.getByPlaceholderText(
+        'dataset.externalKnowledgeDescriptionPlaceholder',
+      ) as HTMLTextAreaElement
 
       expect(nameInput.value).toBe('')
       expect(descriptionInput.value).toBe('')
@@ -229,7 +269,9 @@ describe('ExternalKnowledgeBaseCreate', () => {
     it('should update description when textarea changes', () => {
       renderComponent()
 
-      const descriptionInput = screen.getByPlaceholderText('dataset.externalKnowledgeDescriptionPlaceholder')
+      const descriptionInput = screen.getByPlaceholderText(
+        'dataset.externalKnowledgeDescriptionPlaceholder',
+      )
       fireEvent.change(descriptionInput, { target: { value: 'New Description' } })
 
       expect((descriptionInput as HTMLTextAreaElement).value).toBe('New Description')
@@ -243,31 +285,6 @@ describe('ExternalKnowledgeBaseCreate', () => {
 
       expect((knowledgeIdInput as HTMLInputElement).value).toBe('new-knowledge-id')
     })
-
-    it('should apply filled text style when description has value', () => {
-      renderComponent()
-
-      const descriptionInput = screen.getByPlaceholderText('dataset.externalKnowledgeDescriptionPlaceholder') as HTMLTextAreaElement
-
-      // Initially empty - should have placeholder style
-      expect(descriptionInput.className).toContain('text-components-input-text-placeholder')
-
-      // Add description - should have filled style
-      fireEvent.change(descriptionInput, { target: { value: 'Some description' } })
-      expect(descriptionInput.className).toContain('text-components-input-text-filled')
-    })
-
-    it('should apply placeholder text style when description is empty', () => {
-      renderComponent()
-
-      const descriptionInput = screen.getByPlaceholderText('dataset.externalKnowledgeDescriptionPlaceholder') as HTMLTextAreaElement
-
-      // Add then clear description
-      fireEvent.change(descriptionInput, { target: { value: 'Some description' } })
-      fireEvent.change(descriptionInput, { target: { value: '' } })
-
-      expect(descriptionInput.className).toContain('text-components-input-text-placeholder')
-    })
   })
 
   // Tests for form validation
@@ -279,8 +296,10 @@ describe('ExternalKnowledgeBaseCreate', () => {
       const knowledgeIdInput = screen.getByPlaceholderText('dataset.externalKnowledgeIdPlaceholder')
       fireEvent.change(knowledgeIdInput, { target: { value: 'knowledge-456' } })
 
-      const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
-      expect(connectButton).toBeDisabled()
+      const connectButton = screen
+        .getByText('dataset.externalKnowledgeForm.connect')
+        .closest('button')
+      expect(connectButton)!.toBeDisabled()
     })
 
     it('should disable connect button when name is only whitespace', async () => {
@@ -292,8 +311,10 @@ describe('ExternalKnowledgeBaseCreate', () => {
       fireEvent.change(nameInput, { target: { value: '   ' } })
       fireEvent.change(knowledgeIdInput, { target: { value: 'knowledge-456' } })
 
-      const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
-      expect(connectButton).toBeDisabled()
+      const connectButton = screen
+        .getByText('dataset.externalKnowledgeForm.connect')
+        .closest('button')
+      expect(connectButton)!.toBeDisabled()
     })
 
     it('should disable connect button when external_knowledge_id is empty', () => {
@@ -302,8 +323,10 @@ describe('ExternalKnowledgeBaseCreate', () => {
       const nameInput = screen.getByPlaceholderText('dataset.externalKnowledgeNamePlaceholder')
       fireEvent.change(nameInput, { target: { value: 'Test Name' } })
 
-      const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
-      expect(connectButton).toBeDisabled()
+      const connectButton = screen
+        .getByText('dataset.externalKnowledgeForm.connect')
+        .closest('button')
+      expect(connectButton)!.toBeDisabled()
     })
 
     it('should enable connect button when all required fields are filled', async () => {
@@ -317,7 +340,9 @@ describe('ExternalKnowledgeBaseCreate', () => {
 
       // Wait for auto-selection of API
       await waitFor(() => {
-        const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
+        const connectButton = screen
+          .getByText('dataset.externalKnowledgeForm.connect')
+          .closest('button')
         expect(connectButton).not.toBeDisabled()
       })
     })
@@ -330,7 +355,7 @@ describe('ExternalKnowledgeBaseCreate', () => {
       renderComponent()
 
       const buttons = screen.getAllByRole('button')
-      const backButton = buttons.find(btn => btn.classList.contains('rounded-full'))
+      const backButton = buttons.find((btn) => btn.classList.contains('rounded-full'))
       await user.click(backButton!)
 
       expect(mockReplace).toHaveBeenCalledWith('/datasets')
@@ -340,7 +365,9 @@ describe('ExternalKnowledgeBaseCreate', () => {
       const user = userEvent.setup()
       renderComponent()
 
-      const cancelButton = screen.getByText('dataset.externalKnowledgeForm.cancel').closest('button')
+      const cancelButton = screen
+        .getByText('dataset.externalKnowledgeForm.cancel')
+        .closest('button')
       await user.click(cancelButton!)
 
       expect(mockReplace).toHaveBeenCalledWith('/datasets')
@@ -353,7 +380,9 @@ describe('ExternalKnowledgeBaseCreate', () => {
 
       // Fill all fields using real components
       const nameInput = screen.getByPlaceholderText('dataset.externalKnowledgeNamePlaceholder')
-      const descriptionInput = screen.getByPlaceholderText('dataset.externalKnowledgeDescriptionPlaceholder')
+      const descriptionInput = screen.getByPlaceholderText(
+        'dataset.externalKnowledgeDescriptionPlaceholder',
+      )
       const knowledgeIdInput = screen.getByPlaceholderText('dataset.externalKnowledgeIdPlaceholder')
 
       fireEvent.change(nameInput, { target: { value: 'My Knowledge Base' } })
@@ -361,11 +390,15 @@ describe('ExternalKnowledgeBaseCreate', () => {
       fireEvent.change(knowledgeIdInput, { target: { value: 'knowledge-abc' } })
 
       await waitFor(() => {
-        const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
+        const connectButton = screen
+          .getByText('dataset.externalKnowledgeForm.connect')
+          .closest('button')
         expect(connectButton).not.toBeDisabled()
       })
 
-      const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
+      const connectButton = screen
+        .getByText('dataset.externalKnowledgeForm.connect')
+        .closest('button')
       await user.click(connectButton!)
 
       expect(onConnect).toHaveBeenCalledWith(
@@ -383,7 +416,9 @@ describe('ExternalKnowledgeBaseCreate', () => {
       renderComponent()
 
       const nameInput = screen.getByPlaceholderText('dataset.externalKnowledgeNamePlaceholder')
-      const descriptionInput = screen.getByPlaceholderText('dataset.externalKnowledgeDescriptionPlaceholder')
+      const descriptionInput = screen.getByPlaceholderText(
+        'dataset.externalKnowledgeDescriptionPlaceholder',
+      )
       const knowledgeIdInput = screen.getByPlaceholderText('dataset.externalKnowledgeIdPlaceholder')
 
       await user.type(nameInput, 'Typed Name')
@@ -410,11 +445,15 @@ describe('ExternalKnowledgeBaseCreate', () => {
       fireEvent.change(knowledgeIdInput, { target: { value: 'kb-1' } })
 
       await waitFor(() => {
-        const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
+        const connectButton = screen
+          .getByText('dataset.externalKnowledgeForm.connect')
+          .closest('button')
         expect(connectButton).not.toBeDisabled()
       })
 
-      const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
+      const connectButton = screen
+        .getByText('dataset.externalKnowledgeForm.connect')
+        .closest('button')
       await user.click(connectButton!)
 
       // Should have auto-selected the first API
@@ -429,7 +468,8 @@ describe('ExternalKnowledgeBaseCreate', () => {
       renderComponent()
 
       // The ExternalApiSelect should show the first selected API name
-      expect(screen.getByText('Test API 1')).toBeInTheDocument()
+      // The ExternalApiSelect should show the first selected API name
+      expect(screen.getByText('Test API 1'))!.toBeInTheDocument()
     })
 
     it('should allow selecting different API from dropdown', async () => {
@@ -452,11 +492,15 @@ describe('ExternalKnowledgeBaseCreate', () => {
       fireEvent.change(knowledgeIdInput, { target: { value: 'kb-1' } })
 
       await waitFor(() => {
-        const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
+        const connectButton = screen
+          .getByText('dataset.externalKnowledgeForm.connect')
+          .closest('button')
         expect(connectButton).not.toBeDisabled()
       })
 
-      const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
+      const connectButton = screen
+        .getByText('dataset.externalKnowledgeForm.connect')
+        .closest('button')
       await user.click(connectButton!)
 
       // Should have selected the second API
@@ -473,7 +517,8 @@ describe('ExternalKnowledgeBaseCreate', () => {
       renderComponent()
 
       // Should show "no external knowledge" button
-      expect(screen.getByText('dataset.noExternalKnowledge')).toBeInTheDocument()
+      // Should show "no external knowledge" button
+      expect(screen.getByText('dataset.noExternalKnowledge'))!.toBeInTheDocument()
     })
 
     it('should open add API modal when add button is clicked', async () => {
@@ -494,7 +539,7 @@ describe('ExternalKnowledgeBaseCreate', () => {
       )
     })
 
-    it('should call mutate and router.refresh on modal save callback', async () => {
+    it('should invalidate the generated query and refresh after modal save', async () => {
       const user = userEvent.setup()
       // Set empty API list
       mockExternalKnowledgeApiList = []
@@ -504,14 +549,16 @@ describe('ExternalKnowledgeBaseCreate', () => {
       await user.click(addButton!)
 
       // Get the callback and invoke it
-      const modalCall = mockSetShowExternalKnowledgeAPIModal.mock.calls[0][0]
+      const modalCall = mockSetShowExternalKnowledgeAPIModal.mock.calls[0]![0]
       await modalCall.onSaveCallback()
 
-      expect(mockMutateExternalKnowledgeApis).toHaveBeenCalled()
+      expect(mockInvalidateQueries).toHaveBeenCalledWith({
+        queryKey: externalKnowledgeApiQueryKey,
+      })
       expect(mockRefresh).toHaveBeenCalled()
     })
 
-    it('should call mutate on modal cancel callback', async () => {
+    it('should not invalidate the generated query when the modal is canceled', async () => {
       const user = userEvent.setup()
       // Set empty API list
       mockExternalKnowledgeApiList = []
@@ -521,10 +568,9 @@ describe('ExternalKnowledgeBaseCreate', () => {
       await user.click(addButton!)
 
       // Get the callback and invoke it
-      const modalCall = mockSetShowExternalKnowledgeAPIModal.mock.calls[0][0]
-      modalCall.onCancelCallback()
-
-      expect(mockMutateExternalKnowledgeApis).toHaveBeenCalled()
+      const modalCall = mockSetShowExternalKnowledgeAPIModal.mock.calls[0]![0]
+      expect(modalCall.onCancelCallback).toBeUndefined()
+      expect(mockInvalidateQueries).not.toHaveBeenCalled()
     })
 
     it('should display API URL in dropdown', async () => {
@@ -535,8 +581,9 @@ describe('ExternalKnowledgeBaseCreate', () => {
       await user.click(apiSelector)
 
       // Should show API URLs
-      expect(screen.getByText('https://api1.example.com')).toBeInTheDocument()
-      expect(screen.getByText('https://api2.example.com')).toBeInTheDocument()
+      // Should show API URLs
+      expect(screen.getByText('https://api1.example.com'))!.toBeInTheDocument()
+      expect(screen.getByText('https://api2.example.com'))!.toBeInTheDocument()
     })
 
     it('should show create new API option in dropdown', async () => {
@@ -547,7 +594,8 @@ describe('ExternalKnowledgeBaseCreate', () => {
       await user.click(apiSelector)
 
       // Should show create new API option
-      expect(screen.getByText('dataset.createNewExternalAPI')).toBeInTheDocument()
+      // Should show create new API option
+      expect(screen.getByText('dataset.createNewExternalAPI'))!.toBeInTheDocument()
     })
 
     it('should open add API modal when clicking create new API in dropdown', async () => {
@@ -569,7 +617,7 @@ describe('ExternalKnowledgeBaseCreate', () => {
       )
     })
 
-    it('should call mutate and refresh on save callback from ExternalApiSelect dropdown', async () => {
+    it('should invalidate and refresh after saving from the API dropdown', async () => {
       const user = userEvent.setup()
       renderComponent()
 
@@ -580,14 +628,16 @@ describe('ExternalKnowledgeBaseCreate', () => {
       await user.click(createNewApiOption)
 
       // Get the callback from the modal call and invoke it
-      const modalCall = mockSetShowExternalKnowledgeAPIModal.mock.calls[0][0]
+      const modalCall = mockSetShowExternalKnowledgeAPIModal.mock.calls[0]![0]
       await modalCall.onSaveCallback()
 
-      expect(mockMutateExternalKnowledgeApis).toHaveBeenCalled()
+      expect(mockInvalidateQueries).toHaveBeenCalledWith({
+        queryKey: externalKnowledgeApiQueryKey,
+      })
       expect(mockRefresh).toHaveBeenCalled()
     })
 
-    it('should call mutate on cancel callback from ExternalApiSelect dropdown', async () => {
+    it('should not invalidate after canceling from the API dropdown', async () => {
       const user = userEvent.setup()
       renderComponent()
 
@@ -598,10 +648,9 @@ describe('ExternalKnowledgeBaseCreate', () => {
       await user.click(createNewApiOption)
 
       // Get the callback from the modal call and invoke it
-      const modalCall = mockSetShowExternalKnowledgeAPIModal.mock.calls[0][0]
-      modalCall.onCancelCallback()
-
-      expect(mockMutateExternalKnowledgeApis).toHaveBeenCalled()
+      const modalCall = mockSetShowExternalKnowledgeAPIModal.mock.calls[0]![0]
+      expect(modalCall.onCancelCallback).toBeUndefined()
+      expect(mockInvalidateQueries).not.toHaveBeenCalled()
     })
 
     it('should close dropdown after selecting an API', async () => {
@@ -612,12 +661,44 @@ describe('ExternalKnowledgeBaseCreate', () => {
       await user.click(apiSelector)
 
       // Dropdown should be open - API URLs visible
-      expect(screen.getByText('https://api1.example.com')).toBeInTheDocument()
+      // Dropdown should be open - API URLs visible
+      expect(screen.getByText('https://api1.example.com'))!.toBeInTheDocument()
 
       // Select the second API
       const secondApi = screen.getByText('Test API 2')
       await user.click(secondApi)
 
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
+      // Dropdown should be closed - API URLs not visible
       // Dropdown should be closed - API URLs not visible
       expect(screen.queryByText('https://api1.example.com')).not.toBeInTheDocument()
     })
@@ -628,7 +709,7 @@ describe('ExternalKnowledgeBaseCreate', () => {
 
       const apiSelector = screen.getByText('Test API 1')
       await user.click(apiSelector)
-      expect(screen.getByText('https://api1.example.com')).toBeInTheDocument()
+      expect(screen.getByText('https://api1.example.com'))!.toBeInTheDocument()
 
       await user.click(apiSelector)
       expect(screen.queryByText('https://api1.example.com')).not.toBeInTheDocument()
@@ -644,7 +725,7 @@ describe('ExternalKnowledgeBaseCreate', () => {
       )
 
       const buttons = screen.getAllByRole('button')
-      const backButton = buttons.find(btn => btn.classList.contains('rounded-full'))
+      const backButton = buttons.find((btn) => btn.classList.contains('rounded-full'))
       await user.click(backButton!)
 
       expect(mockReplace).toHaveBeenCalledTimes(1)
@@ -675,11 +756,15 @@ describe('ExternalKnowledgeBaseCreate', () => {
       rerender(<ExternalKnowledgeBaseCreate onConnect={onConnect2} loading={false} />)
 
       await waitFor(() => {
-        const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
+        const connectButton = screen
+          .getByText('dataset.externalKnowledgeForm.connect')
+          .closest('button')
         expect(connectButton).not.toBeDisabled()
       })
 
-      const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
+      const connectButton = screen
+        .getByText('dataset.externalKnowledgeForm.connect')
+        .closest('button')
       await user.click(connectButton!)
 
       // Should use the new callback
@@ -702,11 +787,15 @@ describe('ExternalKnowledgeBaseCreate', () => {
       fireEvent.change(knowledgeIdInput, { target: { value: 'knowledge' } })
 
       await waitFor(() => {
-        const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
+        const connectButton = screen
+          .getByText('dataset.externalKnowledgeForm.connect')
+          .closest('button')
         expect(connectButton).not.toBeDisabled()
       })
 
-      const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
+      const connectButton = screen
+        .getByText('dataset.externalKnowledgeForm.connect')
+        .closest('button')
       await user.click(connectButton!)
 
       expect(onConnect).toHaveBeenCalledWith(
@@ -744,8 +833,7 @@ describe('ExternalKnowledgeBaseCreate', () => {
       const nameInput = screen.getByPlaceholderText('dataset.externalKnowledgeNamePlaceholder')
 
       // Rapid updates
-      for (let i = 0; i < 10; i++)
-        fireEvent.change(nameInput, { target: { value: `Name ${i}` } })
+      for (let i = 0; i < 10; i++) fireEvent.change(nameInput, { target: { value: `Name ${i}` } })
 
       expect((nameInput as HTMLInputElement).value).toBe('Name 9')
     })
@@ -762,11 +850,15 @@ describe('ExternalKnowledgeBaseCreate', () => {
       fireEvent.change(knowledgeIdInput, { target: { value: 'knowledge' } })
 
       await waitFor(() => {
-        const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
+        const connectButton = screen
+          .getByText('dataset.externalKnowledgeForm.connect')
+          .closest('button')
         expect(connectButton).not.toBeDisabled()
       })
 
-      const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
+      const connectButton = screen
+        .getByText('dataset.externalKnowledgeForm.connect')
+        .closest('button')
       await user.click(connectButton!)
 
       expect(onConnect).toHaveBeenCalledWith(
@@ -782,15 +874,19 @@ describe('ExternalKnowledgeBaseCreate', () => {
     it('should pass loading state to connect button', () => {
       renderComponent({ loading: true })
 
-      const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
-      expect(connectButton).toBeInTheDocument()
+      const connectButton = screen
+        .getByText('dataset.externalKnowledgeForm.connect')
+        .closest('button')
+      expect(connectButton)!.toBeInTheDocument()
     })
 
     it('should render correctly when not loading', () => {
       renderComponent({ loading: false })
 
-      const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
-      expect(connectButton).toBeInTheDocument()
+      const connectButton = screen
+        .getByText('dataset.externalKnowledgeForm.connect')
+        .closest('button')
+      expect(connectButton)!.toBeInTheDocument()
     })
   })
 
@@ -804,7 +900,7 @@ describe('ExternalKnowledgeBaseCreate', () => {
       // Find and click the switch for score threshold
       const switches = screen.getAllByRole('switch')
       const scoreThresholdSwitch = switches[0] // The score threshold switch
-      await user.click(scoreThresholdSwitch)
+      await user.click(scoreThresholdSwitch!)
 
       // Fill required fields
       const nameInput = screen.getByPlaceholderText('dataset.externalKnowledgeNamePlaceholder')
@@ -814,11 +910,15 @@ describe('ExternalKnowledgeBaseCreate', () => {
       fireEvent.change(knowledgeIdInput, { target: { value: 'kb-1' } })
 
       await waitFor(() => {
-        const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
+        const connectButton = screen
+          .getByText('dataset.externalKnowledgeForm.connect')
+          .closest('button')
         expect(connectButton).not.toBeDisabled()
       })
 
-      const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
+      const connectButton = screen
+        .getByText('dataset.externalKnowledgeForm.connect')
+        .closest('button')
       await user.click(connectButton!)
 
       expect(onConnect).toHaveBeenCalledWith(
@@ -834,10 +934,12 @@ describe('ExternalKnowledgeBaseCreate', () => {
       renderComponent()
 
       // Should show the retrieval settings section title
-      expect(screen.getByText('dataset.retrievalSettings')).toBeInTheDocument()
+      // Should show the retrieval settings section title
+      expect(screen.getByText('dataset.retrievalSettings'))!.toBeInTheDocument()
       // Should show Top K and Score Threshold labels
-      expect(screen.getByText('appDebug.datasetConfig.top_k')).toBeInTheDocument()
-      expect(screen.getByText('appDebug.datasetConfig.score_threshold')).toBeInTheDocument()
+      // Should show Top K and Score Threshold labels
+      expect(getVisibleText('appDebug.datasetConfig.top_k')).toBeInTheDocument()
+      expect(getVisibleText('appDebug.datasetConfig.score_threshold')).toBeInTheDocument()
     })
   })
 
@@ -856,6 +958,37 @@ describe('ExternalKnowledgeBaseCreate', () => {
       )
 
       // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
+      // In hit testing mode, the title should not be shown
       expect(screen.queryByText('dataset.retrievalSettings')).not.toBeInTheDocument()
     })
 
@@ -871,6 +1004,37 @@ describe('ExternalKnowledgeBaseCreate', () => {
         />,
       )
 
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
+      // In retrieval setting mode, the title should not be shown
       // In retrieval setting mode, the title should not be shown
       expect(screen.queryByText('dataset.retrievalSettings')).not.toBeInTheDocument()
     })
@@ -889,7 +1053,7 @@ describe('ExternalKnowledgeBaseCreate', () => {
 
       // Find and click the switch
       const switches = screen.getAllByRole('switch')
-      await user.click(switches[0])
+      await user.click(switches[0]!)
 
       expect(onChange).toHaveBeenCalledWith({ score_threshold_enabled: true })
     })
@@ -908,7 +1072,7 @@ describe('ExternalKnowledgeBaseCreate', () => {
       // The TopKItem renders the visible number-field input as a textbox.
       const inputs = screen.getAllByRole('textbox')
       const topKInput = inputs[0]
-      fireEvent.change(topKInput, { target: { value: '8' } })
+      fireEvent.change(topKInput!, { target: { value: '8' } })
 
       expect(onChange).toHaveBeenCalledWith({ top_k: 8 })
     })
@@ -927,7 +1091,7 @@ describe('ExternalKnowledgeBaseCreate', () => {
       // The ScoreThresholdItem renders the visible number-field input as a textbox.
       const inputs = screen.getAllByRole('textbox')
       const scoreThresholdInput = inputs[1]
-      fireEvent.change(scoreThresholdInput, { target: { value: '0.8' } })
+      fireEvent.change(scoreThresholdInput!, { target: { value: '0.8' } })
 
       expect(onChange).toHaveBeenCalledWith({ score_threshold: 0.8 })
     })
@@ -947,11 +1111,15 @@ describe('ExternalKnowledgeBaseCreate', () => {
       fireEvent.change(knowledgeIdInput, { target: { value: 'kb-1' } })
 
       await waitFor(() => {
-        const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
+        const connectButton = screen
+          .getByText('dataset.externalKnowledgeForm.connect')
+          .closest('button')
         expect(connectButton).not.toBeDisabled()
       })
 
-      const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
+      const connectButton = screen
+        .getByText('dataset.externalKnowledgeForm.connect')
+        .closest('button')
       await user.click(connectButton!)
 
       expect(onConnect).toHaveBeenCalledWith({
@@ -976,7 +1144,7 @@ describe('ExternalKnowledgeBaseCreate', () => {
       // Toggle score threshold switch
       const switches = screen.getAllByRole('switch')
       const scoreThresholdSwitch = switches[0]
-      await user.click(scoreThresholdSwitch)
+      await user.click(scoreThresholdSwitch!)
 
       // Fill required fields
       const nameInput = screen.getByPlaceholderText('dataset.externalKnowledgeNamePlaceholder')
@@ -986,11 +1154,15 @@ describe('ExternalKnowledgeBaseCreate', () => {
       fireEvent.change(knowledgeIdInput, { target: { value: 'custom-kb' } })
 
       await waitFor(() => {
-        const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
+        const connectButton = screen
+          .getByText('dataset.externalKnowledgeForm.connect')
+          .closest('button')
         expect(connectButton).not.toBeDisabled()
       })
 
-      const connectButton = screen.getByText('dataset.externalKnowledgeForm.connect').closest('button')
+      const connectButton = screen
+        .getByText('dataset.externalKnowledgeForm.connect')
+        .closest('button')
       await user.click(connectButton!)
 
       expect(onConnect).toHaveBeenCalledWith(
@@ -1018,17 +1190,18 @@ describe('ExternalKnowledgeBaseCreate', () => {
 
       const externalLink = screen.getByText('dataset.connectHelper.helper4')
       expect(externalLink.tagName).toBe('A')
-      expect(externalLink).toHaveAttribute('target', '_blank')
-      expect(externalLink).toHaveAttribute('rel', 'noopener noreferrer')
+      expect(externalLink)!.toHaveAttribute('target', '_blank')
+      expect(externalLink)!.toHaveAttribute('rel', 'noopener noreferrer')
     })
 
     it('should have labels for form inputs', () => {
       renderComponent()
 
       // Check labels exist
-      expect(screen.getByText('dataset.externalKnowledgeName')).toBeInTheDocument()
-      expect(screen.getByText('dataset.externalKnowledgeDescription')).toBeInTheDocument()
-      expect(screen.getByText('dataset.externalKnowledgeId')).toBeInTheDocument()
+      // Check labels exist
+      expect(screen.getByText('dataset.externalKnowledgeName'))!.toBeInTheDocument()
+      expect(screen.getByText('dataset.externalKnowledgeDescription'))!.toBeInTheDocument()
+      expect(screen.getByText('dataset.externalKnowledgeId'))!.toBeInTheDocument()
     })
   })
 })

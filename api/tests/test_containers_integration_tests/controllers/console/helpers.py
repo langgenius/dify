@@ -1,6 +1,8 @@
-"""Shared helpers for authenticated console controller integration tests."""
+"""Shared helpers for console controller integration tests."""
 
 import uuid
+from collections.abc import Callable
+from typing import cast
 
 from flask.testing import FlaskClient
 from sqlalchemy import select
@@ -11,7 +13,7 @@ from constants import HEADER_NAME_CSRF_TOKEN
 from libs.datetime_utils import naive_utc_now
 from libs.token import _real_cookie_name, generate_csrf_token
 from models import Account, DifySetup, Tenant, TenantAccountJoin
-from models.account import AccountStatus, TenantAccountRole
+from models.account import AccountStatus, TenantAccountRole, TenantStatus
 from models.model import App, AppMode
 from services.account_service import AccountService
 
@@ -37,7 +39,7 @@ def create_console_account_and_tenant(db_session: Session) -> tuple[Account, Ten
     db_session.add(account)
     db_session.commit()
 
-    tenant = Tenant(name="Test Tenant", status="normal")
+    tenant = Tenant(name="Test Tenant", status=TenantStatus.NORMAL)
     db_session.add(tenant)
     db_session.commit()
 
@@ -83,3 +85,10 @@ def authenticate_console_client(test_client: FlaskClient, account: Account) -> d
         "Authorization": f"Bearer {access_token}",
         HEADER_NAME_CSRF_TOKEN: csrf_token,
     }
+
+
+def unwrap[R](func: Callable[..., R]) -> Callable[..., R]:
+    """Return the undecorated callable for controller methods wrapped by Flask/RESTX."""
+    while hasattr(func, "__wrapped__"):
+        func = cast(Callable[..., R], func.__wrapped__)
+    return func

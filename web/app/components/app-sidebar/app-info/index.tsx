@@ -1,25 +1,15 @@
-import * as React from 'react'
-import { useAppContext } from '@/context/app-context'
-import AppInfoDetailPanel from './app-info-detail-panel'
+import type { AppInfoActions } from './use-app-info-actions'
 import AppInfoModals from './app-info-modals'
 import AppInfoTrigger from './app-info-trigger'
-import { useAppInfoActions } from './use-app-info-actions'
 
-type IAppInfoProps = {
+type AppInfoViewProps = {
   expand: boolean
-  onlyShowDetail?: boolean
-  openState?: boolean
-  onDetailExpand?: (expand: boolean) => void
+  actions: AppInfoActions
 }
 
-const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailExpand }: IAppInfoProps) => {
-  const { isCurrentWorkspaceEditor } = useAppContext()
-
+export const AppInfoView = ({ expand, actions }: AppInfoViewProps) => {
   const {
     appDetail,
-    panelOpen,
-    setPanelOpen,
-    closePanel,
     activeModal,
     openModal,
     closeModal,
@@ -28,31 +18,21 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
     onEdit,
     onCopy,
     onExport,
+    isExporting,
     exportCheck,
     handleConfirmExport,
     onConfirmDelete,
-  } = useAppInfoActions({ onDetailExpand })
+  } = actions
 
-  if (!appDetail)
-    return null
+  if (!appDetail) return null
 
   return (
-    <div>
-      {!onlyShowDetail && (
-        <AppInfoTrigger
-          appDetail={appDetail}
-          expand={expand}
-          onClick={() => {
-            if (isCurrentWorkspaceEditor)
-              setPanelOpen(v => !v)
-          }}
-        />
-      )}
-      <AppInfoDetailPanel
+    <>
+      <AppInfoTrigger
         appDetail={appDetail}
-        show={onlyShowDetail ? openState : panelOpen}
-        onClose={closePanel}
+        expand={expand}
         openModal={openModal}
+        isExporting={isExporting}
         exportCheck={exportCheck}
       />
       <AppInfoModals
@@ -64,12 +44,11 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
         onEdit={onEdit}
         onCopy={onCopy}
         onExport={onExport}
+        isExporting={isExporting}
         exportCheck={exportCheck}
         handleConfirmExport={handleConfirmExport}
         onConfirmDelete={onConfirmDelete}
       />
-    </div>
+    </>
   )
 }
-
-export default React.memo(AppInfo)

@@ -1,10 +1,14 @@
 'use client'
 import type { FormRefObject } from '@/app/components/base/form/types'
-import type { TriggerOAuthClientParams, TriggerOAuthConfig, TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
+import type {
+  TriggerOAuthClientParams,
+  TriggerOAuthConfig,
+  TriggerSubscriptionBuilder,
+} from '@/app/components/workflow/block-selector/types'
 import type { ConfigureTriggerOAuthPayload } from '@/service/use-triggers'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
 import { openOAuthPopup } from '@/hooks/use-oauth'
 import {
   useConfigureTriggerOAuth,
@@ -13,27 +17,30 @@ import {
   useVerifyAndUpdateTriggerSubscriptionBuilder,
 } from '@/service/use-triggers'
 
-export enum AuthorizationStatusEnum {
-  Pending = 'pending',
-  Success = 'success',
-  Failed = 'failed',
-}
+export const AuthorizationStatusEnum = {
+  Pending: 'pending',
+  Success: 'success',
+  Failed: 'failed',
+} as const
 
-export enum ClientTypeEnum {
-  Default = 'default',
-  Custom = 'custom',
-}
+export type AuthorizationStatusEnum =
+  (typeof AuthorizationStatusEnum)[keyof typeof AuthorizationStatusEnum]
+
+export const ClientTypeEnum = {
+  Default: 'default',
+  Custom: 'custom',
+} as const
+
+export type ClientTypeEnum = (typeof ClientTypeEnum)[keyof typeof ClientTypeEnum]
 
 const POLL_INTERVAL_MS = 3000
 
 // Extract error message from various error formats
 export const getErrorMessage = (error: unknown, fallback: string): string => {
-  if (error instanceof Error && error.message)
-    return error.message
+  if (error instanceof Error && error.message) return error.message
   if (typeof error === 'object' && error && 'message' in error) {
     const message = (error as { message?: string }).message
-    if (typeof message === 'string' && message)
-      return message
+    if (typeof message === 'string' && message) return message
   }
   return fallback
 }
@@ -41,7 +48,7 @@ export const getErrorMessage = (error: unknown, fallback: string): string => {
 type UseOAuthClientStateParams = {
   oauthConfig?: TriggerOAuthConfig
   providerName: string
-  onClose: () => void
+  onOpenChange: (open: boolean) => void
   showOAuthCreateModal: (builder: TriggerSubscriptionBuilder) => void
 }
 
@@ -67,13 +74,15 @@ type UseOAuthClientStateReturn = {
 export const useOAuthClientState = ({
   oauthConfig,
   providerName,
-  onClose,
+  onOpenChange,
   showOAuthCreateModal,
 }: UseOAuthClientStateParams): UseOAuthClientStateReturn => {
   const { t } = useTranslation()
 
   // State management
-  const [subscriptionBuilder, setSubscriptionBuilder] = useState<TriggerSubscriptionBuilder | undefined>()
+  const [subscriptionBuilder, setSubscriptionBuilder] = useState<
+    TriggerSubscriptionBuilder | undefined
+  >()
   const [authorizationStatus, setAuthorizationStatus] = useState<AuthorizationStatusEnum>()
   const [clientType, setClientType] = useState<ClientTypeEnum>(
     oauthConfig?.system_configured ? ClientTypeEnum.Default : ClientTypeEnum.Custom,
@@ -90,11 +99,10 @@ export const useOAuthClientState = ({
   // Compute OAuth client schema with default values
   const oauthClientSchema = useMemo(() => {
     const { oauth_client_schema, params } = oauthConfig || {}
-    if (!oauth_client_schema?.length || !params)
-      return []
+    if (!oauth_client_schema?.length || !params) return []
 
     const paramKeys = Object.keys(params)
-    return oauth_client_schema.map(schema => ({
+    return oauth_client_schema.map((schema) => ({
       ...schema,
       default: paramKeys.includes(schema.name) ? params[schema.name] : schema.default,
     }))
@@ -103,10 +111,10 @@ export const useOAuthClientState = ({
   // Compute confirm button text based on authorization status
   const confirmButtonText = useMemo(() => {
     if (authorizationStatus === AuthorizationStatusEnum.Pending)
-      return t('modal.common.authorizing', { ns: 'pluginTrigger' })
+      return t(($) => $['modal.common.authorizing'], { ns: 'pluginTrigger' })
     if (authorizationStatus === AuthorizationStatusEnum.Success)
-      return t('modal.oauth.authorization.waitingJump', { ns: 'pluginTrigger' })
-    return t('auth.saveAndAuth', { ns: 'plugin' })
+      return t(($) => $['modal.oauth.authorization.waitingJump'], { ns: 'pluginTrigger' })
+    return t(($) => $['auth.saveAndAuth'], { ns: 'plugin' })
   }, [authorizationStatus, t])
 
   // Authorization handler
@@ -116,78 +124,95 @@ export const useOAuthClientState = ({
       onSuccess: (response) => {
         setSubscriptionBuilder(response.subscription_builder)
         openOAuthPopup(response.authorization_url, (callbackData) => {
-          if (!callbackData)
-            return
-          toast.success(t('modal.oauth.authorization.authSuccess', { ns: 'pluginTrigger' }))
-          onClose()
+          if (!callbackData) return
+          toast.success(
+            t(($) => $['modal.oauth.authorization.authSuccess'], { ns: 'pluginTrigger' }),
+          )
+          onOpenChange(false)
           showOAuthCreateModal(response.subscription_builder)
         })
       },
       onError: () => {
         setAuthorizationStatus(AuthorizationStatusEnum.Failed)
-        toast.error(t('modal.oauth.authorization.authFailed', { ns: 'pluginTrigger' }))
+        toast.error(t(($) => $['modal.oauth.authorization.authFailed'], { ns: 'pluginTrigger' }))
       },
     })
-  }, [providerName, initiateOAuth, onClose, showOAuthCreateModal, t])
+  }, [providerName, initiateOAuth, onOpenChange, showOAuthCreateModal, t])
 
   // Remove handler
   const handleRemove = useCallback(() => {
     deleteOAuth(providerName, {
       onSuccess: () => {
-        onClose()
-        toast.success(t('modal.oauth.remove.success', { ns: 'pluginTrigger' }))
+        onOpenChange(false)
+        toast.success(t(($) => $['modal.oauth.remove.success'], { ns: 'pluginTrigger' }))
       },
       onError: (error: unknown) => {
-        toast.error(getErrorMessage(error, t('modal.oauth.remove.failed', { ns: 'pluginTrigger' })))
+        toast.error(
+          getErrorMessage(
+            error,
+            t(($) => $['modal.oauth.remove.failed'], { ns: 'pluginTrigger' }),
+          ),
+        )
       },
     })
-  }, [providerName, deleteOAuth, onClose, t])
+  }, [providerName, deleteOAuth, onOpenChange, t])
 
   // Save handler
-  const handleSave = useCallback((needAuth: boolean) => {
-    const isCustom = clientType === ClientTypeEnum.Custom
-    const params: ConfigureTriggerOAuthPayload = {
-      provider: providerName,
-      enabled: isCustom,
-    }
+  const handleSave = useCallback(
+    (needAuth: boolean) => {
+      const isCustom = clientType === ClientTypeEnum.Custom
+      const params: ConfigureTriggerOAuthPayload = {
+        provider: providerName,
+        enabled: isCustom,
+      }
 
-    if (isCustom && oauthClientSchema?.length) {
-      const clientFormValues = clientFormRef.current?.getFormValues({}) as {
-        values: TriggerOAuthClientParams
-        isCheckValidated: boolean
-      } | undefined
-      // Handle missing ref or form values
-      if (!clientFormValues || !clientFormValues.isCheckValidated)
-        return
-      const clientParams = { ...clientFormValues.values }
-      // Preserve hidden values if unchanged
-      if (clientParams.client_id === oauthConfig?.params.client_id)
-        clientParams.client_id = '[__HIDDEN__]'
-      if (clientParams.client_secret === oauthConfig?.params.client_secret)
-        clientParams.client_secret = '[__HIDDEN__]'
-      params.client_params = clientParams
-    }
+      if (isCustom && oauthClientSchema?.length) {
+        const clientFormValues = clientFormRef.current?.getFormValues({}) as
+          | {
+              values: TriggerOAuthClientParams
+              isCheckValidated: boolean
+            }
+          | undefined
+        // Handle missing ref or form values
+        if (!clientFormValues || !clientFormValues.isCheckValidated) return
+        const clientParams = { ...clientFormValues.values }
+        // Preserve hidden values if unchanged
+        if (clientParams.client_id === oauthConfig?.params.client_id)
+          clientParams.client_id = '[__HIDDEN__]'
+        if (clientParams.client_secret === oauthConfig?.params.client_secret)
+          clientParams.client_secret = '[__HIDDEN__]'
+        params.client_params = clientParams
+      }
 
-    configureOAuth(params, {
-      onSuccess: () => {
-        if (needAuth) {
-          handleAuthorization()
-          return
-        }
-        onClose()
-        toast.success(t('modal.oauth.save.success', { ns: 'pluginTrigger' }))
-      },
-    })
-  }, [clientType, providerName, oauthClientSchema, oauthConfig?.params, configureOAuth, handleAuthorization, onClose, t])
+      configureOAuth(params, {
+        onSuccess: () => {
+          if (needAuth) {
+            handleAuthorization()
+            return
+          }
+          onOpenChange(false)
+          toast.success(t(($) => $['modal.oauth.save.success'], { ns: 'pluginTrigger' }))
+        },
+      })
+    },
+    [
+      clientType,
+      providerName,
+      oauthClientSchema,
+      oauthConfig?.params,
+      configureOAuth,
+      handleAuthorization,
+      onOpenChange,
+      t,
+    ],
+  )
 
   // Polling effect for authorization verification
   useEffect(() => {
-    const shouldPoll = providerName
-      && subscriptionBuilder
-      && authorizationStatus === AuthorizationStatusEnum.Pending
+    const shouldPoll =
+      providerName && subscriptionBuilder && authorizationStatus === AuthorizationStatusEnum.Pending
 
-    if (!shouldPoll)
-      return
+    if (!shouldPoll) return
 
     const pollInterval = setInterval(() => {
       verifyBuilder(

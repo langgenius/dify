@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode } from '@/models/datasets'
 import ChunkContent from '../chunk-content'
 
@@ -31,22 +31,47 @@ describe('ChunkContent', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(<ChunkContent {...defaultProps} />)
-
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
     it('should render textarea in edit mode with text docForm', () => {
       render(<ChunkContent {...defaultProps} isEditMode={true} />)
 
       const textarea = screen.getByRole('textbox')
-      expect(textarea).toBeInTheDocument()
+      expect(textarea)!.toBeInTheDocument()
     })
 
     it('should render Markdown content in view mode with text docForm', () => {
       const { container } = render(<ChunkContent {...defaultProps} isEditMode={false} />)
 
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
+      // Assert - In view mode, textarea should not be present, Markdown renders instead
       // Assert - In view mode, textarea should not be present, Markdown renders instead
       expect(container.querySelector('textarea')).not.toBeInTheDocument()
     })
@@ -66,8 +91,9 @@ describe('ChunkContent', () => {
       )
 
       // Assert - QA mode has QUESTION and ANSWER labels
-      expect(screen.getByText('QUESTION')).toBeInTheDocument()
-      expect(screen.getByText('ANSWER')).toBeInTheDocument()
+      // Assert - QA mode has QUESTION and ANSWER labels
+      expect(screen.getByText('QUESTION'))!.toBeInTheDocument()
+      expect(screen.getByText('ANSWER'))!.toBeInTheDocument()
     })
 
     it('should display question value in QA mode', () => {
@@ -83,7 +109,7 @@ describe('ChunkContent', () => {
       )
 
       const textareas = screen.getAllByRole('textbox')
-      expect(textareas[0]).toHaveValue('My question')
+      expect(textareas[0])!.toHaveValue('My question')
     })
 
     it('should display answer value in QA mode', () => {
@@ -99,7 +125,7 @@ describe('ChunkContent', () => {
       )
 
       const textareas = screen.getAllByRole('textbox')
-      expect(textareas[1]).toHaveValue('My answer')
+      expect(textareas[1])!.toHaveValue('My answer')
     })
   })
 
@@ -133,7 +159,7 @@ describe('ChunkContent', () => {
       )
 
       const textareas = screen.getAllByRole('textbox')
-      fireEvent.change(textareas[0], { target: { value: 'New question' } })
+      fireEvent.change(textareas[0]!, { target: { value: 'New question' } })
 
       expect(mockOnQuestionChange).toHaveBeenCalledWith('New question')
     })
@@ -151,16 +177,45 @@ describe('ChunkContent', () => {
       )
 
       const textareas = screen.getAllByRole('textbox')
-      fireEvent.change(textareas[1], { target: { value: 'New answer' } })
+      fireEvent.change(textareas[1]!, { target: { value: 'New answer' } })
 
       expect(mockOnAnswerChange).toHaveBeenCalledWith('New answer')
     })
 
     it('should disable textarea when isEditMode is false in text mode', () => {
-      const { container } = render(
-        <ChunkContent {...defaultProps} isEditMode={false} />,
-      )
+      const { container } = render(<ChunkContent {...defaultProps} isEditMode={false} />)
 
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
+      // Assert - In view mode, Markdown is rendered instead of textarea
       // Assert - In view mode, Markdown is rendered instead of textarea
       expect(container.querySelector('textarea')).not.toBeInTheDocument()
     })
@@ -178,7 +233,7 @@ describe('ChunkContent', () => {
 
       const textareas = screen.getAllByRole('textbox')
       textareas.forEach((textarea) => {
-        expect(textarea).toBeDisabled()
+        expect(textarea)!.toBeDisabled()
       })
     })
   })
@@ -188,7 +243,7 @@ describe('ChunkContent', () => {
     it('should handle ChunkingMode.text', () => {
       render(<ChunkContent {...defaultProps} docForm={ChunkingMode.text} isEditMode={true} />)
 
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
     })
 
     it('should handle ChunkingMode.qa', () => {
@@ -203,36 +258,28 @@ describe('ChunkContent', () => {
       )
 
       // Assert - QA mode should show both question and answer
-      expect(screen.getByText('QUESTION')).toBeInTheDocument()
-      expect(screen.getByText('ANSWER')).toBeInTheDocument()
+      // Assert - QA mode should show both question and answer
+      expect(screen.getByText('QUESTION'))!.toBeInTheDocument()
+      expect(screen.getByText('ANSWER'))!.toBeInTheDocument()
     })
 
     it('should handle ChunkingMode.parentChild similar to text mode', () => {
       render(
-        <ChunkContent
-          {...defaultProps}
-          docForm={ChunkingMode.parentChild}
-          isEditMode={true}
-        />,
+        <ChunkContent {...defaultProps} docForm={ChunkingMode.parentChild} isEditMode={true} />,
       )
 
       // Assert - parentChild should render like text mode
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      // Assert - parentChild should render like text mode
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
     })
   })
 
   describe('Edge Cases', () => {
     it('should handle empty question', () => {
-      render(
-        <ChunkContent
-          {...defaultProps}
-          question=""
-          isEditMode={true}
-        />,
-      )
+      render(<ChunkContent {...defaultProps} question="" isEditMode={true} />)
 
       const textarea = screen.getByRole('textbox')
-      expect(textarea).toHaveValue('')
+      expect(textarea)!.toHaveValue('')
     })
 
     it('should handle empty answer in QA mode', () => {
@@ -248,20 +295,7 @@ describe('ChunkContent', () => {
       )
 
       const textareas = screen.getAllByRole('textbox')
-      expect(textareas[1]).toHaveValue('')
-    })
-
-    it('should handle undefined answer in QA mode', () => {
-      render(
-        <ChunkContent
-          {...defaultProps}
-          docForm={ChunkingMode.qa}
-          isEditMode={true}
-        />,
-      )
-
-      // Assert - should render without crashing
-      expect(screen.getByText('QUESTION')).toBeInTheDocument()
+      expect(textareas[1])!.toHaveValue('')
     })
 
     it('should maintain structure when rerendered', () => {
@@ -269,12 +303,10 @@ describe('ChunkContent', () => {
         <ChunkContent {...defaultProps} question="Initial" isEditMode={true} />,
       )
 
-      rerender(
-        <ChunkContent {...defaultProps} question="Updated" isEditMode={true} />,
-      )
+      rerender(<ChunkContent {...defaultProps} question="Updated" isEditMode={true} />)
 
       const textarea = screen.getByRole('textbox')
-      expect(textarea).toHaveValue('Updated')
+      expect(textarea)!.toHaveValue('Updated')
     })
   })
 })

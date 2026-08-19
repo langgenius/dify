@@ -1,12 +1,9 @@
-/* eslint-disable react-refresh/only-export-components */
+/* oxlint-disable react/only-export-components */
 import type { MouseEvent, MouseEventHandler, ReactElement } from 'react'
 import type { TriggerOption } from './test-run-menu'
-import {
-  cloneElement,
-  isValidElement,
-  useEffect,
-} from 'react'
-import ShortcutsName from '../shortcuts-name'
+import { DropdownMenuItem } from '@langgenius/dify-ui/dropdown-menu'
+import { cloneElement, isValidElement, useEffect } from 'react'
+import { ShortcutKbd } from '../shortcuts/shortcut-kbd'
 
 export type ShortcutMapping = {
   option: TriggerOption
@@ -27,21 +24,18 @@ export const OptionRow = ({
   onSelect: (option: TriggerOption) => void
 }) => {
   return (
-    <div
-      key={option.id}
-      className="flex cursor-pointer items-center rounded-lg px-3 py-1.5 text-text-secondary system-md-regular hover:bg-state-base-hover"
+    <DropdownMenuItem
+      className="h-auto px-3 py-1.5 system-md-regular"
       onClick={() => onSelect(option)}
     >
       <div className="flex min-w-0 flex-1 items-center">
-        <div className="flex h-6 w-6 shrink-0 items-center justify-center">
-          {option.icon}
-        </div>
+        <div className="flex size-6 shrink-0 items-center justify-center">{option.icon}</div>
         <span className="ml-2 truncate">{option.name}</span>
       </div>
       {shortcutKey && (
-        <ShortcutsName keys={[shortcutKey]} className="ml-2" textColor="secondary" />
+        <ShortcutKbd displayKey={shortcutKey} className="ml-2" textColor="secondary" />
       )}
-    </div>
+    </DropdownMenuItem>
   )
 }
 
@@ -55,8 +49,7 @@ export const useShortcutMenu = ({
   handleSelect: (option: TriggerOption) => void
 }) => {
   useEffect(() => {
-    if (!open)
-      return
+    if (!open) return
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.repeat || event.altKey || event.ctrlKey || event.metaKey)
@@ -86,8 +79,7 @@ export const SingleOptionTrigger = ({
   runSoleOption: () => void
 }) => {
   const handleRunClick = (event?: MouseEvent<HTMLElement>) => {
-    if (event?.defaultPrevented)
-      return
+    if (event?.defaultPrevented) return
 
     runSoleOption()
   }
@@ -96,14 +88,12 @@ export const SingleOptionTrigger = ({
     const childElement = children as ReactElement<{ onClick?: MouseEventHandler<HTMLElement> }>
     const originalOnClick = childElement.props?.onClick
 
-    // eslint-disable-next-line react/no-clone-element
+    // oxlint-disable-next-line react/no-clone-element
     return cloneElement(childElement, {
       onClick: (event: MouseEvent<HTMLElement>) => {
-        if (typeof originalOnClick === 'function')
-          originalOnClick(event)
+        if (typeof originalOnClick === 'function') originalOnClick(event)
 
-        if (event?.defaultPrevented)
-          return
+        if (event?.defaultPrevented) return
 
         runSoleOption()
       },
@@ -111,8 +101,8 @@ export const SingleOptionTrigger = ({
   }
 
   return (
-    <span onClick={handleRunClick}>
+    <button type="button" onClick={handleRunClick}>
       {children}
-    </span>
+    </button>
   )
 }

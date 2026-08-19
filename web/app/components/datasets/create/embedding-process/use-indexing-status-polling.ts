@@ -18,10 +18,10 @@ type IndexingStatusPollingResult = {
 }
 
 const isStatusCompleted = (status: string): boolean =>
-  COMPLETED_STATUSES.includes(status as typeof COMPLETED_STATUSES[number])
+  COMPLETED_STATUSES.includes(status as (typeof COMPLETED_STATUSES)[number])
 
 const isAllCompleted = (statusList: IndexingStatusResponse[]): boolean =>
-  statusList.every(item => isStatusCompleted(item.indexing_status))
+  statusList.every((item) => isStatusCompleted(item.indexing_status))
 
 /**
  * Custom hook for polling indexing status with automatic stop on completion.
@@ -46,8 +46,7 @@ export const useIndexingStatusPolling = ({
     }
 
     const poll = async (): Promise<void> => {
-      if (isStopPollingRef.current)
-        return
+      if (isStopPollingRef.current) return
 
       try {
         const data = await fetchStatus()
@@ -55,8 +54,7 @@ export const useIndexingStatusPolling = ({
           isStopPollingRef.current = true
           return
         }
-      }
-      catch {
+      } catch {
         // Continue polling on error
       }
 
@@ -71,13 +69,12 @@ export const useIndexingStatusPolling = ({
 
     return () => {
       isStopPollingRef.current = true
-      if (timeoutId)
-        clearTimeout(timeoutId)
+      if (timeoutId) clearTimeout(timeoutId)
     }
   }, [datasetId, batchId])
 
-  const isEmbedding = statusList.some(item =>
-    EMBEDDING_STATUSES.includes(item?.indexing_status as typeof EMBEDDING_STATUSES[number]),
+  const isEmbedding = statusList.some((item) =>
+    EMBEDDING_STATUSES.includes(item?.indexing_status as (typeof EMBEDDING_STATUSES)[number]),
   )
 
   const isEmbeddingCompleted = statusList.length > 0 && isAllCompleted(statusList)

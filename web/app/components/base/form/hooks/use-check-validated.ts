@@ -1,7 +1,7 @@
 import type { AnyFormApi } from '@tanstack/react-form'
 import type { FormSchema } from '@/app/components/base/form/types'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback } from 'react'
-import { toast } from '@/app/components/base/ui/toast'
 
 export const useCheckValidated = (form: AnyFormApi, FormSchemas: FormSchema[]) => {
   const checkValidated = useCallback(() => {
@@ -10,17 +10,20 @@ export const useCheckValidated = (form: AnyFormApi, FormSchemas: FormSchema[]) =
     if (allError) {
       const fields = allError.fields
       const errorArray = Object.keys(fields).reduce((acc: string[], key: string) => {
-        const currentSchema = FormSchemas.find(schema => schema.name === key)
+        const currentSchema = FormSchemas.find((schema) => schema.name === key)
         const { show_on = [] } = currentSchema || {}
-        const showOnValues = show_on.reduce((acc, condition) => {
-          acc[condition.variable] = values[condition.variable]
-          return acc
-        }, {} as Record<string, any>)
+        const showOnValues = show_on.reduce(
+          (acc, condition) => {
+            acc[condition.variable] = values[condition.variable]
+            return acc
+          },
+          {} as Record<string, any>,
+        )
         const show = show_on?.every((condition) => {
           const conditionValue = showOnValues[condition.variable]
           return conditionValue === condition.value
         })
-        const errors: any[] = show ? fields[key].errors : []
+        const errors: any[] = show ? fields[key]!.errors : []
         return [...acc, ...errors]
       }, [] as string[])
       if (errorArray.length) {

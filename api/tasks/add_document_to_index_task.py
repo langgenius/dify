@@ -44,7 +44,7 @@ def add_document_to_index_task(dataset_document_id: str):
         indexing_cache_key = f"document_{dataset_document.id}_indexing"
 
         try:
-            dataset = dataset_document.dataset
+            dataset = dataset_document.get_dataset(session=session)
             if not dataset:
                 raise Exception(f"Document {dataset_document.id} dataset {dataset_document.dataset_id} doesn't exist.")
 
@@ -70,7 +70,7 @@ def add_document_to_index_task(dataset_document_id: str):
                     },
                 )
                 if dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
-                    child_chunks = segment.get_child_chunks()
+                    child_chunks = segment.get_child_chunks(session=session)
                     if child_chunks:
                         child_documents = []
                         for child_chunk in child_chunks:
@@ -86,7 +86,7 @@ def add_document_to_index_task(dataset_document_id: str):
                             child_documents.append(child_document)
                         document.children = child_documents
                 if dataset.is_multimodal:
-                    for attachment in segment.attachments:
+                    for attachment in segment.get_attachments(session=session):
                         multimodal_documents.append(
                             AttachmentDocument(
                                 page_content=attachment["name"],
@@ -101,9 +101,9 @@ def add_document_to_index_task(dataset_document_id: str):
                         )
                 documents.append(document)
 
-            index_type = dataset.doc_form
+            index_type = dataset.get_doc_form(session=session)
             index_processor = IndexProcessorFactory(index_type).init_index_processor()
-            index_processor.load(dataset, documents, multimodal_documents=multimodal_documents)
+            index_processor.load(dataset, documents, multimodal_documents=multimodal_documents, session=session)
 
             # delete auto disable log
             session.execute(

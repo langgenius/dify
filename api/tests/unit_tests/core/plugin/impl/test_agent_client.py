@@ -1,5 +1,7 @@
 from types import SimpleNamespace
 
+from pytest_mock import MockerFixture
+
 from core.plugin.entities.request import PluginInvokeContext
 from core.plugin.impl.agent import PluginAgentClient
 
@@ -15,7 +17,7 @@ def _agent_provider(name: str = "agent") -> SimpleNamespace:
 
 
 class TestPluginAgentClient:
-    def test_fetch_agent_strategy_providers(self, mocker):
+    def test_fetch_agent_strategy_providers(self, mocker: MockerFixture):
         client = PluginAgentClient()
         provider = _agent_provider("remote")
 
@@ -43,7 +45,7 @@ class TestPluginAgentClient:
         assert result[0].declaration.identity.name == "org/plugin/remote"
         assert result[0].declaration.strategies[0].identity.provider == "org/plugin/remote"
 
-    def test_fetch_agent_strategy_provider(self, mocker):
+    def test_fetch_agent_strategy_provider(self, mocker: MockerFixture):
         client = PluginAgentClient()
         provider = _agent_provider("provider")
 
@@ -63,7 +65,7 @@ class TestPluginAgentClient:
         assert result.declaration.identity.name == "org/plugin/provider"
         assert result.declaration.strategies[0].identity.provider == "org/plugin/provider"
 
-    def test_invoke_merges_chunks_and_passes_context(self, mocker):
+    def test_invoke_merges_chunks_and_passes_context(self, mocker: MockerFixture):
         client = PluginAgentClient()
         stream_mock = mocker.patch.object(
             client, "_request_with_plugin_daemon_response_stream", return_value=iter(["raw"])

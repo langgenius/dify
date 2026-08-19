@@ -1,12 +1,9 @@
 import type { DataSourceCredential } from '@/types/pipeline'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo } from 'react'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import List from './list'
 import Trigger from './trigger'
 
@@ -21,45 +18,49 @@ const CredentialSelector = ({
   onCredentialChange,
   credentials,
 }: CredentialSelectorProps) => {
-  const [open, { toggle }] = useBoolean(false)
+  const [open, { set, setFalse }] = useBoolean(false)
 
   const currentCredential = useMemo(() => {
-    return credentials.find(cred => cred.id === currentCredentialId)
+    return credentials.find((cred) => cred.id === currentCredentialId)
   }, [credentials, currentCredentialId])
 
   useEffect(() => {
-    if (!currentCredential && credentials.length)
-      onCredentialChange(credentials[0].id)
-  }, [currentCredential, credentials])
+    if (!currentCredential && credentials.length) {
+      const fallbackCredential = credentials.find((credential) => credential.is_default)
+      onCredentialChange((fallbackCredential ?? credentials[0]!).id)
+    }
+  }, [currentCredential, credentials, onCredentialChange])
 
-  const handleCredentialChange = useCallback((credentialId: string) => {
-    onCredentialChange(credentialId)
-    toggle()
-  }, [onCredentialChange, toggle])
+  const handleCredentialChange = useCallback(
+    (credentialId: string) => {
+      onCredentialChange(credentialId)
+      setFalse()
+    },
+    [onCredentialChange, setFalse],
+  )
 
   return (
-    <PortalToFollowElem
-      open={open}
-      onOpenChange={toggle}
-      placement="bottom-start"
-      offset={{
-        mainAxis: 4,
-      }}
-    >
-      <PortalToFollowElemTrigger onClick={toggle} className="grow overflow-hidden">
-        <Trigger
-          currentCredential={currentCredential}
-          isOpen={open}
-        />
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-10">
+    <Popover open={open} onOpenChange={set}>
+      <PopoverTrigger
+        nativeButton={false}
+        render={(props, state) => (
+          <div {...props} className={cn('grow overflow-hidden', props.className)}>
+            <Trigger currentCredential={currentCredential} isOpen={state.open} />
+          </div>
+        )}
+      />
+      <PopoverContent
+        placement="bottom-start"
+        sideOffset={4}
+        popupClassName="border-none bg-transparent shadow-none"
+      >
         <List
           currentCredentialId={currentCredentialId}
           credentials={credentials}
           onCredentialChange={handleCredentialChange}
         />
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 

@@ -2,13 +2,13 @@
 import type { FC } from 'react'
 import type { WorkflowRunDetailResponse } from '@/models/log'
 import type { NodeTracing } from '@/types/workflow'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { toast } from '@/app/components/base/ui/toast'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { fetchRunDetail, fetchTracingList } from '@/service/log'
-import { cn } from '@/utils/classnames'
 import { useStore } from '../store'
 import OutputPanel from './output-panel'
 import ResultPanel from './result-panel'
@@ -35,11 +35,10 @@ const RunPanel: FC<RunProps> = ({
   const [loading, setLoading] = useState<boolean>(true)
   const [runDetail, setRunDetail] = useState<WorkflowRunDetailResponse>()
   const [list, setList] = useState<NodeTracing[]>([])
-  const isListening = useStore(s => s.isListening)
+  const isListening = useStore((s) => s.isListening)
 
   const executor = useMemo(() => {
-    if (runDetail?.created_by_role === 'account')
-      return runDetail.created_by_account?.name || ''
+    if (runDetail?.created_by_role === 'account') return runDetail.created_by_account?.name || ''
     if (runDetail?.created_by_role === 'end_user')
       return runDetail.created_by_end_user?.session_id || ''
     return 'N/A'
@@ -49,10 +48,8 @@ const RunPanel: FC<RunProps> = ({
     try {
       const res = await fetchRunDetail(runDetailUrl)
       setRunDetail(res)
-      if (getResultCallback)
-        getResultCallback(res)
-    }
-    catch (err) {
+      if (getResultCallback) getResultCallback(res)
+    } catch (err) {
       toast.error(`${err}`)
     }
   }, [getResultCallback, runDetailUrl])
@@ -63,8 +60,7 @@ const RunPanel: FC<RunProps> = ({
         url: tracingListUrl,
       })
       setList(nodeList)
-    }
-    catch (err) {
+    } catch (err) {
       toast.error(`${err}`)
     }
   }, [tracingListUrl])
@@ -79,30 +75,25 @@ const RunPanel: FC<RunProps> = ({
   const switchTab = async (tab: string) => {
     setCurrentTab(tab)
     if (tab === 'RESULT') {
-      if (runDetailUrl)
-        await getResult()
+      if (runDetailUrl) await getResult()
     }
-    if (tracingListUrl)
-      await getTracingList()
+    if (tracingListUrl) await getTracingList()
   }
 
   useEffect(() => {
-    if (isListening)
-      setCurrentTab('DETAIL')
+    if (isListening) setCurrentTab('DETAIL')
   }, [isListening])
 
   useEffect(() => {
     // fetch data
-    if (runDetailUrl && tracingListUrl)
-      getData()
+    if (runDetailUrl && tracingListUrl) getData()
   }, [runDetailUrl, tracingListUrl])
 
   const [height, setHeight] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
 
   const adjustResultHeight = () => {
-    if (ref.current)
-      setHeight(ref.current?.clientHeight - 16 - 16 - 2 - 1)
+    if (ref.current) setHeight(ref.current?.clientHeight - 16 - 16 - 2 - 1)
   }
 
   useEffect(() => {
@@ -116,46 +107,48 @@ const RunPanel: FC<RunProps> = ({
         {!hideResult && (
           <div
             className={cn(
-              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary system-sm-semibold-uppercase',
-              currentTab === 'RESULT' && 'border-util-colors-blue-brand-blue-brand-600! text-text-primary',
+              'mr-6 cursor-pointer border-b-2 border-transparent py-3 system-sm-semibold-uppercase text-text-tertiary',
+              currentTab === 'RESULT' &&
+                'border-util-colors-blue-brand-blue-brand-600! text-text-primary',
             )}
             onClick={() => switchTab('RESULT')}
           >
-            {t('result', { ns: 'runLog' })}
+            {t(($) => $.result, { ns: 'runLog' })}
           </div>
         )}
         <div
           className={cn(
-            'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary system-sm-semibold-uppercase',
-            currentTab === 'DETAIL' && 'border-util-colors-blue-brand-blue-brand-600! text-text-primary',
+            'mr-6 cursor-pointer border-b-2 border-transparent py-3 system-sm-semibold-uppercase text-text-tertiary',
+            currentTab === 'DETAIL' &&
+              'border-util-colors-blue-brand-blue-brand-600! text-text-primary',
           )}
           onClick={() => switchTab('DETAIL')}
         >
-          {t('detail', { ns: 'runLog' })}
+          {t(($) => $.detail, { ns: 'runLog' })}
         </div>
         <div
           className={cn(
-            'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary system-sm-semibold-uppercase',
-            currentTab === 'TRACING' && 'border-util-colors-blue-brand-blue-brand-600! text-text-primary',
+            'mr-6 cursor-pointer border-b-2 border-transparent py-3 system-sm-semibold-uppercase text-text-tertiary',
+            currentTab === 'TRACING' &&
+              'border-util-colors-blue-brand-blue-brand-600! text-text-primary',
           )}
           onClick={() => switchTab('TRACING')}
         >
-          {t('tracing', { ns: 'runLog' })}
+          {t(($) => $.tracing, { ns: 'runLog' })}
         </div>
       </div>
       {/* panel detail */}
-      <div ref={ref} className={cn('relative h-0 grow overflow-y-auto rounded-b-xl bg-components-panel-bg')}>
+      <div
+        ref={ref}
+        className={cn('relative h-0 grow overflow-y-auto rounded-b-xl bg-components-panel-bg')}
+      >
         {loading && (
           <div className="flex h-full items-center justify-center bg-components-panel-bg">
             <Loading />
           </div>
         )}
         {!loading && currentTab === 'RESULT' && runDetail && (
-          <OutputPanel
-            outputs={runDetail.outputs}
-            error={runDetail.error}
-            height={height}
-          />
+          <OutputPanel outputs={runDetail.outputs} error={runDetail.error} height={height} />
         )}
         {!loading && currentTab === 'DETAIL' && runDetail && (
           <ResultPanel
@@ -174,19 +167,14 @@ const RunPanel: FC<RunProps> = ({
             exceptionCounts={runDetail.exceptions_count}
             isListening={isListening}
             workflowRunId={runDetail.id}
+            onOpenTracingTab={() => switchTab('TRACING')}
           />
         )}
         {!loading && currentTab === 'DETAIL' && !runDetail && isListening && (
-          <StatusPanel
-            status={WorkflowRunningStatus.Running}
-            isListening={true}
-          />
+          <StatusPanel status={WorkflowRunningStatus.Running} isListening={true} />
         )}
         {!loading && currentTab === 'TRACING' && (
-          <TracingPanel
-            className="bg-background-section-burn"
-            list={list}
-          />
+          <TracingPanel className="bg-background-section-burn" list={list} />
         )}
       </div>
     </div>

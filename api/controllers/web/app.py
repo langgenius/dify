@@ -1,5 +1,5 @@
 import logging
-from typing import Any, cast
+from typing import Any
 
 from flask import request
 from flask_restx import Resource
@@ -8,18 +8,22 @@ from werkzeug.exceptions import Unauthorized
 
 from constants import HEADER_NAME_APP_CODE
 from controllers.common import fields
-from controllers.common.schema import register_schema_models
-from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
+from controllers.common.fields import Parameters
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from extensions.ext_application_services import application_services
+from extensions.ext_database import db
+from libs.helper import dump_response
 from libs.passport import PassportService
 from libs.token import extract_webapp_passport
-from models.model import App, AppMode
+from models.model import App, EndUser
+from services.app_definition_query_service import AppDefinitionNotPublishedError, AppDefinitionUnavailableError
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 from services.webapp_auth_service import WebAppAuthService
 
 from . import web_ns
-from .error import AppUnavailableError
+from .error import AgentNotPublishedError, AppUnavailableError
 from .wraps import WebApiResource
 
 logger = logging.getLogger(__name__)
@@ -32,7 +36,27 @@ class AppAccessModeQuery(BaseModel):
     app_code: str | None = Field(default=None, alias="appCode", description="Application code")
 
 
-register_schema_models(web_ns, AppAccessModeQuery)
+class AppPermissionQuery(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    app_id: str = Field(..., alias="appId", description="Application ID")
+
+
+class AppMetaResponse(BaseModel):
+    tool_icons: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Tool icon metadata keyed by tool name",
+    )
+
+
+register_schema_models(web_ns, AppAccessModeQuery, AppPermissionQuery)
+register_response_schema_models(
+    web_ns,
+    Parameters,
+    AppMetaResponse,
+    fields.AccessModeResponse,
+    fields.BooleanResultResponse,
+)
 
 
 @web_ns.route("/parameters")
@@ -51,26 +75,17 @@ class AppParameterApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def get(self, app_model: App, end_user):
+    @web_ns.response(200, "Success", web_ns.models[Parameters.__name__])
+    def get(self, app_model: App, end_user: EndUser):
         """Retrieve app parameters."""
-        if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
-            workflow = app_model.workflow
-            if workflow is None:
-                raise AppUnavailableError()
+        try:
+            parameters = application_services().app_definitions.get_public_parameters(app_model.id)
+        except AppDefinitionNotPublishedError:
+            raise AgentNotPublishedError() from None
+        except AppDefinitionUnavailableError:
+            raise AppUnavailableError() from None
 
-            features_dict: dict[str, Any] = workflow.features_dict
-            user_input_form = workflow.user_input_form(to_old_structure=True)
-        else:
-            app_model_config = app_model.app_model_config
-            if app_model_config is None:
-                raise AppUnavailableError()
-
-            features_dict = cast(dict[str, Any], app_model_config.to_dict())
-
-            user_input_form = features_dict.get("user_input_form", [])
-
-        parameters = get_parameters_from_feature_dict(features_dict=features_dict, user_input_form=user_input_form)
-        return fields.Parameters.model_validate(parameters).model_dump(mode="json")
+        return dump_response(Parameters, parameters)
 
 
 @web_ns.route("/meta")
@@ -87,21 +102,22 @@ class AppMeta(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def get(self, app_model: App, end_user):
+    @web_ns.response(200, "Success", web_ns.models[AppMetaResponse.__name__])
+    def get(self, app_model: App, end_user: EndUser):
         """Get app meta"""
-        return AppService().get_app_meta(app_model)
+        try:
+            tool_icons = application_services().app_definitions.get_tool_icons(app_model.id)
+        except AppDefinitionUnavailableError:
+            raise AppUnavailableError() from None
+
+        return dump_response(AppMetaResponse, {"tool_icons": tool_icons})
 
 
 @web_ns.route("/webapp/access-mode")
 class AppAccessMode(Resource):
     @web_ns.doc("Get App Access Mode")
     @web_ns.doc(description="Retrieve the access mode for a web application (public or restricted).")
-    @web_ns.doc(
-        params={
-            "appId": {"description": "Application ID", "type": "string", "required": False},
-            "appCode": {"description": "Application code", "type": "string", "required": False},
-        }
-    )
+    @web_ns.doc(params=query_params_from_model(AppAccessModeQuery))
     @web_ns.doc(
         responses={
             200: "Success",
@@ -109,6 +125,7 @@ class AppAccessMode(Resource):
             500: "Internal Server Error",
         }
     )
+    @web_ns.response(200, "Success", web_ns.models[fields.AccessModeResponse.__name__])
     def get(self):
         raw_args = request.args.to_dict()
         args = AppAccessModeQuery.model_validate(raw_args)
@@ -119,7 +136,7 @@ class AppAccessMode(Resource):
 
         app_id = args.app_id
         if args.app_code:
-            app_id = AppService.get_app_id_by_code(args.app_code)
+            app_id = AppService.get_app_id_by_code(args.app_code, session=db.session())
 
         if not app_id:
             raise ValueError("appId or appCode must be provided")
@@ -133,7 +150,7 @@ class AppAccessMode(Resource):
 class AppWebAuthPermission(Resource):
     @web_ns.doc("Check App Permission")
     @web_ns.doc(description="Check if user has permission to access a web application.")
-    @web_ns.doc(params={"appId": {"description": "Application ID", "type": "string", "required": True}})
+    @web_ns.doc(params=query_params_from_model(AppPermissionQuery))
     @web_ns.doc(
         responses={
             200: "Success",
@@ -142,6 +159,7 @@ class AppWebAuthPermission(Resource):
             500: "Internal Server Error",
         }
     )
+    @web_ns.response(200, "Success", web_ns.models[fields.BooleanResultResponse.__name__])
     def get(self):
         user_id = "visitor"
         app_code = request.headers.get(HEADER_NAME_APP_CODE)
@@ -149,7 +167,9 @@ class AppWebAuthPermission(Resource):
         if not app_id or not app_code:
             raise ValueError("appId must be provided")
 
-        require_permission_check = WebAppAuthService.is_app_require_permission_check(app_id=app_id)
+        require_permission_check = WebAppAuthService.is_app_require_permission_check(
+            app_id=app_id, session=db.session()
+        )
         if not require_permission_check:
             return {"result": True}
 
@@ -170,6 +190,6 @@ class AppWebAuthPermission(Resource):
             return {"result": True}
 
         res = True
-        if WebAppAuthService.is_app_require_permission_check(app_id=app_id):
+        if WebAppAuthService.is_app_require_permission_check(app_id=app_id, session=db.session()):
             res = EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(str(user_id), app_id)
         return {"result": res}

@@ -20,17 +20,18 @@ def import_module_from_source[T: (str, bytes)](
                 raise Exception(f"Failed to load module {module_name} from {py_file_path!r}")
         else:
             # Refer to: https://docs.python.org/3/library/importlib.html#importing-a-source-file-directly
-            # FIXME: mypy does not support the type of spec.loader
-            spec = importlib.util.spec_from_file_location(module_name, py_file_path)  # type: ignore[assignment]
-            if not spec or not spec.loader:
+            new_spec = importlib.util.spec_from_file_location(module_name, py_file_path)
+            if not new_spec or not new_spec.loader:
                 raise Exception(f"Failed to load module {module_name} from {py_file_path!r}")
             if use_lazy_loader:
                 # Refer to: https://docs.python.org/3/library/importlib.html#implementing-lazy-imports
-                spec.loader = importlib.util.LazyLoader(spec.loader)
+                new_spec.loader = importlib.util.LazyLoader(new_spec.loader)
+            spec = new_spec
         module = importlib.util.module_from_spec(spec)
         if not existed_spec:
             sys.modules[module_name] = module
-        spec.loader.exec_module(module)
+        if spec.loader is not None:
+            spec.loader.exec_module(module)
         return module
     except Exception as e:
         logger.exception("Failed to load module %s from script file '%s'", module_name, repr(py_file_path))

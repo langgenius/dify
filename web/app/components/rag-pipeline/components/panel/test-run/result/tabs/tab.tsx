@@ -1,7 +1,7 @@
 import type { WorkflowRunningData } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback } from 'react'
-import { cn } from '@/utils/classnames'
 
 type TabProps = {
   isActive: boolean
@@ -20,7 +20,7 @@ const Tab = ({ isActive, label, value, workflowRunningData, onClick }: TabProps)
     <button
       type="button"
       className={cn(
-        'system-sm-semibold-uppercase cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary',
+        'cursor-pointer border-b-2 border-transparent py-3 system-sm-semibold-uppercase text-text-tertiary',
         isActive && 'border-util-colors-blue-brand-blue-brand-600 text-text-primary',
         !workflowRunningData && 'cursor-not-allowed! opacity-30',
       )}

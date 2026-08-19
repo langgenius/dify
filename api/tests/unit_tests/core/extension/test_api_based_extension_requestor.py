@@ -1,11 +1,12 @@
 import httpx
 import pytest
+from pytest_mock import MockerFixture
 
 from core.extension.api_based_extension_requestor import APIBasedExtensionRequestor
 from models.api_based_extension import APIBasedExtensionPoint
 
 
-def test_request_success(mocker):
+def test_request_success(mocker: MockerFixture):
     # Mock httpx.Client and its context manager
     mock_client = mocker.MagicMock()
     mock_client_instance = mock_client.__enter__.return_value
@@ -28,7 +29,7 @@ def test_request_success(mocker):
     )
 
 
-def test_request_with_ssrf_proxy(mocker):
+def test_request_with_ssrf_proxy(mocker: MockerFixture):
     # Mock dify_config
     mocker.patch("configs.dify_config.SSRF_PROXY_HTTP_URL", "http://proxy:8080")
     mocker.patch("configs.dify_config.SSRF_PROXY_HTTPS_URL", "https://proxy:8081")
@@ -59,7 +60,7 @@ def test_request_with_ssrf_proxy(mocker):
     assert mock_transport.call_count == 2
 
 
-def test_request_with_only_one_proxy_config(mocker):
+def test_request_with_only_one_proxy_config(mocker: MockerFixture):
     # Mock dify_config with only one proxy
     mocker.patch("configs.dify_config.SSRF_PROXY_HTTP_URL", "http://proxy:8080")
     mocker.patch("configs.dify_config.SSRF_PROXY_HTTPS_URL", None)
@@ -84,29 +85,35 @@ def test_request_with_only_one_proxy_config(mocker):
     assert kwargs.get("mounts") is None
 
 
-def test_request_timeout(mocker):
+def test_request_timeout(mocker: MockerFixture):
     mock_client = mocker.MagicMock()
     mock_client_instance = mock_client.__enter__.return_value
     mocker.patch("httpx.Client", return_value=mock_client)
-    mock_client_instance.request.side_effect = httpx.TimeoutException("timeout")
+    original = httpx.TimeoutException("timeout")
+    mock_client_instance.request.side_effect = original
 
     requestor = APIBasedExtensionRequestor(api_endpoint="http://example.com", api_key="test_key")
-    with pytest.raises(ValueError, match="request timeout"):
+    with pytest.raises(ValueError, match="request timeout") as exc_info:
         requestor.request(APIBasedExtensionPoint.PING, {})
 
+    assert exc_info.value.__cause__ is original
 
-def test_request_connection_error(mocker):
+
+def test_request_connection_error(mocker: MockerFixture):
     mock_client = mocker.MagicMock()
     mock_client_instance = mock_client.__enter__.return_value
     mocker.patch("httpx.Client", return_value=mock_client)
-    mock_client_instance.request.side_effect = httpx.RequestError("error")
+    original = httpx.RequestError("error")
+    mock_client_instance.request.side_effect = original
 
     requestor = APIBasedExtensionRequestor(api_endpoint="http://example.com", api_key="test_key")
-    with pytest.raises(ValueError, match="request connection error"):
+    with pytest.raises(ValueError, match="request connection error") as exc_info:
         requestor.request(APIBasedExtensionPoint.PING, {})
 
+    assert exc_info.value.__cause__ is original
 
-def test_request_error_status_code(mocker):
+
+def test_request_error_status_code(mocker: MockerFixture):
     mock_client = mocker.MagicMock()
     mock_client_instance = mock_client.__enter__.return_value
     mocker.patch("httpx.Client", return_value=mock_client)
@@ -121,7 +128,7 @@ def test_request_error_status_code(mocker):
         requestor.request(APIBasedExtensionPoint.PING, {})
 
 
-def test_request_error_status_code_long_content(mocker):
+def test_request_error_status_code_long_content(mocker: MockerFixture):
     mock_client = mocker.MagicMock()
     mock_client_instance = mock_client.__enter__.return_value
     mocker.patch("httpx.Client", return_value=mock_client)

@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -31,7 +32,8 @@ class EndpointEntity(BasePluginEntity):
     entity of an endpoint
     """
 
-    settings: dict
+    # TODO: Confirm daemon masks secret-input settings before endpoint list responses expose them.
+    settings: dict[str, Any]
     tenant_id: str
     plugin_id: str
     expired_at: datetime

@@ -1,8 +1,9 @@
-import { RiArrowLeftLine, RiArrowRightLine, RiCloseLine, RiRefreshLine } from '@remixicon/react'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Kbd } from '@langgenius/dify-ui/kbd'
+import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
-import { useHotkeys } from 'react-hotkeys-hook'
-import Button from '@/app/components/base/button'
+import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { formatFileSize } from '@/utils/format'
 
@@ -27,42 +28,39 @@ type ImagePreviewerProps = {
   onClose: () => void
 }
 
-const ImagePreviewer = ({
-  images,
-  initialIndex = 0,
-  onClose,
-}: ImagePreviewerProps) => {
+const ImagePreviewer = ({ images, initialIndex = 0, onClose }: ImagePreviewerProps) => {
+  const { t } = useTranslation()
   const [currentIndex, setCurrentIndex] = useState(initialIndex)
   const [cachedImages, setCachedImages] = useState<Record<string, CachedImage>>(() => {
-    return images.reduce((acc, image) => {
-      acc[image.url] = {
-        status: 'loading',
-        width: 0,
-        height: 0,
-      }
-      return acc
-    }, {} as Record<string, CachedImage>)
+    return images.reduce(
+      (acc, image) => {
+        acc[image.url] = {
+          status: 'loading',
+          width: 0,
+          height: 0,
+        }
+        return acc
+      },
+      {} as Record<string, CachedImage>,
+    )
   })
   const isMounted = useRef(false)
 
   const fetchImage = useCallback(async (image: ImageInfo) => {
     const { url } = image
     // Skip if already cached
-    if (imageCache.has(url))
-      return
+    if (imageCache.has(url)) return
 
     try {
       const res = await fetch(url)
-      if (!res.ok)
-        throw new Error(`Failed to load: ${url}`)
+      if (!res.ok) throw new Error(`Failed to load: ${url}`)
       const blob = await res.blob()
       const blobUrl = URL.createObjectURL(blob)
 
       const img = new Image()
       img.src = blobUrl
       img.onload = () => {
-        if (!isMounted.current)
-          return
+        if (!isMounted.current) return
         imageCache.set(url, {
           blobUrl,
           status: 'loaded',
@@ -81,8 +79,7 @@ const ImagePreviewer = ({
           }
         })
       }
-    }
-    catch {
+    } catch {
       if (isMounted.current) {
         setCachedImages((prev) => {
           return {
@@ -109,8 +106,7 @@ const ImagePreviewer = ({
       isMounted.current = false
       // Cleanup released blob URLs not in current list
       imageCache.forEach(({ blobUrl }, key) => {
-        if (blobUrl)
-          URL.revokeObjectURL(blobUrl)
+        if (blobUrl) URL.revokeObjectURL(blobUrl)
         imageCache.delete(key)
       })
     }
@@ -121,105 +117,110 @@ const ImagePreviewer = ({
   }, [images, currentIndex])
 
   const prevImage = useCallback(() => {
-    if (currentIndex === 0)
-      return
-    setCurrentIndex(prevIndex => prevIndex - 1)
+    if (currentIndex === 0) return
+    setCurrentIndex((prevIndex) => prevIndex - 1)
   }, [currentIndex])
 
   const nextImage = useCallback(() => {
-    if (currentIndex === images.length - 1)
-      return
-    setCurrentIndex(prevIndex => prevIndex + 1)
+    if (currentIndex === images.length - 1) return
+    setCurrentIndex((prevIndex) => prevIndex + 1)
   }, [currentIndex, images.length])
 
-  const retryImage = useCallback((image: ImageInfo) => {
-    setCachedImages((prev) => {
-      return {
-        ...prev,
-        [image.url]: {
-          ...prev[image.url],
-          status: 'loading',
-        },
-      }
-    })
-    fetchImage(image)
-  }, [fetchImage])
+  const retryImage = useCallback(
+    (image: ImageInfo) => {
+      setCachedImages((prev) => {
+        return {
+          ...prev,
+          [image.url]: {
+            ...prev[image.url]!,
+            status: 'loading',
+          },
+        }
+      })
+      fetchImage(image)
+    },
+    [fetchImage],
+  )
 
-  useHotkeys('esc', onClose)
-  useHotkeys('left', prevImage)
-  useHotkeys('right', nextImage)
+  useHotkey('ArrowLeft', prevImage)
+  useHotkey('ArrowRight', nextImage)
 
-  return createPortal(
-    <div
-      className="image-previewer fixed inset-0 z-10000 flex items-center justify-center bg-background-overlay-fullscreen p-5 pb-4 backdrop-blur-[6px]"
-      onClick={e => e.stopPropagation()}
-      tabIndex={-1}
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
+      disablePointerDismissal
     >
-      <div className="absolute right-6 top-6 z-10 flex cursor-pointer flex-col items-center gap-y-1">
-        <Button
-          variant="tertiary"
-          onClick={onClose}
-          className="size-9 radius-lg p-0"
-          size="large"
-        >
-          <RiCloseLine className="size-5" />
-        </Button>
-        <span className="system-2xs-medium-uppercase text-text-tertiary">
-          Esc
-        </span>
-      </div>
-      {cachedImages[currentImage.url].status === 'loading' && (
-        <Loading type="app" />
-      )}
-      {cachedImages[currentImage.url].status === 'error' && (
-        <div className="system-sm-regular flex max-w-sm flex-col items-center gap-y-2 text-text-tertiary">
-          <span>{`Failed to load image: ${currentImage.url}. Please try again.`}</span>
-          <Button
-            variant="secondary"
-            onClick={() => retryImage(currentImage)}
-            className="size-9 rounded-full p-0"
-            size="large"
+      <DialogContent
+        className="image-previewer inset-0! top-0! left-0! flex h-dvh! max-h-none! w-screen! max-w-none! translate-x-0! translate-y-0! items-center justify-center overflow-hidden! rounded-none! border-none! bg-background-overlay-fullscreen p-5! pb-4! shadow-none! backdrop-blur-[6px]"
+        backdropClassName="bg-transparent!"
+      >
+        <div className="absolute top-6 right-6 z-10 flex cursor-pointer flex-col items-center gap-y-1">
+          <IconButton
+            variant="tertiary"
+            size="xl"
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            onClick={onClose}
           >
-            <RiRefreshLine className="size-5" />
-          </Button>
+            <span aria-hidden className="i-ri-close-line size-5" />
+          </IconButton>
+          <Kbd>{formatForDisplay('Escape')}</Kbd>
         </div>
-      )}
-      {cachedImages[currentImage.url].status === 'loaded' && (
-        <div className="flex size-full flex-col items-center justify-center gap-y-2">
-          <img
-            alt={currentImage.name}
-            src={cachedImages[currentImage.url].blobUrl}
-            className="max-h-[calc(100%-2.5rem)] max-w-full object-contain shadow-lg ring-8 ring-effects-image-frame backdrop-blur-[5px]"
-          />
-          <div className="system-sm-regular flex shrink-0 gap-x-2 pb-1 pt-3 text-text-tertiary">
-            <span>{currentImage.name}</span>
-            <span>·</span>
-            <span>{`${cachedImages[currentImage.url].width} ×  ${cachedImages[currentImage.url].height}`}</span>
-            <span>·</span>
-            <span>{formatFileSize(currentImage.size)}</span>
+        {cachedImages[currentImage!.url]!.status === 'loading' && <Loading type="app" />}
+        {cachedImages[currentImage!.url]!.status === 'error' && (
+          <div className="flex max-w-sm flex-col items-center gap-y-2 system-sm-regular text-text-tertiary">
+            <span>{`Failed to load image: ${currentImage!.url}. Please try again.`}</span>
+            <IconButton
+              variant="secondary"
+              size="xl"
+              aria-label={t(($) => $['operation.retry'], { ns: 'common' })}
+              onClick={() => retryImage(currentImage!)}
+              className="rounded-full"
+            >
+              <span aria-hidden className="i-ri-refresh-line size-5" />
+            </IconButton>
           </div>
-        </div>
-      )}
-      <Button
-        variant="secondary"
-        onClick={prevImage}
-        className="absolute left-8 top-1/2 z-10 size-9 -translate-y-1/2 rounded-full p-0"
-        disabled={currentIndex === 0}
-        size="large"
-      >
-        <RiArrowLeftLine className="size-5" />
-      </Button>
-      <Button
-        variant="secondary"
-        onClick={nextImage}
-        className="absolute right-8 top-1/2 z-10 size-9 -translate-y-1/2 rounded-full p-0"
-        disabled={currentIndex === images.length - 1}
-        size="large"
-      >
-        <RiArrowRightLine className="size-5" />
-      </Button>
-    </div>,
-    document.body,
+        )}
+        {cachedImages[currentImage!.url]!.status === 'loaded' && (
+          <div className="flex size-full flex-col items-center justify-center gap-y-2">
+            <img
+              alt={currentImage!.name}
+              src={cachedImages[currentImage!.url]!.blobUrl}
+              className="max-h-[calc(100%-2.5rem)] max-w-full object-contain shadow-lg ring-8 ring-effects-image-frame backdrop-blur-[5px]"
+            />
+            <div className="flex shrink-0 gap-x-2 pt-3 pb-1 system-sm-regular text-text-tertiary">
+              <span>{currentImage!.name}</span>
+              <span>·</span>
+              <span>{`${cachedImages[currentImage!.url]!.width} ×  ${cachedImages[currentImage!.url]!.height}`}</span>
+              <span>·</span>
+              <span>{formatFileSize(currentImage!.size)}</span>
+            </div>
+          </div>
+        )}
+        <IconButton
+          variant="secondary"
+          size="xl"
+          aria-label={t(($) => $['pagination.previous'], { ns: 'common' })}
+          onClick={prevImage}
+          className="absolute top-1/2 left-8 z-10 -translate-y-1/2 rounded-full"
+          disabled={currentIndex === 0}
+        >
+          <span aria-hidden className="i-ri-arrow-left-line size-5" />
+        </IconButton>
+        <IconButton
+          variant="secondary"
+          size="xl"
+          aria-label={t(($) => $['pagination.next'], { ns: 'common' })}
+          onClick={nextImage}
+          className="absolute top-1/2 right-8 z-10 -translate-y-1/2 rounded-full"
+          disabled={currentIndex === images.length - 1}
+        >
+          <span aria-hidden className="i-ri-arrow-right-line size-5" />
+        </IconButton>
+      </DialogContent>
+    </Dialog>
   )
 }
 

@@ -14,17 +14,15 @@ describe('IndexMethod', () => {
     vi.clearAllMocks()
   })
 
-  const getKeywordSlider = () => screen.getByLabelText('datasetSettings.form.numberOfKeywords')
-
-  describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<IndexMethod {...defaultProps} />)
-      expect(screen.getByText(/stepTwo\.qualified/)).toBeInTheDocument()
+  const getKeywordSlider = () =>
+    screen.getByLabelText('datasetSettings.form.numberOfKeywords', {
+      selector: 'input[type="range"]',
     })
 
+  describe('Rendering', () => {
     it('should render High Quality option', () => {
       render(<IndexMethod {...defaultProps} />)
-      expect(screen.getByText(/stepTwo\.qualified/)).toBeInTheDocument()
+      expect(screen.getByText(/stepTwo\.qualified/))!.toBeInTheDocument()
     })
 
     it('should render Economy option', () => {
@@ -34,17 +32,17 @@ describe('IndexMethod', () => {
 
     it('should render High Quality description', () => {
       render(<IndexMethod {...defaultProps} />)
-      expect(screen.getByText(/form\.indexMethodHighQualityTip/)).toBeInTheDocument()
+      expect(screen.getByText(/form\.indexMethodHighQualityTip/))!.toBeInTheDocument()
     })
 
     it('should render Economy description', () => {
       render(<IndexMethod {...defaultProps} />)
-      expect(screen.getByText(/form\.indexMethodEconomyTip/)).toBeInTheDocument()
+      expect(screen.getByText(/form\.indexMethodEconomyTip/))!.toBeInTheDocument()
     })
 
     it('should render recommended badge on High Quality', () => {
       render(<IndexMethod {...defaultProps} />)
-      expect(screen.getByText(/stepTwo\.recommend/)).toBeInTheDocument()
+      expect(screen.getByText(/stepTwo\.recommend/))!.toBeInTheDocument()
     })
   })
 
@@ -56,7 +54,9 @@ describe('IndexMethod', () => {
     })
 
     it('should mark Economy as active when value is ECONOMICAL', () => {
-      const { container } = render(<IndexMethod {...defaultProps} value={IndexingType.ECONOMICAL} />)
+      const { container } = render(
+        <IndexMethod {...defaultProps} value={IndexingType.ECONOMICAL} />,
+      )
       const activeCards = container.querySelectorAll('.ring-\\[1px\\]')
       expect(activeCards).toHaveLength(1)
     })
@@ -65,7 +65,9 @@ describe('IndexMethod', () => {
   describe('User Interactions', () => {
     it('should call onChange with QUALIFIED when High Quality is clicked', () => {
       const handleChange = vi.fn()
-      render(<IndexMethod {...defaultProps} value={IndexingType.ECONOMICAL} onChange={handleChange} />)
+      render(
+        <IndexMethod {...defaultProps} value={IndexingType.ECONOMICAL} onChange={handleChange} />,
+      )
 
       // Find and click High Quality option
       const highQualityTitle = screen.getByText(/stepTwo\.qualified/)
@@ -77,12 +79,19 @@ describe('IndexMethod', () => {
 
     it('should call onChange with ECONOMICAL when Economy is clicked', () => {
       const handleChange = vi.fn()
-      render(<IndexMethod {...defaultProps} value={IndexingType.QUALIFIED} onChange={handleChange} currentValue={IndexingType.ECONOMICAL} />)
+      render(
+        <IndexMethod
+          {...defaultProps}
+          value={IndexingType.QUALIFIED}
+          onChange={handleChange}
+          currentValue={IndexingType.ECONOMICAL}
+        />,
+      )
 
       // Find and click Economy option - use getAllByText and get the first one (title)
       const economyTitles = screen.getAllByText(/form\.indexMethodEconomy/)
       const economyTitle = economyTitles[0]
-      const card = economyTitle.closest('div')?.parentElement?.parentElement?.parentElement
+      const card = economyTitle!.closest('div')?.parentElement?.parentElement?.parentElement
       fireEvent.click(card!)
 
       expect(handleChange).toHaveBeenCalledWith(IndexingType.ECONOMICAL)
@@ -90,7 +99,9 @@ describe('IndexMethod', () => {
 
     it('should not call onChange when clicking already active option', () => {
       const handleChange = vi.fn()
-      render(<IndexMethod {...defaultProps} value={IndexingType.QUALIFIED} onChange={handleChange} />)
+      render(
+        <IndexMethod {...defaultProps} value={IndexingType.QUALIFIED} onChange={handleChange} />,
+      )
 
       const highQualityTitle = screen.getByText(/stepTwo\.qualified/)
       const card = highQualityTitle.closest('div')?.parentElement?.parentElement?.parentElement
@@ -109,12 +120,19 @@ describe('IndexMethod', () => {
 
     it('should disable Economy option when currentValue is QUALIFIED', () => {
       const handleChange = vi.fn()
-      render(<IndexMethod {...defaultProps} currentValue={IndexingType.QUALIFIED} onChange={handleChange} value={IndexingType.ECONOMICAL} />)
+      render(
+        <IndexMethod
+          {...defaultProps}
+          currentValue={IndexingType.QUALIFIED}
+          onChange={handleChange}
+          value={IndexingType.ECONOMICAL}
+        />,
+      )
 
       // Try to click Economy option - use getAllByText and get the first one (title)
       const economyTitles = screen.getAllByText(/form\.indexMethodEconomy/)
       const economyTitle = economyTitles[0]
-      const card = economyTitle.closest('div')?.parentElement?.parentElement?.parentElement
+      const card = economyTitle!.closest('div')?.parentElement?.parentElement?.parentElement
       fireEvent.click(card!)
 
       // Should not call onChange because Economy is disabled when current is QUALIFIED
@@ -125,13 +143,23 @@ describe('IndexMethod', () => {
   describe('KeywordNumber', () => {
     it('should render KeywordNumber component inside Economy option', () => {
       render(<IndexMethod {...defaultProps} />)
-      expect(getKeywordSlider()).toBeInTheDocument()
+      expect(getKeywordSlider())!.toBeInTheDocument()
     })
 
     it('should pass keywordNumber to KeywordNumber component', () => {
       render(<IndexMethod {...defaultProps} keywordNumber={25} />)
       const input = screen.getByRole('textbox')
-      expect(input).toHaveValue('25')
+      expect(input)!.toHaveValue('25')
+    })
+
+    it('should keep keyword number input visible next to steppers', () => {
+      render(<IndexMethod {...defaultProps} value={IndexingType.ECONOMICAL} keywordNumber={25} />)
+
+      const input = screen.getByRole('textbox')
+
+      expect(input)!.toHaveClass('w-12')
+      expect(input)!.toHaveClass('flex-none')
+      expect(input)!.toHaveClass('text-center')
     })
 
     it('should call onKeywordNumberChange when KeywordNumber changes', () => {
@@ -147,7 +175,7 @@ describe('IndexMethod', () => {
 
   describe('Tooltip', () => {
     it('should show tooltip when hovering over disabled Economy option', () => {
-      // The tooltip is shown via PortalToFollowElem when hovering
+      // The tooltip is shown via Popover when hovering
       // This is controlled by useHover hook
       render(<IndexMethod {...defaultProps} currentValue={IndexingType.QUALIFIED} />)
       // The tooltip content should exist in DOM but may not be visible
@@ -160,24 +188,32 @@ describe('IndexMethod', () => {
     it('should show orange effect color for High Quality option', () => {
       const { container } = render(<IndexMethod {...defaultProps} />)
       const orangeEffect = container.querySelector('.bg-util-colors-orange-orange-500')
-      expect(orangeEffect).toBeInTheDocument()
+      expect(orangeEffect)!.toBeInTheDocument()
     })
 
     it('should show indigo effect color for Economy option', () => {
       const { container } = render(<IndexMethod {...defaultProps} />)
       const indigoEffect = container.querySelector('.bg-util-colors-indigo-indigo-600')
-      expect(indigoEffect).toBeInTheDocument()
+      expect(indigoEffect)!.toBeInTheDocument()
     })
   })
 
   describe('Props', () => {
     it('should update active state when value prop changes', () => {
-      const { rerender, container } = render(<IndexMethod {...defaultProps} value={IndexingType.QUALIFIED} />)
+      const { rerender, container } = render(
+        <IndexMethod {...defaultProps} value={IndexingType.QUALIFIED} />,
+      )
 
       let activeCards = container.querySelectorAll('.ring-\\[1px\\]')
       expect(activeCards).toHaveLength(1)
 
-      rerender(<IndexMethod {...defaultProps} value={IndexingType.ECONOMICAL} currentValue={IndexingType.ECONOMICAL} />)
+      rerender(
+        <IndexMethod
+          {...defaultProps}
+          value={IndexingType.ECONOMICAL}
+          currentValue={IndexingType.ECONOMICAL}
+        />,
+      )
 
       activeCards = container.querySelectorAll('.ring-\\[1px\\]')
       expect(activeCards).toHaveLength(1)
@@ -188,19 +224,20 @@ describe('IndexMethod', () => {
     it('should handle undefined currentValue', () => {
       render(<IndexMethod {...defaultProps} currentValue={undefined} />)
       // Should render without error
-      expect(screen.getByText(/stepTwo\.qualified/)).toBeInTheDocument()
+      // Should render without error
+      expect(screen.getByText(/stepTwo\.qualified/))!.toBeInTheDocument()
     })
 
     it('should handle minimum keywordNumber', () => {
       render(<IndexMethod {...defaultProps} keywordNumber={0} />)
       const input = screen.getByRole('textbox')
-      expect(input).toHaveValue('0')
+      expect(input)!.toHaveValue('0')
     })
 
     it('should handle max keywordNumber', () => {
       render(<IndexMethod {...defaultProps} keywordNumber={50} />)
       const input = screen.getByRole('textbox')
-      expect(input).toHaveValue('50')
+      expect(input)!.toHaveValue('50')
     })
   })
 })

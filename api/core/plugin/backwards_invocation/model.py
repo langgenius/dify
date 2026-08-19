@@ -1,22 +1,8 @@
 import tempfile
 from binascii import hexlify, unhexlify
 from collections.abc import Generator
+from typing import Any
 
-from graphon.model_runtime.entities.llm_entities import (
-    LLMResult,
-    LLMResultChunk,
-    LLMResultChunkDelta,
-    LLMResultChunkWithStructuredOutput,
-    LLMResultWithStructuredOutput,
-)
-from graphon.model_runtime.entities.message_entities import (
-    PromptMessage,
-    SystemPromptMessage,
-    UserPromptMessage,
-)
-from graphon.model_runtime.entities.model_entities import ModelType
-
-from core.app.llm import deduct_llm_quota
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
 from core.model_manager import ModelManager
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
@@ -32,6 +18,19 @@ from core.plugin.entities.request import (
 )
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.utils.model_invocation_utils import ModelInvocationUtils
+from graphon.model_runtime.entities.llm_entities import (
+    LLMResult,
+    LLMResultChunk,
+    LLMResultChunkDelta,
+    LLMResultChunkWithStructuredOutput,
+    LLMResultWithStructuredOutput,
+)
+from graphon.model_runtime.entities.message_entities import (
+    PromptMessage,
+    SystemPromptMessage,
+    UserPromptMessage,
+)
+from graphon.model_runtime.entities.model_entities import ModelType
 from models.account import Tenant
 
 
@@ -80,15 +79,11 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
 
             def handle() -> Generator[LLMResultChunk, None, None]:
                 for chunk in response:
-                    if chunk.delta.usage:
-                        deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=chunk.delta.usage)
                     chunk.prompt_messages = []
                     yield chunk
 
             return handle()
         else:
-            if response.usage:
-                deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=response.usage)
 
             def handle_non_streaming(response: LLMResult) -> Generator[LLMResultChunk, None, None]:
                 yield LLMResultChunk(
@@ -141,15 +136,11 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
 
             def handle() -> Generator[LLMResultChunkWithStructuredOutput, None, None]:
                 for chunk in response:
-                    if chunk.delta.usage:
-                        deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=chunk.delta.usage)
                     chunk.prompt_messages = []
                     yield chunk
 
             return handle()
         else:
-            if response.usage:
-                deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=response.usage)
 
             def handle_non_streaming(
                 response: LLMResultWithStructuredOutput,
@@ -226,7 +217,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
         # invoke model
         response = model_instance.invoke_tts(content_text=payload.content_text, voice=payload.voice)
 
-        def handle() -> Generator[dict, None, None]:
+        def handle() -> Generator[dict[str, Any], None, None]:
             for chunk in response:
                 yield {"result": hexlify(chunk).decode("utf-8")}
 
@@ -392,7 +383,7 @@ Here is the extra instruction you need to follow:
             else:
                 if len(messages[-1]) + len(line) < max_tokens * 0.5:
                     messages[-1] += line
-                if get_prompt_tokens(messages[-1] + line) > max_tokens * 0.7:
+                elif get_prompt_tokens(messages[-1] + line) > max_tokens * 0.7:
                     messages.append(line)
                 else:
                     messages[-1] += line

@@ -7,10 +7,12 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from models import TenantAccountRole
 from models.account import Account, Tenant, TenantAccountJoin
-from models.enums import ConversationFromSource
+from models.enums import ConversationFromSource, EndUserType
 from models.model import App, Conversation, EndUser, Message, MessageAnnotation
 from services.annotation_service import AppAnnotationService
 from services.conversation_service import ConversationService
@@ -21,7 +23,7 @@ from services.message_service import MessageService
 
 class ConversationServiceIntegrationTestDataFactory:
     @staticmethod
-    def create_app_and_account(db_session_with_containers):
+    def create_app_and_account(db_session_with_containers: Session):
         tenant = Tenant(name=f"Tenant {uuid4()}")
         db_session_with_containers.add(tenant)
         db_session_with_containers.flush()
@@ -40,7 +42,7 @@ class ConversationServiceIntegrationTestDataFactory:
         tenant_join = TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
-            role="owner",
+            role=TenantAccountRole.OWNER,
             current=True,
         )
         db_session_with_containers.add(tenant_join)
@@ -74,7 +76,7 @@ class ConversationServiceIntegrationTestDataFactory:
         end_user = EndUser(
             tenant_id=app.tenant_id,
             app_id=app.id,
-            type=InvokeFrom.SERVICE_API,
+            type=EndUserType.SERVICE_API,
             external_user_id=f"external-{uuid4()}",
             name="End User",
             is_anonymous=False,
@@ -154,7 +156,7 @@ class ConversationServiceIntegrationTestDataFactory:
             total_price=Decimal(0),
             currency="USD",
             status="normal",
-            invoke_from=InvokeFrom.WEB_APP.value,
+            invoke_from=InvokeFrom.WEB_APP,
             from_source=ConversationFromSource.API if isinstance(user, EndUser) else ConversationFromSource.CONSOLE,
             from_end_user_id=user.id if isinstance(user, EndUser) else None,
             from_account_id=user.id if isinstance(user, Account) else None,
@@ -170,7 +172,7 @@ class ConversationServiceIntegrationTestDataFactory:
 class TestConversationServicePagination:
     """Test conversation pagination operations."""
 
-    def test_pagination_with_non_empty_include_ids(self, db_session_with_containers):
+    def test_pagination_with_non_empty_include_ids(self, db_session_with_containers: Session):
         """
         Test that non-empty include_ids filters properly.
 
@@ -204,7 +206,7 @@ class TestConversationServicePagination:
         returned_ids = {conversation.id for conversation in result.data}
         assert returned_ids == {conversations[0].id, conversations[1].id}
 
-    def test_pagination_with_empty_exclude_ids(self, db_session_with_containers):
+    def test_pagination_with_empty_exclude_ids(self, db_session_with_containers: Session):
         """
         Test that empty exclude_ids doesn't filter.
 
@@ -237,7 +239,7 @@ class TestConversationServicePagination:
         # Assert
         assert len(result.data) == len(conversations)
 
-    def test_pagination_with_non_empty_exclude_ids(self, db_session_with_containers):
+    def test_pagination_with_non_empty_exclude_ids(self, db_session_with_containers: Session):
         """
         Test that non-empty exclude_ids filters properly.
 
@@ -271,7 +273,7 @@ class TestConversationServicePagination:
         returned_ids = {conversation.id for conversation in result.data}
         assert returned_ids == {conversations[2].id}
 
-    def test_pagination_with_sorting_descending(self, db_session_with_containers):
+    def test_pagination_with_sorting_descending(self, db_session_with_containers: Session):
         """
         Test pagination with descending sort order.
 
@@ -316,7 +318,7 @@ class TestConversationServiceMessageCreation:
     within conversations.
     """
 
-    def test_pagination_by_first_id_without_first_id(self, db_session_with_containers):
+    def test_pagination_by_first_id_without_first_id(self, db_session_with_containers: Session):
         """
         Test message pagination without specifying first_id.
 
@@ -348,13 +350,14 @@ class TestConversationServiceMessageCreation:
             conversation_id=conversation.id,
             first_id=None,  # No starting point specified
             limit=10,
+            session=db_session_with_containers,
         )
 
         # Assert - Verify the results
         assert len(result.data) == 3  # All 3 messages returned
         assert result.has_more is False  # No more messages available (3 < limit of 10)
 
-    def test_pagination_by_first_id_with_first_id(self, db_session_with_containers):
+    def test_pagination_by_first_id_with_first_id(self, db_session_with_containers: Session):
         """
         Test message pagination with first_id specified.
 
@@ -393,13 +396,16 @@ class TestConversationServiceMessageCreation:
             conversation_id=conversation.id,
             first_id=first_message.id,
             limit=10,
+            session=db_session_with_containers,
         )
 
         # Assert - Verify the results
         assert len(result.data) == 2  # Only 2 messages returned after first_id
         assert result.has_more is False  # No more messages available (2 < limit of 10)
 
-    def test_pagination_by_first_id_raises_error_when_first_message_not_found(self, db_session_with_containers):
+    def test_pagination_by_first_id_raises_error_when_first_message_not_found(
+        self, db_session_with_containers: Session
+    ):
         """
         Test that FirstMessageNotExistsError is raised when first_id doesn't exist.
 
@@ -422,9 +428,10 @@ class TestConversationServiceMessageCreation:
                 conversation_id=conversation.id,
                 first_id=str(uuid4()),
                 limit=10,
+                session=db_session_with_containers,
             )
 
-    def test_pagination_with_has_more_flag(self, db_session_with_containers):
+    def test_pagination_with_has_more_flag(self, db_session_with_containers: Session):
         """
         Test that has_more flag is correctly set when there are more messages.
 
@@ -457,13 +464,14 @@ class TestConversationServiceMessageCreation:
             conversation_id=conversation.id,
             first_id=None,
             limit=limit,
+            session=db_session_with_containers,
         )
 
         # Assert
         assert len(result.data) == limit  # Extra message should be removed
         assert result.has_more is True  # Flag should be set
 
-    def test_pagination_with_ascending_order(self, db_session_with_containers):
+    def test_pagination_with_ascending_order(self, db_session_with_containers: Session):
         """
         Test message pagination with ascending order.
 
@@ -494,7 +502,8 @@ class TestConversationServiceMessageCreation:
             conversation_id=conversation.id,
             first_id=None,
             limit=10,
-            order="asc",  # Ascending order
+            order="asc",  # Ascending order,
+            session=db_session_with_containers,
         )
 
         # Assert
@@ -512,7 +521,7 @@ class TestConversationServiceSummarization:
     """
 
     @patch("services.conversation_service.LLMGenerator.generate_conversation_name")
-    def test_auto_generate_name_success(self, mock_llm_generator, db_session_with_containers):
+    def test_auto_generate_name_success(self, mock_llm_generator, db_session_with_containers: Session):
         """
         Test successful auto-generation of conversation name.
 
@@ -543,7 +552,7 @@ class TestConversationServiceSummarization:
         mock_llm_generator.return_value = generated_name
 
         # Act
-        result = ConversationService.auto_generate_name(app_model, conversation)
+        result = ConversationService.auto_generate_name(app_model, conversation, session=db_session_with_containers)
 
         # Assert
         assert conversation.name == generated_name  # Name updated on conversation object
@@ -552,7 +561,7 @@ class TestConversationServiceSummarization:
             app_model.tenant_id, first_message.query, conversation.id, app_model.id
         )
 
-    def test_auto_generate_name_raises_error_when_no_message(self, db_session_with_containers):
+    def test_auto_generate_name_raises_error_when_no_message(self, db_session_with_containers: Session):
         """
         Test that MessageNotExistsError is raised when conversation has no messages.
 
@@ -568,10 +577,12 @@ class TestConversationServiceSummarization:
 
         # Act & Assert
         with pytest.raises(MessageNotExistsError):
-            ConversationService.auto_generate_name(app_model, conversation)
+            ConversationService.auto_generate_name(app_model, conversation, session=db_session_with_containers)
 
     @patch("services.conversation_service.LLMGenerator.generate_conversation_name")
-    def test_auto_generate_name_handles_llm_failure_gracefully(self, mock_llm_generator, db_session_with_containers):
+    def test_auto_generate_name_handles_llm_failure_gracefully(
+        self, mock_llm_generator, db_session_with_containers: Session
+    ):
         """
         Test that LLM generation failures are suppressed and don't crash.
 
@@ -598,13 +609,13 @@ class TestConversationServiceSummarization:
         mock_llm_generator.side_effect = Exception("LLM service unavailable")
 
         # Act
-        result = ConversationService.auto_generate_name(app_model, conversation)
+        result = ConversationService.auto_generate_name(app_model, conversation, session=db_session_with_containers)
 
         # Assert
         assert conversation.name == original_name  # Name remains unchanged
 
     @patch("services.conversation_service.naive_utc_now")
-    def test_rename_with_manual_name(self, mock_naive_utc_now, db_session_with_containers):
+    def test_rename_with_manual_name(self, mock_naive_utc_now, db_session_with_containers: Session):
         """
         Test renaming conversation with manual name.
 
@@ -631,11 +642,47 @@ class TestConversationServiceSummarization:
             user=user,
             name=new_name,
             auto_generate=False,
+            session=db_session_with_containers,
         )
 
         # Assert
         assert conversation.name == new_name
         assert conversation.updated_at == mock_time
+
+    @patch("services.conversation_service.LLMGenerator.generate_conversation_name")
+    def test_rename_with_auto_generate(self, mock_llm_generator, db_session_with_containers: Session):
+        """
+        Test rename delegates to auto_generate_name when auto_generate is True.
+
+        When auto_generate is True, the service should call auto_generate_name
+        which uses an LLM to create a descriptive conversation title.
+        """
+        # Arrange
+        app_model, user = ConversationServiceIntegrationTestDataFactory.create_app_and_account(
+            db_session_with_containers
+        )
+        conversation = ConversationServiceIntegrationTestDataFactory.create_conversation(
+            db_session_with_containers, app_model, user
+        )
+        ConversationServiceIntegrationTestDataFactory.create_message(
+            db_session_with_containers, app_model, conversation, user
+        )
+        generated_name = "Auto Generated Name"
+        mock_llm_generator.return_value = generated_name
+
+        # Act
+        result = ConversationService.rename(
+            app_model=app_model,
+            conversation_id=conversation.id,
+            user=user,
+            name=None,
+            auto_generate=True,
+            session=db_session_with_containers,
+        )
+
+        # Assert
+        assert result == conversation
+        assert conversation.name == generated_name
 
 
 class TestConversationServiceMessageAnnotation:
@@ -648,7 +695,9 @@ class TestConversationServiceMessageAnnotation:
 
     @patch("services.annotation_service.add_annotation_to_index_task")
     @patch("services.annotation_service.current_account_with_tenant")
-    def test_create_annotation_from_message(self, mock_current_account, mock_add_task, db_session_with_containers):
+    def test_create_annotation_from_message(
+        self, mock_current_account, mock_add_task, db_session_with_containers: Session
+    ):
         """
         Test creating annotation from existing message.
 
@@ -677,7 +726,9 @@ class TestConversationServiceMessageAnnotation:
         args = {"message_id": message.id, "answer": "AI is artificial intelligence"}
 
         # Act
-        result = AppAnnotationService.up_insert_app_annotation_from_message(args, app_model.id)
+        result = AppAnnotationService.up_insert_app_annotation_from_message(
+            args, app_model.id, session=db_session_with_containers
+        )
 
         # Assert
         assert result.message_id == message.id
@@ -687,7 +738,9 @@ class TestConversationServiceMessageAnnotation:
 
     @patch("services.annotation_service.add_annotation_to_index_task")
     @patch("services.annotation_service.current_account_with_tenant")
-    def test_create_annotation_without_message(self, mock_current_account, mock_add_task, db_session_with_containers):
+    def test_create_annotation_without_message(
+        self, mock_current_account, mock_add_task, db_session_with_containers: Session
+    ):
         """
         Test creating standalone annotation without message.
 
@@ -709,7 +762,9 @@ class TestConversationServiceMessageAnnotation:
         }
 
         # Act
-        result = AppAnnotationService.up_insert_app_annotation_from_message(args, app_model.id)
+        result = AppAnnotationService.up_insert_app_annotation_from_message(
+            args, app_model.id, session=db_session_with_containers
+        )
 
         # Assert
         assert result.message_id is None
@@ -719,7 +774,7 @@ class TestConversationServiceMessageAnnotation:
 
     @patch("services.annotation_service.add_annotation_to_index_task")
     @patch("services.annotation_service.current_account_with_tenant")
-    def test_update_existing_annotation(self, mock_current_account, mock_add_task, db_session_with_containers):
+    def test_update_existing_annotation(self, mock_current_account, mock_add_task, db_session_with_containers: Session):
         """
         Test updating an existing annotation.
 
@@ -758,7 +813,9 @@ class TestConversationServiceMessageAnnotation:
         args = {"message_id": message.id, "answer": "Updated annotation content"}
 
         # Act
-        result = AppAnnotationService.up_insert_app_annotation_from_message(args, app_model.id)
+        result = AppAnnotationService.up_insert_app_annotation_from_message(
+            args, app_model.id, session=db_session_with_containers
+        )
 
         # Assert
         assert result.id == existing_annotation.id
@@ -766,7 +823,7 @@ class TestConversationServiceMessageAnnotation:
         mock_add_task.delay.assert_not_called()
 
     @patch("services.annotation_service.current_account_with_tenant")
-    def test_get_annotation_list(self, mock_current_account, db_session_with_containers):
+    def test_get_annotation_list(self, mock_current_account, db_session_with_containers: Session):
         """
         Test retrieving paginated annotation list.
 
@@ -794,7 +851,7 @@ class TestConversationServiceMessageAnnotation:
 
         # Act
         result_items, result_total = AppAnnotationService.get_annotation_list_by_app_id(
-            app_id=app_model.id, page=1, limit=10, keyword=""
+            app_id=app_model.id, page=1, limit=10, keyword="", session=db_session_with_containers
         )
 
         # Assert
@@ -802,7 +859,7 @@ class TestConversationServiceMessageAnnotation:
         assert result_total == 5
 
     @patch("services.annotation_service.current_account_with_tenant")
-    def test_get_annotation_list_with_keyword_search(self, mock_current_account, db_session_with_containers):
+    def test_get_annotation_list_with_keyword_search(self, mock_current_account, db_session_with_containers: Session):
         """
         Test retrieving annotations with keyword filtering.
 
@@ -842,7 +899,8 @@ class TestConversationServiceMessageAnnotation:
             app_id=app_model.id,
             page=1,
             limit=10,
-            keyword="machine",  # Search keyword
+            keyword="machine",  # Search keyword,
+            session=db_session_with_containers,
         )
 
         # Assert
@@ -851,7 +909,7 @@ class TestConversationServiceMessageAnnotation:
 
     @patch("services.annotation_service.add_annotation_to_index_task")
     @patch("services.annotation_service.current_account_with_tenant")
-    def test_insert_annotation_directly(self, mock_current_account, mock_add_task, db_session_with_containers):
+    def test_insert_annotation_directly(self, mock_current_account, mock_add_task, db_session_with_containers: Session):
         """
         Test direct annotation insertion without message reference.
 
@@ -870,7 +928,7 @@ class TestConversationServiceMessageAnnotation:
         }
 
         # Act
-        result = AppAnnotationService.insert_app_annotation_directly(args, app_model.id)
+        result = AppAnnotationService.insert_app_annotation_directly(args, app_model.id, db_session_with_containers)
 
         # Assert
         assert result.question == args["question"]
@@ -885,7 +943,7 @@ class TestConversationServiceExport:
     Tests retrieving conversation data for export purposes.
     """
 
-    def test_get_conversation_success(self, db_session_with_containers):
+    def test_get_conversation_success(self, db_session_with_containers: Session):
         """Test successful retrieval of conversation."""
         # Arrange
         app_model, user = ConversationServiceIntegrationTestDataFactory.create_app_and_account(
@@ -898,12 +956,14 @@ class TestConversationServiceExport:
         )
 
         # Act
-        result = ConversationService.get_conversation(app_model=app_model, conversation_id=conversation.id, user=user)
+        result = ConversationService.get_conversation(
+            app_model=app_model, conversation_id=conversation.id, user=user, session=db_session_with_containers
+        )
 
         # Assert
         assert result == conversation
 
-    def test_get_conversation_not_found(self, db_session_with_containers):
+    def test_get_conversation_not_found(self, db_session_with_containers: Session):
         """Test ConversationNotExistsError when conversation doesn't exist."""
         # Arrange
         app_model, user = ConversationServiceIntegrationTestDataFactory.create_app_and_account(
@@ -912,10 +972,15 @@ class TestConversationServiceExport:
 
         # Act & Assert
         with pytest.raises(ConversationNotExistsError):
-            ConversationService.get_conversation(app_model=app_model, conversation_id=str(uuid4()), user=user)
+            ConversationService.get_conversation(
+                app_model=app_model,
+                conversation_id=str(uuid4()),
+                user=user,
+                session=db_session_with_containers,
+            )
 
     @patch("services.annotation_service.current_account_with_tenant")
-    def test_export_annotation_list(self, mock_current_account, db_session_with_containers):
+    def test_export_annotation_list(self, mock_current_account, db_session_with_containers: Session):
         """Test exporting all annotations for an app."""
         # Arrange
         app_model, account = ConversationServiceIntegrationTestDataFactory.create_app_and_account(
@@ -938,12 +1003,12 @@ class TestConversationServiceExport:
         mock_current_account.return_value = (account, app_model.tenant_id)
 
         # Act
-        result = AppAnnotationService.export_annotation_list_by_app_id(app_model.id)
+        result = AppAnnotationService.export_annotation_list_by_app_id(app_model.id, db_session_with_containers)
 
         # Assert
         assert len(result) == 10
 
-    def test_get_message_success(self, db_session_with_containers):
+    def test_get_message_success(self, db_session_with_containers: Session):
         """Test successful retrieval of a message."""
         # Arrange
         app_model, user = ConversationServiceIntegrationTestDataFactory.create_app_and_account(
@@ -962,12 +1027,14 @@ class TestConversationServiceExport:
         )
 
         # Act
-        result = MessageService.get_message(app_model=app_model, user=user, message_id=message.id)
+        result = MessageService.get_message(
+            app_model=app_model, user=user, message_id=message.id, session=db_session_with_containers
+        )
 
         # Assert
         assert result == message
 
-    def test_get_message_not_found(self, db_session_with_containers):
+    def test_get_message_not_found(self, db_session_with_containers: Session):
         """Test MessageNotExistsError when message doesn't exist."""
         # Arrange
         app_model, user = ConversationServiceIntegrationTestDataFactory.create_app_and_account(
@@ -976,9 +1043,11 @@ class TestConversationServiceExport:
 
         # Act & Assert
         with pytest.raises(MessageNotExistsError):
-            MessageService.get_message(app_model=app_model, user=user, message_id=str(uuid4()))
+            MessageService.get_message(
+                app_model=app_model, user=user, message_id=str(uuid4()), session=db_session_with_containers
+            )
 
-    def test_get_conversation_for_end_user(self, db_session_with_containers):
+    def test_get_conversation_for_end_user(self, db_session_with_containers: Session):
         """
         Test retrieving conversation created by end user via API.
 
@@ -997,19 +1066,22 @@ class TestConversationServiceExport:
 
         # Act
         result = ConversationService.get_conversation(
-            app_model=app_model, conversation_id=conversation.id, user=end_user
+            app_model=app_model,
+            conversation_id=conversation.id,
+            user=end_user,
+            session=db_session_with_containers,
         )
 
         # Assert
         assert result == conversation
 
     @patch("services.conversation_service.delete_conversation_related_data")
-    def test_delete_conversation(self, mock_delete_task, db_session_with_containers):
+    def test_delete_conversation(self, mock_delete_task, db_session_with_containers: Session):
         """
         Test conversation deletion with async cleanup.
 
         Deletion is a two-step process:
-        1. Immediately delete the conversation record from database
+        1. Immediately hide the conversation with a durable soft-delete marker
         2. Trigger async background task to clean up related data
            (messages, annotations, vector embeddings, file uploads)
         """
@@ -1025,19 +1097,26 @@ class TestConversationServiceExport:
         conversation_id = conversation.id
 
         # Act - Delete the conversation
-        ConversationService.delete(app_model=app_model, conversation_id=conversation_id, user=user)
+        ConversationService.delete(
+            app_model=app_model, conversation_id=conversation_id, user=user, session=db_session_with_containers
+        )
 
         # Assert - Verify two-step deletion process
-        # Step 1: Immediate database deletion
+        # Step 1: Immediate logical deletion
         deleted = db_session_with_containers.scalar(select(Conversation).where(Conversation.id == conversation_id))
-        assert deleted is None
+        assert deleted is not None
+        assert deleted.is_deleted is True
 
         # Step 2: Async cleanup task triggered
         # The Celery task will handle cleanup of messages, annotations, etc.
         mock_delete_task.delay.assert_called_once_with(conversation_id)
 
     @patch("services.conversation_service.delete_conversation_related_data")
-    def test_delete_conversation_not_owned_by_account(self, mock_delete_task, db_session_with_containers):
+    def test_delete_conversation_not_owned_by_account(
+        self,
+        mock_delete_task,
+        db_session_with_containers: Session,
+    ):
         """
         Test deletion is denied when conversation belongs to a different account.
         """
@@ -1060,9 +1139,47 @@ class TestConversationServiceExport:
                 app_model=app_model,
                 conversation_id=conversation.id,
                 user=other_account,
+                session=db_session_with_containers,
             )
 
         # Verify no deletion and no async cleanup trigger
         not_deleted = db_session_with_containers.scalar(select(Conversation).where(Conversation.id == conversation.id))
         assert not_deleted is not None
         mock_delete_task.delay.assert_not_called()
+
+    @patch("services.conversation_service.delete_conversation_related_data")
+    def test_delete_handles_exception_and_rollback(
+        self,
+        mock_delete_task,
+        db_session_with_containers: Session,
+    ):
+        """
+        Test that delete propagates exceptions and does not trigger the cleanup task.
+
+        When a DB error occurs during deletion, the conversation row stays in place.
+        """
+        # Arrange
+        app_model, user = ConversationServiceIntegrationTestDataFactory.create_app_and_account(
+            db_session_with_containers
+        )
+        conversation = ConversationServiceIntegrationTestDataFactory.create_conversation(
+            db_session_with_containers, app_model, user
+        )
+        conversation_id = conversation.id
+
+        # Act — force an error during the soft-delete commit to exercise rollback
+        with patch.object(db_session_with_containers, "commit", side_effect=Exception("DB error")):
+            with pytest.raises(Exception, match="DB error"):
+                ConversationService.delete(
+                    app_model=app_model,
+                    conversation_id=conversation_id,
+                    user=user,
+                    session=db_session_with_containers,
+                )
+
+        # Assert — related-data deletion is not scheduled.
+        mock_delete_task.delay.assert_not_called()
+
+        # Conversation is still present because the deletion was never committed
+        still_there = db_session_with_containers.scalar(select(Conversation).where(Conversation.id == conversation_id))
+        assert still_there is not None

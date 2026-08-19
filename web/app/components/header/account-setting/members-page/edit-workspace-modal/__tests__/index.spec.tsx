@@ -1,19 +1,28 @@
-import type { AppContextValue } from '@/context/app-context'
-import type { ICurrentWorkspace } from '@/models/common'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { ConsoleStateFixture } from '@/test/console/state-fixture'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { vi } from 'vitest'
-import { useAppContext } from '@/context/app-context'
+import { vi } from 'vite-plus/test'
 import { updateWorkspaceInfo } from '@/service/common'
+import { render } from '@/test/console/render'
 import EditWorkspaceModal from '../index'
 
 const toastMocks = vi.hoisted(() => ({
   mockNotify: vi.fn(),
 }))
+const mockConsoleState = vi.hoisted(() => ({
+  current: {} as Partial<ConsoleStateFixture>,
+}))
+const mockConsoleStateReader = vi.hoisted(() => vi.fn())
 
-vi.mock('@/context/app-context')
+const getSaveButton = () => screen.getByRole('button', { name: /operation\.(save|saving)/i })
+
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => mockConsoleState.current)
+})
+
 vi.mock('@/service/common')
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   default: {
     notify: (args: unknown) => toastMocks.mockNotify(args),
   },
@@ -32,21 +41,24 @@ describe('EditWorkspaceModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    vi.mocked(useAppContext).mockReturnValue({
-      currentWorkspace: { name: 'Test Workspace' } as ICurrentWorkspace,
+    const consoleState = {
+      currentWorkspace: { name: 'Test Workspace' },
       isCurrentWorkspaceOwner: true,
-    } as unknown as AppContextValue)
+    } as unknown as ConsoleStateFixture
+    mockConsoleState.current = consoleState
+    mockConsoleStateReader.mockReturnValue(consoleState)
   })
 
   afterEach(() => {
     vi.unstubAllGlobals()
   })
 
-  const renderModal = () => render(
-    <>
-      <EditWorkspaceModal onCancel={mockOnCancel} />
-    </>,
-  )
+  const renderModal = () =>
+    render(
+      <>
+        <EditWorkspaceModal onCancel={mockOnCancel} />
+      </>,
+    )
 
   it('should show current workspace name in the input', async () => {
     renderModal()
@@ -54,10 +66,10 @@ describe('EditWorkspaceModal', () => {
     expect(await screen.findByDisplayValue('Test Workspace')).toBeInTheDocument()
   })
 
-  it('should render on the base/ui overlay layer', async () => {
+  it('should render on the dify-ui overlay layer', async () => {
     renderModal()
 
-    expect(await screen.findByRole('dialog')).toHaveClass('z-1002')
+    expect(await screen.findByRole('dialog')).toHaveClass('z-50')
   })
 
   it('should let user edit workspace name', async () => {
@@ -75,15 +87,22 @@ describe('EditWorkspaceModal', () => {
   it('should submit update when confirming as owner', async () => {
     const user = userEvent.setup()
     const mockAssign = vi.fn()
-    vi.stubGlobal('location', { ...window.location, assign: mockAssign, origin: 'http://localhost' })
-    vi.mocked(updateWorkspaceInfo).mockResolvedValue({} as ICurrentWorkspace)
+    vi.stubGlobal('location', {
+      ...window.location,
+      assign: mockAssign,
+      origin: 'http://localhost',
+    })
+    vi.mocked(updateWorkspaceInfo).mockResolvedValue({
+      result: 'success',
+      tenant: { id: 'workspace-id' },
+    })
 
     renderModal()
 
     const input = screen.getByLabelText(/account\.workspaceName/i)
     await user.clear(input)
     await user.type(input, 'Renamed Workspace')
-    await user.click(screen.getByTestId('edit-workspace-save'))
+    await user.click(getSaveButton())
 
     await waitFor(() => {
       expect(updateWorkspaceInfo).toHaveBeenCalledWith({
@@ -106,19 +125,21 @@ describe('EditWorkspaceModal', () => {
     const input = screen.getByLabelText(/account\.workspaceName/i)
     await user.clear(input)
     await user.type(input, 'Broken Workspace')
-    await user.click(screen.getByTestId('edit-workspace-save'))
+    await user.click(getSaveButton())
 
     await waitFor(() => {
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'error',
-      }))
+      expect(mockNotify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'error',
+        }),
+      )
     })
   })
 
   it('should disable save button when there are no changes', async () => {
     renderModal()
 
-    expect(screen.getByTestId('edit-workspace-save')).toBeDisabled()
+    expect(getSaveButton()).toBeDisabled()
   })
 
   it('should disable save button and show error when the name is empty', async () => {
@@ -129,15 +150,15 @@ describe('EditWorkspaceModal', () => {
     const input = screen.getByLabelText(/account\.workspaceName/i)
     await user.clear(input)
 
-    expect(screen.getByTestId('edit-workspace-save')).toBeDisabled()
+    expect(getSaveButton()).toBeDisabled()
     expect(input).toHaveAttribute('aria-invalid', 'true')
-    expect(screen.getByTestId('edit-workspace-error')).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toBeInTheDocument()
   })
 
   it('should not submit when the form is submitted while save is disabled', async () => {
     renderModal()
 
-    const saveButton = screen.getByTestId('edit-workspace-save')
+    const saveButton = getSaveButton()
     const form = saveButton.closest('form')
 
     expect(saveButton).toBeDisabled()
@@ -150,21 +171,21 @@ describe('EditWorkspaceModal', () => {
   })
 
   it('should disable confirm button for non-owners', async () => {
-    vi.mocked(useAppContext).mockReturnValue({
-      currentWorkspace: { name: 'Test Workspace' } as ICurrentWorkspace,
+    mockConsoleStateReader.mockReturnValue({
+      currentWorkspace: { name: 'Test Workspace' },
       isCurrentWorkspaceOwner: false,
-    } as unknown as AppContextValue)
+    } as unknown as ConsoleStateFixture)
 
     renderModal()
 
-    expect(screen.getByTestId('edit-workspace-save')).toBeDisabled()
+    expect(getSaveButton()).toBeDisabled()
   })
 
   it('should call onCancel when close icon is clicked', async () => {
     const user = userEvent.setup()
     renderModal()
 
-    await user.click(screen.getByTestId('edit-workspace-close'))
+    await user.click(screen.getByRole('button', { name: /Close|operation.close/ }))
     expect(mockOnCancel).toHaveBeenCalled()
   })
 
@@ -172,7 +193,7 @@ describe('EditWorkspaceModal', () => {
     const user = userEvent.setup()
     renderModal()
 
-    await user.click(screen.getByTestId('edit-workspace-cancel'))
+    await user.click(screen.getByRole('button', { name: /operation\.cancel/i }))
     expect(mockOnCancel).toHaveBeenCalled()
   })
 

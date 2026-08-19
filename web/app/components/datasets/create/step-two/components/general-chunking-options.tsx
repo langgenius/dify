@@ -1,18 +1,19 @@
 'use client'
 
 import type { FC } from 'react'
-import type { PreProcessingRule, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
-import {
-  RiAlertFill,
-  RiSearchEyeLine,
-} from '@remixicon/react'
+import type {
+  PreProcessingRule,
+  SummaryIndexSetting as SummaryIndexSettingType,
+} from '@/models/datasets'
+import { Button } from '@langgenius/dify-ui/button'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { RiAlertFill, RiSearchEyeLine } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import Checkbox from '@/app/components/base/checkbox'
 import Divider from '@/app/components/base/divider'
-import Tooltip from '@/app/components/base/tooltip'
+import { Infotip } from '@/app/components/base/infotip'
 import SummaryIndexSetting from '@/app/components/datasets/settings/summary-index-setting'
-import { IS_CE_EDITION } from '@/config'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { ChunkingMode } from '@/models/datasets'
 import SettingCog from '../../assets/setting-gear-mod.svg'
 import s from '../index.module.css'
@@ -25,7 +26,7 @@ type TextLabelProps = {
 }
 
 const TextLabel: FC<TextLabelProps> = ({ children }) => {
-  return <label className="text-text-secondary system-sm-semibold">{children}</label>
+  return <label className="system-sm-semibold text-text-secondary">{children}</label>
 }
 
 type GeneralChunkingOptionsProps = {
@@ -82,12 +83,17 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
   onSummaryIndexSettingChange,
 }) => {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+  const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
 
   const getRuleName = (key: string): string => {
     const ruleNameMap: Record<string, string> = {
-      remove_extra_spaces: t('stepTwo.removeExtraSpaces', { ns: 'datasetCreation' }),
-      remove_urls_emails: t('stepTwo.removeUrlEmails', { ns: 'datasetCreation' }),
-      remove_stopwords: t('stepTwo.removeStopwords', { ns: 'datasetCreation' }),
+      remove_extra_spaces: t(($) => $['stepTwo.removeExtraSpaces'], { ns: 'datasetCreation' }),
+      remove_urls_emails: t(($) => $['stepTwo.removeUrlEmails'], { ns: 'datasetCreation' }),
+      remove_stopwords: t(($) => $['stepTwo.removeStopwords'], { ns: 'datasetCreation' }),
     }
     return ruleNameMap[key] ?? key
   }
@@ -95,114 +101,115 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
   return (
     <OptionCard
       className="mb-2 bg-background-section"
-      title={t('stepTwo.general', { ns: 'datasetCreation' })}
-      icon={<img width={20} height={20} src={SettingCog.src} alt={t('stepTwo.general', { ns: 'datasetCreation' })} />}
+      title={t(($) => $['stepTwo.general'], { ns: 'datasetCreation' })}
+      icon={
+        <img
+          width={20}
+          height={20}
+          src={SettingCog.src}
+          alt={t(($) => $['stepTwo.general'], { ns: 'datasetCreation' })}
+        />
+      }
       activeHeaderClassName="bg-dataset-option-card-blue-gradient"
-      description={t('stepTwo.generalTip', { ns: 'datasetCreation' })}
+      description={t(($) => $['stepTwo.generalTip'], { ns: 'datasetCreation' })}
       isActive={isActive}
       onSwitched={() => onDocFormChange(ChunkingMode.text)}
-      actions={(
+      actions={
         <>
           <Button variant="secondary-accent" onClick={onPreview}>
-            <RiSearchEyeLine className="mr-0.5 h-4 w-4" />
-            {t('stepTwo.previewChunk', { ns: 'datasetCreation' })}
+            <RiSearchEyeLine className="size-4" />
+            {t(($) => $['stepTwo.previewChunk'], { ns: 'datasetCreation' })}
           </Button>
           <Button variant="ghost" onClick={onReset}>
-            {t('stepTwo.reset', { ns: 'datasetCreation' })}
+            {t(($) => $['stepTwo.reset'], { ns: 'datasetCreation' })}
           </Button>
         </>
-      )}
+      }
       noHighlight={isInUpload && isNotUploadInEmptyDataset}
     >
-      <div className="flex flex-col gap-y-4">
-        <div className="flex gap-3">
+      <div className="@container/chunkfields flex flex-col gap-y-4">
+        {/* Container query, not a viewport breakpoint: three across at/above a
+            552px container, stacked one-per-row below (see inputs.tsx FormField). */}
+        <div className="flex flex-col gap-3 @min-[552px]/chunkfields:flex-row">
           <DelimiterInput
             value={segmentIdentifier}
-            onChange={e => onSegmentIdentifierChange(e.target.value)}
+            onChange={(e) => onSegmentIdentifierChange(e.target.value)}
           />
           <MaxLengthInput
             unit="characters"
             value={maxChunkLength}
             onChange={onMaxChunkLengthChange}
           />
-          <OverlapInput
-            unit="characters"
-            value={overlap}
-            min={1}
-            onChange={onOverlapChange}
-          />
+          <OverlapInput unit="characters" value={overlap} min={1} onChange={onOverlapChange} />
         </div>
         <div className="flex w-full flex-col">
           <div className="flex items-center gap-x-2">
             <div className="inline-flex shrink-0">
-              <TextLabel>{t('stepTwo.rules', { ns: 'datasetCreation' })}</TextLabel>
+              <TextLabel>{t(($) => $['stepTwo.rules'], { ns: 'datasetCreation' })}</TextLabel>
             </div>
             <Divider className="grow" bgStyle="gradient" />
           </div>
           <div className="mt-1">
-            {rules.map(rule => (
-              <div
-                key={rule.id}
-                className={s.ruleItem}
-                onClick={() => onRuleToggle(rule.id)}
-              >
-                <Checkbox checked={rule.enabled} />
-                <label className="ml-2 cursor-pointer text-text-secondary system-sm-regular">
+            {rules.map((rule) => (
+              <label key={rule.id} className={`${s.ruleItem} cursor-pointer`}>
+                <Checkbox checked={rule.enabled} onCheckedChange={() => onRuleToggle(rule.id)} />
+                <span className="ml-2 system-sm-regular text-text-secondary">
                   {getRuleName(rule.id)}
-                </label>
-              </div>
+                </span>
+              </label>
             ))}
-            {
-              showSummaryIndexSetting && IS_CE_EDITION && (
-                <div className="mt-3">
-                  <SummaryIndexSetting
-                    entry="create-document"
-                    summaryIndexSetting={summaryIndexSetting}
-                    onSummaryIndexSettingChange={onSummaryIndexSettingChange}
-                  />
-                </div>
-              )
-            }
-            {IS_CE_EDITION && (
+            {showSummaryIndexSetting && isNonCloudEdition && (
+              <div className="mt-3">
+                <SummaryIndexSetting
+                  entry="create-document"
+                  summaryIndexSetting={summaryIndexSetting}
+                  onSummaryIndexSettingChange={onSummaryIndexSettingChange}
+                />
+              </div>
+            )}
+            {isNonCloudEdition && (
               <>
                 <Divider type="horizontal" className="my-4 bg-divider-subtle" />
                 <div className="flex items-center py-0.5">
-                  <div
-                    className="flex items-center"
-                    onClick={() => {
-                      if (hasCurrentDatasetDocForm)
-                        return
-                      if (currentDocForm === ChunkingMode.qa)
-                        onDocFormChange(ChunkingMode.text)
-                      else
-                        onDocFormChange(ChunkingMode.qa)
-                    }}
+                  <label
+                    className={`flex items-center ${hasCurrentDatasetDocForm ? '' : 'cursor-pointer'}`}
                   >
                     <Checkbox
                       checked={currentDocForm === ChunkingMode.qa}
                       disabled={hasCurrentDatasetDocForm}
+                      onCheckedChange={() => {
+                        if (hasCurrentDatasetDocForm) return
+                        if (currentDocForm === ChunkingMode.qa) onDocFormChange(ChunkingMode.text)
+                        else onDocFormChange(ChunkingMode.qa)
+                      }}
                     />
-                    <label className="ml-2 cursor-pointer text-text-secondary system-sm-regular">
-                      {t('stepTwo.useQALanguage', { ns: 'datasetCreation' })}
-                    </label>
-                  </div>
+                    <span className="ml-2 system-sm-regular text-text-secondary">
+                      {t(($) => $['stepTwo.useQALanguage'], { ns: 'datasetCreation' })}
+                    </span>
+                  </label>
                   <LanguageSelect
                     currentLanguage={docLanguage || locale}
                     onSelect={onDocLanguageChange}
                     disabled={currentDocForm !== ChunkingMode.qa}
                   />
-                  <Tooltip popupContent={t('stepTwo.QATip', { ns: 'datasetCreation' })} />
+                  <Infotip
+                    aria-label={t(($) => $['stepTwo.QATip'], { ns: 'datasetCreation' })}
+                    className="size-3.5"
+                  >
+                    {t(($) => $['stepTwo.QATip'], { ns: 'datasetCreation' })}
+                  </Infotip>
                 </div>
                 {currentDocForm === ChunkingMode.qa && (
                   <div
                     style={{
-                      background: 'linear-gradient(92deg, rgba(247, 144, 9, 0.1) 0%, rgba(255, 255, 255, 0.00) 100%)',
+                      background:
+                        'linear-gradient(92deg, rgba(247, 144, 9, 0.1) 0%, rgba(255, 255, 255, 0.00) 100%)',
                     }}
                     className="mt-2 flex h-10 items-center gap-2 rounded-xl border border-components-panel-border px-3 text-xs shadow-xs backdrop-blur-[5px]"
                   >
                     <RiAlertFill className="size-4 text-text-warning-secondary" />
-                    <span className="text-text-primary system-xs-medium">
-                      {t('stepTwo.QATip', { ns: 'datasetCreation' })}
+                    <span className="system-xs-medium text-text-primary">
+                      {t(($) => $['stepTwo.QATip'], { ns: 'datasetCreation' })}
                     </span>
                   </div>
                 )}

@@ -3,9 +3,9 @@ import uuid
 from unittest.mock import Mock
 
 import pytest
-from graphon.enums import WorkflowNodeExecutionStatus
-from graphon.runtime import GraphRuntimeState, VariablePool
-from graphon.variables.segments import StringSegment
+from pytest_mock import MockerFixture
+from sqlalchemy import event
+from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
@@ -19,6 +19,9 @@ from core.workflow.nodes.knowledge_index.protocols import (
     SummaryIndexServiceProtocol,
 )
 from core.workflow.system_variables import SystemVariableKey, build_system_variables
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.variables.segments import StringSegment
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -40,7 +43,7 @@ def mock_graph_init_params():
 @pytest.fixture
 def mock_graph_runtime_state():
     """Create mock GraphRuntimeState."""
-    variable_pool = VariablePool(
+    variable_pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(user_id=str(uuid.uuid4()), files=[]),
         user_inputs={},
         environment_variables=[],
@@ -50,7 +53,7 @@ def mock_graph_runtime_state():
 
 
 @pytest.fixture
-def mock_index_processor(mocker):
+def mock_index_processor(mocker: MockerFixture):
     """Create mock IndexProcessorProtocol."""
     mock_processor = Mock(spec=IndexProcessorProtocol)
     mocker.patch(
@@ -61,7 +64,7 @@ def mock_index_processor(mocker):
 
 
 @pytest.fixture
-def mock_summary_index_service(mocker):
+def mock_summary_index_service(mocker: MockerFixture):
     """Create mock SummaryIndexServiceProtocol."""
     mock_service = Mock(spec=SummaryIndexServiceProtocol)
     mocker.patch(
@@ -93,6 +96,25 @@ def sample_chunks():
     }
 
 
+def _build_node(
+    *,
+    node_id: str,
+    node_data: KnowledgeIndexNodeData | dict[str, object],
+    graph_init_params,
+    graph_runtime_state,
+) -> KnowledgeIndexNode:
+    return KnowledgeIndexNode(
+        node_id=node_id,
+        data=(
+            node_data
+            if isinstance(node_data, KnowledgeIndexNodeData)
+            else KnowledgeIndexNodeData.model_validate(node_data)
+        ),
+        graph_init_params=graph_init_params,
+        graph_runtime_state=graph_runtime_state,
+    )
+
+
 class TestKnowledgeIndexNode:
     """
     Test suite for KnowledgeIndexNode.
@@ -115,9 +137,9 @@ class TestKnowledgeIndexNode:
         }
 
         # Act
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -143,9 +165,9 @@ class TestKnowledgeIndexNode:
             "data": sample_node_data.model_dump(),
         }
 
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -176,9 +198,9 @@ class TestKnowledgeIndexNode:
             "data": sample_node_data.model_dump(),
         }
 
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -212,9 +234,9 @@ class TestKnowledgeIndexNode:
             "data": sample_node_data.model_dump(),
         }
 
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -262,16 +284,15 @@ class TestKnowledgeIndexNode:
             total_segments=2,
         )
         mock_index_processor.get_preview_output.return_value = mock_preview
-
         node_id = str(uuid.uuid4())
         config = {
             "id": node_id,
             "data": sample_node_data.model_dump(),
         }
 
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -282,7 +303,7 @@ class TestKnowledgeIndexNode:
         # Assert
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert result.outputs is not None
-        assert mock_index_processor.get_preview_output.called
+        assert isinstance(mock_index_processor.get_preview_output.call_args.kwargs["session"], Session)
 
     def test_run_production_mode_success(
         self,
@@ -332,9 +353,9 @@ class TestKnowledgeIndexNode:
             "data": sample_node_data.model_dump(),
         }
 
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -383,9 +404,9 @@ class TestKnowledgeIndexNode:
             "data": sample_node_data.model_dump(),
         }
 
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -440,9 +461,9 @@ class TestKnowledgeIndexNode:
             "data": sample_node_data.model_dump(),
         }
 
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -498,9 +519,9 @@ class TestKnowledgeIndexNode:
             "data": sample_node_data.model_dump(),
         }
 
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -520,6 +541,7 @@ class TestKnowledgeIndexNode:
         mock_index_processor,
         mock_summary_index_service,
         sample_node_data,
+        sqlite_session: Session,
     ):
         # Arrange
         dataset_id = str(uuid.uuid4())
@@ -536,15 +558,19 @@ class TestKnowledgeIndexNode:
             "data": sample_node_data.model_dump(),
         }
 
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
 
         # Act
+        session = sqlite_session
+        commits: list[str] = []
+        event.listen(session, "after_commit", lambda _session: commits.append("commit"))
         result = node._invoke_knowledge_index(
+            session=session,
             dataset_id=dataset_id,
             document_id=document_id,
             original_document_id=original_document_id,
@@ -557,6 +583,7 @@ class TestKnowledgeIndexNode:
         # Assert
         assert mock_summary_index_service.generate_and_vectorize_summary.called
         assert mock_index_processor.index_and_clean.called
+        assert commits == ["commit"]
         assert result == {"status": "indexed"}
 
     def test_version_method(self):
@@ -583,9 +610,9 @@ class TestKnowledgeIndexNode:
             "data": sample_node_data.model_dump(),
         }
 
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -606,6 +633,7 @@ class TestInvokeKnowledgeIndex:
         mock_index_processor,
         mock_summary_index_service,
         sample_node_data,
+        sqlite_session: Session,
     ):
         # Arrange
         dataset_id = str(uuid.uuid4())
@@ -623,15 +651,19 @@ class TestInvokeKnowledgeIndex:
             "data": sample_node_data.model_dump(),
         }
 
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
         )
 
         # Act
+        session = sqlite_session
+        commits: list[str] = []
+        event.listen(session, "after_commit", lambda _session: commits.append("commit"))
         result = node._invoke_knowledge_index(
+            session=session,
             dataset_id=dataset_id,
             document_id=document_id,
             original_document_id=original_document_id,
@@ -646,6 +678,13 @@ class TestInvokeKnowledgeIndex:
             dataset_id, document_id, False, summary_setting
         )
         mock_index_processor.index_and_clean.assert_called_once_with(
-            dataset_id, document_id, original_document_id, chunks, batch, summary_setting
+            dataset_id,
+            document_id,
+            original_document_id,
+            chunks,
+            batch,
+            summary_setting,
+            session=session,
         )
+        assert commits == ["commit"]
         assert result == {"status": "indexed"}

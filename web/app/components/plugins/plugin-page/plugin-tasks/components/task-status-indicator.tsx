@@ -1,15 +1,14 @@
-import type { FC } from 'react'
-import {
-  RiCheckboxCircleFill,
-  RiErrorWarningFill,
-  RiInstallLine,
-} from '@remixicon/react'
-import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
-import Tooltip from '@/app/components/base/tooltip'
+import type { IconButtonProps } from '@langgenius/dify-ui/icon-button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import DownloadingIcon from '@/app/components/header/plugins-nav/downloading-icon'
-import { cn } from '@/utils/classnames'
+import styles from './task-status-indicator.module.css'
 
-type TaskStatusIndicatorProps = {
+type TaskStatusIndicatorProps = Omit<
+  IconButtonProps,
+  'aria-label' | 'aria-labelledby' | 'children' | 'size' | 'tone' | 'variant'
+> & {
   tip: string
   isInstalling: boolean
   isInstallingWithSuccess: boolean
@@ -18,11 +17,47 @@ type TaskStatusIndicatorProps = {
   isFailed: boolean
   successPluginsLength: number
   runningPluginsLength: number
-  totalPluginsLength: number
-  onClick: () => void
 }
 
-const TaskStatusIndicator: FC<TaskStatusIndicatorProps> = ({
+function ErrorBadgeIcon() {
+  return (
+    <svg
+      aria-hidden
+      data-status-badge="error"
+      data-testid="task-status-error-badge"
+      className="size-3.5 text-text-destructive"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        fill="currentColor"
+        d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10s-4.477 10-10 10m-1-7v2h2v-2zm0-8v6h2V7z"
+      />
+    </svg>
+  )
+}
+
+function SuccessBadgeIcon() {
+  return (
+    <svg
+      aria-hidden
+      data-status-badge="success"
+      data-testid="task-status-success-badge"
+      className="size-3.5 text-text-success"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        fill="currentColor"
+        d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2S2 6.477 2 12s4.477 10 10 10m5.457-12.543L11 15.914l-4.207-4.207l1.414-1.414L11 13.086l5.043-5.043z"
+      />
+    </svg>
+  )
+}
+
+function TaskStatusIndicator({
   tip,
   isInstalling,
   isInstallingWithSuccess,
@@ -31,64 +66,44 @@ const TaskStatusIndicator: FC<TaskStatusIndicatorProps> = ({
   isFailed,
   successPluginsLength,
   runningPluginsLength,
-  totalPluginsLength,
-  onClick,
-}) => {
-  const showDownloadingIcon = isInstalling || isInstallingWithError
+  className,
+  ...buttonProps
+}: TaskStatusIndicatorProps) {
   const showErrorStyle = isInstallingWithError || isFailed
-  const showSuccessIcon = isSuccess || (successPluginsLength > 0 && runningPluginsLength === 0)
+  const hasActiveInstall = isInstalling || isInstallingWithSuccess || isInstallingWithError
+  const showSuccessIcon =
+    isSuccess ||
+    (!hasActiveInstall && !isFailed && successPluginsLength > 0 && runningPluginsLength === 0)
+  const showSuccessBadge = showSuccessIcon && !isInstallingWithError && !isFailed
+  const showBadge = isInstallingWithError || showSuccessBadge || isFailed
 
   return (
-    <Tooltip
-      popupContent={tip}
-      asChild
-      offset={8}
-    >
-      <div
-        className={cn(
-          'relative flex h-8 w-8 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs hover:bg-components-button-secondary-bg-hover',
-          showErrorStyle && 'cursor-pointer border-components-button-destructive-secondary-border-hover bg-state-destructive-hover hover:bg-state-destructive-hover-alt',
-          (isInstalling || isInstallingWithSuccess || isSuccess) && 'cursor-pointer hover:bg-components-button-secondary-bg-hover',
-        )}
-        id="plugin-task-trigger"
-        onClick={onClick}
-      >
-        {/* Main Icon */}
-        {showDownloadingIcon
-          ? <DownloadingIcon />
-          : (
-              <RiInstallLine
-                className={cn(
-                  'h-4 w-4 text-components-button-secondary-text',
-                  showErrorStyle && 'text-components-button-destructive-secondary-text',
-                )}
-              />
-            )}
-
-        {/* Status Indicator Badge */}
-        <div className="absolute -right-1 -top-1">
-          {(isInstalling || isInstallingWithSuccess) && (
-            <ProgressCircle
-              percentage={(totalPluginsLength > 0 ? successPluginsLength / totalPluginsLength : 0) * 100}
-              circleFillColor="fill-components-progress-brand-bg"
-            />
-          )}
-          {isInstallingWithError && (
-            <ProgressCircle
-              percentage={(totalPluginsLength > 0 ? runningPluginsLength / totalPluginsLength : 0) * 100}
-              circleFillColor="fill-components-progress-brand-bg"
-              sectorFillColor="fill-components-progress-error-border"
-              circleStrokeColor="stroke-components-progress-error-border"
-            />
-          )}
-          {showSuccessIcon && !isInstalling && !isInstallingWithSuccess && !isInstallingWithError && (
-            <RiCheckboxCircleFill className="h-3.5 w-3.5 text-text-success" />
-          )}
-          {isFailed && (
-            <RiErrorWarningFill className="h-3.5 w-3.5 text-text-destructive" />
-          )}
-        </div>
-      </div>
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <IconButton
+            {...buttonProps}
+            aria-label={tip}
+            variant="secondary"
+            size="lg"
+            focusableWhenDisabled
+            data-error={showErrorStyle ? '' : undefined}
+            className={cn(styles.indicator, className)}
+          >
+            <span aria-hidden className="contents">
+              <DownloadingIcon active={hasActiveInstall} />
+              {showBadge && (
+                <span className="absolute -top-1.5 -right-1.5 box-content flex size-3.5 items-center justify-center rounded-full border border-components-panel-bg bg-components-panel-bg">
+                  {isInstallingWithError && <ErrorBadgeIcon />}
+                  {showSuccessBadge && <SuccessBadgeIcon />}
+                  {isFailed && <ErrorBadgeIcon />}
+                </span>
+              )}
+            </span>
+          </IconButton>
+        }
+      />
+      <TooltipContent sideOffset={8}>{tip}</TooltipContent>
     </Tooltip>
   )
 }

@@ -1,16 +1,12 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import VarPanel from '../var-panel'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 vi.mock('@/app/components/base/image-uploader/image-preview', () => ({
-  default: ({ url, title, onCancel }: { url: string, title: string, onCancel: () => void }) => (
+  default: ({ url, title, onCancel }: { url: string; title: string; onCancel: () => void }) => (
     <div data-testid="image-preview" data-url={url} data-title={title}>
-      <button onClick={onCancel} data-testid="close-preview">Close</button>
+      <button onClick={onCancel} data-testid="close-preview">
+        Close
+      </button>
     </div>
   ),
 }))
@@ -28,7 +24,7 @@ describe('VarPanel', () => {
     it('should render variables section header', () => {
       render(<VarPanel {...defaultProps} />)
 
-      expect(screen.getByText('detail.variables')).toBeInTheDocument()
+      expect(screen.getByText(/(?:^|\.)detail\.variables(?=$|:)/)).toBeInTheDocument()
     })
 
     it('should render variable labels with braces', () => {
@@ -74,7 +70,7 @@ describe('VarPanel', () => {
     it('should collapse when header is clicked', () => {
       render(<VarPanel {...defaultProps} />)
 
-      const header = screen.getByText('detail.variables').closest('div')
+      const header = screen.getByText(/(?:^|\.)detail\.variables(?=$|:)/).closest('div')
       fireEvent.click(header!)
 
       expect(screen.queryByText('John Doe')).not.toBeInTheDocument()
@@ -84,7 +80,7 @@ describe('VarPanel', () => {
     it('should expand when clicked again', () => {
       render(<VarPanel {...defaultProps} />)
 
-      const header = screen.getByText('detail.variables').closest('div')
+      const header = screen.getByText(/(?:^|\.)detail\.variables(?=$|:)/).closest('div')
 
       // Collapse
       fireEvent.click(header!)
@@ -98,7 +94,7 @@ describe('VarPanel', () => {
     it('should show arrow icon when collapsed', () => {
       const { container } = render(<VarPanel {...defaultProps} />)
 
-      const header = screen.getByText('detail.variables').closest('div')
+      const header = screen.getByText(/(?:^|\.)detail\.variables(?=$|:)/).closest('div')
       fireEvent.click(header!)
 
       // When collapsed, there should be SVG icons in the component
@@ -119,7 +115,7 @@ describe('VarPanel', () => {
     it('should not render images section when message_files is empty', () => {
       render(<VarPanel {...defaultProps} />)
 
-      expect(screen.queryByText('detail.uploadImages')).not.toBeInTheDocument()
+      expect(screen.queryByText(/(?:^|\.)detail\.uploadImages(?=$|:)/)).not.toBeInTheDocument()
     })
 
     it('should render images section when message_files has items', () => {
@@ -130,7 +126,7 @@ describe('VarPanel', () => {
 
       render(<VarPanel {...propsWithFiles} />)
 
-      expect(screen.getByText('detail.uploadImages')).toBeInTheDocument()
+      expect(screen.getByText(/(?:^|\.)detail\.uploadImages(?=$|:)/)).toBeInTheDocument()
     })
 
     it('should render image thumbnails with correct background', () => {
@@ -158,7 +154,10 @@ describe('VarPanel', () => {
       fireEvent.click(thumbnail!)
 
       expect(screen.getByTestId('image-preview')).toBeInTheDocument()
-      expect(screen.getByTestId('image-preview')).toHaveAttribute('data-url', 'https://example.com/image1.jpg')
+      expect(screen.getByTestId('image-preview')).toHaveAttribute(
+        'data-url',
+        'https://example.com/image1.jpg',
+      )
     })
 
     it('should close image preview when close button is clicked', () => {
@@ -193,7 +192,7 @@ describe('VarPanel', () => {
 
       render(<VarPanel {...emptyProps} />)
 
-      expect(screen.getByText('detail.variables')).toBeInTheDocument()
+      expect(screen.getByText(/(?:^|\.)detail\.variables(?=$|:)/)).toBeInTheDocument()
     })
   })
 

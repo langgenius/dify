@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ChunkStructureEnum } from '../../../types'
 import Selector from '../selector'
 
@@ -20,25 +20,25 @@ const options = [
 ]
 
 describe('ChunkStructureSelector', () => {
-  it('should open the selector panel and close it after selecting an option', () => {
+  it('should open the selector panel and close it after selecting an option', async () => {
     const onChange = vi.fn()
 
-    render(
-      <Selector
-        options={options}
-        value={ChunkStructureEnum.general}
-        onChange={onChange}
-      />,
-    )
+    render(<Selector options={options} value={ChunkStructureEnum.general} onChange={onChange} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'workflow.panel.change' }))
 
-    expect(screen.getByText('workflow.nodes.knowledgeBase.changeChunkStructure')).toBeInTheDocument()
+    expect(
+      screen.getByText('workflow.nodes.knowledgeBase.changeChunkStructure'),
+    ).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('Parent child'))
 
     expect(onChange).toHaveBeenCalledWith(ChunkStructureEnum.parent_child)
-    expect(screen.queryByText('workflow.nodes.knowledgeBase.changeChunkStructure')).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(
+        screen.queryByText('workflow.nodes.knowledgeBase.changeChunkStructure'),
+      ).not.toBeInTheDocument()
+    })
   })
 
   it('should not open the selector when readonly is enabled', () => {
@@ -51,8 +51,11 @@ describe('ChunkStructureSelector', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'custom-trigger' }))
+    const trigger = screen.getByText('custom-trigger').closest('[role="button"]')
+    fireEvent.click(trigger!)
 
-    expect(screen.queryByText('workflow.nodes.knowledgeBase.changeChunkStructure')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('workflow.nodes.knowledgeBase.changeChunkStructure'),
+    ).not.toBeInTheDocument()
   })
 })

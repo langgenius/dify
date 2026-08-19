@@ -1,6 +1,17 @@
+import type { ReactElement } from 'react'
+import { Popover } from '@langgenius/dify-ui/popover'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import ToolItem from '../tool-item'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { ToolItem } from '../tool-item'
+
+const renderToolItem = (item: ReactElement) => {
+  const view = render(<Popover>{item}</Popover>)
+  return {
+    ...view,
+    rerenderToolItem: (nextItem: ReactElement) => view.rerender(<Popover>{nextItem}</Popover>),
+  }
+}
 
 let mcpAllowed = true
 
@@ -26,21 +37,6 @@ vi.mock('@/app/components/workflow/nodes/_base/components/switch-plugin-version'
   ),
 }))
 
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({
-    children,
-    popupContent,
-  }: {
-    children: React.ReactNode
-    popupContent: React.ReactNode
-  }) => (
-    <div>
-      {children}
-      <div>{popupContent}</div>
-    </div>
-  ),
-}))
-
 describe('ToolItem', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -48,24 +44,14 @@ describe('ToolItem', () => {
   })
 
   it('shows auth status actions for no-auth and auth-removed states', () => {
-    const { rerender } = render(
-      <ToolItem
-        open={false}
-        toolLabel="Search Tool"
-        providerName="acme/search"
-        noAuth
-      />,
+    const { rerenderToolItem } = renderToolItem(
+      <ToolItem open={false} toolLabel="Search Tool" providerName="acme/search" noAuth />,
     )
 
     expect(screen.getByText('tools.notAuthorized')).toBeInTheDocument()
 
-    rerender(
-      <ToolItem
-        open={false}
-        toolLabel="Search Tool"
-        providerName="acme/search"
-        authRemoved
-      />,
+    rerenderToolItem(
+      <ToolItem open={false} toolLabel="Search Tool" providerName="acme/search" authRemoved />,
     )
 
     expect(screen.getByText('plugin.auth.authRemoved')).toBeInTheDocument()
@@ -73,7 +59,7 @@ describe('ToolItem', () => {
 
   it('surfaces install and version mismatch recovery actions', () => {
     const onInstall = vi.fn()
-    const { rerender } = render(
+    const { rerenderToolItem } = renderToolItem(
       <ToolItem
         open={false}
         toolLabel="Search Tool"
@@ -87,7 +73,7 @@ describe('ToolItem', () => {
     fireEvent.click(screen.getByText('install plugin'))
     expect(onInstall).toHaveBeenCalledTimes(1)
 
-    rerender(
+    rerenderToolItem(
       <ToolItem
         open={false}
         toolLabel="Search Tool"
@@ -102,20 +88,15 @@ describe('ToolItem', () => {
     expect(onInstall).toHaveBeenCalledTimes(2)
   })
 
-  it('blocks unsupported MCP tools and still exposes error state', () => {
+  it('blocks unsupported MCP tools and still exposes error state', async () => {
     mcpAllowed = false
-    const { rerender } = render(
-      <ToolItem
-        open={false}
-        toolLabel="Search Tool"
-        providerName="acme/search"
-        isMCPTool
-      />,
+    const { rerenderToolItem } = renderToolItem(
+      <ToolItem open={false} toolLabel="Search Tool" providerName="acme/search" isMCPTool />,
     )
 
     expect(screen.getByTestId('mcp-tooltip')).toBeInTheDocument()
 
-    rerender(
+    rerenderToolItem(
       <ToolItem
         open={false}
         toolLabel="Search Tool"
@@ -125,6 +106,34 @@ describe('ToolItem', () => {
       />,
     )
 
-    expect(screen.getByText('tool failed')).toBeInTheDocument()
+    await userEvent.hover(screen.getByLabelText('tool failed'))
+    expect(await screen.findByText('tool failed')).toBeInTheDocument()
+  })
+
+  it('exposes one primary row action followed by a separate delete action', async () => {
+    const user = userEvent.setup()
+    const onDelete = vi.fn()
+
+    renderToolItem(
+      <ToolItem
+        open={false}
+        triggerLabel="Configure Search Tool"
+        toolLabel="Search Tool"
+        providerName="acme/search"
+        onDelete={onDelete}
+      />,
+    )
+
+    const primaryAction = screen.getByRole('button', { name: 'Configure Search Tool' })
+    const deleteAction = screen.getByRole('button', { name: 'common.operation.delete' })
+    expect(primaryAction).not.toContainElement(deleteAction)
+
+    await user.tab()
+    expect(primaryAction).toHaveFocus()
+    await user.tab()
+    expect(deleteAction).toHaveFocus()
+
+    await user.keyboard('{Enter}')
+    expect(onDelete).toHaveBeenCalledOnce()
   })
 })

@@ -2,20 +2,6 @@ import { IS_DEV } from '@/config'
 import { env } from '@/env'
 
 async function main() {
-  // Polyfill for Array.prototype.toSpliced (ES2023, Chrome 110+)
-  if (!Array.prototype.toSpliced) {
-    // eslint-disable-next-line no-extend-native
-    Array.prototype.toSpliced = function <T>(this: T[], start: number, deleteCount?: number, ...items: T[]): T[] {
-      const copy = this.slice()
-      // When deleteCount is undefined (omitted), delete to end; otherwise let splice handle coercion
-      if (deleteCount === undefined)
-        copy.splice(start, copy.length - start, ...items)
-      else
-        copy.splice(start, deleteCount, ...items)
-      return copy
-    }
-  }
-
   if (!('localStorage' in globalThis) || !('sessionStorage' in globalThis)) {
     class StorageMock {
       data: Record<string, string>
@@ -46,8 +32,7 @@ async function main() {
     try {
       localStorage = globalThis.localStorage
       sessionStorage = globalThis.sessionStorage
-    }
-    catch {
+    } catch {
       localStorage = new StorageMock()
       sessionStorage = new StorageMock()
     }
@@ -67,10 +52,7 @@ async function main() {
     const Sentry = await import('@sentry/react')
     Sentry.init({
       dsn: SENTRY_DSN,
-      integrations: [
-        Sentry.browserTracingIntegration(),
-        Sentry.replayIntegration(),
-      ],
+      integrations: [Sentry.browserTracingIntegration(), Sentry.replayIntegration()],
       tracesSampleRate: 0.1,
       replaysSessionSampleRate: 0.1,
       replaysOnErrorSampleRate: 1.0,

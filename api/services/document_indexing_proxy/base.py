@@ -4,7 +4,7 @@ from collections.abc import Callable
 from functools import cached_property
 from typing import Any, ClassVar
 
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan
 from services.feature_service import FeatureService
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ class DocumentTaskProxyBase(ABC):
 
     @cached_property
     def features(self):
-        return FeatureService.get_features(self._tenant_id)
+        return FeatureService.get_features(self._tenant_id, exclude_vector_space=True)
 
     @abstractmethod
     def _send_to_direct_queue(self, task_func: Callable[..., Any]):

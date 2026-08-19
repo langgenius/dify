@@ -1,25 +1,29 @@
-import type { InvitationResult } from '@/models/common'
-import { render, screen } from '@testing-library/react'
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
+import type { MemberInviteResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { ReactElement } from 'react'
+import { screen } from '@testing-library/react'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import InvitedModal from '../index'
 
-const mockConfigState = vi.hoisted(() => ({ isCeEdition: true }))
-
-vi.mock('@/config', () => ({
-  get IS_CE_EDITION() {
-    return mockConfigState.isCeEdition
-  },
-}))
+let deploymentEdition: DeploymentEdition = 'COMMUNITY'
+const render = (ui: ReactElement) =>
+  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: deploymentEdition } })
 
 describe('InvitedModal', () => {
   const mockOnCancel = vi.fn()
-  const results: InvitationResult[] = [
+  const results: MemberInviteResponse['invitation_results'] = [
     { email: 'success@example.com', status: 'success', url: 'http://invite.com/1' },
+    {
+      email: 'member@example.com',
+      status: 'already_member',
+      message: 'Account already in workspace.',
+    },
     { email: 'failed@example.com', status: 'failed', message: 'Error msg' },
   ]
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockConfigState.isCeEdition = true
+    deploymentEdition = 'COMMUNITY'
   })
 
   it('should show success and failed invitation sections', async () => {
@@ -28,11 +32,13 @@ describe('InvitedModal', () => {
     expect(await screen.findByText(/members\.invitationSent$/i)).toBeInTheDocument()
     expect(await screen.findByText(/members\.invitationLink/i)).toBeInTheDocument()
     expect(screen.getByText('http://invite.com/1')).toBeInTheDocument()
+    expect(screen.getByText(/members\.alreadyInTeam$/i)).toBeInTheDocument()
+    expect(screen.getByText('member@example.com')).toBeInTheDocument()
     expect(screen.getByText('failed@example.com')).toBeInTheDocument()
   })
 
   it('should hide invitation link section when there are no successes', () => {
-    const failedOnly: InvitationResult[] = [
+    const failedOnly: MemberInviteResponse['invitation_results'] = [
       { email: 'fail@example.com', status: 'failed', message: 'Quota exceeded' },
     ]
 
@@ -43,7 +49,7 @@ describe('InvitedModal', () => {
   })
 
   it('should hide failed section when there are only successes', () => {
-    const successOnly: InvitationResult[] = [
+    const successOnly: MemberInviteResponse['invitation_results'] = [
       { email: 'ok@example.com', status: 'success', url: 'http://invite.com/2' },
     ]
 
@@ -51,6 +57,23 @@ describe('InvitedModal', () => {
 
     expect(screen.getByText(/members\.invitationLink/i)).toBeInTheDocument()
     expect(screen.queryByText(/members\.failedInvitationEmails/i)).not.toBeInTheDocument()
+  })
+
+  it('should show already-member message without invitation copy when every email is already a member', () => {
+    const alreadyMembers: MemberInviteResponse['invitation_results'] = [
+      {
+        email: 'member@example.com',
+        status: 'already_member',
+        message: 'Account already in workspace.',
+      },
+    ]
+
+    render(<InvitedModal invitationResults={alreadyMembers} onCancel={mockOnCancel} />)
+
+    expect(screen.getByText(/members\.noNewInvitationsSent/i)).toBeInTheDocument()
+    expect(screen.getByText(/members\.alreadyInTeamTip/i)).toBeInTheDocument()
+    expect(screen.getByText('member@example.com')).toBeInTheDocument()
+    expect(screen.queryByText(/members\.invitationLink/i)).not.toBeInTheDocument()
   })
 
   it('should hide both sections when results are empty', () => {
@@ -61,28 +84,38 @@ describe('InvitedModal', () => {
   })
 })
 
-describe('InvitedModal (non-CE edition)', () => {
+describe('InvitedModal (Cloud edition)', () => {
   const mockOnCancel = vi.fn()
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockConfigState.isCeEdition = false
+    deploymentEdition = 'CLOUD'
   })
 
-  afterEach(() => {
-    mockConfigState.isCeEdition = true
-  })
-
-  it('should render invitationSentTip without CE edition content when IS_CE_EDITION is false', async () => {
-    const results: InvitationResult[] = [
+  it('should render invitationSentTip without self-hosted content', async () => {
+    const results: MemberInviteResponse['invitation_results'] = [
       { email: 'success@example.com', status: 'success', url: 'http://invite.com/1' },
     ]
 
     render(<InvitedModal invitationResults={results} onCancel={mockOnCancel} />)
 
-    // The !IS_CE_EDITION branch - should show the tip text
     expect(await screen.findByText(/members\.invitationSentTip/i)).toBeInTheDocument()
-    // CE-only content should not be shown
     expect(screen.queryByText(/members\.invitationLink/i)).not.toBeInTheDocument()
+  })
+
+  it('should show already-member details', () => {
+    const results: MemberInviteResponse['invitation_results'] = [
+      {
+        email: 'member@example.com',
+        status: 'already_member',
+        message: 'Account already in workspace.',
+      },
+    ]
+
+    render(<InvitedModal invitationResults={results} onCancel={mockOnCancel} />)
+
+    expect(screen.getByText(/members\.noNewInvitationsSent/i)).toBeInTheDocument()
+    expect(screen.getByText(/members\.alreadyInTeam$/i)).toBeInTheDocument()
+    expect(screen.getByText('member@example.com')).toBeInTheDocument()
   })
 })

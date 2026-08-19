@@ -26,9 +26,7 @@ vi.mock('@/app/components/share/text-generation/run-batch/res-download', () => (
 
 const promptConfig: PromptConfig = {
   prompt_template: 'template',
-  prompt_variables: [
-    { key: 'name', name: 'Name', type: 'string', required: true },
-  ],
+  prompt_variables: [{ key: 'name', name: 'Name', type: 'string', required: true }],
 }
 
 const siteInfo: SiteInfo = {
@@ -50,12 +48,12 @@ const batchTasks = [
     id: 1,
     status: TaskStatus.completed,
     params: { inputs: { name: 'Alpha' } },
-  },
+  }!,
   {
     id: 2,
     status: TaskStatus.failed,
     params: { inputs: { name: 'Beta' } },
-  },
+  }!,
 ]
 
 const baseProps = {
@@ -68,7 +66,7 @@ const baseProps = {
   controlRetry: 88,
   controlSend: 77,
   controlStopResponding: 66,
-  exportRes: [{ 'Name': 'Alpha', 'share.generation.completionResult': 'Done' }],
+  exportRes: [{ Name: 'Alpha', 'share.generation.completionResult': 'Done' }!],
   handleCompleted: vi.fn(),
   handleRetryAllFailedTask: vi.fn(),
   handleSaveMessage: vi.fn(async () => {}),
@@ -99,19 +97,21 @@ describe('TextGenerationResultPanel', () => {
   it('should render a single result in run-once mode and pass non-batch props', () => {
     render(<TextGenerationResultPanel {...baseProps} />)
 
-    expect(screen.getByTestId('res-single')).toBeInTheDocument()
-    expect(resPropsSpy).toHaveBeenCalledWith(expect.objectContaining({
-      appId: 'app-123',
-      appSourceType: AppSourceType.webApp,
-      completionFiles: [],
-      controlSend: 77,
-      controlStopResponding: 66,
-      hideInlineStopButton: true,
-      inputs: { name: 'Alice' },
-      isCallBatchAPI: false,
-      moreLikeThisEnabled: true,
-      taskId: undefined,
-    }))
+    expect(screen.getByTestId('res-single'))!.toBeInTheDocument()
+    expect(resPropsSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appId: 'app-123',
+        appSourceType: AppSourceType.webApp,
+        completionFiles: [],
+        controlSend: 77,
+        controlStopResponding: 66,
+        hideInlineStopButton: true,
+        inputs: { name: 'Alice' },
+        isCallBatchAPI: false,
+        moreLikeThisEnabled: true,
+        taskId: undefined,
+      }),
+    )
     expect(screen.queryByTestId('res-download-mock')).not.toBeInTheDocument()
   })
 
@@ -121,40 +121,50 @@ describe('TextGenerationResultPanel', () => {
     render(
       <TextGenerationResultPanel
         {...baseProps}
-        allFailedTaskList={[batchTasks[1]]}
-        allSuccessTaskList={[batchTasks[0]]}
+        allFailedTaskList={[batchTasks[1]!]}
+        allSuccessTaskList={[batchTasks[0]!]}
         isCallBatchAPI
         noPendingTask={false}
         handleRetryAllFailedTask={handleRetryAllFailedTask}
       />,
     )
 
-    expect(screen.getByTestId('res-1')).toBeInTheDocument()
-    expect(screen.getByTestId('res-2')).toBeInTheDocument()
-    expect(resPropsSpy).toHaveBeenNthCalledWith(1, expect.objectContaining({
-      inputs: { name: 'Alpha' },
-      isError: false,
-      controlRetry: 0,
-      taskId: 1,
-      onRunControlChange: undefined,
-    }))
-    expect(resPropsSpy).toHaveBeenNthCalledWith(2, expect.objectContaining({
-      inputs: { name: 'Beta' },
-      isError: true,
-      controlRetry: 88,
-      taskId: 2,
-    }))
-    expect(screen.getByText('share.generation.executions:{"num":2}')).toBeInTheDocument()
-    expect(screen.getByTestId('res-download-mock')).toBeInTheDocument()
-    expect(resDownloadPropsSpy).toHaveBeenCalledWith(expect.objectContaining({
-      isMobile: false,
-      values: baseProps.exportRes,
-    }))
-    expect(screen.getByText('share.generation.batchFailed.info:{"num":1}')).toBeInTheDocument()
-    expect(screen.getByText('share.generation.batchFailed.retry')).toBeInTheDocument()
-    expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(screen.getByTestId('res-1'))!.toBeInTheDocument()
+    expect(screen.getByTestId('res-2'))!.toBeInTheDocument()
+    expect(resPropsSpy).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        inputs: { name: 'Alpha' },
+        isError: false,
+        controlRetry: 0,
+        taskId: 1,
+        onRunControlChange: undefined,
+      }),
+    )
+    expect(resPropsSpy).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        inputs: { name: 'Beta' },
+        isError: true,
+        controlRetry: 88,
+        taskId: 2,
+      }),
+    )
+    expect(screen.getByText('share.generation.executions:{"num":2}'))!.toBeInTheDocument()
+    expect(screen.getByTestId('res-download-mock'))!.toBeInTheDocument()
+    expect(resDownloadPropsSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        isMobile: false,
+        values: baseProps.exportRes,
+      }),
+    )
+    expect(screen.getByText('share.generation.batchFailed.info:{"num":1}'))!.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'share.generation.batchFailed.retry' }),
+    )!.toBeInTheDocument()
+    expect(screen.getByRole('status', { name: 'appApi.loading' }))!.toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('share.generation.batchFailed.retry'))
+    fireEvent.click(screen.getByRole('button', { name: 'share.generation.batchFailed.retry' }))
     expect(handleRetryAllFailedTask).toHaveBeenCalledTimes(1)
   })
 

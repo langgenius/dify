@@ -1,21 +1,54 @@
 'use client'
-import type { FC } from 'react'
+import type { FC, ReactNode } from 'react'
 import type { ToolVarInputs } from '../../types'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Tool } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
-import {
-  RiBracesLine,
-} from '@remixicon/react'
-import { useBoolean } from 'ahooks'
-import Button from '@/app/components/base/button'
-import Tooltip from '@/app/components/base/tooltip'
+import { Button } from '@langgenius/dify-ui/button'
+import { useState } from 'react'
+import { Infotip } from '@/app/components/base/infotip'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { SchemaModal } from '@/app/components/plugins/plugin-detail-panel/tool-selector/components'
+import { SchemaModal } from '@/app/components/plugins/plugin-detail-panel/tool-selector/components/schema-modal'
 import FormInputItem from '@/app/components/workflow/nodes/_base/components/form-input-item'
 
-type Props = {
+const URL_REGEX = /(https?:\/\/\S+)/g
+
+const renderDescriptionWithLinks = (description: string): ReactNode => {
+  const matches = [...description.matchAll(URL_REGEX)]
+
+  if (!matches.length) return description
+
+  const parts: ReactNode[] = []
+  let currentIndex = 0
+
+  matches.forEach((match) => {
+    const [url] = match
+    const start = match.index ?? 0
+
+    if (start > currentIndex) parts.push(description.slice(currentIndex, start))
+
+    parts.push(
+      <a
+        key={`${url}-${start}`}
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-text-accent hover:underline"
+      >
+        {url}
+      </a>,
+    )
+
+    currentIndex = start + url.length
+  })
+
+  if (currentIndex < description.length) parts.push(description.slice(currentIndex))
+
+  return parts
+}
+
+type Props = Readonly<{
   readOnly: boolean
   nodeId: string
   schema: CredentialFormSchema
@@ -26,9 +59,9 @@ type Props = {
   currentProvider?: ToolWithProvider
   showManageInputField?: boolean
   onManageInputField?: () => void
-  extraParams?: Record<string, any>
+  extraParams?: Record<string, unknown>
   providerType?: 'tool' | 'trigger'
-}
+}>
 
 const ToolFormItem: FC<Props> = ({
   readOnly,
@@ -47,47 +80,51 @@ const ToolFormItem: FC<Props> = ({
   const language = useLanguage()
   const { name, label, type, required, tooltip, input_schema } = schema
   const showSchemaButton = type === FormTypeEnum.object || type === FormTypeEnum.array
-  const showDescription = type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput
-  const [isShowSchema, {
-    setTrue: showSchema,
-    setFalse: hideSchema,
-  }] = useBoolean(false)
+  const showDescription =
+    type === FormTypeEnum.textInput ||
+    type === FormTypeEnum.textNumber ||
+    type === FormTypeEnum.secretInput ||
+    type === FormTypeEnum.date ||
+    type === FormTypeEnum.dateRange
+  const [isShowSchema, setIsShowSchema] = useState(false)
   return (
     <div className="space-y-0.5 py-1">
       <div>
         <div className="flex h-6 items-center">
-          <div className="system-sm-medium text-text-secondary">{label[language] || label.en_US}</div>
+          <div className="system-sm-medium text-text-secondary">
+            {label[language] || label.en_US}
+          </div>
           {required && (
-            <div className="system-xs-regular ml-1 text-text-destructive-secondary">*</div>
+            <div className="ml-1 system-xs-regular text-text-destructive-secondary">*</div>
           )}
           {!showDescription && tooltip && (
-            <Tooltip
-              popupContent={(
-                <div className="w-[200px]">
-                  {tooltip[language] || tooltip.en_US}
-                </div>
-              )}
-              triggerClassName="ml-1 w-4 h-4"
-              asChild={false}
-            />
+            <Infotip
+              aria-label={tooltip[language] || tooltip.en_US}
+              className="ml-1"
+              popupClassName="w-[200px]"
+            >
+              {tooltip[language] || tooltip.en_US}
+            </Infotip>
           )}
           {showSchemaButton && (
             <>
-              <div className="system-xs-regular ml-1 mr-0.5 text-text-quaternary">·</div>
+              <div className="mr-0.5 ml-1 system-xs-regular text-text-quaternary">·</div>
               <Button
                 variant="ghost"
                 size="small"
-                onClick={showSchema}
-                className="system-xs-regular px-1 text-text-tertiary"
+                onClick={() => setIsShowSchema(true)}
+                className="px-1 system-xs-regular text-text-tertiary"
               >
-                <RiBracesLine className="mr-1 size-3.5" />
+                <span aria-hidden className="i-ri-braces-line size-3.5" />
                 <span>JSON Schema</span>
               </Button>
             </>
           )}
         </div>
         {showDescription && tooltip && (
-          <div className="body-xs-regular pb-0.5 text-text-tertiary">{tooltip[language] || tooltip.en_US}</div>
+          <div className="pb-0.5 body-xs-regular wrap-break-word text-text-tertiary">
+            {renderDescriptionWithLinks(tooltip[language] || tooltip.en_US)}
+          </div>
         )}
       </div>
       <FormInputItem
@@ -108,7 +145,7 @@ const ToolFormItem: FC<Props> = ({
       {isShowSchema && (
         <SchemaModal
           isShow
-          onClose={hideSchema}
+          onClose={() => setIsShowSchema(false)}
           rootName={name}
           schema={input_schema!}
         />

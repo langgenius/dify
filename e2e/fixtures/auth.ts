@@ -1,8 +1,9 @@
-import type { Browser, Page } from '@playwright/test'
-import { expect } from '@playwright/test'
+import type { Browser } from '@playwright/test'
+import { Buffer } from 'node:buffer'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { createConsoleClient } from '../support/api/console-client'
 import { defaultBaseURL, defaultLocale } from '../test-env'
 
 export type AuthSessionMetadata = {
@@ -12,7 +13,8 @@ export type AuthSessionMetadata = {
   usedInitPassword: boolean
 }
 
-const WAIT_TIMEOUT_MS = 120_000
+export const AUTH_BOOTSTRAP_TIMEOUT_MS = 180_000
+const AUTH_FLOW_TIMEOUT_MS = AUTH_BOOTSTRAP_TIMEOUT_MS - 30_000
 const e2eRoot = fileURLToPath(new URL('..', import.meta.url))
 
 export const authDir = path.join(e2eRoot, '.auth')
@@ -35,72 +37,74 @@ export const readAuthSessionMetadata = async () => {
   return JSON.parse(content) as AuthSessionMetadata
 }
 
-const escapeRegex = (value: string) => value.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')
-
-const appURL = (baseURL: string, pathname: string) => new URL(pathname, baseURL).toString()
-
-const waitForPageState = async (page: Page) => {
-  const installHeading = page.getByRole('heading', { name: 'Setting up an admin account' })
-  const signInButton = page.getByRole('button', { name: 'Sign in' })
-  const initPasswordField = page.getByLabel('Admin initialization password')
-
-  const deadline = Date.now() + WAIT_TIMEOUT_MS
-
-  while (Date.now() < deadline) {
-    if (await installHeading.isVisible().catch(() => false)) return 'install' as const
-    if (await signInButton.isVisible().catch(() => false)) return 'login' as const
-    if (await initPasswordField.isVisible().catch(() => false)) return 'init' as const
-
-    await page.waitForTimeout(1_000)
-  }
-
-  throw new Error(`Unable to determine auth page state for ${page.url()}`)
+type AuthBootstrapResult = {
+  mode: AuthSessionMetadata['mode']
+  usedInitPassword: boolean
 }
 
-const completeInitPasswordIfNeeded = async (page: Page) => {
-  const initPasswordField = page.getByLabel('Admin initialization password')
-  if (!(await initPasswordField.isVisible({ timeout: 3_000 }).catch(() => false))) return false
+const getRemainingTimeout = (deadline: number) => Math.max(deadline - Date.now(), 1)
 
-  await initPasswordField.fill(initPassword)
-  await page.getByRole('button', { name: 'Validate' }).click()
-  await expect(page.getByRole('heading', { name: 'Setting up an admin account' })).toBeVisible({
-    timeout: WAIT_TIMEOUT_MS,
-  })
+const encodeField = (value: string) => Buffer.from(value, 'utf8').toString('base64')
 
+const validateInitPasswordIfNeeded = async (
+  client: ReturnType<typeof createConsoleClient>,
+  deadline: number,
+) => {
+  const options = { context: { timeoutMs: getRemainingTimeout(deadline) } }
+  const initStatus = await client.init.get(undefined, options)
+  if (initStatus.status === 'finished') return false
+
+  console.warn('[e2e] auth bootstrap: validating init password')
+  await client.init.post({ body: { password: initPassword } }, options)
   return true
 }
 
-const completeInstall = async (page: Page, baseURL: string) => {
-  await expect(page.getByRole('heading', { name: 'Setting up an admin account' })).toBeVisible({
-    timeout: WAIT_TIMEOUT_MS,
-  })
+const ensureAdminAccount = async (
+  client: ReturnType<typeof createConsoleClient>,
+  deadline: number,
+): Promise<AuthBootstrapResult> => {
+  const options = { context: { timeoutMs: getRemainingTimeout(deadline) } }
+  const setupStatus = await client.setup.get(undefined, options)
+  let usedInitPassword = false
 
-  await page.getByLabel('Email address').fill(adminCredentials.email)
-  await page.getByLabel('Username').fill(adminCredentials.name)
-  await page.getByLabel('Password').fill(adminCredentials.password)
-  await page.getByRole('button', { name: 'Set up' }).click()
+  if (setupStatus.step === 'not_started') {
+    usedInitPassword = await validateInitPasswordIfNeeded(client, deadline)
+    console.warn('[e2e] auth bootstrap: creating admin account')
+    await client.setup.post(
+      {
+        body: {
+          email: adminCredentials.email,
+          name: adminCredentials.name,
+          password: adminCredentials.password,
+          language: defaultLocale,
+        },
+      },
+      options,
+    )
 
-  await expect(page).toHaveURL(new RegExp(`^${escapeRegex(baseURL)}/apps(?:\\?.*)?$`), {
-    timeout: WAIT_TIMEOUT_MS,
-  })
+    return { mode: 'install', usedInitPassword }
+  }
+
+  return { mode: 'login', usedInitPassword }
 }
 
-const completeLogin = async (page: Page, baseURL: string) => {
-  await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible({
-    timeout: WAIT_TIMEOUT_MS,
-  })
-
-  await page.getByLabel('Email address').fill(adminCredentials.email)
-  await page.getByLabel('Password').fill(adminCredentials.password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-
-  await expect(page).toHaveURL(new RegExp(`^${escapeRegex(baseURL)}/apps(?:\\?.*)?$`), {
-    timeout: WAIT_TIMEOUT_MS,
-  })
+const loginAdmin = async (client: ReturnType<typeof createConsoleClient>, deadline: number) => {
+  console.warn('[e2e] auth bootstrap: logging in admin')
+  await client.login.post(
+    {
+      body: {
+        email: adminCredentials.email,
+        password: encodeField(adminCredentials.password),
+        remember_me: true,
+      },
+    },
+    { context: { timeoutMs: getRemainingTimeout(deadline) } },
+  )
 }
 
 export const ensureAuthenticatedState = async (browser: Browser, configuredBaseURL?: string) => {
   const baseURL = resolveBaseURL(configuredBaseURL)
+  const deadline = Date.now() + AUTH_FLOW_TIMEOUT_MS
 
   await mkdir(authDir, { recursive: true })
 
@@ -108,36 +112,18 @@ export const ensureAuthenticatedState = async (browser: Browser, configuredBaseU
     baseURL,
     locale: defaultLocale,
   })
-  const page = await context.newPage()
+  const client = createConsoleClient({ requestContext: context.request, requireCsrfToken: false })
 
   try {
-    await page.goto(appURL(baseURL, '/install'), { waitUntil: 'networkidle' })
-
-    let usedInitPassword = await completeInitPasswordIfNeeded(page)
-    let pageState = await waitForPageState(page)
-
-    while (pageState === 'init') {
-      const completedInitPassword = await completeInitPasswordIfNeeded(page)
-      if (!completedInitPassword)
-        throw new Error(`Unable to validate initialization password for ${page.url()}`)
-
-      usedInitPassword = true
-      pageState = await waitForPageState(page)
-    }
-
-    if (pageState === 'install') await completeInstall(page, baseURL)
-    else await completeLogin(page, baseURL)
-
-    await expect(page.getByRole('button', { name: 'Create from Blank' })).toBeVisible({
-      timeout: WAIT_TIMEOUT_MS,
-    })
+    const { mode, usedInitPassword } = await ensureAdminAccount(client, deadline)
+    await loginAdmin(client, deadline)
 
     await context.storageState({ path: authStatePath })
 
     const metadata: AuthSessionMetadata = {
       adminEmail: adminCredentials.email,
       baseURL,
-      mode: pageState,
+      mode,
       usedInitPassword,
     }
 

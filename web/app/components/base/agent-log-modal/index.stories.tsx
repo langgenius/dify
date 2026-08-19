@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { AgentLogDetailResponse } from '@/models/log'
+import { ToastHost } from '@langgenius/dify-ui/toast'
 import { useEffect, useRef } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { ToastHost } from '@/app/components/base/ui/toast'
 import AgentLogModal from '.'
 
 const MOCK_RESPONSE: AgentLogDetailResponse = {
@@ -64,13 +64,9 @@ const MOCK_CHAT_ITEM: IChatItem = {
   conversationId: 'conv-123',
 }
 
-const AgentLogModalDemo = ({
-  width = 960,
-}: {
-  width?: number
-}) => {
+const AgentLogModalDemo = ({ width = 960 }: { width?: number }) => {
   const originalFetchRef = useRef<typeof globalThis.fetch>(null)
-  const setAppDetail = useAppStore(state => state.setAppDetail)
+  const setAppDetail = useAppStore((state) => state.setAppDetail)
 
   useEffect(() => {
     setAppDetail({
@@ -93,8 +89,7 @@ const AgentLogModalDemo = ({
         })
       }
 
-      if (originalFetchRef.current)
-        return originalFetchRef.current(request)
+      if (originalFetchRef.current) return originalFetchRef.current(request)
 
       throw new Error(`Unhandled request: ${url}`)
     }
@@ -102,8 +97,7 @@ const AgentLogModalDemo = ({
     globalThis.fetch = handler as typeof globalThis.fetch
 
     return () => {
-      if (originalFetchRef.current)
-        globalThis.fetch = originalFetchRef.current
+      if (originalFetchRef.current) globalThis.fetch = originalFetchRef.current
       setAppDetail(undefined)
     }
   }, [setAppDetail])
@@ -111,7 +105,7 @@ const AgentLogModalDemo = ({
   return (
     <>
       <ToastHost />
-      <div className="relative min-h-[540px] w-full bg-background-default-subtle p-6">
+      <div className="relative min-h-135 w-full bg-background-default-subtle p-6">
         <AgentLogModal
           currentLogItem={MOCK_CHAT_ITEM}
           width={width}
@@ -131,7 +125,8 @@ const meta = {
     layout: 'fullscreen',
     docs: {
       description: {
-        component: 'Agent execution viewer showing iterations, tool calls, and metadata. Fetch responses are mocked for Storybook.',
+        component:
+          'Agent execution viewer showing iterations, tool calls, and metadata. Fetch responses are mocked for Storybook.',
       },
     },
   },

@@ -3,97 +3,116 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask
 
 from controllers.web.app import AppAccessMode, AppMeta, AppParameterApi, AppWebAuthPermission
-from controllers.web.error import AppUnavailableError
+from controllers.web.error import AgentNotPublishedError, AppUnavailableError
+from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
+from models.enums import EndUserType
+from models.model import App, AppMode, EndUser
+from services.app_definition_query_service import AppDefinitionNotPublishedError, AppDefinitionUnavailableError
+
+
+def _make_app() -> App:
+    return App(
+        id="app-1",
+        tenant_id="tenant-1",
+        name="Web app",
+        mode=AppMode.CHAT,
+        enable_site=True,
+        enable_api=True,
+    )
+
+
+def _make_end_user() -> EndUser:
+    return EndUser(
+        id="end-user-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        type=EndUserType.BROWSER,
+        session_id="session-1",
+    )
 
 
 # ---------------------------------------------------------------------------
 # AppParameterApi
 # ---------------------------------------------------------------------------
 class TestAppParameterApi:
-    def test_advanced_chat_mode_uses_workflow(self, app: Flask) -> None:
-        features_dict = {"opening_statement": "Hello"}
-        workflow = SimpleNamespace(
-            features_dict=features_dict,
-            user_input_form=lambda to_old_structure=False: [],
+    @patch("controllers.web.app.application_services")
+    def test_get_returns_public_parameters(self, application_services: MagicMock, app: Flask) -> None:
+        app_definitions = MagicMock()
+        app_definitions.get_public_parameters.return_value = get_parameters_from_feature_dict(
+            features_dict={"opening_statement": "Hello"},
+            user_input_form=[],
         )
-        app_model = SimpleNamespace(mode="advanced-chat", workflow=workflow)
+        application_services.return_value = SimpleNamespace(app_definitions=app_definitions)
+        app_model = _make_app()
 
-        with (
-            app.test_request_context("/parameters"),
-            patch("controllers.web.app.get_parameters_from_feature_dict", return_value={}) as mock_params,
-            patch("controllers.web.app.fields.Parameters") as mock_fields,
-        ):
-            mock_fields.model_validate.return_value.model_dump.return_value = {"result": "ok"}
-            result = AppParameterApi().get(app_model, SimpleNamespace())
-
-        mock_params.assert_called_once_with(features_dict=features_dict, user_input_form=[])
-        assert result == {"result": "ok"}
-
-    def test_workflow_mode_uses_workflow(self, app: Flask) -> None:
-        features_dict = {}
-        workflow = SimpleNamespace(
-            features_dict=features_dict,
-            user_input_form=lambda to_old_structure=False: [{"var": "x"}],
-        )
-        app_model = SimpleNamespace(mode="workflow", workflow=workflow)
-
-        with (
-            app.test_request_context("/parameters"),
-            patch("controllers.web.app.get_parameters_from_feature_dict", return_value={}) as mock_params,
-            patch("controllers.web.app.fields.Parameters") as mock_fields,
-        ):
-            mock_fields.model_validate.return_value.model_dump.return_value = {}
-            AppParameterApi().get(app_model, SimpleNamespace())
-
-        mock_params.assert_called_once_with(features_dict=features_dict, user_input_form=[{"var": "x"}])
-
-    def test_advanced_chat_mode_no_workflow_raises(self, app: Flask) -> None:
-        app_model = SimpleNamespace(mode="advanced-chat", workflow=None)
         with app.test_request_context("/parameters"):
-            with pytest.raises(AppUnavailableError):
-                AppParameterApi().get(app_model, SimpleNamespace())
+            result = AppParameterApi().get(app_model, _make_end_user())
 
-    def test_standard_mode_uses_app_model_config(self, app: Flask) -> None:
-        config = SimpleNamespace(to_dict=lambda: {"user_input_form": [{"var": "y"}], "key": "val"})
-        app_model = SimpleNamespace(mode="chat", app_model_config=config)
+        assert result["opening_statement"] == "Hello"
+        app_definitions.get_public_parameters.assert_called_once_with("app-1")
 
-        with (
-            app.test_request_context("/parameters"),
-            patch("controllers.web.app.get_parameters_from_feature_dict", return_value={}) as mock_params,
-            patch("controllers.web.app.fields.Parameters") as mock_fields,
-        ):
-            mock_fields.model_validate.return_value.model_dump.return_value = {}
-            AppParameterApi().get(app_model, SimpleNamespace())
+    @pytest.mark.parametrize(
+        ("service_error", "http_error"),
+        [
+            pytest.param(AppDefinitionNotPublishedError(), AgentNotPublishedError, id="not-published"),
+            pytest.param(AppDefinitionUnavailableError(), AppUnavailableError, id="unavailable"),
+        ],
+    )
+    @patch("controllers.web.app.application_services")
+    def test_get_maps_query_errors(
+        self,
+        application_services: MagicMock,
+        service_error: Exception,
+        http_error: type[Exception],
+        app: Flask,
+    ) -> None:
+        app_definitions = MagicMock()
+        app_definitions.get_public_parameters.side_effect = service_error
+        application_services.return_value = SimpleNamespace(app_definitions=app_definitions)
 
-        call_kwargs = mock_params.call_args
-        assert call_kwargs.kwargs["user_input_form"] == [{"var": "y"}]
-
-    def test_standard_mode_no_config_raises(self, app: Flask) -> None:
-        app_model = SimpleNamespace(mode="chat", app_model_config=None)
         with app.test_request_context("/parameters"):
-            with pytest.raises(AppUnavailableError):
-                AppParameterApi().get(app_model, SimpleNamespace())
+            with pytest.raises(http_error):
+                AppParameterApi().get(_make_app(), _make_end_user())
 
 
 # ---------------------------------------------------------------------------
 # AppMeta
 # ---------------------------------------------------------------------------
 class TestAppMeta:
-    @patch("controllers.web.app.AppService")
-    def test_get_returns_meta(self, mock_service_cls: MagicMock, app: Flask) -> None:
-        mock_service_cls.return_value.get_app_meta.return_value = {"tool_icons": {}}
-        app_model = SimpleNamespace(id="app-1")
+    @patch("controllers.web.app.application_services")
+    def test_get_returns_meta(self, application_services: MagicMock, app: Flask) -> None:
+        app_definitions = MagicMock()
+        app_definitions.get_tool_icons.return_value = {}
+        application_services.return_value = SimpleNamespace(app_definitions=app_definitions)
+        app_model = _make_app()
 
         with app.test_request_context("/meta"):
-            result = AppMeta().get(app_model, SimpleNamespace())
+            result = AppMeta().get(app_model, _make_end_user())
 
         assert result == {"tool_icons": {}}
+        app_definitions.get_tool_icons.assert_called_once_with("app-1")
+
+    @patch("controllers.web.app.application_services")
+    def test_maps_unavailable_definition_to_app_unavailable(self, application_services: MagicMock, app: Flask) -> None:
+        app_definitions = MagicMock()
+        app_definitions.get_tool_icons.side_effect = AppDefinitionUnavailableError
+        application_services.return_value = SimpleNamespace(app_definitions=app_definitions)
+
+        with app.test_request_context("/meta"):
+            with pytest.raises(AppUnavailableError) as raised:
+                AppMeta().get(_make_app(), _make_end_user())
+
+        assert raised.value.data == {
+            "code": "app_unavailable",
+            "message": "App unavailable, please check your app configurations.",
+            "status": 400,
+        }
 
 
 # ---------------------------------------------------------------------------
@@ -135,7 +154,7 @@ class TestAppAccessMode:
         with app.test_request_context("/webapp/access-mode?appCode=code1"):
             result = AppAccessMode().get()
 
-        mock_resolve.assert_called_once_with("code1")
+        mock_resolve.assert_called_once_with("code1", session=ANY)
         mock_access.assert_called_once_with("resolved-id")
         assert result == {"accessMode": "external"}
 

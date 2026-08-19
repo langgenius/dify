@@ -1,22 +1,29 @@
 import base64
+from typing import override
 
-from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.model_runtime.entities.rerank_entities import RerankResult
+from sqlalchemy.orm import Session
 
 from core.model_manager import ModelInstance, ModelManager
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
 from core.rag.rerank.rerank_base import BaseRerankRunner
-from extensions.ext_database import db
 from extensions.ext_storage import storage
+from extensions.otel import trace_span
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.rerank_entities import MultimodalRerankInput, RerankResult
 from models.model import UploadFile
 
 
 class RerankModelRunner(BaseRerankRunner):
-    def __init__(self, rerank_model_instance: ModelInstance):
-        self.rerank_model_instance = rerank_model_instance
+    _session: Session
 
+    def __init__(self, rerank_model_instance: ModelInstance, *, session: Session):
+        self.rerank_model_instance = rerank_model_instance
+        self._session = session
+
+    @override
+    @trace_span()
     def run(
         self,
         query: str,
@@ -123,7 +130,7 @@ class RerankModelRunner(BaseRerankRunner):
         :param query_type: query type
         :return: rerank result
         """
-        docs = []
+        docs: list[MultimodalRerankInput] = []
         doc_ids = set()
         unique_documents = []
         for document in documents:
@@ -133,31 +140,32 @@ class RerankModelRunner(BaseRerankRunner):
                 and document.metadata["doc_id"] not in doc_ids
             ):
                 if document.metadata.get("doc_type") == DocType.IMAGE:
-                    # Query file info within db.session context to ensure thread-safe access
-                    upload_file = db.session.get(UploadFile, document.metadata["doc_id"])
+                    upload_file = self._session.get(UploadFile, document.metadata["doc_id"])
                     if upload_file:
                         blob = storage.load_once(upload_file.key)
                         document_file_base64 = base64.b64encode(blob).decode()
-                        document_file_dict = {
-                            "content": document_file_base64,
-                            "content_type": document.metadata["doc_type"],
-                        }
-                        docs.append(document_file_dict)
+                        docs.append(
+                            MultimodalRerankInput(
+                                content=document_file_base64,
+                                content_type=document.metadata["doc_type"],
+                            )
+                        )
                 else:
-                    document_text_dict = {
-                        "content": document.page_content,
-                        "content_type": document.metadata.get("doc_type") or DocType.TEXT,
-                    }
-                    docs.append(document_text_dict)
+                    docs.append(
+                        MultimodalRerankInput(
+                            content=document.page_content,
+                            content_type=document.metadata.get("doc_type") or DocType.TEXT,
+                        )
+                    )
                 doc_ids.add(document.metadata["doc_id"])
                 unique_documents.append(document)
             elif document.provider == "external":
                 if document not in unique_documents:
                     docs.append(
-                        {
-                            "content": document.page_content,
-                            "content_type": document.metadata.get("doc_type") or DocType.TEXT,
-                        }
+                        MultimodalRerankInput(
+                            content=document.page_content,
+                            content_type=document.metadata.get("doc_type") or DocType.TEXT,
+                        )
                     )
                     unique_documents.append(document)
 
@@ -166,17 +174,16 @@ class RerankModelRunner(BaseRerankRunner):
             rerank_result, unique_documents = self.fetch_text_rerank(query, documents, score_threshold, top_n)
             return rerank_result, unique_documents
         elif query_type == QueryType.IMAGE_QUERY:
-            # Query file info within db.session context to ensure thread-safe access
-            upload_file = db.session.get(UploadFile, query)
+            upload_file = self._session.get(UploadFile, query)
             if upload_file:
                 blob = storage.load_once(upload_file.key)
                 file_query = base64.b64encode(blob).decode()
-                file_query_dict = {
-                    "content": file_query,
-                    "content_type": DocType.IMAGE,
-                }
+                file_query_input = MultimodalRerankInput(
+                    content=file_query,
+                    content_type=DocType.IMAGE,
+                )
                 rerank_result = self.rerank_model_instance.invoke_multimodal_rerank(
-                    query=file_query_dict, docs=docs, score_threshold=score_threshold, top_n=top_n
+                    query=file_query_input, docs=docs, score_threshold=score_threshold, top_n=top_n
                 )
                 return rerank_result, unique_documents
             else:

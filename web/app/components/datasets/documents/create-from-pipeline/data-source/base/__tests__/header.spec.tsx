@@ -1,17 +1,9 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import Header from '../header'
-
-vi.mock('@/app/components/base/button', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <button>{children}</button>,
-}))
 
 vi.mock('@/app/components/base/divider', () => ({
   default: () => <span data-testid="divider" />,
-}))
-
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <div data-testid="tooltip">{children}</div>,
 }))
 
 vi.mock('../credential-selector', () => ({

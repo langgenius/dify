@@ -1,14 +1,12 @@
 import type { FC } from 'react'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 import { basePath } from '@/utils/var'
 
 type LogoEmbeddedChatHeaderProps = {
   className?: string
 }
 
-const LogoEmbeddedChatHeader: FC<LogoEmbeddedChatHeaderProps> = ({
-  className,
-}) => {
+const LogoEmbeddedChatHeader: FC<LogoEmbeddedChatHeaderProps> = ({ className }) => {
   return (
     <picture>
       <source media="(resolution: 1x)" srcSet="/logo/logo-embedded-chat-header.png" />

@@ -1,49 +1,57 @@
 'use client'
-import type { App } from '@/types/app'
-import {
-  RiArrowDownSLine,
-} from '@remixicon/react'
-import * as React from 'react'
+
+import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
+import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import { cn } from '@/utils/classnames'
 
-type Props = {
+type AppTriggerProps = {
   open: boolean
-  appDetail?: App
+  appDetail?: Pick<
+    AppPartial,
+    'icon' | 'icon_background' | 'icon_type' | 'icon_url' | 'id' | 'name'
+  >
 }
 
-const AppTrigger = ({
-  open,
-  appDetail,
-}: Props) => {
+export function AppTrigger({ open, appDetail }: AppTriggerProps) {
   const { t } = useTranslation()
+  const appIconType = zIconType.safeParse(appDetail?.icon_type).data ?? null
+
   return (
-    <div className={cn(
-      'group flex cursor-pointer items-center rounded-lg bg-components-input-bg-normal p-2 pl-3 hover:bg-state-base-hover-alt',
-      open && 'bg-state-base-hover-alt',
-      appDetail && 'py-1.5 pl-1.5',
-    )}
+    <span
+      className={cn(
+        'group flex cursor-pointer items-center rounded-lg bg-components-input-bg-normal p-2 pl-3 hover:bg-state-base-hover-alt',
+        open && 'bg-state-base-hover-alt',
+        appDetail && 'py-1.5 pl-1.5',
+      )}
     >
       {appDetail && (
         <AppIcon
-          className="mr-2"
+          className="mr-2 shrink-0"
           size="xs"
-          iconType={appDetail.icon_type}
-          icon={appDetail.icon}
+          iconType={appIconType}
+          icon={appDetail.icon ?? undefined}
           background={appDetail.icon_background}
           imageUrl={appDetail.icon_url}
         />
       )}
-      {appDetail && (
-        <div title={appDetail.name} className="system-sm-medium grow text-components-input-text-filled">{appDetail.name}</div>
+      {appDetail ? (
+        <span className="min-w-0 grow truncate system-sm-medium text-components-input-text-filled">
+          {appDetail.name}
+        </span>
+      ) : (
+        <span className="min-w-0 grow truncate system-sm-regular text-components-input-text-placeholder">
+          {t(($) => $['appSelector.placeholder'], { ns: 'app' })}
+        </span>
       )}
-      {!appDetail && (
-        <div className="system-sm-regular grow truncate text-components-input-text-placeholder">{t('appSelector.placeholder', { ns: 'app' })}</div>
-      )}
-      <RiArrowDownSLine className={cn('ml-0.5 h-4 w-4 shrink-0 text-text-quaternary group-hover:text-text-secondary', open && 'text-text-secondary')} />
-    </div>
+      <span
+        className={cn(
+          'ml-0.5 i-ri-arrow-down-s-line size-4 shrink-0 text-text-quaternary group-hover:text-text-secondary',
+          open && 'text-text-secondary',
+        )}
+        aria-hidden="true"
+      />
+    </span>
   )
 }
-
-export default AppTrigger

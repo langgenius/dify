@@ -66,7 +66,7 @@ How we prioritize:
 1. Fork the repository
 1. Before you draft a PR, please create an issue to discuss the changes you want to make
 1. Create a new branch for your changes
-1. Please add tests for your changes accordingly
+1. Add or update tests when the change affects observable behavior or carries meaningful regression risk
 1. Ensure your code passes the existing tests
 1. Please link the issue in the PR description, `fixes #<issue_number>`
 1. Get merged!
@@ -77,7 +77,7 @@ How we prioritize:
 
 For setting up the frontend service, please refer to our comprehensive [guide](https://github.com/langgenius/dify/blob/main/web/README.md) in the `web/README.md` file. This document provides detailed instructions to help you set up the frontend environment properly.
 
-**Testing**: All React components must have comprehensive test coverage. See [web/docs/test.md](https://github.com/langgenius/dify/blob/main/web/docs/test.md) for the canonical frontend testing guidelines and follow every requirement described there.
+**Testing**: Add focused tests when a change affects observable behavior or carries meaningful regression risk. See [web/docs/test.md](https://github.com/langgenius/dify/blob/main/web/docs/test.md) for the canonical frontend testing guidelines.
 
 #### Backend
 
@@ -97,8 +97,3 @@ Feel free to reach out if you encounter any issues during the setup process.
 ## Getting Help
 
 If you ever get stuck or get a burning question while contributing, simply shoot your queries our way via the related GitHub issue, or hop onto our [Discord](https://discord.gg/8Tpq4AcN9c) for a quick chat.
-
-## Automated Agent Contributions
-
-> [!NOTE]
-> If you are an automated agent， just add 🤖🤖🤖 to the end of the PR title to opt-in.

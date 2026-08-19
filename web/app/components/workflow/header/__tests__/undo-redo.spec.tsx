@@ -1,34 +1,41 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import UndoRedo from '../undo-redo'
 
-type TemporalSnapshot = {
-  pastStates: unknown[]
-  futureStates: unknown[]
-}
-
 const mockUnsubscribe = vi.fn()
-const mockTemporalSubscribe = vi.fn()
 const mockHandleUndo = vi.fn()
 const mockHandleRedo = vi.fn()
 
-let latestTemporalListener: ((state: TemporalSnapshot) => void) | undefined
+let latestTemporalListener:
+  | ((state: { pastStates: unknown[]; futureStates: unknown[] }) => void)
+  | undefined
 let mockNodesReadOnly = false
 
 vi.mock('@/app/components/workflow/header/view-workflow-history', () => ({
   default: () => <div data-testid="view-workflow-history" />,
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodesReadOnly: () => ({
-    nodesReadOnly: mockNodesReadOnly,
-  }),
-}))
+vi.mock('../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useNodesReadOnly: () => ({
+      nodesReadOnly: mockNodesReadOnly,
+    }),
+  }
+})
 
 vi.mock('@/app/components/workflow/workflow-history-store', () => ({
   useWorkflowHistoryStore: () => ({
     store: {
       temporal: {
-        subscribe: mockTemporalSubscribe,
+        subscribe: (
+          listener: (state: { pastStates: unknown[]; futureStates: unknown[] }) => void,
+        ) => {
+          latestTemporalListener = listener
+          return mockUnsubscribe
+        },
       },
     },
     shortcutsEnabled: true,
@@ -49,10 +56,6 @@ describe('UndoRedo', () => {
     vi.clearAllMocks()
     mockNodesReadOnly = false
     latestTemporalListener = undefined
-    mockTemporalSubscribe.mockImplementation((listener: (state: TemporalSnapshot) => void) => {
-      latestTemporalListener = listener
-      return mockUnsubscribe
-    })
   })
 
   it('enables undo and redo when history exists and triggers the callbacks', () => {
@@ -72,16 +75,23 @@ describe('UndoRedo', () => {
     expect(mockHandleRedo).toHaveBeenCalledTimes(1)
   })
 
-  it('keeps the buttons disabled before history is available', () => {
+  it('keeps unavailable history actions focusable without activating them', async () => {
+    const user = userEvent.setup()
     render(<UndoRedo handleRedo={mockHandleRedo} handleUndo={mockHandleUndo} />)
     const undoButton = screen.getByRole('button', { name: 'workflow.common.undo' })
     const redoButton = screen.getByRole('button', { name: 'workflow.common.redo' })
 
-    fireEvent.click(undoButton)
-    fireEvent.click(redoButton)
+    expect(undoButton).toHaveAttribute('aria-disabled', 'true')
+    expect(redoButton).toHaveAttribute('aria-disabled', 'true')
 
-    expect(undoButton).toBeDisabled()
-    expect(redoButton).toBeDisabled()
+    await user.tab()
+    expect(undoButton).toHaveFocus()
+    await user.keyboard('{Enter}')
+
+    await user.tab()
+    expect(redoButton).toHaveFocus()
+    await user.keyboard(' ')
+
     expect(mockHandleUndo).not.toHaveBeenCalled()
     expect(mockHandleRedo).not.toHaveBeenCalled()
   })
@@ -102,8 +112,8 @@ describe('UndoRedo', () => {
     fireEvent.click(undoButton)
     fireEvent.click(redoButton)
 
-    expect(undoButton).toBeDisabled()
-    expect(redoButton).toBeDisabled()
+    expect(undoButton).toHaveAttribute('aria-disabled', 'true')
+    expect(redoButton).toHaveAttribute('aria-disabled', 'true')
     expect(mockHandleUndo).not.toHaveBeenCalled()
     expect(mockHandleRedo).not.toHaveBeenCalled()
   })

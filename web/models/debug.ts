@@ -5,11 +5,15 @@ import type {
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { ModelConfig as NodeModelConfig } from '@/app/components/workflow/types'
 import type { ExternalDataTool } from '@/models/common'
+import type { RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
 import type {
-  RerankingModeEnum,
-  WeightedScoreEnum,
-} from '@/models/datasets'
-import type { AgentStrategy, ModelModeType, RETRIEVE_TYPE, ToolItem, TtsAutoPlay } from '@/types/app'
+  AgentStrategy,
+  Model,
+  ModelModeType,
+  RETRIEVE_TYPE,
+  ToolItem,
+  TtsAutoPlay,
+} from '@/types/app'
 
 export type Inputs = Record<string, string | number | object | boolean>
 
@@ -52,7 +56,7 @@ export type PromptVariable = {
   key: string
   name: string
   type: string // "string" | "number" | "select",
-  default?: string | number
+  default?: string | number | boolean
   required?: boolean
   options?: string[]
   max_length?: number
@@ -74,7 +78,10 @@ export type MoreLikeThisConfig = {
   enabled: boolean
 }
 
-export type SuggestedQuestionsAfterAnswerConfig = MoreLikeThisConfig
+export type SuggestedQuestionsAfterAnswerConfig = MoreLikeThisConfig & {
+  model?: Model
+  prompt?: string
+}
 
 export type SpeechToTextConfig = MoreLikeThisConfig
 
@@ -111,7 +118,7 @@ export type ModerationConfig = MoreLikeThisConfig & {
   } & Partial<Record<string, any>>
 }
 
-export type RetrieverResourceConfig = MoreLikeThisConfig
+type RetrieverResourceConfig = MoreLikeThisConfig
 export type AgentConfig = {
   enabled: boolean
   strategy: AgentStrategy

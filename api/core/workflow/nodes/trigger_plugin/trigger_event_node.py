@@ -1,12 +1,11 @@
 from collections.abc import Mapping
-from typing import Any
-
-from graphon.enums import NodeExecutionType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from graphon.node_events import NodeRunResult
-from graphon.nodes.base.node import Node
+from typing import Any, override
 
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
+from graphon.enums import NodeExecutionType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from graphon.node_events import NodeRunResult
+from graphon.nodes.base.node import Node
 
 from .entities import TriggerEventNodeData
 
@@ -16,6 +15,7 @@ class TriggerEventNode(Node[TriggerEventNodeData]):
     execution_type = NodeExecutionType.ROOT
 
     @classmethod
+    @override
     def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
         return {
             "type": "plugin",
@@ -31,12 +31,15 @@ class TriggerEventNode(Node[TriggerEventNodeData]):
         }
 
     @classmethod
+    @override
     def version(cls) -> str:
         return "1"
 
+    @override
     def populate_start_event(self, event) -> None:
         event.provider_id = self.node_data.provider_id
 
+    @override
     def _run(self) -> NodeRunResult:
         """
         Run the plugin trigger node.

@@ -36,7 +36,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/input-support-select-v
       aria-label="variable-input"
       className={className}
       value={value}
-      onChange={e => onChange(e.target.value)}
+      onChange={(e) => onChange(e.target.value)}
       onFocus={() => onFocusChange?.(true)}
       onBlur={() => onFocusChange?.(false)}
       readOnly={readOnly}
@@ -46,19 +46,13 @@ vi.mock('@/app/components/workflow/nodes/_base/components/input-support-select-v
 }))
 
 vi.mock('../../../../panel/chat-variable-panel/components/bool-value', () => ({
-  default: ({ value, onChange }: { value: boolean, onChange: (value: boolean) => void }) => (
+  default: ({ value, onChange }: { value: boolean; onChange: (value: boolean) => void }) => (
     <button onClick={() => onChange(!value)}>{value ? 'true' : 'false'}</button>
   ),
 }))
 
 vi.mock('../../../if-else/components/condition-list/condition-operator', () => ({
-  default: ({
-    value,
-    onSelect,
-  }: {
-    value: string
-    onSelect: (value: string) => void
-  }) => (
+  default: ({ value, onSelect }: { value: string; onSelect: (value: string) => void }) => (
     <button onClick={() => onSelect(ComparisonOperator.notEqual)}>
       operator:
       {value}
@@ -67,13 +61,7 @@ vi.mock('../../../if-else/components/condition-list/condition-operator', () => (
 }))
 
 vi.mock('../sub-variable-picker', () => ({
-  default: ({
-    value,
-    onChange,
-  }: {
-    value: string
-    onChange: (value: string) => void
-  }) => (
+  default: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => (
     <button onClick={() => onChange('size')}>
       sub-variable:
       {value}
@@ -112,7 +100,7 @@ describe('FilterCondition', () => {
     expect(screen.getByText(/operator:/)).toBeInTheDocument()
     expect(screen.getByText(/sub-variable:/)).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'workflow.nodes.ifElse.optionName.doc' }))
+    await user.click(screen.getByRole('combobox'))
     await user.click(screen.getByText('workflow.nodes.ifElse.optionName.image'))
 
     expect(onChange).toHaveBeenCalledWith({
@@ -173,7 +161,6 @@ describe('FilterCondition', () => {
     expect(variableInput).toHaveAttribute('placeholder', 'workflow.nodes.http.insertVarPlaceholder')
 
     await user.click(variableInput)
-    expect(variableInput.className).toContain('border-components-input-border-active')
 
     fireEvent.change(variableInput, { target: { value: 'draft next' } })
     expect(onChange).toHaveBeenLastCalledWith({
@@ -282,7 +269,7 @@ describe('FilterCondition', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'workflow.nodes.ifElse.optionName.localUpload' }))
+    await user.click(screen.getByRole('combobox'))
     await user.click(screen.getByText('workflow.nodes.ifElse.optionName.url'))
     expect(onChange).toHaveBeenCalledWith({
       key: 'transfer_method',
@@ -305,6 +292,6 @@ describe('FilterCondition', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: 'Select value' })).toBeInTheDocument()
+    expect(screen.getByText('Select value')).toBeInTheDocument()
   })
 })

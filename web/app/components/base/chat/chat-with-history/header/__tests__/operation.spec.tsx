@@ -1,7 +1,7 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import Operation from '../operation'
 
 describe('Operation Component', () => {
@@ -48,11 +48,7 @@ describe('Operation Component', () => {
   it('handles rename and delete visibility correctly', async () => {
     const user = userEvent.setup()
     const { rerender } = render(
-      <Operation
-        {...defaultProps}
-        isShowRenameConversation={false}
-        isShowDelete={false}
-      />,
+      <Operation {...defaultProps} isShowRenameConversation={false} isShowDelete={false} />,
     )
 
     await user.click(screen.getByText('Chat Title'))
@@ -74,12 +70,18 @@ describe('Operation Component', () => {
     expect(defaultProps.togglePin).toHaveBeenCalledTimes(1)
 
     // Rename
+    await user.click(screen.getByText('Chat Title'))
     await user.click(screen.getByText('explore.sidebar.action.rename'))
-    expect(defaultProps.onRenameConversation).toHaveBeenCalledTimes(1)
+    await waitFor(() => {
+      expect(defaultProps.onRenameConversation).toHaveBeenCalledTimes(1)
+    })
 
     // Delete
+    await user.click(screen.getByText('Chat Title'))
     await user.click(screen.getByText('explore.sidebar.action.delete'))
-    expect(defaultProps.onDelete).toHaveBeenCalledTimes(1)
+    await waitFor(() => {
+      expect(defaultProps.onDelete).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('applies hover background when open', async () => {
@@ -89,10 +91,11 @@ describe('Operation Component', () => {
     const trigger = screen.getByText('Chat Title').closest('.cursor-pointer')
 
     // closed state
-    expect(trigger).not.toHaveClass('bg-state-base-hover')
+    expect(trigger).toHaveClass('data-popup-open:bg-state-base-hover')
+    expect(trigger).not.toHaveAttribute('data-popup-open')
 
     // open state
     await user.click(screen.getByText('Chat Title'))
-    expect(trigger).toHaveClass('bg-state-base-hover')
+    expect(trigger).toHaveAttribute('data-popup-open')
   })
 })

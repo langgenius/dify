@@ -2,17 +2,11 @@ import binascii
 from collections.abc import Generator, Sequence
 from typing import IO, Any
 
-from graphon.model_runtime.entities.llm_entities import LLMResultChunk
-from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
-from graphon.model_runtime.entities.model_entities import AIModelEntity
-from graphon.model_runtime.entities.rerank_entities import MultimodalRerankInput, RerankResult
-from graphon.model_runtime.entities.text_embedding_entities import EmbeddingResult
-from graphon.model_runtime.utils.encoders import jsonable_encoder
-
 from core.plugin.entities.plugin_daemon import (
     PluginBasicBooleanResponse,
     PluginDaemonInnerError,
     PluginLLMNumTokensResponse,
+    PluginModelProviderBinding,
     PluginModelProviderEntity,
     PluginModelSchemaEntity,
     PluginStringResultResponse,
@@ -20,14 +14,27 @@ from core.plugin.entities.plugin_daemon import (
     PluginVoicesResponse,
 )
 from core.plugin.impl.base import BasePluginClient
+from core.plugin.impl.exc import PluginInvokeError, PluginLLMPollingUnsupportedError
+from graphon.model_runtime.entities.llm_entities import LLMPollingResult, LLMResultChunk
+from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
+from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
+from graphon.model_runtime.entities.rerank_entities import MultimodalRerankInput, RerankResult
+from graphon.model_runtime.entities.text_embedding_entities import EmbeddingResult
+from graphon.model_runtime.protocols.tts_runtime import TTSModelVoice
+from graphon.model_runtime.utils.encoders import jsonable_encoder
+
+_POLLING_UNSUPPORTED_INVOKE_ERROR_TYPES = frozenset((NotImplementedError.__name__,))
+_POLLING_UNSUPPORTED_ERROR_MESSAGE = "does not support polling"
 
 
 class PluginModelClient(BasePluginClient):
     @staticmethod
-    def _dispatch_payload(*, user_id: str | None, data: dict[str, Any]) -> dict[str, Any]:
+    def _dispatch_payload(*, user_id: str | None, data: dict[str, Any], app_id: str | None = None) -> dict[str, Any]:
         payload: dict[str, Any] = {"data": data}
         if user_id is not None:
             payload["user_id"] = user_id
+        if app_id is not None:
+            payload["app_id"] = app_id
         return payload
 
     def fetch_model_providers(self, tenant_id: str) -> Sequence[PluginModelProviderEntity]:
@@ -42,6 +49,14 @@ class PluginModelClient(BasePluginClient):
         )
         return response
 
+    def fetch_model_provider_bindings(self, tenant_id: str) -> Sequence[PluginModelProviderBinding]:
+        """Fetch only model-provider installation identities from the daemon."""
+        return self._request_with_plugin_daemon_response(
+            "GET",
+            f"plugin/{tenant_id}/management/models/bindings",
+            list[PluginModelProviderBinding],
+        )
+
     def get_model_schema(
         self,
         tenant_id: str,
@@ -50,7 +65,7 @@ class PluginModelClient(BasePluginClient):
         provider: str,
         model_type: str,
         model: str,
-        credentials: dict,
+        credentials: dict[str, Any],
     ) -> AIModelEntity | None:
         """
         Get model schema
@@ -80,7 +95,7 @@ class PluginModelClient(BasePluginClient):
         return None
 
     def validate_provider_credentials(
-        self, tenant_id: str, user_id: str | None, plugin_id: str, provider: str, credentials: dict
+        self, tenant_id: str, user_id: str | None, plugin_id: str, provider: str, credentials: dict[str, Any]
     ) -> bool:
         """
         validate the credentials of the provider
@@ -118,7 +133,7 @@ class PluginModelClient(BasePluginClient):
         provider: str,
         model_type: str,
         model: str,
-        credentials: dict,
+        credentials: dict[str, Any],
     ) -> bool:
         """
         validate the credentials of the provider
@@ -157,12 +172,13 @@ class PluginModelClient(BasePluginClient):
         plugin_id: str,
         provider: str,
         model: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         prompt_messages: list[PromptMessage],
-        model_parameters: dict | None = None,
+        model_parameters: dict[str, Any] | None = None,
         tools: list[PromptMessageTool] | None = None,
         stop: list[str] | None = None,
         stream: bool = True,
+        app_id: str | None = None,
     ) -> Generator[LLMResultChunk, None, None]:
         """
         Invoke llm
@@ -185,6 +201,7 @@ class PluginModelClient(BasePluginClient):
                         "stop": stop,
                         "stream": stream,
                     },
+                    app_id=app_id,
                 )
             ),
             headers={
@@ -198,6 +215,103 @@ class PluginModelClient(BasePluginClient):
         except PluginDaemonInnerError as e:
             raise ValueError(e.message + str(e.code))
 
+    def start_llm_polling(
+        self,
+        tenant_id: str,
+        user_id: str | None,
+        plugin_id: str,
+        provider: str,
+        model: str,
+        credentials: dict[str, Any],
+        prompt_messages: list[PromptMessage],
+        model_parameters: dict[str, Any] | None = None,
+        tools: list[PromptMessageTool] | None = None,
+        stop: list[str] | None = None,
+        json_schema: dict[str, Any] | None = None,
+    ) -> LLMPollingResult:
+        """Start an LLM polling request for plugin-backed long-running jobs."""
+        try:
+            return self._request_with_plugin_daemon_response(
+                method="POST",
+                path=f"plugin/{tenant_id}/dispatch/model/polling/start",
+                type_=LLMPollingResult,
+                data=jsonable_encoder(
+                    self._dispatch_payload(
+                        user_id=user_id,
+                        data={
+                            "provider": provider,
+                            "model_type": ModelType.LLM.value,
+                            "model": model,
+                            "credentials": credentials,
+                            "prompt_messages": prompt_messages,
+                            "model_parameters": model_parameters,
+                            "tools": tools,
+                            "stop": stop,
+                            "stream": False,
+                            "json_schema": json_schema,
+                        },
+                    )
+                ),
+                headers={
+                    "X-Plugin-ID": plugin_id,
+                    "Content-Type": "application/json",
+                },
+            )
+        except PluginInvokeError as error:
+            self._raise_typed_polling_unsupported_error(error)
+            raise
+
+    def check_llm_polling(
+        self,
+        tenant_id: str,
+        user_id: str | None,
+        plugin_id: str,
+        provider: str,
+        model: str,
+        credentials: dict[str, Any],
+        plugin_state: dict[str, Any],
+    ) -> LLMPollingResult:
+        """Check the latest state for a plugin-backed LLM polling job."""
+        try:
+            return self._request_with_plugin_daemon_response(
+                method="POST",
+                path=f"plugin/{tenant_id}/dispatch/model/polling/check",
+                type_=LLMPollingResult,
+                data=jsonable_encoder(
+                    self._dispatch_payload(
+                        user_id=user_id,
+                        data={
+                            "provider": provider,
+                            "model_type": ModelType.LLM.value,
+                            "model": model,
+                            "credentials": credentials,
+                            "plugin_state": plugin_state,
+                        },
+                    )
+                ),
+                headers={
+                    "X-Plugin-ID": plugin_id,
+                    "Content-Type": "application/json",
+                },
+            )
+        except PluginInvokeError as error:
+            self._raise_typed_polling_unsupported_error(error)
+            raise
+
+    @staticmethod
+    def _raise_typed_polling_unsupported_error(error: PluginInvokeError) -> None:
+        """Convert plugin polling capability failures into a dedicated Dify exception."""
+        if error.get_error_type() == PluginLLMPollingUnsupportedError.__name__:
+            raise PluginLLMPollingUnsupportedError(description=error.description) from error
+
+        if (
+            error.get_error_type() in _POLLING_UNSUPPORTED_INVOKE_ERROR_TYPES
+            # This is ugly, we should not rely on error messages while checking
+            # error types.
+            and _POLLING_UNSUPPORTED_ERROR_MESSAGE in error.get_error_message().lower()
+        ):
+            raise PluginLLMPollingUnsupportedError(description=error.description) from error
+
     def get_llm_num_tokens(
         self,
         tenant_id: str,
@@ -206,7 +320,7 @@ class PluginModelClient(BasePluginClient):
         provider: str,
         model_type: str,
         model: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         prompt_messages: list[PromptMessage],
         tools: list[PromptMessageTool] | None = None,
     ) -> int:
@@ -248,7 +362,7 @@ class PluginModelClient(BasePluginClient):
         plugin_id: str,
         provider: str,
         model: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         texts: list[str],
         input_type: str,
     ) -> EmbeddingResult:
@@ -290,7 +404,7 @@ class PluginModelClient(BasePluginClient):
         plugin_id: str,
         provider: str,
         model: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         documents: list[dict],
         input_type: str,
     ) -> EmbeddingResult:
@@ -332,7 +446,7 @@ class PluginModelClient(BasePluginClient):
         plugin_id: str,
         provider: str,
         model: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         texts: list[str],
     ) -> list[int]:
         """
@@ -372,7 +486,7 @@ class PluginModelClient(BasePluginClient):
         plugin_id: str,
         provider: str,
         model: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         query: str,
         docs: list[str],
         score_threshold: float | None = None,
@@ -418,7 +532,7 @@ class PluginModelClient(BasePluginClient):
         plugin_id: str,
         provider: str,
         model: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         query: MultimodalRerankInput,
         docs: list[MultimodalRerankInput],
         score_threshold: float | None = None,
@@ -463,7 +577,7 @@ class PluginModelClient(BasePluginClient):
         plugin_id: str,
         provider: str,
         model: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         content_text: str,
         voice: str,
     ) -> Generator[bytes, None, None]:
@@ -508,9 +622,9 @@ class PluginModelClient(BasePluginClient):
         plugin_id: str,
         provider: str,
         model: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         language: str | None = None,
-    ):
+    ) -> list[TTSModelVoice]:
         """
         Get tts model voices
         """
@@ -537,7 +651,7 @@ class PluginModelClient(BasePluginClient):
         )
 
         for resp in response:
-            voices = []
+            voices: list[TTSModelVoice] = []
             for voice in resp.voices:
                 voices.append({"name": voice.name, "value": voice.value})
 
@@ -552,7 +666,7 @@ class PluginModelClient(BasePluginClient):
         plugin_id: str,
         provider: str,
         model: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         file: IO[bytes],
     ) -> str:
         """
@@ -592,7 +706,7 @@ class PluginModelClient(BasePluginClient):
         plugin_id: str,
         provider: str,
         model: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         text: str,
     ) -> bool:
         """

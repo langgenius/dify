@@ -1,4 +1,4 @@
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 import type { IBatchModalProps } from '../index'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
@@ -22,7 +22,7 @@ vi.mock('../csv-downloader', () => ({
 let lastUploadedFile: File | undefined
 
 vi.mock('../csv-uploader', () => ({
-  default: ({ file, updateFile }: { file?: File, updateFile: (file?: File) => void }) => (
+  default: ({ file, updateFile }: { file?: File; updateFile: (file?: File) => void }) => (
     <div>
       <button
         data-testid="mock-uploader"
@@ -43,7 +43,7 @@ vi.mock('@/app/components/billing/annotation-full', () => ({
 }))
 
 const mockNotify = vi.fn()
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   default: {
     notify: (args: unknown) => mockNotify(args),
   },
@@ -96,15 +96,15 @@ describe('BatchModal', () => {
 
     renderComponent()
 
-    expect(screen.getByTestId('annotation-full')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'appAnnotation.batchModal.run' })).toBeDisabled()
+    expect(screen.getByTestId('annotation-full'))!.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'appAnnotation.batchModal.run' }))!.toBeDisabled()
   })
 
   it('should reset uploader state when modal closes and allow manual cancellation', () => {
     const { rerender, props } = renderComponent()
 
     fireEvent.click(screen.getByTestId('mock-uploader'))
-    expect(screen.getByTestId('selected-file')).toHaveTextContent('batch.csv')
+    expect(screen.getByTestId('selected-file'))!.toHaveTextContent('batch.csv')
 
     rerender(<BatchModal {...props} isShow={false} />)
     rerender(<BatchModal {...props} isShow />)
@@ -112,6 +112,14 @@ describe('BatchModal', () => {
     expect(screen.queryByTestId('selected-file')).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: 'appAnnotation.batchModal.cancel' }))
+    expect(props.onCancel).toHaveBeenCalledTimes(1)
+  })
+
+  it('should call onCancel when close button is clicked', () => {
+    const { props } = renderComponent()
+
+    fireEvent.click(screen.getByRole('button', { name: /operation\.close$/ }))
+
     expect(props.onCancel).toHaveBeenCalledTimes(1)
   })
 
@@ -124,7 +132,10 @@ describe('BatchModal', () => {
     const runButton = screen.getByRole('button', { name: 'appAnnotation.batchModal.run' })
     expect(runButton).not.toBeDisabled()
 
-    annotationBatchImportMock.mockResolvedValue({ job_id: 'job-1', job_status: ProcessStatus.PROCESSING })
+    annotationBatchImportMock.mockResolvedValue({
+      job_id: 'job-1',
+      job_status: ProcessStatus.PROCESSING,
+    })
     checkAnnotationBatchImportProgressMock
       .mockResolvedValueOnce({ job_id: 'job-1', job_status: ProcessStatus.PROCESSING })
       .mockResolvedValueOnce({ job_id: 'job-1', job_status: ProcessStatus.COMPLETED })
@@ -137,7 +148,7 @@ describe('BatchModal', () => {
       expect(annotationBatchImportMock).toHaveBeenCalledTimes(1)
     })
 
-    const formData = annotationBatchImportMock.mock.calls[0][0].body as FormData
+    const formData = annotationBatchImportMock.mock.calls[0]![0].body as FormData
     expect(formData.get('file')).toBe(lastUploadedFile)
 
     await waitFor(() => {

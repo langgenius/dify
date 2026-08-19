@@ -3,14 +3,12 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy import delete, func, select
+from sqlalchemy.orm import Session
 
-from core.model_manager import ModelManager
-from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.models.document import AttachmentDocument, Document
-from extensions.ext_database import db
 from models.dataset import ChildChunk, Dataset, DocumentSegment, SegmentAttachmentBinding
+from models.enums import SegmentType
 
 
 class DatasetDocumentStore:
@@ -44,11 +42,15 @@ class DatasetDocumentStore:
 
     @property
     def docs(self) -> dict[str, Document]:
+        raise ValueError("session is required; use get_docs(session)")
+
+    def get_docs(self, session: Session) -> dict[str, Document]:
         stmt = select(DocumentSegment).where(DocumentSegment.dataset_id == self._dataset.id)
-        document_segments = db.session.scalars(stmt).all()
+        document_segments = session.scalars(stmt).all()
 
         output = {}
         for document_segment in document_segments:
+            assert document_segment.index_node_id
             doc_id = document_segment.index_node_id
             output[doc_id] = Document(
                 page_content=document_segment.content,
@@ -62,37 +64,31 @@ class DatasetDocumentStore:
 
         return output
 
-    def add_documents(self, docs: Sequence[Document], allow_update: bool = True, save_child: bool = False):
-        max_position = db.session.scalar(
+    def add_documents(
+        self,
+        session: Session,
+        docs: Sequence[Document],
+        token_counts: list[int],
+        allow_update: bool = True,
+        save_child: bool = False,
+    ) -> None:
+        document_token_pairs = list(zip(docs, token_counts, strict=True))
+
+        max_position = session.scalar(
             select(func.max(DocumentSegment.position)).where(DocumentSegment.document_id == self._document_id)
         )
 
         if max_position is None:
             max_position = 0
-        embedding_model = None
-        if self._dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-            model_manager = ModelManager.for_tenant(tenant_id=self._dataset.tenant_id)
-            embedding_model = model_manager.get_model_instance(
-                tenant_id=self._dataset.tenant_id,
-                provider=self._dataset.embedding_model_provider,
-                model_type=ModelType.TEXT_EMBEDDING,
-                model=self._dataset.embedding_model,
-            )
 
-        if embedding_model:
-            page_content_list = [doc.page_content for doc in docs]
-            tokens_list = embedding_model.get_text_embedding_num_tokens(page_content_list)
-        else:
-            tokens_list = [0] * len(docs)
-
-        for doc, tokens in zip(docs, tokens_list):
+        for doc, tokens in document_token_pairs:
             if not isinstance(doc, Document):
                 raise ValueError("doc must be a Document")
 
             if doc.metadata is None:
                 raise ValueError("doc.metadata must be a dict")
 
-            segment_document = self.get_document_segment(doc_id=doc.metadata["doc_id"])
+            segment_document = self.get_document_segment(doc_id=doc.metadata["doc_id"], session=session)
 
             # NOTE: doc could already exist in the store, but we overwrite it
             if not allow_update and segment_document:
@@ -102,7 +98,7 @@ class DatasetDocumentStore:
 
             if not segment_document:
                 max_position += 1
-
+                assert self._document_id
                 segment_document = DocumentSegment(
                     tenant_id=self._dataset.tenant_id,
                     dataset_id=self._dataset.id,
@@ -119,14 +115,15 @@ class DatasetDocumentStore:
                 if doc.metadata.get("answer"):
                     segment_document.answer = doc.metadata.pop("answer", "")
 
-                db.session.add(segment_document)
-                db.session.flush()
+                session.add(segment_document)
+                session.flush()
                 self.add_multimodel_documents_binding(
-                    segment_id=segment_document.id, multimodel_documents=doc.attachments
+                    segment_id=segment_document.id, multimodel_documents=doc.attachments, session=session
                 )
                 if save_child:
                     if doc.children:
                         for position, child in enumerate(doc.children, start=1):
+                            assert self._document_id
                             child_segment = ChildChunk(
                                 tenant_id=self._dataset.tenant_id,
                                 dataset_id=self._dataset.id,
@@ -137,10 +134,10 @@ class DatasetDocumentStore:
                                 index_node_hash=child.metadata.get("doc_hash"),
                                 content=child.page_content,
                                 word_count=len(child.page_content),
-                                type="automatic",
+                                type=SegmentType.AUTOMATIC,
                                 created_by=self._user_id,
                             )
-                            db.session.add(child_segment)
+                            session.add(child_segment)
             else:
                 segment_document.content = doc.page_content
                 if doc.metadata.get("answer"):
@@ -149,11 +146,11 @@ class DatasetDocumentStore:
                 segment_document.word_count = len(doc.page_content)
                 segment_document.tokens = tokens
                 self.add_multimodel_documents_binding(
-                    segment_id=segment_document.id, multimodel_documents=doc.attachments
+                    segment_id=segment_document.id, multimodel_documents=doc.attachments, session=session
                 )
                 if save_child and doc.children:
                     # delete the existing child chunks
-                    db.session.execute(
+                    session.execute(
                         delete(ChildChunk).where(
                             ChildChunk.tenant_id == self._dataset.tenant_id,
                             ChildChunk.dataset_id == self._dataset.id,
@@ -163,6 +160,7 @@ class DatasetDocumentStore:
                     )
                     # add new child chunks
                     for position, child in enumerate(doc.children, start=1):
+                        assert self._document_id
                         child_segment = ChildChunk(
                             tenant_id=self._dataset.tenant_id,
                             dataset_id=self._dataset.id,
@@ -173,20 +171,20 @@ class DatasetDocumentStore:
                             index_node_hash=child.metadata.get("doc_hash"),
                             content=child.page_content,
                             word_count=len(child.page_content),
-                            type="automatic",
+                            type=SegmentType.AUTOMATIC,
                             created_by=self._user_id,
                         )
-                        db.session.add(child_segment)
+                        session.add(child_segment)
 
-            db.session.commit()
+            session.flush()
 
-    def document_exists(self, doc_id: str) -> bool:
+    def document_exists(self, doc_id: str, session: Session) -> bool:
         """Check if document exists."""
-        result = self.get_document_segment(doc_id)
+        result = self.get_document_segment(doc_id, session=session)
         return result is not None
 
-    def get_document(self, doc_id: str, raise_error: bool = True) -> Document | None:
-        document_segment = self.get_document_segment(doc_id)
+    def get_document(self, doc_id: str, session: Session, raise_error: bool = True) -> Document | None:
+        document_segment = self.get_document_segment(doc_id, session=session)
 
         if document_segment is None:
             if raise_error:
@@ -204,8 +202,8 @@ class DatasetDocumentStore:
             },
         )
 
-    def delete_document(self, doc_id: str, raise_error: bool = True):
-        document_segment = self.get_document_segment(doc_id)
+    def delete_document(self, doc_id: str, session: Session, raise_error: bool = True):
+        document_segment = self.get_document_segment(doc_id, session=session)
 
         if document_segment is None:
             if raise_error:
@@ -213,38 +211,40 @@ class DatasetDocumentStore:
             else:
                 return None
 
-        db.session.delete(document_segment)
-        db.session.commit()
+        session.delete(document_segment)
+        session.flush()
 
-    def set_document_hash(self, doc_id: str, doc_hash: str):
+    def set_document_hash(self, doc_id: str, doc_hash: str, session: Session):
         """Set the hash for a given doc_id."""
-        document_segment = self.get_document_segment(doc_id)
+        document_segment = self.get_document_segment(doc_id, session=session)
 
         if document_segment is None:
             return None
 
         document_segment.index_node_hash = doc_hash
-        db.session.commit()
+        session.flush()
 
-    def get_document_hash(self, doc_id: str) -> str | None:
+    def get_document_hash(self, doc_id: str, session: Session) -> str | None:
         """Get the stored hash for a document, if it exists."""
-        document_segment = self.get_document_segment(doc_id)
+        document_segment = self.get_document_segment(doc_id, session=session)
 
         if document_segment is None:
             return None
         data: str | None = document_segment.index_node_hash
         return data
 
-    def get_document_segment(self, doc_id: str) -> DocumentSegment | None:
+    def get_document_segment(self, doc_id: str, session: Session) -> DocumentSegment | None:
         stmt = select(DocumentSegment).where(
             DocumentSegment.dataset_id == self._dataset.id, DocumentSegment.index_node_id == doc_id
         )
-        document_segment = db.session.scalar(stmt)
+        document_segment = session.scalar(stmt)
 
         return document_segment
 
-    def add_multimodel_documents_binding(self, segment_id: str, multimodel_documents: list[AttachmentDocument] | None):
-        if multimodel_documents:
+    def add_multimodel_documents_binding(
+        self, segment_id: str, multimodel_documents: list[AttachmentDocument] | None, session: Session
+    ):
+        if multimodel_documents and self._document_id is not None:
             for multimodel_document in multimodel_documents:
                 binding = SegmentAttachmentBinding(
                     tenant_id=self._dataset.tenant_id,
@@ -253,4 +253,4 @@ class DatasetDocumentStore:
                     segment_id=segment_id,
                     attachment_id=multimodel_document.metadata["doc_id"],
                 )
-                db.session.add(binding)
+                session.add(binding)

@@ -1,19 +1,9 @@
-/* eslint-disable ts/no-explicit-any */
 import type { NodeTracing } from '@/types/workflow'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { BlockEnum } from '../../../types'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { BlockEnum, NodeRunningStatus } from '../../../types'
 import RetryResultPanel from '../retry-result-panel'
-
-vi.mock('../../tracing-panel', () => ({
-  default: ({ list }: any) => (
-    <div>
-      {list.map((item: any) => (
-        <div key={item.id}>{item.title}</div>
-      ))}
-    </div>
-  ),
-}))
 
 const createTrace = (overrides: Partial<NodeTracing> = {}): NodeTracing => ({
   id: 'trace-1',
@@ -28,7 +18,7 @@ const createTrace = (overrides: Partial<NodeTracing> = {}): NodeTracing => ({
   process_data_truncated: false,
   outputs: {},
   outputs_truncated: false,
-  status: 'succeeded',
+  status: NodeRunningStatus.Succeeded,
   error: '',
   elapsed_time: 0.1,
   metadata: {
@@ -44,6 +34,11 @@ const createTrace = (overrides: Partial<NodeTracing> = {}): NodeTracing => ({
     email: 'alice@example.com',
   },
   finished_at: 2,
+  execution_metadata: {
+    total_tokens: 0,
+    total_price: 0,
+    currency: 'USD',
+  },
   ...overrides,
 })
 
@@ -52,24 +47,48 @@ describe('RetryResultPanel', () => {
     vi.clearAllMocks()
   })
 
-  // The retry result panel should expose a back action and relabel each retry attempt in the tracing list.
-  describe('Rendering', () => {
-    it('should render retry titles and call onBack from the back header', async () => {
-      const user = userEvent.setup()
-      const onBack = vi.fn()
-      render(
-        <RetryResultPanel
-          list={[createTrace({ id: 'retry-1' }), createTrace({ id: 'retry-2' })]}
-          onBack={onBack}
-        />,
-      )
+  it('should render every retry attempt with its details', async () => {
+    const attempts = [
+      createTrace({
+        id: 'retry-1',
+        status: NodeRunningStatus.Retry,
+        inputs: { attempt: 1 },
+        process_data: { request: 'attempt-1' },
+        outputs: { status_code: 500 },
+        error: 'first failure',
+        expand: true,
+      }),
+      createTrace({
+        id: 'retry-2',
+        status: NodeRunningStatus.Retry,
+        inputs: { attempt: 2 },
+        process_data: { request: 'attempt-2' },
+        outputs: { status_code: 503 },
+        error: 'second failure',
+        expand: true,
+      }),
+    ]
 
-      expect(screen.getByText('workflow.nodes.common.retry.retry 1')).toBeInTheDocument()
-      expect(screen.getByText('workflow.nodes.common.retry.retry 2')).toBeInTheDocument()
+    render(<RetryResultPanel list={attempts} onBack={vi.fn()} />)
 
-      await user.click(screen.getByText('workflow.singleRun.back'))
+    expect(screen.getByText('workflow.nodes.common.retry.retry 1')).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.common.retry.retry 2')).toBeInTheDocument()
+    expect(await screen.findByText('first failure')).toBeInTheDocument()
+    expect(screen.getByText('second failure')).toBeInTheDocument()
+    expect(screen.getByText(/attempt-1/)).toBeInTheDocument()
+    expect(screen.getByText(/attempt-2/)).toBeInTheDocument()
+    expect(screen.getByText(/500/)).toBeInTheDocument()
+    expect(screen.getByText(/503/)).toBeInTheDocument()
+  })
 
-      expect(onBack).toHaveBeenCalled()
-    })
+  it('should trigger the back action when back is clicked', async () => {
+    const user = userEvent.setup()
+    const onBack = vi.fn()
+
+    render(<RetryResultPanel list={[]} onBack={onBack} />)
+
+    await user.click(screen.getByText('workflow.singleRun.back'))
+
+    expect(onBack).toHaveBeenCalledTimes(1)
   })
 })

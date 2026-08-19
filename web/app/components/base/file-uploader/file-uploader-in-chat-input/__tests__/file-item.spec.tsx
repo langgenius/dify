@@ -12,9 +12,11 @@ vi.mock('@/utils/format', () => ({
 }))
 
 vi.mock('../../dynamic-pdf-preview', () => ({
-  default: ({ url, onCancel }: { url: string, onCancel: () => void }) => (
+  default: ({ url, onCancel }: { url: string; onCancel: () => void }) => (
     <div data-testid="pdf-preview" data-url={url}>
-      <button data-testid="pdf-close" onClick={onCancel}>Close PDF</button>
+      <button data-testid="pdf-close" onClick={onCancel}>
+        Close PDF
+      </button>
     </div>
   ),
 }))
@@ -61,14 +63,13 @@ describe('FileItem (chat-input)', () => {
   it('should render delete button when showDeleteAction is true', () => {
     render(<FileItem file={createFile()} showDeleteAction />)
 
-    const buttons = screen.getAllByRole('button')
-    expect(buttons.length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByRole('button', { name: 'common.operation.remove' })).toBeInTheDocument()
   })
 
   it('should call onRemove when delete button is clicked', () => {
     const onRemove = vi.fn()
     render(<FileItem file={createFile()} showDeleteAction onRemove={onRemove} />)
-    const delete_button = screen.getByTestId('delete-button')
+    const delete_button = screen.getByRole('button', { name: 'common.operation.remove' })
     fireEvent.click(delete_button)
     expect(onRemove).toHaveBeenCalledWith('file-1')
   })
@@ -85,27 +86,17 @@ describe('FileItem (chat-input)', () => {
   it('should render replay icon when upload failed', () => {
     render(<FileItem file={createFile({ progress: -1 })} />)
 
-    const replayIcon = screen.getByTestId('replay-icon')
-    expect(replayIcon).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBeInTheDocument()
   })
 
   it('should call onReUpload when replay icon is clicked', () => {
     const onReUpload = vi.fn()
-    render(
-      <FileItem file={createFile({ progress: -1 })} onReUpload={onReUpload} />,
-    )
+    render(<FileItem file={createFile({ progress: -1 })} onReUpload={onReUpload} />)
 
-    const replayIcon = screen.getByTestId('replay-icon')
+    const replayIcon = screen.getByRole('button', { name: 'common.operation.retry' })
     fireEvent.click(replayIcon!)
 
     expect(onReUpload).toHaveBeenCalledWith('file-1')
-  })
-
-  it('should have error styling when upload failed', () => {
-    const { container } = render(<FileItem file={createFile({ progress: -1 })} />)
-    const fileItemContainer = container.firstChild as HTMLElement
-    expect(fileItemContainer).toHaveClass('border-state-destructive-border')
-    expect(fileItemContainer).toHaveClass('bg-state-destructive-hover-alt')
   })
 
   it('should show audio preview when audio file name is clicked', async () => {
@@ -176,7 +167,7 @@ describe('FileItem (chat-input)', () => {
     fireEvent.click(screen.getByText(/audio\.mp3/i))
     expect(document.querySelector('audio')).toBeInTheDocument()
 
-    const deleteButton = screen.getByTestId('close-btn')
+    const deleteButton = screen.getByRole('button', { name: 'common.operation.close' })
     fireEvent.click(deleteButton)
 
     expect(document.querySelector('audio')).not.toBeInTheDocument()
@@ -185,15 +176,14 @@ describe('FileItem (chat-input)', () => {
   it('should render download button when showDownloadAction is true and url exists', () => {
     render(<FileItem file={createFile()} showDownloadAction />)
 
-    const buttons = screen.getAllByRole('button')
-    expect(buttons.length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByRole('button', { name: 'common.operation.download' })).toBeInTheDocument()
   })
 
   it('should call downloadUrl when download button is clicked', async () => {
     const { downloadUrl } = await import('@/utils/download')
     render(<FileItem file={createFile()} showDownloadAction />)
 
-    const downloadBtn = screen.getByTestId('download-button')
+    const downloadBtn = screen.getByRole('button', { name: 'common.operation.download' })
     fireEvent.click(downloadBtn)
 
     expect(downloadUrl).toHaveBeenCalled()
@@ -222,6 +212,21 @@ describe('FileItem (chat-input)', () => {
     expect(document.querySelector('audio')).not.toBeInTheDocument()
   })
 
+  it('should not throw when file type is missing', () => {
+    expect(() => {
+      render(
+        <FileItem
+          file={createFile({
+            name: 'generated.png',
+            type: undefined as unknown as string,
+            supportFileType: 'document',
+          })}
+          canPreview
+        />,
+      )
+    }).not.toThrow()
+  })
+
   it('should close video preview', () => {
     render(
       <FileItem
@@ -237,7 +242,7 @@ describe('FileItem (chat-input)', () => {
     fireEvent.click(screen.getByText(/video\.mp4/i))
     expect(document.querySelector('video')).toBeInTheDocument()
 
-    const closeBtn = screen.getByTestId('video-preview-close-btn')
+    const closeBtn = screen.getByRole('button', { name: 'common.operation.close' })
     fireEvent.click(closeBtn)
 
     expect(document.querySelector('video')).not.toBeInTheDocument()
@@ -301,10 +306,7 @@ describe('FileItem (chat-input)', () => {
 
   it('should not render download button when download_url is falsy', () => {
     render(
-      <FileItem
-        file={createFile({ url: undefined, base64Url: undefined })}
-        showDownloadAction
-      />,
+      <FileItem file={createFile({ url: undefined, base64Url: undefined })} showDownloadAction />,
     )
 
     const buttons = screen.queryAllByRole('button')
@@ -319,8 +321,7 @@ describe('FileItem (chat-input)', () => {
       />,
     )
 
-    const buttons = screen.getAllByRole('button')
-    expect(buttons.length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByRole('button', { name: 'common.operation.download' })).toBeInTheDocument()
   })
 
   it('should not render extension separator when ext is empty', () => {

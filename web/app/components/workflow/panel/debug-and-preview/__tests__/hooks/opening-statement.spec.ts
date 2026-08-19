@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import type { ChatItemInTree } from '@/app/components/base/chat/types'
 import { renderHook } from '@testing-library/react'
 import { useChat } from '../../hooks'
@@ -27,7 +27,7 @@ vi.mock('@/service/workflow', () => ({
   submitHumanInputForm: (...args: any[]) => mockSubmitHumanInputForm(...args),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -44,8 +44,11 @@ vi.mock('reactflow', () => ({
   }),
 }))
 
-vi.mock('../../../../hooks', () => ({
+vi.mock('../../../../hooks/use-workflow-run', () => ({
   useWorkflowRun: () => ({ handleRun: mockHandleRun }),
+}))
+
+vi.mock('../../../../hooks/use-set-workflow-vars-with-value', () => ({
   useSetWorkflowVarsWithValue: () => ({ fetchInspectVars: mockFetchInspectVars }),
 }))
 
@@ -88,7 +91,7 @@ describe('workflow debug useChat – opening statement stability', () => {
   it('should use stable id "opening-statement" instead of Date.now()', () => {
     const config = { opening_statement: 'Welcome!' }
     const { result } = renderHook(() => useChat(config))
-    expect(result.current.chatList[0].id).toBe('opening-statement')
+    expect(result.current.chatList[0]!.id).toBe('opening-statement')
   })
 
   it('should preserve reference when inputs change but produce identical content', () => {
@@ -98,13 +101,12 @@ describe('workflow debug useChat – opening statement stability', () => {
     }
     const formSettings = { inputs: { name: 'Alice' }, inputsForm: [] }
 
-    const { result, rerender } = renderHook(
-      ({ fs }) => useChat(config, fs),
-      { initialProps: { fs: formSettings } },
-    )
+    const { result, rerender } = renderHook(({ fs }) => useChat(config, fs), {
+      initialProps: { fs: formSettings },
+    })
 
     const openerBefore = result.current.chatList[0]
-    expect(openerBefore.content).toBe('Hello Alice')
+    expect(openerBefore!.content).toBe('Hello Alice')
 
     rerender({ fs: { inputs: { name: 'Alice' }, inputsForm: [] } })
 
@@ -118,18 +120,17 @@ describe('workflow debug useChat – opening statement stability', () => {
       suggested_questions: [],
     }
 
-    const { result, rerender } = renderHook(
-      ({ fs }) => useChat(config, fs),
-      { initialProps: { fs: { inputs: { name: 'Alice' }, inputsForm: [] } } },
-    )
+    const { result, rerender } = renderHook(({ fs }) => useChat(config, fs), {
+      initialProps: { fs: { inputs: { name: 'Alice' }, inputsForm: [] } },
+    })
 
     const openerBefore = result.current.chatList[0]
-    expect(openerBefore.content).toBe('Hello Alice')
+    expect(openerBefore!.content).toBe('Hello Alice')
 
     rerender({ fs: { inputs: { name: 'Bob' }, inputsForm: [] } })
 
     const openerAfter = result.current.chatList[0]
-    expect(openerAfter.content).toBe('Hello Bob')
+    expect(openerAfter!.content).toBe('Hello Bob')
     expect(openerAfter).not.toBe(openerBefore)
   })
 
@@ -138,13 +139,15 @@ describe('workflow debug useChat – opening statement stability', () => {
       opening_statement: 'Updated welcome',
       suggested_questions: ['S1'],
     }
-    const prevChatTree = [{
-      id: 'opening-statement',
-      content: 'old',
-      isAnswer: true,
-      isOpeningStatement: true,
-      suggestedQuestions: [],
-    }]
+    const prevChatTree = [
+      {
+        id: 'opening-statement',
+        content: 'old',
+        isAnswer: true,
+        isOpeningStatement: true,
+        suggestedQuestions: [],
+      },
+    ]
 
     const { result, rerender } = renderHook(
       ({ cfg }) => useChat(cfg, undefined, prevChatTree as ChatItemInTree[]),
@@ -152,7 +155,7 @@ describe('workflow debug useChat – opening statement stability', () => {
     )
 
     const openerBefore = result.current.chatList[0]
-    expect(openerBefore.content).toBe('Updated welcome')
+    expect(openerBefore!.content).toBe('Updated welcome')
 
     rerender({ cfg: config })
 
@@ -167,13 +170,13 @@ describe('workflow debug useChat – opening statement stability', () => {
     }
     const { result } = renderHook(() => useChat(config))
     const opener = result.current.chatList[0]
-    expect(opener.suggestedQuestions).toEqual(['How are you?', 'What can you do?'])
+    expect(opener!.suggestedQuestions).toEqual(['How are you?', 'What can you do?'])
   })
 
   it('should not include suggestedQuestions when config has none', () => {
     const config = { opening_statement: 'Welcome!' }
     const { result } = renderHook(() => useChat(config))
     const opener = result.current.chatList[0]
-    expect(opener.suggestedQuestions).toBeUndefined()
+    expect(opener!.suggestedQuestions).toBeUndefined()
   })
 })

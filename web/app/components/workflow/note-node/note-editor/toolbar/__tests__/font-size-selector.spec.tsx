@@ -1,10 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import FontSizeSelector from '../font-size-selector'
 
-const {
-  mockHandleFontSize,
-  mockHandleOpenFontSizeSelector,
-} = vi.hoisted(() => ({
+const { mockHandleFontSize, mockHandleOpenFontSizeSelector } = vi.hoisted(() => ({
   mockHandleFontSize: vi.fn(),
   mockHandleOpenFontSizeSelector: vi.fn(),
 }))
@@ -37,7 +34,7 @@ describe('NoteEditor FontSizeSelector', () => {
 
     fireEvent.click(screen.getByText('workflow.nodes.note.editor.small'))
 
-    expect(mockHandleOpenFontSizeSelector).toHaveBeenCalledWith(true)
+    expect(mockHandleOpenFontSizeSelector.mock.calls[0]?.[0]).toBe(true)
   })
 
   it('should select a new font size and close the popup', () => {
@@ -51,5 +48,13 @@ describe('NoteEditor FontSizeSelector', () => {
     expect(screen.getAllByText('workflow.nodes.note.editor.medium').length).toBeGreaterThan(0)
     expect(mockHandleFontSize).toHaveBeenCalledWith('16px')
     expect(mockHandleOpenFontSizeSelector).toHaveBeenCalledWith(false)
+  })
+
+  it('should fall back to the small label when current font size is unknown', () => {
+    mockFontSize = '18px'
+
+    render(<FontSizeSelector />)
+
+    expect(screen.getByText('workflow.nodes.note.editor.small')).toBeInTheDocument()
   })
 })

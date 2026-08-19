@@ -7,13 +7,14 @@ improving performance by offloading storage operations to background workers.
 
 import json
 import logging
+from typing import Any
 
 from celery import shared_task
-from graphon.entities import WorkflowExecution
-from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from sqlalchemy import select
 
 from core.db.session_factory import session_factory
+from graphon.entities import WorkflowExecution
+from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models import CreatorUserRole, WorkflowRun
 from models.enums import WorkflowRunTriggeredFrom
 
@@ -23,7 +24,7 @@ logger = logging.getLogger(__name__)
 @shared_task(queue="workflow_storage", bind=True, max_retries=3, default_retry_delay=60)
 def save_workflow_execution_task(
     self,
-    execution_data: dict,
+    execution_data: dict[str, Any],
     tenant_id: str,
     app_id: str,
     triggered_from: str,
@@ -100,11 +101,13 @@ def _create_workflow_run_from_execution(
     workflow_run.triggered_from = triggered_from
     workflow_run.version = execution.workflow_version
     json_converter = WorkflowRuntimeTypeConverter()
-    workflow_run.graph = json.dumps(json_converter.to_json_encodable(execution.graph))
-    workflow_run.inputs = json.dumps(json_converter.to_json_encodable(execution.inputs))
+    workflow_run.graph = json.dumps(json_converter.to_json_encodable(execution.graph), ensure_ascii=False)
+    workflow_run.inputs = json.dumps(json_converter.to_json_encodable(execution.inputs), ensure_ascii=False)
     workflow_run.status = execution.status
     workflow_run.outputs = (
-        json.dumps(json_converter.to_json_encodable(execution.outputs)) if execution.outputs else "{}"
+        json.dumps(json_converter.to_json_encodable(execution.outputs), ensure_ascii=False)
+        if execution.outputs
+        else "{}"
     )
     workflow_run.error = execution.error_message
     workflow_run.elapsed_time = execution.elapsed_time

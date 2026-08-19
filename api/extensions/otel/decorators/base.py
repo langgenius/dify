@@ -37,12 +37,7 @@ def trace_span[**P, R](handler_class: type[SpanHandler] | None = None) -> Callab
             handler = _get_handler_instance(handler_class or SpanHandler)
             tracer = get_tracer(__name__)
 
-            return handler.wrapper(
-                tracer=tracer,
-                wrapped=func,
-                args=args,
-                kwargs=kwargs,
-            )
+            return handler.wrapper(tracer, func, *args, **kwargs)
 
         return cast(Callable[P, R], wrapper)
 

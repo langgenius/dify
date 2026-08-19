@@ -1,10 +1,6 @@
 import type { ExternalDataTool } from '@/models/common'
-import type {
-  ModelConfig,
-  VisionFile,
-} from '@/types/app'
+import type { ModelConfig, VisionFile } from '@/types/app'
 
-export type { VisionFile } from '@/types/app'
 export { TransferMethod } from '@/types/app'
 
 export type TextGenerationConfig = Omit<ModelConfig, 'model'> & {

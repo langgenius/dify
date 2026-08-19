@@ -1,10 +1,10 @@
+import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { toast } from '@/app/components/base/ui/toast'
 import ConfigParamModal from '../config-param-modal'
 
 let mockHooksReturn: {
-  modelList: { provider: { provider: string }, models: { model: string }[] }[]
-  defaultModel: { provider: { provider: string }, model: string } | undefined
+  modelList: { provider: { provider: string }; models: { model: string }[] }[]
+  defaultModel: { provider: { provider: string }; model: string } | undefined
   currentModel: boolean | undefined
 } = {
   modelList: [{ provider: { provider: 'openai' }, models: [{ model: 'text-embedding-ada-002' }] }],
@@ -23,10 +23,21 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/declaration
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({ defaultModel, onSelect }: { defaultModel?: { provider: string, model: string }, onSelect: (val: { provider: string, model: string }) => void }) => (
-    <div data-testid="model-selector" data-provider={defaultModel?.provider} data-model={defaultModel?.model}>
+  ModelSelector: ({
+    value,
+    onValueChange,
+  }: {
+    value?: { provider: string; model: string }
+    onValueChange: (val: { provider: string; model: string }) => void
+  }) => (
+    <div data-testid="model-selector" data-provider={value?.provider} data-model={value?.model}>
       Model Selector
-      <button data-testid="select-model" onClick={() => onSelect({ provider: 'cohere', model: 'embed-english' })}>Select</button>
+      <button
+        data-testid="select-model"
+        onClick={() => onValueChange({ provider: 'cohere', model: 'embed-english' })}
+      >
+        Select
+      </button>
     </div>
   ),
 }))
@@ -36,14 +47,13 @@ vi.mock('@/config', () => ({
 }))
 
 vi.mock('../score-slider', () => ({
-  default: ({ value, onChange }: { value: number, onChange: (value: number) => void }) => (
+  default: ({ value, onChange }: { value: number; onChange: (value: number) => void }) => (
     <input
-      role="slider"
       type="range"
-      min={80}
+      min={0}
       max={100}
       value={value}
-      onChange={e => onChange(Number((e.target as HTMLInputElement).value))}
+      onChange={(e) => onChange(Number((e.target as HTMLInputElement).value))}
     />
   ),
 }))
@@ -65,7 +75,9 @@ describe('ConfigParamModal', () => {
     vi.clearAllMocks()
     toastErrorSpy.mockClear()
     mockHooksReturn = {
-      modelList: [{ provider: { provider: 'openai' }, models: [{ model: 'text-embedding-ada-002' }] }],
+      modelList: [
+        { provider: { provider: 'openai' }, models: [{ model: 'text-embedding-ada-002' }] },
+      ],
       defaultModel: { provider: { provider: 'openai' }, model: 'text-embedding-ada-002' },
       currentModel: true,
     }
@@ -202,7 +214,7 @@ describe('ConfigParamModal', () => {
 
     // Click the confirm/save button
     const buttons = screen.getAllByRole('button')
-    const saveBtn = buttons.find(b => b.textContent?.includes('initSetup'))
+    const saveBtn = buttons.find((b) => b.textContent?.includes('initSetup'))
     fireEvent.click(saveBtn!)
 
     await waitFor(() => {
@@ -237,7 +249,7 @@ describe('ConfigParamModal', () => {
     )
 
     const buttons = screen.getAllByRole('button')
-    const saveBtn = buttons.find(b => b.textContent?.includes('initSetup'))
+    const saveBtn = buttons.find((b) => b.textContent?.includes('initSetup'))
     fireEvent.click(saveBtn!)
 
     expect(toastErrorSpy).toHaveBeenCalledWith('common.modelProvider.embeddingModel.required')
@@ -272,7 +284,7 @@ describe('ConfigParamModal', () => {
     )
 
     const slider = screen.getByRole('slider')
-    expect(slider).toHaveAttribute('min', '80')
+    expect(slider).toHaveAttribute('min', '0')
     expect(slider).toHaveAttribute('max', '100')
     expect(slider).toHaveValue('90')
   })
@@ -313,7 +325,7 @@ describe('ConfigParamModal', () => {
 
     // Save
     const buttons = screen.getAllByRole('button')
-    const saveBtn = buttons.find(b => b.textContent?.includes('initSetup'))
+    const saveBtn = buttons.find((b) => b.textContent?.includes('initSetup'))
     fireEvent.click(saveBtn!)
 
     await waitFor(() => {
@@ -341,7 +353,7 @@ describe('ConfigParamModal', () => {
 
     // Save
     const buttons = screen.getAllByRole('button')
-    const saveBtn = buttons.find(b => b.textContent?.includes('initSetup'))
+    const saveBtn = buttons.find((b) => b.textContent?.includes('initSetup'))
     fireEvent.click(saveBtn!)
 
     await waitFor(() => {
@@ -369,13 +381,16 @@ describe('ConfigParamModal', () => {
 
     // Model selector should be initialized with the default model
     expect(screen.getByTestId('model-selector')).toHaveAttribute('data-provider', 'openai')
-    expect(screen.getByTestId('model-selector')).toHaveAttribute('data-model', 'text-embedding-ada-002')
+    expect(screen.getByTestId('model-selector')).toHaveAttribute(
+      'data-model',
+      'text-embedding-ada-002',
+    )
   })
 
   it('should use ANNOTATION_DEFAULT score_threshold when config has no score_threshold', () => {
     const configWithoutThreshold = {
       ...defaultAnnotationConfig,
-      score_threshold: 0,
+      score_threshold: undefined as unknown as number,
     }
     render(
       <ConfigParamModal
@@ -390,11 +405,43 @@ describe('ConfigParamModal', () => {
     expect(screen.getByRole('slider')).toHaveValue('90')
   })
 
+  it('should preserve zero score threshold instead of falling back to default', async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined)
+    render(
+      <ConfigParamModal
+        appId="test-app"
+        isShow={true}
+        onHide={vi.fn()}
+        onSave={onSave}
+        annotationConfig={{
+          ...defaultAnnotationConfig,
+          score_threshold: 0,
+        }}
+      />,
+    )
+
+    expect(screen.getByRole('slider')).toHaveValue('0')
+
+    const buttons = screen.getAllByRole('button')
+    const saveBtn = buttons.find((b) => b.textContent?.includes('initSetup'))
+    fireEvent.click(saveBtn!)
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({ embedding_provider_name: 'openai' }),
+        0,
+      )
+    })
+  })
+
   it('should set loading state while saving', async () => {
     let resolveOnSave: () => void
-    const onSave = vi.fn().mockImplementation(() => new Promise<void>((resolve) => {
-      resolveOnSave = resolve
-    }))
+    const onSave = vi.fn().mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveOnSave = resolve
+        }),
+    )
     const onHide = vi.fn()
 
     render(
@@ -409,7 +456,7 @@ describe('ConfigParamModal', () => {
 
     // Click save
     const buttons = screen.getAllByRole('button')
-    const saveBtn = buttons.find(b => b.textContent?.includes('initSetup'))
+    const saveBtn = buttons.find((b) => b.textContent?.includes('initSetup'))
     fireEvent.click(saveBtn!)
 
     // While loading, clicking cancel should not call onHide
@@ -438,7 +485,7 @@ describe('ConfigParamModal', () => {
     fireEvent.change(screen.getByRole('slider'), { target: { value: '96' } })
 
     const buttons = screen.getAllByRole('button')
-    const saveBtn = buttons.find(b => b.textContent?.includes('initSetup'))
+    const saveBtn = buttons.find((b) => b.textContent?.includes('initSetup'))
     fireEvent.click(saveBtn!)
 
     await waitFor(() => {

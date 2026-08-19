@@ -10,8 +10,6 @@ from typing import Any
 from unittest.mock import Mock
 
 import pytest
-from graphon.entities import WorkflowStartReason
-from graphon.enums import BuiltinNodeTypes
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
@@ -27,6 +25,8 @@ from core.app.entities.queue_entities import (
     QueueNodeSucceededEvent,
 )
 from core.workflow.system_variables import build_system_variables
+from graphon.entities import WorkflowStartReason
+from graphon.enums import BuiltinNodeTypes
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.model import AppMode
@@ -49,10 +49,11 @@ class TestWorkflowResponseConverter:
         """Create a WorkflowResponseConverter for testing."""
 
         mock_entity = self.create_mock_generate_entity()
-        mock_user = Mock(spec=Account)
+        mock_user = Account(
+            name="Test User",
+            email="test@example.com",
+        )
         mock_user.id = "test-user-id"
-        mock_user.name = "Test User"
-        mock_user.email = "test@example.com"
 
         system_variables = build_system_variables(workflow_id="wf-id", workflow_execution_id="initial-run-id")
         return WorkflowResponseConverter(

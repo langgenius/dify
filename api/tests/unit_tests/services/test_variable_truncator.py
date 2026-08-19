@@ -12,11 +12,11 @@ This test suite covers all functionality of the current VariableTruncator includ
 import functools
 import json
 import uuid
-from collections.abc import Mapping
 from typing import Any
 from uuid import uuid4
 
 import pytest
+
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables.segments import (
     ArrayFileSegment,
@@ -29,7 +29,6 @@ from graphon.variables.segments import (
     ObjectSegment,
     StringSegment,
 )
-
 from services.variable_truncator import (
     DummyVariableTruncator,
     MaxDepthExceededError,
@@ -42,9 +41,9 @@ from services.variable_truncator import (
 @pytest.fixture
 def file() -> File:
     return File(
-        id=str(uuid4()),  # Generate new UUID for File.id
+        file_id=str(uuid4()),  # Generate new UUID for File.id
         tenant_id=str(uuid.uuid4()),
-        type=FileType.DOCUMENT,
+        file_type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.LOCAL_FILE,
         related_id=str(uuid.uuid4()),
         filename="test_file.txt",
@@ -676,227 +675,116 @@ def test_dummy_variable_truncator_methods():
     assert result.truncated is False
 
 
-# === Merged from test_variable_truncator_additional.py ===
+# ---------------------------------------------------------------------------
+# Regression tests for langgenius/dify#39218.
+#
+# Before the fix, ``_truncate_array`` had a "Dirty fix" branch that
+# unconditionally appended every ``File`` element to ``truncated_value``
+# *before* the count cap and the byte-budget check, and *before*
+# ``used_size`` was ever incremented. That made ``list[File]`` arrays:
+#   1. uncapped by ``array_element_limit``,
+#   2. uncounted against ``max_size_bytes``, and
+#   3. always reported ``truncated=False``.
+# The fix routes ``File`` through ``_truncate_json_primitives``'s dedicated
+# ``File`` branch, which returns the file as-is with its real serialized
+# size, while preserving the count cap and the byte budget.
+# ---------------------------------------------------------------------------
 
 
-from typing import Any
+class TestFileArrayTruncationRegression39218:
+    """``list[File]`` must respect ``array_element_limit`` and the byte budget."""
 
-import pytest
-from graphon.nodes.variable_assigner.common.helpers import UpdatedVariable
-from graphon.variables.segments import IntegerSegment, ObjectSegment, StringSegment
-from graphon.variables.types import SegmentType
+    @pytest.fixture
+    def truncator(self) -> VariableTruncator:
+        return VariableTruncator(
+            array_element_limit=3,
+            max_size_bytes=1000,
+            string_length_limit=50,
+        )
 
-from services import variable_truncator as truncator_module
-from services.variable_truncator import BaseTruncator, TruncationResult, VariableTruncator
+    @staticmethod
+    def _make_file(name: str = "f") -> File:
+        return File(
+            id=name,
+            type=FileType.DOCUMENT,
+            transfer_method=FileTransferMethod.REMOTE_URL,
+            remote_url=f"https://example.com/{name}.txt",
+            filename=f"{name}.txt",
+            extension=".txt",
+            mime_type="text/plain",
+            size=1024,
+        )
 
+    def test_file_array_respects_element_count_cap(self, truncator: VariableTruncator) -> None:
+        # Use a target_size larger than ``count * file_size`` so the byte
+        # budget never binds — only the count cap should fire.
+        # Each File serializes to ~237 bytes; 3 files = ~713 bytes.
+        files = [self._make_file(f"f{i}") for i in range(500)]
 
-class _AbstractPassthrough(BaseTruncator):
-    def truncate(self, segment: Any) -> TruncationResult:
-        # Arrange / Act
-        return super().truncate(segment)  # type: ignore[misc]
+        result = truncator._truncate_array(files, target_size=10_000_000)
 
-    def truncate_variable_mapping(self, v: Mapping[str, Any]) -> tuple[Mapping[str, Any], bool]:
-        # Arrange / Act
-        return super().truncate_variable_mapping(v)  # type: ignore[misc]
+        # Before the fix, all 500 File entries survived (``len(value)==500``,
+        # ``truncated==False``). After the fix, the array is capped at
+        # ``array_element_limit=3`` and ``truncated`` flips to True.
+        assert len(result.value) == 3
+        assert result.truncated is True
 
+    def test_file_array_reports_real_used_size(self, truncator: VariableTruncator) -> None:
+        # Large budget so the count cap fires before the byte budget does.
+        files = [self._make_file(f"f{i}") for i in range(500)]
 
-def test_base_truncator_methods_should_execute_abstract_placeholders() -> None:
-    # Arrange
-    passthrough = _AbstractPassthrough()
+        result = truncator._truncate_array(files, target_size=10_000_000)
 
-    # Act
-    truncate_result = passthrough.truncate(StringSegment(value="x"))
-    mapping_result = passthrough.truncate_variable_mapping({"a": 1})
+        # Before the fix, ``used_size`` for a File array was the empty-array
+        # baseline of 2 bytes (``[]``), regardless of how many File entries
+        # actually returned. After the fix, ``used_size`` reflects the real
+        # serialized size of the returned ``File`` payload.
+        assert result.value_size > 100
+        assert result.truncated is True
 
-    # Assert
-    assert truncate_result is None
-    assert mapping_result is None
+    def test_file_array_respects_byte_budget(self, truncator: VariableTruncator) -> None:
+        # Use a small ``target_size`` so the byte budget is the binding
+        # constraint. Each File serializes to ~237 bytes, so even one File
+        # blows the 200-byte budget.
+        files = [self._make_file(f"f{i}") for i in range(50)]
 
+        result = truncator._truncate_array(files, target_size=200)
 
-def test_default_should_use_dify_config_limits(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Arrange
-    monkeypatch.setattr(truncator_module.dify_config, "WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE", 111)
-    monkeypatch.setattr(truncator_module.dify_config, "WORKFLOW_VARIABLE_TRUNCATION_ARRAY_LENGTH", 7)
-    monkeypatch.setattr(truncator_module.dify_config, "WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH", 33)
+        # Before the fix, all 50 File entries survived and ``used_size``
+        # reported ``2`` (the empty-array baseline). After the fix, the
+        # loop sees the File payload: ``value_size`` reflects the real
+        # serialized size, and the loop stops after the first File because
+        # adding the next one would exceed ``target_size``.
+        assert len(result.value) == 1
+        assert result.value_size > 100  # the File's real serialized size
+        assert result.value_size <= 250  # in the ballpark of the budget
 
-    # Act
-    truncator = VariableTruncator.default()
+    def test_mixed_array_counts_files_toward_cap(self, truncator: VariableTruncator) -> None:
+        mixed: list[object] = [
+            self._make_file("f0"),
+            "a",
+            self._make_file("f1"),
+            "b",
+            self._make_file("f2"),
+            "c",
+            self._make_file("f3"),
+            "d",
+        ]
 
-    # Assert
-    assert truncator._max_size_bytes == 111
-    assert truncator._array_element_limit == 7
-    assert truncator._string_length_limit == 33
+        result = truncator._truncate_array(mixed, target_size=10_000_000)
 
+        # 8 items, cap of 3 → exactly 3 items. Files and primitives are
+        # counted together toward the cap.
+        assert len(result.value) == 3
+        assert result.truncated is True
 
-def test_truncate_variable_mapping_should_mark_over_budget_keys_with_ellipsis() -> None:
-    # Arrange
-    truncator = VariableTruncator(max_size_bytes=5)
-    mapping = {"very_long_key": "value"}
+    def test_single_file_in_array_is_preserved(self, truncator: VariableTruncator) -> None:
+        result = truncator._truncate_array([self._make_file("only")], target_size=10_000_000)
 
-    # Act
-    result, truncated = truncator.truncate_variable_mapping(mapping)
-
-    # Assert
-    assert result == {"very_long_key": "..."}
-    assert truncated is True
-
-
-def test_truncate_variable_mapping_should_handle_segment_values() -> None:
-    # Arrange
-    truncator = VariableTruncator(max_size_bytes=100)
-    mapping = {"seg": StringSegment(value="hello")}
-
-    # Act
-    result, truncated = truncator.truncate_variable_mapping(mapping)
-
-    # Assert
-    assert isinstance(result["seg"], StringSegment)
-    assert result["seg"].value == "hello"
-    assert truncated is False
-
-
-@pytest.mark.parametrize(
-    ("value", "expected"),
-    [
-        (None, False),
-        (True, False),
-        (1, False),
-        (1.5, False),
-        ("x", True),
-        ({"k": "v"}, True),
-    ],
-)
-def test_json_value_needs_truncation_should_match_expected_rules(value: Any, expected: bool) -> None:
-    # Arrange
-
-    # Act
-    result = VariableTruncator._json_value_needs_truncation(value)
-
-    # Assert
-    assert result is expected
-
-
-def test_truncate_should_use_string_fallback_when_truncated_value_size_exceeds_limit(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    # Arrange
-    truncator = VariableTruncator(max_size_bytes=10)
-    forced_result = truncator_module._PartResult(
-        value=StringSegment(value="this is too long"),
-        value_size=100,
-        truncated=True,
-    )
-    monkeypatch.setattr(truncator, "_truncate_segment", lambda *_args, **_kwargs: forced_result)
-
-    # Act
-    result = truncator.truncate(StringSegment(value="input"))
-
-    # Assert
-    assert result.truncated is True
-    assert isinstance(result.result, StringSegment)
-    assert not result.result.value.startswith('"')
-
-
-def test_truncate_segment_should_raise_assertion_for_unexpected_truncatable_segment(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    # Arrange
-    truncator = VariableTruncator()
-    monkeypatch.setattr(VariableTruncator, "_segment_need_truncation", lambda _segment: True)
-
-    # Act / Assert
-    with pytest.raises(AssertionError):
-        truncator._truncate_segment(IntegerSegment(value=1), 10)
-
-
-def test_calculate_json_size_should_unwrap_segment_values() -> None:
-    # Arrange
-    segment = StringSegment(value="abc")
-
-    # Act
-    size = VariableTruncator.calculate_json_size(segment)
-
-    # Assert
-    assert size == VariableTruncator.calculate_json_size("abc")
-
-
-def test_calculate_json_size_should_handle_updated_variable_instances() -> None:
-    # Arrange
-    updated = UpdatedVariable(name="n", selector=["node", "var"], value_type=SegmentType.STRING, new_value="v")
-
-    # Act
-    size = VariableTruncator.calculate_json_size(updated)
-
-    # Assert
-    assert size > 0
-
-
-def test_maybe_qa_structure_should_validate_shape() -> None:
-    # Arrange
-
-    # Act / Assert
-    assert VariableTruncator._maybe_qa_structure({"qa_chunks": []}) is True
-    assert VariableTruncator._maybe_qa_structure({"qa_chunks": "not-list"}) is False
-    assert VariableTruncator._maybe_qa_structure({}) is False
-
-
-def test_maybe_parent_child_structure_should_validate_shape() -> None:
-    # Arrange
-
-    # Act / Assert
-    assert VariableTruncator._maybe_parent_child_structure({"parent_mode": "full", "parent_child_chunks": []}) is True
-    assert VariableTruncator._maybe_parent_child_structure({"parent_mode": 1, "parent_child_chunks": []}) is False
-    assert (
-        VariableTruncator._maybe_parent_child_structure({"parent_mode": "full", "parent_child_chunks": "bad"}) is False
-    )
-
-
-def test_truncate_object_should_truncate_segment_values_inside_object() -> None:
-    # Arrange
-    truncator = VariableTruncator(string_length_limit=8, max_size_bytes=30)
-    mapping = {"s": StringSegment(value="long-content")}
-
-    # Act
-    result = truncator._truncate_object(mapping, 20)
-
-    # Assert
-    assert result.truncated is True
-    assert isinstance(result.value["s"], StringSegment)
-
-
-def test_truncate_json_primitives_should_handle_updated_variable_input() -> None:
-    # Arrange
-    truncator = VariableTruncator(max_size_bytes=100)
-    updated = UpdatedVariable(name="n", selector=["node", "var"], value_type=SegmentType.STRING, new_value="v")
-
-    # Act
-    result = truncator._truncate_json_primitives(updated, 100)
-
-    # Assert
-    assert isinstance(result.value, dict)
-
-
-def test_truncate_json_primitives_should_raise_assertion_for_unsupported_value_type() -> None:
-    # Arrange
-    truncator = VariableTruncator()
-
-    # Act / Assert
-    with pytest.raises(AssertionError):
-        truncator._truncate_json_primitives(object(), 100)  # type: ignore[arg-type]
-
-
-def test_truncate_should_apply_json_string_fallback_for_large_non_string_segment(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    # Arrange
-    truncator = VariableTruncator(max_size_bytes=10)
-    forced_segment = ObjectSegment(value={"k": "v"})
-    forced_result = truncator_module._PartResult(value=forced_segment, value_size=100, truncated=True)
-    monkeypatch.setattr(truncator, "_truncate_segment", lambda *_args, **_kwargs: forced_result)
-
-    # Act
-    result = truncator.truncate(ObjectSegment(value={"a": "b"}))
-
-    # Assert
-    assert result.truncated is True
-    assert isinstance(result.result, StringSegment)
+        # The File itself is not truncated — the dedicated ``File`` branch
+        # in ``_truncate_json_primitives`` returns the file untouched. Only
+        # the array-shape accounting changes.
+        assert len(result.value) == 1
+        assert isinstance(result.value[0], File)
+        assert result.value[0].id == "only"
+        assert result.truncated is False

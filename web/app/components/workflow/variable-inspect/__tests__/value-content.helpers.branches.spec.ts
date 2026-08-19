@@ -16,8 +16,7 @@ describe('value-content helpers branch coverage', () => {
 
     vi.doMock('../utils', () => ({
       validateJSONSchema: (schema: Record<string, unknown>) => {
-        if (schema.kind === 'invalid')
-          return { success: false, error: new Error('schema invalid') }
+        if (schema.kind === 'invalid') return { success: false, error: new Error('schema invalid') }
         return { success: true }
       },
     }))

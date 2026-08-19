@@ -1,48 +1,66 @@
 import type { FC } from 'react'
 import type { LLMNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import { RiAlertFill, RiQuestionLine } from '@remixicon/react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectTrigger,
+} from '@langgenius/dify-ui/select'
+import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
-import { useCallback } from 'react'
+import { useCallback, useLayoutEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import AddButton2 from '@/app/components/base/button/add-button'
-import Switch from '@/app/components/base/switch'
-import Tooltip from '@/app/components/base/tooltip'
-import { toast } from '@/app/components/base/ui/toast'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import { useHooksStore } from '@/app/components/workflow/hooks-store/store'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
-import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
-import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
+import FormInputTypeSwitch from '@/app/components/workflow/nodes/_base/components/form-input-type-switch'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
 import { useProviderContextSelector } from '@/context/provider-context'
+import { FlowType } from '@/types/common'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 import { extractPluginId } from '../../utils/plugin'
 import ConfigVision from '../_base/components/config-vision'
-import MemoryConfig from '../_base/components/memory-config'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
+import { VarType } from '../tool/types'
 import ConfigPrompt from './components/config-prompt'
+import PanelMemorySection from './components/panel-memory-section'
+import PanelOutputSection from './components/panel-output-section'
 import ReasoningFormatConfig from './components/reasoning-format-config'
-import StructureOutput from './components/structure-output'
 import useConfig from './use-config'
-import { getLLMModelIssue, LLMModelIssueCode } from './utils'
+import { getLLMEnvironmentModel, getLLMModelIssue, LLMModelIssueCode } from './utils'
 
 const i18nPrefix = 'nodes.llm'
 
-const Panel: FC<NodePanelProps<LLMNodeType>> = ({
-  id,
-  data,
-}) => {
+const getModelSelectionKey = (
+  source: 'direct' | 'env',
+  provider: string,
+  modelName: string,
+  completionParams: LLMNodeType['model']['completion_params'],
+  environmentVariableName = '',
+) =>
+  `${source}:${environmentVariableName}:${provider}:${modelName}:${JSON.stringify(completionParams)}`
+
+const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
   const { t } = useTranslation()
+  const flowType = useHooksStore((s) => s.configsMap?.flowType)
   const {
     readOnly,
     inputs,
+    model,
+    environmentVariables,
+    isEnvironmentModelSource,
     isChatModel,
     isChatMode,
     isCompletionModel,
     shouldShowContextTip,
     isVisionModel,
     handleModelChanged,
+    handleModelSourceChange,
+    handleModelSelectorChange,
     hasSetBlockStatus,
     handleCompletionParamsChange,
     handleContextVarChange,
@@ -69,77 +87,190 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     handleReasoningFormatChange,
   } = useConfig(id, data)
 
-  const model = inputs.model
   const isModelProviderInstalled = useProviderContextSelector((state) => {
     const modelIssue = getLLMModelIssue({ modelProvider: model?.provider })
-    if (modelIssue === LLMModelIssueCode.providerRequired)
-      return true
+    if (modelIssue === LLMModelIssueCode.providerRequired) return true
 
     const modelProviderPluginId = extractPluginId(model.provider)
-    return state.modelProviders.some(provider => extractPluginId(provider.provider) === modelProviderPluginId)
+    return state.modelProviders.some(
+      (provider) => extractPluginId(provider.provider) === modelProviderPluginId,
+    )
   })
-  const hasModelWarning = getLLMModelIssue({
-    modelProvider: model?.provider,
-    isModelProviderInstalled,
-  }) !== null
+  const hasModelWarning =
+    getLLMModelIssue({
+      modelProvider: model?.provider,
+      isModelProviderInstalled,
+    }) !== null
+  const selectedEnvironmentVariableName = inputs.model_selector?.[1]
+  const modelSelectionKey = getModelSelectionKey(
+    isEnvironmentModelSource ? 'env' : 'direct',
+    model.provider,
+    model.name,
+    model.completion_params,
+    selectedEnvironmentVariableName,
+  )
+  const modelSelectionKeyRef = useRef(modelSelectionKey)
+  const modelSelectionRequestGenerationRef = useRef(0)
+  useLayoutEffect(() => {
+    modelSelectionKeyRef.current = modelSelectionKey
+  }, [modelSelectionKey])
 
-  const handleModelChange = useCallback((model: {
-    provider: string
-    modelId: string
-    mode?: string
-  }) => {
-    (async () => {
-      try {
-        const { params: filtered, removedDetails } = await fetchAndMergeValidCompletionParams(
-          model.provider,
-          model.modelId,
-          inputs.model.completion_params,
-          true,
-        )
-        const keys = Object.keys(removedDetails)
-        if (keys.length)
-          toast.warning(`${t('modelProvider.parametersInvalidRemoved', { ns: 'common' })}: ${keys.map(k => `${k} (${removedDetails[k]})`).join(', ')}`)
-        handleCompletionParamsChange(filtered)
+  const handleModelChange = useCallback(
+    (model: { provider: string; modelId: string; mode?: string }) => {
+      const baselineSelectionKey = modelSelectionKeyRef.current
+      const requestGeneration = ++modelSelectionRequestGenerationRef.current
+      ;(async () => {
+        try {
+          const { params: filtered, removedDetails } = await fetchAndMergeValidCompletionParams(
+            model.provider,
+            model.modelId,
+            inputs.model.completion_params,
+            true,
+          )
+          if (
+            modelSelectionRequestGenerationRef.current !== requestGeneration ||
+            modelSelectionKeyRef.current !== baselineSelectionKey
+          )
+            return
+          const keys = Object.keys(removedDetails)
+          if (keys.length)
+            toast.warning(
+              `${t(($) => $['modelProvider.parametersInvalidRemoved'], { ns: 'common' })}: ${keys.map((k) => `${k} (${removedDetails[k]})`).join(', ')}`,
+            )
+          handleModelChanged(model, filtered)
+        } catch {
+          if (
+            modelSelectionRequestGenerationRef.current !== requestGeneration ||
+            modelSelectionKeyRef.current !== baselineSelectionKey
+          )
+            return
+          toast.error(t(($) => $.error, { ns: 'common' }))
+        }
+      })()
+    },
+    [handleModelChanged, inputs.model.completion_params, t],
+  )
+
+  const llmEnvironmentVariables = environmentVariables.filter(
+    (variable) => variable.value_type === 'llm',
+  )
+
+  const handleEnvironmentModelChange = useCallback(
+    (environmentVariableName: string) => {
+      const baselineSelectionKey = modelSelectionKeyRef.current
+      const requestGeneration = ++modelSelectionRequestGenerationRef.current
+      const modelSelector = ['env', environmentVariableName]
+      const selectedModel = getLLMEnvironmentModel(modelSelector, environmentVariables)
+      if (!selectedModel) {
+        handleModelSelectorChange(modelSelector)
+        return
       }
-      catch {
-        toast.error(t('error', { ns: 'common' }))
-        handleCompletionParamsChange({})
+      if (selectedModel.completion_params !== undefined) {
+        handleModelSelectorChange(modelSelector, selectedModel.completion_params)
+        return
       }
-      finally {
-        handleModelChanged(model)
-      }
-    })()
-  }, [handleCompletionParamsChange, handleModelChanged, inputs.model.completion_params, t])
+
+      ;(async () => {
+        try {
+          const { params: filtered, removedDetails } = await fetchAndMergeValidCompletionParams(
+            selectedModel.provider,
+            selectedModel.name,
+            inputs.model.completion_params,
+            true,
+          )
+          if (
+            modelSelectionRequestGenerationRef.current !== requestGeneration ||
+            modelSelectionKeyRef.current !== baselineSelectionKey
+          )
+            return
+          const keys = Object.keys(removedDetails)
+          if (keys.length)
+            toast.warning(
+              `${t(($) => $['modelProvider.parametersInvalidRemoved'], { ns: 'common' })}: ${keys.map((key) => `${key} (${removedDetails[key]})`).join(', ')}`,
+            )
+          handleModelSelectorChange(modelSelector, filtered)
+        } catch {
+          if (
+            modelSelectionRequestGenerationRef.current !== requestGeneration ||
+            modelSelectionKeyRef.current !== baselineSelectionKey
+          )
+            return
+          toast.error(t(($) => $.error, { ns: 'common' }))
+        }
+      })()
+    },
+    [environmentVariables, handleModelSelectorChange, inputs.model, t],
+  )
 
   return (
     <div className="mt-2">
       <div className="space-y-4 px-4 pb-4">
         <Field
-          title={t(`${i18nPrefix}.model`, { ns: 'workflow' })}
+          title={t(($) => $[`${i18nPrefix}.model`], { ns: 'workflow' })}
           required
           warningDot={hasModelWarning}
+          operations={
+            flowType === FlowType.snippet && !isEnvironmentModelSource ? undefined : (
+              <FormInputTypeSwitch
+                value={isEnvironmentModelSource ? VarType.variable : VarType.constant}
+                readonly={readOnly}
+                onChange={(value) => {
+                  const useEnvironmentVariable = value === VarType.variable
+                  if (useEnvironmentVariable === isEnvironmentModelSource) return
+                  modelSelectionRequestGenerationRef.current++
+                  handleModelSourceChange(useEnvironmentVariable)
+                }}
+              />
+            )
+          }
         >
-          <ModelParameterModal
-            popupClassName="w-[387px]!"
-            isInWorkflow
-            isAdvancedMode={true}
-            provider={model?.provider}
-            completionParams={model?.completion_params}
-            modelId={model?.name}
-            setModel={handleModelChange}
-            onCompletionParamsChange={handleCompletionParamsChange}
-            hideDebugWithMultipleModel
-            debugWithMultipleModel={false}
-            readonly={readOnly}
-            nodesOutputVars={availableVars}
-            availableNodes={availableNodesWithParent}
-          />
+          <div className="space-y-2">
+            {isEnvironmentModelSource && (
+              <Select
+                value={selectedEnvironmentVariableName ?? null}
+                disabled={readOnly}
+                onValueChange={(nextValue) => nextValue && handleEnvironmentModelChange(nextValue)}
+              >
+                <SelectTrigger
+                  aria-label={t(($) => $[`${i18nPrefix}.model`], { ns: 'workflow' })}
+                  className="w-full"
+                >
+                  {selectedEnvironmentVariableName ??
+                    t(($) => $['nodes.common.typeSwitch.variable'], { ns: 'workflow' })}
+                </SelectTrigger>
+                <SelectContent>
+                  {llmEnvironmentVariables.map((variable) => (
+                    <SelectItem key={variable.id} value={variable.name}>
+                      <SelectItemText>{variable.name}</SelectItemText>
+                      <SelectItemIndicator />
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <ModelParameterModal
+              popupClassName="w-[387px]!"
+              isInWorkflow
+              isAdvancedMode={true}
+              provider={model?.provider}
+              completionParams={model?.completion_params}
+              modelId={model?.name}
+              setModel={handleModelChange}
+              onCompletionParamsChange={handleCompletionParamsChange}
+              hideDebugWithMultipleModel
+              debugWithMultipleModel={false}
+              readonly={readOnly || isEnvironmentModelSource}
+              modelSelectorReadonly={isEnvironmentModelSource}
+              nodesOutputVars={availableVars}
+              availableNodes={availableNodesWithParent}
+            />
+          </div>
         </Field>
 
         {/* knowledge */}
         <Field
-          title={t(`${i18nPrefix}.context`, { ns: 'workflow' })}
-          tooltip={t(`${i18nPrefix}.contextTooltip`, { ns: 'workflow' })!}
+          title={t(($) => $[`${i18nPrefix}.context`], { ns: 'workflow' })}
+          tooltip={t(($) => $[`${i18nPrefix}.contextTooltip`], { ns: 'workflow' })!}
         >
           <>
             <VarReferencePicker
@@ -151,7 +282,9 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
               filterVar={filterVar}
             />
             {shouldShowContextTip && (
-              <div className="text-xs font-normal leading-[18px] text-[#DC6803]">{t(`${i18nPrefix}.notSetContextInPromptTip`, { ns: 'workflow' })}</div>
+              <div className="text-xs leading-4.5 font-normal text-[#DC6803]">
+                {t(($) => $[`${i18nPrefix}.notSetContextInPromptTip`], { ns: 'workflow' })}
+              </div>
             )}
           </>
         </Field>
@@ -176,9 +309,18 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
 
         {isShowVars && (
           <Field
-            title={t('nodes.templateTransform.inputVars', { ns: 'workflow' })}
+            title={t(($) => $['nodes.templateTransform.inputVars'], { ns: 'workflow' })}
             operations={
-              !readOnly ? <AddButton2 onClick={handleAddEmptyVariable} /> : undefined
+              !readOnly ? (
+                <button
+                  type="button"
+                  aria-label={`${t(($) => $['operation.add'], { ns: 'common' })} ${t(($) => $['nodes.templateTransform.inputVars'], { ns: 'workflow' })}`}
+                  className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                  onClick={handleAddEmptyVariable}
+                >
+                  <span className="i-ri-add-line size-4 text-text-tertiary" aria-hidden="true" />
+                </button>
+              ) : undefined
             }
           >
             <VarList
@@ -193,61 +335,21 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
           </Field>
         )}
 
-        {/* Memory put place examples. */}
-        {isChatMode && isChatModel && !!inputs.memory && (
-          <div className="mt-4">
-            <div className="flex h-8 items-center justify-between rounded-lg bg-components-input-bg-normal pl-3 pr-2">
-              <div className="flex items-center space-x-1">
-                <div className="text-xs font-semibold uppercase text-text-secondary">{t('nodes.common.memories.title', { ns: 'workflow' })}</div>
-                <Tooltip
-                  popupContent={t('nodes.common.memories.tip', { ns: 'workflow' })}
-                  triggerClassName="w-4 h-4"
-                />
-              </div>
-              <div className="flex h-[18px] items-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 text-xs font-semibold uppercase text-text-tertiary">{t('nodes.common.memories.builtIn', { ns: 'workflow' })}</div>
-            </div>
-            {/* Readonly User Query */}
-            <div className="mt-4">
-              <Editor
-                title={(
-                  <div className="flex items-center space-x-1">
-                    <div className="text-xs font-semibold uppercase text-text-secondary">user</div>
-                    <Tooltip
-                      popupContent={
-                        <div className="max-w-[180px]">{t('nodes.llm.roleDescription.user', { ns: 'workflow' })}</div>
-                      }
-                      triggerClassName="w-4 h-4"
-                    />
-                  </div>
-                )}
-                value={inputs.memory.query_prompt_template || '{{#sys.query#}}'}
-                onChange={handleSyeQueryChange}
-                readOnly={readOnly}
-                isShowContext={false}
-                isChatApp
-                isChatModel
-                hasSetBlockStatus={hasSetBlockStatus}
-                nodesOutputVars={availableVars}
-                availableNodes={availableNodesWithParent}
-                isSupportFileVar
-              />
-
-              {inputs.memory.query_prompt_template && !inputs.memory.query_prompt_template.includes('{{#sys.query#}}') && (
-                <div className="text-xs font-normal leading-[18px] text-[#DC6803]">{t(`${i18nPrefix}.sysQueryInUser`, { ns: 'workflow' })}</div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Memory */}
         {isChatMode && (
           <>
             <Split />
-            <MemoryConfig
-              readonly={readOnly}
-              config={{ data: inputs.memory }}
-              onChange={handleMemoryChange}
-              canSetRoleName={isCompletionModel}
+            <PanelMemorySection
+              readOnly={readOnly}
+              isChatMode={isChatMode}
+              isChatModel={isChatModel}
+              isCompletionModel={isCompletionModel}
+              inputs={inputs}
+              hasSetBlockStatus={hasSetBlockStatus}
+              availableVars={availableVars}
+              availableNodesWithParent={availableNodesWithParent}
+              flowType={flowType}
+              handleSyeQueryChange={handleSyeQueryChange}
+              handleMemoryChange={handleMemoryChange}
             />
           </>
         )}
@@ -271,74 +373,15 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
           readonly={readOnly}
         />
       </div>
-      <Split />
-      <OutputVars
-        collapsed={structuredOutputCollapsed}
-        onCollapse={setStructuredOutputCollapsed}
-        operations={(
-          <div className="mr-4 flex shrink-0 items-center">
-            {(!isModelSupportStructuredOutput && !!inputs.structured_output_enabled) && (
-              <Tooltip
-                noDecoration
-                popupContent={(
-                  <div className="w-[232px] rounded-xl border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-4 py-3.5 shadow-lg backdrop-blur-[5px]">
-                    <div className="text-text-primary title-xs-semi-bold">{t('structOutput.modelNotSupported', { ns: 'app' })}</div>
-                    <div className="mt-1 text-text-secondary body-xs-regular">{t('structOutput.modelNotSupportedTip', { ns: 'app' })}</div>
-                  </div>
-                )}
-              >
-                <div>
-                  <RiAlertFill className="mr-1 size-4 text-text-warning-secondary" />
-                </div>
-              </Tooltip>
-            )}
-            <div className="mr-0.5 text-text-tertiary system-xs-medium-uppercase">{t('structOutput.structured', { ns: 'app' })}</div>
-            <Tooltip popupContent={
-              <div className="max-w-[150px]">{t('structOutput.structuredTip', { ns: 'app' })}</div>
-            }
-            >
-              <div>
-                <RiQuestionLine className="size-3.5 text-text-quaternary" />
-              </div>
-            </Tooltip>
-            <Switch
-              className="ml-2"
-              value={!!inputs.structured_output_enabled}
-              onChange={handleStructureOutputEnableChange}
-              size="md"
-              disabled={readOnly}
-            />
-          </div>
-        )}
-      >
-        <>
-          <VarItem
-            name="text"
-            type="string"
-            description={t(`${i18nPrefix}.outputVars.output`, { ns: 'workflow' })}
-          />
-          <VarItem
-            name="reasoning_content"
-            type="string"
-            description={t(`${i18nPrefix}.outputVars.reasoning_content`, { ns: 'workflow' })}
-          />
-          <VarItem
-            name="usage"
-            type="object"
-            description={t(`${i18nPrefix}.outputVars.usage`, { ns: 'workflow' })}
-          />
-          {inputs.structured_output_enabled && (
-            <>
-              <Split className="mt-3" />
-              <StructureOutput
-                className="mt-4"
-                value={inputs.structured_output}
-                onChange={handleStructureOutputChange}
-              />
-            </>
-          )}
-        </>
-      </OutputVars>
+      <PanelOutputSection
+        readOnly={readOnly}
+        inputs={inputs}
+        isModelSupportStructuredOutput={isModelSupportStructuredOutput}
+        structuredOutputCollapsed={structuredOutputCollapsed}
+        setStructuredOutputCollapsed={setStructuredOutputCollapsed}
+        handleStructureOutputEnableChange={handleStructureOutputEnableChange}
+        handleStructureOutputChange={handleStructureOutputChange}
+      />
     </div>
   )
 }

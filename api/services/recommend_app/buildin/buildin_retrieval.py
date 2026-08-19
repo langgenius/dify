@@ -1,9 +1,12 @@
 import json
 from os import path
 from pathlib import Path
+from typing import Any, override
 
 from flask import current_app
+from sqlalchemy.orm import Session
 
+from services.recommend_app.database.database_retrieval import DatabaseRecommendAppRetrieval
 from services.recommend_app.recommend_app_base import RecommendAppRetrievalBase
 from services.recommend_app.recommend_app_type import RecommendAppType
 
@@ -13,16 +16,26 @@ class BuildInRecommendAppRetrieval(RecommendAppRetrievalBase):
     Retrieval recommended app from buildin, the location  is constants/recommended_apps.json
     """
 
-    builtin_data: dict | None = None
+    builtin_data: dict[str, Any] | None = None
 
+    @override
     def get_type(self) -> str:
         return RecommendAppType.BUILDIN
 
-    def get_recommended_apps_and_categories(self, language: str):
+    @override
+    def get_recommended_apps_and_categories(self, language: str, *, session: Session):
+        del session
         result = self.fetch_recommended_apps_from_builtin(language)
         return result
 
-    def get_recommend_app_detail(self, app_id: str):
+    @override
+    def get_learn_dify_apps(self, language: str, *, session: Session):
+        result = DatabaseRecommendAppRetrieval.fetch_learn_dify_apps_from_db(language, session=session)
+        return result
+
+    @override
+    def get_recommend_app_detail(self, app_id: str, *, session: Session):
+        del session
         result = self.fetch_recommended_app_detail_from_builtin(app_id)
         return result
 
@@ -53,7 +66,7 @@ class BuildInRecommendAppRetrieval(RecommendAppRetrievalBase):
         return builtin_data.get("recommended_apps", {}).get(language, {})
 
     @classmethod
-    def fetch_recommended_app_detail_from_builtin(cls, app_id: str) -> dict | None:
+    def fetch_recommended_app_detail_from_builtin(cls, app_id: str) -> dict[str, Any] | None:
         """
         Fetch recommended app detail from builtin.
         :param app_id: App ID

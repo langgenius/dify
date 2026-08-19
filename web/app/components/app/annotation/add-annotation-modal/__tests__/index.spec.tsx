@@ -1,4 +1,4 @@
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { useProviderContext } from '@/context/provider-context'
@@ -9,9 +9,9 @@ vi.mock('@/context/provider-context', () => ({
 }))
 
 const mockToastNotify = vi.fn()
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   default: {
-    notify: vi.fn(args => mockToastNotify(args)),
+    notify: vi.fn((args) => mockToastNotify(args)),
   },
   toast: {
     success: (message: string) => mockToastNotify({ type: 'success', message }),
@@ -68,17 +68,23 @@ describe('AddAnnotationModal', () => {
   it('should capture query input text when typing', () => {
     render(<AddAnnotationModal {...baseProps} />)
     typeQuestion('Sample question')
-    expect(screen.getByPlaceholderText('appAnnotation.addModal.queryPlaceholder')).toHaveValue('Sample question')
+    expect(screen.getByPlaceholderText('appAnnotation.addModal.queryPlaceholder')).toHaveValue(
+      'Sample question',
+    )
   })
 
   it('should capture answer input text when typing', () => {
     render(<AddAnnotationModal {...baseProps} />)
     typeAnswer('Sample answer')
-    expect(screen.getByPlaceholderText('appAnnotation.addModal.answerPlaceholder')).toHaveValue('Sample answer')
+    expect(screen.getByPlaceholderText('appAnnotation.addModal.answerPlaceholder')).toHaveValue(
+      'Sample answer',
+    )
   })
 
   it('should show annotation full notice and disable submit when quota exceeded', () => {
-    mockUseProviderContext.mockReturnValue(getProviderContext({ usage: 10, total: 10, enableBilling: true }))
+    mockUseProviderContext.mockReturnValue(
+      getProviderContext({ usage: 10, total: 10, enableBilling: true }),
+    )
     render(<AddAnnotationModal {...baseProps} />)
 
     expect(screen.getByTestId('annotation-full')).toBeInTheDocument()
@@ -91,7 +97,7 @@ describe('AddAnnotationModal', () => {
 
     typeQuestion('Question value')
     typeAnswer('Answer value')
-    fireEvent.click(screen.getByTestId('checkbox-create-next-checkbox'))
+    fireEvent.click(screen.getByText('appAnnotation.addModal.createNext'))
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
@@ -106,8 +112,7 @@ describe('AddAnnotationModal', () => {
 
     typeQuestion('Question value')
     typeAnswer('Answer value')
-    const createNextToggle = screen.getByText('appAnnotation.addModal.createNext').previousElementSibling as HTMLElement
-    fireEvent.click(createNextToggle)
+    fireEvent.click(screen.getByText('appAnnotation.addModal.createNext'))
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
@@ -115,7 +120,9 @@ describe('AddAnnotationModal', () => {
 
     await waitFor(() => {
       expect(screen.getByPlaceholderText('appAnnotation.addModal.queryPlaceholder')).toHaveValue('')
-      expect(screen.getByPlaceholderText('appAnnotation.addModal.answerPlaceholder')).toHaveValue('')
+      expect(screen.getByPlaceholderText('appAnnotation.addModal.answerPlaceholder')).toHaveValue(
+        '',
+      )
     })
   })
 
@@ -123,10 +130,12 @@ describe('AddAnnotationModal', () => {
     render(<AddAnnotationModal {...baseProps} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
-    expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'error',
-      message: 'appAnnotation.errorMessage.queryRequired',
-    }))
+    expect(mockToastNotify).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'error',
+        message: 'appAnnotation.errorMessage.queryRequired',
+      }),
+    )
   })
 
   it('should show toast when validation fails for missing answer', () => {
@@ -134,10 +143,12 @@ describe('AddAnnotationModal', () => {
     typeQuestion('Filled question')
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
 
-    expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'error',
-      message: 'appAnnotation.errorMessage.answerRequired',
-    }))
+    expect(mockToastNotify).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'error',
+        message: 'appAnnotation.errorMessage.answerRequired',
+      }),
+    )
   })
 
   it('should close modal when save completes and create next unchecked', async () => {
