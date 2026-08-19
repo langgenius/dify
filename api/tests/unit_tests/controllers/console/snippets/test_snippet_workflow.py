@@ -577,9 +577,11 @@ def test_delete_published_snippet_workflow_raises_not_found(app: Flask, monkeypa
     api = snippet_workflow_module.SnippetWorkflowByIdApi()
     handler = unwrap(api.delete)
 
-    with app.test_request_context("/snippets/snippet-1/workflows/missing-workflow", method="DELETE"):
-        with pytest.raises(NotFound):
-            handler(api, _snippet(), workflow_id="missing-workflow")
+    with (
+        app.test_request_context("/snippets/snippet-1/workflows/missing-workflow", method="DELETE"),
+        pytest.raises(NotFound),
+    ):
+        handler(api, _snippet(), workflow_id="missing-workflow")
 
 
 def test_delete_published_snippet_workflow_raises_bad_request_when_in_use(
@@ -597,9 +599,11 @@ def test_delete_published_snippet_workflow_raises_bad_request_when_in_use(
     api = snippet_workflow_module.SnippetWorkflowByIdApi()
     handler = unwrap(api.delete)
 
-    with app.test_request_context("/snippets/snippet-1/workflows/workflow-1", method="DELETE"):
-        with pytest.raises(HTTPException) as exc_info:
-            handler(api, _snippet(), workflow_id="workflow-1")
+    with (
+        app.test_request_context("/snippets/snippet-1/workflows/workflow-1", method="DELETE"),
+        pytest.raises(HTTPException) as exc_info,
+    ):
+        handler(api, _snippet(), workflow_id="workflow-1")
 
     assert exc_info.value.code == 400
 

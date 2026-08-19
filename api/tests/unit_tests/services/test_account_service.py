@@ -323,14 +323,16 @@ class TestAccountService:
             "billing_service"
         ].get_email_freeze_type.return_value = "email_domain_suspended"
 
-        with patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD):
-            with pytest.raises(EmailDomainSuspendedError):
-                AccountService.create_account(
-                    email="user@suspended.example",
-                    name="Test User",
-                    interface_language="en-US",
-                    session=unbound_session,
-                )
+        with (
+            patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
+            pytest.raises(EmailDomainSuspendedError),
+        ):
+            AccountService.create_account(
+                email="user@suspended.example",
+                name="Test User",
+                interface_language="en-US",
+                session=unbound_session,
+            )
 
     def test_get_user_through_email_rejects_suspended_email_domain(
         self, unbound_session: Session, mock_external_service_dependencies: _MockDependencies
@@ -340,9 +342,11 @@ class TestAccountService:
             "billing_service"
         ].get_email_freeze_type.return_value = "email_domain_suspended"
 
-        with patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD):
-            with pytest.raises(EmailDomainSuspendedError):
-                AccountService.get_user_through_email("user@suspended.example", session=unbound_session)
+        with (
+            patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
+            pytest.raises(EmailDomainSuspendedError),
+        ):
+            AccountService.get_user_through_email("user@suspended.example", session=unbound_session)
 
     def test_get_account_freeze_type_is_enabled_only_for_cloud(
         self, mock_external_service_dependencies: _MockDependencies

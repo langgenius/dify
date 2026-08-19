@@ -271,13 +271,15 @@ class TestLoginApi:
     def test_login_fails_when_email_domain_is_suspended(self, mock_get_freeze_type, mock_db, app: Flask):
         mock_get_freeze_type.return_value = "email_domain_suspended"
 
-        with app.test_request_context(
-            "/login",
-            method="POST",
-            json={"email": "user@suspended.example", "password": encode_password("password")},
+        with (
+            app.test_request_context(
+                "/login",
+                method="POST",
+                json={"email": "user@suspended.example", "password": encode_password("password")},
+            ),
+            pytest.raises(EmailDomainSuspendedError),
         ):
-            with pytest.raises(EmailDomainSuspendedError):
-                LoginApi().post()
+            LoginApi().post()
 
     @pytest.mark.parametrize(
         ("service_error", "expected_error"),
@@ -303,13 +305,15 @@ class TestLoginApi:
         )
         mock_get_account.side_effect = service_error
 
-        with app.test_request_context(
-            "/email-code-login/validity",
-            method="POST",
-            json={"email": "User@Example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
+        with (
+            app.test_request_context(
+                "/email-code-login/validity",
+                method="POST",
+                json={"email": "User@Example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
+            ),
+            pytest.raises(expected_error),
         ):
-            with pytest.raises(expected_error):
-                EmailCodeLoginApi().post()
+            EmailCodeLoginApi().post()
 
     @pytest.mark.parametrize(
         ("service_error", "expected_error"),
@@ -340,13 +344,15 @@ class TestLoginApi:
         mock_get_account.return_value = None
         mock_create_account.side_effect = service_error
 
-        with app.test_request_context(
-            "/email-code-login/validity",
-            method="POST",
-            json={"email": "User@Example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
+        with (
+            app.test_request_context(
+                "/email-code-login/validity",
+                method="POST",
+                json={"email": "User@Example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
+            ),
+            pytest.raises(expected_error),
         ):
-            with pytest.raises(expected_error):
-                EmailCodeLoginApi().post()
+            EmailCodeLoginApi().post()
 
     @pytest.mark.parametrize(
         ("service_error", "expected_error"),
@@ -367,13 +373,15 @@ class TestLoginApi:
     ):
         mock_get_account.side_effect = service_error
 
-        with app.test_request_context(
-            "/reset-password",
-            method="POST",
-            json={"email": "User@Example.com"},
+        with (
+            app.test_request_context(
+                "/reset-password",
+                method="POST",
+                json={"email": "User@Example.com"},
+            ),
+            pytest.raises(expected_error),
         ):
-            with pytest.raises(expected_error):
-                ResetPasswordSendEmailApi().post()
+            ResetPasswordSendEmailApi().post()
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)

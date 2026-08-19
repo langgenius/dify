@@ -101,7 +101,8 @@ class TestInstalledAppWorkflowRunApi:
             patch(
                 "controllers.console.explore.workflow.AppGenerateService.generate",
                 side_effect=InvokeRateLimitError("rate limit"),
-            ),pytest.raises(InvokeRateLimitHttpError)
+            ),
+            pytest.raises(InvokeRateLimitHttpError),
         ):
             method(api, req_data, sqlite_session, user, installed_app)
 
@@ -117,7 +118,8 @@ class TestInstalledAppWorkflowRunApi:
             patch(
                 "controllers.console.explore.workflow.AppGenerateService.generate",
                 side_effect=Exception("boom"),
-            ),pytest.raises(InternalServerError)
+            ),
+            pytest.raises(InternalServerError),
         ):
             method(api, req_data, sqlite_session, user, installed_app)
 

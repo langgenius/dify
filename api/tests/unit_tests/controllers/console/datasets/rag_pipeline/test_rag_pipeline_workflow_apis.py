@@ -297,7 +297,8 @@ class TestDraftWorkflowApi:
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
                 return_value=service,
-            ),pytest.raises(DraftWorkflowNotExist)
+            ),
+            pytest.raises(DraftWorkflowNotExist),
         ):
             method(api, pipeline)
 
@@ -316,7 +317,8 @@ class TestDraftWorkflowApi:
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
                 return_value=service,
-            ),pytest.raises(DraftWorkflowNotSync)
+            ),
+            pytest.raises(DraftWorkflowNotSync),
         ):
             method(api, user, pipeline)
 
@@ -374,7 +376,8 @@ class TestDraftWorkflowApi:
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
                 return_value=service,
-            ),pytest.raises(NotFound)
+            ),
+            pytest.raises(NotFound),
         ):
             method(api, user, pipeline, "published-workflow")
 
@@ -395,7 +398,8 @@ class TestDraftWorkflowApi:
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
                 return_value=service,
-            ),pytest.raises(HTTPException) as exc
+            ),
+            pytest.raises(HTTPException) as exc,
         ):
             method(api, user, pipeline, "draft-workflow")
 
@@ -438,9 +442,9 @@ class TestDraftRunNodes:
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.PipelineGenerateService.generate_single_iteration",
                 side_effect=services.errors.conversation.ConversationNotExistsError(),
             ),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                method(api, NodeRunPayload(), user, pipeline, "node")
+            method(api, NodeRunPayload(), user, pipeline, "node")
 
     def test_loop_node_success(self, app: Flask) -> None:
         api = RagPipelineDraftRunLoopNodeApi()
@@ -479,7 +483,8 @@ class TestDraftNodeRun:
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
                 return_value=service,
-            ),pytest.raises(ValueError)
+            ),
+            pytest.raises(ValueError),
         ):
             method(api, NodeRunRequiredPayload(inputs={}), user, pipeline, "node")
 
@@ -620,9 +625,7 @@ class TestPublishedAllRagPipelineApi:
         pipeline = make_pipeline()
         user = make_account(id="u1")
 
-        with (
-            app.test_request_context("/?user_id=u2"),pytest.raises(Forbidden)
-        ):
+        with app.test_request_context("/?user_id=u2"), pytest.raises(Forbidden):
             method(api, WorkflowListQuery(user_id="u2"), user, pipeline)
 
 
@@ -735,9 +738,11 @@ class TestRagPipelineByIdApi:
         pipeline = make_pipeline(tenant_id="t1", workflow_id="active-workflow")
         user = make_account()
 
-        with app.test_request_context("/", method="DELETE"):
-            with pytest.raises(BadRequest, match="currently in use by pipeline"):
-                method(api, user, pipeline, "active-workflow")
+        with (
+            app.test_request_context("/", method="DELETE"),
+            pytest.raises(BadRequest, match="currently in use by pipeline"),
+        ):
+            method(api, user, pipeline, "active-workflow")
 
 
 class TestRagPipelineWorkflowLastRunApi:
@@ -779,7 +784,8 @@ class TestRagPipelineWorkflowLastRunApi:
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
                 return_value=service,
-            ),pytest.raises(NotFound)
+            ),
+            pytest.raises(NotFound),
         ):
             method(api, pipeline, "node1")
 

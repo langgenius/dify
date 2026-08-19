@@ -387,9 +387,11 @@ def test_export_snippet_raises_not_found_for_missing_workflow(app: Flask, monkey
     api = snippets_module.CustomizedSnippetExportApi()
     handler = unwrap(api.get)
 
-    with app.test_request_context("/workspaces/current/customized-snippets/snippet-1/export?workflow_id=workflow-1"):
-        with pytest.raises(NotFound, match="Missing published workflow workflow-1"):
-            handler(api, "tenant-1", snippet_id="snippet-1")
+    with (
+        app.test_request_context("/workspaces/current/customized-snippets/snippet-1/export?workflow_id=workflow-1"),
+        pytest.raises(NotFound, match="Missing published workflow workflow-1"),
+    ):
+        handler(api, "tenant-1", snippet_id="snippet-1")
 
 
 def test_import_snippet_returns_202_for_pending_confirmation(app: Flask, monkeypatch: pytest.MonkeyPatch):

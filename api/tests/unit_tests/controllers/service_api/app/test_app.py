@@ -350,9 +350,8 @@ def test_get_site_configuration_maps_missing_site_to_forbidden(
         Mock(return_value=SimpleNamespace(app_definitions=app_definitions)),
     )
 
-    with flask_app.test_request_context("/site", headers={"Authorization": "Bearer token"}):
-        with pytest.raises(Forbidden):
-            AppSiteApi().get()
+    with flask_app.test_request_context("/site", headers={"Authorization": "Bearer token"}), pytest.raises(Forbidden):
+        AppSiteApi().get()
 
 
 @pytest.mark.parametrize("state", ["missing", "disabled", "archived", "ownerless"])

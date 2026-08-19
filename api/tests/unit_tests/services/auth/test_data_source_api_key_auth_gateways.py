@@ -82,34 +82,38 @@ class TestProviderApiKeyAuthCredentialValidator:
             "Authentication error"
         )
 
-        with patch(
-            "services.auth.firecrawl.firecrawl.FirecrawlAuth",
-            autospec=True,
-            return_value=auth_instance,
+        with (
+            patch(
+                "services.auth.firecrawl.firecrawl.FirecrawlAuth",
+                autospec=True,
+                return_value=auth_instance,
+            ),
+            pytest.raises(DataSourceApiKeyAuthCredentialValidationError, match="Authentication error"),
         ):
-            with pytest.raises(DataSourceApiKeyAuthCredentialValidationError, match="Authentication error"):
-                ProviderApiKeyAuthCredentialValidator().validate(
-                    "firecrawl",
-                    DataSourceApiKeyAuthCredentials("bearer", "test_key", {}),
-                )
+            ProviderApiKeyAuthCredentialValidator().validate(
+                "firecrawl",
+                DataSourceApiKeyAuthCredentials("bearer", "test_key", {}),
+            )
 
     def test_validate_maps_provider_network_error(self) -> None:
         auth_instance = MagicMock()
         auth_instance.validate_credentials.side_effect = httpx.ConnectError("Authentication endpoint unavailable")
 
-        with patch(
-            "services.auth.firecrawl.firecrawl.FirecrawlAuth",
-            autospec=True,
-            return_value=auth_instance,
-        ):
-            with pytest.raises(
+        with (
+            patch(
+                "services.auth.firecrawl.firecrawl.FirecrawlAuth",
+                autospec=True,
+                return_value=auth_instance,
+            ),
+            pytest.raises(
                 DataSourceApiKeyAuthProviderUnavailableError,
                 match="Data-source API-key auth provider is unavailable: firecrawl",
-            ):
-                ProviderApiKeyAuthCredentialValidator().validate(
-                    "firecrawl",
-                    DataSourceApiKeyAuthCredentials("bearer", "test_key", {}),
-                )
+            ),
+        ):
+            ProviderApiKeyAuthCredentialValidator().validate(
+                "firecrawl",
+                DataSourceApiKeyAuthCredentials("bearer", "test_key", {}),
+            )
 
     def test_validate_does_not_map_non_transport_http_error(self) -> None:
         request = httpx.Request("POST", "https://api.firecrawl.dev/v1/crawl")
@@ -118,15 +122,17 @@ class TestProviderApiKeyAuthCredentialValidator:
         auth_instance = MagicMock()
         auth_instance.validate_credentials.side_effect = status_error
 
-        with patch(
-            "services.auth.firecrawl.firecrawl.FirecrawlAuth",
-            autospec=True,
-            return_value=auth_instance,
+        with (
+            patch(
+                "services.auth.firecrawl.firecrawl.FirecrawlAuth",
+                autospec=True,
+                return_value=auth_instance,
+            ),
+            pytest.raises(httpx.HTTPStatusError) as exc_info,
         ):
-            with pytest.raises(httpx.HTTPStatusError) as exc_info:
-                ProviderApiKeyAuthCredentialValidator().validate(
-                    "firecrawl",
-                    DataSourceApiKeyAuthCredentials("bearer", "test_key", {}),
-                )
+            ProviderApiKeyAuthCredentialValidator().validate(
+                "firecrawl",
+                DataSourceApiKeyAuthCredentials("bearer", "test_key", {}),
+            )
 
         assert exc_info.value is status_error

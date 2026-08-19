@@ -643,15 +643,14 @@ class TestTrialCompletionApi(_UsesSQLiteSession):
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
-        with app.test_request_context("/", json={"inputs": {}, "query": ""}):
-            with pytest.raises(NotCompletionAppError):
-                method(
-                    api,
-                    CompletionRequest.model_validate(request.get_json()),
-                    self.sqlite_session,
-                    account,
-                    _app(app_id="not-completion", mode=AppMode.CHAT),
-                )
+        with app.test_request_context("/", json={"inputs": {}, "query": ""}), pytest.raises(NotCompletionAppError):
+            method(
+                api,
+                CompletionRequest.model_validate(request.get_json()),
+                self.sqlite_session,
+                account,
+                _app(app_id="not-completion", mode=AppMode.CHAT),
+            )
 
     def test_success(
         self,
@@ -1398,9 +1397,9 @@ class TestTrialSitApi:
         with (
             app.test_request_context("/"),
             patch.object(module.TenantService, "get_tenant_by_id", return_value=tenant) as get_tenant_by_id,
+            pytest.raises(Forbidden),
         ):
-            with pytest.raises(Forbidden):
-                method(api, sqlite_session, app_model)
+            method(api, sqlite_session, app_model)
 
         get_tenant_by_id.assert_called_once_with("tenant-1", session=sqlite_session)
 

@@ -42,8 +42,10 @@ def test_permission_denial_maps_to_forbidden(
     monkeypatch.setattr(app_dsl_module, "AppDslService", Mock(return_value=service))
     monkeypatch.setattr(app_dsl_module, "db", SimpleNamespace(engine=sqlite_engine))
 
-    with app.test_request_context("/openapi/v1/workspaces/workspace-1/apps/imports", method="POST"):
-        with pytest.raises(Forbidden, match="denied") as exc_info:
-            unwrap(api.post)(api, auth_data=SimpleNamespace(caller=Mock()), **kwargs)
+    with (
+        app.test_request_context("/openapi/v1/workspaces/workspace-1/apps/imports", method="POST"),
+        pytest.raises(Forbidden, match="denied") as exc_info,
+    ):
+        unwrap(api.post)(api, auth_data=SimpleNamespace(caller=Mock()), **kwargs)
 
     assert isinstance(exc_info.value.__cause__, NoPermissionError)

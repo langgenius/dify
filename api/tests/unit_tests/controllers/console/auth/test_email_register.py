@@ -97,14 +97,14 @@ class TestEmailRegisterSendEmailApi:
             patch("controllers.console.auth.email_register.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
-        ):
-            with app.test_request_context(
+            app.test_request_context(
                 "/email-register/send-email",
                 method="POST",
                 json={"email": "Invitee@Example.com"},
-            ):
-                with pytest.raises(expected_error):
-                    EmailRegisterSendEmailApi().post()
+            ),
+            pytest.raises(expected_error),
+        ):
+            EmailRegisterSendEmailApi().post()
 
         mock_get_freeze_type.assert_called_once_with("invitee@example.com")
         mock_is_email_send_ip_limit.assert_called_once_with("127.0.0.1")

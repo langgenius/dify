@@ -183,9 +183,8 @@ class TestAppAccessMode:
         webapp_access.get_access_mode.side_effect = service_error
         application_services.return_value = SimpleNamespace(webapp_access=webapp_access)
 
-        with app.test_request_context("/webapp/access-mode?appCode=code-1"):
-            with pytest.raises(http_error) as raised:
-                AppAccessMode().get()
+        with app.test_request_context("/webapp/access-mode?appCode=code-1"), pytest.raises(http_error) as raised:
+            AppAccessMode().get()
 
         assert raised.value.data == expected_data
 

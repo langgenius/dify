@@ -164,7 +164,8 @@ class TestMessageListApi(_UsesSQLiteSession):
                 module.MessageService,
                 "pagination_by_first_id",
                 side_effect=ConversationNotExistsError(),
-            ),pytest.raises(NotFound)
+            ),
+            pytest.raises(NotFound),
         ):
             method(self.account, installed_app)
 
@@ -183,7 +184,8 @@ class TestMessageListApi(_UsesSQLiteSession):
                 module.MessageService,
                 "pagination_by_first_id",
                 side_effect=FirstMessageNotExistsError(),
-            ),pytest.raises(NotFound)
+            ),
+            pytest.raises(NotFound),
         ):
             method(self.account, installed_app)
 
@@ -220,7 +222,8 @@ class TestMessageFeedbackApi(_UsesSQLiteSession):
                 module.MessageService,
                 "create_feedback",
                 side_effect=MessageNotExistsError(),
-            ),pytest.raises(NotFound)
+            ),
+            pytest.raises(NotFound),
         ):
             method(module.MessageFeedbackPayload.model_validate({}), self.account, installed_app, "mid")
 
@@ -276,7 +279,8 @@ class TestMessageMoreLikeThisApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate_more_like_this",
                 side_effect=module.MoreLikeThisDisabledError(),
-            ),pytest.raises(AppMoreLikeThisDisabledError)
+            ),
+            pytest.raises(AppMoreLikeThisDisabledError),
         ):
             method(self.sqlite_session, self.account, installed_app, "mid")
 
@@ -295,7 +299,8 @@ class TestMessageMoreLikeThisApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate_more_like_this",
                 side_effect=MessageNotExistsError(),
-            ),pytest.raises(NotFound)
+            ),
+            pytest.raises(NotFound),
         ):
             method(self.sqlite_session, self.account, installed_app, "mid")
 
@@ -314,7 +319,8 @@ class TestMessageMoreLikeThisApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate_more_like_this",
                 side_effect=ProviderTokenNotInitError("test"),
-            ),pytest.raises(ProviderNotInitializeError)
+            ),
+            pytest.raises(ProviderNotInitializeError),
         ):
             method(self.sqlite_session, self.account, installed_app, "mid")
 
@@ -333,7 +339,8 @@ class TestMessageMoreLikeThisApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate_more_like_this",
                 side_effect=QuotaExceededError(),
-            ),pytest.raises(ProviderQuotaExceededError)
+            ),
+            pytest.raises(ProviderQuotaExceededError),
         ):
             method(self.sqlite_session, self.account, installed_app, "mid")
 
@@ -352,7 +359,8 @@ class TestMessageMoreLikeThisApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate_more_like_this",
                 side_effect=ModelCurrentlyNotSupportError(),
-            ),pytest.raises(ProviderModelCurrentlyNotSupportError)
+            ),
+            pytest.raises(ProviderModelCurrentlyNotSupportError),
         ):
             method(self.sqlite_session, self.account, installed_app, "mid")
 
@@ -371,7 +379,8 @@ class TestMessageMoreLikeThisApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate_more_like_this",
                 side_effect=InvokeError("test error"),
-            ),pytest.raises(CompletionRequestError)
+            ),
+            pytest.raises(CompletionRequestError),
         ):
             method(self.sqlite_session, self.account, installed_app, "mid")
 
@@ -390,7 +399,8 @@ class TestMessageMoreLikeThisApi(_UsesSQLiteSession):
                 module.AppGenerateService,
                 "generate_more_like_this",
                 side_effect=Exception("unexpected"),
-            ),pytest.raises(InternalServerError)
+            ),
+            pytest.raises(InternalServerError),
         ):
             method(self.sqlite_session, self.account, installed_app, "mid")
 
@@ -433,7 +443,8 @@ class TestMessageSuggestedQuestionApi(_UsesSQLiteSession):
                 module.MessageService,
                 "get_suggested_questions_after_answer",
                 side_effect=SuggestedQuestionsAfterAnswerDisabledError(),
-            ),pytest.raises(AppSuggestedQuestionsAfterAnswerDisabledError)
+            ),
+            pytest.raises(AppSuggestedQuestionsAfterAnswerDisabledError),
         ):
             method(self.account, installed_app, "mid")
 
@@ -448,7 +459,8 @@ class TestMessageSuggestedQuestionApi(_UsesSQLiteSession):
                 module.MessageService,
                 "get_suggested_questions_after_answer",
                 side_effect=MessageNotExistsError(),
-            ),pytest.raises(NotFound)
+            ),
+            pytest.raises(NotFound),
         ):
             method(self.account, installed_app, "mid")
 
@@ -463,7 +475,8 @@ class TestMessageSuggestedQuestionApi(_UsesSQLiteSession):
                 module.MessageService,
                 "get_suggested_questions_after_answer",
                 side_effect=ConversationNotExistsError(),
-            ),pytest.raises(NotFound)
+            ),
+            pytest.raises(NotFound),
         ):
             method(self.account, installed_app, "mid")
 
@@ -478,7 +491,8 @@ class TestMessageSuggestedQuestionApi(_UsesSQLiteSession):
                 module.MessageService,
                 "get_suggested_questions_after_answer",
                 side_effect=ProviderTokenNotInitError("test"),
-            ),pytest.raises(ProviderNotInitializeError)
+            ),
+            pytest.raises(ProviderNotInitializeError),
         ):
             method(self.account, installed_app, "mid")
 
@@ -493,7 +507,8 @@ class TestMessageSuggestedQuestionApi(_UsesSQLiteSession):
                 module.MessageService,
                 "get_suggested_questions_after_answer",
                 side_effect=QuotaExceededError(),
-            ),pytest.raises(ProviderQuotaExceededError)
+            ),
+            pytest.raises(ProviderQuotaExceededError),
         ):
             method(self.account, installed_app, "mid")
 
@@ -508,7 +523,8 @@ class TestMessageSuggestedQuestionApi(_UsesSQLiteSession):
                 module.MessageService,
                 "get_suggested_questions_after_answer",
                 side_effect=ModelCurrentlyNotSupportError(),
-            ),pytest.raises(ProviderModelCurrentlyNotSupportError)
+            ),
+            pytest.raises(ProviderModelCurrentlyNotSupportError),
         ):
             method(self.account, installed_app, "mid")
 
@@ -523,7 +539,8 @@ class TestMessageSuggestedQuestionApi(_UsesSQLiteSession):
                 module.MessageService,
                 "get_suggested_questions_after_answer",
                 side_effect=InvokeError("test error"),
-            ),pytest.raises(CompletionRequestError)
+            ),
+            pytest.raises(CompletionRequestError),
         ):
             method(self.account, installed_app, "mid")
 
@@ -538,6 +555,7 @@ class TestMessageSuggestedQuestionApi(_UsesSQLiteSession):
                 module.MessageService,
                 "get_suggested_questions_after_answer",
                 side_effect=Exception("unexpected"),
-            ),pytest.raises(InternalServerError)
+            ),
+            pytest.raises(InternalServerError),
         ):
             method(self.account, installed_app, "mid")
