@@ -62,7 +62,7 @@ describe('loadCreatorProfile', () => {
     })
     expect(mocks.publisherPlugins).toHaveBeenCalledWith({
       params: { uniqueHandle: 'creator-one' },
-      query: { page: 1, page_size: 40 },
+      query: { page: 1, page_size: 40, sort_by: 'version_updated_at', sort_order: 'DESC' },
     })
     expect(loaded?.viewModel.creations).toHaveLength(2)
     expect(loaded?.pluginsByCreationId['plugin:dify/search']).toBeDefined()
@@ -120,8 +120,48 @@ describe('loadCreatorProfile', () => {
     expect(mocks.creatorDetail).toHaveBeenCalledWith({ params: { uniqueHandle: 'evanz' } })
     expect(mocks.publisherTemplates).toHaveBeenCalledWith({
       params: { uniqueHandle: 'evanz' },
-      query: { page: 1, page_size: 40 },
+      query: { page: 1, page_size: 40, sort_by: 'updated_at', sort_order: 'DESC' },
     })
+  })
+
+  it('forwards popularity sort to each publisher API column', async () => {
+    await loadCreatorProfile({
+      uniqueHandle: 'creator-one',
+      locale: 'en-US',
+      sortBy: 'popularity',
+      sortOrder: 'asc',
+    })
+
+    expect(mocks.publisherPlugins).toHaveBeenCalledWith({
+      params: { uniqueHandle: 'creator-one' },
+      query: { page: 1, page_size: 40, sort_by: 'install_count', sort_order: 'ASC' },
+    })
+    expect(mocks.publisherTemplates).toHaveBeenCalledWith({
+      params: { uniqueHandle: 'creator-one' },
+      query: { page: 1, page_size: 40, sort_by: 'usage_count', sort_order: 'ASC' },
+    })
+  })
+
+  it('merge-sorts mixed creations after the publisher responses return', async () => {
+    mocks.publisherPlugins.mockResolvedValue({
+      data: {
+        plugins: [{ ...plugin, install_count: 2, created_at: '2026-01-01T00:00:00Z' }],
+      },
+    })
+    mocks.publisherTemplates.mockResolvedValue({
+      data: {
+        templates: [{ ...template, usage_count: 5, created_at: '2026-01-02T00:00:00Z' }],
+      },
+    })
+
+    const loaded = await loadCreatorProfile({
+      uniqueHandle: 'creator-one',
+      locale: 'en-US',
+      sortBy: 'popularity',
+      sortOrder: 'desc',
+    })
+
+    expect(loaded?.viewModel.creations.map(({ kind }) => kind)).toEqual(['template', 'plugin'])
   })
 
   it('keeps successful creations when one publisher request fails', async () => {

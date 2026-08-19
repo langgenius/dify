@@ -8,7 +8,10 @@ import {
   adaptCreatorProfile,
   getStandaloneCreationHref,
   normalizeCreatorSocialLink,
+  parseCreatorSortField,
+  parseCreatorSortOrder,
   sortCreatorCreations,
+  toPublisherSortQuery,
 } from '../model'
 
 const creator: MarketplaceCreator = {
@@ -137,6 +140,28 @@ describe('creator profile model', () => {
       createdAt: Date.parse('2026-01-02T00:00:00Z'),
       updatedAt: unixMilliseconds,
     })
+  })
+
+  it('maps each UI sort onto the matching plugin and template API columns', () => {
+    expect(toPublisherSortQuery('updatedAt', 'desc')).toEqual({
+      plugins: { sort_by: 'version_updated_at', sort_order: 'DESC' },
+      templates: { sort_by: 'updated_at', sort_order: 'DESC' },
+    })
+    expect(toPublisherSortQuery('createdAt', 'asc')).toEqual({
+      plugins: { sort_by: 'created_at', sort_order: 'ASC' },
+      templates: { sort_by: 'created_at', sort_order: 'ASC' },
+    })
+    expect(toPublisherSortQuery('popularity', 'desc')).toEqual({
+      plugins: { sort_by: 'install_count', sort_order: 'DESC' },
+      templates: { sort_by: 'usage_count', sort_order: 'DESC' },
+    })
+  })
+
+  it('falls back to recently updated descending for unknown URL sort values', () => {
+    expect(parseCreatorSortField('garbage')).toBe('updatedAt')
+    expect(parseCreatorSortField(undefined)).toBe('updatedAt')
+    expect(parseCreatorSortOrder('sideways')).toBe('desc')
+    expect(parseCreatorSortOrder('ASC')).toBe('asc')
   })
 
   it('sorts all fields in both directions and preserves equal-value order', () => {

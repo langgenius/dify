@@ -6,6 +6,8 @@ import { notFound } from '@/next/navigation'
 
 type CreatorPageSearchParams = {
   publisher_type?: string
+  sort_by?: string
+  sort_order?: string
 }
 
 type CreatorProfilePageProps = {
@@ -26,10 +28,7 @@ export default function CreatorProfilePage(props: CreatorProfilePageProps) {
   )
 }
 
-async function CreatorProfileContent({
-  params,
-  searchParams,
-}: CreatorProfilePageProps) {
+async function CreatorProfileContent({ params, searchParams }: CreatorProfilePageProps) {
   const [{ uniqueHandle }, query, locale] = await Promise.all([
     params,
     searchParams,
@@ -39,6 +38,8 @@ async function CreatorProfileContent({
     uniqueHandle,
     publisherType: query.publisher_type,
     locale,
+    sortBy: query.sort_by,
+    sortOrder: query.sort_order,
   })
 
   if (!loadedProfile) notFound()

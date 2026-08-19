@@ -527,6 +527,8 @@ const publisherPluginsContract = base
       query: {
         page: number
         page_size: number
+        sort_by?: string
+        sort_order?: string
       }
     }>(),
   )
@@ -545,6 +547,8 @@ const publisherTemplatesContract = base
       query: {
         page: number
         page_size: number
+        sort_by?: string
+        sort_order?: string
       }
     }>(),
   )

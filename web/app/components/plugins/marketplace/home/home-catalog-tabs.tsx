@@ -6,7 +6,7 @@ export type HomeCatalogTab = 'plugins' | 'templates'
 export type HomeCatalogTabLabels = Record<HomeCatalogTab, string>
 
 type HomeCatalogTabsProps = {
-  activeTab?: HomeCatalogTab
+  activeTab?: HomeCatalogTab | null
   className?: string
   isMarketplacePlatform: boolean
   labels?: HomeCatalogTabLabels
