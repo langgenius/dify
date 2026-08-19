@@ -7,9 +7,9 @@ from typing import Any, Literal, NotRequired, TypedDict, cast, override
 
 import sqlalchemy as sa
 from pydantic import BaseModel, Field
-from sqlalchemy import ColumnElement, select
+from sqlalchemy import ColumnElement, CursorResult, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import InstrumentedAttribute, Session
 
 from configs import dify_config
 from constants.model_template import default_app_templates
@@ -921,6 +921,32 @@ class AppService:
         return app
 
     @staticmethod
+    def _apply_status_toggle(app: App, column: InstrumentedAttribute[bool], value: bool, *, session: Session) -> bool:
+        """Flip a public-visibility column in one conditional UPDATE.
+
+        The write only lands when the row is still in the other state, so a
+        request holding a stale read can't suppress a newer toggle: rapid
+        disable→enable pairs settle on the last intent instead of whichever
+        snapshot happened to be read first. Returns True when the row changed,
+        so callers fire `app_was_updated` only on a real transition.
+        """
+        assert current_user is not None
+        now = naive_utc_now()
+        stmt = (
+            sa.update(App)
+            .where(App.id == app.id, column != value)
+            .values({column.key: value, "updated_by": current_user.id, "updated_at": now})
+            .execution_options(synchronize_session=False)
+        )
+        changed = bool(cast(CursorResult, session.execute(stmt)).rowcount)
+        # Post-operation the row is at `value` either way; keep the returned
+        # object consistent with what was committed (only a real transition
+        # moves updated_by/updated_at).
+        setattr(app, column.key, value)
+        if changed:
+            app.updated_by = current_user.id
+            app.updated_at = now
+        return changed
     def is_agent_app_access_ready(app: App, *, session: Session) -> bool:
         """Return whether an Agent App has a publish-visible active snapshot."""
 
@@ -953,15 +979,10 @@ class AppService:
         """
         if enable_site:
             self.ensure_agent_app_access_ready(app, session=session)
-        if enable_site == app.enable_site:
-            return app
-        assert current_user is not None
-        app.enable_site = enable_site
-        app.updated_by = current_user.id
-        app.updated_at = naive_utc_now()
+        changed = self._apply_status_toggle(app, App.enable_site, enable_site, session=session)
         session.commit()
-
-        app_was_updated.send(app)
+        if changed:
+            app_was_updated.send(app)
 
         return app
 
@@ -974,16 +995,10 @@ class AppService:
         """
         if enable_api:
             self.ensure_agent_app_access_ready(app, session=session)
-        if enable_api == app.enable_api:
-            return app
-        assert current_user is not None
-
-        app.enable_api = enable_api
-        app.updated_by = current_user.id
-        app.updated_at = naive_utc_now()
+        changed = self._apply_status_toggle(app, App.enable_api, enable_api, session=session)
         session.commit()
-
-        app_was_updated.send(app)
+        if changed:
+            app_was_updated.send(app)
 
         return app
 
