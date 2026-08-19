@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import datetime
 import io
+import time
 import zipfile
 from collections.abc import Generator
 from unittest.mock import patch
@@ -950,3 +951,178 @@ def test_skill_metadata_rejects_non_canonical_rows():
             session=session_factory.create_session(),
         )
     assert exc_info.value.code == "invalid_skill_key"
+
+
+# ---------------------------------------------------------------------------
+# verify_archive_member_signature hardening tests
+# ---------------------------------------------------------------------------
+#
+# Verifies the three security properties added to verify_archive_member_signature:
+#   1. constant-time signature comparison (hmac.compare_digest),
+#   2. rejection of far-future timestamps beyond the clock skew window,
+#   3. nonce replay protection via redis_client.set(..., nx=True).
+
+
+def _sign_archive_member_url(
+    *,
+    tenant_id: str,
+    agent_id: str,
+    key: str,
+    archive_file_kind: AgentDriveFileKind,
+    archive_file_id: str,
+    member_path: str,
+    timestamp: str,
+    nonce: str,
+) -> str:
+    return AgentDriveService._sign_archive_member_payload(
+        AgentDriveService._archive_member_signature_payload(
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            key=key,
+            archive_file_kind=archive_file_kind,
+            archive_file_id=archive_file_id,
+            member_path=member_path,
+            timestamp=timestamp,
+            nonce=nonce,
+        )
+    )
+
+
+def test_verify_archive_member_signature_rejects_tampered_signature():
+    now = int(time.time())
+    good = _sign_archive_member_url(
+        tenant_id=TENANT,
+        agent_id=AGENT,
+        key="pdf-toolkit/.DIFY-SKILL-FULL.zip",
+        archive_file_kind=AgentDriveFileKind.TOOL_FILE,
+        archive_file_id="file-id",
+        member_path="SKILL.md",
+        timestamp=str(now),
+        nonce="nonce-1",
+    )
+    tampered = "Z" + good[1:]
+    with patch("services.agent_drive_service.redis_client") as redis_mock:
+        assert (
+            AgentDriveService.verify_archive_member_signature(
+                tenant_id=TENANT,
+                agent_id=AGENT,
+                key="pdf-toolkit/.DIFY-SKILL-FULL.zip",
+                archive_file_kind=AgentDriveFileKind.TOOL_FILE,
+                archive_file_id="file-id",
+                member_path="SKILL.md",
+                timestamp=str(now),
+                nonce="nonce-1",
+                sign=tampered,
+            )
+            is False
+        )
+        redis_mock.set.assert_not_called()
+
+
+def test_verify_archive_member_signature_rejects_far_future_timestamp():
+    now = int(time.time())
+    future = now + (60 * 60)  # one hour in the future
+    good = _sign_archive_member_url(
+        tenant_id=TENANT,
+        agent_id=AGENT,
+        key="pdf-toolkit/.DIFY-SKILL-FULL.zip",
+        archive_file_kind=AgentDriveFileKind.TOOL_FILE,
+        archive_file_id="file-id",
+        member_path="SKILL.md",
+        timestamp=str(future),
+        nonce="nonce-2",
+    )
+    with patch("services.agent_drive_service.redis_client") as redis_mock:
+        assert (
+            AgentDriveService.verify_archive_member_signature(
+                tenant_id=TENANT,
+                agent_id=AGENT,
+                key="pdf-toolkit/.DIFY-SKILL-FULL.zip",
+                archive_file_kind=AgentDriveFileKind.TOOL_FILE,
+                archive_file_id="file-id",
+                member_path="SKILL.md",
+                timestamp=str(future),
+                nonce="nonce-2",
+                sign=good,
+            )
+            is False
+        )
+        redis_mock.set.assert_not_called()
+
+
+def test_verify_archive_member_signature_accepts_signature_within_skew_window():
+    now = int(time.time())
+    slightly_future = now + 5  # within the 30 s clock skew allowance
+    good = _sign_archive_member_url(
+        tenant_id=TENANT,
+        agent_id=AGENT,
+        key="pdf-toolkit/.DIFY-SKILL-FULL.zip",
+        archive_file_kind=AgentDriveFileKind.TOOL_FILE,
+        archive_file_id="file-id",
+        member_path="SKILL.md",
+        timestamp=str(slightly_future),
+        nonce="nonce-3",
+    )
+    with patch("services.agent_drive_service.redis_client") as redis_mock:
+        redis_mock.set.return_value = True
+        assert (
+            AgentDriveService.verify_archive_member_signature(
+                tenant_id=TENANT,
+                agent_id=AGENT,
+                key="pdf-toolkit/.DIFY-SKILL-FULL.zip",
+                archive_file_kind=AgentDriveFileKind.TOOL_FILE,
+                archive_file_id="file-id",
+                member_path="SKILL.md",
+                timestamp=str(slightly_future),
+                nonce="nonce-3",
+                sign=good,
+            )
+            is True
+        )
+        redis_mock.set.assert_called_once()
+        call = redis_mock.set.call_args
+        assert call.args[0] == f"agent_drive_archive_nonce:{TENANT}:{AGENT}:nonce-3"
+        assert call.kwargs.get("nx") is True
+
+
+def test_verify_archive_member_signature_rejects_replay_of_captured_nonce():
+    now = int(time.time())
+    good = _sign_archive_member_url(
+        tenant_id=TENANT,
+        agent_id=AGENT,
+        key="pdf-toolkit/.DIFY-SKILL-FULL.zip",
+        archive_file_kind=AgentDriveFileKind.TOOL_FILE,
+        archive_file_id="file-id",
+        member_path="SKILL.md",
+        timestamp=str(now),
+        nonce="nonce-replay",
+    )
+    with patch("services.agent_drive_service.redis_client") as redis_mock:
+        # First call wins (nx returns True), second call (the replay) finds the
+        # nonce already present and returns False from set(...).
+        redis_mock.set.side_effect = [True, False]
+        first = AgentDriveService.verify_archive_member_signature(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            key="pdf-toolkit/.DIFY-SKILL-FULL.zip",
+            archive_file_kind=AgentDriveFileKind.TOOL_FILE,
+            archive_file_id="file-id",
+            member_path="SKILL.md",
+            timestamp=str(now),
+            nonce="nonce-replay",
+            sign=good,
+        )
+        replay = AgentDriveService.verify_archive_member_signature(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            key="pdf-toolkit/.DIFY-SKILL-FULL.zip",
+            archive_file_kind=AgentDriveFileKind.TOOL_FILE,
+            archive_file_id="file-id",
+            member_path="SKILL.md",
+            timestamp=str(now),
+            nonce="nonce-replay",
+            sign=good,
+        )
+        assert first is True
+        assert replay is False
+        assert redis_mock.set.call_count == 2
