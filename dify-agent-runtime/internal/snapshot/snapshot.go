@@ -9,8 +9,6 @@ package snapshot
 
 import (
 	"fmt"
-	"os"
-	"slices"
 	"strings"
 )
 
@@ -22,18 +20,4 @@ func ValidateExcludes(excludes []string) error {
 		}
 	}
 	return nil
-}
-
-// HomeIsEmpty reports whether homeDir has no top-level entries besides excludes.
-func HomeIsEmpty(homeDir string, excludes []string) (bool, error) {
-	entries, err := os.ReadDir(homeDir)
-	if err != nil {
-		return false, err
-	}
-	for _, entry := range entries {
-		if !slices.Contains(excludes, entry.Name()) {
-			return false, nil
-		}
-	}
-	return true, nil
 }

@@ -81,6 +81,8 @@ func TestSnapshotSaveSuccessWithTrailers(t *testing.T) {
 	}
 }
 
+// An empty Home is not a special case: it produces an ordinary archive with no
+// entries, so every caller stores and restores it through the same path.
 func TestSnapshotSaveEmptyHome(t *testing.T) {
 	home := setHome(t)
 	if err := os.MkdirAll(filepath.Join(home, "workspace"), 0o755); err != nil {
@@ -93,8 +95,27 @@ func TestSnapshotSaveEmptyHome(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = resp.Body.Close() }()
-	if resp.StatusCode != 204 {
-		t.Fatalf("workspace-only home: status = %d, want 204", resp.StatusCode)
+	if resp.StatusCode != 200 {
+		t.Fatalf("workspace-only home: status = %d, want 200", resp.StatusCode)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read stream: %v", err)
+	}
+	if resp.Trailer.Get(TrailerSnapshotStatus) != SnapshotStatusOK {
+		t.Fatalf("status trailer = %q", resp.Trailer.Get(TrailerSnapshotStatus))
+	}
+	if len(body) == 0 {
+		t.Fatal("empty home produced no bytes; callers cannot distinguish it from a dropped stream")
+	}
+
+	dst := t.TempDir()
+	res, err := snapshot.RestoreHome(context.Background(), bytes.NewReader(body), dst)
+	if err != nil {
+		t.Fatalf("empty-home archive not restorable: %v", err)
+	}
+	if res.Entries != 0 || res.BytesWritten != 0 {
+		t.Fatalf("restored %+v, want zero entries and bytes", res)
 	}
 }
 

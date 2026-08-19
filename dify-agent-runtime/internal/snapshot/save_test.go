@@ -144,28 +144,6 @@ func TestSaveHomeUnreadableFile(t *testing.T) {
 	}
 }
 
-func TestHomeIsEmpty(t *testing.T) {
-	home := t.TempDir()
-	empty, err := HomeIsEmpty(home, []string{"workspace"})
-	if err != nil || !empty {
-		t.Fatalf("fresh dir: empty=%v err=%v", empty, err)
-	}
-	if err := os.MkdirAll(filepath.Join(home, "workspace"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	empty, err = HomeIsEmpty(home, []string{"workspace"})
-	if err != nil || !empty {
-		t.Fatalf("workspace-only dir must count as empty: empty=%v err=%v", empty, err)
-	}
-	if err := os.WriteFile(filepath.Join(home, "x"), nil, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	empty, err = HomeIsEmpty(home, []string{"workspace"})
-	if err != nil || empty {
-		t.Fatalf("dir with real entry must not be empty: empty=%v err=%v", empty, err)
-	}
-}
-
 func TestValidateExcludes(t *testing.T) {
 	if err := ValidateExcludes([]string{"workspace", ".cache"}); err != nil {
 		t.Errorf("valid excludes rejected: %v", err)

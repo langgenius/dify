@@ -67,16 +67,6 @@ func (h *snapshotHandlers) handleSnapshotSave() http.HandlerFunc {
 			writeError(w, 500, "home_unavailable", err.Error())
 			return
 		}
-		empty, err := snapshot.HomeIsEmpty(home, h.config.HomeSnapshotExcludes)
-		if err != nil {
-			writeError(w, 500, "snapshot_failed", err.Error())
-			return
-		}
-		if empty {
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
-
 		rc := http.NewResponseController(w)
 		if err := rc.SetWriteDeadline(time.Now().Add(h.config.SnapshotTimeout)); err != nil {
 			log.Printf("WARN snapshot save: set write deadline: %v", err)

@@ -84,8 +84,9 @@ save stream and abort at their cap; bound what they send to restore).
 
 - `POST /v1/snapshot/save` — no parameters. Streams the Home (minus the
   top-level entries in `SHELLCTL_HOME_SNAPSHOT_EXCLUDES`, default `workspace`)
-  as `application/octet-stream` (chunked). `204` when the Home is empty after
-  exclusions. Success is signaled by trailers `X-Snapshot-Status: ok`,
+  as `application/octet-stream` (chunked). An empty Home is not a special case:
+  it streams an ordinary archive with no entries. Success is signaled by
+  trailers `X-Snapshot-Status: ok`,
   `X-Snapshot-Sha256`, `X-Snapshot-Bytes`; a cleanly terminated stream WITHOUT
   the `ok` trailer, or an aborted connection, is a failure.
 - `POST /v1/snapshot/restore` — raw tar+zstd body, no parameters. Extracts
