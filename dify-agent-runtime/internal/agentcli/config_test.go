@@ -543,7 +543,7 @@ func TestConfigFilesPullReturnsAllFailuresInInputOrderAfterLaterFailureCompletes
 				laterMessage,
 			)
 		}
-		if !(earlierWrapperIndex < earlierMessageIndex && earlierMessageIndex < laterWrapperIndex && laterWrapperIndex < laterMessageIndex) {
+		if earlierWrapperIndex >= earlierMessageIndex || earlierMessageIndex >= laterWrapperIndex || laterWrapperIndex >= laterMessageIndex {
 			t.Fatalf("error = %q, want failures in input order", errorText)
 		}
 	case <-time.After(3 * time.Second):
