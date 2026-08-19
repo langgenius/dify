@@ -385,6 +385,81 @@ describe('HomeTrending', () => {
     })
   })
 
+  it('resumes autoplay after a pointer click on pagination without waiting for blur', async () => {
+    const pause = vi.fn()
+    const play = vi.fn()
+    const progressAnimation = {
+      cancel: vi.fn(),
+      onfinish: null,
+      pause,
+      play,
+    } as unknown as Animation
+    const originalAnimate = Element.prototype.animate
+    Object.defineProperty(Element.prototype, 'animate', {
+      configurable: true,
+      value: vi.fn(() => progressAnimation),
+    })
+    const user = userEvent.setup()
+
+    render(<HomeTrending banners={banners} isMarketplacePlatform page="plugins" />)
+
+    const carouselRoot = document.querySelector('[data-home-trending-carousel-root]')!
+    const paginationButton = screen.getByRole('button', { name: 'Dify Updates' })
+
+    // Pointer activation hovers and focuses the control, which normally
+    // pauses rotation until mouseleave/focusout.
+    fireEvent.mouseEnter(carouselRoot)
+    paginationButton.focus()
+    fireEvent.focusIn(paginationButton)
+
+    const playsBeforeSelect = play.mock.calls.length
+    await user.click(paginationButton)
+
+    expect(paginationButton).toHaveAttribute('aria-current', 'true')
+    expect(document.activeElement).toBe(paginationButton)
+    expect(play.mock.calls.length).toBeGreaterThan(playsBeforeSelect)
+
+    Object.defineProperty(Element.prototype, 'animate', {
+      configurable: true,
+      value: originalAnimate,
+    })
+  })
+
+  it('keeps autoplay paused when pagination is selected from the keyboard', async () => {
+    const pause = vi.fn()
+    const play = vi.fn()
+    const progressAnimation = {
+      cancel: vi.fn(),
+      onfinish: null,
+      pause,
+      play,
+    } as unknown as Animation
+    const originalAnimate = Element.prototype.animate
+    Object.defineProperty(Element.prototype, 'animate', {
+      configurable: true,
+      value: vi.fn(() => progressAnimation),
+    })
+    const user = userEvent.setup()
+
+    render(<HomeTrending banners={banners} isMarketplacePlatform page="plugins" />)
+
+    const paginationButton = screen.getByRole('button', { name: 'Dify Updates' })
+    paginationButton.focus()
+    fireEvent.focusIn(paginationButton)
+
+    const playsBeforeSelect = play.mock.calls.length
+    await user.keyboard('{Enter}')
+
+    expect(paginationButton).toHaveAttribute('aria-current', 'true')
+    expect(document.activeElement).toBe(paginationButton)
+    expect(play).toHaveBeenCalledTimes(playsBeforeSelect)
+
+    Object.defineProperty(Element.prototype, 'animate', {
+      configurable: true,
+      value: originalAnimate,
+    })
+  })
+
   it('resumes autoplay when Play is activated without moving keyboard focus', async () => {
     const pause = vi.fn()
     const play = vi.fn()

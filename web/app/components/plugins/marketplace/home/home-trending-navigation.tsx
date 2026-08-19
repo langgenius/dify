@@ -164,18 +164,22 @@ function TrendingNavigation({
     return () => reducedMotionQuery.removeEventListener('change', syncReducedMotion)
   }, [setPauseReason])
 
+  const clearImplicitPauseReasons = () => {
+    // Pointer activation leaves hover and/or focus on the control, which
+    // would otherwise keep rotation paused until the next mouseleave/focusout.
+    setPauseReason('focus', false)
+    setPauseReason('hover', false)
+  }
+
   const toggleAutoplay = () => {
     if (isExplicitlyPaused) {
       setIsUserPaused(false)
       setIsReducedMotionPaused(false)
       setPauseReason('user', false)
       setPauseReason('reduced-motion', false)
-      // Activating Play keeps the pointer and/or keyboard focus on the button
-      // itself, so the implicit hover/focus reasons would silently keep the
-      // rotation paused. An explicit Play overrides them; they re-engage on
+      // An explicit Play overrides the implicit reasons; they re-engage on
       // the next mouseenter/focusin.
-      setPauseReason('focus', false)
-      setPauseReason('hover', false)
+      clearImplicitPauseReasons()
       return
     }
 
@@ -217,9 +221,13 @@ function TrendingNavigation({
               type="button"
               aria-label={banner.title}
               aria-current={isCurrent ? 'true' : undefined}
-              onClick={() => {
-                if (isCurrent) return
-                onSelect(index)
+              onClick={(event) => {
+                if (!isCurrent) onSelect(index)
+                // Keyboard selection keeps the focus pause so rotation does
+                // not advance under the user. Pointer selection should keep
+                // timing immediately without waiting for blur.
+                if (event.detail === 0) return
+                clearImplicitPauseReasons()
               }}
               className={cn(
                 'absolute top-0 left-0 z-2 h-1.5 overflow-hidden rounded-full outline-hidden transition-[transform,width,background-color] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] after:absolute after:-inset-2 hover:bg-state-base-handle-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid motion-reduce:transition-none',
