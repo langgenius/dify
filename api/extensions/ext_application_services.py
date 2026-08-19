@@ -14,6 +14,7 @@ from core.helper.ssrf_proxy import ssrf_proxy
 from core.schemas.schema_manager import SchemaManager
 from enums import DeploymentEdition
 from extensions.ext_redis import RedisClientWrapper, redis_client
+from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.data_source_api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
 from repositories.data_source_oauth_binding_repository import SQLAlchemyDataSourceOAuthBindingRepository
@@ -22,6 +23,13 @@ from repositories.installation_state_repository import InstallationStateReposito
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
 from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
 from repositories.workspace_query_repository import WorkspaceQueryRepository
+from services.account_activation_adapters import (
+    BillingAccountActivationEligibility,
+    BillingWorkspaceMembershipCache,
+    DeploymentWorkspaceInvitePolicy,
+    RegisterServiceInvitationTokenStore,
+)
+from services.account_activation_service import AccountActivationService
 from services.app_definition_query_service import AppDefinitionQueryService
 from services.auth.data_source_api_key_auth_gateways import (
     ProviderApiKeyAuthCredentialValidator,
@@ -49,6 +57,7 @@ _EXTENSION_KEY = "application_services"
 
 @dataclass(frozen=True, slots=True)
 class ApplicationServices:
+    account_activation: AccountActivationService
     app_definitions: AppDefinitionQueryService
     data_source_api_key_auth: DataSourceApiKeyAuthService
     data_source_oauth: Mapping[str, DataSourceOAuthService]
@@ -112,6 +121,17 @@ def build_application_services(
     installation_state = InstallationStateRepository(client=database_client)
     data_source_api_key_auth_bindings = SQLAlchemyDataSourceApiKeyAuthBindingRepository(session_factory=database_client)
     return ApplicationServices(
+        account_activation=AccountActivationService(
+            tokens=RegisterServiceInvitationTokenStore(),
+            accounts=SQLAlchemyAccountActivationRepository(database_client),
+            workspace_policy=DeploymentWorkspaceInvitePolicy(),
+            eligibility=BillingAccountActivationEligibility(
+                enabled=deployment_edition == DeploymentEdition.CLOUD,
+            ),
+            membership_cache=BillingWorkspaceMembershipCache(
+                enabled=deployment_edition == DeploymentEdition.CLOUD,
+            ),
+        ),
         app_definitions=AppDefinitionQueryService(
             definitions=AppDefinitionQueryRepository(session_factory=database_client),
             builtin_icon_url_prefix=(

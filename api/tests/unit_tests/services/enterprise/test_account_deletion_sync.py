@@ -22,6 +22,11 @@ from services.enterprise.account_deletion_sync import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _enterprise_edition(config_overrides) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
+
+
 class TestQueueTask:
     def test_queue_task_redis_error(self, caplog: pytest.LogCaptureFixture):
         with patch("services.enterprise.account_deletion_sync.redis_client") as mock_redis:
@@ -53,36 +58,24 @@ class TestSyncWorkspaceMemberRemoval:
         workspace_id = str(uuid4())
         member_id = str(uuid4())
 
-        with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
-            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
+        result = sync_workspace_member_removal(workspace_id=workspace_id, member_id=member_id, source="removed")
 
-            result = sync_workspace_member_removal(workspace_id=workspace_id, member_id=member_id, source="removed")
+        assert result is True
+        mock_queue_task.assert_called_once_with(workspace_id=workspace_id, member_id=member_id, source="removed")
 
-            assert result is True
-            mock_queue_task.assert_called_once_with(workspace_id=workspace_id, member_id=member_id, source="removed")
+    def test_sync_workspace_member_removal_non_enterprise_edition(self, mock_queue_task, config_overrides):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+        result = sync_workspace_member_removal(workspace_id=str(uuid4()), member_id=str(uuid4()), source="test_source")
 
-    def test_sync_workspace_member_removal_non_enterprise_edition(self, mock_queue_task):
-        with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
-            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
-
-            result = sync_workspace_member_removal(
-                workspace_id=str(uuid4()), member_id=str(uuid4()), source="test_source"
-            )
-
-            assert result is True
-            mock_queue_task.assert_not_called()
+        assert result is True
+        mock_queue_task.assert_not_called()
 
     def test_sync_workspace_member_removal_queue_failure(self, mock_queue_task):
         mock_queue_task.return_value = False
 
-        with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
-            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
+        result = sync_workspace_member_removal(workspace_id=str(uuid4()), member_id=str(uuid4()), source="test_source")
 
-            result = sync_workspace_member_removal(
-                workspace_id=str(uuid4()), member_id=str(uuid4()), source="test_source"
-            )
-
-            assert result is False
+        assert result is False
 
 
 @pytest.mark.parametrize("sqlite_session", [(TenantAccountJoin,)], indirect=True)
@@ -93,14 +86,15 @@ class TestSyncAccountDeletion:
             mock_queue.return_value = True
             yield mock_queue
 
-    def test_sync_account_deletion_non_enterprise_edition(self, mock_queue_task, sqlite_session: Session) -> None:
-        with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
-            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
+    def test_sync_account_deletion_non_enterprise_edition(
+        self, mock_queue_task, sqlite_session: Session, config_overrides
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
 
-            result = sync_account_deletion(account_id=str(uuid4()), source="account_deleted", session=sqlite_session)
+        result = sync_account_deletion(account_id=str(uuid4()), source="account_deleted", session=sqlite_session)
 
-            assert result is True
-            mock_queue_task.assert_not_called()
+        assert result is True
+        mock_queue_task.assert_not_called()
 
     def test_sync_account_deletion_multiple_workspaces(self, sqlite_session: Session, mock_queue_task) -> None:
         account_id = str(uuid4())
@@ -111,25 +105,19 @@ class TestSyncAccountDeletion:
             sqlite_session.add(join)
         sqlite_session.commit()
 
-        with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
-            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
+        result = sync_account_deletion(account_id=account_id, source="account_deleted", session=sqlite_session)
 
-            result = sync_account_deletion(account_id=account_id, source="account_deleted", session=sqlite_session)
+        assert result is True
+        assert mock_queue_task.call_count == 3
 
-            assert result is True
-            assert mock_queue_task.call_count == 3
-
-            queued_workspace_ids = {call.kwargs["workspace_id"] for call in mock_queue_task.call_args_list}
-            assert queued_workspace_ids == set(tenant_ids)
+        queued_workspace_ids = {call.kwargs["workspace_id"] for call in mock_queue_task.call_args_list}
+        assert queued_workspace_ids == set(tenant_ids)
 
     def test_sync_account_deletion_no_workspaces(self, sqlite_session: Session, mock_queue_task) -> None:
-        with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
-            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
+        result = sync_account_deletion(account_id=str(uuid4()), source="account_deleted", session=sqlite_session)
 
-            result = sync_account_deletion(account_id=str(uuid4()), source="account_deleted", session=sqlite_session)
-
-            assert result is True
-            mock_queue_task.assert_not_called()
+        assert result is True
+        mock_queue_task.assert_not_called()
 
     def test_sync_account_deletion_partial_failure(self, sqlite_session: Session, mock_queue_task) -> None:
         account_id = str(uuid4())
@@ -146,13 +134,10 @@ class TestSyncAccountDeletion:
 
         mock_queue_task.side_effect = queue_side_effect
 
-        with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
-            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
+        result = sync_account_deletion(account_id=account_id, source="account_deleted", session=sqlite_session)
 
-            result = sync_account_deletion(account_id=account_id, source="account_deleted", session=sqlite_session)
-
-            assert result is False
-            assert mock_queue_task.call_count == 3
+        assert result is False
+        assert mock_queue_task.call_count == 3
 
     def test_sync_account_deletion_all_failures(self, sqlite_session: Session, mock_queue_task) -> None:
         account_id = str(uuid4())
@@ -164,10 +149,7 @@ class TestSyncAccountDeletion:
 
         mock_queue_task.return_value = False
 
-        with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
-            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
+        result = sync_account_deletion(account_id=account_id, source="account_deleted", session=sqlite_session)
 
-            result = sync_account_deletion(account_id=account_id, source="account_deleted", session=sqlite_session)
-
-            assert result is False
-            mock_queue_task.assert_called_once()
+        assert result is False
+        mock_queue_task.assert_called_once()

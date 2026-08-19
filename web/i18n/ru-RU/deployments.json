@@ -22,7 +22,6 @@
   "deployTab.moreActions": "Дополнительные действия",
   "deployTab.redeploy": "Повторно развернуть",
   "deployTab.undeploy": "Свернуть развертывание",
-  "deployTab.undeployConfirmWarning": "После подтверждения эта среда перейдет в состояние отмены развертывания, а действия будут временно недоступны.",
   "health.ENVIRONMENT_STATUS_FAILED": "Недоступно",
   "list.emptyTitle": "Пока нет развертываний",
   "overview.chip.latest": "последний",

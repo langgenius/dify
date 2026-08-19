@@ -5,7 +5,6 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import select
-from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import AgentAppGenerateEntity, ChatAppGenerateEntity
@@ -17,11 +16,10 @@ from models.provider import ProviderType
 
 
 @pytest.fixture
-def credit_pool_session_factory(sqlite_engine: Engine) -> Iterator[sessionmaker[Session]]:
+def credit_pool_session_factory(sqlite_session_factory: sessionmaker[Session]) -> Iterator[sessionmaker[Session]]:
     """Bind message-created accounting to fixture-owned SQLite sessions."""
-    session_factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    with patch("events.event_handlers.update_provider_when_message_created.db.session", session_factory):
-        yield session_factory
+    with patch("events.event_handlers.update_provider_when_message_created.db.session", sqlite_session_factory):
+        yield sqlite_session_factory
 
 
 def test_message_created_trial_credit_accounting_does_not_raise_when_balance_is_insufficient(

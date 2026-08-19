@@ -110,33 +110,6 @@ export async function requirePreseededWorkflow(
   }
 }
 
-export async function requirePreseededAgentDriveSkill(
-  world: DifyWorld,
-  client: ConsoleClient,
-  agentName: string,
-  skillName: string,
-): Promise<PreseededResource> {
-  const agent = await requirePreseededAgent(world, client, agentName)
-
-  const response = await client.agent.byAgentId.drive.skills.get({
-    params: { agent_id: agent.id },
-  })
-  const skill = response.items?.find((item) => item.name === skillName)
-
-  if (!skill) {
-    return failFixturePrerequisite(
-      world,
-      `Preseeded Agent "${agentName}" does not include drive skill "${skillName}".`,
-    )
-  }
-
-  return {
-    id: skill.path,
-    kind: 'skill',
-    name: skill.name,
-  }
-}
-
 export async function requirePreseededFullConfigAgentCoreConfiguration(
   world: DifyWorld,
   client: ConsoleClient,
@@ -145,13 +118,6 @@ export async function requirePreseededFullConfigAgentCoreConfiguration(
   const stableModel = await requireAgentBuilderStableChatModel(world, client)
 
   const agent = await requirePreseededAgent(world, client, agentName)
-
-  await requirePreseededAgentDriveSkill(
-    world,
-    client,
-    agentName,
-    agentBuilderPreseededResources.summarySkill,
-  )
 
   const jsonTool = await requirePreseededTool(
     world,
@@ -224,13 +190,6 @@ export async function requirePreseededToolStatesAgentConfiguration(
   agentName: string,
 ): Promise<PreseededResource> {
   const agent = await requirePreseededAgent(world, client, agentName)
-
-  await requirePreseededAgentDriveSkill(
-    world,
-    client,
-    agentName,
-    agentBuilderPreseededResources.summarySkill,
-  )
 
   const jsonTool = await requirePreseededTool(
     world,

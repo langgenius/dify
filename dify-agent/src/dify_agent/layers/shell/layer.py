@@ -545,7 +545,6 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         execution_context = execution_context_layer.config if execution_context_layer is not None else None
         agent_stub_env = build_shell_agent_stub_env(
             agent_stub_api_base_url=self.agent_stub_api_base_url,
-            agent_stub_drive_ref=self.config.agent_stub_drive_ref,
             execution_context=execution_context,
             token_factory=self.agent_stub_token_factory,
             session_id=None,

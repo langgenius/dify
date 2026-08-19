@@ -20,8 +20,6 @@ from models.agent import (
     AgentConfigSnapshot,
     AgentConfigVersionKind,
     AgentDebugConversation,
-    AgentDriveFile,
-    AgentDriveFileKind,
     AgentHomeSnapshot,
     AgentKind,
     AgentScope,
@@ -2379,7 +2377,6 @@ def test_composer_save_helpers_create_and_rebind_agents(monkeypatch: pytest.Monk
         scope=AgentScope.WORKFLOW_ONLY,
     )
     create_roster_calls = []
-    copy_drive_calls = []
     monkeypatch.setattr(AgentComposerService, "_create_workflow_only_agent", lambda **kwargs: workflow_agent)
 
     def fake_create_roster_agent_for_composer(**kwargs):
@@ -2390,11 +2387,6 @@ def test_composer_save_helpers_create_and_rebind_agents(monkeypatch: pytest.Monk
         AgentComposerService,
         "_create_roster_agent_for_composer",
         fake_create_roster_agent_for_composer,
-    )
-    monkeypatch.setattr(
-        AgentComposerService,
-        "_copy_agent_drive_rows",
-        lambda **kwargs: copy_drive_calls.append(kwargs),
     )
     monkeypatch.setattr(AgentComposerService, "_require_agent", lambda **kwargs: roster_agent)
     monkeypatch.setattr(
@@ -2496,17 +2488,6 @@ def test_composer_save_helpers_create_and_rebind_agents(monkeypatch: pytest.Monk
     assert create_roster_calls[1]["role"] == "Copied role"
     assert create_roster_calls[1]["icon"] == "copied"
     assert create_roster_calls[1]["icon_background"] == "#E0F2FE"
-    copy_drive_calls[0].pop("session", None)
-    assert copy_drive_calls == [
-        {
-            "tenant_id": "tenant-1",
-            "source_agent_id": "roster-agent-1",
-            "target_agent_id": "roster-agent-1",
-            "account_id": "account-1",
-            "agent_soul": payload.agent_soul,
-            "node_job": payload.node_job,
-        }
-    ]
 
 
 def test_node_job_only_updates_inline_agent_soul(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
@@ -2914,11 +2895,7 @@ def test_copy_workflow_composer_from_roster_creates_inline_agent_and_preserves_n
         captured["create"] = kwargs
         return inline_agent
 
-    def fake_copy_drive_rows(**kwargs):
-        captured["drive"] = kwargs
-
     monkeypatch.setattr(AgentComposerService, "_create_workflow_only_agent", fake_create_workflow_only_agent)
-    monkeypatch.setattr(AgentComposerService, "_copy_agent_drive_rows", fake_copy_drive_rows)
     monkeypatch.setattr(
         AgentComposerService,
         "_serialize_workflow_state",
@@ -2950,9 +2927,6 @@ def test_copy_workflow_composer_from_roster_creates_inline_agent_and_preserves_n
     assert create_kwargs["agent_soul"].prompt.system_prompt == "copy me"
     assert create_kwargs["name"] == "Nadia"
     assert create_kwargs["role"] == "Clarifies tenders"
-    drive_kwargs = captured["drive"]
-    assert drive_kwargs["source_agent_id"] == "roster-agent-1"
-    assert drive_kwargs["target_agent_id"] == "inline-agent-1"
 
 
 def test_copy_workflow_composer_from_roster_rejects_stale_source_snapshot(
@@ -3194,191 +3168,6 @@ def test_copy_workflow_composer_from_roster_rejects_invalid_source_binding(
             account_id="account-1",
             source_agent_id="roster-agent-1",
         )
-
-
-def test_copy_agent_drive_rows_copies_skill_prefix_and_files(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
-    session = sqlite_session
-    skill_row = AgentDriveFile(
-        tenant_id="tenant-1",
-        agent_id="roster-agent-1",
-        key="tender-analyzer/SKILL.md",
-        file_kind="tool_file",
-        file_id="tool-file-1",
-        value_owned_by_drive=True,
-        is_skill=True,
-        skill_metadata='{"name":"Tender Analyzer"}',
-        size=10,
-        mime_type="text/markdown",
-    )
-    script_row = AgentDriveFile(
-        tenant_id="tenant-1",
-        agent_id="roster-agent-1",
-        key="tender-analyzer/scripts/run.sh",
-        file_kind="tool_file",
-        file_id="tool-file-2",
-        value_owned_by_drive=True,
-        size=20,
-        mime_type="text/x-shellscript",
-    )
-    file_row = AgentDriveFile(
-        tenant_id="tenant-1",
-        agent_id="roster-agent-1",
-        key="files/qna.pdf",
-        file_kind="upload_file",
-        file_id="upload-file-1",
-        value_owned_by_drive=False,
-        size=30,
-        mime_type="application/pdf",
-    )
-    session.add_all([skill_row, script_row, file_row])
-    session.commit()
-    agent_soul = AgentSoulConfig.model_validate(
-        {
-            "prompt": {
-                "system_prompt": "[§skill:tender-analyzer/SKILL.md:Tender Analyzer§]",
-            },
-        }
-    )
-    node_job = WorkflowNodeJobConfig.model_validate(
-        {"metadata": {"file_refs": [{"name": "qna.pdf", "drive_key": "files/qna.pdf"}]}}
-    )
-
-    AgentComposerService._copy_agent_drive_rows(
-        session=session,
-        tenant_id="tenant-1",
-        source_agent_id="roster-agent-1",
-        target_agent_id="inline-agent-1",
-        account_id="account-1",
-        agent_soul=agent_soul,
-        node_job=node_job,
-    )
-
-    session.flush()
-    copied = list(
-        session.scalars(
-            select(AgentDriveFile).where(
-                AgentDriveFile.tenant_id == "tenant-1",
-                AgentDriveFile.agent_id == "inline-agent-1",
-            )
-        )
-    )
-    assert {row.key for row in copied} == {
-        "tender-analyzer/SKILL.md",
-        "tender-analyzer/scripts/run.sh",
-        "files/qna.pdf",
-    }
-    assert {row.agent_id for row in copied} == {"inline-agent-1"}
-    copied_by_key = {row.key: row for row in copied}
-    assert copied_by_key["tender-analyzer/SKILL.md"].file_id == "tool-file-1"
-    assert copied_by_key["tender-analyzer/SKILL.md"].is_skill is True
-    assert copied_by_key["files/qna.pdf"].value_owned_by_drive is False
-
-
-def test_copy_agent_drive_rows_skips_when_no_referenced_drive_keys(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-):
-    session = sqlite_session
-    agent_soul = AgentSoulConfig.model_validate({"prompt": {"system_prompt": "No drive mentions."}})
-
-    AgentComposerService._copy_agent_drive_rows(
-        session=session,
-        tenant_id="tenant-1",
-        source_agent_id="roster-agent-1",
-        target_agent_id="inline-agent-1",
-        account_id="account-1",
-        agent_soul=agent_soul,
-    )
-
-    assert not session.new
-
-
-def test_copy_agent_drive_rows_skips_existing_target_keys(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
-    session = sqlite_session
-    source_row = AgentDriveFile(
-        tenant_id="tenant-1",
-        agent_id="roster-agent-1",
-        key="files/qna.pdf",
-        file_kind="upload_file",
-        file_id="upload-file-1",
-        value_owned_by_drive=False,
-        size=30,
-        mime_type="application/pdf",
-    )
-    target_row = AgentDriveFile(
-        tenant_id="tenant-1",
-        agent_id="inline-agent-1",
-        key=source_row.key,
-        file_kind=source_row.file_kind,
-        file_id=source_row.file_id,
-        value_owned_by_drive=source_row.value_owned_by_drive,
-        size=source_row.size,
-        mime_type=source_row.mime_type,
-    )
-    session.add_all([source_row, target_row])
-    session.commit()
-    agent_soul = AgentSoulConfig.model_validate({"prompt": {"system_prompt": "[§file:files/qna.pdf:qna.pdf§]"}})
-
-    AgentComposerService._copy_agent_drive_rows(
-        session=session,
-        tenant_id="tenant-1",
-        source_agent_id="roster-agent-1",
-        target_agent_id="inline-agent-1",
-        account_id="account-1",
-        agent_soul=agent_soul,
-    )
-
-    session.flush()
-    target_rows = list(
-        session.scalars(
-            select(AgentDriveFile).where(
-                AgentDriveFile.tenant_id == "tenant-1",
-                AgentDriveFile.agent_id == "inline-agent-1",
-            )
-        )
-    )
-    assert [row.key for row in target_rows] == ["files/qna.pdf"]
-
-
-def test_drive_copy_scopes_include_declared_output_benchmark_files():
-    agent_soul = AgentSoulConfig.model_validate(
-        {
-            "prompt": {
-                "system_prompt": (
-                    "[§file:files/source.pdf:source.pdf§] "
-                    "[§knowledge:dataset-1:Docs§] "
-                    "[§skill:tender-analyzer/SKILL.md:Tender Analyzer§]"
-                )
-            },
-        }
-    )
-    node_job = WorkflowNodeJobConfig.model_validate(
-        {
-            "declared_outputs": [
-                {
-                    "name": "qna_report",
-                    "type": "file",
-                    "check": {
-                        "enabled": True,
-                        "prompt": "Compare the generated file with the benchmark.",
-                        "benchmark_file_ref": {"name": "expected.pdf", "drive_key": "files/expected.pdf"},
-                    },
-                },
-                {
-                    "name": "summary",
-                    "type": "string",
-                    "check": {"enabled": False, "benchmark_file_ref": {"drive_key": "files/ignored.pdf"}},
-                },
-            ],
-        }
-    )
-
-    exact_keys, prefixes = AgentComposerService._drive_copy_scopes_from_agent_configs(
-        agent_soul=agent_soul,
-        node_job=node_job,
-    )
-
-    assert exact_keys == {"files/source.pdf", "files/expected.pdf"}
-    assert prefixes == {"tender-analyzer/"}
 
 
 def test_composer_create_agents_syncs_active_config_has_model(
@@ -5835,7 +5624,7 @@ class TestWorkflowAgentDraftBindingSync:
                 draft_workflow=self._agent_workflow(),
             )
 
-    def test_publish_validation_rejects_dangling_agent_soul_drive_refs(self, sqlite_session: Session):
+    def test_publish_validation_rejects_dangling_agent_soul_config_refs(self, sqlite_session: Session):
         session = sqlite_session
         binding = self._agent_binding()
         agent_soul = AgentSoulConfig.model_validate(
@@ -5845,7 +5634,7 @@ class TestWorkflowAgentDraftBindingSync:
                     "model_provider": "openai",
                     "model": "gpt-4o",
                 },
-                "prompt": {"system_prompt": "Use [§skill:research%2FSKILL.md:Research§]."},
+                "prompt": {"system_prompt": "Use [§skill:research:Research§]."},
             }
         )
         agent = self._publish_agent()
@@ -7045,135 +6834,6 @@ def test_workspace_dify_tools_returns_provider_and_tool_granularities(monkeypatc
     assert {entry["granularity"] for entry in entries[1:]} == {"tool"}
 
 
-# ── ENG-623 §4.4: drive-backed prompt mention validation ─────────────────────
-
-
-def _drive_soul(**overrides):
-    from services.entities.agent_entities import AgentSoulConfig
-
-    base = {
-        "prompt": {
-            "system_prompt": (
-                "Use [§skill:tender-analyzer%2FSKILL.md:Tender Analyzer§] and [§file:files%2Fsample.pdf:sample.pdf§]."
-            )
-        },
-    }
-    base.update(overrides)
-    return AgentSoulConfig.model_validate(base)
-
-
-def _session_with_drive_keys(sqlite_session: Session, existing_keys: list[str]) -> Session:
-    session = sqlite_session
-    session.add_all(
-        [
-            AgentDriveFile(
-                id=f"drive-file-{index}",
-                tenant_id="tenant-1",
-                agent_id="agent-1",
-                key=key,
-                file_kind=AgentDriveFileKind.UPLOAD_FILE,
-                file_id=f"upload-{index}",
-            )
-            for index, key in enumerate(existing_keys, start=1)
-        ]
-    )
-    session.commit()
-    return session
-
-
-def test_drive_mention_findings_reports_missing_keys(sqlite_session: Session):
-    session = _session_with_drive_keys(sqlite_session, ["tender-analyzer/SKILL.md"])
-
-    findings = AgentComposerService._drive_mention_findings(
-        session=session,
-        tenant_id="tenant-1",
-        agent_id="agent-1",
-        prompt=_drive_soul().prompt.system_prompt,
-    )
-
-    assert [(f["code"], f["id"]) for f in findings] == [("mention_target_missing", "files/sample.pdf")]
-    assert findings[0]["kind"] == "file"
-    assert str(findings[0]["message"]).startswith("file 'sample.pdf' has no drive entry")
-
-
-def test_drive_mention_findings_clean_when_all_keys_exist(sqlite_session: Session):
-    session = _session_with_drive_keys(
-        sqlite_session,
-        ["tender-analyzer/SKILL.md", "files/sample.pdf"],
-    )
-
-    assert (
-        AgentComposerService._drive_mention_findings(
-            session=session,
-            tenant_id="tenant-1",
-            agent_id="agent-1",
-            prompt=_drive_soul().prompt.system_prompt,
-        )
-        == []
-    )
-
-
-def test_drive_mention_findings_skips_prompt_without_drive_mentions(sqlite_session: Session):
-    session = sqlite_session
-    # No drive-backed mention at all -> no DB roundtrip, no findings.
-    soul = _drive_soul(prompt={"system_prompt": "Use [§knowledge:kb-1:Docs§]."})
-    findings = AgentComposerService._drive_mention_findings(
-        session=session,
-        tenant_id="tenant-1",
-        agent_id="agent-1",
-        prompt=soul.prompt.system_prompt,
-    )
-    assert findings == []
-
-
-def test_collect_validation_findings_appends_drive_mention_findings_with_agent_context(
-    sqlite_session: Session,
-):
-    from services.entities.agent_entities import ComposerSavePayload
-
-    session = _session_with_drive_keys(sqlite_session, [])
-    payload = ComposerSavePayload.model_validate(
-        {
-            "variant": "agent_app",
-            "save_strategy": "save_to_current_version",
-            "agent_soul": _drive_soul().model_dump(mode="json"),
-        }
-    )
-
-    findings = AgentComposerService.collect_validation_findings(
-        session=session, tenant_id="tenant-1", payload=payload, agent_id="agent-1"
-    )
-
-    codes = {w["code"] for w in findings["warnings"]}
-    assert codes >= {"mention_target_missing"}
-    assert {w["id"] for w in findings["warnings"] if w["code"] == "mention_target_missing"} == {
-        "tender-analyzer/SKILL.md",
-        "files/sample.pdf",
-    }
-    # without agent context the drive check is skipped entirely
-    findings_no_agent = AgentComposerService.collect_validation_findings(
-        session=session, tenant_id="tenant-1", payload=payload
-    )
-    assert all(w["code"] != "mention_target_missing" for w in findings_no_agent["warnings"])
-
-
-# ── ENG-623/625: resolver helpers + save-path drive guard ────────────────────
-
-
-def test_resolve_bound_agent_id_queries_active_roster_agent(sqlite_session: Session):
-    session = sqlite_session
-    session.add(
-        _agent(
-            agent_id="agent-9",
-            tenant_id="t-1",
-            source=AgentSource.ROSTER,
-            app_id="app-1",
-        )
-    )
-    session.commit()
-    assert AgentComposerService.resolve_bound_agent_id(session=session, tenant_id="t-1", app_id="app-1") == "agent-9"
-
-
 def test_resolve_workflow_node_agent_id_degrades_without_workflow_or_binding(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ):
@@ -7207,129 +6867,3 @@ def test_resolve_workflow_node_agent_id_degrades_without_workflow_or_binding(
         AgentComposerService.resolve_workflow_node_agent_id(session=session, tenant_id="t", app_id="a", node_id="n")
         == "agent-7"
     )
-
-
-def test_save_workflow_composer_reports_drive_mentions_for_inline_node_job_only(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-):
-    payload = ComposerSavePayload.model_validate(
-        {
-            "variant": "workflow",
-            "save_strategy": "node_job_only",
-            "agent_soul": _drive_soul().model_dump(mode="json"),
-            "soul_lock": {"locked": False},
-        }
-    )
-    binding = WorkflowAgentNodeBinding(
-        tenant_id="t-1",
-        app_id="app-1",
-        workflow_id="wf-1",
-        workflow_version="draft",
-        node_id="n-1",
-        binding_type=WorkflowAgentBindingType.INLINE_AGENT,
-        agent_id="agent-1",
-        current_snapshot_id="version-1",
-    )
-    session = sqlite_session
-    monkeypatch.setattr(
-        AgentComposerService, "_get_draft_workflow", classmethod(lambda cls, **kwargs: SimpleNamespace(id="wf-1"))
-    )
-    monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", classmethod(lambda cls, **kwargs: binding))
-    monkeypatch.setattr(AgentComposerService, "_save_node_job_only", classmethod(lambda cls, **kwargs: binding))
-    monkeypatch.setattr(
-        AgentComposerService,
-        "_get_agent_if_present",
-        classmethod(lambda cls, **kwargs: SimpleNamespace(id="agent-1", active_config_snapshot_id="version-1")),
-    )
-    monkeypatch.setattr(
-        AgentComposerService,
-        "_get_version_if_present",
-        classmethod(lambda cls, **kwargs: SimpleNamespace(id="version-1")),
-    )
-    monkeypatch.setattr(
-        AgentComposerService, "_serialize_workflow_state", classmethod(lambda cls, **kwargs: {"state": "ok"})
-    )
-    guarded: dict[str, str] = {}
-
-    def fake_collect(cls, *, session, tenant_id, payload, agent_id=None):
-        guarded["tenant_id"] = tenant_id
-        guarded["agent_id"] = agent_id
-        return {"warnings": [{"code": "mention_target_missing", "id": "files/sample.pdf"}]}
-
-    monkeypatch.setattr(AgentComposerService, "collect_validation_findings", classmethod(fake_collect))
-
-    result = AgentComposerService.save_workflow_composer(
-        session=session,
-        tenant_id="t-1",
-        app_id="app-1",
-        node_id="n-1",
-        account_id="acc-1",
-        payload=payload,
-    )
-
-    assert result == {
-        "state": "ok",
-        "validation": {"warnings": [{"code": "mention_target_missing", "id": "files/sample.pdf"}]},
-    }
-    assert guarded == {"tenant_id": "t-1", "agent_id": "agent-1"}
-
-
-def test_save_workflow_composer_reports_drive_mentions_for_roster_node_job_only(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-):
-    payload = ComposerSavePayload.model_validate(
-        {
-            "variant": "workflow",
-            "save_strategy": "node_job_only",
-            "agent_soul": _drive_soul().model_dump(mode="json"),
-            "soul_lock": {"locked": False},
-        }
-    )
-    binding = WorkflowAgentNodeBinding(
-        tenant_id="t-1",
-        app_id="app-1",
-        workflow_id="wf-1",
-        workflow_version="draft",
-        node_id="n-1",
-        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
-        agent_id="agent-1",
-        current_snapshot_id="version-1",
-    )
-    session = sqlite_session
-    monkeypatch.setattr(
-        AgentComposerService, "_get_draft_workflow", classmethod(lambda cls, **kwargs: SimpleNamespace(id="wf-1"))
-    )
-    monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", classmethod(lambda cls, **kwargs: binding))
-    monkeypatch.setattr(AgentComposerService, "_save_node_job_only", classmethod(lambda cls, **kwargs: binding))
-    monkeypatch.setattr(
-        AgentComposerService,
-        "_get_agent_if_present",
-        classmethod(lambda cls, **kwargs: SimpleNamespace(id="agent-1", active_config_snapshot_id="version-1")),
-    )
-    monkeypatch.setattr(
-        AgentComposerService,
-        "_get_version_if_present",
-        classmethod(lambda cls, **kwargs: SimpleNamespace(id="version-1")),
-    )
-    monkeypatch.setattr(
-        AgentComposerService, "_serialize_workflow_state", classmethod(lambda cls, **kwargs: {"state": "ok"})
-    )
-    captured: dict[str, str | None] = {}
-
-    def fake_collect(cls, *, session, tenant_id, payload, agent_id=None):
-        captured["agent_id"] = agent_id
-        return {"warnings": []}
-
-    monkeypatch.setattr(AgentComposerService, "collect_validation_findings", classmethod(fake_collect))
-
-    result = AgentComposerService.save_workflow_composer(
-        session=session,
-        tenant_id="t-1",
-        app_id="app-1",
-        node_id="n-1",
-        account_id="acc-1",
-        payload=payload,
-    )
-
-    assert result == {"state": "ok", "validation": {"warnings": []}}
-    assert captured["agent_id"] == "agent-1"
