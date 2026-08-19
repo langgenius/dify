@@ -10,6 +10,11 @@ import (
 
 const defaultConfigBase = ".dify_conf"
 
+type ConfigFileRef struct {
+	Kind string `json:"kind"`
+	ID   string `json:"id"`
+}
+
 // RunConfigManifest executes the `config manifest` command.
 func RunConfigManifest(env *Environment) error {
 	client, err := NewStubClient(env)
@@ -216,8 +221,8 @@ func RunConfigSkillsPush(env *Environment, paths []string) error {
 	defer func() { _ = client.Close() }()
 
 	type skillPushItem struct {
-		Name    string        `json:"name"`
-		FileRef *DriveFileRef `json:"file_ref"`
+		Name    string         `json:"name"`
+		FileRef *ConfigFileRef `json:"file_ref"`
 	}
 	var skills []skillPushItem
 
@@ -243,7 +248,7 @@ func RunConfigSkillsPush(env *Environment, paths []string) error {
 		defer func() { _ = os.Remove(archivePath) }()
 
 		name := filepath.Base(absPath)
-		fileRef, err := uploadAndPrepareConfigItem(client, archivePath)
+		fileRef, err := uploadConfigFile(client, archivePath)
 		if err != nil {
 			return fmt.Errorf("upload config skill %q: %w", name, err)
 		}
@@ -280,8 +285,8 @@ func RunConfigFilesPush(env *Environment, paths []string) error {
 	defer func() { _ = client.Close() }()
 
 	type filePushItem struct {
-		Name    string        `json:"name"`
-		FileRef *DriveFileRef `json:"file_ref"`
+		Name    string         `json:"name"`
+		FileRef *ConfigFileRef `json:"file_ref"`
 	}
 	var files []filePushItem
 
@@ -296,7 +301,7 @@ func RunConfigFilesPush(env *Environment, paths []string) error {
 		}
 
 		name := filepath.Base(absPath)
-		fileRef, err := uploadAndPrepareConfigItem(client, absPath)
+		fileRef, err := uploadConfigFile(client, absPath)
 		if err != nil {
 			return fmt.Errorf("upload config file %q: %w", name, err)
 		}
@@ -320,7 +325,7 @@ func RunConfigFilesPush(env *Environment, paths []string) error {
 	return nil
 }
 
-func uploadAndPrepareConfigItem(client StubClient, filePath string) (*DriveFileRef, error) {
+func uploadConfigFile(client StubClient, filePath string) (*ConfigFileRef, error) {
 	filename := filepath.Base(filePath)
 	mimetype := guessMIMEType(filename)
 	uploadURL, err := client.CreateToolFileUploadURL(context.Background(), filename, mimetype)
@@ -331,16 +336,16 @@ func uploadAndPrepareConfigItem(client StubClient, filePath string) (*DriveFileR
 	if err != nil {
 		return nil, fmt.Errorf("upload data: %w", err)
 	}
-
-	var uploadResult map[string]any
+	var uploadResult struct {
+		ID string `json:"id"`
+	}
 	if err := json.Unmarshal(uploadBody, &uploadResult); err != nil {
 		return nil, fmt.Errorf("parse upload result: %w", err)
 	}
-	toolFileID, _ := uploadResult["id"].(string)
-	if toolFileID == "" {
+	if uploadResult.ID == "" {
 		return nil, fmt.Errorf("upload response is missing id")
 	}
-	return &DriveFileRef{Kind: "tool_file", ID: toolFileID}, nil
+	return &ConfigFileRef{Kind: "tool_file", ID: uploadResult.ID}, nil
 }
 
 // RunConfigSkillsDelete executes the `config skills delete` command.

@@ -28,7 +28,6 @@ RunLayerSpec(
 
 | Config field | Meaning |
 | --- | --- |
-| `agent_stub_drive_ref` | Optional Drive ref used by shell-visible Agent Stub commands. |
 | `cli_tools` | CLI bootstrap declarations with install commands and scoped environment metadata. |
 | `env` | Normal environment variables exported to Shell commands. |
 | `secret_refs` | Names of secret environment variables supplied by the backend environment. |
