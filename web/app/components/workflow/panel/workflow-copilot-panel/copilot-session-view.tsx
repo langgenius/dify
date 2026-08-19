@@ -35,27 +35,27 @@ function SessionStatus({ view }: { view: SessionView }) {
       <div className="text-text-tertiary">
         {t(($) => $['copilot.sessionIdLabel'], { ns: 'workflow' })}
       </div>
-      <div className="truncate text-right">{view.SessionID}</div>
+      <div className="truncate text-right">{view.session_id}</div>
       <div className="text-text-tertiary">
         {t(($) => $['copilot.sessionStateLabel'], { ns: 'workflow' })}
       </div>
-      <div className="truncate text-right">{view.State}</div>
+      <div className="truncate text-right">{view.state}</div>
       <div className="text-text-tertiary">
         {t(($) => $['copilot.sessionVersionLabel'], { ns: 'workflow' })}
       </div>
-      <div className="truncate text-right">{view.Version}</div>
+      <div className="truncate text-right">{view.version}</div>
       <div className="text-text-tertiary">
         {t(($) => $['copilot.sessionRunStatusLabel'], { ns: 'workflow' })}
       </div>
-      <div className="truncate text-right">{view.RunStatus}</div>
+      <div className="truncate text-right">{view.run_status}</div>
       <div className="text-text-tertiary">
         {t(($) => $['copilot.sessionCanvasReadOnlyLabel'], { ns: 'workflow' })}
       </div>
-      <div className="truncate text-right">{String(view.CanvasReadOnly)}</div>
+      <div className="truncate text-right">{String(view.canvas_read_only)}</div>
       <div className="text-text-tertiary">
         {t(($) => $['copilot.sessionInterruptedLabel'], { ns: 'workflow' })}
       </div>
-      <div className="truncate text-right">{String(view.Interrupted)}</div>
+      <div className="truncate text-right">{String(view.interrupted)}</div>
     </div>
   )
 }
@@ -159,7 +159,7 @@ function CopilotSessionView({
     <div className="flex flex-col gap-y-3 px-4 py-3">
       <SessionStatus view={view} />
 
-      {view.State === CHECKLIST_AWAIT_RECHECK_STATE && (
+      {view.state === CHECKLIST_AWAIT_RECHECK_STATE && (
         <ChecklistRecheck
           fixableItems={fixableChecklistItems}
           unfixableItems={unfixableChecklistItems}

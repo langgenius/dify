@@ -104,8 +104,8 @@ function WorkflowCopilotPanel() {
   // the duration of the session, and the editor's own autosave only pushes
   // local changes to the draft, never pulls.
   useEffect(() => {
-    if (view?.State === CHECKLIST_AWAIT_RECHECK_STATE) handleRefreshWorkflowDraft()
-  }, [view?.State, handleRefreshWorkflowDraft])
+    if (view?.state === CHECKLIST_AWAIT_RECHECK_STATE) handleRefreshWorkflowDraft()
+  }, [view?.state, handleRefreshWorkflowDraft])
 
   const resolvedRunId = manualRunId.trim() || latestFailedRun?.id || ''
   const canStartFix = !!appId && !!currentWorkspace.id && !!resolvedRunId
