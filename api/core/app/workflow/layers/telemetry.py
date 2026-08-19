@@ -107,7 +107,7 @@ class NodeTelemetryLayer(GraphEngineLayer):
         result: NodeRunResult = event.node_run_result
         metadata = dict(result.metadata) if result.metadata else {}
 
-        finished_at = getattr(event, "finished_at", None)
+        finished_at = event.finished_at
         elapsed_time = (
             max((finished_at - snapshot.start_at).total_seconds(), 0.0) if finished_at else 0.0
         )
