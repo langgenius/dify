@@ -1,3 +1,6 @@
+import json
+
+import pytest
 from dify_trace_aliyun.config import AliyunConfig
 from dify_trace_arize_phoenix.config import ArizeConfig, PhoenixConfig
 from dify_trace_langfuse.config import LangfuseConfig
@@ -6,6 +9,7 @@ from dify_trace_opik.config import OpikConfig
 from dify_trace_weave.config import WeaveConfig
 
 from core.ops.entities.config_entity import TracingProviderEnum
+from core.ops.unified_trace.otel import OTelTracingConfig
 
 
 class TestTracingProviderEnum:
@@ -20,6 +24,29 @@ class TestTracingProviderEnum:
         assert TracingProviderEnum.OPIK == "opik"
         assert TracingProviderEnum.WEAVE == "weave"
         assert TracingProviderEnum.ALIYUN == "aliyun"
+        assert TracingProviderEnum.OTEL == "otel"
+
+
+class TestOTelConfig:
+    """OTel tracing config validation"""
+
+    def test_endpoint_keeps_path(self):
+        config = OTelTracingConfig(endpoint="http://collector:4318/v1/traces")
+        assert config.endpoint == "http://collector:4318/v1/traces"
+
+    def test_defaults(self):
+        config = OTelTracingConfig(endpoint="http://collector:4318/v1/traces")
+        assert config.service_name == "dify"
+        assert json.loads(config.headers) == {}
+        assert json.loads(config.resource_attributes) == {}
+
+    def test_headers_accepts_dict(self):
+        config = OTelTracingConfig(endpoint="http://collector:4318/v1/traces", headers={"authorization": "Bearer t"})
+        assert config.parsed_headers() == {"authorization": "Bearer t"}
+
+    def test_endpoint_rejects_bad_scheme(self):
+        with pytest.raises(ValueError, match="URL must start with"):
+            OTelTracingConfig(endpoint="ftp://collector:4318/v1/traces")
 
 
 class TestConfigIntegration:

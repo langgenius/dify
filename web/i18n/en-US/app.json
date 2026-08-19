@@ -284,5 +284,11 @@
   "types.all": "All",
   "types.chatbot": "Chatbot",
   "types.completion": "Completion",
-  "types.workflow": "Workflow"
+  "types.workflow": "Workflow",
+  "tracing.otel.title": "OTel",
+  "tracing.otel.description": "Export Dify traces to your own OpenTelemetry Collector over OTLP/HTTP, so they land in Jaeger, Tempo, SigNoz, Grafana, or any OTLP-compatible backend.",
+  "tracing.otel.headers": "Headers (JSON)",
+  "tracing.otel.serviceName": "Service Name",
+  "tracing.otel.resourceAttributes": "Resource Attributes (JSON)",
+  "tracing.otel.invalidJson": "Headers and Resource Attributes must be valid JSON objects."
 }

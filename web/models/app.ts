@@ -6,6 +6,7 @@ import type {
   LangSmithConfig,
   MLflowConfig,
   OpikConfig,
+  OTelConfig,
   PhoenixConfig,
   TencentConfig,
   TracingProvider,
@@ -88,6 +89,7 @@ export type TracingConfig = {
     | WeaveConfig
     | AliyunConfig
     | TencentConfig
+    | OTelConfig
 }
 
 export type WebhookTriggerResponse = {

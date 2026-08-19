@@ -13,6 +13,7 @@ import {
   LangsmithIconBig,
   MlflowIconBig,
   OpikIconBig,
+  OTelIconBig,
   PhoenixIconBig,
   TencentIconBig,
   WeaveIconBig,
@@ -44,6 +45,7 @@ const getIcon = (type: TracingProvider) => {
     [TracingProvider.mlflow]: MlflowIconBig,
     [TracingProvider.databricks]: DatabricksIconBig,
     [TracingProvider.tencent]: TencentIconBig,
+    [TracingProvider.otel]: OTelIconBig,
   }[type]
 }
 

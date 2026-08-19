@@ -57,6 +57,7 @@ vi.mock('@/app/components/base/icons/src/public/tracing', () => ({
   LangsmithIcon: () => <span data-testid="langsmith-icon" />,
   MlflowIcon: () => <span data-testid="mlflow-icon" />,
   OpikIcon: () => <span data-testid="opik-icon" />,
+  OTelIcon: () => <span data-testid="otel-icon" />,
   PhoenixIcon: () => <span data-testid="phoenix-icon" />,
   TencentIcon: () => <span data-testid="tencent-icon" />,
   TracingIcon: () => <span data-testid="tracing-icon" />,

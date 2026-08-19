@@ -6,6 +6,7 @@ import type {
   LangSmithConfig,
   MLflowConfig,
   OpikConfig,
+  OTelConfig,
   PhoenixConfig,
   TencentConfig,
   WeaveConfig,
@@ -36,6 +37,7 @@ type ProviderPayload =
   | LangSmithConfig
   | MLflowConfig
   | OpikConfig
+  | OTelConfig
   | PhoenixConfig
   | TencentConfig
   | WeaveConfig
@@ -98,6 +100,12 @@ const validConfigs = {
     endpoint: 'https://your-region.cls.tencentcs.com',
     service_name: 'dify_app',
   },
+  [TracingProvider.otel]: {
+    endpoint: 'http://localhost:4318/v1/traces',
+    headers: '{}',
+    service_name: 'dify',
+    resource_attributes: '{}',
+  },
 } satisfies Record<TracingProvider, ProviderPayload>
 
 const providerFieldLabels = [
@@ -137,6 +145,10 @@ const providerFieldLabels = [
     ],
   ],
   [TracingProvider.tencent, ['Token', 'Endpoint', 'Service Name']],
+  [
+    TracingProvider.otel,
+    ['Endpoint', 'app.tracing.otel.headers', 'app.tracing.otel.serviceName', 'app.tracing.otel.resourceAttributes'],
+  ],
 ] as const
 
 const invalidConfigCases: Array<{
@@ -271,6 +283,7 @@ const renderConfigButton = () => {
       mlflowConfig={null}
       databricksConfig={null}
       tencentConfig={null}
+      otelConfig={null}
       onConfigUpdated={vi.fn()}
       onConfigRemoved={vi.fn()}
     >
@@ -418,6 +431,24 @@ describe('ProviderConfigModal', () => {
         expect(callbacks.onChosen).not.toHaveBeenCalled()
       },
     )
+
+    it('should save unchanged masked OTel headers without JSON validation', async () => {
+      const user = userEvent.setup()
+      const payload: OTelConfig = {
+        ...validConfigs[TracingProvider.otel],
+        headers: 'SFlCUk************M=',
+      }
+      renderProviderConfigModal({ type: TracingProvider.otel, payload })
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      await waitFor(() => {
+        expect(updateTracingConfig).toHaveBeenCalledWith({
+          appId: 'app-id',
+          body: { tracing_provider: TracingProvider.otel, tracing_config: payload },
+        })
+      })
+    })
 
     it.each(invalidConfigCases)(
       'should reject $provider config when $missingField is missing',

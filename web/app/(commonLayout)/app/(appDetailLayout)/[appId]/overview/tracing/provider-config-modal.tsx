@@ -8,6 +8,7 @@ import type {
   LangSmithConfig,
   MLflowConfig,
   OpikConfig,
+  OTelConfig,
   PhoenixConfig,
   TencentConfig,
   WeaveConfig,
@@ -50,6 +51,7 @@ type Props = Readonly<{
     | MLflowConfig
     | DatabricksConfig
     | TencentConfig
+    | OTelConfig
     | null
   onRemoved: () => void
   onCancel: () => void
@@ -64,7 +66,8 @@ type Props = Readonly<{
       | AliyunConfig
       | MLflowConfig
       | DatabricksConfig
-      | TencentConfig,
+      | TencentConfig
+      | OTelConfig,
   ) => void
   onChosen: (provider: TracingProvider) => void
 }>
@@ -138,6 +141,13 @@ const tencentConfigTemplate = {
   service_name: '',
 }
 
+const otelConfigTemplate = {
+  endpoint: '',
+  headers: '{}',
+  service_name: '',
+  resource_attributes: '{}',
+}
+
 const ProviderConfigModal: FC<Props> = ({
   appId,
   type,
@@ -162,6 +172,7 @@ const ProviderConfigModal: FC<Props> = ({
     | MLflowConfig
     | DatabricksConfig
     | TencentConfig
+    | OTelConfig
   >(
     (() => {
       if (isEdit) return payload
@@ -175,6 +186,7 @@ const ProviderConfigModal: FC<Props> = ({
       else if (type === TracingProvider.mlflow) return mlflowConfigTemplate
       else if (type === TracingProvider.databricks) return databricksConfigTemplate
       else if (type === TracingProvider.tencent) return tencentConfigTemplate
+      else if (type === TracingProvider.otel) return otelConfigTemplate
 
       return weaveConfigTemplate
     })(),
@@ -320,6 +332,29 @@ const ProviderConfigModal: FC<Props> = ({
           ns: 'common',
           field: 'Service Name',
         })
+    }
+
+    if (type === TracingProvider.otel) {
+      const postData = config as OTelConfig
+      if (!postData.endpoint)
+        errorMessage = t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: 'Endpoint' })
+      // Unchanged secrets are returned masked; preserve them and let the backend retain the old ciphertext.
+      if (!errorMessage && !postData.headers.includes('*')) {
+        try {
+          JSON.parse(postData.headers || '{}')
+        }
+        catch {
+          errorMessage = t(($) => $['tracing.otel.invalidJson'], { ns: 'app' })
+        }
+      }
+      if (!errorMessage) {
+        try {
+          JSON.parse(postData.resource_attributes || '{}')
+        }
+        catch {
+          errorMessage = t(($) => $['tracing.otel.invalidJson'], { ns: 'app' })
+        }
+      }
     }
 
     return errorMessage
@@ -767,6 +802,39 @@ const ProviderConfigModal: FC<Props> = ({
                             ns: 'app',
                             key: t(($) => $[`${I18N_PREFIX}.personalAccessToken`], { ns: 'app' }),
                           })!}
+                        />
+                      </>
+                    )}
+                    {type === TracingProvider.otel && (
+                      <>
+                        <Field
+                          label="Endpoint"
+                          labelClassName="text-sm!"
+                          isRequired
+                          value={(config as OTelConfig).endpoint}
+                          onChange={handleConfigChange('endpoint')}
+                          placeholder="http://localhost:4318/v1/traces"
+                        />
+                        <Field
+                          label={t(($) => $['tracing.otel.headers'], { ns: 'app' })!}
+                          labelClassName="text-sm!"
+                          value={(config as OTelConfig).headers}
+                          onChange={handleConfigChange('headers')}
+                          placeholder='{"authorization": "Bearer <token>"}'
+                        />
+                        <Field
+                          label={t(($) => $['tracing.otel.serviceName'], { ns: 'app' })!}
+                          labelClassName="text-sm!"
+                          value={(config as OTelConfig).service_name}
+                          onChange={handleConfigChange('service_name')}
+                          placeholder="dify"
+                        />
+                        <Field
+                          label={t(($) => $['tracing.otel.resourceAttributes'], { ns: 'app' })!}
+                          labelClassName="text-sm!"
+                          value={(config as OTelConfig).resource_attributes}
+                          onChange={handleConfigChange('resource_attributes')}
+                          placeholder='{"deployment.environment": "prod"}'
                         />
                       </>
                     )}

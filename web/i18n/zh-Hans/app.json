@@ -284,5 +284,11 @@
   "types.all": "全部",
   "types.chatbot": "聊天助手",
   "types.completion": "文本生成",
-  "types.workflow": "工作流"
+  "types.workflow": "工作流",
+  "tracing.otel.title": "OTel",
+  "tracing.otel.description": "将 Dify 的 Trace 通过 OTLP/HTTP 导出到你自建的 OpenTelemetry Collector，接入 Jaeger、Tempo、SigNoz、Grafana 等任意兼容 OTLP 的后端。",
+  "tracing.otel.headers": "请求头（JSON）",
+  "tracing.otel.serviceName": "服务名",
+  "tracing.otel.resourceAttributes": "Resource 属性（JSON）",
+  "tracing.otel.invalidJson": "请求头和 Resource 属性必须是合法的 JSON 对象。"
 }

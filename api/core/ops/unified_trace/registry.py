@@ -28,6 +28,10 @@ class UnifiedTraceProviderConfigMap(collections.UserDict[str, UnifiedProviderCon
                 from dify_trace_langsmith.unified_trace import UnifiedLangSmithTrace
 
                 return {"config_class": LangSmithConfig, "trace_instance": UnifiedLangSmithTrace}
+            case TracingProviderEnum.OTEL:
+                from core.ops.unified_trace.otel import OTelTracingConfig, UnifiedOTelTrace
+
+                return {"config_class": OTelTracingConfig, "trace_instance": UnifiedOTelTrace}
             case _:
                 raise KeyError(f"Unified tracing provider is not registered: {key}")
 
