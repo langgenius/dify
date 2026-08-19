@@ -1,6 +1,7 @@
 package server
 
 import (
+	"net/http"
 	"testing"
 	"time"
 )
@@ -24,6 +25,45 @@ func TestGenerateJobIDUniqueness(t *testing.T) {
 			t.Fatalf("collision at iteration %d: %s", i, id)
 		}
 		seen[id] = true
+	}
+}
+
+func TestValidateJobID(t *testing.T) {
+	tests := []struct {
+		name    string
+		jobID   string
+		wantErr bool
+	}{
+		{name: "generated", jobID: GenerateJobID()},
+		{name: "known valid", jobID: "0123456789abcdef"},
+		{name: "empty", jobID: "", wantErr: true},
+		{name: "too short", jobID: "0123456789abcde", wantErr: true},
+		{name: "too long", jobID: "0123456789abcdef0", wantErr: true},
+		{name: "uppercase", jobID: "0123456789ABCDEf", wantErr: true},
+		{name: "path separator", jobID: "0123456789abc/de", wantErr: true},
+		{name: "backslash", jobID: `0123456789abc\de`, wantErr: true},
+		{name: "dot dot", jobID: "../../etc/passwd", wantErr: true},
+		{name: "absolute path", jobID: "/tmp/shellctl-job", wantErr: true},
+		{name: "whitespace", jobID: "0123456789abcde ", wantErr: true},
+		{name: "shell metacharacter", jobID: "0123456789abcde;", wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateJobID(tt.jobID)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("ValidateJobID(%q) error = %v, wantErr %v", tt.jobID, err, tt.wantErr)
+			}
+			if tt.wantErr {
+				serverErr, ok := err.(*ServerError)
+				if !ok {
+					t.Fatalf("expected *ServerError, got %T", err)
+				}
+				if serverErr.StatusCode != http.StatusBadRequest || serverErr.Code != "invalid_job_id" {
+					t.Fatalf("unexpected error: %#v", serverErr)
+				}
+			}
+		})
 	}
 }
 
