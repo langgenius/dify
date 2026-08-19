@@ -9,7 +9,7 @@ vi.mock('../document-title', () => ({
 }))
 
 describe('marketplace route layout', () => {
-  it('stays a server module so Flight can stream the async marketplace page', () => {
+  it('stays a server module so Flight can stream the marketplace page', () => {
     const source = readFileSync(
       resolve(dirname(fileURLToPath(import.meta.url)), '../layout.tsx'),
       'utf8',

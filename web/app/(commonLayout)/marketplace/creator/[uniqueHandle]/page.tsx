@@ -8,13 +8,28 @@ type CreatorPageSearchParams = {
   publisher_type?: string
 }
 
-export default async function CreatorProfilePage({
-  params,
-  searchParams,
-}: {
+type CreatorProfilePageProps = {
   params: Promise<{ uniqueHandle: string }>
   searchParams: Promise<CreatorPageSearchParams>
-}) {
+}
+
+// Keep the route module synchronous. An async page under the client console
+// shell makes Flight double-resolve this segment (`reason.enqueueModel`).
+export default function CreatorProfilePage(props: CreatorProfilePageProps) {
+  return (
+    <div
+      id="marketplace-container"
+      className="flex h-full min-h-0 flex-col overflow-y-auto bg-background-default"
+    >
+      <CreatorProfileContent {...props} />
+    </div>
+  )
+}
+
+async function CreatorProfileContent({
+  params,
+  searchParams,
+}: CreatorProfilePageProps) {
   const [{ uniqueHandle }, query, locale] = await Promise.all([
     params,
     searchParams,
@@ -29,13 +44,8 @@ export default async function CreatorProfilePage({
   if (!loadedProfile) notFound()
 
   return (
-    <div
-      id="marketplace-container"
-      className="flex h-full min-h-0 flex-col overflow-y-auto bg-background-default"
-    >
-      <MarketplaceInstallPermissionProvider>
-        <DifyCreatorProfile loadedProfile={loadedProfile} locale={locale} />
-      </MarketplaceInstallPermissionProvider>
-    </div>
+    <MarketplaceInstallPermissionProvider>
+      <DifyCreatorProfile loadedProfile={loadedProfile} locale={locale} />
+    </MarketplaceInstallPermissionProvider>
   )
 }
