@@ -27,12 +27,12 @@ from configs import dify_config
 from core.workflow_copilot.errors import ConflictError
 from core.workflow_copilot.handlers_fix import fix_registry
 from core.workflow_copilot.models import Action, Actor, NodeEvent, Turn
-from core.workflow_copilot.placeholder_agent import PlaceholderAgent
 from core.workflow_copilot.runner import Env, Runner
 from core.workflow_copilot.state import canvas_read_only
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from services.workflow_copilot import progress_bus, session_lock
+from services.workflow_copilot.agent_factory import build_copilot_agent
 from services.workflow_copilot.dify_port import WorkflowServiceDifyPort
 from services.workflow_copilot.repository import SqlCopilotRepository
 
@@ -56,7 +56,7 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
     try:
         repo = _build_repo()
         dify = WorkflowServiceDifyPort()
-        agent = PlaceholderAgent()  # P3c: replace with agent factory
+        agent = build_copilot_agent()
 
         def emit(ne: NodeEvent) -> None:
             progress_bus.publish(
