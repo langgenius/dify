@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"syscall"
 
 	"github.com/klauspost/compress/zstd"
 )
@@ -17,10 +18,40 @@ import (
 // ErrMalformed marks archives that violate the format or hardening rules.
 var ErrMalformed = errors.New("archive malformed")
 
+var environmentalErrnos = []syscall.Errno{
+	syscall.ENOSPC, syscall.EDQUOT, syscall.EROFS, syscall.EIO,
+	syscall.ENOMEM, syscall.EMFILE, syscall.ENFILE,
+}
+
+// classifyEntryErr wraps per-entry filesystem errors as ErrMalformed — a
+// refused write is evidence of a hostile or inconsistent archive — unless the
+// errno is environmental (disk full, quota, read-only fs, ...), which passes
+// through unwrapped.
+func classifyEntryErr(err error) error {
+	if err == nil {
+		return nil
+	}
+	for _, errno := range environmentalErrnos {
+		if errors.Is(err, errno) {
+			return err
+		}
+	}
+	return fmt.Errorf("%w: %v", ErrMalformed, err)
+}
+
 // RestoreResult reports a completed extraction.
 type RestoreResult struct {
 	Entries      int
 	BytesWritten int64
+}
+
+func isPAXSparse(hdr *tar.Header) bool {
+	for k := range hdr.PAXRecords {
+		if strings.HasPrefix(k, "GNU.sparse.") {
+			return true
+		}
+	}
+	return false
 }
 
 // RestoreHome extracts a tar+zstd stream into homeDir in a single pass.
@@ -48,6 +79,12 @@ func RestoreHome(ctx context.Context, src io.Reader, homeDir string) (RestoreRes
 	}
 	defer zr.Close()
 
+	type dirMode struct {
+		name string
+		mode fs.FileMode
+	}
+	var dirModes []dirMode
+
 	tr := tar.NewReader(zr)
 	for {
 		if err := ctx.Err(); err != nil {
@@ -55,6 +92,13 @@ func RestoreHome(ctx context.Context, src io.Reader, homeDir string) (RestoreRes
 		}
 		hdr, err := tr.Next()
 		if errors.Is(err, io.EOF) {
+			// Apply deferred directory modes in reverse order
+			for i := len(dirModes) - 1; i >= 0; i-- {
+				d := dirModes[i]
+				if err := classifyEntryErr(root.Chmod(d.name, d.mode)); err != nil {
+					return res, err
+				}
+			}
 			return res, nil
 		}
 		if err != nil {
@@ -67,32 +111,36 @@ func RestoreHome(ctx context.Context, src io.Reader, homeDir string) (RestoreRes
 		if name == "" {
 			continue // the root entry itself
 		}
+		if hdr.Typeflag == tar.TypeGNUSparse || isPAXSparse(hdr) {
+			return res, fmt.Errorf("%w: sparse entry %q not supported", ErrMalformed, hdr.Name)
+		}
 		mode := hdr.FileInfo().Mode().Perm()
 		switch hdr.Typeflag {
 		case tar.TypeDir:
-			if err := root.MkdirAll(name, mode); err != nil {
+			if err := classifyEntryErr(root.MkdirAll(name, 0o700)); err != nil {
 				return res, err
 			}
-			if err := root.Chmod(name, mode); err != nil {
-				return res, err
-			}
+			dirModes = append(dirModes, dirMode{name, mode})
 		case tar.TypeReg:
-			if err := ensureParent(root, name); err != nil {
+			if err := classifyEntryErr(ensureParent(root, name)); err != nil {
 				return res, err
 			}
 			n, err := extractFile(root, name, mode, tr)
 			if err != nil {
+				return res, classifyEntryErr(err)
+			}
+			if err := classifyEntryErr(root.Chmod(name, mode)); err != nil {
 				return res, err
 			}
 			res.BytesWritten += n
 		case tar.TypeSymlink:
-			if err := ensureParent(root, name); err != nil {
+			if err := classifyEntryErr(ensureParent(root, name)); err != nil {
 				return res, err
 			}
 			if err := root.Remove(name); err != nil && !errors.Is(err, fs.ErrNotExist) {
-				return res, err
+				return res, classifyEntryErr(err)
 			}
-			if err := root.Symlink(hdr.Linkname, name); err != nil {
+			if err := classifyEntryErr(root.Symlink(hdr.Linkname, name)); err != nil {
 				return res, err
 			}
 		case tar.TypeLink:
@@ -100,10 +148,10 @@ func RestoreHome(ctx context.Context, src io.Reader, homeDir string) (RestoreRes
 			if err != nil || target == "" {
 				return res, fmt.Errorf("%w: hardlink target %q", ErrMalformed, hdr.Linkname)
 			}
-			if err := ensureParent(root, name); err != nil {
+			if err := classifyEntryErr(ensureParent(root, name)); err != nil {
 				return res, err
 			}
-			if err := root.Link(target, name); err != nil {
+			if err := classifyEntryErr(root.Link(target, name)); err != nil {
 				return res, err
 			}
 		default:

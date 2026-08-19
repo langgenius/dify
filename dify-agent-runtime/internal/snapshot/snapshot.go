@@ -5,6 +5,11 @@
 // policy and must bound the streams they read or send in their own logic —
 // count bytes while reading a save stream and abort at their cap; bound what
 // they send to restore. In Dify EE the sandbox-gateway enforces this.
+//
+// Note that zstd amplification means bounding a compressed restore stream does
+// NOT bound the bytes written to disk during extraction; a caller that needs a
+// hard write bound must enforce it by other means (in Dify EE the gateway only
+// restores archives it previously saved within its own cap).
 package snapshot
 
 import (
