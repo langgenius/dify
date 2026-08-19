@@ -54,6 +54,13 @@ const member: Member = {
   status: 'active',
 }
 
+const memberMenuProps = {
+  member,
+  isCurrentUser: false,
+  canAssignRoles: true,
+  canRemove: true,
+}
+
 describe('MemberMenu', () => {
   const mockUpdateRolesOfMember = vi.fn()
 
@@ -103,20 +110,11 @@ describe('MemberMenu', () => {
   it('should show edit role copy when multiple roles are disabled', async () => {
     const user = userEvent.setup()
 
-    renderWithConsoleQuery(
-      <MemberMenu
-        member={member}
-        isCurrentUser={false}
-        canAssignRoles
-        canRemove
-        allowMultipleRoles={false}
-      />,
-      {
-        systemFeatures: {
-          rbac_enabled: false,
-        },
+    renderWithConsoleQuery(<MemberMenu {...memberMenuProps} allowMultipleRoles={false} />, {
+      systemFeatures: {
+        rbac_enabled: false,
       },
-    )
+    })
 
     await user.click(screen.getByRole('button', { name: /members\.memberActions/i }))
 
@@ -133,20 +131,11 @@ describe('MemberMenu', () => {
   it('should submit only one selected role from the assign modal when RBAC is disabled', async () => {
     const user = userEvent.setup()
 
-    renderWithConsoleQuery(
-      <MemberMenu
-        member={member}
-        isCurrentUser={false}
-        canAssignRoles
-        canRemove
-        allowMultipleRoles={false}
-      />,
-      {
-        systemFeatures: {
-          rbac_enabled: false,
-        },
+    renderWithConsoleQuery(<MemberMenu {...memberMenuProps} allowMultipleRoles={false} />, {
+      systemFeatures: {
+        rbac_enabled: false,
       },
-    )
+    })
 
     await user.click(screen.getByRole('button', { name: /members\.memberActions/i }))
     await user.click(screen.getByRole('menuitem', { name: /members\.editRole/i }))
@@ -165,9 +154,7 @@ describe('MemberMenu', () => {
   it('should allow assigning roles without member removal permission', async () => {
     const user = userEvent.setup()
 
-    renderWithConsoleQuery(
-      <MemberMenu member={member} isCurrentUser={false} canAssignRoles canRemove={false} />,
-    )
+    renderWithConsoleQuery(<MemberMenu {...memberMenuProps} canRemove={false} />)
 
     await user.click(screen.getByRole('button', { name: /members\.memberActions/i }))
 
@@ -179,26 +166,20 @@ describe('MemberMenu', () => {
 
   it('should close an open action when its permission is revoked', async () => {
     const user = userEvent.setup()
-    const view = renderWithConsoleQuery(
-      <MemberMenu member={member} isCurrentUser={false} canAssignRoles canRemove />,
-    )
+    const view = renderWithConsoleQuery(<MemberMenu {...memberMenuProps} />)
 
     await user.click(screen.getByRole('button', { name: /members\.memberActions/i }))
     await user.click(screen.getByRole('menuitem', { name: /members\.assignRoles/i }))
     expect(screen.getByRole('dialog')).toBeInTheDocument()
 
-    view.rerender(
-      <MemberMenu member={member} isCurrentUser={false} canAssignRoles={false} canRemove />,
-    )
+    view.rerender(<MemberMenu {...memberMenuProps} canAssignRoles={false} />)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /members\.memberActions/i }))
     await user.click(screen.getByRole('menuitem', { name: /members\.removeFromTeam/i }))
     expect(screen.getByRole('alertdialog')).toBeInTheDocument()
 
-    view.rerender(
-      <MemberMenu member={member} isCurrentUser={false} canAssignRoles canRemove={false} />,
-    )
+    view.rerender(<MemberMenu {...memberMenuProps} canRemove={false} />)
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })
 
@@ -208,10 +189,9 @@ describe('MemberMenu', () => {
     const membersQueryKey = [...commonQueryKeys.members, 'en-US']
     queryClient.setQueryData(membersQueryKey, { accounts: [member] })
 
-    renderWithConsoleQuery(
-      <MemberMenu member={member} isCurrentUser={false} canAssignRoles={false} canRemove />,
-      { queryClient },
-    )
+    renderWithConsoleQuery(<MemberMenu {...memberMenuProps} canAssignRoles={false} />, {
+      queryClient,
+    })
 
     await user.click(screen.getByRole('button', { name: /members\.memberActions/i }))
     expect(

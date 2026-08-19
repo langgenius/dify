@@ -6,7 +6,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import click
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.db.session_factory import session_factory
@@ -127,39 +126,6 @@ def _member_already_has_role(current_roles_by_account_id: dict[str, set[str]], a
     return current_roles_by_account_id.get(account_id) == {role_id}
 
 
-def _replace_member_role(
-    tenant_id: str,
-    operator_account_id: str,
-    member_account_id: str,
-    role_id: str,
-    *,
-    session: Session,
-) -> str:
-    RBACService.MemberRoles.replace(
-        tenant_id=tenant_id,
-        account_id=operator_account_id,
-        member_account_id=member_account_id,
-        role_ids=[role_id],
-    )
-    return member_account_id
-
-
-def _replace_member_role_with_new_session(
-    tenant_id: str,
-    operator_account_id: str,
-    member_account_id: str,
-    role_id: str,
-) -> str:
-    with session_factory.create_session() as session:
-        return _replace_member_role(
-            tenant_id=tenant_id,
-            operator_account_id=operator_account_id,
-            member_account_id=member_account_id,
-            role_id=role_id,
-            session=session,
-        )
-
-
 @click.command(
     "rbac-migrate-member-roles", help="Migrate legacy workspace member roles into RBAC member-role bindings."
 )
@@ -234,25 +200,23 @@ def migrate_member_roles_to_rbac(
 
         if replace_jobs:
             if workers == 1:
-                with session_factory.create_session() as session:
-                    for member_account_id, resolved_role_id in replace_jobs:
-                        _replace_member_role(
-                            workspace_id,
-                            owner_account_id,
-                            member_account_id,
-                            resolved_role_id,
-                            session=session,
-                        )
-                        migrated_count += 1
+                for member_account_id, resolved_role_id in replace_jobs:
+                    RBACService.MemberRoles.replace(
+                        workspace_id,
+                        owner_account_id,
+                        member_account_id,
+                        [resolved_role_id],
+                    )
+                    migrated_count += 1
             else:
                 with ThreadPoolExecutor(max_workers=workers) as executor:
                     futures = [
                         executor.submit(
-                            _replace_member_role_with_new_session,
+                            RBACService.MemberRoles.replace,
                             workspace_id,
                             owner_account_id,
                             member_account_id,
-                            resolved_role_id,
+                            [resolved_role_id],
                         )
                         for member_account_id, resolved_role_id in replace_jobs
                     ]

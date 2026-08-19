@@ -117,15 +117,14 @@ def _auth_ctx(account_id: uuid.UUID | None = None) -> AuthContext:
     )
 
 
-def _auth_data(account_id: uuid.UUID) -> AuthData:
-    from controllers.openapi.auth.data import AuthData
-    from libs.oauth_bearer import Scope, TokenType
-
+def _auth_data(account_id: uuid.UUID, *, caller: Account | None = None, tenant: Tenant | None = None) -> AuthData:
     return AuthData(
         token_type=TokenType.OAUTH_ACCOUNT,
         account_id=account_id,
         token_hash="testhash",
         scopes=frozenset({Scope.FULL}),
+        caller=caller,
+        tenant=tenant,
     )
 
 
@@ -282,7 +281,7 @@ def test_switch_returns_workspace_detail_with_current_true(app: Flask, bypass_pi
     acct_id = uuid.uuid4()
     api = WorkspaceSwitchApi()
 
-    _persist_workspace(
+    tenant, accounts = _persist_workspace(
         database_session,
         ws_id,
         [(str(acct_id), "caller@example.com", TenantAccountRole.OWNER, False)],
@@ -290,7 +289,11 @@ def test_switch_returns_workspace_detail_with_current_true(app: Flask, bypass_pi
 
     with app.test_request_context(f"/openapi/v1/workspaces/{ws_id}:switch", method="POST"):
         _seed(_auth_ctx(account_id=acct_id))
-        body, status = api.post.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
+        body, status = api.post.__wrapped__(
+            api,
+            workspace_id=ws_id,
+            auth_data=_auth_data(acct_id, caller=accounts[0], tenant=tenant),
+        )
 
     assert status == 200
     assert body["id"] == ws_id
@@ -314,7 +317,7 @@ def test_switch_404s_when_service_raises_account_not_link_tenant(
     acct_id = uuid.uuid4()
     api = WorkspaceSwitchApi()
 
-    _persist_workspace(
+    tenant, accounts = _persist_workspace(
         database_session,
         ws_id,
         [(str(acct_id), "caller@example.com", TenantAccountRole.OWNER, False)],
@@ -329,7 +332,11 @@ def test_switch_404s_when_service_raises_account_not_link_tenant(
     with app.test_request_context(f"/openapi/v1/workspaces/{ws_id}:switch", method="POST"):
         _seed(_auth_ctx(account_id=acct_id))
         with pytest.raises(NotFound):
-            api.post.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
+            api.post.__wrapped__(
+                api,
+                workspace_id=ws_id,
+                auth_data=_auth_data(acct_id, caller=accounts[0], tenant=tenant),
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -343,7 +350,7 @@ def test_members_list_returns_normalized_rows(app: Flask, bypass_pipeline, datab
     member_id = str(uuid.uuid4())
     api = WorkspaceMembersApi()
 
-    _, members = _persist_workspace(
+    tenant, members = _persist_workspace(
         database_session,
         ws_id,
         [(member_id, "mia@example.com", TenantAccountRole.ADMIN, False)],
@@ -352,7 +359,7 @@ def test_members_list_returns_normalized_rows(app: Flask, bypass_pipeline, datab
 
     with app.test_request_context(f"/openapi/v1/workspaces/{ws_id}/members"):
         _seed(_auth_ctx(account_id=acct_id))
-        body, status = api.get.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
+        body, status = api.get.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id, tenant=tenant))
 
     assert status == 200
     assert body["page"] == 1
@@ -372,11 +379,11 @@ def test_members_list_paginates_with_query_params(app: Flask, bypass_pipeline, d
 
     member_ids = [str(uuid.uuid4()) for _ in range(5)]
     memberships = [(member_ids[i], f"u{i}@example.com", TenantAccountRole.NORMAL, False) for i in range(5)]
-    _persist_workspace(database_session, ws_id, memberships)
+    tenant, _ = _persist_workspace(database_session, ws_id, memberships)
 
     with app.test_request_context(f"/openapi/v1/workspaces/{ws_id}/members?page=2&limit=2"):
         _seed(_auth_ctx(account_id=acct_id))
-        body, status = api.get.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
+        body, status = api.get.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id, tenant=tenant))
 
     assert status == 200
     assert body["page"] == 2
@@ -873,25 +880,6 @@ def test_update_role_exception_mapping(
                 member_id=member_id,
                 auth_data=_auth_data(acct_id),
             )
-
-
-# ---------------------------------------------------------------------------
-# _load_tenant rejects archived tenant
-# ---------------------------------------------------------------------------
-
-
-def test_load_tenant_rejects_archived_workspace(app: Flask, bypass_pipeline, database_session: Session):
-    """Member management against an archived workspace → 404."""
-    ws_id = str(uuid.uuid4())
-    acct_id = uuid.uuid4()
-    api = WorkspaceMembersApi()
-
-    _persist_workspace(database_session, ws_id, [], status=TenantStatus.ARCHIVE)
-
-    with app.test_request_context(f"/openapi/v1/workspaces/{ws_id}/members"):
-        _seed(_auth_ctx(account_id=acct_id))
-        with pytest.raises(NotFound):
-            api.get.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
 
 
 # ---------------------------------------------------------------------------

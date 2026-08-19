@@ -12,6 +12,7 @@ workspace membership and optional role requirements via the auth pipeline.
 from __future__ import annotations
 
 from itertools import starmap
+from typing import cast
 from urllib import parse
 
 from flask_restx import Resource
@@ -41,7 +42,7 @@ from core.rbac import RBACPermission, RBACResourceScope
 from enums import DeploymentEdition
 from libs.oauth_bearer import Scope, TokenType
 from models import Account, Tenant, TenantAccountJoin
-from models.account import TenantAccountRole, TenantStatus
+from models.account import TenantAccountRole
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import (
     AccountAlreadyInTenantError,
@@ -66,20 +67,6 @@ def _member_response(account: Account) -> MemberResponse:
         status=account.status.value if account.status else "",
         avatar=account.avatar,
     )
-
-
-def _load_tenant(session: Session, workspace_id: str) -> Tenant:
-    tenant = TenantService.get_tenant_by_id(workspace_id, session=session)
-    if tenant is None or tenant.status != TenantStatus.NORMAL:
-        raise NotFound("workspace not found")
-    return tenant
-
-
-def _load_account(session: Session, account_id: object) -> Account:
-    account = AccountService.get_account_by_id(str(account_id), session=session) if account_id else None
-    if account is None:
-        raise RuntimeError("authenticated account_id has no Account row")
-    return account
 
 
 def _check_member_invite_quota(tenant_id: str) -> None:
@@ -133,7 +120,7 @@ class WorkspaceSwitchApi(Resource):
     @returns(200, WorkspaceDetailResponse, description="Workspace detail")
     @with_session
     def post(self, session: Session, workspace_id: str, *, auth_data: AuthData):
-        account = _load_account(session, auth_data.account_id)
+        account = cast(Account, auth_data.caller)
 
         try:
             TenantService.switch_tenant(account, workspace_id, session=session)
@@ -160,7 +147,7 @@ class WorkspaceMembersApi(Resource):
     @accepts(query=MemberListQuery)
     @with_session(write=False)
     def get(self, session: Session, workspace_id: str, *, auth_data: AuthData, query: MemberListQuery):
-        tenant = _load_tenant(session, workspace_id)
+        tenant = cast(Tenant, auth_data.tenant)
         members = TenantService.get_tenant_members(tenant, session=session)
         total = len(members)
         start = (query.page - 1) * query.limit

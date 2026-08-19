@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from flask import request
 from flask_restx import Resource
@@ -181,18 +181,15 @@ def _filter_resource_whitelist(tenant_id: str, whitelist: svc.ResourceWhitelist)
     whitelist.account_ids = [account_id for account_id in whitelist.account_ids if account_id in tenant_account_ids]
 
 
-def _hydrate_member_bindings(tenant_id: str, bindings: svc.MemberBindingsResponse) -> None:
-    account_names = _account_names_by_ids(tenant_id, [binding.account_id for binding in bindings.data])
-    bindings.data = [binding for binding in bindings.data if binding.account_id in account_names]
-    for binding in bindings.data:
-        binding.account_name = account_names[binding.account_id]["name"]
-
-
-def _hydrate_role_members(tenant_id: str, members: svc.Paginated[svc.MembersInRole]) -> None:
-    account_names = _account_names_by_ids(tenant_id, [member.account_id for member in members.data])
-    members.data = [member for member in members.data if member.account_id in account_names]
-    for member in members.data:
-        member.account_name = account_names[member.account_id]["name"]
+def _hydrate_member_bindings(
+    tenant_id: str,
+    bindings: svc.MemberBindingsResponse | svc.Paginated[svc.MembersInRole],
+) -> None:
+    items = cast(list[svc.AccessPolicyMemberBinding | svc.MembersInRole], bindings.data)
+    account_names = _account_names_by_ids(tenant_id, [item.account_id for item in items])
+    items[:] = [item for item in items if item.account_id in account_names]
+    for item in items:
+        item.account_name = account_names[item.account_id]["name"]
 
 
 class _PaginationQuery(BaseModel):
@@ -987,5 +984,5 @@ class ListMembersByRole(_WorkspaceRoleManageResource):
             str(role_id),
             options=_pagination_options(),
         )
-        _hydrate_role_members(tenant_id, result)
+        _hydrate_member_bindings(tenant_id, result)
         return _dump(result)

@@ -1768,53 +1768,39 @@ class RBACService:
                 return RBACService.MemberRoles.replace(tenant_id, account_id, member_account_id, role_ids)
 
             with RBACService.MemberRoles.mutation_lock(tenant_id):
-                return RBACService.MemberRoles._replace_user_roles_locked(
+                if not account_id:
+                    raise NoPermissionError("Role assignment requires an authenticated account.")
+                if account_id == member_account_id:
+                    raise CannotOperateSelfError("Cannot operate self.")
+
+                canonical_role_ids = _canonical_role_ids(role_ids)
+
+                from services.account_service import AccountService
+
+                require_tenant_members(tenant_id, [account_id, member_account_id])
+                if "workspace.role.manage" not in AccountService.get_workspace_permission_keys(tenant_id, account_id):
+                    raise NoPermissionError("No permission to update member.")
+
+                current_roles = RBACService.MemberRoles.get(
                     tenant_id,
                     account_id,
                     member_account_id,
-                    role_ids,
+                ).roles
+                if any(
+                    role.is_builtin and role.category == "global_system_default" and role.role_tag == "owner"
+                    for role in current_roles
+                ):
+                    raise NoPermissionError("Workspace owner can only be changed through owner transfer.")
+                if _canonical_member_role_ids(current_roles) == set(canonical_role_ids):
+                    raise RoleAlreadyAssignedError("The provided role is already assigned to the member.")
+
+                RBACService.MemberRoles.ensure_roles_assignable(tenant_id, account_id, canonical_role_ids)
+                return RBACService.MemberRoles.replace(
+                    tenant_id,
+                    account_id,
+                    member_account_id,
+                    canonical_role_ids,
                 )
-
-        @staticmethod
-        def _replace_user_roles_locked(
-            tenant_id: str,
-            account_id: str | None,
-            member_account_id: str,
-            role_ids: list[str],
-        ) -> MemberRolesResponse:
-            if not account_id:
-                raise NoPermissionError("Role assignment requires an authenticated account.")
-            if account_id == member_account_id:
-                raise CannotOperateSelfError("Cannot operate self.")
-
-            canonical_role_ids = _canonical_role_ids(role_ids)
-
-            from services.account_service import AccountService
-
-            require_tenant_members(tenant_id, [account_id, member_account_id])
-            if "workspace.role.manage" not in AccountService.get_workspace_permission_keys(tenant_id, account_id):
-                raise NoPermissionError("No permission to update member.")
-
-            current_roles = RBACService.MemberRoles.get(
-                tenant_id,
-                account_id,
-                member_account_id,
-            ).roles
-            if any(
-                role.is_builtin and role.category == "global_system_default" and role.role_tag == "owner"
-                for role in current_roles
-            ):
-                raise NoPermissionError("Workspace owner can only be changed through owner transfer.")
-            if _canonical_member_role_ids(current_roles) == set(canonical_role_ids):
-                raise RoleAlreadyAssignedError("The provided role is already assigned to the member.")
-
-            RBACService.MemberRoles.ensure_roles_assignable(tenant_id, account_id, canonical_role_ids)
-            return RBACService.MemberRoles.replace(
-                tenant_id,
-                account_id,
-                member_account_id,
-                canonical_role_ids,
-            )
 
         @staticmethod
         @contextmanager

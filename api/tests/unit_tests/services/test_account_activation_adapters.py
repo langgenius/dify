@@ -85,18 +85,6 @@ def test_workspace_policy_delegates_to_existing_policy_owner() -> None:
     ensure_allowed.assert_called_once_with("workspace-1")
 
 
-def test_legacy_membership_assigner_yields_requested_role() -> None:
-    invitation = _invitation()
-    with patch(
-        "services.account_activation_adapters._invitation_membership_scope",
-        return_value=nullcontext(),
-    ) as scope:
-        with assign_legacy_invitation_membership(invitation, "editor") as membership_role:
-            assert membership_role == "editor"
-
-    scope.assert_called_once_with(invitation)
-
-
 def test_membership_scope_translates_capacity_failure() -> None:
     source_error = WorkspaceMembersLimitExceededError("workspace is full")
     session = MagicMock()

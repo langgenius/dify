@@ -2998,33 +2998,6 @@ class TestRegisterService:
             # Verify email task was called
             mock_send_mail.delay.assert_called_once()
 
-    def test_invite_new_member_no_inviter(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test inviting a member without providing an inviter.
-        """
-        fake = Faker()
-        tenant_name = fake.company()
-        new_member_email = fake.email()
-        language = fake.random_element(elements=("en-US", "zh-CN"))
-        # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
-        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
-
-        # Create tenant
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
-
-        # Execute invitation without inviter (should fail)
-        with pytest.raises(ValueError, match="Inviter is required"):
-            RegisterService.invite_new_member(
-                tenant_id=str(tenant.id),
-                email=new_member_email,
-                language=language,
-                role="normal",
-                inviter_id=None,
-            )
-
     def test_invite_new_member_account_already_in_tenant(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):

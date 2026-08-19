@@ -69,7 +69,7 @@ class BillingAccountActivationEligibility(AccountActivationEligibility):
 
 
 @contextmanager
-def _invitation_membership_scope(invitation: AccountInvitation) -> Generator[None]:
+def assign_legacy_invitation_membership(invitation: AccountInvitation, role: str) -> Generator[str]:
     with workspace_membership_mutation_lock(invitation.workspace_id):
         with session_factory.create_session() as session:
             membership_exists = TenantService.account_belongs_to_tenant(
@@ -82,12 +82,6 @@ def _invitation_membership_scope(invitation: AccountInvitation) -> Generator[Non
                 TenantService.ensure_member_capacity(invitation.workspace_id)
             except WorkspaceMembersLimitExceededError as exc:
                 raise WorkspaceMemberCapacityExceededError from exc
-        yield
-
-
-@contextmanager
-def assign_legacy_invitation_membership(invitation: AccountInvitation, role: str) -> Generator[str]:
-    with _invitation_membership_scope(invitation):
         yield role
 
 

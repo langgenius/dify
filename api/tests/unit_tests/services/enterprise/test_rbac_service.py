@@ -1159,36 +1159,6 @@ class TestMemberRoles:
             "tenant-1", "acct-actor", "acct-invitee", [EDITOR_ROLE_ID]
         )
 
-    def test_assign_invited_member_preserves_new_membership_when_assignment_is_unconfirmed(
-        self,
-        sqlite_session: Session,
-        invitation_context: None,
-        invitation_assignment,
-    ):
-        assignment_error = TimeoutError("assignment timed out")
-        with (
-            patch("services.account_service.TenantService.ensure_member_capacity"),
-            patch.object(
-                svc.RBACService.MemberRoles,
-                "replace",
-                side_effect=assignment_error,
-            ),
-            patch.object(
-                svc.RBACService.MemberRoles,
-                "_get_remote",
-                side_effect=[invitation_assignment.no_roles, invitation_assignment.no_roles],
-            ),
-            pytest.raises(TimeoutError) as exc_info,
-        ):
-            svc.RBACService.MemberRoles.assign_invited_member("tenant-1", "acct-actor", "acct-invitee", EDITOR_ROLE_ID)
-
-        assert exc_info.value is assignment_error
-        sqlite_session.expire_all()
-        assert (
-            sqlite_session.query(TenantAccountJoin).filter_by(tenant_id="tenant-1", account_id="acct-invitee").count()
-            == 1
-        )
-
     @pytest.mark.parametrize(("persist_tenant", "persist_account"), [(False, True), (True, False)])
     def test_assign_invited_member_requires_membership_owners(
         self,
@@ -1373,8 +1343,9 @@ class TestMemberRoles:
                 roles=[svc.RBACRole(id=OWNER_ROLE_ID, type="workspace", name="Other")],
             ),
             ConnectionError("readback unavailable"),
+            svc.MemberRolesResponse(account_id="acct-invitee", roles=[]),
         ],
-        ids=["different-role", "unreadable"],
+        ids=["different-role", "unreadable", "no-roles"],
     )
     def test_assign_invited_member_preserves_new_membership_when_remote_state_is_ambiguous(
         self,
@@ -1401,6 +1372,7 @@ class TestMemberRoles:
             svc.RBACService.MemberRoles.assign_invited_member("tenant-1", "acct-actor", "acct-invitee", EDITOR_ROLE_ID)
 
         assert exc_info.value is assignment_error
+        sqlite_session.expire_all()
         assert (
             sqlite_session.query(TenantAccountJoin).filter_by(tenant_id="tenant-1", account_id="acct-invitee").count()
             == 1
