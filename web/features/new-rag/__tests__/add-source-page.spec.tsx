@@ -996,6 +996,19 @@ describe('AddSourcePage', () => {
     expect(screen.queryByLabelText(/Api Key/)).not.toBeInTheDocument()
   })
 
+  it('names the provider when automatic credential binding fails', async () => {
+    queryState.providers.data = { items: [difyManagedFirecrawlProvider] }
+    queryState.datasourceAuth.data = { result: [firecrawlDatasourceAuth] }
+    clientMock.createConnection.mockRejectedValue(new Error('provider unavailable'))
+    queryState.connections.refetch.mockResolvedValue({ data: queryState.connections.data })
+
+    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'dataset.newKnowledge.connectionFailed:{"provider":"Firecrawl"}',
+    )
+  })
+
   it('binds an installed Jina Reader datasource without reusing a Firecrawl connection', async () => {
     queryState.providers.data = { items: [difyManagedFirecrawlProvider] }
     queryState.datasourcePlugins.data = [firecrawlDatasourcePlugin, jinaDatasourcePlugin]
@@ -1288,7 +1301,9 @@ describe('AddSourcePage', () => {
     await user.type(screen.getByLabelText('Endpoint'), 'https://crawl.example.com')
     await user.click(screen.getByRole('button', { name: connectFirecrawlButtonName }))
 
-    expect(await screen.findByText('dataset.newKnowledge.connectionFailed')).toBeInTheDocument()
+    expect(
+      await screen.findByText('dataset.newKnowledge.connectionFailed:{"provider":"Firecrawl"}'),
+    ).toBeInTheDocument()
     expect(screen.getByLabelText(/Api Key/)).toHaveValue('')
     expect(screen.getByLabelText('Endpoint')).toHaveValue('https://crawl.example.com')
   })
@@ -1310,7 +1325,9 @@ describe('AddSourcePage', () => {
     await waitFor(() => expect(clientMock.createConnection).toHaveBeenCalledOnce())
     act(() => window.dispatchEvent(new PopStateEvent('popstate')))
     expect(await screen.findByText(/dataset\.newKnowledge\.providerConnected/)).toBeInTheDocument()
-    expect(screen.queryByText('dataset.newKnowledge.connectionFailed')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('dataset.newKnowledge.connectionFailed:{"provider":"Firecrawl"}'),
+    ).not.toBeInTheDocument()
   })
 
   it('clears an API key when authentication modes are changed and changed back', async () => {
@@ -1395,6 +1412,9 @@ describe('AddSourcePage', () => {
     clientMock.refreshConnection.mockResolvedValue(connection('active'))
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    expect(
+      screen.getByText('dataset.newKnowledge.connectionNeedsAttention:{"provider":"Firecrawl"}'),
+    ).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
 
     await waitFor(() =>
@@ -1474,7 +1494,9 @@ describe('AddSourcePage', () => {
     const view = render(<AddSourcePage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
     expect(
-      await screen.findByText('dataset.newKnowledge.connectionProvisioning'),
+      await screen.findByText(
+        'dataset.newKnowledge.connectionProvisioning:{"provider":"Firecrawl"}',
+      ),
     ).toBeInTheDocument()
 
     queryState.connections.data = {
