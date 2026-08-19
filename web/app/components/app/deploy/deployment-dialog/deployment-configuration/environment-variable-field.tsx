@@ -20,7 +20,7 @@ import {
 } from '@langgenius/dify-ui/select'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { defaultEnvironmentVariableSelection } from './workflow-deployment-input'
+import { resolveEnvironmentVariableSelection } from './workflow-deployment-input'
 
 export const EnvironmentVariableField = memo(
   ({
@@ -33,8 +33,8 @@ export const EnvironmentVariableField = memo(
     onChange: (key: string, value: EnvironmentVariableSelection) => void
   }) => {
     const { t } = useTranslation('deployments')
-    const [selection, setSelection] = useState(
-      () => getInitialSelection(slot.key) ?? defaultEnvironmentVariableSelection(slot),
+    const [selection, setSelection] = useState(() =>
+      resolveEnvironmentVariableSelection(slot, getInitialSelection(slot.key)),
     )
     const { customValue, source } = selection
     const sourceLabels: Partial<Record<EnvVarValueSource, string>> = {

@@ -19,7 +19,7 @@ import { DeploymentDialog } from './deployment-dialog'
 import { EnvironmentTable } from './environment-table'
 import { useRefreshAppEnvironmentsAfterDeploymentPolling } from './hooks/use-refresh-app-environments-after-deployment-polling'
 import { useUndeployWorkflow } from './hooks/use-undeploy-workflow'
-import { AppDeployStateBoundary, latestAppWorkflowVersionAtom } from './state'
+import { AppDeployStateBoundary } from './state'
 import { toDeploymentVersion } from './version'
 
 function AppDeployContent({ appId }: { appId: string }) {
@@ -31,7 +31,6 @@ function AppDeployContent({ appId }: { appId: string }) {
   // `en/3.13.x/use/deploy/overview.mdx` URL once it is available.
   const deployOverviewDocUrl = docLink('/use/deploy/overview' as DocPathWithoutLang)
   const [deploymentRequest, setDeploymentRequest] = useState<DeploymentDialogRequest>()
-  const latestVersion = useAtomValue(latestAppWorkflowVersionAtom)
   useRefreshAppEnvironmentsAfterDeploymentPolling(appId)
   const undeployWorkflow = useUndeployWorkflow(appId)
 
@@ -104,9 +103,7 @@ function AppDeployContent({ appId }: { appId: string }) {
                 kind: 'changeVersion',
               })
             }
-            onDeployLatest={(deployment) => {
-              if (!latestVersion) return
-
+            onDeployLatest={(deployment, latestVersion) => {
               setDeploymentRequest({
                 currentVersionId: deployment.deployment?.current_version?.id,
                 environment: deployment.environment.display_name,

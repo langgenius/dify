@@ -1,11 +1,14 @@
 'use client'
 
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 
 export function useUndeployWorkflow(appId: string) {
+  const { t } = useTranslation('deployments')
   const { mutateAsync } = useMutation(
     consoleQuery.enterprise.appDeploy.deploymentService.undeployWorkflow.mutationOptions(),
   )
@@ -13,7 +16,10 @@ export function useUndeployWorkflow(appId: string) {
   return useCallback(
     (deployment: EnvironmentDeployment) => {
       const workflowId = deployment.deployment?.current_version?.id
-      if (!workflowId) return
+      if (!workflowId) {
+        toast.error(t(($) => $['deployTab.undeployUnavailable']))
+        return
+      }
 
       return mutateAsync({
         params: {
@@ -23,6 +29,6 @@ export function useUndeployWorkflow(appId: string) {
         },
       }).then(() => undefined)
     },
-    [appId, mutateAsync],
+    [appId, mutateAsync, t],
   )
 }

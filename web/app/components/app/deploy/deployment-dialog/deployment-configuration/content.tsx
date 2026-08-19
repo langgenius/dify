@@ -230,7 +230,7 @@ export function DeploymentConfigurationContent({
                 {environmentVariableSlots.map((slot) => {
                   return (
                     <EnvironmentVariableField
-                      key={slot.key}
+                      key={`${slot.key}:${slot.has_configured_value}:${slot.has_last_deployed_value}`}
                       slot={slot}
                       getInitialSelection={getEnvironmentVariableSelection}
                       onChange={setEnvironmentVariableSelection}

@@ -1,5 +1,6 @@
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { AccessPoint } from '../access-point'
+import type { DeploymentVersion } from '../version'
 import type { UndeployHandler } from './types'
 import { memo } from 'react'
 import { ACCESS_POINT_ORDER, getAccessPointHref } from '../access-point'
@@ -12,6 +13,7 @@ import { EnvironmentRowActions } from './row-actions'
 export const EnvironmentRow = memo(
   ({
     appId,
+    latestVersion,
     row,
     onChangeVersion,
     onDeployLatest,
@@ -19,11 +21,12 @@ export const EnvironmentRow = memo(
     onUndeploy,
   }: {
     appId: string
+    latestVersion?: DeploymentVersion
     row: EnvironmentDeployment
-    onChangeVersion?: (deployment: EnvironmentDeployment) => void
-    onDeployLatest?: (deployment: EnvironmentDeployment) => void
-    onRedeploy?: (deployment: EnvironmentDeployment) => void
-    onUndeploy?: UndeployHandler
+    onChangeVersion: (deployment: EnvironmentDeployment) => void
+    onDeployLatest: (deployment: EnvironmentDeployment, version: DeploymentVersion) => void
+    onRedeploy: (deployment: EnvironmentDeployment) => void
+    onUndeploy: UndeployHandler
   }) => {
     const isAccessPointActive = (accessPoint: AccessPoint) => {
       if (accessPoint === 'webApp') return row.access.enable_site
@@ -69,6 +72,7 @@ export const EnvironmentRow = memo(
         </td>
         <td className="border-b border-divider-subtle pr-2 pl-3">
           <EnvironmentRowActions
+            latestVersion={latestVersion}
             row={row}
             onChangeVersion={onChangeVersion}
             onDeployLatest={onDeployLatest}
