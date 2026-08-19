@@ -46,7 +46,7 @@
   "studio.accessPoint.triggerDescription": "実行中のバージョンのトリガーノード",
   "studio.accessPoint.triggerDisconnected": "切断済み",
   "studio.accessPoint.triggerEnabledCount": "{{enabled}}/{{total}} 件が有効",
-  "studio.accessPoint.triggerExclusiveNotice": "実行中のバージョンでトリガーが使用されている間、Web アプリ、API アクセス、MCP サーバーは利用できません。",
+  "studio.accessPoint.triggerExclusiveNotice": "トリガーが使用されている間、Web アプリ、API アクセス、MCP サーバーは利用できません。",
   "studio.accessPoint.triggerMuted": "ミュート",
   "studio.accessPoint.triggerServiceModeUnavailable": "Web App、API、MCP のいずれかが稼働中は利用できません。",
   "studio.accessPoint.unsupportedInDeployedEnvironment": "組み込み環境でのみ利用できます。",

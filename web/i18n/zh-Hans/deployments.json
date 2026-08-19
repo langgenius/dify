@@ -46,7 +46,7 @@
   "studio.accessPoint.triggerDescription": "当前运行版本中的触发器节点",
   "studio.accessPoint.triggerDisconnected": "连接已断开",
   "studio.accessPoint.triggerEnabledCount": "已启用 {{enabled}}/{{total}}",
-  "studio.accessPoint.triggerExclusiveNotice": "当前运行版本使用触发器时，Web 应用、API 访问和 MCP 服务不可用。",
+  "studio.accessPoint.triggerExclusiveNotice": "使用触发器时，Web 应用、API 访问和 MCP 服务不可用。",
   "studio.accessPoint.triggerMuted": "已静默",
   "studio.accessPoint.triggerServiceModeUnavailable": "Web App、API 或 MCP 正在服务时不可用。",
   "studio.accessPoint.unsupportedInDeployedEnvironment": "仅在内置环境中可用。",
