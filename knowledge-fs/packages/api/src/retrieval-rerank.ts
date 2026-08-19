@@ -145,18 +145,18 @@ function validateRerankResult({
 }
 
 export function rerankTextForHybridItem(item: HybridRetrievalItem): string {
-  const ftsText = item.metadata.ftsText;
-  if (typeof ftsText === "string" && ftsText.trim().length > 0) {
-    return ftsText;
-  }
-
   const text = item.metadata.text;
-  if (typeof text === "string" && text.trim().length > 0) {
-    return text;
-  }
+  const naturalText = typeof text === "string" ? text.trim() : "";
+  const ftsText = item.metadata.ftsText;
+  const indexedText = typeof ftsText === "string" ? ftsText.trim() : "";
+  const sectionText = item.citation.sectionPath
+    .map((segment) => segment.trim())
+    .filter(Boolean)
+    .join(" > ");
+  const content = naturalText || indexedText;
 
-  const sectionText = item.citation.sectionPath.join(" ").trim();
-  return sectionText || item.nodeId;
+  if (content && sectionText) return `${sectionText}\n\n${content}`;
+  return content || sectionText || item.nodeId;
 }
 
 export function evidenceTextFromHybridItem(item: HybridRetrievalItem): string {

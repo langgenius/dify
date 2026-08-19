@@ -1678,7 +1678,7 @@ describe('RetrievalTestPage', () => {
           metadata: {
             documentId: 'asset-1',
             revision: '2',
-            score: 0.9,
+            score: 0.0005295,
             text: 'Refunds are available within 30 days.',
           },
           name: 'chunk-1',
@@ -1700,6 +1700,7 @@ describe('RetrievalTestPage', () => {
       screen.getByRole('link', { name: 'dataset.newKnowledge.retrievalTest.open' }),
     ).toHaveAttribute('href', '/datasets/new/space-1/documents/document-1?revision=2&chunk=chunk-1')
     expect(screen.getByText('refund-policy.txt')).toBeInTheDocument()
+    expect(screen.getByText('<0.01')).toBeInTheDocument()
     expect(
       screen.getByText('dataset.newKnowledge.retrievalTest.revision:{"revision":"2"}'),
     ).toBeInTheDocument()

@@ -373,10 +373,15 @@ export function localResearchQueryPlan(query: string): {
   const normalized = requiredText(query, "query");
   const complexPattern =
     /(?:比较|对比|区别|分别|关系|影响|演变|综合|全面|为什么.*(?:以及|并且)|compare|versus|relationship|across|overview)/iu;
+  const compoundManagementPattern =
+    /(?:(?:如何|怎么|怎样).*(?:和|与|以及|及)|(?:和|与|以及).*(?:如何|怎么|怎样|管理|配置|部署|运维)|(?:how|manage|configure|deploy).*(?:\band\b|\bor\b)|(?:\band\b|\bor\b).*(?:manage|configure|deploy))/iu;
   const graphPattern = /(?:关系|关联|依赖|影响|属于|连接|relationship|related|depends|impact)/iu;
   const clauseCount = normalized.split(/[，,；;。.!?？]/u).filter((part) => part.trim()).length;
   const requiresModel =
-    complexPattern.test(normalized) || clauseCount > 2 || Array.from(normalized).length > 120;
+    complexPattern.test(normalized) ||
+    compoundManagementPattern.test(normalized) ||
+    clauseCount > 2 ||
+    Array.from(normalized).length > 120;
   return {
     plan: {
       evidenceDimensions: [],

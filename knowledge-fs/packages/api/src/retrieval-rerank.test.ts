@@ -79,12 +79,12 @@ describe("retrieval rerank", () => {
           {
             id: first.nodeId,
             metadata: { projectionIds: ["projection-a"], sources: ["dense"] },
-            text: "FTS text",
+            text: "Handbook > Policy\n\nPlain text",
           },
           {
             id: second.nodeId,
             metadata: { projectionIds: ["projection-b"], sources: ["fts"] },
-            text: "Second text",
+            text: "Handbook > Policy\n\nSecond text",
           },
         ],
         model: "rerank-model",
@@ -119,8 +119,11 @@ describe("retrieval rerank", () => {
   it("selects bounded text fallbacks for reranking and evidence snippets", async () => {
     expect(
       rerankTextForHybridItem(item({ metadata: { text: "Text fallback", ftsText: " " } })),
-    ).toBe("Text fallback");
-    expect(rerankTextForHybridItem(item({ metadata: {} }))).toBe("Handbook Policy");
+    ).toBe("Handbook > Policy\n\nText fallback");
+    expect(rerankTextForHybridItem(item({ metadata: {} }))).toBe("Handbook > Policy");
+    expect(rerankTextForHybridItem(item({ metadata: { ftsText: "Indexed fallback" } }))).toBe(
+      "Handbook > Policy\n\nIndexed fallback",
+    );
     expect(
       rerankTextForHybridItem(
         item({ citation: { ...item().citation, sectionPath: [] }, metadata: {} }),

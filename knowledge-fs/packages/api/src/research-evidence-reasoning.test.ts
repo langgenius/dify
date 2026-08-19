@@ -70,6 +70,19 @@ describe("Research evidence reasoning", () => {
       temperature: 0,
       tenantId: "tenant-1",
     });
+
+    await expect(
+      reasoning.plan({
+        query: "Dify 的模型和部署是怎么管理的？",
+        reasoningModel,
+        tenantId: "tenant-1",
+      }),
+    ).resolves.toMatchObject({
+      intent: "comparison",
+      modelCalled: true,
+      subqueries: ["renewal terms", "termination terms"],
+    });
+    expect(generate).toHaveBeenCalledTimes(2);
   });
 
   it("routes every judgement through the reasoning model selected by its knowledge space", async () => {
