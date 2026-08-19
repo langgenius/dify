@@ -7,6 +7,7 @@ import type {
   NumberFieldUnitProps,
 } from '../index'
 import * as React from 'react'
+import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { Field, FieldLabel } from '../../field'
 import {
@@ -62,6 +63,20 @@ const renderNumberField = ({
 
 describe('NumberField wrapper', () => {
   describe('Group and input', () => {
+    it('should show the compound focus surface when keyboard users enter without Field', async () => {
+      const screen = await renderNumberField()
+      const group = screen.getByTestId('group')
+      const input = screen.getByRole('textbox', { name: 'Amount' })
+      const restingBoxShadow = getComputedStyle(group.element()).boxShadow
+
+      await userEvent.keyboard('{Tab}')
+
+      await expect.element(input).toHaveFocus()
+      await expect
+        .poll(() => getComputedStyle(group.element()).boxShadow)
+        .not.toBe(restingBoxShadow)
+    })
+
     it('should merge custom className on the group', async () => {
       const screen = await renderNumberField({
         groupProps: {

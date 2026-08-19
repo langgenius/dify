@@ -9,17 +9,14 @@ from uuid import UUID
 
 from flask import has_request_context, request
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
-from redis.exceptions import LockNotOwnedError, RedisError
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Conflict
 
 from configs import dify_config
 from core.db.session_factory import session_factory
 from core.rbac import RBACResourceWhitelistScope
-from extensions.ext_redis import redis_client
-from models import TenantAccountJoin, TenantAccountRole
+from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from services.enterprise.base import EnterpriseRequest
 from services.errors.account import (
     CannotOperateSelfError,
@@ -27,7 +24,8 @@ from services.errors.account import (
     NoPermissionError,
     RoleAlreadyAssignedError,
 )
-from services.errors.enterprise import EnterpriseAPIError
+from services.errors.enterprise import EnterpriseAPIError, EnterpriseAPINotFoundError
+from services.workspace_membership_lock import workspace_membership_mutation_lock
 
 T = TypeVar("T")
 logger = logging.getLogger(__name__)
@@ -311,6 +309,13 @@ class ReplaceUserAccessPoliciesResponse(_RBACModel):
 class MemberRolesResponse(_RBACModel):
     account_id: str
     roles: list[RBACRole] = Field(default_factory=list)
+
+
+def _canonical_member_role_ids(roles: Sequence[RBACRole]) -> set[str]:
+    try:
+        return {str(UUID(role.id)) for role in roles}
+    except (AttributeError, TypeError, ValueError) as exc:
+        raise EnterpriseAPIError("RBAC member-role response contains an invalid role id.", status_code=502) from exc
 
 
 class MemberRolesBatchResponse(_RBACModel):
@@ -914,25 +919,27 @@ class RBACService:
 
         @staticmethod
         def update(tenant_id: str, account_id: str | None, role_id: str, payload: RoleMutation) -> RBACRole:
-            data = _inner_call(
-                "PUT",
-                f"{_INNER_PREFIX}/roles/item",
-                tenant_id=tenant_id,
-                account_id=account_id,
-                params={"id": role_id},
-                json=payload.model_dump(mode="json"),
-            )
+            with RBACService.MemberRoles.mutation_lock(tenant_id):
+                data = _inner_call(
+                    "PUT",
+                    f"{_INNER_PREFIX}/roles/item",
+                    tenant_id=tenant_id,
+                    account_id=account_id,
+                    params={"id": role_id},
+                    json=payload.model_dump(mode="json"),
+                )
             return RBACRole.model_validate(data or {})
 
         @staticmethod
         def delete(tenant_id: str, account_id: str | None, role_id: str) -> None:
-            _inner_call(
-                "DELETE",
-                f"{_INNER_PREFIX}/roles/item",
-                tenant_id=tenant_id,
-                account_id=account_id,
-                params={"id": role_id},
-            )
+            with RBACService.MemberRoles.mutation_lock(tenant_id):
+                _inner_call(
+                    "DELETE",
+                    f"{_INNER_PREFIX}/roles/item",
+                    tenant_id=tenant_id,
+                    account_id=account_id,
+                    params={"id": role_id},
+                )
 
         @staticmethod
         def copy(tenant_id: str, account_id: str | None, role_id: str, copy_member: bool = True) -> RBACRole:
@@ -1623,38 +1630,27 @@ class RBACService:
             return AccessMatrixItem.model_validate(data or {})
 
     class MemberRoles:
-        @staticmethod
-        @contextmanager
-        def mutation_lock(tenant_id: str) -> Generator[None]:
-            # ponytail: fixed lease; add lock renewal if membership mutations can outlive it.
-            timeout = 48 * dify_config.ENTERPRISE_RBAC_REQUEST_TIMEOUT + 60
-            lock = redis_client.lock(f"rbac:tenant-membership:{tenant_id}", timeout=timeout)
-            if not lock.acquire(blocking=False):
-                raise Conflict("Another workspace membership change is in progress.")
-            try:
-                yield
-            finally:
-                try:
-                    lock.release()
-                except (LockNotOwnedError, RedisError):
-                    logger.warning("Failed to release workspace membership lock for tenant %s", tenant_id)
+        mutation_lock = staticmethod(workspace_membership_mutation_lock)
 
         @staticmethod
         def ensure_roles_assignable(tenant_id: str, account_id: str, role_ids: Sequence[str]) -> None:
-            from services.account_service import AccountService
-
             canonical_role_ids = _canonical_role_ids(role_ids)
-            owner_role_id = str(
-                UUID(
-                    AccountService._resolve_legacy_role_id(
-                        tenant_id,
-                        account_id,
-                        TenantAccountRole.OWNER,
-                    )
-                )
-            )
-            if owner_role_id in canonical_role_ids:
-                raise NoPermissionError("Workspace owner can only be changed through owner transfer.")
+            for role_id in canonical_role_ids:
+                try:
+                    role = RBACService.Roles.get(tenant_id, account_id, role_id)
+                except EnterpriseAPINotFoundError as exc:
+                    raise ValueError("Role does not exist in workspace.") from exc
+
+                try:
+                    returned_role_id = str(UUID(role.id))
+                except (AttributeError, TypeError, ValueError) as exc:
+                    raise EnterpriseAPIError(
+                        "RBAC role response contains an invalid role id.", status_code=502
+                    ) from exc
+                if returned_role_id != role_id:
+                    raise EnterpriseAPIError("RBAC role response does not match the requested role.", status_code=502)
+                if role.is_builtin and role.category == "global_system_default" and role.role_tag == "owner":
+                    raise NoPermissionError("Workspace owner can only be changed through owner transfer.")
 
         @staticmethod
         def get(
@@ -1666,19 +1662,7 @@ class RBACService:
         ) -> MemberRolesResponse:
             if dify_config.RBAC_ENABLED:
                 require_tenant_members(tenant_id, [member_account_id])
-                data = _inner_call(
-                    "GET",
-                    f"{_INNER_PREFIX}/members/rbac-roles",
-                    tenant_id=tenant_id,
-                    account_id=account_id,
-                    params={"account_id": member_account_id},
-                )
-                rst = MemberRolesResponse.model_validate(data or {})
-                if rst.account_id != member_account_id:
-                    raise EnterpriseAPIError(
-                        "RBAC member-role response account does not match the requested member.", status_code=502
-                    )
-                return rst
+                return RBACService.MemberRoles._get_remote(tenant_id, account_id, member_account_id)
 
             if session is None:
                 raise ValueError("Legacy member-role lookup requires a database session.")
@@ -1691,6 +1675,26 @@ class RBACService:
             if role is None:
                 raise MemberNotInTenantError("Member not in tenant.")
             return _legacy_member_roles_response(tenant_id, member_account_id, role)
+
+        @staticmethod
+        def _get_remote(
+            tenant_id: str,
+            account_id: str | None,
+            member_account_id: str,
+        ) -> MemberRolesResponse:
+            data = _inner_call(
+                "GET",
+                f"{_INNER_PREFIX}/members/rbac-roles",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                params={"account_id": member_account_id},
+            )
+            result = MemberRolesResponse.model_validate(data or {})
+            if result.account_id != member_account_id:
+                raise EnterpriseAPIError(
+                    "RBAC member-role response account does not match the requested member.", status_code=502
+                )
+            return result
 
         @staticmethod
         def batch_get(
@@ -1801,7 +1805,7 @@ class RBACService:
                 for role in current_roles
             ):
                 raise NoPermissionError("Workspace owner can only be changed through owner transfer.")
-            if {str(role.id) for role in current_roles} == set(canonical_role_ids):
+            if _canonical_member_role_ids(current_roles) == set(canonical_role_ids):
                 raise RoleAlreadyAssignedError("The provided role is already assigned to the member.")
 
             RBACService.MemberRoles.ensure_roles_assignable(tenant_id, account_id, canonical_role_ids)
@@ -1813,12 +1817,15 @@ class RBACService:
             )
 
         @staticmethod
-        def assign_invited_member(
+        @contextmanager
+        def invited_member_assignment_scope(
             tenant_id: str,
             inviter_account_id: str,
             member_account_id: str,
             role_id: str,
-        ) -> None:
+        ) -> Generator[bool]:
+            requested_role_ids = _canonical_role_ids([role_id])
+            requested_role_id_set = set(requested_role_ids)
             with RBACService.MemberRoles.mutation_lock(tenant_id):
                 with session_factory.create_session() as session:
                     membership_exists = (
@@ -1830,50 +1837,100 @@ class RBACService:
                         )
                         is not None
                     )
+                    if not membership_exists and (
+                        session.get(Tenant, tenant_id) is None or session.get(Account, member_account_id) is None
+                    ):
+                        raise ValueError("Workspace invitation context not found.")
 
-                if membership_exists:
-                    current_role_ids = {
-                        str(role.id)
-                        for role in RBACService.MemberRoles.get(
-                            tenant_id,
-                            None,
-                            member_account_id,
-                        ).roles
-                    }
-                    if current_role_ids != set(_canonical_role_ids([role_id])):
-                        raise NoPermissionError("Invitation role no longer matches the member's assigned role.")
+                from services.account_service import AccountService, TenantService
+
+                require_tenant_members(tenant_id, [inviter_account_id])
+                if "workspace.role.manage" not in AccountService.get_workspace_permission_keys(
+                    tenant_id, inviter_account_id
+                ):
+                    raise NoPermissionError("No permission to assign the invitation role.")
+                RBACService.MemberRoles.ensure_roles_assignable(
+                    tenant_id,
+                    inviter_account_id,
+                    requested_role_ids,
+                )
+
+                current_roles = RBACService.MemberRoles._get_remote(
+                    tenant_id,
+                    inviter_account_id,
+                    member_account_id,
+                ).roles
+                current_role_ids = _canonical_member_role_ids(current_roles)
+                if current_role_ids and current_role_ids != requested_role_id_set:
+                    raise NoPermissionError("Invitation role no longer matches the member's assigned role.")
+
+                if not membership_exists:
+                    TenantService.ensure_member_capacity(tenant_id)
+
+                yield membership_exists
+
+                if current_role_ids == requested_role_id_set:
                     return
 
-                from services.account_service import TenantService
-
-                TenantService.ensure_member_capacity(tenant_id)
-                with session_factory.create_session() as session, session.begin():
-                    session.add(
-                        TenantAccountJoin(
-                            tenant_id=tenant_id,
-                            account_id=member_account_id,
-                            role=TenantAccountRole.NORMAL,
-                        )
-                    )
-
                 try:
-                    RBACService.MemberRoles._replace_user_roles_locked(
+                    result = RBACService.MemberRoles.replace(
                         tenant_id,
                         inviter_account_id,
                         member_account_id,
-                        [role_id],
+                        requested_role_ids,
                     )
-                except RoleAlreadyAssignedError:
-                    return
-                except Exception:
-                    with session_factory.create_session() as session, session.begin():
-                        session.execute(
-                            delete(TenantAccountJoin).where(
-                                TenantAccountJoin.tenant_id == tenant_id,
-                                TenantAccountJoin.account_id == member_account_id,
-                            )
+                    if _canonical_member_role_ids(result.roles) != requested_role_id_set:
+                        raise EnterpriseAPIError(
+                            "RBAC role assignment response does not match the requested role.", status_code=502
                         )
+                except Exception as assignment_error:
+                    try:
+                        current_roles = RBACService.MemberRoles._get_remote(
+                            tenant_id,
+                            inviter_account_id,
+                            member_account_id,
+                        ).roles
+                        current_role_ids = _canonical_member_role_ids(current_roles)
+                    except Exception as readback_error:
+                        raise assignment_error from readback_error
+
+                    if current_role_ids == requested_role_id_set:
+                        return
                     raise
+
+        @staticmethod
+        def assign_invited_member(
+            tenant_id: str,
+            inviter_account_id: str,
+            member_account_id: str,
+            role_id: str,
+        ) -> None:
+            with RBACService.MemberRoles.invited_member_assignment_scope(
+                tenant_id,
+                inviter_account_id,
+                member_account_id,
+                role_id,
+            ) as membership_exists:
+                if not membership_exists:
+                    with session_factory.create_session() as session, session.begin():
+                        if session.get(Tenant, tenant_id) is None or session.get(Account, member_account_id) is None:
+                            raise ValueError("Workspace invitation context not found.")
+                        if (
+                            session.scalar(
+                                select(TenantAccountJoin.id).where(
+                                    TenantAccountJoin.tenant_id == tenant_id,
+                                    TenantAccountJoin.account_id == member_account_id,
+                                )
+                            )
+                            is None
+                        ):
+                            session.add(
+                                TenantAccountJoin(
+                                    tenant_id=tenant_id,
+                                    account_id=member_account_id,
+                                    role=TenantAccountRole.NORMAL,
+                                )
+                            )
 
         @staticmethod
         def delete_rbac_bindings(tenant_id: str, actor_account_id: str, member_account_id: str):

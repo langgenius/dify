@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
@@ -89,13 +90,12 @@ describe('CategoriesFilter', () => {
     expect(mockOnChange).toHaveBeenCalledWith([])
   })
 
-  it('should filter categories by search text', () => {
+  it('should filter categories by search text', async () => {
+    const user = userEvent.setup()
     render(<CategoriesFilter value={[]} onChange={vi.fn()} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'plugin.allCategories' }))
-    fireEvent.change(screen.getByPlaceholderText('plugin.searchCategories'), {
-      target: { value: 'mod' },
-    })
+    await user.click(screen.getByRole('button', { name: 'plugin.allCategories' }))
+    await user.type(screen.getByRole('searchbox', { name: 'plugin.searchCategories' }), 'mod')
 
     expect(screen.queryByText('Tool')).not.toBeInTheDocument()
     expect(screen.getByText('Model')).toBeInTheDocument()

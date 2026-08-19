@@ -42,6 +42,7 @@ from controllers.openapi.workspaces import (
     WorkspaceMembersApi,
     WorkspaceSwitchApi,
 )
+from enums import DeploymentEdition
 from libs.oauth_bearer import AuthContext, Scope, SubjectType, TokenType, reset_auth_ctx, set_auth_ctx
 from models import Account, Tenant, TenantAccountJoin
 from models.account import AccountStatus, TenantAccountRole, TenantStatus
@@ -54,6 +55,7 @@ from services.errors.account import (
     MemberNotInTenantError,
     NoPermissionError,
     RoleAlreadyAssignedError,
+    WorkspaceMembersLimitExceededError,
 )
 
 if not hasattr(builtins, "MethodView"):
@@ -601,6 +603,43 @@ def test_invite_ce_passes_when_both_caps_disabled(
 
     assert status == 201
     assert body["email"] == "new@example.com"
+
+
+@pytest.mark.parametrize(
+    ("deployment_edition", "expected"),
+    [
+        (DeploymentEdition.ENTERPRISE, MemberLicenseExceeded),
+        (DeploymentEdition.COMMUNITY, MemberLimitExceeded),
+    ],
+)
+def test_invite_maps_concurrent_workspace_member_limit(
+    app: Flask,
+    bypass_pipeline,
+    monkeypatch: pytest.MonkeyPatch,
+    deployment_edition: DeploymentEdition,
+    expected: type[Exception],
+):
+    ws_id = str(uuid.uuid4())
+    acct_id = uuid.uuid4()
+    api = WorkspaceMembersApi()
+    monkeypatch.setattr(workspaces_module.dify_config, "DEPLOYMENT_EDITION", deployment_edition)
+    monkeypatch.setattr(
+        workspaces_module,
+        "FeatureService",
+        SimpleNamespace(get_features=Mock(return_value=_features())),
+    )
+    monkeypatch.setattr(
+        workspaces_module,
+        "RegisterService",
+        SimpleNamespace(
+            invite_new_member=Mock(side_effect=WorkspaceMembersLimitExceededError("workspace member limit reached"))
+        ),
+    )
+
+    with _invite_request(app, ws_id, acct_id):
+        _seed(_auth_ctx(account_id=acct_id))
+        with pytest.raises(expected):
+            api.post.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
 
 
 def test_invite_400_when_already_in_tenant(

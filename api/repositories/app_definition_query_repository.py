@@ -11,13 +11,14 @@ from core.app.apps.agent_app.app_variable_projection import agent_app_variables_
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
 from models.agent import AgentConfigSnapshot
 from models.agent_config_entities import AgentSoulConfig
-from models.model import App, AppMode, AppModelConfig, load_annotation_reply_config
+from models.model import App, AppMode, AppModelConfig, Site, load_annotation_reply_config
 from models.tools import ApiToolProvider
 from models.workflow import Workflow
 from services.app_definition_query_service import (
     AppDefinitionQuery,
     AppDefinitionSummary,
     AppParameterConfig,
+    AppSiteConfiguration,
     AppToolIconSource,
 )
 
@@ -143,6 +144,30 @@ class AppDefinitionQueryRepository(AppDefinitionQuery):
                 tags=tuple(tag.name for tag in app.tags_with_session(session=session)),
                 mode=app.mode.value,
                 author_name=app.author_name_with_session(session=session),
+            )
+
+    @override
+    def get_site_configuration(self, app_id: str) -> AppSiteConfiguration | None:
+        with self._session_factory() as session:
+            site = session.scalar(select(Site).where(Site.app_id == app_id).limit(1))
+            if site is None:
+                return None
+
+            return AppSiteConfiguration(
+                title=site.title,
+                chat_color_theme=site.chat_color_theme,
+                chat_color_theme_inverted=site.chat_color_theme_inverted,
+                icon_type=site.icon_type.value if site.icon_type is not None else None,
+                icon=site.icon,
+                icon_background=site.icon_background,
+                description=site.description,
+                copyright=site.copyright,
+                privacy_policy=site.privacy_policy,
+                input_placeholder=site.input_placeholder,
+                custom_disclaimer=site.custom_disclaimer,
+                default_language=site.default_language,
+                show_workflow_steps=site.show_workflow_steps,
+                use_icon_as_answer_icon=site.use_icon_as_answer_icon,
             )
 
     @staticmethod

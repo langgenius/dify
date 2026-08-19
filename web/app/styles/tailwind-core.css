@@ -31,7 +31,6 @@
 
 /* ---------- JS plugins ------------------------------------------------ */
 @plugin './plugins/icons.ts';
-@plugin './plugins/typography.ts';
 
 /* ---------- Project-only theme tokens --------------------------------- */
 @theme {

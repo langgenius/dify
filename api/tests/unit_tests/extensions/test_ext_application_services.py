@@ -10,6 +10,15 @@ from enums import DeploymentEdition
 from extensions import ext_application_services
 from extensions.ext_redis import RedisClientWrapper
 from models.model import DifySetup
+from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
+from services.account_activation_adapters import (
+    BillingAccountActivationEligibility,
+    DeploymentWorkspaceInvitePolicy,
+    RegisterServiceInvitationTokenStore,
+    assign_legacy_invitation_membership,
+    assign_rbac_invitation_membership,
+)
+from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
 from services.init_validation_service import InvalidInitializationPasswordError
 
 
@@ -134,3 +143,51 @@ def test_build_application_services_does_not_construct_schema_manager(
         )
 
     schema_manager.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("deployment_edition", "billing_enabled", "rbac_enabled", "membership_assigner"),
+    [
+        pytest.param(DeploymentEdition.CLOUD, True, False, assign_legacy_invitation_membership, id="cloud"),
+        pytest.param(DeploymentEdition.COMMUNITY, False, False, assign_legacy_invitation_membership, id="community"),
+        pytest.param(DeploymentEdition.ENTERPRISE, False, False, assign_legacy_invitation_membership, id="enterprise"),
+        pytest.param(DeploymentEdition.ENTERPRISE, False, True, assign_rbac_invitation_membership, id="rbac"),
+    ],
+)
+def test_build_application_services_wires_account_activation(
+    sqlite_session_factory: sessionmaker[Session],
+    deployment_edition: DeploymentEdition,
+    billing_enabled: bool,
+    rbac_enabled: bool,
+    membership_assigner: object,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(ext_application_services.dify_config, "RBAC_ENABLED", rbac_enabled)
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=deployment_edition,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    activation = services.account_activation
+    assert isinstance(activation._tokens, RegisterServiceInvitationTokenStore)
+    assert isinstance(activation._accounts, SQLAlchemyAccountActivationRepository)
+    assert activation._accounts._session_factory is sqlite_session_factory
+    assert isinstance(activation._workspace_policy, DeploymentWorkspaceInvitePolicy)
+    assert isinstance(activation._eligibility, BillingAccountActivationEligibility)
+    assert activation._eligibility._enabled is billing_enabled
+    assert activation._membership_assigner is membership_assigner
+
+
+def test_build_application_services_wires_data_source_api_key_auth(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert isinstance(services.data_source_api_key_auth, DataSourceApiKeyAuthService)

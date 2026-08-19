@@ -50,6 +50,10 @@ from models.account import (
 from models.dataset import Dataset
 from models.model import App, DifySetup
 from services.billing_service import BillingService
+from services.email_code_login_challenge import (
+    EmailCodeLoginChallengeResult,
+    EmailCodeLoginChallengeStore,
+)
 from services.enterprise.rbac_service import ListOption, RBACService, require_tenant_members
 from services.entities.auth_entities import (
     ChangeEmailNewEmailToken,
@@ -81,6 +85,7 @@ from services.errors.workspace import WorkSpaceNotAllowedCreateError, Workspaces
 from services.feature_service import FeatureService
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 from services.telemetry_service import CommunityTelemetryService
+from services.workspace_membership_lock import workspace_membership_mutation_lock
 from tasks.delete_account_task import delete_account_task
 from tasks.mail_account_deletion_task import send_account_deletion_verification_code
 from tasks.mail_change_mail_task import (
@@ -1043,14 +1048,17 @@ class AccountService:
         email = account.email if account else email
         if email is None:
             raise ValueError("Email must be provided.")
+        email = email.lower()
         if cls.email_code_login_rate_limiter.is_rate_limited(email):
             from controllers.console.auth.error import EmailCodeLoginRateLimitExceededError
 
             raise EmailCodeLoginRateLimitExceededError(int(cls.email_code_login_rate_limiter.time_window / 60))
 
         code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
-        token = TokenManager.generate_token(
-            account=account, email=email, token_type="email_code_login", additional_data={"code": code}
+        token = EmailCodeLoginChallengeStore.create(
+            account_id=str(account.id) if account else None,
+            email=email,
+            code=code,
         )
         send_email_code_login_mail_task.delay(
             language=language,
@@ -1077,6 +1085,10 @@ class AccountService:
     @classmethod
     def get_email_code_login_data(cls, token: str) -> dict[str, Any] | None:
         return TokenManager.get_token_data(token, "email_code_login")
+
+    @classmethod
+    def verify_email_code_login_challenge(cls, *, email: str, code: str, token: str) -> EmailCodeLoginChallengeResult:
+        return EmailCodeLoginChallengeStore.verify(email=email, code=code, token=token)
 
     @classmethod
     def revoke_email_code_login_token(cls, token: str):
@@ -1421,6 +1433,53 @@ class TenantService:
             )
         if (member_count or 0) >= limit:
             raise WorkspaceMembersLimitExceededError("Workspace member limit reached.")
+
+    @staticmethod
+    def assign_invited_member(
+        tenant_id: str,
+        account_id: str,
+        role: TenantAccountRole | str,
+    ) -> None:
+        """Create an invited member under the shared tenant capacity lock."""
+        normalized_role = TenantAccountRole(role)
+        with workspace_membership_mutation_lock(tenant_id):
+            with session_factory.create_session() as session:
+                membership_exists = (
+                    session.scalar(
+                        select(TenantAccountJoin.id).where(
+                            TenantAccountJoin.tenant_id == tenant_id,
+                            TenantAccountJoin.account_id == account_id,
+                        )
+                    )
+                    is not None
+                )
+            if membership_exists:
+                return
+
+            TenantService.ensure_member_capacity(tenant_id)
+            with session_factory.create_session() as session, session.begin():
+                if session.get(Tenant, tenant_id) is None or session.get(Account, account_id) is None:
+                    raise ValueError("Workspace invitation context not found.")
+                if (
+                    session.scalar(
+                        select(TenantAccountJoin.id).where(
+                            TenantAccountJoin.tenant_id == tenant_id,
+                            TenantAccountJoin.account_id == account_id,
+                        )
+                    )
+                    is not None
+                ):
+                    return
+                session.add(
+                    TenantAccountJoin(
+                        tenant_id=tenant_id,
+                        account_id=account_id,
+                        role=normalized_role,
+                    )
+                )
+
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
+            BillingService.clean_billing_info_cache(tenant_id)
 
     @staticmethod
     def create_tenant_member(
@@ -1805,43 +1864,44 @@ class TenantService:
                         owner_id=owner_id,
                     )
         else:
-            with session_factory.create_session() as session, session.begin():
-                tenant = session.get(Tenant, tenant_id)
-                account = session.get(Account, account_id)
-                operator = session.get(Account, operator_id)
-                if not tenant or not operator:
-                    raise ValueError("Workspace member removal context not found.")
-                if not account:
-                    raise MemberNotInTenantError("Member not in tenant.")
-                if operator_id == account_id:
-                    raise CannotOperateSelfError("Cannot operate self.")
-                TenantService.check_member_permission(tenant, operator, account, "remove", session=session)
-                ta = session.scalar(
-                    select(TenantAccountJoin).where(
-                        TenantAccountJoin.tenant_id == tenant_id,
-                        TenantAccountJoin.account_id == account_id,
+            with workspace_membership_mutation_lock(tenant_id):
+                with session_factory.create_session() as session, session.begin():
+                    tenant = session.get(Tenant, tenant_id)
+                    account = session.get(Account, account_id)
+                    operator = session.get(Account, operator_id)
+                    if not tenant or not operator:
+                        raise ValueError("Workspace member removal context not found.")
+                    if not account:
+                        raise MemberNotInTenantError("Member not in tenant.")
+                    if operator_id == account_id:
+                        raise CannotOperateSelfError("Cannot operate self.")
+                    TenantService.check_member_permission(tenant, operator, account, "remove", session=session)
+                    ta = session.scalar(
+                        select(TenantAccountJoin).where(
+                            TenantAccountJoin.tenant_id == tenant_id,
+                            TenantAccountJoin.account_id == account_id,
+                        )
                     )
-                )
-                if not ta:
-                    raise MemberNotInTenantError("Member not in tenant.")
-                legacy_owner_id = session.scalar(
-                    select(TenantAccountJoin.account_id)
-                    .where(
-                        TenantAccountJoin.tenant_id == tenant_id,
-                        TenantAccountJoin.role == TenantAccountRole.OWNER,
+                    if not ta:
+                        raise MemberNotInTenantError("Member not in tenant.")
+                    legacy_owner_id = session.scalar(
+                        select(TenantAccountJoin.account_id)
+                        .where(
+                            TenantAccountJoin.tenant_id == tenant_id,
+                            TenantAccountJoin.role == TenantAccountRole.OWNER,
+                        )
+                        .limit(1)
                     )
-                    .limit(1)
-                )
-                if legacy_owner_id is None:
-                    raise ValueError(f"Workspace owner not found for tenant {tenant_id}.")
-                account_email = account.email
-                deleted_pending_account = TenantService._delete_member_records(
-                    session,
-                    tenant_id=tenant_id,
-                    account=account,
-                    membership=ta,
-                    owner_id=legacy_owner_id,
-                )
+                    if legacy_owner_id is None:
+                        raise ValueError(f"Workspace owner not found for tenant {tenant_id}.")
+                    account_email = account.email
+                    deleted_pending_account = TenantService._delete_member_records(
+                        session,
+                        tenant_id=tenant_id,
+                        account=account,
+                        membership=ta,
+                        owner_id=legacy_owner_id,
+                    )
 
         if deleted_pending_account:
             logger.info("Deleted orphaned pending account: account_id=%s, email=%s", account_id, account_email)
@@ -1928,48 +1988,54 @@ class TenantService:
             )
             return
 
-        with session_factory.create_session() as session:
-            tenant = session.get(Tenant, tenant_id)
-            operator = session.get(Account, operator_id)
-            member = session.scalar(
-                select(Account)
-                .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
-                .where(Account.id == member_id, TenantAccountJoin.tenant_id == tenant_id)
-                .limit(1)
-            )
-            if not member:
-                raise MemberNotInTenantError("Member not in tenant.")
-            if not tenant or not operator:
-                raise ValueError("Workspace member role context not found.")
-
-            TenantService.check_member_permission(tenant, operator, member, "update", session=session)
-            target_member_join = session.scalar(
-                select(TenantAccountJoin)
-                .where(TenantAccountJoin.tenant_id == tenant_id, TenantAccountJoin.account_id == member_id)
-                .limit(1)
-            )
-            if not target_member_join:
-                raise MemberNotInTenantError("Member not in tenant.")
-
-            operator_role = TenantService.get_user_role(operator, tenant, session=session)
-            target_role = TenantAccountRole(target_member_join.role)
-            if operator_role == TenantAccountRole.ADMIN and (TenantAccountRole.OWNER in {target_role, new_tenant_role}):
-                raise NoPermissionError("No permission to update member.")
-
-            if target_member_join.role == new_tenant_role:
-                raise RoleAlreadyAssignedError("The provided role is already assigned to the member.")
-
-            if new_tenant_role == TenantAccountRole.OWNER:
-                current_owner_join = session.scalar(
-                    select(TenantAccountJoin)
-                    .where(TenantAccountJoin.tenant_id == tenant_id, TenantAccountJoin.role == TenantAccountRole.OWNER)
+        with workspace_membership_mutation_lock(tenant_id):
+            with session_factory.create_session() as session:
+                tenant = session.get(Tenant, tenant_id)
+                operator = session.get(Account, operator_id)
+                member = session.scalar(
+                    select(Account)
+                    .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
+                    .where(Account.id == member_id, TenantAccountJoin.tenant_id == tenant_id)
                     .limit(1)
                 )
-                if current_owner_join:
-                    current_owner_join.role = TenantAccountRole.ADMIN
+                if not member:
+                    raise MemberNotInTenantError("Member not in tenant.")
+                if not tenant or not operator:
+                    raise ValueError("Workspace member role context not found.")
 
-            target_member_join.role = new_tenant_role
-            session.commit()
+                TenantService.check_member_permission(tenant, operator, member, "update", session=session)
+                target_member_join = session.scalar(
+                    select(TenantAccountJoin)
+                    .where(TenantAccountJoin.tenant_id == tenant_id, TenantAccountJoin.account_id == member_id)
+                    .limit(1)
+                )
+                if not target_member_join:
+                    raise MemberNotInTenantError("Member not in tenant.")
+
+                operator_role = TenantService.get_user_role(operator, tenant, session=session)
+                target_role = TenantAccountRole(target_member_join.role)
+                if operator_role == TenantAccountRole.ADMIN and (
+                    TenantAccountRole.OWNER in {target_role, new_tenant_role}
+                ):
+                    raise NoPermissionError("No permission to update member.")
+
+                if target_member_join.role == new_tenant_role:
+                    raise RoleAlreadyAssignedError("The provided role is already assigned to the member.")
+
+                if new_tenant_role == TenantAccountRole.OWNER:
+                    current_owner_join = session.scalar(
+                        select(TenantAccountJoin)
+                        .where(
+                            TenantAccountJoin.tenant_id == tenant_id,
+                            TenantAccountJoin.role == TenantAccountRole.OWNER,
+                        )
+                        .limit(1)
+                    )
+                    if current_owner_join:
+                        current_owner_join.role = TenantAccountRole.ADMIN
+
+                target_member_join.role = new_tenant_role
+                session.commit()
 
     @staticmethod
     def get_custom_config(tenant_id: str):
@@ -2220,10 +2286,6 @@ class RegisterService:
                     requires_setup = account.status == AccountStatus.PENDING
                     should_assign_membership = not membership and requires_setup
 
-                    if should_assign_membership and not dify_config.RBAC_ENABLED:
-                        TenantService.create_tenant_member(tenant, account, session, role)
-                        TenantService.switch_tenant(account, tenant_id, session=session)
-
                     if not requires_setup and membership:
                         raise AccountAlreadyInTenantError("Account already in tenant.")
 
@@ -2232,24 +2294,31 @@ class RegisterService:
                     inviter_name = inviter.name
                     tenant_name = tenant.name
 
-                if dify_config.RBAC_ENABLED:
-                    if should_assign_membership:
+                if should_assign_membership:
+                    if dify_config.RBAC_ENABLED:
                         RBACService.MemberRoles.assign_invited_member(
                             tenant_id,
                             inviter_id,
                             account_id,
                             assigned_role,
                         )
-                    elif membership is not None:
-                        try:
-                            RBACService.MemberRoles.replace_user_roles(
-                                tenant_id=tenant_id,
-                                account_id=inviter_id,
-                                member_account_id=account_id,
-                                role_ids=[assigned_role],
-                            )
-                        except RoleAlreadyAssignedError:
-                            pass
+                    else:
+                        TenantService.assign_invited_member(tenant_id, account_id, role)
+                        with session_factory.create_session() as session:
+                            account = session.get(Account, account_id)
+                            if account is None:
+                                raise ValueError("Workspace invitation account not found.")
+                            TenantService.switch_tenant(account, tenant_id, session=session)
+                elif dify_config.RBAC_ENABLED and membership is not None:
+                    try:
+                        RBACService.MemberRoles.replace_user_roles(
+                            tenant_id=tenant_id,
+                            account_id=inviter_id,
+                            member_account_id=account_id,
+                            role_ids=[assigned_role],
+                        )
+                    except RoleAlreadyAssignedError:
+                        pass
             except Exception:
                 if created_account:
                     with session_factory.create_session() as session, session.begin():
