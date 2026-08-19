@@ -123,16 +123,12 @@ describe.each(["postgres", "tidb"] as const)(
         JSON.stringify(["team:camera"]),
       ]);
       const sql = select?.sql ?? "";
-      expect(sql).toContain("UNION ALL");
-      expect(sql).toContain("answer_traces");
+      expect(sql).not.toContain("UNION ALL");
+      expect(sql).not.toContain("answer_traces");
+      expect(sql).toContain("NOT IN");
       expect(sql).toContain("query.completed");
       expect(sql).toContain("query.failed");
-      expect(sql).toMatch(
-        /stored_request\.[`"]actor_subject_id[`"] = stored_trace\.[`"]subject_id[`"]/u,
-      );
-      expect(sql).toMatch(
-        /stored_trace\.[`"]created_at[`"] >= stored_request\.[`"]occurred_at[`"]/u,
-      );
+      expect(sql).toContain("profile.published");
       expect(sql.indexOf("tenant_id")).toBeLessThan(sql.indexOf("ORDER BY"));
       expect(sql.indexOf("knowledge_space_id")).toBeLessThan(sql.indexOf("ORDER BY"));
       expect(sql).toContain(dialect === "postgres" ? "::jsonb @>" : "JSON_CONTAINS");

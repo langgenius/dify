@@ -34,8 +34,6 @@ import {
   assertDatabaseKnowledgeSpacePermissionFence,
 } from "./knowledge-space-access-control";
 import { lockKnowledgeSpaceForDeletionAdmission } from "./knowledge-space-deletion-admission";
-import { deterministicKnowledgeSpaceActivityId } from "./knowledge-space-overview";
-import { appendKnowledgeSpaceActivityWithExecutor } from "./knowledge-space-overview-database-repository";
 
 export const KnowledgeSpaceProfileKinds = ["embedding", "retrieval"] as const;
 export type KnowledgeSpaceProfileKind = (typeof KnowledgeSpaceProfileKinds)[number];
@@ -492,28 +490,6 @@ export function createDatabaseKnowledgeSpaceProfileRepository({
         if (!head) {
           throw new Error("Activated knowledge-space profile head could not be reloaded");
         }
-        await appendKnowledgeSpaceActivityWithExecutor({
-          database,
-          executor: transaction,
-          input: {
-            action: "profile.published",
-            actor: { id: candidate.createdBySubjectId, type: "member" },
-            details: { providerId: candidate.provider },
-            id: deterministicKnowledgeSpaceActivityId(
-              "profile.published",
-              input.tenantId,
-              input.knowledgeSpaceId,
-              input.kind,
-              candidate.id,
-            ),
-            knowledgeSpaceId: input.knowledgeSpaceId,
-            occurredAt: input.now,
-            requiredPermissionScope: [],
-            resource: { id: candidate.id, type: "profile" },
-            result: "success",
-            tenantId: input.tenantId,
-          },
-        });
         return head;
       });
     },
@@ -1588,28 +1564,6 @@ async function activateUnpublishedProfileRevision({
 
   const head = await getProfileHead(database, transaction, input, false);
   if (!head) throw new Error("Activated unpublished profile head could not be reloaded");
-  await appendKnowledgeSpaceActivityWithExecutor({
-    database,
-    executor: transaction,
-    input: {
-      action: "profile.published",
-      actor: { id: candidate.createdBySubjectId, type: "member" },
-      details: { providerId: candidate.provider },
-      id: deterministicKnowledgeSpaceActivityId(
-        "profile.published",
-        input.tenantId,
-        input.knowledgeSpaceId,
-        input.kind,
-        candidate.id,
-      ),
-      knowledgeSpaceId: input.knowledgeSpaceId,
-      occurredAt: input.now,
-      requiredPermissionScope: [],
-      resource: { id: candidate.id, type: "profile" },
-      result: "success",
-      tenantId: input.tenantId,
-    },
-  });
   return { head, replayed: false };
 }
 

@@ -388,35 +388,13 @@ export function registerQueryHandlers({
       throw error;
     }
 
-    const appendTerminalActivity = async (status: "canceled" | "failed" | "succeeded") => {
-      if (!overview) return;
-      const occurredAt = new Date(now()).toISOString();
-      await overview.appendActivity({
-        action: status === "succeeded" ? "query.completed" : "query.failed",
-        actor: { id: subject.subjectId, type: "member" },
-        details: { mode: resolvedMode },
-        id: deterministicKnowledgeSpaceActivityId(
-          `query.${status}`,
-          subject.tenantId,
-          space.id,
-          queryRunId,
-        ),
-        knowledgeSpaceId: space.id,
-        occurredAt,
-        requiredPermissionScope: [],
-        resource: { id: queryRunId, type: "query" },
-        result: status === "succeeded" ? "success" : status === "canceled" ? "canceled" : "failure",
-        tenantId: subject.tenantId,
-      });
-    };
-    let requestedActivityPersisted = false;
     try {
       if (overview) {
         const occurredAt = new Date(now()).toISOString();
         await overview.appendActivity({
           action: "query.requested",
           actor: { id: subject.subjectId, type: "member" },
-          details: { mode: resolvedMode },
+          details: { mode: resolvedMode, ...(query ? { question: query } : {}) },
           id: deterministicKnowledgeSpaceActivityId(
             "query.requested",
             subject.tenantId,
@@ -427,10 +405,9 @@ export function registerQueryHandlers({
           occurredAt,
           requiredPermissionScope: [],
           resource: { id: queryRunId, type: "query" },
-          result: "pending",
+          result: "success",
           tenantId: subject.tenantId,
         });
-        requestedActivityPersisted = true;
       }
       const session = await sessionRepository.recordQuery({
         activeDocumentIds: body.activeDocumentIds,
@@ -500,18 +477,10 @@ export function registerQueryHandlers({
           subject,
           traceId: queryRunId,
         },
-        ...(overview
-          ? {
-              onTerminal: appendTerminalActivity,
-            }
-          : {}),
         sessionId: session.context.sessionId,
         traceId: queryRunId,
       });
     } catch (error) {
-      if (requestedActivityPersisted) {
-        await appendTerminalActivity("failed").catch(() => undefined);
-      }
       await executionLease?.release().catch(() => undefined);
       throw error;
     }

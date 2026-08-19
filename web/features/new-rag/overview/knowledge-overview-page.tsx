@@ -689,8 +689,6 @@ function activityOperationLabel(
   if (activity.action.startsWith('query.'))
     return t(($) => $['newKnowledge.overview.queryOutcomes'])
   if (activity.action === 'permission.updated') return t(($) => $['newKnowledge.permission'])
-  if (activity.action === 'profile.published')
-    return t(($) => $['newKnowledge.retrievalTest.title'])
   if (activity.action === 'settings.updated')
     return t(($) => $['newKnowledge.overview.updateEvidence'])
   return t(($) => $['newKnowledge.backgroundTasks'])
@@ -700,6 +698,16 @@ function activityLabel(
   activity: KnowledgeFsOverviewActivityResponse,
   t: ReturnType<typeof useTranslation<'dataset'>>['t'],
 ) {
+  if (activity.action === 'query.requested') {
+    const question = activity.details.question
+    const mode = activity.details.mode
+    const label =
+      typeof question === 'string' && question.trim()
+        ? `${t(($) => $['newKnowledge.qualityPage.question'])}: ${question}`
+        : activityOperationLabel(activity, t)
+    return typeof mode === 'string' && mode.trim() ? `${label} — ${mode}` : label
+  }
+
   const operation = activityOperationLabel(activity, t)
   let label: string
   if (activity.result === 'success')
@@ -708,11 +716,7 @@ function activityLabel(
     label = t(($) => $['newKnowledge.overview.activityFailed'], { operation })
   else if (activity.result === 'canceled')
     label = t(($) => $['newKnowledge.overview.activityCanceled'], { operation })
-  else
-    label =
-      activity.action === 'query.requested'
-        ? t(($) => $['newKnowledge.overview.activityQueued'], { operation })
-        : t(($) => $['newKnowledge.overview.activityRunning'], { operation })
+  else label = t(($) => $['newKnowledge.overview.activityRunning'], { operation })
 
   const detail = [
     activity.details.reasonCode,

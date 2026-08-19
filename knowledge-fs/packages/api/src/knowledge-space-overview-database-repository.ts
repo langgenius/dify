@@ -23,6 +23,7 @@ import {
 import { lockKnowledgeSpaceForDeletionAdmission } from "./knowledge-space-deletion-admission";
 import {
   type AppendKnowledgeSpaceActivityInput,
+  HiddenKnowledgeSpaceActivityActions,
   type KnowledgeSpaceActivityAction,
   KnowledgeSpaceActivityActions,
   type KnowledgeSpaceActivityEvent,
@@ -1318,9 +1319,11 @@ function activityReadModelSql(database: DatabaseAdapter): string {
   const selectColumns = (alias: string) =>
     columns.map((column) => `${alias}.${q(database, column)}`).join(", ");
   const activity = q(database, "knowledge_space_activity_events");
-  const traces = q(database, "answer_traces");
+  const hiddenActions = HiddenKnowledgeSpaceActivityActions.map((action) => `'${action}'`).join(
+    ", ",
+  );
 
-  return `SELECT ${selectColumns("stored_event")} FROM ${activity} stored_event WHERE NOT (stored_event.${q(database, "action")} IN ('query.completed', 'query.failed') AND EXISTS (SELECT 1 FROM ${traces} stored_trace WHERE stored_trace.${q(database, "knowledge_space_id")} = stored_event.${q(database, "knowledge_space_id")} AND ${textIdSql(database, "stored_trace", "id")} = stored_event.${q(database, "resource_id")} AND EXISTS (SELECT 1 FROM ${activity} stored_request WHERE stored_request.${q(database, "tenant_id")} = stored_event.${q(database, "tenant_id")} AND stored_request.${q(database, "knowledge_space_id")} = stored_event.${q(database, "knowledge_space_id")} AND stored_request.${q(database, "resource_id")} = stored_event.${q(database, "resource_id")} AND stored_request.${q(database, "actor_subject_id")} = stored_trace.${q(database, "subject_id")} AND stored_request.${q(database, "action")} = 'query.requested' AND stored_trace.${q(database, "created_at")} >= stored_request.${q(database, "occurred_at")}))) UNION ALL SELECT terminal_trace.${q(database, "id")} AS ${q(database, "id")}, requested.${q(database, "tenant_id")}, requested.${q(database, "knowledge_space_id")}, requested.${q(database, "actor_type")}, requested.${q(database, "actor_subject_id")}, CASE WHEN terminal_trace.${q(database, "completed")} = TRUE THEN 'query.completed' ELSE 'query.failed' END AS ${q(database, "action")}, requested.${q(database, "resource_type")}, requested.${q(database, "resource_id")}, CASE WHEN terminal_trace.${q(database, "completed")} = TRUE THEN 'success' ELSE 'failure' END AS ${q(database, "result")}, requested.${q(database, "required_permission_scope")}, requested.${q(database, "details")}, terminal_trace.${q(database, "created_at")} AS ${q(database, "occurred_at")} FROM ${traces} terminal_trace INNER JOIN ${activity} requested ON requested.${q(database, "knowledge_space_id")} = terminal_trace.${q(database, "knowledge_space_id")} AND requested.${q(database, "resource_id")} = ${textIdSql(database, "terminal_trace", "id")} AND requested.${q(database, "actor_subject_id")} = terminal_trace.${q(database, "subject_id")} AND requested.${q(database, "action")} = 'query.requested' AND requested.${q(database, "resource_type")} = 'query' AND terminal_trace.${q(database, "created_at")} >= requested.${q(database, "occurred_at")}`;
+  return `SELECT ${selectColumns("stored_event")} FROM ${activity} stored_event WHERE stored_event.${q(database, "action")} NOT IN (${hiddenActions})`;
 }
 
 function textIdSql(database: DatabaseAdapter, alias: string, column: string): string {

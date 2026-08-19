@@ -221,7 +221,7 @@ describe("query handler branch coverage", () => {
     await response.body?.cancel();
   });
 
-  it("records requested and failed terminal activity and releases after session failure", async () => {
+  it("records only the query request and releases after session failure", async () => {
     const release = vi.fn(async () => undefined);
     const appendActivity = vi.fn(async () => ({}));
     const failure = new Error("session failed");
@@ -231,19 +231,26 @@ describe("query handler branch coverage", () => {
       sessionError: failure,
     });
     await expect(fixture.invoke()).rejects.toBe(failure);
-    expect(appendActivity).toHaveBeenCalledTimes(2);
+    expect(appendActivity).toHaveBeenCalledOnce();
+    expect(appendActivity).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "query.requested",
+        details: { mode: "fast", question: "question" },
+        result: "success",
+      }),
+    );
     expect(release).toHaveBeenCalledOnce();
   });
 
-  it("records successful terminal activity when the stream completes", async () => {
+  it("does not append a terminal activity when the stream completes", async () => {
     const appendActivity = vi.fn(async () => ({}));
     const fixture = queryFixture({ overview: { appendActivity } });
     const response = await fixture.invoke();
     expect(response.status).toBe(200);
     await response.text();
-    expect(appendActivity).toHaveBeenCalledTimes(2);
-    expect(appendActivity).toHaveBeenLastCalledWith(
-      expect.objectContaining({ action: "query.completed", result: "success" }),
+    expect(appendActivity).toHaveBeenCalledOnce();
+    expect(appendActivity).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "query.requested", result: "success" }),
     );
   });
 });

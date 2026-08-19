@@ -5,6 +5,7 @@ import {
   decodeKnowledgeSpaceActivityCursor,
   deterministicKnowledgeSpaceActivityId,
   encodeKnowledgeSpaceActivityCursor,
+  sanitizeKnowledgeSpaceActivityDetails,
 } from "./knowledge-space-overview";
 
 const TENANT_ID = "tenant-overview";
@@ -23,7 +24,12 @@ describe("in-memory knowledge-space Overview repository", () => {
     const input = {
       action: "query.requested" as const,
       actor: { id: "member-1", type: "member" as const },
-      details: { apiKey: "must-not-leak", mode: "fast", query: "must-not-leak" },
+      details: {
+        apiKey: "must-not-leak",
+        mode: "fast",
+        query: "legacy-query-key-must-not-leak",
+        question: "What is the permission model?",
+      },
       id,
       knowledgeSpaceId: SPACE_ID,
       occurredAt: NOW,
@@ -40,13 +46,66 @@ describe("in-memory knowledge-space Overview repository", () => {
     });
 
     expect(replay).toEqual(first);
-    expect(first.details).toEqual({ mode: "fast" });
+    expect(first.details).toEqual({ mode: "fast", question: "What is the permission model?" });
     await expect(repository.appendActivity({ ...input, result: "failure" })).rejects.toThrow(
       "idempotency key",
     );
     await expect(repository.appendActivity({ ...input, tenantId: "tenant-other" })).rejects.toThrow(
       "idempotency key",
     );
+  });
+
+  it("keeps legacy terminal and profile events out of the product activity feed", async () => {
+    const repository = createInMemoryKnowledgeSpaceOverviewRepository({
+      maxEvents: 3,
+      maxListLimit: 10,
+    });
+    const common = {
+      actor: { id: "member-1", type: "member" as const },
+      knowledgeSpaceId: SPACE_ID,
+      occurredAt: NOW,
+      requiredPermissionScope: ["team:camera"],
+      tenantId: TENANT_ID,
+    };
+    await repository.appendActivity({
+      ...common,
+      action: "query.requested",
+      id: "00000000-0000-4000-8000-000000000021",
+      resource: { id: QUERY_ID, type: "query" },
+      result: "success",
+    });
+    await repository.appendActivity({
+      ...common,
+      action: "query.completed",
+      id: "00000000-0000-4000-8000-000000000022",
+      resource: { id: QUERY_ID, type: "query" },
+      result: "success",
+    });
+    await repository.appendActivity({
+      ...common,
+      action: "profile.published",
+      id: "00000000-0000-4000-8000-000000000023",
+      resource: { id: "profile-1", type: "profile" },
+      result: "success",
+    });
+
+    const activity = await repository.listActivity({
+      candidateGrants: ["team:camera"],
+      knowledgeSpaceId: SPACE_ID,
+      limit: 10,
+      tenantId: TENANT_ID,
+    });
+
+    expect(activity.items.map((event) => event.action)).toEqual(["query.requested"]);
+  });
+
+  it("bounds long questions without losing the truncation marker on database re-sanitization", () => {
+    const details = sanitizeKnowledgeSpaceActivityDetails({ question: "q".repeat(4_001) });
+
+    expect(details.question).toHaveLength(4_000);
+    expect(details.question).toMatch(/…$/u);
+    expect(details.questionTruncated).toBe(true);
+    expect(sanitizeKnowledgeSpaceActivityDetails(details)).toEqual(details);
   });
 
   it("counts distinct requested query identities and only their later successful completion", async () => {
