@@ -4004,11 +4004,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/http/components/timeout/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/http/panel.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 2
