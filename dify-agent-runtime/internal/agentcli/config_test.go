@@ -7,10 +7,14 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 type configPushCapture struct {
@@ -223,6 +227,330 @@ func TestConfigPullRequestsURLThenDownloadsFromDataPlane(t *testing.T) {
 	}
 }
 
+func TestConfigPullsDownloadConcurrentlyAndPreserveOutputOrder(t *testing.T) {
+	tests := []struct {
+		name         string
+		kind         string
+		names        []string
+		payloads     map[string][]byte
+		run          func(*Environment, []string, string) error
+		assertOutput func(*testing.T, string, string)
+	}{
+		{
+			name:  "files JSON output",
+			kind:  "file",
+			names: []string{"first.txt", "second.txt"},
+			payloads: map[string][]byte{
+				"first.txt":  []byte("first file"),
+				"second.txt": []byte("second file"),
+			},
+			run: func(env *Environment, names []string, targetDir string) error {
+				return RunConfigFilesPull(env, names, targetDir, true)
+			},
+			assertOutput: func(t *testing.T, targetDir string, output string) {
+				t.Helper()
+				var result struct {
+					Items []struct {
+						Name string `json:"name"`
+						Path string `json:"path"`
+					} `json:"items"`
+				}
+				if err := json.Unmarshal([]byte(output), &result); err != nil {
+					t.Fatalf("parse JSON output %q: %v", output, err)
+				}
+				if len(result.Items) != 2 {
+					t.Fatalf("output items = %#v, want two items", result.Items)
+				}
+				for index, name := range []string{"first.txt", "second.txt"} {
+					if result.Items[index].Name != name {
+						t.Errorf("item %d name = %q, want %q", index, result.Items[index].Name, name)
+					}
+					wantPath := filepath.Join(targetDir, name)
+					if result.Items[index].Path != wantPath {
+						t.Errorf("item %d path = %q, want %q", index, result.Items[index].Path, wantPath)
+					}
+				}
+			},
+		},
+		{
+			name:  "skills text output",
+			kind:  "skill",
+			names: []string{"alpha", "beta"},
+			payloads: map[string][]byte{
+				"alpha": zipFixture(t, map[string]string{"SKILL.md": "# Alpha\n"}),
+				"beta":  zipFixture(t, map[string]string{"SKILL.md": "# Beta\n"}),
+			},
+			run: func(env *Environment, names []string, targetDir string) error {
+				return RunConfigSkillsPull(env, names, targetDir, false)
+			},
+			assertOutput: func(t *testing.T, targetDir string, output string) {
+				t.Helper()
+				want := filepath.Join(targetDir, "alpha") + "\n# Alpha\n\n" +
+					filepath.Join(targetDir, "beta") + "\n# Beta\n"
+				if output != want {
+					t.Errorf("text output = %q, want %q", output, want)
+				}
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var server *httptest.Server
+			bothDownloadsStarted := make(chan struct{})
+			secondResponseWritten := make(chan struct{})
+			var startMu sync.Mutex
+			started := 0
+
+			server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case "/agent-stub/files/download-request":
+					var request struct {
+						Config struct {
+							Kind string `json:"kind"`
+							Name string `json:"name"`
+						} `json:"config"`
+					}
+					if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+						http.Error(w, "bad request", http.StatusBadRequest)
+						return
+					}
+					if request.Config.Kind != test.kind {
+						t.Errorf("config kind = %q, want %q", request.Config.Kind, test.kind)
+					}
+					if _, ok := test.payloads[request.Config.Name]; !ok {
+						http.Error(w, "unknown target", http.StatusBadRequest)
+						return
+					}
+					_ = json.NewEncoder(w).Encode(map[string]any{
+						"filename":     request.Config.Name,
+						"size":         len(test.payloads[request.Config.Name]),
+						"download_url": server.URL + "/files/config-asset?name=" + url.QueryEscape(request.Config.Name),
+					})
+				case "/files/config-asset":
+					name := r.URL.Query().Get("name")
+					payload, ok := test.payloads[name]
+					if !ok {
+						http.Error(w, "unknown target", http.StatusNotFound)
+						return
+					}
+
+					startMu.Lock()
+					started++
+					if started == len(test.names) {
+						close(bothDownloadsStarted)
+					}
+					startMu.Unlock()
+
+					select {
+					case <-bothDownloadsStarted:
+					case <-time.After(2 * time.Second):
+						http.Error(w, "downloads did not overlap", http.StatusGatewayTimeout)
+						return
+					}
+					if name == test.names[0] {
+						select {
+						case <-secondResponseWritten:
+						case <-time.After(2 * time.Second):
+							http.Error(w, "second response did not finish first", http.StatusGatewayTimeout)
+							return
+						}
+					}
+
+					_, _ = w.Write(payload)
+					if name == test.names[1] {
+						close(secondResponseWritten)
+					}
+				default:
+					http.NotFound(w, r)
+				}
+			}))
+			defer server.Close()
+
+			targetDir := t.TempDir()
+			output, err := captureConfigStdout(t, func() error {
+				return test.run(
+					&Environment{URL: server.URL + "/agent-stub", AuthJWE: "token"},
+					test.names,
+					targetDir,
+				)
+			})
+			if err != nil {
+				t.Fatalf("pull config %s: %v", test.kind, err)
+			}
+			test.assertOutput(t, targetDir, output)
+		})
+	}
+}
+
+func TestConfigFilesPullLimitsActiveRequestsAndRunsQueuedTarget(t *testing.T) {
+	names := []string{"one.txt", "two.txt", "three.txt", "four.txt", "five.txt"}
+	entered := make(chan string, len(names))
+	release := make(chan struct{})
+	var releaseOnce sync.Once
+	unblock := func() { releaseOnce.Do(func() { close(release) }) }
+
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/agent-stub/files/download-request":
+			var request struct {
+				Config struct {
+					Name string `json:"name"`
+				} `json:"config"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+				http.Error(w, "bad request", http.StatusBadRequest)
+				return
+			}
+			entered <- request.Config.Name
+			select {
+			case <-release:
+			case <-time.After(2 * time.Second):
+				http.Error(w, "request was not released", http.StatusGatewayTimeout)
+				return
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"filename":     request.Config.Name,
+				"download_url": server.URL + "/files/config-asset?name=" + url.QueryEscape(request.Config.Name),
+			})
+		case "/files/config-asset":
+			_, _ = w.Write([]byte(r.URL.Query().Get("name")))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer func() {
+		unblock()
+		server.Close()
+	}()
+
+	done := make(chan error, 1)
+	targetDir := t.TempDir()
+	go func() {
+		done <- RunConfigFilesPull(
+			&Environment{URL: server.URL + "/agent-stub", AuthJWE: "token"},
+			names,
+			targetDir,
+			true,
+		)
+	}()
+
+	for range 4 {
+		select {
+		case <-entered:
+		case <-time.After(2 * time.Second):
+			t.Fatal("four config pull requests did not enter concurrently")
+		}
+	}
+	select {
+	case <-entered:
+		t.Fatal("a fifth request entered above the four-request limit")
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	unblock()
+	select {
+	case <-entered:
+	case <-time.After(2 * time.Second):
+		t.Fatal("queued config pull request did not proceed after release")
+	}
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("pull config files: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("config files pull did not finish")
+	}
+}
+
+func TestConfigFilesPullReturnsAllFailuresInInputOrderAfterLaterFailureCompletesFirst(t *testing.T) {
+	names := []string{"earlier-failure.txt", "later-failure.txt"}
+	laterFailureEmitted := make(chan struct{})
+
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/agent-stub/files/download-request":
+			var request struct {
+				Config struct {
+					Name string `json:"name"`
+				} `json:"config"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+				http.Error(w, "bad request", http.StatusBadRequest)
+				return
+			}
+
+			switch request.Config.Name {
+			case names[0]:
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"filename":     request.Config.Name,
+					"download_url": server.URL + "/files/config-asset",
+				})
+			case names[1]:
+				http.Error(w, "later input failed first", http.StatusServiceUnavailable)
+				close(laterFailureEmitted)
+				return
+			default:
+				http.Error(w, "unknown target", http.StatusBadRequest)
+			}
+		case "/files/config-asset":
+			select {
+			case <-laterFailureEmitted:
+			case <-time.After(2 * time.Second):
+				http.Error(w, "later failure was not emitted", http.StatusGatewayTimeout)
+				return
+			}
+			http.Error(w, "earlier input failed later", http.StatusBadGateway)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	done := make(chan error, 1)
+	targetDir := t.TempDir()
+	go func() {
+		done <- RunConfigFilesPull(
+			&Environment{URL: server.URL + "/agent-stub", AuthJWE: "token"},
+			names,
+			targetDir,
+			true,
+		)
+	}()
+
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("error = nil, want both config pull failures")
+		}
+		errorText := err.Error()
+		earlierWrapper := `download config file "earlier-failure.txt"`
+		earlierMessage := "earlier input failed later"
+		laterWrapper := `request config file "later-failure.txt" download URL`
+		laterMessage := "later input failed first"
+		earlierWrapperIndex := strings.Index(errorText, earlierWrapper)
+		earlierMessageIndex := strings.Index(errorText, earlierMessage)
+		laterWrapperIndex := strings.Index(errorText, laterWrapper)
+		laterMessageIndex := strings.Index(errorText, laterMessage)
+		if earlierWrapperIndex == -1 || earlierMessageIndex == -1 || laterWrapperIndex == -1 || laterMessageIndex == -1 {
+			t.Fatalf(
+				"error = %q, want both wrapped failures with messages %q and %q",
+				errorText,
+				earlierMessage,
+				laterMessage,
+			)
+		}
+		if !(earlierWrapperIndex < earlierMessageIndex && earlierMessageIndex < laterWrapperIndex && laterWrapperIndex < laterMessageIndex) {
+			t.Fatalf("error = %q, want failures in input order", errorText)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("config files pull did not finish")
+	}
+}
+
 func TestConfigPullMultiItemFailuresIdentifyItemAndStage(t *testing.T) {
 	skillArchive := zipFixture(t, map[string]string{"SKILL.md": "# Alpha\n"})
 	tests := []struct {
@@ -269,13 +597,13 @@ func TestConfigPullMultiItemFailuresIdentifyItemAndStage(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			controlCalls := 0
-			dataPlaneCalls := 0
+			var controlCalls atomic.Int32
+			var dataPlaneCalls atomic.Int32
 			var server *httptest.Server
 			server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				switch r.URL.Path {
 				case "/agent-stub/files/download-request":
-					controlCalls++
+					controlCalls.Add(1)
 					var request struct {
 						Config struct {
 							Kind string `json:"kind"`
@@ -287,29 +615,23 @@ func TestConfigPullMultiItemFailuresIdentifyItemAndStage(t *testing.T) {
 						http.Error(w, "bad request", http.StatusBadRequest)
 						return
 					}
-					if controlCalls > len(test.names) {
-						t.Errorf("unexpected control-plane call %d", controlCalls)
-						http.Error(w, "unexpected request", http.StatusInternalServerError)
-						return
+					if request.Config.Kind != test.kind {
+						t.Errorf("config kind = %q, want %q", request.Config.Kind, test.kind)
 					}
-					wantName := test.names[controlCalls-1]
-					if request.Config.Kind != test.kind || request.Config.Name != wantName {
-						t.Errorf("config request = (%q, %q), want (%q, %q)", request.Config.Kind, request.Config.Name, test.kind, wantName)
-					}
-					if test.failureStage == "control" && controlCalls == 2 {
+					if test.failureStage == "control" && request.Config.Name == test.names[1] {
 						w.Header().Set("Content-Type", "application/json")
 						w.WriteHeader(http.StatusUnauthorized)
 						_, _ = w.Write([]byte(`{"detail":{"code":"agent_stub_authorization_expired","message":"expired"}}`))
 						return
 					}
 					_ = json.NewEncoder(w).Encode(map[string]any{
-						"filename":     wantName,
+						"filename":     request.Config.Name,
 						"size":         len(test.payload),
-						"download_url": server.URL + "/files/config-asset",
+						"download_url": server.URL + "/files/config-asset?name=" + url.QueryEscape(request.Config.Name),
 					})
 				case "/files/config-asset":
-					dataPlaneCalls++
-					if test.failureStage == "data" && dataPlaneCalls == 2 {
+					dataPlaneCalls.Add(1)
+					if test.failureStage == "data" && r.URL.Query().Get("name") == test.names[1] {
 						http.Error(w, "data plane unavailable", http.StatusBadGateway)
 						return
 					}
@@ -334,8 +656,8 @@ func TestConfigPullMultiItemFailuresIdentifyItemAndStage(t *testing.T) {
 			if !strings.Contains(err.Error(), test.wantStage) {
 				t.Errorf("error = %q, want stage %q", err, test.wantStage)
 			}
-			if controlCalls != 2 {
-				t.Errorf("control-plane calls = %d, want 2", controlCalls)
+			if controlCalls.Load() != 2 {
+				t.Errorf("control-plane calls = %d, want 2", controlCalls.Load())
 			}
 			wantDataPlaneCalls := 2
 			if test.failureStage == "control" {
@@ -351,8 +673,8 @@ func TestConfigPullMultiItemFailuresIdentifyItemAndStage(t *testing.T) {
 					}
 				}
 			}
-			if dataPlaneCalls != wantDataPlaneCalls {
-				t.Errorf("data-plane calls = %d, want %d", dataPlaneCalls, wantDataPlaneCalls)
+			if int(dataPlaneCalls.Load()) != wantDataPlaneCalls {
+				t.Errorf("data-plane calls = %d, want %d", dataPlaneCalls.Load(), wantDataPlaneCalls)
 			}
 
 			if test.kind == "file" {
@@ -578,4 +900,27 @@ func zipFixture(t *testing.T, files map[string]string) []byte {
 		t.Fatalf("close zip fixture: %v", err)
 	}
 	return buffer.Bytes()
+}
+
+func captureConfigStdout(t *testing.T, run func() error) (string, error) {
+	t.Helper()
+	outputFile, err := os.CreateTemp(t.TempDir(), "config-stdout-*")
+	if err != nil {
+		t.Fatalf("create stdout capture: %v", err)
+	}
+	originalStdout := os.Stdout
+	var runErr error
+	func() {
+		defer func() { os.Stdout = originalStdout }()
+		os.Stdout = outputFile
+		runErr = run()
+	}()
+	if err := outputFile.Close(); err != nil {
+		t.Fatalf("close stdout capture: %v", err)
+	}
+	output, err := os.ReadFile(outputFile.Name())
+	if err != nil {
+		t.Fatalf("read stdout capture: %v", err)
+	}
+	return string(output), runErr
 }
