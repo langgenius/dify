@@ -31,7 +31,6 @@ const (
 	DefaultAuthTokenEnv                  = "SHELLCTL_AUTH_TOKEN"
 	HealthStatus                         = "ok"
 	DefaultSnapshotTimeoutSeconds        = 600.0
-	DefaultHomeSnapshotExclude           = "workspace"
 	HomeSnapshotExcludesEnv              = "SHELLCTL_HOME_SNAPSHOT_EXCLUDES"
 )
 
@@ -137,12 +136,9 @@ func defaultStateDir() string {
 	return filepath.Join(home, ".local", "share", "shellctl")
 }
 
-// parseHomeSnapshotExcludes splits the comma-separated env value; empty input
-// falls back to the default exclude set.
+// parseHomeSnapshotExcludes splits the comma-separated env value into excludes
+// applied on top of snapshot.WorkspaceDir, which is always skipped.
 func parseHomeSnapshotExcludes(raw string) []string {
-	if raw == "" {
-		return []string{DefaultHomeSnapshotExclude}
-	}
 	var excludes []string
 	for _, part := range strings.Split(raw, ",") {
 		if trimmed := strings.TrimSpace(part); trimmed != "" {

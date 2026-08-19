@@ -27,10 +27,7 @@ func newSnapshotTestServer(t *testing.T, cfg *Config) *httptest.Server {
 }
 
 func testConfig() *Config {
-	return &Config{
-		SnapshotTimeout:      600 * time.Second,
-		HomeSnapshotExcludes: []string{"workspace"},
-	}
+	return &Config{SnapshotTimeout: 600 * time.Second}
 }
 
 func setHome(t *testing.T) string {

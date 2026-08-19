@@ -62,8 +62,8 @@ func TestDefaultConfigSnapshotFields(t *testing.T) {
 	if cfg.SnapshotTimeout != 600*time.Second {
 		t.Errorf("SnapshotTimeout = %v, want 600s", cfg.SnapshotTimeout)
 	}
-	if len(cfg.HomeSnapshotExcludes) != 1 || cfg.HomeSnapshotExcludes[0] != "workspace" {
-		t.Errorf("HomeSnapshotExcludes = %v, want [workspace]", cfg.HomeSnapshotExcludes)
+	if len(cfg.HomeSnapshotExcludes) != 0 {
+		t.Errorf("HomeSnapshotExcludes = %v, want none: workspace is skipped by SaveHome, not by config", cfg.HomeSnapshotExcludes)
 	}
 	if err := cfg.Validate(); err != nil {
 		t.Errorf("default config must validate: %v", err)

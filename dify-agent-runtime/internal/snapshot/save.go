@@ -8,13 +8,12 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"slices"
 
 	"github.com/klauspost/compress/zstd"
 )
 
-// SaveHome streams homeDir (minus top-level excludes) to dst as tar+zstd in a
-// single pass with no intermediate spooling.
+// SaveHome streams homeDir to dst as tar+zstd in a single pass with no
+// intermediate spooling. WorkspaceDir and the top-level excludes are skipped.
 // Symlinks are archived as symlinks; irregular files (sockets, fifos,
 // devices) are skipped as runtime artifacts; ownership is not recorded.
 // Callers wrap dst to hash or count the compressed bytes.
@@ -42,7 +41,7 @@ func SaveHome(ctx context.Context, dst io.Writer, homeDir string, excludes []str
 		if rel == "." {
 			return nil
 		}
-		if filepath.Dir(rel) == "." && slices.Contains(excludes, rel) {
+		if excluded(rel, excludes) {
 			if d.IsDir() {
 				return fs.SkipDir
 			}

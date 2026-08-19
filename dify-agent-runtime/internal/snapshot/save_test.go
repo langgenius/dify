@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/klauspost/compress/zstd"
@@ -72,7 +73,7 @@ func decodeArchive(t *testing.T, data []byte) (map[string]*tar.Header, map[strin
 func TestSaveHomeArchivesTreeWithoutExcludes(t *testing.T) {
 	home := buildFixtureHome(t)
 	var buf bytes.Buffer
-	if err := SaveHome(context.Background(), &buf, home, []string{"workspace"}); err != nil {
+	if err := SaveHome(context.Background(), &buf, home, nil); err != nil {
 		t.Fatalf("SaveHome: %v", err)
 	}
 	headers, contents := decodeArchive(t, buf.Bytes())
@@ -141,6 +142,51 @@ func TestSaveHomeUnreadableFile(t *testing.T) {
 	var buf bytes.Buffer
 	if err := SaveHome(context.Background(), &buf, home, nil); err == nil {
 		t.Fatal("expected error for unreadable file")
+	}
+}
+
+// Workspace is not logically part of a Home Snapshot, so no configuration may
+// put it into one. Excludes add to that rule; they cannot subtract from it.
+func TestSaveHomeAlwaysSkipsWorkspace(t *testing.T) {
+	for name, excludes := range map[string][]string{
+		"nil excludes":       nil,
+		"empty excludes":     {},
+		"unrelated excludes": {".cache"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			home := buildFixtureHome(t)
+			var buf bytes.Buffer
+			if err := SaveHome(context.Background(), &buf, home, excludes); err != nil {
+				t.Fatalf("SaveHome: %v", err)
+			}
+			headers, _ := decodeArchive(t, buf.Bytes())
+			for name := range headers {
+				if name == WorkspaceDir+"/" || strings.HasPrefix(name, WorkspaceDir+"/") {
+					t.Errorf("workspace entry %q archived", name)
+				}
+			}
+		})
+	}
+}
+
+// A nested path that merely starts with the workspace name is ordinary Home
+// content and must survive.
+func TestSaveHomeSkipsOnlyTopLevelWorkspace(t *testing.T) {
+	home := buildFixtureHome(t)
+	nested := filepath.Join(home, "bin", WorkspaceDir)
+	if err := os.MkdirAll(nested, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(nested, "keep.txt"), []byte("keep"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+	if err := SaveHome(context.Background(), &buf, home, nil); err != nil {
+		t.Fatalf("SaveHome: %v", err)
+	}
+	headers, _ := decodeArchive(t, buf.Bytes())
+	if _, ok := headers["bin/workspace/keep.txt"]; !ok {
+		t.Error("bin/workspace/keep.txt dropped; only the top-level workspace is excluded")
 	}
 }
 
