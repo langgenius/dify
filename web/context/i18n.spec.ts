@@ -3,7 +3,7 @@ import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { renderHook } from '@testing-library/react'
 import { useTranslation } from '#i18n'
 import { getDocLanguage } from '@/i18n-config/language'
-import { defaultDocBaseUrl, useDocLink } from './i18n'
+import { defaultDocBaseUrl, enterpriseDocBaseUrl, useDocLink } from './i18n'
 
 const mockDeploymentEdition = vi.hoisted(() => ({
   value: 'CLOUD' as 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD',
@@ -212,6 +212,75 @@ describe('useDocLink', () => {
       const { result } = renderHook(() => useDocLink())
       const url = result.current('/self-host/deploy/overview' as DocPathWithoutLang)
       expect(url).toBe(`${defaultDocBaseUrl}/en/self-host/deploy/overview`)
+    })
+  })
+
+  describe('Enterprise documentation', () => {
+    beforeEach(() => {
+      mockDeploymentEdition.value = 'ENTERPRISE'
+    })
+
+    it('should route use documentation to the versioned enterprise documentation', () => {
+      const { result } = renderHook(() => useDocLink())
+
+      expect(result.current('/use-dify/build/workflow-chatflow')).toBe(
+        `${enterpriseDocBaseUrl}/en/use/build/workflow-chatflow`,
+      )
+    })
+
+    it('should route the shared documentation entry to the enterprise workflow guide', () => {
+      const { result } = renderHook(() => useDocLink())
+
+      expect(result.current('/use-dify/getting-started/introduction')).toBe(
+        `${enterpriseDocBaseUrl}/en/use/build/workflow-chatflow`,
+      )
+    })
+
+    it('should convert API and plugin documentation paths', () => {
+      const { result } = renderHook(() => useDocLink())
+
+      expect(result.current('/api-reference/guides/knowledge')).toBe(
+        `${enterpriseDocBaseUrl}/en/develop/api/guides/knowledge`,
+      )
+      expect(result.current('/develop-plugin/getting-started/getting-started-dify-plugin')).toBe(
+        `${enterpriseDocBaseUrl}/en/develop/plugins/getting-started/getting-started-dify-plugin`,
+      )
+    })
+
+    it('should remove public product prefixes and preserve anchors', () => {
+      const { result } = renderHook(() => useDocLink())
+
+      expect(result.current('/self-host/use-dify/workspace/tools#mcp' as DocPathWithoutLang)).toBe(
+        `${enterpriseDocBaseUrl}/en/use/workspace/tools#mcp`,
+      )
+    })
+
+    it('should open the enterprise documentation home when no path is provided', () => {
+      const { result } = renderHook(() => useDocLink())
+
+      expect(result.current()).toBe(`${enterpriseDocBaseUrl}/en/`)
+    })
+
+    it('should use Chinese and fall back to English for unsupported documentation languages', () => {
+      vi.mocked(useTranslation).mockReturnValue({
+        i18n: { language: 'zh-Hans' },
+      } as ReturnType<typeof useTranslation>)
+      vi.mocked(getDocLanguage).mockReturnValue('zh')
+
+      const { result, rerender } = renderHook(() => useDocLink())
+      expect(result.current('/use-dify/nodes/start')).toBe(
+        `${enterpriseDocBaseUrl}/zh/use/nodes/start`,
+      )
+
+      vi.mocked(useTranslation).mockReturnValue({
+        i18n: { language: 'ja-JP' },
+      } as ReturnType<typeof useTranslation>)
+      vi.mocked(getDocLanguage).mockReturnValue('ja')
+      rerender()
+
+      expect(result.current('/use-dify/nodes/start')).toBe(
+        `${enterpriseDocBaseUrl}/en/use/nodes/start`,
+      )
     })
   })
 
