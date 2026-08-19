@@ -158,7 +158,7 @@ class TestAccessMatrixAccountNames:
 
         assert response == {}
         fetch.assert_called_once_with("tenant-1", "acct-actor", resource_id)
-        hydrate.assert_called_once_with("tenant-1", getattr(result, result_attribute))
+        hydrate.assert_called_once_with("tenant-1", vars(result)[result_attribute])
 
     def test_hydrates_missing_account_names(self):
         items = [
