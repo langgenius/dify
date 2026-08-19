@@ -100,6 +100,7 @@ class AgentBackendRunFailedInternalEvent(AgentBackendInternalEventBase):
     error_type: RunFailureType | None = None
     reason: str | None = None
     session_snapshot: CompositorSessionSnapshot | None = None
+    usage: dict[str, JsonValue] | None = None
 
 
 class AgentBackendRunCancelledInternalEvent(AgentBackendInternalEventBase):
@@ -109,6 +110,7 @@ class AgentBackendRunCancelledInternalEvent(AgentBackendInternalEventBase):
     reason: str | None = None
     message: str | None = None
     session_snapshot: CompositorSessionSnapshot | None = None
+    usage: dict[str, JsonValue] | None = None
 
 
 type AgentBackendInternalEvent = Annotated[
@@ -187,6 +189,7 @@ class AgentBackendRunEventAdapter:
                         error_type=event.data.error_type,
                         reason=event.data.reason,
                         session_snapshot=event.data.session_snapshot,
+                        usage=_agent_run_usage(event.data.usage),
                     )
                 ]
             case RunCancelledEvent():
@@ -197,6 +200,7 @@ class AgentBackendRunEventAdapter:
                         reason=event.data.reason,
                         message=event.data.message,
                         session_snapshot=event.data.session_snapshot,
+                        usage=_agent_run_usage(event.data.usage),
                     )
                 ]
         raise TypeError(f"unsupported agent backend run event: {type(event).__name__}")

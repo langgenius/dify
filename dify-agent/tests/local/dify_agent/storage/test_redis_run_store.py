@@ -9,6 +9,7 @@ from pydantic import JsonValue
 from agenton.compositor import CompositorSessionSnapshot, LayerSessionSnapshot
 from agenton.layers import LifecycleState
 from dify_agent.protocol.schemas import (
+    AgentRunUsage,
     RUN_EVENT_ADAPTER,
     CancelRunRequest,
     RunCancelledEvent,
@@ -239,6 +240,7 @@ def test_finalize_cancellation_maps_eval_result_and_arguments() -> None:
             "run-1",
             intent,
             session_snapshot=CompositorSessionSnapshot(layers=[]),
+            usage=AgentRunUsage(prompt_tokens=13, completion_tokens=8),
         )
     )
 
@@ -253,11 +255,12 @@ def test_finalize_cancellation_maps_eval_result_and_arguments() -> None:
     payload = json.loads(cast(str, eval_command[9]))
     assert "id" not in payload
     assert payload["type"] == "run_cancelled"
-    assert payload["data"] == {
-        "reason": "workflow_aborted",
-        "message": "workflow stopped",
-        "session_snapshot": {"schema_version": 1, "layers": []},
-    }
+    assert payload["data"]["reason"] == "workflow_aborted"
+    assert payload["data"]["message"] == "workflow stopped"
+    assert payload["data"]["session_snapshot"] == {"schema_version": 1, "layers": []}
+    assert payload["data"]["usage"]["prompt_tokens"] == 13
+    assert payload["data"]["usage"]["completion_tokens"] == 8
+    assert payload["data"]["usage"]["total_tokens"] == 21
     assert eval_command[10] == "60"
 
 
