@@ -4,7 +4,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RadioGroup } from '@langgenius/dify-ui/radio'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useDebounceFn } from 'ahooks'
+import { useDebounce } from 'ahooks'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
@@ -41,17 +41,8 @@ const PermissionSelector = ({
     select: ({ rbac_enabled }) => rbac_enabled,
   })
   const [keywords, setKeywords] = useState('')
-  const [searchKeywords, setSearchKeywords] = useState('')
-  const { run: handleSearch } = useDebounceFn(
-    (nextKeywords: string) => {
-      setSearchKeywords(nextKeywords)
-    },
-    { wait: 500 },
-  )
-  const handleKeywordsChange = (nextKeywords: string) => {
-    setKeywords(nextKeywords)
-    handleSearch(nextKeywords)
-  }
+  const debouncedKeywords = useDebounce(keywords, { wait: 500 })
+  const searchKeywords = keywords ? debouncedKeywords : ''
   const selectMember = (member: Member) => {
     if (value.includes(member.id)) onMemberSelect(value.filter((id) => id !== member.id))
     else onMemberSelect([...value, member.id])
@@ -233,7 +224,7 @@ const PermissionSelector = ({
                   name="member-search"
                   value={keywords}
                   placeholder={t(($) => $['operation.search'], { ns: 'common' }) || ''}
-                  onValueChange={handleKeywordsChange}
+                  onValueChange={setKeywords}
                 />
               </div>
               <div className="flex flex-col p-1">
