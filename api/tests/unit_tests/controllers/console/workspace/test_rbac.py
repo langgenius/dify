@@ -113,6 +113,53 @@ class TestMyPermissions:
 
 
 class TestAccessMatrixAccountNames:
+    @pytest.mark.parametrize(
+        ("resource_class", "service_owner", "service_method", "result_attribute", "resource_id"),
+        [
+            (rbac_mod.RBACAppMatrixApi, rbac_mod.svc.RBACService.AppAccess, "matrix", "items", "app-1"),
+            (
+                rbac_mod.RBACAppUserAccessPoliciesApi,
+                rbac_mod.svc.RBACService.AppAccess,
+                "user_access_policies",
+                "data",
+                "app-1",
+            ),
+            (rbac_mod.RBACDatasetMatrixApi, rbac_mod.svc.RBACService.DatasetAccess, "matrix", "items", "dataset-1"),
+            (
+                rbac_mod.RBACDatasetUserAccessPoliciesApi,
+                rbac_mod.svc.RBACService.DatasetAccess,
+                "user_access_policies",
+                "data",
+                "dataset-1",
+            ),
+        ],
+    )
+    def test_resource_reads_hydrate_tenant_members(
+        self,
+        resource_class,
+        service_owner,
+        service_method,
+        result_attribute,
+        resource_id,
+    ):
+        result = SimpleNamespace(**{result_attribute: []})
+        hydrator = (
+            "_hydrate_access_matrix_account_names"
+            if result_attribute == "items"
+            else "_hydrate_resource_user_account_names"
+        )
+        with (
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-actor")),
+            patch.object(service_owner, service_method, return_value=result) as fetch,
+            patch.object(rbac_mod, hydrator) as hydrate,
+            patch.object(rbac_mod, "_dump", return_value={}),
+        ):
+            response = inspect.unwrap(resource_class.get)(resource_class(), resource_id)
+
+        assert response == {}
+        fetch.assert_called_once_with("tenant-1", "acct-actor", resource_id)
+        hydrate.assert_called_once_with("tenant-1", getattr(result, result_attribute))
+
     def test_hydrates_missing_account_names(self):
         items = [
             rbac_mod.svc.AccessMatrixItem(

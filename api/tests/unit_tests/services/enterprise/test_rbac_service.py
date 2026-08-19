@@ -67,6 +67,27 @@ def test_require_tenant_members_rejects_mixed_tenants(sqlite_session: Session):
         svc.require_tenant_members("tenant-1", ["member-1", "member-2"])
 
 
+def test_require_tenant_members_skips_empty_input():
+    with patch.object(svc.session_factory, "create_session") as create_session:
+        svc.require_tenant_members("tenant-1", [None, "", " "])
+
+    create_session.assert_not_called()
+
+
+def test_role_id_canonicalization_rejects_invalid_input():
+    with pytest.raises(ValueError, match="must be UUIDs"):
+        svc._canonical_role_ids(["not-a-uuid"])
+
+
+def test_member_role_id_canonicalization_rejects_invalid_response():
+    role = svc.RBACRole(id="not-a-uuid", type="workspace", name="Invalid")
+
+    with pytest.raises(svc.EnterpriseAPIError, match="invalid role id") as exc_info:
+        svc._canonical_member_role_ids([role])
+
+    assert exc_info.value.status_code == 502
+
+
 class TestCatalog:
     def test_workspace_catalog(self, mock_send: MagicMock):
         mock_send.return_value = {"groups": [{"group_key": "workspace", "group_name": "工作空间", "permissions": []}]}
@@ -711,6 +732,12 @@ class TestMyPermissions:
         assert out.app.default_permission_keys == []
         assert out.dataset.default_permission_keys == []
 
+    def test_get_legacy_requires_session(self, sqlite_session: Session, config_overrides):
+        config_overrides(RBAC_ENABLED=False)
+
+        with pytest.raises(ValueError, match="requires a database session"):
+            svc.RBACService.MyPermissions.get("tenant-1", "acct-1")
+
     def test_get_with_single_resource_filters(self, mock_send: MagicMock, sqlite_session: Session):
         mock_send.return_value = {
             "workspace": {"permission_keys": []},
@@ -806,6 +833,14 @@ class TestMemberRoles:
         assert out.account_id == "acct-2"
         assert out.roles[0].name == "Member"
 
+    def test_get_rejects_mismatched_response_account(self, mock_send: MagicMock, tenant_members: None):
+        mock_send.return_value = {"account_id": "acct-other", "roles": []}
+
+        with pytest.raises(svc.EnterpriseAPIError, match="does not match") as exc_info:
+            svc.RBACService.MemberRoles.get("tenant-1", "acct-1", "acct-2")
+
+        assert exc_info.value.status_code == 502
+
     def test_get_legacy_role_includes_permission_keys(
         self, mock_send: MagicMock, sqlite_session: Session, config_overrides
     ):
@@ -838,6 +873,12 @@ class TestMemberRoles:
         config_overrides(RBAC_ENABLED=False)
         with pytest.raises(svc.MemberNotInTenantError):
             svc.RBACService.MemberRoles.get("tenant-1", "acct-1", "acct-missing", session=sqlite_session)
+
+    def test_get_legacy_requires_session(self, config_overrides):
+        config_overrides(RBAC_ENABLED=False)
+
+        with pytest.raises(ValueError, match="requires a database session"):
+            svc.RBACService.MemberRoles.get("tenant-1", "acct-1", "acct-2")
 
     def test_replace(self, mock_send: MagicMock):
         mock_send.return_value = {"account_id": "acct-2", "roles": []}
@@ -958,6 +999,20 @@ class TestMemberRoles:
             svc.RBACService.MemberRoles.ensure_roles_assignable("tenant-1", "acct-actor", [EDITOR_ROLE_ID])
 
         assert exc_info.value.status_code == 502
+
+    def test_ensure_roles_assignable_rejects_invalid_role_response(self):
+        role = svc.RBACRole(id="not-a-uuid", tenant_id="tenant-1", type="workspace", name="Invalid")
+        with (
+            patch.object(svc.RBACService.Roles, "get", return_value=role),
+            pytest.raises(svc.EnterpriseAPIError, match="invalid role id") as exc_info,
+        ):
+            svc.RBACService.MemberRoles.ensure_roles_assignable("tenant-1", "acct-actor", [EDITOR_ROLE_ID])
+
+        assert exc_info.value.status_code == 502
+
+    def test_replace_user_roles_requires_actor(self):
+        with pytest.raises(svc.NoPermissionError, match="authenticated account"):
+            svc.RBACService.MemberRoles.replace_user_roles("tenant-1", None, "acct-target", [EDITOR_ROLE_ID])
 
     def test_replace_user_roles_rejects_current_owner(self, tenant_members: None):
         current = svc.MemberRolesResponse(
@@ -1152,6 +1207,24 @@ class TestMemberRoles:
         sqlite_session.commit()
 
         with pytest.raises(ValueError, match="invitation context not found"):
+            svc.RBACService.MemberRoles.assign_invited_member("tenant-1", "acct-actor", "acct-invitee", EDITOR_ROLE_ID)
+
+        assert (
+            sqlite_session.query(TenantAccountJoin)
+            .filter_by(tenant_id="tenant-1", account_id="acct-invitee")
+            .one_or_none()
+            is None
+        )
+
+    def test_assign_invited_member_requires_role_permission(
+        self,
+        sqlite_session: Session,
+        invitation_context: None,
+        member_role_guards,
+    ):
+        member_role_guards.permissions.return_value = set()
+
+        with pytest.raises(svc.NoPermissionError, match="assign the invitation role"):
             svc.RBACService.MemberRoles.assign_invited_member("tenant-1", "acct-actor", "acct-invitee", EDITOR_ROLE_ID)
 
         assert (
@@ -1371,6 +1444,25 @@ class TestMemberRoles:
         assert out.account_id == "acct-2"
         assert out.roles[0].id == "editor"
         assert "app.acl.preview" in out.roles[0].permission_keys
+
+    @pytest.mark.parametrize(
+        ("account_id", "role_ids", "error"),
+        [
+            ("acct-1", [], ValueError),
+            (None, ["editor"], svc.NoPermissionError),
+        ],
+    )
+    def test_replace_legacy_rejects_invalid_request(
+        self,
+        config_overrides,
+        account_id: str | None,
+        role_ids: list[str],
+        error: type[Exception],
+    ):
+        config_overrides(RBAC_ENABLED=False)
+
+        with pytest.raises(error):
+            svc.RBACService.MemberRoles.replace("tenant-1", account_id, "acct-2", role_ids)
 
     def test_replace_legacy_rejects_global_account_outside_tenant(
         self, mock_send: MagicMock, sqlite_session: Session, config_overrides

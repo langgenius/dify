@@ -116,6 +116,20 @@ def test_membership_scope_translates_capacity_failure() -> None:
     assert raised.value.__cause__ is source_error
 
 
+def test_membership_scope_skips_capacity_for_existing_member() -> None:
+    session = MagicMock()
+    with (
+        patch("services.account_activation_adapters.workspace_membership_mutation_lock", return_value=nullcontext()),
+        patch("services.account_activation_adapters.session_factory.create_session", return_value=nullcontext(session)),
+        patch("services.account_activation_adapters.TenantService.account_belongs_to_tenant", return_value=True),
+        patch("services.account_activation_adapters.TenantService.ensure_member_capacity") as ensure_capacity,
+    ):
+        with assign_legacy_invitation_membership(_invitation(), "editor") as membership_role:
+            assert membership_role == "editor"
+
+    ensure_capacity.assert_not_called()
+
+
 def test_rbac_membership_assigner_delegates_to_existing_owner() -> None:
     invitation = _invitation()
     with patch(

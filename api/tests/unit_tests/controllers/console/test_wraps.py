@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import HTTPException
 
-from controllers.common.wraps import _extract_resource_id
+from controllers.common.wraps import _extract_resource_id, _is_resource_owned_by_current_user
 from controllers.console import api as console_api
 from controllers.console import flask_admission
 from controllers.console.error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
@@ -339,6 +339,19 @@ class TestCurrentContextInjection:
 
 class TestRbacPermissionRequired:
     """Test enterprise RBAC decorator."""
+
+    def test_dataset_owner_check_reads_dataset_maintainer(self):
+        session = MagicMock()
+        session.scalar.return_value = "account-1"
+
+        assert _is_resource_owned_by_current_user(
+            "tenant-1",
+            "account-1",
+            RBACResourceScope.DATASET,
+            "dataset-1",
+            session=session,
+        )
+        session.scalar.assert_called_once()
 
     def test_resource_scoped_check_uses_resource_id(self):
         current_user = make_account("account-1")
