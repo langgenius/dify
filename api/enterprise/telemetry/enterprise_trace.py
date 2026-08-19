@@ -290,9 +290,14 @@ class EnterpriseOtelTrace:
             )
 
         # -- Emit child node execution spans from DB records --
-        self._emit_node_executions_for_workflow(info)
+        self._emit_node_executions_for_workflow(info, trace_correlation_override=trace_correlation_override)
 
-    def _emit_node_executions_for_workflow(self, workflow_info: WorkflowTraceInfo) -> None:
+    def _emit_node_executions_for_workflow(
+        self,
+        workflow_info: WorkflowTraceInfo,
+        *,
+        trace_correlation_override: str | None = None,
+    ) -> None:
         """Query node executions from the DB and emit child spans under the workflow run."""
         from collections.abc import Mapping as MappingABC
 
@@ -346,10 +351,9 @@ class EnterpriseOtelTrace:
                 "invoke_from": metadata.get("triggered_from"),
                 "conversation_id": metadata.get("conversation_id"),
             }
-
-            parent_trace_context = metadata.get("parent_trace_context")
-            if parent_trace_context:
-                node_trace_metadata["parent_trace_context"] = parent_trace_context
+            # NOTE: Do NOT propagate parent_trace_context to node infos.
+            # Cross-trace linking is handled at the workflow-run span level only;
+            # node spans are children of their own workflow run span.
 
             node_info = WorkflowNodeTraceInfo(
                 trace_id=workflow_info.trace_id,
@@ -388,7 +392,12 @@ class EnterpriseOtelTrace:
                 invoked_by=workflow_info.invoked_by,
             )
             try:
-                self._node_execution_trace(node_info)
+                self._emit_node_execution_trace(
+                    node_info,
+                    EnterpriseTelemetrySpan.NODE_EXECUTION,
+                    "node",
+                    trace_correlation_override_param=trace_correlation_override,
+                )
             except Exception:
                 logger.exception(
                     "Failed to emit node execution trace: node_execution_id=%s",
@@ -451,6 +460,9 @@ class EnterpriseOtelTrace:
         trace_correlation_override = trace_correlation_override_param or resolved_override
 
         effective_correlation_id = correlation_id_override or info.workflow_run_id
+        # Explicitly set parent to the workflow run span so node executions
+        # are always children of their workflow run in the trace tree.
+        parent_span_id_source = info.workflow_run_id if not correlation_id_override else None
         self._exporter.export_span(
             span_name,
             span_attrs,
@@ -459,6 +471,7 @@ class EnterpriseOtelTrace:
             start_time=info.start_time,
             end_time=info.end_time,
             trace_correlation_override=trace_correlation_override,
+            parent_span_id_source=parent_span_id_source,
         )
 
         # -- Companion log: ALL attrs (span + detail) --
