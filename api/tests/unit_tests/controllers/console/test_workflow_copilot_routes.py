@@ -11,6 +11,7 @@ that is exercised by integration/e2e tests, not here.
 from unittest.mock import MagicMock
 
 import controllers.console.workflow_copilot as mod
+from controllers.console import wraps as wraps_mod
 from core.workflow_copilot.errors import BusyError, ConflictError, NotFoundError
 from core.workflow_copilot.models import Actor
 from services.workflow_copilot.service import SessionView
@@ -185,3 +186,64 @@ def test_workflow_copilot_required_passes_through_when_enabled(monkeypatch):
     result = wrapped(object(), "t")
 
     assert result == ({"ok": True, "current_tenant_id": "t"}, 200)
+
+
+# --- real decorator stack composition ---------------------------------------
+#
+# The tests above exercise `workflow_copilot_required` in isolation. The tests
+# below compose the REAL `@with_current_user` / `@with_current_tenant_id` /
+# `workflow_copilot_required` stack (mirroring the exact nesting used on the
+# Resource methods in workflow_copilot.py: `with_current_user(with_current_tenant_id(
+# workflow_copilot_required(view)))`) to verify the values actually land in the
+# method's declared positional slots -- not just that each decorator behaves
+# correctly alone.
+
+
+def test_decorator_stack_injects_positionally_in_method_order(monkeypatch):
+    account = MagicMock()
+    account.id = "acc-1"
+    # both injection decorators resolve identity via current_account_with_tenant()
+    monkeypatch.setattr(wraps_mod, "current_account_with_tenant", lambda: (account, "ten-9"))
+    # feature enabled so the gate passes through instead of 403
+    feat = MagicMock()
+    feat.workflow_copilot_enabled = True
+    monkeypatch.setattr(mod, "FeatureService", MagicMock(get_features=lambda _t: feat))
+
+    captured = {}
+
+    def fake_view(self, current_tenant_id, current_user, **kwargs):
+        captured.update(
+            self=self, current_tenant_id=current_tenant_id, current_user=current_user, kwargs=kwargs
+        )
+        return {"ok": True}, 200
+
+    # innermost → outermost, mirroring the real stack order (gate is closest to the method)
+    composed = wraps_mod.with_current_user(
+        wraps_mod.with_current_tenant_id(mod.workflow_copilot_required(fake_view))
+    )
+    sentinel_self = object()
+    result = composed(sentinel_self, session_id="s1")
+
+    assert result == ({"ok": True}, 200)
+    assert captured["self"] is sentinel_self
+    assert captured["current_tenant_id"] == "ten-9"
+    assert captured["current_user"] is account
+    assert captured["kwargs"] == {"session_id": "s1"}
+
+
+def test_decorator_stack_gate_blocks_when_feature_off(monkeypatch):
+    account = MagicMock()
+    account.id = "acc-1"
+    monkeypatch.setattr(wraps_mod, "current_account_with_tenant", lambda: (account, "ten-9"))
+    feat = MagicMock()
+    feat.workflow_copilot_enabled = False
+    monkeypatch.setattr(mod, "FeatureService", MagicMock(get_features=lambda _t: feat))
+
+    def fake_view(_self, _current_tenant_id, _current_user, **_kwargs):
+        raise AssertionError("view must not run when the feature is off")
+
+    composed = wraps_mod.with_current_user(
+        wraps_mod.with_current_tenant_id(mod.workflow_copilot_required(fake_view))
+    )
+    result = composed(object(), session_id="s1")
+    assert result == ({"code": "feature_unavailable"}, 403)
