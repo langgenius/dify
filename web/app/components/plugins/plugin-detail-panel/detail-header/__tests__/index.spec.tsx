@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { fireEvent, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -42,12 +42,6 @@ vi.mock('@/service/use-plugins', () => ({
 
 vi.mock('@/utils/var', () => ({
   getMarketplaceUrl: (path: string) => `https://marketplace.example.com${path}`,
-}))
-
-vi.mock('@/app/components/base/action-button', () => ({
-  default: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-    <button {...props}>{children}</button>
-  ),
 }))
 
 vi.mock('@/app/components/base/badge', () => ({

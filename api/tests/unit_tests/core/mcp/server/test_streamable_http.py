@@ -260,9 +260,7 @@ class TestIndividualHandlers:
 
     def test_handle_initialize_echoes_supported_version(self):
         """A supported requested version is echoed back unchanged."""
-        with patch("core.mcp.server.streamable_http.dify_config") as mock_config:
-            mock_config.project.version = "1.0.0"
-            result = handle_initialize("Test server", "2024-11-05")
+        result = handle_initialize("Test server", "2024-11-05")
 
         assert isinstance(result, types.InitializeResult)
         assert result.protocolVersion == "2024-11-05"
@@ -270,34 +268,26 @@ class TestIndividualHandlers:
 
     def test_handle_initialize_echoes_intermediate_version(self):
         """The intermediate supported version (2025-03-26) is echoed back."""
-        with patch("core.mcp.server.streamable_http.dify_config") as mock_config:
-            mock_config.project.version = "1.0.0"
-            result = handle_initialize("Test server", "2025-03-26")
+        result = handle_initialize("Test server", "2025-03-26")
 
         assert result.protocolVersion == "2025-03-26"
 
     def test_handle_initialize_negotiates_latest_for_modern_client(self):
         """A 2025-06-18 client gets 2025-06-18 back."""
-        with patch("core.mcp.server.streamable_http.dify_config") as mock_config:
-            mock_config.project.version = "1.0.0"
-            result = handle_initialize("Test server", "2025-06-18")
+        result = handle_initialize("Test server", "2025-06-18")
 
         assert result.protocolVersion == "2025-06-18"
 
     def test_handle_initialize_falls_back_for_unknown_version(self):
         """An unsupported requested version falls back to the server latest."""
-        with patch("core.mcp.server.streamable_http.dify_config") as mock_config:
-            mock_config.project.version = "1.0.0"
-            result = handle_initialize("Test server", "1999-01-01")
+        result = handle_initialize("Test server", "1999-01-01")
 
         assert result.protocolVersion == types.SERVER_LATEST_PROTOCOL_VERSION
         assert result.protocolVersion == "2025-06-18"
 
     def test_handle_initialize_non_string_version_falls_back(self):
         """A malformed (non-string) requested version falls back to the server latest."""
-        with patch("core.mcp.server.streamable_http.dify_config") as mock_config:
-            mock_config.project.version = "1.0.0"
-            result = handle_initialize("Test server", 20250618)
+        result = handle_initialize("Test server", 20250618)
 
         assert result.protocolVersion == types.SERVER_LATEST_PROTOCOL_VERSION
 

@@ -1,5 +1,6 @@
 import type { TagType } from '@dify/contracts/api/console/tags/types.gen'
 import type { TagComboboxItem } from './tag-combobox-item'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   ComboboxEmpty,
   ComboboxInput,
@@ -11,8 +12,9 @@ import {
   ComboboxSeparator,
   useComboboxFilteredItems,
 } from '@langgenius/dify-ui/combobox'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useAtomValue } from 'jotai'
-import { Fragment } from 'react'
+import { Fragment, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { hasPermission } from '@/utils/permission'
@@ -37,11 +39,17 @@ export const TagSearchContent = ({
   canBindOrUnbindTags = false,
 }: TagSearchContentProps) => {
   const { t } = useTranslation()
+  const inputRef = useRef<HTMLInputElement>(null)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageTags = hasPermission(workspacePermissionKeys, getTagManagePermissionKey(type))
   const filteredItems = useComboboxFilteredItems<TagComboboxItem>()
   const realItemCount = filteredItems.filter((tag) => !isCreateTagOption(tag)).length
   const placeholder = t(($) => $['tag.selectorPlaceholder'], { ns: 'common' }) || ''
+
+  const handleClearInput = () => {
+    onInputValueChange('')
+    inputRef.current?.focus()
+  }
 
   return (
     <div className="relative w-full">
@@ -52,21 +60,22 @@ export const TagSearchContent = ({
             className="ml-2 i-ri-search-line size-4 shrink-0 text-text-tertiary"
           />
           <ComboboxInput
+            ref={inputRef}
             aria-label={placeholder}
             name={`tag-search-${type}`}
             placeholder={placeholder}
             className="pl-2"
           />
           {inputValue && (
-            <button
-              type="button"
+            <IconButton
+              size="sm"
               aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-              className="mr-1.5 flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-components-input-bg-hover hover:text-text-secondary focus-visible:bg-components-input-bg-hover focus-visible:text-text-secondary focus-visible:inset-ring-1 focus-visible:inset-ring-components-input-border-active"
-              onClick={() => onInputValueChange('')}
-              onPointerDown={(event) => event.preventDefault()}
+              className="mr-1.5 shrink-0 hover:bg-components-input-bg-hover focus-visible:bg-components-input-bg-hover"
+              onClick={handleClearInput}
+              onMouseDown={(event) => event.preventDefault()}
             >
               <span className="i-ri-close-line size-4" aria-hidden="true" />
-            </button>
+            </IconButton>
           )}
         </ComboboxInputGroup>
       </div>
@@ -119,9 +128,10 @@ export const TagSearchContent = ({
         <>
           <ComboboxSeparator />
           <div className="p-1">
-            <button
-              type="button"
-              className="flex w-full cursor-pointer touch-manipulation items-center gap-x-1 rounded-lg px-2 py-1.5 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            <Button
+              variant="ghost"
+              size="medium"
+              className="w-full justify-start gap-x-1 px-2 py-1.5 text-left"
               onClick={() => {
                 onOpenTagManagement?.()
                 onClose?.()
@@ -134,7 +144,7 @@ export const TagSearchContent = ({
               <span className="min-w-0 grow truncate px-1 system-md-regular text-text-secondary">
                 {t(($) => $['tag.manageTags'], { ns: 'common' })}
               </span>
-            </button>
+            </Button>
           </div>
         </>
       )}

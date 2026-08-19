@@ -32,7 +32,17 @@ class TestUploadDSL:
         mock_post.assert_called_once()
         call_kwargs = mock_post.call_args
         assert "anonymous-upload" in call_kwargs.args[0]
-        assert call_kwargs.kwargs["timeout"] == 30
+        timeout = call_kwargs.kwargs["timeout"]
+        assert isinstance(timeout, httpx.Timeout)
+        assert timeout.connect == 5.0
+        assert timeout.read == 30.0
+
+    def test_creators_request_timeout_bounds_connect_phase(self):
+        """Module-level _CREATORS_REQUEST_TIMEOUT should bound the connect phase to 5.0s."""
+        from core.helper.creators import _CREATORS_REQUEST_TIMEOUT
+
+        assert _CREATORS_REQUEST_TIMEOUT.connect == 5.0
+        assert _CREATORS_REQUEST_TIMEOUT.read == 30.0
 
     @patch("core.helper.creators.httpx.post")
     def test_raises_on_missing_claim_code(self, mock_post):
@@ -75,10 +85,11 @@ class TestUploadDSL:
 
 
 class TestGetRedirectUrl:
-    @patch("core.helper.creators.dify_config")
-    def test_without_oauth_client_id(self, mock_config):
-        mock_config.CREATORS_PLATFORM_API_URL = "https://creators.example.com"
-        mock_config.CREATORS_PLATFORM_OAUTH_CLIENT_ID = ""
+    def test_without_oauth_client_id(self, config_overrides):
+        config_overrides(
+            CREATORS_PLATFORM_API_URL="https://creators.example.com",
+            CREATORS_PLATFORM_OAUTH_CLIENT_ID="",
+        )
 
         from core.helper.creators import get_redirect_url
 
@@ -88,10 +99,11 @@ class TestGetRedirectUrl:
         assert "oauth_code" not in url
         assert url.startswith("https://creators.example.com")
 
-    @patch("core.helper.creators.dify_config")
-    def test_with_oauth_client_id(self, mock_config):
-        mock_config.CREATORS_PLATFORM_API_URL = "https://creators.example.com"
-        mock_config.CREATORS_PLATFORM_OAUTH_CLIENT_ID = "client-xyz"
+    def test_with_oauth_client_id(self, config_overrides):
+        config_overrides(
+            CREATORS_PLATFORM_API_URL="https://creators.example.com",
+            CREATORS_PLATFORM_OAUTH_CLIENT_ID="client-xyz",
+        )
 
         with patch(
             "services.oauth_server.OAuthServerService.sign_oauth_authorization_code",
@@ -105,10 +117,11 @@ class TestGetRedirectUrl:
             assert "dsl_claim_code=claim-abc" in url
             assert "oauth_code=oauth-code-123" in url
 
-    @patch("core.helper.creators.dify_config")
-    def test_strips_trailing_slash(self, mock_config):
-        mock_config.CREATORS_PLATFORM_API_URL = "https://creators.example.com/"
-        mock_config.CREATORS_PLATFORM_OAUTH_CLIENT_ID = ""
+    def test_strips_trailing_slash(self, config_overrides):
+        config_overrides(
+            CREATORS_PLATFORM_API_URL="https://creators.example.com/",
+            CREATORS_PLATFORM_OAUTH_CLIENT_ID="",
+        )
 
         from core.helper.creators import get_redirect_url
 

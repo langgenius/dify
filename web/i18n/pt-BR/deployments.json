@@ -22,7 +22,6 @@
   "deployTab.moreActions": "Mais ações",
   "deployTab.redeploy": "Reimplantar",
   "deployTab.undeploy": "Desimplantar",
-  "deployTab.undeployConfirmWarning": "Após a confirmação, este ambiente entrará no estado de desimplantação e as ações serão temporariamente desabilitadas.",
   "health.ENVIRONMENT_STATUS_FAILED": "Indisponível",
   "list.emptyTitle": "Nenhuma implantação ainda",
   "overview.chip.latest": "mais recente",

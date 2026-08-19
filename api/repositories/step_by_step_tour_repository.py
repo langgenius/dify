@@ -2,7 +2,7 @@
 
 import logging
 from collections.abc import Callable
-from typing import override
+from typing import Protocol, override, runtime_checkable
 
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError, OperationalError
@@ -16,6 +16,12 @@ logger = logging.getLogger(__name__)
 
 _MYSQL_RETRYABLE_LOCK_ERRNOS = frozenset({1205, 1213})
 _MAX_LOCK_ATTEMPTS = 3
+
+
+@runtime_checkable
+class _ErrorWithErrno(Protocol):
+    @property
+    def errno(self) -> object: ...
 
 
 class SQLAlchemyStepByStepTourStateRepository(StepByStepTourStateRepository):
@@ -164,16 +170,20 @@ class SQLAlchemyStepByStepTourStateRepository(StepByStepTourStateRepository):
 
 def _is_retryable_mysql_lock_error(exc: OperationalError) -> bool:
     orig = exc.orig
-    candidates: tuple[object, ...] = (
-        getattr(orig, "errno", None),
-        (getattr(orig, "args", ()) or (None,))[0],
-    )
-    for candidate in candidates:
-        code: int | None = None
-        if isinstance(candidate, int) and not isinstance(candidate, bool):
-            code = candidate
-        elif isinstance(candidate, str) and candidate.isdecimal():
-            code = int(candidate)
-        if code in _MYSQL_RETRYABLE_LOCK_ERRNOS:
-            return True
-    return False
+    if isinstance(orig, _ErrorWithErrno) and _is_retryable_mysql_lock_error_code(orig.errno):
+        return True
+    if not isinstance(orig, BaseException) or not orig.args:
+        return False
+    return _is_retryable_mysql_lock_error_code(orig.args[0])
+
+
+def _is_retryable_mysql_lock_error_code(candidate: object) -> bool:
+    if isinstance(candidate, bool):
+        return False
+    if isinstance(candidate, int):
+        code = candidate
+    elif isinstance(candidate, str) and candidate.isdecimal():
+        code = int(candidate)
+    else:
+        return False
+    return code in _MYSQL_RETRYABLE_LOCK_ERRNOS

@@ -47,6 +47,7 @@ from core.workflow.nodes.agent.plugin_strategy_adapter import (
 from core.workflow.nodes.agent.runtime_support import AgentRuntimeSupport
 from core.workflow.nodes.agent_v2 import DifyAgentNode
 from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingResolver
+from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter
 from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeRequestBuilder
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
@@ -134,11 +135,26 @@ def get_node_type_classes_mapping() -> Mapping[NodeType, Mapping[str, type[Node]
     return Node.get_node_type_classes_mapping()
 
 
-def resolve_workflow_node_class(*, node_type: NodeType, node_version: str) -> type[Node]:
+def resolve_workflow_node_class(
+    *,
+    node_type: NodeType,
+    node_version: str,
+    node_data: Mapping[str, Any] | BaseNodeData | None = None,
+) -> type[Node]:
     """Resolve the production node class for the requested type/version."""
     node_mapping = get_node_type_classes_mapping().get(node_type)
     if not node_mapping:
         raise ValueError(f"No class mapping found for node type: {node_type}")
+
+    # Historical Agent nodes used version=2 for their tool-parameter format.
+    # Only the explicit kind marker identifies the newer Dify Agent node.
+    if (
+        node_data is not None
+        and node_type == BuiltinNodeTypes.AGENT
+        and node_version == "2"
+        and not is_dify_agent_node_data(node_data)
+    ):
+        node_version = "1"
 
     latest_node_class = node_mapping.get(LATEST_VERSION)
     matched_node_class = node_mapping.get(node_version)
@@ -400,7 +416,11 @@ class DifyNodeFactory(NodeFactory):
         typed_node_config = NodeConfigDictAdapter.validate_python(adapted_node_config)
         node_id = typed_node_config["id"]
         node_data = typed_node_config["data"]
-        node_class = self._resolve_node_class(node_type=node_data.type, node_version=str(node_data.version))
+        node_class = self._resolve_node_class(
+            node_type=node_data.type,
+            node_version=str(node_data.version),
+            node_data=node_data,
+        )
         # Graph configs are initially validated against permissive shared node data.
         # Re-validate using the resolved node class so workflow-local node schemas
         # stay explicit and constructors receive the concrete typed payload.
@@ -493,10 +513,19 @@ class DifyNodeFactory(NodeFactory):
         return node_data
 
     @staticmethod
-    def _resolve_node_class(*, node_type: NodeType, node_version: str) -> type[Node]:
+    def _resolve_node_class(
+        *,
+        node_type: NodeType,
+        node_version: str,
+        node_data: Mapping[str, Any] | BaseNodeData | None = None,
+    ) -> type[Node]:
         if node_type == BuiltinNodeTypes.LLM:
             return DifyLLMNode
-        return resolve_workflow_node_class(node_type=node_type, node_version=node_version)
+        return resolve_workflow_node_class(
+            node_type=node_type,
+            node_version=node_version,
+            node_data=node_data,
+        )
 
     def _resolve_llm_model_reference(self, node_data: LLMNodeData) -> LLMNodeData:
         """Resolve an optional shared model selector from the workflow variable pool."""
@@ -530,7 +559,6 @@ class DifyNodeFactory(NodeFactory):
             return {
                 "binding_resolver": WorkflowAgentBindingResolver(),
                 "runtime_request_builder": WorkflowAgentRuntimeRequestBuilder(
-                    credentials_provider=self._llm_credentials_provider,
                     request_builder=AgentBackendRunRequestBuilder(),
                 ),
                 "agent_backend_client": create_agent_backend_run_client(
@@ -540,7 +568,6 @@ class DifyNodeFactory(NodeFactory):
                     fake_scenario=dify_config.AGENT_BACKEND_FAKE_SCENARIO,
                     stream_read_timeout_seconds=dify_config.AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS,
                     stream_max_reconnects=dify_config.AGENT_BACKEND_STREAM_MAX_RECONNECTS,
-                    stream_run_timeout_seconds=dify_config.AGENT_BACKEND_RUN_TIMEOUT_SECONDS,
                 ),
                 "event_adapter": AgentBackendRunEventAdapter(),
                 # Agent Files §4.6: reback file outputs from the ToolFile row so

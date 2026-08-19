@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { expect, it, vi } from 'vitest'
+import { expect, it, vi } from 'vite-plus/test'
 import EditedBeacon from '../edited-beacon'
 
 it('reveals the reset action on hover and invokes it', async () => {

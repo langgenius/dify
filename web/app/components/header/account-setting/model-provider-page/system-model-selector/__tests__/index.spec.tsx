@@ -1,7 +1,7 @@
 import type { DefaultModelResponse } from '../../declarations'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
 import { render } from '@/test/console/render'
 import { ModelTypeEnum } from '../../declarations'
 import SystemModel from '../index'
@@ -87,16 +87,16 @@ vi.mock('@/service/common', () => ({
 }))
 
 vi.mock('../../model-selector', () => ({
-  default: (props: {
+  ModelSelector: (props: {
     hideProviderSettingsFooter?: boolean
     onConfigureEmptyState?: () => void
     showModelMeta?: boolean
-    onSelect: (model: { model: string; provider: string }) => void
+    onValueChange: (model: { model: string; provider: string }) => void
   }) => {
     mockModelSelectorProps.push(props)
     return (
       <div>
-        <button onClick={() => props.onSelect({ model: 'test', provider: 'test' })}>
+        <button onClick={() => props.onValueChange({ model: 'test', provider: 'test' })}>
           Mock Model Selector
         </button>
         {props.onConfigureEmptyState && (

@@ -22,7 +22,6 @@
   "deployTab.moreActions": "Daha fazla işlem",
   "deployTab.redeploy": "Yeniden Dağıt",
   "deployTab.undeploy": "Dağıtımı Geri Al",
-  "deployTab.undeployConfirmWarning": "Onaydan sonra bu ortam dağıtımdan kaldırılıyor durumuna geçecek ve işlemler geçici olarak devre dışı bırakılacak.",
   "health.ENVIRONMENT_STATUS_FAILED": "Kullanılamıyor",
   "list.emptyTitle": "Henüz dağıtım yok",
   "overview.chip.latest": "en son",

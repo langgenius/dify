@@ -24,6 +24,7 @@ from clients.agent_backend import (
     AgentBackendDeferredToolCallInternalEvent,
     AgentBackendError,
     AgentBackendInternalEventType,
+    AgentBackendRunCancelledInternalEvent,
     AgentBackendRunClient,
     AgentBackendRunEventAdapter,
     AgentBackendRunFailedError,
@@ -67,7 +68,7 @@ from graphon.model_runtime.errors.invoke import (
 from models.agent import AgentConfigVersionKind
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import CreatorUserRole
-from models.model import MessageAgentThought
+from models.model import Message, MessageAgentThought
 
 logger = logging.getLogger(__name__)
 
@@ -681,6 +682,8 @@ class AgentAppRunner:
             queue_manager=queue_manager,
             model_name=model_name,
             query=query,
+            session_scope=scope,
+            binding_id=runtime.binding_id,
         )
 
         if isinstance(terminal, AgentBackendDeferredToolCallInternalEvent):
@@ -699,6 +702,28 @@ class AgentAppRunner:
                 query=query,
             )
             return
+
+        terminal_usage = None
+        if isinstance(
+            terminal,
+            AgentBackendRunSucceededInternalEvent
+            | AgentBackendRunFailedInternalEvent
+            | AgentBackendRunCancelledInternalEvent,
+        ):
+            terminal_usage = _llm_usage_from_agent_backend(terminal.usage)
+            self._persist_message_usage(
+                message_id=message_id,
+                usage=terminal_usage,
+            )
+
+        if isinstance(terminal, AgentBackendRunFailedInternalEvent | AgentBackendRunCancelledInternalEvent):
+            # None means no post-exit snapshot was produced; leave the previously stored session snapshot untouched.
+            if terminal.session_snapshot is not None:
+                self._save_session(
+                    scope=scope,
+                    binding_id=runtime.binding_id,
+                    snapshot=terminal.session_snapshot,
+                )
 
         if not isinstance(terminal, AgentBackendRunSucceededInternalEvent):
             if isinstance(terminal, AgentBackendRunFailedInternalEvent):
@@ -724,7 +749,7 @@ class AgentAppRunner:
             model_name=model_name,
             answer=answer,
             query=query,
-            usage=_llm_usage_from_agent_backend(terminal.usage),
+            usage=terminal_usage,
         )
         self._save_session(
             scope=scope,
@@ -844,6 +869,7 @@ class AgentAppRunner:
             model_name=model_name,
             answer=self._ask_human_message(created.args),
             query=query,
+            usage=_llm_usage_from_agent_backend(terminal.usage),
         )
 
     def _resolve_pending_ask_human(
@@ -895,6 +921,8 @@ class AgentAppRunner:
         queue_manager: AppQueueManager,
         model_name: str,
         query: str | None,
+        session_scope: AgentAppSessionScope,
+        binding_id: str,
     ):
         """Consume backend events while preserving raw recorder granularity."""
         terminal = None
@@ -904,6 +932,7 @@ class AgentAppRunner:
             queue_manager=queue_manager,
         )
         text_delta_debouncer = _TextDeltaDebouncer(debounce_seconds=self._text_delta_debounce_seconds)
+        last_event_id: str | None = None
 
         def persist_answer_text(content_delta: str) -> None:
             try:
@@ -934,14 +963,28 @@ class AgentAppRunner:
                 should_stop=queue_manager.is_stopped,
             )
             for public_event in public_events:
+                if public_event.id is not None:
+                    last_event_id = public_event.id
                 if queue_manager.is_stopped():
                     flush_pending_agent_message_text()
-                    self._cancel_run(run_id)
+                    self._cancel_run(
+                        run_id,
+                        after=last_event_id,
+                        session_scope=session_scope,
+                        binding_id=binding_id,
+                        message_id=message_id,
+                    )
                     raise GenerateTaskStoppedError()
                 for internal_event in self._event_adapter.adapt(public_event):
                     if queue_manager.is_stopped():
                         flush_pending_agent_message_text()
-                        self._cancel_run(run_id)
+                        self._cancel_run(
+                            run_id,
+                            after=last_event_id,
+                            session_scope=session_scope,
+                            binding_id=binding_id,
+                            message_id=message_id,
+                        )
                         raise GenerateTaskStoppedError()
                     if internal_event.type in (
                         AgentBackendInternalEventType.RUN_STARTED,
@@ -978,28 +1021,79 @@ class AgentAppRunner:
             raise
         except Exception as error:
             flush_pending_agent_message_text()
-            self._cancel_run(run_id)
+            self._cancel_run(
+                run_id,
+                after=last_event_id,
+                session_scope=session_scope,
+                binding_id=binding_id,
+                message_id=message_id,
+            )
             if queue_manager.is_stopped():
                 raise GenerateTaskStoppedError() from error
             raise
         flush_pending_agent_message_text()
         if queue_manager.is_stopped():
-            self._cancel_run(run_id)
+            self._cancel_run(
+                run_id,
+                after=last_event_id,
+                session_scope=session_scope,
+                binding_id=binding_id,
+                message_id=message_id,
+            )
             raise GenerateTaskStoppedError()
         return terminal, process_recorder
 
-    def _cancel_run(self, run_id: str) -> None:
+    def _cancel_run(
+        self,
+        run_id: str,
+        *,
+        after: str | None,
+        session_scope: AgentAppSessionScope,
+        binding_id: str,
+        message_id: str,
+    ) -> None:
         try:
-            self._agent_backend_client.cancel_run(run_id)
+            public_event = self._agent_backend_client.cancel_run_and_wait(run_id, after=after)
+            for internal_event in self._event_adapter.adapt(public_event):
+                if (
+                    isinstance(internal_event, AgentBackendRunCancelledInternalEvent)
+                    and internal_event.session_snapshot is not None
+                ):
+                    self._save_session(
+                        scope=session_scope,
+                        binding_id=binding_id,
+                        snapshot=internal_event.session_snapshot,
+                    )
+                if isinstance(internal_event, AgentBackendRunCancelledInternalEvent):
+                    self._persist_message_usage(
+                        message_id=message_id,
+                        usage=_llm_usage_from_agent_backend(internal_event.usage),
+                    )
         except Exception:
-            logger.warning("Failed to cancel stopped Agent App backend run: run_id=%s", run_id, exc_info=True)
+            logger.warning(
+                "Failed to finish cancelling stopped Agent App backend run: run_id=%s",
+                run_id,
+                exc_info=True,
+            )
 
     def _publish_answer(
-        self, *, queue_manager: AppQueueManager, model_name: str, answer: str, query: str | None
+        self,
+        *,
+        queue_manager: AppQueueManager,
+        model_name: str,
+        answer: str,
+        query: str | None,
+        usage: LLMUsage | None = None,
     ) -> None:
         # MVP: emit the full answer as a single chunk + message-end. The chat
         # task pipeline streams the chunk over SSE and persists the message.
-        publish_text_answer(queue_manager=queue_manager, model_name=model_name, answer=answer, user_query=query)
+        publish_text_answer(
+            queue_manager=queue_manager,
+            model_name=model_name,
+            answer=answer,
+            user_query=query,
+            usage=usage,
+        )
 
     def _publish_terminal_answer(
         self,
@@ -1018,6 +1112,40 @@ class AgentAppRunner:
             usage=usage,
             user_query=query,
         )
+
+    @staticmethod
+    def _persist_message_usage(*, message_id: str, usage: LLMUsage | None) -> None:
+        """Persist terminal usage independently of the client-facing stream lifecycle."""
+        if usage is None or (usage.total_tokens <= 0 and usage.total_price <= 0):
+            return
+        try:
+            message = db.session.get(Message, message_id)
+            if message is None:
+                logger.warning("Cannot persist Agent App usage: message not found: %s", message_id)
+                return
+            message.message_tokens = usage.prompt_tokens
+            message.message_unit_price = usage.prompt_unit_price
+            message.message_price_unit = usage.prompt_price_unit
+            message.answer_tokens = usage.completion_tokens
+            message.answer_unit_price = usage.completion_unit_price
+            message.answer_price_unit = usage.completion_price_unit
+            message.total_price = usage.total_price
+            message.currency = usage.currency
+            if usage.latency > 0:
+                message.provider_response_latency = usage.latency
+
+            try:
+                metadata = json.loads(message.message_metadata) if message.message_metadata else {}
+            except (json.JSONDecodeError, TypeError):
+                metadata = {}
+            if not isinstance(metadata, dict):
+                metadata = {}
+            metadata["usage"] = usage.model_dump(mode="json")
+            message.message_metadata = json.dumps(metadata, ensure_ascii=False)
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            logger.warning("Failed to persist partial Agent App usage: message_id=%s", message_id, exc_info=True)
 
     def _save_session(
         self,

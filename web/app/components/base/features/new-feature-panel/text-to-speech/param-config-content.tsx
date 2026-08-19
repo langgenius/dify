@@ -14,7 +14,7 @@ import { skipToken, useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useTranslation } from 'react-i18next'
 import { replace } from 'string-ts'
-import AudioBtn from '@/app/components/base/audio-btn'
+import { AudioBtn } from '@/app/components/base/audio-btn'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import { Infotip } from '@/app/components/base/infotip'
 import { languages } from '@/i18n-config/language'
@@ -173,12 +173,7 @@ const VoiceParamConfig = ({ onClose, onChange }: VoiceParamConfigProps) => {
               role="group"
               aria-label={t(($) => $.play, { ns: 'appApi', defaultValue: 'Play' })}
             >
-              <AudioBtn
-                value={languageItem?.example}
-                isAudition
-                voice={text2speech?.voice}
-                noCache
-              />
+              <AudioBtn value={languageItem?.example} isAudition voice={text2speech?.voice} />
             </div>
           )}
         </div>

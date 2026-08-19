@@ -274,7 +274,6 @@ class TestGenerateWorker:
         mocker.patch(f"{MODULE}.session_factory.create_session", return_value=resolver_context)
         mocker.patch(f"{MODULE}.db.session.close")
         mocker.patch(f"{MODULE}.DifyRunContext", return_value=mocker.MagicMock())
-        mocker.patch(f"{MODULE}.build_dify_model_access", return_value=(mocker.MagicMock(), None))
         mocker.patch(f"{MODULE}.AgentAppRuntimeRequestBuilder", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.create_agent_backend_run_client", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.AgentBackendRunEventAdapter", return_value=mocker.MagicMock())

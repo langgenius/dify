@@ -4,11 +4,21 @@ from datetime import datetime
 from typing import cast
 from unittest.mock import MagicMock, Mock
 
+import pytest
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.onboarding import AccountStepByStepTourState
-from repositories.step_by_step_tour_repository import SQLAlchemyStepByStepTourStateRepository
+from repositories.step_by_step_tour_repository import (
+    SQLAlchemyStepByStepTourStateRepository,
+    _is_retryable_mysql_lock_error,
+)
+
+
+class _ErrnoOnlyError(Exception):
+    def __init__(self, errno: int | str) -> None:
+        super().__init__()
+        self.errno = errno
 
 
 def test_mutate_creates_and_updates_state_in_repository_owned_transaction(
@@ -121,11 +131,8 @@ def test_mutate_retries_mysql_deadlock_with_fresh_session() -> None:
 
     retry_session = MagicMock(spec=Session)
     retry_session.execute.return_value.scalar_one_or_none.side_effect = [concurrent_state, concurrent_state]
-    factory = cast(
-        sessionmaker[Session],
-        Mock(side_effect=[nullcontext(deadlocked_session), nullcontext(retry_session)]),
-    )
-    repository = SQLAlchemyStepByStepTourStateRepository(factory)
+    factory = Mock(side_effect=[nullcontext(deadlocked_session), nullcontext(retry_session)])
+    repository = SQLAlchemyStepByStepTourStateRepository(cast(sessionmaker[Session], factory))
 
     result = repository.mutate(
         "account-1",
@@ -136,6 +143,26 @@ def test_mutate_retries_mysql_deadlock_with_fresh_session() -> None:
     assert factory.call_count == 2
     retry_lock_statement = retry_session.execute.call_args_list[1].args[0]
     assert retry_lock_statement._for_update_arg is not None
+
+
+@pytest.mark.parametrize(
+    ("orig", "expected"),
+    [
+        pytest.param(_ErrnoOnlyError(1205), True, id="errno-attribute"),
+        pytest.param(Exception(1213, "deadlock"), True, id="integer-args-code"),
+        pytest.param(Exception("1213", "deadlock"), True, id="string-args-code"),
+        pytest.param(Exception(9999, "other error"), False, id="non-retryable-code"),
+        pytest.param(Exception(True), False, id="boolean-is-not-an-error-code"),
+        pytest.param(Exception(), False, id="missing-error-code"),
+    ],
+)
+def test_mysql_lock_error_detection_preserves_errno_and_args_coverage(
+    orig: BaseException,
+    expected: bool,
+) -> None:
+    exc = OperationalError("statement", {}, orig)
+
+    assert _is_retryable_mysql_lock_error(exc) is expected
 
 
 def test_get_returns_none_for_unknown_account(
