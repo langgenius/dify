@@ -196,6 +196,7 @@ class FeatureService:
         features.model_load_balancing_enabled = dify_config.MODEL_LB_ENABLED
         features.dataset_operator_enabled = dify_config.DATASET_OPERATOR_ENABLED
         features.education.enabled = dify_config.EDUCATION_ENABLED
+        features.workflow_copilot_enabled = dify_config.WORKFLOW_COPILOT_ENABLED
 
     @classmethod
     def _fulfill_params_from_workspace_info(cls, features: feature_entities.FeatureModel, tenant_id: str):

@@ -162,6 +162,7 @@ class FeatureModel(FeatureResponseModel):
     model_load_balancing_enabled: bool = False
     dataset_operator_enabled: bool = False
     webapp_copyright_enabled: bool = False
+    workflow_copilot_enabled: bool = False
     workspace_members: LicenseLimitationModel = LicenseLimitationModel(enabled=False, size=0, limit=0)
     is_allow_transfer_workspace: bool = True
     trigger_event: Quota = Quota(usage=0, limit=3000, reset_date=0)

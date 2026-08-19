@@ -937,6 +937,11 @@ class WorkflowConfig(BaseSettings):
         default=600,
     )
 
+    WORKFLOW_COPILOT_ENABLED: bool = Field(
+        description="Expose the workflow copilot feature (console routes + UI flag).",
+        default=False,
+    )
+
 
 class WorkflowNodeExecutionConfig(BaseSettings):
     """
