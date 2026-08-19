@@ -59,6 +59,7 @@ from . import (
     setup,
     spec,
     system,
+    workflow_copilot,
     workflow_run_archive,
 )
 from .agent import composer as agent_composer
@@ -253,6 +254,7 @@ __all__ = [
     "workflow",
     "workflow_app_log",
     "workflow_comment",
+    "workflow_copilot",
     "workflow_draft_variable",
     "workflow_node_output_inspector",
     "workflow_run",
