@@ -1,7 +1,7 @@
 import type { Edge, Node } from '@/app/components/workflow/types'
 import type { FileUploadConfigResponse } from '@/models/common'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
-import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { CancelledError, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -10,9 +10,10 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useWorkflowConfig } from '@/service/use-workflow'
-import { fetchWorkflowDraft, syncWorkflowDraft } from '@/service/workflow'
+import { syncWorkflowDraft } from '@/service/workflow'
 import {
   appWorkflowDefaultBlockConfigsQueryOptions,
+  appWorkflowDraftQueryOptions,
   appWorkflowQueryOptions,
 } from '@/service/workflow-queries'
 import { AppModeEnum } from '@/types/app'
@@ -107,7 +108,7 @@ export const useWorkflowInit = () => {
 
   const handleGetInitialWorkflowData = useCallback(async () => {
     try {
-      const res = await fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`)
+      const res = await queryClient.fetchQuery(appWorkflowDraftQueryOptions(appDetail.id))
       const initialData = {
         ...res,
         graph: getWorkflowDraftGraphForCanvas(res.graph, {
@@ -198,6 +199,7 @@ export const useWorkflowInit = () => {
     getWorkflowDraftGraphForCanvas,
     nodesTemplate,
     edgesTemplate,
+    queryClient,
     workflowStore,
     setSyncWorkflowDraftHash,
   ])
@@ -223,7 +225,7 @@ export const useWorkflowInit = () => {
           {} as Record<string, unknown>,
         ),
       })
-    } else {
+    } else if (!(nodesDefaultConfigsResult.reason instanceof CancelledError)) {
       console.error(nodesDefaultConfigsResult.reason)
     }
 
@@ -234,7 +236,7 @@ export const useWorkflowInit = () => {
       const nodes = Array.isArray(graph?.nodes) ? (graph.nodes as Node[]) : undefined
       const edges = Array.isArray(graph?.edges) ? (graph.edges as Edge[]) : undefined
       workflowStore.getState().setLastPublishedHasUserInput(hasConnectedUserInput(nodes, edges))
-    } else {
+    } else if (!(publishedWorkflowResult.reason instanceof CancelledError)) {
       console.error(publishedWorkflowResult.reason)
       workflowStore.getState().setLastPublishedHasUserInput(false)
     }

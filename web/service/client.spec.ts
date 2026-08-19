@@ -795,6 +795,41 @@ describe('consoleQuery app mutation defaults', () => {
     expect(synchronized).toBe(true)
   })
 
+  it('should cancel every current app workflow query before deleting the app', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const cancelQueries = vi.spyOn(queryClient, 'cancelQueries')
+    const mutationOptions = consoleQuery.apps.byAppId.delete.mutationOptions()
+    const input = { params: { app_id: 'app-1' } }
+    const otherInput = { params: { app_id: 'app-2' } }
+    const workflowQueryKey = consoleQuery.apps.byAppId.workflows.key({ input })
+
+    queryClient.setQueryData(
+      consoleQuery.apps.byAppId.workflows.defaultWorkflowBlockConfigs.get.key({ input }),
+      'default-configs',
+    )
+    queryClient.setQueryData(
+      consoleQuery.apps.byAppId.workflows.draft.conversationVariables.get.key({ input }),
+      'conversation-variables',
+    )
+    queryClient.setQueryData(
+      consoleQuery.apps.byAppId.workflows.draft.systemVariables.get.key({ input: otherInput }),
+      'other-app-system-variables',
+    )
+
+    expect(
+      queryClient.getQueriesData({ queryKey: workflowQueryKey }).map(([, data]) => data),
+    ).toEqual(expect.arrayContaining(['default-configs', 'conversation-variables']))
+    expect(queryClient.getQueriesData({ queryKey: workflowQueryKey })).toHaveLength(2)
+
+    await mutationOptions.onMutate?.(input, createMutationContext(queryClient))
+
+    expect(cancelQueries).toHaveBeenCalledWith({
+      queryKey: workflowQueryKey,
+    })
+    expect(cancelQueries).toHaveBeenCalledTimes(1)
+  })
+
   it('should refresh plan usage and keep a delete mutation pending until every app list synchronizes', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = new QueryClient()

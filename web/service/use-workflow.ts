@@ -1,20 +1,24 @@
 import type { CommonResponse } from '@/models/common'
-import type { FlowType } from '@/types/common'
 import type {
   FetchWorkflowDraftPageParams,
   FetchWorkflowDraftPageResponse,
   NodeTracing,
   PublishWorkflowParams,
   UpdateWorkflowParams,
-  VarInInspect,
   WorkflowConfigResponse,
   WorkflowRunHistoryResponse,
 } from '@/types/workflow'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { FlowType } from '@/types/common'
 import { del, get, patch, post, put } from './base'
 import { useInvalid } from './use-base'
 import { getFlowPrefix } from './utils'
-import { appWorkflowQueryOptions, appWorkflowVersionsInfiniteQueryKey } from './workflow-queries'
+import {
+  appWorkflowConversationVariableValuesQueryOptions,
+  appWorkflowQueryOptions,
+  appWorkflowSystemVariableValuesQueryOptions,
+  appWorkflowVersionsInfiniteQueryKey,
+} from './workflow-queries'
 
 const NAME_SPACE = 'workflow'
 
@@ -178,20 +182,19 @@ export const useInvalidAllLastRun = (flowType?: FlowType, flowId?: string) => {
 }
 
 export const useConversationVarValues = (flowType?: FlowType, flowId?: string) => {
-  return useQuery({
-    enabled: !!flowId,
-    queryKey: [NAME_SPACE, flowType, 'conversation var values', flowId],
-    queryFn: async () => {
-      const { items } = (await get(
-        `${getFlowPrefix(flowType)}/${flowId}/workflows/draft/conversation-variables`,
-      )) as { items: VarInInspect[] }
-      return items
-    },
-  })
+  const appId =
+    flowType === FlowType.ragPipeline || flowType === FlowType.snippet ? undefined : flowId
+  return useQuery(appWorkflowConversationVariableValuesQueryOptions(appId))
 }
 
 export const useInvalidateConversationVarValues = (flowType: FlowType, flowId: string) => {
-  return useInvalid([NAME_SPACE, flowType, 'conversation var values', flowId])
+  const queryClient = useQueryClient()
+  return () => {
+    if (flowType !== FlowType.appFlow) return Promise.resolve()
+    return queryClient.invalidateQueries({
+      queryKey: appWorkflowConversationVariableValuesQueryOptions(flowId).queryKey,
+    })
+  }
 }
 
 export const useResetConversationVar = (flowType: FlowType, flowId: string) => {
@@ -213,20 +216,19 @@ export const useResetToLastRunValue = (flowType: FlowType, flowId: string) => {
 }
 
 export const useSysVarValues = (flowType?: FlowType, flowId?: string) => {
-  return useQuery({
-    enabled: !!flowId,
-    queryKey: [NAME_SPACE, flowType, 'sys var values', flowId],
-    queryFn: async () => {
-      const { items } = (await get(
-        `${getFlowPrefix(flowType)}/${flowId}/workflows/draft/system-variables`,
-      )) as { items: VarInInspect[] }
-      return items
-    },
-  })
+  const appId =
+    flowType === FlowType.ragPipeline || flowType === FlowType.snippet ? undefined : flowId
+  return useQuery(appWorkflowSystemVariableValuesQueryOptions(appId))
 }
 
 export const useInvalidateSysVarValues = (flowType: FlowType, flowId: string) => {
-  return useInvalid([NAME_SPACE, flowType, 'sys var values', flowId])
+  const queryClient = useQueryClient()
+  return () => {
+    if (flowType !== FlowType.appFlow) return Promise.resolve()
+    return queryClient.invalidateQueries({
+      queryKey: appWorkflowSystemVariableValuesQueryOptions(flowId).queryKey,
+    })
+  }
 }
 
 export const useDeleteAllInspectorVars = (flowType: FlowType, flowId: string) => {

@@ -527,6 +527,12 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
         byAppId: {
           delete: {
             mutationOptions: {
+              onMutate: async (variables, context) => {
+                const input = { params: { app_id: variables.params.app_id } }
+                await context.client.cancelQueries({
+                  queryKey: consoleQuery.apps.byAppId.workflows.key({ input }),
+                })
+              },
               onSuccess: (_data, _variables, _onMutateResult, context) => {
                 void context.client.invalidateQueries({
                   queryKey: consoleQuery.features.get.key(),

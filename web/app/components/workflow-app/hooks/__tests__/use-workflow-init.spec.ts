@@ -1,3 +1,4 @@
+import { CancelledError } from '@tanstack/react-query'
 import { waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -87,10 +88,13 @@ vi.mock('@/service/workflow-queries', () => ({
     queryKey: ['workflow', 'publish', appId],
     queryFn: () => mockFetchPublishedWorkflow(`/apps/${appId}/workflows/publish`),
   }),
+  appWorkflowDraftQueryOptions: (appId: string) => ({
+    queryKey: ['workflow', 'draft', appId],
+    queryFn: () => mockFetchWorkflowDraft(`/apps/${appId}/workflows/draft`),
+  }),
 }))
 
 vi.mock('@/service/workflow', () => ({
-  fetchWorkflowDraft: (...args: unknown[]) => mockFetchWorkflowDraft(...args),
   syncWorkflowDraft: (...args: unknown[]) => mockSyncWorkflowDraft(...args),
 }))
 
@@ -379,6 +383,29 @@ describe('useWorkflowInit', () => {
     })
 
     expect(consoleErrorSpy).toHaveBeenCalled()
+    consoleErrorSpy.mockRestore()
+  })
+
+  it('should keep fulfilled preload data and ignore a sibling cancellation', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    mockFetchWorkflowDraft.mockReset().mockResolvedValue(draftResponse)
+    mockFetchDefaultBlockConfigs.mockRejectedValue(new CancelledError())
+    mockFetchPublishedWorkflow.mockResolvedValue({
+      created_at: 99,
+      graph: {
+        nodes: [{ id: 'start', data: { type: BlockEnum.Start } }],
+        edges: [{ source: 'start', target: 'end' }],
+      },
+    })
+
+    renderHook(() => useWorkflowInit())
+
+    await waitFor(() => {
+      expect(mockSetPublishedAt).toHaveBeenCalledWith(99)
+      expect(mockSetLastPublishedHasUserInput).toHaveBeenCalledWith(true)
+    })
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled()
     consoleErrorSpy.mockRestore()
   })
 

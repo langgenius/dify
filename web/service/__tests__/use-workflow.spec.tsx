@@ -2,8 +2,17 @@ import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { useUpdateWorkflow } from '../use-workflow'
-import { appWorkflowVersionsInfiniteQueryKey } from '../workflow-queries'
+import { FlowType } from '@/types/common'
+import {
+  useInvalidateConversationVarValues,
+  useInvalidateSysVarValues,
+  useUpdateWorkflow,
+} from '../use-workflow'
+import {
+  appWorkflowConversationVariableValuesQueryOptions,
+  appWorkflowSystemVariableValuesQueryOptions,
+  appWorkflowVersionsInfiniteQueryKey,
+} from '../workflow-queries'
 
 const mockPatch = vi.hoisted(() => vi.fn())
 
@@ -51,6 +60,41 @@ describe('useUpdateWorkflow', () => {
     })
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: appWorkflowVersionsInfiniteQueryKey(),
+    })
+  })
+})
+
+describe('workflow variable query invalidation', () => {
+  it('should invalidate the generated conversation variable query', async () => {
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const { result } = renderHook(
+      () => useInvalidateConversationVarValues(FlowType.appFlow, 'app-1'),
+      { wrapper: createWrapper(queryClient) },
+    )
+
+    await act(async () => {
+      await result.current()
+    })
+
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: appWorkflowConversationVariableValuesQueryOptions('app-1').queryKey,
+    })
+  })
+
+  it('should invalidate the generated system variable query', async () => {
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const { result } = renderHook(() => useInvalidateSysVarValues(FlowType.appFlow, 'app-1'), {
+      wrapper: createWrapper(queryClient),
+    })
+
+    await act(async () => {
+      await result.current()
+    })
+
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: appWorkflowSystemVariableValuesQueryOptions('app-1').queryKey,
     })
   })
 })

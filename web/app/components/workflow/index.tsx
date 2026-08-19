@@ -8,7 +8,6 @@ import type { WorkflowHistoryState } from './store/workflow/history-slice'
 import type { WorkflowSliceShape } from './store/workflow/workflow-slice'
 import type { ConversationVariable, Edge, EnvironmentVariable, Node } from './types'
 import type { EventEmitterValue } from '@/context/event-emitter'
-import type { VarInInspect } from '@/types/workflow'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -20,6 +19,7 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useQuery } from '@tanstack/react-query'
 import { useEventListener } from 'ahooks'
 import { isEqual } from 'es-toolkit/predicate'
 import { setAutoFreeze } from 'immer'
@@ -55,7 +55,7 @@ import {
   useAllMCPTools,
   useAllWorkflowTools,
 } from '@/service/use-tools'
-import { fetchAllInspectVars } from '@/service/workflow'
+import { workflowInspectVariablesQueryOptions } from '@/service/workflow-queries'
 import CandidateNode from './candidate-node'
 import UserCursors from './collaboration/components/user-cursors'
 import { collaborationManager } from './collaboration/core/collaboration-manager'
@@ -604,16 +604,9 @@ export const Workflow: FC<WorkflowProps> = memo(
     const dataSourceList = useStore((s) => s.dataSourceList)
     // buildInTools, customTools, workflowTools, mcpTools, dataSourceList
     const configsMap = useHooksStore((s) => s.configsMap)
-    const [isLoadedVars, setIsLoadedVars] = useState(false)
-    const [vars, setVars] = useState<VarInInspect[]>([])
-    useEffect(() => {
-      ;(async () => {
-        if (!configsMap?.flowType || !configsMap?.flowId) return
-        const data = await fetchAllInspectVars(configsMap.flowType, configsMap.flowId)
-        setVars(data)
-        setIsLoadedVars(true)
-      })()
-    }, [configsMap?.flowType, configsMap?.flowId])
+    const { data: vars = [], isSuccess: isLoadedVars } = useQuery(
+      workflowInspectVariablesQueryOptions(configsMap?.flowType, configsMap?.flowId),
+    )
     useEffect(() => {
       if (schemaTypeDefinitions && isLoadedVars) {
         fetchInspectVars({
