@@ -18,9 +18,6 @@ import (
 // ErrMalformed marks archives that violate the format or hardening rules.
 var ErrMalformed = errors.New("archive malformed")
 
-// maxDecoderWindow bounds zstd decoder memory (not archive output size);
-// archives produced with a larger long-distance-matching window are foreign
-// and rejected as malformed.
 const maxDecoderWindow = 64 << 20
 
 var environmentalErrnos = []syscall.Errno{
@@ -28,10 +25,6 @@ var environmentalErrnos = []syscall.Errno{
 	syscall.ENOMEM, syscall.EMFILE, syscall.ENFILE,
 }
 
-// classifyEntryErr wraps per-entry filesystem errors as ErrMalformed — a
-// refused write is evidence of a hostile or inconsistent archive — unless the
-// errno is environmental (disk full, quota, read-only fs, ...), which passes
-// through unwrapped.
 func classifyEntryErr(err error) error {
 	if err == nil {
 		return nil
@@ -67,7 +60,7 @@ func isPAXSparse(hdr *tar.Header) bool {
 // symlinked path components are refused by the kernel (openat2/RESOLVE_BENEATH
 // on Linux). Only regular files, directories, symlinks, and hardlinks are
 // accepted; hardlink targets must resolve inside the root. The stream is not
-// size-limited here — callers bound what they send (see the package doc).
+// size-limited here.
 // A mid-stream failure can leave a partially restored Home; callers own
 // cleanup of the surrounding sandbox.
 func RestoreHome(ctx context.Context, src io.Reader, homeDir string) (RestoreResult, error) {

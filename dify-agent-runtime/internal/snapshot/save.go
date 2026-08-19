@@ -14,9 +14,8 @@ import (
 )
 
 // SaveHome streams homeDir (minus top-level excludes) to dst as tar+zstd in a
-// single pass — nothing is spooled to disk. Entry names are clean
-// slash-separated paths relative to homeDir (directories carry a trailing
-// slash). Symlinks are archived as symlinks; irregular files (sockets, fifos,
+// single pass with no intermediate spooling.
+// Symlinks are archived as symlinks; irregular files (sockets, fifos,
 // devices) are skipped as runtime artifacts; ownership is not recorded.
 // Callers wrap dst to hash or count the compressed bytes.
 func SaveHome(ctx context.Context, dst io.Writer, homeDir string, excludes []string) error {
@@ -60,7 +59,7 @@ func SaveHome(ctx context.Context, dst io.Writer, homeDir string, excludes []str
 				return err
 			}
 		case !info.Mode().IsRegular() && !info.IsDir():
-			return nil // sockets, fifos, devices: runtime artifacts, not Home state
+			return nil
 		}
 		hdr, err := tar.FileInfoHeader(info, linkTarget)
 		if err != nil {

@@ -17,10 +17,6 @@ import (
 	"github.com/langgenius/dify/dify-agent-runtime/internal/snapshot"
 )
 
-// Trailer names and values of the snapshot save completion protocol. A save
-// stream is only trustworthy when it terminates cleanly AND carries
-// X-Snapshot-Status: ok; a mid-stream failure aborts the connection instead,
-// so truncation can never be mistaken for success.
 const (
 	TrailerSnapshotStatus = "X-Snapshot-Status"
 	TrailerSnapshotSha256 = "X-Snapshot-Sha256"
@@ -31,12 +27,10 @@ const (
 // snapshotHandlers serves the native Home snapshot endpoints.
 //
 // SIZE CONTRACT: neither endpoint imposes a size limit. Consumers MUST bound
-// the streams in their own logic — count bytes while reading a save stream
-// and abort the connection at their cap; bound what they send to restore. In
-// Dify EE the sandbox-gateway enforces this.
+// the streams in their own logic.
 type snapshotHandlers struct {
 	config *Config
-	gate   sync.Mutex // single-flight: one snapshot operation per runtime
+	gate   sync.Mutex
 }
 
 func newSnapshotHandlers(config *Config) *snapshotHandlers {
