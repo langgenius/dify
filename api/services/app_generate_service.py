@@ -24,6 +24,7 @@ from core.db import session_factory
 from enums import DeploymentEdition, QuotaType
 from extensions.otel import AppGenerateHandler, trace_span
 from libs.broadcast_channel.channel import Topic
+from libs.broadcast_channel.redis.streams_channel import StreamsTopic
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowRun
 from services.errors.app import QuotaExceededError, WorkflowIdFormatError, WorkflowNotFoundError
@@ -78,8 +79,7 @@ class AppGenerateService:
 
         channel_type = dify_config.PUBSUB_REDIS_CHANNEL_TYPE
         if channel_type == "streams":
-            checkpoint = getattr(topic, "checkpoint", None)
-            start_id = checkpoint() if checkpoint is not None else None
+            start_id = topic.checkpoint() if isinstance(topic, StreamsTopic) else None
 
             # With Redis Streams, we can safely start right away; consumers resume from `start_id`.
             _try_start()

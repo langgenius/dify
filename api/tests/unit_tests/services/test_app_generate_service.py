@@ -25,6 +25,7 @@ from pytest_mock import MockerFixture
 import services.app_generate_service as ags_module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from enums import DeploymentEdition, QuotaType
+from libs.broadcast_channel.redis.streams_channel import StreamsTopic
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowIdFormatError, WorkflowNotFoundError
@@ -116,7 +117,7 @@ class TestBuildStreamingTaskOnSubscribe:
         event that the eventual subscriber fails to see."""
         monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "streams")
         call_order = []
-        topic = MagicMock()
+        topic = MagicMock(spec=StreamsTopic)
         topic.checkpoint.side_effect = lambda: call_order.append("checkpoint") or "42-0"
 
         def start_task():
@@ -133,7 +134,7 @@ class TestBuildStreamingTaskOnSubscribe:
         start from an unsafe position -- the error propagates and the request fails, rather
         than silently falling back to a starting point that could drop events."""
         monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "streams")
-        topic = MagicMock()
+        topic = MagicMock(spec=StreamsTopic)
         topic.checkpoint.side_effect = RuntimeError("redis unavailable")
         called = []
 
