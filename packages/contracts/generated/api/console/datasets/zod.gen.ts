@@ -808,6 +808,13 @@ export const zKnowledgeFsUpgradeJobResponse = z.object({
 })
 
 /**
+ * KnowledgeFSUpgradeJobListResponse
+ */
+export const zKnowledgeFsUpgradeJobListResponse = z.object({
+  data: z.array(zKnowledgeFsUpgradeJobResponse),
+})
+
+/**
  * KnowledgeFSUpgradeDiscoveryResponse
  */
 export const zKnowledgeFsUpgradeDiscoveryResponse = z.object({
@@ -1660,6 +1667,11 @@ export const zPostDatasetsInitBody = zKnowledgeConfig
  * Dataset initialized successfully
  */
 export const zPostDatasetsInitResponse = zDatasetAndDocumentResponse
+
+/**
+ * Recoverable KnowledgeFS Dataset upgrade jobs
+ */
+export const zGetDatasetsKnowledgeFsUpgradeJobsResponse = zKnowledgeFsUpgradeJobListResponse
 
 /**
  * Built-in fields retrieved successfully

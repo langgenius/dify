@@ -1,8 +1,10 @@
 import type { InfiniteData } from '@tanstack/react-query'
+import type { KnowledgeUpgrade } from '../upgrade/knowledge-upgrade-context-value'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { NewKnowledgeList } from '../new-knowledge-list'
+import { KnowledgeUpgradeContext } from '../upgrade/knowledge-upgrade-context-value'
 
 type KnowledgeSpaceList = {
   items: Array<{
@@ -94,7 +96,29 @@ const queryMock = vi.hoisted(() => ({
   refetch: vi.fn(),
 }))
 
-const datasetListMock = vi.hoisted(() => ({
+const upgradeJobsMock = vi.hoisted(() => ({
+  data: undefined as
+    | {
+        data: Array<{
+          completed_documents: number
+          completed_sources: number
+          id: string
+          new_control_space_id?: string | null
+          old_dataset_id: string
+          snapshot_at: string
+          stage: 'completed' | 'submitting_documents'
+          status: 'failed' | 'queued' | 'running' | 'succeeded'
+          total_documents: number
+          total_sources: number
+        }>
+      }
+    | undefined,
+  error: null as unknown,
+  isPending: false,
+  refetch: vi.fn(),
+}))
+
+const upgradeDatasetsMock = vi.hoisted(() => ({
   data: undefined as
     | {
         data: Array<{
@@ -121,15 +145,22 @@ const datasetListMock = vi.hoisted(() => ({
         }>
       }
     | undefined,
+  error: null as unknown,
+  isPending: false,
+  refetch: vi.fn(),
 }))
 
 const consoleQueryMock = vi.hoisted(() => ({
   datasetsKey: ['datasets'],
-  datasetsQueryOptions: vi.fn(() => ({ testQuery: 'datasets' })),
+  datasetsQueryOptions: vi.fn((options: { input: { query: { ids: string[] } } }) => ({
+    ...options,
+    testQuery: 'upgrade-datasets',
+  })),
   deleteMutationOptions: vi.fn(() => ({ mutationFn: deleteSpaceMock })),
   infiniteOptions: vi.fn((_options: ListKnowledgeSpacesInfiniteOptions) => ({})),
   listKey: ['knowledge-fs', 'spaces'],
   membersQueryOptions: vi.fn(() => ({})),
+  upgradeJobsQueryOptions: vi.fn(() => ({ testQuery: 'upgrade-jobs' })),
 }))
 
 const membersMock = vi.hoisted(() => ({
@@ -217,8 +248,12 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
           }
         : undefined,
     }),
-    useQuery: (options: { testQuery?: string }) =>
-      options.testQuery === 'datasets' ? { data: datasetListMock.data } : { ...membersMock },
+    useQueries: ({ queries }: { queries: Array<{ testQuery?: string }> }) =>
+      queries.map(() => ({ ...upgradeDatasetsMock })),
+    useQuery: (options: { testQuery?: string }) => {
+      if (options.testQuery === 'upgrade-jobs') return { ...upgradeJobsMock }
+      return { ...membersMock }
+    },
     useQueryClient: () => ({
       invalidateQueries: invalidateQueriesMock,
     }),
@@ -285,8 +320,17 @@ vi.mock('../upgrade/knowledge-upgrade-card', () => ({
   KnowledgeUpgradeCard: ({
     upgrade,
   }: {
-    upgrade: { dataset: { id: string }; job: { status: string } }
-  }) => <li>{`upgrade:${upgrade.dataset.id}:${upgrade.job.status}`}</li>,
+    upgrade: {
+      canRetry: boolean
+      dataset: { id: string }
+      job: { id: string; status: string }
+    }
+  }) => (
+    <li>
+      {`upgrade:${upgrade.dataset.id}:${upgrade.job.id}:${upgrade.job.status}`}
+      {upgrade.canRetry && <button type="button">{`retry:${upgrade.job.id}`}</button>}
+    </li>
+  ),
 }))
 
 vi.mock('@/service/client', () => ({
@@ -318,6 +362,11 @@ vi.mock('@/service/client', () => ({
         key: () => consoleQueryMock.datasetsKey,
         queryOptions: consoleQueryMock.datasetsQueryOptions,
       },
+      knowledgeFsUpgradeJobs: {
+        get: {
+          queryOptions: consoleQueryMock.upgradeJobsQueryOptions,
+        },
+      },
     },
   },
 }))
@@ -329,6 +378,21 @@ const setResolvedPage = (items: KnowledgeSpaceList['items'] = []) => {
   }
 }
 
+const createUpgradeJob = (
+  overrides: Partial<NonNullable<typeof upgradeJobsMock.data>['data'][number]> = {},
+): NonNullable<typeof upgradeJobsMock.data>['data'][number] => ({
+  completed_documents: 4,
+  completed_sources: 1,
+  id: 'upgrade-1',
+  old_dataset_id: 'dataset-1',
+  snapshot_at: '2026-08-18T00:00:00Z',
+  stage: 'submitting_documents',
+  status: 'running',
+  total_documents: 10,
+  total_sources: 1,
+  ...overrides,
+})
+
 describe('NewKnowledgeList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -338,7 +402,14 @@ describe('NewKnowledgeList', () => {
     queryMock.isFetchNextPageError = false
     queryMock.isFetchingNextPage = false
     queryMock.isPending = false
-    datasetListMock.data = undefined
+    upgradeJobsMock.data = undefined
+    upgradeJobsMock.error = null
+    upgradeJobsMock.isPending = false
+    upgradeJobsMock.refetch.mockResolvedValue(undefined)
+    upgradeDatasetsMock.data = undefined
+    upgradeDatasetsMock.error = null
+    upgradeDatasetsMock.isPending = false
+    upgradeDatasetsMock.refetch.mockResolvedValue(undefined)
     membersMock.data = resolvedMembers
     membersMock.isError = false
     membersMock.isPending = false
@@ -360,6 +431,76 @@ describe('NewKnowledgeList', () => {
     expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
   })
 
+  it('keeps the empty workspace loading while upgrade datasets are being restored', () => {
+    setResolvedPage()
+    upgradeJobsMock.data = { data: [createUpgradeJob()] }
+    upgradeDatasetsMock.isPending = true
+
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+
+    expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
+    expect(screen.queryByText('dataset.newKnowledge.emptyTitle')).not.toBeInTheDocument()
+  })
+
+  it('shows and retries an upgrade recovery error', async () => {
+    const user = userEvent.setup()
+    setResolvedPage()
+    upgradeJobsMock.data = { data: [createUpgradeJob()] }
+    upgradeDatasetsMock.error = new Error('Failed to restore upgrade datasets')
+
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+
+    expect(
+      screen.getByRole('heading', { name: 'dataset.newKnowledge.errorTitle' }),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+    expect(upgradeJobsMock.refetch).toHaveBeenCalledOnce()
+    expect(upgradeDatasetsMock.refetch).toHaveBeenCalledOnce()
+  })
+
+  it('batches legacy dataset lookups to keep each recovery URL bounded', () => {
+    setResolvedPage()
+    const jobs = Array.from({ length: 51 }, (_, index) =>
+      createUpgradeJob({
+        id: `upgrade-${index}`,
+        old_dataset_id: `dataset-${index}`,
+      }),
+    )
+    upgradeJobsMock.data = { data: jobs }
+    upgradeDatasetsMock.data = { data: [] }
+
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+
+    const requestedIdBatches = consoleQueryMock.datasetsQueryOptions.mock.calls.map(
+      ([options]) => options.input.query.ids,
+    )
+    expect(requestedIdBatches).toHaveLength(2)
+    expect(requestedIdBatches.every((datasetIds) => datasetIds.length <= 50)).toBe(true)
+    expect(requestedIdBatches.flat()).toEqual(jobs.map((job) => job.old_dataset_id))
+  })
+
+  it('limits failed upgrade recovery while retaining bounded dataset lookups', () => {
+    setResolvedPage()
+    const jobs = Array.from({ length: 101 }, (_, index) =>
+      createUpgradeJob({
+        id: `upgrade-${index}`,
+        old_dataset_id: `dataset-${index}`,
+        status: 'failed',
+      }),
+    )
+    upgradeJobsMock.data = { data: jobs }
+    upgradeDatasetsMock.data = { data: [] }
+
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+
+    const requestedDatasetIds = consoleQueryMock.datasetsQueryOptions.mock.calls.flatMap(
+      ([options]) => options.input.query.ids,
+    )
+    expect(requestedDatasetIds).toEqual(jobs.slice(0, 100).map((job) => job.old_dataset_id))
+  })
+
   it('requests the generated KnowledgeFS collection contract with cursor pagination', () => {
     setResolvedPage()
 
@@ -376,13 +517,28 @@ describe('NewKnowledgeList', () => {
     expect(options?.getNextPageParam({ has_more: false, page: 1 })).toBeUndefined()
   })
 
-  it('restores an upgrade task from the dataset list summary', () => {
+  it('restores upgrade tasks by querying their exact legacy dataset IDs', () => {
     setResolvedPage()
-    datasetListMock.data = {
+    upgradeJobsMock.data = {
+      data: [
+        {
+          completed_documents: 4,
+          completed_sources: 1,
+          id: 'upgrade-1',
+          old_dataset_id: 'dataset-31',
+          snapshot_at: '2026-08-18T00:00:00Z',
+          stage: 'submitting_documents',
+          status: 'failed',
+          total_documents: 10,
+          total_sources: 1,
+        },
+      ],
+    }
+    upgradeDatasetsMock.data = {
       data: [
         {
           description: 'Support articles',
-          id: 'dataset-1',
+          id: 'dataset-31',
           knowledge_fs_upgrade: {
             can_retry: true,
             can_upgrade: false,
@@ -390,7 +546,7 @@ describe('NewKnowledgeList', () => {
               completed_documents: 4,
               completed_sources: 1,
               id: 'upgrade-1',
-              old_dataset_id: 'dataset-1',
+              old_dataset_id: 'dataset-31',
               snapshot_at: '2026-08-18T00:00:00Z',
               stage: 'submitting_documents',
               status: 'failed',
@@ -406,10 +562,251 @@ describe('NewKnowledgeList', () => {
 
     renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
 
-    expect(screen.getByText('upgrade:dataset-1:failed')).toBeInTheDocument()
+    expect(screen.getByText('upgrade:dataset-31:upgrade-1:failed')).toBeInTheDocument()
+    expect(consoleQueryMock.upgradeJobsQueryOptions).toHaveBeenCalledOnce()
     expect(consoleQueryMock.datasetsQueryOptions).toHaveBeenCalledWith({
-      input: { query: { limit: 30, page: 1 } },
+      input: { query: { ids: ['dataset-31'] } },
     })
+  })
+
+  it('keeps historical failures for the same dataset distinct by job ID', () => {
+    setResolvedPage()
+    upgradeJobsMock.data = {
+      data: [
+        {
+          completed_documents: 4,
+          completed_sources: 1,
+          id: 'upgrade-1',
+          old_dataset_id: 'dataset-1',
+          snapshot_at: '2026-08-17T00:00:00Z',
+          stage: 'submitting_documents',
+          status: 'failed',
+          total_documents: 10,
+          total_sources: 1,
+        },
+        {
+          completed_documents: 6,
+          completed_sources: 1,
+          id: 'upgrade-2',
+          old_dataset_id: 'dataset-1',
+          snapshot_at: '2026-08-18T00:00:00Z',
+          stage: 'submitting_documents',
+          status: 'failed',
+          total_documents: 10,
+          total_sources: 1,
+        },
+      ],
+    }
+    upgradeDatasetsMock.data = {
+      data: [
+        {
+          description: 'Support articles',
+          id: 'dataset-1',
+          knowledge_fs_upgrade: {
+            can_retry: true,
+            can_upgrade: false,
+            job: upgradeJobsMock.data.data[1],
+          },
+          name: 'Support knowledge',
+          tags: [],
+        },
+      ],
+    }
+
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+
+    expect(screen.getByText('upgrade:dataset-1:upgrade-1:failed')).toBeInTheDocument()
+    expect(screen.getByText('upgrade:dataset-1:upgrade-2:failed')).toBeInTheDocument()
+    expect(consoleQueryMock.datasetsQueryOptions).toHaveBeenCalledWith({
+      input: { query: { ids: ['dataset-1'] } },
+    })
+  })
+
+  it('allows retrying an older failed job after a newer migration succeeds', () => {
+    setResolvedPage()
+    upgradeJobsMock.data = {
+      data: [
+        {
+          completed_documents: 4,
+          completed_sources: 1,
+          id: 'upgrade-failed',
+          old_dataset_id: 'dataset-1',
+          snapshot_at: '2026-08-17T00:00:00Z',
+          stage: 'submitting_documents',
+          status: 'failed',
+          total_documents: 10,
+          total_sources: 1,
+        },
+      ],
+    }
+    upgradeDatasetsMock.data = {
+      data: [
+        {
+          description: 'Support articles',
+          id: 'dataset-1',
+          knowledge_fs_upgrade: {
+            can_retry: false,
+            can_upgrade: true,
+            job: {
+              completed_documents: 10,
+              completed_sources: 1,
+              id: 'upgrade-succeeded',
+              new_control_space_id: 'space-1',
+              old_dataset_id: 'dataset-1',
+              snapshot_at: '2026-08-18T00:00:00Z',
+              stage: 'completed',
+              status: 'succeeded',
+              total_documents: 10,
+              total_sources: 1,
+            },
+          },
+          name: 'Support knowledge',
+          tags: [],
+        },
+      ],
+    }
+
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+
+    expect(screen.getByRole('button', { name: 'retry:upgrade-failed' })).toBeInTheDocument()
+  })
+
+  it('keeps recovery retry eligibility authoritative over a stale local upgrade', () => {
+    setResolvedPage()
+    const recoveredJob = createUpgradeJob({ status: 'failed' })
+    upgradeJobsMock.data = { data: [recoveredJob] }
+    upgradeDatasetsMock.data = {
+      data: [
+        {
+          description: 'Support articles',
+          id: 'dataset-1',
+          knowledge_fs_upgrade: {
+            can_retry: false,
+            can_upgrade: false,
+            job: recoveredJob,
+          },
+          name: 'Support knowledge',
+          tags: [],
+        },
+      ],
+    }
+    const localUpgrade = {
+      canRetry: true,
+      dataset: upgradeDatasetsMock.data.data[0],
+      job: recoveredJob,
+    } as unknown as KnowledgeUpgrade
+
+    renderWithNuqs(
+      <KnowledgeUpgradeContext
+        value={{
+          dismissUpgrade: vi.fn(),
+          enabled: true,
+          requestUpgrade: vi.fn(),
+          settleUpgrade: vi.fn(),
+          upgrades: [localUpgrade],
+        }}
+      >
+        <NewKnowledgeList view="new" onViewChange={vi.fn()} />
+      </KnowledgeUpgradeContext>,
+    )
+
+    expect(screen.getByText('upgrade:dataset-1:upgrade-1:failed')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'retry:upgrade-1' })).not.toBeInTheDocument()
+  })
+
+  it('keeps a completed local upgrade until its knowledge space is visible', async () => {
+    setResolvedPage()
+    const dismissUpgrade = vi.fn()
+    const localUpgrade = {
+      canRetry: false,
+      dataset: {
+        description: 'Support articles',
+        id: 'dataset-1',
+        name: 'Support knowledge',
+        tags: [],
+      },
+      job: {
+        completed_documents: 10,
+        completed_sources: 1,
+        id: 'upgrade-1',
+        new_control_space_id: 'space-1',
+        old_dataset_id: 'dataset-1',
+        snapshot_at: '2026-08-18T00:00:00Z',
+        stage: 'completed',
+        status: 'succeeded',
+        total_documents: 10,
+        total_sources: 1,
+      },
+    } as unknown as KnowledgeUpgrade
+    const contextValue = {
+      dismissUpgrade,
+      enabled: true,
+      requestUpgrade: vi.fn(),
+      settleUpgrade: vi.fn(),
+      upgrades: [localUpgrade],
+    }
+    const { rerender } = renderWithNuqs(
+      <KnowledgeUpgradeContext value={contextValue}>
+        <NewKnowledgeList view="new" onViewChange={vi.fn()} />
+      </KnowledgeUpgradeContext>,
+    )
+
+    expect(screen.getByText('upgrade:dataset-1:upgrade-1:succeeded')).toBeInTheDocument()
+    expect(dismissUpgrade).not.toHaveBeenCalled()
+
+    upgradeJobsMock.data = {
+      data: [
+        {
+          ...localUpgrade.job,
+          completed_documents: 9,
+          stage: 'submitting_documents',
+          status: 'running',
+        },
+      ],
+    }
+    upgradeDatasetsMock.data = {
+      data: [
+        {
+          description: 'Support articles',
+          id: 'dataset-1',
+          knowledge_fs_upgrade: {
+            can_retry: false,
+            can_upgrade: false,
+            job: upgradeJobsMock.data.data[0],
+          },
+          name: 'Support knowledge',
+          tags: [],
+        },
+      ],
+    }
+    setResolvedPage([
+      {
+        createdAt: '2026-08-18T00:00:00Z',
+        id: 'space-1',
+        name: 'Upgraded knowledge',
+        revision: 1,
+        slug: 'upgraded-knowledge',
+        tenantId: 'tenant-1',
+        updatedAt: '2026-08-18T00:00:00Z',
+      },
+    ])
+    rerender(
+      <KnowledgeUpgradeContext value={contextValue}>
+        <NewKnowledgeList view="new" onViewChange={vi.fn()} />
+      </KnowledgeUpgradeContext>,
+    )
+
+    expect(screen.getByRole('link', { name: 'Upgraded knowledge' })).toBeInTheDocument()
+    expect(dismissUpgrade).not.toHaveBeenCalled()
+
+    upgradeJobsMock.data = { data: [] }
+    rerender(
+      <KnowledgeUpgradeContext value={contextValue}>
+        <NewKnowledgeList view="new" onViewChange={vi.fn()} />
+      </KnowledgeUpgradeContext>,
+    )
+
+    await waitFor(() => expect(dismissUpgrade).toHaveBeenCalledWith('upgrade-1'))
   })
 
   it('keeps an active upgrade card when its control space appears before migration completes', () => {
@@ -424,7 +821,23 @@ describe('NewKnowledgeList', () => {
         updatedAt: '2026-08-18T00:00:00Z',
       },
     ])
-    datasetListMock.data = {
+    upgradeJobsMock.data = {
+      data: [
+        {
+          completed_documents: 4,
+          completed_sources: 1,
+          id: 'upgrade-1',
+          new_control_space_id: 'space-1',
+          old_dataset_id: 'dataset-1',
+          snapshot_at: '2026-08-18T00:00:00Z',
+          stage: 'submitting_documents',
+          status: 'running',
+          total_documents: 10,
+          total_sources: 1,
+        },
+      ],
+    }
+    upgradeDatasetsMock.data = {
       data: [
         {
           description: 'Legacy knowledge',
@@ -453,7 +866,7 @@ describe('NewKnowledgeList', () => {
 
     renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
 
-    expect(screen.getByText('upgrade:dataset-1:running')).toBeInTheDocument()
+    expect(screen.getByText('upgrade:dataset-1:upgrade-1:running')).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'space-1' })).not.toBeInTheDocument()
   })
 
@@ -469,7 +882,7 @@ describe('NewKnowledgeList', () => {
         updatedAt: '2026-08-18T00:00:00Z',
       },
     ])
-    datasetListMock.data = {
+    upgradeDatasetsMock.data = {
       data: [
         {
           description: 'Legacy knowledge',

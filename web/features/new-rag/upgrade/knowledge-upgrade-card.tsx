@@ -21,10 +21,12 @@ export function KnowledgeUpgradeCard({
   upgrade,
   highlighted = false,
   onSucceeded,
+  onSettled,
 }: {
   upgrade: KnowledgeUpgrade
   highlighted?: boolean
   onSucceeded?: (controlSpaceId: string) => void
+  onSettled?: (upgrade: KnowledgeUpgrade) => void
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
@@ -36,21 +38,28 @@ export function KnowledgeUpgradeCard({
       job_id: upgrade.job.id,
     },
   }
-  const { data: job, refetch } = useQuery({
-    ...consoleQuery.datasets.byDatasetId.knowledgeFsUpgrades.byJobId.get.queryOptions({
+  const jobQueryOptions =
+    consoleQuery.datasets.byDatasetId.knowledgeFsUpgrades.byJobId.get.queryOptions({
       input: jobInput,
-    }),
+    })
+  const retryMutation = useMutation({
+    ...consoleQuery.datasets.byDatasetId.knowledgeFsUpgrades.byJobId.post.mutationOptions(),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: jobQueryOptions.queryKey })
+      void queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
+      void queryClient.invalidateQueries({
+        queryKey: consoleQuery.datasets.knowledgeFsUpgradeJobs.get.key(),
+      })
+    },
+  })
+  const { data: job } = useQuery({
+    ...jobQueryOptions,
+    enabled: isActiveUpgrade(upgrade.job.status) || retryMutation.isSuccess,
     initialData: upgrade.job,
     refetchInterval: (query) =>
       query.state.data && isActiveUpgrade(query.state.data.status) ? UPGRADE_POLL_INTERVAL : false,
   })
-  const retryMutation = useMutation({
-    ...consoleQuery.datasets.byDatasetId.knowledgeFsUpgrades.byJobId.post.mutationOptions(),
-    onSuccess: () => {
-      void refetch()
-      void queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
-    },
-  })
+  const resetRetryMutation = retryMutation.reset
   const previousStatusRef = useRef(job.status)
 
   useEffect(() => {
@@ -58,7 +67,12 @@ export function KnowledgeUpgradeCard({
     previousStatusRef.current = job.status
     if (!isActiveUpgrade(previousStatus) || isActiveUpgrade(job.status)) return
 
+    resetRetryMutation()
+    onSettled?.({ canRetry: job.status === 'failed', dataset, job })
     void queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
+    void queryClient.invalidateQueries({
+      queryKey: consoleQuery.datasets.knowledgeFsUpgradeJobs.get.key(),
+    })
     if (job.status === 'succeeded') {
       if (job.new_control_space_id) onSucceeded?.(job.new_control_space_id)
       toast.success(
@@ -83,7 +97,7 @@ export function KnowledgeUpgradeCard({
         }),
       },
     )
-  }, [dataset.name, job.new_control_space_id, job.status, onSucceeded, queryClient, t])
+  }, [dataset, job, onSettled, onSucceeded, queryClient, resetRetryMutation, t])
 
   const active = isActiveUpgrade(job.status)
   const failed = job.status === 'failed'

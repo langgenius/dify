@@ -10,15 +10,19 @@ export type KnowledgeUpgrade = {
 }
 
 type KnowledgeUpgradeContextValue = {
+  dismissUpgrade: (jobId: string) => void
   enabled: boolean
   upgrades: KnowledgeUpgrade[]
   requestUpgrade: (dataset: DatasetCardItem, finalFocus?: RefObject<HTMLElement | null>) => void
+  settleUpgrade: (upgrade: KnowledgeUpgrade) => void
 }
 
 export const KnowledgeUpgradeContext = createContext<KnowledgeUpgradeContextValue>({
+  dismissUpgrade: () => {},
   enabled: false,
   upgrades: [],
   requestUpgrade: () => {},
+  settleUpgrade: () => {},
 })
 
 export const useKnowledgeUpgrade = () => use(KnowledgeUpgradeContext)

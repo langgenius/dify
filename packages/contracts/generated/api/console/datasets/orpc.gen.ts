@@ -92,6 +92,7 @@ import {
   zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckResponse,
   zGetDatasetsExternalKnowledgeApiQuery,
   zGetDatasetsExternalKnowledgeApiResponse,
+  zGetDatasetsKnowledgeFsUpgradeJobsResponse,
   zGetDatasetsMetadataBuiltInResponse,
   zGetDatasetsProcessRuleQuery,
   zGetDatasetsProcessRuleResponse,
@@ -473,6 +474,20 @@ export const get7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
+    operationId: 'getDatasetsKnowledgeFsUpgradeJobs',
+    path: '/datasets/knowledge-fs-upgrade-jobs',
+    tags: ['console'],
+  })
+  .output(zGetDatasetsKnowledgeFsUpgradeJobsResponse)
+
+export const knowledgeFsUpgradeJobs = {
+  get: get7,
+}
+
+export const get8 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
     operationId: 'getDatasetsMetadataBuiltIn',
     path: '/datasets/metadata/built-in',
     tags: ['console'],
@@ -480,7 +495,7 @@ export const get7 = oc
   .output(zGetDatasetsMetadataBuiltInResponse)
 
 export const builtIn = {
-  get: get7,
+  get: get8,
 }
 
 export const metadata = {
@@ -505,7 +520,7 @@ export const notionIndexingEstimate = {
 /**
  * Get dataset document processing rules
  */
-export const get8 = oc
+export const get9 = oc
   .route({
     description: 'Get dataset document processing rules',
     inputStructure: 'detailed',
@@ -518,13 +533,13 @@ export const get8 = oc
   .output(zGetDatasetsProcessRuleResponse)
 
 export const processRule = {
-  get: get8,
+  get: get9,
 }
 
 /**
  * Get mock dataset retrieval settings by vector type
  */
-export const get9 = oc
+export const get10 = oc
   .route({
     description: 'Get mock dataset retrieval settings by vector type',
     inputStructure: 'detailed',
@@ -537,13 +552,13 @@ export const get9 = oc
   .output(zGetDatasetsRetrievalSettingByVectorTypeResponse)
 
 export const byVectorType = {
-  get: get9,
+  get: get10,
 }
 
 /**
  * Get dataset retrieval settings
  */
-export const get10 = oc
+export const get11 = oc
   .route({
     description: 'Get dataset retrieval settings',
     inputStructure: 'detailed',
@@ -555,7 +570,7 @@ export const get10 = oc
   .output(zGetDatasetsRetrievalSettingResponse)
 
 export const retrievalSetting = {
-  get: get10,
+  get: get11,
   byVectorType,
 }
 
@@ -581,7 +596,7 @@ export const apiKeys2 = {
 /**
  * Get dataset auto disable logs
  */
-export const get11 = oc
+export const get12 = oc
   .route({
     description: 'Get dataset auto disable logs',
     inputStructure: 'detailed',
@@ -594,10 +609,10 @@ export const get11 = oc
   .output(zGetDatasetsByDatasetIdAutoDisableLogsResponse)
 
 export const autoDisableLogs = {
-  get: get11,
+  get: get12,
 }
 
-export const get12 = oc
+export const get13 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -609,10 +624,10 @@ export const get12 = oc
   .output(zGetDatasetsByDatasetIdBatchByBatchIndexingEstimateResponse)
 
 export const indexingEstimate2 = {
-  get: get12,
+  get: get13,
 }
 
-export const get13 = oc
+export const get14 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -624,7 +639,7 @@ export const get13 = oc
   .output(zGetDatasetsByDatasetIdBatchByBatchIndexingStatusResponse)
 
 export const indexingStatus = {
-  get: get13,
+  get: get14,
 }
 
 export const byBatch = {
@@ -741,7 +756,7 @@ export const status = {
 /**
  * Get a signed download URL for a dataset document's original uploaded file
  */
-export const get14 = oc
+export const get15 = oc
   .route({
     description: "Get a signed download URL for a dataset document's original uploaded file",
     inputStructure: 'detailed',
@@ -754,13 +769,13 @@ export const get14 = oc
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponse)
 
 export const download = {
-  get: get14,
+  get: get15,
 }
 
 /**
  * Estimate document indexing cost
  */
-export const get15 = oc
+export const get16 = oc
   .route({
     description: 'Estimate document indexing cost',
     inputStructure: 'detailed',
@@ -773,13 +788,13 @@ export const get15 = oc
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateResponse)
 
 export const indexingEstimate3 = {
-  get: get15,
+  get: get16,
 }
 
 /**
  * Get document indexing status
  */
-export const get16 = oc
+export const get17 = oc
   .route({
     description: 'Get document indexing status',
     inputStructure: 'detailed',
@@ -792,7 +807,7 @@ export const get16 = oc
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusResponse)
 
 export const indexingStatus2 = {
-  get: get16,
+  get: get17,
 }
 
 /**
@@ -819,7 +834,7 @@ export const metadata3 = {
   put,
 }
 
-export const get17 = oc
+export const get18 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -831,14 +846,14 @@ export const get17 = oc
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncResponse)
 
 export const sync = {
-  get: get17,
+  get: get18,
 }
 
 export const notion = {
   sync,
 }
 
-export const get18 = oc
+export const get19 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -850,7 +865,7 @@ export const get18 = oc
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogResponse)
 
 export const pipelineExecutionLog = {
-  get: get18,
+  get: get19,
 }
 
 /**
@@ -979,7 +994,7 @@ export const segment = {
   byAction: byAction3,
 }
 
-export const get19 = oc
+export const get20 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1007,7 +1022,7 @@ export const post14 = oc
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse)
 
 export const batchImport = {
-  get: get19,
+  get: get20,
   post: post14,
 }
 
@@ -1056,7 +1071,7 @@ export const byChildChunkId = {
   patch: patch7,
 }
 
-export const get20 = oc
+export const get21 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1106,7 +1121,7 @@ export const post15 = oc
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse)
 
 export const childChunks = {
-  get: get20,
+  get: get21,
   patch: patch8,
   post: post15,
   byChildChunkId,
@@ -1165,7 +1180,7 @@ export const delete5 = oc
   )
   .output(zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse)
 
-export const get21 = oc
+export const get22 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1183,7 +1198,7 @@ export const get21 = oc
 
 export const segments = {
   delete: delete5,
-  get: get21,
+  get: get22,
   batchImport,
   bySegmentId,
 }
@@ -1202,7 +1217,7 @@ export const segments = {
  * - timeout: Number of summaries that timed out
  * - summaries: List of summary records with status and content preview
  */
-export const get22 = oc
+export const get23 = oc
   .route({
     description:
       'Get summary index generation status for a document\nReturns:\n- total_segments: Total number of segments in the document\n- summary_status: Dictionary with status counts\n  - completed: Number of summaries completed\n  - generating: Number of summaries being generated\n  - error: Number of summaries with errors\n  - not_started: Number of segments without summary records\n  - timeout: Number of summaries that timed out\n- summaries: List of summary records with status and content preview',
@@ -1217,13 +1232,13 @@ export const get22 = oc
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusResponse)
 
 export const summaryStatus = {
-  get: get22,
+  get: get23,
 }
 
 /**
  * sync website document
  */
-export const get23 = oc
+export const get24 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1236,7 +1251,7 @@ export const get23 = oc
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncResponse)
 
 export const websiteSync = {
-  get: get23,
+  get: get24,
 }
 
 export const delete6 = oc
@@ -1254,7 +1269,7 @@ export const delete6 = oc
 /**
  * Get document details
  */
-export const get24 = oc
+export const get25 = oc
   .route({
     description: 'Get document details',
     inputStructure: 'detailed',
@@ -1273,7 +1288,7 @@ export const get24 = oc
 
 export const byDocumentId = {
   delete: delete6,
-  get: get24,
+  get: get25,
   download,
   indexingEstimate: indexingEstimate3,
   indexingStatus: indexingStatus2,
@@ -1303,7 +1318,7 @@ export const delete7 = oc
 /**
  * Get documents in a dataset
  */
-export const get25 = oc
+export const get26 = oc
   .route({
     description: 'Get documents in a dataset',
     inputStructure: 'detailed',
@@ -1338,7 +1353,7 @@ export const post16 = oc
 
 export const documents = {
   delete: delete7,
-  get: get25,
+  get: get26,
   post: post16,
   downloadZip,
   generateSummary,
@@ -1350,7 +1365,7 @@ export const documents = {
 /**
  * Get dataset error documents
  */
-export const get26 = oc
+export const get27 = oc
   .route({
     description: 'Get dataset error documents',
     inputStructure: 'detailed',
@@ -1363,7 +1378,7 @@ export const get26 = oc
   .output(zGetDatasetsByDatasetIdErrorDocsResponse)
 
 export const errorDocs = {
-  get: get26,
+  get: get27,
 }
 
 /**
@@ -1417,7 +1432,7 @@ export const hitTesting = {
 /**
  * Get dataset indexing status
  */
-export const get27 = oc
+export const get28 = oc
   .route({
     description: 'Get dataset indexing status',
     inputStructure: 'detailed',
@@ -1430,10 +1445,10 @@ export const get27 = oc
   .output(zGetDatasetsByDatasetIdIndexingStatusResponse)
 
 export const indexingStatus3 = {
-  get: get27,
+  get: get28,
 }
 
-export const get28 = oc
+export const get29 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1457,11 +1472,11 @@ export const post19 = oc
   .output(zPostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponse)
 
 export const byJobId2 = {
-  get: get28,
+  get: get29,
   post: post19,
 }
 
-export const get29 = oc
+export const get30 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1490,7 +1505,7 @@ export const post20 = oc
   .output(zPostDatasetsByDatasetIdKnowledgeFsUpgradesResponse)
 
 export const knowledgeFsUpgrades = {
-  get: get29,
+  get: get30,
   post: post20,
   byJobId: byJobId2,
 }
@@ -1548,7 +1563,7 @@ export const byMetadataId = {
   patch: patch10,
 }
 
-export const get30 = oc
+export const get31 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1577,13 +1592,13 @@ export const post22 = oc
   .output(zPostDatasetsByDatasetIdMetadataResponse)
 
 export const metadata4 = {
-  get: get30,
+  get: get31,
   post: post22,
   builtIn: builtIn2,
   byMetadataId,
 }
 
-export const get31 = oc
+export const get32 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1595,7 +1610,7 @@ export const get31 = oc
   .output(zGetDatasetsByDatasetIdNotionSyncResponse)
 
 export const sync2 = {
-  get: get31,
+  get: get32,
 }
 
 export const notion2 = {
@@ -1605,7 +1620,7 @@ export const notion2 = {
 /**
  * Get dataset permission user list
  */
-export const get32 = oc
+export const get33 = oc
   .route({
     description: 'Get dataset permission user list',
     inputStructure: 'detailed',
@@ -1618,13 +1633,13 @@ export const get32 = oc
   .output(zGetDatasetsByDatasetIdPermissionPartUsersResponse)
 
 export const permissionPartUsers = {
-  get: get32,
+  get: get33,
 }
 
 /**
  * Get dataset query history
  */
-export const get33 = oc
+export const get34 = oc
   .route({
     description: 'Get dataset query history',
     inputStructure: 'detailed',
@@ -1637,13 +1652,13 @@ export const get33 = oc
   .output(zGetDatasetsByDatasetIdQueriesResponse)
 
 export const queries = {
-  get: get33,
+  get: get34,
 }
 
 /**
  * Get applications related to dataset
  */
-export const get34 = oc
+export const get35 = oc
   .route({
     description: 'Get applications related to dataset',
     inputStructure: 'detailed',
@@ -1656,7 +1671,7 @@ export const get34 = oc
   .output(zGetDatasetsByDatasetIdRelatedAppsResponse)
 
 export const relatedApps = {
-  get: get34,
+  get: get35,
 }
 
 /**
@@ -1687,7 +1702,7 @@ export const retry = {
 /**
  * Check if dataset is in use
  */
-export const get35 = oc
+export const get36 = oc
   .route({
     description: 'Check if dataset is in use',
     inputStructure: 'detailed',
@@ -1700,7 +1715,7 @@ export const get35 = oc
   .output(zGetDatasetsByDatasetIdUseCheckResponse)
 
 export const useCheck2 = {
-  get: get35,
+  get: get36,
 }
 
 export const delete9 = oc
@@ -1718,7 +1733,7 @@ export const delete9 = oc
 /**
  * Get dataset details
  */
-export const get36 = oc
+export const get37 = oc
   .route({
     description: 'Get dataset details',
     inputStructure: 'detailed',
@@ -1747,7 +1762,7 @@ export const patch11 = oc
 
 export const byDatasetId = {
   delete: delete9,
-  get: get36,
+  get: get37,
   patch: patch11,
   apiKeys: apiKeys2,
   autoDisableLogs,
@@ -1795,7 +1810,7 @@ export const byApiKeyId2 = {
  *
  * Get all API keys for a dataset
  */
-export const get37 = oc
+export const get38 = oc
   .route({
     description: 'Get all API keys for a dataset',
     inputStructure: 'detailed',
@@ -1828,7 +1843,7 @@ export const post24 = oc
   .output(zPostDatasetsByResourceIdApiKeysResponse)
 
 export const apiKeys3 = {
-  get: get37,
+  get: get38,
   post: post24,
   byApiKeyId: byApiKeyId2,
 }
@@ -1840,7 +1855,7 @@ export const byResourceId = {
 /**
  * Get list of datasets
  */
-export const get38 = oc
+export const get39 = oc
   .route({
     description: 'Get list of datasets',
     inputStructure: 'detailed',
@@ -1869,7 +1884,7 @@ export const post25 = oc
   .output(zPostDatasetsResponse)
 
 export const datasets = {
-  get: get38,
+  get: get39,
   post: post25,
   apiBaseInfo,
   apiKeys,
@@ -1878,6 +1893,7 @@ export const datasets = {
   externalKnowledgeApi,
   indexingEstimate,
   init,
+  knowledgeFsUpgradeJobs,
   metadata,
   notionIndexingEstimate,
   processRule,

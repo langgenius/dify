@@ -179,6 +179,10 @@ export type DatasetAndDocumentResponse = {
   documents: Array<DocumentResponse>
 }
 
+export type KnowledgeFsUpgradeJobListResponse = {
+  data: Array<KnowledgeFsUpgradeJobResponse>
+}
+
 export type DatasetMetadataBuiltInFieldsResponse = {
   fields: Array<DatasetMetadataBuiltInFieldResponse>
 }
@@ -1417,6 +1421,20 @@ export type PostDatasetsInitResponses = {
 }
 
 export type PostDatasetsInitResponse = PostDatasetsInitResponses[keyof PostDatasetsInitResponses]
+
+export type GetDatasetsKnowledgeFsUpgradeJobsData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/datasets/knowledge-fs-upgrade-jobs'
+}
+
+export type GetDatasetsKnowledgeFsUpgradeJobsResponses = {
+  200: KnowledgeFsUpgradeJobListResponse
+}
+
+export type GetDatasetsKnowledgeFsUpgradeJobsResponse =
+  GetDatasetsKnowledgeFsUpgradeJobsResponses[keyof GetDatasetsKnowledgeFsUpgradeJobsResponses]
 
 export type GetDatasetsMetadataBuiltInData = {
   body?: never
