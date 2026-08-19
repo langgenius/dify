@@ -301,6 +301,30 @@ class MessageService:
                 suggested_questions_after_answer_config = cast(
                     SuggestedQuestionsAfterAnswerConfig, suggested_questions_after_answer
                 )
+        elif app_model.mode == AppMode.AGENT:
+            from services.agent.roster_service import AgentRosterService
+
+            agent_soul = AgentRosterService(session).get_published_agent_soul_for_app(
+                tenant_id=app_model.tenant_id,
+                app_id=app_model.id,
+            )
+            if agent_soul is None:
+                return []
+
+            sq_config = agent_soul.app_features.suggested_questions_after_answer
+            if sq_config is None or not sq_config.enabled:
+                raise SuggestedQuestionsAfterAnswerDisabledError()
+
+            suggested_questions_after_answer_config = cast(SuggestedQuestionsAfterAnswerConfig, {"enabled": True})
+            if sq_config.prompt:
+                suggested_questions_after_answer_config["prompt"] = sq_config.prompt
+            if sq_config.model:
+                suggested_questions_after_answer_config["model"] = {
+                    "provider": sq_config.model.provider,
+                    "name": sq_config.model.name,
+                    "mode": sq_config.model.mode or "chat",
+                    "completion_params": sq_config.model.completion_params or {},
+                }
         else:
             if not conversation.override_model_configs:
                 app_model_config = session.scalar(
