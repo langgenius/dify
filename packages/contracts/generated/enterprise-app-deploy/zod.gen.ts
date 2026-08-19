@@ -79,12 +79,6 @@ export const zEnvironmentBackend = z.enum([
   'ENVIRONMENT_BACKEND_EXTERNAL',
 ])
 
-export const zEnvironmentManagedBy = z.enum([
-  'ENVIRONMENT_MANAGED_BY_UNSPECIFIED',
-  'ENVIRONMENT_MANAGED_BY_SYSTEM',
-  'ENVIRONMENT_MANAGED_BY_USER',
-])
-
 export const zEnvironmentDeployedAppStatus = z.enum([
   'ENVIRONMENT_DEPLOYED_APP_STATUS_UNSPECIFIED',
   'ENVIRONMENT_DEPLOYED_APP_STATUS_DEPLOYED',
@@ -173,7 +167,10 @@ export const zCreateEnvironmentRequest = z.object({
   displayName: z.string(),
   description: z.string().optional(),
   mode: zEnvironmentMode,
-  cpuPool: z.number(),
+  cpuPoolMillicores: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
   namespace: z.string().optional(),
   maxMemoryMib: z.string().optional(),
 })
@@ -199,12 +196,6 @@ export const zCredentialSlot = z.object({
   last_deployed_credential_id: z.string().optional(),
   icon: z.string().optional(),
   icon_dark: z.string().optional(),
-})
-
-export const zDashboardApp = z.object({
-  id: z.string(),
-  workspaceId: z.string(),
-  displayName: z.string(),
 })
 
 export const zDeleteEnvironmentApiKeyResponse = z.record(z.string(), z.unknown())
@@ -275,29 +266,13 @@ export const zEnvironmentDeployedAppAttempt = z.object({
   finalizedAt: z.iso.datetime().optional(),
 })
 
-export const zEnvironmentDeployedAppSummary = z.object({
-  total: z
-    .int()
-    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
-    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
-  deployed: z
-    .int()
-    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
-    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
-  deploying: z
-    .int()
-    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
-    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
-  failed: z
-    .int()
-    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
-    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
-})
-
 export const zEnvironmentMcpServer = z.record(z.string(), z.unknown())
 
 export const zEnvironmentPoolUsage = z.object({
-  occupiedCpu: z.number(),
+  occupiedCpuMillicores: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
   appCount: z
     .int()
     .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
@@ -534,7 +509,10 @@ export const zNamedRef = z.object({
 
 export const zEnvironmentPoolShare = z.object({
   app: zNamedRef,
-  isolatedCpu: z.number(),
+  isolatedCpuMillicores: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
 })
 
 /**
@@ -544,12 +522,22 @@ export const zEnvironmentPoolShare = z.object({
  */
 export const zEnvironmentPoolComposition = z.object({
   topApps: z.array(zEnvironmentPoolShare).optional(),
-  otherCpu: z.number().optional(),
+  otherCpuMillicores: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
   otherAppCount: z
     .int()
     .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
     .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
     .optional(),
+})
+
+export const zOperationApp = z.object({
+  id: z.string().optional(),
+  workspaceId: z.string().optional(),
+  displayName: z.string().optional(),
 })
 
 export const zOperator = z.object({
@@ -639,8 +627,8 @@ export const zResolveWebAppRouteResponse = z.object({
   targetKind: zRouteTargetKind.optional(),
   directUpstream: z.string().optional(),
   deploymentGeneration: z.string().optional(),
-  endUserId: z.string().optional(),
-  authType: z.string().optional(),
+  userId: z.string().optional(),
+  userFrom: z.string().optional(),
 })
 
 export const zRetryEnvironmentBootstrapRequest = z.object({
@@ -667,8 +655,10 @@ export const zEnvironment = z.object({
   statusMessage: z.string(),
   lastError: zError.optional(),
   namespace: z.string().optional(),
-  managedBy: zEnvironmentManagedBy.optional(),
-  cpuPool: z.number(),
+  cpuPoolMillicores: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
   memory: zRunnerMemory.optional(),
@@ -693,7 +683,10 @@ export const zRetryEnvironmentBootstrapResponse = z.object({
  * in an isolated environment; elsewhere the runner belongs to the environment.
  */
 export const zRunnerSizing = z.object({
-  isolatedCpu: z.number(),
+  isolatedCpuMillicores: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
   memory: zRunnerMemory,
 })
 
@@ -745,15 +738,27 @@ export const zPrecheckWorkflowDeploymentResponse = z.object({
 export const zUpdateEnvironmentDeployedAppResourcesRequest = z.object({
   environmentId: z.string(),
   deploymentId: z.string(),
-  isolatedCpu: z.number(),
+  isolatedCpuMillicores: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
   maxMemoryMib: z.string().optional(),
 })
 
 export const zUpdateEnvironmentDeployedAppResourcesResponse = z.object({
   deploymentId: z.string(),
-  isolatedCpu: z.number(),
-  allocatedCpuCount: z.number(),
-  poolCpuCount: z.number(),
+  isolatedCpuMillicores: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
+  allocatedCpuMillicores: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
+  poolCpuMillicores: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
   memory: zRunnerMemory,
 })
 
@@ -761,7 +766,11 @@ export const zUpdateEnvironmentRequest = z.object({
   environmentId: z.string().optional(),
   displayName: z.string().optional(),
   description: z.string().optional(),
-  cpuPool: z.number().optional(),
+  cpuPoolMillicores: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
   maxMemoryMib: z.string().optional(),
 })
 
@@ -801,7 +810,6 @@ export const zWorkflowVersion = z.object({
   created_at: z.number().optional(),
   created_by: zSimpleAccount.optional(),
   dsl_hash: z.string().optional(),
-  deleted: z.boolean().optional(),
 })
 
 export const zDeploymentOperation = z.object({
@@ -904,11 +912,6 @@ export const zListApplicationInteractionsResponse = z.object({
   pagination: zPagination,
 })
 
-export const zListAppsResponse = z.object({
-  data: z.array(zDashboardApp),
-  pagination: zPagination,
-})
-
 export const zListDeploymentOperationsResponse = z.object({
   data: z.array(zDeploymentOperation),
   pagination: zPagination,
@@ -916,12 +919,16 @@ export const zListDeploymentOperationsResponse = z.object({
 
 export const zListEnvironmentDeployedAppsResponse = z.object({
   data: z.array(zEnvironmentDeployedApp),
-  summary: zEnvironmentDeployedAppSummary,
   pagination: zPagination,
 })
 
 export const zListEnvironmentsResponse = z.object({
   data: z.array(zEnvironment),
+  pagination: zPagination,
+})
+
+export const zListOperationAppsResponse = z.object({
+  data: z.array(zOperationApp),
   pagination: zPagination,
 })
 
@@ -951,8 +958,10 @@ export const zEnvironmentWritable = z.object({
   statusMessage: z.string(),
   lastError: zError.optional(),
   namespace: z.string().optional(),
-  managedBy: zEnvironmentManagedBy.optional(),
-  cpuPool: z.number(),
+  cpuPoolMillicores: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
   memory: zRunnerMemoryWritable.optional(),
@@ -982,7 +991,10 @@ export const zRetryEnvironmentBootstrapResponseWritable = z.object({
  * in an isolated environment; elsewhere the runner belongs to the environment.
  */
 export const zRunnerSizingWritable = z.object({
-  isolatedCpu: z.number(),
+  isolatedCpuMillicores: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
   memory: zRunnerMemoryWritable,
 })
 
@@ -1001,15 +1013,23 @@ export const zEnvironmentDeployedAppWritable = z.object({
 
 export const zListEnvironmentDeployedAppsResponseWritable = z.object({
   data: z.array(zEnvironmentDeployedAppWritable),
-  summary: zEnvironmentDeployedAppSummary,
   pagination: zPagination,
 })
 
 export const zUpdateEnvironmentDeployedAppResourcesResponseWritable = z.object({
   deploymentId: z.string(),
-  isolatedCpu: z.number(),
-  allocatedCpuCount: z.number(),
-  poolCpuCount: z.number(),
+  isolatedCpuMillicores: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
+  allocatedCpuMillicores: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
+  poolCpuMillicores: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
   memory: zRunnerMemoryWritable,
 })
 

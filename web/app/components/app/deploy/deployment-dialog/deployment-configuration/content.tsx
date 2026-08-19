@@ -8,6 +8,7 @@ import type { DeploymentConfigurationValuesController } from './use-deployment-c
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
+import Loading from '@/app/components/base/loading'
 import { CredentialField } from './credential-field'
 import { DeploymentPrecheckAlert } from './deployment-precheck-alert'
 import { EnvironmentVariableField } from './environment-variable-field'
@@ -71,18 +72,6 @@ function ConfigurationError({ messages }: { messages: string[] }) {
           ))}
         </ul>
       </div>
-    </div>
-  )
-}
-
-function ConfigurationLoading({ label }: { label: string }) {
-  return (
-    <div role="status" className="flex items-center justify-center gap-2 py-8 text-text-tertiary">
-      <span
-        aria-hidden
-        className="i-ri-loader-2-line size-4 animate-spin motion-reduce:animate-none"
-      />
-      <span className="system-xs-regular">{label}</span>
     </div>
   )
 }
@@ -156,9 +145,7 @@ export function DeploymentConfigurationContent({
         aria-busy={isPrechecking || isLoadingDeploymentOptions}
         className="min-h-0 flex-1 overflow-y-auto"
       >
-        {isPrechecking && (
-          <ConfigurationLoading label={t(($) => $['versions.checkingReleaseContent'])} />
-        )}
+        {isPrechecking && <Loading className="py-8" />}
         {!isPrechecking && precheckError && (
           <div className={cn('py-4', horizontalPaddingClassName)}>
             <ConfigurationError
@@ -178,7 +165,7 @@ export function DeploymentConfigurationContent({
             <DeploymentPrecheckAlert nodes={unsupportedNodes} />
           </div>
         )}
-        {isLoadingDeploymentOptions && <ConfigurationLoading label={tCommon(($) => $.loading)} />}
+        {isLoadingDeploymentOptions && <Loading className="py-8" />}
         {!isLoadingDeploymentOptions && deploymentOptionsError && (
           <div className={cn('py-4', horizontalPaddingClassName)}>
             <ConfigurationError

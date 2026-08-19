@@ -9,6 +9,7 @@ import { DialogCloseButton, DialogDescription, DialogTitle } from '@langgenius/d
 import { useAtomValue } from 'jotai'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
+import Loading from '@/app/components/base/loading'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { useInfiniteScroll } from '../../hooks/use-infinite-scroll'
@@ -162,18 +163,7 @@ function VersionList({
           versions={versions}
         />
       </div>
-      {isLoading && (
-        <div
-          role="status"
-          aria-label={tCommon(($) => $.loading)}
-          className="flex h-20 items-center justify-center"
-        >
-          <span
-            aria-hidden
-            className="i-ri-loader-2-line size-4 animate-spin text-text-tertiary motion-reduce:animate-none"
-          />
-        </div>
-      )}
+      {isLoading && <Loading className="h-20" />}
       {!isLoading && versionsError && versions.length === 0 && (
         <p role="alert" className="px-2 py-6 text-center system-xs-regular text-text-tertiary">
           {tCommon(($) => $.error)}
@@ -196,18 +186,7 @@ function VersionList({
           )}
         </div>
       )}
-      {isFetchingNextPage && versions.length > 0 && (
-        <div
-          role="status"
-          aria-label={tCommon(($) => $.loading)}
-          className="flex h-8 items-center justify-center"
-        >
-          <span
-            aria-hidden
-            className="i-ri-loader-2-line size-4 animate-spin text-text-tertiary motion-reduce:animate-none"
-          />
-        </div>
-      )}
+      {isFetchingNextPage && versions.length > 0 && <Loading className="h-8" />}
       <div ref={sentinelRef} aria-hidden className="h-px" />
     </div>
   )

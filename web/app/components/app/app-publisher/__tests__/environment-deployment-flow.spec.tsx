@@ -461,6 +461,25 @@ async function expectDeploymentRequest(
 }
 
 describe('PublisherEnvironmentFlow', () => {
+  it('shows the shared loading state while deployment details load', () => {
+    render(
+      <PublisherEnvironmentFlow
+        appId="app-1"
+        environmentId="development"
+        environmentName="Development"
+        environmentTabs={<div>Environment tabs</div>}
+        isEnvironmentInUse={false}
+        isDeploymentError={false}
+        isDeploymentLoading
+        latestVersion={null}
+        onGoToPublish={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('Environment tabs')).toBeInTheDocument()
+    expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+  })
+
   it('formats deployed_at as a Unix timestamp in seconds', () => {
     const deployment = createDeployment()
     const deployedAt = deployment.deployment?.deployed_at
