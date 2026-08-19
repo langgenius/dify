@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -258,5 +259,58 @@ func TestSnapshotRoutesRequireAuth(t *testing.T) {
 	resp.Body.Close()
 	if resp.StatusCode != 401 {
 		t.Fatalf("unauthenticated save: status = %d, want 401", resp.StatusCode)
+	}
+
+	resp, err = http.Post(srv.URL+"/v1/snapshot/restore", "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != 401 {
+		t.Fatalf("unauthenticated restore: status = %d, want 401", resp.StatusCode)
+	}
+}
+
+// TestSnapshotRestoreStalledPeerReleasesGate proves that a peer which stops
+// sending body bytes mid-stream cannot wedge the single-flight gate forever:
+// the read deadline set via http.ResponseController must fire and unblock
+// the handler even though the server's ReadTimeout is 0.
+func TestSnapshotRestoreStalledPeerReleasesGate(t *testing.T) {
+	setHome(t)
+	cfg := testConfig()
+	cfg.SnapshotTimeout = 300 * time.Millisecond
+	srv := newSnapshotTestServer(t, cfg)
+
+	addr := srv.Listener.Addr().String()
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+
+	// A syntactically valid request head announcing a chunked body, followed
+	// by a partial chunk. The peer then goes silent without completing it.
+	head := "POST /v1/snapshot/restore HTTP/1.1\r\n" +
+		"Host: " + addr + "\r\n" +
+		"Transfer-Encoding: chunked\r\n" +
+		"Content-Type: application/octet-stream\r\n" +
+		"\r\n" +
+		"5\r\n" +
+		"ab"
+	if _, err := conn.Write([]byte(head)); err != nil {
+		t.Fatal(err)
+	}
+
+	// Comfortably past SnapshotTimeout: the stalled request's read deadline
+	// must have fired and released the gate by now.
+	time.Sleep(2 * time.Second)
+
+	resp, err := http.Post(srv.URL+"/v1/snapshot/restore", "application/octet-stream", bytes.NewReader([]byte("garbage")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusConflict {
+		t.Fatal("gate still held after stalled peer's read deadline should have expired")
 	}
 }

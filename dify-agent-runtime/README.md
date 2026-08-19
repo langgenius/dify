@@ -91,7 +91,13 @@ save stream and abort at their cap; bound what they send to restore).
 - `POST /v1/snapshot/restore` — raw tar+zstd body, no parameters. Extracts
   into `$HOME` under `os.Root` (path traversal, absolute names, and symlink
   escapes are refused). Returns `{"entries": N, "bytes_written": M}`;
-  `400 archive_malformed` for invalid input.
+  `400 archive_malformed` for invalid input, `500 restore_failed` for
+  non-format failures (e.g. filesystem or environmental errors). Restore is
+  NOT transactional — a mid-stream failure can leave a partially restored
+  Home, so callers must treat the sandbox as unusable and recreate it rather
+  than retry into it. Archives are plain tar+zstd; the decoder caps the zstd
+  window at 64 MiB, so foreign archives produced with long-window settings
+  are rejected as malformed.
 
 ## Dependencies
 

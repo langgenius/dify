@@ -18,6 +18,11 @@ import (
 // ErrMalformed marks archives that violate the format or hardening rules.
 var ErrMalformed = errors.New("archive malformed")
 
+// maxDecoderWindow bounds zstd decoder memory (not archive output size);
+// archives produced with a larger long-distance-matching window are foreign
+// and rejected as malformed.
+const maxDecoderWindow = 64 << 20
+
 var environmentalErrnos = []syscall.Errno{
 	syscall.ENOSPC, syscall.EDQUOT, syscall.EROFS, syscall.EIO,
 	syscall.ENOMEM, syscall.EMFILE, syscall.ENFILE,
@@ -30,6 +35,9 @@ var environmentalErrnos = []syscall.Errno{
 func classifyEntryErr(err error) error {
 	if err == nil {
 		return nil
+	}
+	if errors.Is(err, os.ErrDeadlineExceeded) {
+		return err
 	}
 	for _, errno := range environmentalErrnos {
 		if errors.Is(err, errno) {
@@ -72,7 +80,7 @@ func RestoreHome(ctx context.Context, src io.Reader, homeDir string) (RestoreRes
 
 	zr, err := zstd.NewReader(src,
 		zstd.WithDecoderConcurrency(1),
-		zstd.WithDecoderMaxWindow(64<<20),
+		zstd.WithDecoderMaxWindow(maxDecoderWindow),
 	)
 	if err != nil {
 		return res, fmt.Errorf("%w: %v", ErrMalformed, err)
@@ -102,6 +110,9 @@ func RestoreHome(ctx context.Context, src io.Reader, homeDir string) (RestoreRes
 			return res, nil
 		}
 		if err != nil {
+			if errors.Is(err, os.ErrDeadlineExceeded) {
+				return res, err
+			}
 			return res, fmt.Errorf("%w: %v", ErrMalformed, err)
 		}
 		name, err := cleanEntryName(hdr.Name)

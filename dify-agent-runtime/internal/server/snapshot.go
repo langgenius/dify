@@ -12,6 +12,7 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/langgenius/dify/dify-agent-runtime/internal/snapshot"
 )
@@ -82,6 +83,11 @@ func (h *snapshotHandlers) handleSnapshotSave() http.HandlerFunc {
 			return
 		}
 
+		rc := http.NewResponseController(w)
+		if err := rc.SetWriteDeadline(time.Now().Add(h.config.SnapshotTimeout)); err != nil {
+			log.Printf("WARN snapshot save: set write deadline: %v", err)
+		}
+
 		ctx, cancel := context.WithTimeout(r.Context(), h.config.SnapshotTimeout)
 		defer cancel()
 
@@ -116,6 +122,11 @@ func (h *snapshotHandlers) handleSnapshotRestore() http.HandlerFunc {
 		if err != nil {
 			writeError(w, 500, "home_unavailable", err.Error())
 			return
+		}
+
+		rc := http.NewResponseController(w)
+		if err := rc.SetReadDeadline(time.Now().Add(h.config.SnapshotTimeout)); err != nil {
+			log.Printf("WARN snapshot restore: set read deadline: %v", err)
 		}
 
 		ctx, cancel := context.WithTimeout(r.Context(), h.config.SnapshotTimeout)

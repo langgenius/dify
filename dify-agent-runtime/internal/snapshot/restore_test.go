@@ -184,12 +184,6 @@ func TestRestoreRejectsSparseEntries(t *testing.T) {
 		t.Fatal("isPAXSparse should detect GNU.sparse.* records")
 	}
 
-	// Unit test: TypeGNUSparse is recognized by the guard
-	hdrGNU := &tar.Header{Name: "g", Typeflag: tar.TypeGNUSparse}
-	if hdrGNU.Typeflag != tar.TypeGNUSparse {
-		t.Fatal("tar.TypeGNUSparse should exist")
-	}
-
 	// The key evidence: if a PAX-sparse archive somehow reached us,
 	// the cleanEntryName + typeflag switch + isPAXSparse check would catch it.
 	// Since tar.Writer blocks encoding them, the guards are tested above and
