@@ -3301,11 +3301,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow-app/hooks/use-nodes-sync-draft.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow-app/hooks/use-workflow-run-callbacks.ts": {
     "no-restricted-imports": {
       "count": 2
@@ -5568,7 +5563,7 @@
   },
   "web/types/workflow.ts": {
     "typescript/no-explicit-any": {
-      "count": 17
+      "count": 16
     }
   },
   "web/utils/completion-params.spec.ts": {

@@ -16,7 +16,16 @@ const mockDeleteApp = vi.fn()
 
 vi.mock('@/service/apps', () => ({
   createApp: (params: unknown) => mockCreateApp(params),
-  deleteApp: (appId: string) => mockDeleteApp(appId),
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleClient: {
+    apps: {
+      byAppId: {
+        delete: (input: unknown, options: unknown) => mockDeleteApp(input, options),
+      },
+    },
+  },
 }))
 
 vi.mock('@/service/workflow', () => ({
@@ -149,7 +158,7 @@ describe('applyToNewApp', () => {
   })
 
   // Sync failure must roll back the createApp so the user isn't left with an
-  // empty app in their /apps list. deleteApp is called with the new app id,
+  // empty app in their /apps list. The delete endpoint receives the new app id,
   // and the original sync error is re-thrown so the caller can toast it.
   it('should delete the new app when syncWorkflowDraft fails', async () => {
     mockCreateApp.mockResolvedValueOnce({ id: 'doomed', mode: AppModeEnum.WORKFLOW })
@@ -165,7 +174,10 @@ describe('applyToNewApp', () => {
       }),
     ).rejects.toBe(syncErr)
 
-    expect(mockDeleteApp).toHaveBeenCalledWith('doomed')
+    expect(mockDeleteApp).toHaveBeenCalledWith(
+      { params: { app_id: 'doomed' } },
+      { context: { silent: true } },
+    )
   })
 
   // The truly stuck path: sync fails AND the rollback delete also fails. We

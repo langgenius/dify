@@ -46,7 +46,8 @@ type AppInfoModalsProps = {
   isExporting: boolean
   exportCheck: () => void
   handleConfirmExport: () => Promise<void>
-  onConfirmDelete: () => void
+  onConfirmDelete: () => Promise<void>
+  isDeleting: boolean
 }
 
 const AppInfoModals = ({
@@ -62,6 +63,7 @@ const AppInfoModals = ({
   exportCheck,
   handleConfirmExport,
   onConfirmDelete,
+  isDeleting,
 }: AppInfoModalsProps) => {
   const { t } = useTranslation()
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
@@ -130,15 +132,15 @@ const AppInfoModals = ({
       )}
       <AlertDialog
         open={activeModal === 'delete'}
-        onOpenChange={(open) => !open && handleDeleteDialogClose()}
+        onOpenChange={(open) => !open && !isDeleting && handleDeleteDialogClose()}
       >
         <AlertDialogContent>
           <form
             className="flex flex-col"
             onSubmit={(e) => {
               e.preventDefault()
-              if (isDeleteConfirmDisabled) return
-              onConfirmDelete()
+              if (isDeleteConfirmDisabled || isDeleting) return
+              void onConfirmDelete()
             }}
           >
             <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
@@ -169,12 +171,14 @@ const AppInfoModals = ({
                     placeholder={t(($) => $.deleteAppConfirmInputPlaceholder, { ns: 'app' })}
                     value={confirmDeleteInput}
                     onValueChange={setConfirmDeleteInput}
+                    disabled={isDeleting}
                   />
                   <InputGroupAddon align="inline-end" className="min-w-20 justify-end pe-1.75">
                     <Button
                       variant="tertiary"
                       size="small"
                       onClick={() => setConfirmDeleteInput(appDetail.name)}
+                      disabled={isDeleting}
                       className="rounded-full px-2.5"
                     >
                       {t(($) => $['operation.fill'], { ns: 'common' })}
@@ -184,10 +188,14 @@ const AppInfoModals = ({
               </Field>
             </div>
             <AlertDialogActions>
-              <AlertDialogCancelButton type="button">
+              <AlertDialogCancelButton type="button" disabled={isDeleting}>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </AlertDialogCancelButton>
-              <AlertDialogConfirmButton type="submit" disabled={isDeleteConfirmDisabled}>
+              <AlertDialogConfirmButton
+                type="submit"
+                disabled={isDeleteConfirmDisabled || isDeleting}
+                loading={isDeleting}
+              >
                 {t(($) => $['operation.confirm'], { ns: 'common' })}
               </AlertDialogConfirmButton>
             </AlertDialogActions>

@@ -22,6 +22,7 @@ export const AppInfoView = ({ expand, actions }: AppInfoViewProps) => {
     exportCheck,
     handleConfirmExport,
     onConfirmDelete,
+    isDeleting,
   } = actions
 
   if (!appDetail) return null
@@ -48,6 +49,7 @@ export const AppInfoView = ({ expand, actions }: AppInfoViewProps) => {
         exportCheck={exportCheck}
         handleConfirmExport={handleConfirmExport}
         onConfirmDelete={onConfirmDelete}
+        isDeleting={isDeleting}
       />
     </>
   )

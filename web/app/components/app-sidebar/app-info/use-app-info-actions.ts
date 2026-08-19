@@ -7,7 +7,7 @@ import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-moda
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { App } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -15,7 +15,7 @@ import { useExportAppDsl, useExportWorkflowAppDsl } from '@/app/components/app/u
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
-import { copyApp, deleteApp, fetchAppDetail, updateAppInfo } from '@/service/apps'
+import { copyApp, fetchAppDetail, updateAppInfo } from '@/service/apps'
 import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
@@ -95,6 +95,11 @@ export function useAppInfoActions({ resetKey }: UseAppInfoActionsParams) {
   const { exportAppDsl, isExporting: isAppDslExporting } = useExportAppDsl()
   const { exportWorkflowAppDsl, isExporting: isWorkflowAppDslExporting } = useExportWorkflowAppDsl()
   const isExporting = isAppDslExporting || isWorkflowAppDslExporting
+  const { mutateAsync: deleteCurrentApp, isPending: isDeleting } = useMutation(
+    consoleQuery.apps.byAppId.delete.mutationOptions({
+      context: { silent: true },
+    }),
+  )
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isRbacEnabled = systemFeatures.rbac_enabled
 
@@ -307,15 +312,11 @@ export function useAppInfoActions({ resetKey }: UseAppInfoActionsParams) {
   const onConfirmDelete = useCallback(async () => {
     if (!appDetail) return
     try {
-      await deleteApp(appDetail.id)
+      await deleteCurrentApp({ params: { app_id: appDetail.id } })
       toast(
         t(($) => $.appDeleted, { ns: 'app' }),
         { type: 'success' },
       )
-      void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
-      void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.starred.get.key() })
-      void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.recent.get.key() })
-      onPlanInfoChanged()
       setAppDetail()
       replace('/apps')
     } catch (e: unknown) {
@@ -325,7 +326,7 @@ export function useAppInfoActions({ resetKey }: UseAppInfoActionsParams) {
       )
     }
     closeModal()
-  }, [appDetail, closeModal, onPlanInfoChanged, queryClient, replace, setAppDetail, t])
+  }, [appDetail, closeModal, deleteCurrentApp, replace, setAppDetail, t])
 
   return {
     appDetail,
@@ -341,6 +342,7 @@ export function useAppInfoActions({ resetKey }: UseAppInfoActionsParams) {
     exportCheck,
     handleConfirmExport,
     onConfirmDelete,
+    isDeleting,
   }
 }
 

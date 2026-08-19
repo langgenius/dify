@@ -2,11 +2,12 @@ import type { EnvironmentVariablePatch } from '@/service/workflow'
 import { act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { consoleQuery } from '@/service/client'
 import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { useNodesSyncDraft } from '../use-nodes-sync-draft'
 
 const mockGetNodes = vi.fn()
-const mockPostWithKeepalive = vi.fn()
+const mockPostWorkflowDraft = vi.fn().mockResolvedValue(undefined)
 const mockSetSyncWorkflowDraftHash = vi.fn()
 const mockSetDraftUpdatedAt = vi.fn()
 const mockGetNodesReadOnly = vi.fn()
@@ -83,16 +84,22 @@ vi.mock('@/service/workflow', () => ({
   syncWorkflowDraft: (p: unknown) => mockSyncWorkflowDraft(p),
 }))
 
-vi.mock('@/service/fetch', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/fetch')>()
+vi.mock('@/service/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/client')>()
   return {
     ...actual,
-    postWithKeepalive: (...args: unknown[]) => mockPostWithKeepalive(...args),
+    consoleClient: {
+      apps: {
+        byAppId: {
+          workflows: {
+            draft: {
+              post: (...args: unknown[]) => mockPostWorkflowDraft(...args),
+            },
+          },
+        },
+      },
+    },
   }
-})
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return { ...actual, API_PREFIX: '/api' }
 })
 
 const mockHandleRefreshWorkflowDraft = vi.fn()
@@ -533,15 +540,72 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
       result.current.syncWorkflowDraftWhenPageClose()
     })
 
-    expect(mockPostWithKeepalive).toHaveBeenCalledWith(
-      '/api/apps/app-1/workflows/draft',
-      expect.objectContaining({
-        graph: expect.objectContaining({
-          viewport: { x: 1, y: 2, zoom: 3 },
+    expect(mockPostWorkflowDraft).toHaveBeenCalledWith(
+      {
+        params: { app_id: 'app-1' },
+        body: expect.objectContaining({
+          graph: expect.objectContaining({
+            viewport: { x: 1, y: 2, zoom: 3 },
+          }),
+          hash: 'hash-123',
         }),
-        hash: 'hash-123',
-      }),
+      },
+      {
+        context: {
+          keepalive: true,
+          silent: true,
+        },
+      },
     )
+  })
+
+  it('should stop draft persistence as soon as deleting the current app starts', async () => {
+    let resolveDelete: (() => void) | undefined
+    const callbacks = {
+      onError: vi.fn(),
+      onSettled: vi.fn(),
+    }
+    const { result, queryClient } = renderUseNodesSyncDraft()
+    const deleteMutation = queryClient.getMutationCache().build(queryClient, {
+      mutationKey: consoleQuery.apps.byAppId.delete.mutationKey(),
+      mutationFn: () =>
+        new Promise<void>((resolve) => {
+          resolveDelete = resolve
+        }),
+    })
+
+    let deletePromise: Promise<void> | undefined
+    await act(async () => {
+      deletePromise = deleteMutation.execute({ params: { app_id: 'app-1' } })
+      await Promise.resolve()
+    })
+
+    expect(deleteMutation.state.status).toBe('pending')
+
+    await act(async () => {
+      await result.current.doSyncWorkflowDraft(false, callbacks)
+      result.current.syncWorkflowDraftWhenPageClose()
+    })
+
+    expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockPostWorkflowDraft).not.toHaveBeenCalled()
+    expect(callbacks.onError).not.toHaveBeenCalled()
+    expect(callbacks.onSettled).toHaveBeenCalledOnce()
+
+    resolveDelete?.()
+    await act(async () => {
+      await deletePromise
+    })
+
+    await act(async () => {
+      await result.current.doSyncWorkflowDraft(false, callbacks)
+      result.current.syncWorkflowDraftWhenPageClose()
+    })
+
+    expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockPostWorkflowDraft).not.toHaveBeenCalled()
+    expect(callbacks.onError).not.toHaveBeenCalled()
+    expect(callbacks.onSettled).toHaveBeenCalledTimes(2)
   })
 
   it('should not post the local start placeholder when the page closes', () => {
@@ -564,14 +628,17 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
       result.current.syncWorkflowDraftWhenPageClose()
     })
 
-    expect(mockPostWithKeepalive).toHaveBeenCalledWith(
-      '/api/apps/app-1/workflows/draft',
+    expect(mockPostWorkflowDraft).toHaveBeenCalledWith(
       expect.objectContaining({
-        graph: expect.objectContaining({
-          nodes: [{ id: 'n1', position: { x: 1, y: 1 }, data: { type: BlockEnum.Start } }],
-          edges: [],
+        params: { app_id: 'app-1' },
+        body: expect.objectContaining({
+          graph: expect.objectContaining({
+            nodes: [{ id: 'n1', position: { x: 1, y: 1 }, data: { type: BlockEnum.Start } }],
+            edges: [],
+          }),
         }),
       }),
+      expect.anything(),
     )
   })
 
@@ -705,7 +772,7 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
       result.current.syncWorkflowDraftWhenPageClose()
     })
 
-    expect(mockPostWithKeepalive).not.toHaveBeenCalled()
+    expect(mockPostWorkflowDraft).not.toHaveBeenCalled()
   })
 
   it('should allow the trusted sole leader to flush with keepalive while hidden', () => {
@@ -720,7 +787,7 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
       result.current.syncWorkflowDraftWhenPageClose()
     })
 
-    expect(mockPostWithKeepalive).toHaveBeenCalledTimes(1)
+    expect(mockPostWorkflowDraft).toHaveBeenCalledTimes(1)
   })
 
   it('should still flush with keepalive on page close when collaboration is enabled but never connected', () => {
@@ -738,7 +805,7 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
       result.current.syncWorkflowDraftWhenPageClose()
     })
 
-    expect(mockPostWithKeepalive).toHaveBeenCalledTimes(1)
+    expect(mockPostWorkflowDraft).toHaveBeenCalledTimes(1)
   })
 
   it('should not flush an untrusted graph after an established collaboration disconnects', () => {
@@ -753,6 +820,6 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
       result.current.syncWorkflowDraftWhenPageClose()
     })
 
-    expect(mockPostWithKeepalive).not.toHaveBeenCalled()
+    expect(mockPostWorkflowDraft).not.toHaveBeenCalled()
   })
 })

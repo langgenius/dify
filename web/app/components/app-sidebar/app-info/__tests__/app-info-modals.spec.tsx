@@ -133,7 +133,8 @@ const defaultProps = {
   isExporting: false,
   exportCheck: vi.fn(),
   handleConfirmExport: vi.fn(async () => {}),
-  onConfirmDelete: vi.fn(),
+  onConfirmDelete: vi.fn(async () => {}),
+  isDeleting: false,
 }
 
 describe('AppInfoModals', () => {
@@ -299,6 +300,19 @@ describe('AppInfoModals', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     expect(defaultProps.onConfirmDelete).toHaveBeenCalledTimes(1)
+  })
+
+  it('should disable delete controls while the deletion is pending', async () => {
+    await act(async () => {
+      render(<AppInfoModals {...defaultProps} activeModal="delete" isDeleting />)
+    })
+
+    expect(await screen.findByRole('textbox')).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'common.operation.confirm' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
   })
 
   it('should call handleConfirmExport when confirm on export warning', async () => {

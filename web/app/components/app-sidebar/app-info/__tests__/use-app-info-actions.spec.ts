@@ -81,6 +81,10 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 
 vi.mock('@tanstack/react-query', () => ({
   queryOptions: <TOptions>(options: TOptions) => options,
+  useMutation: () => ({
+    mutateAsync: (...args: unknown[]) => mockDeleteApp(...args),
+    isPending: false,
+  }),
   useSuspenseQuery: () => ({
     data: { rbac_enabled: true },
   }),
@@ -93,7 +97,6 @@ vi.mock('@tanstack/react-query', () => ({
 vi.mock('@/service/apps', () => ({
   updateAppInfo: (...args: unknown[]) => mockUpdateAppInfo(...args),
   copyApp: (...args: unknown[]) => mockCopyApp(...args),
-  deleteApp: (...args: unknown[]) => mockDeleteApp(...args),
   fetchAppDetail: (...args: unknown[]) => mockFetchAppDetail(...args),
 }))
 
@@ -498,9 +501,9 @@ describe('useAppInfoActions', () => {
         await result.current.onConfirmDelete()
       })
 
-      expect(mockDeleteApp).toHaveBeenCalledWith('app-1')
+      expect(mockDeleteApp).toHaveBeenCalledWith({ params: { app_id: 'app-1' } })
       expect(toastMocks.call).toHaveBeenCalledWith({ type: 'success', message: 'app.appDeleted' })
-      expect(mockInvalidateQueries).toHaveBeenCalledTimes(3)
+      expect(mockOnPlanInfoChanged).not.toHaveBeenCalled()
       expect(mockReplace).toHaveBeenCalledWith('/apps')
       expect(mockSetAppDetail).toHaveBeenCalledWith()
     })

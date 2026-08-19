@@ -1,10 +1,11 @@
+import type { QueryClient } from '@tanstack/react-query'
 import type {
   SyncDraftCallback,
   SyncDraftOptions,
   SyncDraftResult,
 } from '@/app/components/workflow/hooks-store'
 import type { WorkflowDraftFeaturesPayload } from '@/service/workflow'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
@@ -21,13 +22,36 @@ import {
 } from '@/app/components/workflow/nodes/agent-v2/types'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { API_PREFIX } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { postWithKeepalive } from '@/service/fetch'
+import { consoleClient, consoleQuery } from '@/service/client'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { useWorkflowRefreshDraft } from './use-workflow-refresh-draft'
 
+const isAppDeletingOrDeleted = (queryClient: QueryClient, appId: string) => {
+  return Boolean(
+    queryClient.getMutationCache().find({
+      mutationKey: consoleQuery.apps.byAppId.delete.mutationKey(),
+      exact: true,
+      predicate: (mutation) => {
+        if (mutation.state.status !== 'pending' && mutation.state.status !== 'success') return false
+
+        const variables = mutation.state.variables
+        if (!variables || typeof variables !== 'object' || !('params' in variables)) return false
+
+        const { params } = variables
+        return (
+          typeof params === 'object' &&
+          params !== null &&
+          'app_id' in params &&
+          params.app_id === appId
+        )
+      },
+    }),
+  )
+}
+
 const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
+  const queryClient = useQueryClient()
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const featuresStore = useFeaturesStore()
@@ -36,6 +60,11 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     ...systemFeaturesQueryOptions(),
     select: (s) => s.enable_collaboration_mode,
   })
+
+  const shouldSkipDraftSync = useCallback(() => {
+    const { appId, isWorkflowDataLoaded } = workflowStore.getState()
+    return !appId || !isWorkflowDataLoaded || isAppDeletingOrDeleted(queryClient, appId)
+  }, [queryClient, workflowStore])
 
   const getPostParams = useCallback(() => {
     const { getNodes, edges, transform } = store.getState()
@@ -122,6 +151,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
 
   const syncWorkflowDraftWhenPageClose = useCallback(() => {
     if (getNodesReadOnly()) return
+    if (shouldSkipDraftSync()) return
 
     const canPersistOnPageClose =
       !isCollaborationEnabled ||
@@ -129,10 +159,25 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       collaborationManager.canUseLocalDraftFallback()
     if (!canPersistOnPageClose) return
 
+    const { appId } = workflowStore.getState()
     const postParams = getPostParams()
+    if (!appId || !postParams) return
 
-    if (postParams) postWithKeepalive(`${API_PREFIX}${postParams.url}`, postParams.params)
-  }, [getPostParams, getNodesReadOnly, isCollaborationEnabled])
+    void consoleClient.apps.byAppId.workflows.draft
+      .post(
+        {
+          params: { app_id: appId },
+          body: postParams.params,
+        },
+        {
+          context: {
+            keepalive: true,
+            silent: true,
+          },
+        },
+      )
+      .catch(() => {})
+  }, [getPostParams, getNodesReadOnly, isCollaborationEnabled, shouldSkipDraftSync, workflowStore])
 
   const performLocalSync = useCallback(
     async (
@@ -142,6 +187,10 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       options?: SyncDraftOptions,
     ): Promise<SyncDraftResult | null> => {
       if (getNodesReadOnly()) return null
+      if (shouldSkipDraftSync()) {
+        callback?.onSettled?.()
+        return null
+      }
 
       if (isCollaborationEnabled && !collaborationManager.canPersistLocalGraph()) {
         callback?.onSettled?.()
@@ -195,7 +244,13 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         callback?.onSettled?.()
       }
     },
-    [workflowStore, getNodesReadOnly, handleRefreshWorkflowDraft, isCollaborationEnabled],
+    [
+      workflowStore,
+      getNodesReadOnly,
+      handleRefreshWorkflowDraft,
+      isCollaborationEnabled,
+      shouldSkipDraftSync,
+    ],
   )
 
   const doSyncWorkflowDraftLocally = useSerialAsyncCallback(performLocalSync, getNodesReadOnly)
@@ -206,6 +261,10 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       options?: SyncDraftOptions,
     ): Promise<SyncDraftResult | null> => {
       if (getNodesReadOnly()) return null
+      if (shouldSkipDraftSync()) {
+        callback?.onSettled?.()
+        return null
+      }
 
       const shouldRequestLeader =
         isCollaborationEnabled &&
@@ -243,6 +302,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       getNodesReadOnly,
       getPostParams,
       isCollaborationEnabled,
+      shouldSkipDraftSync,
       workflowStore,
     ],
   )

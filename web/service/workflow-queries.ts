@@ -15,6 +15,17 @@ export function appWorkflowQueryOptions(appId: string | null | undefined) {
   })
 }
 
+export function appWorkflowDefaultBlockConfigsQueryOptions(appId: string) {
+  return consoleQuery.apps.byAppId.workflows.defaultWorkflowBlockConfigs.get.queryOptions({
+    input: {
+      params: {
+        app_id: appId,
+      },
+    },
+    context: { silent: true },
+  })
+}
+
 export function appWorkflowVersionsInfiniteQueryOptions(appId: string | null | undefined) {
   return consoleQuery.apps.byAppId.workflows.get.infiniteOptions({
     input: appId

@@ -1,17 +1,37 @@
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { updateEnvironmentVariables } from './workflow'
+import { FlowType } from '@/types/common'
+import { fetchAllInspectVars, updateEnvironmentVariables } from './workflow'
 
+const mockGet = vi.hoisted(() => vi.fn())
 const mockPost = vi.hoisted(() => vi.fn())
 
 vi.mock('./base', () => ({
-  get: vi.fn(),
+  get: mockGet,
   post: mockPost,
 }))
 
 vi.mock('./client', () => ({
   consoleClient: {},
 }))
+
+describe('fetchAllInspectVars', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('keeps background variable preloading silent', async () => {
+    mockGet.mockResolvedValue({ items: [], total: 0 })
+
+    await fetchAllInspectVars(FlowType.appFlow, 'app-1')
+
+    expect(mockGet).toHaveBeenCalledWith(
+      'apps/app-1/workflows/draft/variables',
+      { params: { page: 1, limit: 100 } },
+      { silent: true },
+    )
+  })
+})
 
 describe('updateEnvironmentVariables', () => {
   beforeEach(() => {

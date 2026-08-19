@@ -14,8 +14,9 @@ const mockSetLastPublishedHasUserInput = vi.fn()
 const mockSetFileUploadConfig = vi.fn()
 const mockWorkflowStoreSetState = vi.fn()
 const mockWorkflowStoreGetState = vi.fn()
-const mockFetchNodesDefaultConfigs = vi.fn()
+const mockFetchDefaultBlockConfigs = vi.fn()
 const mockFetchPublishedWorkflow = vi.fn()
+const mockFetchWorkflowDraft = vi.fn()
 const mockSyncWorkflowDraft = vi.fn()
 
 const renderHook = <Result>(callback: () => Result) =>
@@ -78,18 +79,19 @@ vi.mock('@/service/use-workflow', () => ({
 }))
 
 vi.mock('@/service/workflow-queries', () => ({
+  appWorkflowDefaultBlockConfigsQueryOptions: (appId: string) => ({
+    queryKey: ['workflow', 'default-block-configs', appId],
+    queryFn: () => mockFetchDefaultBlockConfigs(appId),
+  }),
   appWorkflowQueryOptions: (appId: string) => ({
     queryKey: ['workflow', 'publish', appId],
     queryFn: () => mockFetchPublishedWorkflow(`/apps/${appId}/workflows/publish`),
   }),
 }))
 
-const mockFetchWorkflowDraft = vi.fn()
-
 vi.mock('@/service/workflow', () => ({
   fetchWorkflowDraft: (...args: unknown[]) => mockFetchWorkflowDraft(...args),
   syncWorkflowDraft: (...args: unknown[]) => mockSyncWorkflowDraft(...args),
-  fetchNodesDefaultConfigs: (...args: unknown[]) => mockFetchNodesDefaultConfigs(...args),
 }))
 
 const notExistError = () => ({
@@ -136,7 +138,7 @@ describe('useWorkflowInit', () => {
       setLastPublishedHasUserInput: mockSetLastPublishedHasUserInput,
       setFileUploadConfig: mockSetFileUploadConfig,
     })
-    mockFetchNodesDefaultConfigs.mockResolvedValue([])
+    mockFetchDefaultBlockConfigs.mockResolvedValue([])
     mockFetchPublishedWorkflow.mockResolvedValue({ created_at: 0, graph: { nodes: [], edges: [] } })
     mockFetchWorkflowDraft.mockRejectedValueOnce(notExistError())
     mockSyncWorkflowDraft.mockReset()
@@ -312,7 +314,7 @@ describe('useWorkflowInit', () => {
       ],
       conversation_variables: [{ id: 'conversation-1' }],
     })
-    mockFetchNodesDefaultConfigs.mockResolvedValue([
+    mockFetchDefaultBlockConfigs.mockResolvedValue([
       { type: 'start', config: { title: 'Start Config' } },
       { type: 'start', config: { title: 'Ignored Duplicate' } },
     ])
@@ -360,7 +362,7 @@ describe('useWorkflowInit', () => {
   it('should keep published metadata when loading node defaults fails', async () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     mockFetchWorkflowDraft.mockReset().mockResolvedValue(draftResponse)
-    mockFetchNodesDefaultConfigs.mockRejectedValue(new Error('preload failed'))
+    mockFetchDefaultBlockConfigs.mockRejectedValue(new Error('preload failed'))
     mockFetchPublishedWorkflow.mockResolvedValue({
       created_at: 99,
       graph: {
@@ -383,7 +385,7 @@ describe('useWorkflowInit', () => {
   it('should keep node defaults when loading published metadata fails', async () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     mockFetchWorkflowDraft.mockReset().mockResolvedValue(draftResponse)
-    mockFetchNodesDefaultConfigs.mockResolvedValue([
+    mockFetchDefaultBlockConfigs.mockResolvedValue([
       { type: 'start', config: { title: 'Start Config' } },
     ])
     mockFetchPublishedWorkflow.mockRejectedValue(new Error('published workflow failed'))

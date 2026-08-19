@@ -1,5 +1,6 @@
 import type { GeneratedGraph, WorkflowGeneratorMode } from './types'
-import { createApp, deleteApp } from '@/service/apps'
+import { createApp } from '@/service/apps'
+import { consoleClient } from '@/service/client'
 import { fetchWorkflowDraft, syncWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 
@@ -111,7 +112,7 @@ export const applyToNewApp = async ({
   // already succeeded so the app exists; if the sync fails (network blip,
   // backend rejection of the graph) we MUST roll the createApp back so the
   // user isn't left with a discoverable-but-empty app sitting at the top
-  // of their /apps list. ``deleteApp`` is best-effort — if that also fails
+  // of their /apps list. The delete is best-effort — if that also fails
   // (it usually won't, it's a simple DELETE) we surface ``WorkflowApplyOrphanError``
   // so the caller can route to /apps where the orphan is still recoverable
   // by hand.
@@ -126,7 +127,10 @@ export const applyToNewApp = async ({
     })
   } catch (syncErr) {
     try {
-      await deleteApp(app.id)
+      await consoleClient.apps.byAppId.delete(
+        { params: { app_id: app.id } },
+        { context: { silent: true } },
+      )
     } catch (deleteErr) {
       throw new WorkflowApplyOrphanError(app.id, deleteErr)
     }

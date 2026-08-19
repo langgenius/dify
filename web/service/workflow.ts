@@ -10,7 +10,6 @@ import type {
   ConversationVariableResponse,
   FetchWorkflowDraftResponse,
   HumanInputFormData,
-  NodesDefaultConfigsResponse,
   VarInInspect,
 } from '@/types/workflow'
 import { get, post } from './base'
@@ -48,10 +47,6 @@ export const syncWorkflowDraft = ({
     { body: params },
     { silent: true },
   )
-}
-
-export const fetchNodesDefaultConfigs = (url: string) => {
-  return get<NodesDefaultConfigsResponse>(url)
 }
 
 export const singleNodeRun = (
@@ -114,10 +109,13 @@ const fetchAllInspectVarsOnePage = async (
   flowId: string,
   page: number,
 ): Promise<{ total: number; items: VarInInspect[] }> => {
-  return get(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/variables`, {
-    params: { page, limit: 100 },
-  })
+  return get(
+    `${getFlowPrefix(flowType)}/${flowId}/workflows/draft/variables`,
+    { params: { page, limit: 100 } },
+    { silent: true },
+  )
 }
+
 export const fetchAllInspectVars = async (
   flowType: FlowType,
   flowId: string,

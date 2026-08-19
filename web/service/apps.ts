@@ -168,10 +168,6 @@ export const importDSLConfirm = ({
   return post<DSLImportResponse>(`apps/imports/${import_id}/confirm`, { body: {} })
 }
 
-export const deleteApp = (appID: string): Promise<CommonResponse> => {
-  return del<CommonResponse>(`apps/${appID}`)
-}
-
 export const updateAppSiteStatus = ({
   url,
   body,

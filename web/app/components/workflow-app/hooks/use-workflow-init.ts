@@ -10,8 +10,11 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useWorkflowConfig } from '@/service/use-workflow'
-import { fetchNodesDefaultConfigs, fetchWorkflowDraft, syncWorkflowDraft } from '@/service/workflow'
-import { appWorkflowQueryOptions } from '@/service/workflow-queries'
+import { fetchWorkflowDraft, syncWorkflowDraft } from '@/service/workflow'
+import {
+  appWorkflowDefaultBlockConfigsQueryOptions,
+  appWorkflowQueryOptions,
+} from '@/service/workflow-queries'
 import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { useWorkflowDraftGraphForCanvas } from './use-workflow-draft-graph-for-canvas'
@@ -52,6 +55,17 @@ const hasConnectedUserInput = (nodes: Node[] = [], edges: Edge[] = []): boolean 
   if (!startNodeIds.length) return false
 
   return edges.some((edge) => startNodeIds.includes(edge.source))
+}
+
+const isNodeDefaultConfig = (
+  block: Record<string, unknown>,
+): block is { type: string; config: Record<string, unknown> } => {
+  return (
+    typeof block.type === 'string' &&
+    typeof block.config === 'object' &&
+    block.config !== null &&
+    !Array.isArray(block.config)
+  )
 }
 
 export const useWorkflowInit = () => {
@@ -194,14 +208,14 @@ export const useWorkflowInit = () => {
 
   const handleFetchPreloadData = useCallback(async () => {
     const [nodesDefaultConfigsResult, publishedWorkflowResult] = await Promise.allSettled([
-      fetchNodesDefaultConfigs(`/apps/${appDetail.id}/workflows/default-workflow-block-configs`),
+      queryClient.fetchQuery(appWorkflowDefaultBlockConfigsQueryOptions(appDetail.id)),
       queryClient.fetchQuery(appWorkflowQueryOptions(appDetail.id)),
     ])
 
     if (nodesDefaultConfigsResult.status === 'fulfilled') {
       const nodesDefaultConfigsData = nodesDefaultConfigsResult.value
       workflowStore.setState({
-        nodesDefaultConfigs: nodesDefaultConfigsData.reduce(
+        nodesDefaultConfigs: nodesDefaultConfigsData.filter(isNodeDefaultConfig).reduce(
           (acc, block) => {
             if (!acc[block.type]) acc[block.type] = { ...block.config }
             return acc
