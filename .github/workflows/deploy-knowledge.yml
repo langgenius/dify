@@ -91,3 +91,24 @@ jobs:
             tr -d '\r' < "$deploy_script" > "$normalized_script"
             mv "$normalized_script" "$deploy_script"
             bash -e -u -o pipefail "$deploy_script"
+
+      - name: Apply KnowledgeFS database migrations
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
+        with:
+          host: ${{ secrets.SSH_NEW_RAG_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -euo pipefail
+
+            mapfile -t knowledge_fs_containers < <(
+              docker ps \
+                --filter 'label=com.docker.compose.service=knowledge_fs' \
+                --format '{{.ID}}'
+            )
+            if [[ "${#knowledge_fs_containers[@]}" -ne 1 ]]; then
+              echo "Expected exactly one running KnowledgeFS container, found ${#knowledge_fs_containers[@]}." >&2
+              exit 1
+            fi
+
+            docker exec "${knowledge_fs_containers[0]}" node migrate.mjs

@@ -135,6 +135,27 @@ test("deploy workflow normalizes CRLF scripts and fails closed", () => {
   assert.doesNotMatch(failure.stdout, /must-not-run/);
 });
 
+test("deploy workflow applies KnowledgeFS migrations from the deployed image", () => {
+  const migrateStep = deployWorkflowDocument.jobs.deploy.steps.find(
+    (step) => step.name === "Apply KnowledgeFS database migrations",
+  );
+  assert.ok(migrateStep, "workflow is missing the KnowledgeFS migration step");
+  assert.match(migrateStep.uses, /^appleboy\/ssh-action@[0-9a-f]{40}$/);
+  assert.equal(migrateStep.with.host, "${{ secrets.SSH_NEW_RAG_HOST }}");
+  assert.equal(migrateStep.with.username, "${{ secrets.SSH_USER }}");
+  assert.equal(migrateStep.with.key, "${{ secrets.SSH_PRIVATE_KEY }}");
+  assert.match(migrateStep.with.script, /^set -euo pipefail$/m);
+  assert.match(
+    migrateStep.with.script,
+    /--filter 'label=com\.docker\.compose\.service=knowledge_fs'/,
+  );
+  assert.match(migrateStep.with.script, /\[\[ "\$\{#knowledge_fs_containers\[@\]\}" -ne 1 \]\]/);
+  assert.match(
+    migrateStep.with.script,
+    /docker exec "\$\{knowledge_fs_containers\[0\]\}" node migrate\.mjs/,
+  );
+});
+
 test("root workflow preserves the independent KnowledgeFS pnpm workspace", () => {
   assert.equal(packageJson.packageManager, "pnpm@10.33.0");
   assert.match(workflow, /working-directory: \.\/knowledge-fs/);
