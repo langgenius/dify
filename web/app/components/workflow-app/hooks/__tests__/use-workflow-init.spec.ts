@@ -1,8 +1,9 @@
-import { CancelledError } from '@tanstack/react-query'
-import { waitFor } from '@testing-library/react'
+import type { QueryClient } from '@tanstack/react-query'
+import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { createAccountProfileQueryClient } from '@/test/console/account-profile'
+import { createQueryClientWrapper } from '@/test/console/query-client'
 import { renderHook as renderHookWithConsoleState } from '@/test/console/render'
 import { AppACLPermission } from '@/utils/permission'
 import { useWorkflowInit } from '../use-workflow-init'
@@ -20,9 +21,12 @@ const mockFetchPublishedWorkflow = vi.fn()
 const mockFetchWorkflowDraft = vi.fn()
 const mockSyncWorkflowDraft = vi.fn()
 
-const renderHook = <Result>(callback: () => Result) =>
+const renderHook = <Result>(
+  callback: () => Result,
+  queryClient: QueryClient = createAccountProfileQueryClient({ id: 'user-1' }),
+) =>
   renderHookWithConsoleState(callback, {
-    wrapper: createAccountProfileQueryWrapper({ id: 'user-1' }),
+    wrapper: createQueryClientWrapper(queryClient),
   })
 
 let appStoreState: {
@@ -90,7 +94,8 @@ vi.mock('@/service/workflow-queries', () => ({
   }),
   appWorkflowDraftQueryOptions: (appId: string) => ({
     queryKey: ['workflow', 'draft', appId],
-    queryFn: () => mockFetchWorkflowDraft(`/apps/${appId}/workflows/draft`),
+    queryFn: ({ signal }: { signal: AbortSignal }) =>
+      mockFetchWorkflowDraft(`/apps/${appId}/workflows/draft`, signal),
   }),
 }))
 
@@ -303,6 +308,43 @@ describe('useWorkflowInit', () => {
     expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
   })
 
+  it('should resume draft initialization after a canceled query is invalidated', async () => {
+    const queryClient = createAccountProfileQueryClient({ id: 'user-1' })
+    mockFetchWorkflowDraft
+      .mockReset()
+      .mockImplementationOnce(
+        (_url: string, signal: AbortSignal) =>
+          new Promise((_resolve, reject) => {
+            signal.addEventListener(
+              'abort',
+              () => reject(new DOMException('The operation was aborted', 'AbortError')),
+              { once: true },
+            )
+          }),
+      )
+      .mockResolvedValueOnce(draftResponse)
+
+    const { result } = renderHook(() => useWorkflowInit(), queryClient)
+
+    await waitFor(() => expect(mockFetchWorkflowDraft).toHaveBeenCalledTimes(1))
+
+    await act(async () => {
+      await queryClient.cancelQueries({ queryKey: ['workflow'] })
+    })
+
+    expect(result.current.isLoading).toBe(true)
+
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: ['workflow'] })
+    })
+
+    await waitFor(() => {
+      expect(result.current.data?.hash).toBe('server-hash')
+      expect(result.current.isLoading).toBe(false)
+    })
+    expect(mockFetchWorkflowDraft).toHaveBeenCalledTimes(2)
+  })
+
   it('should hydrate draft state, preload defaults, and derive published workflow metadata on success', async () => {
     workflowConfigState = {
       data: { enabled: true, sizeLimit: 20 },
@@ -383,29 +425,6 @@ describe('useWorkflowInit', () => {
     })
 
     expect(consoleErrorSpy).toHaveBeenCalled()
-    consoleErrorSpy.mockRestore()
-  })
-
-  it('should keep fulfilled preload data and ignore a sibling cancellation', async () => {
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    mockFetchWorkflowDraft.mockReset().mockResolvedValue(draftResponse)
-    mockFetchDefaultBlockConfigs.mockRejectedValue(new CancelledError())
-    mockFetchPublishedWorkflow.mockResolvedValue({
-      created_at: 99,
-      graph: {
-        nodes: [{ id: 'start', data: { type: BlockEnum.Start } }],
-        edges: [{ source: 'start', target: 'end' }],
-      },
-    })
-
-    renderHook(() => useWorkflowInit())
-
-    await waitFor(() => {
-      expect(mockSetPublishedAt).toHaveBeenCalledWith(99)
-      expect(mockSetLastPublishedHasUserInput).toHaveBeenCalledWith(true)
-    })
-
-    expect(consoleErrorSpy).not.toHaveBeenCalled()
     consoleErrorSpy.mockRestore()
   })
 

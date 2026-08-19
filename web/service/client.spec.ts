@@ -795,10 +795,11 @@ describe('consoleQuery app mutation defaults', () => {
     expect(synchronized).toBe(true)
   })
 
-  it('should cancel every current app workflow query before deleting the app', async () => {
+  it('should cancel app workflow queries before deletion and restore them on failure', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = new QueryClient()
     const cancelQueries = vi.spyOn(queryClient, 'cancelQueries')
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     const mutationOptions = consoleQuery.apps.byAppId.delete.mutationOptions()
     const input = { params: { app_id: 'app-1' } }
     const otherInput = { params: { app_id: 'app-2' } }
@@ -828,6 +829,19 @@ describe('consoleQuery app mutation defaults', () => {
       queryKey: workflowQueryKey,
     })
     expect(cancelQueries).toHaveBeenCalledTimes(1)
+
+    const recovery = mutationOptions.onError?.(
+      new Error('delete failed') as never,
+      input,
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(recovery).toBeUndefined()
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: workflowQueryKey,
+    })
+    expect(invalidateQueries).toHaveBeenCalledTimes(1)
   })
 
   it('should refresh plan usage and keep a delete mutation pending until every app list synchronizes', async () => {
