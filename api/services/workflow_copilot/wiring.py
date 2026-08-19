@@ -58,9 +58,11 @@ def stream_frames(view_dict: dict, subscription) -> Iterator[str]:
     Frame format matches the frontend parser + the retired Go transport:
     `event: <name>\ndata: <json>\n\n`.
     """
-    yield f"event: snapshot\ndata: {json.dumps(view_dict)}\n\n"
     deadline = time.monotonic() + _MAX_STREAM_SECONDS
     try:
+        # Inside the try so `finally: subscription.close()` runs even if the
+        # client disconnects during the snapshot frame.
+        yield f"event: snapshot\ndata: {json.dumps(view_dict)}\n\n"
         while time.monotonic() < deadline:
             try:
                 raw = subscription.receive(timeout=_HEARTBEAT_SECONDS)
