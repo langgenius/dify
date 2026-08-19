@@ -5,10 +5,9 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
-  DialogBackdrop,
   DialogCloseButton,
-  DialogPopup,
-  DialogPortal,
+  DialogContent,
+  DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
@@ -393,19 +392,23 @@ export function QualityEvaluationPanel({ knowledgeSpaceId }: { knowledgeSpaceId:
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogPortal>
-          <DialogBackdrop />
-          <DialogPopup className="w-[480px] max-w-[calc(100vw-32px)] p-6">
-            <DialogTitle>
+        <DialogContent className="w-130! max-w-[calc(100vw-2rem)]! overflow-hidden! p-0!">
+          <div className="relative border-b border-divider-subtle px-6 pt-6 pb-5">
+            <DialogTitle className="pr-10 title-xl-semi-bold text-text-primary">
               {t(($) => $['newKnowledge.qualityPage.evaluation.dialogTitle'])}
             </DialogTitle>
-            <DialogCloseButton />
-            <p className="mt-2 system-xs-regular text-text-tertiary">
+            <DialogDescription className="mt-1.5 pr-10 system-sm-regular text-text-tertiary">
               {t(($) => $['newKnowledge.qualityPage.evaluation.dialogDescription'])}
+            </DialogDescription>
+            <DialogCloseButton aria-label={t(($) => $['newKnowledge.qualityPage.closeDialog'])} />
+          </div>
+          <div className="px-6 py-5">
+            <p className="system-xs-medium-uppercase text-text-tertiary">
+              {t(($) => $['newKnowledge.qualityPage.evaluation.modeLabel'])}
             </p>
             <RadioGroup<EvaluationMode>
               aria-label={t(($) => $['newKnowledge.qualityPage.evaluation.modeLabel'])}
-              className="mt-5 grid grid-cols-2 gap-2"
+              className="mt-3 grid grid-cols-2 gap-2"
               value={mode}
               onValueChange={setMode}
             >
@@ -417,7 +420,7 @@ export function QualityEvaluationPanel({ knowledgeSpaceId }: { knowledgeSpaceId:
                   render={
                     <Button
                       type="button"
-                      className="justify-start"
+                      className="h-11 justify-start px-4"
                       variant={mode === candidate ? 'secondary' : 'ghost'}
                     />
                   }
@@ -426,21 +429,21 @@ export function QualityEvaluationPanel({ knowledgeSpaceId }: { knowledgeSpaceId:
                 </RadioItem>
               ))}
             </RadioGroup>
-            <div className="mt-6 flex justify-end gap-2">
-              <Button disabled={createMutation.isPending} onClick={() => setDialogOpen(false)}>
-                {t(($) => $['newKnowledge.qualityPage.cancel'])}
-              </Button>
-              <Button
-                variant="primary"
-                loading={createMutation.isPending}
-                disabled={createMutation.isPending}
-                onClick={() => void startEvaluation()}
-              >
-                {t(($) => $['newKnowledge.qualityPage.evaluation.start'])}
-              </Button>
-            </div>
-          </DialogPopup>
-        </DialogPortal>
+          </div>
+          <div className="flex justify-end gap-2 border-t border-divider-subtle bg-background-section-burn px-6 py-4">
+            <Button disabled={createMutation.isPending} onClick={() => setDialogOpen(false)}>
+              {t(($) => $['newKnowledge.qualityPage.cancel'])}
+            </Button>
+            <Button
+              variant="primary"
+              loading={createMutation.isPending}
+              disabled={createMutation.isPending}
+              onClick={() => void startEvaluation()}
+            >
+              {t(($) => $['newKnowledge.qualityPage.evaluation.start'])}
+            </Button>
+          </div>
+        </DialogContent>
       </Dialog>
     </section>
   )

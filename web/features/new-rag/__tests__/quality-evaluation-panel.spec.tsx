@@ -128,6 +128,32 @@ describe('QualityEvaluationPanel', () => {
     ).toBeEnabled()
   })
 
+  it('opens evaluation settings in an accessible centered modal', async () => {
+    const user = userEvent.setup()
+    renderPanel()
+
+    await screen.findByText('dataset.newKnowledge.qualityPage.evaluation.emptyTitle')
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.qualityPage.evaluation.run',
+      }),
+    )
+
+    const dialog = screen.getByRole('dialog', {
+      name: 'dataset.newKnowledge.qualityPage.evaluation.dialogTitle',
+    })
+    expect(dialog).toHaveClass(
+      'fixed',
+      'top-1/2',
+      'left-1/2',
+      '-translate-x-1/2',
+      '-translate-y-1/2',
+    )
+    expect(dialog).toHaveAccessibleDescription(
+      'dataset.newKnowledge.qualityPage.evaluation.dialogDescription',
+    )
+  })
+
   it('queues every active golden question and opens the persisted evidence report', async () => {
     const user = userEvent.setup()
     renderPanel()
