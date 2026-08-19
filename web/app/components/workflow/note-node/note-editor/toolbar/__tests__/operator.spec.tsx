@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import Operator from '../operator'
 
 const renderOperator = (showAuthor = false) => {
@@ -7,7 +8,7 @@ const renderOperator = (showAuthor = false) => {
   const onDelete = vi.fn()
   const onShowAuthorChange = vi.fn()
 
-  const renderResult = render(
+  render(
     <Operator
       onCopy={onCopy}
       onDuplicate={onDuplicate}
@@ -18,7 +19,6 @@ const renderOperator = (showAuthor = false) => {
   )
 
   return {
-    ...renderResult,
     onCopy,
     onDelete,
     onDuplicate,
@@ -27,41 +27,31 @@ const renderOperator = (showAuthor = false) => {
 }
 
 describe('NoteEditor Toolbar Operator', () => {
-  it('should trigger copy, duplicate, and delete from the opened menu', () => {
-    const {
-      container,
-      onCopy,
-      onDelete,
-      onDuplicate,
-    } = renderOperator()
+  it('triggers copy, duplicate, and delete from the opened menu', async () => {
+    const user = userEvent.setup()
+    const { onCopy, onDelete, onDuplicate } = renderOperator()
 
-    const trigger = container.querySelector('[data-state="closed"]') as HTMLElement
-
-    fireEvent.click(trigger)
-    fireEvent.click(screen.getByText('workflow.common.copy'))
-
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+    await user.click(screen.getByText('workflow.common.copy'))
     expect(onCopy).toHaveBeenCalledTimes(1)
 
-    fireEvent.click(container.querySelector('[data-state="closed"]') as HTMLElement)
-    fireEvent.click(screen.getByText('workflow.common.duplicate'))
-
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+    await user.click(screen.getByText('workflow.common.duplicate'))
     expect(onDuplicate).toHaveBeenCalledTimes(1)
 
-    fireEvent.click(container.querySelector('[data-state="closed"]') as HTMLElement)
-    fireEvent.click(screen.getByText('common.operation.delete'))
-
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+    await user.click(screen.getByText('common.operation.delete'))
     expect(onDelete).toHaveBeenCalledTimes(1)
   })
 
-  it('should forward the switch state through onShowAuthorChange', () => {
-    const {
-      container,
-      onShowAuthorChange,
-    } = renderOperator(true)
+  it('keeps the menu open when toggling show author', async () => {
+    const user = userEvent.setup()
+    const { onShowAuthorChange } = renderOperator(true)
 
-    fireEvent.click(container.querySelector('[data-state="closed"]') as HTMLElement)
-    fireEvent.click(screen.getByRole('switch'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+    await user.click(screen.getByRole('switch'))
 
     expect(onShowAuthorChange).toHaveBeenCalledWith(false)
+    expect(screen.getByText('workflow.nodes.note.editor.showAuthor')).toBeInTheDocument()
   })
 })

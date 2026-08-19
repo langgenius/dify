@@ -1,12 +1,13 @@
 import type { TFunction } from 'i18next'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { AppModeEnum } from '@/types/app'
 import { getAppModeLabel } from '../app-mode-labels'
 
 describe('getAppModeLabel', () => {
-  const t: TFunction = ((key: string, options?: Record<string, unknown>) => {
+  const t = withSelectorKey((key: string, options?: Record<string, unknown>) => {
     const ns = (options?.ns as string | undefined) ?? ''
     return ns ? `${ns}.${key}` : key
-  }) as TFunction
+  }, 'app') as unknown as TFunction
 
   it('should return advanced chat label', () => {
     expect(getAppModeLabel(AppModeEnum.ADVANCED_CHAT, t)).toBe('app.types.advanced')

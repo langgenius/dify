@@ -8,8 +8,7 @@ type DynamicPdfPreviewProps = {
 }
 const DynamicPdfPreview = dynamic<DynamicPdfPreviewProps>(
   (() => {
-    if (typeof window !== 'undefined')
-      return import('./pdf-preview')
+    if (typeof window !== 'undefined') return import('./pdf-preview')
   }) as any,
   { ssr: false }, // This will prevent the module from being loaded on the server-side
 )

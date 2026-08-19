@@ -6,8 +6,10 @@ import { ChatVarType } from '../type'
 
 type MockWorkflowStoreState = {
   setShowChatVariablePanel: (value: boolean) => void
+  appId: string
   conversationVariables: ConversationVariable[]
   setConversationVariables: (value: ConversationVariable[]) => void
+  setControlPromptEditorRerenderKey: (value: number) => void
 }
 
 type MockFlowStore = {
@@ -17,10 +19,9 @@ type MockFlowStore = {
 
 const mockSetShowChatVariablePanel = vi.fn()
 const mockSetConversationVariables = vi.fn()
-const mockDoSyncWorkflowDraft = vi.fn((_sync: boolean, options?: { onSuccess?: () => void }) => {
-  options?.onSuccess?.()
-})
+const mockSetControlPromptEditorRerenderKey = vi.fn()
 const mockInvalidateConversationVarValues = vi.fn()
+const mockUpdateConversationVariables = vi.fn().mockResolvedValue(undefined)
 const mockFindUsedVarNodes = vi.fn<(selector: string[], nodes: Node[]) => Node[]>()
 const mockUpdateNodeVars = vi.fn<(node: Node, current: string[], next: string[]) => Node>()
 
@@ -60,17 +61,18 @@ vi.mock('reactflow', () => ({
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
-  useStore: <T,>(selector: (state: MockWorkflowStoreState) => T) => selector({
-    setShowChatVariablePanel: mockSetShowChatVariablePanel,
-    conversationVariables: mockConversationVariables,
-    setConversationVariables: mockSetConversationVariables,
-  }),
+  useStore: <T,>(selector: (state: MockWorkflowStoreState) => T) =>
+    selector({
+      setShowChatVariablePanel: mockSetShowChatVariablePanel,
+      appId: 'app-1',
+      conversationVariables: mockConversationVariables,
+      setConversationVariables: mockSetConversationVariables,
+      setControlPromptEditorRerenderKey: mockSetControlPromptEditorRerenderKey,
+    }),
 }))
 
-vi.mock('@/app/components/workflow/hooks/use-nodes-sync-draft', () => ({
-  useNodesSyncDraft: () => ({
-    doSyncWorkflowDraft: mockDoSyncWorkflowDraft,
-  }),
+vi.mock('@/service/workflow', () => ({
+  updateConversationVariables: (...args: unknown[]) => mockUpdateConversationVariables(...args),
 }))
 
 vi.mock('../../../hooks/use-inspect-vars-crud', () => ({
@@ -80,7 +82,8 @@ vi.mock('../../../hooks/use-inspect-vars-crud', () => ({
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/utils', () => ({
-  findUsedVarNodes: (...args: Parameters<typeof mockFindUsedVarNodes>) => mockFindUsedVarNodes(...args),
+  findUsedVarNodes: (...args: Parameters<typeof mockFindUsedVarNodes>) =>
+    mockFindUsedVarNodes(...args),
   updateNodeVars: (...args: Parameters<typeof mockUpdateNodeVars>) => mockUpdateNodeVars(...args),
 }))
 
@@ -102,51 +105,60 @@ vi.mock('@/app/components/workflow/panel/chat-variable-panel/components/variable
   ),
 }))
 
-vi.mock('@/app/components/workflow/panel/chat-variable-panel/components/variable-modal-trigger', () => ({
-  default: ({
-    open,
-    showTip,
-    chatVar,
-    onSave,
-    onClose,
-  }: {
-    open: boolean
-    showTip: boolean
-    chatVar?: ConversationVariable
-    onSave: (chatVar: ConversationVariable) => void
-    onClose: () => void
-  }) => (
-    <div data-testid="variable-modal-trigger">
-      <span>{open ? 'open' : 'closed'}</span>
-      <span>{showTip ? 'tip-on' : 'tip-off'}</span>
-      <span>{chatVar?.name || 'new-variable'}</span>
-      <button
-        type="button"
-        onClick={() => onSave({
-          id: 'var-added',
-          name: 'fresh_var',
-          value_type: ChatVarType.String,
-          value: '',
-          description: 'Added variable',
-        })}
-      >
-        save-add
-      </button>
-      {chatVar && (
+vi.mock(
+  '@/app/components/workflow/panel/chat-variable-panel/components/variable-modal-trigger',
+  () => ({
+    default: ({
+      open,
+      showTip,
+      chatVar,
+      onSave,
+      onClose,
+    }: {
+      open: boolean
+      showTip: boolean
+      chatVar?: ConversationVariable
+      onSave: (chatVar: ConversationVariable) => void
+      onClose: () => void
+    }) => (
+      <div data-testid="variable-modal-trigger">
+        <span>{open ? 'open' : 'closed'}</span>
+        <span>{showTip ? 'tip-on' : 'tip-off'}</span>
+        <span>{chatVar?.name || 'new-variable'}</span>
         <button
           type="button"
-          onClick={() => onSave({
-            ...chatVar,
-            name: `${chatVar.name}_next`,
-          })}
+          onClick={() =>
+            onSave({
+              id: 'var-added',
+              name: 'fresh_var',
+              value_type: ChatVarType.String,
+              value: '',
+              description: 'Added variable',
+            })
+          }
         >
-          save-edit
+          save-add
         </button>
-      )}
-      <button type="button" onClick={onClose}>close-trigger</button>
-    </div>
-  ),
-}))
+        {chatVar && (
+          <button
+            type="button"
+            onClick={() =>
+              onSave({
+                ...chatVar,
+                name: `${chatVar.name}_next`,
+              })
+            }
+          >
+            save-edit
+          </button>
+        )}
+        <button type="button" onClick={onClose}>
+          close-trigger
+        </button>
+      </div>
+    ),
+  }),
+)
 
 vi.mock('@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm', () => ({
   default: ({
@@ -158,13 +170,16 @@ vi.mock('@/app/components/workflow/nodes/_base/components/remove-effect-var-conf
     onConfirm: () => void
     onCancel: () => void
   }) => {
-    if (!isShow)
-      return null
+    if (!isShow) return null
 
     return (
       <div data-testid="remove-effect-var-confirm">
-        <button type="button" onClick={onConfirm}>confirm-remove</button>
-        <button type="button" onClick={onCancel}>cancel-remove</button>
+        <button type="button" onClick={onConfirm}>
+          confirm-remove
+        </button>
+        <button type="button" onClick={onCancel}>
+          cancel-remove
+        </button>
       </div>
     )
   },
@@ -175,22 +190,31 @@ describe('ChatVariablePanel', () => {
     vi.clearAllMocks()
     mockConversationVariables = [createConversationVariable()]
     mockFlowNodes = [createNode('node-1'), createNode('node-2')]
+    mockUpdateConversationVariables.mockResolvedValue(undefined)
     mockFindUsedVarNodes.mockReturnValue([])
     mockUpdateNodeVars.mockImplementation((node: Node) => node)
   })
 
   it('should toggle the tips area and close the panel', async () => {
     const user = userEvent.setup()
-    const { container } = render(<ChatVariablePanel />)
+    render(<ChatVariablePanel />)
 
     expect(screen.getByText('workflow.chatVariable.panelDescription')).toBeInTheDocument()
 
-    const toggleTipButton = screen.getAllByRole('button')[0]!
+    const toggleTipButton = screen.getByRole('button', {
+      name: 'workflow.chatVariable.tips',
+      expanded: true,
+    })
     await user.click(toggleTipButton)
     expect(screen.queryByText('workflow.chatVariable.panelDescription')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'workflow.chatVariable.tips',
+        expanded: false,
+      }),
+    ).toBeInTheDocument()
 
-    const closeButton = container.querySelector('.flex.h-6.w-6.cursor-pointer.items-center.justify-center') as HTMLElement
-    await user.click(closeButton)
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     expect(mockSetShowChatVariablePanel).toHaveBeenCalledWith(false)
   })
@@ -207,9 +231,15 @@ describe('ChatVariablePanel', () => {
         expect.objectContaining({ id: 'var-added', name: 'fresh_var' }),
         createConversationVariable(),
       ])
+      expect(mockUpdateConversationVariables).toHaveBeenCalledWith({
+        appId: 'app-1',
+        conversationVariables: [
+          expect.objectContaining({ id: 'var-added', name: 'fresh_var' }),
+          createConversationVariable(),
+        ],
+      })
+      expect(mockInvalidateConversationVarValues).toHaveBeenCalledTimes(1)
     })
-    expect(mockDoSyncWorkflowDraft).toHaveBeenCalledTimes(1)
-    expect(mockInvalidateConversationVarValues).toHaveBeenCalledTimes(1)
   })
 
   it('should rename existing variables and update affected node references', async () => {
@@ -234,6 +264,7 @@ describe('ChatVariablePanel', () => {
       ['conversation', 'conversation_var_next'],
     )
     expect(mockSetNodes).toHaveBeenCalledWith([updatedNode, createNode('node-2')])
+    expect(mockSetControlPromptEditorRerenderKey).toHaveBeenCalled()
   })
 
   it('should require confirmation before deleting variables referenced by workflow nodes', async () => {

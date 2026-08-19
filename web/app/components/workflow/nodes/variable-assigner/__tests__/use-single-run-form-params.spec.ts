@@ -4,7 +4,9 @@ import { renderHook } from '@testing-library/react'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import useSingleRunFormParams from '../use-single-run-form-params'
 
-const createData = (overrides: Partial<VariableAssignerNodeType> = {}): VariableAssignerNodeType => ({
+const createData = (
+  overrides: Partial<VariableAssignerNodeType> = {},
+): VariableAssignerNodeType => ({
   title: 'Variable Assigner',
   desc: '',
   type: BlockEnum.VariableAssigner,
@@ -17,7 +19,10 @@ const createData = (overrides: Partial<VariableAssignerNodeType> = {}): Variable
         groupId: 'group-1',
         group_name: 'Group1',
         output_type: VarType.string,
-        variables: [['source-node', 'sharedVar'], ['source-node', 'uniqueVar']],
+        variables: [
+          ['source-node', 'sharedVar'],
+          ['source-node', 'uniqueVar'],
+        ],
       },
       {
         groupId: 'group-2',
@@ -54,23 +59,25 @@ describe('variable-assigner/use-single-run-form-params', () => {
       },
     ])
 
-    const { result } = renderHook(() => useSingleRunFormParams({
-      id: 'assigner-node',
-      payload: createData(),
-      runInputData: { sharedVar: 'hello' },
-      runInputDataRef: { current: {} },
-      getInputVars: () => [],
-      setRunInputData,
-      toVarInputs: () => [],
-      varSelectorsToVarInputs,
-    }))
+    const { result } = renderHook(() =>
+      useSingleRunFormParams({
+        id: 'assigner-node',
+        payload: createData(),
+        runInputData: { sharedVar: 'hello' },
+        runInputDataRef: { current: {} },
+        getInputVars: () => [],
+        setRunInputData,
+        toVarInputs: () => [],
+        varSelectorsToVarInputs,
+      }),
+    )
 
     expect(varSelectorsToVarInputs).toHaveBeenCalledWith([
       ['source-node', 'sharedVar'],
       ['source-node', 'uniqueVar'],
       ['source-node', 'sharedVar'],
     ])
-    expect(result.current.forms[0].inputs).toEqual([
+    expect(result.current.forms[0]!.inputs).toEqual([
       {
         label: 'Shared',
         variable: 'sharedVar',
@@ -85,35 +92,38 @@ describe('variable-assigner/use-single-run-form-params', () => {
       },
     ])
 
-    result.current.forms[0].onChange({ sharedVar: 'updated' })
+    result.current.forms[0]!.onChange({ sharedVar: 'updated' })
 
     expect(setRunInputData).toHaveBeenCalledWith({ sharedVar: 'updated' })
     expect(result.current.getDependentVars()).toEqual([
-      [['source-node', 'sharedVar'], ['source-node', 'uniqueVar']],
+      [
+        ['source-node', 'sharedVar'],
+        ['source-node', 'uniqueVar'],
+      ],
       [['source-node', 'sharedVar']],
     ])
   })
 
   it('returns root variables directly when grouping is disabled', () => {
-    const { result } = renderHook(() => useSingleRunFormParams({
-      id: 'assigner-node',
-      payload: createData({
-        advanced_settings: {
-          group_enabled: false,
-          groups: [],
-        },
-        variables: [['source-node', 'rootVar']],
+    const { result } = renderHook(() =>
+      useSingleRunFormParams({
+        id: 'assigner-node',
+        payload: createData({
+          advanced_settings: {
+            group_enabled: false,
+            groups: [],
+          },
+          variables: [['source-node', 'rootVar']],
+        }),
+        runInputData: {},
+        runInputDataRef: { current: {} },
+        getInputVars: () => [],
+        setRunInputData: vi.fn(),
+        toVarInputs: () => [],
+        varSelectorsToVarInputs: () => [],
       }),
-      runInputData: {},
-      runInputDataRef: { current: {} },
-      getInputVars: () => [],
-      setRunInputData: vi.fn(),
-      toVarInputs: () => [],
-      varSelectorsToVarInputs: () => [],
-    }))
+    )
 
-    expect(result.current.getDependentVars()).toEqual([
-      [['source-node', 'rootVar']],
-    ])
+    expect(result.current.getDependentVars()).toEqual([[['source-node', 'rootVar']]])
   })
 })

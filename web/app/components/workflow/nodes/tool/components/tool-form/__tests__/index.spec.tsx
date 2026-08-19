@@ -23,7 +23,9 @@ const mockToolFormItem = vi.fn<(props: MockToolFormItemProps) => void>()
 vi.mock('../item', () => ({
   default: (props: MockToolFormItemProps) => {
     mockToolFormItem(props)
-    return <div data-testid={`tool-form-item-${props.schema.variable}`}>{props.schema.label.en_US}</div>
+    return (
+      <div data-testid={`tool-form-item-${props.schema.variable}`}>{props.schema.label.en_US}</div>
+    )
   },
 }))
 
@@ -79,10 +81,10 @@ describe('tool/tool-form', () => {
       />,
     )
 
-    expect(screen.getByTestId('tool-form-item-api_key')).toBeInTheDocument()
-    expect(screen.getByTestId('tool-form-item-region')).toBeInTheDocument()
+    expect(screen.getByTestId('tool-form-item-api_key'))!.toBeInTheDocument()
+    expect(screen.getByTestId('tool-form-item-region'))!.toBeInTheDocument()
     expect(mockToolFormItem).toHaveBeenCalledTimes(2)
-    expect(mockToolFormItem.mock.calls[0][0]).toMatchObject({
+    expect(mockToolFormItem.mock.calls[0]![0]).toMatchObject({
       readOnly: true,
       nodeId: 'tool-node',
       schema: expect.objectContaining({ variable: 'api_key' }),
@@ -98,16 +100,10 @@ describe('tool/tool-form', () => {
 
   it('should render an empty container when schema is empty', () => {
     const { container } = render(
-      <ToolForm
-        readOnly={false}
-        nodeId="tool-node"
-        schema={[]}
-        value={{}}
-        onChange={vi.fn()}
-      />,
+      <ToolForm readOnly={false} nodeId="tool-node" schema={[]} value={{}} onChange={vi.fn()} />,
     )
 
-    expect(container.firstChild).toHaveClass('space-y-1')
+    expect(container.firstChild)!.toHaveClass('space-y-1')
     expect(screen.queryByTestId(/tool-form-item-/)).not.toBeInTheDocument()
     expect(mockToolFormItem).not.toHaveBeenCalled()
   })

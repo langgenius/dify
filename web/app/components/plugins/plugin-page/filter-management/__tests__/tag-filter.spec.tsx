@@ -1,8 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import TagFilter from '../tag-filter'
-
-let portalOpen = false
 
 vi.mock('../../../hooks', () => ({
   useTags: () => ({
@@ -11,43 +9,24 @@ vi.mock('../../../hooks', () => ({
       { name: 'rag', label: 'RAG' },
       { name: 'search', label: 'Search' },
     ],
-    getTagLabel: (name: string) => ({
-      agent: 'Agent',
-      rag: 'RAG',
-      search: 'Search',
-    }[name] ?? name),
+    getTagLabel: (name: string) =>
+      ({
+        agent: 'Agent',
+        rag: 'RAG',
+        search: 'Search',
+      })[name] ?? name,
   }),
-}))
-
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({
-    children,
-    open,
-  }: {
-    children: React.ReactNode
-    open: boolean
-  }) => {
-    portalOpen = open
-    return <div>{children}</div>
-  },
-  PortalToFollowElemTrigger: ({
-    children,
-    onClick,
-  }: {
-    children: React.ReactNode
-    onClick: () => void
-  }) => <button data-testid="trigger" onClick={onClick}>{children}</button>,
-  PortalToFollowElemContent: ({
-    children,
-  }: {
-    children: React.ReactNode
-  }) => portalOpen ? <div data-testid="portal-content">{children}</div> : null,
 }))
 
 describe('TagFilter', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    portalOpen = false
+  })
+
+  it('renders the tags placeholder when nothing is selected', () => {
+    render(<TagFilter value={[]} onChange={vi.fn()} />)
+
+    expect(screen.getByText('common.tag.tags')).toBeInTheDocument()
   })
 
   it('renders selected tag labels and the overflow counter', () => {
@@ -57,14 +36,16 @@ describe('TagFilter', () => {
     expect(screen.getByText('+1')).toBeInTheDocument()
   })
 
-  it('filters options by search text and toggles tag selection', () => {
+  it('filters options by search text and toggles tag selection', async () => {
     const onChange = vi.fn()
     render(<TagFilter value={['agent']} onChange={onChange} />)
 
-    fireEvent.click(screen.getByTestId('trigger'))
-    const portal = screen.getByTestId('portal-content')
+    fireEvent.click(screen.getByRole('button', { name: /Agent/ }))
+    const portal = await screen.findByRole('dialog')
 
-    fireEvent.change(screen.getByPlaceholderText('pluginTags.searchTags'), { target: { value: 'ra' } })
+    fireEvent.change(screen.getByPlaceholderText('pluginTags.searchTags'), {
+      target: { value: 'ra' },
+    })
 
     expect(within(portal).queryByText('Agent')).not.toBeInTheDocument()
     expect(within(portal).getByText('RAG')).toBeInTheDocument()
@@ -72,5 +53,25 @@ describe('TagFilter', () => {
     fireEvent.click(within(portal).getByText('RAG'))
 
     expect(onChange).toHaveBeenCalledWith(['agent', 'rag'])
+  })
+
+  it('clears all selected tags when the clear icon is clicked', () => {
+    const onChange = vi.fn()
+    render(<TagFilter value={['agent']} onChange={onChange} />)
+
+    const trigger = screen.getByRole('button', { name: /Agent/ })
+    fireEvent.click(trigger.querySelector('.i-ri-close-circle-fill')!)
+
+    expect(onChange).toHaveBeenCalledWith([])
+  })
+
+  it('removes a selected tag when clicking the same option again', async () => {
+    const onChange = vi.fn()
+    render(<TagFilter value={['agent']} onChange={onChange} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /Agent/ }))
+    fireEvent.click(within(await screen.findByRole('dialog')).getByText('Agent'))
+
+    expect(onChange).toHaveBeenCalledWith([])
   })
 })

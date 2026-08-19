@@ -1,11 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import ModelInfo from '../model-info'
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useTextGenerationCurrentProviderAndModelAndModelList: () => ({
@@ -21,28 +16,18 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-icon', () => ({
-  default: ({ modelName }: { provider: unknown, modelName: string }) => (
-    <div data-testid="model-icon" data-model-name={modelName}>ModelIcon</div>
-  ),
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-name', () => ({
-  default: ({ modelItem, showMode }: { modelItem: { model: string }, showMode: boolean }) => (
-    <div data-testid="model-name" data-show-mode={showMode ? 'true' : 'false'}>
-      {modelItem?.model}
+  default: ({ modelName }: { provider: unknown; modelName: string }) => (
+    <div data-testid="model-icon" data-model-name={modelName}>
+      ModelIcon
     </div>
   ),
 }))
 
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open }: { children: React.ReactNode, open: boolean }) => (
-    <div data-testid="portal-elem" data-open={open ? 'true' : 'false'}>{children}</div>
-  ),
-  PortalToFollowElemTrigger: ({ children, onClick }: { children: React.ReactNode, onClick: () => void }) => (
-    <div data-testid="portal-trigger" onClick={onClick}>{children}</div>
-  ),
-  PortalToFollowElemContent: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="portal-content">{children}</div>
+vi.mock('@/app/components/header/account-setting/model-provider-page/model-name', () => ({
+  default: ({ modelItem, showMode }: { modelItem: { model: string }; showMode: boolean }) => (
+    <div data-testid="model-name" data-show-mode={showMode ? 'true' : 'false'}>
+      {modelItem?.model}
+    </div>
   ),
 }))
 
@@ -92,42 +77,46 @@ describe('ModelInfo', () => {
     it('should be closed by default', () => {
       render(<ModelInfo model={defaultModel} />)
 
-      expect(screen.getByTestId('portal-elem')).toHaveAttribute('data-open', 'false')
+      expect(screen.queryByText(/(?:^|\.)detail\.modelParams(?=$|:)/)).not.toBeInTheDocument()
     })
 
-    it('should open when info button is clicked', () => {
+    it('should open when info button is clicked', async () => {
+      const user = userEvent.setup()
       render(<ModelInfo model={defaultModel} />)
 
-      const trigger = screen.getByTestId('portal-trigger')
-      fireEvent.click(trigger)
+      const trigger = screen.getByRole('button')
+      await user.click(trigger)
 
-      expect(screen.getByTestId('portal-elem')).toHaveAttribute('data-open', 'true')
+      expect(screen.getByText(/(?:^|\.)detail\.modelParams(?=$|:)/)).toBeInTheDocument()
+      expect(trigger).toHaveAttribute('aria-expanded', 'true')
     })
 
-    it('should close when info button is clicked again', () => {
+    it('should close when info button is clicked again', async () => {
+      const user = userEvent.setup()
       render(<ModelInfo model={defaultModel} />)
 
-      const trigger = screen.getByTestId('portal-trigger')
+      const trigger = screen.getByRole('button')
 
-      // Open
-      fireEvent.click(trigger)
-      expect(screen.getByTestId('portal-elem')).toHaveAttribute('data-open', 'true')
+      await user.click(trigger)
+      expect(screen.getByText(/(?:^|\.)detail\.modelParams(?=$|:)/)).toBeInTheDocument()
 
-      // Close
-      fireEvent.click(trigger)
-      expect(screen.getByTestId('portal-elem')).toHaveAttribute('data-open', 'false')
+      await user.click(trigger)
+      expect(screen.queryByText(/(?:^|\.)detail\.modelParams(?=$|:)/)).not.toBeInTheDocument()
+      expect(trigger).toHaveAttribute('aria-expanded', 'false')
     })
   })
 
   describe('Model Parameters Display', () => {
     it('should render model params header', () => {
       render(<ModelInfo model={defaultModel} />)
+      fireEvent.click(screen.getByRole('button'))
 
-      expect(screen.getByText('detail.modelParams')).toBeInTheDocument()
+      expect(screen.getByText(/(?:^|\.)detail\.modelParams(?=$|:)/)).toBeInTheDocument()
     })
 
     it('should render temperature parameter', () => {
       render(<ModelInfo model={defaultModel} />)
+      fireEvent.click(screen.getByRole('button'))
 
       expect(screen.getByText('Temperature')).toBeInTheDocument()
       expect(screen.getByText('0.7')).toBeInTheDocument()
@@ -135,6 +124,7 @@ describe('ModelInfo', () => {
 
     it('should render top_p parameter', () => {
       render(<ModelInfo model={defaultModel} />)
+      fireEvent.click(screen.getByRole('button'))
 
       expect(screen.getByText('Top P')).toBeInTheDocument()
       expect(screen.getByText('0.9')).toBeInTheDocument()
@@ -142,6 +132,7 @@ describe('ModelInfo', () => {
 
     it('should render presence_penalty parameter', () => {
       render(<ModelInfo model={defaultModel} />)
+      fireEvent.click(screen.getByRole('button'))
 
       expect(screen.getByText('Presence Penalty')).toBeInTheDocument()
       expect(screen.getByText('0.1')).toBeInTheDocument()
@@ -149,6 +140,7 @@ describe('ModelInfo', () => {
 
     it('should render max_tokens parameter', () => {
       render(<ModelInfo model={defaultModel} />)
+      fireEvent.click(screen.getByRole('button'))
 
       expect(screen.getByText('Max Token')).toBeInTheDocument()
       expect(screen.getByText('2048')).toBeInTheDocument()
@@ -156,6 +148,7 @@ describe('ModelInfo', () => {
 
     it('should render stop parameter as comma-separated values', () => {
       render(<ModelInfo model={defaultModel} />)
+      fireEvent.click(screen.getByRole('button'))
 
       expect(screen.getByText('Stop')).toBeInTheDocument()
       expect(screen.getByText('END')).toBeInTheDocument()
@@ -171,6 +164,7 @@ describe('ModelInfo', () => {
       }
 
       render(<ModelInfo model={modelWithNoParams} />)
+      fireEvent.click(screen.getByRole('button'))
 
       const dashes = screen.getAllByText('-')
       expect(dashes.length).toBeGreaterThan(0)
@@ -186,6 +180,7 @@ describe('ModelInfo', () => {
       }
 
       render(<ModelInfo model={modelWithInvalidStop} />)
+      fireEvent.click(screen.getByRole('button'))
 
       const stopValues = screen.getAllByText('-')
       expect(stopValues.length).toBeGreaterThan(0)
@@ -201,6 +196,7 @@ describe('ModelInfo', () => {
       }
 
       render(<ModelInfo model={modelWithMultipleStops} />)
+      fireEvent.click(screen.getByRole('button'))
 
       expect(screen.getByText('END,STOP,DONE')).toBeInTheDocument()
     })

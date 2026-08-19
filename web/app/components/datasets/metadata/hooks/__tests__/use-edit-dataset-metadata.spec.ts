@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { DataType } from '../../types'
 import useEditDatasetMetadata from '../use-edit-dataset-metadata'
 
@@ -40,7 +40,7 @@ vi.mock('@/service/knowledge/use-metadata', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   default: {
     notify: vi.fn(),
   },
@@ -297,10 +297,9 @@ describe('useEditDatasetMetadata', () => {
 
   describe('Edge Cases', () => {
     it('should handle different datasetIds', () => {
-      const { result, rerender } = renderHook(
-        props => useEditDatasetMetadata(props),
-        { initialProps: defaultProps },
-      )
+      const { result, rerender } = renderHook((props) => useEditDatasetMetadata(props), {
+        initialProps: defaultProps,
+      })
 
       expect(result.current).toBeDefined()
 

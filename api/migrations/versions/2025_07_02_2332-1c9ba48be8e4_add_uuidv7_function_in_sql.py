@@ -45,34 +45,52 @@ def upgrade():
     # PostgreSQL 18's `uuidv7` function. This capability is rarely needed in practice, as IDs can be
     # generated and controlled within the application layer.
     conn = op.get_bind()
-    
-    if _is_pg(conn):
-        # PostgreSQL: Create uuidv7 functions
-        op.execute(sa.text(r"""
-/* Main function to generate a uuidv7 value with millisecond precision */
-CREATE FUNCTION uuidv7() RETURNS uuid
-AS
-$$
-    -- Replace the first 48 bits of a uuidv4 with the current
-    -- number of milliseconds since 1970-01-01 UTC
-    -- and set the "ver" field to 7 by setting additional bits
-SELECT encode(
-               set_bit(
-                       set_bit(
-                               overlay(uuid_send(gen_random_uuid()) placing
-                                       substring(int8send((extract(epoch from clock_timestamp()) * 1000)::bigint) from
-                                                 3)
-                                       from 1 for 6),
-                               52, 1),
-                       53, 1), 'hex')::uuid;
-$$ LANGUAGE SQL VOLATILE PARALLEL SAFE;
 
-COMMENT ON FUNCTION uuidv7 IS
-    'Generate a uuid-v7 value with a 48-bit timestamp (millisecond precision) and 74 bits of randomness';
+    if _is_pg(conn):
+        # PostgreSQL: Create uuidv7 functions.
+        # PostgreSQL 18 ships a native pg_catalog.uuidv7(), so only create our own
+        # implementation when the server does not already provide one. Otherwise the
+        # CREATE FUNCTION below and the unqualified COMMENT statement collide with the
+        # built-in and the migration fails.
+        #
+        # The existence check is done server-side via a DO block rather than
+        # conn.execute().scalar() because the latter returns None in offline
+        # migration mode (no real database connection), causing an AttributeError.
+        op.execute(sa.text(r"""
+DO $do$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_proc p
+        JOIN pg_namespace n ON p.pronamespace = n.oid
+        WHERE p.proname = 'uuidv7' AND n.nspname = 'pg_catalog'
+    ) THEN
+        /* Main function to generate a uuidv7 value with millisecond precision */
+        CREATE FUNCTION public.uuidv7() RETURNS uuid
+        AS
+        $func$
+            -- Replace the first 48 bits of a uuidv4 with the current
+            -- number of milliseconds since 1970-01-01 UTC
+            -- and set the "ver" field to 7 by setting additional bits
+        SELECT encode(
+                       set_bit(
+                               set_bit(
+                                       overlay(uuid_send(gen_random_uuid()) placing
+                                               substring(int8send((extract(epoch from clock_timestamp()) * 1000)::bigint) from
+                                                         3)
+                                               from 1 for 6),
+                                       52, 1),
+                               53, 1), 'hex')::uuid;
+        $func$ LANGUAGE SQL VOLATILE PARALLEL SAFE;
+
+        COMMENT ON FUNCTION public.uuidv7 IS
+            'Generate a uuid-v7 value with a 48-bit timestamp (millisecond precision) and 74 bits of randomness';
+    END IF;
+END
+$do$;
 """))
 
         op.execute(sa.text(r"""
-CREATE FUNCTION uuidv7_boundary(timestamptz) RETURNS uuid
+CREATE FUNCTION public.uuidv7_boundary(timestamptz) RETURNS uuid
 AS
 $$
     /* uuid fields: version=0b0111, variant=0b10 */
@@ -83,7 +101,7 @@ SELECT encode(
                'hex')::uuid;
 $$ LANGUAGE SQL STABLE STRICT PARALLEL SAFE;
 
-COMMENT ON FUNCTION uuidv7_boundary(timestamptz) IS
+COMMENT ON FUNCTION public.uuidv7_boundary(timestamptz) IS
     'Generate a non-random uuidv7 with the given timestamp (first 48 bits) and all random bits to 0. As the smallest possible uuidv7 for that timestamp, it may be used as a boundary for partitions.';
 """
 ))
@@ -95,7 +113,10 @@ def downgrade():
     conn = op.get_bind()
     
     if _is_pg(conn):
-        op.execute(sa.text("DROP FUNCTION uuidv7"))
-        op.execute(sa.text("DROP FUNCTION uuidv7_boundary"))
+        # IF EXISTS keeps the downgrade a no-op on PostgreSQL 18, where the native
+        # pg_catalog.uuidv7() was kept and no public.uuidv7() was created. Scoping the
+        # drop to the public schema avoids touching the built-in.
+        op.execute(sa.text("DROP FUNCTION IF EXISTS public.uuidv7()"))
+        op.execute(sa.text("DROP FUNCTION IF EXISTS public.uuidv7_boundary(timestamptz)"))
     else:
         pass

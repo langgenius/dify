@@ -4,11 +4,18 @@ import { ModelTypeEnum } from '../../../declarations'
 import { AuthorizedItem } from '../authorized-item'
 
 vi.mock('../../../model-icon', () => ({
-  default: ({ modelName }: { modelName: string }) => <div data-testid="model-icon">{modelName}</div>,
+  default: ({ modelName }: { modelName: string }) => (
+    <div data-testid="model-icon">{modelName}</div>
+  ),
 }))
 
 vi.mock('../credential-item', () => ({
-  default: ({ credential, onEdit, onDelete, onItemClick }: {
+  default: ({
+    credential,
+    onEdit,
+    onDelete,
+    onItemClick,
+  }: {
     credential: Credential
     onEdit?: (credential: Credential) => void
     onDelete?: (credential: Credential) => void
@@ -44,17 +51,12 @@ describe('AuthorizedItem', () => {
 
   describe('Rendering', () => {
     it('should render credentials list', () => {
-      render(
-        <AuthorizedItem
-          provider={mockProvider}
-          credentials={mockCredentials}
-        />,
-      )
+      render(<AuthorizedItem provider={mockProvider} credentials={mockCredentials} />)
 
-      expect(screen.getByTestId('credential-item-cred-1')).toBeInTheDocument()
-      expect(screen.getByTestId('credential-item-cred-2')).toBeInTheDocument()
-      expect(screen.getByText('API Key 1')).toBeInTheDocument()
-      expect(screen.getByText('API Key 2')).toBeInTheDocument()
+      expect(screen.getByTestId('credential-item-cred-1'))!.toBeInTheDocument()
+      expect(screen.getByTestId('credential-item-cred-2'))!.toBeInTheDocument()
+      expect(screen.getByText('API Key 1'))!.toBeInTheDocument()
+      expect(screen.getByText('API Key 2'))!.toBeInTheDocument()
     })
 
     it('should render model title when showModelTitle is true', () => {
@@ -67,17 +69,13 @@ describe('AuthorizedItem', () => {
         />,
       )
 
-      expect(screen.getByTestId('model-icon')).toBeInTheDocument()
+      expect(screen.getByTestId('model-icon'))!.toBeInTheDocument()
       expect(screen.getAllByText('gpt-4')).toHaveLength(2)
     })
 
     it('should not render model title when showModelTitle is false', () => {
       render(
-        <AuthorizedItem
-          provider={mockProvider}
-          credentials={mockCredentials}
-          model={mockModel}
-        />,
+        <AuthorizedItem provider={mockProvider} credentials={mockCredentials} model={mockModel} />,
       )
 
       expect(screen.queryByTestId('model-icon')).not.toBeInTheDocument()
@@ -94,16 +92,11 @@ describe('AuthorizedItem', () => {
         />,
       )
 
-      expect(screen.getByText('Custom Title')).toBeInTheDocument()
+      expect(screen.getByText('Custom Title'))!.toBeInTheDocument()
     })
 
     it('should handle empty credentials array', () => {
-      const { container } = render(
-        <AuthorizedItem
-          provider={mockProvider}
-          credentials={[]}
-        />,
-      )
+      const { container } = render(<AuthorizedItem provider={mockProvider} credentials={[]} />)
 
       expect(container.querySelector('[data-testid^="credential-item-"]')).not.toBeInTheDocument()
     })
@@ -122,7 +115,7 @@ describe('AuthorizedItem', () => {
         />,
       )
 
-      screen.getAllByText('Edit')[0].click()
+      screen.getAllByText('Edit')[0]!.click()
 
       expect(onEdit).toHaveBeenCalledWith(mockCredentials[0], mockModel)
     })
@@ -139,7 +132,7 @@ describe('AuthorizedItem', () => {
         />,
       )
 
-      screen.getAllByText('Delete')[0].click()
+      screen.getAllByText('Delete')[0]!.click()
 
       expect(onDelete).toHaveBeenCalledWith(mockCredentials[0], mockModel)
     })
@@ -156,7 +149,7 @@ describe('AuthorizedItem', () => {
         />,
       )
 
-      screen.getAllByText('Click')[0].click()
+      screen.getAllByText('Click')[0]!.click()
 
       expect(onItemClick).toHaveBeenCalledWith(mockCredentials[0], mockModel)
     })

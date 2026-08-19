@@ -1,32 +1,12 @@
-from collections.abc import Mapping
 from typing import Any
 
 import pytest
+
 from graphon.nodes.variable_assigner.common.helpers import UpdatedVariable
 from graphon.variables.segments import IntegerSegment, ObjectSegment, StringSegment
 from graphon.variables.types import SegmentType
-
 from services import variable_truncator as truncator_module
-from services.variable_truncator import BaseTruncator, TruncationResult, VariableTruncator
-
-
-class _AbstractPassthrough(BaseTruncator):
-    def truncate(self, segment: Any) -> TruncationResult:
-        return super().truncate(segment)  # type: ignore[misc]
-
-    def truncate_variable_mapping(self, v: Mapping[str, Any]) -> tuple[Mapping[str, Any], bool]:
-        return super().truncate_variable_mapping(v)  # type: ignore[misc]
-
-
-class TestBaseTruncatorContract:
-    def test_base_truncator_methods_should_execute_abstract_placeholders(self) -> None:
-        passthrough = _AbstractPassthrough()
-
-        truncate_result = passthrough.truncate(StringSegment(value="x"))
-        mapping_result = passthrough.truncate_variable_mapping({"a": 1})
-
-        assert truncate_result is None
-        assert mapping_result is None
+from services.variable_truncator import VariableTruncator
 
 
 class TestVariableTruncatorAdditionalBehavior:

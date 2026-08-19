@@ -2,13 +2,8 @@ import type { Limit } from '../../types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import LimitConfig from '../limit-config'
 
-type MockSwitchProps = {
-  value: boolean
-  onChange: (value: boolean) => void
-  disabled?: boolean
-}
-
 type MockSliderProps = {
+  label: string
   value: number
   min: number
   max: number
@@ -16,22 +11,7 @@ type MockSliderProps = {
   readonly: boolean
 }
 
-const mockSwitch = vi.fn<(props: MockSwitchProps) => void>()
 const mockSlider = vi.fn<(props: MockSliderProps) => void>()
-
-vi.mock('@/app/components/base/switch', () => ({
-  default: (props: MockSwitchProps) => {
-    mockSwitch(props)
-    return (
-      <button
-        type="button"
-        onClick={() => !props.disabled && props.onChange(!props.value)}
-      >
-        {`switch:${props.value}`}
-      </button>
-    )
-  },
-}))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
   default: ({
@@ -71,18 +51,12 @@ describe('list-operator/limit-config', () => {
     const handleChange = vi.fn()
     const config: Limit = { enabled: false, size: 10 }
 
-    render(
-      <LimitConfig
-        readonly={false}
-        config={config}
-        onChange={handleChange}
-      />,
-    )
+    render(<LimitConfig readonly={false} config={config} onChange={handleChange} />)
 
-    expect(screen.getByText('workflow.nodes.listFilter.limit')).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.listFilter.limit'))!.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'slider:10:false' })).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'switch:false' }))
+    fireEvent.click(screen.getByRole('switch'))
     expect(handleChange).toHaveBeenCalledWith({
       enabled: true,
       size: 10,
@@ -94,20 +68,16 @@ describe('list-operator/limit-config', () => {
     const config: Limit = { enabled: true, size: 6 }
 
     render(
-      <LimitConfig
-        className="custom-limit"
-        readonly
-        config={config}
-        onChange={handleChange}
-      />,
+      <LimitConfig className="custom-limit" readonly config={config} onChange={handleChange} />,
     )
 
-    expect(screen.getByRole('button', { name: 'slider:6:true' })).toBeInTheDocument()
-    expect(mockSlider.mock.calls[0][0]).toMatchObject({
+    expect(screen.getByRole('button', { name: 'slider:6:true' }))!.toBeInTheDocument()
+    expect(mockSlider.mock.calls[0]![0]).toMatchObject({
       value: 6,
       min: 1,
       max: 20,
       readonly: true,
+      label: 'workflow.nodes.listFilter.limit',
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'slider:6:true' }))
@@ -116,7 +86,7 @@ describe('list-operator/limit-config', () => {
       size: 7,
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'switch:true' }))
+    fireEvent.click(screen.getByRole('switch'))
     expect(handleChange).toHaveBeenCalledTimes(1)
   })
 })

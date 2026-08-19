@@ -1,7 +1,7 @@
 import json
 import logging
 import uuid
-from typing import Any
+from typing import Any, override
 
 from pydantic import BaseModel, model_validator
 from sqlalchemy import Column, String, Table, create_engine, insert
@@ -64,9 +64,11 @@ class RelytVector(BaseVector):
         self._fields: list[str] = []
         self._group_id = group_id
 
+    @override
     def get_type(self) -> str:
         return VectorType.RELYT
 
+    @override
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         self.create_collection(len(embeddings[0]))
         self.embedding_dimension = len(embeddings[0])
@@ -106,6 +108,7 @@ class RelytVector(BaseVector):
                 session.execute(index_statement)
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
+    @override
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         from pgvecto_rs.sqlalchemy import VECTOR  # type: ignore
 
@@ -150,6 +153,7 @@ class RelytVector(BaseVector):
 
         return ids
 
+    @override
     def get_ids_by_metadata_field(self, key: str, value: str):
         result = None
         with Session(self.client) as session:
@@ -191,11 +195,13 @@ class RelytVector(BaseVector):
             logger.exception("Delete operation failed for collection %s", self._collection_name)
             return False
 
+    @override
     def delete_by_metadata_field(self, key: str, value: str):
         ids = self.get_ids_by_metadata_field(key, value)
         if ids:
             self.delete_by_uuids(ids)
 
+    @override
     def delete_by_ids(self, ids: list[str]):
         with Session(self.client) as session:
             select_statement = sql_text(
@@ -206,10 +212,12 @@ class RelytVector(BaseVector):
             ids = [item[0] for item in result]
             self.delete_by_uuids(ids)
 
+    @override
     def delete(self):
         with sessionmaker(bind=self.client).begin() as session:
             session.execute(sql_text(f"""DROP TABLE IF EXISTS "{self._collection_name}";"""))
 
+    @override
     def text_exists(self, id: str) -> bool:
         with Session(self.client) as session:
             select_statement = sql_text(
@@ -218,6 +226,7 @@ class RelytVector(BaseVector):
             result = session.execute(select_statement, {"doc_id": id}).fetchall()
         return len(result) > 0
 
+    @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         document_ids_filter = kwargs.get("document_ids_filter")
         filter = kwargs.get("filter", {})
@@ -285,12 +294,14 @@ class RelytVector(BaseVector):
         ]
         return documents_with_scores
 
+    @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         # milvus/zilliz/relyt doesn't support bm25 search
         return []
 
 
 class RelytVectorFactory(AbstractVectorFactory):
+    @override
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> RelytVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]

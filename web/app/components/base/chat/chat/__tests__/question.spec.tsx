@@ -1,12 +1,12 @@
-import type { Theme } from '../../embedded-chatbot/theme/theme-context'
+import type { Theme } from '../../embedded-chatbot/theme/theme'
 import type { ChatConfig, ChatItem, OnRegenerate } from '../../types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import { toast } from '@langgenius/dify-ui/toast'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
-import { toast } from '@/app/components/base/ui/toast'
-import { ThemeBuilder } from '../../embedded-chatbot/theme/theme-context'
+import { createTheme } from '../../embedded-chatbot/theme/theme'
 import { ChatContextProvider } from '../context-provider'
 import Question from '../question'
 
@@ -15,15 +15,20 @@ vi.mock('@react-aria/interactions', () => ({
   useFocusVisible: () => ({ isFocusVisible: false }),
 }))
 vi.mock('../content-switch', () => ({
-  default: ({ count, currentIndex, switchSibling, prevDisabled, nextDisabled }: {
+  default: ({
+    count,
+    currentIndex,
+    switchSibling,
+    prevDisabled,
+    nextDisabled,
+  }: {
     count?: number
     currentIndex?: number
     switchSibling: (direction: 'prev' | 'next') => void
     prevDisabled: boolean
     nextDisabled: boolean
   }) => {
-    if (!(count && count > 1 && currentIndex !== undefined))
-      return null
+    if (!(count && count > 1 && currentIndex !== undefined)) return null
 
     return (
       <div data-testid="content-switch">
@@ -78,16 +83,17 @@ type RenderProps = {
   answerIcon?: React.ReactNode
 }
 
-const makeItem = (overrides: Partial<ChatItem> = {}): ChatItem => ({
-  id: 'q-1',
-  content: 'This is the question content',
-  message_files: [],
-  siblingCount: 3,
-  siblingIndex: 0,
-  prevSibling: null,
-  nextSibling: 'q-2',
-  ...overrides,
-} as unknown as ChatItem)
+const makeItem = (overrides: Partial<ChatItem> = {}): ChatItem =>
+  ({
+    id: 'q-1',
+    content: 'This is the question content',
+    message_files: [],
+    siblingCount: 3,
+    siblingIndex: 0,
+    prevSibling: null,
+    nextSibling: 'q-2',
+    ...overrides,
+  }) as unknown as ChatItem
 
 const renderWithProvider = (
   item: ChatItem,
@@ -96,7 +102,7 @@ const renderWithProvider = (
 ) => {
   return render(
     <ChatContextProvider
-      config={{} as unknown as (ChatConfig | undefined)}
+      config={{} as unknown as ChatConfig | undefined}
       isResponding={false}
       chatList={[]}
       showPromptLog={false}
@@ -135,13 +141,16 @@ describe('Question component', () => {
     const markdown = container.querySelector('.markdown-body')
     expect(markdown).toBeInTheDocument()
 
-    const avatar = container.querySelector('.h-10.w-10') || container.querySelector('.h-10.w-10.shrink-0')
+    const avatar =
+      container.querySelector('.size-10') || container.querySelector('.size-10.shrink-0')
     expect(avatar).toBeTruthy()
   })
 
   it('should hide avatar when hideAvatar is true', () => {
-    const { container } = renderWithProvider(makeItem(), vi.fn() as unknown as OnRegenerate, { hideAvatar: true })
-    const avatar = container.querySelector('.h-10.w-10')
+    const { container } = renderWithProvider(makeItem(), vi.fn() as unknown as OnRegenerate, {
+      hideAvatar: true,
+    })
+    const avatar = container.querySelector('.size-10')
     expect(avatar).toBeNull()
   })
 
@@ -152,7 +161,10 @@ describe('Question component', () => {
     expect(resizeCallback).not.toBeNull()
 
     // Mock HTML element clientWidth to trigger logic mapping line coverage
-    const originalClientWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientWidth')
+    const originalClientWidth = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      'clientWidth',
+    )
     Object.defineProperty(HTMLElement.prototype, 'clientWidth', { configurable: true, value: 500 })
 
     act(() => {
@@ -183,7 +195,7 @@ describe('Question component', () => {
 
     renderWithProvider(makeItem())
 
-    const copyBtn = screen.getByTestId('copy-btn')
+    const copyBtn = screen.getByRole('button', { name: 'common.operation.copy' })
     await user.click(copyBtn)
 
     await waitFor(() => {
@@ -195,8 +207,8 @@ describe('Question component', () => {
   it('should not show edit action when enableEdit is false', () => {
     renderWithProvider(makeItem(), vi.fn() as unknown as OnRegenerate, { enableEdit: false })
 
-    expect(screen.getByTestId('copy-btn')).toBeInTheDocument()
-    expect(screen.queryByTestId('edit-btn')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.copy' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'common.operation.edit' })).not.toBeInTheDocument()
   })
 
   it('should enter edit mode when edit action clicked, allow editing and call onRegenerate on resend', async () => {
@@ -206,7 +218,7 @@ describe('Question component', () => {
     const item = makeItem()
     renderWithProvider(item, onRegenerate)
 
-    const editBtn = screen.getByTestId('edit-btn')
+    const editBtn = screen.getByRole('button', { name: 'common.operation.edit' })
     await user.click(editBtn)
 
     const textbox = await screen.findByRole('textbox')
@@ -227,14 +239,14 @@ describe('Question component', () => {
     const user = userEvent.setup()
     const { container } = renderWithProvider(makeItem())
 
-    const editBtn = screen.getByTestId('edit-btn')
+    const editBtn = screen.getByRole('button', { name: 'common.operation.edit' })
     await user.click(editBtn)
 
     const textbox = await screen.findByRole('textbox')
     await user.clear(textbox)
     await user.type(textbox, 'Edited question')
 
-    const cancelBtn = await screen.findByTestId('cancel-edit-btn')
+    const cancelBtn = await screen.findByRole('button', { name: 'common.operation.cancel' })
     await user.click(cancelBtn)
 
     await waitFor(() => {
@@ -250,7 +262,7 @@ describe('Question component', () => {
 
     renderWithProvider(makeItem(), onRegenerate)
 
-    await user.click(screen.getByTestId('edit-btn'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     const textbox = await screen.findByRole('textbox')
 
     await user.clear(textbox)
@@ -259,7 +271,10 @@ describe('Question component', () => {
     fireEvent.keyDown(textbox, { key: 'Enter', code: 'Enter' })
 
     await waitFor(() => {
-      expect(onRegenerate).toHaveBeenCalledWith(makeItem(), { message: 'Edited with Enter', files: [] })
+      expect(onRegenerate).toHaveBeenCalledWith(makeItem(), {
+        message: 'Edited with Enter',
+        files: [],
+      })
     })
   })
 
@@ -269,7 +284,7 @@ describe('Question component', () => {
 
     renderWithProvider(makeItem(), onRegenerate)
 
-    await user.click(screen.getByTestId('edit-btn'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     const textbox = await screen.findByRole('textbox')
 
     await user.clear(textbox)
@@ -285,7 +300,7 @@ describe('Question component', () => {
 
     renderWithProvider(makeItem(), onRegenerate)
 
-    fireEvent.click(screen.getByTestId('edit-btn'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     const textbox = screen.getByRole('textbox')
 
     fireEvent.compositionStart(textbox)
@@ -302,7 +317,7 @@ describe('Question component', () => {
       const onRegenerate = vi.fn() as unknown as OnRegenerate
       renderWithProvider(makeItem(), onRegenerate)
 
-      fireEvent.click(screen.getByTestId('edit-btn'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.edit' }))
       const textbox = screen.getByRole('textbox')
       fireEvent.change(textbox, { target: { value: 'IME guard text' } })
 
@@ -312,7 +327,12 @@ describe('Question component', () => {
 
       vi.advanceTimersByTime(50)
 
-      const blockedEnterEvent = new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true })
+      const blockedEnterEvent = new KeyboardEvent('keydown', {
+        key: 'Enter',
+        code: 'Enter',
+        bubbles: true,
+        cancelable: true,
+      })
       textbox.dispatchEvent(blockedEnterEvent)
       expect(onRegenerate).not.toHaveBeenCalled()
       expect(blockedEnterEvent.defaultPrevented).toBe(true)
@@ -322,9 +342,11 @@ describe('Question component', () => {
       vi.advanceTimersByTime(50)
 
       fireEvent.keyDown(textbox, { key: 'Enter', code: 'Enter' })
-      expect(onRegenerate).toHaveBeenCalledWith(makeItem(), { message: 'IME guard text', files: [] })
-    }
-    finally {
+      expect(onRegenerate).toHaveBeenCalledWith(makeItem(), {
+        message: 'IME guard text',
+        files: [],
+      })
+    } finally {
       vi.useRealTimers()
     }
   })
@@ -348,7 +370,12 @@ describe('Question component', () => {
   })
 
   it('should render prev disabled when no prevSibling is provided', () => {
-    const item = makeItem({ prevSibling: undefined, nextSibling: 'q-next', siblingIndex: 0, siblingCount: 2 })
+    const item = makeItem({
+      prevSibling: undefined,
+      nextSibling: 'q-next',
+      siblingIndex: 0,
+      siblingCount: 2,
+    })
     renderWithProvider(item, vi.fn() as unknown as OnRegenerate)
 
     const prevBtn = screen.getByRole('button', { name: /previous/i })
@@ -375,9 +402,7 @@ describe('Question component', () => {
   })
 
   it('should apply theme bubble styles when theme provided', () => {
-    const themeBuilder = new ThemeBuilder()
-    themeBuilder.buildTheme('#ff0000', false)
-    const theme = themeBuilder.theme
+    const theme = createTheme('#ff0000')
 
     renderWithProvider(makeItem(), vi.fn() as unknown as OnRegenerate, { theme })
 
@@ -392,7 +417,7 @@ describe('Question component', () => {
 
     renderWithProvider(item, onRegenerate)
 
-    const editBtn = screen.getByTestId('edit-btn')
+    const editBtn = screen.getByRole('button', { name: 'common.operation.edit' })
     await user.click(editBtn)
 
     const textbox = await screen.findByRole('textbox')
@@ -416,7 +441,7 @@ describe('Question component', () => {
     expect(onRegenerate).not.toHaveBeenCalled()
 
     // Let setTimeout finish its 50ms interval to clear isComposing
-    await new Promise(r => setTimeout(r, 60))
+    await new Promise((r) => setTimeout(r, 60))
 
     // Now press Enter after composition is fully cleared
     fireEvent.keyDown(textbox, { key: 'Enter', code: 'Enter' })
@@ -431,7 +456,7 @@ describe('Question component', () => {
 
     renderWithProvider(item, onRegenerate)
 
-    await user.click(screen.getByTestId('edit-btn'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     const textbox = await screen.findByRole('textbox')
 
     // Press Shift+Enter
@@ -445,7 +470,7 @@ describe('Question component', () => {
     const onRegenerate = vi.fn() as unknown as OnRegenerate
     renderWithProvider(makeItem(), onRegenerate)
 
-    await user.click(screen.getByTestId('edit-btn'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     const textbox = await screen.findByRole('textbox')
 
     // Create an event with nativeEvent.isComposing = true
@@ -461,7 +486,7 @@ describe('Question component', () => {
     const onRegenerate = vi.fn() as unknown as OnRegenerate
     const { unmount } = renderWithProvider(makeItem(), onRegenerate)
 
-    await user.click(screen.getByTestId('edit-btn'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     const textbox = await screen.findByRole('textbox')
 
     fireEvent.compositionStart(textbox)
@@ -471,11 +496,11 @@ describe('Question component', () => {
     fireEvent.compositionStart(textbox)
     fireEvent.compositionEnd(textbox)
 
-    const cancelBtn = await screen.findByTestId('cancel-edit-btn')
+    const cancelBtn = await screen.findByRole('button', { name: 'common.operation.cancel' })
     await user.click(cancelBtn)
 
     // Test unmount clearing timer
-    await user.click(screen.getByTestId('edit-btn'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     const textbox2 = await screen.findByRole('textbox')
     fireEvent.compositionStart(textbox2)
     fireEvent.compositionEnd(textbox2)
@@ -489,34 +514,29 @@ describe('Question component', () => {
     const onRegenerate = vi.fn() as unknown as OnRegenerate
     renderWithProvider(makeItem(), onRegenerate)
 
-    await user.click(screen.getByTestId('edit-btn'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     const textbox = await screen.findByRole('textbox')
 
     fireEvent.compositionStart(textbox)
     fireEvent.compositionEnd(textbox) // starts timer
 
-    const saveBtn = screen.getByTestId('save-edit-btn')
+    const saveBtn = screen.getByRole('button', { name: 'common.operation.save' })
     await user.click(saveBtn) // handleResend clears timer
 
     expect(onRegenerate).toHaveBeenCalled()
   })
 
   it('should render default question avatar icon when questionIcon is not provided', () => {
-    const { container } = renderWithProvider(
-      makeItem(),
-      vi.fn() as unknown as OnRegenerate,
-    )
+    const { container } = renderWithProvider(makeItem(), vi.fn() as unknown as OnRegenerate)
 
     const defaultIcon = container.querySelector('.question-default-user-icon')
     expect(defaultIcon).toBeInTheDocument()
   })
 
   it('should render custom questionIcon when provided', () => {
-    const { container } = renderWithProvider(
-      makeItem(),
-      vi.fn() as unknown as OnRegenerate,
-      { questionIcon: <div data-testid="custom-question-icon">CustomIcon</div> },
-    )
+    const { container } = renderWithProvider(makeItem(), vi.fn() as unknown as OnRegenerate, {
+      questionIcon: <div data-testid="custom-question-icon">CustomIcon</div>,
+    })
 
     expect(screen.getByTestId('custom-question-icon')).toBeInTheDocument()
     const defaultIcon = container.querySelector('.question-default-user-icon')
@@ -526,7 +546,12 @@ describe('Question component', () => {
   it('should call switchSibling with next sibling ID when next button clicked and nextSibling exists', async () => {
     const user = userEvent.setup()
     const switchSibling = vi.fn()
-    const item = makeItem({ prevSibling: 'q-0', nextSibling: 'q-2', siblingIndex: 1, siblingCount: 3 })
+    const item = makeItem({
+      prevSibling: 'q-0',
+      nextSibling: 'q-2',
+      siblingIndex: 1,
+      siblingCount: 3,
+    })
 
     renderWithProvider(item, vi.fn() as unknown as OnRegenerate, { switchSibling })
 
@@ -540,7 +565,12 @@ describe('Question component', () => {
   it('should not call switchSibling when next button clicked but nextSibling is null', async () => {
     const user = userEvent.setup()
     const switchSibling = vi.fn()
-    const item = makeItem({ prevSibling: 'q-0', nextSibling: undefined, siblingIndex: 2, siblingCount: 3 })
+    const item = makeItem({
+      prevSibling: 'q-0',
+      nextSibling: undefined,
+      siblingIndex: 2,
+      siblingCount: 3,
+    })
 
     renderWithProvider(item, vi.fn() as unknown as OnRegenerate, { switchSibling })
 
@@ -554,7 +584,12 @@ describe('Question component', () => {
   it('should not call switchSibling when prev button clicked but prevSibling is null', async () => {
     const user = userEvent.setup()
     const switchSibling = vi.fn()
-    const item = makeItem({ prevSibling: undefined, nextSibling: 'q-2', siblingIndex: 0, siblingCount: 3 })
+    const item = makeItem({
+      prevSibling: undefined,
+      nextSibling: 'q-2',
+      siblingIndex: 0,
+      siblingCount: 3,
+    })
 
     renderWithProvider(item, vi.fn() as unknown as OnRegenerate, { switchSibling })
 
@@ -566,7 +601,12 @@ describe('Question component', () => {
   })
 
   it('should render next button disabled when nextSibling is null', () => {
-    const item = makeItem({ prevSibling: 'q-0', nextSibling: undefined, siblingIndex: 2, siblingCount: 3 })
+    const item = makeItem({
+      prevSibling: 'q-0',
+      nextSibling: undefined,
+      siblingIndex: 2,
+      siblingCount: 3,
+    })
     renderWithProvider(item, vi.fn() as unknown as OnRegenerate)
 
     const nextBtn = screen.getByRole('button', { name: /next/i })
@@ -574,7 +614,12 @@ describe('Question component', () => {
   })
 
   it('should handle both prev and next siblings being null (only one message)', () => {
-    const item = makeItem({ prevSibling: undefined, nextSibling: undefined, siblingIndex: 0, siblingCount: 1 })
+    const item = makeItem({
+      prevSibling: undefined,
+      nextSibling: undefined,
+      siblingIndex: 0,
+      siblingCount: 1,
+    })
     renderWithProvider(item, vi.fn() as unknown as OnRegenerate)
 
     const prevBtn = screen.queryByRole('button', { name: /previous/i })
@@ -623,8 +668,14 @@ describe('Question component', () => {
       renderWithProvider(makeItem())
 
       // Mock clientWidth at different values
-      const originalClientWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientWidth')
-      Object.defineProperty(HTMLElement.prototype, 'clientWidth', { configurable: true, value: 300 })
+      const originalClientWidth = Object.getOwnPropertyDescriptor(
+        HTMLElement.prototype,
+        'clientWidth',
+      )
+      Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
+        configurable: true,
+        value: 300,
+      })
 
       act(() => {
         if (resizeCallback) {
@@ -637,7 +688,10 @@ describe('Question component', () => {
       expect(actionContainer).toHaveStyle({ right: '308px' })
 
       // Change width and trigger resize again
-      Object.defineProperty(HTMLElement.prototype, 'clientWidth', { configurable: true, value: 250 })
+      Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
+        configurable: true,
+        value: 250,
+      })
 
       act(() => {
         if (resizeCallback) {
@@ -652,8 +706,7 @@ describe('Question component', () => {
       if (originalClientWidth) {
         Object.defineProperty(HTMLElement.prototype, 'clientWidth', originalClientWidth)
       }
-    }
-    finally {
+    } finally {
       vi.useRealTimers()
     }
   })
@@ -661,18 +714,23 @@ describe('Question component', () => {
   it('should hide edit button when enableEdit is explicitly true', () => {
     renderWithProvider(makeItem(), vi.fn() as unknown as OnRegenerate, { enableEdit: true })
 
-    expect(screen.getByTestId('edit-btn')).toBeInTheDocument()
-    expect(screen.getByTestId('copy-btn')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.edit' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.copy' })).toBeInTheDocument()
   })
 
   it('should show copy button always regardless of enableEdit setting', () => {
     renderWithProvider(makeItem(), vi.fn() as unknown as OnRegenerate, { enableEdit: false })
 
-    expect(screen.getByTestId('copy-btn')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.copy' })).toBeInTheDocument()
   })
 
   it('should not render content switch when no siblings exist', () => {
-    const item = makeItem({ siblingCount: 1, siblingIndex: 0, prevSibling: undefined, nextSibling: undefined })
+    const item = makeItem({
+      siblingCount: 1,
+      siblingIndex: 0,
+      prevSibling: undefined,
+      nextSibling: undefined,
+    })
     renderWithProvider(item)
 
     // ContentSwitch should not render when count is 1
@@ -687,7 +745,7 @@ describe('Question component', () => {
     const user = userEvent.setup()
     renderWithProvider(makeItem())
 
-    await user.click(screen.getByTestId('edit-btn'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     const textbox = await screen.findByRole('textbox')
 
     expect(textbox).toHaveValue('This is the question content')
@@ -713,7 +771,7 @@ describe('Question component', () => {
 
     const { container } = renderWithProvider(makeItem({ message_files: files }))
 
-    await user.click(screen.getByTestId('edit-btn'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
 
     // FileList should be visible in edit mode with mb-3 margin
     expect(screen.getByText(/test.txt/i)).toBeInTheDocument()
@@ -723,9 +781,7 @@ describe('Question component', () => {
   })
 
   it('should render theme styles only in non-edit mode', () => {
-    const themeBuilder = new ThemeBuilder()
-    themeBuilder.buildTheme('#00ff00', true)
-    const theme = themeBuilder.theme
+    const theme = createTheme('#00ff00', true)
 
     renderWithProvider(makeItem(), vi.fn() as unknown as OnRegenerate, { theme })
 
@@ -740,8 +796,17 @@ describe('Question component', () => {
     const switchSibling = vi.fn()
 
     // Test first message
-    const firstItem = makeItem({ prevSibling: undefined, nextSibling: 'q-2', siblingIndex: 0, siblingCount: 3 })
-    const { unmount: unmount1 } = renderWithProvider(firstItem, vi.fn() as unknown as OnRegenerate, { switchSibling })
+    const firstItem = makeItem({
+      prevSibling: undefined,
+      nextSibling: 'q-2',
+      siblingIndex: 0,
+      siblingCount: 3,
+    })
+    const { unmount: unmount1 } = renderWithProvider(
+      firstItem,
+      vi.fn() as unknown as OnRegenerate,
+      { switchSibling },
+    )
 
     let prevBtn = screen.getByRole('button', { name: /previous/i })
     let nextBtn = screen.getByRole('button', { name: /next/i })
@@ -753,8 +818,15 @@ describe('Question component', () => {
     vi.clearAllMocks()
 
     // Test last message
-    const lastItem = makeItem({ prevSibling: 'q-0', nextSibling: undefined, siblingIndex: 2, siblingCount: 3 })
-    const { unmount: unmount2 } = renderWithProvider(lastItem, vi.fn() as unknown as OnRegenerate, { switchSibling })
+    const lastItem = makeItem({
+      prevSibling: 'q-0',
+      nextSibling: undefined,
+      siblingIndex: 2,
+      siblingCount: 3,
+    })
+    const { unmount: unmount2 } = renderWithProvider(lastItem, vi.fn() as unknown as OnRegenerate, {
+      switchSibling,
+    })
 
     prevBtn = screen.getByRole('button', { name: /previous/i })
     nextBtn = screen.getByRole('button', { name: /next/i })
@@ -769,7 +841,7 @@ describe('Question component', () => {
     const onRegenerate = vi.fn() as unknown as OnRegenerate
     renderWithProvider(makeItem(), onRegenerate)
 
-    await userEvent.click(screen.getByTestId('edit-btn'))
+    await userEvent.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     const textbox = await screen.findByRole('textbox')
 
     // Rapid composition cycles
@@ -781,7 +853,7 @@ describe('Question component', () => {
     fireEvent.compositionEnd(textbox)
 
     // Press Enter after final composition end
-    await new Promise(r => setTimeout(r, 60))
+    await new Promise((r) => setTimeout(r, 60))
     fireEvent.keyDown(textbox, { key: 'Enter', code: 'Enter' })
 
     expect(onRegenerate).toHaveBeenCalled()
@@ -792,7 +864,7 @@ describe('Question component', () => {
     const onRegenerate = vi.fn() as unknown as OnRegenerate
     renderWithProvider(makeItem(), onRegenerate)
 
-    await user.click(screen.getByTestId('edit-btn'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     const textbox = await screen.findByRole('textbox')
 
     await user.clear(textbox)
@@ -821,7 +893,7 @@ describe('Question component', () => {
     const item = makeItem({ message_files: files })
     renderWithProvider(item, onRegenerate)
 
-    await user.click(screen.getByTestId('edit-btn'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     const textbox = await screen.findByRole('textbox')
 
     await user.clear(textbox)
@@ -830,10 +902,7 @@ describe('Question component', () => {
     fireEvent.keyDown(textbox, { key: 'Enter', code: 'Enter' })
 
     await waitFor(() => {
-      expect(onRegenerate).toHaveBeenCalledWith(
-        item,
-        { message: 'Modified with files', files },
-      )
+      expect(onRegenerate).toHaveBeenCalledWith(item, { message: 'Modified with files', files })
     })
   })
 
@@ -842,44 +911,27 @@ describe('Question component', () => {
     renderWithProvider(makeItem())
 
     // First edit cycle
-    await user.click(screen.getByTestId('edit-btn'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     let textbox = await screen.findByRole('textbox')
     fireEvent.compositionStart(textbox)
     fireEvent.compositionEnd(textbox)
 
     // Cancel and re-edit
-    let cancelBtn = await screen.findByTestId('cancel-edit-btn')
+    let cancelBtn = await screen.findByRole('button', { name: 'common.operation.cancel' })
     await user.click(cancelBtn)
 
     // Second edit cycle
-    await user.click(screen.getByTestId('edit-btn'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     textbox = await screen.findByRole('textbox')
     expect(textbox).toHaveValue('This is the question content')
 
     fireEvent.compositionStart(textbox)
     fireEvent.compositionEnd(textbox)
 
-    cancelBtn = await screen.findByTestId('cancel-edit-btn')
+    cancelBtn = await screen.findByRole('button', { name: 'common.operation.cancel' })
     await user.click(cancelBtn)
 
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
-  })
-
-  it('should apply correct CSS classes in edit vs view mode', async () => {
-    const user = userEvent.setup()
-    renderWithProvider(makeItem())
-
-    const contentContainer = screen.getByTestId('question-content')
-
-    // View mode classes
-    expect(contentContainer).toHaveClass('rounded-2xl')
-    expect(contentContainer).toHaveClass('bg-background-gradient-bg-fill-chat-bubble-bg-3')
-
-    await user.click(screen.getByTestId('edit-btn'))
-
-    // Edit mode classes
-    expect(contentContainer).toHaveClass('rounded-[24px]')
-    expect(contentContainer).toHaveClass('border-[3px]')
   })
 
   it('should handle all sibling combinations with switchSibling callback', async () => {
@@ -887,7 +939,12 @@ describe('Question component', () => {
     const switchSibling = vi.fn()
 
     // Test with all siblings
-    const allItem = makeItem({ prevSibling: 'q-0', nextSibling: 'q-2', siblingIndex: 1, siblingCount: 3 })
+    const allItem = makeItem({
+      prevSibling: 'q-0',
+      nextSibling: 'q-2',
+      siblingIndex: 1,
+      siblingCount: 3,
+    })
     renderWithProvider(allItem, vi.fn() as unknown as OnRegenerate, { switchSibling })
 
     await user.click(screen.getByRole('button', { name: /previous/i }))
@@ -918,14 +975,19 @@ describe('Question component', () => {
       </ChatContextProvider>,
     )
 
-    await user.click(screen.getByTestId('edit-btn'))
-    await user.click(screen.getByTestId('save-edit-btn'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
     // Should not throw
   })
 
   it('should handle missing switchSibling prop', async () => {
     const user = userEvent.setup()
-    const item = makeItem({ prevSibling: 'prev', nextSibling: 'next', siblingIndex: 1, siblingCount: 3 })
+    const item = makeItem({
+      prevSibling: 'prev',
+      nextSibling: 'next',
+      siblingIndex: 1,
+      siblingCount: 3,
+    })
     renderWithProvider(item, vi.fn() as unknown as OnRegenerate, { switchSibling: undefined })
 
     const prevBtn = screen.getByRole('button', { name: /previous/i })
@@ -953,7 +1015,12 @@ describe('Question component', () => {
   it('should handle handleSwitchSibling call when siblings are missing', async () => {
     const user = userEvent.setup()
     const switchSibling = vi.fn()
-    const item = makeItem({ prevSibling: undefined, nextSibling: undefined, siblingIndex: 0, siblingCount: 2 })
+    const item = makeItem({
+      prevSibling: undefined,
+      nextSibling: undefined,
+      siblingIndex: 0,
+      siblingCount: 2,
+    })
     renderWithProvider(item, vi.fn() as unknown as OnRegenerate, { switchSibling })
 
     const prevBtn = screen.getByRole('button', { name: /previous/i })
@@ -969,7 +1036,7 @@ describe('Question component', () => {
   it('should clear timer on unmount when timer is active', async () => {
     const user = userEvent.setup()
     const { unmount } = renderWithProvider(makeItem())
-    await user.click(screen.getByTestId('edit-btn'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     const textbox = await screen.findByRole('textbox')
     fireEvent.compositionStart(textbox)
     fireEvent.compositionEnd(textbox) // starts timer
@@ -979,7 +1046,12 @@ describe('Question component', () => {
 
   it('should handle handleSwitchSibling with no siblings and missing switchSibling prop', async () => {
     const user = userEvent.setup()
-    const item = makeItem({ prevSibling: undefined, nextSibling: undefined, siblingIndex: 0, siblingCount: 2 })
+    const item = makeItem({
+      prevSibling: undefined,
+      nextSibling: undefined,
+      siblingIndex: 0,
+      siblingCount: 2,
+    })
     renderWithProvider(item, vi.fn() as unknown as OnRegenerate, { switchSibling: undefined })
 
     const prevBtn = screen.getByRole('button', { name: /previous/i })

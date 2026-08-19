@@ -106,3 +106,6 @@ msg = "Use Pydantic payload/query models instead of reqparse."
 
 [lint.flake8-tidy-imports.banned-api."flask_restx.reqparse.RequestParser"]
 msg = "Use Pydantic payload/query models instead of reqparse."
+
+[lint.isort]
+known-first-party = ["graphon"]

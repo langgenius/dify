@@ -47,7 +47,11 @@ describe('useAsyncWindowOpen', () => {
       })
     })
 
-    expect(openSpy).toHaveBeenCalledWith('https://example.com', '_blank', 'width=500,noopener,noreferrer')
+    expect(openSpy).toHaveBeenCalledWith(
+      'https://example.com',
+      '_blank',
+      'width=500,noopener,noreferrer',
+    )
     expect(getUrl).not.toHaveBeenCalled()
     expect(mockWindow.opener).toBeNull()
   })
@@ -68,7 +72,7 @@ describe('useAsyncWindowOpen', () => {
     })
 
     expect(onError).toHaveBeenCalled()
-    const errArg = onError.mock.calls[0][0] as Error
+    const errArg = onError.mock.calls[0]![0] as Error
     expect(errArg.message).toBe('Failed to open new window')
     expect(getUrl).not.toHaveBeenCalled()
   })
@@ -108,9 +112,12 @@ describe('useAsyncWindowOpen', () => {
 
     const error = new Error('fetch failed')
     await act(async () => {
-      await result.current(async () => {
-        throw error
-      }, { onError })
+      await result.current(
+        async () => {
+          throw error
+        },
+        { onError },
+      )
     })
 
     expect(close).toHaveBeenCalled()
@@ -160,7 +167,7 @@ describe('useAsyncWindowOpen', () => {
 
     expect(close).toHaveBeenCalled()
     expect(onError).toHaveBeenCalled()
-    const errArg = onError.mock.calls[0][0] as Error
+    const errArg = onError.mock.calls[0]![0] as Error
     expect(errArg.message).toBe('No url resolved for new window')
   })
 
@@ -176,7 +183,7 @@ describe('useAsyncWindowOpen', () => {
     })
 
     expect(onError).toHaveBeenCalled()
-    const errArg = onError.mock.calls[0][0] as Error
+    const errArg = onError.mock.calls[0]![0] as Error
     expect(errArg.message).toBe('Failed to open new window')
     expect(getUrl).not.toHaveBeenCalled()
   })

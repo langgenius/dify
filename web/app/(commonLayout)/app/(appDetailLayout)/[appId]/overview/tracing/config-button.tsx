@@ -1,60 +1,36 @@
 'use client'
 import type { FC } from 'react'
 import type { PopupProps } from './config-popup'
-
+import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
-import { useCallback, useRef, useState } from 'react'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import { cn } from '@/utils/classnames'
+import { useState } from 'react'
 import ConfigPopup from './config-popup'
 
-type Props = {
+type Props = Readonly<{
   readOnly: boolean
   className?: string
   hasConfigured: boolean
   children?: React.ReactNode
-} & PopupProps
+}> &
+  PopupProps
 
-const ConfigBtn: FC<Props> = ({
-  className,
-  hasConfigured,
-  children,
-  ...popupProps
-}) => {
-  const [open, doSetOpen] = useState(false)
-  const openRef = useRef(open)
-  const setOpen = useCallback((v: boolean) => {
-    doSetOpen(v)
-    openRef.current = v
-  }, [doSetOpen])
+const ConfigBtn: FC<Props> = ({ className, hasConfigured, children, ...popupProps }) => {
+  const [open, setOpen] = useState(false)
 
-  const handleTrigger = useCallback(() => {
-    setOpen(!openRef.current)
-  }, [setOpen])
-
-  if (popupProps.readOnly && !hasConfigured)
-    return null
+  if (popupProps.readOnly && !hasConfigured) return null
 
   return (
-    <PortalToFollowElem
-      open={open}
-      onOpenChange={setOpen}
-      placement="bottom-end"
-      offset={12}
-    >
-      <PortalToFollowElemTrigger onClick={handleTrigger}>
-        <div className={cn('select-none', className)}>
-          {children}
-        </div>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-11">
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger render={<div className={cn('select-none', className)}>{children}</div>} />
+      <PopoverContent
+        placement="bottom-end"
+        sideOffset={12}
+        popupClassName="border-none bg-transparent shadow-none"
+      >
         <ConfigPopup {...popupProps} />
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 export default React.memo(ConfigBtn)

@@ -1,9 +1,9 @@
 import type { FC } from 'react'
 import type { ListFilterNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
+import { Switch } from '@langgenius/dify-ui/switch'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Switch from '@/app/components/base/switch'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import ExtractInput from '@/app/components/workflow/nodes/list-operator/components/extract-input'
 import OptionCard from '../_base/components/option-card'
@@ -18,10 +18,7 @@ import useConfig from './use-config'
 
 const i18nPrefix = 'nodes.listFilter'
 
-const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
-  id,
-  data,
-}) => {
+const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({ id, data }) => {
   const { t } = useTranslation()
 
   const {
@@ -45,10 +42,7 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
   return (
     <div className="pt-2">
       <div className="space-y-4 px-4">
-        <Field
-          title={t(`${i18nPrefix}.inputVar`, { ns: 'workflow' })}
-          required
-        >
+        <Field title={t(($) => $[`${i18nPrefix}.inputVar`], { ns: 'workflow' })} required>
           <VarReferencePicker
             readonly={readOnly}
             nodeId={id}
@@ -62,100 +56,94 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
         </Field>
 
         <Field
-          title={t(`${i18nPrefix}.filterCondition`, { ns: 'workflow' })}
-          operations={(
+          title={t(($) => $[`${i18nPrefix}.filterCondition`], { ns: 'workflow' })}
+          operations={
             <Switch
-              value={inputs.filter_by?.enabled}
-              onChange={handleFilterEnabledChange}
+              checked={inputs.filter_by?.enabled}
+              onCheckedChange={handleFilterEnabledChange}
               size="md"
               disabled={readOnly}
             />
-          )}
+          }
         >
-          {inputs.filter_by?.enabled
-            ? (
-                <FilterCondition
-                  condition={inputs.filter_by.conditions[0]}
-                  onChange={handleFilterChange}
-                  varType={itemVarType}
-                  hasSubVariable={hasSubVariable}
+          {inputs.filter_by?.enabled ? (
+            <FilterCondition
+              condition={inputs.filter_by.conditions[0]!}
+              onChange={handleFilterChange}
+              varType={itemVarType}
+              hasSubVariable={hasSubVariable}
+              readOnly={readOnly}
+              nodeId={id}
+            />
+          ) : null}
+        </Field>
+        <Split />
+        <Field
+          title={t(($) => $[`${i18nPrefix}.extractsCondition`], { ns: 'workflow' })}
+          operations={
+            <Switch
+              checked={inputs.extract_by?.enabled}
+              onCheckedChange={handleExtractsEnabledChange}
+              size="md"
+              disabled={readOnly}
+            />
+          }
+        >
+          {inputs.extract_by?.enabled ? (
+            <div className="flex items-center justify-between">
+              <div className="mr-2 grow">
+                <ExtractInput
+                  value={inputs.extract_by.serial as string}
+                  onChange={handleExtractsChange}
                   readOnly={readOnly}
                   nodeId={id}
                 />
-              )
-            : null}
+              </div>
+            </div>
+          ) : null}
         </Field>
         <Split />
+        <LimitConfig config={inputs.limit} onChange={handleLimitChange} readonly={readOnly} />
+        <Split />
         <Field
-          title={t(`${i18nPrefix}.extractsCondition`, { ns: 'workflow' })}
-          operations={(
+          title={t(($) => $[`${i18nPrefix}.orderBy`], { ns: 'workflow' })}
+          operations={
             <Switch
-              value={inputs.extract_by?.enabled}
-              onChange={handleExtractsEnabledChange}
+              checked={inputs.order_by?.enabled}
+              onCheckedChange={handleOrderByEnabledChange}
               size="md"
               disabled={readOnly}
             />
-          )}
+          }
         >
-          {inputs.extract_by?.enabled
-            ? (
-                <div className="flex items-center justify-between">
-                  <div className="mr-2 grow">
-                    <ExtractInput
-                      value={inputs.extract_by.serial as string}
-                      onChange={handleExtractsChange}
-                      readOnly={readOnly}
-                      nodeId={id}
-                    />
-                  </div>
+          {inputs.order_by?.enabled ? (
+            <div className="flex items-center justify-between">
+              {hasSubVariable && (
+                <div className="mr-2 grow">
+                  <SubVariablePicker
+                    value={inputs.order_by.key as string}
+                    onChange={handleOrderByKeyChange}
+                  />
                 </div>
-              )
-            : null}
-        </Field>
-        <Split />
-        <LimitConfig
-          config={inputs.limit}
-          onChange={handleLimitChange}
-          readonly={readOnly}
-        />
-        <Split />
-        <Field
-          title={t(`${i18nPrefix}.orderBy`, { ns: 'workflow' })}
-          operations={(
-            <Switch
-              value={inputs.order_by?.enabled}
-              onChange={handleOrderByEnabledChange}
-              size="md"
-              disabled={readOnly}
-            />
-          )}
-        >
-          {inputs.order_by?.enabled
-            ? (
-                <div className="flex items-center justify-between">
-                  {hasSubVariable && (
-                    <div className="mr-2 grow">
-                      <SubVariablePicker
-                        value={inputs.order_by.key as string}
-                        onChange={handleOrderByKeyChange}
-                      />
-                    </div>
-                  )}
-                  <div className={!hasSubVariable ? 'grid w-full grid-cols-2 gap-1' : 'flex shrink-0 space-x-1'}>
-                    <OptionCard
-                      title={t(`${i18nPrefix}.asc`, { ns: 'workflow' })}
-                      onSelect={handleOrderByTypeChange(OrderBy.ASC)}
-                      selected={inputs.order_by.value === OrderBy.ASC}
-                    />
-                    <OptionCard
-                      title={t(`${i18nPrefix}.desc`, { ns: 'workflow' })}
-                      onSelect={handleOrderByTypeChange(OrderBy.DESC)}
-                      selected={inputs.order_by.value === OrderBy.DESC}
-                    />
-                  </div>
-                </div>
-              )
-            : null}
+              )}
+              <div
+                className={
+                  !hasSubVariable ? 'grid w-full grid-cols-2 gap-1' : 'flex shrink-0 space-x-1'
+                }
+              >
+                <OptionCard
+                  title={t(($) => $[`${i18nPrefix}.asc`], { ns: 'workflow' })}
+                  onSelect={handleOrderByTypeChange(OrderBy.ASC)}
+                  selected={inputs.order_by.value === OrderBy.ASC}
+                />
+                <OptionCard
+                  title={t(($) => $[`${i18nPrefix}.desc`], { ns: 'workflow' })}
+                  onSelect={handleOrderByTypeChange(OrderBy.DESC)}
+                  selected={inputs.order_by.value === OrderBy.DESC}
+                />
+              </div>
+            </div>
+          ) : null}
         </Field>
         <Split />
       </div>
@@ -165,17 +153,17 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
             <VarItem
               name="result"
               type={`Array[${itemVarTypeShowName}]`}
-              description={t(`${i18nPrefix}.outputVars.result`, { ns: 'workflow' })}
+              description={t(($) => $[`${i18nPrefix}.outputVars.result`], { ns: 'workflow' })}
             />
             <VarItem
               name="first_record"
               type={itemVarTypeShowName}
-              description={t(`${i18nPrefix}.outputVars.first_record`, { ns: 'workflow' })}
+              description={t(($) => $[`${i18nPrefix}.outputVars.first_record`], { ns: 'workflow' })}
             />
             <VarItem
               name="last_record"
               type={itemVarTypeShowName}
-              description={t(`${i18nPrefix}.outputVars.last_record`, { ns: 'workflow' })}
+              description={t(($) => $[`${i18nPrefix}.outputVars.last_record`], { ns: 'workflow' })}
             />
           </>
         </OutputVars>

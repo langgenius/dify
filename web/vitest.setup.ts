@@ -1,90 +1,24 @@
-import * as jestDomMatchers from '@testing-library/jest-dom/matchers'
 import { act, cleanup } from '@testing-library/react'
 import * as React from 'react'
+import { afterEach, beforeEach, vi } from 'vite-plus/test'
 import '@testing-library/jest-dom/vitest'
 import 'vitest-canvas-mock'
 
-expect.extend(jestDomMatchers)
-
-// Suppress act() warnings from @headlessui/react internal Transition component
-// These warnings are caused by Headless UI's internal async state updates, not our code
-const originalConsoleError = console.error
-console.error = (...args: unknown[]) => {
-  // Check all arguments for the Headless UI TransitionRootFn act warning
-  const fullMessage = args.map(arg => (typeof arg === 'string' ? arg : '')).join(' ')
-  if (fullMessage.includes('TransitionRootFn') && fullMessage.includes('not wrapped in act'))
-    return
-  originalConsoleError.apply(console, args)
-}
-
-// Fix for @headlessui/react compatibility with happy-dom
-// headlessui tries to override focus properties which may be read-only in happy-dom
-if (typeof window !== 'undefined') {
-  // Provide a minimal animations API polyfill before @headlessui/react boots
-  if (typeof Element !== 'undefined' && !Element.prototype.getAnimations)
-    Element.prototype.getAnimations = () => []
-
-  if (!document.getAnimations)
-    document.getAnimations = () => []
-
-  const ensureWritable = (target: object, prop: string) => {
-    const descriptor = Object.getOwnPropertyDescriptor(target, prop)
-    if (descriptor && !descriptor.writable) {
-      const original = descriptor.value ?? descriptor.get?.call(target)
-      Object.defineProperty(target, prop, {
-        value: typeof original === 'function' ? original : vi.fn(),
-        writable: true,
-        configurable: true,
-      })
-    }
+;(
+  globalThis as typeof globalThis & {
+    BASE_UI_ANIMATIONS_DISABLED: boolean
   }
+).BASE_UI_ANIMATIONS_DISABLED = true
 
-  ensureWritable(window, 'focus')
-  ensureWritable(HTMLElement.prototype, 'focus')
-}
+if (typeof Element !== 'undefined' && !Element.prototype.getAnimations)
+  Element.prototype.getAnimations = () => []
 
-if (typeof globalThis.ResizeObserver === 'undefined') {
-  globalThis.ResizeObserver = class {
-    observe() {
-      return undefined
-    }
-
-    unobserve() {
-      return undefined
-    }
-
-    disconnect() {
-      return undefined
-    }
-  }
-}
-
-// Mock IntersectionObserver for tests
-if (typeof globalThis.IntersectionObserver === 'undefined') {
-  globalThis.IntersectionObserver = class {
-    readonly root: Element | Document | null = null
-    readonly rootMargin: string = ''
-    readonly scrollMargin: string = ''
-    readonly thresholds: ReadonlyArray<number> = []
-    constructor(_callback: IntersectionObserverCallback, _options?: IntersectionObserverInit) { /* noop */ }
-    observe(_target: Element) { /* noop */ }
-    unobserve(_target: Element) { /* noop */ }
-    disconnect() { /* noop */ }
-    takeRecords(): IntersectionObserverEntry[] { return [] }
-  }
-}
-
-// Mock global fetch to prevent happy-dom from making real network calls
-// (which would cause ECONNREFUSED errors against localhost:5001).
-// Individual tests can still override via vi.spyOn(globalThis, 'fetch') or reassignment.
-globalThis.fetch = vi.fn(() =>
-  Promise.resolve(
-    new Response(JSON.stringify({}), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    }),
-  ),
-) as unknown as typeof fetch
+const unexpectedFetchCalls: Parameters<typeof fetch>[] = []
+const unexpectedFetchMock = vi.fn((...args: Parameters<typeof fetch>) => {
+  unexpectedFetchCalls.push(args)
+  return new Promise<Response>(() => {})
+}) as typeof fetch
+globalThis.fetch = unexpectedFetchMock
 
 afterEach(async () => {
   // Wrap cleanup in act() to flush pending React scheduler work
@@ -93,16 +27,14 @@ afterEach(async () => {
   await act(async () => {
     cleanup()
   })
-})
 
-// mock custom clipboard hook - wraps writeTextToClipboard with fallback
-vi.mock('@/hooks/use-clipboard', () => ({
-  useClipboard: () => ({
-    copy: vi.fn(),
-    copied: false,
-    reset: vi.fn(),
-  }),
-}))
+  if (unexpectedFetchCalls.length) {
+    const requests = unexpectedFetchCalls.map(([input]) =>
+      input instanceof Request ? input.url : String(input),
+    )
+    throw new Error(`Unexpected fetch request(s): ${requests.join(', ')}`)
+  }
+})
 
 // mock zustand - auto-resets all stores after each test
 // Based on official Zustand testing guide: https://zustand.docs.pmnd.rs/guides/testing
@@ -115,15 +47,6 @@ vi.mock('react-i18next', async () => {
   return {
     ...actual,
     ...createReactI18nextMock(),
-  }
-})
-
-// Mock FloatingPortal to render children in the normal DOM flow
-vi.mock('@floating-ui/react', async () => {
-  const actual = await vi.importActual('@floating-ui/react')
-  return {
-    ...actual,
-    FloatingPortal: ({ children }: { children: React.ReactNode }) => React.createElement('div', { 'data-floating-ui-portal': true }, children),
   }
 })
 
@@ -148,15 +71,11 @@ vi.mock('@monaco-editor/react', () => {
         getLineContent: vi.fn(() => ''),
       })),
       getPosition: vi.fn(() => ({ lineNumber: 1, column: 1 })),
-      deltaDecorations: vi.fn(() => []),
       focus: vi.fn(() => {
-        focusListeners.forEach(listener => listener())
+        focusListeners.forEach((listener) => listener())
       }),
-      setPosition: vi.fn(),
-      revealLine: vi.fn(),
-      trigger: vi.fn(),
       __blur: () => {
-        blurListeners.forEach(listener => listener())
+        blurListeners.forEach((listener) => listener())
       },
     }
   }
@@ -171,7 +90,12 @@ vi.mock('@monaco-editor/react', () => {
       startColumn: number
       endLineNumber: number
       endColumn: number
-      constructor(startLineNumber: number, startColumn: number, endLineNumber: number, endColumn: number) {
+      constructor(
+        startLineNumber: number,
+        startColumn: number,
+        endLineNumber: number,
+        endColumn: number,
+      ) {
         this.startLineNumber = startLineNumber
         this.startColumn = startColumn
         this.endLineNumber = endLineNumber
@@ -192,8 +116,7 @@ vi.mock('@monaco-editor/react', () => {
     options?: { readOnly?: boolean }
   }) => {
     const editorRef = React.useRef<ReturnType<typeof createEditorMock> | null>(null)
-    if (!editorRef.current)
-      editorRef.current = createEditorMock()
+    if (!editorRef.current) editorRef.current = createEditorMock()
 
     React.useEffect(() => {
       onMount?.(editorRef.current!, monacoMock)
@@ -201,11 +124,11 @@ vi.mock('@monaco-editor/react', () => {
 
     return React.createElement('textarea', {
       'data-testid': 'monaco-editor',
-      'readOnly': options?.readOnly,
+      readOnly: options?.readOnly,
       value,
-      'onChange': (event: React.ChangeEvent<HTMLTextAreaElement>) => onChange?.(event.target.value),
-      'onFocus': () => editorRef.current?.focus(),
-      'onBlur': () => editorRef.current?.__blur(),
+      onChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => onChange?.(event.target.value),
+      onFocus: () => editorRef.current?.focus(),
+      onBlur: () => editorRef.current?.__blur(),
     })
   }
 
@@ -215,37 +138,13 @@ vi.mock('@monaco-editor/react', () => {
     Editor: MonacoEditor,
     loader: {
       config: vi.fn(),
-      init: vi.fn().mockResolvedValue(monacoMock),
     },
   }
 })
 
-// Mock localStorage for testing
-const createMockLocalStorage = () => {
-  const storage: Record<string, string> = {}
-  return {
-    getItem: vi.fn((key: string) => storage[key] || null),
-    setItem: vi.fn((key: string, value: string) => {
-      storage[key] = value
-    }),
-    removeItem: vi.fn((key: string) => {
-      delete storage[key]
-    }),
-    clear: vi.fn(() => {
-      Object.keys(storage).forEach(key => delete storage[key])
-    }),
-    get storage() { return { ...storage } },
-  }
-}
-
-let mockLocalStorage: ReturnType<typeof createMockLocalStorage>
-
 beforeEach(() => {
-  vi.clearAllMocks()
-  mockLocalStorage = createMockLocalStorage()
-  Object.defineProperty(globalThis, 'localStorage', {
-    value: mockLocalStorage,
-    writable: true,
-    configurable: true,
-  })
+  unexpectedFetchCalls.length = 0
+  vi.mocked(unexpectedFetchMock).mockClear()
+  globalThis.fetch = unexpectedFetchMock
+  if (typeof localStorage !== 'undefined') localStorage.clear()
 })

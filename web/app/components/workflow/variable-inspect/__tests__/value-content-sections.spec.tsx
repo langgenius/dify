@@ -18,7 +18,7 @@ const toastMocks = vi.hoisted(() => ({
   promise: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(toastMocks.call, {
     success: vi.fn(),
     error: vi.fn(),
@@ -30,14 +30,22 @@ vi.mock('@/app/components/base/ui/toast', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow/nodes/llm/components/json-schema-config-modal/schema-editor', () => ({
-  default: ({ schema, onUpdate }: { schema: string, onUpdate: (value: string) => void }) => (
-    <textarea data-testid="schema-editor" value={schema} onChange={event => onUpdate(event.target.value)} />
-  ),
-}))
+vi.mock(
+  '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/schema-editor',
+  () => ({
+    default: ({ schema, onUpdate }: { schema: string; onUpdate: (value: string) => void }) => (
+      <textarea
+        data-testid="schema-editor"
+        value={schema}
+        onChange={(event) => onUpdate(event.target.value)}
+      />
+    ),
+  }),
+)
 
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ token: '' }),
+  usePathname: () => '/',
 }))
 
 describe('value-content sections', () => {
@@ -51,14 +59,15 @@ describe('value-content sections', () => {
     workflow_file_upload_limit: 5,
   })
 
-  const createVar = (overrides: Partial<VarInInspect>): VarInInspect => ({
-    id: 'var-1',
-    name: 'query',
-    type: VarInInspectType.node,
-    value_type: VarType.string,
-    value: '',
-    ...overrides,
-  } as VarInInspect)
+  const createVar = (overrides: Partial<VarInInspect>): VarInInspect =>
+    ({
+      id: 'var-1',
+      name: 'query',
+      type: VarInInspectType.node,
+      value_type: VarType.string,
+      value: '',
+      ...overrides,
+    }) as VarInInspect
 
   it('should render the text editor section and forward text changes', () => {
     const handleTextChange = vi.fn()
@@ -98,7 +107,7 @@ describe('value-content sections', () => {
     const onChange = vi.fn()
     render(<BoolArraySection values={[true, false]} onChange={onChange} />)
 
-    fireEvent.click(screen.getAllByText('True')[1])
+    fireEvent.click(screen.getAllByText('True')[1]!)
     expect(onChange).toHaveBeenCalledWith([true, true])
   })
 
@@ -114,17 +123,14 @@ describe('value-content sections', () => {
           isTruncated={false}
           onChange={onChange}
         />
-        <ErrorMessages
-          parseError={new Error('Broken JSON')}
-          validationError="Too deep"
-        />
+        <ErrorMessages parseError={new Error('Broken JSON')} validationError="Too deep" />
       </>,
     )
 
     fireEvent.change(screen.getByTestId('schema-editor'), { target: { value: '{"foo":1}' } })
     expect(onChange).toHaveBeenCalledWith('{"foo":1}')
-    expect(screen.getByText('Broken JSON')).toBeInTheDocument()
-    expect(screen.getByText('Too deep')).toBeInTheDocument()
+    expect(screen.getByText('Broken JSON'))!.toBeInTheDocument()
+    expect(screen.getByText('Too deep'))!.toBeInTheDocument()
   })
 
   it('should render chunk preview when the json editor has chunks', () => {
@@ -140,7 +146,7 @@ describe('value-content sections', () => {
       />,
     )
 
-    expect(screen.getByTestId('schema-editor')).toBeInTheDocument()
+    expect(screen.getByTestId('schema-editor'))!.toBeInTheDocument()
   })
 
   it('should render the file editor section', () => {

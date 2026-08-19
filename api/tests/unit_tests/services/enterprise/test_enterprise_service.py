@@ -10,6 +10,8 @@ from unittest.mock import patch
 
 import pytest
 
+from enums import DeploymentEdition
+from services.enterprise.base import MCPIdentityRefreshError, MCPNoRefreshTokenError, MCPTokenError
 from services.enterprise.enterprise_service import (
     INVALID_LICENSE_CACHE_TTL,
     LICENSE_STATUS_CACHE_KEY,
@@ -20,6 +22,8 @@ from services.enterprise.enterprise_service import (
     WorkspacePermission,
     try_join_default_workspace,
 )
+from services.entities.feature_entities import LicenseStatus
+from services.errors.enterprise import EnterpriseAPIError, EnterpriseAPIForbiddenError, EnterpriseAPIUnauthorizedError
 
 MODULE = "services.enterprise.enterprise_service"
 
@@ -188,6 +192,31 @@ class TestWebAppAuth:
 
         req.send_request.assert_called_once_with("DELETE", "/webapp/clean", params={"appId": "a1"})
 
+    def test_list_externally_accessible_apps_minimal_call(self):
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.return_value = {"data": [], "total": 0, "hasMore": False}
+            result = EnterpriseService.WebAppAuth.list_externally_accessible_apps(page=1, limit=10)
+
+        assert result == {"data": [], "total": 0, "hasMore": False}
+        req.send_request.assert_called_once_with(
+            "POST",
+            "/webapp/externally-accessible-apps",
+            json={"page": 1, "limit": 10},
+            timeout=5.0,
+        )
+
+    def test_list_externally_accessible_apps_with_filters(self):
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.return_value = {"data": [], "total": 0, "hasMore": False}
+            EnterpriseService.WebAppAuth.list_externally_accessible_apps(page=2, limit=5, mode="workflow", name="alpha")
+
+        req.send_request.assert_called_once_with(
+            "POST",
+            "/webapp/externally-accessible-apps",
+            json={"page": 2, "limit": 5, "mode": "workflow", "name": "alpha"},
+            timeout=5.0,
+        )
+
 
 class TestJoinDefaultWorkspace:
     def test_join_default_workspace_success(self):
@@ -240,13 +269,13 @@ class TestJoinDefaultWorkspace:
 
 
 class TestTryJoinDefaultWorkspace:
-    def test_try_join_default_workspace_enterprise_disabled_noop(self):
-        with (
-            patch("services.enterprise.enterprise_service.dify_config") as mock_config,
-            patch("services.enterprise.enterprise_service.EnterpriseService.join_default_workspace") as mock_join,
-        ):
-            mock_config.ENTERPRISE_ENABLED = False
+    @pytest.fixture(autouse=True)
+    def _enterprise_edition(self, config_overrides) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
 
+    def test_try_join_default_workspace_non_enterprise_edition_noop(self, config_overrides):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+        with patch("services.enterprise.enterprise_service.EnterpriseService.join_default_workspace") as mock_join:
             try_join_default_workspace("11111111-1111-1111-1111-111111111111")
 
             mock_join.assert_not_called()
@@ -254,11 +283,7 @@ class TestTryJoinDefaultWorkspace:
     def test_try_join_default_workspace_successful_join_does_not_raise(self):
         account_id = "11111111-1111-1111-1111-111111111111"
 
-        with (
-            patch("services.enterprise.enterprise_service.dify_config") as mock_config,
-            patch("services.enterprise.enterprise_service.EnterpriseService.join_default_workspace") as mock_join,
-        ):
-            mock_config.ENTERPRISE_ENABLED = True
+        with patch("services.enterprise.enterprise_service.EnterpriseService.join_default_workspace") as mock_join:
             mock_join.return_value = DefaultWorkspaceJoinResult(
                 workspace_id="22222222-2222-2222-2222-222222222222",
                 joined=True,
@@ -273,11 +298,7 @@ class TestTryJoinDefaultWorkspace:
     def test_try_join_default_workspace_skipped_join_does_not_raise(self):
         account_id = "11111111-1111-1111-1111-111111111111"
 
-        with (
-            patch("services.enterprise.enterprise_service.dify_config") as mock_config,
-            patch("services.enterprise.enterprise_service.EnterpriseService.join_default_workspace") as mock_join,
-        ):
-            mock_config.ENTERPRISE_ENABLED = True
+        with patch("services.enterprise.enterprise_service.EnterpriseService.join_default_workspace") as mock_join:
             mock_join.return_value = DefaultWorkspaceJoinResult(
                 workspace_id="",
                 joined=False,
@@ -292,11 +313,7 @@ class TestTryJoinDefaultWorkspace:
     def test_try_join_default_workspace_api_failure_soft_fails(self):
         account_id = "11111111-1111-1111-1111-111111111111"
 
-        with (
-            patch("services.enterprise.enterprise_service.dify_config") as mock_config,
-            patch("services.enterprise.enterprise_service.EnterpriseService.join_default_workspace") as mock_join,
-        ):
-            mock_config.ENTERPRISE_ENABLED = True
+        with patch("services.enterprise.enterprise_service.EnterpriseService.join_default_workspace") as mock_join:
             mock_join.side_effect = Exception("network failure")
 
             # Should not raise
@@ -305,11 +322,8 @@ class TestTryJoinDefaultWorkspace:
             mock_join.assert_called_once_with(account_id=account_id)
 
     def test_try_join_default_workspace_invalid_account_id_soft_fails(self):
-        with patch("services.enterprise.enterprise_service.dify_config") as mock_config:
-            mock_config.ENTERPRISE_ENABLED = True
-
-            # Should not raise even though UUID parsing fails inside join_default_workspace
-            try_join_default_workspace("not-a-uuid")
+        # Should not raise even though UUID parsing fails inside join_default_workspace
+        try_join_default_workspace("not-a-uuid")
 
 
 # ---------------------------------------------------------------------------
@@ -322,21 +336,19 @@ _EE_SVC = "services.enterprise.enterprise_service"
 class TestGetCachedLicenseStatus:
     """Tests for EnterpriseService.get_cached_license_status."""
 
-    def test_returns_none_when_enterprise_disabled(self):
-        with patch(f"{_EE_SVC}.dify_config") as mock_config:
-            mock_config.ENTERPRISE_ENABLED = False
+    @pytest.fixture(autouse=True)
+    def _enterprise_edition(self, config_overrides) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
 
-            assert EnterpriseService.get_cached_license_status() is None
+    def test_returns_none_outside_enterprise_edition(self, config_overrides):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+        assert EnterpriseService.get_cached_license_status() is None
 
     def test_cache_hit_returns_license_status_enum(self):
-        from services.feature_service import LicenseStatus
-
         with (
-            patch(f"{_EE_SVC}.dify_config") as mock_config,
             patch(f"{_EE_SVC}.redis_client") as mock_redis,
             patch.object(EnterpriseService, "get_info") as mock_get_info,
         ):
-            mock_config.ENTERPRISE_ENABLED = True
             mock_redis.get.return_value = b"active"
 
             result = EnterpriseService.get_cached_license_status()
@@ -346,14 +358,10 @@ class TestGetCachedLicenseStatus:
             mock_get_info.assert_not_called()
 
     def test_cache_miss_fetches_api_and_caches_valid_status(self):
-        from services.feature_service import LicenseStatus
-
         with (
-            patch(f"{_EE_SVC}.dify_config") as mock_config,
             patch(f"{_EE_SVC}.redis_client") as mock_redis,
             patch.object(EnterpriseService, "get_info") as mock_get_info,
         ):
-            mock_config.ENTERPRISE_ENABLED = True
             mock_redis.get.return_value = None
             mock_get_info.return_value = {"License": {"status": "active"}}
 
@@ -365,14 +373,10 @@ class TestGetCachedLicenseStatus:
             )
 
     def test_cache_miss_fetches_api_and_caches_invalid_status_with_short_ttl(self):
-        from services.feature_service import LicenseStatus
-
         with (
-            patch(f"{_EE_SVC}.dify_config") as mock_config,
             patch(f"{_EE_SVC}.redis_client") as mock_redis,
             patch.object(EnterpriseService, "get_info") as mock_get_info,
         ):
-            mock_config.ENTERPRISE_ENABLED = True
             mock_redis.get.return_value = None
             mock_get_info.return_value = {"License": {"status": "expired"}}
 
@@ -384,14 +388,10 @@ class TestGetCachedLicenseStatus:
             )
 
     def test_redis_read_failure_falls_through_to_api(self):
-        from services.feature_service import LicenseStatus
-
         with (
-            patch(f"{_EE_SVC}.dify_config") as mock_config,
             patch(f"{_EE_SVC}.redis_client") as mock_redis,
             patch.object(EnterpriseService, "get_info") as mock_get_info,
         ):
-            mock_config.ENTERPRISE_ENABLED = True
             mock_redis.get.side_effect = ConnectionError("redis down")
             mock_get_info.return_value = {"License": {"status": "active"}}
 
@@ -401,14 +401,10 @@ class TestGetCachedLicenseStatus:
             mock_get_info.assert_called_once()
 
     def test_redis_write_failure_still_returns_status(self):
-        from services.feature_service import LicenseStatus
-
         with (
-            patch(f"{_EE_SVC}.dify_config") as mock_config,
             patch(f"{_EE_SVC}.redis_client") as mock_redis,
             patch.object(EnterpriseService, "get_info") as mock_get_info,
         ):
-            mock_config.ENTERPRISE_ENABLED = True
             mock_redis.get.return_value = None
             mock_redis.setex.side_effect = ConnectionError("redis down")
             mock_get_info.return_value = {"License": {"status": "expiring"}}
@@ -419,11 +415,9 @@ class TestGetCachedLicenseStatus:
 
     def test_api_failure_returns_none(self):
         with (
-            patch(f"{_EE_SVC}.dify_config") as mock_config,
             patch(f"{_EE_SVC}.redis_client") as mock_redis,
             patch.object(EnterpriseService, "get_info") as mock_get_info,
         ):
-            mock_config.ENTERPRISE_ENABLED = True
             mock_redis.get.return_value = None
             mock_get_info.side_effect = Exception("network failure")
 
@@ -431,13 +425,116 @@ class TestGetCachedLicenseStatus:
 
     def test_api_returns_no_license_info(self):
         with (
-            patch(f"{_EE_SVC}.dify_config") as mock_config,
             patch(f"{_EE_SVC}.redis_client") as mock_redis,
             patch.object(EnterpriseService, "get_info") as mock_get_info,
         ):
-            mock_config.ENTERPRISE_ENABLED = True
             mock_redis.get.return_value = None
             mock_get_info.return_value = {}  # no "License" key
 
             assert EnterpriseService.get_cached_license_status() is None
             mock_redis.setex.assert_not_called()
+
+
+class TestIssueMCPToken:
+    """Coverage for EnterpriseService.issue_mcp_token (M2).
+
+    The function wraps `POST /inner/api/mcp/issue-token` and must map
+    EnterpriseServiceError subclasses to MCP-typed errors so the workflow
+    layer can halt with a precise message instead of leaking transport text.
+    """
+
+    @staticmethod
+    def _call():
+        return EnterpriseService.issue_mcp_token(
+            user_id="user-uuid",
+            tenant_id="tenant-uuid",
+            app_id="app-uuid",
+            audience="https://mcp.example.com/mcp/",
+        )
+
+    def test_happy_path_returns_token_and_expiry(self):
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.return_value = {"token": "abc.def.ghi", "expires_at": 1900000000}
+            token, exp = self._call()
+
+        assert token == "abc.def.ghi"
+        assert exp == 1900000000
+        req.send_request.assert_called_once_with(
+            "POST",
+            "/mcp/issue-token",
+            json={
+                "user_id": "user-uuid",
+                "tenant_id": "tenant-uuid",
+                "app_id": "app-uuid",
+                "audience": "https://mcp.example.com/mcp/",
+                "user_type": "account",
+            },
+        )
+
+    def test_end_user_type_is_forwarded(self):
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.return_value = {"token": "t", "expires_at": 1900000000}
+            EnterpriseService.issue_mcp_token(
+                user_id="end-user-uuid",
+                tenant_id="tenant-uuid",
+                app_id="app-uuid",
+                audience="https://mcp.example.com/mcp/",
+                user_type="end_user",
+            )
+        body = req.send_request.call_args.kwargs["json"]
+        assert body["user_type"] == "end_user"
+        assert body["app_id"] == "app-uuid"
+
+    def test_401_maps_to_identity_refresh_error(self):
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.side_effect = EnterpriseAPIUnauthorizedError("refresh rejected by IdP")
+            with pytest.raises(MCPIdentityRefreshError, match="refresh rejected"):
+                self._call()
+
+    def test_428_maps_to_no_refresh_token_error(self):
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            # 428 PreconditionRequired is what EE returns when there's no
+            # stored SSO refresh token for the user.
+            req.send_request.side_effect = EnterpriseAPIError("user has not completed SSO", status_code=428)
+            with pytest.raises(MCPNoRefreshTokenError, match="SSO"):
+                self._call()
+
+    def test_403_maps_to_identity_refresh_error_for_license(self):
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.side_effect = EnterpriseAPIForbiddenError("not licensed for MCP forwarding")
+            with pytest.raises(MCPIdentityRefreshError, match="not licensed"):
+                self._call()
+
+    def test_other_status_maps_to_generic_token_error(self):
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.side_effect = EnterpriseAPIError("upstream 502", status_code=502)
+            with pytest.raises(MCPTokenError, match="status=502"):
+                self._call()
+
+    def test_malformed_response_shape_raises_token_error(self):
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.return_value = "not-a-dict"
+            with pytest.raises(MCPTokenError, match="invalid response shape"):
+                self._call()
+
+    def test_missing_token_field_raises_token_error(self):
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.return_value = {"expires_at": 1700000000}  # no token
+            with pytest.raises(MCPTokenError, match="missing or non-string token"):
+                self._call()
+
+    def test_float_expires_at_is_accepted(self):
+        """expires_at may arrive as float (time.time()) — must be coerced."""
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.return_value = {"token": "t", "expires_at": 1900000000.5}
+            token, exp = self._call()
+        assert token == "t"
+        assert exp == 1900000000
+        assert isinstance(exp, int)
+
+    def test_bool_expires_at_is_rejected(self):
+        """bool is a subclass of int — must NOT be accepted as expires_at."""
+        with patch(f"{MODULE}.EnterpriseRequest") as req:
+            req.send_request.return_value = {"token": "t", "expires_at": True}
+            with pytest.raises(MCPTokenError, match="non-numeric expires_at"):
+                self._call()

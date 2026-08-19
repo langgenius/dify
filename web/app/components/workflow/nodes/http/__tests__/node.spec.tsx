@@ -8,7 +8,7 @@ const mockReadonlyInputWithSelectVar = vi.hoisted(() => vi.fn())
 
 vi.mock('@/app/components/workflow/nodes/_base/components/readonly-input-with-select-var', () => ({
   __esModule: true,
-  default: (props: { value: string, nodeId: string, className?: string }) => {
+  default: (props: { value: string; nodeId: string; className?: string }) => {
     mockReadonlyInputWithSelectVar(props)
     return <div data-testid="readonly-input">{props.value}</div>
   },
@@ -48,19 +48,16 @@ describe('http/node', () => {
 
     expect(screen.getByText('post')).toBeInTheDocument()
     expect(screen.getByTestId('readonly-input')).toHaveTextContent('https://api.example.com/users')
-    expect(mockReadonlyInputWithSelectVar).toHaveBeenCalledWith(expect.objectContaining({
-      nodeId: 'http-node',
-      value: 'https://api.example.com/users',
-    }))
+    expect(mockReadonlyInputWithSelectVar).toHaveBeenCalledWith(
+      expect.objectContaining({
+        nodeId: 'http-node',
+        value: 'https://api.example.com/users',
+      }),
+    )
   })
 
   it('renders nothing when the request URL is empty', () => {
-    const { container } = render(
-      <Node
-        id="http-node"
-        data={createData({ url: '' })}
-      />,
-    )
+    const { container } = render(<Node id="http-node" data={createData({ url: '' })} />)
 
     expect(container).toBeEmptyDOMElement()
   })

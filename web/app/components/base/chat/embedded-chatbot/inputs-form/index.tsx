@@ -1,64 +1,67 @@
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import InputsFormContent from '@/app/components/base/chat/embedded-chatbot/inputs-form/content'
 import Divider from '@/app/components/base/divider'
-import { Button } from '@/app/components/base/ui/button'
 import { AppSourceType } from '@/service/share'
-import { cn } from '@/utils/classnames'
 import { useEmbeddedChatbotContext } from '../context'
 
-type Props = {
+type Props = Readonly<{
   collapsed: boolean
   setCollapsed: (collapsed: boolean) => void
-}
+}>
 
-const InputsFormNode = ({
-  collapsed,
-  setCollapsed,
-}: Props) => {
+const InputsFormNode = ({ collapsed, setCollapsed }: Props) => {
   const { t } = useTranslation()
   const {
     appSourceType,
     isMobile,
     currentConversationId,
-    themeBuilder,
+    theme,
     handleStartChat,
     allInputsHidden,
     inputsForms,
   } = useEmbeddedChatbotContext()
   const isTryApp = appSourceType === AppSourceType.tryApp
 
-  if (allInputsHidden || inputsForms.length === 0)
-    return null
+  if (allInputsHidden || inputsForms.length === 0) return null
 
   return (
     <div
       data-testid="inputs-form-node"
-      className={cn('mb-6 flex flex-col items-center px-4 pt-6', isMobile && 'mb-4 pt-4', isTryApp && 'mb-0 px-0')}
-    >
-      <div className={cn(
-        'w-full max-w-[672px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-md',
-        collapsed && 'border border-components-card-border bg-components-card-bg shadow-none',
-        isTryApp && 'max-w-[auto]',
+      className={cn(
+        'mb-6 flex flex-col items-center px-4 pt-6',
+        isMobile && 'mb-4 pt-4',
+        isTryApp && 'mb-0 px-0',
       )}
-      >
-        <div className={cn(
-          'flex items-center gap-3 rounded-t-2xl px-6 py-4',
-          !collapsed && 'border-b border-divider-subtle',
-          isMobile && 'px-4 py-3',
+    >
+      <div
+        className={cn(
+          'w-full max-w-2xl rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-md',
+          collapsed && 'border border-components-card-border bg-components-card-bg shadow-none',
+          isTryApp && 'max-w-[auto]',
         )}
+      >
+        <div
+          className={cn(
+            'flex items-center gap-3 rounded-t-2xl px-6 py-4',
+            !collapsed && 'border-b border-divider-subtle',
+            isMobile && 'px-4 py-3',
+          )}
         >
-          <div className="i-custom-public-other-message-3-fill h-6 w-6 shrink-0" />
-          <div className="grow system-xl-semibold text-text-secondary">{t('chat.chatSettingsTitle', { ns: 'share' })}</div>
+          <div className="i-custom-public-other-message-3-fill size-6 shrink-0" />
+          <div className="grow system-xl-semibold text-text-secondary">
+            {t(($) => $['chat.chatSettingsTitle'], { ns: 'share' })}
+          </div>
           {collapsed && (
             <Button
               className="text-text-tertiary uppercase"
               size="small"
               variant="ghost"
               onClick={() => setCollapsed(false)}
-              data-testid="inputs-form-edit-button"
             >
-              {t('operation.edit', { ns: 'common' })}
+              {t(($) => $['operation.edit'], { ns: 'common' })}
             </Button>
           )}
           {!collapsed && currentConversationId && (
@@ -67,9 +70,8 @@ const InputsFormNode = ({
               size="small"
               variant="ghost"
               onClick={() => setCollapsed(true)}
-              data-testid="inputs-form-close-button"
             >
-              {t('operation.close', { ns: 'common' })}
+              {t(($) => $['operation.close'], { ns: 'common' })}
             </Button>
           )}
         </div>
@@ -84,22 +86,21 @@ const InputsFormNode = ({
               variant="primary"
               className="w-full"
               onClick={() => handleStartChat(() => setCollapsed(true))}
-              data-testid="inputs-form-start-chat-button"
               style={
-                themeBuilder?.theme
+                theme
                   ? {
-                      backgroundColor: themeBuilder?.theme.primaryColor,
+                      backgroundColor: theme.primaryColor,
                     }
                   : {}
               }
             >
-              {t('chat.startChat', { ns: 'share' })}
+              {t(($) => $['chat.startChat'], { ns: 'share' })}
             </Button>
           </div>
         )}
       </div>
       {collapsed && (
-        <div className="flex w-full max-w-[720px] items-center py-4">
+        <div className="flex w-full max-w-180 items-center py-4">
           <Divider bgStyle="gradient" className="h-px basis-1/2 rotate-180" />
           <Divider bgStyle="gradient" className="h-px basis-1/2" />
         </div>

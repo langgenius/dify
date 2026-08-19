@@ -1,6 +1,8 @@
 import type { ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { render } from '@/test/console/render'
 import AddCustomModel from '../add-custom-model'
 
 // Mock hooks
@@ -8,7 +10,12 @@ const mockHandleOpenModalForAddNewCustomModel = vi.fn()
 const mockHandleOpenModalForAddCustomModelToModelList = vi.fn()
 
 vi.mock('../hooks/use-auth', () => ({
-  useAuth: (_provider: unknown, _configMethod: unknown, _fixedFields: unknown, options: { mode: string }) => {
+  useAuth: (
+    _provider: unknown,
+    _configMethod: unknown,
+    _fixedFields: unknown,
+    options: { mode: string },
+  ) => {
     if (options.mode === 'config-custom-model') {
       return { handleOpenModal: mockHandleOpenModalForAddNewCustomModel }
     }
@@ -19,10 +26,21 @@ vi.mock('../hooks/use-auth', () => ({
   },
 }))
 
-let mockCanAddedModels: { model: string, model_type: string }[] = []
+let mockCanAddedModels: { model: string; model_type: string }[] = []
 vi.mock('../hooks/use-custom-models', () => ({
   useCanAddedModels: () => mockCanAddedModels,
 }))
+
+const mockWorkspacePermissionKeys = vi.hoisted(() => ({
+  value: ['credential.use', 'credential.create', 'credential.manage'],
+}))
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }))
+})
 
 // Mock components
 vi.mock('../../model-icon', () => ({
@@ -34,35 +52,13 @@ vi.mock('@remixicon/react', () => ({
   RiAddLine: () => <div data-testid="add-line-icon" />,
 }))
 
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({ children, popupContent }: { children: React.ReactNode, popupContent: string }) => (
-    <div data-testid="tooltip-mock">
-      {children}
-      <div>{popupContent}</div>
-    </div>
-  ),
-}))
-
-// Mock portal components to avoid async test DOM issues (consistent with sibling tests)
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open }: { children: React.ReactNode, open: boolean, onOpenChange: (open: boolean) => void }) => (
-    <div data-testid="portal" data-open={open}>
-      {children}
-    </div>
-  ),
-  PortalToFollowElemTrigger: ({ children, onClick }: { children: React.ReactNode, onClick: () => void }) => (
-    <div data-testid="portal-trigger" onClick={onClick}>{children}</div>
-  ),
-  PortalToFollowElemContent: ({ children }: { children: React.ReactNode, open?: boolean }) => {
-    // In many tests, we need to find elements inside the content even if "closed" in state
-    // but not yet "removed" from DOM. However, to avoid multiple elements issues,
-    // we should be careful.
-    // For AddCustomModel, we need the content to be present when we click a model.
-    return <div data-testid="portal-content" style={{ display: 'block' }}>{children}</div>
-  },
-}))
-
 describe('AddCustomModel', () => {
+  const getAddModelTrigger = () =>
+    screen
+      .getAllByRole('button', { name: /modelProvider.addModel/i })
+      .find((element) => element.getAttribute('aria-haspopup') === 'dialog') ??
+    screen.getAllByRole('button', { name: /modelProvider.addModel/i })[0]!
+
   const mockProvider = {
     provider: 'openai',
     allow_custom_token: true,
@@ -70,6 +66,7 @@ describe('AddCustomModel', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockWorkspacePermissionKeys.value = ['credential.use', 'credential.create', 'credential.manage']
     mockCanAddedModels = []
   })
 
@@ -82,7 +79,6 @@ describe('AddCustomModel', () => {
     )
 
     expect(screen.getByText(/modelProvider.addModel/)).toBeInTheDocument()
-    expect(screen.getByTestId('add-circle-icon')).toBeInTheDocument()
   })
 
   it('should call handleOpenModal directly when no models available and allowed', () => {
@@ -94,11 +90,12 @@ describe('AddCustomModel', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('portal-trigger'))
+    fireEvent.click(screen.getByRole('button', { name: /modelProvider.addModel/i }))
     expect(mockHandleOpenModalForAddNewCustomModel).toHaveBeenCalled()
   })
 
-  it('should show models list when models are available', () => {
+  it('should show models list when models are available', async () => {
+    const user = userEvent.setup()
     mockCanAddedModels = [{ model: 'gpt-4', model_type: 'llm' }]
     render(
       <AddCustomModel
@@ -107,15 +104,14 @@ describe('AddCustomModel', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('portal-trigger'))
+    await user.click(getAddModelTrigger())
 
-    // The portal should be "open"
-    expect(screen.getByTestId('portal')).toHaveAttribute('data-open', 'true')
-    expect(screen.getByText('gpt-4')).toBeInTheDocument()
+    expect(await screen.findByText('gpt-4')).toBeInTheDocument()
     expect(screen.getByTestId('model-icon')).toBeInTheDocument()
   })
 
-  it('should call handleOpenModalForAddCustomModelToModelList when clicking a model', () => {
+  it('should call handleOpenModalForAddCustomModelToModelList when clicking a model', async () => {
+    const user = userEvent.setup()
     const model = { model: 'gpt-4', model_type: 'llm' }
     mockCanAddedModels = [model]
     render(
@@ -125,13 +121,39 @@ describe('AddCustomModel', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('portal-trigger'))
-    fireEvent.click(screen.getByText('gpt-4'))
+    await user.click(getAddModelTrigger())
+    await user.click(await screen.findByText('gpt-4'))
 
     expect(mockHandleOpenModalForAddCustomModelToModelList).toHaveBeenCalledWith(undefined, model)
   })
 
-  it('should call handleOpenModalForAddNewCustomModel when clicking "Add New Model" in list', () => {
+  it('should show existing model rows as disabled for create-only users', async () => {
+    const user = userEvent.setup()
+    const model = { model: 'gpt-4', model_type: 'llm' }
+    mockWorkspacePermissionKeys.value = ['credential.create']
+    mockCanAddedModels = [model]
+
+    render(
+      <AddCustomModel
+        provider={mockProvider}
+        configurationMethod={ConfigurationMethodEnum.predefinedModel}
+      />,
+    )
+
+    await user.click(getAddModelTrigger())
+
+    const modelRow = (await screen.findByText('gpt-4')).closest('[aria-disabled]')
+    expect(modelRow).toHaveAttribute('aria-disabled', 'true')
+
+    await user.click(modelRow!)
+    expect(mockHandleOpenModalForAddCustomModelToModelList).not.toHaveBeenCalled()
+
+    await user.click(screen.getByText(/modelProvider.auth.addNewModel/))
+    expect(mockHandleOpenModalForAddNewCustomModel).toHaveBeenCalled()
+  })
+
+  it('should call handleOpenModalForAddNewCustomModel when clicking "Add New Model" in list', async () => {
+    const user = userEvent.setup()
     mockCanAddedModels = [{ model: 'gpt-4', model_type: 'llm' }]
     render(
       <AddCustomModel
@@ -140,13 +162,14 @@ describe('AddCustomModel', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('portal-trigger'))
-    fireEvent.click(screen.getByText(/modelProvider.auth.addNewModel/))
+    await user.click(getAddModelTrigger())
+    await user.click(await screen.findByText(/modelProvider.auth.addNewModel/))
 
     expect(mockHandleOpenModalForAddNewCustomModel).toHaveBeenCalled()
   })
 
-  it('should show tooltip when no models and custom tokens not allowed', () => {
+  it('should show tooltip when no models and custom tokens not allowed', async () => {
+    const user = userEvent.setup()
     const restrictedProvider = { ...mockProvider, allow_custom_token: false }
     mockCanAddedModels = []
     render(
@@ -156,10 +179,11 @@ describe('AddCustomModel', () => {
       />,
     )
 
-    expect(screen.getByTestId('tooltip-mock')).toBeInTheDocument()
-    expect(screen.getByText('plugin.auth.credentialUnavailable')).toBeInTheDocument()
+    const trigger = getAddModelTrigger()
+    await user.hover(trigger)
+    expect(await screen.findByText('plugin.auth.credentialUnavailable')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByTestId('portal-trigger'))
+    await user.click(trigger)
     expect(mockHandleOpenModalForAddNewCustomModel).not.toHaveBeenCalled()
   })
 })

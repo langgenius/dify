@@ -3,44 +3,43 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import InSiteMessageNotification from '../notification'
 
-const {
-  mockConfig,
-  mockNotification,
-  mockNotificationDismiss,
-} = vi.hoisted(() => ({
-  mockConfig: {
-    isCloudEdition: true,
+const { mockEdition, mockNotification, mockNotificationDismiss } = vi.hoisted(() => ({
+  mockEdition: {
+    value: 'CLOUD' as 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD' | null,
   },
   mockNotification: vi.fn(),
   mockNotificationDismiss: vi.fn(),
 }))
 
-vi.mock(import('@/config'), async (importOriginal) => {
-  const actual = await importOriginal()
-
-  return {
-    ...actual,
-    get IS_CLOUD_EDITION() {
-      return mockConfig.isCloudEdition
-    },
-  }
-})
-
 vi.mock('@/service/client', () => ({
   consoleQuery: {
-    notification: {
-      queryOptions: (options?: Record<string, unknown>) => ({
-        queryKey: ['console', 'notification'],
-        queryFn: (...args: unknown[]) => mockNotification(...args),
-        ...options,
-      }),
+    systemFeatures: {
+      get: {
+        queryKey: () => ['console', 'systemFeatures', 'get'],
+        queryOptions: (options?: Record<string, unknown>) => ({
+          queryKey: ['console', 'systemFeatures', 'get'],
+          queryFn: () => new Promise(() => {}),
+          ...options,
+        }),
+      },
     },
-    notificationDismiss: {
-      mutationOptions: (options?: Record<string, unknown>) => ({
-        mutationKey: ['console', 'notificationDismiss'],
-        mutationFn: (...args: unknown[]) => mockNotificationDismiss(...args),
-        ...options,
-      }),
+    notification: {
+      get: {
+        queryOptions: (options?: Record<string, unknown>) => ({
+          queryKey: ['console', 'notification', 'get'],
+          queryFn: (...args: unknown[]) => mockNotification(...args),
+          ...options,
+        }),
+      },
+      dismiss: {
+        post: {
+          mutationOptions: (options?: Record<string, unknown>) => ({
+            mutationKey: ['console', 'notification', 'dismiss', 'post'],
+            mutationFn: (...args: unknown[]) => mockNotificationDismiss(...args),
+            ...options,
+          }),
+        },
+      },
     },
   },
 }))
@@ -56,11 +55,12 @@ const createWrapper = () => {
       },
     },
   })
+  queryClient.setQueryData(['console', 'systemFeatures', 'get'], {
+    deployment_edition: mockEdition.value,
+  })
 
   const Wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
 
   return Wrapper
@@ -69,7 +69,7 @@ const createWrapper = () => {
 describe('InSiteMessageNotification', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockConfig.isCloudEdition = true
+    mockEdition.value = 'CLOUD'
     vi.stubGlobal('open', vi.fn())
   })
 
@@ -80,7 +80,7 @@ describe('InSiteMessageNotification', () => {
   // Validate query gating and empty state rendering.
   describe('Rendering', () => {
     it('should render null and skip query when not cloud edition', async () => {
-      mockConfig.isCloudEdition = false
+      mockEdition.value = 'COMMUNITY'
       const Wrapper = createWrapper()
       const { container } = render(<InSiteMessageNotification />, { wrapper: Wrapper })
 
@@ -115,7 +115,13 @@ describe('InSiteMessageNotification', () => {
             body: JSON.stringify({
               main: 'Parsed body main',
               actions: [
-                { action: 'link', data: 'https://example.com/docs', text: 'Visit docs', type: 'primary' },
+                {
+                  action: 'link',
+                  data: 'https://example.com/docs',
+                  text: 'Visit docs',
+                  type: 'primary',
+                },
+                { action: 'close', text: 'Outline close', type: 'outline' },
                 { action: 'close', text: 'Dismiss now', type: 'default' },
                 { action: 'link', data: 'https://example.com/invalid', text: 100, type: 'primary' },
               ],
@@ -132,6 +138,7 @@ describe('InSiteMessageNotification', () => {
         expect(screen.getByText('Parsed body main')).toBeInTheDocument()
       })
       expect(screen.getByRole('button', { name: 'Visit docs' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Outline close' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Dismiss now' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Invalid' })).not.toBeInTheDocument()
 
@@ -147,7 +154,7 @@ describe('InSiteMessageNotification', () => {
             },
           },
           expect.objectContaining({
-            mutationKey: ['console', 'notificationDismiss'],
+            mutationKey: ['console', 'notification', 'dismiss', 'post'],
           }),
         )
       })
@@ -185,7 +192,7 @@ describe('InSiteMessageNotification', () => {
             },
           },
           expect.objectContaining({
-            mutationKey: ['console', 'notificationDismiss'],
+            mutationKey: ['console', 'notification', 'dismiss', 'post'],
           }),
         )
       })

@@ -1,32 +1,26 @@
 'use client'
 import type { FC, ReactNode } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { FieldCollapse } from '@/app/components/workflow/nodes/_base/components/collapse'
-import { cn } from '@/utils/classnames'
 import TreeIndentLine from './variable/object-child-tree-panel/tree-indent-line'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   title?: string
   children: ReactNode
   operations?: ReactNode
   collapsed?: boolean
   onCollapse?: (collapsed: boolean) => void
-}
+}>
 
-const OutputVars: FC<Props> = ({
-  title,
-  children,
-  operations,
-  collapsed,
-  onCollapse,
-}) => {
+const OutputVars: FC<Props> = ({ title, children, operations, collapsed, onCollapse }) => {
   const { t } = useTranslation()
   return (
     <FieldCollapse
-      title={title || t('nodes.common.outputVars', { ns: 'workflow' })}
-      operations={operations}
+      title={title || t(($) => $['nodes.common.outputVars'], { ns: 'workflow' })}
+      actions={operations}
       collapsed={collapsed}
       onCollapse={onCollapse}
     >
@@ -46,24 +40,18 @@ type VarItemProps = {
   isIndent?: boolean
 }
 
-export const VarItem: FC<VarItemProps> = ({
-  name,
-  type,
-  description,
-  subItems,
-  isIndent,
-}) => {
+export const VarItem: FC<VarItemProps> = ({ name, type, description, subItems, isIndent }) => {
   return (
-    <div className={cn('flex', isIndent && 'relative left-[-7px]')}>
+    <div className={cn('flex', isIndent && 'relative -left-1.75')}>
       {isIndent && <TreeIndentLine depth={1} />}
       <div className="py-1">
         <div className="flex">
-          <div className="flex items-center leading-[18px]">
+          <div className="flex items-center leading-4.5">
             <div className="code-sm-semibold text-text-secondary">{name}</div>
-            <div className="system-xs-regular ml-2 text-text-tertiary">{type}</div>
+            <div className="ml-2 system-xs-regular text-text-tertiary">{type}</div>
           </div>
         </div>
-        <div className="system-xs-regular mt-0.5 text-text-tertiary">
+        <div className="mt-0.5 system-xs-regular text-text-tertiary">
           {description}
           {subItems && (
             <div className="ml-2 border-l border-gray-200 pl-2">

@@ -3,7 +3,9 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import AgentLogNavMore from '../agent-log-nav-more'
 
-const createLogItem = (overrides: Partial<AgentLogItemWithChildren> = {}): AgentLogItemWithChildren => ({
+const createLogItem = (
+  overrides: Partial<AgentLogItemWithChildren> = {},
+): AgentLogItemWithChildren => ({
   message_id: 'message-1',
   label: 'Planner',
   children: [],
@@ -24,15 +26,17 @@ describe('AgentLogNavMore', () => {
     const onShowAgentOrToolLog = vi.fn()
     const option = createLogItem({ message_id: 'mid', label: 'Intermediate Tool' })
 
-    render(
-      <AgentLogNavMore
-        options={[option]}
-        onShowAgentOrToolLog={onShowAgentOrToolLog}
-      />,
-    )
+    render(<AgentLogNavMore options={[option]} onShowAgentOrToolLog={onShowAgentOrToolLog} />)
 
-    await user.click(screen.getByRole('button'))
-    await user.click(screen.getByText('Intermediate Tool'))
+    const menuButton = screen.getByRole('button', {
+      name: 'common.operation.more',
+      expanded: false,
+    })
+    await user.click(menuButton)
+    expect(
+      screen.getByRole('button', { name: 'common.operation.more', expanded: true }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('menuitem', { name: 'Intermediate Tool' }))
 
     expect(onShowAgentOrToolLog).toHaveBeenCalledWith(option)
   })

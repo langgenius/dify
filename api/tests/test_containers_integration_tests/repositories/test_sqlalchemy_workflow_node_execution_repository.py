@@ -7,6 +7,11 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import uuid4
 
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session, sessionmaker
+
+from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
+from core.repositories.factory import OrderConfig
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import (
     BuiltinNodeTypes,
@@ -14,11 +19,6 @@ from graphon.enums import (
     WorkflowNodeExecutionStatus,
 )
 from graphon.model_runtime.utils.encoders import jsonable_encoder
-from sqlalchemy import Engine
-from sqlalchemy.orm import Session, sessionmaker
-
-from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
-from core.repositories.factory import OrderConfig
 from models.account import Account, Tenant
 from models.enums import CreatorUserRole
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
@@ -40,8 +40,11 @@ def _create_account_with_tenant(session: Session) -> Account:
 def _make_repo(session: Session, account: Account, app_id: str) -> SQLAlchemyWorkflowNodeExecutionRepository:
     engine = session.get_bind()
     assert isinstance(engine, Engine)
+    tenant_id = account.current_tenant_id
+    assert tenant_id is not None
     return SQLAlchemyWorkflowNodeExecutionRepository(
         session_factory=sessionmaker(bind=engine, expire_on_commit=False),
+        tenant_id=tenant_id,
         user=account,
         app_id=app_id,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,

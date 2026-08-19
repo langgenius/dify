@@ -10,7 +10,6 @@
   "imageUploader.tip": "Naložite ali povlecite slike (največ {{batchCount}}, {{size}} MB vsaka)",
   "imageUploader.tooltip": "Naloži slike (maksimalno {{batchCount}}, {{size}} MB vsaka)",
   "input.countWarning": "Do 200 znakov.",
-  "input.indexWarning": "Samo znanje visoke kakovosti.",
   "input.placeholder": "Prosimo, vnesite besedilo, priporočljivo je kratko izjavno poved.",
   "input.testing": "Testiranje",
   "input.title": "Izvorno besedilo",
@@ -22,7 +21,5 @@
   "table.header.queryContent": "Vsebina poizvedbe",
   "table.header.source": "Vir",
   "table.header.time": "Čas",
-  "title": "Testiranje pridobivanja",
-  "viewChart": "Prikaži VEKTORSKI GRAF",
-  "viewDetail": "Prikaži podrobnosti"
+  "title": "Testiranje pridobivanja"
 }

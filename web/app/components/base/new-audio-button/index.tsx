@@ -1,27 +1,21 @@
 'use client'
-import {
-  RiVolumeUpLine,
-} from '@remixicon/react'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { t } from 'i18next'
 import { useState } from 'react'
-import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
-import Tooltip from '@/app/components/base/tooltip'
+import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { useParams, usePathname } from '@/next/navigation'
 
-type AudioBtnProps = {
+type AudioBtnProps = Readonly<{
   id?: string
   voice?: string
   value?: string
-}
+}>
 
 type AudioState = 'initial' | 'loading' | 'playing' | 'paused' | 'ended'
 
-const AudioBtn = ({
-  id,
-  voice,
-  value,
-}: AudioBtnProps) => {
+const AudioBtn = ({ id, voice, value }: AudioBtnProps) => {
   const [audioState, setAudioState] = useState<AudioState>('initial')
 
   const params = useParams()
@@ -51,47 +45,52 @@ const AudioBtn = ({
   if (params.token) {
     url = '/text-to-audio'
     isPublic = true
-  }
-  else if (params.appId) {
-    if (pathname.search('explore/installed') > -1)
-      url = `/installed-apps/${params.appId}/text-to-audio`
-    else
-      url = `/apps/${params.appId}/text-to-audio`
+  } else if (params.appId) {
+    if (isInstalledAppPath(pathname)) url = `/installed-apps/${params.appId}/text-to-audio`
+    else url = `/apps/${params.appId}/text-to-audio`
   }
   const handleToggle = async () => {
     if (audioState === 'playing' || audioState === 'loading') {
       setTimeout(() => setAudioState('paused'), 1)
-      AudioPlayerManager.getInstance().getAudioPlayer(url, isPublic, id, value, voice, audio_finished_call).pauseAudio()
-    }
-    else {
+      AudioPlayerManager.getInstance()
+        .getAudioPlayer(url, isPublic, id, value, voice, audio_finished_call)
+        .pauseAudio()
+    } else {
       setTimeout(() => setAudioState('loading'), 1)
-      AudioPlayerManager.getInstance().getAudioPlayer(url, isPublic, id, value, voice, audio_finished_call).playAudio()
+      AudioPlayerManager.getInstance()
+        .getAudioPlayer(url, isPublic, id, value, voice, audio_finished_call)
+        .playAudio()
     }
   }
 
   const tooltipContent = {
-    initial: t('play', { ns: 'appApi' }),
-    ended: t('play', { ns: 'appApi' }),
-    paused: t('pause', { ns: 'appApi' }),
-    playing: t('playing', { ns: 'appApi' }),
-    loading: t('loading', { ns: 'appApi' }),
+    initial: t(($) => $.play, { ns: 'appApi' }),
+    ended: t(($) => $.play, { ns: 'appApi' }),
+    paused: t(($) => $.pause, { ns: 'appApi' }),
+    playing: t(($) => $.playing, { ns: 'appApi' }),
+    loading: t(($) => $.loading, { ns: 'appApi' }),
   }[audioState]
 
   return (
-    <Tooltip
-      popupContent={tooltipContent}
-    >
-      <ActionButton
-        state={
-          audioState === 'loading' || audioState === 'playing'
-            ? ActionButtonState.Active
-            : ActionButtonState.Default
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <span className="inline-flex">
+            <IconButton
+              data-audio-active={
+                audioState === 'loading' || audioState === 'playing' ? '' : undefined
+              }
+              className="data-audio-active:bg-state-accent-active data-audio-active:text-text-accent data-audio-active:hover:bg-state-accent-active-alt data-disabled:bg-transparent data-disabled:text-text-disabled"
+              aria-label={tooltipContent}
+              onClick={handleToggle}
+              disabled={audioState === 'loading'}
+            >
+              <span aria-hidden="true" className="i-ri-volume-up-line size-4" />
+            </IconButton>
+          </span>
         }
-        onClick={handleToggle}
-        disabled={audioState === 'loading'}
-      >
-        <RiVolumeUpLine className="h-4 w-4" />
-      </ActionButton>
+      />
+      <TooltipContent>{tooltipContent}</TooltipContent>
     </Tooltip>
   )
 }

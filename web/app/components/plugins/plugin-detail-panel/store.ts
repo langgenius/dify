@@ -11,7 +11,10 @@ type TriggerDeclarationSummary = {
   subscription_constructor?: PluginTriggerSubscriptionConstructor | null
 }
 
-export type SimpleDetail = Pick<PluginDetail, 'plugin_id' | 'name' | 'plugin_unique_identifier' | 'id'> & {
+export type SimpleDetail = Pick<
+  PluginDetail,
+  'plugin_id' | 'name' | 'plugin_unique_identifier' | 'id'
+> & {
   provider: string
   declaration: Partial<Omit<PluginDeclaration, 'trigger'>> & {
     trigger?: TriggerDeclarationSummary
@@ -23,7 +26,7 @@ type Shape = {
   setDetail: (detail?: SimpleDetail) => void
 }
 
-export const usePluginStore = create<Shape>(set => ({
+export const usePluginStore = create<Shape>((set) => ({
   detail: undefined,
   setDetail: (detail?: SimpleDetail) => set({ detail }),
 }))

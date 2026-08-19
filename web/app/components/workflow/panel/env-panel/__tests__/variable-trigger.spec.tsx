@@ -8,6 +8,23 @@ import { WorkflowContext } from '@/app/components/workflow/context'
 import { createWorkflowStore } from '@/app/components/workflow/store/workflow'
 import VariableTrigger from '../variable-trigger'
 
+vi.mock(
+  '@/app/components/header/account-setting/model-provider-page/hooks',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/app/components/header/account-setting/model-provider-page/hooks')
+      >()
+
+    return {
+      ...actual,
+      useTextGenerationCurrentProviderAndModelAndModelList: () => ({
+        activeTextGenerationModelList: [],
+      }),
+    }
+  },
+)
+
 const createEnv = (overrides: Partial<EnvironmentVariable> = {}): EnvironmentVariable => ({
   id: 'env-1',
   name: 'api_key',
@@ -25,14 +42,9 @@ const renderWithProviders = (
 ) => {
   const store = createWorkflowStore({})
 
-  if (options.storeState)
-    store.setState(options.storeState)
+  if (options.storeState) store.setState(options.storeState)
 
-  const result = render(
-    <WorkflowContext value={store}>
-      {ui}
-    </WorkflowContext>,
-  )
+  const result = render(<WorkflowContext value={store}>{ui}</WorkflowContext>)
 
   return {
     ...result,
@@ -52,14 +64,7 @@ describe('VariableTrigger', () => {
     const TriggerHarness = () => {
       const [open, setOpen] = React.useState(false)
 
-      return (
-        <VariableTrigger
-          open={open}
-          setOpen={setOpen}
-          onClose={onClose}
-          onSave={vi.fn()}
-        />
-      )
+      return <VariableTrigger open={open} setOpen={setOpen} onClose={onClose} onSave={vi.fn()} />
     }
 
     renderWithProviders(<TriggerHarness />)

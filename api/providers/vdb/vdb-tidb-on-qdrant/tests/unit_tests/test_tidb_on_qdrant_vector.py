@@ -114,14 +114,12 @@ class TestTidbOnQdrantVectorDeleteByIds:
 
         assert exc_info.value.status_code == 500
 
-    def test_delete_by_ids_with_large_batch(self, vector_instance):
-        """Test deletion with a large batch of IDs."""
-        # Create 1000 IDs
+    def test_delete_by_ids_with_exactly_1000(self, vector_instance):
+        """Test deletion with exactly 1000 IDs triggers a single batch."""
         ids = [f"doc_{i}" for i in range(1000)]
 
         vector_instance.delete_by_ids(ids)
 
-        # Verify single delete call with all IDs
         vector_instance._client.delete.assert_called_once()
         call_args = vector_instance._client.delete.call_args
 
@@ -129,10 +127,27 @@ class TestTidbOnQdrantVectorDeleteByIds:
         filter_obj = filter_selector.filter
         field_condition = filter_obj.must[0]
 
-        # Verify all 1000 IDs are in the batch
         assert len(field_condition.match.any) == 1000
         assert "doc_0" in field_condition.match.any
         assert "doc_999" in field_condition.match.any
+
+    def test_delete_by_ids_splits_into_batches(self, vector_instance):
+        """Test deletion with >1000 IDs triggers multiple batched calls."""
+        ids = [f"doc_{i}" for i in range(2500)]
+
+        vector_instance.delete_by_ids(ids)
+
+        assert vector_instance._client.delete.call_count == 3
+
+        batches = []
+        for call in vector_instance._client.delete.call_args_list:
+            filter_selector = call[1]["points_selector"]
+            field_condition = filter_selector.filter.must[0]
+            batches.append(field_condition.match.any)
+
+        assert len(batches[0]) == 1000
+        assert len(batches[1]) == 1000
+        assert len(batches[2]) == 500
 
     def test_delete_by_ids_filter_structure(self, vector_instance):
         """Test that the filter structure is correctly constructed."""
@@ -157,3 +172,94 @@ class TestTidbOnQdrantVectorDeleteByIds:
         # Verify MatchAny structure
         assert isinstance(field_condition.match, rest.MatchAny)
         assert field_condition.match.any == ids
+
+
+class TestInitVectorEndpointSelection:
+    """Test that init_vector selects the correct qdrant endpoint.
+
+    We avoid importing the full module (which triggers Flask app context)
+    by testing the endpoint selection logic directly on TidbOnQdrantConfig.
+    """
+
+    def test_uses_binding_endpoint_when_present(self):
+        binding_endpoint = "https://qdrant-custom.tidb.com"
+        global_url = "https://qdrant-global.tidb.com"
+
+        qdrant_url = binding_endpoint or global_url or ""
+
+        assert qdrant_url == "https://qdrant-custom.tidb.com"
+        config = TidbOnQdrantConfig(endpoint=qdrant_url)
+        assert config.endpoint == "https://qdrant-custom.tidb.com"
+
+    def test_falls_back_to_global_when_binding_endpoint_is_none(self):
+        binding_endpoint = None
+        global_url = "https://qdrant-global.tidb.com"
+
+        qdrant_url = binding_endpoint or global_url or ""
+
+        assert qdrant_url == "https://qdrant-global.tidb.com"
+        config = TidbOnQdrantConfig(endpoint=qdrant_url)
+        assert config.endpoint == "https://qdrant-global.tidb.com"
+
+    def test_falls_back_to_empty_when_both_none(self):
+        binding_endpoint = None
+        global_url = None
+
+        qdrant_url = binding_endpoint or global_url or ""
+
+        assert qdrant_url == ""
+        config = TidbOnQdrantConfig(endpoint=qdrant_url)
+        assert config.endpoint == ""
+
+    def test_binding_endpoint_takes_precedence_over_global(self):
+        binding_endpoint = "https://qdrant-ap-southeast.tidb.com"
+        global_url = "https://qdrant-us-east.tidb.com"
+
+        qdrant_url = binding_endpoint or global_url or ""
+
+        assert qdrant_url == "https://qdrant-ap-southeast.tidb.com"
+
+    def test_empty_string_binding_endpoint_falls_back_to_global(self):
+        binding_endpoint = ""
+        global_url = "https://qdrant-global.tidb.com"
+
+        qdrant_url = binding_endpoint or global_url or ""
+
+        assert qdrant_url == "https://qdrant-global.tidb.com"
+
+
+class TestTidbCloudRequestTimeouts:
+    """The TiDB Cloud API calls must be bounded: a hanging endpoint must not
+    block cluster provisioning or password rotation forever."""
+
+    @patch("dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector.httpx.post")
+    def test_create_cluster_passes_bounded_timeout(self, mock_post):
+        from dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector import (
+            TidbConfig,
+            TidbOnQdrantVectorFactory,
+        )
+
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.json.return_value = {}
+        factory = TidbOnQdrantVectorFactory()
+        config = TidbConfig(api_url="https://api.tidbcloud.test", public_key="pub", private_key="priv")
+
+        factory.create_tidb_serverless_cluster(config, "display", "us-east-1")
+
+        assert mock_post.call_args.kwargs["timeout"] is not None
+
+    @patch("dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector.httpx.put")
+    def test_change_password_passes_bounded_timeout(self, mock_put):
+        from dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector import (
+            TidbConfig,
+            TidbOnQdrantVectorFactory,
+        )
+
+        mock_put.return_value.status_code = 200
+        mock_put.return_value.json.return_value = {}
+        factory = TidbOnQdrantVectorFactory()
+        config = TidbConfig(api_url="https://api.tidbcloud.test", public_key="pub", private_key="priv")
+
+        factory.change_tidb_serverless_root_password(config, "c-1", "new-password")
+
+        assert mock_put.call_args.kwargs["timeout"] is not None

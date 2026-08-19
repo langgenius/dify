@@ -1,6 +1,6 @@
 import type { Plugin } from 'vite'
 import fs from 'node:fs'
-import { injectClientSnippet, normalizeViteModuleId } from './utils'
+import { injectClientSnippet, normalizeViteModuleId } from './utils.ts'
 
 type CustomI18nHmrPluginOptions = {
   injectTarget: string
@@ -68,12 +68,10 @@ if (import.meta.hot) {
     },
     transform(code, id) {
       const cleanId = normalizeViteModuleId(id)
-      if (cleanId !== injectTarget)
-        return null
+      if (cleanId !== injectTarget) return null
 
       const nextCode = injectClientSnippet(code, i18nHmrClientMarker, i18nHmrClientSnippet)
-      if (nextCode === code)
-        return null
+      if (nextCode === code) return null
       return { code: nextCode, map: null }
     },
   }

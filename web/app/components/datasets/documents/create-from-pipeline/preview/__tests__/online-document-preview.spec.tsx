@@ -9,8 +9,8 @@ const { mockToastError } = vi.hoisted(() => ({
   mockToastError: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/base/ui/toast')>()
+vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
   return {
     ...actual,
     toast: {
@@ -23,7 +23,9 @@ vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
 // Mock dataset-detail context - needs mock to control return values
 const mockPipelineId = vi.fn()
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (_selector: (s: { dataset: { pipeline_id: string } }) => string) => {
+  useDatasetDetailContextWithSelector: (
+    _selector: (s: { dataset: { pipeline_id: string } }) => string,
+  ) => {
     return mockPipelineId()
   },
 }))

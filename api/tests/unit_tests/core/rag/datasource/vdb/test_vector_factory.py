@@ -1,15 +1,22 @@
 import base64
 import sys
 import types
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.rag.models.document import Document
+from extensions.storage.storage_type import StorageType
+from models.dataset import Whitelist
+from models.enums import CreatorUserRole
+from models.model import UploadFile
 
 
-def _register_fake_factory_module(monkeypatch, module_path: str, class_name: str):
+def _register_fake_factory_module(monkeypatch: pytest.MonkeyPatch, module_path: str, class_name: str):
     fake_module = types.ModuleType(module_path)
     fake_cls = type(class_name, (), {})
     setattr(fake_module, class_name, fake_cls)
@@ -102,7 +109,9 @@ def test_gen_index_struct_dict(vector_factory_module):
         ("HOLOGRES", "dify_vdb_hologres.hologres_vector", "HologresVectorFactory"),
     ],
 )
-def test_get_vector_factory_supported(vector_factory_module, monkeypatch, vector_type, module_path, class_name):
+def test_get_vector_factory_supported(
+    vector_factory_module, monkeypatch: pytest.MonkeyPatch, vector_type, module_path, class_name
+):
     expected_cls = _register_fake_factory_module(monkeypatch, module_path, class_name)
 
     result_cls = vector_factory_module.Vector.get_vector_factory(getattr(vector_factory_module.VectorType, vector_type))
@@ -119,7 +128,7 @@ class _PluginChromaFactory:
     """Stub used only for entry-point override test."""
 
 
-def test_get_vector_factory_entry_point_overrides_builtin(vector_factory_module, monkeypatch):
+def test_get_vector_factory_entry_point_overrides_builtin(vector_factory_module, monkeypatch: pytest.MonkeyPatch):
     from importlib.metadata import EntryPoint
 
     from core.rag.datasource.vdb import vector_backend_registry as reg
@@ -143,15 +152,12 @@ def test_get_vector_factory_entry_point_overrides_builtin(vector_factory_module,
     assert result_cls is _PluginChromaFactory
 
 
-def test_vector_init_uses_default_and_custom_attributes(vector_factory_module):
+def test_vector_init_uses_default_and_custom_attributes(vector_factory_module, unbound_session: Session):
     dataset = SimpleNamespace(id="dataset-1")
 
-    with (
-        patch.object(vector_factory_module.Vector, "_get_embeddings", return_value="embeddings"),
-        patch.object(vector_factory_module.Vector, "_init_vector", return_value="processor"),
-    ):
-        default_vector = vector_factory_module.Vector(dataset)
-        custom_vector = vector_factory_module.Vector(dataset, attributes=["doc_id"])
+    with patch.object(vector_factory_module.Vector, "_init_vector", return_value="processor") as init_vector:
+        default_vector = vector_factory_module.Vector(dataset, session=unbound_session)
+        custom_vector = vector_factory_module.Vector(dataset, attributes=["doc_id"], session=unbound_session)
 
     # `is_summary` and `original_chunk_id` must be in the default return-properties
     # projection so summary index retrieval works on backends that honor the list
@@ -166,11 +172,63 @@ def test_vector_init_uses_default_and_custom_attributes(vector_factory_module):
         "original_chunk_id",
     ]
     assert custom_vector._attributes == ["doc_id"]
-    assert default_vector._embeddings == "embeddings"
+    # ``_embeddings`` is now a lazy proxy that defers materializing the real
+    # embedding model until ``embed_*`` is invoked, so cleanup paths never
+    # trigger billing/feature-service calls during ``Vector(dataset, session=...)``
+    # construction. See ``_LazyEmbeddings``.
+    assert isinstance(default_vector._embeddings, vector_factory_module._LazyEmbeddings)
+    assert default_vector._session is unbound_session
+    assert custom_vector._session is unbound_session
     assert default_vector._vector_processor == "processor"
+    assert [call.kwargs["session"] for call in init_vector.call_args_list] == [unbound_session, unbound_session]
 
 
-def test_init_vector_prefers_dataset_index_struct(vector_factory_module, monkeypatch):
+def test_lazy_embeddings_defer_real_load_until_first_embed_call(vector_factory_module, monkeypatch: pytest.MonkeyPatch):
+    """``Vector(dataset, session=...)`` must not transitively call ``ModelManager`` during
+    construction. The real embedding model should only be materialized on the
+    first ``embed_*`` call (i.e. create / search paths) so cleanup paths
+    (``delete_by_ids`` / ``delete``) remain resilient to billing-API failures.
+    """
+    for_tenant_mock = MagicMock(side_effect=AssertionError("ModelManager.for_tenant must not be called eagerly"))
+    monkeypatch.setattr(vector_factory_module.ModelManager, "for_tenant", for_tenant_mock)
+
+    dataset = SimpleNamespace(
+        tenant_id="tenant-1",
+        embedding_model_provider="openai",
+        embedding_model="text-embedding-3-small",
+    )
+
+    proxy = vector_factory_module._LazyEmbeddings(dataset)
+
+    # Construction alone does not trigger ModelManager / FeatureService / BillingService.
+    for_tenant_mock.assert_not_called()
+
+    # Exercising an embed_* method materializes the real model exactly once.
+    inner_model = MagicMock()
+    inner_model.embed_documents.return_value = [[0.1, 0.2]]
+    cached_embedding_mock = MagicMock(return_value=inner_model)
+    real_for_tenant = MagicMock()
+    real_for_tenant.get_model_instance.return_value = "embedding-model-instance"
+    monkeypatch.setattr(vector_factory_module.ModelManager, "for_tenant", MagicMock(return_value=real_for_tenant))
+    monkeypatch.setattr(vector_factory_module, "CacheEmbedding", cached_embedding_mock)
+
+    result = proxy.embed_documents(["hello"])
+
+    assert result == [[0.1, 0.2]]
+    cached_embedding_mock.assert_called_once_with("embedding-model-instance")
+    inner_model.embed_documents.assert_called_once_with(["hello"])
+
+    # Subsequent calls reuse the materialized model (no re-resolution).
+    inner_model.embed_documents.reset_mock()
+    cached_embedding_mock.reset_mock()
+    proxy.embed_documents(["world"])
+    cached_embedding_mock.assert_not_called()
+    inner_model.embed_documents.assert_called_once_with(["world"])
+
+
+def test_init_vector_prefers_dataset_index_struct(
+    vector_factory_module, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+):
     calls = {"vector_type": None, "init_args": None}
 
     class _Factory:
@@ -191,31 +249,25 @@ def test_init_vector_prefers_dataset_index_struct(vector_factory_module, monkeyp
     vector._attributes = ["doc_id"]
     vector._embeddings = "embeddings"
 
-    result = vector._init_vector()
+    result = vector._init_vector(session=unbound_session)
 
     assert result == "vector-processor"
     assert calls["vector_type"] == vector_factory_module.VectorType.UPSTASH
     assert calls["init_args"] == (vector._dataset, ["doc_id"], "embeddings")
 
 
-def test_init_vector_uses_whitelist_override(vector_factory_module, monkeypatch):
-    class _Expr:
-        def __eq__(self, _other):
-            return "expr"
-
+def test_init_vector_uses_whitelist_override(
+    vector_factory_module, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
     calls = {"vector_type": None}
 
     class _Factory:
         def init_vector(self, dataset, attributes, embeddings):
             return "vector-processor"
 
-    monkeypatch.setattr(vector_factory_module, "Whitelist", SimpleNamespace(tenant_id=_Expr(), category=_Expr()))
-    monkeypatch.setattr(vector_factory_module, "select", lambda _model: SimpleNamespace(where=lambda *_args: "stmt"))
-    monkeypatch.setattr(
-        vector_factory_module,
-        "db",
-        SimpleNamespace(session=SimpleNamespace(scalars=lambda _stmt: SimpleNamespace(one_or_none=lambda: object()))),
-    )
+    tenant_id = str(uuid4())
+    sqlite_session.add(Whitelist(tenant_id=tenant_id, category="vector_db"))
+    sqlite_session.commit()
     monkeypatch.setattr(vector_factory_module.dify_config, "VECTOR_STORE", vector_factory_module.VectorType.CHROMA)
     monkeypatch.setattr(vector_factory_module.dify_config, "VECTOR_STORE_WHITELIST_ENABLE", True)
     monkeypatch.setattr(
@@ -225,17 +277,19 @@ def test_init_vector_uses_whitelist_override(vector_factory_module, monkeypatch)
     )
 
     vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
-    vector._dataset = SimpleNamespace(index_struct_dict=None, tenant_id="tenant-1")
+    vector._dataset = SimpleNamespace(index_struct_dict=None, tenant_id=tenant_id)
     vector._attributes = ["doc_id"]
     vector._embeddings = "embeddings"
 
-    result = vector._init_vector()
+    result = vector._init_vector(session=sqlite_session)
 
     assert result == "vector-processor"
     assert calls["vector_type"] == vector_factory_module.VectorType.TIDB_ON_QDRANT
 
 
-def test_init_vector_raises_when_vector_store_missing(vector_factory_module, monkeypatch):
+def test_init_vector_raises_when_vector_store_missing(
+    vector_factory_module, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+):
     monkeypatch.setattr(vector_factory_module.dify_config, "VECTOR_STORE", None)
     monkeypatch.setattr(vector_factory_module.dify_config, "VECTOR_STORE_WHITELIST_ENABLE", False)
 
@@ -245,7 +299,7 @@ def test_init_vector_raises_when_vector_store_missing(vector_factory_module, mon
     vector._embeddings = "embeddings"
 
     with pytest.raises(ValueError, match="Vector store must be specified"):
-        vector._init_vector()
+        vector._init_vector(session=unbound_session)
 
 
 def test_create_batches_texts_and_skips_empty_input(vector_factory_module):
@@ -272,42 +326,68 @@ def test_create_batches_texts_and_skips_empty_input(vector_factory_module):
     vector._vector_processor.create.assert_not_called()
 
 
-def test_create_multimodal_filters_missing_uploads(vector_factory_module, monkeypatch):
-    class _Field:
-        def in_(self, value):
-            return value
+def test_create_skips_empty_text_documents_before_embedding(vector_factory_module):
+    vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
+    vector._embeddings = MagicMock()
+    vector._embeddings.embed_documents.return_value = [[0.1], [0.2]]
+    vector._vector_processor = MagicMock()
 
-        def __eq__(self, value):
-            return value
+    docs = [
+        Document(page_content="foo", metadata={"doc_id": "id-1"}),
+        Document(page_content="", metadata={"doc_id": "id-empty"}),
+        Document(page_content="  \n", metadata={"doc_id": "id-blank"}),
+        Document(page_content="bar", metadata={"doc_id": "id-2"}),
+    ]
 
+    vector.create(texts=docs, request_id="r-1")
+
+    vector._embeddings.embed_documents.assert_called_once_with(["foo", "bar"])
+    vector._vector_processor.create.assert_called_once_with(
+        texts=[docs[0], docs[3]], embeddings=[[0.1], [0.2]], request_id="r-1"
+    )
+
+    vector._embeddings.embed_documents.reset_mock()
+    vector._vector_processor.create.reset_mock()
+    vector.create(texts=[docs[1], docs[2]])
+    vector._embeddings.embed_documents.assert_not_called()
+    vector._vector_processor.create.assert_not_called()
+
+
+def test_create_multimodal_filters_missing_uploads(
+    vector_factory_module, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
+    upload_file = UploadFile(
+        tenant_id=str(uuid4()),
+        storage_type=StorageType.LOCAL,
+        key="k-1",
+        name="image.png",
+        size=3,
+        extension="png",
+        mime_type="image/png",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=str(uuid4()),
+        created_at=datetime.now(UTC),
+        used=True,
+    )
+    sqlite_session.add(upload_file)
+    sqlite_session.commit()
     vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
     vector._embeddings = MagicMock()
     vector._embeddings.embed_multimodal_documents.return_value = [[0.1, 0.2]]
     vector._vector_processor = MagicMock()
-
-    monkeypatch.setattr(vector_factory_module, "UploadFile", SimpleNamespace(id=_Field()))
-    monkeypatch.setattr(vector_factory_module, "select", lambda _model: SimpleNamespace(where=lambda *_args: "stmt"))
-    monkeypatch.setattr(
-        vector_factory_module,
-        "db",
-        SimpleNamespace(
-            session=SimpleNamespace(
-                scalars=lambda _stmt: SimpleNamespace(all=lambda: [SimpleNamespace(id="f-1", key="k-1")])
-            )
-        ),
-    )
+    vector._session = sqlite_session
     monkeypatch.setattr(vector_factory_module.storage, "load_once", MagicMock(return_value=b"abc"))
 
     docs = [
-        Document(page_content="file-1", metadata={"doc_id": "f-1", "doc_type": "image"}),
-        Document(page_content="file-2", metadata={"doc_id": "f-2", "doc_type": "image"}),
+        Document(page_content="file-1", metadata={"doc_id": upload_file.id, "doc_type": "image"}),
+        Document(page_content="file-2", metadata={"doc_id": str(uuid4()), "doc_type": "image"}),
     ]
 
     vector.create_multimodal(file_documents=docs, request_id="r-1")
 
     file_base64 = base64.b64encode(b"abc").decode()
     vector._embeddings.embed_multimodal_documents.assert_called_once_with(
-        [{"content": file_base64, "content_type": "image", "file_id": "f-1"}]
+        [{"content": file_base64, "content_type": "image", "file_id": upload_file.id}]
     )
     vector._vector_processor.create.assert_called_once_with(
         texts=[docs[0]],
@@ -352,6 +432,48 @@ def test_add_texts_with_optional_duplicate_check(vector_factory_module):
     vector._vector_processor.create.assert_called_once()
 
 
+def test_add_texts_skips_empty_text_documents(vector_factory_module):
+    vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
+    vector._embeddings = MagicMock()
+    vector._embeddings.embed_documents.return_value = [[0.1]]
+    vector._vector_processor = MagicMock()
+
+    docs = [
+        Document(page_content="keep", metadata={"doc_id": "id-1"}),
+        Document(page_content="", metadata={"doc_id": "id-empty"}),
+    ]
+
+    vector.add_texts(docs, source="api")
+
+    vector._embeddings.embed_documents.assert_called_once_with(["keep"])
+    vector._vector_processor.create.assert_called_once_with(texts=[docs[0]], embeddings=[[0.1]], source="api")
+
+    vector._embeddings.embed_documents.reset_mock()
+    vector._vector_processor.create.reset_mock()
+    vector.add_texts([docs[1]])
+    vector._embeddings.embed_documents.assert_not_called()
+    vector._vector_processor.create.assert_not_called()
+
+
+def test_add_texts_filters_empty_documents_before_duplicate_check(vector_factory_module):
+    vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
+    vector._embeddings = MagicMock()
+    vector._embeddings.embed_documents.return_value = [[0.1]]
+    vector._vector_processor = MagicMock()
+    vector._filter_duplicate_texts = MagicMock(return_value=[])
+
+    docs = [
+        Document(page_content="keep", metadata={"doc_id": "id-1"}),
+        Document(page_content="   ", metadata={"doc_id": "id-empty"}),
+    ]
+
+    vector.add_texts(docs, duplicate_check=True)
+
+    vector._filter_duplicate_texts.assert_called_once_with([docs[0]])
+    vector._embeddings.embed_documents.assert_not_called()
+    vector._vector_processor.create.assert_not_called()
+
+
 def test_vector_delegation_methods(vector_factory_module):
     vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
     vector._embeddings = MagicMock()
@@ -371,38 +493,46 @@ def test_vector_delegation_methods(vector_factory_module):
     vector._vector_processor.delete_by_metadata_field.assert_called_once_with("doc_id", "doc-1")
 
 
-def test_search_by_file_handles_missing_and_existing_upload(vector_factory_module, monkeypatch):
-    class _Field:
-        def __eq__(self, value):
-            return value
-
-    upload_query = MagicMock()
-    upload_query.where.return_value = upload_query
-
+def test_search_by_file_handles_missing_and_existing_upload(
+    vector_factory_module, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+):
     vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
     vector._embeddings = MagicMock()
     vector._vector_processor = MagicMock()
 
-    mock_session = SimpleNamespace(get=lambda _model, _id: None)
-    monkeypatch.setattr(vector_factory_module, "UploadFile", SimpleNamespace(id=_Field()))
-    monkeypatch.setattr(vector_factory_module, "db", SimpleNamespace(session=mock_session))
+    vector._session = sqlite_session
+    missing_id = str(uuid4())
 
-    assert vector.search_by_file("file-1") == []
+    assert vector.search_by_file(missing_id) == []
 
-    mock_session.get = lambda _model, _id: SimpleNamespace(key="blob-key")
+    upload_file = UploadFile(
+        tenant_id=str(uuid4()),
+        storage_type=StorageType.LOCAL,
+        key="blob-key",
+        name="query.png",
+        size=10,
+        extension="png",
+        mime_type="image/png",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=str(uuid4()),
+        created_at=datetime.now(UTC),
+        used=True,
+    )
+    sqlite_session.add(upload_file)
+    sqlite_session.commit()
     monkeypatch.setattr(vector_factory_module.storage, "load_once", MagicMock(return_value=b"file-bytes"))
     vector._embeddings.embed_multimodal_query.return_value = [0.3, 0.4]
     vector._vector_processor.search_by_vector.return_value = ["hit"]
 
-    result = vector.search_by_file("file-2", top_k=2)
+    result = vector.search_by_file(upload_file.id, top_k=2)
 
     assert result == ["hit"]
     payload = vector._embeddings.embed_multimodal_query.call_args.args[0]
     assert payload["content_type"] == vector_factory_module.DocType.IMAGE
-    assert payload["file_id"] == "file-2"
+    assert payload["file_id"] == upload_file.id
 
 
-def test_delete_clears_redis_cache_when_collection_exists(vector_factory_module, monkeypatch):
+def test_delete_clears_redis_cache_when_collection_exists(vector_factory_module, monkeypatch: pytest.MonkeyPatch):
     delete_mock = MagicMock()
     redis_delete = MagicMock()
     monkeypatch.setattr(vector_factory_module.redis_client, "delete", redis_delete)
@@ -421,7 +551,7 @@ def test_delete_clears_redis_cache_when_collection_exists(vector_factory_module,
     redis_delete.assert_not_called()
 
 
-def test_get_embeddings_builds_cache_embedding(vector_factory_module, monkeypatch):
+def test_get_embeddings_builds_cache_embedding(vector_factory_module, monkeypatch: pytest.MonkeyPatch):
     model_manager = MagicMock()
     model_manager.get_model_instance.return_value = "model-instance"
 

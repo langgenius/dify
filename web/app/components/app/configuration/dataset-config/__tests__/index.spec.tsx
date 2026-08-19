@@ -1,15 +1,25 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import type { DataSet } from '@/models/datasets'
 import type { DatasetConfigs } from '@/models/debug'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useContext } from 'use-context-selector'
-import { ComparisonOperator, LogicalOperator } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import {
+  ComparisonOperator,
+  LogicalOperator,
+} from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { getSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
 import { DatasetPermission, DataSourceType } from '@/models/datasets'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { AppModeEnum, ModelModeType, RETRIEVE_TYPE } from '@/types/app'
-import { hasEditPermissionForDataset } from '@/utils/permission'
+import { DatasetACLPermission, getDatasetACLCapabilities } from '@/utils/permission'
 import DatasetConfig from '../index'
+
+const render = (ui: Parameters<typeof renderWithConsoleState>[0]) =>
+  renderWithConsoleState(ui, {
+    wrapper: createConsoleQueryWrapper({ accountProfile: { id: 'user-123' } }).wrapper,
+  })
 
 // Mock external dependencies
 vi.mock('@/app/components/workflow/nodes/knowledge-retrieval/utils', () => ({
@@ -37,16 +47,33 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   })),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: vi.fn((fn: any) => fn({
-    userProfile: {
-      id: 'user-123',
-    },
-  })),
-}))
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
+    userProfile: { id: 'user-123' },
+    workspacePermissionKeys: [],
+  }))
+})
 
 vi.mock('@/utils/permission', () => ({
-  hasEditPermissionForDataset: vi.fn(() => true),
+  DatasetACLPermission: {
+    Readonly: 'dataset.acl.readonly',
+    Edit: 'dataset.acl.edit',
+    Use: 'dataset.acl.use',
+  },
+  getDatasetACLCapabilities: vi.fn(() => ({
+    canReadonly: false,
+    canEdit: true,
+    canImportExportDSL: false,
+    canPipelineTest: false,
+    canDocumentDownload: false,
+    canRetrievalRecall: false,
+    canUse: true,
+    canDeleteFile: false,
+    canPipelineRelease: false,
+    canDelete: false,
+    canAccessConfig: false,
+  })),
 }))
 
 vi.mock('../../debug/hooks', () => ({
@@ -57,19 +84,15 @@ vi.mock('es-toolkit/compat', () => ({
   intersectionBy: vi.fn((...arrays) => {
     // Mock realistic intersection behavior based on metadata name
     const validArrays = arrays.filter(Array.isArray)
-    if (validArrays.length === 0)
-      return []
+    if (validArrays.length === 0) return []
 
     // Start with first array and filter down
-    return validArrays[0].filter((item: any) => {
-      if (!item || !item.name)
-        return false
+    return validArrays[0]!.filter((item: any) => {
+      if (!item || !item.name) return false
 
       // Only return items that exist in all arrays
-      return validArrays.every(array =>
-        array.some((otherItem: any) =>
-          otherItem && otherItem.name === item.name,
-        ),
+      return validArrays.every((array) =>
+        array.some((otherItem: any) => otherItem && otherItem.name === item.name),
       )
     })
   }),
@@ -93,67 +116,73 @@ vi.mock('../card-item', () => ({
 vi.mock('../params-config', () => ({
   default: ({ disabled, selectedDatasets }: any) => (
     <button data-testid="params-config" disabled={disabled}>
-      Params (
-      {selectedDatasets.length}
-      )
+      Params ({selectedDatasets.length})
     </button>
   ),
 }))
 
 vi.mock('../context-var', () => ({
   default: ({ value, options, onChange }: any) => (
-    <select data-testid="context-var" value={value} onChange={e => onChange(e.target.value)}>
+    <select data-testid="context-var" value={value} onChange={(e) => onChange(e.target.value)}>
       <option value="">Select context variable</option>
       {options.map((opt: any) => (
-        <option key={opt.value} value={opt.value}>{opt.name}</option>
+        <option key={opt.value} value={opt.value}>
+          {opt.name}
+        </option>
       ))}
     </select>
   ),
 }))
 
-vi.mock('@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter', () => ({
-  default: ({
-    metadataList,
-    metadataFilterMode,
-    handleMetadataFilterModeChange,
-    handleAddCondition,
-    handleRemoveCondition,
-    handleUpdateCondition,
-    handleToggleConditionLogicalOperator,
-    handleMetadataModelChange,
-    handleMetadataCompletionParamsChange,
-  }: any) => (
-    <div data-testid="metadata-filter">
-      <span data-testid="metadata-list-count">{metadataList.length}</span>
-      <select value={metadataFilterMode} onChange={e => handleMetadataFilterModeChange(e.target.value)}>
-        <option value="disabled">Disabled</option>
-        <option value="automatic">Automatic</option>
-        <option value="manual">Manual</option>
-      </select>
-      <button onClick={() => handleAddCondition({ name: 'test', type: 'string' })}>
-        Add Condition
-      </button>
-      <button onClick={() => handleAddCondition({ id: 'priority', name: 'priority', type: 'number' })}>
-        Add Number Condition
-      </button>
-      <button onClick={() => handleRemoveCondition('condition-id')}>
-        Remove Condition
-      </button>
-      <button onClick={() => handleUpdateCondition('condition-id', { name: 'updated' })}>
-        Update Condition
-      </button>
-      <button onClick={handleToggleConditionLogicalOperator}>
-        Toggle Operator
-      </button>
-      <button onClick={() => handleMetadataModelChange({ provider: 'openai', modelId: 'gpt-4o-mini' })}>
-        Change Metadata Model
-      </button>
-      <button onClick={() => handleMetadataCompletionParamsChange({ temperature: 0.3 })}>
-        Change Metadata Params
-      </button>
-    </div>
-  ),
-}))
+vi.mock(
+  '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter',
+  () => ({
+    default: ({
+      metadataList,
+      metadataFilterMode,
+      handleMetadataFilterModeChange,
+      handleAddCondition,
+      handleRemoveCondition,
+      handleUpdateCondition,
+      handleToggleConditionLogicalOperator,
+      handleMetadataModelChange,
+      handleMetadataCompletionParamsChange,
+    }: any) => (
+      <div data-testid="metadata-filter">
+        <span data-testid="metadata-list-count">{metadataList.length}</span>
+        <select
+          value={metadataFilterMode}
+          onChange={(e) => handleMetadataFilterModeChange(e.target.value)}
+        >
+          <option value="disabled">Disabled</option>
+          <option value="automatic">Automatic</option>
+          <option value="manual">Manual</option>
+        </select>
+        <button onClick={() => handleAddCondition({ name: 'test', type: 'string' })}>
+          Add Condition
+        </button>
+        <button
+          onClick={() => handleAddCondition({ id: 'priority', name: 'priority', type: 'number' })}
+        >
+          Add Number Condition
+        </button>
+        <button onClick={() => handleRemoveCondition('condition-id')}>Remove Condition</button>
+        <button onClick={() => handleUpdateCondition('condition-id', { name: 'updated' })}>
+          Update Condition
+        </button>
+        <button onClick={handleToggleConditionLogicalOperator}>Toggle Operator</button>
+        <button
+          onClick={() => handleMetadataModelChange({ provider: 'openai', modelId: 'gpt-4o-mini' })}
+        >
+          Change Metadata Model
+        </button>
+        <button onClick={() => handleMetadataCompletionParamsChange({ temperature: 0.3 })}>
+          Change Metadata Params
+        </button>
+      </div>
+    ),
+  }),
+)
 
 // Mock context
 const mockConfigContext: any = {
@@ -206,11 +235,7 @@ const mockConfigContext: any = {
 }
 
 vi.mock('@/context/debug-configuration', () => ({
-  default: ({ children }: any) => (
-    <div data-testid="config-context-provider">
-      {children}
-    </div>
-  ),
+  default: ({ children }: any) => <div data-testid="config-context-provider">{children}</div>,
 }))
 
 vi.mock('use-context-selector', () => ({
@@ -234,6 +259,7 @@ const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => {
     indexing_technique: 'high_quality' as any,
     author_name: 'Test Author',
     created_by: 'user-123',
+    maintainer: 'user-123',
     updated_by: 'user-123',
     updated_at: Date.now(),
     app_count: 0,
@@ -306,6 +332,19 @@ const renderDatasetConfig = (contextOverrides: Partial<typeof mockConfigContext>
 describe('DatasetConfig', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(getDatasetACLCapabilities).mockReturnValue({
+      canReadonly: false,
+      canEdit: true,
+      canImportExportDSL: false,
+      canPipelineTest: false,
+      canDocumentDownload: false,
+      canRetrievalRecall: false,
+      canUse: true,
+      canDeleteFile: false,
+      canPipelineRelease: false,
+      canDelete: false,
+      canAccessConfig: false,
+    })
     mockConfigContext.dataSets = []
     mockConfigContext.setDataSets = vi.fn()
     mockConfigContext.setModelConfig = vi.fn()
@@ -317,14 +356,14 @@ describe('DatasetConfig', () => {
     it('should render dataset configuration panel when component mounts', () => {
       renderDatasetConfig()
 
-      expect(screen.getByText('appDebug.feature.dataSet.title')).toBeInTheDocument()
+      expect(screen.getByText('appDebug.feature.dataSet.title'))!.toBeInTheDocument()
     })
 
     it('should display empty state message when no datasets are configured', () => {
       renderDatasetConfig()
 
-      expect(screen.getByText(/no.*data/i)).toBeInTheDocument()
-      expect(screen.getByTestId('params-config')).toBeDisabled()
+      expect(screen.getByText(/no.*data/i))!.toBeInTheDocument()
+      expect(screen.getByTestId('params-config'))!.toBeDisabled()
     })
 
     it('should render dataset cards and enable parameters when datasets exist', () => {
@@ -333,16 +372,16 @@ describe('DatasetConfig', () => {
         dataSets: [dataset],
       })
 
-      expect(screen.getByTestId(`card-item-${dataset.id}`)).toBeInTheDocument()
-      expect(screen.getByText(dataset.name)).toBeInTheDocument()
+      expect(screen.getByTestId(`card-item-${dataset.id}`))!.toBeInTheDocument()
+      expect(screen.getByText(dataset.name))!.toBeInTheDocument()
       expect(screen.getByTestId('params-config')).not.toBeDisabled()
     })
 
     it('should show configuration title and add dataset button in header', () => {
       renderDatasetConfig()
 
-      expect(screen.getByText('appDebug.feature.dataSet.title')).toBeInTheDocument()
-      expect(screen.getByText('common.operation.add')).toBeInTheDocument()
+      expect(screen.getByText('appDebug.feature.dataSet.title'))!.toBeInTheDocument()
+      expect(screen.getByText('common.operation.add'))!.toBeInTheDocument()
     })
 
     it('should hide parameters configuration when in agent mode', () => {
@@ -436,7 +475,41 @@ describe('DatasetConfig', () => {
         dataSets: [dataset],
       })
 
-      expect(screen.getByTestId(`card-item-${dataset.id}`)).toBeInTheDocument()
+      expect(screen.getByTestId(`card-item-${dataset.id}`))!.toBeInTheDocument()
+    })
+
+    it('should disable dataset editing when ACL does not grant edit even if legacy dataset permission allows it', () => {
+      const dataset = createMockDataset({
+        permission: DatasetPermission.allTeamMembers,
+        permission_keys: [DatasetACLPermission.Use],
+      })
+      vi.mocked(getDatasetACLCapabilities).mockReturnValue({
+        canReadonly: false,
+        canEdit: false,
+        canImportExportDSL: false,
+        canPipelineTest: false,
+        canDocumentDownload: false,
+        canRetrievalRecall: false,
+        canUse: true,
+        canDeleteFile: false,
+        canPipelineRelease: false,
+        canDelete: false,
+        canAccessConfig: false,
+      })
+
+      renderDatasetConfig({
+        dataSets: [dataset],
+      })
+
+      expect(screen.getByTestId(`card-item-${dataset.id}`))!.toBeInTheDocument()
+      expect(screen.queryByText('Edit')).not.toBeInTheDocument()
+      expect(getDatasetACLCapabilities).toHaveBeenCalledWith(
+        dataset.permission_keys,
+        expect.objectContaining({
+          currentUserId: 'user-123',
+          resourceMaintainer: dataset.maintainer,
+        }),
+      )
     })
   })
 
@@ -456,9 +529,10 @@ describe('DatasetConfig', () => {
         },
       })
 
-      expect(screen.getByTestId('context-var')).toBeInTheDocument()
+      expect(screen.getByTestId('context-var'))!.toBeInTheDocument()
       // Should find the selected context variable in the options
-      expect(screen.getByText('Select context variable')).toBeInTheDocument()
+      // Should find the selected context variable in the options
+      expect(screen.getByText('Select context variable'))!.toBeInTheDocument()
     })
 
     it('should not show context variable selector in chat mode', () => {
@@ -514,8 +588,8 @@ describe('DatasetConfig', () => {
         dataSets: [dataset],
       })
 
-      expect(screen.getByTestId('metadata-filter')).toBeInTheDocument()
-      expect(screen.getByTestId('metadata-list-count')).toHaveTextContent('2') // both 'category' and 'priority'
+      expect(screen.getByTestId('metadata-filter'))!.toBeInTheDocument()
+      expect(screen.getByTestId('metadata-list-count'))!.toHaveTextContent('2') // both 'category' and 'priority'
     })
 
     it('should handle metadata filter mode change', async () => {
@@ -585,12 +659,14 @@ describe('DatasetConfig', () => {
           ...mockConfigContext.datasetConfigs,
           metadata_filtering_conditions: {
             logical_operator: LogicalOperator.and,
-            conditions: [{
-              id: 'condition-id',
-              metadata_id: 'category',
-              name: 'category',
-              comparison_operator: ComparisonOperator.is,
-            }],
+            conditions: [
+              {
+                id: 'condition-id',
+                metadata_id: 'category',
+                name: 'category',
+                comparison_operator: ComparisonOperator.is,
+              },
+            ],
           },
         },
         datasetConfigsRef: {
@@ -598,18 +674,22 @@ describe('DatasetConfig', () => {
             ...mockConfigContext.datasetConfigsRef.current,
             metadata_filtering_conditions: {
               logical_operator: LogicalOperator.and,
-              conditions: [{
-                id: 'condition-id',
-                metadata_id: 'category',
-                name: 'category',
-                comparison_operator: ComparisonOperator.is,
-              }],
+              conditions: [
+                {
+                  id: 'condition-id',
+                  metadata_id: 'category',
+                  name: 'category',
+                  comparison_operator: ComparisonOperator.is,
+                },
+              ],
             },
           },
         },
       })
 
-      await userEvent.click(within(screen.getByTestId('metadata-filter')).getByText('Add Number Condition'))
+      await userEvent.click(
+        within(screen.getByTestId('metadata-filter')).getByText('Add Number Condition'),
+      )
 
       expect(mockConfigContext.setDatasetConfigs).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -647,7 +727,9 @@ describe('DatasetConfig', () => {
       // Update ref to match datasetConfigs
       mockConfigContext.datasetConfigsRef.current = datasetConfigsWithConditions
 
-      const removeButton = within(screen.getByTestId('metadata-filter')).getByText('Remove Condition')
+      const removeButton = within(screen.getByTestId('metadata-filter')).getByText(
+        'Remove Condition',
+      )
       await user.click(removeButton)
 
       expect(mockConfigContext.setDatasetConfigs).toHaveBeenCalledWith(
@@ -680,7 +762,9 @@ describe('DatasetConfig', () => {
 
       mockConfigContext.datasetConfigsRef.current = datasetConfigsWithConditions
 
-      const updateButton = within(screen.getByTestId('metadata-filter')).getByText('Update Condition')
+      const updateButton = within(screen.getByTestId('metadata-filter')).getByText(
+        'Update Condition',
+      )
       await user.click(updateButton)
 
       expect(mockConfigContext.setDatasetConfigs).toHaveBeenCalledWith(
@@ -717,7 +801,9 @@ describe('DatasetConfig', () => {
 
       mockConfigContext.datasetConfigsRef.current = datasetConfigsWithConditions
 
-      const toggleButton = within(screen.getByTestId('metadata-filter')).getByText('Toggle Operator')
+      const toggleButton = within(screen.getByTestId('metadata-filter')).getByText(
+        'Toggle Operator',
+      )
       await user.click(toggleButton)
 
       expect(mockConfigContext.setDatasetConfigs).toHaveBeenCalledWith(
@@ -740,8 +826,8 @@ describe('DatasetConfig', () => {
         dataSets: [dataset],
       })
 
-      expect(screen.getByTestId('metadata-filter')).toBeInTheDocument()
-      expect(screen.getByTestId('metadata-list-count')).toHaveTextContent('0')
+      expect(screen.getByTestId('metadata-filter'))!.toBeInTheDocument()
+      expect(screen.getByTestId('metadata-list-count'))!.toHaveTextContent('0')
     })
 
     it('should handle empty doc_metadata array', () => {
@@ -753,8 +839,8 @@ describe('DatasetConfig', () => {
         dataSets: [dataset],
       })
 
-      expect(screen.getByTestId('metadata-filter')).toBeInTheDocument()
-      expect(screen.getByTestId('metadata-list-count')).toHaveTextContent('0')
+      expect(screen.getByTestId('metadata-filter'))!.toBeInTheDocument()
+      expect(screen.getByTestId('metadata-list-count'))!.toHaveTextContent('0')
     })
 
     it('should handle missing userProfile', () => {
@@ -769,7 +855,7 @@ describe('DatasetConfig', () => {
         dataSets: [dataset],
       })
 
-      expect(screen.getByTestId(`card-item-${dataset.id}`)).toBeInTheDocument()
+      expect(screen.getByTestId(`card-item-${dataset.id}`))!.toBeInTheDocument()
     })
 
     it('should handle missing datasetConfigsRef gracefully', () => {
@@ -816,25 +902,22 @@ describe('DatasetConfig', () => {
         dataSets: datasets,
       })
 
-      expect(screen.getByTestId('card-item-ds1')).toBeInTheDocument()
-      expect(screen.getByTestId('card-item-ds2')).toBeInTheDocument()
-      expect(screen.getByText('Dataset 1')).toBeInTheDocument()
-      expect(screen.getByText('Dataset 2')).toBeInTheDocument()
+      expect(screen.getByTestId('card-item-ds1'))!.toBeInTheDocument()
+      expect(screen.getByTestId('card-item-ds2'))!.toBeInTheDocument()
+      expect(screen.getByText('Dataset 1'))!.toBeInTheDocument()
+      expect(screen.getByText('Dataset 2'))!.toBeInTheDocument()
     })
 
     it('should integrate with params config component', () => {
-      const datasets = [
-        createMockDataset(),
-        createMockDataset({ id: 'ds2' }),
-      ]
+      const datasets = [createMockDataset(), createMockDataset({ id: 'ds2' })]
 
       renderDatasetConfig({
         dataSets: datasets,
       })
 
       const paramsConfig = screen.getByTestId('params-config')
-      expect(paramsConfig).toBeInTheDocument()
-      expect(paramsConfig).toHaveTextContent('Params (2)')
+      expect(paramsConfig)!.toBeInTheDocument()
+      expect(paramsConfig)!.toHaveTextContent('Params (2)')
       expect(paramsConfig).not.toBeDisabled()
     })
 
@@ -860,9 +943,10 @@ describe('DatasetConfig', () => {
       })
 
       const metadataFilter = screen.getByTestId('metadata-filter')
-      expect(metadataFilter).toBeInTheDocument()
+      expect(metadataFilter)!.toBeInTheDocument()
       // Should show intersection (only 'category')
-      expect(screen.getByTestId('metadata-list-count')).toHaveTextContent('1')
+      // Should show intersection (only 'category')
+      expect(screen.getByTestId('metadata-list-count'))!.toHaveTextContent('1')
     })
   })
 
@@ -884,18 +968,20 @@ describe('DatasetConfig', () => {
       })
 
       const metadataFilter = screen.getByTestId('metadata-filter')
-      expect(metadataFilter).toBeInTheDocument()
+      expect(metadataFilter)!.toBeInTheDocument()
 
       fireEvent.click(within(metadataFilter).getByText('Change Metadata Model'))
 
-      expect(mockConfigContext.setDatasetConfigs).toHaveBeenCalledWith(expect.objectContaining({
-        metadata_model_config: {
-          provider: 'openai',
-          name: 'gpt-4o-mini',
-          mode: AppModeEnum.CHAT,
-          completion_params: { temperature: 0.7 },
-        },
-      }))
+      expect(mockConfigContext.setDatasetConfigs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          metadata_model_config: {
+            provider: 'openai',
+            name: 'gpt-4o-mini',
+            mode: AppModeEnum.CHAT,
+            completion_params: { temperature: 0.7 },
+          },
+        }),
+      )
     })
 
     it('should handle metadata completion params change', () => {
@@ -915,64 +1001,17 @@ describe('DatasetConfig', () => {
       })
 
       const metadataFilter = screen.getByTestId('metadata-filter')
-      expect(metadataFilter).toBeInTheDocument()
+      expect(metadataFilter)!.toBeInTheDocument()
 
       fireEvent.click(within(metadataFilter).getByText('Change Metadata Params'))
 
-      expect(mockConfigContext.setDatasetConfigs).toHaveBeenCalledWith(expect.objectContaining({
-        metadata_model_config: {
-          completion_params: { temperature: 0.3 },
-        },
-      }))
-    })
-  })
-
-  describe('Permission Handling', () => {
-    it('should hide edit options when user lacks permission', () => {
-      vi.mocked(hasEditPermissionForDataset).mockReturnValue(false)
-
-      const dataset = createMockDataset({
-        created_by: 'other-user',
-        permission: DatasetPermission.onlyMe,
-      })
-
-      renderDatasetConfig({
-        dataSets: [dataset],
-      })
-
-      // The editable property should be false when no permission
-      expect(screen.getByTestId(`card-item-${dataset.id}`)).toBeInTheDocument()
-    })
-
-    it('should show readonly state for non-editable datasets', () => {
-      vi.mocked(hasEditPermissionForDataset).mockReturnValue(false)
-
-      const dataset = createMockDataset({
-        created_by: 'admin',
-        permission: DatasetPermission.allTeamMembers,
-      })
-
-      renderDatasetConfig({
-        dataSets: [dataset],
-      })
-
-      expect(screen.getByTestId(`card-item-${dataset.id}`)).toBeInTheDocument()
-    })
-
-    it('should allow editing when user has partial member permission', () => {
-      vi.mocked(hasEditPermissionForDataset).mockReturnValue(true)
-
-      const dataset = createMockDataset({
-        created_by: 'admin',
-        permission: DatasetPermission.partialMembers,
-        partial_member_list: ['user-123'],
-      })
-
-      renderDatasetConfig({
-        dataSets: [dataset],
-      })
-
-      expect(screen.getByTestId(`card-item-${dataset.id}`)).toBeInTheDocument()
+      expect(mockConfigContext.setDatasetConfigs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          metadata_model_config: {
+            completion_params: { temperature: 0.3 },
+          },
+        }),
+      )
     })
   })
 
@@ -989,9 +1028,10 @@ describe('DatasetConfig', () => {
       })
 
       // Verify order is maintained
-      expect(screen.getByText('Dataset 1')).toBeInTheDocument()
-      expect(screen.getByText('Dataset 2')).toBeInTheDocument()
-      expect(screen.getByText('Dataset 3')).toBeInTheDocument()
+      // Verify order is maintained
+      expect(screen.getByText('Dataset 1'))!.toBeInTheDocument()
+      expect(screen.getByText('Dataset 2'))!.toBeInTheDocument()
+      expect(screen.getByText('Dataset 3'))!.toBeInTheDocument()
     })
 
     it('should handle multiple dataset operations correctly', async () => {
@@ -1007,7 +1047,7 @@ describe('DatasetConfig', () => {
 
       // Remove first dataset
       const removeButton1 = screen.getAllByText('Remove')[0]
-      await user.click(removeButton1)
+      await user.click(removeButton1!)
 
       expect(mockConfigContext.setDataSets).toHaveBeenCalledWith([datasets[1]])
     })
@@ -1050,7 +1090,7 @@ describe('DatasetConfig', () => {
         dataSets: datasets,
       })
 
-      expect(screen.getByTestId('params-config')).toHaveTextContent('Params (2)')
+      expect(screen.getByTestId('params-config'))!.toHaveTextContent('Params (2)')
     })
 
     it('should handle external knowledge base integration', () => {
@@ -1068,8 +1108,8 @@ describe('DatasetConfig', () => {
         dataSets: [externalDataset],
       })
 
-      expect(screen.getByTestId(`card-item-${externalDataset.id}`)).toBeInTheDocument()
-      expect(screen.getByText(externalDataset.name)).toBeInTheDocument()
+      expect(screen.getByTestId(`card-item-${externalDataset.id}`))!.toBeInTheDocument()
+      expect(screen.getByText(externalDataset.name))!.toBeInTheDocument()
     })
   })
 
@@ -1084,13 +1124,14 @@ describe('DatasetConfig', () => {
             { name: 'category', type: 'string' } as any,
             { name: 'priority', type: 'number' } as any,
           ],
-        }))
+        }),
+      )
 
       renderDatasetConfig({
         dataSets: manyDatasets,
       })
 
-      expect(screen.getByTestId('params-config')).toHaveTextContent('Params (50)')
+      expect(screen.getByTestId('params-config'))!.toHaveTextContent('Params (50)')
     })
 
     it('should handle metadata intersection calculation efficiently', () => {
@@ -1118,7 +1159,8 @@ describe('DatasetConfig', () => {
       })
 
       // Should calculate intersection correctly
-      expect(screen.getByTestId('metadata-filter')).toBeInTheDocument()
+      // Should calculate intersection correctly
+      expect(screen.getByTestId('metadata-filter'))!.toBeInTheDocument()
     })
   })
 })

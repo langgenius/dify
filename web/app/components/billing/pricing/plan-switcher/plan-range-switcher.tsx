@@ -1,8 +1,7 @@
 'use client'
-import type { FC } from 'react'
+import { Switch } from '@langgenius/dify-ui/switch'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Switch from '../../../base/switch'
 
 export enum PlanRange {
   monthly = 'monthly',
@@ -14,23 +13,21 @@ type PlanRangeSwitcherProps = {
   onChange: (value: PlanRange) => void
 }
 
-const PlanRangeSwitcher: FC<PlanRangeSwitcherProps> = ({
-  value,
-  onChange,
-}) => {
+function PlanRangeSwitcher({ value, onChange }: PlanRangeSwitcherProps) {
   const { t } = useTranslation()
 
   return (
     <div className="flex items-center justify-end gap-x-3 pr-5">
       <Switch
+        aria-label={t(($) => $['plansCommon.yearlyBilling'], { ns: 'billing' })}
         size="lg"
-        value={value === PlanRange.yearly}
-        onChange={(v) => {
+        checked={value === PlanRange.yearly}
+        onCheckedChange={(v) => {
           onChange(v ? PlanRange.yearly : PlanRange.monthly)
         }}
       />
-      <span className="text-text-tertiary system-md-regular">
-        {t('plansCommon.annualBilling', { ns: 'billing', percent: 17 })}
+      <span className="system-md-regular text-text-tertiary">
+        {t(($) => $['plansCommon.annualBilling'], { ns: 'billing', percent: 17 })}
       </span>
     </div>
   )

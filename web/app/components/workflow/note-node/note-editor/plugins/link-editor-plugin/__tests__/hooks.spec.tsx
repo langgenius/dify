@@ -14,7 +14,11 @@ const {
 } = vi.hoisted(() => {
   const listeners: {
     update?: () => void
-    click?: (payload: { metaKey?: boolean, ctrlKey?: boolean }) => boolean
+    click?: (payload: {
+      metaKey?: boolean
+      ctrlKey?: boolean
+      target?: EventTarget | null
+    }) => boolean
   } = {}
 
   const editor = {
@@ -36,17 +40,22 @@ const {
       selectedLinkUrl: '',
       setLinkAnchorElement: vi.fn(),
       setLinkOperatorShow: vi.fn(),
+      setSelectedLinkUrl: vi.fn(),
+      setSelectedIsLink: vi.fn(),
     },
     mockListeners: listeners,
   }
 })
 
 vi.mock('@lexical/react/LexicalComposerContext', () => ({
-  useLexicalComposerContext: () => ([mockEditor]),
+  useLexicalComposerContext: () => [mockEditor],
 }))
 
 vi.mock('@lexical/utils', () => ({
-  mergeRegister: (...cleanups: Array<() => void>) => () => cleanups.forEach(cleanup => cleanup()),
+  mergeRegister:
+    (...cleanups: Array<() => void>) =>
+    () =>
+      cleanups.forEach((cleanup) => cleanup()),
 }))
 
 vi.mock('@lexical/link', () => ({
@@ -58,7 +67,7 @@ vi.mock('lexical', () => ({
   COMMAND_PRIORITY_LOW: 1,
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: mockToastError,
   },
@@ -78,6 +87,8 @@ describe('link editor hooks', () => {
     mockStoreState.selectedLinkUrl = ''
     mockStoreState.setLinkAnchorElement = mockSetLinkAnchorElement
     mockStoreState.setLinkOperatorShow = mockSetLinkOperatorShow
+    mockStoreState.setSelectedLinkUrl = vi.fn()
+    mockStoreState.setSelectedIsLink = vi.fn()
     mockListeners.update = undefined
     mockListeners.click = undefined
 
@@ -124,6 +135,26 @@ describe('link editor hooks', () => {
       expect(mockSetLinkOperatorShow).toHaveBeenCalledWith(false)
     })
 
+    it('should show the link operator immediately when clicking a link target', () => {
+      const target = document.createElement('a')
+      target.className = 'note-editor-theme_link'
+      target.href = 'https://dify.ai/docs'
+
+      renderHook(() => useOpenLink())
+
+      let handled = false
+      act(() => {
+        handled = mockListeners.click?.({ target }) ?? false
+        vi.runAllTimers()
+      })
+
+      expect(handled).toBe(true)
+      expect(mockStoreState.setSelectedLinkUrl).toHaveBeenCalledWith('https://dify.ai/docs')
+      expect(mockStoreState.setSelectedIsLink).toHaveBeenCalledWith(true)
+      expect(mockSetLinkAnchorElement).toHaveBeenCalledWith(target)
+      expect(mockSetLinkOperatorShow).toHaveBeenCalledWith(true)
+    })
+
     it('should open the selected link in a new tab on meta or ctrl click', () => {
       mockStoreState.selectedIsLink = true
       mockStoreState.selectedLinkUrl = 'https://dify.ai'
@@ -162,7 +193,10 @@ describe('link editor hooks', () => {
         result.current.handleSaveLink('https://dify.ai/docs')
       })
 
-      expect(mockDispatchCommand).toHaveBeenCalledWith('toggle-link-command', 'https://dify.ai/docs')
+      expect(mockDispatchCommand).toHaveBeenCalledWith(
+        'toggle-link-command',
+        'https://dify.ai/docs',
+      )
       expect(mockSetLinkAnchorElement).toHaveBeenCalledWith()
     })
 

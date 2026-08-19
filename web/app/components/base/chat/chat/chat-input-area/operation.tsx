@@ -1,19 +1,13 @@
 import type { FC, Ref } from 'react'
-import type { Theme } from '../../embedded-chatbot/theme/theme-context'
-import type {
-  EnableType,
-} from '../../types'
+import type { Theme } from '../../embedded-chatbot/theme/theme'
+import type { EnableType } from '../../types'
 import type { FileUpload } from '@/app/components/base/features/types'
-import {
-  RiMicLine,
-  RiSendPlane2Fill,
-} from '@remixicon/react'
-import { noop } from 'es-toolkit/function'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { memo } from 'react'
-import ActionButton from '@/app/components/base/action-button'
+import { useTranslation } from 'react-i18next'
 import { FileUploaderInChatInput } from '@/app/components/base/file-uploader'
-import { Button } from '@/app/components/base/ui/button'
-import { cn } from '@/utils/classnames'
 
 type OperationProps = {
   readonly?: boolean
@@ -21,6 +15,9 @@ type OperationProps = {
   speechToTextConfig?: EnableType
   onShowVoiceInput?: () => void
   onSend: () => void
+  sendButtonLabel?: string
+  sendButtonLoading?: boolean
+  disabled?: boolean
   theme?: Theme | null
   ref?: Ref<HTMLDivElement>
 }
@@ -31,38 +28,39 @@ const Operation: FC<OperationProps> = ({
   speechToTextConfig,
   onShowVoiceInput,
   onSend,
+  sendButtonLabel,
+  sendButtonLoading,
+  disabled,
   theme,
 }) => {
+  const { t } = useTranslation()
+
   return (
-    <div
-      className={cn(
-        'flex shrink-0 items-center justify-end',
-      )}
-    >
-      <div
-        className="flex items-center pl-1"
-        ref={ref}
-      >
-        <div className="flex items-center space-x-1">
-          {fileConfig?.enabled && <FileUploaderInChatInput readonly={readonly} fileConfig={fileConfig} />}
-          {
-            speechToTextConfig?.enabled && (
-              <ActionButton
-                size="l"
-                disabled={readonly}
-                onClick={onShowVoiceInput}
-                data-testid="voice-input-button"
-              >
-                <RiMicLine className="h-5 w-5" />
-              </ActionButton>
-            )
-          }
+    <div className={cn('flex shrink-0 items-center justify-end')}>
+      <div className="flex items-center pl-1" ref={ref}>
+        <div className="flex items-center gap-1">
+          {fileConfig?.enabled && (
+            <FileUploaderInChatInput readonly={readonly} fileConfig={fileConfig} />
+          )}
+          {speechToTextConfig?.enabled && onShowVoiceInput && (
+            <IconButton
+              className="shrink-0"
+              size="lg"
+              aria-label={t(($) => $['voiceInput.start'], { ns: 'common' })}
+              disabled={readonly}
+              onClick={onShowVoiceInput}
+            >
+              <span className="i-ri-mic-line size-5" aria-hidden="true" />
+            </IconButton>
+          )}
         </div>
         <Button
-          className="ml-3 w-8 px-0"
+          aria-label={sendButtonLabel ? undefined : t(($) => $['operation.send'], { ns: 'common' })}
+          className={cn('ml-3 focus-visible:ring-inset', sendButtonLabel ? 'px-3' : 'w-8 px-0')}
           variant="primary"
-          onClick={readonly ? noop : onSend}
-          data-testid="send-button"
+          disabled={readonly || disabled}
+          loading={sendButtonLoading}
+          onClick={onSend}
           style={
             theme
               ? {
@@ -71,7 +69,7 @@ const Operation: FC<OperationProps> = ({
               : {}
           }
         >
-          <RiSendPlane2Fill className="h-4 w-4" />
+          {sendButtonLabel || <span className="i-ri-send-plane-2-fill size-4" aria-hidden="true" />}
         </Button>
       </div>
     </div>

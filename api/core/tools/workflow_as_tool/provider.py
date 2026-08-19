@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from typing import override
 
-from graphon.variables.input_entities import VariableEntity, VariableEntityType
-from pydantic import Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -25,6 +24,7 @@ from core.tools.entities.tool_entities import (
 from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationUtils
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from extensions.ext_database import db
+from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from models.account import Account
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
@@ -42,13 +42,14 @@ VARIABLE_TO_PARAMETER_TYPE_MAPPING = {
 }
 
 
-class WorkflowToolProviderController(ToolProviderController):
+class WorkflowToolProviderController(ToolProviderController[ToolProviderEntity, WorkflowTool | None]):
     provider_id: str
-    tools: list[WorkflowTool] = Field(default_factory=list)
+    tools: list[WorkflowTool] | None
 
     def __init__(self, entity: ToolProviderEntity, provider_id: str):
         super().__init__(entity=entity)
         self.provider_id = provider_id
+        self.tools = None
 
     @classmethod
     def from_db(cls, db_provider: WorkflowToolProvider) -> WorkflowToolProviderController:
@@ -80,6 +81,7 @@ class WorkflowToolProviderController(ToolProviderController):
         return controller
 
     @property
+    @override
     def provider_type(self) -> ToolProviderType:
         return ToolProviderType.WORKFLOW
 
@@ -239,7 +241,8 @@ class WorkflowToolProviderController(ToolProviderController):
 
         return self.tools
 
-    def get_tool(self, tool_name: str) -> WorkflowTool | None:  # type: ignore
+    @override
+    def get_tool(self, tool_name: str) -> WorkflowTool | None:
         """
         get tool by name
 

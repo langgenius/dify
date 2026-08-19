@@ -1,6 +1,13 @@
 import type { IndexingType } from './hooks'
 import type { DataSourceProvider, NotionPage } from '@/models/common'
-import type { CrawlOptions, CrawlResultItem, createDocumentResponse, CustomFile, DataSourceType, FullDocumentDetail } from '@/models/datasets'
+import type {
+  CrawlOptions,
+  CrawlResultItem,
+  createDocumentResponse,
+  CustomFile,
+  DataSourceType,
+  FullDocumentDetail,
+} from '@/models/datasets'
 import type { RETRIEVE_METHOD } from '@/types/app'
 
 export type StepTwoProps = {
@@ -19,6 +26,7 @@ export type StepTwoProps = {
   crawlOptions?: CrawlOptions
   websiteCrawlProvider?: DataSourceProvider
   websiteCrawlJobId?: string
+  canCreateDocument?: boolean
   onStepChange?: (delta: number) => void
   updateIndexingTypeCache?: (type: string) => void
   updateRetrievalMethodCache?: (method: RETRIEVE_METHOD | '') => void

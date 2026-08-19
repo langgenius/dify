@@ -6,14 +6,12 @@ import * as React from 'react'
 import IconBase from '@/app/components/base/icons/IconBase'
 import data from './MagicBox.json'
 
-const Icon = (
-  {
-    ref,
-    ...props
-  }: React.SVGProps<SVGSVGElement> & {
-    ref?: React.RefObject<React.RefObject<HTMLOrSVGElement>>
-  },
-) => <IconBase {...props} ref={ref} data={data as IconData} />
+const Icon = ({
+  ref,
+  ...props
+}: React.SVGProps<SVGSVGElement> & {
+  ref?: React.RefObject<React.RefObject<HTMLOrSVGElement>>
+}) => <IconBase {...props} ref={ref} data={data as IconData} />
 
 Icon.displayName = 'MagicBox'
 

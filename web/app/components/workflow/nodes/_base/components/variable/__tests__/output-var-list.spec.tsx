@@ -3,11 +3,11 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import OutputVarList from '../output-var-list'
 
 vi.mock('../var-type-picker', () => ({
-  default: (props: { value: string, onChange: (v: string) => void, readonly: boolean }) => (
+  default: (props: { value: string; onChange: (v: string) => void; readonly: boolean }) => (
     <select
       data-testid="var-type-picker"
       value={props.value ?? ''}
-      onChange={e => props.onChange(e.target.value)}
+      onChange={(e) => props.onChange(e.target.value)}
       disabled={props.readonly}
     >
       <option value="string">string</option>
@@ -16,7 +16,7 @@ vi.mock('../var-type-picker', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: { error: vi.fn() },
 }))
 
@@ -43,13 +43,15 @@ describe('OutputVarList', () => {
         readonly={false}
         outputs={outputs}
         outputKeyOrders={outputKeyOrders}
-        onChange={(newOutputs) => { captured = newOutputs }}
+        onChange={(newOutputs) => {
+          captured = newOutputs
+        }}
         onRemove={vi.fn()}
       />,
     )
 
     const inputs = screen.getAllByRole('textbox')
-    fireEvent.change(inputs[renameIndex], { target: { value: newName } })
+    fireEvent.change(inputs[renameIndex]!, { target: { value: newName } })
 
     return captured!
   }
@@ -119,7 +121,7 @@ describe('OutputVarList', () => {
 
       // The second remove button (index 1 in the row)
       const buttons = screen.getAllByRole('button')
-      fireEvent.click(buttons[1])
+      fireEvent.click(buttons[1]!)
 
       expect(onRemove).toHaveBeenCalledWith(1)
     })
@@ -142,8 +144,8 @@ describe('OutputVarList', () => {
 
       const inputs = screen.getAllByRole('textbox')
       expect(inputs).toHaveLength(2)
-      expect(inputs[0]).toHaveValue('a')
-      expect(inputs[1]).toHaveValue('b')
+      expect(inputs[0])!.toHaveValue('a')
+      expect(inputs[1])!.toHaveValue('b')
     })
 
     it('should call onChange with updated outputs when renaming', () => {
@@ -203,7 +205,7 @@ describe('OutputVarList', () => {
         />,
       )
 
-      expect(screen.getByRole('textbox')).toHaveAttribute('readonly')
+      expect(screen.getByRole('textbox'))!.toHaveAttribute('readonly')
     })
   })
 })

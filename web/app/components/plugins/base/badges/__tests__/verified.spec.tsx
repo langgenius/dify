@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 vi.mock('@/app/components/base/icons/src/public/plugins/VerifiedDark', () => ({
   default: () => <span data-testid="verified-dark" />,
@@ -15,7 +15,12 @@ vi.mock('@/hooks/use-theme', () => ({
 }))
 
 vi.mock('../icon-with-tooltip', () => ({
-  default: ({ popupContent, BadgeIconLight, BadgeIconDark, theme }: {
+  default: ({
+    popupContent,
+    BadgeIconLight,
+    BadgeIconDark,
+    theme,
+  }: {
     popupContent: string
     BadgeIconLight: React.FC
     BadgeIconDark: React.FC

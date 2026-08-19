@@ -19,19 +19,23 @@ vi.mock('../../../_base/components/variable/var-reference-picker', () => ({
       <div>
         <button
           type="button"
-          onClick={() => props.onChange(['node-a', 'answer'], 'variable', {
-            variable: 'answer',
-            type: VarType.string,
-          })}
+          onClick={() =>
+            props.onChange(['node-a', 'answer'], 'variable', {
+              variable: 'answer',
+              type: VarType.string,
+            })
+          }
         >
           add-string-var
         </button>
         <button
           type="button"
-          onClick={() => props.onChange(['node-a', 'answer'], 'variable', {
-            variable: 'answer',
-            type: VarType.string,
-          })}
+          onClick={() =>
+            props.onChange(['node-a', 'answer'], 'variable', {
+              variable: 'answer',
+              type: VarType.string,
+            })
+          }
         >
           add-duplicate-var
         </button>
@@ -42,25 +46,25 @@ vi.mock('../../../_base/components/variable/var-reference-picker', () => ({
 
 vi.mock('../var-list', () => ({
   __esModule: true,
-  default: (props: {
-    onChange: (list: string[][], changedItem?: string[]) => void
-  }) => {
+  default: (props: { onChange: (list: string[][], changedItem?: string[]) => void }) => {
     mockVarListRender(props)
     return (
       <div>
         <button
           type="button"
-          onClick={() => props.onChange([
-            ['node-a', 'flag'],
-            ['node-a', 'flag'],
-          ], ['node-a', 'flag'])}
+          onClick={() =>
+            props.onChange(
+              [
+                ['node-a', 'flag'],
+                ['node-a', 'flag'],
+              ],
+              ['node-a', 'flag'],
+            )
+          }
         >
           replace-with-duplicate
         </button>
-        <button
-          type="button"
-          onClick={() => props.onChange([], undefined)}
-        >
+        <button type="button" onClick={() => props.onChange([], undefined)}>
           clear-vars
         </button>
       </div>
@@ -111,10 +115,12 @@ describe('variable-assigner/var-group-item branches', () => {
 
     await user.click(screen.getByRole('button', { name: 'add-string-var' }))
 
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
-      variables: [['node-a', 'answer']],
-      output_type: VarType.string,
-    }))
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variables: [['node-a', 'answer']],
+        output_type: VarType.string,
+      }),
+    )
   })
 
   it('ignores duplicate additions and only accepts matching types when the output type is fixed', async () => {
@@ -141,7 +147,10 @@ describe('variable-assigner/var-group-item branches', () => {
     const { onChange } = renderGroupItem({
       payload: createPayload({
         output_type: VarType.string,
-        variables: [['node-a', 'answer'], ['node-a', 'flag']],
+        variables: [
+          ['node-a', 'answer'],
+          ['node-a', 'flag'],
+        ],
       }),
     })
 
@@ -161,9 +170,11 @@ describe('variable-assigner/var-group-item branches', () => {
 
     await user.click(screen.getByRole('button', { name: 'clear-vars' }))
 
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
-      variables: [],
-      output_type: VarType.any,
-    }))
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variables: [],
+        output_type: VarType.any,
+      }),
+    )
   })
 })

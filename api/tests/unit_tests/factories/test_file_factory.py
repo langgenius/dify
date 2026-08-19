@@ -1,8 +1,18 @@
 import re
+from datetime import UTC, datetime
+from unittest.mock import MagicMock
+from uuid import uuid4
 
 import pytest
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, sessionmaker
 
+from extensions.storage.storage_type import StorageType
+from factories.file_factory import builders
 from factories.file_factory.remote import extract_filename, get_remote_file_info
+from graphon.file import FileTransferMethod
+from models import UploadFile
+from models.enums import CreatorUserRole
 
 
 class _FakeResponse:
@@ -12,10 +22,11 @@ class _FakeResponse:
 
 
 def _mock_head(monkeypatch: pytest.MonkeyPatch, headers: dict[str, str], status_code: int = 200):
-    def _fake_head(url: str, follow_redirects: bool = True):
+    def _fake_head(method: str, url: str, follow_redirects: bool = True):
+        assert method == "HEAD"
         return _FakeResponse(status_code=status_code, headers=headers)
 
-    monkeypatch.setattr("factories.file_factory.remote.ssrf_proxy.head", _fake_head)
+    monkeypatch.setattr("factories.file_factory.remote.remote_fetcher.make_request", _fake_head)
 
 
 class TestGetRemoteFileInfo:
@@ -230,3 +241,187 @@ class TestExtractFilename:
             "http://example.com/", 'attachment; filename="file%20with%20quotes%20%26%20encoding.txt"'
         )
         assert result == "file with quotes & encoding.txt"
+
+    def test_url_with_query_string(self):
+        """Test that query strings are stripped from URL basename."""
+        result = extract_filename("http://example.com/path/file.txt?signature=abc123&expires=12345", None)
+        assert result == "file.txt"
+
+    def test_url_with_hash_fragment(self):
+        """Test that hash fragments are stripped from URL basename."""
+        result = extract_filename("http://example.com/path/file.txt#section", None)
+        assert result == "file.txt"
+
+    def test_url_with_query_and_fragment(self):
+        """Test that both query strings and hash fragments are stripped."""
+        result = extract_filename("http://example.com/path/file.txt?token=xyz#section", None)
+        assert result == "file.txt"
+
+    def test_signed_url_preserves_filename(self):
+        """Test that signed URL parameters don't affect filename extraction."""
+        result = extract_filename(
+            "http://storage.example.com/bucket/documents/report.pdf?AWSAccessKeyId=xxx&Signature=yyy&Expires=12345",
+            None,
+        )
+        assert result == "report.pdf"
+
+    def test_percent_encoded_filename_with_query_string(self):
+        """Test percent-encoded filename with query string is decoded correctly."""
+        result = extract_filename("http://example.com/path/my%20file.txt?download=true", None)
+        assert result == "my file.txt"
+
+    def test_percent_encoded_filename_with_fragment(self):
+        """Test percent-encoded filename with fragment is decoded correctly."""
+        result = extract_filename("http://example.com/path/my%20file.txt#page=1", None)
+        assert result == "my file.txt"
+
+    def test_complex_percent_encoding_with_query(self):
+        """Test complex percent-encoded filename with query parameters."""
+        result = extract_filename("http://example.com/docs/%E4%B8%AD%E6%96%87%E6%96%87%E4%BB%B6.pdf?v=1", None)
+        assert result == "中文文件.pdf"
+
+    def test_url_with_special_chars_in_query(self):
+        """Test that special characters in query string don't affect filename."""
+        result = extract_filename("http://example.com/file.bin?name=test&path=/some/path", None)
+        assert result == "file.bin"
+
+    def test_malformed_percent_encoding_safe_fallback(self):
+        """Test that malformed percent-encoding is handled safely."""
+        result = extract_filename("http://example.com/path/file%20name%GG.txt?x=1", None)
+        # %GG is invalid, should be replaced with replacement character
+
+        assert result is not None
+        assert "file" in result
+        assert ".txt" in result
+
+    def test_empty_path_with_query_returns_none(self):
+        """Test that empty path with query string returns None."""
+        result = extract_filename("http://example.com/?query=value", None)
+        assert result is None
+
+    def test_path_only_with_query_string(self):
+        """Test bare path (not full URL) with query string."""
+        result = extract_filename("/path/to/file.txt?extra=params", None)
+        assert result == "file.txt"
+
+
+@pytest.mark.parametrize("sqlite_session", [(UploadFile,)], indirect=True)
+class TestBuildFromDatasourceFile:
+    """Tests for _build_from_datasource_file extension handling."""
+
+    @staticmethod
+    def _bind_session_factory(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
+        """Bind builder-owned sessions to the test database."""
+        factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+        monkeypatch.setattr(builders.session_factory, "create_session", factory)
+
+    @staticmethod
+    def _make_datasource_file(*, key: str, mime_type: str = "text/csv") -> UploadFile:
+        return UploadFile(
+            tenant_id=str(uuid4()),
+            storage_type=StorageType.LOCAL,
+            key=key,
+            name=key.split("/")[-1],
+            size=123,
+            extension=key.rsplit(".", maxsplit=1)[-1] if "." in key else "",
+            mime_type=mime_type,
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by=str(uuid4()),
+            created_at=datetime.now(UTC),
+            used=False,
+            source_url=f"https://example.com/{key}",
+        )
+
+    def test_extension_passed_without_doubled_dot(
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, sqlite_session: Session
+    ):
+        """Regression: standardize_file_type must receive the extension exactly once-prefixed.
+
+        Previously the call was ``standardize_file_type(extension="." + extension, ...)`` while
+        ``extension`` already had a leading dot, producing ``"..csv"``. The mitigating
+        ``lstrip(".")`` inside ``standardize_file_type`` masked the bug from end users, but the
+        argument shape itself was wrong and showed up in any caller that didn't strip dots.
+        """
+        captured: dict = {}
+
+        def fake_standardize(*, extension: str = "", mime_type: str = ""):
+            from graphon.file import FileType
+
+            captured["extension"] = extension
+            captured["mime_type"] = mime_type
+            return FileType.DOCUMENT
+
+        monkeypatch.setattr(builders, "standardize_file_type", fake_standardize)
+
+        datasource_file = self._make_datasource_file(key="folder/data.csv", mime_type="text/csv")
+        sqlite_session.add(datasource_file)
+        sqlite_session.commit()
+        self._bind_session_factory(monkeypatch, sqlite_engine)
+
+        access_controller = MagicMock()
+        access_controller.apply_upload_file_filters = lambda stmt: stmt
+
+        file = builders._build_from_datasource_file(
+            mapping={"datasource_file_id": datasource_file.id, "transfer_method": "datasource_file"},
+            tenant_id=datasource_file.tenant_id,
+            transfer_method=FileTransferMethod.DATASOURCE_FILE,
+            access_controller=access_controller,
+        )
+
+        assert captured["extension"] == ".csv", (
+            f"standardize_file_type received {captured['extension']!r}; expected single-dot '.csv'"
+        )
+        assert captured["mime_type"] == "text/csv"
+        assert file.extension == ".csv"
+        assert file.transfer_method == FileTransferMethod.DATASOURCE_FILE
+
+    def test_extension_falls_back_to_bin_when_key_has_no_dot(
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, sqlite_session: Session
+    ):
+        captured: dict = {}
+
+        def fake_standardize(*, extension: str = "", mime_type: str = ""):
+            from graphon.file import FileType
+
+            captured["extension"] = extension
+            return FileType.CUSTOM
+
+        monkeypatch.setattr(builders, "standardize_file_type", fake_standardize)
+
+        datasource_file = self._make_datasource_file(key="dotless-key", mime_type="application/octet-stream")
+        sqlite_session.add(datasource_file)
+        sqlite_session.commit()
+        self._bind_session_factory(monkeypatch, sqlite_engine)
+
+        access_controller = MagicMock()
+        access_controller.apply_upload_file_filters = lambda stmt: stmt
+
+        file = builders._build_from_datasource_file(
+            mapping={"datasource_file_id": datasource_file.id, "transfer_method": "datasource_file"},
+            tenant_id=datasource_file.tenant_id,
+            transfer_method=FileTransferMethod.DATASOURCE_FILE,
+            access_controller=access_controller,
+        )
+
+        assert captured["extension"] == ".bin"
+        assert file.extension == ".bin"
+        assert file.transfer_method == FileTransferMethod.DATASOURCE_FILE
+
+    def test_datasource_file_is_scoped_to_tenant(
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, sqlite_session: Session
+    ):
+        datasource_file = self._make_datasource_file(key="folder/data.csv")
+        sqlite_session.add(datasource_file)
+        sqlite_session.commit()
+        self._bind_session_factory(monkeypatch, sqlite_engine)
+
+        access_controller = MagicMock()
+        access_controller.apply_upload_file_filters = lambda stmt: stmt
+
+        with pytest.raises(ValueError, match=f"DatasourceFile {datasource_file.id} not found"):
+            builders._build_from_datasource_file(
+                mapping={"datasource_file_id": datasource_file.id, "transfer_method": "datasource_file"},
+                tenant_id=str(uuid4()),
+                transfer_method=FileTransferMethod.DATASOURCE_FILE,
+                access_controller=access_controller,
+            )

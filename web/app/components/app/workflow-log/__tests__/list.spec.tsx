@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 /**
  * WorkflowAppLogList Component Tests
  *
@@ -48,7 +48,7 @@ vi.mock('@/hooks/use-breakpoints', () => ({
 
 // Mock the Run component
 vi.mock('@/app/components/workflow/run', () => ({
-  default: ({ runDetailUrl, tracingListUrl }: { runDetailUrl: string, tracingListUrl: string }) => (
+  default: ({ runDetailUrl, tracingListUrl }: { runDetailUrl: string; tracingListUrl: string }) => (
     <div data-testid="workflow-run">
       <span data-testid="run-detail-url">{runDetailUrl}</span>
       <span data-testid="tracing-list-url">{tracingListUrl}</span>
@@ -135,7 +135,9 @@ const createMockWorkflowRun = (overrides: Partial<WorkflowRunDetail> = {}): Work
   ...overrides,
 })
 
-const createMockWorkflowLog = (overrides: Partial<WorkflowAppLogDetail> = {}): WorkflowAppLogDetail => ({
+const createMockWorkflowLog = (
+  overrides: Partial<WorkflowAppLogDetail> = {},
+): WorkflowAppLogDetail => ({
   id: 'log-1',
   workflow_run: createMockWorkflowRun(),
   created_from: 'web-app',
@@ -178,10 +180,14 @@ describe('WorkflowAppLogList', () => {
   describe('Rendering', () => {
     it('should render loading state when logs are undefined', () => {
       const { container } = render(
-        <WorkflowAppLogList logs={undefined} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
+        <WorkflowAppLogList
+          logs={undefined}
+          appDetail={createMockApp()}
+          onRefresh={defaultOnRefresh}
+        />,
       )
 
-      expect(container.querySelector('.spin-animation')).toBeInTheDocument()
+      expect(container.querySelector('.spin-animation'))!.toBeInTheDocument()
     })
 
     it('should render loading state when appDetail is undefined', () => {
@@ -191,7 +197,7 @@ describe('WorkflowAppLogList', () => {
         <WorkflowAppLogList logs={logs} appDetail={undefined} onRefresh={defaultOnRefresh} />,
       )
 
-      expect(container.querySelector('.spin-animation')).toBeInTheDocument()
+      expect(container.querySelector('.spin-animation'))!.toBeInTheDocument()
     })
 
     it('should render table when data is available', () => {
@@ -201,7 +207,7 @@ describe('WorkflowAppLogList', () => {
         <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
       )
 
-      expect(screen.getByRole('table')).toBeInTheDocument()
+      expect(screen.getByRole('table'))!.toBeInTheDocument()
     })
 
     it('should render all table headers', () => {
@@ -211,11 +217,11 @@ describe('WorkflowAppLogList', () => {
         <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
       )
 
-      expect(screen.getByText('appLog.table.header.startTime')).toBeInTheDocument()
-      expect(screen.getByText('appLog.table.header.status')).toBeInTheDocument()
-      expect(screen.getByText('appLog.table.header.runtime')).toBeInTheDocument()
-      expect(screen.getByText('appLog.table.header.tokens')).toBeInTheDocument()
-      expect(screen.getByText('appLog.table.header.user')).toBeInTheDocument()
+      expect(screen.getByText('appLog.table.header.startTime'))!.toBeInTheDocument()
+      expect(screen.getByText('appLog.table.header.status'))!.toBeInTheDocument()
+      expect(screen.getByText('appLog.table.header.runtime'))!.toBeInTheDocument()
+      expect(screen.getByText('appLog.table.header.tokens'))!.toBeInTheDocument()
+      expect(screen.getByText('appLog.table.header.user'))!.toBeInTheDocument()
     })
 
     it('should render trigger column for workflow apps', () => {
@@ -226,16 +232,14 @@ describe('WorkflowAppLogList', () => {
         <WorkflowAppLogList logs={logs} appDetail={workflowApp} onRefresh={defaultOnRefresh} />,
       )
 
-      expect(screen.getByText('appLog.table.header.triggered_from')).toBeInTheDocument()
+      expect(screen.getByText('appLog.table.header.triggered_from'))!.toBeInTheDocument()
     })
 
     it('should not render trigger column for non-workflow apps', () => {
       const logs = createMockLogsResponse([createMockWorkflowLog()])
       const chatApp = createMockApp({ mode: 'advanced-chat' as AppModeEnum })
 
-      render(
-        <WorkflowAppLogList logs={logs} appDetail={chatApp} onRefresh={defaultOnRefresh} />,
-      )
+      render(<WorkflowAppLogList logs={logs} appDetail={chatApp} onRefresh={defaultOnRefresh} />)
 
       expect(screen.queryByText('appLog.table.header.triggered_from')).not.toBeInTheDocument()
     })
@@ -256,7 +260,7 @@ describe('WorkflowAppLogList', () => {
         <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
       )
 
-      expect(screen.getByText('Success')).toBeInTheDocument()
+      expect(screen.getByText('Success'))!.toBeInTheDocument()
     })
 
     it('should render failure status correctly', () => {
@@ -270,7 +274,7 @@ describe('WorkflowAppLogList', () => {
         <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
       )
 
-      expect(screen.getByText('Failure')).toBeInTheDocument()
+      expect(screen.getByText('Failure'))!.toBeInTheDocument()
     })
 
     it('should render stopped status correctly', () => {
@@ -284,7 +288,7 @@ describe('WorkflowAppLogList', () => {
         <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
       )
 
-      expect(screen.getByText('Stop')).toBeInTheDocument()
+      expect(screen.getByText('Stop'))!.toBeInTheDocument()
     })
 
     it('should render running status correctly', () => {
@@ -298,13 +302,15 @@ describe('WorkflowAppLogList', () => {
         <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
       )
 
-      expect(screen.getByText('Running')).toBeInTheDocument()
+      expect(screen.getByText('Running'))!.toBeInTheDocument()
     })
 
     it('should render partial-succeeded status correctly', () => {
       const logs = createMockLogsResponse([
         createMockWorkflowLog({
-          workflow_run: createMockWorkflowRun({ status: 'partial-succeeded' as WorkflowRunDetail['status'] }),
+          workflow_run: createMockWorkflowRun({
+            status: 'partial-succeeded' as WorkflowRunDetail['status'],
+          }),
         }),
       ])
 
@@ -312,7 +318,7 @@ describe('WorkflowAppLogList', () => {
         <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
       )
 
-      expect(screen.getByText('Partial Success')).toBeInTheDocument()
+      expect(screen.getByText('Partial Success'))!.toBeInTheDocument()
     })
   })
 
@@ -332,13 +338,18 @@ describe('WorkflowAppLogList', () => {
         <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
       )
 
-      expect(screen.getByText('John Doe')).toBeInTheDocument()
+      expect(screen.getByText('John Doe'))!.toBeInTheDocument()
     })
 
     it('should display end user session id when created by end user', () => {
       const logs = createMockLogsResponse([
         createMockWorkflowLog({
-          created_by_end_user: { id: 'user-1', type: 'browser', is_anonymous: false, session_id: 'session-abc-123' },
+          created_by_end_user: {
+            id: 'user-1',
+            type: 'browser',
+            is_anonymous: false,
+            session_id: 'session-abc-123',
+          },
           created_by_account: undefined,
         }),
       ])
@@ -347,7 +358,7 @@ describe('WorkflowAppLogList', () => {
         <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
       )
 
-      expect(screen.getByText('session-abc-123')).toBeInTheDocument()
+      expect(screen.getByText('session-abc-123'))!.toBeInTheDocument()
     })
 
     it('should display N/A when no user info', () => {
@@ -362,7 +373,7 @@ describe('WorkflowAppLogList', () => {
         <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
       )
 
-      expect(screen.getByText('N/A')).toBeInTheDocument()
+      expect(screen.getByText('N/A'))!.toBeInTheDocument()
     })
   })
 
@@ -405,7 +416,7 @@ describe('WorkflowAppLogList', () => {
       // Arrow should rotate (indicated by class change)
       // The sort icon should have rotate-180 class for ascending
       const sortIcon = startTimeHeader.closest('div')?.querySelector('svg')
-      expect(sortIcon).toBeInTheDocument()
+      expect(sortIcon)!.toBeInTheDocument()
     })
 
     it('should render sort arrow icon', () => {
@@ -417,7 +428,7 @@ describe('WorkflowAppLogList', () => {
 
       // Check for ArrowDownIcon presence
       const sortArrow = container.querySelector('svg.ml-0\\.5')
-      expect(sortArrow).toBeInTheDocument()
+      expect(sortArrow)!.toBeInTheDocument()
     })
   })
 
@@ -440,11 +451,11 @@ describe('WorkflowAppLogList', () => {
       )
 
       const dataRows = screen.getAllByRole('row')
-      await user.click(dataRows[1]) // Click first data row
+      await user.click(dataRows[1]!) // Click first data row
 
       const dialog = await screen.findByRole('dialog')
-      expect(dialog).toBeInTheDocument()
-      expect(screen.getByText('appLog.runDetail.workflowTitle')).toBeInTheDocument()
+      expect(dialog)!.toBeInTheDocument()
+      expect(screen.getByText('appLog.runDetail.workflowTitle'))!.toBeInTheDocument()
     })
 
     it('should close drawer and call onRefresh when closing', async () => {
@@ -453,16 +464,15 @@ describe('WorkflowAppLogList', () => {
       useAppStore.setState({ appDetail: createMockApp() })
       const logs = createMockLogsResponse([createMockWorkflowLog()])
 
-      render(
-        <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={onRefresh} />,
-      )
+      render(<WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={onRefresh} />)
 
       // Open drawer
       const dataRows = screen.getAllByRole('row')
-      await user.click(dataRows[1])
-      await screen.findByRole('dialog')
+      await user.click(dataRows[1]!)
+      const dialog = await screen.findByRole('dialog')
 
       // Close drawer using Escape key
+      dialog.focus()
       await user.keyboard('{Escape}')
 
       await waitFor(() => {
@@ -483,13 +493,45 @@ describe('WorkflowAppLogList', () => {
       const dataRow = dataRows[1]
 
       // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
+      // Before click - no highlight
       expect(dataRow).not.toHaveClass('bg-background-default-hover')
 
       // After click - has highlight (via currentLog state)
-      await user.click(dataRow)
+      await user.click(dataRow!)
 
       // The row should have the selected class
-      expect(dataRow).toHaveClass('bg-background-default-hover')
+      // The row should have the selected class
+      expect(dataRow)!.toHaveClass('bg-background-default-hover')
     })
   })
 
@@ -515,14 +557,16 @@ describe('WorkflowAppLogList', () => {
 
       // Open drawer
       const dataRows = screen.getAllByRole('row')
-      await user.click(dataRows[1])
+      await user.click(dataRows[1]!)
       await screen.findByRole('dialog')
 
       // Replay button should be present for app-run triggers
       const replayButton = screen.getByRole('button', { name: 'appLog.runDetail.testWithParams' })
       await user.click(replayButton)
 
-      expect(mockRouterPush).toHaveBeenCalledWith('/app/app-replay/workflow?replayRunId=run-to-replay')
+      expect(mockRouterPush).toHaveBeenCalledWith(
+        '/app/app-replay/workflow?replayRunId=run-to-replay',
+      )
     })
 
     it('should allow replay when triggered from debugging', async () => {
@@ -543,12 +587,12 @@ describe('WorkflowAppLogList', () => {
 
       // Open drawer
       const dataRows = screen.getAllByRole('row')
-      await user.click(dataRows[1])
+      await user.click(dataRows[1]!)
       await screen.findByRole('dialog')
 
       // Replay button should be present for debugging triggers
       const replayButton = screen.getByRole('button', { name: 'appLog.runDetail.testWithParams' })
-      expect(replayButton).toBeInTheDocument()
+      expect(replayButton)!.toBeInTheDocument()
     })
 
     it('should not show replay for webhook triggers', async () => {
@@ -569,11 +613,44 @@ describe('WorkflowAppLogList', () => {
 
       // Open drawer
       const dataRows = screen.getAllByRole('row')
-      await user.click(dataRows[1])
+      await user.click(dataRows[1]!)
       await screen.findByRole('dialog')
 
       // Replay button should not be present for webhook triggers
-      expect(screen.queryByRole('button', { name: 'appLog.runDetail.testWithParams' })).not.toBeInTheDocument()
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      // Replay button should not be present for webhook triggers
+      expect(
+        screen.queryByRole('button', { name: 'appLog.runDetail.testWithParams' }),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -594,7 +671,7 @@ describe('WorkflowAppLogList', () => {
 
       // Unread indicator is a small blue dot
       const unreadDot = container.querySelector('.bg-util-colors-blue-blue-500')
-      expect(unreadDot).toBeInTheDocument()
+      expect(unreadDot)!.toBeInTheDocument()
     })
 
     it('should not show unread indicator for read logs', () => {
@@ -629,7 +706,7 @@ describe('WorkflowAppLogList', () => {
         <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
       )
 
-      expect(screen.getByText('1.235s')).toBeInTheDocument()
+      expect(screen.getByText('1.235s'))!.toBeInTheDocument()
     })
 
     it('should display 0 elapsed time with special styling', () => {
@@ -644,8 +721,8 @@ describe('WorkflowAppLogList', () => {
       )
 
       const zeroTime = screen.getByText('0.000s')
-      expect(zeroTime).toBeInTheDocument()
-      expect(zeroTime).toHaveClass('text-text-quaternary')
+      expect(zeroTime)!.toBeInTheDocument()
+      expect(zeroTime)!.toHaveClass('text-text-quaternary')
     })
   })
 
@@ -664,7 +741,7 @@ describe('WorkflowAppLogList', () => {
         <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
       )
 
-      expect(screen.getByText('12345')).toBeInTheDocument()
+      expect(screen.getByText('12345'))!.toBeInTheDocument()
     })
   })
 
@@ -680,7 +757,7 @@ describe('WorkflowAppLogList', () => {
       )
 
       const table = screen.getByRole('table')
-      expect(table).toBeInTheDocument()
+      expect(table)!.toBeInTheDocument()
 
       // Should only have header row
       const rows = screen.getAllByRole('row')
@@ -721,8 +798,8 @@ describe('WorkflowAppLogList', () => {
         <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
       )
 
-      expect(screen.getByText('0.000s')).toBeInTheDocument()
-      expect(screen.getByText('0')).toBeInTheDocument()
+      expect(screen.getByText('0.000s'))!.toBeInTheDocument()
+      expect(screen.getByText('0'))!.toBeInTheDocument()
     })
 
     it('should handle null workflow_run.triggered_from for non-workflow apps', () => {
@@ -735,10 +812,39 @@ describe('WorkflowAppLogList', () => {
       ])
       const chatApp = createMockApp({ mode: 'advanced-chat' as AppModeEnum })
 
-      render(
-        <WorkflowAppLogList logs={logs} appDetail={chatApp} onRefresh={defaultOnRefresh} />,
-      )
+      render(<WorkflowAppLogList logs={logs} appDetail={chatApp} onRefresh={defaultOnRefresh} />)
 
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
+      // Should render without trigger column
       // Should render without trigger column
       expect(screen.queryByText('appLog.table.header.triggered_from')).not.toBeInTheDocument()
     })

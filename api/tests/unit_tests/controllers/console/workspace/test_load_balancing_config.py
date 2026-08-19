@@ -5,20 +5,20 @@ from __future__ import annotations
 import builtins
 import importlib
 import sys
-from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import ANY, MagicMock
 
 import pytest
 from flask import Flask
 from flask.views import MethodView
+from werkzeug.exceptions import Forbidden
+
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
-from werkzeug.exceptions import Forbidden
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
 
-from models.account import TenantAccountRole
+from models.account import Account, TenantAccountRole
 
 
 @pytest.fixture
@@ -56,13 +56,18 @@ def load_balancing_module(monkeypatch: pytest.MonkeyPatch):
     return module
 
 
-def _mock_user(role: TenantAccountRole) -> SimpleNamespace:
-    return SimpleNamespace(current_role=role)
+def _account(role: TenantAccountRole) -> Account:
+    account = Account(name="Owner", email="owner@example.com")
+    account.id = "account-1"
+    account.role = role
+    return account
 
 
 def _prepare_context(module, monkeypatch: pytest.MonkeyPatch, role=TenantAccountRole.OWNER):
-    user = _mock_user(role)
-    monkeypatch.setattr(module, "current_account_with_tenant", lambda: (user, "tenant-123"))
+    user = _account(role)
+    from controllers.console import wraps
+
+    monkeypatch.setattr(wraps, "current_account_with_tenant", lambda: (user, "tenant-123"))
     mock_service = MagicMock()
     monkeypatch.setattr(module, "ModelLoadBalancingService", lambda: mock_service)
     return mock_service
@@ -89,6 +94,7 @@ def test_validate_credentials_success(app: Flask, load_balancing_module, monkeyp
         model="gpt-4o",
         model_type=ModelType.LLM,
         credentials={"api_key": "sk-***"},
+        session=ANY,
     )
 
 
@@ -140,5 +146,6 @@ def test_validate_credentials_with_config_id(app: Flask, load_balancing_module, 
         model="gpt-4o",
         model_type=ModelType.LLM,
         credentials={"api_key": "sk-***"},
+        session=ANY,
         config_id="cfg-1",
     )

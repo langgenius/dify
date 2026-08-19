@@ -1,10 +1,11 @@
 import type { InputVar } from '@/app/components/workflow/types'
 import type { App, AppSSO } from '@/types/app'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import * as React from 'react'
+import { toast } from '@/app/components/app/configuration/toast'
 import { useStore } from '@/app/components/app/store'
-import { toast } from '@/app/components/base/ui/toast'
 import { InputVarType } from '@/app/components/workflow/types'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import ConfigModal from '../index'
 
@@ -44,9 +45,9 @@ describe('ConfigModal', () => {
     )
 
     const textboxes = screen.getAllByRole('textbox')
-    fireEvent.blur(textboxes[0], { target: { value: 'question' } })
+    fireEvent.blur(textboxes[0]!, { target: { value: 'question' } })
 
-    expect(textboxes[1]).toHaveValue('question')
+    expect(textboxes[1])!.toHaveValue('question')
   })
 
   it('should submit the edited payload when the form is valid', () => {
@@ -64,11 +65,33 @@ describe('ConfigModal', () => {
     fireEvent.change(screen.getByDisplayValue('hello'), { target: { value: 'updated default' } })
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-    expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({
-      default: 'updated default',
-      label: 'Question',
-      variable: 'question',
-    }), undefined)
+    expect(onConfirm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        default: 'updated default',
+        label: 'Question',
+        variable: 'question',
+      }),
+      undefined,
+    )
+  })
+
+  it('should keep scrolling inside the form body so scrollbars do not cover dialog corners', () => {
+    render(
+      <ConfigModal
+        isCreate
+        isShow
+        payload={createPayload({ label: 'Question' })}
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+      />,
+    )
+
+    const dialog = screen.getByRole('dialog')
+    const scrollArea = screen.getByTestId('config-modal-scroll-area')
+
+    expect(dialog).toHaveClass('overflow-hidden!')
+    expect(scrollArea).toHaveClass('overflow-y-auto')
+    expect(scrollArea).toHaveClass('overflow-x-hidden')
   })
 
   it('should block save when the label is missing', () => {

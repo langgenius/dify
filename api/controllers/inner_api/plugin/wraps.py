@@ -10,6 +10,7 @@ from sqlalchemy.orm import sessionmaker
 from extensions.ext_database import db
 from libs.login import current_user
 from models.account import Tenant
+from models.enums import EndUserType
 from models.model import DefaultEndUserSessionID, EndUser
 
 
@@ -20,10 +21,13 @@ class TenantUserPayload(BaseModel):
 
 def get_user(tenant_id: str, user_id: str | None) -> EndUser:
     """
-    Get current user
+    Get current user.
 
     NOTE: user_id is not trusted, it could be maliciously set to any value.
-    As a result, it could only be considered as an end user id.
+    As a result, it could only be considered as an end user id. Even when a
+    concrete end-user ID is supplied, lookups must stay tenant-scoped so one
+    tenant cannot bind another tenant's user record into the plugin request
+    context.
     """
     if not user_id:
         user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID
@@ -42,12 +46,37 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
                     .limit(1)
                 )
             else:
-                user_model = session.get(EndUser, user_id)
+                # Try id first (preserves the original "explicit end-user
+                # id → that specific user" semantics for callers that pass
+                # a known EndUser.id). Fall back to session_id so daemon-
+                # supplied session UUIDs dedup against the row created on
+                # the first Reverse Invocation call — without this, an
+                # id-only lookup never matched (create writes user_id to
+                # session_id, id is auto-generated) and a fresh EndUser
+                # was created per call, breaking multi-turn chat
+                # continuation (see #36736).
+                user_model = session.scalar(
+                    select(EndUser)
+                    .where(
+                        EndUser.id == user_id,
+                        EndUser.tenant_id == tenant_id,
+                    )
+                    .limit(1)
+                )
+                if user_model is None:
+                    user_model = session.scalar(
+                        select(EndUser)
+                        .where(
+                            EndUser.session_id == user_id,
+                            EndUser.tenant_id == tenant_id,
+                        )
+                        .limit(1)
+                    )
 
             if not user_model:
                 user_model = EndUser(
                     tenant_id=tenant_id,
-                    type="service_api",
+                    type=EndUserType.SERVICE_API,
                     is_anonymous=is_anonymous,
                     session_id=user_id,
                 )
@@ -55,8 +84,8 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
                 session.flush()
                 session.refresh(user_model)
 
-    except Exception:
-        raise ValueError("user not found")
+    except Exception as e:
+        raise ValueError("user not found") from e
 
     return user_model
 
@@ -102,13 +131,13 @@ def plugin_data[**P, R](
         def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
             try:
                 data = request.get_json()
-            except Exception:
-                raise ValueError("invalid json")
+            except Exception as e:
+                raise ValueError("invalid json") from e
 
             try:
                 payload = payload_type.model_validate(data)
             except Exception as e:
-                raise ValueError(f"invalid payload: {str(e)}")
+                raise ValueError(f"invalid payload: {str(e)}") from e
 
             kwargs["payload"] = payload
             return view_func(*args, **kwargs)

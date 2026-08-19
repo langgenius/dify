@@ -19,6 +19,12 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
+from core.tools.utils.yaml_utils import _load_yaml_file
+from core.workflow.node_factory import DifyNodeFactory, get_default_root_node_id
+from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
+from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
+from core.workflow.workflow_entry import iter_dify_graph_engine_events
 from graphon.entities import GraphInitParams
 from graphon.graph import Graph
 from graphon.graph_engine import GraphEngine, GraphEngineConfig
@@ -39,63 +45,10 @@ from graphon.variables import (
     StringVariable,
 )
 
-from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
-from core.tools.utils.yaml_utils import _load_yaml_file
-from core.workflow.node_factory import DifyNodeFactory, get_default_root_node_id
-from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
-from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
-
 from .test_mock_config import MockConfig
 from .test_mock_factory import MockNodeFactory
 
 logger = logging.getLogger(__name__)
-
-
-class _TableTestChildEngineBuilder:
-    def __init__(self, *, use_mock_factory: bool, mock_config: MockConfig | None) -> None:
-        self._use_mock_factory = use_mock_factory
-        self._mock_config = mock_config
-
-    def build_child_engine(
-        self,
-        *,
-        workflow_id: str,
-        graph_init_params: GraphInitParams,
-        parent_graph_runtime_state: GraphRuntimeState,
-        root_node_id: str,
-        variable_pool: VariablePool | None = None,
-    ) -> GraphEngine:
-        child_graph_runtime_state = GraphRuntimeState(
-            variable_pool=variable_pool if variable_pool is not None else parent_graph_runtime_state.variable_pool,
-            start_at=time.perf_counter(),
-            execution_context=parent_graph_runtime_state.execution_context,
-        )
-        if self._use_mock_factory:
-            node_factory = MockNodeFactory(
-                graph_init_params=graph_init_params,
-                graph_runtime_state=child_graph_runtime_state,
-                mock_config=self._mock_config,
-            )
-        else:
-            node_factory = DifyNodeFactory(
-                graph_init_params=graph_init_params,
-                graph_runtime_state=child_graph_runtime_state,
-            )
-
-        graph_config = graph_init_params.graph_config
-        child_graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id=root_node_id)
-        if not child_graph:
-            raise ValueError("child graph not found")
-
-        child_engine = GraphEngine(
-            workflow_id=workflow_id,
-            graph=child_graph,
-            graph_runtime_state=child_graph_runtime_state,
-            command_channel=InMemoryChannel(),
-            config=GraphEngineConfig(),
-            child_engine_builder=self,
-        )
-        return child_engine
 
 
 @dataclass
@@ -298,7 +251,7 @@ class TableTestRunner:
         max_workers: int = 4,
         enable_logging: bool = False,
         log_level: str = "INFO",
-        graph_engine_min_workers: int = 1,
+        graph_engine_min_workers: int = 3,
         graph_engine_max_workers: int = 1,
         graph_engine_scale_up_threshold: int = 5,
         graph_engine_scale_down_idle_time: float = 30.0,
@@ -311,7 +264,7 @@ class TableTestRunner:
             max_workers: Maximum number of parallel workers for test execution
             enable_logging: Enable detailed logging
             log_level: Logging level (DEBUG, INFO, WARNING, ERROR)
-            graph_engine_min_workers: Minimum workers for GraphEngine (default: 1)
+            graph_engine_min_workers: Minimum workers for GraphEngine (default: 3)
             graph_engine_max_workers: Maximum workers for GraphEngine (default: 1)
             graph_engine_scale_up_threshold: Queue depth to trigger scale up
             graph_engine_scale_down_idle_time: Idle time before scaling down
@@ -379,15 +332,11 @@ class TableTestRunner:
                     scale_up_threshold=self.graph_engine_scale_up_threshold,
                     scale_down_idle_time=self.graph_engine_scale_down_idle_time,
                 ),
-                child_engine_builder=_TableTestChildEngineBuilder(
-                    use_mock_factory=test_case.use_auto_mock,
-                    mock_config=test_case.mock_config,
-                ),
             )
 
             # Execute and collect events
             events: list[GraphEngineEvent] = []
-            for event in engine.run():
+            for event in iter_dify_graph_engine_events(engine):
                 events.append(event)
 
             # Check execution success

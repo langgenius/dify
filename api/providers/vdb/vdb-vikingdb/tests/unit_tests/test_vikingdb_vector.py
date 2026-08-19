@@ -79,7 +79,7 @@ def _build_fake_vikingdb_modules():
 
 
 @pytest.fixture
-def vikingdb_module(monkeypatch):
+def vikingdb_module(monkeypatch: pytest.MonkeyPatch):
     for name, module in _build_fake_vikingdb_modules().items():
         monkeypatch.setitem(sys.modules, name, module)
 
@@ -117,7 +117,7 @@ def test_init_get_type_and_has_checks(vikingdb_module):
     assert vector._has_index() is False
 
 
-def test_create_collection_cache_and_creation_paths(vikingdb_module, monkeypatch):
+def test_create_collection_cache_and_creation_paths(vikingdb_module, monkeypatch: pytest.MonkeyPatch):
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -253,7 +253,7 @@ def test_delete_drops_index_and_collection_when_present(vikingdb_module):
     vector._client.drop_collection.assert_not_called()
 
 
-def test_vikingdb_factory_validates_config_and_builds_vector(vikingdb_module, monkeypatch):
+def test_vikingdb_factory_validates_config_and_builds_vector(vikingdb_module, monkeypatch: pytest.MonkeyPatch):
     factory = vikingdb_module.VikingDBVectorFactory()
     dataset_with_index = SimpleNamespace(
         id="dataset-1",
@@ -293,7 +293,9 @@ def test_vikingdb_factory_validates_config_and_builds_vector(vikingdb_module, mo
         ("VIKINGDB_SCHEME", "VIKINGDB_SCHEME should not be None"),
     ],
 )
-def test_vikingdb_factory_raises_when_required_config_missing(vikingdb_module, monkeypatch, field, message):
+def test_vikingdb_factory_raises_when_required_config_missing(
+    vikingdb_module, monkeypatch: pytest.MonkeyPatch, field, message
+):
     factory = vikingdb_module.VikingDBVectorFactory()
     dataset = SimpleNamespace(
         id="dataset-1", index_struct_dict={"vector_store": {"class_prefix": "existing"}}, index_struct=None

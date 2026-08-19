@@ -1,5 +1,5 @@
 import type { ModelProvider } from '../../declarations'
-import { renderHook } from '@testing-library/react'
+import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import {
   ConfigurationMethodEnum,
   CurrentSystemQuotaTypeEnum,
@@ -8,48 +8,59 @@ import {
 } from '../../declarations'
 import { isDestructiveVariant, useCredentialPanelState } from '../use-credential-panel-state'
 
-const mockTrialCredits = { credits: 100, totalCredits: 10_000, isExhausted: false, isLoading: false, nextCreditResetDate: undefined }
+const mockTrialCredits = {
+  credits: 100,
+  totalCredits: 10_000,
+  isExhausted: false,
+  isLoading: false,
+  nextCreditResetDate: undefined,
+}
 const mockTrialModels = ['langgenius/openai/openai', 'langgenius/anthropic/anthropic']
 
 vi.mock('../use-trial-credits', () => ({
   useTrialCredits: () => mockTrialCredits,
 }))
 
-vi.mock('@/context/global-public-context', () => ({
-  useSystemFeaturesQuery: () => ({ data: { trial_models: mockTrialModels } }),
-}))
+const renderPanelHook = (provider: ModelProvider | undefined) => {
+  // oxlint-disable-next-line eslint-react/use-state -- This is a domain hook, not React's useState.
+  return renderHookWithConsoleQuery(() => useCredentialPanelState(provider), {
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    trialModels: mockTrialModels,
+  })
+}
 
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return { ...actual, IS_CLOUD_EDITION: true }
-})
-
-const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider => ({
-  provider: 'langgenius/openai/openai',
-  provider_credential_schema: { credential_form_schemas: [] },
-  custom_configuration: {
-    status: CustomConfigurationStatusEnum.active,
-    current_credential_id: 'cred-1',
-    current_credential_name: 'My Key',
-    available_credentials: [{ credential_id: 'cred-1', credential_name: 'My Key' }],
-  },
-  system_configuration: { enabled: true, current_quota_type: 'trial', quota_configurations: [] },
-  preferred_provider_type: PreferredProviderTypeEnum.system,
-  configurate_methods: [ConfigurationMethodEnum.predefinedModel],
-  supported_model_types: ['llm'],
-  ...overrides,
-} as unknown as ModelProvider)
+const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =>
+  ({
+    provider: 'langgenius/openai/openai',
+    provider_credential_schema: { credential_form_schemas: [] },
+    custom_configuration: {
+      status: CustomConfigurationStatusEnum.active,
+      current_credential_id: 'cred-1',
+      current_credential_name: 'My Key',
+      available_credentials: [{ credential_id: 'cred-1', credential_name: 'My Key' }],
+    },
+    system_configuration: { enabled: true, current_quota_type: 'trial', quota_configurations: [] },
+    preferred_provider_type: PreferredProviderTypeEnum.system,
+    configurate_methods: [ConfigurationMethodEnum.predefinedModel],
+    supported_model_types: ['llm'],
+    ...overrides,
+  }) as unknown as ModelProvider
 
 describe('useCredentialPanelState', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    Object.assign(mockTrialCredits, { credits: 100, totalCredits: 10_000, isExhausted: false, isLoading: false })
+    Object.assign(mockTrialCredits, {
+      credits: 100,
+      totalCredits: 10_000,
+      isExhausted: false,
+      isLoading: false,
+    })
   })
 
   // Credits priority variants
   describe('Credits priority variants', () => {
     it('should return credits-active when credits available', () => {
-      const { result } = renderHook(() => useCredentialPanelState(createProvider()))
+      const { result } = renderPanelHook(createProvider())
 
       expect(result.current.variant).toBe('credits-active')
       expect(result.current.priority).toBe('credits')
@@ -60,7 +71,7 @@ describe('useCredentialPanelState', () => {
       mockTrialCredits.isExhausted = true
       mockTrialCredits.credits = 0
 
-      const { result } = renderHook(() => useCredentialPanelState(createProvider()))
+      const { result } = renderPanelHook(createProvider())
 
       expect(result.current.variant).toBe('api-fallback')
     })
@@ -76,7 +87,26 @@ describe('useCredentialPanelState', () => {
         },
       })
 
-      const { result } = renderHook(() => useCredentialPanelState(provider))
+      const { result } = renderPanelHook(provider)
+
+      expect(result.current.variant).toBe('no-usage')
+    })
+
+    it('should return no-usage when credits exhausted and selected API key is unavailable', () => {
+      mockTrialCredits.isExhausted = true
+      mockTrialCredits.credits = 0
+      const provider = createProvider({
+        custom_configuration: {
+          status: CustomConfigurationStatusEnum.active,
+          current_credential_id: 'cred-1',
+          current_credential_name: 'Bad Key',
+          available_credentials: [
+            { credential_id: 'cred-1', credential_name: 'Bad Key', not_allowed_to_use: true },
+          ],
+        },
+      })
+
+      const { result } = renderPanelHook(provider)
 
       expect(result.current.variant).toBe('no-usage')
     })
@@ -90,7 +120,7 @@ describe('useCredentialPanelState', () => {
         },
       })
 
-      const { result } = renderHook(() => useCredentialPanelState(provider))
+      const { result } = renderPanelHook(provider)
 
       expect(result.current.variant).toBe('credits-exhausted')
     })
@@ -103,7 +133,7 @@ describe('useCredentialPanelState', () => {
         preferred_provider_type: PreferredProviderTypeEnum.custom,
       })
 
-      const { result } = renderHook(() => useCredentialPanelState(provider))
+      const { result } = renderPanelHook(provider)
 
       expect(result.current.variant).toBe('api-active')
       expect(result.current.priority).toBe('apiKey')
@@ -120,7 +150,7 @@ describe('useCredentialPanelState', () => {
         },
       })
 
-      const { result } = renderHook(() => useCredentialPanelState(provider))
+      const { result } = renderPanelHook(provider)
 
       expect(result.current.variant).toBe('credits-fallback')
     })
@@ -134,7 +164,7 @@ describe('useCredentialPanelState', () => {
         },
       })
 
-      const { result } = renderHook(() => useCredentialPanelState(provider))
+      const { result } = renderPanelHook(provider)
 
       expect(result.current.variant).toBe('credits-fallback')
     })
@@ -150,7 +180,7 @@ describe('useCredentialPanelState', () => {
         },
       })
 
-      const { result } = renderHook(() => useCredentialPanelState(provider))
+      const { result } = renderPanelHook(provider)
 
       expect(result.current.variant).toBe('no-usage')
     })
@@ -168,7 +198,27 @@ describe('useCredentialPanelState', () => {
         },
       })
 
-      const { result } = renderHook(() => useCredentialPanelState(provider))
+      const { result } = renderPanelHook(provider)
+
+      expect(result.current.variant).toBe('api-unavailable')
+    })
+
+    it('should return api-unavailable when selected API key is unavailable and credits are exhausted', () => {
+      mockTrialCredits.isExhausted = true
+      mockTrialCredits.credits = 0
+      const provider = createProvider({
+        preferred_provider_type: PreferredProviderTypeEnum.custom,
+        custom_configuration: {
+          status: CustomConfigurationStatusEnum.active,
+          current_credential_id: 'cred-1',
+          current_credential_name: 'Bad Key',
+          available_credentials: [
+            { credential_id: 'cred-1', credential_name: 'Bad Key', not_allowed_to_use: true },
+          ],
+        },
+      })
+
+      const { result } = renderPanelHook(provider)
 
       expect(result.current.variant).toBe('api-unavailable')
     })
@@ -186,7 +236,7 @@ describe('useCredentialPanelState', () => {
         },
       })
 
-      const { result } = renderHook(() => useCredentialPanelState(provider))
+      const { result } = renderPanelHook(provider)
 
       expect(result.current.variant).toBe('api-required-configure')
     })
@@ -196,10 +246,14 @@ describe('useCredentialPanelState', () => {
   describe('apiKeyOnly priority (non-cloud / system disabled / not in trial_models)', () => {
     it('should return apiKeyOnly when system config disabled', () => {
       const provider = createProvider({
-        system_configuration: { enabled: false, current_quota_type: CurrentSystemQuotaTypeEnum.trial, quota_configurations: [] },
+        system_configuration: {
+          enabled: false,
+          current_quota_type: CurrentSystemQuotaTypeEnum.trial,
+          quota_configurations: [],
+        },
       })
 
-      const { result } = renderHook(() => useCredentialPanelState(provider))
+      const { result } = renderPanelHook(provider)
 
       expect(result.current.priority).toBe('apiKeyOnly')
       expect(result.current.supportsCredits).toBe(false)
@@ -208,11 +262,15 @@ describe('useCredentialPanelState', () => {
     it('should return apiKeyOnly when provider not in trial_models even if system enabled', () => {
       const provider = createProvider({
         provider: 'langgenius/minimax/minimax',
-        system_configuration: { enabled: true, current_quota_type: CurrentSystemQuotaTypeEnum.trial, quota_configurations: [] },
+        system_configuration: {
+          enabled: true,
+          current_quota_type: CurrentSystemQuotaTypeEnum.trial,
+          quota_configurations: [],
+        },
         preferred_provider_type: PreferredProviderTypeEnum.system,
       })
 
-      const { result } = renderHook(() => useCredentialPanelState(provider))
+      const { result } = renderPanelHook(provider)
 
       expect(result.current.priority).toBe('apiKeyOnly')
       expect(result.current.supportsCredits).toBe(false)
@@ -223,7 +281,7 @@ describe('useCredentialPanelState', () => {
   // Undefined provider
   describe('Undefined provider', () => {
     it('should return safe defaults when provider is undefined', () => {
-      const { result } = renderHook(() => useCredentialPanelState(undefined))
+      const { result } = renderPanelHook(undefined)
 
       expect(result.current.priority).toBe('apiKeyOnly')
       expect(result.current.supportsCredits).toBe(false)
@@ -237,17 +295,21 @@ describe('useCredentialPanelState', () => {
     it('should show priority switcher when credits supported and custom config active', () => {
       const provider = createProvider()
 
-      const { result } = renderHook(() => useCredentialPanelState(provider))
+      const { result } = renderPanelHook(provider)
 
       expect(result.current.showPrioritySwitcher).toBe(true)
     })
 
     it('should hide priority switcher when system config disabled', () => {
       const provider = createProvider({
-        system_configuration: { enabled: false, current_quota_type: CurrentSystemQuotaTypeEnum.trial, quota_configurations: [] },
+        system_configuration: {
+          enabled: false,
+          current_quota_type: CurrentSystemQuotaTypeEnum.trial,
+          quota_configurations: [],
+        },
       })
 
-      const { result } = renderHook(() => useCredentialPanelState(provider))
+      const { result } = renderPanelHook(provider)
 
       expect(result.current.showPrioritySwitcher).toBe(false)
     })
@@ -255,16 +317,20 @@ describe('useCredentialPanelState', () => {
     it('should hide priority switcher when provider not in trial_models', () => {
       const provider = createProvider({
         provider: 'langgenius/zhipuai/zhipuai',
-        system_configuration: { enabled: true, current_quota_type: CurrentSystemQuotaTypeEnum.trial, quota_configurations: [] },
+        system_configuration: {
+          enabled: true,
+          current_quota_type: CurrentSystemQuotaTypeEnum.trial,
+          quota_configurations: [],
+        },
       })
 
-      const { result } = renderHook(() => useCredentialPanelState(provider))
+      const { result } = renderPanelHook(provider)
 
       expect(result.current.showPrioritySwitcher).toBe(false)
     })
 
     it('should expose credential name from provider', () => {
-      const { result } = renderHook(() => useCredentialPanelState(createProvider()))
+      const { result } = renderPanelHook(createProvider())
 
       expect(result.current.credentialName).toBe('My Key')
     })
@@ -272,7 +338,7 @@ describe('useCredentialPanelState', () => {
     it('should expose credits amount', () => {
       mockTrialCredits.credits = 500
 
-      const { result } = renderHook(() => useCredentialPanelState(createProvider()))
+      const { result } = renderPanelHook(createProvider())
 
       expect(result.current.credits).toBe(500)
     })

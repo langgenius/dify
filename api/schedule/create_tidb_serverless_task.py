@@ -57,6 +57,7 @@ def create_clusters(batch_size):
                 cluster_name=new_cluster["cluster_name"],
                 account=new_cluster["account"],
                 password=new_cluster["password"],
+                qdrant_endpoint=new_cluster.get("qdrant_endpoint"),
                 active=False,
                 status=TidbAuthBindingStatus.CREATING,
             )

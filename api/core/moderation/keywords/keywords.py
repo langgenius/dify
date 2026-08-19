@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, override
 
 from core.moderation.base import Moderation, ModerationAction, ModerationInputsResult, ModerationOutputsResult
 
@@ -8,6 +8,7 @@ class KeywordsModeration(Moderation):
     name: str = "keywords"
 
     @classmethod
+    @override
     def validate_config(cls, tenant_id: str, config: dict[str, Any]):
         """
         Validate the incoming form config data.
@@ -28,6 +29,7 @@ class KeywordsModeration(Moderation):
         if len(keywords_row_len) > 100:
             raise ValueError("the number of rows for the keywords must be less than 100")
 
+    @override
     def moderation_for_inputs(self, inputs: dict[str, Any], query: str = "") -> ModerationInputsResult:
         flagged = False
         preset_response = ""
@@ -49,6 +51,7 @@ class KeywordsModeration(Moderation):
             flagged=flagged, action=ModerationAction.DIRECT_OUTPUT, preset_response=preset_response
         )
 
+    @override
     def moderation_for_outputs(self, text: str) -> ModerationOutputsResult:
         flagged = False
         preset_response = ""

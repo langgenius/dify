@@ -1,13 +1,20 @@
-import type { ReactNode } from 'react'
-import type { Props as PaginationProps } from '@/app/components/base/pagination'
 import type { SimpleDocumentDetail } from '@/models/datasets'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render } from '@/test/console/render'
 import DocumentList from '../../list'
 
 const mockPush = vi.fn()
+
+type PaginationProps = {
+  current: number
+  onChange: (page: number) => void
+  total: number
+  limit?: number
+  onLimitChange?: (limit: number) => void
+}
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
@@ -17,59 +24,91 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (state: { dataset: { doc_form: string } }) => unknown) =>
-    selector({ dataset: { doc_form: ChunkingMode.text } }),
+  useDatasetDetailContextWithSelector: (
+    selector: (state: {
+      dataset: { doc_form: string; created_by: string; permission_keys: string[] }
+    }) => unknown,
+  ) =>
+    selector({
+      dataset: {
+        doc_form: ChunkingMode.text,
+        created_by: 'user-1',
+        permission_keys: ['dataset.acl.edit', 'dataset.acl.use'],
+      },
+    }),
 }))
 
-const createTestQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: { retry: false, gcTime: 0 },
-    mutations: { retry: false },
-  },
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createWorkspaceStateModuleMock(() => ({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: ['dataset.create_and_management'],
+  }))
+})
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: ['dataset.create_and_management'],
+  }))
+})
+vi.mock('@/features/system-features/state', async () => {
+  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createSystemFeaturesStateModuleMock(() => ({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: ['dataset.create_and_management'],
+  }))
 })
 
-const createWrapper = () => {
-  const queryClient = createTestQueryClient()
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
-  )
-}
+vi.mock('@/app/components/datasets/metadata/hooks/use-batch-edit-document-metadata', () => ({
+  default: () => ({
+    isShowEditModal: false,
+    showEditModal: vi.fn(),
+    hideEditModal: vi.fn(),
+    originalList: [],
+    handleSave: vi.fn(),
+  }),
+}))
 
-const createMockDoc = (overrides: Partial<SimpleDocumentDetail> = {}): SimpleDocumentDetail => ({
-  id: `doc-${Math.random().toString(36).substr(2, 9)}`,
-  position: 1,
-  data_source_type: DataSourceType.FILE,
-  data_source_info: {},
-  data_source_detail_dict: {
-    upload_file: { name: 'test.txt', extension: 'txt' },
-  },
-  dataset_process_rule_id: 'rule-1',
-  batch: 'batch-1',
-  name: 'test-document.txt',
-  created_from: 'web',
-  created_by: 'user-1',
-  created_at: Date.now(),
-  tokens: 100,
-  indexing_status: 'completed',
-  error: null,
-  enabled: true,
-  disabled_at: null,
-  disabled_by: null,
-  archived: false,
-  archived_reason: null,
-  archived_by: null,
-  archived_at: null,
-  updated_at: Date.now(),
-  doc_type: null,
-  doc_metadata: undefined,
-  display_status: 'available',
-  word_count: 500,
-  hit_count: 10,
-  doc_form: 'text_model',
-  ...overrides,
-} as SimpleDocumentDetail)
+const createWrapper = () => createConsoleQueryWrapper().wrapper
+
+const createMockDoc = (overrides: Partial<SimpleDocumentDetail> = {}): SimpleDocumentDetail =>
+  ({
+    id: `doc-${Math.random().toString(36).substr(2, 9)}`,
+    position: 1,
+    data_source_type: DataSourceType.FILE,
+    data_source_info: {},
+    data_source_detail_dict: {
+      upload_file: { name: 'test.txt', extension: 'txt' },
+    },
+    dataset_process_rule_id: 'rule-1',
+    batch: 'batch-1',
+    name: 'test-document.txt',
+    created_from: 'web',
+    created_by: 'user-1',
+    created_at: Date.now(),
+    tokens: 100,
+    indexing_status: 'completed',
+    error: null,
+    enabled: true,
+    disabled_at: null,
+    disabled_by: null,
+    archived: false,
+    archived_reason: null,
+    archived_by: null,
+    archived_at: null,
+    updated_at: Date.now(),
+    doc_type: null,
+    doc_metadata: undefined,
+    display_status: 'available',
+    word_count: 500,
+    hit_count: 10,
+    doc_form: 'text_model',
+    ...overrides,
+  }) as SimpleDocumentDetail
 
 const defaultPagination: PaginationProps = {
   current: 1,
@@ -100,27 +139,23 @@ describe('DocumentList', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<DocumentList {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByRole('table')).toBeInTheDocument()
-    })
-
     it('should render all documents', () => {
       render(<DocumentList {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('Document 1.txt')).toBeInTheDocument()
-      expect(screen.getByText('Document 2.txt')).toBeInTheDocument()
-      expect(screen.getByText('Document 3.txt')).toBeInTheDocument()
+      expect(screen.getByText('Document 1.txt'))!.toBeInTheDocument()
+      expect(screen.getByText('Document 2.txt'))!.toBeInTheDocument()
+      expect(screen.getByText('Document 3.txt'))!.toBeInTheDocument()
     })
 
     it('should render table headers', () => {
       render(<DocumentList {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('#')).toBeInTheDocument()
+      expect(screen.getByText('#'))!.toBeInTheDocument()
     })
 
     it('should render pagination when total is provided', () => {
       render(<DocumentList {...defaultProps} />, { wrapper: createWrapper() })
       // Pagination component should be present
-      expect(screen.getByRole('table')).toBeInTheDocument()
+      // Pagination component should be present
+      expect(screen.getByRole('table'))!.toBeInTheDocument()
     })
 
     it('should not render pagination when total is 0', () => {
@@ -129,13 +164,13 @@ describe('DocumentList', () => {
         pagination: { ...defaultPagination, total: 0 },
       }
       render(<DocumentList {...props} />, { wrapper: createWrapper() })
-      expect(screen.getByRole('table')).toBeInTheDocument()
+      expect(screen.getByRole('table'))!.toBeInTheDocument()
     })
 
     it('should render empty table when no documents', () => {
       const props = { ...defaultProps, documents: [] }
       render(<DocumentList {...props} />, { wrapper: createWrapper() })
-      expect(screen.getByRole('table')).toBeInTheDocument()
+      expect(screen.getByRole('table'))!.toBeInTheDocument()
     })
   })
 
@@ -155,7 +190,8 @@ describe('DocumentList', () => {
       const props = { ...defaultProps, embeddingAvailable: false }
       render(<DocumentList {...props} />, { wrapper: createWrapper() })
       // Row checkboxes should still be there, but header checkbox should be hidden
-      expect(screen.getByRole('table')).toBeInTheDocument()
+      // Row checkboxes should still be there, but header checkbox should be hidden
+      expect(screen.getByRole('table'))!.toBeInTheDocument()
     })
 
     it('should call onSelectedIdChange when select all is clicked', () => {
@@ -165,7 +201,7 @@ describe('DocumentList', () => {
 
       const checkboxes = findCheckboxes(container)
       if (checkboxes.length > 0) {
-        fireEvent.click(checkboxes[0])
+        fireEvent.click(checkboxes[0]!)
         expect(onSelectedIdChange).toHaveBeenCalled()
       }
     })
@@ -177,11 +213,18 @@ describe('DocumentList', () => {
       }
       render(<DocumentList {...props} />, { wrapper: createWrapper() })
 
-      // When checked, checkbox should have a check icon (svg) inside
-      props.selectedIds.forEach((id) => {
-        const checkIcon = screen.getByTestId(`check-icon-doc-row-${id}`)
-        expect(checkIcon).toBeInTheDocument()
-      })
+      expect(screen.getByRole('checkbox', { name: 'Document 1.txt' })).toHaveAttribute(
+        'aria-checked',
+        'true',
+      )
+      expect(screen.getByRole('checkbox', { name: 'Document 2.txt' })).toHaveAttribute(
+        'aria-checked',
+        'true',
+      )
+      expect(screen.getByRole('checkbox', { name: 'Document 3.txt' })).toHaveAttribute(
+        'aria-checked',
+        'true',
+      )
     })
 
     it('should show indeterminate state when some are selected', () => {
@@ -196,7 +239,9 @@ describe('DocumentList', () => {
       expect(checkboxes.length).toBeGreaterThan(0)
       // Header checkbox should show indeterminate icon, not check icon
       // Just verify it's rendered
-      expect(checkboxes[0]).toBeInTheDocument()
+      // Header checkbox should show indeterminate icon, not check icon
+      // Just verify it's rendered
+      expect(checkboxes[0])!.toBeInTheDocument()
     })
 
     it('should call onSelectedIdChange with single document when row checkbox is clicked', () => {
@@ -206,7 +251,7 @@ describe('DocumentList', () => {
 
       const checkboxes = findCheckboxes(container)
       if (checkboxes.length > 1) {
-        fireEvent.click(checkboxes[1])
+        fireEvent.click(checkboxes[1]!)
         expect(onSelectedIdChange).toHaveBeenCalled()
       }
     })
@@ -222,11 +267,12 @@ describe('DocumentList', () => {
 
     it('should call onSortChange when sortable header is clicked', () => {
       const onSortChange = vi.fn()
-      const { container } = render(<DocumentList {...defaultProps} onSortChange={onSortChange} />, { wrapper: createWrapper() })
+      const { container } = render(<DocumentList {...defaultProps} onSortChange={onSortChange} />, {
+        wrapper: createWrapper(),
+      })
 
       const sortableHeaders = container.querySelectorAll('thead button')
-      if (sortableHeaders.length > 0)
-        fireEvent.click(sortableHeaders[0])
+      if (sortableHeaders.length > 0) fireEvent.click(sortableHeaders[0]!)
 
       expect(onSortChange).toHaveBeenCalled()
     })
@@ -241,14 +287,16 @@ describe('DocumentList', () => {
       render(<DocumentList {...props} />, { wrapper: createWrapper() })
 
       // BatchAction component should be visible
-      expect(screen.getByRole('table')).toBeInTheDocument()
+      // BatchAction component should be visible
+      expect(screen.getByRole('table'))!.toBeInTheDocument()
     })
 
     it('should not show batch action bar when no documents selected', () => {
       render(<DocumentList {...defaultProps} />, { wrapper: createWrapper() })
 
       // BatchAction should not be present
-      expect(screen.getByRole('table')).toBeInTheDocument()
+      // BatchAction should not be present
+      expect(screen.getByRole('table'))!.toBeInTheDocument()
     })
 
     it('should render batch action bar with archive option', () => {
@@ -259,7 +307,8 @@ describe('DocumentList', () => {
       render(<DocumentList {...props} />, { wrapper: createWrapper() })
 
       // BatchAction component should be visible when documents are selected
-      expect(screen.getByRole('table')).toBeInTheDocument()
+      // BatchAction component should be visible when documents are selected
+      expect(screen.getByRole('table'))!.toBeInTheDocument()
     })
 
     it('should render batch action bar with enable option', () => {
@@ -269,7 +318,7 @@ describe('DocumentList', () => {
       }
       render(<DocumentList {...props} />, { wrapper: createWrapper() })
 
-      expect(screen.getByRole('table')).toBeInTheDocument()
+      expect(screen.getByRole('table'))!.toBeInTheDocument()
     })
 
     it('should render batch action bar with disable option', () => {
@@ -279,7 +328,7 @@ describe('DocumentList', () => {
       }
       render(<DocumentList {...props} />, { wrapper: createWrapper() })
 
-      expect(screen.getByRole('table')).toBeInTheDocument()
+      expect(screen.getByRole('table'))!.toBeInTheDocument()
     })
 
     it('should render batch action bar with delete option', () => {
@@ -289,7 +338,7 @@ describe('DocumentList', () => {
       }
       render(<DocumentList {...props} />, { wrapper: createWrapper() })
 
-      expect(screen.getByRole('table')).toBeInTheDocument()
+      expect(screen.getByRole('table'))!.toBeInTheDocument()
     })
 
     it('should clear selection when cancel is clicked', () => {
@@ -312,28 +361,26 @@ describe('DocumentList', () => {
       const props = {
         ...defaultProps,
         selectedIds: ['doc-1'],
-        documents: [
-          createMockDoc({ id: 'doc-1', data_source_type: DataSourceType.FILE }),
-        ],
+        documents: [createMockDoc({ id: 'doc-1', data_source_type: DataSourceType.FILE })],
       }
       render(<DocumentList {...props} />, { wrapper: createWrapper() })
 
       // BatchAction should be visible
-      expect(screen.getByRole('table')).toBeInTheDocument()
+      // BatchAction should be visible
+      expect(screen.getByRole('table'))!.toBeInTheDocument()
     })
 
     it('should show re-index option for error documents', () => {
       const props = {
         ...defaultProps,
         selectedIds: ['doc-1'],
-        documents: [
-          createMockDoc({ id: 'doc-1', display_status: 'error' }),
-        ],
+        documents: [createMockDoc({ id: 'doc-1', display_status: 'error' })],
       }
       render(<DocumentList {...props} />, { wrapper: createWrapper() })
 
       // BatchAction with re-index should be present for error documents
-      expect(screen.getByRole('table')).toBeInTheDocument()
+      // BatchAction with re-index should be present for error documents
+      expect(screen.getByRole('table'))!.toBeInTheDocument()
     })
   })
 
@@ -344,7 +391,7 @@ describe('DocumentList', () => {
       const rows = screen.getAllByRole('row')
       // First row is header, second row is first document
       if (rows.length > 1) {
-        fireEvent.click(rows[1])
+        fireEvent.click(rows[1]!)
         expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/documents/doc-1')
       }
     })
@@ -360,18 +407,18 @@ describe('DocumentList', () => {
     })
 
     it('should show rename modal when rename button is clicked', async () => {
-      const { container } = render(<DocumentList {...defaultProps} />, { wrapper: createWrapper() })
+      render(<DocumentList {...defaultProps} />, { wrapper: createWrapper() })
 
-      // Find and click the rename button in the first row
-      const renameButtons = container.querySelectorAll('.cursor-pointer.rounded-md')
-      if (renameButtons.length > 0) {
-        await act(async () => {
-          fireEvent.click(renameButtons[0])
-        })
-      }
+      await act(async () => {
+        fireEvent.click(screen.getAllByRole('button', { name: 'common.operation.more' })[0]!)
+      })
+      await act(async () => {
+        fireEvent.click(await screen.findByText('datasetDocuments.list.table.rename'))
+      })
 
-      // After clicking rename, the modal should potentially be visible
-      expect(screen.getByRole('table')).toBeInTheDocument()
+      expect(
+        screen.getByRole('dialog', { name: 'datasetDocuments.list.table.rename' }),
+      )!.toBeInTheDocument()
     })
 
     it('should call onUpdate when document is renamed', () => {
@@ -380,7 +427,8 @@ describe('DocumentList', () => {
       render(<DocumentList {...props} />, { wrapper: createWrapper() })
 
       // The handleRenamed callback wraps onUpdate
-      expect(screen.getByRole('table')).toBeInTheDocument()
+      // The handleRenamed callback wraps onUpdate
+      expect(screen.getByRole('table'))!.toBeInTheDocument()
     })
   })
 
@@ -399,7 +447,7 @@ describe('DocumentList', () => {
         })
       }
 
-      expect(screen.getByRole('table')).toBeInTheDocument()
+      expect(screen.getByRole('table'))!.toBeInTheDocument()
     })
 
     it('should call onManageMetadata when manage metadata is triggered', () => {
@@ -412,26 +460,27 @@ describe('DocumentList', () => {
       render(<DocumentList {...props} />, { wrapper: createWrapper() })
 
       // The onShowManage callback in EditMetadataBatchModal should call hideEditModal then onManageMetadata
-      expect(screen.getByRole('table')).toBeInTheDocument()
+      // The onShowManage callback in EditMetadataBatchModal should call hideEditModal then onManageMetadata
+      expect(screen.getByRole('table'))!.toBeInTheDocument()
     })
   })
 
   describe('Chunking Mode', () => {
     it('should render with general mode', () => {
       render(<DocumentList {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByRole('table')).toBeInTheDocument()
+      expect(screen.getByRole('table'))!.toBeInTheDocument()
     })
 
     it('should render with QA mode', () => {
       // This test uses the default mock which returns ChunkingMode.text
       // The component will compute isQAMode based on doc_form
       render(<DocumentList {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByRole('table')).toBeInTheDocument()
+      expect(screen.getByRole('table'))!.toBeInTheDocument()
     })
 
     it('should render with parent-child mode', () => {
       render(<DocumentList {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByRole('table')).toBeInTheDocument()
+      expect(screen.getByRole('table'))!.toBeInTheDocument()
     })
   })
 
@@ -440,7 +489,7 @@ describe('DocumentList', () => {
       const props = { ...defaultProps, documents: [] }
       render(<DocumentList {...props} />, { wrapper: createWrapper() })
 
-      expect(screen.getByRole('table')).toBeInTheDocument()
+      expect(screen.getByRole('table'))!.toBeInTheDocument()
     })
 
     it('should handle documents with missing optional fields', () => {
@@ -454,7 +503,7 @@ describe('DocumentList', () => {
       }
       render(<DocumentList {...props} />, { wrapper: createWrapper() })
 
-      expect(screen.getByRole('table')).toBeInTheDocument()
+      expect(screen.getByRole('table'))!.toBeInTheDocument()
     })
 
     it('should handle remote sort value', () => {
@@ -464,16 +513,17 @@ describe('DocumentList', () => {
       }
       render(<DocumentList {...props} />, { wrapper: createWrapper() })
 
-      expect(screen.getByRole('table')).toBeInTheDocument()
+      expect(screen.getByRole('table'))!.toBeInTheDocument()
     })
 
     it('should handle large number of documents', () => {
       const manyDocs = Array.from({ length: 20 }, (_, i) =>
-        createMockDoc({ id: `doc-${i}`, name: `Document ${i}.txt` }))
+        createMockDoc({ id: `doc-${i}`, name: `Document ${i}.txt` }),
+      )
       const props = { ...defaultProps, documents: manyDocs }
       render(<DocumentList {...props} />, { wrapper: createWrapper() })
 
-      expect(screen.getByRole('table')).toBeInTheDocument()
+      expect(screen.getByRole('table'))!.toBeInTheDocument()
     }, 10000)
   })
 })

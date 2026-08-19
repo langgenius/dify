@@ -13,7 +13,7 @@ type MockPromptEditorProps = {
   workflowVariableBlock: {
     show: boolean
     variables: NodeOutPutVar[]
-    workflowNodesMap: Record<string, { title: string, type: BlockEnum }>
+    workflowNodesMap: Record<string, { title: string; type: BlockEnum }>
     showManageInputField?: boolean
     onManageInputField?: () => void
   }
@@ -35,9 +35,10 @@ vi.mock('@/app/components/base/prompt-editor', () => ({
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: { controlPromptEditorRerenderKey: string }) => unknown) => selector({
-    controlPromptEditorRerenderKey: 'rerender-key',
-  }),
+  useStore: (selector: (state: { controlPromptEditorRerenderKey: string }) => unknown) =>
+    selector({
+      controlPromptEditorRerenderKey: 'rerender-key',
+    }),
 }))
 
 describe('tool/mixed-variable-text-input', () => {
@@ -48,11 +49,13 @@ describe('tool/mixed-variable-text-input', () => {
   it('should map workflow variable props into the prompt editor', () => {
     const handleChange = vi.fn()
     const handleManageInputField = vi.fn()
-    const nodesOutputVars: NodeOutPutVar[] = [{
-      nodeId: 'tool-node',
-      title: 'Search Tool',
-      vars: [],
-    }]
+    const nodesOutputVars: NodeOutPutVar[] = [
+      {
+        nodeId: 'tool-node',
+        title: 'Search Tool',
+        vars: [],
+      },
+    ]
     const availableNodes = [
       {
         id: 'start-node',
@@ -84,7 +87,7 @@ describe('tool/mixed-variable-text-input', () => {
     fireEvent.click(screen.getByRole('button', { name: 'prompt-editor' }))
 
     expect(handleChange).toHaveBeenCalledWith('updated value')
-    expect(mockPromptEditor.mock.calls[0][0]).toMatchObject({
+    expect(mockPromptEditor.mock.calls[0]![0]).toMatchObject({
       editable: true,
       value: 'initial value',
       workflowVariableBlock: {
@@ -101,25 +104,20 @@ describe('tool/mixed-variable-text-input', () => {
             title: 'Start Title',
             type: BlockEnum.Start,
           },
-          'sys': {
+          sys: {
             title: 'workflow.blocks.start',
             type: BlockEnum.Start,
           },
         },
       },
     })
-    expect(isValidElement(mockPromptEditor.mock.calls[0][0].placeholder)).toBe(true)
+    expect(isValidElement(mockPromptEditor.mock.calls[0]![0].placeholder)).toBe(true)
   })
 
   it('should disable editing and variable insertion when requested', () => {
-    render(
-      <MixedVariableTextInput
-        readOnly
-        disableVariableInsertion
-      />,
-    )
+    render(<MixedVariableTextInput readOnly disableVariableInsertion />)
 
-    expect(mockPromptEditor.mock.calls[0][0]).toMatchObject({
+    expect(mockPromptEditor.mock.calls[0]![0]).toMatchObject({
       editable: false,
       value: '',
       workflowVariableBlock: {
@@ -130,6 +128,6 @@ describe('tool/mixed-variable-text-input', () => {
         onManageInputField: undefined,
       },
     })
-    expect(isValidElement(mockPromptEditor.mock.calls[0][0].placeholder)).toBe(true)
+    expect(isValidElement(mockPromptEditor.mock.calls[0]![0].placeholder)).toBe(true)
   })
 })

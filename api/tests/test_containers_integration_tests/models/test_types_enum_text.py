@@ -4,13 +4,13 @@ from typing import Any, NamedTuple
 
 import pytest
 import sqlalchemy as sa
-from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import insert, select
 from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 from sqlalchemy.sql.sqltypes import VARCHAR
 
+from graphon.model_runtime.entities.model_entities import ModelType
 from models.types import EnumText
 
 _USER_TABLE = "enum_text_users"
@@ -210,7 +210,7 @@ class TestEnumText:
 
         assert str(exc.value) == "'invalid' is not a valid _UserType"
 
-    def test_select_legacy_model_type_values(self, engine_with_containers: Engine):
+    def test_select_rejects_legacy_model_type_values(self, engine_with_containers: Engine):
         insertion_sql = """
                         INSERT INTO enum_text_legacy_model_type_test (id, model_type) VALUES
                             (1, 'text-generation'),
@@ -221,11 +221,9 @@ class TestEnumText:
             session.execute(sa.text(insertion_sql))
             session.commit()
 
-        with Session(engine_with_containers) as session:
-            records = session.scalars(select(_LegacyModelTypeRecord).order_by(_LegacyModelTypeRecord.id)).all()
+        for record_id, legacy_value in enumerate(("text-generation", "embeddings", "reranking"), 1):
+            with pytest.raises(ValueError) as exc:
+                with Session(engine_with_containers) as session:
+                    session.scalar(select(_LegacyModelTypeRecord).where(_LegacyModelTypeRecord.id == record_id))
 
-        assert [record.model_type for record in records] == [
-            ModelType.LLM,
-            ModelType.TEXT_EMBEDDING,
-            ModelType.RERANK,
-        ]
+            assert str(exc.value) == f"'{legacy_value}' is not a valid ModelType"

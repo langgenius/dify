@@ -3,9 +3,8 @@ import re
 from collections.abc import Generator
 from typing import Any, Union
 
-from graphon.model_runtime.entities.llm_entities import LLMResultChunk
-
 from core.agent.entities import AgentScratchpadUnit
+from graphon.model_runtime.entities.llm_entities import LLMResultChunk
 
 
 class CotAgentOutputParser:
@@ -50,7 +49,7 @@ class CotAgentOutputParser:
                     json_text = re.sub(r"^[a-zA-Z]+\n", "", block.strip(), flags=re.MULTILINE)
                     json_blocks.append(json.loads(json_text, strict=False))
                 return json_blocks
-            except:
+            except Exception:
                 return []
 
         code_block_cache = ""

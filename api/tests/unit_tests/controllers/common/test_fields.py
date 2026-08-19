@@ -1,5 +1,4 @@
 import builtins
-from types import SimpleNamespace
 from unittest.mock import patch
 
 from flask.views import MethodView as FlaskMethodView
@@ -22,7 +21,7 @@ def test_parameters_model_round_trip():
 
 
 def test_site_icon_url_uses_signed_url_for_image_icon():
-    site = SimpleNamespace(
+    site = Site(
         title="Example",
         chat_color_theme=None,
         chat_color_theme_inverted=False,
@@ -46,7 +45,7 @@ def test_site_icon_url_uses_signed_url_for_image_icon():
 
 
 def test_site_icon_url_is_none_for_non_image_icon():
-    site = SimpleNamespace(
+    site = Site(
         title="Example",
         chat_color_theme=None,
         chat_color_theme_inverted=False,

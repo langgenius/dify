@@ -1,179 +1,126 @@
-import type { ReactNode } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { AppModeEnum } from '@/types/app'
-import AppPicker from '../app-picker'
-
-class MockIntersectionObserver {
-  observe = vi.fn()
-  disconnect = vi.fn()
-  unobserve = vi.fn()
-}
-
-class MockMutationObserver {
-  observe = vi.fn()
-  disconnect = vi.fn()
-  takeRecords = vi.fn().mockReturnValue([])
-}
-
-beforeAll(() => {
-  vi.stubGlobal('IntersectionObserver', MockIntersectionObserver)
-  vi.stubGlobal('MutationObserver', MockMutationObserver)
-})
+import { AppPicker } from '../app-picker'
 
 vi.mock('@/app/components/base/app-icon', () => ({
-  default: () => <div data-testid="app-icon" />,
+  default: () => <span aria-hidden="true" data-testid="app-icon" />,
 }))
 
-vi.mock('@/app/components/base/input', () => ({
-  default: ({
-    value,
-    onChange,
-    onClear,
-  }: {
-    value: string
-    onChange: (e: { target: { value: string } }) => void
-    onClear?: () => void
-  }) => (
-    <div>
-      <input
-        data-testid="search-input"
-        value={value}
-        onChange={e => onChange({ target: { value: e.target.value } })}
-      />
-      <button data-testid="clear-input" onClick={onClear}>Clear</button>
-    </div>
-  ),
-}))
+const app = {
+  id: 'app-1',
+  name: 'Workflow App',
+  mode: AppModeEnum.WORKFLOW,
+  icon_type: 'emoji',
+  icon: 'W',
+  icon_background: '#FFFFFF',
+  icon_url: null,
+} satisfies AppPartial
 
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({
-    children,
-    open,
-  }: {
-    children: ReactNode
-    open: boolean
-  }) => (
-    <div data-testid="portal" data-open={open}>
-      {children}
-    </div>
-  ),
-  PortalToFollowElemTrigger: ({
-    children,
-    onClick,
-  }: {
-    children: ReactNode
-    onClick?: () => void
-  }) => (
-    <button data-testid="picker-trigger" onClick={onClick}>
-      {children}
-    </button>
-  ),
-  PortalToFollowElemContent: ({ children }: { children: ReactNode }) => (
-    <div data-testid="portal-content">{children}</div>
-  ),
-}))
+function renderAppPicker(
+  overrides: Partial<Omit<React.ComponentProps<typeof AppPicker>, 'isShow' | 'onShowChange'>> = {},
+) {
+  const props = {
+    disabled: false,
+    trigger: <span>Choose app</span>,
+    onSelect: vi.fn(),
+    apps: [app],
+    isLoading: false,
+    hasMore: false,
+    onLoadMore: vi.fn(),
+    searchText: '',
+    onSearchChange: vi.fn(),
+    ...overrides,
+  }
 
-const apps = [
-  {
-    id: 'app-1',
-    name: 'Chat App',
-    mode: AppModeEnum.CHAT,
-    icon_type: 'emoji',
-    icon: '🤖',
-    icon_background: '#fff',
-  },
-  {
-    id: 'app-2',
-    name: 'Workflow App',
-    mode: AppModeEnum.WORKFLOW,
-    icon_type: 'emoji',
-    icon: '⚙️',
-    icon_background: '#fff',
-  },
-]
+  function AppPickerHarness() {
+    const [open, setOpen] = useState(false)
+
+    return <AppPicker {...props} isShow={open} onShowChange={setOpen} />
+  }
+
+  return { props, ...render(<AppPickerHarness />) }
+}
 
 describe('AppPicker', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+  it('should expose a named dialog and keep app choices in the listbox', async () => {
+    const user = userEvent.setup()
+    renderAppPicker()
+    await user.click(screen.getByRole('combobox', { name: 'app.appSelector.label' }))
+
+    const dialog = screen.getByRole('dialog', { name: 'app.appSelector.label' })
+    const listbox = screen.getByRole('listbox')
+    const option = screen.getByRole('option', { name: /Workflow App/ })
+
+    expect(dialog).toBeInTheDocument()
+    expect(listbox).toContainElement(option)
   })
 
-  it('should open when the trigger is clicked', () => {
-    const onShowChange = vi.fn()
+  it('should not show the empty state while loading', async () => {
+    const user = userEvent.setup()
+    renderAppPicker({ apps: [], isLoading: true })
+    await user.click(screen.getByRole('combobox', { name: 'app.appSelector.label' }))
 
-    render(
-      <AppPicker
-        scope="all"
-        disabled={false}
-        trigger={<span>Trigger</span>}
-        isShow={false}
-        onShowChange={onShowChange}
-        onSelect={vi.fn()}
-        apps={apps as never}
-        isLoading={false}
-        hasMore={false}
-        onLoadMore={vi.fn()}
-        searchText=""
-        onSearchChange={vi.fn()}
-      />,
-    )
-
-    fireEvent.click(screen.getByTestId('picker-trigger'))
-
-    expect(onShowChange).toHaveBeenCalledWith(true)
+    expect(
+      screen
+        .getAllByRole('status')
+        .some((status) => status.textContent?.includes('common.loading')),
+    ).toBe(true)
+    expect(screen.queryByText('common.noData')).not.toBeInTheDocument()
   })
 
-  it('should render apps, select one, and handle search changes', () => {
+  it('should keep load more outside the listbox and inside the named scroll region', async () => {
+    const user = userEvent.setup()
+    renderAppPicker({ hasMore: true })
+    await user.click(screen.getByRole('combobox', { name: 'app.appSelector.label' }))
+
+    const listbox = screen.getByRole('listbox')
+    const scrollRegion = screen.getByRole('region', { name: 'app.appSelector.label' })
+    const loadMoreButton = screen.getByRole('button', { name: 'workflow.common.loadMore' })
+
+    expect(listbox).not.toContainElement(loadMoreButton)
+    expect(scrollRegion).toContainElement(listbox)
+    expect(scrollRegion).toContainElement(loadMoreButton)
+  })
+
+  it('should clear only the search query and keep focus in the input', async () => {
+    const user = userEvent.setup()
     const onSelect = vi.fn()
-    const onSearchChange = vi.fn()
 
-    render(
-      <AppPicker
-        scope="all"
-        disabled={false}
-        trigger={<span>Trigger</span>}
-        isShow
-        onShowChange={vi.fn()}
-        onSelect={onSelect}
-        apps={apps as never}
-        isLoading={false}
-        hasMore={false}
-        onLoadMore={vi.fn()}
-        searchText="chat"
-        onSearchChange={onSearchChange}
-      />,
-    )
+    function AppPickerHarness() {
+      const [open, setOpen] = useState(false)
+      const [searchText, setSearchText] = useState('')
 
-    fireEvent.change(screen.getByTestId('search-input'), {
-      target: { value: 'workflow' },
-    })
-    fireEvent.click(screen.getByText('Workflow App'))
-    fireEvent.click(screen.getByTestId('clear-input'))
+      return (
+        <AppPicker
+          disabled={false}
+          trigger={<span>Choose app</span>}
+          isShow={open}
+          onShowChange={setOpen}
+          onSelect={onSelect}
+          apps={[app]}
+          isLoading={false}
+          hasMore={false}
+          onLoadMore={vi.fn()}
+          searchText={searchText}
+          onSearchChange={setSearchText}
+        />
+      )
+    }
 
-    expect(onSearchChange).toHaveBeenCalledWith('workflow')
-    expect(onSearchChange).toHaveBeenCalledWith('')
-    expect(onSelect).toHaveBeenCalledWith(apps[1])
-    expect(screen.getByText('chat')).toBeInTheDocument()
-  })
+    render(<AppPickerHarness />)
+    await user.click(screen.getByRole('combobox', { name: 'app.appSelector.label' }))
+    const searchInput = screen.getByRole('combobox', { name: 'app.appSelector.placeholder' })
+    await user.type(searchInput, 'workflow')
+    const clearButton = screen.getByRole('button', { name: 'common.operation.clear' })
+    clearButton.focus()
+    await user.keyboard('{Enter}')
 
-  it('should render loading text when loading more apps', () => {
-    render(
-      <AppPicker
-        scope="all"
-        disabled={false}
-        trigger={<span>Trigger</span>}
-        isShow
-        onShowChange={vi.fn()}
-        onSelect={vi.fn()}
-        apps={apps as never}
-        isLoading
-        hasMore
-        onLoadMore={vi.fn()}
-        searchText=""
-        onSearchChange={vi.fn()}
-      />,
-    )
-
-    expect(screen.getByText('common.loading')).toBeInTheDocument()
+    expect(searchInput).toHaveValue('')
+    expect(searchInput).toHaveFocus()
+    expect(onSelect).not.toHaveBeenCalled()
+    expect(screen.getByRole('option', { name: /Workflow App/ })).toBeInTheDocument()
   })
 })

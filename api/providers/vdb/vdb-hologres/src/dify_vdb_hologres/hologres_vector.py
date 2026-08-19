@@ -1,7 +1,7 @@
 import json
 import logging
 import time
-from typing import Any, cast
+from typing import Any, cast, override
 
 import holo_search_sdk as holo  # type: ignore
 from holo_search_sdk.types import BaseQuantizationType, DistanceType, TokenizerType
@@ -81,15 +81,18 @@ class HologresVector(BaseVector):
         client.connect()
         return client
 
+    @override
     def get_type(self) -> str:
         return VectorType.HOLOGRES
 
+    @override
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         """Create collection table with vector and full-text indexes, then add texts."""
         dimension = len(embeddings[0])
         self._create_collection(dimension)
         self.add_texts(texts, embeddings)
 
+    @override
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         """Add texts with embeddings to the collection using batch upsert."""
         if not documents:
@@ -127,6 +130,7 @@ class HologresVector(BaseVector):
 
         return pks
 
+    @override
     def text_exists(self, id: str) -> bool:
         """Check if a text with the given doc_id exists in the collection."""
         if not self._client.check_table_exist(self.table_name):
@@ -140,6 +144,7 @@ class HologresVector(BaseVector):
         )
         return bool(result)
 
+    @override
     def get_ids_by_metadata_field(self, key: str, value: str) -> list[str] | None:
         """Get document IDs by metadata field key and value."""
         result = self._client.execute(
@@ -152,6 +157,7 @@ class HologresVector(BaseVector):
             return [row[0] for row in result]
         return None
 
+    @override
     def delete_by_ids(self, ids: list[str]):
         """Delete documents by their doc_id list."""
         if not ids:
@@ -166,6 +172,7 @@ class HologresVector(BaseVector):
             )
         )
 
+    @override
     def delete_by_metadata_field(self, key: str, value: str):
         """Delete documents by metadata field key and value."""
         if not self._client.check_table_exist(self.table_name):
@@ -177,6 +184,7 @@ class HologresVector(BaseVector):
             )
         )
 
+    @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         """Search for documents by vector similarity."""
         if not self._client.check_table_exist(self.table_name):
@@ -229,6 +237,7 @@ class HologresVector(BaseVector):
 
         return docs
 
+    @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         """Search for documents by full-text search."""
         if not self._client.check_table_exist(self.table_name):
@@ -272,6 +281,7 @@ class HologresVector(BaseVector):
 
         return docs
 
+    @override
     def delete(self):
         """Delete the entire collection table."""
         if self._client.check_table_exist(self.table_name):
@@ -333,6 +343,7 @@ class HologresVector(BaseVector):
 class HologresVectorFactory(AbstractVectorFactory):
     """Factory class for creating HologresVector instances."""
 
+    @override
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> HologresVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]

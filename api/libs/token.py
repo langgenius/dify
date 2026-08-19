@@ -1,3 +1,4 @@
+import hmac
 import logging
 import re
 from datetime import UTC, datetime, timedelta
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 CSRF_WHITE_LIST = [
     re.compile(r"/console/api/apps/[a-f0-9-]+/workflows/draft"),
+    re.compile(r"/console/api/workflow-run-archives/downloads/[a-f0-9]+/file"),
 ]
 
 
@@ -47,23 +49,17 @@ def _cookie_domain() -> str | None:
 def _real_cookie_name(cookie_name: str) -> str:
     if is_secure() and _cookie_domain() is None:
         return "__Host-" + cookie_name
-    else:
-        return cookie_name
+    return cookie_name
 
 
 def _try_extract_from_header(request: Request) -> str | None:
     auth_header = request.headers.get("Authorization")
-    if auth_header:
-        if " " not in auth_header:
-            return None
-        else:
-            auth_scheme, auth_token = auth_header.split(None, 1)
-            auth_scheme = auth_scheme.lower()
-            if auth_scheme != "bearer":
-                return None
-            else:
-                return auth_token
-    return None
+    if not auth_header or " " not in auth_header:
+        return None
+    auth_scheme, auth_token = auth_header.split(None, 1)
+    if auth_scheme.lower() != "bearer":
+        return None
+    return auth_token
 
 
 def extract_refresh_token(request: Request) -> str | None:
@@ -78,11 +74,28 @@ def extract_csrf_token_from_cookie(request: Request) -> str | None:
     return request.cookies.get(_real_cookie_name(COOKIE_NAME_CSRF_TOKEN))
 
 
-def extract_access_token(request: Request) -> str | None:
-    def _try_extract_from_cookie(request: Request) -> str | None:
-        return request.cookies.get(_real_cookie_name(COOKIE_NAME_ACCESS_TOKEN))
+def extract_console_cookie_token(request: Request) -> str | None:
+    """Cookie-only console session token. Used by /openapi/v1/oauth/device/*
+    approval routes, which must not fall through to the Authorization header
+    (that's where dfoa_/dfoe_ bearers live — they aren't JWTs)."""
+    return request.cookies.get(_real_cookie_name(COOKIE_NAME_ACCESS_TOKEN))
 
-    return _try_extract_from_cookie(request) or _try_extract_from_header(request)
+
+def extract_access_token(request: Request) -> str | None:
+    return extract_console_cookie_token(request) or _try_extract_from_header(request)
+
+
+def is_admin_api_key_request(request: Request) -> bool:
+    """Return whether the request carries the configured admin API key as a bearer token.
+
+    Admin API key authentication is header-only so an unrelated console session cookie
+    cannot shadow the bearer token used by server-to-server clients.
+    """
+    admin_api_key = dify_config.ADMIN_API_KEY
+    bearer_token = _try_extract_from_header(request)
+    if not dify_config.ADMIN_API_KEY_ENABLE or not admin_api_key or not bearer_token:
+        return False
+    return hmac.compare_digest(bearer_token, admin_api_key)
 
 
 def extract_webapp_access_token(request: Request) -> str | None:
@@ -90,14 +103,9 @@ def extract_webapp_access_token(request: Request) -> str | None:
 
 
 def extract_webapp_passport(app_code: str, request: Request) -> str | None:
-    def _try_extract_passport_token_from_cookie(request: Request) -> str | None:
-        return request.cookies.get(_real_cookie_name(COOKIE_NAME_PASSPORT + "-" + app_code))
-
-    def _try_extract_passport_token_from_header(request: Request) -> str | None:
-        return request.headers.get(HEADER_NAME_PASSPORT)
-
-    ret = _try_extract_passport_token_from_cookie(request) or _try_extract_passport_token_from_header(request)
-    return ret
+    return request.cookies.get(_real_cookie_name(COOKIE_NAME_PASSPORT + "-" + app_code)) or request.headers.get(
+        HEADER_NAME_PASSPORT
+    )
 
 
 def set_access_token_to_cookie(request: Request, response: Response, token: str, samesite: str = "Lax"):
@@ -189,10 +197,8 @@ def build_force_logout_cookie_headers() -> list[str]:
 def check_csrf_token(request: Request, user_id: str):
     # some apis are sent by beacon, so we need to bypass csrf token check
     # since these APIs are post, they are already protected by SameSite: Lax, so csrf is not required.
-    if dify_config.ADMIN_API_KEY_ENABLE:
-        auth_token = extract_access_token(request)
-        if auth_token and auth_token == dify_config.ADMIN_API_KEY:
-            return
+    if is_admin_api_key_request(request):
+        return
 
     def _unauthorized():
         raise Unauthorized("CSRF token is missing or invalid.")
@@ -209,22 +215,18 @@ def check_csrf_token(request: Request, user_id: str):
 
     if not csrf_token:
         _unauthorized()
-    verified = {}
     try:
         verified = PassportService().verify(csrf_token)
-    except:
+    except Exception:
         _unauthorized()
+        raise  # unreachable, but helps the type checker see verified is always bound
 
     if verified.get("sub") != user_id:
         _unauthorized()
 
     exp: int | None = verified.get("exp")
-    if not exp:
+    if not exp or exp < int(datetime.now(UTC).timestamp()):
         _unauthorized()
-    else:
-        time_now = int(datetime.now().timestamp())
-        if exp < time_now:
-            _unauthorized()
 
 
 def generate_csrf_token(user_id: str) -> str:

@@ -1,8 +1,9 @@
+import json
 import re
-
-from graphon.variables.input_entities import VariableEntity
+from typing import Any
 
 from core.app.app_config.entities import RagPipelineVariableEntity
+from graphon.variables.input_entities import VariableEntity
 from models.workflow import Workflow
 
 
@@ -21,9 +22,31 @@ class WorkflowVariablesConfigManager:
 
         # variables
         for variable in user_input_form:
+            cls._normalize_json_schema(variable)
             variables.append(VariableEntity.model_validate(variable))
 
         return variables
+
+    @staticmethod
+    def _normalize_json_schema(variable: dict[str, Any]) -> None:
+        """
+        Normalize ``json_schema`` from a JSON string to a dict.
+
+        The workflow graph is stored as JSON in the database.  When a JSON
+        object variable carries a ``json_schema`` field, nested dicts are
+        preserved correctly, but older data or certain serialization paths
+        may store it as a JSON *string* instead of a native dict.
+
+        ``VariableEntity.json_schema`` expects ``dict | None``, so we
+        deserialize the string here before handing it to Pydantic.
+        """
+        json_schema = variable.get("json_schema")
+        if isinstance(json_schema, str):
+            try:
+                variable["json_schema"] = json.loads(json_schema)
+            except (json.JSONDecodeError, TypeError):
+                # Leave as-is; Pydantic validation will surface the error.
+                pass
 
     @classmethod
     def convert_rag_pipeline_variable(cls, workflow: Workflow, start_node_id: str) -> list[RagPipelineVariableEntity]:

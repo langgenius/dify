@@ -30,8 +30,7 @@ const SVGRenderer = ({ content }: { content: string }) => {
 
   useEffect(() => {
     /* v8 ignore next 2 -- ref is expected after mount, but null can occur during rapid mount/unmount timing in React lifecycle edges. @preserve */
-    if (!svgRef.current)
-      return
+    if (!svgRef.current) return
 
     try {
       svgRef.current.innerHTML = ''
@@ -41,8 +40,7 @@ const SVGRenderer = ({ content }: { content: string }) => {
       const svgDoc = parser.parseFromString(content, 'image/svg+xml')
       const svgElement = svgDoc.documentElement
 
-      if (!(svgElement instanceof SVGElement))
-        throw new Error('Invalid SVG content')
+      if (!(svgElement instanceof SVGElement)) throw new Error('Invalid SVG content')
 
       const originalWidth = Number.parseInt(svgElement.getAttribute('width') || '400', 10)
       const originalHeight = Number.parseInt(svgElement.getAttribute('height') || '600', 10)
@@ -55,12 +53,11 @@ const SVGRenderer = ({ content }: { content: string }) => {
       rootElement.click(() => {
         setImagePreview(svgToDataURL(svgElement as Element))
       })
-    }
-    catch {
+    } catch {
       /* v8 ignore next 2 -- if unmounted while handling parser/render errors, ref becomes null; guard avoids writing to a detached node. @preserve */
-      if (!svgRef.current)
-        return
-      svgRef.current.innerHTML = '<span style="padding: 1rem;">Error rendering SVG. Wait for the image content to complete.</span>'
+      if (!svgRef.current) return
+      svgRef.current.innerHTML =
+        '<span style="padding: 1rem;">Error rendering SVG. Wait for the image content to complete.</span>'
     }
   }, [content, windowSize])
 
@@ -79,7 +76,9 @@ const SVGRenderer = ({ content }: { content: string }) => {
           margin: '0 auto',
         }}
       />
-      {imagePreview && (<ImagePreview url={imagePreview} title="Preview" onCancel={() => setImagePreview('')} />)}
+      {imagePreview && (
+        <ImagePreview url={imagePreview} title="Preview" onCancel={() => setImagePreview('')} />
+      )}
     </>
   )
 }

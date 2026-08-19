@@ -4,17 +4,18 @@ import { createNode } from '../../../__tests__/fixtures'
 import { baseRunningData } from '../../../__tests__/workflow-test-env'
 import { NodeRunningStatus } from '../../../types'
 import { useWorkflowNodeHumanInputRequired } from '../use-workflow-node-human-input-required'
-import {
-  getNodeRuntimeState,
-  renderViewportHook,
-} from './test-helpers'
+import { getNodeRuntimeState, renderViewportHook } from './test-helpers'
 
 describe('useWorkflowNodeHumanInputRequired', () => {
   it('creates humanInputFormDataList and sets tracing and node to Paused', async () => {
     const { result, store } = renderViewportHook(() => useWorkflowNodeHumanInputRequired(), {
       nodes: [
         createNode({ id: 'n1', data: { _runningStatus: NodeRunningStatus.Running } }),
-        createNode({ id: 'n2', position: { x: 300, y: 0 }, data: { _runningStatus: NodeRunningStatus.Running } }),
+        createNode({
+          id: 'n2',
+          position: { x: 300, y: 0 },
+          data: { _runningStatus: NodeRunningStatus.Running },
+        }),
       ],
       edges: [],
       initialStoreState: {
@@ -32,11 +33,13 @@ describe('useWorkflowNodeHumanInputRequired', () => {
 
     const state = store.getState().workflowRunningData!
     expect(state.humanInputFormDataList).toHaveLength(1)
-    expect(state.humanInputFormDataList![0].form_id).toBe('f1')
-    expect(state.tracing![0].status).toBe(NodeRunningStatus.Paused)
+    expect(state.humanInputFormDataList![0]!.form_id).toBe('f1')
+    expect(state.tracing![0]!.status).toBe(NodeRunningStatus.Paused)
 
     await waitFor(() => {
-      expect(getNodeRuntimeState(result.current.nodes.find(item => item.id === 'n1'))._runningStatus).toBe(NodeRunningStatus.Paused)
+      expect(
+        getNodeRuntimeState(result.current.nodes.find((item) => item.id === 'n1'))._runningStatus,
+      ).toBe(NodeRunningStatus.Paused)
     })
   })
 
@@ -44,7 +47,11 @@ describe('useWorkflowNodeHumanInputRequired', () => {
     const { result, store } = renderViewportHook(() => useWorkflowNodeHumanInputRequired(), {
       nodes: [
         createNode({ id: 'n1', data: { _runningStatus: NodeRunningStatus.Running } }),
-        createNode({ id: 'n2', position: { x: 300, y: 0 }, data: { _runningStatus: NodeRunningStatus.Running } }),
+        createNode({
+          id: 'n2',
+          position: { x: 300, y: 0 },
+          data: { _runningStatus: NodeRunningStatus.Running },
+        }),
       ],
       edges: [],
       initialStoreState: {
@@ -65,14 +72,18 @@ describe('useWorkflowNodeHumanInputRequired', () => {
 
     const formList = store.getState().workflowRunningData!.humanInputFormDataList!
     expect(formList).toHaveLength(1)
-    expect(formList[0].form_id).toBe('new')
+    expect(formList[0]!.form_id).toBe('new')
   })
 
   it('appends a new form entry for a different node_id', () => {
     const { result, store } = renderViewportHook(() => useWorkflowNodeHumanInputRequired(), {
       nodes: [
         createNode({ id: 'n1', data: { _runningStatus: NodeRunningStatus.Running } }),
-        createNode({ id: 'n2', position: { x: 300, y: 0 }, data: { _runningStatus: NodeRunningStatus.Running } }),
+        createNode({
+          id: 'n2',
+          position: { x: 300, y: 0 },
+          data: { _runningStatus: NodeRunningStatus.Running },
+        }),
       ],
       edges: [],
       initialStoreState: {

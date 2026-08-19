@@ -1,7 +1,30 @@
 import type { SiteInfo } from '@/models/share'
+import type { WebAppAddress } from '@/service/webapp-address'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import MenuDropdown from '../menu-dropdown'
+
+vi.mock('../info-modal', () => ({
+  default: ({
+    isShow,
+    onClose,
+    data,
+  }: {
+    isShow: boolean
+    onClose: () => void
+    data?: SiteInfo
+  }) => {
+    if (!isShow) return null
+    return (
+      <div data-testid="info-modal">
+        <span>{data?.title}</span>
+        <button type="button" onClick={onClose}>
+          Close Info
+        </button>
+      </div>
+    )
+  },
+}))
 
 const mockReplace = vi.fn()
 const mockPathname = '/test-path'
@@ -13,6 +36,7 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 const mockShareCode = 'test-share-code'
+const webAppAddress: WebAppAddress = { kind: 'default', code: mockShareCode }
 vi.mock('@/context/web-app-context', () => ({
   useWebAppStore: (selector: (state: Record<string, unknown>) => unknown) => {
     const state = {
@@ -26,6 +50,10 @@ vi.mock('@/context/web-app-context', () => ({
 const mockWebAppLogout = vi.fn().mockResolvedValue(undefined)
 vi.mock('@/service/webapp-auth', () => ({
   webAppLogout: (...args: unknown[]) => mockWebAppLogout(...args),
+}))
+
+vi.mock('@/service/webapp-address', () => ({
+  resolveWebAppAddress: () => webAppAddress,
 }))
 
 afterEach(() => {
@@ -167,7 +195,7 @@ describe('MenuDropdown', () => {
       })
 
       await waitFor(() => {
-        expect(mockWebAppLogout).toHaveBeenCalledWith(mockShareCode)
+        expect(mockWebAppLogout).toHaveBeenCalledWith(webAppAddress)
         expect(mockReplace).toHaveBeenCalledWith(`/webapp-signin?redirect_url=${mockPathname}`)
       })
     })
@@ -191,23 +219,23 @@ describe('MenuDropdown', () => {
         expect(screen.getByText('Test App')).toBeInTheDocument()
       })
     })
-  })
 
-  describe('forceClose prop', () => {
-    it('should close dropdown when forceClose changes to true', async () => {
-      const { rerender } = render(<MenuDropdown data={baseSiteInfo} forceClose={false} />)
+    it('should close InfoModal when the close handler runs', async () => {
+      render(<MenuDropdown data={baseSiteInfo} />)
 
-      const triggerButton = screen.getByRole('button')
-      fireEvent.click(triggerButton)
-
+      fireEvent.click(screen.getByRole('button'))
       await waitFor(() => {
-        expect(screen.getByText('common.theme.theme')).toBeInTheDocument()
+        expect(screen.getByText('common.userProfile.about')).toBeInTheDocument()
       })
 
-      rerender(<MenuDropdown data={baseSiteInfo} forceClose={true} />)
-
+      fireEvent.click(screen.getByText('common.userProfile.about'))
       await waitFor(() => {
-        expect(screen.queryByText('common.theme.theme')).not.toBeInTheDocument()
+        expect(screen.getByTestId('info-modal')).toBeInTheDocument()
+      })
+
+      fireEvent.click(screen.getByText('Close Info'))
+      await waitFor(() => {
+        expect(screen.queryByTestId('info-modal')).not.toBeInTheDocument()
       })
     })
   })
@@ -236,12 +264,6 @@ describe('MenuDropdown', () => {
       await waitFor(() => {
         expect(screen.queryByText('common.theme.theme')).not.toBeInTheDocument()
       })
-    })
-  })
-
-  describe('memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect((MenuDropdown as unknown as { $$typeof: symbol }).$$typeof).toBe(Symbol.for('react.memo'))
     })
   })
 })

@@ -3,15 +3,10 @@ import type { WorkflowNodesMap } from '../../workflow-variable-block/node'
 import type { Var } from '@/app/components/workflow/types'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { act, render, screen, waitFor } from '@testing-library/react'
-import {
-  $getRoot,
-} from 'lexical'
+import { $getRoot } from 'lexical'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
-import {
-  BlockEnum,
-  VarType,
-} from '@/app/components/workflow/types'
-import { CaptureEditorPlugin } from '../../test-utils'
+import { BlockEnum, VarType } from '@/app/components/workflow/types'
+import { CaptureEditorPlugin } from '../../__tests__/test-utils'
 import { UPDATE_WORKFLOW_NODES_MAP } from '../../workflow-variable-block'
 import { HITLInputNode } from '../node'
 import HITLInputVariableBlockComponent from '../variable-block'
@@ -59,7 +54,7 @@ const hasErrorIcon = (container: HTMLElement) => {
 const renderVariableBlock = (props: {
   variables: string[]
   workflowNodesMap?: WorkflowNodesMap
-  getVarType?: (payload: { nodeId: string, valueSelector: string[] }) => Type
+  getVarType?: (payload: { nodeId: string; valueSelector: string[] }) => Type
   environmentVariables?: Var[]
   conversationVariables?: Var[]
   ragVariables?: Var[]
@@ -302,8 +297,8 @@ describe('HITLInputVariableBlockComponent', () => {
     })
   })
 
-  describe('Tooltip payload', () => {
-    it('should call getVarType with rag selector and use rag node id mapping', () => {
+  describe('Full-path preview payload', () => {
+    it('should resolve the rag node via isRagVar offset and skip the full-path preview', () => {
       const getVarType = vi.fn(() => Type.number)
       const { container } = renderVariableBlock({
         variables: ['rag', 'node-rag', 'chunk'],
@@ -314,10 +309,9 @@ describe('HITLInputVariableBlockComponent', () => {
 
       expect(screen.getByText('chunk')).toBeInTheDocument()
       expect(hasErrorIcon(container)).toBe(false)
-      expect(getVarType).toHaveBeenCalledWith({
-        nodeId: 'rag',
-        valueSelector: ['rag', 'node-rag', 'chunk'],
-      })
+      // Rag selectors always have `isShowAPart === false`, so the full-path
+      // preview is not rendered and `getVarType` is not invoked.
+      expect(getVarType).not.toHaveBeenCalled()
     })
 
     it('should use shortened display name for deep non-rag selectors', () => {

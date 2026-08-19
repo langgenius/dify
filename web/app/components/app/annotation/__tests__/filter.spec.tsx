@@ -1,7 +1,7 @@
+import type { AnnotationCountResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { UseQueryResult } from '@tanstack/react-query'
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 import type { QueryParam } from '../filter'
-import type { AnnotationsCountResponse } from '@/models/log'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
@@ -16,21 +16,18 @@ const mockUseAnnotationsCount = useLogModule.useAnnotationsCount as Mock
 // Test Utilities
 // ============================================================================
 
-const createQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
+const createQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
     },
-  },
-})
+  })
 
 const renderWithQueryClient = (ui: React.ReactElement) => {
   const queryClient = createQueryClient()
-  return render(
-    <QueryClientProvider client={queryClient}>
-      {ui}
-    </QueryClientProvider>,
-  )
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
 }
 
 // ============================================================================
@@ -69,16 +66,12 @@ describe('Filter', () => {
     it('should render nothing when data is loading', () => {
       // Arrange
       mockUseAnnotationsCount.mockReturnValue(
-        createMockQueryResult<AnnotationsCountResponse>({ isLoading: true }),
+        createMockQueryResult<AnnotationCountResponse>({ isLoading: true }),
       )
 
       // Act
       const { container } = renderWithQueryClient(
-        <Filter
-          appId={appId}
-          queryParams={defaultQueryParams}
-          setQueryParams={vi.fn()}
-        >
+        <Filter appId={appId} queryParams={defaultQueryParams} setQueryParams={vi.fn()}>
           <div>{childContent}</div>
         </Filter>,
       )
@@ -90,16 +83,12 @@ describe('Filter', () => {
     it('should render nothing when data is undefined', () => {
       // Arrange
       mockUseAnnotationsCount.mockReturnValue(
-        createMockQueryResult<AnnotationsCountResponse>({ data: undefined, isLoading: false }),
+        createMockQueryResult<AnnotationCountResponse>({ data: undefined, isLoading: false }),
       )
 
       // Act
       const { container } = renderWithQueryClient(
-        <Filter
-          appId={appId}
-          queryParams={defaultQueryParams}
-          setQueryParams={vi.fn()}
-        >
+        <Filter appId={appId} queryParams={defaultQueryParams} setQueryParams={vi.fn()}>
           <div>{childContent}</div>
         </Filter>,
       )
@@ -111,7 +100,7 @@ describe('Filter', () => {
     it('should render filter and children when data is available', () => {
       // Arrange
       mockUseAnnotationsCount.mockReturnValue(
-        createMockQueryResult<AnnotationsCountResponse>({
+        createMockQueryResult<AnnotationCountResponse>({
           data: { count: 20 },
           isLoading: false,
         }),
@@ -119,17 +108,13 @@ describe('Filter', () => {
 
       // Act
       renderWithQueryClient(
-        <Filter
-          appId={appId}
-          queryParams={defaultQueryParams}
-          setQueryParams={vi.fn()}
-        >
+        <Filter appId={appId} queryParams={defaultQueryParams} setQueryParams={vi.fn()}>
           <div>{childContent}</div>
         </Filter>,
       )
 
       // Assert
-      expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toBeInTheDocument()
       expect(screen.getByText(childContent)).toBeInTheDocument()
     })
   })
@@ -141,7 +126,7 @@ describe('Filter', () => {
     it('should call useAnnotationsCount with appId', () => {
       // Arrange
       mockUseAnnotationsCount.mockReturnValue(
-        createMockQueryResult<AnnotationsCountResponse>({
+        createMockQueryResult<AnnotationCountResponse>({
           data: { count: 10 },
           isLoading: false,
         }),
@@ -149,11 +134,7 @@ describe('Filter', () => {
 
       // Act
       renderWithQueryClient(
-        <Filter
-          appId={appId}
-          queryParams={defaultQueryParams}
-          setQueryParams={vi.fn()}
-        >
+        <Filter appId={appId} queryParams={defaultQueryParams} setQueryParams={vi.fn()}>
           <div>{childContent}</div>
         </Filter>,
       )
@@ -165,7 +146,7 @@ describe('Filter', () => {
     it('should display keyword value in input', () => {
       // Arrange
       mockUseAnnotationsCount.mockReturnValue(
-        createMockQueryResult<AnnotationsCountResponse>({
+        createMockQueryResult<AnnotationCountResponse>({
           data: { count: 10 },
           isLoading: false,
         }),
@@ -174,17 +155,15 @@ describe('Filter', () => {
 
       // Act
       renderWithQueryClient(
-        <Filter
-          appId={appId}
-          queryParams={queryParams}
-          setQueryParams={vi.fn()}
-        >
+        <Filter appId={appId} queryParams={queryParams} setQueryParams={vi.fn()}>
           <div>{childContent}</div>
         </Filter>,
       )
 
       // Assert
-      expect(screen.getByPlaceholderText('common.operation.search')).toHaveValue('test-keyword')
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toHaveValue(
+        'test-keyword',
+      )
     })
   })
 
@@ -195,7 +174,7 @@ describe('Filter', () => {
     it('should call setQueryParams when typing in search input', () => {
       // Arrange
       mockUseAnnotationsCount.mockReturnValue(
-        createMockQueryResult<AnnotationsCountResponse>({
+        createMockQueryResult<AnnotationCountResponse>({
           data: { count: 20 },
           isLoading: false,
         }),
@@ -204,17 +183,13 @@ describe('Filter', () => {
       const setQueryParams = vi.fn()
 
       renderWithQueryClient(
-        <Filter
-          appId={appId}
-          queryParams={queryParams}
-          setQueryParams={setQueryParams}
-        >
+        <Filter appId={appId} queryParams={queryParams} setQueryParams={setQueryParams}>
           <div>{childContent}</div>
         </Filter>,
       )
 
       // Act
-      const input = screen.getByPlaceholderText('common.operation.search')
+      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
       fireEvent.change(input, { target: { value: 'updated' } })
 
       // Assert
@@ -224,7 +199,7 @@ describe('Filter', () => {
     it('should call setQueryParams with empty keyword when clearing input', () => {
       // Arrange
       mockUseAnnotationsCount.mockReturnValue(
-        createMockQueryResult<AnnotationsCountResponse>({
+        createMockQueryResult<AnnotationCountResponse>({
           data: { count: 20 },
           isLoading: false,
         }),
@@ -233,20 +208,13 @@ describe('Filter', () => {
       const setQueryParams = vi.fn()
 
       renderWithQueryClient(
-        <Filter
-          appId={appId}
-          queryParams={queryParams}
-          setQueryParams={setQueryParams}
-        >
+        <Filter appId={appId} queryParams={queryParams} setQueryParams={setQueryParams}>
           <div>{childContent}</div>
         </Filter>,
       )
 
       // Act
-      const input = screen.getByPlaceholderText('common.operation.search')
-      const clearButton = input.parentElement?.querySelector('div.cursor-pointer')
-      if (clearButton)
-        fireEvent.click(clearButton)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
       // Assert
       expect(setQueryParams).toHaveBeenCalledWith({ ...queryParams, keyword: '' })
@@ -260,7 +228,7 @@ describe('Filter', () => {
     it('should handle empty keyword in queryParams', () => {
       // Arrange
       mockUseAnnotationsCount.mockReturnValue(
-        createMockQueryResult<AnnotationsCountResponse>({
+        createMockQueryResult<AnnotationCountResponse>({
           data: { count: 5 },
           isLoading: false,
         }),
@@ -268,23 +236,19 @@ describe('Filter', () => {
 
       // Act
       renderWithQueryClient(
-        <Filter
-          appId={appId}
-          queryParams={{ keyword: '' }}
-          setQueryParams={vi.fn()}
-        >
+        <Filter appId={appId} queryParams={{ keyword: '' }} setQueryParams={vi.fn()}>
           <div>{childContent}</div>
         </Filter>,
       )
 
       // Assert
-      expect(screen.getByPlaceholderText('common.operation.search')).toHaveValue('')
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toHaveValue('')
     })
 
     it('should handle undefined keyword in queryParams', () => {
       // Arrange
       mockUseAnnotationsCount.mockReturnValue(
-        createMockQueryResult<AnnotationsCountResponse>({
+        createMockQueryResult<AnnotationCountResponse>({
           data: { count: 5 },
           isLoading: false,
         }),
@@ -292,23 +256,19 @@ describe('Filter', () => {
 
       // Act
       renderWithQueryClient(
-        <Filter
-          appId={appId}
-          queryParams={{ keyword: undefined }}
-          setQueryParams={vi.fn()}
-        >
+        <Filter appId={appId} queryParams={{ keyword: undefined }} setQueryParams={vi.fn()}>
           <div>{childContent}</div>
         </Filter>,
       )
 
       // Assert
-      expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toBeInTheDocument()
     })
 
     it('should handle zero count', () => {
       // Arrange
       mockUseAnnotationsCount.mockReturnValue(
-        createMockQueryResult<AnnotationsCountResponse>({
+        createMockQueryResult<AnnotationCountResponse>({
           data: { count: 0 },
           isLoading: false,
         }),
@@ -316,17 +276,13 @@ describe('Filter', () => {
 
       // Act
       renderWithQueryClient(
-        <Filter
-          appId={appId}
-          queryParams={defaultQueryParams}
-          setQueryParams={vi.fn()}
-        >
+        <Filter appId={appId} queryParams={defaultQueryParams} setQueryParams={vi.fn()}>
           <div>{childContent}</div>
         </Filter>,
       )
 
       // Assert - should still render when count is 0
-      expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toBeInTheDocument()
     })
   })
 })

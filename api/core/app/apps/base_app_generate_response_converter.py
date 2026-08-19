@@ -1,19 +1,24 @@
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Generator, Mapping
-from typing import Any, Union
+from typing import Any, Union, cast
 
-from graphon.model_runtime.errors.invoke import InvokeError
+from dify_agent.protocol import RunFailureType
+from pydantic import JsonValue
 
+from clients.agent_backend.errors import AgentBackendError, AgentBackendRunFailedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import AppBlockingResponse, AppStreamResponse
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from graphon.model_runtime.errors.invoke import InvokeError, InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
 
 
-class AppGenerateResponseConverter(ABC):
-    _blocking_response_type: type[AppBlockingResponse]
+class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
+    @classmethod
+    def _cast_blocking_response(cls, response: AppBlockingResponse) -> TBlockingResponse:
+        return cast(TBlockingResponse, response)
 
     @classmethod
     def convert(
@@ -21,45 +26,45 @@ class AppGenerateResponseConverter(ABC):
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], Any, None]:
         if invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.SERVICE_API}:
             if isinstance(response, AppBlockingResponse):
-                return cls.convert_blocking_full_response(response)
+                return cls.convert_blocking_full_response(cls._cast_blocking_response(response))
             else:
 
-                def _generate_full_response() -> Generator[dict | str, Any, None]:
+                def _generate_full_response() -> Generator[dict[str, Any] | str, Any, None]:
                     yield from cls.convert_stream_full_response(response)
 
                 return _generate_full_response()
         else:
             if isinstance(response, AppBlockingResponse):
-                return cls.convert_blocking_simple_response(response)
+                return cls.convert_blocking_simple_response(cls._cast_blocking_response(response))
             else:
 
-                def _generate_simple_response() -> Generator[dict | str, Any, None]:
+                def _generate_simple_response() -> Generator[dict[str, Any] | str, Any, None]:
                     yield from cls.convert_stream_simple_response(response)
 
                 return _generate_simple_response()
 
     @classmethod
     @abstractmethod
-    def convert_blocking_full_response(cls, blocking_response: AppBlockingResponse) -> dict[str, Any]:
+    def convert_blocking_full_response(cls, blocking_response: TBlockingResponse) -> dict[str, Any]:
         raise NotImplementedError
 
     @classmethod
     @abstractmethod
-    def convert_blocking_simple_response(cls, blocking_response: AppBlockingResponse) -> dict[str, Any]:
+    def convert_blocking_simple_response(cls, blocking_response: TBlockingResponse) -> dict[str, Any]:
         raise NotImplementedError
 
     @classmethod
     @abstractmethod
     def convert_stream_full_response(
         cls, stream_response: Generator[AppStreamResponse, None, None]
-    ) -> Generator[dict | str, None, None]:
+    ) -> Generator[dict[str, Any] | str, None, None]:
         raise NotImplementedError
 
     @classmethod
     @abstractmethod
     def convert_stream_simple_response(
         cls, stream_response: Generator[AppStreamResponse, None, None]
-    ) -> Generator[dict | str, None, None]:
+    ) -> Generator[dict[str, Any] | str, None, None]:
         raise NotImplementedError
 
     @classmethod
@@ -107,13 +112,20 @@ class AppGenerateResponseConverter(ABC):
         return metadata
 
     @classmethod
-    def _error_to_stream_response(cls, e: Exception) -> dict[str, Any]:
+    def _error_to_stream_response(cls, e: Exception) -> dict[str, JsonValue]:
         """
         Error to stream response.
         :param e: exception
         :return:
         """
-        error_responses: dict[type[Exception], dict[str, Any]] = {
+        if isinstance(e, AgentBackendRunFailedError) and e.error_type == RunFailureType.AGENT_RUN_LIMIT_EXCEEDED:
+            return {
+                "code": RunFailureType.AGENT_RUN_LIMIT_EXCEEDED.value,
+                "status": 400,
+                "message": str(e),
+            }
+
+        error_responses: dict[type[Exception], dict[str, JsonValue]] = {
             ValueError: {"code": "invalid_param", "status": 400},
             ProviderTokenNotInitError: {"code": "provider_not_initialize", "status": 400},
             QuotaExceededError: {
@@ -124,10 +136,12 @@ class AppGenerateResponseConverter(ABC):
             },
             ModelCurrentlyNotSupportError: {"code": "model_currently_not_support", "status": 400},
             InvokeError: {"code": "completion_request_error", "status": 400},
+            AgentBackendError: {"code": "completion_request_error", "status": 400},
+            InvokeRateLimitError: {"code": "rate_limit_error", "status": 429},
         }
 
         # Determine the response based on the type of exception
-        data: dict[str, Any] | None = None
+        data: dict[str, JsonValue] | None = None
         for k, v in error_responses.items():
             if isinstance(e, k):
                 data = v

@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
 from uuid import uuid4
 
-from graphon.file import File
-from pydantic import Field, field_validator
+from pydantic import Field, computed_field, field_validator
 
 from core.entities.execution_extra_content import ExecutionExtraContentDomainModel
 from fields.base import ResponseModel
 from fields.conversation_fields import AgentThought, JSONValue, MessageFile
+from graphon.file import File
+from libs.helper import to_timestamp
 
 type JSONValueType = JSONValue
 
@@ -39,9 +41,7 @@ class RetrieverResource(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
-        if isinstance(value, datetime):
-            return to_timestamp(value)
-        return value
+        return to_timestamp(value)
 
 
 class MessageListItem(ResponseModel):
@@ -56,9 +56,18 @@ class MessageListItem(ResponseModel):
     created_at: int | None = None
     agent_thoughts: list[AgentThought]
     message_files: list[MessageFile]
+    message_tokens: int = 0
+    answer_tokens: int = 0
+    provider_response_latency: float = 0
+    total_price: Decimal | None = None
+    currency: str | None = None
     status: str
     error: str | None = None
     extra_contents: list[ExecutionExtraContentDomainModel]
+
+    @computed_field
+    def total_tokens(self) -> int:
+        return self.message_tokens + self.answer_tokens
 
     @field_validator("inputs", mode="before")
     @classmethod
@@ -68,13 +77,21 @@ class MessageListItem(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
-        if isinstance(value, datetime):
-            return to_timestamp(value)
-        return value
+        return to_timestamp(value)
 
 
 class WebMessageListItem(MessageListItem):
-    metadata: JSONValueType | None = Field(default=None, validation_alias="message_metadata_dict")
+    metadata: JSONValueType | None = Field(
+        default=None,
+        validation_alias="message_metadata_dict",
+    )
+
+
+class ExploreMessageListItem(MessageListItem):
+    metadata: JSONValueType | None = Field(
+        default=None,
+        validation_alias="message_metadata_dict",
+    )
 
 
 class MessageInfiniteScrollPagination(ResponseModel):
@@ -87,6 +104,12 @@ class WebMessageInfiniteScrollPagination(ResponseModel):
     limit: int
     has_more: bool
     data: list[WebMessageListItem]
+
+
+class ExploreMessageInfiniteScrollPagination(ResponseModel):
+    limit: int
+    has_more: bool
+    data: list[ExploreMessageListItem]
 
 
 class SavedMessageItem(ResponseModel):
@@ -106,9 +129,7 @@ class SavedMessageItem(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
-        if isinstance(value, datetime):
-            return to_timestamp(value)
-        return value
+        return to_timestamp(value)
 
 
 class SavedMessageInfiniteScrollPagination(ResponseModel):
@@ -119,12 +140,6 @@ class SavedMessageInfiniteScrollPagination(ResponseModel):
 
 class SuggestedQuestionsResponse(ResponseModel):
     data: list[str]
-
-
-def to_timestamp(value: datetime | None) -> int | None:
-    if value is None:
-        return None
-    return int(value.timestamp())
 
 
 def format_files_contained(value: JSONValueType) -> JSONValueType:

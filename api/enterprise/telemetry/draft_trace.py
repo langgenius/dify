@@ -3,10 +3,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from graphon.enums import WorkflowNodeExecutionMetadataKey
-
 from core.telemetry import TelemetryContext, TelemetryEvent, TraceTaskName
 from core.telemetry import emit as telemetry_emit
+from graphon.enums import WorkflowNodeExecutionMetadataKey
 from models.workflow import WorkflowNodeExecutionModel
 
 

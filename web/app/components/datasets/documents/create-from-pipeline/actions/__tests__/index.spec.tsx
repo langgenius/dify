@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import Actions from '../index'
 
@@ -10,12 +11,23 @@ vi.mock('@/next/navigation', () => ({
 
 // Mock next/link to capture href
 vi.mock('@/next/link', () => ({
-  default: ({ children, href, replace }: { children: React.ReactNode, href: string, replace?: boolean }) => (
+  default: ({
+    children,
+    href,
+    replace,
+  }: {
+    children: React.ReactNode
+    href: string
+    replace?: boolean
+  }) => (
     <a href={href} data-replace={replace}>
       {children}
     </a>
   ),
 }))
+
+const getSelectAllCheckbox = () =>
+  screen.getByRole('checkbox', { name: 'common.operation.selectAll' })
 
 describe('Actions', () => {
   // Default mock for required props
@@ -28,13 +40,6 @@ describe('Actions', () => {
   })
 
   describe('Rendering', () => {
-    // Tests basic rendering functionality
-    it('should render without crashing', () => {
-      render(<Actions {...defaultProps} />)
-
-      expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i })).toBeInTheDocument()
-    })
-
     it('should render cancel button with correct link', () => {
       render(<Actions {...defaultProps} />)
 
@@ -166,8 +171,9 @@ describe('Actions', () => {
       expect(handleNextStep).not.toHaveBeenCalled()
     })
 
-    it('should call onSelectAll when checkbox is clicked', () => {
+    it('should call onSelectAll when checkbox is clicked', async () => {
       const onSelectAll = vi.fn()
+      const user = userEvent.setup()
       render(
         <Actions
           {...defaultProps}
@@ -178,14 +184,10 @@ describe('Actions', () => {
         />,
       )
 
-      // Act - find the checkbox container and click it
-      const selectAllLabel = screen.getByText('common.operation.selectAll')
-      const checkboxContainer = selectAllLabel.closest('.flex.shrink-0.items-center')
-      const checkbox = checkboxContainer?.querySelector('[class*="cursor-pointer"]')
-      if (checkbox)
-        fireEvent.click(checkbox)
+      await user.click(screen.getByText('common.operation.selectAll'))
 
       expect(onSelectAll).toHaveBeenCalledTimes(1)
+      expect(onSelectAll).toHaveBeenCalledWith(true)
     })
   })
 
@@ -209,7 +211,7 @@ describe('Actions', () => {
       })
 
       it('should return false when selectedOptions is undefined', () => {
-        const { container } = render(
+        render(
           <Actions
             {...defaultProps}
             showSelect={true}
@@ -220,12 +222,11 @@ describe('Actions', () => {
         )
 
         // Assert - checkbox should not be indeterminate
-        const checkbox = container.querySelector('[class*="cursor-pointer"]')
-        expect(checkbox).toBeInTheDocument()
+        expect(getSelectAllCheckbox()).toHaveAttribute('aria-checked', 'false')
       })
 
       it('should return false when totalOptions is undefined', () => {
-        const { container } = render(
+        render(
           <Actions
             {...defaultProps}
             showSelect={true}
@@ -236,12 +237,11 @@ describe('Actions', () => {
         )
 
         // Assert - checkbox should exist
-        const checkbox = container.querySelector('[class*="cursor-pointer"]')
-        expect(checkbox).toBeInTheDocument()
+        expect(getSelectAllCheckbox()).toHaveAttribute('aria-checked', 'false')
       })
 
       it('should return true when some options are selected (0 < selectedOptions < totalOptions)', () => {
-        const { container } = render(
+        render(
           <Actions
             {...defaultProps}
             showSelect={true}
@@ -252,13 +252,11 @@ describe('Actions', () => {
         )
 
         // Assert - checkbox should render in indeterminate state
-        // The checkbox component renders IndeterminateIcon when indeterminate and not checked
-        const selectAllContainer = container.querySelector('.flex.shrink-0.items-center')
-        expect(selectAllContainer).toBeInTheDocument()
+        expect(getSelectAllCheckbox()).toHaveAttribute('aria-checked', 'mixed')
       })
 
       it('should return false when no options are selected (selectedOptions === 0)', () => {
-        const { container } = render(
+        render(
           <Actions
             {...defaultProps}
             showSelect={true}
@@ -269,12 +267,11 @@ describe('Actions', () => {
         )
 
         // Assert - checkbox should be unchecked and not indeterminate
-        const checkbox = container.querySelector('[class*="cursor-pointer"]')
-        expect(checkbox).toBeInTheDocument()
+        expect(getSelectAllCheckbox()).toHaveAttribute('aria-checked', 'false')
       })
 
       it('should return false when all options are selected (selectedOptions === totalOptions)', () => {
-        const { container } = render(
+        render(
           <Actions
             {...defaultProps}
             showSelect={true}
@@ -285,8 +282,7 @@ describe('Actions', () => {
         )
 
         // Assert - checkbox should be checked, not indeterminate
-        const checkbox = container.querySelector('[class*="cursor-pointer"]')
-        expect(checkbox).toBeInTheDocument()
+        expect(getSelectAllCheckbox()).toHaveAttribute('aria-checked', 'true')
       })
     })
 
@@ -307,7 +303,7 @@ describe('Actions', () => {
       })
 
       it('should return false when selectedOptions is undefined', () => {
-        const { container } = render(
+        render(
           <Actions
             {...defaultProps}
             showSelect={true}
@@ -317,12 +313,11 @@ describe('Actions', () => {
           />,
         )
 
-        const checkbox = container.querySelector('[class*="cursor-pointer"]')
-        expect(checkbox).toBeInTheDocument()
+        expect(getSelectAllCheckbox()).toHaveAttribute('aria-checked', 'false')
       })
 
       it('should return false when totalOptions is undefined', () => {
-        const { container } = render(
+        render(
           <Actions
             {...defaultProps}
             showSelect={true}
@@ -332,12 +327,11 @@ describe('Actions', () => {
           />,
         )
 
-        const checkbox = container.querySelector('[class*="cursor-pointer"]')
-        expect(checkbox).toBeInTheDocument()
+        expect(getSelectAllCheckbox()).toHaveAttribute('aria-checked', 'false')
       })
 
       it('should return true when all options are selected (selectedOptions === totalOptions)', () => {
-        const { container } = render(
+        render(
           <Actions
             {...defaultProps}
             showSelect={true}
@@ -348,12 +342,11 @@ describe('Actions', () => {
         )
 
         // Assert - checkbox should show checked state (RiCheckLine icon)
-        const checkbox = container.querySelector('[class*="cursor-pointer"]')
-        expect(checkbox).toBeInTheDocument()
+        expect(getSelectAllCheckbox()).toHaveAttribute('aria-checked', 'true')
       })
 
       it('should return false when selectedOptions is 0', () => {
-        const { container } = render(
+        render(
           <Actions
             {...defaultProps}
             showSelect={true}
@@ -364,12 +357,11 @@ describe('Actions', () => {
         )
 
         // Assert - checkbox should be unchecked
-        const checkbox = container.querySelector('[class*="cursor-pointer"]')
-        expect(checkbox).toBeInTheDocument()
+        expect(getSelectAllCheckbox()).toHaveAttribute('aria-checked', 'false')
       })
 
       it('should return false when not all options are selected', () => {
-        const { container } = render(
+        render(
           <Actions
             {...defaultProps}
             showSelect={true}
@@ -380,20 +372,13 @@ describe('Actions', () => {
         )
 
         // Assert - checkbox should be indeterminate, not checked
-        const checkbox = container.querySelector('[class*="cursor-pointer"]')
-        expect(checkbox).toBeInTheDocument()
+        expect(getSelectAllCheckbox()).toHaveAttribute('aria-checked', 'mixed')
       })
     })
   })
 
   // Component Memoization Testing
   describe('Component Memoization', () => {
-    // Tests for React.memo behavior
-    it('should be wrapped with React.memo', () => {
-      // Assert - verify component has memo wrapper
-      expect(Actions.$$typeof).toBe(Symbol.for('react.memo'))
-    })
-
     it('should not re-render when props are the same', () => {
       const handleNextStep = vi.fn()
       const props = {
@@ -443,7 +428,7 @@ describe('Actions', () => {
   describe('Edge Cases', () => {
     // Tests for boundary conditions and unusual inputs
     it('should handle totalOptions of 0', () => {
-      const { container } = render(
+      render(
         <Actions
           {...defaultProps}
           showSelect={true}
@@ -454,12 +439,11 @@ describe('Actions', () => {
       )
 
       // Assert - should render checkbox
-      const checkbox = container.querySelector('[class*="cursor-pointer"]')
-      expect(checkbox).toBeInTheDocument()
+      expect(getSelectAllCheckbox()).toHaveAttribute('aria-checked', 'false')
     })
 
     it('should handle very large totalOptions', () => {
-      const { container } = render(
+      render(
         <Actions
           {...defaultProps}
           showSelect={true}
@@ -469,21 +453,13 @@ describe('Actions', () => {
         />,
       )
 
-      const checkbox = container.querySelector('[class*="cursor-pointer"]')
-      expect(checkbox).toBeInTheDocument()
+      expect(getSelectAllCheckbox()).toHaveAttribute('aria-checked', 'mixed')
     })
 
     it('should handle very long tip text', () => {
       const longTip = 'A'.repeat(500)
 
-      render(
-        <Actions
-          {...defaultProps}
-          showSelect={true}
-          tip={longTip}
-          onSelectAll={vi.fn()}
-        />,
-      )
+      render(<Actions {...defaultProps} showSelect={true} tip={longTip} onSelectAll={vi.fn()} />)
 
       // Assert - tip should render with truncate class
       const tipElement = screen.getByTitle(longTip)
@@ -493,14 +469,7 @@ describe('Actions', () => {
     it('should handle tip with special characters', () => {
       const specialTip = '<script>alert("xss")</script> & "quotes" \'apostrophes\''
 
-      render(
-        <Actions
-          {...defaultProps}
-          showSelect={true}
-          tip={specialTip}
-          onSelectAll={vi.fn()}
-        />,
-      )
+      render(<Actions {...defaultProps} showSelect={true} tip={specialTip} onSelectAll={vi.fn()} />)
 
       // Assert - special characters should be rendered safely
       expect(screen.getByText(specialTip)).toBeInTheDocument()
@@ -509,21 +478,14 @@ describe('Actions', () => {
     it('should handle tip with unicode characters', () => {
       const unicodeTip = '选中 5 个文件，共 10MB 🚀'
 
-      render(
-        <Actions
-          {...defaultProps}
-          showSelect={true}
-          tip={unicodeTip}
-          onSelectAll={vi.fn()}
-        />,
-      )
+      render(<Actions {...defaultProps} showSelect={true} tip={unicodeTip} onSelectAll={vi.fn()} />)
 
       expect(screen.getByText(unicodeTip)).toBeInTheDocument()
     })
 
     it('should handle selectedOptions greater than totalOptions', () => {
       // This is an edge case that shouldn't happen but should be handled gracefully
-      const { container } = render(
+      render(
         <Actions
           {...defaultProps}
           showSelect={true}
@@ -534,12 +496,11 @@ describe('Actions', () => {
       )
 
       // Assert - should still render
-      const checkbox = container.querySelector('[class*="cursor-pointer"]')
-      expect(checkbox).toBeInTheDocument()
+      expect(getSelectAllCheckbox()).toHaveAttribute('aria-checked', 'false')
     })
 
     it('should handle negative selectedOptions', () => {
-      const { container } = render(
+      render(
         <Actions
           {...defaultProps}
           showSelect={true}
@@ -550,12 +511,12 @@ describe('Actions', () => {
       )
 
       // Assert - should still render (though this is an invalid state)
-      const checkbox = container.querySelector('[class*="cursor-pointer"]')
-      expect(checkbox).toBeInTheDocument()
+      expect(getSelectAllCheckbox()).toHaveAttribute('aria-checked', 'false')
     })
 
-    it('should handle onSelectAll being undefined when showSelect is true', () => {
-      const { container } = render(
+    it('should handle onSelectAll being undefined when showSelect is true', async () => {
+      const user = userEvent.setup()
+      render(
         <Actions
           {...defaultProps}
           showSelect={true}
@@ -566,11 +527,10 @@ describe('Actions', () => {
       )
 
       // Assert - should render checkbox
-      const checkbox = container.querySelector('[class*="cursor-pointer"]')
-      expect(checkbox).toBeInTheDocument()
-
-      if (checkbox)
-        expect(() => fireEvent.click(checkbox)).not.toThrow()
+      expect(getSelectAllCheckbox()).toBeInTheDocument()
+      await expect(
+        user.click(screen.getByText('common.operation.selectAll')),
+      ).resolves.toBeUndefined()
     })
 
     it('should handle empty datasetId from params', () => {
@@ -627,7 +587,9 @@ describe('Actions', () => {
       expect(screen.getByText('common.operation.selectAll')).toBeInTheDocument()
       expect(screen.getByText('All props provided')).toBeInTheDocument()
       expect(screen.getByText('common.operation.cancel')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i })).not.toBeDisabled()
+      expect(
+        screen.getByRole('button', { name: /datasetCreation.stepOne.button/i }),
+      ).not.toBeDisabled()
     })
 
     it('should render minimal component with only required props', () => {
@@ -635,7 +597,9 @@ describe('Actions', () => {
 
       expect(screen.queryByText('common.operation.selectAll')).not.toBeInTheDocument()
       expect(screen.getByText('common.operation.cancel')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i })).not.toBeDisabled()
+      expect(
+        screen.getByRole('button', { name: /datasetCreation.stepOne.button/i }),
+      ).not.toBeDisabled()
     })
   })
 
@@ -654,8 +618,8 @@ describe('Actions', () => {
 
     it.each(selectionStates)(
       'should render with $expectedState state when totalOptions=$totalOptions and selectedOptions=$selectedOptions',
-      ({ totalOptions, selectedOptions }) => {
-        const { container } = render(
+      ({ totalOptions, selectedOptions, expectedState }) => {
+        render(
           <Actions
             {...defaultProps}
             showSelect={true}
@@ -666,8 +630,13 @@ describe('Actions', () => {
         )
 
         // Assert - component should render without errors
-        const checkbox = container.querySelector('[class*="cursor-pointer"]')
-        expect(checkbox).toBeInTheDocument()
+        const expectedAriaChecked =
+          expectedState === 'indeterminate'
+            ? 'mixed'
+            : expectedState === 'checked'
+              ? 'true'
+              : 'false'
+        expect(getSelectAllCheckbox()).toHaveAttribute('aria-checked', expectedAriaChecked)
         expect(screen.getByText('common.operation.selectAll')).toBeInTheDocument()
       },
     )
@@ -692,7 +661,7 @@ describe('Actions', () => {
     })
 
     it('should position select all section before buttons when showSelect is true', () => {
-      const { container } = render(
+      render(
         <Actions
           {...defaultProps}
           showSelect={true}
@@ -703,8 +672,7 @@ describe('Actions', () => {
       )
 
       // Assert - select all section should exist
-      const selectAllSection = container.querySelector('.flex.shrink-0.items-center')
-      expect(selectAllSection).toBeInTheDocument()
+      expect(getSelectAllCheckbox()).toBeInTheDocument()
     })
   })
 })

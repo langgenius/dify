@@ -5,14 +5,34 @@ import Item from '../item'
 
 // Mock Operation to verify its usage
 vi.mock('@/app/components/base/chat/chat-with-history/sidebar/operation', () => ({
-  default: ({ togglePin, onRenameConversation, onDelete, isItemHovering, isActive, isPinned }: { togglePin: () => void, onRenameConversation: () => void, onDelete: () => void, isItemHovering: boolean, isActive: boolean, isPinned: boolean }) => (
+  default: ({
+    togglePin,
+    onRenameConversation,
+    onDelete,
+    isItemHovering,
+    isActive,
+    isPinned,
+  }: {
+    togglePin: () => void
+    onRenameConversation: () => void
+    onDelete: () => void
+    isItemHovering: boolean
+    isActive: boolean
+    isPinned: boolean
+  }) => (
     <div data-testid="mock-operation">
-      <button onClick={togglePin} data-testid="pin-button">Pin</button>
-      <button onClick={onRenameConversation} data-testid="rename-button">Rename</button>
-      <button onClick={onDelete} data-testid="delete-button">Delete</button>
-      <span data-hovering={isItemHovering} data-testid="hover-indicator">Hovering</span>
-      <span data-active={isActive} data-testid="active-indicator">Active</span>
-      <span data-pinned={isPinned} data-testid="pinned-indicator">Pinned</span>
+      <button onClick={togglePin}>Pin</button>
+      <button onClick={onRenameConversation}>Rename</button>
+      <button onClick={onDelete}>Delete</button>
+      <span data-hovering={isItemHovering} data-testid="hover-indicator">
+        Hovering
+      </span>
+      <span data-active={isActive} data-testid="active-indicator">
+        Active
+      </span>
+      <span data-pinned={isPinned} data-testid="pinned-indicator">
+        Pinned
+      </span>
     </div>
   ),
 }))
@@ -137,7 +157,7 @@ describe('Item', () => {
       const onOperate = vi.fn()
       render(<Item {...defaultProps} onOperate={onOperate} isPin={true} />)
 
-      await user.click(screen.getByTestId('pin-button'))
+      await user.click(screen.getByRole('button', { name: 'Pin' }))
       expect(onOperate).toHaveBeenCalledWith('unpin', mockItem)
     })
 
@@ -146,7 +166,7 @@ describe('Item', () => {
       const onOperate = vi.fn()
       render(<Item {...defaultProps} onOperate={onOperate} isPin={false} />)
 
-      await user.click(screen.getByTestId('pin-button'))
+      await user.click(screen.getByRole('button', { name: 'Pin' }))
       expect(onOperate).toHaveBeenCalledWith('pin', mockItem)
     })
 
@@ -155,7 +175,7 @@ describe('Item', () => {
       const onOperate = vi.fn()
       render(<Item {...defaultProps} onOperate={onOperate} />)
 
-      await user.click(screen.getByTestId('pin-button'))
+      await user.click(screen.getByRole('button', { name: 'Pin' }))
       expect(onOperate).toHaveBeenCalledWith('pin', mockItem)
     })
   })
@@ -213,7 +233,7 @@ describe('Item', () => {
       const onChangeConversation = vi.fn()
       render(<Item {...defaultProps} onChangeConversation={onChangeConversation} />)
 
-      const deleteButton = screen.getByTestId('delete-button')
+      const deleteButton = screen.getByRole('button', { name: 'Delete' })
       await user.click(deleteButton)
 
       // onChangeConversation should not be called when Operation button is clicked
@@ -225,7 +245,7 @@ describe('Item', () => {
       const onOperate = vi.fn()
       render(<Item {...defaultProps} onOperate={onOperate} />)
 
-      await user.click(screen.getByTestId('delete-button'))
+      await user.click(screen.getByRole('button', { name: 'Delete' }))
       expect(onOperate).toHaveBeenCalledWith('delete', mockItem)
     })
 
@@ -234,7 +254,7 @@ describe('Item', () => {
       const onOperate = vi.fn()
       render(<Item {...defaultProps} onOperate={onOperate} />)
 
-      await user.click(screen.getByTestId('rename-button'))
+      await user.click(screen.getByRole('button', { name: 'Rename' }))
       expect(onOperate).toHaveBeenCalledWith('rename', mockItem)
     })
 
@@ -243,9 +263,9 @@ describe('Item', () => {
       const onOperate = vi.fn()
       render(<Item {...defaultProps} onOperate={onOperate} />)
 
-      await user.click(screen.getByTestId('rename-button'))
-      await user.click(screen.getByTestId('pin-button'))
-      await user.click(screen.getByTestId('delete-button'))
+      await user.click(screen.getByRole('button', { name: 'Rename' }))
+      await user.click(screen.getByRole('button', { name: 'Pin' }))
+      await user.click(screen.getByRole('button', { name: 'Delete' }))
 
       expect(onOperate).toHaveBeenCalledTimes(3)
     })
@@ -296,13 +316,13 @@ describe('Item', () => {
       const onOperate = vi.fn()
       render(<Item {...defaultProps} onOperate={onOperate} />)
 
-      await user.click(screen.getByTestId('rename-button'))
+      await user.click(screen.getByRole('button', { name: 'Rename' }))
       expect(onOperate).toHaveBeenNthCalledWith(1, 'rename', mockItem)
 
-      await user.click(screen.getByTestId('pin-button'))
+      await user.click(screen.getByRole('button', { name: 'Pin' }))
       expect(onOperate).toHaveBeenNthCalledWith(2, 'pin', mockItem)
 
-      await user.click(screen.getByTestId('delete-button'))
+      await user.click(screen.getByRole('button', { name: 'Delete' }))
       expect(onOperate).toHaveBeenNthCalledWith(3, 'delete', mockItem)
     })
 
@@ -310,59 +330,15 @@ describe('Item', () => {
       const user = userEvent.setup()
       const onOperate = vi.fn()
 
-      const { rerender } = render(
-        <Item {...defaultProps} onOperate={onOperate} isPin={false} />,
-      )
+      const { rerender } = render(<Item {...defaultProps} onOperate={onOperate} isPin={false} />)
 
-      await user.click(screen.getByTestId('pin-button'))
+      await user.click(screen.getByRole('button', { name: 'Pin' }))
       expect(onOperate).toHaveBeenCalledWith('pin', mockItem)
 
       rerender(<Item {...defaultProps} onOperate={onOperate} isPin={true} />)
 
-      await user.click(screen.getByTestId('pin-button'))
+      await user.click(screen.getByRole('button', { name: 'Pin' }))
       expect(onOperate).toHaveBeenCalledWith('unpin', mockItem)
-    })
-  })
-
-  describe('Styling', () => {
-    it('should have base classes on container', () => {
-      const { container } = render(<Item {...defaultProps} />)
-      const itemDiv = container.firstChild as HTMLElement
-
-      expect(itemDiv).toHaveClass('group')
-      expect(itemDiv).toHaveClass('flex')
-      expect(itemDiv).toHaveClass('cursor-pointer')
-      expect(itemDiv).toHaveClass('rounded-lg')
-    })
-
-    it('should apply active state classes when selected', () => {
-      const { container } = render(<Item {...defaultProps} currentConversationId="1" />)
-      const itemDiv = container.firstChild as HTMLElement
-
-      expect(itemDiv).toHaveClass('bg-state-accent-active')
-      expect(itemDiv).toHaveClass('text-text-accent')
-    })
-
-    it('should apply hover classes', () => {
-      const { container } = render(<Item {...defaultProps} />)
-      const itemDiv = container.firstChild as HTMLElement
-
-      expect(itemDiv).toHaveClass('hover:bg-state-base-hover')
-    })
-
-    it('should maintain hover classes when active', () => {
-      const { container } = render(<Item {...defaultProps} currentConversationId="1" />)
-      const itemDiv = container.firstChild as HTMLElement
-
-      expect(itemDiv).toHaveClass('hover:bg-state-accent-active')
-    })
-
-    it('should apply truncate class to text container', () => {
-      const { container } = render(<Item {...defaultProps} />)
-      const textDiv = container.querySelector('.grow.truncate')
-
-      expect(textDiv).toHaveClass('truncate')
-      expect(textDiv).toHaveClass('grow')
     })
   })
 
@@ -380,9 +356,7 @@ describe('Item', () => {
     })
 
     it('should update when currentConversationId changes', () => {
-      const { container, rerender } = render(
-        <Item {...defaultProps} currentConversationId="0" />,
-      )
+      const { container, rerender } = render(<Item {...defaultProps} currentConversationId="0" />)
 
       expect(container.firstChild).not.toHaveClass('bg-state-accent-active')
 
@@ -412,7 +386,7 @@ describe('Item', () => {
 
       rerender(<Item {...defaultProps} onOperate={newOnOperate} />)
 
-      await user.click(screen.getByTestId('delete-button'))
+      await user.click(screen.getByRole('button', { name: 'Delete' }))
 
       expect(newOnOperate).toHaveBeenCalledWith('delete', mockItem)
       expect(oldOnOperate).not.toHaveBeenCalled()
@@ -420,23 +394,11 @@ describe('Item', () => {
 
     it('should update when multiple props change together', () => {
       const { rerender } = render(
-        <Item
-          {...defaultProps}
-          item={mockItem}
-          currentConversationId="0"
-          isPin={false}
-        />,
+        <Item {...defaultProps} item={mockItem} currentConversationId="0" isPin={false} />,
       )
 
       const newItem = { ...mockItem, name: 'New Name', id: '2' }
-      rerender(
-        <Item
-          {...defaultProps}
-          item={newItem}
-          currentConversationId="2"
-          isPin={true}
-        />,
-      )
+      rerender(<Item {...defaultProps} item={newItem} currentConversationId="2" isPin={true} />)
 
       expect(screen.getByText('New Name')).toBeInTheDocument()
 

@@ -1,43 +1,42 @@
-import type { MockedFunction } from 'vitest'
-import type { SystemFeatures } from '@/types/feature'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { MockedFunction } from 'vite-plus/test'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useLocale } from '@/context/i18n'
+import { useSearchParams } from '@/next/navigation'
 import { useSendMail } from '@/service/use-common'
-import { defaultSystemFeatures } from '@/types/feature'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import Form from './input-mail'
 
 const mockSubmitMail = vi.fn()
 const mockOnSuccess = vi.fn()
 
-type SystemFeaturesOverrides = Partial<Omit<SystemFeatures, 'branding'>> & {
-  branding?: Partial<SystemFeatures['branding']>
-}
-
-const buildSystemFeatures = (overrides: SystemFeaturesOverrides = {}): SystemFeatures => ({
-  ...defaultSystemFeatures,
-  ...overrides,
-  branding: {
-    ...defaultSystemFeatures.branding,
-    ...overrides.branding,
-  },
-})
-
 vi.mock('@/next/link', () => ({
-  default: ({ children, href, className, target, rel }: { children: React.ReactNode, href: string, className?: string, target?: string, rel?: string }) => (
+  default: ({
+    children,
+    href,
+    className,
+    target,
+    rel,
+  }: {
+    children: React.ReactNode
+    href: string
+    className?: string
+    target?: string
+    rel?: string
+  }) => (
     <a href={href} className={className} target={target} rel={rel}>
       {children}
     </a>
   ),
 }))
 
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: vi.fn(),
-}))
-
 vi.mock('@/context/i18n', () => ({
   useLocale: vi.fn(),
+}))
+
+vi.mock('@/next/navigation', () => ({
+  useSearchParams: vi.fn(),
 }))
 
 vi.mock('@/service/use-common', () => ({
@@ -46,8 +45,8 @@ vi.mock('@/service/use-common', () => ({
 
 type UseSendMailResult = ReturnType<typeof useSendMail>
 
-const mockUseGlobalPublicStore = useGlobalPublicStore as unknown as MockedFunction<typeof useGlobalPublicStore>
 const mockUseLocale = useLocale as unknown as MockedFunction<typeof useLocale>
+const mockUseSearchParams = useSearchParams as unknown as MockedFunction<typeof useSearchParams>
 const mockUseSendMail = useSendMail as unknown as MockedFunction<typeof useSendMail>
 
 const renderForm = ({
@@ -57,22 +56,22 @@ const renderForm = ({
   brandingEnabled?: boolean
   isPending?: boolean
 } = {}) => {
-  mockUseGlobalPublicStore.mockReturnValue({
-    systemFeatures: buildSystemFeatures({
-      branding: { enabled: brandingEnabled },
-    }),
-  })
   mockUseLocale.mockReturnValue('en-US')
   mockUseSendMail.mockReturnValue({
     mutateAsync: mockSubmitMail,
     isPending,
   } as unknown as UseSendMailResult)
-  return render(<Form onSuccess={mockOnSuccess} />)
+  return renderWithConsoleQuery(<Form onSuccess={mockOnSuccess} />, {
+    systemFeatures: { branding: { enabled: brandingEnabled } },
+  })
 }
 
 describe('InputMail Form', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUseSearchParams.mockReturnValue(
+      new URLSearchParams() as unknown as ReturnType<typeof useSearchParams>,
+    )
     mockSubmitMail.mockResolvedValue({ result: 'success', data: 'token' })
   })
 
@@ -81,8 +80,16 @@ describe('InputMail Form', () => {
     it('should render email input and submit button', () => {
       renderForm()
 
-      expect(screen.getByLabelText('login.email')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'login.signup.verifyMail' })).toBeInTheDocument()
+      const emailInput = screen.getByRole('textbox', { name: 'login.email' })
+      const submitButton = screen.getByRole('button', { name: 'login.signup.verifyMail' })
+
+      expect(emailInput).toHaveAttribute('name', 'email')
+      expect(emailInput).toHaveAttribute('type', 'email')
+      expect(emailInput).toHaveAttribute('autocomplete', 'email')
+      expect(emailInput).toHaveAttribute('spellcheck', 'false')
+      expect(emailInput).toHaveProperty('tabIndex', 0)
+      expect(submitButton).toHaveAttribute('type', 'submit')
+      expect(submitButton).toHaveProperty('tabIndex', 0)
       expect(screen.getByRole('link', { name: 'login.signup.signIn' })).toBeInTheDocument()
     })
   })
@@ -107,21 +114,39 @@ describe('InputMail Form', () => {
   // Submission flow and mutation integration.
   describe('User Interactions', () => {
     it('should submit email and call onSuccess when mutation succeeds', async () => {
+      const user = userEvent.setup()
       renderForm()
-      const input = screen.getByLabelText('login.email')
-      const button = screen.getByRole('button', { name: 'login.signup.verifyMail' })
+      const input = screen.getByRole('textbox', { name: 'login.email' })
 
-      fireEvent.change(input, { target: { value: 'test@example.com' } })
-      fireEvent.click(button)
+      await user.type(input, 'test@example.com{Enter}')
 
       expect(mockSubmitMail).toHaveBeenCalledWith({
         email: 'test@example.com',
         language: 'en-US',
       })
+      expect(mockSubmitMail).toHaveBeenCalledTimes(1)
 
       await waitFor(() => {
         expect(mockOnSuccess).toHaveBeenCalledWith('test@example.com', 'token')
       })
+    })
+  })
+
+  // Navigation between registration and login keeps the original destination.
+  describe('Registration Navigation', () => {
+    it('should preserve the current query when navigating to sign in', () => {
+      mockUseSearchParams.mockReturnValue(
+        new URLSearchParams(
+          'redirect_url=%2Fapps%3Ftag%3Dworkflow&source=pricing',
+        ) as unknown as ReturnType<typeof useSearchParams>,
+      )
+
+      renderForm()
+
+      expect(screen.getByRole('link', { name: 'login.signup.signIn' })).toHaveAttribute(
+        'href',
+        '/signin?redirect_url=%2Fapps%3Ftag%3Dworkflow&source=pricing',
+      )
     })
   })
 

@@ -1,5 +1,9 @@
 import { fireEvent, screen } from '@testing-library/react'
-import { createNode, createStartNode, resetFixtureCounters } from '@/app/components/workflow/__tests__/fixtures'
+import {
+  createNode,
+  createStartNode,
+  resetFixtureCounters,
+} from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import NodeGroupItem from '../node-group-item'
@@ -94,8 +98,8 @@ describe('variable-assigner/node-group-item', () => {
       },
     )
 
-    expect(screen.getByText('workflow.nodes.variableAssigner.varNotSet')).toBeInTheDocument()
-    expect(container.querySelector('.relative.rounded-lg')).toHaveClass('border-text-accent!')
+    expect(screen.getByText('workflow.nodes.variableAssigner.varNotSet'))!.toBeInTheDocument()
+    expect(container.querySelector('.relative.rounded-lg'))!.toHaveClass('border-text-accent!')
     expect(mockGetAvailableVars).toHaveBeenCalledWith(
       'assigner-node',
       'group-1',
@@ -103,7 +107,7 @@ describe('variable-assigner/node-group-item', () => {
       true,
     )
 
-    const filter = mockGetAvailableVars.mock.calls[0][2] as (payload: { type: VarType }) => boolean
+    const filter = mockGetAvailableVars.mock.calls[0]![2] as (payload: { type: VarType }) => boolean
     expect(filter({ type: VarType.string })).toBe(true)
     expect(filter({ type: VarType.number })).toBe(false)
 
@@ -124,7 +128,10 @@ describe('variable-assigner/node-group-item', () => {
           targetHandleId: 'group-2',
           title: 'Group B',
           type: 'number',
-          variables: [['sys', 'query'], ['source-node', 'answer']],
+          variables: [
+            ['sys', 'query'],
+            ['source-node', 'answer'],
+          ],
           variableAssignerNodeId: 'assigner-node',
           variableAssignerNodeData: data,
         }}
@@ -142,13 +149,13 @@ describe('variable-assigner/node-group-item', () => {
       },
     )
 
-    expect(container.querySelector('.relative.rounded-lg')).toHaveClass('border-dashed!')
-    expect(screen.getByText('Start')).toBeInTheDocument()
-    expect(screen.getByText('query')).toBeInTheDocument()
-    expect(screen.getByText('Source Node')).toBeInTheDocument()
-    expect(screen.getByText('answer')).toBeInTheDocument()
+    expect(container.querySelector('.relative.rounded-lg'))!.toHaveClass('border-dashed!')
+    expect(screen.getByText('Start'))!.toBeInTheDocument()
+    expect(screen.getByText('query'))!.toBeInTheDocument()
+    expect(screen.getByText('Source Node'))!.toBeInTheDocument()
+    expect(screen.getByText('answer'))!.toBeInTheDocument()
 
-    const filter = mockGetAvailableVars.mock.calls[0][2] as (payload: { type: VarType }) => boolean
+    const filter = mockGetAvailableVars.mock.calls[0]![2] as (payload: { type: VarType }) => boolean
     expect(filter({ type: VarType.number })).toBe(true)
     expect(filter({ type: VarType.string })).toBe(false)
   })
@@ -178,7 +185,7 @@ describe('variable-assigner/node-group-item', () => {
     expect(container.querySelector('.relative.rounded-lg')).not.toHaveClass('border-dashed!')
     expect(container.querySelector('.relative.rounded-lg')).not.toHaveClass('border-text-accent!')
 
-    const filter = mockGetAvailableVars.mock.calls[0][2] as (payload: { type: VarType }) => boolean
+    const filter = mockGetAvailableVars.mock.calls[0]![2] as (payload: { type: VarType }) => boolean
     expect(filter({ type: VarType.boolean })).toBe(true)
     expect(filter({ type: VarType.string })).toBe(false)
   })

@@ -1,5 +1,7 @@
 import json
+from typing import override
 
+from core.agent.cot_agent_runner import CotAgentRunner
 from graphon.file import file_manager
 from graphon.model_runtime.entities import (
     AssistantPromptMessage,
@@ -10,8 +12,6 @@ from graphon.model_runtime.entities import (
 )
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
 from graphon.model_runtime.utils.encoders import jsonable_encoder
-
-from core.agent.cot_agent_runner import CotAgentRunner
 
 
 class CotChatAgentRunner(CotAgentRunner):
@@ -67,6 +67,7 @@ class CotChatAgentRunner(CotAgentRunner):
 
         return prompt_messages
 
+    @override
     def _organize_prompt_messages(self) -> list[PromptMessage]:
         """
         Organize

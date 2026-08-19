@@ -36,9 +36,7 @@ const mockDynamic = vi.hoisted(() =>
   }),
 )
 
-const mockPdfPreview = vi.hoisted(() =>
-  vi.fn(() => null),
-)
+const mockPdfPreview = vi.hoisted(() => vi.fn(() => null))
 
 vi.mock('@/next/dynamic', () => ({
   default: mockDynamic,
@@ -93,8 +91,7 @@ describe('dynamic-pdf-preview', () => {
     try {
       const loaded = mockState.loader?.()
       expect(loaded).toBeUndefined()
-    }
-    finally {
+    } finally {
       Object.defineProperty(globalThis, 'window', {
         configurable: true,
         writable: true,

@@ -8,7 +8,6 @@ from typing import Any
 import click
 import pandas as pd
 from celery import shared_task
-from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy import func, select
 
 from core.db.session_factory import session_factory
@@ -16,9 +15,11 @@ from core.model_manager import ModelManager
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
+from graphon.model_runtime.entities.model_entities import ModelType
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment
+from models.enums import SegmentStatus
 from models.model import UploadFile
 from services.vector_service import VectorService
 
@@ -156,7 +157,7 @@ def batch_create_segment_to_index_task(
                 tokens=tokens,
                 created_by=user_id,
                 indexing_at=naive_utc_now(),
-                status="completed",
+                status=SegmentStatus.COMPLETED,
                 completed_at=naive_utc_now(),
             )
             if document_config["doc_form"] == IndexStructureType.QA_INDEX:
@@ -173,10 +174,12 @@ def batch_create_segment_to_index_task(
             dataset_document.word_count += word_count_change
             session.add(dataset_document)
 
-    with session_factory.create_session() as session:
+    with session_factory.create_session() as session, session.begin():
         dataset = session.get(Dataset, dataset_id)
         if dataset:
-            VectorService.create_segments_vector(None, document_segments, dataset, document_config["doc_form"])
+            VectorService.create_segments_vector(
+                None, document_segments, dataset, document_config["doc_form"], session=session
+            )
 
     redis_client.setex(indexing_cache_key, 600, "completed")
     end_at = time.perf_counter()

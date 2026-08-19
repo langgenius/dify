@@ -1,5 +1,10 @@
 import type { DocumentContextValue } from '@/app/components/datasets/documents/detail/context'
-import type { ChildChunkDetail, ChunkingMode, ParentMode, SegmentDetailModel } from '@/models/datasets'
+import type {
+  ChildChunkDetail,
+  ChunkingMode,
+  ParentMode,
+  SegmentDetailModel,
+} from '@/models/datasets'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
@@ -73,7 +78,7 @@ vi.mock('../../context', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: mockToast,
 }))
 
@@ -106,12 +111,9 @@ vi.mock('@/service/knowledge/use-segment', () => ({
 vi.mock('@/service/use-base', () => ({
   useInvalid: (key: unknown[]) => {
     const keyStr = JSON.stringify(key)
-    if (keyStr.includes('"enabled":"all"'))
-      return mockInvalidChunkListAll
-    if (keyStr.includes('"enabled":true'))
-      return mockInvalidChunkListEnabled
-    if (keyStr.includes('"enabled":false'))
-      return mockInvalidChunkListDisabled
+    if (keyStr.includes('"enabled":"all"')) return mockInvalidChunkListAll
+    if (keyStr.includes('"enabled":true')) return mockInvalidChunkListEnabled
+    if (keyStr.includes('"enabled":false')) return mockInvalidChunkListDisabled
     return vi.fn()
   },
 }))
@@ -137,43 +139,87 @@ vi.mock('../hooks/use-child-segment-data', () => ({
   },
 }))
 
-// Mock child components to simplify testing
-vi.mock('../components', () => ({
-  MenuBar: ({ totalText, onInputChange, inputValue, isLoading, onSelectedAll, onChangeStatus }: {
-    totalText: string
-    onInputChange: (value: string) => void
-    inputValue: string
-    isLoading: boolean
-    onSelectedAll?: () => void
-    onChangeStatus?: (item: { value: string | number, name: string }) => void
-  }) => (
-    <div data-testid="menu-bar">
-      <span data-testid="total-text">{totalText}</span>
-      <input
-        data-testid="search-input"
-        value={inputValue}
-        onChange={e => onInputChange(e.target.value)}
-        disabled={isLoading}
-      />
-      {onSelectedAll && (
-        <button data-testid="select-all-button" onClick={onSelectedAll}>Select All</button>
-      )}
-      {onChangeStatus && (
-        <>
-          <button data-testid="status-enabled" onClick={() => onChangeStatus({ value: 1, name: 'Enabled' })}>Enabled</button>
-          <button data-testid="status-disabled" onClick={() => onChangeStatus({ value: 0, name: 'Disabled' })}>Disabled</button>
-          <button data-testid="status-all" onClick={() => onChangeStatus({ value: 'all', name: 'All' })}>All</button>
-        </>
-      )}
-    </div>
-  ),
+vi.mock('../components/menu-bar', async () => {
+  const { Checkbox } = await import('@langgenius/dify-ui/checkbox')
+
+  return {
+    default: ({
+      hasSelectableSegments,
+      totalText,
+      onInputChange,
+      inputValue,
+      isLoading,
+      onChangeStatus,
+    }: {
+      hasSelectableSegments: boolean
+      totalText: string
+      onInputChange: (value: string) => void
+      inputValue: string
+      isLoading: boolean
+      onChangeStatus?: (item: { value: string | number; name: string }) => void
+    }) => (
+      <div data-testid="menu-bar">
+        <span data-testid="total-text">{totalText}</span>
+        <input
+          data-testid="search-input"
+          value={inputValue}
+          onChange={(e) => onInputChange(e.target.value)}
+          disabled={isLoading}
+        />
+        {hasSelectableSegments ? (
+          <Checkbox
+            parent
+            data-testid="select-all-button"
+            aria-label="Select All"
+            disabled={isLoading}
+          />
+        ) : (
+          <span data-testid="select-all-spacer" aria-hidden />
+        )}
+        {onChangeStatus && (
+          <>
+            <button
+              data-testid="status-enabled"
+              onClick={() => onChangeStatus({ value: 1, name: 'Enabled' })}
+            >
+              Enabled
+            </button>
+            <button
+              data-testid="status-disabled"
+              onClick={() => onChangeStatus({ value: 0, name: 'Disabled' })}
+            >
+              Disabled
+            </button>
+            <button
+              data-testid="status-all"
+              onClick={() => onChangeStatus({ value: 'all', name: 'All' })}
+            >
+              All
+            </button>
+          </>
+        )}
+      </div>
+    ),
+  }
+})
+
+vi.mock('../components/drawer-group', () => ({
   DrawerGroup: () => <div data-testid="drawer-group" />,
+}))
+
+vi.mock('../components/segment-list-content', () => ({
   FullDocModeContent: () => <div data-testid="full-doc-mode-content" />,
   GeneralModeContent: () => <div data-testid="general-mode-content" />,
 }))
 
 vi.mock('../common/batch-action', () => ({
-  default: ({ selectedIds, onCancel, onBatchEnable, onBatchDisable, onBatchDelete }: {
+  default: ({
+    selectedIds,
+    onCancel,
+    onBatchEnable,
+    onBatchDisable,
+    onBatchDelete,
+  }: {
     selectedIds: string[]
     onCancel: () => void
     onBatchEnable: () => void
@@ -182,10 +228,18 @@ vi.mock('../common/batch-action', () => ({
   }) => (
     <div data-testid="batch-action">
       <span data-testid="selected-count">{selectedIds.length}</span>
-      <button data-testid="cancel-batch" onClick={onCancel}>Cancel</button>
-      <button data-testid="batch-enable" onClick={onBatchEnable}>Enable</button>
-      <button data-testid="batch-disable" onClick={onBatchDisable}>Disable</button>
-      <button data-testid="batch-delete" onClick={onBatchDelete}>Delete</button>
+      <button data-testid="cancel-batch" onClick={onCancel}>
+        Cancel
+      </button>
+      <button data-testid="batch-enable" onClick={onBatchEnable}>
+        Enable
+      </button>
+      <button data-testid="batch-disable" onClick={onBatchDisable}>
+        Disable
+      </button>
+      <button data-testid="batch-delete" onClick={onBatchDelete}>
+        Delete
+      </button>
     </div>
   ),
 }))
@@ -194,23 +248,9 @@ vi.mock('@/app/components/base/divider', () => ({
   default: () => <hr data-testid="divider" />,
 }))
 
-vi.mock('@/app/components/base/pagination', () => ({
-  default: ({ current, total, onChange, onLimitChange }: {
-    current: number
-    total: number
-    onChange: (page: number) => void
-    onLimitChange: (limit: number) => void
-  }) => (
-    <div data-testid="pagination">
-      <span data-testid="current-page">{current}</span>
-      <span data-testid="total-items">{total}</span>
-      <button data-testid="next-page" onClick={() => onChange(current + 1)}>Next</button>
-      <button data-testid="change-limit" onClick={() => onLimitChange(20)}>Change Limit</button>
-    </div>
-  ),
-}))
-
-const createMockSegmentDetail = (overrides: Partial<SegmentDetailModel> = {}): SegmentDetailModel => ({
+const createMockSegmentDetail = (
+  overrides: Partial<SegmentDetailModel> = {},
+): SegmentDetailModel => ({
   id: `segment-${Math.random().toString(36).substr(2, 9)}`,
   position: 1,
   document_id: 'doc-1',
@@ -250,30 +290,34 @@ const _createMockChildChunk = (overrides: Partial<ChildChunkDetail> = {}): Child
   ...overrides,
 })
 
-const createQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: { retry: false },
-    mutations: { retry: false },
-  },
-})
+const createQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  })
 
 const createWrapper = () => {
   const queryClient = createQueryClient()
   return ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
 }
+
+const getPageSummaryButton = (page: number, totalPages: number) =>
+  screen.getByRole('button', {
+    name: `common.pagination.editPageNumber:{"page":${page},"totalPages":${totalPages}}`,
+  })
 
 describe('SegmentListContext', () => {
   describe('Default Values', () => {
     it('should have correct default context values', () => {
       const TestComponent = () => {
-        const isCollapsed = useSegmentListContext(s => s.isCollapsed)
-        const fullScreen = useSegmentListContext(s => s.fullScreen)
-        const currSegment = useSegmentListContext(s => s.currSegment)
-        const currChildChunk = useSegmentListContext(s => s.currChildChunk)
+        const isCollapsed = useSegmentListContext((s) => s.isCollapsed)
+        const fullScreen = useSegmentListContext((s) => s.fullScreen)
+        const currSegment = useSegmentListContext((s) => s.currSegment)
+        const currChildChunk = useSegmentListContext((s) => s.currChildChunk)
 
         return (
           <div>
@@ -287,10 +331,10 @@ describe('SegmentListContext', () => {
 
       render(<TestComponent />)
 
-      expect(screen.getByTestId('isCollapsed')).toHaveTextContent('true')
-      expect(screen.getByTestId('fullScreen')).toHaveTextContent('false')
-      expect(screen.getByTestId('currSegmentShowModal')).toHaveTextContent('false')
-      expect(screen.getByTestId('currChildChunkShowModal')).toHaveTextContent('false')
+      expect(screen.getByTestId('isCollapsed'))!.toHaveTextContent('true')
+      expect(screen.getByTestId('fullScreen'))!.toHaveTextContent('false')
+      expect(screen.getByTestId('currSegmentShowModal'))!.toHaveTextContent('false')
+      expect(screen.getByTestId('currChildChunkShowModal'))!.toHaveTextContent('false')
     })
   })
 
@@ -305,9 +349,9 @@ describe('SegmentListContext', () => {
       }
 
       const TestComponent = () => {
-        const isCollapsed = useSegmentListContext(s => s.isCollapsed)
-        const fullScreen = useSegmentListContext(s => s.fullScreen)
-        const currSegment = useSegmentListContext(s => s.currSegment)
+        const isCollapsed = useSegmentListContext((s) => s.isCollapsed)
+        const fullScreen = useSegmentListContext((s) => s.fullScreen)
+        const currSegment = useSegmentListContext((s) => s.currSegment)
 
         return (
           <div>
@@ -324,17 +368,17 @@ describe('SegmentListContext', () => {
         </SegmentListContext.Provider>,
       )
 
-      expect(screen.getByTestId('isCollapsed')).toHaveTextContent('false')
-      expect(screen.getByTestId('fullScreen')).toHaveTextContent('true')
-      expect(screen.getByTestId('currSegmentShowModal')).toHaveTextContent('true')
+      expect(screen.getByTestId('isCollapsed'))!.toHaveTextContent('false')
+      expect(screen.getByTestId('fullScreen'))!.toHaveTextContent('true')
+      expect(screen.getByTestId('currSegmentShowModal'))!.toHaveTextContent('true')
     })
   })
 
   describe('Selector Optimization', () => {
     it('should select specific values from context', () => {
       const TestComponent = () => {
-        const isCollapsed = useSegmentListContext(s => s.isCollapsed)
-        const fullScreen = useSegmentListContext(s => s.fullScreen)
+        const isCollapsed = useSegmentListContext((s) => s.isCollapsed)
+        const fullScreen = useSegmentListContext((s) => s.fullScreen)
         return (
           <div>
             <span data-testid="isCollapsed">{String(isCollapsed)}</span>
@@ -344,37 +388,39 @@ describe('SegmentListContext', () => {
       }
 
       const { rerender } = render(
-        <SegmentListContext.Provider value={{
-          isCollapsed: true,
-          fullScreen: false,
-          toggleFullScreen: vi.fn(),
-          currSegment: { showModal: false },
-          currChildChunk: { showModal: false },
-        }}
+        <SegmentListContext.Provider
+          value={{
+            isCollapsed: true,
+            fullScreen: false,
+            toggleFullScreen: vi.fn(),
+            currSegment: { showModal: false },
+            currChildChunk: { showModal: false },
+          }}
         >
           <TestComponent />
         </SegmentListContext.Provider>,
       )
 
-      expect(screen.getByTestId('isCollapsed')).toHaveTextContent('true')
-      expect(screen.getByTestId('fullScreen')).toHaveTextContent('false')
+      expect(screen.getByTestId('isCollapsed'))!.toHaveTextContent('true')
+      expect(screen.getByTestId('fullScreen'))!.toHaveTextContent('false')
 
       // Rerender with changed values
       rerender(
-        <SegmentListContext.Provider value={{
-          isCollapsed: false,
-          fullScreen: true,
-          toggleFullScreen: vi.fn(),
-          currSegment: { showModal: false },
-          currChildChunk: { showModal: false },
-        }}
+        <SegmentListContext.Provider
+          value={{
+            isCollapsed: false,
+            fullScreen: true,
+            toggleFullScreen: vi.fn(),
+            currSegment: { showModal: false },
+            currChildChunk: { showModal: false },
+          }}
         >
           <TestComponent />
         </SegmentListContext.Provider>,
       )
 
-      expect(screen.getByTestId('isCollapsed')).toHaveTextContent('false')
-      expect(screen.getByTestId('fullScreen')).toHaveTextContent('true')
+      expect(screen.getByTestId('isCollapsed'))!.toHaveTextContent('false')
+      expect(screen.getByTestId('fullScreen'))!.toHaveTextContent('true')
     })
   })
 })
@@ -400,7 +446,7 @@ describe('Completed Component', () => {
     it('should render MenuBar when not in full-doc mode', () => {
       render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-      expect(screen.getByTestId('menu-bar')).toBeInTheDocument()
+      expect(screen.getByTestId('menu-bar'))!.toBeInTheDocument()
     })
 
     it('should not render MenuBar when in full-doc mode', () => {
@@ -415,7 +461,7 @@ describe('Completed Component', () => {
     it('should render GeneralModeContent when not in full-doc mode', () => {
       render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-      expect(screen.getByTestId('general-mode-content')).toBeInTheDocument()
+      expect(screen.getByTestId('general-mode-content'))!.toBeInTheDocument()
     })
 
     it('should render FullDocModeContent when in full-doc mode', () => {
@@ -424,25 +470,25 @@ describe('Completed Component', () => {
 
       render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-      expect(screen.getByTestId('full-doc-mode-content')).toBeInTheDocument()
+      expect(screen.getByTestId('full-doc-mode-content'))!.toBeInTheDocument()
     })
 
     it('should render Pagination component', () => {
       render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-      expect(screen.getByTestId('pagination')).toBeInTheDocument()
+      expect(screen.getByRole('navigation', { name: 'Pagination' })).toBeInTheDocument()
     })
 
     it('should render Divider component', () => {
       render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-      expect(screen.getByTestId('divider')).toBeInTheDocument()
+      expect(screen.getByTestId('divider'))!.toBeInTheDocument()
     })
 
     it('should render DrawerGroup when docForm is available', () => {
       render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-      expect(screen.getByTestId('drawer-group')).toBeInTheDocument()
+      expect(screen.getByTestId('drawer-group'))!.toBeInTheDocument()
     })
 
     it('should not render DrawerGroup when docForm is undefined', () => {
@@ -455,31 +501,32 @@ describe('Completed Component', () => {
   })
 
   describe('Pagination', () => {
-    it('should start with page 0 (current - 1)', () => {
+    it('should start on the first page', () => {
+      mockSegmentListData.total = 30
       render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-      expect(screen.getByTestId('current-page')).toHaveTextContent('0')
+      expect(getPageSummaryButton(1, 3)).toBeInTheDocument()
     })
 
     it('should update page when pagination changes', async () => {
+      mockSegmentListData.total = 30
       render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-      const nextPageButton = screen.getByTestId('next-page')
+      const nextPageButton = screen.getByRole('button', { name: 'common.pagination.next' })
       fireEvent.click(nextPageButton)
 
       await waitFor(() => {
-        expect(screen.getByTestId('current-page')).toHaveTextContent('1')
+        expect(getPageSummaryButton(2, 3)).toBeInTheDocument()
       })
     })
 
-    it('should update limit when limit changes', async () => {
+    it('should expose page-size controls', () => {
       render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-      const changeLimitButton = screen.getByTestId('change-limit')
-      fireEvent.click(changeLimitButton)
-
-      // Limit change is handled internally
-      expect(changeLimitButton).toBeInTheDocument()
+      expect(
+        screen.getByRole('radiogroup', { name: 'common.pagination.perPage' }),
+      ).toBeInTheDocument()
+      expect(screen.getByRole('radio', { name: '10' })).toHaveAttribute('aria-checked', 'true')
     })
   })
 
@@ -495,19 +542,23 @@ describe('Completed Component', () => {
     it('should handle archived prop', () => {
       render(<Completed {...defaultProps} archived={true} />, { wrapper: createWrapper() })
 
-      expect(screen.getByTestId('general-mode-content')).toBeInTheDocument()
+      expect(screen.getByTestId('general-mode-content'))!.toBeInTheDocument()
     })
 
     it('should handle embeddingAvailable prop', () => {
-      render(<Completed {...defaultProps} embeddingAvailable={false} />, { wrapper: createWrapper() })
+      render(<Completed {...defaultProps} embeddingAvailable={false} />, {
+        wrapper: createWrapper(),
+      })
 
-      expect(screen.getByTestId('general-mode-content')).toBeInTheDocument()
+      expect(screen.getByTestId('general-mode-content'))!.toBeInTheDocument()
     })
 
     it('should handle showNewSegmentModal prop', () => {
-      render(<Completed {...defaultProps} showNewSegmentModal={true} />, { wrapper: createWrapper() })
+      render(<Completed {...defaultProps} showNewSegmentModal={true} />, {
+        wrapper: createWrapper(),
+      })
 
-      expect(screen.getByTestId('drawer-group')).toBeInTheDocument()
+      expect(screen.getByTestId('drawer-group'))!.toBeInTheDocument()
     })
   })
 
@@ -517,7 +568,8 @@ describe('Completed Component', () => {
       render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
       // Context is provided, components should render without errors
-      expect(screen.getByTestId('general-mode-content')).toBeInTheDocument()
+      // Context is provided, components should render without errors
+      expect(screen.getByTestId('general-mode-content'))!.toBeInTheDocument()
     })
   })
 })
@@ -544,7 +596,7 @@ describe('Edge Cases', () => {
 
     render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-    expect(screen.getByTestId('general-mode-content')).toBeInTheDocument()
+    expect(screen.getByTestId('general-mode-content'))!.toBeInTheDocument()
   })
 
   it('should handle empty documentId', () => {
@@ -552,19 +604,19 @@ describe('Edge Cases', () => {
 
     render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-    expect(screen.getByTestId('general-mode-content')).toBeInTheDocument()
+    expect(screen.getByTestId('general-mode-content'))!.toBeInTheDocument()
   })
 
   it('should handle undefined importStatus', () => {
     render(<Completed {...defaultProps} importStatus={undefined} />, { wrapper: createWrapper() })
 
-    expect(screen.getByTestId('general-mode-content')).toBeInTheDocument()
+    expect(screen.getByTestId('general-mode-content'))!.toBeInTheDocument()
   })
 
-  it('should handle ProcessStatus.COMPLETED importStatus', () => {
+  it('should handle completed importStatus', () => {
     render(<Completed {...defaultProps} importStatus="completed" />, { wrapper: createWrapper() })
 
-    expect(screen.getByTestId('general-mode-content')).toBeInTheDocument()
+    expect(screen.getByTestId('general-mode-content'))!.toBeInTheDocument()
   })
 
   it('should handle all ChunkingMode values', () => {
@@ -575,7 +627,7 @@ describe('Edge Cases', () => {
 
       const { unmount } = render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-      expect(screen.getByTestId('pagination')).toBeInTheDocument()
+      expect(screen.getByRole('navigation', { name: 'Pagination' })).toBeInTheDocument()
 
       unmount()
     })
@@ -591,7 +643,7 @@ describe('Edge Cases', () => {
 
       const { unmount } = render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-      expect(screen.getByTestId('pagination')).toBeInTheDocument()
+      expect(screen.getByRole('navigation', { name: 'Pagination' })).toBeInTheDocument()
 
       unmount()
     })
@@ -617,33 +669,34 @@ describe('Integration Tests', () => {
     render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
     // All components should render without errors
-    expect(screen.getByTestId('menu-bar')).toBeInTheDocument()
-    expect(screen.getByTestId('general-mode-content')).toBeInTheDocument()
-    expect(screen.getByTestId('pagination')).toBeInTheDocument()
-    expect(screen.getByTestId('drawer-group')).toBeInTheDocument()
+    // All components should render without errors
+    expect(screen.getByTestId('menu-bar'))!.toBeInTheDocument()
+    expect(screen.getByTestId('general-mode-content'))!.toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: 'Pagination' })).toBeInTheDocument()
+    expect(screen.getByTestId('drawer-group'))!.toBeInTheDocument()
   })
 
   it('should update UI when mode changes', () => {
     const { rerender } = render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-    expect(screen.getByTestId('general-mode-content')).toBeInTheDocument()
+    expect(screen.getByTestId('general-mode-content'))!.toBeInTheDocument()
 
     mockDocForm.current = ChunkingModeEnum.parentChild
     mockParentMode.current = 'full-doc'
 
     rerender(<Completed {...defaultProps} />)
 
-    expect(screen.getByTestId('full-doc-mode-content')).toBeInTheDocument()
+    expect(screen.getByTestId('full-doc-mode-content'))!.toBeInTheDocument()
   })
 
   it('should handle prop updates correctly', () => {
     const { rerender } = render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-    expect(screen.getByTestId('drawer-group')).toBeInTheDocument()
+    expect(screen.getByTestId('drawer-group'))!.toBeInTheDocument()
 
     rerender(<Completed {...defaultProps} showNewSegmentModal={true} />)
 
-    expect(screen.getByTestId('drawer-group')).toBeInTheDocument()
+    expect(screen.getByTestId('drawer-group'))!.toBeInTheDocument()
   })
 })
 
@@ -697,6 +750,37 @@ describe('Batch Action Callbacks', () => {
     render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
     // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
+    // Initially no segments are selected, so batch action should not be visible
     expect(screen.queryByTestId('batch-action')).not.toBeInTheDocument()
   })
 
@@ -708,8 +792,19 @@ describe('Batch Action Callbacks', () => {
 
     // Now batch actions should be visible
     await waitFor(() => {
-      expect(screen.getByTestId('batch-action')).toBeInTheDocument()
+      expect(screen.getByTestId('batch-action'))!.toBeInTheDocument()
     })
+  })
+
+  it('should not render select all when there are no current page segments', () => {
+    mockSegmentListData.data = []
+    mockSegmentListData.total = 0
+
+    render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
+
+    expect(screen.queryByTestId('select-all-button')).not.toBeInTheDocument()
+    expect(screen.getByTestId('select-all-spacer')).toBeInTheDocument()
+    expect(screen.queryByTestId('batch-action')).not.toBeInTheDocument()
   })
 
   it('should call onChangeSwitch with true when batch enable is clicked', async () => {
@@ -721,7 +816,7 @@ describe('Batch Action Callbacks', () => {
 
     // Wait for batch actions to appear
     await waitFor(() => {
-      expect(screen.getByTestId('batch-action')).toBeInTheDocument()
+      expect(screen.getByTestId('batch-action'))!.toBeInTheDocument()
     })
 
     const enableButton = screen.getByTestId('batch-enable')
@@ -739,7 +834,7 @@ describe('Batch Action Callbacks', () => {
 
     // Wait for batch actions to appear
     await waitFor(() => {
-      expect(screen.getByTestId('batch-action')).toBeInTheDocument()
+      expect(screen.getByTestId('batch-action'))!.toBeInTheDocument()
     })
 
     const disableButton = screen.getByTestId('batch-disable')
@@ -757,7 +852,7 @@ describe('Batch Action Callbacks', () => {
 
     // Wait for batch actions to appear
     await waitFor(() => {
-      expect(screen.getByTestId('batch-action')).toBeInTheDocument()
+      expect(screen.getByTestId('batch-action'))!.toBeInTheDocument()
     })
 
     const deleteButton = screen.getByTestId('batch-delete')
@@ -798,8 +893,7 @@ describe('refreshChunkListDataWithDetailChanged callback', () => {
     render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
     // Call the captured callback - status is 'all' by default
-    if (capturedRefreshCallback)
-      capturedRefreshCallback()
+    if (capturedRefreshCallback) capturedRefreshCallback()
 
     // With status 'all', should call both disabled and enabled invalidation
     expect(mockInvalidChunkListDisabled).toHaveBeenCalled()
@@ -839,8 +933,7 @@ describe('refreshChunkListDataWithDetailChanged callback', () => {
     })
 
     // Call the callback with status 'true'
-    if (capturedRefreshCallback)
-      capturedRefreshCallback()
+    if (capturedRefreshCallback) capturedRefreshCallback()
 
     // With status true, should call all and disabled invalidation
     expect(mockInvalidChunkListAll).toHaveBeenCalled()
@@ -865,8 +958,7 @@ describe('refreshChunkListDataWithDetailChanged callback', () => {
     })
 
     // Call the callback with status 'false'
-    if (capturedRefreshCallback)
-      capturedRefreshCallback()
+    if (capturedRefreshCallback) capturedRefreshCallback()
 
     // With status false, should call all and enabled invalidation
     expect(mockInvalidChunkListAll).toHaveBeenCalled()
@@ -887,14 +979,15 @@ describe('refreshChunkListDataWithDetailChanged branch coverage', () => {
 
     // Create a refreshMap similar to the component
     const refreshMap: Record<string, () => void> = {
-      true: () => {
+      true: (() => {
         mockInvalidAll()
         mockInvalidDisabled()
-      },
+      })!,
     }
 
     // Execute the 'true' branch
-    refreshMap.true()
+    // Execute the 'true' branch
+    refreshMap.true!()
 
     expect(mockInvalidAll).toHaveBeenCalled()
     expect(mockInvalidDisabled).toHaveBeenCalled()
@@ -907,14 +1000,15 @@ describe('refreshChunkListDataWithDetailChanged branch coverage', () => {
 
     // Create a refreshMap similar to the component
     const refreshMap: Record<string, () => void> = {
-      false: () => {
+      false: (() => {
         mockInvalidAll()
         mockInvalidEnabled()
-      },
+      })!,
     }
 
     // Execute the 'false' branch
-    refreshMap.false()
+    // Execute the 'false' branch
+    refreshMap.false!()
 
     expect(mockInvalidAll).toHaveBeenCalled()
     expect(mockInvalidEnabled).toHaveBeenCalled()
@@ -985,28 +1079,28 @@ describe('Inline callback and hook initialization coverage', () => {
 
   // Covers lines 56-58: useSearchFilter({ onPageChange: setCurrentPage })
   it('should reset current page when status filter changes', async () => {
+    mockSegmentListData.total = 30
     render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-    fireEvent.click(screen.getByTestId('next-page'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.pagination.next' }))
     await waitFor(() => {
-      expect(screen.getByTestId('current-page')).toHaveTextContent('1')
+      expect(getPageSummaryButton(2, 3)).toBeInTheDocument()
     })
 
     fireEvent.click(screen.getByTestId('status-enabled'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('current-page')).toHaveTextContent('0')
+      expect(getPageSummaryButton(1, 3)).toBeInTheDocument()
     })
   })
 
   // Covers lines 61-63: useModalState({ onNewSegmentModalChange })
   it('should pass onNewSegmentModalChange to modal state hook', () => {
     const mockOnChange = vi.fn()
-    render(
-      <Completed {...defaultProps} onNewSegmentModalChange={mockOnChange} />,
-      { wrapper: createWrapper() },
-    )
-    expect(screen.getByTestId('drawer-group')).toBeInTheDocument()
+    render(<Completed {...defaultProps} onNewSegmentModalChange={mockOnChange} />, {
+      wrapper: createWrapper(),
+    })
+    expect(screen.getByTestId('drawer-group'))!.toBeInTheDocument()
   })
 
   // Covers lines 74-90: refreshChunkListDataWithDetailChanged with status true
@@ -1056,7 +1150,7 @@ describe('Inline callback and hook initialization coverage', () => {
     fireEvent.click(screen.getByTestId('select-all-button'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('batch-action')).toBeInTheDocument()
+      expect(screen.getByTestId('batch-action'))!.toBeInTheDocument()
     })
 
     fireEvent.click(screen.getByTestId('cancel-batch'))
@@ -1072,7 +1166,7 @@ describe('Inline callback and hook initialization coverage', () => {
 
     fireEvent.click(screen.getByTestId('select-all-button'))
     await waitFor(() => {
-      expect(screen.getByTestId('batch-action')).toBeInTheDocument()
+      expect(screen.getByTestId('batch-action'))!.toBeInTheDocument()
     })
 
     fireEvent.click(screen.getByTestId('batch-enable'))
@@ -1086,7 +1180,7 @@ describe('Inline callback and hook initialization coverage', () => {
 
     fireEvent.click(screen.getByTestId('select-all-button'))
     await waitFor(() => {
-      expect(screen.getByTestId('batch-action')).toBeInTheDocument()
+      expect(screen.getByTestId('batch-action'))!.toBeInTheDocument()
     })
 
     fireEvent.click(screen.getByTestId('batch-disable'))
@@ -1100,7 +1194,7 @@ describe('Inline callback and hook initialization coverage', () => {
 
     fireEvent.click(screen.getByTestId('select-all-button'))
     await waitFor(() => {
-      expect(screen.getByTestId('batch-action')).toBeInTheDocument()
+      expect(screen.getByTestId('batch-action'))!.toBeInTheDocument()
     })
 
     fireEvent.click(screen.getByTestId('batch-delete'))
@@ -1109,30 +1203,14 @@ describe('Inline callback and hook initialization coverage', () => {
     })
   })
 
-  // Covers line 133-135: handlePageChange
-  it('should handle multiple page changes', async () => {
-    render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
-
-    fireEvent.click(screen.getByTestId('next-page'))
-    await waitFor(() => {
-      expect(screen.getByTestId('current-page')).toHaveTextContent('1')
-    })
-
-    fireEvent.click(screen.getByTestId('next-page'))
-    await waitFor(() => {
-      expect(screen.getByTestId('current-page')).toHaveTextContent('2')
-    })
-  })
-
-  // Covers paginationTotal in full-doc mode
-  it('should compute pagination total from child chunk data in full-doc mode', () => {
+  it('should compute pagination pages from child chunk data in full-doc mode', () => {
     mockDocForm.current = ChunkingModeEnum.parentChild
     mockParentMode.current = 'full-doc'
     mockChildSegmentListData.total = 42
 
     render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-    expect(screen.getByTestId('total-items')).toHaveTextContent('42')
+    expect(getPageSummaryButton(1, 5)).toBeInTheDocument()
   })
 
   // Covers search input change
@@ -1142,6 +1220,6 @@ describe('Inline callback and hook initialization coverage', () => {
     const searchInput = screen.getByTestId('search-input')
     fireEvent.change(searchInput, { target: { value: 'test query' } })
 
-    expect(searchInput).toHaveValue('test query')
+    expect(searchInput)!.toHaveValue('test query')
   })
 })

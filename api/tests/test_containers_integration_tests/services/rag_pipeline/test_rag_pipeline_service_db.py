@@ -11,17 +11,27 @@ Covers:
 """
 
 from collections.abc import Generator
-from types import SimpleNamespace
 from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
+from flask import Flask
 from sqlalchemy.orm import Session, sessionmaker
 
+from models import Account, Tenant
 from models.dataset import Dataset, Pipeline, PipelineCustomizedTemplate
 from models.enums import DataSourceType
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, PipelineTemplateInfoEntity
 from services.rag_pipeline.rag_pipeline import RagPipelineService
+
+
+def _make_account(account_id: str, tenant_id: str) -> Account:
+    account = Account(name="Test User", email=f"{account_id}@example.com")
+    account.id = account_id
+    tenant = Tenant(name="Test Tenant")
+    tenant.id = tenant_id
+    account._current_tenant = tenant
+    return account
 
 
 class TestRagPipelineServiceGetPipeline:
@@ -32,7 +42,9 @@ class TestRagPipelineServiceGetPipeline:
         yield
         db_session_with_containers.rollback()
 
-    def _make_service(self, flask_app_with_containers) -> RagPipelineService:
+    def _make_service(
+        self, flask_app_with_containers: Flask, db_session_with_containers: Session
+    ) -> RagPipelineService:
         with (
             patch(
                 "services.rag_pipeline.rag_pipeline.DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository",
@@ -44,7 +56,7 @@ class TestRagPipelineServiceGetPipeline:
             ),
         ):
             session_factory = sessionmaker(bind=flask_app_with_containers.extensions["sqlalchemy"].engine)
-            return RagPipelineService(session_maker=session_factory)
+            return RagPipelineService(db_session_with_containers, session_maker=session_factory)
 
     def _create_pipeline(self, db_session: Session, tenant_id: str, created_by: str) -> Pipeline:
         pipeline = Pipeline(
@@ -72,16 +84,16 @@ class TestRagPipelineServiceGetPipeline:
         return dataset
 
     def test_get_pipeline_raises_when_dataset_not_found(
-        self, db_session_with_containers: Session, flask_app_with_containers
+        self, db_session_with_containers: Session, flask_app_with_containers: Flask
     ) -> None:
         """get_pipeline raises ValueError when dataset does not exist."""
-        service = self._make_service(flask_app_with_containers)
+        service = self._make_service(flask_app_with_containers, db_session_with_containers)
 
         with pytest.raises(ValueError, match="Dataset not found"):
             service.get_pipeline(tenant_id=str(uuid4()), dataset_id=str(uuid4()))
 
     def test_get_pipeline_raises_when_pipeline_not_found(
-        self, db_session_with_containers: Session, flask_app_with_containers
+        self, db_session_with_containers: Session, flask_app_with_containers: Flask
     ) -> None:
         """get_pipeline raises ValueError when dataset exists but has no linked pipeline."""
         tenant_id = str(uuid4())
@@ -89,13 +101,13 @@ class TestRagPipelineServiceGetPipeline:
         dataset = self._create_dataset(db_session_with_containers, tenant_id, created_by, pipeline_id=None)
         db_session_with_containers.flush()
 
-        service = self._make_service(flask_app_with_containers)
+        service = self._make_service(flask_app_with_containers, db_session_with_containers)
 
-        with pytest.raises(ValueError, match="(Dataset not found|Pipeline not found)"):
+        with pytest.raises(ValueError, match="Pipeline not found"):
             service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset.id)
 
     def test_get_pipeline_returns_pipeline_when_found(
-        self, db_session_with_containers: Session, flask_app_with_containers
+        self, db_session_with_containers: Session, flask_app_with_containers: Flask
     ) -> None:
         """get_pipeline returns the Pipeline when both Dataset and Pipeline exist."""
         tenant_id = str(uuid4())
@@ -105,7 +117,7 @@ class TestRagPipelineServiceGetPipeline:
         dataset = self._create_dataset(db_session_with_containers, tenant_id, created_by, pipeline_id=pipeline.id)
         db_session_with_containers.flush()
 
-        service = self._make_service(flask_app_with_containers)
+        service = self._make_service(flask_app_with_containers, db_session_with_containers)
 
         result = service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset.id)
 
@@ -139,43 +151,48 @@ class TestUpdateCustomizedPipelineTemplate:
         db_session.flush()
         return template
 
-    def test_update_template_succeeds(self, db_session_with_containers: Session, flask_app_with_containers) -> None:
+    def test_update_template_succeeds(
+        self, db_session_with_containers: Session, flask_app_with_containers: Flask
+    ) -> None:
         """update_customized_pipeline_template updates name and description."""
         tenant_id = str(uuid4())
         created_by = str(uuid4())
         template = self._create_template(db_session_with_containers, tenant_id, created_by)
         db_session_with_containers.flush()
 
-        fake_user = SimpleNamespace(id=created_by, current_tenant_id=tenant_id)
+        account = _make_account(created_by, tenant_id)
 
-        with patch("services.rag_pipeline.rag_pipeline.current_user", fake_user):
-            info = PipelineTemplateInfoEntity(
-                name="Updated Name",
-                description="Updated description",
-                icon_info=IconInfo(icon="🔥"),
-            )
-            result = RagPipelineService.update_customized_pipeline_template(template.id, info)
+        info = PipelineTemplateInfoEntity(
+            name="Updated Name",
+            description="Updated description",
+            icon_info=IconInfo(icon="🔥"),
+        )
+        result = RagPipelineService.update_customized_pipeline_template(
+            template.id, info, account, tenant_id, session=db_session_with_containers
+        )
 
         assert result.name == "Updated Name"
         assert result.description == "Updated description"
 
     def test_update_template_raises_when_not_found(
-        self, db_session_with_containers: Session, flask_app_with_containers
+        self, db_session_with_containers: Session, flask_app_with_containers: Flask
     ) -> None:
         """update_customized_pipeline_template raises ValueError when template doesn't exist."""
-        fake_user = SimpleNamespace(id=str(uuid4()), current_tenant_id=str(uuid4()))
+        tenant_id = str(uuid4())
+        account = _make_account(str(uuid4()), tenant_id)
 
-        with patch("services.rag_pipeline.rag_pipeline.current_user", fake_user):
-            info = PipelineTemplateInfoEntity(
-                name="New Name",
-                description="desc",
-                icon_info=IconInfo(icon="📄"),
+        info = PipelineTemplateInfoEntity(
+            name="New Name",
+            description="desc",
+            icon_info=IconInfo(icon="📄"),
+        )
+        with pytest.raises(ValueError, match="Customized pipeline template not found"):
+            RagPipelineService.update_customized_pipeline_template(
+                str(uuid4()), info, account, tenant_id, session=db_session_with_containers
             )
-            with pytest.raises(ValueError, match="Customized pipeline template not found"):
-                RagPipelineService.update_customized_pipeline_template(str(uuid4()), info)
 
     def test_update_template_raises_on_duplicate_name(
-        self, db_session_with_containers: Session, flask_app_with_containers
+        self, db_session_with_containers: Session, flask_app_with_containers: Flask
     ) -> None:
         """update_customized_pipeline_template raises ValueError when new name already exists."""
         tenant_id = str(uuid4())
@@ -184,16 +201,17 @@ class TestUpdateCustomizedPipelineTemplate:
         self._create_template(db_session_with_containers, tenant_id, created_by, name="Duplicate")
         db_session_with_containers.flush()
 
-        fake_user = SimpleNamespace(id=created_by, current_tenant_id=tenant_id)
+        account = _make_account(created_by, tenant_id)
 
-        with patch("services.rag_pipeline.rag_pipeline.current_user", fake_user):
-            info = PipelineTemplateInfoEntity(
-                name="Duplicate",
-                description="desc",
-                icon_info=IconInfo(icon="📄"),
+        info = PipelineTemplateInfoEntity(
+            name="Duplicate",
+            description="desc",
+            icon_info=IconInfo(icon="📄"),
+        )
+        with pytest.raises(ValueError, match="Template name is already exists"):
+            RagPipelineService.update_customized_pipeline_template(
+                template1.id, info, account, tenant_id, session=db_session_with_containers
             )
-            with pytest.raises(ValueError, match="Template name is already exists"):
-                RagPipelineService.update_customized_pipeline_template(template1.id, info)
 
 
 class TestDeleteCustomizedPipelineTemplate:
@@ -221,7 +239,9 @@ class TestDeleteCustomizedPipelineTemplate:
         db_session.flush()
         return template
 
-    def test_delete_template_succeeds(self, db_session_with_containers: Session, flask_app_with_containers) -> None:
+    def test_delete_template_succeeds(
+        self, db_session_with_containers: Session, flask_app_with_containers: Flask
+    ) -> None:
         """delete_customized_pipeline_template removes the template from the DB."""
         tenant_id = str(uuid4())
         created_by = str(uuid4())
@@ -229,27 +249,25 @@ class TestDeleteCustomizedPipelineTemplate:
         template_id = template.id
         db_session_with_containers.flush()
 
-        fake_user = SimpleNamespace(id=created_by, current_tenant_id=tenant_id)
+        RagPipelineService.delete_customized_pipeline_template(
+            template_id, tenant_id, session=db_session_with_containers
+        )
 
-        with patch("services.rag_pipeline.rag_pipeline.current_user", fake_user):
-            RagPipelineService.delete_customized_pipeline_template(template_id)
+        # Verify the record is deleted within the same context
+        from sqlalchemy import select
 
-            # Verify the record is deleted within the same context
-            from sqlalchemy import select
-
-            from extensions.ext_database import db as ext_db
-
-            remaining = ext_db.session.scalar(
-                select(PipelineCustomizedTemplate).where(PipelineCustomizedTemplate.id == template_id)
-            )
-            assert remaining is None
+        remaining = db_session_with_containers.scalar(
+            select(PipelineCustomizedTemplate).where(PipelineCustomizedTemplate.id == template_id)
+        )
+        assert remaining is None
 
     def test_delete_template_raises_when_not_found(
-        self, db_session_with_containers: Session, flask_app_with_containers
+        self, db_session_with_containers: Session, flask_app_with_containers: Flask
     ) -> None:
         """delete_customized_pipeline_template raises ValueError when template doesn't exist."""
-        fake_user = SimpleNamespace(id=str(uuid4()), current_tenant_id=str(uuid4()))
+        tenant_id = str(uuid4())
 
-        with patch("services.rag_pipeline.rag_pipeline.current_user", fake_user):
-            with pytest.raises(ValueError, match="Customized pipeline template not found"):
-                RagPipelineService.delete_customized_pipeline_template(str(uuid4()))
+        with pytest.raises(ValueError, match="Customized pipeline template not found"):
+            RagPipelineService.delete_customized_pipeline_template(
+                str(uuid4()), tenant_id, session=db_session_with_containers
+            )

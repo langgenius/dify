@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DeleteConfirm } from '../delete-confirm'
 
 const mockRefetch = vi.fn()
@@ -15,8 +15,8 @@ vi.mock('@/service/use-triggers', () => ({
   useDeleteTriggerSubscription: () => ({ mutate: mockDelete, isPending: false }),
 }))
 
-vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/base/ui/toast')>()
+vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
   return {
     ...actual,
     toast: {
@@ -46,10 +46,16 @@ describe('DeleteConfirm', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.confirm/ }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.confirm/,
+      }),
+    )
 
     expect(mockDelete).not.toHaveBeenCalled()
-    expect(mockToastError).toHaveBeenCalledWith('pluginTrigger.subscription.list.item.actions.deleteConfirm.confirmInputWarning')
+    expect(mockToastError).toHaveBeenCalledWith(
+      'pluginTrigger.subscription.list.item.actions.deleteConfirm.confirmInputWarning',
+    )
   })
 
   it('should allow deletion after matching input name', () => {
@@ -66,11 +72,17 @@ describe('DeleteConfirm', () => {
     )
 
     fireEvent.change(
-      screen.getByPlaceholderText(/pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.confirmInputPlaceholder/),
+      screen.getByPlaceholderText(
+        /pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.confirmInputPlaceholder/,
+      ),
       { target: { value: 'Subscription One' } },
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.confirm/ }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.confirm/,
+      }),
+    )
 
     expect(mockDelete).toHaveBeenCalledWith('sub-1', expect.any(Object))
     expect(mockRefetch).toHaveBeenCalledTimes(1)
@@ -92,7 +104,11 @@ describe('DeleteConfirm', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.confirm/ }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.confirm/,
+      }),
+    )
 
     expect(mockToastError).toHaveBeenCalledWith('network error')
   })

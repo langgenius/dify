@@ -10,17 +10,13 @@ vi.mock('../email-item', () => ({
   __esModule: true,
   default: (props: {
     email: string
-    data: { email?: string, name?: string }
+    data: { email?: string; name?: string }
     isError: boolean
   }) => {
     mockEmailItem(props)
     return (
       <div data-testid="selected-email-item">
-        {props.data.email}
-        |
-        {props.data.name}
-        |
-        {props.isError ? 'error' : 'ok'}
+        {props.data.email}|{props.data.name}|{props.isError ? 'error' : 'ok'}
       </div>
     )
   },
@@ -28,10 +24,7 @@ vi.mock('../email-item', () => ({
 
 vi.mock('../member-list', () => ({
   __esModule: true,
-  default: (props: {
-    searchValue: string
-    onSelect: (value: string) => void
-  }) => {
+  default: (props: { searchValue: string; onSelect: (value: string) => void }) => {
     mockMemberList(props)
     return (
       <div data-testid="member-list">
@@ -52,6 +45,7 @@ const createMember = (overrides: Partial<Member>): Member => ({
   avatar_url: 'avatar.png',
   status: 'active',
   role: 'normal',
+  roles: [],
   created_at: '2026-01-01T00:00:00Z',
   last_active_at: '2026-01-02T00:00:00Z',
   last_login_at: '2026-01-03T00:00:00Z',
@@ -86,13 +80,18 @@ describe('human-input/delivery-method/recipient/email-input', () => {
       />,
     )
 
-    expect(screen.getByTestId('selected-email-item')).toHaveTextContent('member-1@example.com|Member One|ok')
+    expect(screen.getByTestId('selected-email-item')).toHaveTextContent(
+      'member-1@example.com|Member One|ok',
+    )
 
     const input = screen.getByRole('textbox')
     expect(input).toHaveAttribute('placeholder', '')
 
     fireEvent.click(container.querySelector('.max-h-24') as HTMLDivElement)
-    expect(input).toHaveAttribute('placeholder', 'workflow.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.placeholder')
+    expect(input).toHaveAttribute(
+      'placeholder',
+      'workflow.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.placeholder',
+    )
 
     fireEvent.change(input, { target: { value: 'member' } })
     expect(screen.getByTestId('member-list')).toBeInTheDocument()
@@ -134,6 +133,39 @@ describe('human-input/delivery-method/recipient/email-input', () => {
 
     expect(handleAdd).toHaveBeenCalledTimes(1)
     expect(handleSelect).toHaveBeenCalledTimes(1)
+  })
+
+  it('should keep typing focused and stop keyboard events from reaching workflow listeners', () => {
+    const handleParentKeyDown = vi.fn()
+    const handleWindowKeyDown = vi.fn()
+    window.addEventListener('keydown', handleWindowKeyDown)
+
+    try {
+      render(
+        <div onKeyDown={handleParentKeyDown}>
+          <EmailInput
+            email="owner@example.com"
+            value={[]}
+            list={members}
+            onDelete={vi.fn()}
+            onSelect={vi.fn()}
+            onAdd={vi.fn()}
+          />
+        </div>,
+      )
+
+      const input = screen.getByRole('textbox')
+      input.focus()
+
+      fireEvent.change(input, { target: { value: 'a' } })
+      fireEvent.keyDown(input, { key: 'a', code: 'KeyA' })
+
+      expect(document.activeElement).toBe(input)
+      expect(handleParentKeyDown).not.toHaveBeenCalled()
+      expect(handleWindowKeyDown).not.toHaveBeenCalled()
+    } finally {
+      window.removeEventListener('keydown', handleWindowKeyDown)
+    }
   })
 
   it('should delete the last recipient with backspace, flag missing members as errors, and stop focusing when disabled', () => {

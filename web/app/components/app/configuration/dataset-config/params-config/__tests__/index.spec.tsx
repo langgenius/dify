@@ -1,9 +1,9 @@
-import type { MockedFunction, MockInstance } from 'vitest'
+import type { MockedFunction, MockInstance } from 'vite-plus/test'
 import type { DatasetConfigs } from '@/models/debug'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { toast } from '@/app/components/base/ui/toast'
+import { toast } from '@/app/components/app/configuration/toast'
 import {
   useCurrentProviderAndModel,
   useModelListAndDefaultModelAndCurrentProviderAndModel,
@@ -13,37 +13,6 @@ import { RerankingModeEnum } from '@/models/datasets'
 import { RETRIEVE_TYPE } from '@/types/app'
 import ParamsConfig from '../index'
 
-vi.mock('@headlessui/react', () => ({
-  Dialog: ({ children, className }: { children: React.ReactNode, className?: string }) => (
-    <div role="dialog" className={className}>
-      {children}
-    </div>
-  ),
-  DialogPanel: ({ children, className, ...props }: { children: React.ReactNode, className?: string }) => (
-    <div className={className} {...props}>
-      {children}
-    </div>
-  ),
-  DialogTitle: ({ children, className, ...props }: { children: React.ReactNode, className?: string }) => (
-    <div className={className} {...props}>
-      {children}
-    </div>
-  ),
-  Transition: ({ show, children }: { show: boolean, children: React.ReactNode }) => (show ? <>{children}</> : null),
-  TransitionChild: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  Switch: ({ checked, onChange, children, ...props }: { checked: boolean, onChange?: (value: boolean) => void, children?: React.ReactNode }) => (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange?.(!checked)}
-      {...props}
-    >
-      {children}
-    </button>
-  ),
-}))
-
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useModelListAndDefaultModelAndCurrentProviderAndModel: vi.fn(),
   useCurrentProviderAndModel: vi.fn(),
@@ -51,30 +20,38 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => {
   type Props = {
-    defaultModel?: { provider: string, model: string }
-    onSelect?: (model: { provider: string, model: string }) => void
+    value?: { provider: string; model: string }
+    onValueChange?: (model: { provider: string; model: string }) => void
   }
 
-  const MockModelSelector = ({ defaultModel, onSelect }: Props) => (
+  const MockModelSelector = ({ value, onValueChange }: Props) => (
     <button
       type="button"
-      onClick={() => onSelect?.(defaultModel ?? { provider: 'mock-provider', model: 'mock-model' })}
+      onClick={() => onValueChange?.(value ?? { provider: 'mock-provider', model: 'mock-model' })}
     >
       Mock ModelSelector
     </button>
   )
 
   return {
-    default: MockModelSelector,
+    ModelSelector: MockModelSelector,
   }
 })
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-parameter-modal', () => ({
-  default: () => <div data-testid="model-parameter-modal" />,
-}))
+vi.mock(
+  '@/app/components/header/account-setting/model-provider-page/model-parameter-modal',
+  () => ({
+    default: () => <div data-testid="model-parameter-modal" />,
+  }),
+)
 
-const mockedUseModelListAndDefaultModelAndCurrentProviderAndModel = useModelListAndDefaultModelAndCurrentProviderAndModel as MockedFunction<typeof useModelListAndDefaultModelAndCurrentProviderAndModel>
-const mockedUseCurrentProviderAndModel = useCurrentProviderAndModel as MockedFunction<typeof useCurrentProviderAndModel>
+const mockedUseModelListAndDefaultModelAndCurrentProviderAndModel =
+  useModelListAndDefaultModelAndCurrentProviderAndModel as MockedFunction<
+    typeof useModelListAndDefaultModelAndCurrentProviderAndModel
+  >
+const mockedUseCurrentProviderAndModel = useCurrentProviderAndModel as MockedFunction<
+  typeof useCurrentProviderAndModel
+>
 let toastErrorSpy: MockInstance
 
 const createDatasetConfigs = (overrides: Partial<DatasetConfigs> = {}): DatasetConfigs => {
@@ -120,20 +97,10 @@ const renderParamsConfig = ({
       },
     } as unknown as React.ComponentProps<typeof ConfigContext.Provider>['value']
 
-    return (
-      <ConfigContext.Provider value={contextValue}>
-        {children}
-      </ConfigContext.Provider>
-    )
+    return <ConfigContext.Provider value={contextValue}>{children}</ConfigContext.Provider>
   }
 
-  return render(
-    <ParamsConfig
-      disabled={disabled}
-      selectedDatasets={[]}
-    />,
-    { wrapper: Wrapper },
-  )
+  return render(<ParamsConfig disabled={disabled} selectedDatasets={[]} />, { wrapper: Wrapper })
 }
 
 describe('dataset-config/params-config', () => {
@@ -164,7 +131,8 @@ describe('dataset-config/params-config', () => {
       renderParamsConfig({ disabled: true })
 
       // Assert
-      expect(screen.getByRole('button', { name: 'dataset.retrievalSettings' })).toBeDisabled()
+      // Assert
+      expect(screen.getByRole('button', { name: 'dataset.retrievalSettings' }))!.toBeDisabled()
     })
   })
 
@@ -181,11 +149,11 @@ describe('dataset-config/params-config', () => {
       const dialogScope = within(dialog)
 
       const incrementButtons = dialogScope.getAllByRole('button', { name: /increment/i })
-      await user.click(incrementButtons[0])
+      await user.click(incrementButtons[0]!)
 
       await waitFor(() => {
         const [topKInput] = dialogScope.getAllByRole('textbox')
-        expect(topKInput).toHaveValue('5')
+        expect(topKInput)!.toHaveValue('5')
       })
 
       await user.click(dialogScope.getByRole('button', { name: 'common.operation.save' }))
@@ -200,7 +168,8 @@ describe('dataset-config/params-config', () => {
       const [reopenedTopKInput] = reopenedScope.getAllByRole('textbox')
 
       // Assert
-      expect(reopenedTopKInput).toHaveValue('5')
+      // Assert
+      expect(reopenedTopKInput)!.toHaveValue('5')
     })
 
     it('should discard changes when cancel is clicked', async () => {
@@ -214,14 +183,16 @@ describe('dataset-config/params-config', () => {
       const dialogScope = within(dialog)
 
       const incrementButtons = dialogScope.getAllByRole('button', { name: /increment/i })
-      await user.click(incrementButtons[0])
+      await user.click(incrementButtons[0]!)
 
       await waitFor(() => {
         const [topKInput] = dialogScope.getAllByRole('textbox')
-        expect(topKInput).toHaveValue('5')
+        expect(topKInput)!.toHaveValue('5')
       })
 
-      const cancelButton = await dialogScope.findByRole('button', { name: 'common.operation.cancel' })
+      const cancelButton = await dialogScope.findByRole('button', {
+        name: 'common.operation.cancel',
+      })
       await user.click(cancelButton)
       await waitFor(() => {
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -234,7 +205,8 @@ describe('dataset-config/params-config', () => {
       const [reopenedTopKInput] = reopenedScope.getAllByRole('textbox')
 
       // Assert
-      expect(reopenedTopKInput).toHaveValue('4')
+      // Assert
+      expect(reopenedTopKInput)!.toHaveValue('4')
     })
 
     it('should prevent saving when rerank model is required but invalid', async () => {
@@ -255,7 +227,7 @@ describe('dataset-config/params-config', () => {
 
       // Assert
       expect(toastErrorSpy).toHaveBeenCalledWith('appDebug.datasetConfig.rerankModelRequired')
-      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      expect(screen.getByRole('dialog'))!.toBeInTheDocument()
     })
   })
 })

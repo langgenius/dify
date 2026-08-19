@@ -22,13 +22,7 @@ describe('VariableTypeSelector', () => {
 
   it('dismisses the popup through the real portal flow', async () => {
     const user = userEvent.setup()
-    render(
-      <VariableTypeSelector
-        value="string"
-        list={['string', 'number']}
-        onSelect={vi.fn()}
-      />,
-    )
+    render(<VariableTypeSelector value="string" list={['string', 'number']} onSelect={vi.fn()} />)
 
     await user.click(screen.getByText('string'))
     expect(screen.getByText('number')).toBeInTheDocument()
@@ -36,8 +30,9 @@ describe('VariableTypeSelector', () => {
     await user.keyboard('{Escape}')
 
     await waitFor(() => {
-      expect(screen.queryByText('number')).not.toBeInTheDocument()
+      expect(screen.getByRole('combobox')).toHaveAttribute('aria-expanded', 'false')
     })
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
   })
 
   it('keeps the custom popup class in in-cell mode', async () => {

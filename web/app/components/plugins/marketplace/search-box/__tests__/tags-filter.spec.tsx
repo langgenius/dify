@@ -1,12 +1,22 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import TagsFilter from '../tags-filter'
 
-vi.mock('#i18n', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
+const { mockTranslate } = vi.hoisted(() => ({
+  mockTranslate: vi.fn((key: string, options?: { ns?: string }) =>
+    options?.ns ? `${options.ns}.${key}` : key,
+  ),
 }))
+
+vi.mock('#i18n', async () => {
+  const { withSelectorKey } = await import('@/test/i18n-mock')
+  return {
+    useTranslation: () => ({
+      t: withSelectorKey(mockTranslate),
+    }),
+  }
+})
 
 vi.mock('@/app/components/plugins/hooks', () => ({
   useTags: () => ({
@@ -23,104 +33,58 @@ vi.mock('@/app/components/plugins/hooks', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/checkbox', () => ({
-  default: ({ checked }: { checked: boolean }) => <span data-testid="checkbox">{String(checked)}</span>,
-}))
-
-vi.mock('@/app/components/base/input', () => ({
-  default: ({
-    value,
-    onChange,
-    placeholder,
-  }: {
-    value: string
-    onChange: (event: { target: { value: string } }) => void
-    placeholder: string
-  }) => (
-    <input
-      aria-label="tags-search"
-      value={value}
-      placeholder={placeholder}
-      onChange={event => onChange({ target: { value: event.target.value } })}
-    />
-  ),
-}))
-
-vi.mock('@/app/components/base/portal-to-follow-elem', async () => {
-  const React = await import('react')
-  return {
-    PortalToFollowElem: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    PortalToFollowElemTrigger: ({
-      children,
-      onClick,
-    }: {
-      children: React.ReactNode
-      onClick: () => void
-    }) => <button data-testid="portal-trigger" onClick={onClick}>{children}</button>,
-    PortalToFollowElemContent: ({ children }: { children: React.ReactNode }) => <div data-testid="portal-content">{children}</div>,
-  }
-})
-
-vi.mock('../trigger/marketplace', () => ({
-  default: ({ selectedTagsLength }: { selectedTagsLength: number }) => (
-    <div data-testid="marketplace-trigger">
-      marketplace:
-      {selectedTagsLength}
-    </div>
-  ),
-}))
-
-vi.mock('../trigger/tool-selector', () => ({
-  default: ({ selectedTagsLength }: { selectedTagsLength: number }) => (
-    <div data-testid="tool-trigger">
-      tool:
-      {selectedTagsLength}
-    </div>
-  ),
-}))
-
 describe('TagsFilter', () => {
+  const ensurePopoverOpen = async (user: ReturnType<typeof userEvent.setup>) => {
+    if (!screen.queryByRole('searchbox', { name: 'pluginTags.searchTags' }))
+      await user.click(screen.getByRole('button', { name: 'pluginTags.allTags' }))
+
+    return screen.getByRole('searchbox', { name: 'pluginTags.searchTags' })
+  }
+
   beforeEach(() => {
     vi.clearAllMocks()
+    mockTranslate.mockImplementation((key: string, options?: { ns?: string }) =>
+      options?.ns ? `${options.ns}.${key}` : key,
+    )
   })
 
-  it('renders marketplace trigger when used in marketplace', () => {
-    render(<TagsFilter tags={['agent']} onTagsChange={vi.fn()} usedInMarketplace />)
-
-    expect(screen.getByTestId('marketplace-trigger')).toHaveTextContent('marketplace:1')
-    expect(screen.queryByTestId('tool-trigger')).not.toBeInTheDocument()
-  })
-
-  it('renders tool selector trigger when used outside marketplace', () => {
-    render(<TagsFilter tags={['agent']} onTagsChange={vi.fn()} />)
-
-    expect(screen.getByTestId('tool-trigger')).toHaveTextContent('tool:1')
-    expect(screen.queryByTestId('marketplace-trigger')).not.toBeInTheDocument()
-  })
-
-  it('filters tag options by search text', () => {
+  it('filters tag options by search text', async () => {
+    const user = userEvent.setup()
     render(<TagsFilter tags={[]} onTagsChange={vi.fn()} />)
+    const search = await ensurePopoverOpen(user)
 
-    expect(screen.getByText('Agent')).toBeInTheDocument()
-    expect(screen.getByText('RAG')).toBeInTheDocument()
-    expect(screen.getByText('Search')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Agent' })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'RAG' })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Search' })).toBeInTheDocument()
 
-    fireEvent.change(screen.getByLabelText('tags-search'), { target: { value: 'ra' } })
+    await user.type(search, 'ra')
 
-    expect(screen.queryByText('Agent')).not.toBeInTheDocument()
-    expect(screen.getByText('RAG')).toBeInTheDocument()
-    expect(screen.queryByText('Search')).not.toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { name: 'Agent' })).not.toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'RAG' })).toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { name: 'Search' })).not.toBeInTheDocument()
   })
 
-  it('adds and removes selected tags when options are clicked', () => {
+  it('adds and removes selected tags when options are clicked', async () => {
+    const user = userEvent.setup()
     const onTagsChange = vi.fn()
     const { rerender } = render(<TagsFilter tags={['agent']} onTagsChange={onTagsChange} />)
 
-    fireEvent.click(screen.getByText('Agent'))
+    await user.click(screen.getByRole('button', { name: 'Agent' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Agent' }))
     expect(onTagsChange).toHaveBeenCalledWith([])
 
     rerender(<TagsFilter tags={['agent']} onTagsChange={onTagsChange} />)
-    fireEvent.click(screen.getByText('RAG'))
+    await user.click(screen.getByRole('checkbox', { name: 'RAG' }))
     expect(onTagsChange).toHaveBeenCalledWith(['agent', 'rag'])
+  })
+
+  it('falls back to an empty placeholder when translation is missing', async () => {
+    const user = userEvent.setup()
+    mockTranslate.mockImplementation(() => undefined as unknown as string)
+
+    render(<TagsFilter tags={[]} onTagsChange={vi.fn()} />)
+    await user.click(screen.getByRole('button'))
+
+    expect(screen.getByRole('searchbox')).toHaveAttribute('placeholder', '')
   })
 })

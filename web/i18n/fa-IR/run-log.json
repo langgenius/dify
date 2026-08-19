@@ -1,5 +1,4 @@
 {
-  "actionLogs": "گزارش های اکشن",
   "circularInvocationTip": "فراخوانی دایره ای ابزارها/گره ها در گردش کار فعلی وجود دارد.",
   "detail": "جزئیات",
   "input": "ورودی",
@@ -10,7 +9,6 @@
   "meta.time": "زمان گذشته",
   "meta.title": "فراداده",
   "meta.tokens": "کل توکن‌ها",
-  "meta.version": "نسخه",
   "result": "نتیجه",
   "resultEmpty.link": "پنل جزئیات",
   "resultEmpty.tipLeft": "لطفاً به ",

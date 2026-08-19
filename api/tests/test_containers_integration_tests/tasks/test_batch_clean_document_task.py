@@ -19,7 +19,7 @@ from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
-from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
+from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from models.model import UploadFile
 from tasks.batch_clean_document_task import batch_clean_document_task
 
@@ -177,7 +177,6 @@ class TestBatchCleanDocumentTask:
         fake = Faker()
 
         segment = DocumentSegment(
-            id=str(uuid.uuid4()),
             tenant_id=account.current_tenant.id,
             dataset_id=document.dataset_id,
             document_id=document.id,
@@ -207,8 +206,6 @@ class TestBatchCleanDocumentTask:
             UploadFile: Created upload file instance
         """
         fake = Faker()
-
-        from models.enums import CreatorUserRole
 
         upload_file = UploadFile(
             tenant_id=account.current_tenant.id,
@@ -290,10 +287,9 @@ class TestBatchCleanDocumentTask:
         account = self._create_test_account(db_session_with_containers)
         dataset = self._create_test_dataset(db_session_with_containers, account)
         document = self._create_test_document(db_session_with_containers, dataset, account)
-
+        assert account.current_tenant
         # Create segment with simple content (no image references)
         segment = DocumentSegment(
-            id=str(uuid.uuid4()),
             tenant_id=account.current_tenant.id,
             dataset_id=document.dataset_id,
             document_id=document.id,
@@ -692,9 +688,9 @@ class TestBatchCleanDocumentTask:
 
         # Create multiple segments for the document
         segments = []
+        assert account.current_tenant
         for i in range(3):
             segment = DocumentSegment(
-                id=str(uuid.uuid4()),
                 tenant_id=account.current_tenant.id,
                 dataset_id=document.dataset_id,
                 document_id=document.id,
