@@ -17,10 +17,6 @@ type Props = Readonly<{
 }>
 
 const i18nPrefix = 'nodes.http'
-const timeoutNumberFormat = {
-  maximumFractionDigits: 0,
-  roundingMode: 'trunc',
-} as const
 
 const InputField: FC<{
   title: string
@@ -44,7 +40,7 @@ const InputField: FC<{
         value={value ?? null}
         min={min}
         max={max}
-        format={timeoutNumberFormat}
+        format={{ maximumFractionDigits: 0 }}
         readOnly={readOnly}
         onValueChange={(nextValue) => onChange(nextValue ?? undefined)}
       >

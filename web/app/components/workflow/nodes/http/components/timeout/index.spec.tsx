@@ -73,7 +73,7 @@ describe('HTTP timeout fields', () => {
 
     await user.type(connectInput, '8.9')
 
-    expect(onChange).toHaveBeenLastCalledWith({ connect: 8, read: 10, write: 15 })
+    expect(onChange).toHaveBeenLastCalledWith({ connect: 9, read: 10, write: 15 })
   })
 
   it('does not update read-only timeout fields', async () => {
