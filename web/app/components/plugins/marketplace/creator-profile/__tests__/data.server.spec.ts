@@ -67,6 +67,7 @@ describe('loadCreatorProfile', () => {
     expect(loaded?.viewModel.creations).toHaveLength(2)
     expect(loaded?.pluginsByCreationId['plugin:dify/search']).toBeDefined()
     expect(loaded?.viewModel.profile.backgroundUrl).toBe('')
+    expect(loaded?.viewModel.profile.avatarUrl).toBe('')
   })
 
   it('only emits the remote background URL when the API reports an uploaded background', async () => {
@@ -88,6 +89,28 @@ describe('loadCreatorProfile', () => {
 
     expect(loaded?.viewModel.profile.backgroundUrl).toBe(
       'https://marketplace.example/api/v1/creators/creator-with-background/background-image',
+    )
+  })
+
+  it('only emits the remote avatar URL when the API reports an uploaded avatar', async () => {
+    mocks.creatorDetail.mockResolvedValue({
+      data: {
+        creator: {
+          unique_handle: 'creator-with-avatar',
+          display_name: 'Creator with avatar',
+          avatar: 'creator/avatar.png',
+          social_links: [],
+        },
+      },
+    })
+
+    const loaded = await loadCreatorProfile({
+      uniqueHandle: 'creator-with-avatar',
+      locale: 'en-US',
+    })
+
+    expect(loaded?.viewModel.profile.avatarUrl).toBe(
+      'https://marketplace.example/api/v1/creators/creator-with-avatar/avatar',
     )
   })
 

@@ -99,11 +99,14 @@ const loadCreatorProfileCached = cache(
     const backgroundUrl = creator.background_image
       ? `${MARKETPLACE_API_PREFIX}/${resource}/${encodedHandle}/background-image`
       : ''
+    const avatarUrl = creator.avatar
+      ? `${MARKETPLACE_API_PREFIX}/${resource}/${encodedHandle}/avatar`
+      : ''
     const viewModel = adaptCreatorProfile({
       creator,
       kind,
       locale,
-      avatarUrl: `${MARKETPLACE_API_PREFIX}/${resource}/${encodedHandle}/avatar`,
+      avatarUrl,
       backgroundUrl,
       plugins,
       templates,
