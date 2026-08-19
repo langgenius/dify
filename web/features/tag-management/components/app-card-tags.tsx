@@ -18,7 +18,6 @@ export const AppCardTags = ({
 }: AppCardTagsProps) => {
   return (
     <TagSelector
-      placement="bottom-start"
       type="app"
       targetId={appId}
       value={tags}

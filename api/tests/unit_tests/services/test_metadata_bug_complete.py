@@ -58,9 +58,7 @@ class TestMetadataBugCompleteValidation:
         account = _make_account()
         none_name = cast(str, None)
         with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
-            MetadataService.update_metadata_name(
-                "dataset-123", "metadata-456", none_name, account, "tenant-123", session=sqlite_session
-            )
+            MetadataService.update_metadata_name(Mock(), "metadata-456", none_name, account, session=sqlite_session)
         assert not sqlite_session.in_transaction()
 
     def test_3_database_constraints_verification(self) -> None:

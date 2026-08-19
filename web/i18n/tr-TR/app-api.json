@@ -3,7 +3,7 @@
   "actionMsg.deleteConfirmTitle": "Bu gizli anahtarı silmek istiyor musunuz?",
   "actionMsg.ok": "Tamam",
   "apiKey": "API Anahtarı",
-  "apiKeyModal.apiSecretKey": "API Gizli Anahtar",
+  "apiKeyModal.apiSecretKey": "API Anahtarı",
   "apiKeyModal.apiSecretKeyTips": "API suiistimalini önlemek için, API Anahtarınızı koruyunuz. Ön uç kodda düz metin olarak kullanmaktan kaçının. :)",
   "apiKeyModal.createNewSecretKey": "Yeni Gizli Anahtar Oluştur",
   "apiKeyModal.created": "OLUŞTURULDU",

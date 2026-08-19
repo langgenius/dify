@@ -12,6 +12,7 @@ import logging
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
+from enums import DeploymentEdition
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 
@@ -32,8 +33,8 @@ def check_workspace_member_invite_permission(workspace_id: str) -> None:
     Raises:
         Forbidden: If either billing plan or workspace policy prohibits member invitations
     """
-    # Check enterprise workspace policy level (only if enterprise enabled)
-    if dify_config.ENTERPRISE_ENABLED:
+    # Check the enterprise workspace policy only in the Enterprise edition.
+    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
         try:
             permission = EnterpriseService.WorkspacePermissionService.get_permission(workspace_id)
             if not permission.allow_member_invite:
@@ -62,8 +63,8 @@ def check_workspace_owner_transfer_permission(workspace_id: str) -> None:
     if not features.is_allow_transfer_workspace:
         raise Forbidden("Your current plan does not allow workspace ownership transfer")
 
-    # Check enterprise workspace policy level (only if enterprise enabled)
-    if dify_config.ENTERPRISE_ENABLED:
+    # Check the enterprise workspace policy only in the Enterprise edition.
+    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
         try:
             permission = EnterpriseService.WorkspacePermissionService.get_permission(workspace_id)
             if not permission.allow_owner_transfer:

@@ -143,15 +143,12 @@ describe('AccessRulesEditor', () => {
     const allMembersButton = screen.getByRole('button', {
       name: /permission\.accessRule\.allPermittedMembers/,
     })
-    const onlyMeButton = screen.getByRole('button', { name: /permission\.accessRule\.onlyMe/ })
     const specificMembersButton = screen.getByRole('button', {
       name: /permission\.accessRule\.specificMembersOnly/,
     })
     expect(allMembersButton).toBeDisabled()
-    expect(onlyMeButton).toBeDisabled()
     expect(specificMembersButton).toBeDisabled()
     expect(allMembersButton).toHaveAttribute('aria-pressed', 'false')
-    expect(onlyMeButton).toHaveAttribute('aria-pressed', 'false')
     expect(specificMembersButton).toHaveAttribute('aria-pressed', 'false')
   })
 
@@ -201,7 +198,7 @@ describe('AccessRulesEditor', () => {
     expect(onRemoveAccessPolicyMemberBinding).toHaveBeenCalledWith('account-1', 'app-policy-id')
   })
 
-  it('should render and update the only-me resource access scope', () => {
+  it('should hide the only-me option and allow changing a legacy only-me scope', () => {
     const onOpenScopeChange = vi.fn()
 
     render(
@@ -217,10 +214,9 @@ describe('AccessRulesEditor', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: /permission\.accessRule\.onlyMe/ })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    )
+    expect(
+      screen.queryByRole('button', { name: /permission\.accessRule\.onlyMe/ }),
+    ).not.toBeInTheDocument()
 
     fireEvent.click(
       screen.getByRole('button', { name: /permission\.accessRule\.specificMembersOnly/ }),

@@ -13,7 +13,7 @@ from services.snippet_dsl_service import ImportStatus, SnippetImportInfo
 
 
 @pytest.fixture(autouse=True)
-def _patch_snippet_service_factory(monkeypatch):
+def _patch_snippet_service_factory(monkeypatch: pytest.MonkeyPatch):
     def factory():
         return snippets_module.SnippetService.__new__(snippets_module.SnippetService)
 

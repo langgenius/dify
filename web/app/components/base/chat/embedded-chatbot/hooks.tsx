@@ -8,7 +8,7 @@ import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useConversationIdInfo } from '@/app/components/base/chat/storage'
+import { useConversationSelection } from '@/app/components/base/chat/storage'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { InputVarType } from '@/app/components/workflow/types'
 import { useWebAppStore } from '@/context/web-app-context'
@@ -118,38 +118,9 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     }
     setLanguageFromParams()
   }, [appInfo])
-  const [conversationIdInfo, setConversationIdInfo] = useConversationIdInfo()
-  const removeConversationIdInfo = useCallback(
-    (appId: string) => {
-      setConversationIdInfo((prev) => {
-        const newInfo = { ...prev }
-        delete newInfo[appId]
-        return newInfo
-      })
-    },
-    [setConversationIdInfo],
-  )
   const allowResetChat = !conversationId
-  const currentConversationId = useMemo(
-    () => conversationId || conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || '',
-    [appId, conversationIdInfo, userId, conversationId],
-  )
-  const handleConversationIdInfoChange = useCallback(
-    (changeConversationId: string) => {
-      if (appId) {
-        let prevValue = conversationIdInfo?.[appId || '']
-        if (typeof prevValue === 'string') prevValue = {}
-        setConversationIdInfo({
-          ...conversationIdInfo,
-          [appId || '']: {
-            ...prevValue,
-            [userId || 'DEFAULT']: changeConversationId,
-          },
-        })
-      }
-    },
-    [appId, conversationIdInfo, setConversationIdInfo, userId],
-  )
+  const { currentConversationId, handleConversationIdInfoChange, removeConversationIdInfo } =
+    useConversationSelection({ appId, userId, conversationId })
   const [newConversationId, setNewConversationId] = useState('')
   const chatShouldReloadKey = useMemo(() => {
     if (currentConversationId === newConversationId) return ''

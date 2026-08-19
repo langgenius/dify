@@ -1,7 +1,6 @@
 from typing import Literal
 from uuid import UUID
 
-from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, RootModel, field_validator
 from sqlalchemy import select
@@ -135,10 +134,9 @@ class TagListApi(Resource):
     @console_ns.doc(params=query_params_from_model(TagListQueryParam))
     @console_ns.response(200, "Success", console_ns.models[TagListResponse.__name__])
     @with_current_tenant_id
-    def get(self, current_tenant_id: str):
-        raw_args = request.args.to_dict()
-        param = TagListQueryParam.model_validate(raw_args)
-        tags = TagService.get_tags(param.type, current_tenant_id, param.keyword, session=db.session())
+    @model_validate(TagListQueryParam)
+    def get(self, req_data: TagListQueryParam, current_tenant_id: str):
+        tags = TagService.get_tags(req_data.type, current_tenant_id, req_data.keyword, session=db.session())
 
         return dump_response(TagListResponse, tags), 200
 
@@ -213,10 +211,9 @@ def _require_tag_binding_edit_permission(current_user: Account) -> None:
         raise Forbidden()
 
 
-def _create_tag_bindings(current_user: Account) -> tuple[dict[str, str], int]:
+def _create_tag_bindings(current_user: Account, payload: TagBindingPayload) -> tuple[dict[str, str], int]:
     _require_tag_binding_edit_permission(current_user)
 
-    payload = TagBindingPayload.model_validate(console_ns.payload or {})
     _enforce_snippet_tag_rbac_if_needed(payload.type)
     TagService.save_tag_binding(
         TagBindingCreatePayload(
@@ -229,10 +226,9 @@ def _create_tag_bindings(current_user: Account) -> tuple[dict[str, str], int]:
     return {"result": "success"}, 200
 
 
-def _remove_tag_bindings(current_user: Account) -> tuple[dict[str, str], int]:
+def _remove_tag_bindings(current_user: Account, payload: TagBindingRemovePayload) -> tuple[dict[str, str], int]:
     _require_tag_binding_edit_permission(current_user)
 
-    payload = TagBindingRemovePayload.model_validate(console_ns.payload or {})
     _enforce_snippet_tag_rbac_if_needed(payload.type)
     TagService.delete_tag_binding(
         TagBindingDeletePayload(
@@ -256,8 +252,9 @@ class TagBindingCollectionApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    def post(self, current_user: Account):
-        return _create_tag_bindings(current_user)
+    @model_validate(TagBindingPayload)
+    def post(self, req_data: TagBindingPayload, current_user: Account):
+        return _create_tag_bindings(current_user, req_data)
 
 
 @console_ns.route("/tag-bindings/remove")
@@ -272,5 +269,6 @@ class TagBindingRemoveApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    def post(self, current_user: Account):
-        return _remove_tag_bindings(current_user)
+    @model_validate(TagBindingRemovePayload)
+    def post(self, req_data: TagBindingRemovePayload, current_user: Account):
+        return _remove_tag_bindings(current_user, req_data)

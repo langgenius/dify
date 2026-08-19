@@ -81,7 +81,7 @@ class TencentTraceClient:
             attributes={
                 service_attributes.SERVICE_NAME: service_name,
                 service_attributes.SERVICE_VERSION: f"dify-{dify_config.project.version}-{dify_config.COMMIT_SHA}",
-                DEPLOYMENT_ENVIRONMENT: f"{dify_config.DEPLOY_ENV}-{dify_config.EDITION}",
+                DEPLOYMENT_ENVIRONMENT: f"{dify_config.DEPLOY_ENV}-{dify_config.DEPLOYMENT_EDITION.value}",
                 HOST_NAME: socket.gethostname(),
                 "telemetry.sdk.language": "python",
                 "telemetry.sdk.name": "opentelemetry",

@@ -1,4 +1,5 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import Apps from '../index'
@@ -12,28 +13,9 @@ const mockPush = vi.fn()
 const mockToastSuccess = vi.fn()
 const mockToastError = vi.fn()
 const mockTrackCreateApp = vi.fn()
-let latestDebounceFn = () => {}
 let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
 const mockUserProfile = { id: 'user-1' }
 
-vi.mock('ahooks', () => ({
-  useDebounceFn: (fn: () => void) => {
-    latestDebounceFn = fn
-    return {
-      run: () => setTimeout(() => latestDebounceFn(), 0),
-      cancel: vi.fn(),
-      flush: () => latestDebounceFn(),
-    }
-  },
-}))
-
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({
-    userProfile: mockUserProfile,
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => ({
@@ -156,6 +138,13 @@ vi.mock('@/service/client', async (importOriginal) => {
     ...actual,
     consoleQuery: {
       ...actual.consoleQuery,
+      account: {
+        profile: {
+          get: {
+            queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
+          },
+        },
+      },
       systemFeatures: actual.consoleQuery.systemFeatures,
       apps: {
         ...actual.consoleQuery.apps,
@@ -517,5 +506,25 @@ describe('Apps', () => {
     fireEvent.click(screen.getByTestId('hide-create-modal'))
 
     expect(screen.queryByTestId('create-from-template-modal')).not.toBeInTheDocument()
+  })
+
+  it('clears an active search immediately and returns focus to the searchbox', async () => {
+    const user = userEvent.setup()
+    render(<Apps />)
+
+    const searchInput = screen.getByRole('searchbox', {
+      name: 'app.newAppFromTemplate.searchAllTemplate',
+    })
+
+    await user.type(searchInput, 'Alpha')
+    await waitFor(() => {
+      expect(screen.queryByText('Bravo')).not.toBeInTheDocument()
+    })
+    await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+
+    expect(searchInput).toHaveValue('')
+    expect(searchInput).toHaveFocus()
+    expect(screen.getByText('Cat A')).toBeInTheDocument()
+    expect(screen.getAllByTestId('app-card')).toHaveLength(6)
   })
 })

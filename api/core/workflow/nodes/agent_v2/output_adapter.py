@@ -331,7 +331,13 @@ class WorkflowAgentOutputAdapter:
             }
         )
         session_snapshot = None
-        if isinstance(event, AgentBackendRunSucceededInternalEvent | AgentBackendDeferredToolCallInternalEvent):
+        if isinstance(
+            event,
+            AgentBackendRunSucceededInternalEvent
+            | AgentBackendDeferredToolCallInternalEvent
+            | AgentBackendRunFailedInternalEvent
+            | AgentBackendRunCancelledInternalEvent,
+        ):
             session_snapshot = event.session_snapshot
             if event.usage is not None:
                 agent_backend["usage"] = dict(event.usage)

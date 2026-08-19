@@ -14,6 +14,7 @@ from ...common.schema import DEFAULT_REF_TEMPLATE_OPENAPI_3_0
 from .. import console_ns
 from ..wraps import (
     account_initialization_required,
+    model_validate,
     only_edition_cloud,
     setup_required,
     with_current_tenant_id,
@@ -48,13 +49,13 @@ class ComplianceApi(Resource):
     @only_edition_cloud
     @with_current_user
     @with_current_tenant_id
-    def get(self, current_tenant_id: str, current_user: Account):
-        args = ComplianceDownloadQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(ComplianceDownloadQuery)
+    def get(self, req_data: ComplianceDownloadQuery, current_tenant_id: str, current_user: Account):
 
         ip_address = extract_remote_ip(request)
         device_info = request.headers.get("User-Agent", "Unknown device")
         return BillingService.get_compliance_download_link(
-            doc_name=args.doc_name,
+            doc_name=req_data.doc_name,
             account_id=current_user.id,
             tenant_id=current_tenant_id,
             ip=ip_address,
