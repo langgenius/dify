@@ -117,25 +117,38 @@ export function createResearchEvidenceRetrieval({
         if (!restored.result) {
           throw new Error("Completed Research V3 checkpoint is missing its evidence result");
         }
+        await input.onResearchStageChange?.("retrieving", {
+          checkpointed: true,
+          questions: [input.query],
+          topK: input.topK ?? input.limit,
+        });
+        await input.onResearchStageChange?.("analyzing", {
+          checkpointed: true,
+          results: [{ chunkCount: restored.result.items.length, question: input.query }],
+          retrievalCount:
+            restored.result.metrics?.rerankCandidates ??
+            restored.result.metrics?.fusedCandidates ??
+            restored.result.items.length,
+        });
         return restored.result;
       }
       const budget = createResearchRetrievalBudget(policy, now, restored?.checkpoint.budget);
+      const reserveModelCall = () => {
+        if (!budget.consume("modelCalls")) {
+          throw new Error("Research retrieval model-call budget was exhausted");
+        }
+      };
       const planStartedAt = now();
-      if (!restored && !budget.consume("modelCalls")) {
-        throw new Error("Research retrieval model-call budget was exhausted before planning");
-      }
       const queryPlan = restored
         ? { ...restored.checkpoint.queryPlan, modelCalled: false }
         : await reasoning.plan({
             query: input.query,
             reasoningModel,
+            reserveModelCall,
             researchModelCallObserver: input.researchModelCallObserver,
             tenantId,
             traceId: input.traceId,
           });
-      if (!restored && !queryPlan.modelCalled) {
-        budget.refund("modelCalls");
-      }
       const planMs = restored ? 0 : Math.max(0, now() - planStartedAt);
       const retrievalPlan =
         planner?.plan({
@@ -158,6 +171,11 @@ export function createResearchEvidenceRetrieval({
           sequence: 0,
         });
       }
+      await input.onResearchStageChange?.("retrieving", {
+        ...(restored ? { checkpointed: true } : {}),
+        questions: [input.query, ...queryPlan.subqueries],
+        topK: input.topK ?? input.limit,
+      });
       const candidateLimit = Math.min(
         maxRerankCandidates,
         Math.max(input.limit, retrievalPlan.rerankCandidateLimit),
@@ -257,25 +275,27 @@ export function createResearchEvidenceRetrieval({
           sequence: 1,
         });
       }
+      await input.onResearchStageChange?.("analyzing", {
+        results: [
+          {
+            chunkCount: Math.min(reranked.length, input.limit),
+            question: input.query,
+          },
+        ],
+        retrievalCount: fused.length,
+      });
       if (!judgement) {
-        if (!budget.consume("modelCalls")) {
-          throw new Error(
-            "Research retrieval model-call budget was exhausted before evidence judge",
-          );
-        }
         const judgeStartedAt = now();
         const evaluatedJudgement = await reasoning.judge({
           evidence: reranked.slice(0, input.limit),
           evidenceDimensions: queryPlan.evidenceDimensions,
           query: input.query,
           reasoningModel,
+          reserveModelCall,
           researchModelCallObserver: input.researchModelCallObserver,
           tenantId,
           traceId: input.traceId,
         });
-        if (evaluatedJudgement.modelCalled === false) {
-          budget.refund("modelCalls");
-        }
         judgement = evaluatedJudgement;
         judgeMs = Math.max(0, now() - judgeStartedAt);
       }

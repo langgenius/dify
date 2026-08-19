@@ -7,8 +7,8 @@ import { createApiResearchEvidenceReasoningOptions } from "./research-evidence-r
 describe("Research evidence reasoning options", () => {
   it("uses a larger, bounded recovery budget by default", () => {
     expect(createApiResearchEvidenceReasoningOptions({})).toEqual({
-      maxOutputTokens: 1_024,
-      recoveryMaxOutputTokens: 2_048,
+      maxOutputTokens: 2_048,
+      recoveryMaxOutputTokens: 4_096,
       timeoutMs: 60_000,
     });
   });

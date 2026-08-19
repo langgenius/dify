@@ -38,6 +38,8 @@ export interface ResearchEvidenceReasoning {
     readonly evidenceDimensions: readonly string[];
     readonly query: string;
     readonly reasoningModel: KnowledgeSpaceModelSelection;
+    /** Reserves one bounded budget unit immediately before every physical provider call. */
+    readonly reserveModelCall?: (() => void) | undefined;
     readonly researchModelCallObserver?: ResearchModelCallObserver | undefined;
     readonly tenantId: string;
     readonly traceId?: string | undefined;
@@ -45,6 +47,8 @@ export interface ResearchEvidenceReasoning {
   plan(input: {
     readonly query: string;
     readonly reasoningModel: KnowledgeSpaceModelSelection;
+    /** Reserves one bounded budget unit immediately before every physical provider call. */
+    readonly reserveModelCall?: (() => void) | undefined;
     readonly researchModelCallObserver?: ResearchModelCallObserver | undefined;
     readonly tenantId: string;
     readonly traceId?: string | undefined;
@@ -160,6 +164,7 @@ export function createResearchEvidenceReasoning({
     messages,
     observer,
     reasoningModel,
+    reserveModelCall,
     schema,
     step,
     tenantId,
@@ -169,10 +174,12 @@ export function createResearchEvidenceReasoning({
     readonly messages: readonly { readonly content: string; readonly role: "system" | "user" }[];
     readonly observer?: ResearchModelCallObserver | undefined;
     readonly reasoningModel: KnowledgeSpaceModelSelection;
+    readonly reserveModelCall?: (() => void) | undefined;
     readonly schema: Readonly<Record<string, unknown>>;
     readonly step: "research.judge" | "research.plan";
     readonly tenantId: string;
   }) => {
+    reserveModelCall?.();
     const modelCall = {
       callId,
       estimatedPromptTokens: estimateResearchModelPromptTokens({ messages, schema }),
@@ -242,6 +249,7 @@ export function createResearchEvidenceReasoning({
     observer,
     parse,
     reasoningModel,
+    reserveModelCall,
     schema,
     step,
     tenantId,
@@ -251,6 +259,7 @@ export function createResearchEvidenceReasoning({
     readonly observer?: ResearchModelCallObserver | undefined;
     readonly parse: (text: string) => T;
     readonly reasoningModel: KnowledgeSpaceModelSelection;
+    readonly reserveModelCall?: (() => void) | undefined;
     readonly schema: Readonly<Record<string, unknown>>;
     readonly step: "research.judge" | "research.plan";
     readonly tenantId: string;
@@ -261,6 +270,7 @@ export function createResearchEvidenceReasoning({
       messages,
       observer,
       reasoningModel,
+      reserveModelCall,
       schema,
       step,
       tenantId,
@@ -280,6 +290,7 @@ export function createResearchEvidenceReasoning({
       messages,
       observer,
       reasoningModel,
+      reserveModelCall,
       schema,
       step,
       tenantId,
@@ -314,6 +325,7 @@ export function createResearchEvidenceReasoning({
         observer: input.researchModelCallObserver,
         parse: (text) => parseJson(text, QueryPlanSchema, "research.plan"),
         reasoningModel: input.reasoningModel,
+        reserveModelCall: input.reserveModelCall,
         schema: zodJsonSchema(QueryPlanSchema),
         step: "research.plan",
         tenantId: requiredText(input.tenantId, "tenantId"),
@@ -365,6 +377,7 @@ export function createResearchEvidenceReasoning({
         observer: input.researchModelCallObserver,
         parse: parseEvidenceJudgement,
         reasoningModel: input.reasoningModel,
+        reserveModelCall: input.reserveModelCall,
         schema: zodJsonSchema(EvidenceJudgementSchema),
         step: "research.judge",
         tenantId: requiredText(input.tenantId, "tenantId"),

@@ -300,6 +300,14 @@ export function createLlmAnswerQueryGenerator({
           ...(input.researchModelCallObserver
             ? { researchModelCallObserver: input.researchModelCallObserver }
             : {}),
+          ...(input.onResearchStageChange
+            ? {
+                onResearchStageChange: (
+                  stage: "retrieving" | "analyzing",
+                  details?: Record<string, unknown>,
+                ) => input.onResearchStageChange?.(stage, details) ?? Promise.resolve(),
+              }
+            : {}),
           ...(input.mode === "research"
             ? {
                 researchExecutionPolicy:
@@ -348,7 +356,21 @@ export function createLlmAnswerQueryGenerator({
         await input.onResearchRetrievalCheckpoint?.(evidenceBundle);
       }
 
+      let generationStageStarted = false;
+      const beginGenerationStage = async () => {
+        if (generationStageStarted) return;
+        generationStageStarted = true;
+        await input.onResearchStageChange?.("generating", {
+          chunks: retrieval.items.length,
+          retrievalCount:
+            retrieval.metrics?.rerankCandidates ??
+            retrieval.metrics?.fusedCandidates ??
+            retrieval.items.length,
+        });
+      };
+
       if (retrieval.items.length === 0) {
+        await beginGenerationStage();
         yield {
           delta: "I could not find evidence for that query in the indexed retrieval projections.",
           type: "delta",
@@ -398,6 +420,7 @@ export function createLlmAnswerQueryGenerator({
       let multimodalAnswerFailure: string | undefined;
       let queryImageAnswerDegraded =
         (input.resolvedQueryImages?.length ?? 0) > 0 && !multimodalAnswerProvider;
+      await beginGenerationStage();
       const answerStartedAt = Date.now();
       if (queryImageAnswerDegraded) {
         yield traceStepEvent("query.answer.multimodal", answerStartedAt, "skipped", {

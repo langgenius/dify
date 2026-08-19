@@ -122,6 +122,14 @@ export interface RetrieveHybridInput extends SearchDenseInput {
   /** Internal Research V3 routing decision; false suppresses the graph leg for direct queries. */
   readonly researchGraphEnabled?: boolean | undefined;
   readonly researchModelCallObserver?: ResearchModelCallObserver | undefined;
+  /**
+   * Durable Research progress boundary. V3 calls this after planning and after initial recall so
+   * the task timeline measures the work that is actually running instead of inferring stages from
+   * completed trace spans.
+   */
+  readonly onResearchStageChange?:
+    | ((stage: "retrieving" | "analyzing", details?: Record<string, unknown>) => Promise<void>)
+    | undefined;
   /** Durable-only replay boundary. Implementations call it after each safely opened evidence round. */
   readonly onResearchRound?:
     | ((checkpoint: ResearchRetrievalRoundCheckpoint) => Promise<void>)

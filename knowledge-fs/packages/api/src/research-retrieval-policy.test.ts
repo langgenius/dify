@@ -33,17 +33,17 @@ describe("Research retrieval execution policy", () => {
     ).toThrow("interactive maxRounds must equal 1");
   });
 
-  it("caps fresh Evidence V3 retrieval at two model calls and one durable supplement", () => {
+  it("caps fresh Evidence V3 retrieval at two semantic calls plus one truncation recovery", () => {
     expect(InteractiveResearchEvidenceRetrievalPolicy).toMatchObject({
       kind: "interactive",
-      maxModelCalls: 2,
+      maxModelCalls: 3,
       maxRounds: 1,
       maxSupplementalSearches: 0,
       strategyVersion: "research-evidence-v3",
     });
     expect(DurableResearchEvidenceRetrievalPolicy).toMatchObject({
       kind: "durable",
-      maxModelCalls: 2,
+      maxModelCalls: 3,
       maxRounds: 2,
       maxSupplementalSearches: 1,
       strategyVersion: "research-evidence-v3",
@@ -54,7 +54,7 @@ describe("Research retrieval execution policy", () => {
       }),
     ).toMatchObject({
       expected: { modelCalls: 3 },
-      maximum: { modelCalls: 3 },
+      maximum: { modelCalls: 4 },
       minimum: { modelCalls: 2 },
     });
   });

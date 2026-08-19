@@ -361,6 +361,12 @@ export function formatDuration(milliseconds: number) {
   return remainingSeconds ? `${minutes}min ${remainingSeconds}s` : `${minutes}min`
 }
 
+export function formatStageDuration(milliseconds: number) {
+  const duration = Math.max(0, milliseconds)
+  if (duration > 0 && duration < 1_000) return `${Math.max(1, Math.round(duration))} ms`
+  return formatDuration(duration)
+}
+
 export function formatRetrievalDuration(milliseconds: number) {
   const duration = Math.max(0, milliseconds)
   if (duration < 1_000) return `${Math.round(duration)} ms`

@@ -250,6 +250,7 @@ describe("Research evidence reasoning", () => {
   ])("recovers one truncated judgement detected from $label", async (firstResponse) => {
     const before = vi.fn();
     const after = vi.fn();
+    const reserveModelCall = vi.fn();
     const generate = vi
       .fn()
       .mockResolvedValueOnce({
@@ -286,6 +287,7 @@ describe("Research evidence reasoning", () => {
         evidenceDimensions: ["timeline"],
         query: "Apple，1985 到底发生了什么",
         reasoningModel,
+        reserveModelCall,
         researchModelCallObserver: { after, before },
         tenantId: "tenant-1",
         traceId: "trace-1",
@@ -299,6 +301,7 @@ describe("Research evidence reasoning", () => {
     });
 
     expect(generate).toHaveBeenCalledTimes(2);
+    expect(reserveModelCall).toHaveBeenCalledTimes(2);
     expect(generate.mock.calls.map(([input]) => input.maxOutputTokens)).toEqual([512, 2_048]);
     expect(before.mock.calls.map(([input]) => input.callId)).toEqual([
       "research-judge:trace-1:1",

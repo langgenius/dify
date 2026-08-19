@@ -736,14 +736,14 @@ describe('RetrievalTestPage', () => {
       }) => {
         const stages = [
           ['planning', 0],
-          ['retrieving', 2],
-          ['analyzing', 7],
-          ['generating', 14],
-          ['completed', 25],
+          ['retrieving', 7],
+          ['analyzing', 79_007],
+          ['generating', 86_007],
+          ['completed', 86_028],
         ] as const
-        stages.forEach(([stage, seconds], index) =>
+        stages.forEach(([stage, milliseconds], index) =>
           onEvent({
-            createdAt: new Date(1_800_000_000_000 + seconds * 1000).toISOString(),
+            createdAt: new Date(1_800_000_000_000 + milliseconds).toISOString(),
             id: `event-${index + 1}`,
             payload: {
               ...(stage === 'retrieving'
@@ -815,10 +815,10 @@ describe('RetrievalTestPage', () => {
         capability: expect.objectContaining({ operation_id: 'streamResearchTask' }),
       }),
     )
-    expect(await screen.findByText('2s')).toBeInTheDocument()
-    expect(screen.getByText('5s')).toBeInTheDocument()
+    expect(await screen.findByText('7 ms')).toBeInTheDocument()
+    expect(screen.getByText('1min 19s')).toBeInTheDocument()
     expect(screen.getByText('7s')).toBeInTheDocument()
-    expect(screen.getByText('11s')).toBeInTheDocument()
+    expect(screen.getByText('21 ms')).toBeInTheDocument()
     expect(screen.getAllByText('dataset.newKnowledge.sources: 2').length).toBeGreaterThan(0)
     expect(screen.getAllByText('dataset.newKnowledge.documents: 2').length).toBeGreaterThan(0)
     expect(screen.getAllByText('dataset.newKnowledge.chunkCount: 3').length).toBeGreaterThan(1)

@@ -37,6 +37,7 @@ import {
   extractTraceId,
   formatDuration,
   formatRetrievalDuration,
+  formatStageDuration,
   researchTaskIsActive,
   retrievalTestRecords,
   shouldRefreshResearchPartials,
@@ -343,7 +344,7 @@ function estimatedStageDuration(
     if (!stepNames[stage].has(typeof step.name === 'string' ? step.name : '')) return total
     return total + (typeof step.estimatedLatencyMs === 'number' ? step.estimatedLatencyMs : 0)
   }, 0)
-  return milliseconds > 0 ? formatDuration(milliseconds) : undefined
+  return milliseconds > 0 ? formatStageDuration(milliseconds) : undefined
 }
 
 function researchProgressTime(event: ResearchTaskProgressEvent) {
@@ -376,7 +377,7 @@ function actualStageDuration(
         ? timeValue(task.completed_at)
         : undefined
   if (endedAt === undefined || endedAt < startedAt) return
-  return formatDuration(endedAt - startedAt)
+  return formatStageDuration(endedAt - startedAt)
 }
 
 function mergeResearchProgressEvent(

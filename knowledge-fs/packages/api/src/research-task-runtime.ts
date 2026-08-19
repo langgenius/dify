@@ -762,7 +762,7 @@ async function runResearchTask({
     throw new Error(`${profileError.code}: ${profileError.message}`);
   }
   await revalidate();
-  if (current.stage === "planning") {
+  if (current.stage === "planning" && mode !== "research") {
     await advance("retrieving", {
       questions: [researchTaskDisplayQuery(current)],
       topK: plan.topK,
@@ -860,6 +860,45 @@ async function runResearchTask({
   let evidenceBundle: EvidenceBundle | undefined;
   let retrievalCandidateCount: number | undefined;
   let retrievedChunkCount: number | undefined;
+  const planStageDetails = () => ({
+    questions: [researchTaskDisplayQuery(current)],
+    topK: plan.topK,
+  });
+  const retrievalStageDetails = (): Record<string, unknown> | undefined =>
+    retrievedChunkCount === undefined
+      ? undefined
+      : {
+          results: [
+            { chunkCount: retrievedChunkCount, question: researchTaskDisplayQuery(current) },
+          ],
+          ...(retrievalCandidateCount === undefined
+            ? {}
+            : { retrievalCount: retrievalCandidateCount }),
+        };
+  const analysisStageDetails = (): Record<string, unknown> | undefined =>
+    retrievedChunkCount === undefined
+      ? undefined
+      : {
+          chunks: retrievedChunkCount,
+          ...(retrievalCandidateCount === undefined
+            ? {}
+            : { retrievalCount: retrievalCandidateCount }),
+        };
+  const ensureResearchStage = async (
+    target: "retrieving" | "analyzing" | "generating",
+    details?: Record<string, unknown>,
+  ): Promise<void> => {
+    await revalidate();
+    if (current.stage === "planning") {
+      await advance("retrieving", target === "retrieving" ? details : planStageDetails());
+    }
+    if ((target === "analyzing" || target === "generating") && current.stage === "retrieving") {
+      await advance("analyzing", target === "analyzing" ? details : retrievalStageDetails());
+    }
+    if (target === "generating" && current.stage === "analyzing") {
+      await advance("generating", details ?? analysisStageDetails());
+    }
+  };
   const flushAnswerDelta = async (): Promise<void> => {
     if (!pendingAnswerDelta) return;
     current = getCurrent();
@@ -907,6 +946,7 @@ async function runResearchTask({
       researchExecutionKind: "durable",
       researchExecutionAttempt: current.executionAttempts,
       researchModelCallObserver,
+      onResearchStageChange: ensureResearchStage,
       ...(mode === "research"
         ? { onResearchDurableCheckpoint: persistResearchDurableCheckpoint }
         : {}),
@@ -953,77 +993,20 @@ async function runResearchTask({
       }
     }
     evidenceBundle = evidenceBundleFromEvent(event) ?? evidenceBundle;
-    if (
-      event.type === "trace-step" &&
-      event.step.name === "query.retrieve" &&
-      current.stage === "retrieving"
-    ) {
+    if (event.type === "trace-step" && event.step.name === "query.retrieve") {
       retrievedChunkCount = nonNegativeInteger(event.step.metadata.itemCount);
       retrievalCandidateCount = retrievalCandidateCountFromMetadata(event.step.metadata);
-      await advance(
-        "analyzing",
-        retrievedChunkCount === undefined
-          ? undefined
-          : {
-              results: [
-                { chunkCount: retrievedChunkCount, question: researchTaskDisplayQuery(current) },
-              ],
-              ...(retrievalCandidateCount === undefined
-                ? {}
-                : { retrievalCount: retrievalCandidateCount }),
-            },
-      );
+      await ensureResearchStage("analyzing", retrievalStageDetails());
     }
-    if (
-      event.type === "trace-step" &&
-      event.step.name === "query.answer" &&
-      current.stage === "analyzing"
-    ) {
-      await advance(
-        "generating",
-        retrievedChunkCount === undefined
-          ? undefined
-          : {
-              chunks: retrievedChunkCount,
-              ...(retrievalCandidateCount === undefined
-                ? {}
-                : { retrievalCount: retrievalCandidateCount }),
-            },
-      );
+    if (event.type === "trace-step" && event.step.name === "query.answer") {
+      await ensureResearchStage("generating", analysisStageDetails());
     }
   }
 
   await flushAnswerDelta();
 
-  if (current.stage === "retrieving") {
-    retrievedChunkCount ??= evidenceBundle?.items.length;
-    await advance(
-      "analyzing",
-      retrievedChunkCount === undefined
-        ? undefined
-        : {
-            results: [
-              { chunkCount: retrievedChunkCount, question: researchTaskDisplayQuery(current) },
-            ],
-            ...(retrievalCandidateCount === undefined
-              ? {}
-              : { retrievalCount: retrievalCandidateCount }),
-          },
-    );
-  }
-  if (current.stage === "analyzing") {
-    await advance(
-      "generating",
-      retrievedChunkCount === undefined
-        ? undefined
-        : {
-            chunks: retrievedChunkCount,
-            ...(retrievalCandidateCount === undefined
-              ? {}
-              : { retrievalCount: retrievalCandidateCount }),
-          },
-    );
-  }
+  retrievedChunkCount ??= evidenceBundle?.items.length;
+  await ensureResearchStage("generating", analysisStageDetails());
   await revalidate();
   const normalizedAnswer = answer.trim();
   if (normalizedAnswer && !evidenceBundle) {
