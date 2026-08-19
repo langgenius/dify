@@ -1,0 +1,353 @@
+# One-click Dify on Render: api + worker + beat + web + MinIO + Key Value + Postgres 16.
+# Images pinned to the current stable release. Postgres 16 avoids uuidv7 migration conflicts on PG 18+.
+services:
+  # Object storage shared by api and worker (Render disks cannot be shared across services).
+  - type: web
+    name: dify-minio
+    runtime: image
+    image:
+      url: docker.io/minio/minio:RELEASE.2023-03-20T20-16-18Z
+    plan: starter
+    dockerCommand: server /data --address ":10000"
+    disk:
+      name: dify-minio-data
+      mountPath: /data
+      sizeGB: 10
+    envVars:
+      - key: MINIO_ROOT_USER
+        value: dify
+      - key: MINIO_ROOT_PASSWORD
+        generateValue: true
+
+  # Dify API Service
+  - type: web
+    name: dify-api
+    runtime: image
+    image:
+      url: docker.io/langgenius/dify-api:1.16.0
+    plan: standard
+    # Render routes to $PORT (default 10000); Dify binds DIFY_PORT (image default 5001).
+    envVars:
+      - key: MODE
+        value: api
+      - key: MIGRATION_ENABLED
+        value: "true"
+      - key: DIFY_PORT
+        value: "10000"
+      - key: PORT
+        value: "10000"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: CONSOLE_WEB_URL
+        fromService:
+          name: dify-web
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: SERVICE_API_URL
+        fromService:
+          name: dify-api
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: APP_WEB_URL
+        fromService:
+          name: dify-web
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: FILES_URL
+        fromService:
+          name: dify-api
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: DB_USERNAME
+        fromDatabase:
+          name: dify-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: dify-db
+          property: password
+      - key: DB_HOST
+        fromDatabase:
+          name: dify-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: dify-db
+          property: port
+      - key: DB_DATABASE
+        fromDatabase:
+          name: dify-db
+          property: database
+      - key: REDIS_HOST
+        fromService:
+          name: dify-redis
+          type: keyvalue
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          name: dify-redis
+          type: keyvalue
+          property: port
+      - key: REDIS_DB
+        value: "0"
+      # Broker uses the Key Value connection string (db 0). Cache also uses REDIS_DB=0.
+      - key: CELERY_BROKER_URL
+        fromService:
+          name: dify-redis
+          type: keyvalue
+          property: connectionString
+      - key: VECTOR_STORE
+        value: pgvector
+      - key: PGVECTOR_HOST
+        fromDatabase:
+          name: dify-db
+          property: host
+      - key: PGVECTOR_PORT
+        fromDatabase:
+          name: dify-db
+          property: port
+      - key: PGVECTOR_USER
+        fromDatabase:
+          name: dify-db
+          property: user
+      - key: PGVECTOR_PASSWORD
+        fromDatabase:
+          name: dify-db
+          property: password
+      - key: PGVECTOR_DATABASE
+        fromDatabase:
+          name: dify-db
+          property: database
+      - key: STORAGE_TYPE
+        value: s3
+      - key: S3_ENDPOINT
+        fromService:
+          name: dify-minio
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: S3_REGION
+        value: us-east-1
+      - key: S3_BUCKET_NAME
+        value: dify
+      - key: S3_ACCESS_KEY
+        fromService:
+          name: dify-minio
+          type: web
+          envVarKey: MINIO_ROOT_USER
+      - key: S3_SECRET_KEY
+        fromService:
+          name: dify-minio
+          type: web
+          envVarKey: MINIO_ROOT_PASSWORD
+      - key: S3_ADDRESS_STYLE
+        value: path
+    healthCheckPath: /health
+    # Create the MinIO bucket once; Dify creates the pgvector extension on first use.
+    initialDeployHook: |
+      python -c "
+      import os, time, boto3
+      from botocore.client import Config
+      endpoint = os.environ['S3_ENDPOINT']
+      bucket = os.environ['S3_BUCKET_NAME']
+      client = boto3.client(
+          's3',
+          endpoint_url=endpoint,
+          aws_access_key_id=os.environ['S3_ACCESS_KEY'],
+          aws_secret_access_key=os.environ['S3_SECRET_KEY'],
+          region_name=os.environ.get('S3_REGION', 'us-east-1'),
+          config=Config(signature_version='s3v4', s3={'addressing_style': 'path'}),
+      )
+      for _ in range(30):
+          try:
+              client.create_bucket(Bucket=bucket)
+              break
+          except Exception as exc:
+              msg = str(exc)
+              if 'BucketAlreadyOwnedByYou' in msg or 'BucketAlreadyExists' in msg:
+                  break
+              time.sleep(2)
+      else:
+          raise SystemExit('timed out creating S3 bucket')
+      "
+
+  # Dify Worker Service (Celery)
+  - type: worker
+    name: dify-worker
+    runtime: image
+    image:
+      url: docker.io/langgenius/dify-api:1.16.0
+    plan: standard
+    envVars:
+      - key: MODE
+        value: worker
+      - key: SECRET_KEY
+        fromService:
+          name: dify-api
+          type: web
+          envVarKey: SECRET_KEY
+      - key: DB_USERNAME
+        fromDatabase:
+          name: dify-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: dify-db
+          property: password
+      - key: DB_HOST
+        fromDatabase:
+          name: dify-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: dify-db
+          property: port
+      - key: DB_DATABASE
+        fromDatabase:
+          name: dify-db
+          property: database
+      - key: REDIS_HOST
+        fromService:
+          name: dify-redis
+          type: keyvalue
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          name: dify-redis
+          type: keyvalue
+          property: port
+      - key: REDIS_DB
+        value: "0"
+      - key: CELERY_BROKER_URL
+        fromService:
+          name: dify-redis
+          type: keyvalue
+          property: connectionString
+      - key: VECTOR_STORE
+        value: pgvector
+      - key: PGVECTOR_HOST
+        fromDatabase:
+          name: dify-db
+          property: host
+      - key: PGVECTOR_PORT
+        fromDatabase:
+          name: dify-db
+          property: port
+      - key: PGVECTOR_USER
+        fromDatabase:
+          name: dify-db
+          property: user
+      - key: PGVECTOR_PASSWORD
+        fromDatabase:
+          name: dify-db
+          property: password
+      - key: PGVECTOR_DATABASE
+        fromDatabase:
+          name: dify-db
+          property: database
+      - key: STORAGE_TYPE
+        value: s3
+      - key: S3_ENDPOINT
+        fromService:
+          name: dify-minio
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: S3_REGION
+        value: us-east-1
+      - key: S3_BUCKET_NAME
+        value: dify
+      - key: S3_ACCESS_KEY
+        fromService:
+          name: dify-minio
+          type: web
+          envVarKey: MINIO_ROOT_USER
+      - key: S3_SECRET_KEY
+        fromService:
+          name: dify-minio
+          type: web
+          envVarKey: MINIO_ROOT_PASSWORD
+      - key: S3_ADDRESS_STYLE
+        value: path
+
+  # Celery beat (periodic / scheduled tasks)
+  - type: worker
+    name: dify-beat
+    runtime: image
+    image:
+      url: docker.io/langgenius/dify-api:1.16.0
+    plan: starter
+    envVars:
+      - key: MODE
+        value: beat
+      - key: SECRET_KEY
+        fromService:
+          name: dify-api
+          type: web
+          envVarKey: SECRET_KEY
+      - key: DB_USERNAME
+        fromDatabase:
+          name: dify-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: dify-db
+          property: password
+      - key: DB_HOST
+        fromDatabase:
+          name: dify-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: dify-db
+          property: port
+      - key: DB_DATABASE
+        fromDatabase:
+          name: dify-db
+          property: database
+      - key: REDIS_HOST
+        fromService:
+          name: dify-redis
+          type: keyvalue
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          name: dify-redis
+          type: keyvalue
+          property: port
+      - key: CELERY_BROKER_URL
+        fromService:
+          name: dify-redis
+          type: keyvalue
+          property: connectionString
+
+  # Dify Web Frontend (Next.js)
+  - type: web
+    name: dify-web
+    runtime: image
+    image:
+      url: docker.io/langgenius/dify-web:1.16.0
+    plan: starter
+    envVars:
+      - key: CONSOLE_API_URL
+        fromService:
+          name: dify-api
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: APP_API_URL
+        fromService:
+          name: dify-api
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+
+  # Key Value as Celery broker + cache (noeviction: do not drop queue keys under memory pressure)
+  - type: keyvalue
+    name: dify-redis
+    plan: starter
+    maxmemoryPolicy: noeviction
+    ipAllowList: []
+
+databases:
+  # Pin PG 16: Dify migration 1c9ba48be8e4 conflicts with PostgreSQL 18 built-in uuidv7().
+  - name: dify-db
+    plan: basic-256mb
+    postgresMajorVersion: "16"
+    ipAllowList: []
