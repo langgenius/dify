@@ -29,8 +29,12 @@ from controllers.console.error import (
     SeatsLimitExceeded,
     WorkspacesLimitExceeded,
 )
+from enums.deployment_edition import DeploymentEdition
+from services.email_code_login_challenge import EmailCodeLoginChallengeResult, EmailCodeLoginChallengeStatus
 from services.entities.auth_entities import LoginFailureReason
 from services.errors.account import AccountLoginError, AccountPasswordError, SeatsLimitExceededError
+
+TEST_TOKEN = "00000000-0000-4000-8000-000000000001"
 
 
 def encode_password(password: str) -> str:
@@ -457,30 +461,29 @@ class TestLoginApi:
         mock_reset_rate_limit.assert_called_once_with("upper@example.com")
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.AccountService.get_email_code_login_data")
-    @patch("controllers.console.auth.login.AccountService.revoke_email_code_login_token")
+    @patch("controllers.console.auth.login.AccountService.verify_email_code_login_challenge")
     @patch("controllers.console.auth.login._get_account_with_case_fallback")
     def test_email_code_login_logs_banned_account(
         self,
         mock_get_account: MagicMock,
-        mock_revoke_token: MagicMock,
-        mock_get_token_data: MagicMock,
+        mock_verify_challenge: MagicMock,
         mock_db: MagicMock,
         app: Flask,
         caplog: pytest.LogCaptureFixture,
     ):
-        mock_get_token_data.return_value = {"email": "User@Example.com", "code": "123456"}
+        mock_verify_challenge.return_value = EmailCodeLoginChallengeResult(
+            status=EmailCodeLoginChallengeStatus.VERIFIED
+        )
         mock_get_account.side_effect = Unauthorized("Account is banned.")
 
         with app.test_request_context(
             "/email-code-login/validity",
             method="POST",
-            json={"email": "User@Example.com", "code": encode_code("123456"), "token": "token-123"},
+            json={"email": "User@Example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
         ):
             with pytest.raises(AccountBannedError):
                 EmailCodeLoginApi().post()
 
-        mock_revoke_token.assert_called_once_with("token-123")
         warn_records = [
             r for r in caplog.records if r.name == "controllers.console.auth.login" and r.levelno == logging.WARNING
         ]
@@ -491,14 +494,12 @@ class TestLoginApi:
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.db")
     @patch("controllers.console.auth.login.AccountService.create_account_and_tenant")
-    @patch("controllers.console.auth.login.AccountService.get_email_code_login_data")
-    @patch("controllers.console.auth.login.AccountService.revoke_email_code_login_token")
+    @patch("controllers.console.auth.login.AccountService.verify_email_code_login_challenge")
     @patch("controllers.console.auth.login._get_account_with_case_fallback")
     def test_email_code_login_fails_when_seats_limit_exceeded(
         self,
         mock_get_account: MagicMock,
-        mock_revoke_token: MagicMock,
-        mock_get_token_data: MagicMock,
+        mock_verify_challenge: MagicMock,
         mock_create_account: MagicMock,
         mock_login_db: MagicMock,
         mock_db: MagicMock,
@@ -512,7 +513,9 @@ class TestLoginApi:
         - the service-layer SeatsLimitExceededError is translated to the SeatsLimitExceeded HTTP error
         """
         # Arrange: valid token, no existing account -> account-creation path
-        mock_get_token_data.return_value = {"email": "User@Example.com", "code": "123456"}
+        mock_verify_challenge.return_value = EmailCodeLoginChallengeResult(
+            status=EmailCodeLoginChallengeStatus.VERIFIED
+        )
         mock_get_account.return_value = None
         mock_create_account.side_effect = SeatsLimitExceededError("licensed seats limit exceeded")
 
@@ -520,7 +523,7 @@ class TestLoginApi:
         with app.test_request_context(
             "/email-code-login/validity",
             method="POST",
-            json={"email": "User@Example.com", "code": encode_code("123456"), "token": "token-123"},
+            json={"email": "User@Example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
         ):
             with pytest.raises(SeatsLimitExceeded):
                 EmailCodeLoginApi().post()

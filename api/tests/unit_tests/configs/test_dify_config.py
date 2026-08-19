@@ -1,12 +1,41 @@
 import os
+from typing import override
 
 import pytest
 from flask import Flask
 from packaging.version import Version
 from pydantic import SecretStr
+from pydantic_settings import BaseSettings, PydanticBaseSettingsSource
 from yarl import URL
 
 from configs.app_config import DifyConfig
+
+
+class _IsolatedDifyConfig(DifyConfig):
+    """Load explicit test values and packaging metadata without consulting process state."""
+
+    @classmethod
+    @override
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        production_sources = super().settings_customise_sources(
+            settings_cls,
+            init_settings,
+            env_settings,
+            dotenv_settings,
+            file_secret_settings,
+        )
+        return init_settings, production_sources[-1]
+
+
+def _make_config(**values: object) -> DifyConfig:
+    return _IsolatedDifyConfig(**values)
 
 
 def _clear_environment(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -111,16 +140,23 @@ def test_new_user_default_plugin_ids_are_parsed_from_env(monkeypatch: pytest.Mon
     ]
 
 
-def test_turnstile_config_is_parsed_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    _set_basic_config_env(monkeypatch)
-    monkeypatch.setenv("TURNSTILE_SECRET_KEY", " test-secret ")
-    monkeypatch.setenv("TURNSTILE_ALLOWED_HOSTNAMES", "dify.dev, Login.Example.COM. ")
-
-    config = DifyConfig(_env_file=None)
+def test_turnstile_config_is_parsed() -> None:
+    config = _make_config(
+        TURNSTILE_SECRET_KEY=" test-secret ",
+        TURNSTILE_ALLOWED_HOSTNAMES="dify.dev, Login.Example.COM. ",
+        TURNSTILE_EMAIL_CODE_VERIFY_REQUIRED="true",
+    )
 
     assert isinstance(config.TURNSTILE_SECRET_KEY, SecretStr)
     assert config.TURNSTILE_SECRET_KEY.get_secret_value() == "test-secret"
     assert frozenset({"dify.dev", "login.example.com"}) == config.TURNSTILE_ALLOWED_HOSTNAME_SET
+    assert config.TURNSTILE_EMAIL_CODE_VERIFY_REQUIRED is True
+
+
+def test_email_code_login_attempt_budget_is_parsed() -> None:
+    config = _make_config(EMAIL_CODE_LOGIN_MAX_ATTEMPTS="7")
+
+    assert config.EMAIL_CODE_LOGIN_MAX_ATTEMPTS == 7
 
 
 def test_plugin_remote_install_port_rejects_host_port_spec(monkeypatch: pytest.MonkeyPatch) -> None:
