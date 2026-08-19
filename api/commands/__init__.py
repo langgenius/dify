@@ -44,6 +44,8 @@ from .system import (
 )
 from .vector import (
     add_qdrant_index,
+    audit_orphaned_tidb_collections,
+    cleanup_orphaned_tidb_collections,
     migrate_annotation_vector_database,
     migrate_knowledge_vector_database,
     old_metadata_migration,
@@ -54,11 +56,13 @@ __all__ = [
     "add_qdrant_index",
     "archive_workflow_runs",
     "archive_workflow_runs_plan",
+    "audit_orphaned_tidb_collections",
     "backfill_plugin_auto_upgrade",
     "backfill_workflow_run_archive_bundles",
     "clean_expired_messages",
     "clean_workflow_runs",
     "cleanup_orphaned_draft_variables",
+    "cleanup_orphaned_tidb_collections",
     "clear_free_plan_tenant_expired_logs",
     "clear_orphaned_file_records",
     "convert_to_agent_apps",

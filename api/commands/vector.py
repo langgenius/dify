@@ -1,5 +1,7 @@
 import json
+from pathlib import Path
 from typing import cast
+from uuid import UUID
 
 import click
 from flask import current_app
@@ -15,7 +17,13 @@ from core.rag.index_processor.constant.index_type import IndexStructureType, Ind
 from core.rag.models.document import ChildDocument, Document
 from extensions.ext_database import db
 from libs.pagination import paginate_query
-from models.dataset import Dataset, DatasetCollectionBinding, DatasetMetadata, DatasetMetadataBinding, DocumentSegment
+from models.dataset import (
+    Dataset,
+    DatasetCollectionBinding,
+    DatasetMetadata,
+    DatasetMetadataBinding,
+    DocumentSegment,
+)
 from models.dataset import Document as DatasetDocument
 from models.enums import DatasetMetadataType, IndexingStatus, SegmentStatus
 from models.model import App, AppAnnotationSetting, MessageAnnotation
@@ -397,6 +405,75 @@ def add_qdrant_index(field: str):
         click.echo(click.style("Failed to create Qdrant client.", fg="red"))
 
     click.echo(click.style(f"Index creation complete. Created {create_count} collection indexes.", fg="green"))
+
+
+@click.command(
+    "audit-orphaned-tidb-collections",
+    help="Export a read-only C1 manifest for Dataset IDs found only in document_segments.",
+)
+@click.option(
+    "--output-dir",
+    type=click.Path(file_okay=False, writable=True, resolve_path=True, path_type=Path),
+    required=True,
+    help="Directory for resumable bucket files and final ready.jsonl/held.jsonl manifests.",
+)
+def audit_orphaned_tidb_collections(output_dir: Path) -> None:
+    from services.tidb_orphan_audit_service import OrphanAuditError, run_tidb_orphan_audit
+
+    try:
+        run_tidb_orphan_audit(output_dir=str(output_dir))
+    except OrphanAuditError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+
+@click.command(
+    "cleanup-orphaned-tidb-collections",
+    help="Validate and clean canonical TiDB-on-Qdrant C1 entries from a completed audit manifest.",
+)
+@click.option(
+    "--manifest",
+    type=click.Path(exists=True, dir_okay=False, readable=True, resolve_path=True, path_type=Path),
+    required=True,
+    help="Completed ready.jsonl produced by audit-orphaned-tidb-collections.",
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    default=False,
+    show_default=True,
+    help="Audit without deleting. The default runs READY cleanup actions.",
+)
+@click.option(
+    "--output",
+    type=click.Path(dir_okay=False, writable=True, resolve_path=True, path_type=Path),
+    required=True,
+    help="Create a new write-once JSONL audit ledger. The path must not already exist.",
+)
+@click.option(
+    "--dataset-id",
+    "dataset_ids",
+    type=click.UUID,
+    multiple=True,
+    help="Limit this run to Dataset IDs in the manifest. Repeat the option to select more than one.",
+)
+def cleanup_orphaned_tidb_collections(
+    manifest: Path,
+    dry_run: bool,
+    output: Path,
+    dataset_ids: tuple[UUID, ...],
+) -> None:
+    from services.tidb_orphan_cleanup_service import OrphanCleanupError, run_tidb_orphan_cleanup
+
+    try:
+        run_tidb_orphan_cleanup(
+            manifest_path=str(manifest),
+            dry_run=dry_run,
+            output_path=str(output),
+            dataset_ids=tuple(str(dataset_id) for dataset_id in dataset_ids),
+            root_path=current_app.root_path,
+        )
+    except OrphanCleanupError as exc:
+        raise click.ClickException(str(exc)) from exc
 
 
 @click.command("old-metadata-migration", help="Old metadata migration.")
