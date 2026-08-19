@@ -5,6 +5,7 @@ from typing import Any
 
 import pytest
 
+from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_generator import MessageGenerator
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
@@ -60,6 +61,9 @@ class _FakeStreams:
         # key -> list[(id, {field: value})]
         self._data: dict[str, list[tuple[str, dict]]] = defaultdict(list)
         self._seq: dict[str, int] = defaultdict(int)
+        # Mirrors real Redis: "$" resolves once, to the tail of the stream at the moment
+        # the first xread naming it is issued -- entries added earlier are never seen.
+        self._dollar_snapshots: dict[str, int] = {}
 
     def xadd(self, key: str, fields: dict[str, Any], *, maxlen: int | None = None) -> str:
         # maxlen is accepted for API compatibility with redis-py; ignored in this test double
@@ -72,12 +76,20 @@ class _FakeStreams:
         # no-op for tests
         return None
 
+    def xrevrange(self, key: str, count: int | None = None):
+        entries = list(reversed(self._data.get(key, [])))
+        if count is not None:
+            entries = entries[:count]
+        return entries
+
     def xread(self, streams: dict[str, Any], block: int | None = None, count: int | None = None):
         assert len(streams) == 1
         key, last_id = next(iter(streams.items()))
         entries = self._data.get(key, [])
         start = 0
-        if last_id != "0-0":
+        if last_id == "$":
+            start = self._dollar_snapshots.setdefault(key, len(entries))
+        elif last_id != "0-0":
             for i, (eid, _f) in enumerate(entries):
                 if eid == last_id:
                     start = i + 1
@@ -98,9 +110,10 @@ def _patch_get_channel_streams(monkeypatch: pytest.MonkeyPatch):
     def _get_channel():
         return chan
 
-    # Patch both the source and the imported alias used by MessageGenerator
+    # Patch the source and the imported aliases used by MessageGenerator / MessageBasedAppGenerator
     monkeypatch.setattr("extensions.ext_redis.get_pubsub_broadcast_channel", lambda: chan)
     monkeypatch.setattr("core.app.apps.message_generator.get_pubsub_broadcast_channel", lambda: chan)
+    monkeypatch.setattr("core.app.apps.message_based_app_generator.get_pubsub_broadcast_channel", lambda: chan)
     # Ensure AppGenerateService sees streams mode
     import services.app_generate_service as ags
 
@@ -136,19 +149,35 @@ def _publish_events(app_mode: AppMode, run_id: str, events: list[dict]):
 
 @pytest.mark.usefixtures("_patch_get_channel_streams")
 def test_streams_full_flow_prepublish_and_replay():
+    """Regression test for dify#40948: `workflow_started` dropped for concurrent streaming
+    runs on the streams transport.
+
+    In production, the background task is dispatched synchronously (in the Flask request
+    thread) well before the SSE response body starts streaming and the subscriber's
+    listener thread issues its first `xread`. This test dispatches the task -- and lets it
+    publish both events -- *before* `retrieve_events` is even called, to reproduce that
+    ordering. Without the checkpoint captured by `_build_streaming_task_on_subscribe`,
+    both events would be silently dropped because they were published before any
+    subscription (real or "$"-snapshotted) existed.
+    """
     app_mode = AppMode.WORKFLOW
     run_id = str(uuid.uuid4())
 
-    # Build start_task that publishes two events immediately
     events = [{"event": "workflow_started"}, {"event": "workflow_finished"}]
 
     def start_task():
         _publish_events(app_mode, run_id, events)
 
-    on_subscribe = AppGenerateService._build_streaming_task_on_subscribe(start_task)
+    # MessageBasedAppGenerator is what AppGenerateService actually dispatches WORKFLOW /
+    # ADVANCED_CHAT streaming runs through in production.
+    topic = MessageBasedAppGenerator.get_response_topic(app_mode, run_id)
+    on_subscribe, start_id = AppGenerateService._build_streaming_task_on_subscribe(start_task, topic=topic)
 
-    # Start retrieving BEFORE subscription is established; in streams mode, we also started immediately
-    gen = MessageGenerator.retrieve_events(app_mode, run_id, idle_timeout=2.0, on_subscribe=on_subscribe)
+    # By the time retrieve_events() is called, start_task() has already run synchronously
+    # and published both events -- mirroring the real dispatch-before-subscribe ordering.
+    gen = MessageBasedAppGenerator.retrieve_events(
+        app_mode, run_id, idle_timeout=2.0, on_subscribe=on_subscribe, start_id=start_id
+    )
 
     received = []
     for msg in gen:
@@ -178,7 +207,8 @@ def test_pubsub_full_flow_start_on_subscribe_gated(monkeypatch: pytest.MonkeyPat
         _publish_events(app_mode, run_id, events)
         published_order.extend([e["event"] for e in events])
 
-    on_subscribe = AppGenerateService._build_streaming_task_on_subscribe(start_task)
+    on_subscribe, start_id = AppGenerateService._build_streaming_task_on_subscribe(start_task)
+    assert start_id is None  # pub/sub transport has no checkpoint concept
 
     # Producer not started yet; only when subscribe happens
     assert published_order == []

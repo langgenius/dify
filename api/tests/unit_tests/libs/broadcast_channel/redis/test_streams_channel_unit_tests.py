@@ -45,6 +45,12 @@ class FakeStreamsRedis:
     def expire(self, key: str, seconds: int) -> None:
         self._expire_calls[key] = self._expire_calls.get(key, 0) + 1
 
+    def xrevrange(self, key: str, count: int | None = None):
+        entries = list(reversed(self._store.get(key, [])))
+        if count is not None:
+            entries = entries[:count]
+        return entries
+
     # Consumer API
     def xread(self, streams: dict[str, Any], block: int | None = None, count: int | None = None):
         # Expect a single key
@@ -75,6 +81,11 @@ class FakeStreamsRedis:
 class FailExpireRedis(FakeStreamsRedis):
     def expire(self, key: str, seconds: int) -> None:
         raise RuntimeError("expire failed")
+
+
+class FailXrevrangeRedis(FakeStreamsRedis):
+    def xrevrange(self, key: str, count: int | None = None):
+        raise RuntimeError("xrevrange failed")
 
 
 class BlockingRedis:
@@ -227,6 +238,90 @@ class TestStreamsSubscription:
                 received.append(msg)
 
         assert received == [b"after-subscribe-1", b"after-subscribe-2"]
+
+    def test_checkpoint_returns_last_entry_id(self, streams_channel: StreamsBroadcastChannel):
+        topic = streams_channel.topic("checkpoint-topic")
+        topic.publish(b"first")
+        checkpoint = topic.checkpoint()
+        assert checkpoint == "1-0"
+
+        topic.publish(b"second")
+        # checkpoint reflects the stream state at call time; a later publish doesn't
+        # retroactively change a checkpoint already taken.
+        assert checkpoint == "1-0"
+        assert topic.checkpoint() == "2-0"
+
+    def test_checkpoint_returns_0_0_for_empty_stream(self, streams_channel: StreamsBroadcastChannel):
+        topic = streams_channel.topic("empty-topic")
+        assert topic.checkpoint() == "0-0"
+
+    def test_checkpoint_propagates_redis_error(self):
+        """Callers must not swallow a failed checkpoint and fall back to `$` themselves --
+        doing so would reintroduce the dify#40948 race, since `$` gets resolved lazily by
+        the listener thread at some later, unpredictable time instead of synchronously
+        before the caller dispatches its background task. Letting the error propagate keeps
+        that decision -- and the resulting request failure -- with the caller."""
+        channel = StreamsBroadcastChannel(FailXrevrangeRedis(), retention_seconds=60)
+        topic = channel.topic("broken-checkpoint")
+        with pytest.raises(RuntimeError, match="xrevrange failed"):
+            topic.checkpoint()
+
+    def test_subscribe_from_receives_messages_published_before_listener_starts(
+        self,
+        streams_channel: StreamsBroadcastChannel,
+    ):
+        """Regression test for the `workflow_started`-drop race (dify#40948).
+
+        A background task can publish events to the topic as soon as it is dispatched,
+        well before the eventual subscriber's listener thread issues its first `xread`
+        (e.g. because subscribing is deferred until an HTTP response body starts
+        streaming). Capturing a checkpoint synchronously before dispatching the task,
+        then resuming from it via `subscribe_from`, must not lose events published in
+        that window -- unlike plain `subscribe()`, which only sees messages published
+        after the listener thread actually starts reading.
+        """
+        topic = streams_channel.topic("race-topic")
+
+        # Synchronously captured before the "task" is dispatched.
+        start_id = topic.checkpoint()
+
+        # Simulates the background task publishing immediately after being dispatched,
+        # before the subscriber's listener thread has had a chance to run.
+        topic.publish(b"workflow_started")
+
+        sub = topic.subscribe_from(start_id)
+        received: list[bytes] = []
+        with sub:
+            for _ in range(5):
+                msg = sub.receive(timeout=0.1)
+                if msg is None:
+                    break
+                received.append(msg)
+
+        assert received == [b"workflow_started"]
+
+    def test_subscribe_from_does_not_replay_messages_published_before_checkpoint(
+        self,
+        streams_channel: StreamsBroadcastChannel,
+    ):
+        """`subscribe_from` must preserve the "no stale replay" fix from #34030/#34040:
+        events published before the checkpoint was taken must never be delivered."""
+        topic = streams_channel.topic("no-replay-topic")
+        topic.publish(b"stale-event")
+
+        start_id = topic.checkpoint()
+        topic.publish(b"fresh-event")
+
+        sub = topic.subscribe_from(start_id)
+        received: list[bytes] = []
+        with sub:
+            for _ in range(5):
+                msg = sub.receive(timeout=0.1)
+                if msg is None:
+                    break
+                received.append(msg)
+
+        assert received == [b"fresh-event"]
 
     def test_receive_timeout_returns_none(self, streams_channel: StreamsBroadcastChannel):
         topic = streams_channel.topic("delta")

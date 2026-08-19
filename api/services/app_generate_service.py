@@ -23,6 +23,7 @@ from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.db import session_factory
 from enums.quota_type import QuotaType
 from extensions.otel import AppGenerateHandler, trace_span
+from libs.broadcast_channel.channel import Topic
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowRun
 from services.errors.app import QuotaExceededError, WorkflowIdFormatError, WorkflowNotFoundError
@@ -41,13 +42,23 @@ if TYPE_CHECKING:
 
 class AppGenerateService:
     @staticmethod
-    def _build_streaming_task_on_subscribe(start_task: Callable[[], None]) -> Callable[[], None]:
+    def _build_streaming_task_on_subscribe(
+        start_task: Callable[[], None],
+        *,
+        topic: Topic | None = None,
+    ) -> tuple[Callable[[], None], bytes | str | None]:
         """
         Build a subscription callback that coordinates when the background task starts.
 
-        - streams transport: start immediately (events are durable; late subscribers can replay).
-        - pubsub/sharded transport: start on first subscribe, with a short fallback timer so the task
-          still runs if the client never connects.
+        - streams transport: a checkpoint is captured synchronously here, before the task is
+          dispatched, and returned for the caller to resume from -- otherwise a fast
+          background task could publish events before the subscriber's listener ever issues
+          its first read, since the actual Redis subscription is only established later,
+          once the SSE response body starts streaming. If the checkpoint can't be read (e.g.
+          a transient Redis error), the exception propagates and this request fails rather
+          than starting the task from an unsafe position.
+        - pubsub/sharded transport: start on first subscribe, with a short fallback timer so
+          the task still runs if the client never connects.
         """
         started = False
         lock = threading.Lock()
@@ -67,14 +78,17 @@ class AppGenerateService:
 
         channel_type = dify_config.PUBSUB_REDIS_CHANNEL_TYPE
         if channel_type == "streams":
-            # With Redis Streams, we can safely start right away; consumers can read past events.
+            checkpoint = getattr(topic, "checkpoint", None)
+            start_id = checkpoint() if checkpoint is not None else None
+
+            # With Redis Streams, we can safely start right away; consumers resume from `start_id`.
             _try_start()
 
             # Keep return type Callable[[], None] consistent while allowing an extra (no-op) call.
             def _on_subscribe_streams() -> None:
                 _try_start()
 
-            return _on_subscribe_streams
+            return _on_subscribe_streams, start_id
 
         # Pub/Sub modes (at-most-once): subscribe-gated start with a tiny fallback.
         timer = threading.Timer(SSE_TASK_START_FALLBACK_MS / 1000.0, _try_start)
@@ -85,7 +99,7 @@ class AppGenerateService:
             if _try_start():
                 timer.cancel()
 
-        return _on_subscribe
+        return _on_subscribe, None
 
     @classmethod
     @trace_span(AppGenerateHandler)
@@ -255,7 +269,10 @@ class AppGenerateService:
                     def on_subscribe():
                         workflow_based_app_execution_task.delay(payload_json)
 
-                    on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
+                    topic = AdvancedChatAppGenerator.get_response_topic(
+                        AppMode.ADVANCED_CHAT, payload.workflow_run_id
+                    )
+                    on_subscribe, start_id = cls._build_streaming_task_on_subscribe(on_subscribe, topic=topic)
                     generator = AdvancedChatAppGenerator()
                     return rate_limit.generate(
                         generator.convert_to_event_stream(
@@ -263,6 +280,7 @@ class AppGenerateService:
                                 AppMode.ADVANCED_CHAT,
                                 payload.workflow_run_id,
                                 on_subscribe=on_subscribe,
+                                start_id=start_id,
                             ),
                         ),
                         request_id=request_id,
@@ -312,13 +330,15 @@ class AppGenerateService:
                     def on_subscribe():
                         workflow_based_app_execution_task.delay(payload_json)
 
-                    on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
+                    topic = MessageBasedAppGenerator.get_response_topic(AppMode.WORKFLOW, payload.workflow_run_id)
+                    on_subscribe, start_id = cls._build_streaming_task_on_subscribe(on_subscribe, topic=topic)
                     return rate_limit.generate(
                         WorkflowAppGenerator.convert_to_event_stream(
                             MessageBasedAppGenerator.retrieve_events(
                                 AppMode.WORKFLOW,
                                 payload.workflow_run_id,
                                 on_subscribe=on_subscribe,
+                                start_id=start_id,
                             ),
                         ),
                         request_id,

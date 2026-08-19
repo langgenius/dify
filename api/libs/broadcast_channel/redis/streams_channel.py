@@ -73,13 +73,40 @@ class StreamsTopic:
     def subscribe(self) -> Subscription:
         return _StreamsSubscription(self._client, self._key)
 
+    def checkpoint(self) -> bytes | str:
+        """Synchronously capture the id of the most recent entry currently in the stream.
+
+        Callers that need to start a background task which may publish to this topic
+        before `subscribe()`/`subscribe_from()` actually runs should call this first and
+        pass the result to `subscribe_from()`. Since this is a direct, synchronous Redis
+        round trip (unlike the lazily-resolved `$` used by `subscribe()`), it establishes
+        the read position before returning, closing the race where a fast producer
+        publishes between task dispatch and the subscriber's listener thread issuing its
+        first `xread`.
+
+        Propagates whatever the underlying Redis client raises on failure. Callers must not
+        swallow it and fall back to `$` themselves -- resolving `$` lazily at some later,
+        unpredictable point is exactly the race this method exists to close.
+        """
+        entries = self._client.xrevrange(self._key, count=1)
+        if not entries:
+            return "0-0"
+        entry_id, _fields = entries[0]
+        return entry_id
+
+    def subscribe_from(self, start_id: bytes | str) -> Subscription:
+        """Like `subscribe()`, but starts reading strictly after `start_id` instead of
+        lazily resolving `$` when the listener thread's first `xread` happens to run."""
+        return _StreamsSubscription(self._client, self._key, start_id=start_id)
+
 
 class _StreamsSubscription(Subscription):
     _SENTINEL = object()
 
-    def __init__(self, client: Redis | RedisCluster, key: str):
+    def __init__(self, client: Redis | RedisCluster, key: str, *, start_id: bytes | str | None = None):
         self._client = client
         self._key = key
+        self._start_id = start_id
 
         self._queue: queue.Queue[object] = queue.Queue()
 
@@ -104,10 +131,13 @@ class _StreamsSubscription(Subscription):
         # since this method runs in a dedicated thread, acquiring `_lock` inside this method won't cause
         # deadlock.
 
-        # Setting initial last id to `$` to signal redis that we only want new messages.
+        # Default initial last id to `$` to signal redis that we only want new messages.
+        # Callers that need a race-free start point (e.g. a background task may already be
+        # publishing before this listener's first `xread` runs) can pass an explicit
+        # `start_id` obtained via `StreamsTopic.checkpoint()` instead.
         #
         # ref: https://redis.io/docs/latest/commands/xread/#the-special--id
-        last_id = "$"
+        last_id = self._start_id if self._start_id is not None else "$"
         try:
             while True:
                 with self._lock:
