@@ -28,7 +28,7 @@ export const defaultDocBaseUrl = 'https://docs.dify.ai'
 export const enterpriseDocBaseUrl = 'https://enterprise-docs.dify.ai'
 export type DocPathMap = Partial<Record<Locale, DocPathWithoutLang>>
 
-export const getDocHomePath = () => '/home'
+const getDocHomePath = () => '/home'
 
 const getCurrentDocsProduct = (deploymentEdition: DeploymentEdition): DocsProduct => {
   if (deploymentEdition === 'CLOUD') return 'cloud'
