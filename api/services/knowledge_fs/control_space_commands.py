@@ -136,6 +136,17 @@ class KnowledgeFSControlSpaceCommandService:
                     granted_by_account_id=intent.owner_account_id,
                 )
             )
+            session.add(
+                KnowledgeFSExternalAccessPolicy(
+                    tenant_id=intent.tenant_id,
+                    control_space_id=control_space.id,
+                    service_api_enabled=True,
+                    agent_enabled=True,
+                    workflow_enabled=True,
+                    mcp_enabled=False,
+                    updated_by_account_id=intent.owner_account_id,
+                )
+            )
             payload = KnowledgeFSProvisionCommandPayload(
                 schema_version=1,
                 idempotency_key=intent.idempotency_key,
