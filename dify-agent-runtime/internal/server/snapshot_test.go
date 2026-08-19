@@ -51,7 +51,7 @@ func TestSnapshotSaveSuccessWithTrailers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != 200 {
 		t.Fatalf("status = %d", resp.StatusCode)
 	}
@@ -92,7 +92,7 @@ func TestSnapshotSaveEmptyHome(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != 204 {
 		t.Fatalf("workspace-only home: status = %d, want 204", resp.StatusCode)
 	}
@@ -115,7 +115,7 @@ func TestSnapshotSaveAbortsOnMidStreamFailure(t *testing.T) {
 	if err != nil {
 		return // aborted before headers: also a valid failure surface
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	_, readErr := io.ReadAll(resp.Body)
 	if readErr == nil && resp.Trailer.Get(TrailerSnapshotStatus) == SnapshotStatusOK {
 		t.Fatal("mid-stream failure must never produce a clean ok stream")
@@ -189,7 +189,7 @@ func TestSnapshotRestoreEndpoint(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != 200 {
 		t.Fatalf("status = %d", resp.StatusCode)
 	}
@@ -212,7 +212,7 @@ func TestSnapshotRestoreMalformed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != 400 {
 		t.Fatalf("status = %d, want 400", resp.StatusCode)
 	}
@@ -233,7 +233,7 @@ func TestSnapshotSaveHomeUnavailable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != 500 {
 		t.Fatalf("status = %d, want 500", resp.StatusCode)
 	}
@@ -256,7 +256,7 @@ func TestSnapshotRoutesRequireAuth(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	if resp.StatusCode != 401 {
 		t.Fatalf("unauthenticated save: status = %d, want 401", resp.StatusCode)
 	}
@@ -265,7 +265,7 @@ func TestSnapshotRoutesRequireAuth(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	if resp.StatusCode != 401 {
 		t.Fatalf("unauthenticated restore: status = %d, want 401", resp.StatusCode)
 	}
@@ -286,7 +286,7 @@ func TestSnapshotRestoreStalledPeerReleasesGate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// A syntactically valid request head announcing a chunked body, followed
 	// by a partial chunk. The peer then goes silent without completing it.
@@ -309,7 +309,7 @@ func TestSnapshotRestoreStalledPeerReleasesGate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode == http.StatusConflict {
 		t.Fatal("gate still held after stalled peer's read deadline should have expired")
 	}

@@ -69,7 +69,7 @@ func RestoreHome(ctx context.Context, src io.Reader, homeDir string) (RestoreRes
 	if err != nil {
 		return res, err
 	}
-	defer root.Close()
+	defer func() { _ = root.Close() }()
 
 	zr, err := zstd.NewReader(src,
 		zstd.WithDecoderConcurrency(1),

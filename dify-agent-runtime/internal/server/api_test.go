@@ -190,7 +190,7 @@ func TestRecoveryMiddlewareRepanicsAbortHandler(t *testing.T) {
 	resp, err := http.Get(srv.URL)
 	if err == nil {
 		_, readErr := io.ReadAll(resp.Body)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		if readErr == nil {
 			t.Fatal("expected aborted connection, got clean response")
 		}
@@ -208,7 +208,7 @@ func TestRecoveryMiddlewareStillCatchesOtherPanics(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != 500 {
 		t.Fatalf("expected 500, got %d", resp.StatusCode)
 	}

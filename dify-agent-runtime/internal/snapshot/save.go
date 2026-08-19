@@ -79,7 +79,7 @@ func SaveHome(ctx context.Context, dst io.Writer, homeDir string, excludes []str
 				return err
 			}
 			_, err = io.Copy(tw, f)
-			f.Close()
+			_ = f.Close()
 			if err != nil {
 				return err
 			}

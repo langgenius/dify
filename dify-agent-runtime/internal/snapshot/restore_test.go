@@ -202,8 +202,8 @@ func TestRestoreStripsSetuid(t *testing.T) {
 	tw := tar.NewWriter(zw)
 	_ = tw.WriteHeader(&tar.Header{Name: "suid", Typeflag: tar.TypeReg, Mode: 0o4755, Size: int64(len(content))})
 	_, _ = io.WriteString(tw, content)
-	tw.Close()
-	zw.Close()
+	_ = tw.Close()
+	_ = zw.Close()
 
 	_, err = RestoreHome(context.Background(), bytes.NewReader(buf.Bytes()), home)
 	if err != nil {
