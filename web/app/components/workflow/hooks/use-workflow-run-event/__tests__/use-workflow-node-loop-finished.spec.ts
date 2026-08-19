@@ -69,9 +69,10 @@ describe('useWorkflowNodeLoopFinished', () => {
     })
 
     await waitFor(() => {
-      expect(getNodeRuntimeState(result.current.nodes.find(node => node.id === 'loop-end'))._runningStatus).toBe(
-        NodeRunningStatus.Succeeded,
-      )
+      expect(
+        getNodeRuntimeState(result.current.nodes.find((node) => node.id === 'loop-end'))
+          ._runningStatus,
+      ).toBe(NodeRunningStatus.Succeeded)
     })
   })
 })

@@ -60,8 +60,7 @@ function addTitle(
       node.parallel_start_node_id ?? node.execution_metadata?.parallel_start_node_id ?? null
 
     const isNotInParallel = !parallel_id || isParallelBoundaryNode(node)
-    if (isNotInParallel)
-      return
+    if (isNotInParallel) return
 
     const isParallelStartNode = node.parallelDetail?.isParallelStartNode
 
@@ -202,8 +201,7 @@ const format = (list: NodeTracing[], t: WorkflowTranslate, isPrint?: boolean): N
   const filteredInParallelSubNodes = result.filter((node) => {
     const parallel_id = node.parallel_id ?? node.execution_metadata?.parallel_id ?? null
     const isNotInParallel = !parallel_id || isParallelBoundaryNode(node)
-    if (isNotInParallel)
-      return true
+    if (isNotInParallel) return true
 
     const parent_parallel_id =
       node.parent_parallel_id ?? node.execution_metadata?.parent_parallel_id ?? null
