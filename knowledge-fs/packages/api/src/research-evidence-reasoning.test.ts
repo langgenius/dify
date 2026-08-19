@@ -66,6 +66,49 @@ describe("Research evidence reasoning", () => {
     });
   });
 
+  it("recovers a provider-truncated complex query plan once", async () => {
+    const generate = vi
+      .fn()
+      .mockResolvedValueOnce({
+        finishReason: "length",
+        metadata: { model: reasoningModel.model, usage: { completionTokens: 256 } },
+        model: reasoningModel.model,
+        text: '{"intent":"comparison","subqueries":["renewal terms"',
+      })
+      .mockResolvedValueOnce({
+        finishReason: "stop",
+        metadata: { model: reasoningModel.model, usage: { completionTokens: 96 } },
+        model: reasoningModel.model,
+        text: JSON.stringify({
+          evidenceDimensions: ["renewal", "termination"],
+          intent: "comparison",
+          subqueries: ["renewal terms", "termination terms"],
+          useGraph: false,
+        }),
+      });
+    const reasoning = createResearchEvidenceReasoning({
+      maxOutputTokens: 256,
+      providerFactory: () => ({ generate }),
+      recoveryMaxOutputTokens: 1_024,
+      timeoutMs: 1_000,
+    });
+
+    await expect(
+      reasoning.plan({
+        query: "比较续约条款和终止条款，并说明两者风险",
+        reasoningModel,
+        tenantId: "tenant-1",
+        traceId: "trace-plan",
+      }),
+    ).resolves.toMatchObject({
+      evidenceDimensions: ["renewal", "termination"],
+      intent: "comparison",
+      modelCalled: true,
+      subqueries: ["renewal terms", "termination terms"],
+    });
+    expect(generate.mock.calls.map(([input]) => input.maxOutputTokens)).toEqual([256, 1_024]);
+  });
+
   it("judges the evidence set once and emits only a focused supplemental query", async () => {
     const generate = vi.fn(async (_input: unknown) => ({
       metadata: { model: reasoningModel.model },
@@ -193,6 +236,141 @@ describe("Research evidence reasoning", () => {
     });
   });
 
+  it.each([
+    {
+      finishReason: "length",
+      label: "an explicit provider length finish reason",
+      metadata: { model: reasoningModel.model, usage: { completionTokens: 480 } },
+    },
+    {
+      finishReason: undefined,
+      label: "usage that reaches the requested output-token bound",
+      metadata: { model: reasoningModel.model, usage: { completionTokens: 512 } },
+    },
+  ])("recovers one truncated judgement detected from $label", async (firstResponse) => {
+    const before = vi.fn();
+    const after = vi.fn();
+    const generate = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ...(firstResponse.finishReason ? { finishReason: firstResponse.finishReason } : {}),
+        metadata: firstResponse.metadata,
+        model: reasoningModel.model,
+        text: '{"coverage":0.8,"coveredDimensions":["timeline"]',
+      })
+      .mockResolvedValueOnce({
+        finishReason: "stop",
+        metadata: {
+          model: reasoningModel.model,
+          usage: { completionTokens: 180 },
+        },
+        model: reasoningModel.model,
+        text: JSON.stringify({
+          coverage: 1,
+          coveredDimensions: ["timeline"],
+          missingDimensions: [],
+          sufficient: true,
+          supplementalQuery: null,
+        }),
+      });
+    const reasoning = createResearchEvidenceReasoning({
+      maxOutputTokens: 512,
+      providerFactory: () => ({ generate }),
+      recoveryMaxOutputTokens: 2_048,
+      timeoutMs: 1_000,
+    });
+
+    await expect(
+      reasoning.judge({
+        evidence: [researchEvidenceItem()],
+        evidenceDimensions: ["timeline"],
+        query: "Apple，1985 到底发生了什么",
+        reasoningModel,
+        researchModelCallObserver: { after, before },
+        tenantId: "tenant-1",
+        traceId: "trace-1",
+      }),
+    ).resolves.toEqual({
+      coverage: 1,
+      coveredDimensions: ["timeline"],
+      missingDimensions: [],
+      modelCalled: true,
+      sufficient: true,
+    });
+
+    expect(generate).toHaveBeenCalledTimes(2);
+    expect(generate.mock.calls.map(([input]) => input.maxOutputTokens)).toEqual([512, 2_048]);
+    expect(before.mock.calls.map(([input]) => input.callId)).toEqual([
+      "research-judge:trace-1:1",
+      "research-judge:trace-1:1:recovery",
+    ]);
+    expect(after.mock.calls.map(([input]) => input.status)).toEqual(["succeeded", "succeeded"]);
+  });
+
+  it("does not retry a non-truncated judgement contract violation", async () => {
+    const generate = vi.fn(async () => ({
+      finishReason: "stop",
+      metadata: {
+        model: reasoningModel.model,
+        usage: { completionTokens: 120 },
+      },
+      model: reasoningModel.model,
+      text: "not-json",
+    }));
+    const reasoning = createResearchEvidenceReasoning({
+      maxOutputTokens: 512,
+      providerFactory: () => ({ generate }),
+      recoveryMaxOutputTokens: 2_048,
+      timeoutMs: 1_000,
+    });
+
+    await expect(
+      reasoning.judge({
+        evidence: [researchEvidenceItem()],
+        evidenceDimensions: ["timeline"],
+        query: "Apple，1985 到底发生了什么",
+        reasoningModel,
+        tenantId: "tenant-1",
+      }),
+    ).rejects.toMatchObject({
+      code: "RESEARCH_EVIDENCE_REASONING_INVALID",
+      retryable: false,
+    });
+    expect(generate).toHaveBeenCalledOnce();
+  });
+
+  it("fails with a distinct terminal code when the bounded recovery is also truncated", async () => {
+    const generate = vi.fn(async (input: { readonly maxOutputTokens?: number | undefined }) => ({
+      finishReason: "length",
+      metadata: {
+        model: reasoningModel.model,
+        usage: { completionTokens: input.maxOutputTokens },
+      },
+      model: reasoningModel.model,
+      text: '{"coverage":0.8',
+    }));
+    const reasoning = createResearchEvidenceReasoning({
+      maxOutputTokens: 512,
+      providerFactory: () => ({ generate }),
+      recoveryMaxOutputTokens: 2_048,
+      timeoutMs: 1_000,
+    });
+
+    await expect(
+      reasoning.judge({
+        evidence: [researchEvidenceItem()],
+        evidenceDimensions: ["timeline"],
+        query: "Apple，1985 到底发生了什么",
+        reasoningModel,
+        tenantId: "tenant-1",
+      }),
+    ).rejects.toMatchObject({
+      code: "RESEARCH_EVIDENCE_REASONING_TRUNCATED",
+      retryable: false,
+    });
+    expect(generate.mock.calls.map(([input]) => input.maxOutputTokens)).toEqual([512, 2_048]);
+  });
+
   it("reports successful and failed provider calls through the model observer", async () => {
     const before = vi.fn();
     const after = vi.fn();
@@ -312,6 +490,15 @@ describe("Research evidence reasoning", () => {
       }),
     ).toThrow("maxOutputTokens must be at least 1");
 
+    expect(() =>
+      createResearchEvidenceReasoning({
+        maxOutputTokens: 128,
+        providerFactory: vi.fn(),
+        recoveryMaxOutputTokens: 64,
+        timeoutMs: 1_000,
+      }),
+    ).toThrow("recoveryMaxOutputTokens must be at least maxOutputTokens");
+
     const reasoning = createResearchEvidenceReasoning({
       maxOutputTokens: 128,
       providerFactory: vi.fn(),
@@ -373,3 +560,19 @@ describe("Research evidence reasoning", () => {
     });
   });
 });
+
+function researchEvidenceItem() {
+  return {
+    citation: {
+      artifactHash: "a".repeat(64),
+      documentAssetId: "doc-1",
+      documentVersion: 1,
+      sectionPath: ["Apple, 1985"],
+    },
+    metadata: { text: "Apple's board removed Steve Jobs from operational control in 1985." },
+    nodeId: "node-1",
+    projectionIds: ["projection-1"],
+    score: 0.99,
+    sources: ["dense" as const],
+  };
+}

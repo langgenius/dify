@@ -94,6 +94,7 @@ import {
   createApiDatabaseRepositories,
 } from "./repository-options";
 import { createApiRerankerOptions } from "./reranker-options";
+import { createApiResearchEvidenceReasoningOptions } from "./research-evidence-reasoning-options";
 import {
   assertApiResearchTaskDurability,
   createApiResearchTaskRuntime,
@@ -177,6 +178,7 @@ const semanticEntityExtractionOptions = createApiSemanticEntityExtractionOptions
   modelRequestGate: ingestionModelRuntimeOptions.modelRequestGate,
 });
 const profileReasoningCapability = createApiProfileReasoningCapability();
+const researchEvidenceReasoningOptions = createApiResearchEvidenceReasoningOptions();
 const pageIndexSemanticTreeSearch = createPageIndexSemanticTreeSearch({
   batchSize: 5,
   maxConcurrentBatches: 4,
@@ -511,10 +513,11 @@ const embeddingResolver =
       })
     : undefined;
 const researchEvidenceReasoning = createResearchEvidenceReasoning({
-  maxOutputTokens: Math.min(profileReasoningCapability.maxOutputTokens, 512),
+  maxOutputTokens: researchEvidenceReasoningOptions.maxOutputTokens,
   modelRequestGate: ingestionModelRuntimeOptions.modelRequestGate,
   providerFactory: profileReasoningCapability.providerFactory,
-  timeoutMs: 30_000,
+  recoveryMaxOutputTokens: researchEvidenceReasoningOptions.recoveryMaxOutputTokens,
+  timeoutMs: researchEvidenceReasoningOptions.timeoutMs,
 });
 const documentCompilationRuntime = createApiDocumentCompilationRuntime({
   adapter,
