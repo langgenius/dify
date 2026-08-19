@@ -1773,7 +1773,7 @@ describe('DocumentsPage', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('opens the upload form when files are dropped on a populated document page', () => {
+  it('shows the drop target while dragging and previews dropped files in the upload form', () => {
     documentsQuery.data = { pages: [{ items: [document()] }] }
     const droppedFile = new File(['# handbook'], 'handbook.md', { type: 'text/markdown' })
 
@@ -1783,6 +1783,21 @@ describe('DocumentsPage', () => {
       .getByRole('heading', { name: 'dataset.newKnowledge.documents' })
       .closest('section')
     expect(documentSurface).not.toBeNull()
+    fireEvent.dragEnter(documentSurface!, {
+      dataTransfer: { files: [droppedFile], types: ['Files'] },
+    })
+
+    expect(screen.getByText('dataset.newKnowledge.dropFilesHere')).toBeInTheDocument()
+
+    fireEvent.dragLeave(documentSurface!, {
+      dataTransfer: { files: [droppedFile], types: ['Files'] },
+    })
+
+    expect(screen.queryByText('dataset.newKnowledge.dropFilesHere')).not.toBeInTheDocument()
+
+    fireEvent.dragEnter(documentSurface!, {
+      dataTransfer: { files: [droppedFile], types: ['Files'] },
+    })
     fireEvent.drop(documentSurface!, {
       dataTransfer: {
         dropEffect: 'copy',
@@ -1794,7 +1809,36 @@ describe('DocumentsPage', () => {
     expect(
       screen.getByRole('heading', { name: 'dataset.newKnowledge.addDocument' }),
     ).toBeInTheDocument()
+    expect(screen.queryByText('dataset.newKnowledge.dropFilesHere')).not.toBeInTheDocument()
     expect(screen.getByText('handbook.md')).toBeInTheDocument()
+  })
+
+  it('keeps the designed drop target active over the open upload form', async () => {
+    const droppedFile = new File(['# handbook'], 'handbook.md', { type: 'text/markdown' })
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />, { searchParams: '?upload=1' })
+
+    const documentSurface = screen
+      .getByRole('heading', { name: 'dataset.newKnowledge.addDocument' })
+      .closest('section')
+    expect(documentSurface).not.toBeNull()
+
+    fireEvent.dragEnter(documentSurface!, {
+      dataTransfer: { files: [droppedFile], types: ['Files'] },
+    })
+
+    expect(screen.getByText('dataset.newKnowledge.dropFilesHere')).toBeInTheDocument()
+
+    fireEvent.drop(documentSurface!, {
+      dataTransfer: {
+        dropEffect: 'copy',
+        files: [droppedFile],
+        types: ['Files'],
+      },
+    })
+
+    expect(screen.queryByText('dataset.newKnowledge.dropFilesHere')).not.toBeInTheDocument()
+    expect(await screen.findByText('handbook.md')).toBeInTheDocument()
   })
 
   it('keeps direct-upload actions unavailable until the deployment is verified', () => {

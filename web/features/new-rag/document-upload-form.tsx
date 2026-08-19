@@ -1,8 +1,9 @@
 'use client'
 
+import type { Ref } from 'react'
 import type { KnowledgeFsUploadPhase } from './knowledge-fs-upload'
 import { Button } from '@langgenius/dify-ui/button'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DocumentUploadFileList } from './document-upload-file-list'
 import {
@@ -12,6 +13,21 @@ import {
   uniqueDocumentUploadFiles,
 } from './document-upload-policy'
 
+export type DocumentUploadFormHandle = {
+  addFiles: (files: File[]) => void
+}
+
+type DocumentUploadFormProps = {
+  initialFiles?: File[]
+  onCancel: () => void
+  onFilesAdded: (files: File[]) => Promise<void>
+  onFileRemoved: (file: File) => void
+  onSubmit: (files: File[]) => Promise<boolean>
+  uploadProgress?: ReadonlyMap<File, KnowledgeFsUploadPhase>
+  uploading: boolean
+  ref?: Ref<DocumentUploadFormHandle>
+}
+
 export function DocumentUploadForm({
   initialFiles = [],
   onCancel,
@@ -20,15 +36,8 @@ export function DocumentUploadForm({
   onSubmit,
   uploadProgress = new Map(),
   uploading,
-}: {
-  initialFiles?: File[]
-  onCancel: () => void
-  onFilesAdded: (files: File[]) => Promise<void>
-  onFileRemoved: (file: File) => void
-  onSubmit: (files: File[]) => Promise<boolean>
-  uploadProgress?: ReadonlyMap<File, KnowledgeFsUploadPhase>
-  uploading: boolean
-}) {
+  ref,
+}: DocumentUploadFormProps) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -62,6 +71,19 @@ export function DocumentUploadForm({
     [onFilesAdded],
   )
 
+  const addFiles = useCallback(
+    (nextFiles: File[]) => {
+      const uniqueFiles = uniqueDocumentUploadFiles(filesRef.current, nextFiles)
+      const validUniqueFiles = uniqueFiles.filter((file) => !documentUploadIssue(file))
+      filesRef.current = [...filesRef.current, ...uniqueFiles]
+      setFiles(filesRef.current)
+      stageAddedFiles(validUniqueFiles)
+    },
+    [stageAddedFiles],
+  )
+
+  useImperativeHandle(ref, () => ({ addFiles }), [addFiles])
+
   useEffect(() => {
     if (initialFilesAnnouncedRef.current) return
     initialFilesAnnouncedRef.current = true
@@ -77,14 +99,6 @@ export function DocumentUploadForm({
         })
       })
   }, [initialFiles, onFilesAdded])
-
-  const addFiles = (nextFiles: File[]) => {
-    const uniqueFiles = uniqueDocumentUploadFiles(filesRef.current, nextFiles)
-    const validUniqueFiles = uniqueFiles.filter((file) => !documentUploadIssue(file))
-    filesRef.current = [...filesRef.current, ...uniqueFiles]
-    setFiles(filesRef.current)
-    stageAddedFiles(validUniqueFiles)
-  }
 
   return (
     <form

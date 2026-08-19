@@ -2,6 +2,7 @@
 
 import type { DocumentAction } from './document-actions-dropdown'
 import type { DocumentProcessingTask } from './document-models'
+import type { DocumentUploadFormHandle } from './document-upload-form'
 import type { DocumentUploadIssue } from './document-upload-policy'
 import type { KnowledgeFsUploadPhase, KnowledgeFsUploadProgress } from './knowledge-fs-upload'
 import type {
@@ -299,6 +300,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   )
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<Set<string>>(() => new Set())
   const [uploadFormInitialFiles, setUploadFormInitialFiles] = useState<File[]>([])
+  const uploadFormRef = useRef<DocumentUploadFormHandle>(null)
   const [isFileDragActive, setIsFileDragActive] = useState(false)
   const fileDragDepthRef = useRef(0)
   const [tasksOpen, setTasksOpen] = useState(false)
@@ -2594,7 +2596,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           const types = Array.from(event.dataTransfer.types ?? [])
           if (types.length && !types.includes('Files')) return
           event.preventDefault()
-          if (!canUpload || uploadFormOpen || uploading) return
+          if (!canUpload || uploading) return
           fileDragDepthRef.current += 1
           setIsFileDragActive(true)
         }}
@@ -2607,8 +2609,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           const types = Array.from(event.dataTransfer.types ?? [])
           if (types.length && !types.includes('Files')) return
           event.preventDefault()
-          if (!uploadFormOpen)
-            event.dataTransfer.dropEffect = canUpload && !uploading ? 'copy' : 'none'
+          event.dataTransfer.dropEffect = canUpload && !uploading ? 'copy' : 'none'
         }}
         onDrop={(event) => {
           const types = Array.from(event.dataTransfer.types ?? [])
@@ -2616,9 +2617,11 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           event.preventDefault()
           fileDragDepthRef.current = 0
           setIsFileDragActive(false)
-          if (!canUpload || uploadFormOpen || uploading) return
+          if (!canUpload || uploading) return
           const files = [...event.dataTransfer.files]
-          if (files.length) openUploadForm(files)
+          if (!files.length) return
+          if (uploadFormOpen) uploadFormRef.current?.addFiles(files)
+          else openUploadForm(files)
         }}
         onBlurCapture={(event) => {
           if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
@@ -2860,6 +2863,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           </div>
         ) : uploadFormOpen ? (
           <DocumentUploadForm
+            ref={uploadFormRef}
             initialFiles={uploadFormInitialFiles}
             uploadProgress={stagedUploadProgress}
             uploading={uploading}
@@ -2952,7 +2956,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             uploading={uploading}
           />
         )}
-        {isFileDragActive && canUpload && !uploadFormOpen && <DocumentDropOverlay />}
+        {isFileDragActive && canUpload && <DocumentDropOverlay />}
       </section>
       {bulkActionsVisible && (
         <DocumentBulkActions

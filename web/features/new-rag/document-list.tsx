@@ -921,7 +921,7 @@ export function DocumentDropOverlay() {
       className="pointer-events-none absolute inset-0 z-30 flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-divider-regular bg-[rgba(255,255,255,0.5)] text-center backdrop-blur-[5px]"
       role="status"
     >
-      <div className="flex w-57 items-center justify-center gap-5 rounded-xl border border-dashed border-divider-regular bg-components-panel-bg px-8 py-7 shadow-xs">
+      <div className="flex h-22 w-57 items-center justify-center gap-2 rounded-xl border border-dashed border-divider-regular bg-components-panel-bg shadow-xs">
         <span aria-hidden className="i-ri-file-word-2-fill size-6 text-text-accent" />
         <span aria-hidden className="i-ri-file-pdf-2-fill size-6 text-text-destructive" />
         <span aria-hidden className="i-ri-file-excel-fill size-6 text-text-success" />
@@ -930,7 +930,7 @@ export function DocumentDropOverlay() {
       <p className="mt-4 system-md-semibold text-text-primary">
         {t(($) => $['newKnowledge.dropFilesHere'])}
       </p>
-      <p className="mt-2 system-xs-regular text-text-tertiary">
+      <p className="mt-1 system-xs-regular text-text-tertiary">
         {t(($) => $['newKnowledge.documentUploadFormats'])}
       </p>
     </div>
