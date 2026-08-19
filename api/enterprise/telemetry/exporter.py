@@ -7,6 +7,7 @@ Initialized once during Flask extension init (single-threaded via ext_enterprise
 Accessed via ``ext_enterprise_telemetry.get_enterprise_exporter()`` from any thread/process.
 """
 
+from configs import DifyConfig
 import logging
 import socket
 import uuid
@@ -106,14 +107,14 @@ class EnterpriseExporter:
     ``increment_counter`` / ``record_histogram`` emit OTEL metrics at 100% accuracy.
     """
 
-    def __init__(self, config: object) -> None:
-        endpoint: str = getattr(config, "ENTERPRISE_OTLP_ENDPOINT", "")
-        headers_raw: str = getattr(config, "ENTERPRISE_OTLP_HEADERS", "")
-        protocol: str = (getattr(config, "ENTERPRISE_OTLP_PROTOCOL", "http") or "http").lower()
-        service_name: str = getattr(config, "ENTERPRISE_SERVICE_NAME", "dify")
-        sampling_rate: float = getattr(config, "ENTERPRISE_OTEL_SAMPLING_RATE", 1.0)
-        self.include_content: bool = getattr(config, "ENTERPRISE_INCLUDE_CONTENT", True)
-        api_key: str = getattr(config, "ENTERPRISE_OTLP_API_KEY", "")
+    def __init__(self, config: DifyConfig) -> None:
+        endpoint: str = config.ENTERPRISE_OTLP_ENDPOINT
+        headers_raw: str = config.ENTERPRISE_OTLP_HEADERS
+        protocol: str = config.ENTERPRISE_OTLP_PROTOCOL
+        service_name: str = config.APPLICATION_NAME
+        sampling_rate: float = config.ENTERPRISE_OTEL_SAMPLING_RATE
+        self.include_content: bool = config.ENTERPRISE_INCLUDE_CONTENT
+        api_key: str = config.ENTERPRISE_OTLP_API_KEY
 
         # Auto-detect TLS: https:// uses secure, everything else is insecure
         insecure = not endpoint.startswith("https://")
