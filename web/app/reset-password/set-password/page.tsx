@@ -128,7 +128,6 @@ const ChangePasswordForm = () => {
                   />
                   <InputGroupAddon align="inline-end">
                     <IconButton
-                      size="lg"
                       aria-label={t(($) => $[showPassword ? 'hidePassword' : 'showPassword'], {
                         ns: 'login',
                       })}
@@ -162,7 +161,6 @@ const ChangePasswordForm = () => {
                   />
                   <InputGroupAddon align="inline-end">
                     <IconButton
-                      size="lg"
                       aria-label={t(
                         ($) => $[showConfirmPassword ? 'hidePassword' : 'showPassword'],
                         { ns: 'login' },
