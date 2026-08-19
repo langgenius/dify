@@ -75,21 +75,18 @@ def test_message_carries_both_drift_reasons():
     assert "scopes" in msg
 
 
-def test_license_required_decorator_skips_on_ce():
-    from unittest.mock import patch
-
+def test_license_required_decorator_skips_on_ce(config_overrides):
     from services.openapi.license_gate import license_required
 
     @license_required
     def view():
         return "ok"
 
-    with patch("services.openapi.license_gate.dify_config") as cfg:
-        cfg.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
-        assert view() == "ok"
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+    assert view() == "ok"
 
 
-def test_license_required_decorator_403_on_invalid_ee_license():
+def test_license_required_decorator_403_on_invalid_ee_license(config_overrides):
     from unittest.mock import patch
 
     from werkzeug.exceptions import Forbidden
@@ -100,17 +97,16 @@ def test_license_required_decorator_403_on_invalid_ee_license():
     def view():
         return "ok"
 
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
     with (
-        patch("services.openapi.license_gate.dify_config") as cfg,
         patch("services.openapi.license_gate._is_license_valid", return_value=False),
     ):
-        cfg.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
         with pytest.raises(Forbidden) as exc:
             view()
         assert "license_required" in exc.value.description
 
 
-def test_license_required_decorator_passes_on_valid_ee_license():
+def test_license_required_decorator_passes_on_valid_ee_license(config_overrides):
     from unittest.mock import patch
 
     from services.openapi.license_gate import license_required
@@ -119,9 +115,8 @@ def test_license_required_decorator_passes_on_valid_ee_license():
     def view():
         return "ok"
 
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
     with (
-        patch("services.openapi.license_gate.dify_config") as cfg,
         patch("services.openapi.license_gate._is_license_valid", return_value=True),
     ):
-        cfg.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
         assert view() == "ok"

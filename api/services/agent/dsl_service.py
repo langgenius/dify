@@ -3,8 +3,7 @@
 Agent runtime configuration is split across immutable Soul snapshots and
 workflow-node bindings, while App and Snippet DSLs must be independent of the
 source workspace's database identifiers. This module owns that translation.
-It deliberately excludes drive payloads and stored credentials from portable
-packages; same-workspace copies may use the separate server-side clone path.
+It deliberately excludes stored credentials from portable packages.
 """
 
 from __future__ import annotations
@@ -327,7 +326,6 @@ class AgentDslService:
         node_id: str,
         source_agent: Agent,
         source_snapshot: AgentConfigSnapshot,
-        node_job: WorkflowNodeJobConfig,
         account_id: str,
     ) -> tuple[Agent, AgentConfigSnapshot]:
         """Clone a same-workspace Inline Agent for a pasted target node."""
@@ -349,17 +347,6 @@ class AgentDslService:
             soul=soul,
             source=AgentSource.WORKFLOW,
             operation=AgentConfigRevisionOperation.CREATE_VERSION,
-        )
-        from services.agent.composer_service import AgentComposerService
-
-        AgentComposerService._copy_agent_drive_rows(
-            tenant_id=workflow.tenant_id,
-            source_agent_id=source_agent.id,
-            target_agent_id=agent.id,
-            account_id=account_id,
-            agent_soul=soul,
-            node_job=node_job,
-            session=self.session,
         )
         return agent, snapshot
 

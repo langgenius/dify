@@ -15,7 +15,6 @@ from controllers.console.agent import roster as roster_controller
 from controllers.console.agent.composer import (
     AgentComposerApi,
     AgentComposerCandidatesApi,
-    AgentComposerValidateApi,
     WorkflowAgentComposerApi,
     WorkflowAgentComposerCandidatesApi,
     WorkflowAgentComposerCopyFromRosterApi,
@@ -260,10 +259,7 @@ def test_agent_v2_console_routes_are_agent_id_first() -> None:
         "/agent/<uuid:agent_id>/build-draft",
         "/agent/<uuid:agent_id>/build-draft/apply",
         "/agent/<uuid:agent_id>/referencing-workflows",
-        "/agent/<uuid:agent_id>/drive/files",
         "/agent/<uuid:agent_id>/sandbox/files",
-        "/agent/<uuid:agent_id>/skills/upload",
-        "/agent/<uuid:agent_id>/files",
         "/agent/<uuid:agent_id>/api-access",
         "/agent/<uuid:agent_id>/api-enable",
         "/agent/<uuid:agent_id>/api-keys",
@@ -1329,10 +1325,6 @@ def test_workflow_composer_get_put_validate_candidates_impact_and_save(
     )
     monkeypatch.setattr(composer_controller.ComposerConfigValidator, "validate_publish_payload", lambda payload: None)
     monkeypatch.setattr(
-        composer_controller.AgentComposerService, "resolve_workflow_node_agent_id", lambda **kwargs: None
-    )
-    monkeypatch.setattr(composer_controller.AgentComposerService, "resolve_bound_agent_id", lambda **kwargs: None)
-    monkeypatch.setattr(
         composer_controller.AgentComposerService,
         "get_workflow_candidates",
         lambda **kwargs: _candidates_response("workflow"),
@@ -1514,10 +1506,6 @@ def test_agent_composer_routes_resolve_app_from_agent_id(
         captured["save"] = kwargs
         return _agent_app_composer_response()
 
-    def collect_validation_findings(**kwargs: object) -> dict:
-        captured["validate"] = kwargs
-        return {"warnings": [], "knowledge_retrieval_placeholder": []}
-
     def get_agent_app_candidates(**kwargs: object) -> dict:
         captured["candidates"] = kwargs
         return _candidates_response("agent_app")
@@ -1525,9 +1513,6 @@ def test_agent_composer_routes_resolve_app_from_agent_id(
     monkeypatch.setattr(composer_controller.AgentComposerService, "load_agent_composer", load_agent_composer)
     monkeypatch.setattr(composer_controller.AgentComposerService, "save_agent_composer", save_agent_composer)
     monkeypatch.setattr(composer_controller.ComposerConfigValidator, "validate_publish_payload", lambda payload: None)
-    monkeypatch.setattr(
-        composer_controller.AgentComposerService, "collect_validation_findings", collect_validation_findings
-    )
     monkeypatch.setattr(composer_controller.AgentComposerService, "get_agent_app_candidates", get_agent_app_candidates)
     composer = unwrap(AgentComposerApi.get)(AgentComposerApi(), MagicMock(), "tenant-1", agent_id)
     assert composer["variant"] == "agent_app"
@@ -1545,15 +1530,6 @@ def test_agent_composer_routes_resolve_app_from_agent_id(
         assert saved_composer["variant"] == "agent_app"
         assert saved_composer["active_config_is_published"] is True
         assert cast(dict[str, object], captured["save"])["agent_id"] == agent_id
-        assert unwrap(AgentComposerValidateApi.post)(
-            AgentComposerValidateApi(), composer_save_payload, MagicMock(), "tenant-1", agent_id
-        ) == {
-            "result": "success",
-            "errors": [],
-            "warnings": [],
-            "knowledge_retrieval_placeholder": [],
-        }
-        assert cast(dict[str, object], captured["validate"])["agent_id"] == agent_id
     candidates = unwrap(AgentComposerCandidatesApi.get)(
         AgentComposerCandidatesApi(), MagicMock(), "tenant-1", account_id, agent_id
     )

@@ -23,18 +23,7 @@ export default defineConfig(({ mode }) => {
       const { default: react } = await import('@vitejs/plugin-react')
 
       if (isTest) {
-        return [
-          nextStaticImageTestPlugin({ projectRoot }),
-          react(),
-          {
-            // Stub .mdx files so components importing them can be unit-tested
-            name: 'mdx-stub',
-            enforce: 'pre',
-            transform(_: string, id: string) {
-              if (id.endsWith('.mdx')) return { code: 'export default () => null', map: null }
-            },
-          },
-        ]
+        return [nextStaticImageTestPlugin({ projectRoot }), react()]
       }
 
       if (isStorybook) return [react()]

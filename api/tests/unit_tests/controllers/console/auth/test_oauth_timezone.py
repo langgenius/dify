@@ -109,7 +109,6 @@ def test_generate_account_prefers_state_language_over_accept_language(
     mock_link_account.assert_called_once_with("github", "github-123", account, session=ANY)
 
 
-@patch("controllers.console.auth.oauth.dify_config")
 @patch("controllers.console.auth.oauth.RegisterService")
 @patch("controllers.console.auth.oauth.SystemFeatureService")
 @patch("controllers.console.auth.oauth._get_account_by_openid_or_email", return_value=None)
@@ -117,11 +116,11 @@ def test_generate_account_rejects_new_user_when_registration_disabled(
     mock_get_account,
     mock_feature_service,
     mock_register_service,
-    mock_config,
     app: Flask,
+    config_overrides,
 ):
     mock_feature_service.is_registration_allowed.return_value = False
-    mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     user_info = OAuthUserInfo(id="github-123", name="Test User", email="user@example.com")
 
     with app.test_request_context(headers={"Accept-Language": "en-US,en;q=0.9"}):

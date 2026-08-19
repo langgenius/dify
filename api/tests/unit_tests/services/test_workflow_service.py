@@ -2942,7 +2942,9 @@ class TestWorkflowServiceDraftExecution:
     def service(self, sqlite_engine: Engine) -> WorkflowService:
         return WorkflowService(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
 
-    def test_run_draft_workflow_node_should_execute_start_node_successfully(self, service: WorkflowService) -> None:
+    def test_run_draft_workflow_node_should_execute_start_node_successfully(
+        self, service: WorkflowService, sqlite_engine: Engine
+    ) -> None:
         # Arrange
         app = TestWorkflowAssociatedDataFactory.create_app(app_id="app-1", tenant_id="tenant-1")
         account = TestWorkflowAssociatedDataFactory.create_account(account_id="user-1")
@@ -2964,8 +2966,7 @@ class TestWorkflowServiceDraftExecution:
 
         # Mocking complex dependencies
         with (
-            patch("services.workflow_service.db"),
-            patch("services.workflow_service.Session"),
+            patch("services.workflow_service.db", SimpleNamespace(engine=sqlite_engine)),
             patch("services.workflow_service.WorkflowDraftVariableService"),
             patch("services.workflow_service.StartNodeData") as mock_start_data,
             patch(
@@ -3021,7 +3022,9 @@ class TestWorkflowServiceDraftExecution:
             mock_repo.save.assert_called_once()
             mock_saver_cls.return_value.save.assert_called_once()
 
-    def test_run_draft_workflow_node_should_execute_non_start_node_successfully(self, service: WorkflowService) -> None:
+    def test_run_draft_workflow_node_should_execute_non_start_node_successfully(
+        self, service: WorkflowService, sqlite_engine: Engine
+    ) -> None:
         # Arrange
         app = TestWorkflowAssociatedDataFactory.create_app(app_id="app-1", tenant_id="tenant-1")
         account = TestWorkflowAssociatedDataFactory.create_account(account_id="user-1")
@@ -3046,8 +3049,7 @@ class TestWorkflowServiceDraftExecution:
         )
 
         with (
-            patch("services.workflow_service.db"),
-            patch("services.workflow_service.Session"),
+            patch("services.workflow_service.db", SimpleNamespace(engine=sqlite_engine)),
             patch("services.workflow_service.WorkflowDraftVariableService"),
             patch("services.workflow_service.VariablePool") as mock_pool_cls,
             patch("services.workflow_service.default_system_variables") as mock_default_system_variables,
@@ -3281,14 +3283,13 @@ class TestWorkflowServiceHumanInputOperations:
 
         assert result == []
 
-    def test_build_human_input_variable_pool(self, service: WorkflowService) -> None:
+    def test_build_human_input_variable_pool(self, service: WorkflowService, sqlite_engine: Engine) -> None:
         workflow = TestWorkflowAssociatedDataFactory.create_workflow()
         node_data = MagicMock()
         node_data.extract_variable_selector_to_variable_mapping.return_value = {}
 
         with (
-            patch("services.workflow_service.db"),
-            patch("services.workflow_service.Session"),
+            patch("services.workflow_service.db", SimpleNamespace(engine=sqlite_engine)),
             patch("services.workflow_service.WorkflowDraftVariableService"),
             patch("services.workflow_service.VariablePool") as mock_pool_cls,
             patch("services.workflow_service.DraftVarLoader"),

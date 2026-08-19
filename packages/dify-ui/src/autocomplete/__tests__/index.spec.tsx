@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import {
   Autocomplete,
@@ -67,6 +68,20 @@ const renderAutocomplete = ({
 
 describe('Autocomplete wrappers', () => {
   describe('Input group and input', () => {
+    it('should show the compound focus surface when keyboard users enter without Field', async () => {
+      const screen = await renderAutocomplete()
+      const inputGroup = screen.getByTestId('input-group')
+      const input = screen.getByTestId('input')
+      const restingBoxShadow = getComputedStyle(inputGroup.element()).boxShadow
+
+      await userEvent.keyboard('{Tab}')
+
+      await expect.element(input).toHaveFocus()
+      await expect
+        .poll(() => getComputedStyle(inputGroup.element()).boxShadow)
+        .not.toBe(restingBoxShadow)
+    })
+
     it('should set input defaults and forward passthrough props', async () => {
       const screen = await renderAutocomplete({
         children: (
