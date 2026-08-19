@@ -47,6 +47,15 @@ export function defaultEnvironmentVariableSelection(
   }
 }
 
+export function hasRequiredDeploymentCredentials(
+  deploymentOptions: GetWorkflowDeploymentOptionsResponse,
+  credentials: DeploymentConfigurationValues['credentials'],
+) {
+  return deploymentOptions.credential_slots.every((slot) =>
+    Boolean(credentials[credentialSlotKey(slot)] ?? defaultCredentialId(slot)),
+  )
+}
+
 export function workflowDeploymentInput(
   deploymentOptions: GetWorkflowDeploymentOptionsResponse,
   values: DeploymentConfigurationValues,

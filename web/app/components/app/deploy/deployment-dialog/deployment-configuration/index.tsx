@@ -10,7 +10,10 @@ import { useDeployWorkflow } from '../../use-deploy-workflow'
 import { DeploymentConfigurationContent } from './content'
 import { useDeploymentConfigurationQueries } from './use-deployment-configuration-queries'
 import { useDeploymentConfigurationValues } from './use-deployment-configuration-values'
-import { workflowDeploymentInput } from './workflow-deployment-input'
+import {
+  hasRequiredDeploymentCredentials,
+  workflowDeploymentInput,
+} from './workflow-deployment-input'
 
 export function DeploymentConfiguration({
   appId,
@@ -35,15 +38,18 @@ export function DeploymentConfiguration({
 }) {
   const { t } = useTranslation('deployments')
   const { t: tCommon } = useTranslation('common')
-  const [configurationValues, setConfigurationValues] = useDeploymentConfigurationValues()
+  const configurationValues = useDeploymentConfigurationValues()
   const queryState = useDeploymentConfigurationQueries({
     appId,
     environmentId: request.environmentId,
     workflowId: version.id,
   })
-  const deploymentInput = queryState.deploymentOptions
-    ? workflowDeploymentInput(queryState.deploymentOptions, configurationValues)
-    : undefined
+  const hasRequiredCredentials = queryState.deploymentOptions
+    ? hasRequiredDeploymentCredentials(
+        queryState.deploymentOptions,
+        configurationValues.credentials,
+      )
+    : false
   const deployMutation = useDeployWorkflow({
     appId,
     invalidateAppEnvironmentsOnSuccess,
@@ -56,7 +62,7 @@ export function DeploymentConfiguration({
     Boolean(appId) &&
     !disabled &&
     queryState.canDeploy &&
-    Boolean(deploymentInput) &&
+    hasRequiredCredentials &&
     !deployMutation.isPending
 
   return (
@@ -64,7 +70,13 @@ export function DeploymentConfiguration({
       className="flex min-h-0 flex-1 flex-col"
       onSubmit={(event) => {
         event.preventDefault()
-        if (!appId || !canDeploy || !deploymentInput) return
+        if (!appId || !canDeploy || !queryState.deploymentOptions) return
+
+        const deploymentInput = workflowDeploymentInput(
+          queryState.deploymentOptions,
+          configurationValues.getValues(),
+        )
+        if (!deploymentInput) return
 
         deployMutation.mutate({
           body: deploymentInput,
@@ -109,10 +121,9 @@ export function DeploymentConfiguration({
 
       <DeploymentConfigurationContent
         compact={embedded}
-        onValuesChange={setConfigurationValues}
+        configurationValues={configurationValues}
         queryState={queryState}
         request={request}
-        values={configurationValues}
         version={version}
       />
 

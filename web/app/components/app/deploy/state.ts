@@ -36,6 +36,34 @@ export type EnvironmentDeploymentAction = {
 const appDeployAppIdAtom = atom<string | null>(null)
 const defaultWorkflowVersionNameAtom = atom('')
 
+type DeploymentVersionSource = Parameters<typeof toDeploymentVersion>[0]
+type DeploymentVersionCacheEntry = {
+  defaultName: string
+  latestWorkflowId?: string
+  version: ReturnType<typeof toDeploymentVersion>
+}
+
+const deploymentVersionCache = new WeakMap<DeploymentVersionSource, DeploymentVersionCacheEntry>()
+
+function toStableDeploymentVersion(
+  source: DeploymentVersionSource,
+  defaultName: string,
+  latestWorkflowId?: string,
+) {
+  const cached = deploymentVersionCache.get(source)
+  if (cached?.defaultName === defaultName && cached.latestWorkflowId === latestWorkflowId)
+    return cached.version
+
+  const version = toDeploymentVersion(source, defaultName, latestWorkflowId)
+  deploymentVersionCache.set(source, {
+    defaultName,
+    latestWorkflowId,
+    version,
+  })
+
+  return version
+}
+
 export function AppDeployStateBoundary({
   appId,
   children,
@@ -71,7 +99,7 @@ export const latestAppWorkflowVersionAtom = atom((get) => {
   const workflow = get(latestPublishedWorkflowAtom)
   if (!workflow) return
 
-  return toDeploymentVersion(workflow, get(defaultWorkflowVersionNameAtom), workflow.id)
+  return toStableDeploymentVersion(workflow, get(defaultWorkflowVersionNameAtom), workflow.id)
 })
 
 const appWorkflowVersionsQueryAtom = atomWithInfiniteQuery((get) => {
@@ -88,7 +116,7 @@ export const appWorkflowVersionsAtom = atom((get) => {
   return pages.flatMap((page) =>
     page.items
       .filter((workflow) => workflow.version !== 'draft')
-      .map((workflow) => toDeploymentVersion(workflow, defaultName, latestWorkflowId)),
+      .map((workflow) => toStableDeploymentVersion(workflow, defaultName, latestWorkflowId)),
   )
 })
 
@@ -202,9 +230,10 @@ export const appEnvironmentDeploymentsIsErrorAtom = selectAtom(
   (query) => query.isError,
 )
 
-export const appEnvironmentDeploymentsIsFetchingAtom = selectAtom(
+export const appEnvironmentDeploymentsIsRetryingAtom = selectAtom(
   appEnvironmentDeploymentsQueryAtom,
-  (query) => query.isFetching,
+  (query) =>
+    query.isError && (query.data?.environment_deployments.length ?? 0) === 0 && query.isFetching,
 )
 
 export const appEnvironmentDeploymentsRefetchAtom = selectAtom(

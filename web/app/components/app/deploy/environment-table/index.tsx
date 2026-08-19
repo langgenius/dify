@@ -12,8 +12,8 @@ import Loading from '@/app/components/base/loading'
 import {
   appEnvironmentDeploymentsAtom,
   appEnvironmentDeploymentsIsErrorAtom,
-  appEnvironmentDeploymentsIsFetchingAtom,
   appEnvironmentDeploymentsIsLoadingAtom,
+  appEnvironmentDeploymentsIsRetryingAtom,
   appEnvironmentDeploymentsRefetchAtom,
   appEnvironmentUsageAtom,
 } from '../state'
@@ -42,14 +42,13 @@ export function EnvironmentTable({
   const deployments = useAtomValue(appEnvironmentDeploymentsAtom) ?? []
   const isLoading = useAtomValue(appEnvironmentDeploymentsIsLoadingAtom)
   const isError = useAtomValue(appEnvironmentDeploymentsIsErrorAtom)
-  const isFetching = useAtomValue(appEnvironmentDeploymentsIsFetchingAtom)
+  const isRetrying = useAtomValue(appEnvironmentDeploymentsIsRetryingAtom)
   const refetchDeployments = useAtomValue(appEnvironmentDeploymentsRefetchAtom)
   const usage = useAtomValue(appEnvironmentUsageAtom)
   const used = usage?.used ?? deployments.length
   const total = usage?.total ?? deployments.length
   const showLoadingState = isLoading && deployments.length === 0
   const showErrorState = isError && deployments.length === 0
-  const isRetrying = showErrorState && isFetching
   const showEmptyState = !isLoading && !isError && deployments.length === 0
 
   return (

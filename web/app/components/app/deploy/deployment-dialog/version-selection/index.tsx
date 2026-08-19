@@ -7,6 +7,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogCloseButton, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { useAtomValue } from 'jotai'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
@@ -37,60 +38,88 @@ function VersionTag({ children }: { children: ReactNode }) {
   )
 }
 
-function VersionChoice({
-  version,
-  current,
-  disabled = false,
-  onSelect,
-}: {
-  version: DeploymentVersion
-  current: boolean
-  disabled?: boolean
-  onSelect: (version: DeploymentVersion) => void
-}) {
-  const { t } = useTranslation('deployments')
-  const { t: tWorkflow } = useTranslation('workflow')
-  const { formatTimeFromNow } = useFormatTimeFromNow()
+const VersionChoice = memo(
+  ({
+    version,
+    current,
+    disabled = false,
+    onSelect,
+  }: {
+    version: DeploymentVersion
+    current: boolean
+    disabled?: boolean
+    onSelect: (version: DeploymentVersion) => void
+  }) => {
+    const { t } = useTranslation('deployments')
+    const { t: tWorkflow } = useTranslation('workflow')
+    const { formatTimeFromNow } = useFormatTimeFromNow()
 
-  return (
-    <button
-      type="button"
-      disabled={current || disabled}
-      onClick={() => onSelect(version)}
-      className="flex w-full cursor-pointer flex-col items-start gap-0.5 rounded-lg p-2 text-start outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:hover:bg-transparent"
-    >
-      <span className="flex min-w-0 items-center gap-1">
-        <span
-          className={cn('truncate system-md-medium text-text-secondary', current && 'opacity-50')}
-        >
-          {version.name}
+    return (
+      <button
+        type="button"
+        disabled={current || disabled}
+        onClick={() => onSelect(version)}
+        className="flex w-full cursor-pointer flex-col items-start gap-0.5 rounded-lg p-2 text-start outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:hover:bg-transparent"
+      >
+        <span className="flex min-w-0 items-center gap-1">
+          <span
+            className={cn('truncate system-md-medium text-text-secondary', current && 'opacity-50')}
+          >
+            {version.name}
+          </span>
+          {version.latest && <VersionBadge>{t(($) => $['overview.chip.latest'])}</VersionBadge>}
+          {current && <VersionBadge>{t(($) => $['studio.current'])}</VersionBadge>}
         </span>
-        {version.latest && <VersionBadge>{t(($) => $['overview.chip.latest'])}</VersionBadge>}
-        {current && <VersionBadge>{t(($) => $['studio.current'])}</VersionBadge>}
-      </span>
-      {version.description && (
-        <span className="line-clamp-3 system-xs-regular text-text-tertiary">
-          {version.description}
-        </span>
-      )}
-      {version.publishedAt !== undefined && version.publishedBy && (
-        <span className={cn('system-xs-regular text-text-tertiary', current && 'opacity-50')}>
-          {tWorkflow(($) => $['common.publishedBy'], {
-            time: formatTimeFromNow(version.publishedAt),
-            author: version.publishedBy,
-          })}
-        </span>
-      )}
-      {version.tags && version.tags.length > 0 && (
-        <span className="flex flex-wrap items-center gap-1 pt-1">
-          {version.tags.map((tag) => (
-            <VersionTag key={tag}>{tag}</VersionTag>
-          ))}
-        </span>
-      )}
-    </button>
-  )
-}
+        {version.description && (
+          <span className="line-clamp-3 system-xs-regular text-text-tertiary">
+            {version.description}
+          </span>
+        )}
+        {version.publishedAt !== undefined && version.publishedBy && (
+          <span className={cn('system-xs-regular text-text-tertiary', current && 'opacity-50')}>
+            {tWorkflow(($) => $['common.publishedBy'], {
+              time: formatTimeFromNow(version.publishedAt),
+              author: version.publishedBy,
+            })}
+          </span>
+        )}
+        {version.tags && version.tags.length > 0 && (
+          <span className="flex flex-wrap items-center gap-1 pt-1">
+            {version.tags.map((tag) => (
+              <VersionTag key={tag}>{tag}</VersionTag>
+            ))}
+          </span>
+        )}
+      </button>
+    )
+  },
+)
+VersionChoice.displayName = 'VersionChoice'
+
+const VersionChoices = memo(
+  ({
+    currentVersionId,
+    disabled,
+    onSelect,
+    versions,
+  }: {
+    currentVersionId?: string
+    disabled: boolean
+    onSelect: (version: DeploymentVersion) => void
+    versions: DeploymentVersion[]
+  }) => {
+    return versions.map((version) => (
+      <VersionChoice
+        key={version.id}
+        version={version}
+        current={version.id === currentVersionId}
+        disabled={disabled}
+        onSelect={onSelect}
+      />
+    ))
+  },
+)
+VersionChoices.displayName = 'VersionChoices'
 
 function VersionList({
   className,
@@ -126,15 +155,12 @@ function VersionList({
   return (
     <div ref={rootRef} className={cn('min-h-0 flex-1 overflow-y-auto', className)}>
       <div className="flex flex-col gap-px">
-        {versions.map((version) => (
-          <VersionChoice
-            key={version.id}
-            version={version}
-            current={version.id === currentVersionId}
-            disabled={disabled}
-            onSelect={onSelect}
-          />
-        ))}
+        <VersionChoices
+          currentVersionId={currentVersionId}
+          disabled={disabled}
+          onSelect={onSelect}
+          versions={versions}
+        />
       </div>
       {isLoading && (
         <div
