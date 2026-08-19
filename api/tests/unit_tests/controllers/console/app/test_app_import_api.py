@@ -20,7 +20,7 @@ from models.engine import db
 from models.model import App, AppMode
 from services.app_dsl_service import ImportStatus
 from services.entities.dsl_entities import CheckDependenciesResult
-from services.feature_service import SystemFeatureModel, WebAppAuthModel
+from services.entities.feature_entities import SystemFeatureModel, WebAppAuthModel
 
 
 def _unwrap(func):

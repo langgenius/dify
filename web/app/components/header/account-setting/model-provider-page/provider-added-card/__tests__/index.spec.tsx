@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import type { ModelProvider } from '../../declarations'
-import type { PluginDetail } from '@/app/components/plugins/types'
+import type { ModelProviderPluginSummary } from '../../index'
 import { QueryClient } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
@@ -229,15 +229,11 @@ describe('ProviderAddedCard', () => {
     renderWithQueryClient(
       <ProviderAddedCard
         provider={mockProvider}
-        pluginDetail={
+        pluginSummary={
           {
             plugin_id: 'provider-plugin',
-            plugin_unique_identifier: 'provider-plugin@1.0.0',
-            declaration: {
-              author: 'langgenius',
-              description: { en_US: 'Provider plugin' },
-            },
-          } as PluginDetail
+            installation_id: 'provider-plugin@1.0.0',
+          } as ModelProviderPluginSummary
         }
       />,
     )
@@ -352,29 +348,44 @@ describe('ProviderAddedCard', () => {
     const customConfigProvider = {
       ...mockProvider,
       configurate_methods: [ConfigurationMethodEnum.customizableModel],
+      custom_configuration: { has_custom_models: true },
     } as unknown as ModelProvider
     const { unmount } = renderWithQueryClient(<ProviderAddedCard provider={customConfigProvider} />)
 
-    expect(screen.getByTestId('manage-custom-model')).toBeInTheDocument()
-    expect(screen.getByTestId('add-custom-model')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'common.modelProvider.auth.manageCredentials' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'common.modelProvider.addModel' }),
+    ).toBeInTheDocument()
 
     unmount()
     mockIsCurrentWorkspaceManager = false
     mockWorkspacePermissionKeys = ['credential.use', 'credential.create', 'credential.manage']
     renderWithQueryClient(<ProviderAddedCard provider={customConfigProvider} />)
-    expect(screen.queryByTestId('manage-custom-model')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'common.modelProvider.auth.manageCredentials' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'common.modelProvider.addModel' }),
+    ).not.toBeInTheDocument()
   })
 
   it('should render custom model actions when user can configure models without credential permissions', () => {
     const customConfigProvider = {
       ...mockProvider,
       configurate_methods: [ConfigurationMethodEnum.customizableModel],
+      custom_configuration: { has_custom_models: false },
     } as unknown as ModelProvider
     mockWorkspacePermissionKeys = ['plugin.model_config']
 
     renderWithQueryClient(<ProviderAddedCard provider={customConfigProvider} />)
 
-    expect(screen.getByTestId('manage-custom-model')).toBeInTheDocument()
-    expect(screen.getByTestId('add-custom-model')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'common.modelProvider.auth.manageCredentials' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'common.modelProvider.addModel' }),
+    ).toBeInTheDocument()
   })
 })

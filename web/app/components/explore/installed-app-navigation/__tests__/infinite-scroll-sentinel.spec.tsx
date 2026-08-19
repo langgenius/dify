@@ -1,70 +1,95 @@
-import type { RefObject } from 'react'
 import { act, render } from '@testing-library/react'
+import { useRef } from 'react'
 import { InfiniteScrollSentinel } from '../infinite-scroll-sentinel'
 
-describe('InfiniteScrollSentinel', () => {
-  it('does not observe again after a next-page request completes', () => {
-    const fetchNextPage = vi.fn(() => Promise.resolve())
-    const scrollRootRef: RefObject<HTMLDivElement | null> = {
-      current: document.createElement('div'),
-    }
-    const observerConstructed = vi.fn()
+type MockObserver = {
+  callback: IntersectionObserverCallback
+}
 
+const observers: MockObserver[] = []
+
+function Harness({
+  canLoadMore,
+  fetchNextPage,
+}: {
+  canLoadMore: boolean
+  fetchNextPage: () => Promise<unknown>
+}) {
+  const scrollRootRef = useRef<HTMLDivElement>(null)
+
+  return (
+    <div ref={scrollRootRef}>
+      <InfiniteScrollSentinel
+        canLoadMore={canLoadMore}
+        fetchNextPage={fetchNextPage}
+        scrollRootRef={scrollRootRef}
+      />
+    </div>
+  )
+}
+
+describe('InfiniteScrollSentinel', () => {
+  beforeEach(() => {
+    observers.length = 0
     vi.stubGlobal(
       'IntersectionObserver',
       class MockIntersectionObserver {
-        private readonly callback: IntersectionObserverCallback
+        callback: IntersectionObserverCallback
+        disconnect = vi.fn()
+        observe = vi.fn()
+        root = null
+        rootMargin = ''
+        thresholds = []
+        takeRecords = () => []
+        unobserve = vi.fn()
 
         constructor(callback: IntersectionObserverCallback) {
           this.callback = callback
-          observerConstructed()
+          observers.push({ callback })
         }
-
-        observe() {
-          this.callback(
-            [{ isIntersecting: true } as IntersectionObserverEntry],
-            this as unknown as IntersectionObserver,
-          )
-        }
-
-        disconnect() {}
-        unobserve() {}
       },
     )
+  })
 
-    const { rerender } = render(
-      <InfiniteScrollSentinel
-        canFetchNextPage
-        fetchNextPage={fetchNextPage}
-        isFetchingNextPage={false}
-        scrollRootRef={scrollRootRef}
-      />,
-    )
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
 
-    expect(fetchNextPage).toHaveBeenCalledOnce()
+  it('does not fetch again while busy and resumes when the query can load again', () => {
+    const fetchNextPage = vi.fn().mockResolvedValue(undefined)
+    const { rerender } = render(<Harness canLoadMore fetchNextPage={fetchNextPage} />)
 
     act(() => {
-      rerender(
-        <InfiniteScrollSentinel
-          canFetchNextPage
-          fetchNextPage={fetchNextPage}
-          isFetchingNextPage
-          scrollRootRef={scrollRootRef}
-        />,
-      )
+      observers
+        .at(-1)
+        ?.callback(
+          [{ isIntersecting: true } as IntersectionObserverEntry],
+          {} as IntersectionObserver,
+        )
     })
+    expect(fetchNextPage).toHaveBeenCalledOnce()
+
+    rerender(<Harness canLoadMore={false} fetchNextPage={fetchNextPage} />)
     act(() => {
-      rerender(
-        <InfiniteScrollSentinel
-          canFetchNextPage
-          fetchNextPage={fetchNextPage}
-          isFetchingNextPage={false}
-          scrollRootRef={scrollRootRef}
-        />,
-      )
+      observers
+        .at(-1)
+        ?.callback(
+          [{ isIntersecting: true } as IntersectionObserverEntry],
+          {} as IntersectionObserver,
+        )
+    })
+    expect(fetchNextPage).toHaveBeenCalledOnce()
+
+    rerender(<Harness canLoadMore fetchNextPage={fetchNextPage} />)
+    act(() => {
+      observers
+        .at(-1)
+        ?.callback(
+          [{ isIntersecting: true } as IntersectionObserverEntry],
+          {} as IntersectionObserver,
+        )
     })
 
-    expect(observerConstructed).toHaveBeenCalledOnce()
-    expect(fetchNextPage).toHaveBeenCalledOnce()
+    expect(fetchNextPage).toHaveBeenCalledTimes(2)
   })
 })

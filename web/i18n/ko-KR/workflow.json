@@ -472,7 +472,7 @@
   "nodes.agent.task.mention": "멘션",
   "nodes.agent.task.placeholder": "이 Agent가 수행해야 할 작업을 설명하세요...",
   "nodes.agent.task.tooltip": "에이전트가 이 노드를 처리하도록 돕는 추가 프롬프트입니다. 변수를 명시적으로 참조하려면 / 를 사용하세요.\n올바르게 구성하면 에이전트가 스스로 판단하도록 신뢰할 수 있습니다.",
-  "nodes.agent.toolNotAuthorizedTooltip": "{{tool}} 권한이 부여되지 않음",
+  "nodes.agent.toolNotAuthorizedTooltip": "{{tool}}에 권한이 부여되지 않았습니다.",
   "nodes.agent.toolNotInstallTooltip": "{{tool}}이 설치되지 않았습니다.",
   "nodes.agent.toolbox": "도구",
   "nodes.agent.tools": "도구",

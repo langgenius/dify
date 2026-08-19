@@ -13,17 +13,20 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from graphon.model_runtime.entities.model_entities import ModelType
-from models import Account
+from models import Account, Tenant
 from models.model import App, AppMode, AppModelConfig, IconType
 from models.workflow import Workflow
-from services.agent.errors import AgentNameConflictError
+from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
 from services.app_service import AppListParams, AppService, CreateAppParams
 
 
 class TestCreateAppTransactionBoundary:
     def test_commits_database_state_before_external_side_effects(self) -> None:
         session = MagicMock()
-        account = MagicMock(spec=Account, id="account-1", current_tenant_id="tenant-1")
+        account = Account(name="Test Account", email="test@example.com")
+        account.id = "account-1"
+        account._current_tenant = Tenant(name="Test Tenant")
+        account._current_tenant.id = "tenant-1"
         phase_events: list[str] = []
         session.commit.side_effect = lambda: phase_events.append("commit")
 
@@ -53,7 +56,10 @@ class TestCreateAppTransactionBoundary:
 
     def test_falls_back_when_default_model_schema_is_unavailable(self) -> None:
         session = MagicMock()
-        account = MagicMock(spec=Account, id="account-1", current_tenant_id="tenant-1")
+        account = Account(name="Test Account", email="test@example.com")
+        account.id = "account-1"
+        account._current_tenant = Tenant(name="Test Tenant")
+        account._current_tenant.id = "tenant-1"
         model_type_instance = MagicMock()
         model_type_instance.get_model_schema.side_effect = ValueError("Base model unknown-model not found")
         model_instance = SimpleNamespace(
@@ -103,7 +109,7 @@ class TestCreateAppTransactionBoundary:
     [AppService.update_app_site_status, AppService.update_app_api_status],
 )
 def test_app_status_updates_commit_before_signal(update_status: Callable[..., App]) -> None:
-    app = cast(App, SimpleNamespace(enable_site=False, enable_api=False))
+    app = cast(App, SimpleNamespace(enable_site=False, enable_api=False, mode=AppMode.CHAT))
     session = MagicMock()
     phase_events: list[str] = []
     session.commit.side_effect = lambda: phase_events.append("commit")
@@ -115,6 +121,36 @@ def test_app_status_updates_commit_before_signal(update_status: Callable[..., Ap
         update_status(AppService(), app, True, session=session)
 
     assert phase_events == ["commit", "signal"]
+
+
+@pytest.mark.parametrize(
+    "update_status",
+    [
+        AppService.update_app_site_status,
+        AppService.update_app_api_status,
+    ],
+)
+def test_unpublished_agent_app_access_cannot_be_enabled(update_status: Callable[..., App]) -> None:
+    app = cast(
+        App,
+        SimpleNamespace(
+            id="app-1",
+            tenant_id="tenant-1",
+            mode=AppMode.AGENT,
+            enable_site=False,
+            enable_api=False,
+        ),
+    )
+    session = MagicMock()
+    session.scalar.return_value = SimpleNamespace(id="agent-1")
+
+    with patch("services.app_service.agent_has_workflow_callable_active_snapshot", return_value=False):
+        with pytest.raises(AgentAccessNotReadyError):
+            update_status(AppService(), app, True, session=session)
+
+    assert app.enable_site is False
+    assert app.enable_api is False
+    session.commit.assert_not_called()
 
 
 class TestOpenapiVisibilityHelpers:
@@ -131,8 +167,9 @@ class TestOpenapiVisibilityHelpers:
         signal if the helper coalesced both into ``None``.
         """
         mock_session = MagicMock()
-        sentinel_app = MagicMock(spec=App)
-        sentinel_app.status = "archived"  # explicitly NOT "normal"
+        sentinel_app = App(
+            status="archived",
+        )  # explicitly NOT "normal"
         mock_session.get.return_value = sentinel_app
 
         assert AppService.get_app_by_id("app-uuid", mock_session) is sentinel_app
@@ -146,8 +183,9 @@ class TestOpenapiVisibilityHelpers:
 
     def test_get_visible_app_by_id_returns_app_when_visible(self):
         mock_session = MagicMock()
-        app = MagicMock(spec=App)
-        app.status = "normal"
+        app = App(
+            status="normal",
+        )
         mock_session.get.return_value = app
 
         with patch("services.app_service.is_openapi_visible", return_value=True):
@@ -166,8 +204,9 @@ class TestOpenapiVisibilityHelpers:
         surface — the helper hides them by returning ``None``.
         """
         mock_session = MagicMock()
-        app = MagicMock(spec=App)
-        app.status = "archived"
+        app = App(
+            status="archived",
+        )
         mock_session.get.return_value = app
 
         with patch("services.app_service.is_openapi_visible", return_value=True):
@@ -179,8 +218,9 @@ class TestOpenapiVisibilityHelpers:
         treat the row as invisible (not "found but unauthorized").
         """
         mock_session = MagicMock()
-        app = MagicMock(spec=App)
-        app.status = "normal"
+        app = App(
+            status="normal",
+        )
         mock_session.get.return_value = app
 
         with patch("services.app_service.is_openapi_visible", return_value=False):
@@ -192,7 +232,7 @@ class TestOpenapiVisibilityHelpers:
         so the controller can branch on length (404 / single / 409).
         """
         mock_session = MagicMock()
-        rows = [MagicMock(spec=App), MagicMock(spec=App)]
+        rows = [App(), App()]
         mock_session.execute.return_value.scalars.return_value = iter(rows)
 
         with patch("services.app_service.apply_openapi_gate", side_effect=lambda q: q) as gate:
@@ -229,7 +269,7 @@ class TestOpenapiVisibilityHelpers:
         non-normal hits in Python so its page count stays anchored.
         """
         mock_session = MagicMock()
-        rows = [MagicMock(spec=App), MagicMock(spec=App)]
+        rows = [App(), App()]
         mock_session.execute.return_value.scalars.return_value.all.return_value = rows
 
         with patch("services.app_service.apply_openapi_gate", side_effect=lambda q: q) as gate:
@@ -249,27 +289,30 @@ def test_get_recent_apps_uses_one_tenant_scoped_projection_query(sqlite_session:
     sqlite_session.flush()
 
     def create_app(*, name: str, tenant_id: str, updated_at: datetime, mode: AppMode = AppMode.CHAT) -> App:
-        app = App()
-        app.id = str(uuid4())
-        app.tenant_id = tenant_id
-        app.name = name
-        app.description = ""
-        app.mode = mode
-        app.icon_type = IconType.EMOJI
-        app.icon = "🚀"
-        app.icon_background = "#FFFFFF"
-        app.enable_site = False
-        app.enable_api = False
-        app.created_by = account.id
-        app.maintainer = account.id
-        app.created_at = updated_at
-        app.updated_at = updated_at
-        app.use_icon_as_answer_icon = False
+        app = App(
+            id=str(uuid4()),
+            tenant_id=tenant_id,
+            name=name,
+            description="",
+            mode=mode,
+            icon_type=IconType.EMOJI,
+            icon="🚀",
+            icon_background="#FFFFFF",
+            enable_site=False,
+            enable_api=False,
+            created_by=account.id,
+            maintainer=account.id,
+            created_at=updated_at,
+            updated_at=updated_at,
+            use_icon_as_answer_icon=False,
+        )
         return app
 
     newest = create_app(name="Newest", tenant_id=tenant_id, updated_at=datetime(2026, 7, 3))
-    legacy_agent = AppModelConfig(app_id=newest.id)
-    legacy_agent.agent_mode = '{"enabled": true, "strategy": "react"}'
+    legacy_agent = AppModelConfig(
+        app_id=newest.id,
+        agent_mode='{"enabled": true, "strategy": "react"}',
+    )
     newest.app_model_config_id = legacy_agent.id
     second = create_app(
         name="Second",
@@ -349,31 +392,41 @@ class TestAppMeta:
 class TestGetApp:
     def test_legacy_agent_detection_uses_caller_session(self):
         session = MagicMock()
-        app = MagicMock(spec=App)
-        app.mode = AppMode.CHAT
-        app.is_agent_with_session.return_value = False
-        account = MagicMock(spec=Account)
-        account.current_tenant_id = "tenant-1"
+        app = App(
+            mode=AppMode.CHAT,
+        )
+        account = Account(name="Test Account", email="test@example.com")
+        account._current_tenant = Tenant(name="Test Tenant")
+        account._current_tenant.id = "tenant-1"
 
-        with patch("services.app_service.current_user", account):
+        with (
+            patch.object(App, "is_agent_with_session", return_value=False) as is_agent,
+            patch.object(App, "app_model_config_with_session") as get_model_config,
+            patch("services.app_service.current_user", account),
+        ):
             assert AppService().get_app(app, session=session) is app
 
-        app.is_agent_with_session.assert_called_once_with(session=session)
-        app.app_model_config_with_session.assert_not_called()
+        is_agent.assert_called_once_with(session=session)
+        get_model_config.assert_not_called()
 
     def test_agent_model_config_uses_caller_session(self):
         session = MagicMock()
-        app = MagicMock(spec=App)
-        app.mode = AppMode.AGENT_CHAT
-        app.app_model_config_with_session.return_value = None
-        account = MagicMock(spec=Account)
-        account.current_tenant_id = "tenant-1"
+        app = App(
+            mode=AppMode.AGENT_CHAT,
+        )
+        account = Account(name="Test Account", email="test@example.com")
+        account._current_tenant = Tenant(name="Test Tenant")
+        account._current_tenant.id = "tenant-1"
 
-        with patch("services.app_service.current_user", account):
+        with (
+            patch.object(App, "is_agent_with_session") as is_agent,
+            patch.object(App, "app_model_config_with_session", return_value=None) as get_model_config,
+            patch("services.app_service.current_user", account),
+        ):
             assert AppService().get_app(app, session=session) is app
 
-        app.is_agent_with_session.assert_not_called()
-        app.app_model_config_with_session.assert_called_once_with(session=session)
+        is_agent.assert_not_called()
+        get_model_config.assert_called_once_with(session=session)
 
 
 class TestAgentAppType:
@@ -388,6 +441,8 @@ class TestAgentAppType:
         # Runtime config comes from the Agent Soul, so no model_config is seeded.
         assert "model_config" not in default_app_templates[AppMode.AGENT]
         assert default_app_templates[AppMode.AGENT]["app"]["mode"] == AppMode.AGENT
+        assert default_app_templates[AppMode.AGENT]["app"]["enable_site"] is False
+        assert default_app_templates[AppMode.AGENT]["app"]["enable_api"] is False
 
     def test_create_app_params_accepts_agent_mode(self):
         from services.app_service import CreateAppParams
@@ -399,8 +454,9 @@ class TestAgentAppType:
         """Non-agent apps short-circuit without touching the DB."""
         from models.model import App, AppMode
 
-        app = App()
-        app.mode = AppMode.CHAT
+        app = App(
+            mode=AppMode.CHAT,
+        )
         assert app.bound_agent_id is None
 
     def test_update_agent_app_syncs_backing_agent_identity(self):

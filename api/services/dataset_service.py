@@ -69,6 +69,7 @@ from services.dataset_ref_service import DatasetRef, SegmentRef
 from services.document_indexing_proxy.document_indexing_task_proxy import DocumentIndexingTaskProxy
 from services.document_indexing_proxy.duplicate_document_indexing_task_proxy import DuplicateDocumentIndexingTaskProxy
 from services.enterprise import rbac_service as enterprise_rbac_service
+from services.entities.feature_entities import FeatureModel
 from services.entities.knowledge_entities.knowledge_entities import (
     ChildChunkUpdateArgs,
     KnowledgeConfig,
@@ -86,7 +87,7 @@ from services.errors.dataset import DatasetNameDuplicateError
 from services.errors.document import DocumentIndexingError
 from services.errors.file import FileNotExistsError
 from services.external_knowledge_service import ExternalDatasetService
-from services.feature_service import FeatureModel, FeatureService
+from services.feature_service import FeatureService
 from services.file_service import FileService
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.tag_service import TagService

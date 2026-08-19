@@ -1,6 +1,6 @@
 import type { MouseEvent } from 'react'
 import type { ModelProvider } from '../../declarations'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { vi } from 'vitest'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import {
@@ -19,6 +19,8 @@ const invalidateInstalledPluginList = vi.fn()
 const handleOpenModal = vi.fn()
 const updateModelProviders = vi.fn()
 const updateModelList = vi.fn()
+const loadProviderDetail = vi.fn()
+let isLoadingProviderDetail = false
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
@@ -33,6 +35,10 @@ vi.mock('@/service/use-plugins', () => ({
 }))
 
 vi.mock('../../hooks', () => ({
+  useLazyModelProviderDetail: () => ({
+    loadProviderDetail,
+    isLoadingProviderDetail,
+  }),
   useModelModalHandler: () => handleOpenModal,
   useUpdateModelList: () => updateModelList,
   useUpdateModelProviders: () => updateModelProviders,
@@ -76,6 +82,7 @@ describe('AgentModelTrigger', () => {
     pluginInfo = null
     pluginLoading = false
     inModelList = true
+    isLoadingProviderDetail = false
   })
 
   it('should render loading state when plugin info is still fetching', () => {
@@ -127,6 +134,14 @@ describe('AgentModelTrigger', () => {
     expect(invalidateInstalledPluginList).toHaveBeenCalledWith(PluginCategoryEnum.model)
   })
 
+  it('should not render the install action when the plugin has no package identifier', () => {
+    pluginInfo = { latest_package_identifier: '' }
+
+    render(<AgentModelTrigger modelId="gpt-4" providerName="openai" />)
+
+    expect(screen.queryByText('Install Plugin')).not.toBeInTheDocument()
+  })
+
   it('should show configuration action when provider requires setup', () => {
     modelProviders = [
       {
@@ -143,6 +158,19 @@ describe('AgentModelTrigger', () => {
     render(<AgentModelTrigger modelId="gpt-4" providerName="openai" />)
 
     expect(screen.getByText('workflow.nodes.agent.notAuthorized')).toBeInTheDocument()
+  })
+
+  it('should load complete provider detail before opening configuration', async () => {
+    const providerDetail = { provider: 'openai' } as ModelProvider
+    modelProviders = [{ provider: 'openai', is_configured: false }] as unknown as ModelProvider[]
+    loadProviderDetail.mockResolvedValue(providerDetail)
+
+    render(<AgentModelTrigger modelId="gpt-4" providerName="openai" />)
+    fireEvent.click(screen.getByRole('button', { name: /notAuthorized/ }))
+
+    await waitFor(() => {
+      expect(handleOpenModal).toHaveBeenCalledWith(providerDetail, 'predefined-model', undefined)
+    })
   })
 
   it('should render unconfigured state when model is not selected', () => {

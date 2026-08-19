@@ -11,7 +11,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useHotkey } from '@tanstack/react-hotkeys'
-import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { use, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkflowLaunchDialog } from '@/app/components/app/overview/app-card-sections'
@@ -38,7 +38,6 @@ import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control'
 import { fetchAppDetail, publishToCreatorsPlatform } from '@/service/apps'
 import { fetchInstalledAppList } from '@/service/explore'
-import { appDetailQueryKeyPrefix } from '@/service/use-apps'
 import { useInvalidateAppWorkflow } from '@/service/use-workflow'
 import { fetchPublishedWorkflow } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
@@ -129,15 +128,16 @@ export function AppPublisher({
   const appDetail = useAppStore((state) => state.appDetail)
   const setAppDetail = useAppStore((state) => state.setAppDetail)
   const canManageTools = useCanManageTools()
-  const queryClient = useQueryClient()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail?.site ?? {}
 
   const appURL = getPublisherAppUrl({ appBaseUrl: appBaseURL, accessToken, mode: appDetail?.mode })
-  const isChatApp = [AppModeEnum.CHAT, AppModeEnum.AGENT_CHAT, AppModeEnum.COMPLETION].includes(
-    appDetail?.mode || AppModeEnum.CHAT,
-  )
+  const appMode = appDetail?.mode || AppModeEnum.CHAT
+  const isChatApp =
+    appMode === AppModeEnum.CHAT ||
+    appMode === AppModeEnum.AGENT_CHAT ||
+    appMode === AppModeEnum.COMPLETION
   const hiddenLaunchVariables: WorkflowHiddenStartVariable[] = (inputs ?? []).filter(
     (input) => input.hide === true,
   )
@@ -258,7 +258,6 @@ export function AppPublisher({
     if (!appDetail) return
     try {
       const res = await fetchAppDetail({ url: '/apps', id: appDetail.id })
-      queryClient.setQueryData([...appDetailQueryKeyPrefix, appDetail.id], res)
       setAppDetail({ ...res })
     } finally {
       setShowAppAccessControl(false)

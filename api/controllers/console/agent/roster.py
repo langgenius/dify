@@ -43,6 +43,7 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
+from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
 from fields.agent_fields import (
     AgentConfigDraftSummaryResponse,
     AgentConfigSnapshotDetailResponse,
@@ -139,6 +140,7 @@ class AgentApiStatusPayload(BaseModel):
 
 
 class AgentApiAccessResponse(BaseModel):
+    access_ready: bool
     enabled: bool
     service_api_base_url: str
     streaming_only: bool = True
@@ -257,6 +259,7 @@ class AgentAppDetailWithSite(GenericAppDetailWithSite):
     debug_conversation_has_messages: bool = False
     debug_conversation_message_count: int = 0
     role: str | None = None
+    access_ready: bool = False
 
 
 class AgentDebugConversationRefreshResponse(BaseModel):
@@ -400,6 +403,7 @@ def _serialize_agent_app_detail(
     payload["debug_conversation_has_messages"] = message_count > 0
     payload["debug_conversation_message_count"] = message_count
     payload["role"] = agent.role or ""
+    payload["access_ready"] = agent_has_workflow_callable_active_snapshot(session=session, agent=agent)
     return payload
 
 
@@ -491,10 +495,20 @@ def _agent_api_key_count(session: Session, app_id: str) -> int:
     )
 
 
+def _agent_app_access_ready(session: Session, app_model: App) -> bool:
+    agent = _agent_roster_service(session).get_app_backing_agent(
+        tenant_id=app_model.tenant_id,
+        app_id=str(app_model.id),
+    )
+    return bool(agent and agent_has_workflow_callable_active_snapshot(session=session, agent=agent))
+
+
 def _serialize_agent_api_access(session: Session, app_model: App) -> dict:
     base_url = app_model.api_base_url
+    access_ready = _agent_app_access_ready(session, app_model)
     response = AgentApiAccessResponse(
-        enabled=bool(app_model.enable_api),
+        access_ready=access_ready,
+        enabled=bool(app_model.enable_api and access_ready),
         service_api_base_url=base_url,
         chat_endpoint=f"{base_url}/chat-messages",
         stop_endpoint=f"{base_url}/chat-messages/{{task_id}}/stop",

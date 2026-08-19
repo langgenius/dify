@@ -78,6 +78,14 @@ const WebAppsSectionContent = () => {
   )
 
   const pinnedAppsCount = installedApps.filter(({ is_pinned }) => is_pinned).length
+  const canLoadMore = Boolean(
+    installedAppsQuery.hasNextPage && !installedAppsQuery.isFetching && !installedAppsQuery.error,
+  )
+
+  const handleSearchTextChange = (value: string) => {
+    scrollRef.current?.scrollTo({ top: 0 })
+    setSearchText(value)
+  }
 
   const handleDelete = () => {
     if (!uninstallDialogAppId) return
@@ -154,10 +162,8 @@ const WebAppsSectionContent = () => {
             )}
             onClick={() => {
               setAppsExpanded(true)
-              setSearchVisible((value) => {
-                if (value) setSearchText('')
-                return !value
-              })
+              if (searchVisible) handleSearchTextChange('')
+              setSearchVisible(!searchVisible)
             }}
           >
             <span className="flex size-5 shrink-0 items-center justify-center">
@@ -170,7 +176,7 @@ const WebAppsSectionContent = () => {
         <div className="px-2 pb-2">
           <SearchInput
             value={searchText}
-            onValueChange={setSearchText}
+            onValueChange={handleSearchTextChange}
             placeholder={t(($) => $['mainNav.webApps.searchPlaceholder'], { ns: 'common' })}
             // oxlint-disable-next-line jsx-a11y/no-autofocus -- The field is mounted after an explicit search action.
             autoFocus
@@ -226,13 +232,12 @@ const WebAppsSectionContent = () => {
               )}
               {installedAppsQuery.isFetchingNextPage && <InstalledAppPaginationSkeleton />}
               <InfiniteScrollSentinel
-                canFetchNextPage={installedAppsQuery.hasNextPage && !installedAppsQuery.error}
+                canLoadMore={canLoadMore}
                 fetchNextPage={() =>
                   installedAppsQuery.fetchNextPage({
                     cancelRefetch: false,
                   })
                 }
-                isFetchingNextPage={installedAppsQuery.isFetchingNextPage}
                 scrollRootRef={scrollRef}
               />
             </ScrollAreaContent>

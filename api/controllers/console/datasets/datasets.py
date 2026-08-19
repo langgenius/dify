@@ -152,6 +152,12 @@ class IndexingEstimatePayload(BaseModel):
         return result
 
 
+class DatasetApiKeyCreatePayload(BaseModel):
+    # Knowledge bases to scope the key to. Absent/empty => the key can access every
+    # dataset in the tenant (default). Declared so the generated client can send it.
+    dataset_ids: list[str] = Field(default_factory=list)
+
+
 class ConsoleDatasetListQuery(BaseModel):
     page: int = Field(default=1, description="Page number")
     limit: int = Field(default=20, description="Number of items per page")
@@ -323,7 +329,12 @@ class AutoDisableLogsResponse(ResponseModel):
 
 
 register_schema_models(
-    console_ns, DatasetCreatePayload, DatasetUpdatePayload, IndexingEstimatePayload, ConsoleDatasetListQuery
+    console_ns,
+    DatasetCreatePayload,
+    DatasetUpdatePayload,
+    IndexingEstimatePayload,
+    ConsoleDatasetListQuery,
+    DatasetApiKeyCreatePayload,
 )
 register_response_schema_models(
     console_ns,
@@ -361,7 +372,6 @@ def _get_retrieval_methods_by_vector_type(vector_type: str | None, is_mock: bool
     # Define vector database types that only support semantic search
     semantic_only_types = {
         VectorType.RELYT,
-        VectorType.TIDB_VECTOR,
         VectorType.CHROMA,
         VectorType.PGVECTO_RS,
         VectorType.VIKINGDB,
@@ -408,6 +418,9 @@ def _get_retrieval_methods_by_vector_type(vector_type: str | None, is_mock: bool
 
     if vector_type == VectorType.MILVUS:
         return semantic_methods if is_mock else full_methods
+
+    if vector_type == VectorType.TIDB_VECTOR:
+        return full_methods if dify_config.TIDB_VECTOR_ENABLE_FULLTEXT_SEARCH else semantic_methods
 
     if vector_type in semantic_only_types:
         return semantic_methods
@@ -1089,6 +1102,7 @@ class DatasetApiKeyApi(Resource):
         bindings_by_token = dataset_api_key_service.list_bindings_by_token(session, token_ids)
         return dump_response(ApiKeyList, build_masked_api_key_list(keys, bindings_by_token))
 
+    @console_ns.expect(console_ns.models[DatasetApiKeyCreatePayload.__name__])
     @console_ns.response(200, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
     @console_ns.response(400, "Maximum keys exceeded")
     @setup_required

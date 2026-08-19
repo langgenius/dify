@@ -10,6 +10,13 @@ export const zApiBaseUrlResponse = z.object({
 })
 
 /**
+ * DatasetApiKeyCreatePayload
+ */
+export const zDatasetApiKeyCreatePayload = z.object({
+  dataset_ids: z.array(z.string()).optional(),
+})
+
+/**
  * ApiKeyItem
  */
 export const zApiKeyItem = z.object({
@@ -45,6 +52,13 @@ export const zBatchImportPayload = z.object({
 
 /**
  * ExternalDatasetCreatePayload
+ *
+ * Validated fields required to create an external dataset binding.
+ *
+ * The console controller owns HTTP concerns, but the service also needs this
+ * contract when creating the tenant-scoped dataset and external knowledge
+ * binding. Keep it outside controllers so service imports do not depend on
+ * Flask blueprint initialization.
  */
 export const zExternalDatasetCreatePayload = z.object({
   description: z.string().max(400).nullish(),
@@ -1474,6 +1488,8 @@ export const zGetDatasetsApiBaseInfoResponse = zApiBaseUrlResponse
  * API keys retrieved successfully
  */
 export const zGetDatasetsApiKeysResponse = zApiKeyList
+
+export const zPostDatasetsApiKeysBody = zDatasetApiKeyCreatePayload
 
 /**
  * API key created successfully

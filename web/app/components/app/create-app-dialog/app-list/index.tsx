@@ -3,29 +3,25 @@
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { App } from '@/models/explore'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiRobot2Line } from '@remixicon/react'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppTypeSelector from '@/app/components/app/type-selector'
-import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import Divider from '@/app/components/base/divider'
-import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { DSLImportMode } from '@/models/app'
 import { useRouter } from '@/next/navigation'
-import { importDSL } from '@/service/apps'
+import { consoleQuery } from '@/service/client'
 import { fetchAppDetail } from '@/service/explore'
-import { useInvalidateAppList } from '@/service/use-apps'
 import { useExploreAppList } from '@/service/use-explore'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
@@ -55,10 +51,8 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
     'app.create_and_management',
   )
   const { push } = useRouter()
-  const invalidateAppList = useInvalidateAppList()
+  const { mutateAsync: importApp } = useMutation(consoleQuery.apps.imports.post.mutationOptions())
   const allCategoriesEn = AppCategories.RECOMMENDED
-
-  const setNeedRefresh = useSetNeedRefreshAppList()
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
@@ -141,35 +135,35 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
   }) => {
     const { export_data, mode } = await fetchAppDetail(currApp?.app.id as string)
     try {
-      const app = await importDSL({
-        mode: DSLImportMode.YAML_CONTENT,
-        yaml_content: export_data,
-        name,
-        icon_type,
-        icon,
-        icon_background,
-        description,
+      const app = await importApp({
+        body: {
+          mode: 'yaml-content',
+          yaml_content: export_data,
+          name,
+          icon_type,
+          icon,
+          icon_background,
+          description,
+        },
       })
+      if (!app.app_id || !app.app_mode) throw new Error('Completed import is missing app metadata')
+
       trackCreateApp({ source: 'studio_template_list', appMode: mode, templateId: currApp?.app_id })
 
       setIsShowCreateModal(false)
       toast.success(t(($) => $['newApp.appCreated'], { ns: 'app' }))
       if (onSuccess) onSuccess()
-      if (app.app_id) await handleCheckPluginDependencies(app.app_id)
-      setNeedRefresh('1')
-      invalidateAppList()
-      if (app.app_id) {
-        getRedirection(
-          { id: app.app_id, mode: app.app_mode, permission_keys: app.permission_keys },
-          push,
-          {
-            currentUserId,
-            resourceMaintainer: currentUserId,
-            workspacePermissionKeys,
-            isRbacEnabled,
-          },
-        )
-      }
+      await handleCheckPluginDependencies(app.app_id)
+      getRedirection(
+        { id: app.app_id, mode: app.app_mode, permission_keys: app.permission_keys },
+        push,
+        {
+          currentUserId,
+          resourceMaintainer: currentUserId,
+          workspacePermissionKeys,
+          isRbacEnabled,
+        },
+      )
     } catch {
       toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
     }
@@ -196,17 +190,27 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
           <div className="h-3.5">
             <Divider type="vertical" />
           </div>
-          <Input
-            showClearIcon
-            wrapperClassName="w-full flex-1"
-            className="bg-transparent hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent focus:shadow-none"
-            placeholder={
-              t(($) => $['newAppFromTemplate.searchAllTemplate'], { ns: 'app' }) as string
-            }
-            value={keywords}
-            onChange={(e) => handleKeywordsChange(e.target.value)}
-            onClear={() => handleKeywordsChange('')}
-          />
+          <div className="relative w-full flex-1">
+            <Input
+              className="w-full border-transparent bg-transparent pr-7 hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent focus:shadow-none"
+              placeholder={t(($) => $['newAppFromTemplate.searchAllTemplate'], { ns: 'app' })}
+              value={keywords}
+              onChange={(e) => handleKeywordsChange(e.target.value)}
+            />
+            {keywords && (
+              <button
+                type="button"
+                aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
+                className="group absolute top-1/2 right-2 -translate-y-1/2 border-none bg-transparent p-px"
+                onClick={() => handleKeywordsChange('')}
+              >
+                <span
+                  aria-hidden
+                  className="i-ri-close-circle-fill size-3.5 text-text-quaternary group-hover:text-text-tertiary"
+                />
+              </button>
+            )}
+          </div>
         </div>
         <div className="h-8 w-45"></div>
       </div>
@@ -294,7 +298,7 @@ function NoTemplateFound() {
   return (
     <div className="w-full rounded-lg bg-workflow-process-bg p-4">
       <div className="mb-2 inline-flex size-8 items-center justify-center rounded-lg bg-components-card-bg shadow-lg">
-        <RiRobot2Line className="size-5 text-text-tertiary" />
+        <span aria-hidden className="i-ri-robot-2-line size-5 text-text-tertiary" />
       </div>
       <p className="title-md-semi-bold text-text-primary">
         {t(($) => $['newApp.noTemplateFound'], { ns: 'app' })}

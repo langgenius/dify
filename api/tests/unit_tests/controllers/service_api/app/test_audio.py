@@ -143,11 +143,12 @@ class TestAudioServiceMockedBehavior:
 
     @pytest.fixture
     def mock_app(self):
-        """Create mock app model."""
+        """Create an app model."""
         from models.model import App
 
-        app = Mock(spec=App)
-        app.id = str(uuid.uuid4())
+        app = App(
+            id=str(uuid.uuid4()),
+        )
         return app
 
     @pytest.fixture

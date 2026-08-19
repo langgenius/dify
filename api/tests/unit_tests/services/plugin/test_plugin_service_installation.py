@@ -23,11 +23,11 @@ from core.plugin.plugin_service import PluginService
 from models import ProviderType
 from models.engine import db
 from models.provider import Provider, ProviderCredential, TenantPreferredModelProvider
-from services.errors.plugin import PluginInstallationForbiddenError
-from services.feature_service import (
+from services.entities.feature_entities import (
     PluginInstallationPermissionModel,
     PluginInstallationScope,
 )
+from services.errors.plugin import PluginInstallationForbiddenError
 
 
 def _make_permission(

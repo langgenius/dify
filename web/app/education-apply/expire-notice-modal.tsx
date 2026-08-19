@@ -14,11 +14,11 @@ import { useRouter } from '@/next/navigation'
 import { useEducationVerify } from '@/service/use-education'
 import { SparklesSoftAccent } from '../components/base/icons/src/public/common'
 
-export type ExpireNoticeModalPayloadProps = {
+type ExpireNoticeModalPayloadProps = {
   expireAt: number
   expired: boolean
 }
-export type Props = {
+type Props = {
   onClose: () => void
 } & ExpireNoticeModalPayloadProps
 

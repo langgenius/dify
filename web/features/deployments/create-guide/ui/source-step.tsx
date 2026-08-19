@@ -4,6 +4,7 @@ import type {
   GuideMethod,
   WorkflowSourceApp,
 } from '@/features/deployments/create-guide/state/types'
+import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
@@ -288,6 +289,8 @@ function SourceAppOption({
   onSelect: () => void
   selected: boolean
 }) {
+  const appIconType = zIconType.safeParse(app.icon_type).data ?? null
+
   return (
     <label
       className={cn(
@@ -300,8 +303,8 @@ function SourceAppOption({
       <AppIcon
         className="shrink-0"
         size="xs"
-        iconType={app.icon_type}
-        icon={app.icon}
+        iconType={appIconType}
+        icon={app.icon ?? undefined}
         background={app.icon_background}
         imageUrl={app.icon_url}
       />

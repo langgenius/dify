@@ -4,7 +4,8 @@ import pytest
 
 from enums.cloud_plan import CloudPlan
 from services import feature_service as feature_service_module
-from services.feature_service import FeatureModel, FeatureService
+from services.entities.feature_entities import FeatureModel
+from services.feature_service import FeatureService
 
 
 @dataclass(frozen=True)

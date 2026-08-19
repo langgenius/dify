@@ -21,6 +21,7 @@ from models import Account
 from models.enums import ApiTokenType
 from models.model import ApiToken, App
 from services.api_token_service import ApiTokenCache
+from services.app_service import AppService
 
 from . import console_ns
 from .wraps import (
@@ -140,7 +141,9 @@ class BaseApiKeyListResource(Resource):
 
     def _create_api_key(self, resource_id: str, current_tenant_id: str, *, session: Session) -> ApiToken:
         assert self.resource_id_field is not None, "resource_id_field must be set"
-        _get_resource(resource_id, current_tenant_id, self.resource_model, session=session)
+        resource = _get_resource(resource_id, current_tenant_id, self.resource_model, session=session)
+        if isinstance(resource, App):
+            AppService.ensure_agent_app_access_ready(resource, session=session)
         current_key_count: int = (
             session.scalar(
                 select(func.count(ApiToken.id)).where(

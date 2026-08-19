@@ -600,11 +600,16 @@ class Client:
         with an id, reconnects resume from that id using the ``after`` query
         parameter. HTTP 5xx stream responses are retried, but HTTP 4xx responses,
         DTO validation failures, and malformed SSE frames are not retried. By
-        default iteration stops after a succeeded, failed, or cancelled terminal event.
+        default, ``until_terminal=True`` returns immediately after yielding a
+        succeeded, failed, or cancelled terminal event. With
+        ``until_terminal=False``, iteration may consume the remainder of the current
+        response, but after observing a terminal event it will not reconnect when that
+        response ends normally or raises a reconnectable transport error.
         """
         _validate_stream_options(max_reconnects, reconnect_delay_seconds, timeout_seconds)
         cursor = after or "0-0"
         reconnect_attempts = 0
+        terminal_event_seen = False
         deadline = time.monotonic() + timeout_seconds if timeout_seconds is not None else None
         while True:
             _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
@@ -617,10 +622,14 @@ class Client:
                 ):
                     if event.id is not None:
                         cursor = event.id
+                    if event.type in _TERMINAL_EVENT_TYPES:
+                        terminal_event_seen = True
                     yield event
-                    if until_terminal and event.type in _TERMINAL_EVENT_TYPES:
+                    if until_terminal and terminal_event_seen:
                         return
             except _ReconnectableStreamError as exc:
+                if terminal_event_seen:
+                    return
                 if not reconnect:
                     raise exc.error from exc
                 reconnect_attempts = _next_reconnect_attempt(
@@ -631,6 +640,8 @@ class Client:
                 _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
                 await _sleep_async(_bounded_sleep_seconds(reconnect_delay_seconds, deadline))
                 continue
+            if terminal_event_seen:
+                return
             if not reconnect:
                 return
             reconnect_attempts = _next_reconnect_attempt(
@@ -657,6 +668,7 @@ class Client:
         _validate_stream_options(max_reconnects, reconnect_delay_seconds, timeout_seconds)
         cursor = after or "0-0"
         reconnect_attempts = 0
+        terminal_event_seen = False
         deadline = time.monotonic() + timeout_seconds if timeout_seconds is not None else None
         while True:
             _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
@@ -669,10 +681,14 @@ class Client:
                 ):
                     if event.id is not None:
                         cursor = event.id
+                    if event.type in _TERMINAL_EVENT_TYPES:
+                        terminal_event_seen = True
                     yield event
-                    if until_terminal and event.type in _TERMINAL_EVENT_TYPES:
+                    if until_terminal and terminal_event_seen:
                         return
             except _ReconnectableStreamError as exc:
+                if terminal_event_seen:
+                    return
                 if not reconnect:
                     raise exc.error from exc
                 reconnect_attempts = _next_reconnect_attempt(
@@ -683,6 +699,8 @@ class Client:
                 _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
                 _sleep_sync(_bounded_sleep_seconds(reconnect_delay_seconds, deadline))
                 continue
+            if terminal_event_seen:
+                return
             if not reconnect:
                 return
             reconnect_attempts = _next_reconnect_attempt(

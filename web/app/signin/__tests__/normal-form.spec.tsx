@@ -224,4 +224,20 @@ describe('NormalForm', () => {
     )
     expect(screen.getByLabelText('login.password')).toHaveAttribute('type', 'text')
   })
+
+  it('should not expose SSO when it is enforced without a configured protocol', () => {
+    mockQueryResults(
+      nonInviteQueryResult as unknown as ReturnType<typeof useQuery>,
+      nonInviteQueryResult as unknown as ReturnType<typeof useQuery>,
+    )
+
+    render(<NormalForm />, {
+      systemFeatures: {
+        sso_enforced_for_signin: true,
+        sso_enforced_for_signin_protocol: null,
+      },
+    })
+
+    expect(screen.queryByRole('button', { name: 'login.withSSO' })).not.toBeInTheDocument()
+  })
 })

@@ -472,7 +472,7 @@
   "nodes.agent.task.mention": "Menziona",
   "nodes.agent.task.placeholder": "Descrivi cosa deve fare questo agente...",
   "nodes.agent.task.tooltip": "Prompt aggiuntivo per aiutare l’agente a gestire proprio questo nodo. Usa / per fare riferimento esplicito alle variabili.\nSe configurato correttamente, potresti poterti fidare dell’agente perché capisca da solo cosa fare.",
-  "nodes.agent.toolNotAuthorizedTooltip": "{{tool}} Non autorizzato",
+  "nodes.agent.toolNotAuthorizedTooltip": "{{tool}} non è autorizzato",
   "nodes.agent.toolNotInstallTooltip": "{{tool}} non è installato",
   "nodes.agent.toolbox": "cassetta degli attrezzi",
   "nodes.agent.tools": "Utensileria",

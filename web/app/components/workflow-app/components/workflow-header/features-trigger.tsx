@@ -29,7 +29,6 @@ import { useProviderContext } from '@/context/provider-context'
 import useTheme from '@/hooks/use-theme'
 import { fetchAppDetail } from '@/service/apps'
 import { consoleQuery } from '@/service/client'
-import { appDetailQueryKeyPrefix } from '@/service/use-apps'
 import { useInvalidateAppTriggers } from '@/service/use-tools'
 import {
   useInvalidateAppWorkflow,
@@ -140,12 +139,11 @@ const FeaturesTrigger = () => {
       if (!appID) return
 
       const res = await fetchAppDetail({ url: '/apps', id: appID })
-      queryClient.setQueryData([...appDetailQueryKeyPrefix, appID], res)
       setAppDetail({ ...res })
     } catch (error) {
       console.error(error)
     }
-  }, [appID, queryClient, setAppDetail])
+  }, [appID, setAppDetail])
 
   const { mutateAsync: publishWorkflow } = usePublishWorkflow()
   // const { validateBeforeRun } = useWorkflowRunValidation()

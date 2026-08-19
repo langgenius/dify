@@ -36,7 +36,8 @@ from libs.oauth_bearer import (
     set_auth_ctx,
 )
 from models.account import TenantAccountRole
-from services.feature_service import FeatureService, LicenseStatus
+from services.entities.feature_entities import LicenseStatus
+from services.feature_service import FeatureService
 
 
 class AuthPipeline:

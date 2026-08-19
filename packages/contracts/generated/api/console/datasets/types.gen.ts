@@ -70,6 +70,10 @@ export type ApiKeyList = {
   data: Array<ApiKeyItem>
 }
 
+export type DatasetApiKeyCreatePayload = {
+  dataset_ids?: Array<string>
+}
+
 export type ApiKeyItem = {
   created_at?: number | null
   dataset_ids?: Array<string>
@@ -1148,7 +1152,7 @@ export type GetDatasetsApiKeysResponse =
   GetDatasetsApiKeysResponses[keyof GetDatasetsApiKeysResponses]
 
 export type PostDatasetsApiKeysData = {
-  body?: never
+  body: DatasetApiKeyCreatePayload
   path?: never
   query?: never
   url: '/datasets/api-keys'

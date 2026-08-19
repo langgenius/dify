@@ -588,6 +588,7 @@ def test_shell_run_formats_large_non_truncated_output_without_tail_lookup() -> N
             metadata, output = _parse_tagged_observation(result)
             assert metadata["output_path"] == "/tmp/large.log"
             assert output.startswith("head-y")
+            assert "max output size is limited to 8192 bytes" in output
             assert output.endswith("(check the /tmp/large.log for full output)")
             assert "-tail" in output
 

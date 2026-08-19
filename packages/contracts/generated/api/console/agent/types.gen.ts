@@ -23,6 +23,7 @@ export type AgentAppCreatePayload = {
 
 export type AgentAppDetailWithSite = {
   access_mode?: string | null
+  access_ready?: boolean
   api_base_url?: string | null
   app_id?: string | null
   backing_app_id?: string | null
@@ -78,6 +79,7 @@ export type AgentAppUpdatePayload = {
 }
 
 export type AgentApiAccessResponse = {
+  access_ready: boolean
   api_key_count: number
   api_rph: number
   api_rpm: number
@@ -1897,6 +1899,7 @@ export type AgentAppPaginationWritable = {
 
 export type AgentAppDetailWithSiteWritable = {
   access_mode?: string | null
+  access_ready?: boolean
   api_base_url?: string | null
   app_id?: string | null
   backing_app_id?: string | null

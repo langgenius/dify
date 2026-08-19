@@ -1310,11 +1310,20 @@ describe('MainNav', () => {
 
     renderMainNav()
 
+    const scrollViewport = await screen.findByRole('region', {
+      name: 'explore.sidebar.webApps',
+    })
+    scrollViewport.scrollTop = 240
+    scrollViewport.scrollTo = (optionsOrX?: ScrollToOptions | number, y?: number) => {
+      const top = typeof optionsOrX === 'object' ? optionsOrX.top : y
+      scrollViewport.scrollTop = Number(top ?? 0)
+    }
     await user.click(await screen.findByRole('button', { name: 'common.operation.search' }))
     const searchInput = screen.getByPlaceholderText('common.mainNav.webApps.searchPlaceholder')
     await user.type(searchInput, 'beta')
 
     await waitFor(() => {
+      expect(scrollViewport.scrollTop).toBe(0)
       expect(screen.queryByText('Alpha App')).not.toBeInTheDocument()
       expect(screen.getByText('Beta Tool')).toBeInTheDocument()
     })

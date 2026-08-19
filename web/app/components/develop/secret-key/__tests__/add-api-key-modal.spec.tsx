@@ -1,23 +1,30 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
 import AddApiKeyModal from '../add-api-key-modal'
 
-const mockCreateDatasetApikey = vi.fn().mockResolvedValue({
-  id: 'new-key',
-  token: 'ds-vd...cdef',
-  created_at: '1700000000',
-})
-const mockInvalidateDatasetApiKeys = vi.fn()
+type MutationCallbacks<TData> = {
+  onSuccess?: (data: TData) => void
+}
 
-vi.mock('@/service/datasets', () => ({
-  createApikey: (...args: unknown[]) => mockCreateDatasetApikey(...args),
-}))
+const createDatasetApiKey = vi.fn(
+  (_variables: { body: { dataset_ids?: string[] } }, callbacks?: MutationCallbacks<{ token: string }>) =>
+    callbacks?.onSuccess?.({ token: 'new-dataset-token' }),
+)
+const invalidateQueries = vi.fn()
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useMutation: () => ({ mutate: createDatasetApiKey, isPending: false }),
+    useQueryClient: () => ({ invalidateQueries }),
+  }
+})
 
 const mockUseInfiniteDatasets = vi.fn()
 vi.mock('@/service/knowledge/use-dataset', () => ({
   useInfiniteDatasets: (...args: unknown[]) => mockUseInfiniteDatasets(...args),
-  useInvalidateDatasetApiKeys: () => mockInvalidateDatasetApiKeys,
 }))
 
 vi.mock('../secret-key-generate', () => ({
@@ -41,7 +48,7 @@ describe('AddApiKeyModal', () => {
     })
   })
 
-  it('defaults to the "all knowledge bases" scope', async () => {
+  it('defaults to the "all knowledge bases" scope', () => {
     render(<AddApiKeyModal isShow onClose={vi.fn()} />)
 
     expect(screen.getByText('appApi.apiKeyModal.addTitle')).toBeInTheDocument()
@@ -51,20 +58,17 @@ describe('AddApiKeyModal', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('creates an unscoped key with an empty dataset_ids list', async () => {
+  it('creates an unscoped key with an empty dataset_ids body', async () => {
     const user = userEvent.setup()
-    const onClose = vi.fn()
-    render(<AddApiKeyModal isShow onClose={onClose} />)
+    render(<AddApiKeyModal isShow onClose={vi.fn()} />)
 
     await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
 
-    await waitFor(() => {
-      expect(mockCreateDatasetApikey).toHaveBeenCalledWith({
-        url: '/datasets/api-keys',
-        body: { dataset_ids: [] },
-      })
-    })
-    expect(mockInvalidateDatasetApiKeys).toHaveBeenCalled()
+    expect(createDatasetApiKey).toHaveBeenCalledWith(
+      { body: { dataset_ids: [] } },
+      expect.objectContaining({ onSuccess: expect.any(Function) }),
+    )
+    expect(invalidateQueries).toHaveBeenCalled()
   })
 
   it('reveals the select area and blocks creation until a knowledge base is chosen', async () => {
@@ -87,11 +91,9 @@ describe('AddApiKeyModal', () => {
 
     await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
 
-    await waitFor(() => {
-      expect(mockCreateDatasetApikey).toHaveBeenCalledWith({
-        url: '/datasets/api-keys',
-        body: { dataset_ids: ['kb-1'] },
-      })
-    })
+    expect(createDatasetApiKey).toHaveBeenCalledWith(
+      { body: { dataset_ids: ['kb-1'] } },
+      expect.objectContaining({ onSuccess: expect.any(Function) }),
+    )
   })
 })

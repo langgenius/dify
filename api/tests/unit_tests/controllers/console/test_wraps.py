@@ -41,7 +41,7 @@ from machinery.context import RequestContext
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
 from models.dataset import RateLimitLog
-from services.feature_service import LicenseStatus
+from services.entities.feature_entities import LicenseStatus
 
 
 @pytest.fixture(autouse=True)
@@ -165,6 +165,32 @@ class TestCurrentContextInjection:
         setup_required.assert_called_once()
         login_required.assert_called_once()
         account_initialization_required.assert_called_once()
+
+    def test_console_account_admission_preserves_route_kwarg_named_request_context(self):
+        current_user = make_account()
+
+        with (
+            patch("controllers.console.flask_admission.setup_required", side_effect=lambda view: view),
+            patch("controllers.console.flask_admission.login_required", side_effect=lambda view: view),
+            patch("controllers.console.flask_admission.account_initialization_required", side_effect=lambda view: view),
+            patch(
+                "controllers.console.flask_admission.current_account_with_tenant",
+                return_value=AccountWithTenant(account=current_user, tenant_id="tenant-123"),
+            ),
+            patch("controllers.console.flask_admission.get_request_id", return_value="request-1"),
+            patch("controllers.console.flask_admission.get_trace_id", return_value="trace-1"),
+        ):
+
+            class Handler:
+                @flask_admission.console_account_admission()
+                def get(self, admission_context: RequestContext, request_context: str):
+                    return admission_context, request_context
+
+            with Flask(__name__).test_request_context():
+                admission_context, route_value = Handler().get(request_context="route-value")
+
+        assert admission_context.active_workspace_id == "tenant-123"
+        assert route_value == "route-value"
 
     def test_with_current_tenant_id_injects_tenant_id(self):
         class Handler:

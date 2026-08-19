@@ -21,6 +21,11 @@ export const zBrandingModel = z.object({
 export const zDeploymentEdition = z.enum(['CLOUD', 'COMMUNITY', 'ENTERPRISE'])
 
 /**
+ * SSOProtocol
+ */
+export const zSsoProtocol = z.enum(['oauth2', 'oidc', 'saml'])
+
+/**
  * LicenseLimitationModel
  *
  * - enabled: whether this limit is enforced
@@ -85,7 +90,7 @@ export const zPluginInstallationPermissionModel = z.object({
  * WebAppAuthSSOModel
  */
 export const zWebAppAuthSsoModel = z.object({
-  protocol: z.string().default(''),
+  protocol: zSsoProtocol.nullable(),
 })
 
 /**
@@ -97,7 +102,7 @@ export const zWebAppAuthModel = z.object({
   allow_public_access: z.boolean().default(true),
   allow_sso: z.boolean().default(false),
   enabled: z.boolean().default(false),
-  sso_config: zWebAppAuthSsoModel.default({ protocol: '' }),
+  sso_config: zWebAppAuthSsoModel,
 })
 
 /**
@@ -135,15 +140,8 @@ export const zSystemFeatureModel = z.object({
   }),
   rbac_enabled: z.boolean().default(false),
   sso_enforced_for_signin: z.boolean().default(false),
-  sso_enforced_for_signin_protocol: z.string().default(''),
-  webapp_auth: zWebAppAuthModel.default({
-    allow_email_code_login: false,
-    allow_email_password_login: false,
-    allow_public_access: true,
-    allow_sso: false,
-    enabled: false,
-    sso_config: { protocol: '' },
-  }),
+  sso_enforced_for_signin_protocol: zSsoProtocol.nullable(),
+  webapp_auth: zWebAppAuthModel,
 })
 
 /**

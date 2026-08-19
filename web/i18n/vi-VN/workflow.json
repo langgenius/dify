@@ -472,7 +472,7 @@
   "nodes.agent.task.mention": "Đề cập",
   "nodes.agent.task.placeholder": "Mô tả tác nhân này nên làm gì...",
   "nodes.agent.task.tooltip": "Prompt bổ sung để giúp agent xử lý đúng node này. Dùng / để tham chiếu rõ ràng đến các biến.\nNếu được cấu hình đúng, bạn có thể tin agent tự tìm ra cách xử lý.",
-  "nodes.agent.toolNotAuthorizedTooltip": "{{tool}} Không được ủy quyền",
+  "nodes.agent.toolNotAuthorizedTooltip": "{{tool}} không được ủy quyền",
   "nodes.agent.toolNotInstallTooltip": "{{tool}} không được cài đặt",
   "nodes.agent.toolbox": "hộp công cụ",
   "nodes.agent.tools": "Công cụ",

@@ -22,6 +22,7 @@ from pydantic_ai.messages import (
 from pydantic_ai.models import ModelRequestParameters
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.tools import DeferredToolRequests, DeferredToolResults
+from pydantic_ai.usage import UsageLimits
 from pydantic_ai.settings import ModelSettings
 
 from agenton.compositor import CompositorSessionSnapshot, LayerProvider, LayerSessionSnapshot
@@ -606,6 +607,36 @@ def test_runner_preserves_explicit_json_null_output(monkeypatch: pytest.MonkeyPa
     assert terminal.data.output is None
     assert terminal.data.deferred_tool_call is None
     assert sink.statuses["run-null-output"] == "succeeded"
+
+
+def test_runner_passes_explicit_step_limit_to_agent(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+        assert http_client.is_closed is False
+        return TestModel(custom_output_text="unused")  # pyright: ignore[reportReturnType]
+
+    class FakeAgent:
+        async def run(self, *_args: object, **kwargs: object) -> FakeAgentRunResult:
+            usage_limits = cast(UsageLimits, kwargs["usage_limits"])
+            assert usage_limits.request_limit == 100
+            return FakeAgentRunResult("done", [])
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    monkeypatch.setattr("dify_agent.runtime.runner.create_agent", lambda *_args, **_kwargs: FakeAgent())
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            await AgentRunRunner(
+                sink=sink,
+                request=_request(),
+                run_id="run-explicit-step-limit",
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+            ).run()
+
+    asyncio.run(scenario())
+
+    assert sink.statuses["run-explicit-step-limit"] == "succeeded"
 
 
 def test_runner_emits_deferred_tool_call_and_persists_pending_history(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -1,5 +1,5 @@
 'use client'
-import type { CreateApiKeyResponse } from '@/models/app'
+import type { ApiKeyItem } from '@dify/contracts/api/console/datasets/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
@@ -7,10 +7,11 @@ import { Input } from '@langgenius/dify-ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Radio, RadioGroup } from '@langgenius/dify-ui/radio'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { createApikey as createDatasetApikey } from '@/service/datasets'
-import { useInfiniteDatasets, useInvalidateDatasetApiKeys } from '@/service/knowledge/use-dataset'
+import { consoleQuery } from '@/service/client'
+import { useInfiniteDatasets } from '@/service/knowledge/use-dataset'
 import SecretKeyGenerateModal from './secret-key-generate'
 
 type Scope = 'all' | 'specific'
@@ -24,13 +25,13 @@ type AddApiKeyModalProps = {
 
 const AddApiKeyModal = ({ isShow, onClose }: AddApiKeyModalProps) => {
   const { t } = useTranslation()
-  const invalidateDatasetApiKeys = useInvalidateDatasetApiKeys()
+  const queryClient = useQueryClient()
+  const createDatasetApiKey = useMutation(consoleQuery.datasets.apiKeys.post.mutationOptions())
   const [scope, setScope] = useState<Scope>('all')
   const [selected, setSelected] = useState<SelectedKb[]>([])
   const [pickerOpen, setPickerOpen] = useState(false)
   const [keyword, setKeyword] = useState('')
-  const [creating, setCreating] = useState(false)
-  const [generatedKey, setGeneratedKey] = useState<CreateApiKeyResponse | undefined>(undefined)
+  const [generatedKey, setGeneratedKey] = useState<Pick<ApiKeyItem, 'token'> | undefined>(undefined)
 
   const { data: datasetsPages } = useInfiniteDatasets(
     { keyword },
@@ -64,21 +65,19 @@ const AddApiKeyModal = ({ isShow, onClose }: AddApiKeyModalProps) => {
     onClose()
   }
 
-  const onCreate = async () => {
-    if (!canCreate || creating) return
-    setCreating(true)
-    try {
-      const res = await createDatasetApikey({
-        url: '/datasets/api-keys',
-        body: { dataset_ids: scope === 'specific' ? selected.map((kb) => kb.id) : [] },
-      })
-      invalidateDatasetApiKeys()
-      setGeneratedKey(res)
-      reset()
-      onClose()
-    } finally {
-      setCreating(false)
-    }
+  const onCreate = () => {
+    if (!canCreate || createDatasetApiKey.isPending) return
+    createDatasetApiKey.mutate(
+      { body: { dataset_ids: scope === 'specific' ? selected.map((kb) => kb.id) : [] } },
+      {
+        onSuccess: (apiKey) => {
+          void queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.apiKeys.get.key() })
+          setGeneratedKey(apiKey)
+          reset()
+          onClose()
+        },
+      },
+    )
   }
 
   return (
@@ -224,7 +223,11 @@ const AddApiKeyModal = ({ isShow, onClose }: AddApiKeyModalProps) => {
             <Button variant="secondary" onClick={handleClose}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </Button>
-            <Button variant="primary" disabled={!canCreate || creating} onClick={onCreate}>
+            <Button
+              variant="primary"
+              disabled={!canCreate || createDatasetApiKey.isPending}
+              onClick={onCreate}
+            >
               {t(($) => $['operation.create'], { ns: 'common' })}
             </Button>
           </div>

@@ -117,10 +117,8 @@ def _build_service_api_pause_converter() -> WorkflowResponseConverter:
         workflow_id="workflow-id",
         workflow_execution_id="run-id",
     )
-    user = MagicMock(spec=Account)
+    user = Account(name="Tester", email="tester@example.com")
     user.id = "account-id"
-    user.name = "Tester"
-    user.email = "tester@example.com"
     return WorkflowResponseConverter(
         application_generate_entity=application_generate_entity,
         user=user,

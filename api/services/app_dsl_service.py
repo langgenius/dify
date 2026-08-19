@@ -482,8 +482,8 @@ class AppDslService:
             app.icon_type = resolved_icon_type
             app.icon = icon
             app.icon_background = icon_background or app_data.get("icon_background", "#FFFFFF")
-            app.enable_site = True
-            app.enable_api = True
+            app.enable_site = app_mode != AppMode.AGENT
+            app.enable_api = app_mode != AppMode.AGENT
             app.use_icon_as_answer_icon = app_data.get("use_icon_as_answer_icon", False)
             app.created_by = account.id
             app.maintainer = account.id

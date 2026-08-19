@@ -6,6 +6,7 @@ import * as z from 'zod'
  * AgentApiAccessResponse
  */
 export const zAgentApiAccessResponse = z.object({
+  access_ready: z.boolean(),
   api_key_count: z.int(),
   api_rph: z.int(),
   api_rpm: z.int(),
@@ -375,6 +376,7 @@ export const zWorkflowPartial = z.object({
  */
 export const zAgentAppDetailWithSite = z.object({
   access_mode: z.string().nullish(),
+  access_ready: z.boolean().optional().default(false),
   api_base_url: z.string().nullish(),
   app_id: z.string().nullish(),
   backing_app_id: z.string().nullish(),
@@ -2735,6 +2737,7 @@ export const zAppDetailSiteResponseWritable = z.object({
  */
 export const zAgentAppDetailWithSiteWritable = z.object({
   access_mode: z.string().nullish(),
+  access_ready: z.boolean().optional().default(false),
   api_base_url: z.string().nullish(),
   app_id: z.string().nullish(),
   backing_app_id: z.string().nullish(),

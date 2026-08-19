@@ -425,6 +425,21 @@ wheels = [
 ]
 
 [[package]]
+name = "azure-keyvault-keys"
+version = "4.11.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "azure-core" },
+    { name = "cryptography" },
+    { name = "isodate" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f4/03/5ce6db28b545427d4ab572f6a4ef2a727b6b4e7bf6941cedddf98822535b/azure_keyvault_keys-4.11.1.tar.gz", hash = "sha256:90caa3a7b2c8f6b53c247ec115cf1c1dad7f107cc3aa9f35aff4838bbce7e562", size = 260915, upload-time = "2026-05-19T20:01:08.041Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0c/3d/7bed91ae9268cf48124cf6990d8cd2c3daff7a2bb1e91a439d26ee90d705/azure_keyvault_keys-4.11.1-py3-none-any.whl", hash = "sha256:f46cdf6ee7a9baf27f70e6838327032886c8a087041dd56397773b1639da8fe2", size = 200651, upload-time = "2026-05-19T20:01:09.809Z" },
+]
+
+[[package]]
 name = "azure-storage-blob"
 version = "12.30.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1445,6 +1460,9 @@ dev = [
     { name = "types-ujson" },
     { name = "xinference-client" },
 ]
+kms = [
+    { name = "azure-keyvault-keys" },
+]
 storage = [
     { name = "azure-storage-blob" },
     { name = "bce-python-sdk" },
@@ -1732,6 +1750,7 @@ dev = [
     { name = "types-ujson", specifier = ">=5.10.0" },
     { name = "xinference-client", specifier = ">=2.7.0" },
 ]
+kms = [{ name = "azure-keyvault-keys", specifier = ">=4.10.0,<5.0.0" }]
 storage = [
     { name = "azure-storage-blob", specifier = ">=12.30.0,<13.0.0" },
     { name = "bce-python-sdk", specifier = "==0.9.76" },
