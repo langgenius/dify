@@ -38,7 +38,7 @@ def build_runtime_feature_manifest(agent_soul: AgentSoulConfig) -> dict[str, Any
         value = _get_nested(soul_dump, section)
         has_value = bool(value)
         if isinstance(value, dict):
-            has_value = any(bool(item) for item in value.values())
+            has_value = any(value.values())
         if has_value:
             warnings.append(
                 {
