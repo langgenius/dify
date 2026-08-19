@@ -43,6 +43,8 @@ describe('agent topic', () => {
     expect(out).toContain('-o json')
     expect(out).toContain('EXIT CODES')
     expect(out).toContain('DIFY_TOKEN')
+    expect(out).toContain('difyctl search "<intent>" -o json')
+    expect(out).toContain('difyctl help <path> -o json')
     expect(out).toContain('difyctl help -o json')
     expect(out).toContain('HUMAN-IN-THE-LOOP')
   })

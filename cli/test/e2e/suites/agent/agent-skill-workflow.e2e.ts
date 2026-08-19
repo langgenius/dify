@@ -3,7 +3,7 @@
  *
  * Scenario: an AI agent has loaded difyctl SKILL.md and drives difyctl to:
  *   1. Bootstrap  - read SKILL.md via `skills install --stdout`
- *   2. Discover   - `help -o json` for full command surface + contract
+ *   2. Discover   - `search` for candidates, then per-command help
  *   3. Auth check - no token → exit 4 + JSON error envelope
  *   4. Discover apps    - `get app -o json`
  *   5. Describe app     - `describe app <id> -o json`
@@ -14,7 +14,7 @@
  *  10. Pipeline safety  - no ANSI/spinner, stdout/stderr separation
  *
  * PRD: §3 Agent-Driven, §5 Agent onboarding, Req 1.3/2.1/2.3/3.1-3.3
- * Agent Skills PRD: §4/§5.2 SKILL.md → help -o json discovery pattern
+ * Agent Skills PRD: §4/§5.2 SKILL.md → live command discovery
  *
  * Groups 1-3, 9: no auth required (local mode compatible)
  * Groups 4-8, 10: require DIFY_E2E_TOKEN / staging — wrapped with optionalIt
@@ -45,13 +45,15 @@ const itWithWorkflow = optionalIt(Boolean(E.token) && Boolean(E.workflowAppId))
 const itWithHitl = optionalIt(Boolean(E.token) && Boolean(E.hitlAppId))
 
 // ---------------------------------------------------------------------------
-// 1 + 2. Skill bootstrap → help -o json discovery
+// 1 + 2. Skill bootstrap → search → per-command help
 // ---------------------------------------------------------------------------
 
 describe('E2E / agent skill — bootstrap + discovery (no auth)', () => {
-  it('[P0] SKILL.md contains `difyctl help -o json` as the discovery entry point', async () => {
+  it('[P0] SKILL.md directs agents through search and per-command help', async () => {
     const r = await run(['skills', 'install', '--stdout'])
     expect(r.exitCode).toBe(0)
+    expect(r.stdout).toContain('difyctl search "<intent>" -o json')
+    expect(r.stdout).toContain('difyctl help <path> -o json')
     expect(r.stdout).toContain('difyctl help -o json')
   })
 
@@ -61,7 +63,7 @@ describe('E2E / agent skill — bootstrap + discovery (no auth)', () => {
     const { commands } = JSON.parse(helpR.stdout) as { commands: Array<{ command: string }> }
     const skillR = await run(['skills', 'install', '--stdout'])
     expect(skillR.exitCode).toBe(0)
-    const ALLOWED = new Set(['resume app', 'skills install', 'version'])
+    const ALLOWED = new Set(['resume app', 'search', 'skills install', 'version'])
     for (const { command } of commands) {
       if (ALLOWED.has(command)) continue
       expect(skillR.stdout, `skill must not enumerate "${command}"`).not.toContain(command)
@@ -100,6 +102,19 @@ describe('E2E / agent skill — bootstrap + discovery (no auth)', () => {
     expect(map.topics.map((t: { name: string }) => t.name)).toEqual(
       expect.arrayContaining(['account', 'agent', 'environment', 'external']),
     )
+  })
+
+  it('[P0] search ranks the intended command and returns candidate metadata only', async () => {
+    const r = await run(['search', 'export app', '-o', 'json'])
+    expect(r.exitCode).toBe(0)
+    assertPipeFriendlyJson(r)
+    const parsed = JSON.parse(r.stdout) as {
+      results: Array<Record<string, unknown>>
+    }
+    expect(parsed.results[0]).toMatchObject({ path: 'export studio-app', effect: 'read' })
+    expect(parsed.results.some(({ path }) => path === 'search')).toBe(false)
+    expect(parsed.results.some(({ flags }) => flags !== undefined)).toBe(false)
+    expect(parsed.results.some(({ agentGuide }) => agentGuide !== undefined)).toBe(false)
   })
 
   it('[P0] every command in help -o json has args, flags, examples arrays', async () => {
