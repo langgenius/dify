@@ -11,6 +11,7 @@ caller (P3b Task 4: the Flask controller + the Celery task's ``.delay``).
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
+from uuid import uuid4
 
 from core.workflow_copilot.errors import BusyError, ConflictError, NotFoundError
 from core.workflow_copilot.models import (
@@ -20,6 +21,7 @@ from core.workflow_copilot.models import (
     ConversationItem,
     EntryMode,
     FixContext,
+    Run,
     Session,
 )
 from core.workflow_copilot.ports import Repository
@@ -89,19 +91,30 @@ class WorkflowCopilotService:
         failed_run_id: str | None = None,
         checklist_errors: list[ChecklistError] | None = None,
     ) -> SessionView:
-        """Port of Go ``CreateFixSession``.
+        """Port of Go ``CreateFixSession``, extended to record the failed run.
 
-        Checklist takes precedence when errors are present. Does NOT create
-        a failed ``CopilotRun`` row -- ``failed_run_id`` is trusted to
-        already name a recorded run; recording it is an upstream/P4
-        concern.
+        ``failed_run_id`` is the id of the **Dify workflow run** that failed
+        (what the frontend has). In fix mode we record it as an immutable
+        ``original-failed`` ``CopilotRun`` and point ``fc.failed_run_id`` at
+        that row, so the async ``diagnose`` step can resolve it
+        (``repo.get_run(fc.failed_run_id)`` -> ``run.dify_run_id`` ->
+        ``dify.node_outputs``). Checklist takes precedence when errors are
+        present (no failed run on that path).
         """
+        failed_run: Run | None = None
         if checklist_errors:
             entry_mode, state = EntryMode.FIX_CHECKLIST, PcState.CHECKLIST_DIAGNOSE
             fc = FixContext(source="checklist", checklist_errors=checklist_errors)
         else:
             entry_mode, state = EntryMode.FIX, PcState.FIX_DIAGNOSE
-            fc = FixContext(failed_run_id=failed_run_id or "", source="run")
+            failed_run = Run(
+                id=str(uuid4()),
+                kind="original-failed",
+                dify_run_id=failed_run_id or "",
+                status="failed",
+                immutable=True,
+            )
+            fc = FixContext(failed_run_id=failed_run.id, source="run")
 
         s = Session(
             app_id=app_id,
@@ -112,6 +125,10 @@ class WorkflowCopilotService:
         )
         items = [ConversationItem(kind="run-context", seq=0, payload={"run_id": failed_run_id or ""})]
         self._repo.create_session(s, fc, items)  # assigns s.id, s.version = 1
+        if failed_run is not None:
+            # Persist the failed-run record BEFORE dispatch so the enqueued
+            # advance's diagnose can resolve fc.failed_run_id.
+            self._repo.save_run(s.id, failed_run)
 
         self.dispatch(s.id, Action(kind="request_fix", base_version=1), actor)
         return self.get_session_view(s.id, actor)
