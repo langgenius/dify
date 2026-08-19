@@ -1,9 +1,11 @@
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager, nullcontext
 from decimal import Decimal
+from typing import cast
 from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy import Table
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.sql.dml import Delete
 
@@ -229,14 +231,14 @@ def test_purge_bulk_deletes_aggregate_dependencies_before_agent(monkeypatch: pyt
 
     def record_bulk_delete(statement: object) -> None:
         if isinstance(statement, Delete):
-            deleted_tables.append(statement.table.name)
+            deleted_tables.append(cast(Table, statement.table).name)
 
     session.execute.side_effect = record_bulk_delete
     monkeypatch.setattr("services.agent.deletion_service.session_factory.create_session", lambda: context)
     AgentDeletionService.purge_archived_agents(tenant_id="tenant-1", agent_ids=["agent-1"])
 
     assert deleted_tables == [
-        model.__table__.name
+        cast(Table, model.__table__).name
         for model in (
             AgentDebugConversation,
             AgentConfigRevision,
@@ -351,7 +353,7 @@ def test_purge_failure_rolls_back_complete_aggregate(
     error = RuntimeError(f"{failure_stage} failed")
 
     @contextmanager
-    def failing_session() -> Iterator[Session]:
+    def failing_session() -> Generator[Session]:
         with sqlite_session_factory() as service_session:
             failure_method = failure_stage if failure_stage == "commit" else "execute"
             monkeypatch.setattr(service_session, failure_method, MagicMock(side_effect=error))
