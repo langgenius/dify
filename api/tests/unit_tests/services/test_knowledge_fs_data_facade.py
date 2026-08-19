@@ -2031,6 +2031,20 @@ def test_logical_document_delete_preserves_initial_row_version() -> None:
             None,
         ),
         (
+            "list_quality_replays",
+            "KnowledgeFSQualityReplayListResponse",
+            "listQualityReplays",
+            {"cursor": "cursor-1", "limit": 25, "mode": "deep", "state": "passed"},
+            None,
+        ),
+        (
+            "get_quality_replay",
+            "KnowledgeFSQualityReplayResponse",
+            "getQualityReplay",
+            {"run_id": "replay-run-1"},
+            "replay-run-1",
+        ),
+        (
             "cancel_background_task",
             "KnowledgeFSBackgroundTaskResponse",
             "cancelBackgroundTask",
@@ -2262,6 +2276,15 @@ def test_facade_public_methods_preserve_the_registered_operation_and_child_bindi
         assert delegated.call_args.kwargs["query"] == (("limit", "25"), ("cursor", "cursor-1"))
     if operation_id == "createQualityReplay":
         assert delegated.call_args.kwargs["headers"] == (("Idempotency-Key", "quality-replay-once"),)
+    if operation_id == "listQualityReplays":
+        assert delegated.call_args.kwargs["query"] == (
+            ("limit", "25"),
+            ("cursor", "cursor-1"),
+            ("mode", "deep"),
+            ("state", "passed"),
+        )
+    if operation_id == "getQualityReplay":
+        assert delegated.call_args.kwargs["path_parameters"] == (("runId", "replay-run-1"),)
     if operation_id == "getOverviewQueryOutcomes":
         assert delegated.call_args.kwargs["query"] == (("window", "7d"),)
     if operation_id == "cancelBackgroundTask":

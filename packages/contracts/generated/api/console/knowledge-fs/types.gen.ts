@@ -611,15 +611,30 @@ export type KnowledgeFsBadCaseTraceReferenceResponse = {
   trace_id: string
 }
 
+export type KnowledgeFsQualityReplayListResponse = {
+  data: Array<KnowledgeFsQualityReplayResponse>
+  next_cursor?: string | null
+}
+
 export type KnowledgeFsQualityReplayPayload = {
-  golden_question_ids: Array<string>
+  golden_question_ids?: Array<string> | null
   mode?: 'deep' | 'fast' | 'research' | null
+  selection?: 'all-active' | null
 }
 
 export type KnowledgeFsQualityReplayResponse = {
+  attempt: number
+  created_at: string
+  error?: string | null
   id: string
+  items: Array<KnowledgeFsQualityReplayItem>
+  knowledge_space_id: string
+  mode: 'deep' | 'fast' | 'research'
+  provenance: KnowledgeFsQualityReplayProvenance
   revision: number
   state: 'canceled' | 'failed' | 'passed' | 'queued' | 'running'
+  summary: KnowledgeFsQualityReplaySummary
+  updated_at: string
 }
 
 export type KnowledgeFsQueryCreatePayload = {
@@ -1723,6 +1738,30 @@ export type KnowledgeFsOverviewCountComparisonResponse = {
   value: number
 }
 
+export type KnowledgeFsQualityReplayItem = {
+  golden_question_id: string
+  id: string
+  match_policy: 'all' | 'any'
+  ordinal: number
+  question: string
+  result?: KnowledgeFsQualityReplayItemResult | null
+  state: 'canceled' | 'failed' | 'passed' | 'queued' | 'running'
+}
+
+export type KnowledgeFsQualityReplayProvenance = {
+  embedding?: KnowledgeFsQualityReplayEmbeddingProvenance | null
+  projection: KnowledgeFsQualityReplayProjectionProvenance
+  retrieval: KnowledgeFsQualityReplayRetrievalProvenance
+}
+
+export type KnowledgeFsQualityReplaySummary = {
+  completed: number
+  failed: number
+  hit_rate: number
+  passed: number
+  total: number
+}
+
 export type KnowledgeFsResearchTaskLimits = {
   maxRetrievalSteps?: number | null
   maxScannedResources?: number | null
@@ -2110,6 +2149,28 @@ export type KnowledgeFsOverviewHealthComponentResponse = {
   state: 'degraded' | 'healthy' | 'unavailable' | 'unknown'
 }
 
+export type KnowledgeFsQualityReplayItemResult = {
+  evidence_diff: KnowledgeFsQualityReplayEvidenceDiff
+  metrics: KnowledgeFsQualityReplayMetrics
+  passed: boolean
+}
+
+export type KnowledgeFsQualityReplayEmbeddingProvenance = {
+  dimension: number
+  model: string
+  vector_space_id: string
+}
+
+export type KnowledgeFsQualityReplayProjectionProvenance = {
+  projection_version: number
+}
+
+export type KnowledgeFsQualityReplayRetrievalProvenance = {
+  profile_revision: number
+  reasoning_model: string
+  rerank_model?: string | null
+}
+
 export type KnowledgeFsProductRerankProfile = {
   enabled: boolean
   model?: KnowledgeFsProfileModelSelection | null
@@ -2165,6 +2226,26 @@ export type KnowledgeFsTraceStageResponse = {
   candidate_count?: number | null
   name: string
   status: 'error' | 'ok' | 'skipped'
+}
+
+export type KnowledgeFsQualityReplayEvidenceDiff = {
+  expected_count: number
+  matched_count: number
+  missing_count: number
+  retrieved_count: number
+}
+
+export type KnowledgeFsQualityReplayMetrics = {
+  dense_candidates?: number | null
+  fts_candidates?: number | null
+  fused_candidates?: number | null
+  graph_expansion_candidates?: number | null
+  page_index_matched_nodes?: number | null
+  permission_filtered_candidates?: number | null
+  rerank_candidates?: number | null
+  score_threshold_filtered_candidates?: number | null
+  summary_candidates?: number | null
+  total_ms?: number | null
 }
 
 export type GetKnowledgeFsWellKnownJwksJsonData = {
@@ -3420,6 +3501,27 @@ export type GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdTraceR
 export type GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdTraceReferenceResponse =
   GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdTraceReferenceResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdTraceReferenceResponses]
 
+export type GetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsData = {
+  body?: never
+  path: {
+    control_space_id: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+    mode?: 'deep' | 'fast' | 'research'
+    state?: 'canceled' | 'failed' | 'passed' | 'queued' | 'running'
+  }
+  url: '/knowledge-fs/spaces/{control_space_id}/quality/replay-runs'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsResponses = {
+  200: KnowledgeFsQualityReplayListResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsResponses]
+
 export type PostKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsData = {
   body: KnowledgeFsQualityReplayPayload
   headers: {
@@ -3438,6 +3540,23 @@ export type PostKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsResponses = {
 
 export type PostKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsResponse =
   PostKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsResponses]
+
+export type GetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsByRunIdData = {
+  body?: never
+  path: {
+    control_space_id: string
+    run_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/quality/replay-runs/{run_id}'
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsByRunIdResponses = {
+  200: KnowledgeFsQualityReplayResponse
+}
+
+export type GetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsByRunIdResponse =
+  GetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsByRunIdResponses[keyof GetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsByRunIdResponses]
 
 export type PostKnowledgeFsSpacesByControlSpaceIdQueriesData = {
   body: KnowledgeFsQueryCreatePayload

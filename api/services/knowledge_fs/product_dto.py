@@ -3352,20 +3352,139 @@ class KnowledgeFSBadCaseTraceReferenceResponse(ResponseModel):
 
 
 class KnowledgeFSQualityReplayPayload(BaseModel):
-    golden_question_ids: list[str] = Field(
+    golden_question_ids: list[str] | None = Field(
+        default=None,
         min_length=1,
-        max_length=100,
+        max_length=1000,
         serialization_alias="goldenQuestionIds",
     )
     mode: Literal["deep", "fast", "research"] | None = None
+    selection: Literal["all-active"] | None = None
 
     model_config = ConfigDict(extra="forbid", serialize_by_alias=True)
 
+    @model_validator(mode="after")
+    def validate_selection(self) -> KnowledgeFSQualityReplayPayload:
+        if (self.golden_question_ids is None) == (self.selection is None):
+            raise ValueError("provide exactly one of golden_question_ids or selection")
+        return self
+
+
+class KnowledgeFSQualityReplayEvidenceDiff(ResponseModel):
+    expected_count: int = Field(ge=0, validation_alias=AliasChoices("expected_count", "expectedCount"))
+    matched_count: int = Field(ge=0, validation_alias=AliasChoices("matched_count", "matchedCount"))
+    missing_count: int = Field(ge=0, validation_alias=AliasChoices("missing_count", "missingCount"))
+    retrieved_count: int = Field(ge=0, validation_alias=AliasChoices("retrieved_count", "retrievedCount"))
+
+
+class KnowledgeFSQualityReplayMetrics(ResponseModel):
+    dense_candidates: int | None = Field(
+        default=None, ge=0, validation_alias=AliasChoices("dense_candidates", "denseCandidates")
+    )
+    fts_candidates: int | None = Field(
+        default=None, ge=0, validation_alias=AliasChoices("fts_candidates", "ftsCandidates")
+    )
+    fused_candidates: int | None = Field(
+        default=None, ge=0, validation_alias=AliasChoices("fused_candidates", "fusedCandidates")
+    )
+    graph_expansion_candidates: int | None = Field(
+        default=None, ge=0, validation_alias=AliasChoices("graph_expansion_candidates", "graphExpansionCandidates")
+    )
+    page_index_matched_nodes: int | None = Field(
+        default=None, ge=0, validation_alias=AliasChoices("page_index_matched_nodes", "pageIndexMatchedNodes")
+    )
+    permission_filtered_candidates: int | None = Field(
+        default=None,
+        ge=0,
+        validation_alias=AliasChoices("permission_filtered_candidates", "permissionFilteredCandidates"),
+    )
+    rerank_candidates: int | None = Field(
+        default=None, ge=0, validation_alias=AliasChoices("rerank_candidates", "rerankCandidates")
+    )
+    score_threshold_filtered_candidates: int | None = Field(
+        default=None,
+        ge=0,
+        validation_alias=AliasChoices("score_threshold_filtered_candidates", "scoreThresholdFilteredCandidates"),
+    )
+    summary_candidates: int | None = Field(
+        default=None, ge=0, validation_alias=AliasChoices("summary_candidates", "summaryCandidates")
+    )
+    total_ms: float | None = Field(default=None, ge=0, validation_alias=AliasChoices("total_ms", "totalMs"))
+
+
+class KnowledgeFSQualityReplayItemResult(ResponseModel):
+    evidence_diff: KnowledgeFSQualityReplayEvidenceDiff = Field(
+        validation_alias=AliasChoices("evidence_diff", "evidenceDiff")
+    )
+    metrics: KnowledgeFSQualityReplayMetrics
+    passed: bool
+
+
+class KnowledgeFSQualityReplayItem(ResponseModel):
+    golden_question_id: str = Field(validation_alias=AliasChoices("golden_question_id", "goldenQuestionId"))
+    id: str
+    match_policy: Literal["all", "any"] = Field(validation_alias=AliasChoices("match_policy", "matchPolicy"))
+    ordinal: int = Field(ge=1)
+    question: str
+    result: KnowledgeFSQualityReplayItemResult | None = None
+    state: Literal["queued", "running", "passed", "failed", "canceled"]
+
+
+class KnowledgeFSQualityReplayEmbeddingProvenance(ResponseModel):
+    dimension: int = Field(gt=0)
+    model: str
+    vector_space_id: str = Field(validation_alias=AliasChoices("vector_space_id", "vectorSpaceId"))
+
+
+class KnowledgeFSQualityReplayProjectionProvenance(ResponseModel):
+    projection_version: int = Field(gt=0, validation_alias=AliasChoices("projection_version", "projectionVersion"))
+
+
+class KnowledgeFSQualityReplayRetrievalProvenance(ResponseModel):
+    profile_revision: int = Field(gt=0, validation_alias=AliasChoices("profile_revision", "profileRevision"))
+    reasoning_model: str = Field(validation_alias=AliasChoices("reasoning_model", "reasoningModel"))
+    rerank_model: str | None = Field(default=None, validation_alias=AliasChoices("rerank_model", "rerankModel"))
+
+
+class KnowledgeFSQualityReplayProvenance(ResponseModel):
+    embedding: KnowledgeFSQualityReplayEmbeddingProvenance | None = None
+    projection: KnowledgeFSQualityReplayProjectionProvenance
+    retrieval: KnowledgeFSQualityReplayRetrievalProvenance
+
+
+class KnowledgeFSQualityReplaySummary(ResponseModel):
+    completed: int = Field(ge=0)
+    failed: int = Field(ge=0)
+    hit_rate: float = Field(ge=0, le=1, validation_alias=AliasChoices("hit_rate", "hitRate"))
+    passed: int = Field(ge=0)
+    total: int = Field(ge=0)
+
 
 class KnowledgeFSQualityReplayResponse(ResponseModel):
+    attempt: int = Field(ge=0)
+    created_at: datetime = Field(validation_alias=AliasChoices("created_at", "createdAt"))
+    error: str | None = None
     id: str
+    items: list[KnowledgeFSQualityReplayItem]
+    knowledge_space_id: str = Field(validation_alias=AliasChoices("knowledge_space_id", "knowledgeSpaceId"))
+    mode: Literal["deep", "fast", "research"]
+    provenance: KnowledgeFSQualityReplayProvenance
     revision: int = Field(ge=1)
     state: Literal["queued", "running", "passed", "failed", "canceled"]
+    summary: KnowledgeFSQualityReplaySummary
+    updated_at: datetime = Field(validation_alias=AliasChoices("updated_at", "updatedAt"))
+
+
+class KnowledgeFSQualityReplayListQuery(BaseModel):
+    cursor: str | None = Field(default=None, max_length=1000)
+    limit: int = Field(default=20, ge=1, le=100)
+    mode: Literal["deep", "fast", "research"] | None = None
+    state: Literal["queued", "running", "passed", "failed", "canceled"] | None = None
+
+
+class KnowledgeFSQualityReplayListResponse(ResponseModel):
+    data: list[KnowledgeFSQualityReplayResponse] = Field(validation_alias=AliasChoices("data", "items"))
+    next_cursor: str | None = Field(default=None, validation_alias=AliasChoices("next_cursor", "nextCursor"))
 
 
 class KnowledgeFSUploadSessionResponse(ResponseModel):

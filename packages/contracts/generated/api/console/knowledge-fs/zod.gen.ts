@@ -370,17 +370,9 @@ export const zKnowledgeFsBadCaseTraceReferenceResponse = z.object({
  * KnowledgeFSQualityReplayPayload
  */
 export const zKnowledgeFsQualityReplayPayload = z.object({
-  golden_question_ids: z.array(z.string()).min(1).max(100),
+  golden_question_ids: z.array(z.string()).min(1).max(1000).nullish(),
   mode: z.enum(['deep', 'fast', 'research']).nullish(),
-})
-
-/**
- * KnowledgeFSQualityReplayResponse
- */
-export const zKnowledgeFsQualityReplayResponse = z.object({
-  id: z.string(),
-  revision: z.int().gte(1),
-  state: z.enum(['canceled', 'failed', 'passed', 'queued', 'running']),
+  selection: z.literal('all-active').nullish(),
 })
 
 /**
@@ -1702,6 +1694,17 @@ export const zKnowledgeFsOverviewStatsResponse = z.object({
 })
 
 /**
+ * KnowledgeFSQualityReplaySummary
+ */
+export const zKnowledgeFsQualityReplaySummary = z.object({
+  completed: z.int().gte(0),
+  failed: z.int().gte(0),
+  hit_rate: z.number().gte(0).lte(1),
+  passed: z.int().gte(0),
+  total: z.int().gte(0),
+})
+
+/**
  * KnowledgeFSResearchTaskLimits
  */
 export const zKnowledgeFsResearchTaskLimits = z.object({
@@ -2614,6 +2617,40 @@ export const zKnowledgeFsOverviewHealthResponse = z.object({
 })
 
 /**
+ * KnowledgeFSQualityReplayEmbeddingProvenance
+ */
+export const zKnowledgeFsQualityReplayEmbeddingProvenance = z.object({
+  dimension: z.int().gt(0),
+  model: z.string(),
+  vector_space_id: z.string(),
+})
+
+/**
+ * KnowledgeFSQualityReplayProjectionProvenance
+ */
+export const zKnowledgeFsQualityReplayProjectionProvenance = z.object({
+  projection_version: z.int().gt(0),
+})
+
+/**
+ * KnowledgeFSQualityReplayRetrievalProvenance
+ */
+export const zKnowledgeFsQualityReplayRetrievalProvenance = z.object({
+  profile_revision: z.int().gt(0),
+  reasoning_model: z.string(),
+  rerank_model: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSQualityReplayProvenance
+ */
+export const zKnowledgeFsQualityReplayProvenance = z.object({
+  embedding: zKnowledgeFsQualityReplayEmbeddingProvenance.nullish(),
+  projection: zKnowledgeFsQualityReplayProjectionProvenance,
+  retrieval: zKnowledgeFsQualityReplayRetrievalProvenance,
+})
+
+/**
  * KnowledgeFSProductRerankProfile
  */
 export const zKnowledgeFsProductRerankProfile = z.object({
@@ -2832,6 +2869,80 @@ export const zKnowledgeFsTraceResponse = z.object({
  */
 export const zKnowledgeFsTraceListResponse = z.object({
   data: z.array(zKnowledgeFsTraceResponse),
+  next_cursor: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSQualityReplayEvidenceDiff
+ */
+export const zKnowledgeFsQualityReplayEvidenceDiff = z.object({
+  expected_count: z.int().gte(0),
+  matched_count: z.int().gte(0),
+  missing_count: z.int().gte(0),
+  retrieved_count: z.int().gte(0),
+})
+
+/**
+ * KnowledgeFSQualityReplayMetrics
+ */
+export const zKnowledgeFsQualityReplayMetrics = z.object({
+  dense_candidates: z.int().gte(0).nullish(),
+  fts_candidates: z.int().gte(0).nullish(),
+  fused_candidates: z.int().gte(0).nullish(),
+  graph_expansion_candidates: z.int().gte(0).nullish(),
+  page_index_matched_nodes: z.int().gte(0).nullish(),
+  permission_filtered_candidates: z.int().gte(0).nullish(),
+  rerank_candidates: z.int().gte(0).nullish(),
+  score_threshold_filtered_candidates: z.int().gte(0).nullish(),
+  summary_candidates: z.int().gte(0).nullish(),
+  total_ms: z.number().gte(0).nullish(),
+})
+
+/**
+ * KnowledgeFSQualityReplayItemResult
+ */
+export const zKnowledgeFsQualityReplayItemResult = z.object({
+  evidence_diff: zKnowledgeFsQualityReplayEvidenceDiff,
+  metrics: zKnowledgeFsQualityReplayMetrics,
+  passed: z.boolean(),
+})
+
+/**
+ * KnowledgeFSQualityReplayItem
+ */
+export const zKnowledgeFsQualityReplayItem = z.object({
+  golden_question_id: z.string(),
+  id: z.string(),
+  match_policy: z.enum(['all', 'any']),
+  ordinal: z.int().gte(1),
+  question: z.string(),
+  result: zKnowledgeFsQualityReplayItemResult.nullish(),
+  state: z.enum(['canceled', 'failed', 'passed', 'queued', 'running']),
+})
+
+/**
+ * KnowledgeFSQualityReplayResponse
+ */
+export const zKnowledgeFsQualityReplayResponse = z.object({
+  attempt: z.int().gte(0),
+  created_at: z.iso.datetime(),
+  error: z.string().nullish(),
+  id: z.string(),
+  items: z.array(zKnowledgeFsQualityReplayItem),
+  knowledge_space_id: z.string(),
+  mode: z.enum(['deep', 'fast', 'research']),
+  provenance: zKnowledgeFsQualityReplayProvenance,
+  revision: z.int().gte(1),
+  state: z.enum(['canceled', 'failed', 'passed', 'queued', 'running']),
+  summary: zKnowledgeFsQualityReplaySummary,
+  updated_at: z.iso.datetime(),
+})
+
+/**
+ * KnowledgeFSQualityReplayListResponse
+ */
+export const zKnowledgeFsQualityReplayListResponse = z.object({
+  data: z.array(zKnowledgeFsQualityReplayResponse),
   next_cursor: z.string().nullish(),
 })
 
@@ -3762,6 +3873,23 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdTrac
 export const zGetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdTraceReferenceResponse =
   zKnowledgeFsBadCaseTraceReferenceResponse
 
+export const zGetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsPath = z.object({
+  control_space_id: z.string(),
+})
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsQuery = z.object({
+  cursor: z.string().max(1000).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  mode: z.enum(['deep', 'fast', 'research']).optional(),
+  state: z.enum(['canceled', 'failed', 'passed', 'queued', 'running']).optional(),
+})
+
+/**
+ * KnowledgeFS quality replay history
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsResponse =
+  zKnowledgeFsQualityReplayListResponse
+
 export const zPostKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsBody =
   zKnowledgeFsQualityReplayPayload
 
@@ -3777,6 +3905,17 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsPath = z.obj
  * KnowledgeFS quality replay queued
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsResponse =
+  zKnowledgeFsQualityReplayResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsByRunIdPath = z.object({
+  control_space_id: z.string(),
+  run_id: z.string(),
+})
+
+/**
+ * KnowledgeFS quality replay run
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsByRunIdResponse =
   zKnowledgeFsQualityReplayResponse
 
 export const zPostKnowledgeFsSpacesByControlSpaceIdQueriesBody = zKnowledgeFsQueryCreatePayload

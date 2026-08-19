@@ -97,7 +97,12 @@ describe("quality-control handlers", () => {
       items: [
         {
           result: {
-            evidenceDiff: { expectedCount: 1, missingCount: 1, retrievedCount: 1 },
+            evidenceDiff: {
+              expectedCount: 1,
+              matchedCount: 0,
+              missingCount: 1,
+              retrievedCount: 1,
+            },
             metrics: { totalMs: 17 },
             passed: false,
           },
@@ -128,6 +133,55 @@ describe("quality-control handlers", () => {
     expect(body).not.toHaveProperty("tenantId");
     expect(body).not.toHaveProperty("permission");
     expect(body).not.toHaveProperty("frozenSnapshot");
+  });
+
+  it("reports a partial evidence hit as passed for an any-match replay item", async () => {
+    const base = replayRun();
+    const getReplay = vi.fn(async () => ({
+      ...base,
+      items: [
+        {
+          ...base.items[0],
+          expectedEvidenceIds: ["expected-1", "expected-2"],
+          matchPolicy: "any" as const,
+          result: {
+            evidenceDiff: {
+              matchPolicy: "any",
+              missingEvidenceIds: ["expected-2"],
+              retrievedEvidenceIds: ["expected-1"],
+            },
+            metrics: { totalMs: 17 },
+          },
+          state: "passed" as const,
+        },
+      ],
+      state: "passed" as const,
+    }));
+    const app = qualityApp({ getReplay } as unknown as QualityControlRepository);
+
+    const response = await app.request(
+      `/knowledge-spaces/${SPACE_ID}/quality/replay-runs/${RUN_ID}`,
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      items: [
+        {
+          matchPolicy: "any",
+          result: {
+            evidenceDiff: {
+              expectedCount: 2,
+              matchedCount: 1,
+              missingCount: 1,
+              retrievedCount: 1,
+            },
+            passed: true,
+          },
+          state: "passed",
+        },
+      ],
+      summary: { failed: 0, hitRate: 1, passed: 1 },
+    });
   });
 
   it("serializes optional replay errors, results, embedding, and rerank provenance safely", async () => {
@@ -620,6 +674,7 @@ describe("quality-control handlers", () => {
           {
             expectedEvidenceIds: [],
             id: GOLDEN_QUESTION_ID,
+            matchPolicy: "all",
             question: "Which camera evidence is missing?",
           },
         ],
@@ -639,6 +694,96 @@ describe("quality-control handlers", () => {
     });
     expect(duplicate.status).toBe(404);
     expect(createReplay).toHaveBeenCalledTimes(1);
+  });
+
+  it("queues every visible active golden question and freezes its evidence match policy", async () => {
+    const createReplay = vi.fn(async () => ({
+      ...replayRun(),
+      error: undefined,
+      state: "queued" as const,
+    }));
+    const list = vi.fn(async () => ({
+      items: [
+        {
+          createdAt: NOW,
+          expectedEvidenceIds: ["evidence-active-1", "evidence-active-2"],
+          id: GOLDEN_QUESTION_ID,
+          knowledgeSpaceId: SPACE_ID,
+          metadata: { lifecycleStatus: "active", matchPolicy: "any" },
+          question: "Which permission rule applies?",
+          tags: [],
+          updatedAt: NOW,
+        },
+        {
+          createdAt: NOW,
+          expectedEvidenceIds: [],
+          id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c55",
+          knowledgeSpaceId: SPACE_ID,
+          metadata: { lifecycleStatus: "draft", matchPolicy: "all" },
+          question: "Draft without selected evidence",
+          tags: [],
+          updatedAt: NOW,
+        },
+        {
+          createdAt: NOW,
+          expectedEvidenceIds: ["evidence-stale"],
+          id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c56",
+          knowledgeSpaceId: SPACE_ID,
+          metadata: { lifecycleStatus: "stale", matchPolicy: "all" },
+          question: "Stale expected evidence",
+          tags: [],
+          updatedAt: NOW,
+        },
+      ],
+    }));
+    const app = qualityApp({ createReplay } as unknown as QualityControlRepository, {
+      access: {
+        createPermissionSnapshot: vi.fn(async () => ({
+          accessChannel: "interactive",
+          id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c63",
+          permissionScopes: ["subject:editor-1", "tenant:tenant-1"],
+          revision: 14,
+        })),
+      } as never,
+      goldenQuestions: { list } as never,
+      nodes: {
+        getMany: vi.fn(async () => [
+          { id: "evidence-active-1", permissionScope: [] },
+          { id: "evidence-active-2", permissionScope: [] },
+        ]),
+        getManyByIdsAcrossGenerations: vi.fn(async () => []),
+      } as never,
+      runtimeSnapshots: {
+        assertReady: vi.fn(async () => undefined),
+        resolve: vi.fn(async () => replayRun().frozenSnapshot),
+      },
+    });
+
+    const response = await app.request(`/knowledge-spaces/${SPACE_ID}/quality/replay-runs`, {
+      body: JSON.stringify({ selection: "all-active" }),
+      headers: { "content-type": "application/json", "idempotency-key": "all-active-replay" },
+      method: "POST",
+    });
+
+    expect(response.status, await response.clone().text()).toBe(202);
+    expect(list).toHaveBeenCalledWith(
+      expect.objectContaining({
+        candidateGrants: ["subject:editor-1", "tenant:tenant-1"],
+        limit: 100,
+      }),
+    );
+    expect(createReplay).toHaveBeenCalledWith(
+      expect.objectContaining({
+        questions: [
+          {
+            expectedEvidenceIds: ["evidence-active-1", "evidence-active-2"],
+            id: GOLDEN_QUESTION_ID,
+            matchPolicy: "any",
+            question: "Which permission rule applies?",
+          },
+        ],
+      }),
+    );
   });
 
   it("reviews visible missing evidence and captures its subject-owned trace as a bad case", async () => {
@@ -1629,6 +1774,7 @@ function replayRun(): QualityReplayRun {
         expectedEvidenceIds: ["expected-evidence-secret"],
         goldenQuestionId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c44",
         id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c45",
+        matchPolicy: "all",
         ordinal: 1,
         question: "camera evidence",
         result: {

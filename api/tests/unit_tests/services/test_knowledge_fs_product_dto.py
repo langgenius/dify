@@ -34,6 +34,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSOverviewWindowQuery,
     KnowledgeFSPublicFailureResponse,
     KnowledgeFSQualityListQuery,
+    KnowledgeFSQualityReplayPayload,
     KnowledgeFSQueryCreatePayload,
     KnowledgeFSRerankIntent,
     KnowledgeFSResearchTaskCreatePayload,
@@ -65,6 +66,16 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSWorkflowFailedRetrievalCapturePayload,
     KnowledgeFSWorkflowFailedRetrievalCaptureResponse,
 )
+
+
+def test_quality_replay_payload_requires_exactly_one_selection_mode() -> None:
+    assert KnowledgeFSQualityReplayPayload(selection="all-active").selection == "all-active"
+    assert KnowledgeFSQualityReplayPayload(golden_question_ids=["question-1"]).golden_question_ids == ["question-1"]
+
+    with pytest.raises(ValidationError, match="provide exactly one"):
+        KnowledgeFSQualityReplayPayload()
+    with pytest.raises(ValidationError, match="provide exactly one"):
+        KnowledgeFSQualityReplayPayload(selection="all-active", golden_question_ids=["question-1"])
 
 
 def test_golden_question_evidence_match_requires_exactly_one_lookup_mode() -> None:

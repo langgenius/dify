@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
 import type { OpenAPIHono } from "@hono/zod-openapi";
-import type { AnswerTrace, EvidenceBundle } from "@knowledge/core";
+import type { AnswerTrace, EvidenceBundle, GoldenQuestion } from "@knowledge/core";
 
 import type { AnswerTraceRepository } from "./answer-trace-repository";
 import { isAuthenticatedApiKeyBoundToKnowledgeSpace } from "./auth";
@@ -53,6 +53,11 @@ import {
   updateQualityBadCaseRoute,
 } from "./quality-control-routes";
 import { evidenceBundleFromAnswerTrace } from "./query-virtual-entries";
+
+const MAX_QUALITY_REPLAY_QUESTIONS = 1_000;
+const QUALITY_REPLAY_QUESTION_PAGE_SIZE = 100;
+
+class QualityReplaySelectionTooLargeError extends Error {}
 
 export interface RegisterQualityControlHandlersOptions {
   readonly access: Pick<
@@ -417,17 +422,33 @@ export function registerQualityControlHandlers({
       return context.json({ error: "Quality runtime unavailable" }, 503);
     }
     const body = context.req.valid("json");
-    const questions = await loadVisibleGoldenQuestions({
-      assets,
-      candidateGrants: scope.candidateGrants,
-      goldenQuestionIds: body.goldenQuestionIds,
-      knowledgeSpaceId: scope.knowledgeSpaceId,
-      nodes,
-      questions: goldenQuestions,
-      tenantId: scope.subject.tenantId,
-    });
-    if (!questions) return context.json({ error: "Golden question not found" }, 404);
     try {
+      const questions =
+        "selection" in body
+          ? await loadVisibleActiveGoldenQuestions({
+              assets,
+              candidateGrants: scope.candidateGrants,
+              knowledgeSpaceId: scope.knowledgeSpaceId,
+              nodes,
+              questions: goldenQuestions,
+              tenantId: scope.subject.tenantId,
+            })
+          : await loadVisibleGoldenQuestions({
+              assets,
+              candidateGrants: scope.candidateGrants,
+              goldenQuestionIds: body.goldenQuestionIds,
+              knowledgeSpaceId: scope.knowledgeSpaceId,
+              nodes,
+              questions: goldenQuestions,
+              tenantId: scope.subject.tenantId,
+            });
+      if (!questions) return context.json({ error: "Golden question not found" }, 404);
+      if (questions.length === 0) {
+        return context.json(
+          { error: "No active golden questions are available for evaluation" },
+          400,
+        );
+      }
       const frozen = freezeQualityRuntimeSnapshot(
         await runtimeSnapshots.resolve({
           knowledgeSpaceId: scope.knowledgeSpaceId,
@@ -467,6 +488,9 @@ export function registerQualityControlHandlers({
       });
       return context.json(publicReplay(run), 202);
     } catch (error) {
+      if (error instanceof QualityReplaySelectionTooLargeError) {
+        return context.json({ error: error.message }, 400);
+      }
       if (error instanceof QualityControlIdempotencyConflictError) {
         return context.json({ error: error.message }, 409);
       }
@@ -839,7 +863,54 @@ async function loadVisibleGoldenQuestions(input: {
   const resolved = questions.filter((question): question is NonNullable<typeof question> =>
     Boolean(question),
   );
-  const evidenceIds = [...new Set(resolved.flatMap((question) => question.expectedEvidenceIds))];
+  return visibleGoldenQuestionSnapshots({ ...input, questions: resolved });
+}
+
+async function loadVisibleActiveGoldenQuestions(input: {
+  readonly assets: Pick<DocumentAssetRepository, "get">;
+  readonly candidateGrants: readonly string[];
+  readonly knowledgeSpaceId: string;
+  readonly nodes: Pick<KnowledgeNodeRepository, "getMany">;
+  readonly questions: GoldenQuestionRepository;
+  readonly tenantId: string;
+}) {
+  const active: GoldenQuestion[] = [];
+  let cursor: { readonly createdAt: string; readonly id: string } | undefined;
+  do {
+    const page = await input.questions.list({
+      candidateGrants: input.candidateGrants,
+      ...(cursor ? { cursor } : {}),
+      knowledgeSpaceId: input.knowledgeSpaceId,
+      limit: QUALITY_REPLAY_QUESTION_PAGE_SIZE,
+      tenantId: input.tenantId,
+    });
+    for (const question of page.items) {
+      const lifecycleStatus = question.metadata.lifecycleStatus;
+      if (question.expectedEvidenceIds.length > 0 && lifecycleStatus !== "stale") {
+        active.push(question);
+        if (active.length > MAX_QUALITY_REPLAY_QUESTIONS) {
+          throw new QualityReplaySelectionTooLargeError(
+            `Quality evaluation supports at most ${MAX_QUALITY_REPLAY_QUESTIONS} active golden questions`,
+          );
+        }
+      }
+    }
+    cursor = page.nextCursor;
+  } while (cursor);
+
+  return visibleGoldenQuestionSnapshots({ ...input, questions: active });
+}
+
+async function visibleGoldenQuestionSnapshots(input: {
+  readonly assets: Pick<DocumentAssetRepository, "get">;
+  readonly candidateGrants: readonly string[];
+  readonly knowledgeSpaceId: string;
+  readonly nodes: Pick<KnowledgeNodeRepository, "getMany">;
+  readonly questions: readonly GoldenQuestion[];
+}) {
+  const evidenceIds = [
+    ...new Set(input.questions.flatMap((question) => question.expectedEvidenceIds)),
+  ];
   const nodes = await input.nodes.getMany({
     ids: evidenceIds,
     knowledgeSpaceId: input.knowledgeSpaceId,
@@ -854,9 +925,10 @@ async function loadVisibleGoldenQuestions(input: {
     assets.some((asset) => asset && !candidatePermissionAllowsAsset(asset, input.candidateGrants))
   )
     return null;
-  return resolved.map((question) => ({
+  return input.questions.map((question) => ({
     expectedEvidenceIds: [...question.expectedEvidenceIds],
     id: question.id,
+    matchPolicy: question.metadata.matchPolicy === "any" ? ("any" as const) : ("all" as const),
     question: question.question,
   }));
 }
@@ -903,6 +975,7 @@ function qualityReplayRequestFingerprint(input: {
   readonly questions: readonly {
     readonly expectedEvidenceIds: readonly string[];
     readonly id: string;
+    readonly matchPolicy: "all" | "any";
     readonly question: string;
   }[];
   readonly subjectId: string;
@@ -917,6 +990,7 @@ function qualityReplayRequestFingerprint(input: {
         questions: input.questions.map((question) => ({
           expectedEvidenceIds: [...question.expectedEvidenceIds].sort(),
           id: question.id,
+          matchPolicy: question.matchPolicy,
           question: question.question,
         })),
         retrievalProfile: input.frozen.retrievalProfile,
@@ -937,6 +1011,9 @@ function publicBadCase(value: ProductionBadCase) {
 function publicReplay(run: QualityReplayRun) {
   const embedding = run.frozenSnapshot.embeddingProfile;
   const retrieval = run.frozenSnapshot.retrievalProfile;
+  const passed = run.items.filter((item) => item.state === "passed").length;
+  const failed = run.items.filter((item) => item.state === "failed").length;
+  const completed = passed + failed;
   return {
     attempt: run.attempt,
     createdAt: run.createdAt,
@@ -945,10 +1022,17 @@ function publicReplay(run: QualityReplayRun) {
     items: run.items.map((item) => ({
       goldenQuestionId: item.goldenQuestionId,
       id: item.id,
+      matchPolicy: item.matchPolicy,
       ordinal: item.ordinal,
       question: item.question,
       ...(item.result
-        ? { result: publicReplayResult(item.result, item.expectedEvidenceIds.length) }
+        ? {
+            result: publicReplayResult(
+              item.result,
+              item.expectedEvidenceIds.length,
+              item.matchPolicy,
+            ),
+          }
         : {}),
       state: item.state,
     })),
@@ -977,6 +1061,13 @@ function publicReplay(run: QualityReplayRun) {
     },
     revision: run.revision,
     state: run.state,
+    summary: {
+      completed,
+      failed,
+      hitRate: completed === 0 ? 0 : passed / completed,
+      passed,
+      total: run.items.length,
+    },
     updatedAt: run.updatedAt,
   };
 }
@@ -985,7 +1076,11 @@ function publicReplayErrorCode(error: string) {
   return error === "PERMISSION_REVOKED" ? "PERMISSION_REVOKED" : "REPLAY_EXECUTION_FAILED";
 }
 
-function publicReplayResult(value: Readonly<Record<string, unknown>>, expectedCount: number) {
+function publicReplayResult(
+  value: Readonly<Record<string, unknown>>,
+  expectedCount: number,
+  matchPolicy: "all" | "any",
+) {
   const diff = isPlainRecord(value.evidenceDiff) ? value.evidenceDiff : {};
   const metrics = isPlainRecord(value.metrics) ? value.metrics : {};
   const missingCount = Array.isArray(diff.missingEvidenceIds) ? diff.missingEvidenceIds.length : 0;
@@ -1011,10 +1106,16 @@ function publicReplayResult(value: Readonly<Record<string, unknown>>, expectedCo
       safeMetrics[name] = candidate;
     }
   }
+  const matchedCount = Math.max(0, expectedCount - missingCount);
   return {
-    evidenceDiff: { expectedCount, missingCount, retrievedCount },
+    evidenceDiff: {
+      expectedCount,
+      matchedCount,
+      missingCount,
+      retrievedCount,
+    },
     metrics: safeMetrics,
-    passed: missingCount === 0,
+    passed: matchPolicy === "any" ? matchedCount > 0 : missingCount === 0,
   };
 }
 

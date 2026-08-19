@@ -601,6 +601,7 @@ export function createDatabaseQualityControlRepository({
               ordinal,
               question.question,
               JSON.stringify(question.expectedEvidenceIds),
+              question.matchPolicy,
               "queued",
               timestamp,
               timestamp,
@@ -612,6 +613,7 @@ export function createDatabaseQualityControlRepository({
               "ordinal",
               "question",
               "expected_evidence_ids",
+              "match_policy",
               "state",
               "created_at",
               "updated_at",
@@ -619,7 +621,7 @@ export function createDatabaseQualityControlRepository({
               .map((column) => q(database, column))
               .join(
                 ", ",
-              )}) VALUES (${Array.from({ length: 9 }, (_, index) => (index === 5 ? jsonP(database, index + 1) : p(database, index + 1))).join(", ")});`,
+              )}) VALUES (${Array.from({ length: 10 }, (_, index) => (index === 5 ? jsonP(database, index + 1) : p(database, index + 1))).join(", ")});`,
             tableName: "quality_replay_items",
           });
         }
@@ -1557,6 +1559,7 @@ function mapReplayItem(row: DatabaseRow): QualityReplayItem {
     expectedEvidenceIds: jsonStringArrayColumn(row, "expected_evidence_ids"),
     goldenQuestionId: stringColumn(row, "golden_question_id"),
     id: stringColumn(row, "id"),
+    matchPolicy: stringColumn(row, "match_policy") as QualityReplayItem["matchPolicy"],
     ordinal: numberColumn(row, "ordinal"),
     question: stringColumn(row, "question"),
     ...(row.result == null ? {} : { result: jsonObjectColumn(row, "result") }),

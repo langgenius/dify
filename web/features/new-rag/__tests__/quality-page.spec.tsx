@@ -198,6 +198,9 @@ describe('QualityPage', () => {
     expect(
       screen.getByRole('tab', { name: 'dataset.newKnowledge.qualityPage.badCasesTab' }),
     ).toBeInTheDocument()
+    expect(
+      screen.getByRole('tab', { name: 'dataset.newKnowledge.qualityPage.evaluationTab' }),
+    ).toBeInTheDocument()
   })
 
   it('renders an empty golden-question annotation without an empty interactive control', async () => {

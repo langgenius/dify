@@ -128,6 +128,52 @@ describe("quality replay runtime", () => {
     },
   );
 
+  it("passes an any-match question when retrieval finds one expected evidence node", async () => {
+    const baseRun = replayRun();
+    const run: QualityReplayRun = {
+      ...baseRun,
+      items: baseRun.items.map((item) => ({
+        ...item,
+        expectedEvidenceIds: ["node-1", "node-not-retrieved"],
+        matchPolicy: "any",
+      })),
+    };
+    const repository = repositoryStub(run);
+    const runtime = createQualityReplayRuntime({
+      access: { revalidatePermissionSnapshot: vi.fn(async () => permissionSnapshot("editor")) },
+      answerTraces: { create: async (trace) => trace },
+      executor: {
+        execute: vi.fn(async () => retrievalResult()),
+      } as unknown as RetrievalTestExecutor,
+      generateTraceId: () => TRACE_ID,
+      now: () => NOW,
+      repository,
+      runtimeSnapshots: {
+        assertReady: vi.fn(async () => undefined),
+        resolve: vi.fn(async () => run.frozenSnapshot),
+      },
+      workerId: "quality-worker-1",
+    });
+
+    await expect(runtime.tick()).resolves.toBe(true);
+
+    expect(repository.recordReplayItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: expect.objectContaining({
+          evidenceDiff: {
+            matchPolicy: "any",
+            missingEvidenceIds: ["node-not-retrieved"],
+            retrievedEvidenceIds: ["node-1", "projection-1"],
+          },
+        }),
+        state: "passed",
+      }),
+    );
+    expect(repository.completeReplay).toHaveBeenCalledWith(
+      expect.objectContaining({ state: "passed" }),
+    );
+  });
+
   it("fails terminally with a permission-revoked code before executing an item", async () => {
     const run = replayRun();
     const execute = vi.fn();
@@ -328,6 +374,7 @@ function replayRun(mode: "deep" | "fast" | "research" = "deep"): QualityReplayRu
         expectedEvidenceIds: ["node-1"],
         goldenQuestionId: GOLDEN_ID,
         id: ITEM_ID,
+        matchPolicy: "all",
         ordinal: 1,
         question: "Which camera sensor is supported?",
         state: "queued",

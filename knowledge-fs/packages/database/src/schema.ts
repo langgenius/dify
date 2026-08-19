@@ -4701,6 +4701,13 @@ const tables = [
         },
         name: "quality_replay_items_state_ck",
       },
+      {
+        expression: {
+          postgres: `"match_policy" IN ('all', 'any')`,
+          tidb: "`match_policy` IN ('all', 'any')",
+        },
+        name: "quality_replay_items_match_policy_ck",
+      },
     ],
     foreignKeys: [
       {
@@ -4717,6 +4724,7 @@ const tables = [
       integerColumn("ordinal"),
       textColumn("question"),
       jsonColumn("expected_evidence_ids"),
+      varcharColumn("match_policy", 8),
       varcharColumn("state", 16),
       { ...jsonColumn("result"), nullable: true },
       idColumn("trace_id", true),

@@ -910,6 +910,23 @@
       "resourceType": "knowledge_space"
     },
     {
+      "action": "quality.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getQualityReplay",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/quality/replay-runs/{runId}",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
       "action": "research_tasks.read",
       "allowedCallerKinds": [
         "interactive",
@@ -1331,6 +1348,23 @@
       "operationId": "listQualityBadCases",
       "parentResourceBinding": null,
       "path": "/knowledge-spaces/{id}/quality/bad-cases",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "quality.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "listQualityReplays",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/quality/replay-runs",
       "resourceBinding": {
         "pathParameter": "id"
       },

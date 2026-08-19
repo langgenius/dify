@@ -20,7 +20,7 @@ test("Capability v2 operation export is deterministic and includes internal life
     );
     const document = JSON.parse(readFileSync(output, "utf8"));
     assert.equal(document.schemaVersion, 1);
-    assert.equal(new Set(document.operations.map((operation) => operation.operationId)).size, 115);
+    assert.equal(new Set(document.operations.map((operation) => operation.operationId)).size, 117);
     assert.deepEqual(
       document.operations.find(
         (operation) => operation.operationId === "getDocumentMultimodalManifest",
@@ -50,6 +50,35 @@ test("Capability v2 operation export is deterministic and includes internal life
         resourceBinding: { pathParameter: "id" },
         resourceType: "knowledge_space",
       },
+    );
+    assert.deepEqual(
+      document.operations
+        .filter((operation) =>
+          ["getQualityReplay", "listQualityReplays"].includes(operation.operationId),
+        )
+        .map(({ action, allowedCallerKinds, method, operationId, path }) => ({
+          action,
+          allowedCallerKinds,
+          method,
+          operationId,
+          path,
+        })),
+      [
+        {
+          action: "quality.read",
+          allowedCallerKinds: ["interactive", "service", "agent", "workflow"],
+          method: "GET",
+          operationId: "getQualityReplay",
+          path: "/knowledge-spaces/{id}/quality/replay-runs/{runId}",
+        },
+        {
+          action: "quality.read",
+          allowedCallerKinds: ["interactive", "service", "agent", "workflow"],
+          method: "GET",
+          operationId: "listQualityReplays",
+          path: "/knowledge-spaces/{id}/quality/replay-runs",
+        },
+      ],
     );
     assert.deepEqual(
       document.operations.find(

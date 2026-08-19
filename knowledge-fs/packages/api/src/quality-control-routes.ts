@@ -106,12 +106,14 @@ export const ReplayRunSchema = z
       z.object({
         goldenQuestionId: z.string().uuid(),
         id: z.string().uuid(),
+        matchPolicy: z.enum(["all", "any"]),
         ordinal: z.number().int().positive(),
         question: z.string(),
         result: z
           .object({
             evidenceDiff: z.object({
               expectedCount: z.number().int().nonnegative(),
+              matchedCount: z.number().int().nonnegative(),
               missingCount: z.number().int().nonnegative(),
               retrievedCount: z.number().int().nonnegative(),
             }),
@@ -154,6 +156,13 @@ export const ReplayRunSchema = z
     }),
     revision: z.number().int().positive(),
     state: z.enum(["queued", "running", "passed", "failed", "canceled"]),
+    summary: z.object({
+      completed: z.number().int().nonnegative(),
+      failed: z.number().int().nonnegative(),
+      hitRate: z.number().min(0).max(1),
+      passed: z.number().int().nonnegative(),
+      total: z.number().int().nonnegative(),
+    }),
     updatedAt: DateTime,
   })
   .openapi("QualityReplayRun");
@@ -460,16 +469,25 @@ export const createQualityReplayRoute = createRoute({
   method: "post",
   operationId: "createQualityReplay",
   path: "/knowledge-spaces/{id}/quality/replay-runs",
+  "x-knowledge-fs-max-response-bytes": 4 * 1024 * 1024,
   request: {
     body: {
       content: {
         "application/json": {
-          schema: z
-            .object({
-              goldenQuestionIds: z.array(z.string().uuid()).min(1).max(100),
-              mode: z.enum(["deep", "fast", "research"]).optional(),
-            })
-            .strict(),
+          schema: z.union([
+            z
+              .object({
+                goldenQuestionIds: z.array(z.string().uuid()).min(1).max(1000),
+                mode: z.enum(["deep", "fast", "research"]).optional(),
+              })
+              .strict(),
+            z
+              .object({
+                mode: z.enum(["deep", "fast", "research"]).optional(),
+                selection: z.literal("all-active"),
+              })
+              .strict(),
+          ]),
         },
       },
       required: true,
@@ -493,7 +511,9 @@ export const createQualityReplayRoute = createRoute({
 
 export const getQualityReplayRoute = createRoute({
   method: "get",
+  operationId: "getQualityReplay",
   path: "/knowledge-spaces/{id}/quality/replay-runs/{runId}",
+  "x-knowledge-fs-max-response-bytes": 4 * 1024 * 1024,
   request: { params: ReplayParams },
   responses: {
     200: {
@@ -511,7 +531,9 @@ export const getQualityReplayRoute = createRoute({
 
 export const listQualityReplaysRoute = createRoute({
   method: "get",
+  operationId: "listQualityReplays",
   path: "/knowledge-spaces/{id}/quality/replay-runs",
+  "x-knowledge-fs-max-response-bytes": 4 * 1024 * 1024,
   request: {
     params: SpaceParams,
     query: z

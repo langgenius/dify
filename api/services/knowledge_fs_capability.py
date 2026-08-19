@@ -919,6 +919,20 @@ KNOWLEDGE_FS_CAPABILITY_OPERATIONS: Final[Mapping[str, KnowledgeFSCapabilityOper
             "/knowledge-spaces/{id}/quality/replay-runs",
             "knowledge_space",
         ),
+        "listQualityReplays": KnowledgeFSCapabilityOperation(
+            "quality.read",
+            _STANDARD_CALLERS,
+            "GET",
+            "/knowledge-spaces/{id}/quality/replay-runs",
+            "knowledge_space",
+        ),
+        "getQualityReplay": KnowledgeFSCapabilityOperation(
+            "quality.read",
+            _STANDARD_CALLERS,
+            "GET",
+            "/knowledge-spaces/{id}/quality/replay-runs/{runId}",
+            "knowledge_space",
+        ),
         "getQualityBadCaseTraceReference": KnowledgeFSCapabilityOperation(
             "quality.read",
             _STANDARD_CALLERS,

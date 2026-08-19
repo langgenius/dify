@@ -417,7 +417,14 @@ describe("database quality-control repository", () => {
         knowledgeSpaceId: SPACE_ID,
         mode: "deep",
         permission: permissionBinding(),
-        questions: [],
+        questions: [
+          {
+            expectedEvidenceIds: ["node-1", "node-2"],
+            id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c79",
+            matchPolicy: "any",
+            question: "Which evidence is sufficient?",
+          },
+        ],
         requestFingerprint: `sha256:${"a".repeat(64)}`,
         tenantId: "tenant-1",
       });
@@ -427,6 +434,11 @@ describe("database quality-control repository", () => {
       );
       expect(outbox?.sql).toContain("delivery_revision");
       expect(outbox?.params[2]).toBe(1);
+      const item = calls.find(
+        (call) => call.tableName === "quality_replay_items" && call.operation === "insert",
+      );
+      expect(item?.sql).toContain("match_policy");
+      expect(item?.params[6]).toBe("any");
     },
   );
 
@@ -1966,6 +1978,7 @@ describe("database quality-control repository", () => {
               expected_evidence_ids: ["node-1"],
               golden_question_id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c86",
               id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c87",
+              match_policy: "all",
               ordinal: 1,
               question: "Which evidence is missing?",
               result: { passed: false },
@@ -1976,6 +1989,7 @@ describe("database quality-control repository", () => {
               expected_evidence_ids: [],
               golden_question_id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c88",
               id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c89",
+              match_policy: "all",
               ordinal: 2,
               question: "No evidence expected?",
               result: null,

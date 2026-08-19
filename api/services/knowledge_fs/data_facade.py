@@ -81,6 +81,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSOverviewQueryOutcomesResponse,
     KnowledgeFSPresignedUploadResponse,
     KnowledgeFSProfileMigrationResponse,
+    KnowledgeFSQualityReplayListResponse,
     KnowledgeFSQualityReplayPayload,
     KnowledgeFSQualityReplayResponse,
     KnowledgeFSQueryCreatePayload,
@@ -2160,6 +2161,51 @@ class KnowledgeFSDataFacade:
             operation_id="createQualityReplay",
             payload=payload,
             headers=(("Idempotency-Key", idempotency_key),),
+        )
+        return KnowledgeFSQualityReplayResponse.model_validate(raw)
+
+    def list_quality_replays(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        cursor: str | None = None,
+        limit: int = 20,
+        mode: Literal["deep", "fast", "research"] | None = None,
+        state: Literal["queued", "running", "passed", "failed", "canceled"] | None = None,
+    ) -> KnowledgeFSQualityReplayListResponse:
+        query = (("limit", str(limit)),)
+        if cursor:
+            query += (("cursor", cursor),)
+        if mode:
+            query += (("mode", mode),)
+        if state:
+            query += (("state", state),)
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="listQualityReplays",
+            query=query,
+        )
+        return KnowledgeFSQualityReplayListResponse.model_validate(raw)
+
+    def get_quality_replay(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        run_id: str,
+    ) -> KnowledgeFSQualityReplayResponse:
+        raw = self._interactive_child(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="getQualityReplay",
+            resource_id=run_id,
+            path_parameters=(("runId", run_id),),
         )
         return KnowledgeFSQualityReplayResponse.model_validate(raw)
 

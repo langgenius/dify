@@ -33,6 +33,7 @@ import { consoleClient, consoleQuery } from '@/service/client'
 import { newKnowledgeQualityPath, newKnowledgeRetrievalTestPath } from '../routes'
 import { GoldenQuestionDialog } from './golden-question-dialog'
 import { GoldenQuestionImportDialog } from './golden-question-import-dialog'
+import { QualityEvaluationPanel } from './quality-evaluation-panel'
 
 const emptyDraft: GoldenQuestionDraft = {
   annotation: '',
@@ -157,7 +158,9 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
   const router = useRouter()
   const searchParams = useSearchParams()
   const queryClient = useQueryClient()
-  const activeTab = searchParams.get('tab') === 'bad-cases' ? 'bad' : 'golden'
+  const requestedTab = searchParams.get('tab')
+  const activeTab =
+    requestedTab === 'bad-cases' ? 'bad' : requestedTab === 'evaluations' ? 'evaluation' : 'golden'
   const [selected, setSelected] = useState<Set<string>>(() => new Set())
   const [deleteIds, setDeleteIds] = useState<Set<string>>()
   const [deleteSubmitting, setDeleteSubmitting] = useState(false)
@@ -211,12 +214,14 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
   )
   const allSelected = goldenQuestions.length > 0 && selected.size === goldenQuestions.length
   const partiallySelected = selected.size > 0 && !allSelected
-  const setTab = (tab: 'bad' | 'golden') => {
-    if (tab === 'bad') setSelected(new Set())
+  const setTab = (tab: 'bad' | 'evaluation' | 'golden') => {
+    if (tab !== 'golden') setSelected(new Set())
     router.replace(
       tab === 'bad'
         ? `${newKnowledgeQualityPath(knowledgeSpaceId)}?tab=bad-cases`
-        : newKnowledgeQualityPath(knowledgeSpaceId),
+        : tab === 'evaluation'
+          ? `${newKnowledgeQualityPath(knowledgeSpaceId)}?tab=evaluations`
+          : newKnowledgeQualityPath(knowledgeSpaceId),
     )
   }
   const updated = (value: string) => {
@@ -454,6 +459,18 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             onClick={() => setTab('bad')}
           >
             {t(($) => $['newKnowledge.qualityPage.badCasesTab'])}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'evaluation'}
+            className={cn(
+              'h-7 rounded-md px-2.5 system-xs-medium text-text-tertiary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+              activeTab === 'evaluation' && 'bg-background-default text-text-primary shadow-xs',
+            )}
+            onClick={() => setTab('evaluation')}
+          >
+            {t(($) => $['newKnowledge.qualityPage.evaluationTab'])}
           </button>
         </div>
         {activeTab === 'golden' && goldenQuestions.length > 0 && (
@@ -752,6 +769,8 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             )}
           </div>
         ))}
+
+      {activeTab === 'evaluation' && <QualityEvaluationPanel knowledgeSpaceId={knowledgeSpaceId} />}
 
       {activeTab === 'golden' && selected.size > 0 && (
         <div className="fixed bottom-6 left-[calc(50%+var(--new-rag-sidebar-width)/2)] flex h-12 -translate-x-1/2 items-center gap-2 rounded-xl border border-components-panel-border bg-components-panel-bg px-3 shadow-xl">

@@ -174,6 +174,8 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSPresignedUploadResponse,
     KnowledgeFSProfileMigrationResponse,
     KnowledgeFSQualityListQuery,
+    KnowledgeFSQualityReplayListQuery,
+    KnowledgeFSQualityReplayListResponse,
     KnowledgeFSQualityReplayPayload,
     KnowledgeFSQualityReplayResponse,
     KnowledgeFSQueryAdmissionResponse,
@@ -297,6 +299,7 @@ register_schema_models(
     KnowledgeFSAdmittedQueryRequest,
     KnowledgeFSQueryCreatePayload,
     KnowledgeFSQualityListQuery,
+    KnowledgeFSQualityReplayListQuery,
     KnowledgeFSQualityReplayPayload,
     KnowledgeFSResearchTaskPartialsQuery,
     KnowledgeFSResearchTaskStreamQuery,
@@ -372,6 +375,7 @@ register_response_schema_models(
     KnowledgeFSMetadataFieldResponse,
     KnowledgeFSPermissionListResponse,
     KnowledgeFSQueryResponse,
+    KnowledgeFSQualityReplayListResponse,
     KnowledgeFSQualityReplayResponse,
     KnowledgeFSQueryAdmissionResponse,
     KnowledgeFSQueryStreamCapabilityResponse,
@@ -3323,6 +3327,30 @@ class KnowledgeFSSpaceBadCasesApi(Resource):
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/quality/replay-runs")
 class KnowledgeFSSpaceQualityReplayApi(Resource):
+    @console_ns.doc(params=query_params_from_model(KnowledgeFSQualityReplayListQuery))
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS quality replay history",
+        console_ns.models[KnowledgeFSQualityReplayListResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def get(self, control_space_id: str):
+        actor_id, tenant_id = _actor()
+        query = KnowledgeFSQualityReplayListQuery.model_validate(request.args.to_dict())
+        result = _console_services().facade.list_quality_replays(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            cursor=query.cursor,
+            limit=query.limit,
+            mode=query.mode,
+            state=query.state,
+        )
+        return dump_response(KnowledgeFSQualityReplayListResponse, result)
+
     @console_ns.expect(console_ns.models[KnowledgeFSQualityReplayPayload.__name__])
     @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
     @console_ns.response(
@@ -3344,6 +3372,28 @@ class KnowledgeFSSpaceQualityReplayApi(Resource):
             idempotency_key=_idempotency_key(),
         )
         return dump_response(KnowledgeFSQualityReplayResponse, result), HTTPStatus.ACCEPTED
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/quality/replay-runs/<string:run_id>")
+class KnowledgeFSSpaceQualityReplayDetailApi(Resource):
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS quality replay run",
+        console_ns.models[KnowledgeFSQualityReplayResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def get(self, control_space_id: str, run_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.get_quality_replay(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            run_id=run_id,
+        )
+        return dump_response(KnowledgeFSQualityReplayResponse, result)
 
 
 @console_ns.route(

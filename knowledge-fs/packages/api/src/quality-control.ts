@@ -145,6 +145,7 @@ export interface QualityReplayItem {
   readonly expectedEvidenceIds: readonly string[];
   readonly goldenQuestionId: string;
   readonly id: string;
+  readonly matchPolicy: "all" | "any";
   readonly ordinal: number;
   readonly question: string;
   readonly result?: Readonly<Record<string, unknown>> | undefined;
@@ -176,6 +177,7 @@ export interface QualityReplayRun {
 export interface QualityGoldenQuestionSnapshot {
   readonly expectedEvidenceIds: readonly string[];
   readonly id: string;
+  readonly matchPolicy: "all" | "any";
   readonly question: string;
 }
 
@@ -464,7 +466,15 @@ export function createQualityReplayRuntime({
         const missingEvidenceIds = item.expectedEvidenceIds.filter(
           (expected) => !retrievedEvidenceIds.has(expected),
         );
-        const state = missingEvidenceIds.length === 0 ? "passed" : "failed";
+        const matchedEvidenceCount = item.expectedEvidenceIds.length - missingEvidenceIds.length;
+        const state =
+          item.matchPolicy === "any"
+            ? matchedEvidenceCount > 0
+              ? "passed"
+              : "failed"
+            : missingEvidenceIds.length === 0
+              ? "passed"
+              : "failed";
         anyFailed ||= state === "failed";
         const traceTimestamp = now();
         await answerTraces.create(
@@ -535,6 +545,7 @@ export function createQualityReplayRuntime({
           now: traceTimestamp,
           result: Object.freeze({
             evidenceDiff: {
+              matchPolicy: item.matchPolicy,
               missingEvidenceIds,
               retrievedEvidenceIds: [...retrievedEvidenceIds].sort(),
             },
