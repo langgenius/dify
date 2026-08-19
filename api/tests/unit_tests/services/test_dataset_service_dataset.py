@@ -270,22 +270,30 @@ class TestDatasetServiceRetrieval:
         assert DatasetService.get_dataset_for_tenant(owned.id, "tenant-1", session=sqlite_session) is owned
         assert DatasetService.get_dataset_for_tenant(foreign.id, "tenant-1", session=sqlite_session) is None
 
-    def test_get_datasets_filters_by_creator_ids(self):
-        session = MagicMock()
+    def test_get_datasets_filters_by_creator_ids(self, sqlite_session: Session) -> None:
+        creator_one = _dataset(dataset_id="creator-one", name="Creator One", maintainer="creator-1")
+        creator_two = _dataset(dataset_id="creator-two", name="Creator Two", maintainer="creator-2")
+        excluded = _dataset(dataset_id="excluded", name="Excluded", maintainer="creator-3")
+        foreign = _dataset(
+            dataset_id="foreign",
+            tenant_id="tenant-2",
+            name="Foreign",
+            maintainer="creator-1",
+        )
+        sqlite_session.add_all([creator_one, creator_two, excluded, foreign])
+        sqlite_session.commit()
 
-        with patch("services.dataset_service.paginate_query") as mock_paginate:
-            mock_paginate.return_value = SimpleNamespace(items=[], total=0)
-            DatasetService.get_datasets(
+        with patch("services.dataset_service.dify_config.RBAC_ENABLED", False):
+            datasets, total = DatasetService.get_datasets(
                 page=1,
                 per_page=20,
-                session=session,
+                session=sqlite_session,
                 tenant_id="tenant-1",
                 creator_ids=["creator-1", "creator-2"],
             )
 
-        statement = mock_paginate.call_args.args[0].compile()
-        assert "datasets.created_by IN" in str(statement)
-        assert ["creator-1", "creator-2"] in statement.params.values()
+        assert total == 2
+        assert {dataset.id for dataset in datasets} == {creator_one.id, creator_two.id}
 
     def test_get_datasets_applies_rbac_resource_scope_and_maintainer_override(self, sqlite_session: Session) -> None:
         user = _account(role=TenantAccountRole.NORMAL)

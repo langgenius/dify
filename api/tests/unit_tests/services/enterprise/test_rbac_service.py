@@ -1,11 +1,11 @@
-"""Unit tests for services.enterprise.rbac_service.
+"""Unit tests for :mod:`services.enterprise.rbac_service`.
 
-The enterprise RBAC client is almost pure glue: each method turns a single
-``EnterpriseRequest.send_inner_rbac_request`` call into a pydantic response
-model. Rather than spinning up an HTTP server we monkeypatch that helper and
-assert on the arguments it received; that catches both routing regressions
-(wrong method / wrong path / wrong params) and model-shape regressions in
-one place.
+Remote RBAC methods are tested by mocking
+``EnterpriseRequest.send_inner_rbac_request`` and asserting on request routing
+and response models. Legacy fallbacks use SQLite to verify database reads and
+committed role updates. KnowledgeFS mutations additionally verify the ordering
+and failure semantics of remote changes, local authorization invalidation, and
+transaction commit or rollback.
 """
 
 from __future__ import annotations
