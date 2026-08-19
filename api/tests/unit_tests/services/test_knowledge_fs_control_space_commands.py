@@ -65,7 +65,7 @@ def _provision_intent() -> KnowledgeFSProvisionIntent:
     ],
     indirect=True,
 )
-def test_create_provision_intent_persists_control_revision_and_outbox_atomically(
+def test_create_provision_intent_persists_default_access_revision_and_outbox_atomically(
     sqlite_session: Session,
 ) -> None:
     service = _service(sqlite_session)
@@ -76,6 +76,7 @@ def test_create_provision_intent_persists_control_revision_and_outbox_atomically
     with Session(sqlite_session.get_bind()) as session:
         control_spaces = tuple(session.scalars(select(KnowledgeFSControlSpace)))
         permissions = tuple(session.scalars(select(KnowledgeFSControlSpacePermission)))
+        external_access_policies = tuple(session.scalars(select(KnowledgeFSExternalAccessPolicy)))
         revisions = tuple(session.scalars(select(KnowledgeFSAuthorizationRevision)))
         commands = tuple(session.scalars(select(KnowledgeFSLifecycleOutbox)))
     assert replay.control_space.id == result.control_space.id
@@ -83,6 +84,13 @@ def test_create_provision_intent_persists_control_revision_and_outbox_atomically
     assert len(permissions) == 1
     assert permissions[0].account_id == "account-1"
     assert permissions[0].role.value == "owner"
+    assert len(external_access_policies) == 1
+    assert external_access_policies[0].control_space_id == result.control_space.id
+    assert external_access_policies[0].service_api_enabled is True
+    assert external_access_policies[0].agent_enabled is True
+    assert external_access_policies[0].workflow_enabled is True
+    assert external_access_policies[0].mcp_enabled is False
+    assert external_access_policies[0].updated_by_account_id == "account-1"
     assert commands[0].operation is KnowledgeFSLifecycleOperation.PROVISION
     assert commands[0].expected_control_space_version == 0
     assert commands[0].command_payload["idempotency_key"] == "provision-idempotency-1"

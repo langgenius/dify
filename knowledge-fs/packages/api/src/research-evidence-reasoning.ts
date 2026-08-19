@@ -7,6 +7,7 @@ import {
   estimateResearchModelPromptTokens,
   notifyResearchModelCallAfter,
   notifyResearchModelCallBefore,
+  parseResearchModelUsage,
 } from "./research-model-usage";
 import type { HybridRetrievalItem } from "./retrieval-fusion";
 import { evidenceTextFromHybridItem } from "./retrieval-rerank";
@@ -59,6 +60,8 @@ export interface ResearchEvidenceReasoningOptions {
   readonly providerFactory: (
     selection: KnowledgeSpaceModelSelection,
   ) => ResearchEvidenceReasoningProvider;
+  /** One larger, in-place retry is allowed only when the provider proves output truncation. */
+  readonly recoveryMaxOutputTokens?: number | undefined;
   readonly timeoutMs: number;
 }
 
@@ -75,6 +78,7 @@ export interface ResearchEvidenceReasoningProvider {
     readonly temperature?: number | undefined;
     readonly tenantId?: string | undefined;
   }): Promise<{
+    readonly finishReason?: string | undefined;
     readonly metadata?: unknown;
     readonly model: string;
     readonly text: string;
@@ -101,15 +105,23 @@ const EvidenceJudgementSchema = z
   .strict();
 
 export class ResearchEvidenceReasoningContractError extends Error {
-  readonly code = "RESEARCH_EVIDENCE_REASONING_INVALID";
+  readonly code: "RESEARCH_EVIDENCE_REASONING_INVALID" | "RESEARCH_EVIDENCE_REASONING_TRUNCATED";
   readonly retryable: boolean;
 
   constructor(
     message: string,
-    options: { readonly cause?: unknown; readonly retryable?: boolean | undefined } = {},
+    options: {
+      readonly cause?: unknown;
+      readonly code?:
+        | "RESEARCH_EVIDENCE_REASONING_INVALID"
+        | "RESEARCH_EVIDENCE_REASONING_TRUNCATED"
+        | undefined;
+      readonly retryable?: boolean | undefined;
+    } = {},
   ) {
     super(message, options.cause === undefined ? undefined : { cause: options.cause });
     this.name = "ResearchEvidenceReasoningContractError";
+    this.code = options.code ?? "RESEARCH_EVIDENCE_REASONING_INVALID";
     this.retryable = options.retryable ?? false;
   }
 }
@@ -121,6 +133,7 @@ export function createResearchEvidenceReasoning({
   maxResponseChars = 16_000,
   modelRequestGate,
   providerFactory,
+  recoveryMaxOutputTokens = maxOutputTokens,
   timeoutMs,
 }: ResearchEvidenceReasoningOptions): ResearchEvidenceReasoning {
   for (const [label, value] of Object.entries({
@@ -128,15 +141,22 @@ export function createResearchEvidenceReasoning({
     maxEvidenceItems,
     maxOutputTokens,
     maxResponseChars,
+    recoveryMaxOutputTokens,
     timeoutMs,
   })) {
     if (!Number.isSafeInteger(value) || value < 1) {
       throw new Error(`Research evidence reasoning ${label} must be at least 1`);
     }
   }
+  if (recoveryMaxOutputTokens < maxOutputTokens) {
+    throw new Error(
+      "Research evidence reasoning recoveryMaxOutputTokens must be at least maxOutputTokens",
+    );
+  }
 
   const generate = async ({
     callId,
+    callMaxOutputTokens,
     messages,
     observer,
     reasoningModel,
@@ -145,6 +165,7 @@ export function createResearchEvidenceReasoning({
     tenantId,
   }: {
     readonly callId: string;
+    readonly callMaxOutputTokens: number;
     readonly messages: readonly { readonly content: string; readonly role: "system" | "user" }[];
     readonly observer?: ResearchModelCallObserver | undefined;
     readonly reasoningModel: KnowledgeSpaceModelSelection;
@@ -155,7 +176,7 @@ export function createResearchEvidenceReasoning({
     const modelCall = {
       callId,
       estimatedPromptTokens: estimateResearchModelPromptTokens({ messages, schema }),
-      maxOutputTokens,
+      maxOutputTokens: callMaxOutputTokens,
       model: reasoningModel.model,
       provider: reasoningModel.provider,
       step,
@@ -174,7 +195,7 @@ export function createResearchEvidenceReasoning({
       const provider = providerFactory(reasoningModel);
       const operation = () =>
         provider.generate({
-          maxOutputTokens,
+          maxOutputTokens: callMaxOutputTokens,
           messages,
           model: reasoningModel.model,
           signal: controller.signal,
@@ -212,7 +233,65 @@ export function createResearchEvidenceReasoning({
       metadata: result.metadata,
       status: "succeeded",
     });
-    return result.text;
+    return result;
+  };
+
+  const generateStructured = async <T>({
+    callId,
+    messages,
+    observer,
+    parse,
+    reasoningModel,
+    schema,
+    step,
+    tenantId,
+  }: {
+    readonly callId: string;
+    readonly messages: readonly { readonly content: string; readonly role: "system" | "user" }[];
+    readonly observer?: ResearchModelCallObserver | undefined;
+    readonly parse: (text: string) => T;
+    readonly reasoningModel: KnowledgeSpaceModelSelection;
+    readonly schema: Readonly<Record<string, unknown>>;
+    readonly step: "research.judge" | "research.plan";
+    readonly tenantId: string;
+  }): Promise<T> => {
+    const initial = await generate({
+      callId,
+      callMaxOutputTokens: maxOutputTokens,
+      messages,
+      observer,
+      reasoningModel,
+      schema,
+      step,
+      tenantId,
+    });
+    try {
+      return parse(initial.text);
+    } catch (error) {
+      if (!responseWasTruncated(initial, maxOutputTokens)) throw error;
+      if (recoveryMaxOutputTokens === maxOutputTokens) {
+        throw truncatedResponseError(step, error);
+      }
+    }
+
+    const recovery = await generate({
+      callId: `${callId}:recovery`,
+      callMaxOutputTokens: recoveryMaxOutputTokens,
+      messages,
+      observer,
+      reasoningModel,
+      schema,
+      step,
+      tenantId,
+    });
+    try {
+      return parse(recovery.text);
+    } catch (error) {
+      if (responseWasTruncated(recovery, recoveryMaxOutputTokens)) {
+        throw truncatedResponseError(step, error);
+      }
+      throw error;
+    }
   };
 
   return {
@@ -222,7 +301,7 @@ export function createResearchEvidenceReasoning({
       if (!local.requiresModel) {
         return { ...local.plan, modelCalled: false };
       }
-      const text = await generate({
+      const parsed = await generateStructured({
         callId: `research-plan:${input.traceId ?? "interactive"}`,
         messages: [
           {
@@ -233,12 +312,12 @@ export function createResearchEvidenceReasoning({
           { content: query, role: "user" },
         ],
         observer: input.researchModelCallObserver,
+        parse: (text) => parseJson(text, QueryPlanSchema, "research.plan"),
         reasoningModel: input.reasoningModel,
         schema: zodJsonSchema(QueryPlanSchema),
         step: "research.plan",
         tenantId: requiredText(input.tenantId, "tenantId"),
       });
-      const parsed = parseJson(text, QueryPlanSchema, "research.plan");
       return {
         ...parsed,
         evidenceDimensions: uniqueStrings(parsed.evidenceDimensions),
@@ -266,7 +345,7 @@ export function createResearchEvidenceReasoning({
         sectionPath: item.citation.sectionPath,
         text: truncate(evidenceTextFromHybridItem(item), maxEvidenceCharsPerItem),
       }));
-      const text = await generate({
+      const parsed = await generateStructured({
         callId: `research-judge:${input.traceId ?? "interactive"}:${evidence.length}`,
         messages: [
           {
@@ -284,12 +363,12 @@ export function createResearchEvidenceReasoning({
           },
         ],
         observer: input.researchModelCallObserver,
+        parse: parseEvidenceJudgement,
         reasoningModel: input.reasoningModel,
         schema: zodJsonSchema(EvidenceJudgementSchema),
         step: "research.judge",
         tenantId: requiredText(input.tenantId, "tenantId"),
       });
-      const parsed = parseEvidenceJudgement(text);
       return {
         coverage: parsed.coverage,
         coveredDimensions: uniqueStrings(parsed.coveredDimensions),
@@ -397,6 +476,34 @@ function parseEvidenceJudgement(text: string): z.infer<typeof EvidenceJudgementS
       { cause },
     );
   }
+}
+
+function responseWasTruncated(
+  response: {
+    readonly finishReason?: string | undefined;
+    readonly metadata?: unknown;
+  },
+  maxOutputTokens: number,
+): boolean {
+  const finishReason = response.finishReason?.trim().toLocaleLowerCase();
+  if (
+    finishReason &&
+    /^(?:length|max[_ -]?(?:output[_ -]?)?tokens?|token[_ -]?limit|incomplete)$/u.test(finishReason)
+  ) {
+    return true;
+  }
+  const usage = parseResearchModelUsage(response.metadata);
+  return usage?.completionTokens !== undefined && usage.completionTokens >= maxOutputTokens;
+}
+
+function truncatedResponseError(step: "research.judge" | "research.plan", cause: unknown) {
+  return new ResearchEvidenceReasoningContractError(
+    `${step} response remained truncated after bounded recovery`,
+    {
+      cause,
+      code: "RESEARCH_EVIDENCE_REASONING_TRUNCATED",
+    },
+  );
 }
 
 function normalizeSufficientValue(value: unknown): boolean | undefined {
