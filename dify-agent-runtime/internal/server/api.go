@@ -27,6 +27,10 @@ func Handler(svc *Service, config *Config) http.Handler {
 	mux.HandleFunc("POST /v1/jobs/{job_id}/terminate", auth(handleTerminateJob(svc, config)))
 	mux.HandleFunc("DELETE /v1/jobs/{job_id}", auth(handleDeleteJob(svc, config)))
 
+	snap := newSnapshotHandlers(config)
+	mux.HandleFunc("POST /v1/snapshot/save", auth(snap.handleSnapshotSave()))
+	mux.HandleFunc("POST /v1/snapshot/restore", auth(snap.handleSnapshotRestore()))
+
 	return requestLoggingMiddleware(recoveryMiddleware(mux))
 }
 
