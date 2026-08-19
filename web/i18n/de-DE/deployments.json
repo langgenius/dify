@@ -22,7 +22,6 @@
   "deployTab.moreActions": "Weitere Aktionen",
   "deployTab.redeploy": "Erneut bereitstellen",
   "deployTab.undeploy": "Bereitstellung aufheben",
-  "deployTab.undeployConfirmWarning": "Nach der Bestätigung wechselt diese Umgebung in den Status „Bereitstellung wird aufgehoben“ und Aktionen werden vorübergehend deaktiviert.",
   "health.ENVIRONMENT_STATUS_FAILED": "Nicht verfügbar",
   "list.emptyTitle": "Noch keine Bereitstellungen",
   "overview.chip.latest": "neueste",

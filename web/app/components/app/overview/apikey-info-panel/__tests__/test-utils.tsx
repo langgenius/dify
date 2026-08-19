@@ -1,6 +1,6 @@
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { RenderOptions } from '@testing-library/react'
-import type { MockedFunction } from 'vitest'
+import type { MockedFunction } from 'vite-plus/test'
 import { fireEvent, screen } from '@testing-library/react'
 import { noop } from 'es-toolkit/function'
 import { defaultPlan } from '@/app/components/billing/config'

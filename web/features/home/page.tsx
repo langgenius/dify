@@ -1,10 +1,7 @@
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
 import { Suspense } from 'react'
 import { getQueryClient } from '@/app/get-query-client'
-import {
-  getSystemFeaturesQueryClient,
-  systemFeaturesServerQueryOptions,
-} from '@/features/system-features/server'
+import { ensureSystemFeatures } from '@/features/system-features/server'
 import { getLocaleOnServer } from '@/i18n-config/server'
 import { getServerConsoleClientContext, serverConsoleQuery } from '@/service/server'
 import { HomeContent } from './home-content/home-content'
@@ -31,9 +28,7 @@ export async function HomePage() {
     }),
   )
 
-  const enableExploreBanner = (
-    await getSystemFeaturesQueryClient().ensureQueryData(systemFeaturesServerQueryOptions())
-  ).enable_explore_banner
+  const enableExploreBanner = (await ensureSystemFeatures()).enable_explore_banner
   if (enableExploreBanner) {
     void homeQueryClient.prefetchQuery(
       serverConsoleQuery.explore.banners.get.queryOptions({

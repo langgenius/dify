@@ -22,7 +22,6 @@
   "deployTab.moreActions": "Thêm thao tác",
   "deployTab.redeploy": "Triển khai lại",
   "deployTab.undeploy": "Hủy triển khai",
-  "deployTab.undeployConfirmWarning": "Sau khi xác nhận, môi trường này sẽ chuyển sang trạng thái đang hủy triển khai và các thao tác sẽ tạm thời bị vô hiệu hóa.",
   "health.ENVIRONMENT_STATUS_FAILED": "Không khả dụng",
   "list.emptyTitle": "Chưa có triển khai nào",
   "overview.chip.latest": "mới nhất",

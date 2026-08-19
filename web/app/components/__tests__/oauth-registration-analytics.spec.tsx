@@ -1,6 +1,6 @@
 import { render, waitFor } from '@testing-library/react'
 import Cookies from 'js-cookie'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useSearchParams } from '@/next/navigation'
 import { OAuthRegistrationAnalytics } from '../oauth-registration-analytics'
 

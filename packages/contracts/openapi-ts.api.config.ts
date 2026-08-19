@@ -444,12 +444,10 @@ const splitConsoleDocument = (document: SwaggerDocument) => {
   }
 
   const segments = [...pathsBySegment.keys()].sort((left, right) => left.localeCompare(right))
-  const jobs = segments.map(
-    (segment): ApiJob => ({
-      document: cloneDocumentWithPaths(document, pathsBySegment.get(segment) ?? {}),
-      outputPath: `generated/api/console/${toKebabCase(segment)}`,
-    }),
-  )
+  const jobs = segments.map((segment): ApiJob => ({
+    document: cloneDocumentWithPaths(document, pathsBySegment.get(segment) ?? {}),
+    outputPath: `generated/api/console/${toKebabCase(segment)}`,
+  }))
 
   return [...jobs, createConsoleContractEntryJob(document, segments)]
 }

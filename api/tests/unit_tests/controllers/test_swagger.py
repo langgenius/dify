@@ -350,7 +350,7 @@ def test_service_openapi_documents_app_multipart_contracts(monkeypatch: pytest.M
             assert schema["properties"]["file"] == {
                 "description": (
                     "Audio file to transcribe. Supported MIME types: `audio/mp3`, `audio/mpga`, `audio/m4a`, "
-                    "`audio/wav`, and `audio/amr`. File size limit is `30 MB`."
+                    "`audio/x-m4a`, `audio/wav`, and `audio/amr`. File size limit is `30 MB`."
                 ),
                 "format": "binary",
                 "type": "string",

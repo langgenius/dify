@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Iterator
 from typing import cast
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -14,6 +14,7 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest
 
+from models.account import Account
 from models.engine import db
 from models.model import OAuthProviderApp
 from services.oauth_server import (
@@ -178,7 +179,8 @@ class TestOAuthServerServiceTokenOperations:
 
     def test_validate_access_token_loads_user_when_exists(self, mock_redis, sqlite_engine: Engine) -> None:
         mock_redis.get.return_value = b"user-88"
-        expected_user = MagicMock()
+        expected_user = Account(name="Test User", email="user@example.com")
+        expected_user.id = "user-88"
 
         with Session(sqlite_engine) as session:
             with patch("services.oauth_server.AccountService.load_user", return_value=expected_user) as mock_load:

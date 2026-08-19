@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import * as React from 'react'
 // AudioBlock.integration.spec.tsx
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import AudioBlock from '../audio-block'
 
 // Mock the nested AudioPlayer used by AudioGallery (do not mock AudioGallery itself)
