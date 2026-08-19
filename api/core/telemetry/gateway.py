@@ -83,11 +83,7 @@ def _handle_payload_sizing(
 
 
 def emit(event: TelemetryEvent, trace_manager: TraceQueueManager | None = None) -> None:
-    """Emit a telemetry event.
-
-    Reads routing metadata directly from the event instance and
-    dispatches to the appropriate pipeline.
-    """
+    """Emit a telemetry event."""
     if not event.ce_eligible and not is_enterprise_telemetry_enabled():
         logger.debug("Dropping EE-only event: case=%s (EE disabled)", event.case)
         return
