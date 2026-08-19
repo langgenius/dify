@@ -2,7 +2,7 @@ import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { useDebounce } from 'ahooks'
+import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
@@ -21,7 +21,7 @@ function LabelSelector({ value, onChange }: LabelSelectorProps) {
   const { tags: labelList } = useTags()
 
   const [keywords, setKeywords] = useState('')
-  const debouncedKeywords = useDebounce(keywords, { wait: 500 })
+  const debouncedKeywords = useDebouncedValue(keywords, 500)
   const searchKeywords = keywords ? debouncedKeywords : ''
 
   const filteredLabelList = labelList.filter((label) => label.name.includes(searchKeywords))

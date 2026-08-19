@@ -7,7 +7,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
-import { useDebounce } from 'ahooks'
+import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
@@ -59,7 +59,7 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
   const allCategoriesEn = AppCategories.RECOMMENDED
 
   const [keywords, setKeywords] = useState('')
-  const debouncedKeywords = useDebounce(keywords, { wait: 500 })
+  const debouncedKeywords = useDebouncedValue(keywords, 500)
   const searchKeywords = keywords ? debouncedKeywords : ''
   const searchInputRef = React.useRef<HTMLInputElement>(null)
 

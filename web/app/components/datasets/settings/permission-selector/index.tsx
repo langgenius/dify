@@ -4,7 +4,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RadioGroup } from '@langgenius/dify-ui/radio'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useDebounce } from 'ahooks'
+import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
@@ -41,7 +41,7 @@ const PermissionSelector = ({
     select: ({ rbac_enabled }) => rbac_enabled,
   })
   const [keywords, setKeywords] = useState('')
-  const debouncedKeywords = useDebounce(keywords, { wait: 500 })
+  const debouncedKeywords = useDebouncedValue(keywords, 500)
   const searchKeywords = keywords ? debouncedKeywords : ''
   const selectMember = (member: Member) => {
     if (value.includes(member.id)) onMemberSelect(value.filter((id) => id !== member.id))

@@ -6,7 +6,7 @@ import type { StepByStepTourTaskId } from '@/app/components/step-by-step-tour/ty
 import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQueryClient, useSuspenseQueries, useSuspenseQuery } from '@tanstack/react-query'
-import { useDebounce } from 'ahooks'
+import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -111,7 +111,7 @@ export function HomeContent() {
   )
 
   const [keywords, setKeywords] = useState('')
-  const debouncedKeywords = useDebounce(keywords, { wait: 500 })
+  const debouncedKeywords = useDebouncedValue(keywords, 500)
   const searchKeywords = keywords ? debouncedKeywords : ''
 
   const [currCategory, setCurrCategory] = useQueryState('category', {
