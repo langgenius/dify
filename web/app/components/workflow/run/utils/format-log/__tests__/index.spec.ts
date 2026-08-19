@@ -212,7 +212,10 @@ describe('formatToTracingNodeList', () => {
   })
 
   it('should not keep loop-end traces without loop metadata as top-level nodes', () => {
-    const t = vi.fn((key: string) => key)
+    const t = withSelectorKey(
+      vi.fn((key: string) => key),
+      'workflow',
+    ) as WorkflowTranslate
     const loopParent = createTrace({
       id: 'loop-parent',
       node_id: 'loop-parent',
