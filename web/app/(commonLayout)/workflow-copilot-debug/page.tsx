@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import type { ChecklistErrorPayload } from '@/app/components/workflow-copilot/types'
 import { COPILOT_ACTION_KINDS } from '@/app/components/workflow-copilot/types'
 import { useCopilotSession } from '@/app/components/workflow-copilot/use-copilot-session'
 import { API_PREFIX } from '@/config'
@@ -16,12 +17,28 @@ export default function WorkflowCopilotDebugPage() {
   const [failedRunId, setFailedRunId] = useState('')
   const [workspaceId, setWorkspaceId] = useState('')
   const [messageText, setMessageText] = useState('')
+  const [checklistJson, setChecklistJson] = useState(
+    '[{"node_id":"code-1","node_type":"code","title":"Code","messages":["Code node config error"],"unconnected":false,"plugin_missing":false}]',
+  )
+  const [checklistError, setChecklistError] = useState('')
 
-  const { view, lastRaw, lastError, progressLog, startFix, refresh, runAction, sendMessage } =
+  const { view, lastRaw, lastError, progressLog, startFix, startChecklistFix, refresh, runAction, sendMessage } =
     useCopilotSession({ baseUrl, workspaceId })
 
   const handleStartFix = async () => {
     await startFix(appId, failedRunId)
+  }
+
+  const handleStartChecklistFix = async () => {
+    let errors: ChecklistErrorPayload[]
+    try {
+      errors = JSON.parse(checklistJson)
+    } catch {
+      setChecklistError('Checklist Errors must be a valid JSON array of ChecklistErrorPayload.')
+      return
+    }
+    setChecklistError('')
+    await startChecklistFix(appId, errors)
   }
 
   const handleGet = async () => {
@@ -29,7 +46,9 @@ export default function WorkflowCopilotDebugPage() {
   }
 
   const handleAction = async (kind: (typeof COPILOT_ACTION_KINDS)[number]) => {
-    await runAction(kind, kind === 'provide_testdata' ? { mode: 'mock' } : {})
+    const payload =
+      kind === 'provide_testdata' ? { mode: 'mock' } : kind === 'recheck' ? { passed: true } : {}
+    await runAction(kind, payload)
   }
 
   const handleSendMessage = async () => {
@@ -77,6 +96,15 @@ export default function WorkflowCopilotDebugPage() {
               style={{ width: '100%' }}
             />
           </label>
+          <label>
+            Checklist Errors (JSON) — for Start Checklist Fix
+            <textarea
+              value={checklistJson}
+              onChange={(e) => setChecklistJson(e.target.value)}
+              rows={3}
+              style={{ width: '100%', fontFamily: 'monospace' }}
+            />
+          </label>
         </div>
         <div style={{ marginTop: 8 }}>
           <button
@@ -90,6 +118,15 @@ export default function WorkflowCopilotDebugPage() {
           <button
             type="button"
             onClick={() => {
+              void handleStartChecklistFix()
+            }}
+            style={{ marginLeft: 8 }}
+          >
+            Start Checklist Fix
+          </button>
+          <button
+            type="button"
+            onClick={() => {
               void handleGet()
             }}
             style={{ marginLeft: 8 }}
@@ -97,6 +134,7 @@ export default function WorkflowCopilotDebugPage() {
             Refresh (GET)
           </button>
         </div>
+        {checklistError && <div style={{ color: 'red', marginTop: 8 }}>{checklistError}</div>}
       </fieldset>
 
       <fieldset style={{ marginBottom: 16 }}>
