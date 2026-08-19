@@ -1,13 +1,12 @@
 package server
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
-
-	"github.com/langgenius/dify/dify-agent-runtime/internal/snapshot"
 )
 
 const (
@@ -32,6 +31,7 @@ const (
 	HealthStatus                         = "ok"
 	DefaultSnapshotTimeoutSeconds        = 600.0
 	HomeSnapshotExcludesEnv              = "SHELLCTL_HOME_SNAPSHOT_EXCLUDES"
+	SnapshotTimeoutEnv                   = "SHELLCTL_SNAPSHOT_TIMEOUT"
 )
 
 // Config holds runtime configuration for the shellctl server.
@@ -64,10 +64,20 @@ type Config struct {
 }
 
 // DefaultConfig returns a Config with sensible defaults.
-func DefaultConfig() *Config {
+func DefaultConfig() (*Config, error) {
 	homeDir, _ := os.UserHomeDir()
 	stateDir := defaultStateDir()
 	runtimeDir := filepath.Join(stateDir, "runtime")
+
+	snapshotTimeout, err := parseSnapshotTimeout(os.Getenv(SnapshotTimeoutEnv))
+	if err != nil {
+		return nil, err
+	}
+
+	homeSnapshotExcludes, err := parseHomeSnapshotExcludes(os.Getenv(HomeSnapshotExcludesEnv))
+	if err != nil {
+		return nil, err
+	}
 
 	cfg := &Config{
 		Listen:                       DefaultListen,
@@ -92,8 +102,8 @@ func DefaultConfig() *Config {
 		SQLiteBusyTimeoutMs:          DefaultSQLiteBusyTimeoutMs,
 		SanitizePtyCommand:           []string{"shellctl-sanitize-pty"},
 		RunnerExitCommand:            []string{"shellctl-runner-exit"},
-		SnapshotTimeout:              time.Duration(DefaultSnapshotTimeoutSeconds * float64(time.Second)),
-		HomeSnapshotExcludes:         parseHomeSnapshotExcludes(os.Getenv(HomeSnapshotExcludesEnv)),
+		SnapshotTimeout:              snapshotTimeout,
+		HomeSnapshotExcludes:         homeSnapshotExcludes,
 	}
 
 	// Auth token from environment if not set explicitly
@@ -101,7 +111,7 @@ func DefaultConfig() *Config {
 		cfg.AuthToken = os.Getenv(DefaultAuthTokenEnv)
 	}
 
-	return cfg
+	return cfg, nil
 }
 
 // JobsDir returns the path to the jobs artifact directory.
@@ -137,21 +147,35 @@ func defaultStateDir() string {
 }
 
 // parseHomeSnapshotExcludes splits the comma-separated env value into excludes
-// applied on top of snapshot.WorkspaceDir, which is always skipped.
-func parseHomeSnapshotExcludes(raw string) []string {
+// applied on top of the workspace directory, which SaveHome always skips.
+// Entries must be single path segments: SaveHome only matches top-level names,
+// so anything else would be silently inert.
+func parseHomeSnapshotExcludes(raw string) ([]string, error) {
 	var excludes []string
 	for _, part := range strings.Split(raw, ",") {
-		if trimmed := strings.TrimSpace(part); trimmed != "" {
-			excludes = append(excludes, trimmed)
+		trimmed := strings.TrimSpace(part)
+		if trimmed == "" {
+			continue
 		}
+		if trimmed == "." || trimmed == ".." || strings.ContainsAny(trimmed, `/\`) {
+			return nil, fmt.Errorf("%s: invalid exclude %q: must be a single path segment", HomeSnapshotExcludesEnv, trimmed)
+		}
+		excludes = append(excludes, trimmed)
 	}
-	return excludes
+	return excludes, nil
 }
 
-// Validate rejects configuration the server must not start with.
-func (c *Config) Validate() error {
-	if err := snapshot.ValidateExcludes(c.HomeSnapshotExcludes); err != nil {
-		return err
+func parseSnapshotTimeout(raw string) (time.Duration, error) {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return time.Duration(DefaultSnapshotTimeoutSeconds * float64(time.Second)), nil
 	}
-	return nil
+	timeout, err := time.ParseDuration(trimmed)
+	if err != nil {
+		return 0, fmt.Errorf("%s: %w", SnapshotTimeoutEnv, err)
+	}
+	if timeout <= 0 {
+		return 0, fmt.Errorf("%s: must be positive, got %q", SnapshotTimeoutEnv, trimmed)
+	}
+	return timeout, nil
 }

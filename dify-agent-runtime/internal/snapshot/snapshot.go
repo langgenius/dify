@@ -8,10 +8,8 @@
 package snapshot
 
 import (
-	"fmt"
 	"path/filepath"
 	"slices"
-	"strings"
 )
 
 // WorkspaceDir is the top-level Home entry that is never part of a Home
@@ -28,14 +26,4 @@ func excluded(rel string, excludes []string) bool {
 		return true
 	}
 	return slices.Contains(excludes, rel)
-}
-
-// ValidateExcludes rejects exclude entries that are not single path segments.
-func ValidateExcludes(excludes []string) error {
-	for _, e := range excludes {
-		if e == "" || e == "." || e == ".." || strings.ContainsAny(e, `/\`) {
-			return fmt.Errorf("invalid home snapshot exclude %q: must be a single path segment", e)
-		}
-	}
-	return nil
 }

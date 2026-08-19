@@ -1,12 +1,23 @@
 package server
 
 import (
+	"os"
+	"strings"
 	"testing"
 	"time"
 )
 
+func mustDefaultConfig(t *testing.T) *Config {
+	t.Helper()
+	cfg, err := DefaultConfig()
+	if err != nil {
+		t.Fatalf("DefaultConfig: %v", err)
+	}
+	return cfg
+}
+
 func TestDefaultConfig(t *testing.T) {
-	cfg := DefaultConfig()
+	cfg := mustDefaultConfig(t)
 	if cfg.Listen != DefaultListen {
 		t.Errorf("expected Listen=%s, got %s", DefaultListen, cfg.Listen)
 	}
@@ -22,7 +33,7 @@ func TestDefaultConfig(t *testing.T) {
 }
 
 func TestConfigPaths(t *testing.T) {
-	cfg := DefaultConfig()
+	cfg := mustDefaultConfig(t)
 	cfg.StateDir = "/tmp/shellctl-test"
 	cfg.RuntimeDir = "/tmp/shellctl-test/runtime"
 
@@ -42,7 +53,7 @@ func TestConfigPaths(t *testing.T) {
 
 func TestConfigAuthTokenFromEnv(t *testing.T) {
 	t.Setenv("SHELLCTL_AUTH_TOKEN", "my-secret-token")
-	cfg := DefaultConfig()
+	cfg := mustDefaultConfig(t)
 	if cfg.AuthToken != "my-secret-token" {
 		t.Errorf("expected auth token from env, got %q", cfg.AuthToken)
 	}
@@ -50,7 +61,7 @@ func TestConfigAuthTokenFromEnv(t *testing.T) {
 
 func TestConfigNoAuthToken(t *testing.T) {
 	t.Setenv("SHELLCTL_AUTH_TOKEN", "")
-	cfg := DefaultConfig()
+	cfg := mustDefaultConfig(t)
 	if cfg.AuthToken != "" {
 		t.Errorf("expected empty auth token, got %q", cfg.AuthToken)
 	}
@@ -58,21 +69,18 @@ func TestConfigNoAuthToken(t *testing.T) {
 
 func TestDefaultConfigSnapshotFields(t *testing.T) {
 	t.Setenv(HomeSnapshotExcludesEnv, "")
-	cfg := DefaultConfig()
+	cfg := mustDefaultConfig(t)
 	if cfg.SnapshotTimeout != 600*time.Second {
 		t.Errorf("SnapshotTimeout = %v, want 600s", cfg.SnapshotTimeout)
 	}
 	if len(cfg.HomeSnapshotExcludes) != 0 {
 		t.Errorf("HomeSnapshotExcludes = %v, want none: workspace is skipped by SaveHome, not by config", cfg.HomeSnapshotExcludes)
 	}
-	if err := cfg.Validate(); err != nil {
-		t.Errorf("default config must validate: %v", err)
-	}
 }
 
 func TestHomeSnapshotExcludesFromEnv(t *testing.T) {
 	t.Setenv(HomeSnapshotExcludesEnv, "workspace, .cache ,")
-	cfg := DefaultConfig()
+	cfg := mustDefaultConfig(t)
 	want := []string{"workspace", ".cache"}
 	if len(cfg.HomeSnapshotExcludes) != len(want) {
 		t.Fatalf("excludes = %v, want %v", cfg.HomeSnapshotExcludes, want)
@@ -84,10 +92,81 @@ func TestHomeSnapshotExcludesFromEnv(t *testing.T) {
 	}
 }
 
-func TestValidateRejectsBadExcludes(t *testing.T) {
-	t.Setenv(HomeSnapshotExcludesEnv, "a/b")
-	cfg := DefaultConfig()
-	if err := cfg.Validate(); err == nil {
-		t.Fatal("path-separator exclude must fail validation")
+func TestRejectsBadExcludes(t *testing.T) {
+	for _, bad := range []string{".", "..", "a/b", `a\b`, "workspace,a/b"} {
+		t.Run(bad, func(t *testing.T) {
+			t.Setenv(HomeSnapshotExcludesEnv, bad)
+			cfg, err := DefaultConfig()
+			if err == nil {
+				t.Fatalf("exclude %q must fail startup", bad)
+			}
+			if cfg != nil {
+				t.Errorf("exclude %q yielded a usable config", bad)
+			}
+		})
+	}
+}
+
+func TestEmptyExcludeSegmentsAreSkipped(t *testing.T) {
+	t.Setenv(HomeSnapshotExcludesEnv, ",workspace,,")
+	cfg := mustDefaultConfig(t)
+	if len(cfg.HomeSnapshotExcludes) != 1 || cfg.HomeSnapshotExcludes[0] != "workspace" {
+		t.Errorf("excludes = %v, want [workspace]", cfg.HomeSnapshotExcludes)
+	}
+}
+
+func TestSnapshotTimeoutDefaultsWhenEnvUnset(t *testing.T) {
+	t.Setenv(SnapshotTimeoutEnv, "")
+	_ = os.Unsetenv(SnapshotTimeoutEnv)
+	cfg := mustDefaultConfig(t)
+	if cfg.SnapshotTimeout != 600*time.Second {
+		t.Errorf("SnapshotTimeout = %v, want 600s", cfg.SnapshotTimeout)
+	}
+}
+
+func TestSnapshotTimeoutDefaultsWhenEnvEmpty(t *testing.T) {
+	t.Setenv(SnapshotTimeoutEnv, "")
+	cfg := mustDefaultConfig(t)
+	if cfg.SnapshotTimeout != 600*time.Second {
+		t.Errorf("SnapshotTimeout = %v, want 600s", cfg.SnapshotTimeout)
+	}
+}
+
+func TestSnapshotTimeoutFromEnv(t *testing.T) {
+	cases := []struct {
+		raw  string
+		want time.Duration
+	}{
+		{"900s", 900 * time.Second},
+		{"15m", 15 * time.Minute},
+		{"15m30s", 15*time.Minute + 30*time.Second},
+		{"  15m  ", 15 * time.Minute},
+	}
+	for _, tc := range cases {
+		t.Run(tc.raw, func(t *testing.T) {
+			t.Setenv(SnapshotTimeoutEnv, tc.raw)
+			cfg := mustDefaultConfig(t)
+			if cfg.SnapshotTimeout != tc.want {
+				t.Errorf("SnapshotTimeout = %v, want %v", cfg.SnapshotTimeout, tc.want)
+			}
+		})
+	}
+}
+
+func TestSnapshotTimeoutRejectsUnusableEnv(t *testing.T) {
+	for _, raw := range []string{"fifteen minutes", "600", "10 m", "0", "0s", "-1s", "-5m"} {
+		t.Run(raw, func(t *testing.T) {
+			t.Setenv(SnapshotTimeoutEnv, raw)
+			cfg, err := DefaultConfig()
+			if err == nil {
+				t.Fatalf("%q must fail startup, not run with a substituted timeout", raw)
+			}
+			if !strings.Contains(err.Error(), SnapshotTimeoutEnv) {
+				t.Errorf("error %q must name %s so the operator knows what to fix", err, SnapshotTimeoutEnv)
+			}
+			if cfg != nil {
+				t.Errorf("%q yielded a usable config; an unusable timeout must yield none", raw)
+			}
+		})
 	}
 }

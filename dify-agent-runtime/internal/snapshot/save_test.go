@@ -189,14 +189,3 @@ func TestSaveHomeSkipsOnlyTopLevelWorkspace(t *testing.T) {
 		t.Error("bin/workspace/keep.txt dropped; only the top-level workspace is excluded")
 	}
 }
-
-func TestValidateExcludes(t *testing.T) {
-	if err := ValidateExcludes([]string{"workspace", ".cache"}); err != nil {
-		t.Errorf("valid excludes rejected: %v", err)
-	}
-	for _, bad := range []string{"", ".", "..", "a/b", `a\b`} {
-		if err := ValidateExcludes([]string{bad}); err == nil {
-			t.Errorf("exclude %q must be rejected", bad)
-		}
-	}
-}

@@ -82,6 +82,13 @@ otherwise). **Neither endpoint imposes a size limit — callers own size policy
 and must bound the streams in their own logic** (count bytes while reading a
 save stream and abort at their cap; bound what they send to restore).
 
+Each operation carries a total I/O deadline set by `SHELLCTL_SNAPSHOT_TIMEOUT`,
+a Go duration string (`600s`, `10m`, `15m30s`), default `600s`. It bounds how
+long a stalled peer — connection open, nobody reading — can hold the
+single-operation gate; a peer that closes the connection releases it
+immediately. Unset or empty uses the default; an unparseable or non-positive
+value fails startup rather than falling back to it.
+
 - `POST /v1/snapshot/save` — no parameters. Streams the Home as
   `application/octet-stream` (chunked). The top-level `workspace` directory is
   **always** excluded — Workspace content is not part of a Home Snapshot, and
