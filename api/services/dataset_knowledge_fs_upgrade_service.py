@@ -291,6 +291,27 @@ class KnowledgeFSUpgradeSnapshotService:
         jobs = self.get_latest_by_dataset_ids(tenant_id=tenant_id, dataset_ids=[dataset_id])
         return jobs.get(dataset_id)
 
+    def list_by_statuses(
+        self,
+        *,
+        tenant_id: str,
+        statuses: tuple[KnowledgeFSUpgradeJobStatus, ...],
+    ) -> list[KnowledgeFSUpgradeJob]:
+        with self._session_maker() as session:
+            jobs = list(
+                session.scalars(
+                    sa.select(KnowledgeFSUpgradeJob)
+                    .where(
+                        KnowledgeFSUpgradeJob.tenant_id == tenant_id,
+                        KnowledgeFSUpgradeJob.status.in_(statuses),
+                    )
+                    .order_by(KnowledgeFSUpgradeJob.created_at.desc(), KnowledgeFSUpgradeJob.id.desc())
+                )
+            )
+            for job in jobs:
+                session.expunge(job)
+            return jobs
+
     def get_latest_by_dataset_ids(
         self,
         *,

@@ -312,6 +312,39 @@ def test_upgrade_lookup_prefers_an_active_retry_over_newer_terminal_history(
     assert result.id == active_retry.id
 
 
+def test_list_upgrade_jobs_filters_tenant_and_status(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    older_running = _job(
+        idempotency_key="older-running",
+        status=KnowledgeFSUpgradeJobStatus.RUNNING,
+    )
+    newer_failed = _job(
+        idempotency_key="newer-failed",
+        status=KnowledgeFSUpgradeJobStatus.FAILED,
+    )
+    succeeded = _job(
+        idempotency_key="succeeded",
+        status=KnowledgeFSUpgradeJobStatus.SUCCEEDED,
+    )
+    other_tenant = _job(
+        idempotency_key="other-tenant",
+        status=KnowledgeFSUpgradeJobStatus.RUNNING,
+    )
+    other_tenant.tenant_id = "tenant-2"
+    older_running.created_at = naive_utc_now() - timedelta(hours=1)
+    newer_failed.created_at = naive_utc_now()
+    with sqlite_session_factory.begin() as session:
+        session.add_all([older_running, newer_failed, succeeded, other_tenant])
+
+    jobs = KnowledgeFSUpgradeSnapshotService(sqlite_session_factory).list_by_statuses(
+        tenant_id=_TENANT_ID,
+        statuses=(KnowledgeFSUpgradeJobStatus.RUNNING, KnowledgeFSUpgradeJobStatus.FAILED),
+    )
+
+    assert [job.id for job in jobs] == [newer_failed.id, older_running.id]
+
+
 @pytest.mark.parametrize(
     ("job_status", "feature_enabled", "provider", "can_upgrade", "can_retry", "reason"),
     [

@@ -25,6 +25,7 @@ from controllers.console.datasets.datasets import (
     DatasetIndexingStatusApi,
     DatasetKnowledgeFSUpgradeApi,
     DatasetKnowledgeFSUpgradeJobApi,
+    DatasetKnowledgeFSUpgradeJobsApi,
     DatasetListApi,
     DatasetPermissionUserListApi,
     DatasetQueryApi,
@@ -896,6 +897,49 @@ class TestDatasetKnowledgeFSUpgradeApi:
         }
         values.update(overrides)
         return SimpleNamespace(**values)
+
+    def test_list_upgrade_jobs_returns_only_accessible_dataset_jobs(self, app: Flask):
+        allowed_dataset = make_dataset(id="dataset-1", tenant_id="tenant-1")
+        denied_dataset = make_dataset(id="dataset-2", tenant_id="tenant-1")
+        snapshots = MagicMock()
+        snapshots.list_by_statuses.return_value = [
+            self._job("dataset-1", id="job-1"),
+            self._job("dataset-2", id="job-2", status=KnowledgeFSUpgradeJobStatus.FAILED),
+        ]
+        api = DatasetKnowledgeFSUpgradeJobsApi()
+        method = unwrap(api.get)
+
+        def check_permission(dataset, _user, _session):
+            if dataset.id == "dataset-2":
+                raise services.errors.account.NoPermissionError()
+
+        with (
+            app.test_request_context("/datasets/knowledge-fs-upgrade-jobs"),
+            patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", False),
+            patch("controllers.console.datasets.datasets.session_factory.get_session_maker", return_value="maker"),
+            patch(
+                "controllers.console.datasets.datasets.KnowledgeFSUpgradeSnapshotService",
+                return_value=snapshots,
+            ),
+            patch.object(
+                DatasetService,
+                "get_datasets_by_ids",
+                return_value=([allowed_dataset, denied_dataset], 2),
+            ) as get_datasets,
+            patch.object(DatasetService, "check_dataset_permission", side_effect=check_permission),
+        ):
+            response = method(api, MagicMock(), "tenant-1", make_account())
+
+        assert [job["id"] for job in response["data"]] == ["job-1"]
+        snapshots.list_by_statuses.assert_called_once_with(
+            tenant_id="tenant-1",
+            statuses=(
+                KnowledgeFSUpgradeJobStatus.QUEUED,
+                KnowledgeFSUpgradeJobStatus.RUNNING,
+                KnowledgeFSUpgradeJobStatus.FAILED,
+            ),
+        )
+        assert get_datasets.call_args.args[:2] == (["dataset-1", "dataset-2"], "tenant-1")
 
     def test_create_snapshots_and_enqueues_without_remote_work_in_request(self, app: Flask):
         dataset_id = "123e4567-e89b-12d3-a456-426614174000"

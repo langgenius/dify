@@ -51,6 +51,7 @@ from libs.url_utils import normalize_api_base_url
 from models import Account, ApiToken, App, Dataset, Document, DocumentSegment, UploadFile
 from models.dataset import DatasetPermission, DatasetPermissionEnum, DatasetQuery
 from models.enums import ApiTokenType, SegmentStatus
+from models.knowledge_fs import KnowledgeFSUpgradeJobStatus
 from models.provider_ids import ModelProviderID
 from services.api_token_service import ApiTokenCache, get_effective_token_last_used_at
 from services.app_service import AppService
@@ -68,6 +69,7 @@ from services.enterprise.rbac_service import RBACResourceWhitelistScope, Replace
 from services.knowledge_fs.product_dto import (
     KnowledgeFSIdempotencyHeader,
     KnowledgeFSUpgradeDiscoveryResponse,
+    KnowledgeFSUpgradeJobListResponse,
     KnowledgeFSUpgradeJobResponse,
     KnowledgeFSUpgradeRetryResponse,
 )
@@ -90,6 +92,39 @@ _KNOWLEDGE_FS_UPGRADE_IDEMPOTENCY_HEADER_PARAMS = {
 
 def _has_dataset_list_permission(permission_keys: list[str]) -> bool:
     return any(permission_key in DATASET_LIST_PERMISSION_KEYS for permission_key in permission_keys)
+
+
+def _dataset_list_access_scope(
+    *, tenant_id: str, user: Account, session: Session, permissions: Any | None = None
+) -> tuple[list[str] | None, bool]:
+    if not dify_config.RBAC_ENABLED:
+        return None, False
+
+    permissions = permissions or enterprise_rbac_service.RBACService.MyPermissions.get(
+        tenant_id, user.id, session=session
+    )
+    whitelist_scope = enterprise_rbac_service.RBACService.DatasetAccess.whitelist_resources(tenant_id, user.id)
+    has_default_readonly = _has_dataset_list_permission(
+        permissions.dataset.default_permission_keys
+    ) or _has_dataset_list_permission(permissions.workspace.permission_keys)
+    permission_dataset_ids: set[str] | None = None
+    if not has_default_readonly:
+        permission_dataset_ids = {
+            override.resource_id
+            for override in permissions.dataset.overrides
+            if _has_dataset_list_permission(override.permission_keys)
+        }
+    if getattr(whitelist_scope, "unrestricted", False):
+        filtered_dataset_ids = permission_dataset_ids
+    else:
+        filtered_dataset_ids = set(whitelist_scope.resource_ids)
+        if permission_dataset_ids is not None:
+            filtered_dataset_ids |= permission_dataset_ids
+        elif has_default_readonly:
+            filtered_dataset_ids = None
+    accessible_dataset_ids = sorted(filtered_dataset_ids) if filtered_dataset_ids is not None else None
+    include_own_datasets = "dataset.create_and_management" in permissions.workspace.permission_keys
+    return accessible_dataset_ids, include_own_datasets
 
 
 def _get_accessible_dataset(dataset_id: UUID, tenant_id: str, current_user: Account, session: Session) -> Dataset:
@@ -394,6 +429,7 @@ register_response_schema_models(
     KnowledgeFSUpgradeJobResponse,
     KnowledgeFSUpgradeRetryResponse,
     KnowledgeFSUpgradeDiscoveryResponse,
+    KnowledgeFSUpgradeJobListResponse,
 )
 
 
@@ -501,39 +537,11 @@ class DatasetListApi(Resource):
         query = ConsoleDatasetListQuery.model_validate(query_params)
 
         permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
-            str(current_tenant_id),
-            current_user.id,
-            session=session,
+            str(current_tenant_id), current_user.id, session=session
         )
-
-        accessible_dataset_ids: list[str] | None = None
-        include_own_datasets = False
-        if dify_config.RBAC_ENABLED:
-            whitelist_scope = enterprise_rbac_service.RBACService.DatasetAccess.whitelist_resources(
-                str(current_tenant_id),
-                current_user.id,
-            )
-            has_default_readonly = _has_dataset_list_permission(
-                permissions.dataset.default_permission_keys
-            ) or _has_dataset_list_permission(permissions.workspace.permission_keys)
-            permission_dataset_ids: set[str] | None = None
-            if not has_default_readonly:
-                permission_dataset_ids = {
-                    override.resource_id
-                    for override in permissions.dataset.overrides
-                    if _has_dataset_list_permission(override.permission_keys)
-                }
-            if getattr(whitelist_scope, "unrestricted", False):
-                filtered_dataset_ids = permission_dataset_ids
-            else:
-                filtered_dataset_ids = set(whitelist_scope.resource_ids)
-                if permission_dataset_ids is not None:
-                    filtered_dataset_ids |= permission_dataset_ids
-                elif has_default_readonly:
-                    filtered_dataset_ids = None
-            if filtered_dataset_ids is not None:
-                accessible_dataset_ids = sorted(filtered_dataset_ids)
-            include_own_datasets = "dataset.create_and_management" in permissions.workspace.permission_keys
+        accessible_dataset_ids, include_own_datasets = _dataset_list_access_scope(
+            tenant_id=str(current_tenant_id), user=current_user, session=session, permissions=permissions
+        )
 
         if query.ids:
             datasets, total = DatasetService.get_datasets_by_ids(
@@ -865,6 +873,55 @@ class DatasetApi(Resource):
                 raise NotFound("Dataset not found.")
         except services.errors.dataset.DatasetInUseError:
             raise DatasetInUseError()
+
+
+@console_ns.route("/datasets/knowledge-fs-upgrade-jobs")
+class DatasetKnowledgeFSUpgradeJobsApi(Resource):
+    @console_ns.response(
+        200,
+        "Recoverable KnowledgeFS Dataset upgrade jobs",
+        console_ns.models[KnowledgeFSUpgradeJobListResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @with_current_user
+    @with_current_tenant_id
+    @with_session(write=False)
+    def get(self, session: Session, current_tenant_id: str, current_user: Account):
+        jobs = KnowledgeFSUpgradeSnapshotService(session_factory.get_session_maker()).list_by_statuses(
+            tenant_id=current_tenant_id,
+            statuses=(
+                KnowledgeFSUpgradeJobStatus.QUEUED,
+                KnowledgeFSUpgradeJobStatus.RUNNING,
+                KnowledgeFSUpgradeJobStatus.FAILED,
+            ),
+        )
+        dataset_ids = list(dict.fromkeys(job.old_dataset_id for job in jobs))
+        accessible_dataset_ids, include_own_datasets = _dataset_list_access_scope(
+            tenant_id=current_tenant_id, user=current_user, session=session
+        )
+        datasets, _ = DatasetService.get_datasets_by_ids(
+            dataset_ids,
+            current_tenant_id,
+            user=current_user,
+            accessible_dataset_ids=accessible_dataset_ids,
+            include_own_datasets=include_own_datasets,
+            session=session,
+        )
+        allowed_dataset_ids: set[str] = set()
+        for dataset in datasets:
+            if not dify_config.RBAC_ENABLED:
+                try:
+                    DatasetService.check_dataset_permission(dataset, current_user, session)
+                except services.errors.account.NoPermissionError:
+                    continue
+            allowed_dataset_ids.add(str(dataset.id))
+        return dump_response(
+            KnowledgeFSUpgradeJobListResponse,
+            {"data": [upgrade_job_response(job) for job in jobs if job.old_dataset_id in allowed_dataset_ids]},
+        )
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/knowledge-fs-upgrades")

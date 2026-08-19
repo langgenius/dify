@@ -317,6 +317,10 @@ class KnowledgeFSUpgradeRetryResponse(ResponseModel):
     status: Literal["queued"] = "queued"
 
 
+class KnowledgeFSUpgradeJobListResponse(ResponseModel):
+    data: list[KnowledgeFSUpgradeJobResponse]
+
+
 type KnowledgeFSUpgradeBlockReason = Literal[
     "feature_disabled",
     "unsupported_dataset_provider",
