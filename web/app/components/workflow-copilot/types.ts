@@ -3,18 +3,18 @@
 // design), so these mirror the backend's JSON responses by hand until one exists.
 
 export type SessionView = {
-  SessionID: string
-  AppID: string
-  Version: number
-  State: string
-  CanvasReadOnly: boolean
-  RunStatus: string
-  Interrupted: boolean
-  Conversation: {
-    Seq: number
-    Kind: string
-    Payload: Record<string, unknown>
-    AtVersion: number
+  session_id: string
+  app_id: string
+  version: number
+  state: string
+  canvas_read_only: boolean
+  run_status: string
+  interrupted: boolean
+  conversation: {
+    seq: number
+    kind: string
+    payload: Record<string, unknown>
+    at_version: number
   }[]
 }
 
@@ -62,7 +62,7 @@ export type CopilotActionKind = (typeof COPILOT_ACTION_KINDS)[number]
 
 export function isSessionView(value: unknown): value is SessionView {
   if (typeof value !== 'object' || value === null) return false
-  return 'SessionID' in value && 'Version' in value
+  return 'session_id' in value && 'version' in value
 }
 
 // Parses one `event: <kind>\ndata: <json>` SSE frame (already split on the `\n\n` delimiter).
