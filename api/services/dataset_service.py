@@ -1664,7 +1664,7 @@ class DocumentService:
         """Fetch documents for a dataset in a single batch query."""
         if not document_ids:
             return []
-        document_id_list: list[str] = [document_id for document_id in document_ids]
+        document_id_list: list[str] = list(document_ids)
         # Fetch all requested documents in one query to avoid N+1 lookups.
         documents: Sequence[Document] = session.scalars(
             select(Document).where(
@@ -1700,7 +1700,7 @@ class DocumentService:
         if not document_ids:
             return 0
 
-        document_id_list: list[str] = [document_id for document_id in document_ids]
+        document_id_list: list[str] = list(document_ids)
 
         result = session.execute(
             update(Document)
@@ -1861,7 +1861,7 @@ class DocumentService:
         """
         Batch load upload files keyed by document id for ZIP downloads.
         """
-        document_id_list: list[str] = [document_id for document_id in document_ids]
+        document_id_list: list[str] = list(document_ids)
 
         documents = DocumentService.get_documents_by_ids(
             DatasetRef(tenant_id=tenant_id, dataset_id=dataset_id), document_id_list, session
