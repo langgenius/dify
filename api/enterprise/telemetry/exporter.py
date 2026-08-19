@@ -207,7 +207,12 @@ class EnterpriseExporter:
         set_span_id_source(span_id_source)
 
         try:
-            parent_context: Context | None = None
+            # Use an explicit empty Context (not None) as the default so root spans
+            # never implicitly inherit an ambient active span (e.g. Celery/HTTP
+            # auto-instrumentation or an external trace context). Otherwise the root
+            # span would join the ambient trace while child spans use our deterministic
+            # trace_id, splitting a single logical trace into two.
+            parent_context: Context = Context()
             # A span is the "root" of its correlation group when span_id_source == correlation_id
             # (i.e. a workflow root span).  All other spans are children.
             if parent_span_id_source:

@@ -484,7 +484,13 @@ def test_export_span_with_start_time_passed_to_start_as_current_span() -> None:
 
 
 def test_export_span_root_span_no_parent_context() -> None:
-    """When span_id_source == correlation_id the span is root — no parent context."""
+    """When span_id_source == correlation_id the span is root.
+
+    An explicit empty ``Context`` is passed (not ``None``) so the root span never
+    implicitly inherits an ambient active span from the surrounding context.
+    """
+    from opentelemetry.context import Context
+
     exporter, mock_tracer, mock_span = _make_exporter_with_mock_tracer()
 
     uid = "123e4567-e89b-12d3-a456-426614174000"
@@ -496,7 +502,9 @@ def test_export_span_root_span_no_parent_context() -> None:
     )
 
     _, kwargs = mock_tracer.start_as_current_span.call_args
-    assert kwargs["context"] is None
+    assert isinstance(kwargs["context"], Context)
+    # An empty context carries no active span, guaranteeing a deterministic root trace_id.
+    assert len(kwargs["context"]) == 0
 
 
 def test_export_span_child_span_has_parent_context() -> None:
