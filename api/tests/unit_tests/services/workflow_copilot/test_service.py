@@ -119,6 +119,36 @@ def test_create_fix_session_dispatches_request_fix_and_holds_lock(
     assert token == f"tok-{view.session_id}"
 
 
+def test_create_fix_session_records_failed_run(
+    service: WorkflowCopilotService, repo: SqlCopilotRepository
+) -> None:
+    """The bridge: ``failed_run_id`` is a Dify workflow-run id, which
+    create_fix_session records as an immutable ``original-failed``
+    ``CopilotRun``; ``fc.failed_run_id`` points at that row so the async
+    diagnose can resolve ``run.dify_run_id`` -> ``dify.node_outputs``."""
+    view = service.create_fix_session(APP_ID, _actor(), failed_run_id="dify-run-abc")
+
+    _session, fc = repo.get_session(view.session_id)
+    assert fc.failed_run_id  # a CopilotRun id...
+    assert fc.failed_run_id != "dify-run-abc"  # ...not the Dify run id itself
+    recorded = repo.get_run(fc.failed_run_id)
+    assert recorded.kind == "original-failed"
+    assert recorded.dify_run_id == "dify-run-abc"  # the Dify run the caller passed
+    assert recorded.status == "failed"
+    assert recorded.immutable is True
+
+
+def test_create_checklist_session_records_no_failed_run(
+    service: WorkflowCopilotService, repo: SqlCopilotRepository
+) -> None:
+    """Checklist entry has no failed run: ``fc.failed_run_id`` stays empty."""
+    view = service.create_fix_session(
+        APP_ID, _actor(), checklist_errors=[ChecklistError(node_id="n1", node_type="llm", title="x")]
+    )
+    _session, fc = repo.get_session(view.session_id)
+    assert fc.failed_run_id == ""
+
+
 def test_create_fix_session_checklist_entry(service: WorkflowCopilotService) -> None:
     actor = _actor()
     errors = [ChecklistError(node_id="n1", node_type="llm", title="LLM", messages=["missing prompt"])]
