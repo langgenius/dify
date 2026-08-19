@@ -32,7 +32,6 @@ from services.entities.dsl_entities import (
 )
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.snippet_service import SNIPPET_FORBIDDEN_NODE_TYPES, SnippetService
-from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 logger = logging.getLogger(__name__)
 
@@ -491,16 +490,10 @@ class SnippetDslService:
 
         self._session.commit()
         if workflow_data:
-            binding_ids, home_snapshot_ids, purge_agent_ids = WorkflowAgentRetirementService.retire_unowned(
+            WorkflowAgentRetirementService.retire_unowned(
                 tenant_id=snippet.tenant_id,
                 agent_ids=retirement_candidates,
                 account_id=account.id,
-            )
-            enqueue_agent_resource_collection(
-                tenant_id=snippet.tenant_id,
-                binding_ids=binding_ids,
-                home_snapshot_ids=home_snapshot_ids,
-                purge_agent_ids=purge_agent_ids,
             )
         return snippet
 

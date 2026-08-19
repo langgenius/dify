@@ -31,7 +31,6 @@ from models.agent import (
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import AppStatus, ConversationFromSource, ConversationStatus
 from models.model import App, AppMode, Conversation, Message
-from models.workflow import Workflow, WorkflowType
 from services.agent.deletion_service import AgentDeletionInvariantError, AgentDeletionService
 
 
@@ -54,7 +53,7 @@ def _archived_agent(
     )
 
 
-def test_purge_archived_agent_deletes_complete_aggregate(
+def test_purge_archived_agent_deletes_complete_aggregate_and_preserves_workflow_binding(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
@@ -66,6 +65,18 @@ def test_purge_archived_agent_deletes_complete_aggregate(
         agent_id=agent.id,
         version=1,
         config_snapshot=AgentSoulConfig(),
+    )
+    dangling_binding = WorkflowAgentNodeBinding(
+        id="workflow-binding-1",
+        tenant_id=agent.tenant_id,
+        app_id="missing-app",
+        workflow_id="missing-workflow",
+        workflow_version="old-version",
+        node_id="agent-node",
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+        agent_id=agent.id,
+        current_snapshot_id=snapshot.id,
+        node_job_config={},
     )
     rows = [
         agent,
@@ -121,18 +132,6 @@ def test_purge_archived_agent_deletes_complete_aggregate(
             agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
             backend_binding_ref="binding-ref",
             status=AgentWorkingResourceStatus.RETIRED,
-        ),
-        WorkflowAgentNodeBinding(
-            id="workflow-binding-1",
-            tenant_id=agent.tenant_id,
-            app_id="missing-app",
-            workflow_id="missing-workflow",
-            workflow_version="old-version",
-            node_id="agent-node",
-            binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
-            agent_id=agent.id,
-            current_snapshot_id=snapshot.id,
-            node_job_config={},
         ),
     ]
     sibling = _archived_agent(agent_id="agent-2")
@@ -202,7 +201,7 @@ def test_purge_archived_agent_deletes_complete_aggregate(
             from_account_id="account-1",
         ),
     ]
-    sqlite_session.add_all([*rows, *preserved_rows])
+    sqlite_session.add_all([*rows, dangling_binding, *preserved_rows])
     sqlite_session.commit()
     monkeypatch.setattr(
         "services.agent.deletion_service.session_factory.create_session",
@@ -214,6 +213,9 @@ def test_purge_archived_agent_deletes_complete_aggregate(
     with sqlite_session_factory() as observer_session:
         for row in rows:
             assert observer_session.get(type(row), row.id) is None
+        preserved_binding = observer_session.get(WorkflowAgentNodeBinding, dangling_binding.id)
+        assert preserved_binding is not None
+        assert preserved_binding.agent_id == agent.id
         for row in preserved_rows:
             assert observer_session.get(type(row), row.id) is not None
 
@@ -231,17 +233,11 @@ def test_purge_bulk_deletes_aggregate_dependencies_before_agent(monkeypatch: pyt
 
     session.execute.side_effect = record_bulk_delete
     monkeypatch.setattr("services.agent.deletion_service.session_factory.create_session", lambda: context)
-    monkeypatch.setattr(
-        "services.agent.deletion_service.WorkflowAgentRetirementService.effective_agent_ids",
-        lambda **_kwargs: set(),
-    )
-
     AgentDeletionService.purge_archived_agents(tenant_id="tenant-1", agent_ids=["agent-1"])
 
     assert deleted_tables == [
         model.__table__.name
         for model in (
-            WorkflowAgentNodeBinding,
             AgentDebugConversation,
             AgentConfigRevision,
             AgentConfigDraft,
@@ -332,18 +328,6 @@ def test_purge_is_idempotent_for_empty_missing_and_repeated_ids(
     assert sqlite_session.get(Agent, agent_id) is None
 
 
-def test_purge_locks_candidate_agents_for_update(monkeypatch: pytest.MonkeyPatch) -> None:
-    context = MagicMock()
-    session = context.__enter__.return_value
-    session.scalars.return_value.all.return_value = []
-    monkeypatch.setattr("services.agent.deletion_service.session_factory.create_session", lambda: context)
-
-    AgentDeletionService.purge_archived_agents(tenant_id="tenant-1", agent_ids=["agent-1"])
-
-    statement = session.scalars.call_args.args[0]
-    assert statement._for_update_arg is not None
-
-
 @pytest.mark.parametrize("failure_stage", ["delete", "commit"])
 def test_purge_failure_rolls_back_complete_aggregate(
     monkeypatch: pytest.MonkeyPatch,
@@ -385,52 +369,3 @@ def test_purge_failure_rolls_back_complete_aggregate(
     with sqlite_session_factory() as observer_session:
         assert observer_session.get(Agent, agent_id) is not None
         assert observer_session.get(AgentConfigDraft, draft_id) is not None
-
-
-def test_purge_rejects_agent_with_effective_workflow_reference(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
-    agent = _archived_agent()
-    app = App(
-        id="app-1",
-        tenant_id=agent.tenant_id,
-        name="Workflow",
-        mode=AppMode.WORKFLOW,
-        status=AppStatus.NORMAL,
-        enable_site=True,
-        enable_api=True,
-    )
-    workflow = Workflow.new(
-        tenant_id=agent.tenant_id,
-        app_id=app.id,
-        type=WorkflowType.WORKFLOW.value,
-        version=Workflow.VERSION_DRAFT,
-        graph="{}",
-        features="{}",
-        created_by="account-1",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
-    )
-    binding = WorkflowAgentNodeBinding(
-        tenant_id=agent.tenant_id,
-        app_id=app.id,
-        workflow_id=workflow.id,
-        workflow_version=workflow.version,
-        node_id="agent-node",
-        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
-        agent_id=agent.id,
-        current_snapshot_id="snapshot-1",
-        node_job_config={},
-    )
-    sqlite_session.add_all([agent, app, workflow, binding])
-    sqlite_session.commit()
-    monkeypatch.setattr(
-        "services.agent.deletion_service.session_factory.create_session",
-        lambda: nullcontext(sqlite_session),
-    )
-
-    with pytest.raises(AgentDeletionInvariantError, match="regained effective Workflow ownership"):
-        AgentDeletionService.purge_archived_agents(tenant_id=agent.tenant_id, agent_ids=[agent.id])
-
-    assert sqlite_session.get(Agent, agent.id) is not None

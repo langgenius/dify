@@ -198,7 +198,7 @@ def test_published_workflow_post_returns_400_when_publish_fails(
 
 
 @pytest.mark.parametrize("sqlite_session", [(CustomizedSnippet,)], indirect=True)
-def test_published_workflow_post_forwards_retired_agent_purge_ids(
+def test_published_workflow_post_returns_success(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
     sqlite_engine: Engine,
@@ -213,15 +213,8 @@ def test_published_workflow_post_forwards_retired_agent_purge_ids(
     monkeypatch.setattr(
         snippet_workflow_module,
         "_snippet_service",
-        lambda: SimpleNamespace(publish_workflow=Mock(return_value=(workflow, {"retired-agent"}))),
+        lambda: SimpleNamespace(publish_workflow=Mock(return_value=workflow)),
     )
-    monkeypatch.setattr(
-        snippet_workflow_module.WorkflowAgentRetirementService,
-        "retire_unowned",
-        Mock(return_value=(["binding-1"], ["home-1"], ["retired-agent"])),
-    )
-    enqueue_collection = Mock()
-    monkeypatch.setattr(snippet_workflow_module, "enqueue_agent_resource_collection", enqueue_collection)
 
     api = snippet_workflow_module.SnippetPublishedWorkflowApi()
     handler = unwrap(api.post)
@@ -229,12 +222,6 @@ def test_published_workflow_post_forwards_retired_agent_purge_ids(
         response = handler(api, user, snippet)
 
     assert response["result"] == "success"
-    enqueue_collection.assert_called_once_with(
-        tenant_id="tenant-1",
-        binding_ids=["binding-1"],
-        home_snapshot_ids=["home-1"],
-        purge_agent_ids=["retired-agent"],
-    )
 
 
 def test_default_block_configs_delegates_to_service(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

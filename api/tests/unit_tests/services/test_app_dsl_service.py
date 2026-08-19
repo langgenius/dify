@@ -331,12 +331,11 @@ def test_create_or_update_app_forwards_imported_agent_purge_ids(monkeypatch: pyt
         "services.app_dsl_service.WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync",
         Mock(),
     )
+    retire_unowned = Mock()
     monkeypatch.setattr(
         "services.app_dsl_service.WorkflowAgentRetirementService.retire_unowned",
-        Mock(return_value=(["binding-1"], ["home-1"], ["retired-agent"])),
+        retire_unowned,
     )
-    enqueue_collection = Mock()
-    monkeypatch.setattr("services.app_dsl_service.enqueue_agent_resource_collection", enqueue_collection)
 
     service._create_or_update_app(
         app=cast(App, app),
@@ -348,11 +347,10 @@ def test_create_or_update_app_forwards_imported_agent_purge_ids(monkeypatch: pyt
         account=Mock(id="account-1"),
     )
 
-    enqueue_collection.assert_called_once_with(
+    retire_unowned.assert_called_once_with(
         tenant_id="tenant-1",
-        binding_ids=["binding-1"],
-        home_snapshot_ids=["home-1"],
-        purge_agent_ids=["retired-agent"],
+        agent_ids={"retired-agent"},
+        account_id="account-1",
     )
 
 

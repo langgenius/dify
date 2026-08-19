@@ -6,7 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from enums import DeploymentEdition
@@ -218,12 +218,11 @@ def test_sync_draft_workflow_creates_draft_and_updates_input_fields(
         "services.agent.workflow_publish_service.WorkflowAgentPublishService.sync_agent_bindings_for_draft",
         Mock(return_value={"retired-agent"}),
     )
+    retire_unowned = Mock()
     monkeypatch.setattr(
         "services.snippet_service.WorkflowAgentRetirementService.retire_unowned",
-        Mock(return_value=(["binding-1"], ["home-1"], ["retired-agent"])),
+        retire_unowned,
     )
-    enqueue_collection = Mock()
-    monkeypatch.setattr("services.snippet_service.enqueue_agent_resource_collection", enqueue_collection)
     snippet = _snippet()
     account = SimpleNamespace(id="account-1")
 
@@ -244,11 +243,10 @@ def test_sync_draft_workflow_creates_draft_and_updates_input_fields(
     assert stored_workflow is not None
     assert stored_snippet is not None
     assert stored_snippet.input_fields_list == [{"variable": "query"}]
-    enqueue_collection.assert_called_once_with(
+    retire_unowned.assert_called_once_with(
         tenant_id=snippet.tenant_id,
-        binding_ids=["binding-1"],
-        home_snapshot_ids=["home-1"],
-        purge_agent_ids=["retired-agent"],
+        agent_ids={"retired-agent"},
+        account_id=account.id,
     )
 
 
@@ -421,12 +419,11 @@ def test_restore_published_snippet_workflow_to_draft_copies_source_snapshot(
         "services.agent.workflow_publish_service.WorkflowAgentPublishService.restore_agent_node_bindings_to_draft",
         Mock(return_value={"retired-agent"}),
     )
+    retire_unowned = Mock()
     monkeypatch.setattr(
         "services.snippet_service.WorkflowAgentRetirementService.retire_unowned",
-        Mock(return_value=(["binding-1"], ["home-1"], ["retired-agent"])),
+        retire_unowned,
     )
-    enqueue_collection = Mock()
-    monkeypatch.setattr("services.snippet_service.enqueue_agent_resource_collection", enqueue_collection)
 
     result = service.restore_published_workflow_to_draft(
         snippet=snippet,
@@ -442,11 +439,10 @@ def test_restore_published_snippet_workflow_to_draft_copies_source_snapshot(
     stored = sqlite_session.get(Workflow, draft_workflow.id)
     assert stored is not None
     assert stored.graph_dict == source_graph
-    enqueue_collection.assert_called_once_with(
+    retire_unowned.assert_called_once_with(
         tenant_id=snippet.tenant_id,
-        binding_ids=["binding-1"],
-        home_snapshot_ids=["home-1"],
-        purge_agent_ids=["retired-agent"],
+        agent_ids={"retired-agent"},
+        account_id=account.id,
     )
 
 
@@ -573,7 +569,7 @@ def test_publish_workflow_creates_snapshot_and_updates_snippet(
         Mock(return_value=set()),
     )
 
-    result, retirement_candidates = service.publish_workflow(
+    result = service.publish_workflow(
         session=sqlite_session,
         snippet=snippet,
         account=SimpleNamespace(id="account-1"),
@@ -587,7 +583,6 @@ def test_publish_workflow_creates_snapshot_and_updates_snippet(
     sqlite_session.flush()
     assert sqlite_session.get(Workflow, result.id) is result
     assert sqlite_session.get(CustomizedSnippet, snippet.id).workflow_id == result.id
-    assert retirement_candidates == set()
 
 
 def test_get_all_published_workflows_returns_empty_without_current_workflow(unbound_session: Session) -> None:
@@ -647,11 +642,12 @@ def test_delete_snippet_removes_related_records(
         assert observer.get(Workflow, workflow.id) is None
 
 
-def test_delete_snippet_archives_owned_agents_and_schedules_backing_app_cleanup(
+def test_delete_snippet_releases_last_owner_and_retries_archived_agent_cleanup_after_commit(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
 ) -> None:
     snippet = _snippet()
+    archived_at = datetime(2025, 1, 1)
     agent = Agent(
         id="agent-1",
         tenant_id=snippet.tenant_id,
@@ -662,15 +658,57 @@ def test_delete_snippet_archives_owned_agents_and_schedules_backing_app_cleanup(
         source=AgentSource.WORKFLOW,
         app_id=snippet.id,
         backing_app_id="backing-app-1",
-        status=AgentStatus.ACTIVE,
-        updated_by="creator-1",
+        workflow_id="workflow-1",
+        workflow_node_id="agent-node",
+        status=AgentStatus.ARCHIVED,
+        archived_by="original-account",
+        archived_at=archived_at,
+        updated_by="original-account",
     )
-    sqlite_session.add_all([snippet, agent])
+    hidden_app = App(
+        id="backing-app-1",
+        tenant_id=snippet.tenant_id,
+        name="Snippet Agent runtime",
+        mode=AppMode.AGENT,
+        status=AppStatus.NORMAL,
+        enable_site=False,
+        enable_api=False,
+    )
+    workflow = _create_workflow(
+        workflow_id="workflow-1",
+        version=Workflow.VERSION_DRAFT,
+        graph={"nodes": []},
+        features={},
+    )
+    owner_binding = WorkflowAgentNodeBinding(
+        id="snippet-inline-binding",
+        tenant_id=snippet.tenant_id,
+        app_id=snippet.id,
+        workflow_id=workflow.id,
+        workflow_version=workflow.version,
+        node_id="agent-node",
+        binding_type=WorkflowAgentBindingType.INLINE_AGENT,
+        agent_id=agent.id,
+        current_snapshot_id="snapshot-1",
+        node_job_config={},
+    )
+    sqlite_session.add_all([snippet, agent, hidden_app, workflow, owner_binding])
     sqlite_session.flush()
-    cleanup_delay = Mock()
-    enqueue_collection = Mock()
-    monkeypatch.setattr("tasks.remove_app_and_related_data_task.remove_app_and_related_data_task.delay", cleanup_delay)
-    monkeypatch.setattr("services.snippet_service.enqueue_agent_resource_collection", enqueue_collection)
+    hidden_app_id = hidden_app.id
+    workflow_id = workflow.id
+    owner_binding_id = owner_binding.id
+    events: list[str] = []
+    event.listen(sqlite_session, "after_commit", lambda _session: events.append("commit"), once=True)
+    cleanup_delay = Mock(side_effect=lambda **_kwargs: events.append("cleanup-hidden-app"))
+    enqueue_collection = Mock(side_effect=lambda **_kwargs: events.append("enqueue-agent-purge"))
+    monkeypatch.setattr(
+        "services.agent.retirement_service.remove_app_and_related_data_task.delay",
+        cleanup_delay,
+    )
+    monkeypatch.setattr(
+        "services.agent.retirement_service.enqueue_agent_resource_collection",
+        enqueue_collection,
+    )
 
     result = SnippetService.delete_snippet(
         session=sqlite_session,
@@ -679,25 +717,36 @@ def test_delete_snippet_archives_owned_agents_and_schedules_backing_app_cleanup(
     )
 
     assert result is True
-    assert agent.status == AgentStatus.ACTIVE
+    assert agent.status == AgentStatus.ARCHIVED
+    assert (
+        sqlite_session.scalar(select(WorkflowAgentNodeBinding).where(WorkflowAgentNodeBinding.id == owner_binding.id))
+        is None
+    )
+    cleanup_delay.assert_not_called()
+    enqueue_collection.assert_not_called()
     sqlite_session.commit()
     sqlite_session.expire_all()
     stored_agent = sqlite_session.get(Agent, agent.id)
     assert stored_agent is not None
     assert stored_agent.status == AgentStatus.ARCHIVED
-    assert stored_agent.archived_by == "account-1"
-    assert stored_agent.archived_at is not None
-    assert stored_agent.updated_by == "account-1"
+    assert stored_agent.archived_by == "original-account"
+    assert stored_agent.archived_at == archived_at
+    assert stored_agent.updated_by == "original-account"
+    assert sqlite_session.get(App, hidden_app_id) is None
+    assert sqlite_session.get(Workflow, workflow_id) is None
+    assert sqlite_session.get(WorkflowAgentNodeBinding, owner_binding_id) is None
+    assert events == ["commit", "cleanup-hidden-app", "enqueue-agent-purge"]
     cleanup_delay.assert_called_once_with(tenant_id=snippet.tenant_id, app_id="backing-app-1")
     enqueue_collection.assert_called_once_with(
         tenant_id=snippet.tenant_id,
+        workspace_ids=[],
         binding_ids=[],
         home_snapshot_ids=[],
         purge_agent_ids=[agent.id],
     )
 
 
-def test_delete_snippet_keeps_agent_with_effective_external_owner(
+def test_delete_snippet_keeps_agent_with_persisted_external_owner(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
 ) -> None:
@@ -749,10 +798,11 @@ def test_delete_snippet_keeps_agent_with_effective_external_owner(
     )
     sqlite_session.add_all([snippet, agent, workflow_app, workflow, external_binding])
     sqlite_session.flush()
-    enqueue_collection = Mock()
     cleanup_delay = Mock()
-    monkeypatch.setattr("services.snippet_service.enqueue_agent_resource_collection", enqueue_collection)
-    monkeypatch.setattr("tasks.remove_app_and_related_data_task.remove_app_and_related_data_task.delay", cleanup_delay)
+    monkeypatch.setattr(
+        "services.agent.retirement_service.remove_app_and_related_data_task.delay",
+        cleanup_delay,
+    )
 
     SnippetService.delete_snippet(session=sqlite_session, snippet=snippet, account_id="account-1")
     sqlite_session.commit()
@@ -760,7 +810,6 @@ def test_delete_snippet_keeps_agent_with_effective_external_owner(
 
     assert sqlite_session.get(Agent, agent.id).status == AgentStatus.ACTIVE  # type: ignore[union-attr]
     assert sqlite_session.get(WorkflowAgentNodeBinding, external_binding.id) is not None
-    enqueue_collection.assert_not_called()
     cleanup_delay.assert_not_called()
 
 

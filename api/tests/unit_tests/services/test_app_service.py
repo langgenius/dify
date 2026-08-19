@@ -16,20 +16,16 @@ from models import Account, Tenant
 from models.account import TenantAccountJoin, TenantAccountRole
 from models.agent import (
     Agent,
-    AgentConfigVersionKind,
-    AgentHomeSnapshot,
     AgentIconType,
     AgentScope,
     AgentSource,
     AgentStatus,
-    AgentWorkingResourceStatus,
-    AgentWorkspaceBinding,
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
 from models.model import App, AppMode, AppModelConfig, IconType
 from models.workflow import Workflow, WorkflowType
-from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError, AgentWorkflowReferenceConflictError
+from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
 from services.app_service import AppListParams, AppService, CreateAppParams
 
 
@@ -506,15 +502,6 @@ class TestAgentAppType:
         )
         assert app.bound_agent_id is None
 
-    def test_backing_agent_delete_lookup_locks_agent_row(self) -> None:
-        app = SimpleNamespace(mode=AppMode.AGENT, tenant_id="tenant-1", id="app-1")
-        session = MagicMock()
-
-        AppService._get_backing_agent_for_update(app, session=session)
-
-        statement = session.scalar.call_args.args[0]
-        assert statement._for_update_arg is not None
-
     def test_update_agent_app_syncs_backing_agent_identity(self, sqlite_session: Session):
         app, backing_agent = _persist_agent_app(sqlite_session)
         account_id = str(uuid4())
@@ -637,6 +624,31 @@ class TestAgentAppType:
 
     def test_delete_agent_app_archives_backing_agent(self, sqlite_session: Session):
         app, backing_agent = _persist_agent_app(sqlite_session)
+        workflow_app = _persist_app(sqlite_session, tenant_id=app.tenant_id, name="Workflow")
+        workflow_app.mode = AppMode.WORKFLOW
+        referencing_workflow = Workflow.new(
+            tenant_id=app.tenant_id,
+            app_id=workflow_app.id,
+            type=WorkflowType.WORKFLOW.value,
+            version=Workflow.VERSION_DRAFT,
+            graph="{}",
+            features="{}",
+            created_by="account-1",
+            environment_variables=[],
+            conversation_variables=[],
+            rag_pipeline_variables=[],
+        )
+        workflow_binding = WorkflowAgentNodeBinding(
+            tenant_id=app.tenant_id,
+            app_id=workflow_app.id,
+            workflow_id=referencing_workflow.id,
+            workflow_version=referencing_workflow.version,
+            node_id="agent-node",
+            binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+            agent_id=backing_agent.id,
+            current_snapshot_id="snapshot-1",
+            node_job_config={},
+        )
         workflow_agents = [
             Agent(
                 tenant_id=app.tenant_id,
@@ -652,7 +664,7 @@ class TestAgentAppType:
             )
             for index in range(2)
         ]
-        sqlite_session.add_all(workflow_agents)
+        sqlite_session.add_all([referencing_workflow, workflow_binding, *workflow_agents])
         sqlite_session.commit()
         account_id = str(uuid4())
         events: list[str] = []
@@ -664,7 +676,10 @@ class TestAgentAppType:
             patch("services.app_service.BillingService"),
             patch("services.app_service.EnterpriseService"),
             patch("services.app_service.FeatureService"),
-            patch("services.app_service.remove_app_and_related_data_task"),
+            patch(
+                "services.app_service.remove_app_and_related_data_task.delay",
+                side_effect=lambda **_kwargs: events.append("enqueue-app-cleanup"),
+            ),
             patch(
                 "services.app_service.AgentHomeSnapshotService.retire_all_for_agent",
                 return_value=["home-1"],
@@ -675,10 +690,7 @@ class TestAgentAppType:
             ) as mock_retire_workspaces,
             patch(
                 "services.app_service.WorkflowAgentRetirementService.retire_unowned",
-                side_effect=lambda **_kwargs: (
-                    events.append("retire-workflow-agents")
-                    or (["workflow-binding-1"], ["workflow-home-1"], ["workflow-agent-1"])
-                ),
+                side_effect=lambda **_kwargs: events.append("retire-workflow-agents"),
             ) as mock_workflow_retirement,
             patch(
                 "services.app_service.enqueue_agent_resource_collection",
@@ -687,7 +699,13 @@ class TestAgentAppType:
         ):
             AppService().delete_app(app, session=sqlite_session)
 
-        assert events == ["retire-app-workspaces", "commit", "retire-workflow-agents", "enqueue"]
+        assert events == [
+            "retire-app-workspaces",
+            "commit",
+            "enqueue-app-cleanup",
+            "retire-workflow-agents",
+            "enqueue",
+        ]
         sqlite_session.expire_all()
         persisted_agent = sqlite_session.get(Agent, backing_agent.id)
         assert persisted_agent is not None
@@ -695,9 +713,12 @@ class TestAgentAppType:
         assert persisted_agent.status == AgentStatus.ARCHIVED
         assert persisted_agent.archived_by == account_id
         assert persisted_agent.archived_at is not None
+        persisted_workflow_binding = sqlite_session.get(WorkflowAgentNodeBinding, workflow_binding.id)
+        assert persisted_workflow_binding is not None
+        assert persisted_workflow_binding.agent_id == backing_agent.id
         mock_workflow_retirement.assert_called_once_with(
             tenant_id=app.tenant_id,
-            agent_ids=[agent.id for agent in workflow_agents],
+            agent_ids={agent.id for agent in workflow_agents},
             account_id=account_id,
         )
         mock_retire_workspaces.assert_called_once_with(
@@ -713,75 +734,10 @@ class TestAgentAppType:
         mock_enqueue_collection.assert_called_once_with(
             tenant_id=app.tenant_id,
             workspace_ids=["workspace-1"],
-            binding_ids=["workflow-binding-1"],
-            home_snapshot_ids=["home-1", "workflow-home-1"],
-            purge_agent_ids=[backing_agent.id, "workflow-agent-1"],
+            binding_ids=[],
+            home_snapshot_ids=["home-1"],
+            purge_agent_ids=[backing_agent.id],
         )
-
-    def test_delete_agent_app_rejects_effective_workflow_reference(self, sqlite_session: Session) -> None:
-        agent_app, backing_agent = _persist_agent_app(sqlite_session)
-        workflow_app = _persist_app(sqlite_session, tenant_id=agent_app.tenant_id, name="Workflow")
-        workflow_app.mode = AppMode.WORKFLOW
-        workflow = Workflow.new(
-            tenant_id=agent_app.tenant_id,
-            app_id=workflow_app.id,
-            type=WorkflowType.WORKFLOW.value,
-            version=Workflow.VERSION_DRAFT,
-            graph="{}",
-            features="{}",
-            created_by="account-1",
-            environment_variables=[],
-            conversation_variables=[],
-            rag_pipeline_variables=[],
-        )
-        binding = WorkflowAgentNodeBinding(
-            tenant_id=agent_app.tenant_id,
-            app_id=workflow_app.id,
-            workflow_id=workflow.id,
-            workflow_version=workflow.version,
-            node_id="agent-node",
-            binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
-            agent_id=backing_agent.id,
-            current_snapshot_id="snapshot-1",
-            node_job_config={},
-        )
-        workspace_binding = AgentWorkspaceBinding(
-            id="workspace-binding-1",
-            tenant_id=agent_app.tenant_id,
-            app_id=agent_app.id,
-            workspace_id="workspace-1",
-            agent_id=backing_agent.id,
-            agent_config_version_id="snapshot-1",
-            agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
-            backend_binding_ref="backend-binding-1",
-            status=AgentWorkingResourceStatus.ACTIVE,
-        )
-        home = AgentHomeSnapshot(
-            id="home-1",
-            tenant_id=agent_app.tenant_id,
-            agent_id=backing_agent.id,
-            snapshot_ref="home-ref-1",
-            status=AgentWorkingResourceStatus.ACTIVE,
-        )
-        sqlite_session.add_all([workflow, binding, workspace_binding, home])
-        sqlite_session.commit()
-
-        with (
-            patch("services.app_service.app_was_deleted.send") as deleted_signal,
-            patch("services.app_service.enqueue_agent_resource_collection") as enqueue_collection,
-            pytest.raises(AgentWorkflowReferenceConflictError, match="1 active workflow app"),
-        ):
-            AppService().delete_app(agent_app, session=sqlite_session)
-
-        assert sqlite_session.get(App, agent_app.id) is not None
-        assert sqlite_session.get(Agent, backing_agent.id).status == AgentStatus.ACTIVE  # type: ignore[union-attr]
-        assert (
-            sqlite_session.get(AgentWorkspaceBinding, workspace_binding.id).status  # type: ignore[union-attr]
-            == AgentWorkingResourceStatus.ACTIVE
-        )
-        assert sqlite_session.get(AgentHomeSnapshot, home.id).status == AgentWorkingResourceStatus.ACTIVE  # type: ignore[union-attr]
-        deleted_signal.assert_not_called()
-        enqueue_collection.assert_not_called()
 
     def test_delete_app_commit_failure_does_not_retire_workflow_agents_or_enqueue(self, sqlite_session: Session):
         app = _persist_app(sqlite_session, tenant_id=str(uuid4()))
@@ -811,9 +767,100 @@ class TestAgentAppType:
             patch("services.app_service.AgentWorkspaceService.retire_all_for_app", return_value=["workspace-1"]),
             patch("services.app_service.WorkflowAgentRetirementService.retire_unowned") as retire_unowned,
             patch("services.app_service.enqueue_agent_resource_collection") as enqueue_collection,
+            patch("services.app_service.remove_app_and_related_data_task.delay") as enqueue_app_cleanup,
         ):
             with pytest.raises(RuntimeError, match="commit failed"):
                 AppService().delete_app(app, session=sqlite_session)
 
+        retire_unowned.assert_not_called()
+        enqueue_collection.assert_not_called()
+        enqueue_app_cleanup.assert_not_called()
+
+    def test_delete_workflow_app_releases_all_bindings_before_retirement(self, sqlite_session: Session):
+        app = _persist_app(sqlite_session, tenant_id=str(uuid4()))
+        app.mode = AppMode.WORKFLOW
+        workflow = Workflow.new(
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            type=WorkflowType.WORKFLOW.value,
+            version="historical-version",
+            graph="{}",
+            features="{}",
+            created_by="account-1",
+            environment_variables=[],
+            conversation_variables=[],
+            rag_pipeline_variables=[],
+        )
+        inline_binding = WorkflowAgentNodeBinding(
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            workflow_id=workflow.id,
+            workflow_version=workflow.version,
+            node_id="inline-node",
+            binding_type=WorkflowAgentBindingType.INLINE_AGENT,
+            agent_id="inline-agent",
+            current_snapshot_id="snapshot-1",
+            node_job_config={},
+        )
+        roster_binding = WorkflowAgentNodeBinding(
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            workflow_id=workflow.id,
+            workflow_version=workflow.version,
+            node_id="roster-node",
+            binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+            agent_id="roster-agent",
+            current_snapshot_id="snapshot-2",
+            node_job_config={},
+        )
+        sqlite_session.add_all([workflow, inline_binding, roster_binding])
+        sqlite_session.commit()
+        events: list[str] = []
+
+        def retire_unowned(**kwargs):
+            events.append("retire")
+            assert sqlite_session.get(WorkflowAgentNodeBinding, inline_binding.id) is None
+            assert sqlite_session.get(WorkflowAgentNodeBinding, roster_binding.id) is None
+            assert kwargs["agent_ids"] == {"inline-agent"}
+
+        with (
+            patch("services.app_service.current_user", _account_identity(str(uuid4()))),
+            patch("services.app_service.app_was_deleted.send"),
+            patch("services.app_service.FeatureService"),
+            patch("services.app_service.BillingService"),
+            patch("services.app_service.EnterpriseService"),
+            patch("services.app_service.AgentWorkspaceService.retire_all_for_app", return_value=[]),
+            patch(
+                "services.app_service.remove_app_and_related_data_task.delay",
+                side_effect=lambda **_kwargs: events.append("enqueue-app-cleanup"),
+            ),
+            patch(
+                "services.app_service.WorkflowAgentRetirementService.retire_unowned",
+                side_effect=retire_unowned,
+            ),
+            patch("services.app_service.enqueue_agent_resource_collection"),
+        ):
+            AppService().delete_app(app, session=sqlite_session)
+
+        assert events == ["enqueue-app-cleanup", "retire"]
+        assert sqlite_session.get(WorkflowAgentNodeBinding, inline_binding.id) is None
+        assert sqlite_session.get(WorkflowAgentNodeBinding, roster_binding.id) is None
+
+    def test_delete_app_cleanup_enqueue_failure_propagates_before_retirement(self, sqlite_session: Session):
+        app = _persist_app(sqlite_session, tenant_id=str(uuid4()))
+        error = RuntimeError("broker unavailable")
+
+        with (
+            patch("services.app_service.current_user", _account_identity(str(uuid4()))),
+            patch("services.app_service.app_was_deleted.send"),
+            patch("services.app_service.AgentWorkspaceService.retire_all_for_app", return_value=[]),
+            patch("services.app_service.remove_app_and_related_data_task.delay", side_effect=error),
+            patch("services.app_service.WorkflowAgentRetirementService.retire_unowned") as retire_unowned,
+            patch("services.app_service.enqueue_agent_resource_collection") as enqueue_collection,
+        ):
+            with pytest.raises(RuntimeError) as exc_info:
+                AppService().delete_app(app, session=sqlite_session)
+
+        assert exc_info.value is error
         retire_unowned.assert_not_called()
         enqueue_collection.assert_not_called()

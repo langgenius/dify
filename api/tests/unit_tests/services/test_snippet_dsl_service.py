@@ -539,12 +539,11 @@ def test_create_or_update_snippet_updates_existing_snippet_and_syncs_workflow(mo
         "services.snippet_dsl_service.WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync",
         Mock(),
     )
+    retire_unowned = Mock()
     monkeypatch.setattr(
         "services.snippet_dsl_service.WorkflowAgentRetirementService.retire_unowned",
-        Mock(return_value=(["binding-1"], ["home-1"], ["retired-agent"])),
+        retire_unowned,
     )
-    enqueue_collection = Mock()
-    monkeypatch.setattr("services.snippet_dsl_service.enqueue_agent_resource_collection", enqueue_collection)
 
     result = service._create_or_update_snippet(
         snippet=snippet,
@@ -567,11 +566,10 @@ def test_create_or_update_snippet_updates_existing_snippet_and_syncs_workflow(mo
     assert snippet.icon_info == {"icon": "x"}
     snippet_service.sync_draft_workflow.assert_called_once()
     session.commit.assert_called_once()
-    enqueue_collection.assert_called_once_with(
+    retire_unowned.assert_called_once_with(
         tenant_id="tenant-1",
-        binding_ids=["binding-1"],
-        home_snapshot_ids=["home-1"],
-        purge_agent_ids=["retired-agent"],
+        agent_ids={"retired-agent"},
+        account_id="account-1",
     )
 
 

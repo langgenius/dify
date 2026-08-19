@@ -492,28 +492,20 @@ def test_workflow_tool_import_publishes_referenced_app_before_create(
     assert events == [("published", app_id), ("created", app_id)]
 
 
-def test_ensure_workflow_app_is_published_forwards_purge_ids(
+def test_ensure_workflow_app_is_published_updates_current_workflow(
     monkeypatch: pytest.MonkeyPatch,
     database: Database,
 ) -> None:
     _, account = _persist_tenant_account(database.session)
     app_id = "00000000-0000-0000-0000-000000000001"
     _persist_app(database.session, app_id=app_id)
-    publish = Mock(return_value=(SimpleNamespace(id="published-workflow"), {"retired-agent"}))
+    publish = Mock(return_value=SimpleNamespace(id="published-workflow"))
     monkeypatch.setattr(import_service, "WorkflowService", Mock(return_value=SimpleNamespace(publish_workflow=publish)))
     monkeypatch.setattr(
         import_service,
         "sessionmaker",
         lambda _engine: SimpleNamespace(begin=lambda: nullcontext(database.session)),
     )
-    monkeypatch.setattr(
-        import_service.WorkflowAgentRetirementService,
-        "retire_unowned",
-        Mock(return_value=(["binding-1"], ["home-1"], ["retired-agent"])),
-    )
-    enqueue_collection = Mock()
-    monkeypatch.setattr(import_service, "enqueue_agent_resource_collection", enqueue_collection)
-
     MigrationImportService()._ensure_workflow_app_is_published(
         ImportTarget("tenant-1", "target", "account-1", "owner@example.com"),
         account,
@@ -521,12 +513,7 @@ def test_ensure_workflow_app_is_published_forwards_purge_ids(
         session=database.session,
     )
 
-    enqueue_collection.assert_called_once_with(
-        tenant_id="tenant-1",
-        binding_ids=["binding-1"],
-        home_snapshot_ids=["home-1"],
-        purge_agent_ids=["retired-agent"],
-    )
+    assert database.session.get(App, app_id).workflow_id == "published-workflow"
 
 
 @pytest.mark.parametrize("id_strategy", [IdStrategy.PRESERVE_ID, IdStrategy.GENERATE_NEW_ID])

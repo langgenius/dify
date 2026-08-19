@@ -676,7 +676,6 @@ class AgentAppApi(Resource):
         return _serialize_agent_app_detail(session, updated, current_user=current_user)
 
     @console_ns.response(204, "Agent app deleted successfully")
-    @console_ns.response(409, "Agent is still referenced by an active workflow")
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required

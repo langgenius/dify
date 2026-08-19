@@ -17,9 +17,7 @@ from models.agent import (
     AgentStatus,
     AgentWorkingResourceStatus,
     AgentWorkspaceBinding,
-    WorkflowAgentNodeBinding,
 )
-from services.agent.retirement_service import WorkflowAgentRetirementService
 
 
 class AgentDeletionInvariantError(RuntimeError):
@@ -27,12 +25,11 @@ class AgentDeletionInvariantError(RuntimeError):
 
 
 class AgentDeletionService:
-    """Delete Agent aggregates and stale Workflow-owned binding soft references.
+    """Delete archived Agent aggregates after their external resources are gone.
 
     The aggregate includes Agent-owned configuration, debug, Home, and Workspace
-    Binding rows. Purge also removes invalid or historical
-    ``WorkflowAgentNodeBinding`` soft-reference rows that are owned by Workflows
-    rather than by the Agent aggregate.
+    Binding rows. Workflow-owned binding soft references are outside the
+    aggregate and may remain dangling after deletion.
     """
 
     @classmethod
@@ -40,19 +37,17 @@ class AgentDeletionService:
         """Idempotently hard-delete eligible archived Agent aggregates.
 
         Missing targets are a no-op. Every stored target must be ``ARCHIVED``,
-        have no ACTIVE Workspace Binding or Home Snapshot, and have no effective
-        Workflow ownership. All dependent rows and Agents are deleted and
-        committed in one transaction; an exception before commit leaves the
-        transaction to roll back without a partial aggregate deletion.
+        have no ACTIVE Workspace Binding or Home Snapshot, and all dependent rows
+        and Agents are deleted and committed in one transaction; an exception
+        before commit leaves the transaction to roll back without a partial
+        aggregate deletion.
         """
         candidates = tuple(sorted({agent_id for agent_id in agent_ids if agent_id}))
         if not candidates:
             return
 
         with session_factory.create_session() as session:
-            agents = session.scalars(
-                select(Agent).where(Agent.tenant_id == tenant_id, Agent.id.in_(candidates)).with_for_update()
-            ).all()
+            agents = session.scalars(select(Agent).where(Agent.tenant_id == tenant_id, Agent.id.in_(candidates))).all()
             if not agents:
                 return
 
@@ -87,18 +82,7 @@ class AgentDeletionService:
             if active_home_id is not None:
                 raise AgentDeletionInvariantError(f"Agent aggregate still has ACTIVE Home Snapshot {active_home_id}")
 
-            effective_ids = WorkflowAgentRetirementService.effective_agent_ids(
-                session=session,
-                tenant_id=tenant_id,
-                agent_ids=stored_ids,
-            )
-            if effective_ids:
-                raise AgentDeletionInvariantError(
-                    f"Agents regained effective Workflow ownership: {', '.join(sorted(effective_ids))}"
-                )
-
             for model in (
-                WorkflowAgentNodeBinding,
                 AgentDebugConversation,
                 AgentConfigRevision,
                 AgentConfigDraft,

@@ -133,8 +133,9 @@ and commits the run's Workspaces before enqueueing collection. When a Workflow
 change may orphan Workflow-only Agents, the main product transaction commits
 first; a fresh session then rechecks effective ownership and retires only Agents
 that remain unowned. An effective reference is a binding in a normal App's
-current draft or current published Workflow. Such a reference blocks direct
-Agent deletion.
+current draft or current published Workflow. This ownership check applies only
+to implicit retirement of Workflow-only Agents. Explicit deletion of a roster
+Agent or Agent App proceeds even while Workflows reference it.
 
 Retiring a final Binding also retires its Workspace. Workspace collection
 destroys the physical Workspace through one Binding and then collects remaining
@@ -143,9 +144,10 @@ retired. `RETIRED` is the sole physical-deletion condition for a Home Snapshot;
 Draft and Config Snapshot references are historical pointers and do not keep it
 alive. After every external resource in a deletion batch succeeds, Dify API
 hard-deletes the archived Agent together with its Drafts, Config Snapshots,
-Config Revisions, debug-conversation mappings, resource ledgers, and stale
-Workflow Agent bindings in one database transaction. Dify Agent itself remains
-stateless.
+Config Revisions, debug-conversation mappings, and resource ledgers in one
+database transaction. Workflow Agent bindings belong to
+their Workflows and remain unchanged, so they may hold a dangling Agent ID after
+explicit deletion. Dify Agent itself remains stateless.
 
 A `RETIRED` Workspace without a `RETIRED` Binding cannot identify a backend
 participant through which to destroy the Workspace. That state is a lifecycle
