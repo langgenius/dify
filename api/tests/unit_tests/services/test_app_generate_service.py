@@ -99,17 +99,16 @@ def _noop_rate_limit_context(rate_limit, request_id):
 class TestBuildStreamingTaskOnSubscribe:
     """Tests for AppGenerateService._build_streaming_task_on_subscribe."""
 
-    def test_streams_mode_starts_immediately(self, monkeypatch: pytest.MonkeyPatch):
+    def test_streams_mode_requires_streams_topic(self, monkeypatch: pytest.MonkeyPatch):
+        """streams mode must fail loudly rather than silently skipping checkpointing when
+        no checkpoint-capable topic is supplied."""
         monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "streams")
         called = []
-        cb, start_id = AppGenerateService._build_streaming_task_on_subscribe(lambda: called.append(1))
-        # task started immediately during build
-        assert called == [1]
-        # no topic was supplied, so there's nothing to checkpoint
-        assert start_id is None
-        # calling the returned callback is idempotent
-        cb()
-        assert called == [1]  # not called again
+
+        with pytest.raises(TypeError):
+            AppGenerateService._build_streaming_task_on_subscribe(lambda: called.append(1))
+
+        assert called == []
 
     def test_streams_mode_captures_checkpoint_before_starting_task(self, monkeypatch: pytest.MonkeyPatch):
         """Regression test for dify#40948: the checkpoint must be captured from the topic
@@ -179,6 +178,8 @@ class TestBuildStreamingTaskOnSubscribe:
     def test_exception_in_start_task_returns_false(self, monkeypatch: pytest.MonkeyPatch):
         """When start_task raises, _try_start returns False and next call retries."""
         monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "streams")
+        topic = MagicMock(spec=StreamsTopic)
+        topic.checkpoint.return_value = "0-0"
         call_count = 0
 
         def _bad():
@@ -187,7 +188,7 @@ class TestBuildStreamingTaskOnSubscribe:
             if call_count == 1:
                 raise RuntimeError("boom")
 
-        cb, _start_id = AppGenerateService._build_streaming_task_on_subscribe(_bad)
+        cb, _start_id = AppGenerateService._build_streaming_task_on_subscribe(_bad, topic=topic)
         # first call inside build raised, but is caught; second call via cb succeeds
         assert call_count == 1
         cb()
@@ -478,7 +479,7 @@ class TestGenerate:
         monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "streams")
         mocker.patch(
             "services.app_generate_service.MessageBasedAppGenerator.get_response_topic",
-            return_value=MagicMock(),
+            return_value=MagicMock(spec=StreamsTopic),
         )
         retrieve_spy = mocker.patch(
             "services.app_generate_service.MessageBasedAppGenerator.retrieve_events",

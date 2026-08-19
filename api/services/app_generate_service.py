@@ -79,7 +79,13 @@ class AppGenerateService:
 
         channel_type = dify_config.PUBSUB_REDIS_CHANNEL_TYPE
         if channel_type == "streams":
-            start_id = topic.checkpoint() if isinstance(topic, StreamsTopic) else None
+            if not isinstance(topic, StreamsTopic):
+                raise TypeError(
+                    f"Expected a StreamsTopic when PUBSUB_REDIS_CHANNEL_TYPE is "
+                    f"'streams', got {type(topic).__name__}"
+                )
+
+            start_id = topic.checkpoint()
 
             # With Redis Streams, we can safely start right away; consumers resume from `start_id`.
             _try_start()

@@ -33,7 +33,9 @@ def stream_topic_events(
     # the meantime), resume from that point instead of the topic's default `subscribe()`,
     # which would only pick up messages published after this line actually executes.
     subscribe_from = getattr(topic, "subscribe_from", None)
-    if start_id is not None and subscribe_from is not None:
+    if start_id is not None:
+        if not callable(subscribe_from):
+            raise TypeError("start_id was provided but topic does not support subscribe_from()")
         subscription = subscribe_from(start_id)
     else:
         subscription = topic.subscribe()
