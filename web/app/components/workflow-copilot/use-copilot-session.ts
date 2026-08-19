@@ -37,7 +37,9 @@ function useCopilotApi(baseUrl: string, workspaceId: string) {
   // Memoized so the returned methods stay referentially stable across renders
   // unless the connection inputs actually change (also what earns the `use` prefix).
   return useMemo(() => {
-    const root = `${baseUrl.replace(/\/$/, '')}/enterprise/workflow-copilot`
+    // OSS-native copilot routes (post-pivot): `/console/api/workflow-copilot/*`
+    // (the retired enterprise Go backend lived at `.../enterprise/workflow-copilot/*`).
+    const root = `${baseUrl.replace(/\/$/, '')}/workflow-copilot`
 
     const headers = (json: boolean, csrf: boolean): Record<string, string> => {
       const h: Record<string, string> = {}
@@ -60,10 +62,13 @@ function useCopilotApi(baseUrl: string, workspaceId: string) {
         }),
       })
 
+    // NOTE: the OSS backend enforces CSRF on every method (login_required), so
+    // GET /sessions/{id} and the SSE stream must send X-CSRF-Token too — unlike
+    // the old Go backend, which skipped CSRF on GETs.
     const get = (id: string) =>
       fetch(`${root}/sessions/${id}`, {
         credentials: 'include',
-        headers: headers(false, false),
+        headers: headers(false, true),
       })
 
     const action = (
@@ -88,8 +93,10 @@ function useCopilotApi(baseUrl: string, workspaceId: string) {
       })
 
     const streamURL = (id: string) => `${root}/sessions/${id}/stream`
+    // Headers for the SSE GET: X-CSRF-Token (+ X-Workspace-Id), no Content-Type.
+    const streamHeaders = () => headers(false, true)
 
-    return { create, get, action, message, streamURL }
+    return { create, get, action, message, streamURL, streamHeaders }
   }, [baseUrl, workspaceId])
 }
 
@@ -144,7 +151,11 @@ export function useCopilotSession({
       abortRef.current?.abort()
       const controller = new AbortController()
       abortRef.current = controller
-      fetch(api.streamURL(sessionId), { credentials: 'include', signal: controller.signal })
+      fetch(api.streamURL(sessionId), {
+        credentials: 'include',
+        signal: controller.signal,
+        headers: api.streamHeaders(),
+      })
         .then(async (res) => {
           const reader = res.body?.getReader()
           if (!reader) return
@@ -176,7 +187,7 @@ export function useCopilotSession({
       try {
         const res = await api.create(appId, target)
         const parsed = await applyResponse(res)
-        if (isSessionView(parsed)) startStream(parsed.SessionID)
+        if (isSessionView(parsed)) startStream(parsed.session_id)
         return true
       } catch (err) {
         setLastError(String(err))
@@ -200,7 +211,7 @@ export function useCopilotSession({
   const refresh = useCallback(async () => {
     if (!view) return false
     try {
-      const res = await api.get(view.SessionID)
+      const res = await api.get(view.session_id)
       await applyResponse(res)
       return true
     } catch (err) {
@@ -213,7 +224,7 @@ export function useCopilotSession({
     async (kind: CopilotActionKind, payload: Record<string, unknown> = {}) => {
       if (!view) return false
       try {
-        const res = await api.action(view.SessionID, kind, view.Version, payload)
+        const res = await api.action(view.session_id, kind, view.version, payload)
         await applyResponse(res)
         return true
       } catch (err) {
@@ -228,7 +239,7 @@ export function useCopilotSession({
     async (text: string) => {
       if (!view) return false
       try {
-        const res = await api.message(view.SessionID, text, view.Version)
+        const res = await api.message(view.session_id, text, view.version)
         await applyResponse(res)
         return true
       } catch (err) {
