@@ -732,9 +732,7 @@ class TestDatasetServiceCreationAndUpdate:
         vector_task.assert_not_called()
         summary_task.assert_not_called()
 
-    def test_update_internal_dataset_dispatches_on_rag_pipeline_internal_commit(
-        self, sqlite_session: Session
-    ) -> None:
+    def test_update_internal_dataset_dispatches_on_rag_pipeline_internal_commit(self, sqlite_session: Session) -> None:
         """RAG_PIPELINE helpers commit internally; the re-index must dispatch
         on that commit, and the later outer commit must not dispatch twice."""
         dataset = _dataset(name="Before")
@@ -746,9 +744,7 @@ class TestDatasetServiceCreationAndUpdate:
 
         with (
             patch.object(DatasetService, "_handle_indexing_technique_change", return_value="update"),
-            patch.object(
-                DatasetService, "_update_pipeline_knowledge_base_node_data", side_effect=commit_inside_helper
-            ),
+            patch.object(DatasetService, "_update_pipeline_knowledge_base_node_data", side_effect=commit_inside_helper),
             patch("services.dataset_service.deal_dataset_vector_index_task.delay") as vector_task,
             patch("services.dataset_service.regenerate_summary_index_task.delay") as summary_task,
         ):
