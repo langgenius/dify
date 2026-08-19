@@ -1,5 +1,6 @@
 import { screen, waitFor } from '@testing-library/react'
 import { StrictMode } from 'react'
+import { consoleQuery } from '@/service/client'
 import { createConsoleQueryWrapper, seedFeatures } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import { EducationVerifyFlow } from '../verify-flow'
@@ -34,6 +35,7 @@ function renderFlow({
       allow_refresh: allowRefresh,
       is_student: isEducationAccount,
     },
+    systemFeatures: { deployment_edition: 'CLOUD' },
   })
   seedFeatures(queryClient, { education: { enabled: true } })
 
@@ -63,6 +65,7 @@ describe('EducationVerifyFlow', () => {
     const { queryClient, wrapper } = createConsoleQueryWrapper({
       accountProfile: { email: 'student@university.edu' },
       educationStatus: { allow_refresh: false, is_student: false },
+      systemFeatures: { deployment_edition: 'CLOUD' },
     })
     seedFeatures(queryClient, { education: { enabled: true } })
 
@@ -102,5 +105,21 @@ describe('EducationVerifyFlow', () => {
     expect(
       screen.getByRole('button', { name: 'common.errorBoundary.tryAgain' }),
     ).toBeInTheDocument()
+  })
+
+  it('redirects before requesting education status outside Cloud edition', () => {
+    const { queryClient, wrapper } = createConsoleQueryWrapper({
+      accountProfile: { email: 'student@university.edu' },
+      systemFeatures: { deployment_edition: 'COMMUNITY' },
+    })
+    seedFeatures(queryClient, { education: { enabled: true } })
+
+    render(<EducationVerifyFlow requestVerification={mockRequestVerification} />, { wrapper })
+
+    expect(mockRedirect).toHaveBeenCalledWith('/')
+    expect(
+      queryClient.getQueryState(consoleQuery.account.education.get.queryOptions().queryKey)
+        ?.fetchStatus,
+    ).toBe('idle')
   })
 })
