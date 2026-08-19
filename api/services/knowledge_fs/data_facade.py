@@ -2175,7 +2175,7 @@ class KnowledgeFSDataFacade:
         mode: Literal["deep", "fast", "research"] | None = None,
         state: Literal["queued", "running", "passed", "failed", "canceled"] | None = None,
     ) -> KnowledgeFSQualityReplayListResponse:
-        query = (("limit", str(limit)),)
+        query: tuple[tuple[str, str], ...] = (("limit", str(limit)),)
         if cursor:
             query += (("cursor", cursor),)
         if mode:
