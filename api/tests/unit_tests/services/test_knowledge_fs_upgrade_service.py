@@ -152,7 +152,22 @@ def test_retry_restores_failed_items_and_unreleased_file_lease(
         assert persisted_lease.expires_at > naive_utc_now()
 
 
-def test_create_reuses_the_dataset_job_after_success(
+def test_retry_rejects_when_another_dataset_job_is_active(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    failed = _job(status=KnowledgeFSUpgradeJobStatus.FAILED, idempotency_key="failed-upgrade")
+    active = _job(status=KnowledgeFSUpgradeJobStatus.RUNNING, idempotency_key="active-upgrade")
+    with sqlite_session_factory.begin() as session:
+        session.add_all([failed, active])
+
+    with pytest.raises(KnowledgeFSUpgradeConflictError, match="already in progress"):
+        KnowledgeFSUpgradeSnapshotService(sqlite_session_factory).retry(
+            tenant_id=_TENANT_ID,
+            job_id=failed.id,
+        )
+
+
+def test_create_starts_a_new_dataset_job_after_success(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     tenant = Tenant(name="Once-only workspace")
@@ -160,6 +175,13 @@ def test_create_reuses_the_dataset_job_after_success(
     with sqlite_session_factory.begin() as session:
         session.add_all([tenant, owner])
         session.flush()
+        session.add(
+            TenantAccountJoin(
+                tenant_id=tenant.id,
+                account_id=owner.id,
+                role=TenantAccountRole.OWNER,
+            )
+        )
         dataset = Dataset(
             tenant_id=tenant.id,
             name="Legacy once-only",
@@ -193,7 +215,50 @@ def test_create_reuses_the_dataset_job_after_success(
         idempotency_key="second-upgrade-intent",
     )
 
-    assert result.id == succeeded.id
+    assert result.id != succeeded.id
+    assert result.idempotency_key == "second-upgrade-intent"
+    with sqlite_session_factory() as session:
+        assert len(list(session.scalars(select(KnowledgeFSUpgradeJob)))) == 2
+
+
+def test_create_reuses_an_active_dataset_job(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    tenant = Tenant(name="Active upgrade workspace")
+    owner = Account(name="Owner", email="active-upgrade@example.com")
+    with sqlite_session_factory.begin() as session:
+        session.add_all([tenant, owner])
+        session.flush()
+        dataset = Dataset(
+            tenant_id=tenant.id,
+            name="Legacy active upgrade",
+            data_source_type=DataSourceType.UPLOAD_FILE,
+            permission=DatasetPermissionEnum.ONLY_ME,
+            created_by=owner.id,
+        )
+        session.add(dataset)
+        session.flush()
+        active = _job(
+            tenant_id=tenant.id,
+            old_dataset_id=dataset.id,
+            requested_by_account_id=owner.id,
+            owner_account_id=owner.id,
+            idempotency_key="active-upgrade",
+            status=KnowledgeFSUpgradeJobStatus.RUNNING,
+        )
+        session.add(active)
+        tenant_id = tenant.id
+        dataset_id = dataset.id
+        owner_id = owner.id
+
+    result = KnowledgeFSUpgradeSnapshotService(sqlite_session_factory).create(
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        requested_by_account_id=owner_id,
+        idempotency_key="new-upgrade-intent",
+    )
+
+    assert result.id == active.id
     with sqlite_session_factory() as session:
         assert len(list(session.scalars(select(KnowledgeFSUpgradeJob)))) == 1
 
@@ -222,14 +287,39 @@ def test_latest_upgrade_lookup_batches_dataset_ids(
     assert service.get_latest(tenant_id=_TENANT_ID, dataset_id="00000000-0000-0000-0000-000000000099") is None
 
 
+def test_upgrade_lookup_prefers_an_active_retry_over_newer_terminal_history(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    active_retry = _job(
+        idempotency_key="older-active-retry",
+        status=KnowledgeFSUpgradeJobStatus.RUNNING,
+    )
+    newer_success = _job(
+        idempotency_key="newer-success",
+        status=KnowledgeFSUpgradeJobStatus.SUCCEEDED,
+    )
+    active_retry.created_at = naive_utc_now() - timedelta(hours=1)
+    newer_success.created_at = naive_utc_now()
+    with sqlite_session_factory.begin() as session:
+        session.add_all([active_retry, newer_success])
+
+    result = KnowledgeFSUpgradeSnapshotService(sqlite_session_factory).get_latest(
+        tenant_id=_TENANT_ID,
+        dataset_id=_DATASET_ID,
+    )
+
+    assert result is not None
+    assert result.id == active_retry.id
+
+
 @pytest.mark.parametrize(
     ("job_status", "feature_enabled", "provider", "can_upgrade", "can_retry", "reason"),
     [
         (None, True, "vendor", True, False, None),
         (KnowledgeFSUpgradeJobStatus.QUEUED, True, "vendor", False, False, "upgrade_in_progress"),
         (KnowledgeFSUpgradeJobStatus.RUNNING, True, "vendor", False, False, "upgrade_in_progress"),
-        (KnowledgeFSUpgradeJobStatus.FAILED, True, "vendor", False, True, "retry_required"),
-        (KnowledgeFSUpgradeJobStatus.SUCCEEDED, True, "vendor", False, False, "already_upgraded"),
+        (KnowledgeFSUpgradeJobStatus.FAILED, True, "vendor", True, True, "retry_required"),
+        (KnowledgeFSUpgradeJobStatus.SUCCEEDED, True, "vendor", True, False, None),
         (None, False, "vendor", False, False, "feature_disabled"),
         (None, True, "external", False, False, "unsupported_dataset_provider"),
     ],

@@ -239,7 +239,8 @@ class TestDatasetList:
 
         assert status == 200
         get_latest.assert_called_once()
-        assert resp["data"][0]["knowledge_fs_upgrade"]["block_reason"] == "already_upgraded"
+        assert resp["data"][0]["knowledge_fs_upgrade"]["block_reason"] is None
+        assert resp["data"][0]["knowledge_fs_upgrade"]["can_upgrade"] is True
         assert resp["data"][0]["knowledge_fs_upgrade"]["job"]["new_control_space_id"] == "space-1"
         assert resp["data"][1]["knowledge_fs_upgrade"]["can_upgrade"] is True
 
@@ -980,7 +981,7 @@ class TestDatasetKnowledgeFSUpgradeApi:
         ):
             response = method(api, "tenant-1", make_account(), dataset_id)
 
-        assert response["can_upgrade"] is False
+        assert response["can_upgrade"] is True
         assert response["can_retry"] is True
         assert response["block_reason"] == "retry_required"
         assert response["job"]["last_error_message"] == "source failed"

@@ -123,6 +123,7 @@ class KnowledgeFSUpgradeSnapshotService:
                 .where(
                     KnowledgeFSUpgradeJob.tenant_id == tenant_id,
                     KnowledgeFSUpgradeJob.old_dataset_id == dataset_id,
+                    KnowledgeFSUpgradeJob.status.in_(_ACTIVE_JOB_STATUSES),
                 )
                 .order_by(KnowledgeFSUpgradeJob.created_at.desc())
                 .limit(1)
@@ -325,6 +326,7 @@ class KnowledgeFSUpgradeSnapshotService:
             )
             .order_by(
                 KnowledgeFSUpgradeJob.old_dataset_id,
+                sa.case((KnowledgeFSUpgradeJob.status.in_(_ACTIVE_JOB_STATUSES), 0), else_=1),
                 KnowledgeFSUpgradeJob.created_at.desc(),
                 KnowledgeFSUpgradeJob.id.desc(),
             )
@@ -351,6 +353,18 @@ class KnowledgeFSUpgradeSnapshotService:
                 raise KnowledgeFSUpgradeConflictError("Successful upgrades cannot be retried")
             if job.status in _ACTIVE_JOB_STATUSES:
                 return job
+            active_job = session.scalar(
+                sa.select(KnowledgeFSUpgradeJob)
+                .where(
+                    KnowledgeFSUpgradeJob.tenant_id == tenant_id,
+                    KnowledgeFSUpgradeJob.old_dataset_id == job.old_dataset_id,
+                    KnowledgeFSUpgradeJob.id != job.id,
+                    KnowledgeFSUpgradeJob.status.in_(_ACTIVE_JOB_STATUSES),
+                )
+                .limit(1)
+            )
+            if active_job is not None:
+                raise KnowledgeFSUpgradeConflictError("Another Dataset upgrade is already in progress")
             job.status = KnowledgeFSUpgradeJobStatus.QUEUED
             job.last_error_code = None
             job.last_error_message = None
@@ -989,15 +1003,14 @@ def upgrade_discovery_response(
     if job.status is KnowledgeFSUpgradeJobStatus.FAILED:
         return KnowledgeFSUpgradeDiscoveryResponse(
             job=upgrade_job_response(job),
-            can_upgrade=False,
+            can_upgrade=True,
             can_retry=True,
             block_reason="retry_required",
         )
     return KnowledgeFSUpgradeDiscoveryResponse(
         job=upgrade_job_response(job),
-        can_upgrade=False,
+        can_upgrade=True,
         can_retry=False,
-        block_reason="already_upgraded",
     )
 
 
