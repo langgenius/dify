@@ -139,12 +139,12 @@ export default function WorkflowCopilotDebugPage() {
         <legend>Status</legend>
         {view ? (
           <ul>
-            <li>SessionID: {view.SessionID}</li>
-            <li>State: {view.State}</li>
-            <li>Version: {view.Version}</li>
-            <li>CanvasReadOnly: {String(view.CanvasReadOnly)}</li>
-            <li>RunStatus: {view.RunStatus}</li>
-            <li>Interrupted: {String(view.Interrupted)}</li>
+            <li>SessionID: {view.session_id}</li>
+            <li>State: {view.state}</li>
+            <li>Version: {view.version}</li>
+            <li>CanvasReadOnly: {String(view.canvas_read_only)}</li>
+            <li>RunStatus: {view.run_status}</li>
+            <li>Interrupted: {String(view.interrupted)}</li>
           </ul>
         ) : (
           <p>No session yet.</p>
@@ -154,13 +154,13 @@ export default function WorkflowCopilotDebugPage() {
       <fieldset style={{ marginBottom: 16 }}>
         <legend>Conversation</legend>
         <ul>
-          {(view?.Conversation ?? []).map((entry) => (
-            <li key={entry.Seq}>
-              {entry.Seq}
+          {(view?.conversation ?? []).map((entry) => (
+            <li key={entry.seq}>
+              {entry.seq}
               {' · '}
-              {entry.Kind}
+              {entry.kind}
               {' · '}
-              {JSON.stringify(entry.Payload)}
+              {JSON.stringify(entry.payload)}
             </li>
           ))}
         </ul>
