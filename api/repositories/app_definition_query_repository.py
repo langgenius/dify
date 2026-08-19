@@ -9,6 +9,7 @@ from core.agent.publish_visibility import agent_has_workflow_callable_active_sna
 from core.app.apps.agent_app.app_feature_projection import merge_agent_app_features
 from core.app.apps.agent_app.app_variable_projection import agent_app_variables_to_user_input_form
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
+from models.account import Tenant
 from models.agent import AgentConfigSnapshot
 from models.agent_config_entities import AgentSoulConfig
 from models.model import App, AppMode, AppModelConfig, Site, load_annotation_reply_config
@@ -21,6 +22,27 @@ from services.app_definition_query_service import (
     AppSiteConfiguration,
     AppToolIconSource,
 )
+from services.web_app_runtime_query_service import WebAppRuntimeRecord
+
+
+def _map_site_configuration(site: Site) -> AppSiteConfiguration:
+    return AppSiteConfiguration(
+        title=site.title,
+        chat_color_theme=site.chat_color_theme,
+        chat_color_theme_inverted=site.chat_color_theme_inverted,
+        icon_type=site.icon_type.value if site.icon_type is not None else None,
+        icon=site.icon,
+        icon_background=site.icon_background,
+        description=site.description,
+        copyright=site.copyright,
+        privacy_policy=site.privacy_policy,
+        input_placeholder=site.input_placeholder,
+        custom_disclaimer=site.custom_disclaimer,
+        default_language=site.default_language,
+        prompt_public=site.prompt_public,
+        show_workflow_steps=site.show_workflow_steps,
+        use_icon_as_answer_icon=site.use_icon_as_answer_icon,
+    )
 
 
 def _get_public_agent_parameter_config(app: App, *, session: Session) -> AppParameterConfig:
@@ -153,22 +175,45 @@ class AppDefinitionQueryRepository(AppDefinitionQuery):
             if site is None:
                 return None
 
-            return AppSiteConfiguration(
-                title=site.title,
-                chat_color_theme=site.chat_color_theme,
-                chat_color_theme_inverted=site.chat_color_theme_inverted,
-                icon_type=site.icon_type.value if site.icon_type is not None else None,
-                icon=site.icon,
-                icon_background=site.icon_background,
-                description=site.description,
-                copyright=site.copyright,
-                privacy_policy=site.privacy_policy,
-                input_placeholder=site.input_placeholder,
-                custom_disclaimer=site.custom_disclaimer,
-                default_language=site.default_language,
-                show_workflow_steps=site.show_workflow_steps,
-                use_icon_as_answer_icon=site.use_icon_as_answer_icon,
+            return _map_site_configuration(site)
+
+    def get_runtime_record(self, app_id: str) -> WebAppRuntimeRecord | None:
+        with self._session_factory() as session:
+            app = session.get(App, app_id)
+            if app is None:
+                return None
+
+            site = session.scalar(select(Site).where(Site.app_id == app_id).limit(1))
+            if site is None:
+                return None
+
+            tenant = session.get(Tenant, app.tenant_id)
+            if tenant is None:
+                return None
+
+            app_id = app.id
+            tenant_id = app.tenant_id
+            enable_site = app.enable_site
+            site_configuration = _map_site_configuration(site)
+            plan = tenant.plan
+            tenant_status = tenant.status.value
+            tenant_custom_config_json = tenant.custom_config
+            return WebAppRuntimeRecord(
+                app_id=app_id,
+                tenant_id=tenant_id,
+                enable_site=enable_site,
+                site=site_configuration,
+                plan=plan,
+                tenant_status=tenant_status,
+                tenant_custom_config_json=tenant_custom_config_json,
             )
+
+    def resolve_compatible_app_mode(self, app_id: str) -> str | None:
+        with self._session_factory() as session:
+            app = session.get(App, app_id)
+            if app is None:
+                return None
+            return AppMode.value_of(app.mode_compatible_with_agent_with_session(session=session)).value
 
     @staticmethod
     def _get_tools(session: Session, app: App) -> list[dict[str, Any]]:
