@@ -114,7 +114,7 @@ const emptySourceShortcuts = [
   },
   {
     brand: 'confluence',
-    iconClass: 'i-custom-public-common-confluence',
+    iconClass: 'i-custom-public-new-rag-confluence',
     provider: 'Confluence',
     sourceType: 'onlineDocuments',
   },
