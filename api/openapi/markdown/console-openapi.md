@@ -17660,7 +17660,8 @@ Portable DSL reference that could not be restored in the target workspace.
 | email | string |  | Yes |
 | language | string |  | No |
 | timezone | string |  | No |
-| token | string |  | Yes |
+| token | string (uuid) |  | Yes |
+| turnstile_token | string | Cloudflare Turnstile token for email-code verification. | No |
 
 #### EmailCodeSendPayload
 

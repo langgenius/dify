@@ -114,12 +114,23 @@ def test_turnstile_config_is_parsed_from_env(monkeypatch: pytest.MonkeyPatch) ->
     _set_basic_config_env(monkeypatch)
     monkeypatch.setenv("TURNSTILE_SECRET_KEY", " test-secret ")
     monkeypatch.setenv("TURNSTILE_ALLOWED_HOSTNAMES", "dify.dev, Login.Example.COM. ")
+    monkeypatch.setenv("TURNSTILE_EMAIL_CODE_VERIFY_REQUIRED", "true")
 
     config = DifyConfig(_env_file=None)
 
     assert isinstance(config.TURNSTILE_SECRET_KEY, SecretStr)
     assert config.TURNSTILE_SECRET_KEY.get_secret_value() == "test-secret"
     assert frozenset({"dify.dev", "login.example.com"}) == config.TURNSTILE_ALLOWED_HOSTNAME_SET
+    assert config.TURNSTILE_EMAIL_CODE_VERIFY_REQUIRED is True
+
+
+def test_email_code_login_attempt_budget_is_parsed_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    _set_basic_config_env(monkeypatch)
+    monkeypatch.setenv("EMAIL_CODE_LOGIN_MAX_ATTEMPTS", "7")
+
+    config = DifyConfig(_env_file=None)
+
+    assert config.EMAIL_CODE_LOGIN_MAX_ATTEMPTS == 7
 
 
 def test_plugin_remote_install_port_rejects_host_port_spec(monkeypatch: pytest.MonkeyPatch) -> None:
