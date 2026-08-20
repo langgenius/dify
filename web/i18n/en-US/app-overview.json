@@ -121,7 +121,7 @@
   "overview.triggerInfo.learnAboutTriggers": "Learn more about triggers",
   "overview.triggerInfo.noTriggerAdded": "No trigger added",
   "overview.triggerInfo.title": "Triggers",
-  "overview.triggerInfo.triggerStatusDescription": "Triggers appear here after you publish the version that contains them.",
+  "overview.triggerInfo.triggerStatusDescription": "Triggers appear here after you publish.",
   "overview.triggerInfo.triggersAdded": "{{count}} Triggers added",
   "welcome.enterKeyTip": "enter your OpenAI API Key below",
   "welcome.firstStepTip": "To get started,",

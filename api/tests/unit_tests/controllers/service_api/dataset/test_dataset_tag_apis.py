@@ -7,15 +7,13 @@ cover the concrete objects and session passed across the controller boundary.
 
 import uuid
 from inspect import unwrap
-from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
-from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
-from extensions.ext_database import db
 from models.account import Account, Tenant, TenantAccountRole
 from models.enums import TagType
 from models.model import Tag
@@ -24,15 +22,9 @@ TAG_MODEL_TABLES = (Account, Tenant, Tag)
 pytestmark = pytest.mark.parametrize("sqlite_session", [TAG_MODEL_TABLES], indirect=True)
 
 
-@pytest.fixture(autouse=True)
-def controller_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Session:
-    """Route controller database access through the test's SQLite session."""
-
-    # Flask-SQLAlchemy exposes a callable registry that also proxies Session methods.
-    # Seed that registry with this fixture's Session so both access styles share one transaction.
-    existing_session_factory = cast(sessionmaker[Session], lambda: sqlite_session)
-    session_registry = scoped_session(existing_session_factory)
-    monkeypatch.setattr(db, "session", session_registry)
+@pytest.fixture
+def controller_session(sqlite_session: Session) -> Session:
+    """Expose the shared SQLite session under the controller-focused fixture name."""
     return sqlite_session
 
 

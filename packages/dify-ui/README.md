@@ -30,9 +30,11 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { Drawer, DrawerPopup, DrawerTrigger } from '@langgenius/dify-ui/drawer'
-import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
+import { Input } from '@langgenius/dify-ui/input'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
@@ -63,18 +65,18 @@ Keep implementation-only render helpers, context values, styling helpers, and up
 
 ## Primitives
 
-| Category         | Subpath                                                                                                                                                       | Notes                                                                                                 |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Actions          | `./button`, `./icon-button`, `./toggle`                                                                                                                       | Visible-label actions, icon-only commands, and persistent toggles.                                    |
-| Controls         | `./segmented-control`                                                                                                                                         | SegmentedControl for mode, filter, and view selection.                                                |
-| Display          | `./collapsible`, `./kbd`                                                                                                                                      | Collapsible disclosure primitive; keyboard input and shortcut keycap primitives.                      |
-| Feedback         | `./meter`, `./progress`, `./status-dot`, `./toast`                                                                                                            | Inline and asynchronous status primitives; Toast owns the `z-60` layer.                               |
-| Form             | `./form`, `./field`, `./fieldset`, `./input`, `./textarea`, `./checkbox`, `./checkbox-group`, `./radio`, `./number-field`, `./select`, `./slider`, `./switch` | Native form boundary, field semantics, and controls.                                                  |
-| Layout           | `./scroll-area`                                                                                                                                               | Custom-styled scrollbar over the host viewport.                                                       |
-| Media            | `./avatar`                                                                                                                                                    | Avatar root, image, and fallback primitives.                                                          |
-| Navigation       | `./file-tree`, `./pagination`, `./tabs`                                                                                                                       | FileTree for preview-oriented file disclosure lists; Pagination for page navigation; Tabs for panels. |
-| Overlay / menu   | `./alert-dialog`, `./context-menu`, `./dialog`, `./drawer`, `./dropdown-menu`, `./popover`, `./preview-card`, `./tooltip`                                     | Portalled. See [Overlay & portal contract] below.                                                     |
-| Search / pickers | `./autocomplete`, `./combobox`, `./select`                                                                                                                    | Search input, searchable picker, and closed picker.                                                   |
+| Category         | Subpath                                                                                                                                                                        | Notes                                                                                                 |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| Actions          | `./button`, `./icon-button`, `./toggle`                                                                                                                                        | Visible-label actions, icon-only commands, and persistent toggles.                                    |
+| Controls         | `./segmented-control`                                                                                                                                                          | SegmentedControl for mode, filter, and view selection.                                                |
+| Display          | `./collapsible`, `./kbd`                                                                                                                                                       | Collapsible disclosure primitive; keyboard input and shortcut keycap primitives.                      |
+| Feedback         | `./meter`, `./progress`, `./status-dot`, `./toast`                                                                                                                             | Inline and asynchronous status primitives; Toast owns the `z-60` layer.                               |
+| Form             | `./form`, `./field`, `./fieldset`, `./input`, `./input-group`, `./textarea`, `./checkbox`, `./checkbox-group`, `./radio`, `./number-field`, `./select`, `./slider`, `./switch` | Native form boundary, field semantics, and controls.                                                  |
+| Layout           | `./scroll-area`                                                                                                                                                                | Custom-styled scrollbar over the host viewport.                                                       |
+| Media            | `./avatar`                                                                                                                                                                     | Avatar root, image, and fallback primitives.                                                          |
+| Navigation       | `./file-tree`, `./pagination`, `./tabs`                                                                                                                                        | FileTree for preview-oriented file disclosure lists; Pagination for page navigation; Tabs for panels. |
+| Overlay / menu   | `./alert-dialog`, `./context-menu`, `./dialog`, `./drawer`, `./dropdown-menu`, `./popover`, `./preview-card`, `./tooltip`                                                      | Portalled. See [Overlay & portal contract] below.                                                     |
+| Search / pickers | `./autocomplete`, `./combobox`, `./select`                                                                                                                                     | Search input, searchable picker, and closed picker.                                                   |
 
 Utilities:
 
@@ -122,7 +124,9 @@ Dify UI's form primitives are a Base UI composition layer for native form semant
 
 Use `Form` for the submit boundary. It renders a native `<form>`, preserves Enter-to-submit and submit-button behavior, and adds Base UI's `onFormSubmit`, `errors`, `actionsRef`, and `validationMode` APIs for structured values and consolidated field validation. Prefer it over a bare `<form>` when the form is composed with Dify UI fields.
 
-Use `Field` for each standalone named field. A field must have a stable `name`, a label relationship, and either a `FieldControl` or another control that participates in the same Base UI field context. Prefer a visible label for normal form rows; when the surrounding UI already supplies the visible text, use the matching label primitive visually hidden or put `aria-label` on the actual interactive control. `FieldDescription` and `FieldError` provide the message relationships that screen readers need, while the Dify wrapper adds the default Form Input Set styling from the design system.
+Use `Field` when a text control needs Base UI field semantics such as shared name, label, validation, description, or error state. A standalone `Input` may instead use a native `<label htmlFor>` relationship or an accessible name on the input itself. Prefer a visible label for normal form rows. `FieldDescription` and `FieldError` provide the message relationships that screen readers need, while the Dify wrapper adds the default Form Input Set styling from the design system.
+
+`Input` is the standalone Dify UI text-input control. When `Field` is present, it owns the shared name, label, validation, and messages. For a prefix, suffix, or action, use the [Input Group composition contract].
 
 Choose the label primitive by the control semantics. Text-like inputs, `Textarea`, input-based `Combobox` / `Autocomplete`, single `Checkbox` / `Radio`, `Switch`, and `NumberField` use `FieldLabel`. Trigger-based `Select` fields use `SelectLabel`; `Slider` fields use `SliderLabel`, with per-thumb `aria-label` only when the thumbs need distinct names. `SelectGroupLabel` and `AutocompleteGroupLabel` only label grouped options inside their popup content; they are not field labels.
 
@@ -229,7 +233,7 @@ Convert Figma output such as `rounded-[var(--radius/sm, 6px)]` to the mapped Tai
 
 ## Overlay & portal contract
 
-Overlay primitives render their floating surfaces inside a [Base UI Portal] attached to `document.body`. This is the Base UI default — see the upstream [Portals][Base UI Portal] docs for the underlying behavior. Convenience content components such as `DialogContent`, `PopoverContent`, and `SelectContent` own their portal internally; primitives with explicit portal anatomy such as `Drawer` expose the matching `DrawerPortal` part so consumers can compose the full Base UI structure.
+Overlay primitives render their floating surfaces inside a [Base UI Portal] attached to `document.body`. This is the Base UI default — see the upstream [Portals][Base UI Portal] docs for the underlying behavior. Convenience content components such as `DialogContent`, `PopoverContent`, and `SelectContent` own their portal internally. Primitives with explicit anatomy expose their constituent parts so consumers can compose the Base UI structure and put behavior on its owner.
 
 ### Root isolation requirement
 
@@ -272,11 +276,13 @@ See the [web overlay guide] for the web app overlay best practices.
 
 ## Development
 
-- `vp check packages/dify-ui` (from the repository root) — formatting and lint for the package plus the repository-wide TypeScript diagnostics configured by Vite+.
-- `pnpm -C packages/dify-ui test` — Vitest unit tests for primitives.
-- `pnpm -C packages/dify-ui storybook` — Storybook on the default port. Each primitive has `index.stories.tsx`.
-- `pnpm -C packages/dify-ui test:storybook` — Storybook component tests in Vitest browser mode. Stories without `play` are render and a11y smoke tests; stories with `play` should cover public UI contracts such as opening overlays, keyboard navigation, disabled/loading guards, form submission, and controlled state updates.
-- `pnpm -C packages/dify-ui type-check` — TypeScript 7 native type checking for this package only.
+Run `vp check packages/dify-ui` from the repository root for package formatting, lint, and repository-wide TypeScript diagnostics. Run the remaining commands from `packages/dify-ui/`:
+
+- `vp test --project unit` — Vitest unit tests for primitives.
+- `vp run storybook` — Storybook on the default port. Each primitive has `index.stories.tsx`.
+- `vp test --project storybook --run` — Storybook component tests in Vitest browser mode. Stories without `play` are render and a11y smoke tests; stories with `play` should cover public UI contracts such as opening overlays, keyboard navigation, disabled/loading guards, form submission, and controlled state updates.
+
+Both test projects run in Playwright Chromium Browser Mode; choose `unit` or `storybook` by behavior owner, not runtime. Bare `vp test` runs both projects.
 
 ### Test Boundary
 
@@ -287,10 +293,10 @@ wrapper contracts such as class variants, Base UI passthrough props, hidden inpu
 serialization, data attribute hooks, store behavior, and edge cases that do not
 need a full story.
 
-Storybook accessibility testing stays enabled globally with `a11y.test = 'error'`.
-If a story is temporarily marked `todo`, keep the exception local to that story
-and do not treat an interaction `play` test as a replacement for fixing the
-underlying accessibility issue.
+Storybook accessibility testing uses `a11y.test = 'error'` for enabled rules.
+Color contrast is a known design-token gap and is currently excluded globally;
+do not add another global exclusion. Keep other temporary exceptions local to
+the affected story and do not use a `play` test in place of an accessibility fix.
 
 ### Disabling Animations In Tests
 
@@ -307,6 +313,7 @@ Set the Base UI test flag in a Vitest setup file to skip those waits:
 ```
 
 `packages/dify-ui/vitest.setup.ts` already applies this for primitive tests.
+The Storybook project intentionally uses its preview setup instead; do not disable animation lifecycles globally there.
 
 See [component authoring rules] for:
 
@@ -324,6 +331,7 @@ See [component authoring rules] for:
 [Base UI docs index]: https://base-ui.com/llms.txt
 [Base UI forms handbook]: https://base-ui.com/react/handbook/forms
 [Base UI]: https://base-ui.com/react
+[Input Group composition contract]: ./src/input-group/README.md
 [Overlay & portal contract]: #overlay--portal-contract
 [component authoring rules]: ./AGENTS.md
 [web overlay guide]: ../../web/docs/overlay.md

@@ -1,12 +1,12 @@
-import importlib
-import types
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.workflow.file_reference import build_file_reference
 from graphon.file import FILE_MODEL_IDENTITY, FileTransferMethod
-from models.model import Conversation, Message
+from models import model as model_module
+from models.model import App, AppMode, Conversation, IconType, Message
 
 
 @pytest.fixture(autouse=True)
@@ -14,10 +14,11 @@ def patch_file_helpers(monkeypatch: pytest.MonkeyPatch):
     """
     Patch file_helpers.get_signed_file_url to a deterministic stub.
     """
-    model_module = importlib.import_module("models.model")
-    dummy = types.SimpleNamespace(get_signed_file_url=lambda fid: f"https://signed.example/{fid}")
-    # Inject/override file_helpers on models.model
-    monkeypatch.setattr(model_module, "file_helpers", dummy, raising=False)
+    monkeypatch.setattr(
+        model_module.file_helpers,
+        "get_signed_file_url",
+        lambda file_id: f"https://signed.example/{file_id}",
+    )
 
 
 def _wrap_md(url: str) -> str:
@@ -124,17 +125,43 @@ def test_inputs_restore_external_remote_url_file_mappings(owner_cls: type[Conver
     assert restored_file.remote_url == "https://example.com/report.pdf"
 
 
-def test_message_inputs_resolve_file_tenant_with_caller_session() -> None:
+@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
+def test_message_inputs_resolve_file_tenant_with_caller_session(sqlite_session: Session) -> None:
+    app = App(
+        id="app-1",
+        tenant_id="tenant-1",
+        name="File owner",
+        description="",
+        mode=AppMode.CHAT,
+        icon_type=IconType.EMOJI,
+        icon="file",
+        icon_background="#FFFFFF",
+        enable_site=False,
+        enable_api=False,
+        max_active_requests=0,
+    )
+    decoy = App(
+        id="other-app",
+        tenant_id="other-tenant",
+        name="Decoy",
+        description="",
+        mode=AppMode.CHAT,
+        icon_type=IconType.EMOJI,
+        icon="file",
+        icon_background="#FFFFFF",
+        enable_site=False,
+        enable_api=False,
+        max_active_requests=0,
+    )
+    sqlite_session.add_all([decoy, app])
+    sqlite_session.flush()
     message = Message(app_id="app-1")
     message.inputs = {"file": _build_local_file_mapping("upload-1")}
-    session = MagicMock()
-    session.scalar.return_value = "tenant-1"
 
     with patch(
         "models.model.build_file_from_input_mapping",
         side_effect=lambda **kwargs: kwargs["tenant_resolver"](),
     ):
-        inputs = message.inputs_with_session(session=session)
+        inputs = message.inputs_with_session(session=sqlite_session)
 
     assert inputs["file"] == "tenant-1"
-    session.scalar.assert_called_once()

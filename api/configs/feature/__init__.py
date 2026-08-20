@@ -1324,6 +1324,17 @@ class MultiModalTransferConfig(BaseSettings):
     )
 
 
+class NewAgentBetaConfig(BaseSettings):
+    NEW_AGENT_BETA_ACTIVITY_START_AT: datetime | None = Field(
+        description="New Agent Beta Publish window start in RFC3339 UTC (inclusive)",
+        default=None,
+    )
+    NEW_AGENT_BETA_ACTIVITY_END_AT: datetime | None = Field(
+        description="New Agent Beta Publish window end in RFC3339 UTC (exclusive)",
+        default=None,
+    )
+
+
 class OpsTraceConfig(BaseSettings):
     OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES: PositiveInt = Field(
         description="Maximum retry attempts for transient ops trace provider dispatch failures.",
@@ -1538,6 +1549,10 @@ class LoginConfig(BaseSettings):
         description="expiry time in minutes for email code login token",
         default=5,
     )
+    EMAIL_CODE_LOGIN_MAX_ATTEMPTS: PositiveInt = Field(
+        description="maximum number of verification attempts for an email code login challenge",
+        default=5,
+    )
     ALLOW_REGISTER: bool = Field(
         description="whether to enable register",
         default=False,
@@ -1641,6 +1656,7 @@ class FeatureConfig(
     ModelLoadBalanceConfig,
     ModerationConfig,
     MultiModalTransferConfig,
+    NewAgentBetaConfig,
     OpsTraceConfig,
     PositionConfig,
     RagEtlConfig,

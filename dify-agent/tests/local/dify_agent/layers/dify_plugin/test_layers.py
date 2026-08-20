@@ -848,9 +848,9 @@ def test_plugin_tool_file_context_uploads_sandbox_path_and_resolves_signed_url()
     async def scenario() -> None:
         shell = FakeShell()
         context = _PluginToolFileContext(
-            file_client=FakeFileClient(),  # type: ignore[arg-type]
+            file_client=FakeFileClient(),  # pyright: ignore[reportArgumentType]
             execution_context=_execution_context_config(),
-            shell=shell,  # type: ignore[arg-type]
+            shell=shell,  # pyright: ignore[reportArgumentType]
         )
         result = await context.to_plugin_file_parameter("outputs/report.pdf")
 
