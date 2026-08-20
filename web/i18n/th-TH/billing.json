@@ -131,7 +131,6 @@
   "plansCommon.supportItems.workflow": "เวิร์กโฟลว์",
   "plansCommon.talkToSales": "พูดคุยกับฝ่ายขาย",
   "plansCommon.taxTip": "ราคาการสมัครสมาชิกทั้งหมด (รายเดือน/รายปี) ไม่รวมภาษีที่ใช้บังคับ (เช่น ภาษีมูลค่าเพิ่ม, ภาษีการขาย)",
-  "plansCommon.taxTipSecond": "หากภูมิภาคของคุณไม่มีข้อกำหนดเกี่ยวกับภาษีที่ใช้ได้ จะไม่มีการคิดภาษีในขั้นตอนการชำระเงินของคุณ และคุณจะไม่ถูกเรียกเก็บค่าธรรมเนียมเพิ่มเติมใด ๆ ตลอดระยะเวลาสมาชิกทั้งหมด",
   "plansCommon.teamMember_one": "{{count,number}} สมาชิกทีม",
   "plansCommon.teamMember_other": "{{count,number}} สมาชิกทีม",
   "plansCommon.teamWorkspace": "{{count,number}} ทีมทำงาน",

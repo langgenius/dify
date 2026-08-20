@@ -327,9 +327,6 @@ catalogs:
     eslint-plugin-erasable-syntax-only:
       specifier: 0.4.2
       version: 0.4.2
-    eslint-plugin-hyoban:
-      specifier: 0.14.1
-      version: 0.14.1
     eslint-plugin-jsdoc:
       specifier: 63.3.3
       version: 63.3.3
@@ -687,9 +684,6 @@ importers:
       eslint-plugin-erasable-syntax-only:
         specifier: 'catalog:'
         version: 0.4.2(@typescript-eslint/parser@8.67.0(@typescript/typescript6@6.0.2)(eslint@10.8.1(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0))(@typescript/typescript6@6.0.2)(eslint@10.8.1(jiti@2.7.0)(supports-color@11.0.0))(supports-color@10.2.2)
-      eslint-plugin-hyoban:
-        specifier: 'catalog:'
-        version: 0.14.1(eslint@10.8.1(jiti@2.7.0)(supports-color@11.0.0))
       eslint-plugin-jsdoc:
         specifier: 'catalog:'
         version: 63.3.3(eslint@10.8.1(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0)
@@ -6005,11 +5999,6 @@ packages:
     engines: {node: ^14.18.0 || >=16.0.0}
     peerDependencies:
       eslint: '>=8'
-
-  eslint-plugin-hyoban@0.14.1:
-    resolution: {integrity: sha512-R7UX1AMUilGfFftGoHKTlG0BVN5PsiZLN78Yqi6GZBaheQkvwRj4Dw+k+wW+1nKcueyh4IKdvt+n+0ayLEnZYA==}
-    peerDependencies:
-      eslint: '*'
 
   eslint-plugin-jsdoc@63.3.3:
     resolution: {integrity: sha512-xI4IeVRzRFA2DGHrPLIxF3U+oJHU3FE+P9Zb27fVs5dPHgfcpoAs0PyCbznVhK7pwR+9BPUztFeXSgpw/CL4Yg==}
@@ -13414,10 +13403,6 @@ snapshots:
       eslint: 10.8.1(jiti@2.7.0)(supports-color@11.0.0)
       eslint-compat-utils: 0.5.1(eslint@10.8.1(jiti@2.7.0)(supports-color@11.0.0))
 
-  eslint-plugin-hyoban@0.14.1(eslint@10.8.1(jiti@2.7.0)(supports-color@11.0.0)):
-    dependencies:
-      eslint: 10.8.1(jiti@2.7.0)(supports-color@11.0.0)
-
   eslint-plugin-jsdoc@63.3.3(eslint@10.8.1(jiti@2.7.0)(supports-color@11.0.0))(supports-color@11.0.0):
     dependencies:
       '@es-joy/jsdoccomment': 0.91.0
@@ -17170,7 +17155,6 @@ time:
   eslint-plugin-better-tailwindcss@4.7.0: '2026-07-19T13:26:01.366Z'
   eslint-plugin-command@3.5.3: '2026-07-14T04:59:31.991Z'
   eslint-plugin-erasable-syntax-only@0.4.2: '2026-06-18T00:56:01.038Z'
-  eslint-plugin-hyoban@0.14.1: '2026-03-08T02:51:00.805Z'
   eslint-plugin-jsdoc@63.3.3: '2026-08-02T18:02:10.488Z'
   eslint-plugin-jsonc@3.4.1: '2026-08-04T07:21:02.632Z'
   eslint-plugin-markdown-preferences@0.41.1: '2026-04-09T23:28:41.552Z'

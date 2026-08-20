@@ -103,11 +103,6 @@
       "count": 1
     }
   },
-  "web/app/(shareLayout)/webapp-reset-password/set-password/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/(shareLayout)/webapp-signin/check-code/page.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -4009,11 +4004,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/http/components/timeout/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/http/panel.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 2
@@ -5164,11 +5154,6 @@
       "count": 7
     }
   },
-  "web/app/install/installForm.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/reset-password/check-code/page.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -5180,11 +5165,6 @@
     }
   },
   "web/app/reset-password/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/reset-password/set-password/page.tsx": {
     "no-restricted-imports": {
       "count": 1
     }
@@ -5204,18 +5184,8 @@
       "count": 1
     }
   },
-  "web/app/signup/components/input-mail.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/signup/layout.tsx": {
     "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/signup/set-password/page.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },

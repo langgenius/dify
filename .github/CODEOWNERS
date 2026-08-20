@@ -267,5 +267,9 @@
 /web/app/auth/refresh/route.ts @iamjoel @lyzno1
 /web/service/server.ts @iamjoel @lyzno1
 
+# Frontend - Browser Mode Tests
+/web/app/**/*.browser.spec.ts @lyzno1
+/web/app/**/*.browser.spec.tsx @lyzno1
+
 # Docker
 /docker/* @laipz8200

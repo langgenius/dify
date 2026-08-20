@@ -533,11 +533,16 @@ def test_create_or_update_snippet_updates_existing_snippet_and_syncs_workflow(mo
     monkeypatch.setattr("services.snippet_dsl_service.SnippetService", lambda *_args, **_kwargs: snippet_service)
     monkeypatch.setattr(
         "services.snippet_dsl_service.WorkflowAgentPublishService.sync_agent_bindings_for_draft",
-        Mock(return_value=set()),
+        Mock(return_value={"retired-agent"}),
     )
     monkeypatch.setattr(
         "services.snippet_dsl_service.WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync",
         Mock(),
+    )
+    retire_unowned = Mock()
+    monkeypatch.setattr(
+        "services.snippet_dsl_service.WorkflowAgentRetirementService.retire_unowned",
+        retire_unowned,
     )
 
     result = service._create_or_update_snippet(
@@ -561,6 +566,11 @@ def test_create_or_update_snippet_updates_existing_snippet_and_syncs_workflow(mo
     assert snippet.icon_info == {"icon": "x"}
     snippet_service.sync_draft_workflow.assert_called_once()
     session.commit.assert_called_once()
+    retire_unowned.assert_called_once_with(
+        tenant_id="tenant-1",
+        agent_ids={"retired-agent"},
+        account_id="account-1",
+    )
 
 
 def test_create_or_update_snippet_creates_new_snippet_and_flushes(monkeypatch: pytest.MonkeyPatch):
@@ -638,6 +648,40 @@ def test_export_snippet_dsl_returns_yaml(monkeypatch: pytest.MonkeyPatch):
     assert "kind: snippet" in result
     assert "name: Exported" in result
     assert "input_fields:" in result
+
+
+def test_export_snippet_dsl_uses_requested_published_workflow(monkeypatch: pytest.MonkeyPatch):
+    service = SnippetDslService(session=SimpleNamespace(get_bind=Mock()))
+    workflow = SimpleNamespace(
+        to_dict=Mock(return_value={"graph": {"nodes": []}}),
+        graph_dict={"nodes": []},
+    )
+    snippet = SimpleNamespace(
+        tenant_id="tenant-1",
+        name="Exported",
+        description=None,
+        type="node",
+        icon_info=None,
+        input_fields_list=[],
+    )
+    get_published_workflow_by_id = Mock(return_value=workflow)
+    get_draft_workflow = Mock()
+    monkeypatch.setattr(
+        "services.snippet_dsl_service.SnippetService",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            get_draft_workflow=get_draft_workflow,
+            get_published_workflow_by_id=get_published_workflow_by_id,
+        ),
+    )
+    monkeypatch.setattr(
+        "services.snippet_dsl_service.DependenciesAnalysisService.generate_dependencies",
+        Mock(return_value=[]),
+    )
+
+    service.export_snippet_dsl(snippet, workflow_id="workflow-1")
+
+    get_published_workflow_by_id.assert_called_once_with(snippet=snippet, workflow_id="workflow-1")
+    get_draft_workflow.assert_not_called()
 
 
 def test_append_workflow_export_data_filters_credentials_and_extracts_dependencies(monkeypatch: pytest.MonkeyPatch):
