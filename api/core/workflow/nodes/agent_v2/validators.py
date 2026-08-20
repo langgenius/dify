@@ -28,6 +28,7 @@ from models.model import UploadFile
 from models.workflow import Workflow
 from services.agent.knowledge_datasets import list_missing_tenant_knowledge_dataset_ids
 
+from .discriminator import is_dify_agent_node_data
 from .entities import DifyAgentNodeData
 
 
@@ -258,7 +259,7 @@ class WorkflowAgentNodeValidator:
             node_data = node.get("data")
             if not isinstance(node_id, str) or not isinstance(node_data, Mapping):
                 continue
-            if node_data.get("type") == BuiltinNodeTypes.AGENT and str(node_data.get("version")) == "2":
+            if is_dify_agent_node_data(node_data):
                 yield node_id, node_data
 
     @staticmethod

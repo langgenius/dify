@@ -83,7 +83,7 @@ describe('DocumentsHeader', () => {
 
     it('should render filter input', () => {
       render(<DocumentsHeader {...defaultProps} />)
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toBeInTheDocument()
     })
 
     it('should hide action controls by default when permissions are omitted', () => {
@@ -204,7 +204,7 @@ describe('DocumentsHeader', () => {
       const onInputChange = vi.fn()
       render(<DocumentsHeader {...defaultProps} onInputChange={onInputChange} />)
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
       fireEvent.change(input, { target: { value: 'search query' } })
 
       expect(onInputChange).toHaveBeenCalledWith('search query')

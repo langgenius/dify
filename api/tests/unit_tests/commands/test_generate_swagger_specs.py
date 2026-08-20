@@ -216,6 +216,16 @@ def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp
     assert file_upload_schema["properties"]["file"]["type"] == "string"
     assert file_upload_schema["properties"]["source"]["enum"] == ["datasets"]
 
+    api_key_auth_binding_schema = _request_schema(paths["/api-key-auth/data-source/binding"]["post"])
+    assert api_key_auth_binding_schema["$ref"] == "#/components/schemas/ApiKeyAuthBindingPayload"
+    assert schemas["ApiKeyAuthBindingPayload"]["properties"]["credentials"]["$ref"] == (
+        "#/components/schemas/ApiKeyAuthCredentialsPayload"
+    )
+    assert schemas["ApiKeyAuthCredentialsPayload"]["properties"]["config"]["$ref"] == (
+        "#/components/schemas/ApiKeyAuthConfigPayload"
+    )
+    assert schemas["ApiKeyAuthConfigPayload"]["properties"]["api_key"]["minLength"] == 1
+
     invoices_schema_ref = _response_schema(paths["/billing/invoices"]["get"])["$ref"].removeprefix(
         "#/components/schemas/"
     )
@@ -231,12 +241,11 @@ def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp
     assert app_list_item_schema["properties"]["can_trial"]["type"] == "boolean"
     assert "anyOf" not in app_list_item_schema["properties"]["can_trial"]
     assert "can_trial" in app_list_item_schema["required"]
-    app_detail_nullable_schema = schemas["RecommendedAppDetailNullableResponse"]
     assert _response_schema(paths["/explore/apps/{app_id}"]["get"])["$ref"] == (
-        "#/components/schemas/RecommendedAppDetailNullableResponse"
+        "#/components/schemas/RecommendedAppDetailResponse"
     )
-    assert {"$ref": "#/components/schemas/RecommendedAppDetailResponse"} in app_detail_nullable_schema["anyOf"]
-    assert {"type": "null"} in app_detail_nullable_schema["anyOf"]
+    assert "404" in paths["/explore/apps/{app_id}"]["get"]["responses"]
+    assert "RecommendedAppDetailNullableResponse" not in schemas
     assert schemas["RecommendedAppInfoResponse"]["properties"]["icon_url"]["readOnly"] is True
     assert schemas["InstalledAppInfoResponse"]["properties"]["icon_url"]["readOnly"] is True
     assert _response_schema(paths["/apps/{app_id}"]["get"])["$ref"] == "#/components/schemas/AppDetailWithSite"

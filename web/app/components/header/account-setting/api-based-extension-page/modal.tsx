@@ -4,14 +4,9 @@ import type {
 } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import {
-  Field,
-  FieldControl,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-} from '@langgenius/dify-ui/field'
+import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
+import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -106,7 +101,7 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
         <Form<ApiBasedExtensionPayload> className="grid gap-4 pt-2" onFormSubmit={handleSubmit}>
           <Field name="name">
             <FieldLabel>{nameLabel}</FieldLabel>
-            <FieldControl
+            <Input
               required
               defaultValue={editingApiBasedExtension?.name || ''}
               placeholder={
@@ -120,7 +115,7 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
 
           <Field name="api_endpoint">
             <FieldLabel>{apiEndpointLabel}</FieldLabel>
-            <FieldControl
+            <Input
               required
               defaultValue={editingApiBasedExtension?.api_endpoint || ''}
               placeholder={
@@ -157,7 +152,7 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
             }}
           >
             <FieldLabel>{apiKeyLabel}</FieldLabel>
-            <FieldControl
+            <Input
               required
               defaultValue={editingApiBasedExtension?.api_key || ''}
               placeholder={
