@@ -1922,11 +1922,6 @@
       "count": 3
     }
   },
-  "web/app/components/datasets/create/empty-dataset-creation-modal/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/create/file-preview/index.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 1
