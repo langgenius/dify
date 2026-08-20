@@ -24,6 +24,7 @@ from dify_agent.runtime_backend.errors import (
     BindingCreateError,
     BindingDestroyError,
     BindingLostError,
+    HomeSnapshotCreateError,
     SharedWorkspaceUnsupportedError,
     WorkspacePreservationUnsupportedError,
 )
@@ -112,8 +113,28 @@ class EnterpriseHomeSnapshotBackend:
     snapshot_timeout: float = 35.0
 
     async def create_from_runtime(self, *, spec: HomeSnapshotCreateSpec, source: RuntimeLease) -> str:
-        del spec, source
-        raise _not_implemented()
+        """Capture the source lease's Home through the Gateway's snapshot endpoint."""
+        if not isinstance(source, EnterpriseRuntimeLease):
+            raise HomeSnapshotCreateError("Enterprise Home Snapshot requires an Enterprise RuntimeLease")
+        try:
+            payload = await _gateway_request(
+                endpoint=self.gateway_endpoint,
+                auth_token=self.auth_token,
+                timeout=self.snapshot_timeout,
+                method="POST",
+                path=f"/v1/sandboxes/{quote(source.handle, safe='')}/home-snapshots",
+                json_body={
+                    "tenantId": spec.tenant_id,
+                    "agentId": spec.agent_id,
+                    "homeSnapshotId": spec.home_snapshot_id,
+                },
+            )
+        except (_GatewayStatusError, httpx.TimeoutException, httpx.RequestError) as exc:
+            raise HomeSnapshotCreateError(str(exc)) from exc
+        snapshot_ref = payload.get("snapshotRef") if isinstance(payload, dict) else None
+        if not isinstance(snapshot_ref, str) or not snapshot_ref:
+            raise HomeSnapshotCreateError("Enterprise Gateway returned an invalid snapshot ref")
+        return snapshot_ref
 
     async def delete(self, snapshot_ref: str) -> None:
         del snapshot_ref

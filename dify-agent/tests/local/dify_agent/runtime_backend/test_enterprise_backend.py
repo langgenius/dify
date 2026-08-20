@@ -14,6 +14,7 @@ from dify_agent.runtime_backend import (
     BindingLostError,
     ExecutionBindingCreateSpec,
     ExecutionBindingDestroySpec,
+    HomeSnapshotCreateError,
     HomeSnapshotCreateSpec,
     RuntimeLease,
     SharedWorkspaceUnsupportedError,
@@ -447,13 +448,100 @@ async def test_enterprise_binding_create_deletes_new_sandbox_when_layout_setup_f
 
 
 @pytest.mark.anyio
-async def test_enterprise_home_snapshots_remain_explicitly_not_implemented() -> None:
+async def test_enterprise_snapshot_create_posts_to_the_lease_sandbox(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if request.url.path == "/v1/sandboxes/sandbox-1/home-snapshots":
+            assert json.loads(request.content) == {
+                "tenantId": "tenant-1",
+                "agentId": "agent-1",
+                "homeSnapshotId": "home-2",
+            }
+            assert request.headers["X-Inner-Api-Key"] == "secret"
+            return httpx.Response(200, json={"snapshotRef": "tenant-1/agent-1/home-2"})
+        return _job_response()
+
+    clients = _mock_http(monkeypatch, handler)
+    bindings = EnterpriseExecutionBindingBackend(gateway_endpoint="http://gateway.example", auth_token="secret")
+    lease = await bindings.acquire("sandbox-1")
+    snapshots = EnterpriseHomeSnapshotBackend(
+        gateway_endpoint="http://gateway.example",
+        auth_token="secret",
+        snapshot_timeout=120,
+    )
+
+    snapshot_ref = await snapshots.create_from_runtime(
+        spec=HomeSnapshotCreateSpec(tenant_id="tenant-1", agent_id="agent-1", home_snapshot_id="home-2"),
+        source=lease,
+    )
+
+    assert snapshot_ref == "tenant-1/agent-1/home-2"
+    assert any(request.url.path == "/v1/sandboxes/sandbox-1/home-snapshots" for request in requests)
+    assert clients[-1].timeout.read == 120
+    await bindings.release(lease)
+
+
+@pytest.mark.anyio
+async def test_enterprise_snapshot_create_rejects_a_foreign_lease() -> None:
     snapshots = EnterpriseHomeSnapshotBackend(gateway_endpoint="http://gateway.example", auth_token="secret")
 
-    with pytest.raises(NotImplementedError, match="immutable Home Snapshot"):
+    with pytest.raises(HomeSnapshotCreateError):
         _ = await snapshots.create_from_runtime(
             spec=HomeSnapshotCreateSpec(tenant_id="tenant-1", agent_id="agent-1", home_snapshot_id="home-2"),
             source=cast(RuntimeLease, object()),
         )
-    with pytest.raises(NotImplementedError, match="immutable Home Snapshot"):
-        await snapshots.delete("snapshot-1")
+
+
+@pytest.mark.anyio
+async def test_enterprise_snapshot_create_maps_gateway_failures(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/home-snapshots"):
+            return httpx.Response(
+                413,
+                json={
+                    "code": 413,
+                    "reason": "snapshot_size_exceeded",
+                    "message": "home snapshot exceeds the configured limit of 67108864 bytes",
+                },
+            )
+        return _job_response()
+
+    _ = _mock_http(monkeypatch, handler)
+    bindings = EnterpriseExecutionBindingBackend(gateway_endpoint="http://gateway.example", auth_token="secret")
+    lease = await bindings.acquire("sandbox-1")
+    snapshots = EnterpriseHomeSnapshotBackend(gateway_endpoint="http://gateway.example", auth_token="secret")
+
+    with pytest.raises(HomeSnapshotCreateError, match="snapshot_size_exceeded"):
+        _ = await snapshots.create_from_runtime(
+            spec=HomeSnapshotCreateSpec(tenant_id="tenant-1", agent_id="agent-1", home_snapshot_id="home-2"),
+            source=lease,
+        )
+    await bindings.release(lease)
+
+
+@pytest.mark.anyio
+async def test_enterprise_snapshot_create_rejects_a_reply_without_a_ref(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/home-snapshots"):
+            return httpx.Response(200, json={"snapshotRef": ""})
+        return _job_response()
+
+    _ = _mock_http(monkeypatch, handler)
+    bindings = EnterpriseExecutionBindingBackend(gateway_endpoint="http://gateway.example", auth_token="secret")
+    lease = await bindings.acquire("sandbox-1")
+    snapshots = EnterpriseHomeSnapshotBackend(gateway_endpoint="http://gateway.example", auth_token="secret")
+
+    with pytest.raises(HomeSnapshotCreateError, match="invalid snapshot ref"):
+        _ = await snapshots.create_from_runtime(
+            spec=HomeSnapshotCreateSpec(tenant_id="tenant-1", agent_id="agent-1", home_snapshot_id="home-2"),
+            source=lease,
+        )
+    await bindings.release(lease)
