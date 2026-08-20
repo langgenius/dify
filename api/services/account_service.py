@@ -372,12 +372,11 @@ class AccountService:
             .limit(1)
         )
         current_tenant = session.get(Tenant, current_tenant_join.tenant_id) if current_tenant_join is not None else None
-        has_valid_current_tenant = (
+        if (
             current_tenant_join is not None
             and current_tenant is not None
             and current_tenant.status == TenantStatus.NORMAL
-        )
-        if has_valid_current_tenant:
+        ):
             account.set_tenant_id_with_session(current_tenant_join.tenant_id, session=session)
         else:
             if current_tenant_join is not None:
