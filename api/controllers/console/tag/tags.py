@@ -1,4 +1,4 @@
-from typing import Literal, NoReturn
+from typing import Literal
 from uuid import UUID
 
 from flask_restx import Resource
@@ -24,9 +24,10 @@ from machinery.context import RequestContext
 from models.enums import TagType
 from services.tag_application_service import (
     CreateTagInput,
-    TagApplicationError,
     TagBindingInput,
+    TagBindingTargetNotFoundError,
     TagNameConflictError,
+    TagNotFoundError,
     UpdateTagInput,
 )
 
@@ -133,12 +134,6 @@ def _require_tag_edit_permission(*, allow_dataset_editor: bool) -> None:
     raise Forbidden()
 
 
-def _raise_transport_error(error: TagApplicationError) -> NoReturn:
-    if isinstance(error, TagNameConflictError):
-        raise ValueError(str(error)) from None
-    raise NotFound(str(error)) from None
-
-
 @console_ns.route("/tags")
 class TagListApi(Resource):
     @console_account_admission()
@@ -164,8 +159,8 @@ class TagListApi(Resource):
                 request_context,
                 CreateTagInput(name=req_data.name, type=req_data.type.value),
             )
-        except TagApplicationError as error:
-            _raise_transport_error(error)
+        except TagNameConflictError as error:
+            raise ValueError(str(error)) from None
 
         return dump_response(TagResponse, tag), 200
 
@@ -188,8 +183,10 @@ class TagUpdateDeleteApi(Resource):
                 tag_id_str,
                 UpdateTagInput(name=req_data.name),
             )
-        except TagApplicationError as error:
-            _raise_transport_error(error)
+        except TagNameConflictError as error:
+            raise ValueError(str(error)) from None
+        except TagNotFoundError as error:
+            raise NotFound(str(error)) from None
 
         return dump_response(TagResponse, tag), 200
 
@@ -202,8 +199,8 @@ class TagUpdateDeleteApi(Resource):
         _enforce_snippet_tag_rbac_by_tag_id(tag_id_str, request_context)
         try:
             application_services().tags.delete_tag(request_context, tag_id_str)
-        except TagApplicationError as error:
-            _raise_transport_error(error)
+        except TagNotFoundError as error:
+            raise NotFound(str(error)) from None
 
         return "", 204
 
@@ -231,8 +228,8 @@ def _create_tag_bindings(context: RequestContext, payload: TagBindingPayload) ->
                 type=payload.type.value,
             ),
         )
-    except TagApplicationError as error:
-        _raise_transport_error(error)
+    except TagBindingTargetNotFoundError as error:
+        raise NotFound(str(error)) from None
     return {"result": "success"}, 200
 
 
@@ -249,8 +246,8 @@ def _remove_tag_bindings(context: RequestContext, payload: TagBindingRemovePaylo
                 type=payload.type.value,
             ),
         )
-    except TagApplicationError as error:
-        _raise_transport_error(error)
+    except TagBindingTargetNotFoundError as error:
+        raise NotFound(str(error)) from None
     return {"result": "success"}, 200
 
 

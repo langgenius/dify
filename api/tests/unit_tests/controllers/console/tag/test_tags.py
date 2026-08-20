@@ -23,7 +23,9 @@ from models import Account
 from models.account import AccountStatus, TenantAccountRole
 from models.enums import TagType
 from services.tag_application_service import (
+    TagApplicationError,
     TagBindingInput,
+    TagBindingTargetNotFoundError,
     TagNameConflictError,
     TagNotFoundError,
     TagSummary,
@@ -199,6 +201,24 @@ class TestTagListApi:
         assert exc_info.value.__cause__ is None
         assert exc_info.value.__suppress_context__ is True
 
+    def test_post_does_not_coerce_unknown_application_error_to_transport_error(
+        self, app: Flask, request_context: RequestContext, tags_service: MagicMock
+    ) -> None:
+        tags_service.create_tag.side_effect = TagApplicationError("unexpected")
+        owner = _account(TenantAccountRole.OWNER)
+
+        with (
+            app.test_request_context("/"),
+            patch.object(module.dify_config, "RBAC_ENABLED", False),
+            patch.object(module, "current_account_with_tenant", return_value=(owner, "tenant-1")),
+        ):
+            with pytest.raises(TagApplicationError, match="unexpected"):
+                unwrap(TagListApi().post)(
+                    TagListApi(),
+                    TagBasePayload(name="Tag", type=TagType.KNOWLEDGE),
+                    request_context,
+                )
+
 
 class TestTagUpdateDeleteApi:
     def test_patch_authorizes_snippet_before_update(
@@ -358,6 +378,24 @@ class TestTagBindings:
         )
         assert (result, status) == ({"result": "success"}, 200)
 
+    def test_create_maps_missing_target_to_not_found(
+        self, app: Flask, request_context: RequestContext, tags_service: MagicMock
+    ) -> None:
+        tags_service.create_bindings.side_effect = TagBindingTargetNotFoundError("app")
+        owner = _account(TenantAccountRole.OWNER)
+        payload = TagBindingPayload(tag_ids=["tag-1"], target_id="missing", type=TagType.APP)
+
+        with (
+            app.test_request_context("/"),
+            patch.object(module.dify_config, "RBAC_ENABLED", False),
+            patch.object(module, "current_account_with_tenant", return_value=(owner, "tenant-1")),
+        ):
+            with pytest.raises(NotFound, match="App not found") as exc_info:
+                unwrap(TagBindingCollectionApi().post)(TagBindingCollectionApi(), payload, request_context)
+
+        assert exc_info.value.__cause__ is None
+        assert exc_info.value.__suppress_context__ is True
+
     def test_create_rejects_read_only_member(self, app: Flask, request_context: RequestContext) -> None:
         readonly = _account(TenantAccountRole.NORMAL)
         payload = TagBindingPayload(tag_ids=["tag-1"], target_id="app-1", type=TagType.APP)
@@ -392,6 +430,24 @@ class TestTagBindings:
             TagBindingInput(("tag-1",), "app-1", "app"),
         )
         assert (result, status) == ({"result": "success"}, 200)
+
+    def test_remove_maps_missing_target_to_not_found(
+        self, app: Flask, request_context: RequestContext, tags_service: MagicMock
+    ) -> None:
+        tags_service.delete_bindings.side_effect = TagBindingTargetNotFoundError("knowledge")
+        owner = _account(TenantAccountRole.OWNER)
+        payload = TagBindingRemovePayload(tag_ids=["tag-1"], target_id="missing", type=TagType.KNOWLEDGE)
+
+        with (
+            app.test_request_context("/"),
+            patch.object(module.dify_config, "RBAC_ENABLED", False),
+            patch.object(module, "current_account_with_tenant", return_value=(owner, "tenant-1")),
+        ):
+            with pytest.raises(NotFound, match="Dataset not found") as exc_info:
+                unwrap(TagBindingRemoveApi().post)(TagBindingRemoveApi(), payload, request_context)
+
+        assert exc_info.value.__cause__ is None
+        assert exc_info.value.__suppress_context__ is True
 
     def test_remove_rejects_read_only_member(self, app: Flask, request_context: RequestContext) -> None:
         readonly = _account(TenantAccountRole.NORMAL)
