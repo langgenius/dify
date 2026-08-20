@@ -566,6 +566,7 @@ describe('PublisherEnvironmentFlow', () => {
     await user.click(screen.getByRole('button', { name: 'All versions' }))
 
     expect(screen.getByRole('heading', { name: 'Deploy to Staging' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Deploy to Staging' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Back' }))
 

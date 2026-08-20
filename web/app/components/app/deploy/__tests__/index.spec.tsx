@@ -1066,6 +1066,7 @@ describe('AppDeploy', () => {
     const dialog = await screen.findByRole('dialog', {
       name: 'deployments.versions.deployTo:{"name":"Dev"}',
     })
+    expect(dialog).toHaveClass('h-[min(44rem,calc(100dvh-32px))]')
     expect(within(dialog).getByText('deployments.studio.chooseVersionToDeploy')).toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: /Release 7/ })).toBeEnabled()
     expect(within(dialog).getByRole('button', { name: /Sprint-42/ })).toBeEnabled()
@@ -1108,6 +1109,7 @@ describe('AppDeploy', () => {
     const configurationDialog = await screen.findByRole('dialog', {
       name: 'deployments.studio.deployConfiguration',
     })
+    expect(configurationDialog).not.toHaveClass('h-[min(44rem,calc(100dvh-32px))]')
     expect(within(configurationDialog).getByText('Release 6')).toBeInTheDocument()
     expect(within(configurationDialog).getByText('Dev')).toBeInTheDocument()
     expect(
@@ -1737,7 +1739,10 @@ describe('AppDeploy', () => {
     const dialog = await screen.findByRole('dialog', {
       name: 'deployments.studio.changeVersion · Canary',
     })
-    expect(within(dialog).getByRole('button', { name: /Sprint-42/ })).toBeDisabled()
+    const versionList = within(dialog).getByRole('region', {
+      name: 'deployments.studio.changeVersion · Canary',
+    })
+    expect(within(versionList).getByRole('button', { name: /Sprint-42/ })).toBeDisabled()
     expect(within(dialog).getByText('deployments.studio.current')).toBeInTheDocument()
   })
 

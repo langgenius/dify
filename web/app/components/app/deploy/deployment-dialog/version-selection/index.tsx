@@ -6,6 +6,13 @@ import type { DeploymentDialogRequest } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogCloseButton, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { useAtomValue } from 'jotai'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -126,12 +133,14 @@ function VersionList({
   className,
   currentVersionId,
   disabled = false,
+  label,
   publishHref,
   onSelect,
 }: {
   className?: string
   currentVersionId?: string
   disabled?: boolean
+  label: string
   publishHref?: string
   onSelect: (version: DeploymentVersion) => void
 }) {
@@ -154,41 +163,57 @@ function VersionList({
   })
 
   return (
-    <div ref={rootRef} className={cn('min-h-0 flex-1 overflow-y-auto', className)}>
-      <div className="flex flex-col gap-px">
-        <VersionChoices
-          currentVersionId={currentVersionId}
-          disabled={disabled}
-          onSelect={onSelect}
-          versions={versions}
-        />
-      </div>
-      {isLoading && <Loading className="h-20" />}
-      {!isLoading && versionsError && versions.length === 0 && (
-        <p role="alert" className="px-2 py-6 text-center system-xs-regular text-text-tertiary">
-          {tCommon(($) => $.error)}
-        </p>
-      )}
-      {!isLoading && !versionsError && versions.length === 0 && (
-        <div className="flex flex-col items-center gap-2 px-2 py-6">
-          <p className="text-center system-sm-regular text-text-tertiary">
-            {t(($) => $['studio.accessPoint.noPublishedTitle'])}
-          </p>
-          {publishHref && (
-            <Button
-              size="medium"
-              render={<Link href={publishHref} />}
-              className="flex items-center gap-1"
-            >
-              {t(($) => $['studio.accessPoint.goToPublish'])}
-              <span aria-hidden className="i-ri-arrow-right-line size-4" />
-            </Button>
+    <ScrollArea className="relative min-h-0 flex-1 overflow-hidden">
+      <ScrollAreaViewport
+        ref={rootRef}
+        aria-label={label}
+        className="max-h-full max-w-full overscroll-contain"
+        role="region"
+        style={{ overflowX: 'hidden' }}
+      >
+        <ScrollAreaContent
+          className={cn('min-h-full w-full max-w-full', className)}
+          style={{ minWidth: 0 }}
+        >
+          <div className="flex flex-col gap-px">
+            <VersionChoices
+              currentVersionId={currentVersionId}
+              disabled={disabled}
+              onSelect={onSelect}
+              versions={versions}
+            />
+          </div>
+          {isLoading && <Loading className="h-20" />}
+          {!isLoading && versionsError && versions.length === 0 && (
+            <p role="alert" className="px-2 py-6 text-center system-xs-regular text-text-tertiary">
+              {tCommon(($) => $.error)}
+            </p>
           )}
-        </div>
-      )}
-      {isFetchingNextPage && versions.length > 0 && <Loading className="h-8" />}
-      <div ref={sentinelRef} aria-hidden className="h-px" />
-    </div>
+          {!isLoading && !versionsError && versions.length === 0 && (
+            <div className="flex flex-col items-center gap-2 px-2 py-6">
+              <p className="text-center system-sm-regular text-text-tertiary">
+                {t(($) => $['studio.accessPoint.noPublishedTitle'])}
+              </p>
+              {publishHref && (
+                <Button
+                  size="medium"
+                  render={<Link href={publishHref} />}
+                  className="flex items-center gap-1"
+                >
+                  {t(($) => $['studio.accessPoint.goToPublish'])}
+                  <span aria-hidden className="i-ri-arrow-right-line size-4" />
+                </Button>
+              )}
+            </div>
+          )}
+          {isFetchingNextPage && versions.length > 0 && <Loading className="h-8" />}
+          <div ref={sentinelRef} aria-hidden className="h-px" />
+        </ScrollAreaContent>
+      </ScrollAreaViewport>
+      <ScrollAreaScrollbar>
+        <ScrollAreaThumb />
+      </ScrollAreaScrollbar>
+    </ScrollArea>
   )
 }
 
@@ -229,6 +254,7 @@ export function VersionSelection({
       <VersionList
         className="px-4 pt-2 pb-4"
         currentVersionId={request.currentVersionId}
+        label={title}
         publishHref={`/app/${appId}/workflow`}
         onSelect={onSelect}
       />
@@ -277,6 +303,7 @@ export function EmbeddedVersionSelection({
         className="p-2"
         currentVersionId={request.currentVersionId}
         disabled={disabled}
+        label={title}
         onSelect={onSelect}
       />
     </div>

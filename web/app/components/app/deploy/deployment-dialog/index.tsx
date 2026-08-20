@@ -2,6 +2,7 @@
 
 import type { DeploymentVersion } from '../version'
 import type { DeploymentDialogRequest } from './types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { useState } from 'react'
 import { DeploymentConfiguration } from './deployment-configuration'
@@ -27,7 +28,12 @@ function DeploymentDialogSession({
   )
 
   return (
-    <DialogContent className="flex max-h-[min(44rem,calc(100dvh-32px))] min-h-0 w-120 max-w-[calc(100vw-32px)] flex-col overflow-hidden p-0">
+    <DialogContent
+      className={cn(
+        'flex max-h-[min(44rem,calc(100dvh-32px))] min-h-0 w-120 max-w-[calc(100vw-32px)] flex-col overflow-hidden p-0',
+        !selectedVersion && 'h-[min(44rem,calc(100dvh-32px))]',
+      )}
+    >
       {selectedVersion ? (
         <DeploymentConfiguration
           appId={appId}
