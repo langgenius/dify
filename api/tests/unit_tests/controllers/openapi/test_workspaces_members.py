@@ -30,7 +30,7 @@ from flask.views import MethodView
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import BadRequest, NotFound, UnprocessableEntity
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound, UnprocessableEntity
 
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi import workspaces as workspaces_module
@@ -57,6 +57,8 @@ from services.errors.account import (
     RoleAlreadyAssignedError,
     WorkspaceMembersLimitExceededError,
 )
+from services.workspace_member_query_service import WorkspaceMemberRole, WorkspaceMemberSummary
+from services.workspace_query_service import WorkspaceWithRoles
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
@@ -139,6 +141,42 @@ def _tenant(tenant_id: str = "ws-1", *, status: TenantStatus = TenantStatus.NORM
     tenant.id = tenant_id
     tenant.created_at = datetime(2026, 5, 18)
     return tenant
+
+
+def _member_summary(
+    member_id: str,
+    *,
+    email: str,
+    legacy_role: str = "normal",
+    roles: tuple[WorkspaceMemberRole, ...] | None = None,
+) -> WorkspaceMemberSummary:
+    now = datetime(2026, 5, 18)
+    return WorkspaceMemberSummary(
+        id=member_id,
+        name="Mia",
+        email=email,
+        avatar=None,
+        last_login_at=None,
+        last_active_at=now,
+        created_at=now,
+        role=legacy_role,
+        roles=roles if roles is not None else (WorkspaceMemberRole(id=legacy_role, name=legacy_role),),
+        status="active",
+    )
+
+
+def _workspace_with_roles(workspace_id: str, *, current: bool = True) -> WorkspaceWithRoles:
+    return WorkspaceWithRoles(
+        id=workspace_id,
+        name="WS",
+        status="normal",
+        created_at=datetime(2026, 5, 18),
+        current=current,
+        roles=(
+            WorkspaceMemberRole(id="workspace.admin", name="Admin"),
+            WorkspaceMemberRole(id="workspace.reviewer", name="Reviewer"),
+        ),
+    )
 
 
 def _persist_workspace(
@@ -273,7 +311,12 @@ def test_update_role_rejects_invalid_body_with_422(app: Flask, bypass_pipeline):
 # ---------------------------------------------------------------------------
 
 
-def test_switch_returns_workspace_detail_with_current_true(app: Flask, bypass_pipeline, database_session: Session):
+def test_switch_returns_workspace_detail_with_current_true(
+    app: Flask,
+    bypass_pipeline,
+    monkeypatch: pytest.MonkeyPatch,
+    database_session: Session,
+):
     """Happy path: switch service is called, then the workspace+membership
     row is re-queried so the returned `current` reflects post-commit state.
     """
@@ -285,6 +328,14 @@ def test_switch_returns_workspace_detail_with_current_true(app: Flask, bypass_pi
         database_session,
         ws_id,
         [(str(acct_id), "caller@example.com", TenantAccountRole.OWNER, False)],
+    )
+    workspace_queries = SimpleNamespace(
+        get_for_account_with_roles=Mock(return_value=_workspace_with_roles(ws_id)),
+    )
+    monkeypatch.setattr(
+        workspaces_module,
+        "application_services",
+        lambda: SimpleNamespace(workspace_queries=workspace_queries),
     )
 
     with app.test_request_context(f"/openapi/v1/workspaces/{ws_id}:switch", method="POST"):
@@ -298,6 +349,11 @@ def test_switch_returns_workspace_detail_with_current_true(app: Flask, bypass_pi
     assert status == 200
     assert body["id"] == ws_id
     assert body["current"] is True
+    assert body["roles"] == [
+        {"id": "workspace.admin", "name": "Admin"},
+        {"id": "workspace.reviewer", "name": "Reviewer"},
+    ]
+    assert "role" not in body
     membership = database_session.scalar(
         select(TenantAccountJoin).where(
             TenantAccountJoin.tenant_id == ws_id,
@@ -344,22 +400,40 @@ def test_switch_404s_when_service_raises_account_not_link_tenant(
 # ---------------------------------------------------------------------------
 
 
-def test_members_list_returns_normalized_rows(app: Flask, bypass_pipeline, database_session: Session):
+def test_members_list_returns_authoritative_roles(
+    app: Flask,
+    bypass_pipeline,
+    monkeypatch: pytest.MonkeyPatch,
+):
     ws_id = str(uuid.uuid4())
     acct_id = uuid.uuid4()
     member_id = str(uuid.uuid4())
     api = WorkspaceMembersApi()
 
-    tenant, members = _persist_workspace(
-        database_session,
-        ws_id,
-        [(member_id, "mia@example.com", TenantAccountRole.ADMIN, False)],
+    member_queries = SimpleNamespace(
+        list_for_workspace=Mock(
+            return_value=(
+                _member_summary(
+                    member_id,
+                    email="mia@example.com",
+                    legacy_role="normal",
+                    roles=(
+                        WorkspaceMemberRole(id="workspace.admin", name="Admin"),
+                        WorkspaceMemberRole(id="workspace.reviewer", name="Reviewer"),
+                    ),
+                ),
+            )
+        )
     )
-    members[0].name = "Mia"
+    monkeypatch.setattr(
+        workspaces_module,
+        "application_services",
+        lambda: SimpleNamespace(workspace_member_queries=member_queries),
+    )
 
     with app.test_request_context(f"/openapi/v1/workspaces/{ws_id}/members"):
         _seed(_auth_ctx(account_id=acct_id))
-        body, status = api.get.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id, tenant=tenant))
+        body, status = api.get.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
 
     assert status == 200
     assert body["page"] == 1
@@ -367,23 +441,42 @@ def test_members_list_returns_normalized_rows(app: Flask, bypass_pipeline, datab
     assert body["total"] == 1
     assert body["has_more"] is False
     assert body["data"][0]["email"] == "mia@example.com"
-    assert body["data"][0]["role"] == "admin"
+    assert body["data"][0]["roles"] == [
+        {"id": "workspace.admin", "name": "Admin"},
+        {"id": "workspace.reviewer", "name": "Reviewer"},
+    ]
+    assert "role" not in body["data"][0]
     assert body["data"][0]["status"] == "active"
+    member_queries.list_for_workspace.assert_called_once_with(ws_id, str(acct_id))
 
 
-def test_members_list_paginates_with_query_params(app: Flask, bypass_pipeline, database_session: Session):
+def test_members_list_paginates_with_query_params(
+    app: Flask,
+    bypass_pipeline,
+    monkeypatch: pytest.MonkeyPatch,
+):
     """`?page=2&limit=2` slices service output and reports total/has_more."""
     ws_id = str(uuid.uuid4())
     acct_id = uuid.uuid4()
     api = WorkspaceMembersApi()
 
     member_ids = [str(uuid.uuid4()) for _ in range(5)]
-    memberships = [(member_ids[i], f"u{i}@example.com", TenantAccountRole.NORMAL, False) for i in range(5)]
-    tenant, _ = _persist_workspace(database_session, ws_id, memberships)
+    member_queries = SimpleNamespace(
+        list_for_workspace=Mock(
+            return_value=tuple(
+                _member_summary(member_id, email=f"u{i}@example.com") for i, member_id in enumerate(member_ids)
+            )
+        )
+    )
+    monkeypatch.setattr(
+        workspaces_module,
+        "application_services",
+        lambda: SimpleNamespace(workspace_member_queries=member_queries),
+    )
 
     with app.test_request_context(f"/openapi/v1/workspaces/{ws_id}/members?page=2&limit=2"):
         _seed(_auth_ctx(account_id=acct_id))
-        body, status = api.get.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id, tenant=tenant))
+        body, status = api.get.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
 
     assert status == 200
     assert body["page"] == 2
@@ -451,37 +544,6 @@ def test_invite_happy_path_returns_invite_url_and_member_id(
     assert body["tenant_id"] == ws_id
 
 
-def _features(
-    *,
-    billing_enabled: bool = False,
-    members_size: int = 0,
-    members_limit: int = 0,
-    workspace_members_enabled: bool = False,
-    workspace_members_size: int = 0,
-    workspace_members_limit: int = 0,
-) -> SimpleNamespace:
-    """Build a feature object matching the surface `_check_member_invite_quota`
-    reads: `.billing.enabled`, `.members.{size,limit}`,
-    `.workspace_members.{enabled, is_available(N)}`.
-
-    Defaults model CE (both flags off, both caps inert).
-    """
-
-    def _is_available(n: int) -> bool:
-        return workspace_members_size + n <= workspace_members_limit
-
-    return SimpleNamespace(
-        billing=SimpleNamespace(enabled=billing_enabled),
-        members=SimpleNamespace(size=members_size, limit=members_limit),
-        workspace_members=SimpleNamespace(
-            enabled=workspace_members_enabled,
-            size=workspace_members_size,
-            limit=workspace_members_limit,
-            is_available=_is_available,
-        ),
-    )
-
-
 def _invite_request(app, ws_id: str, acct_id: uuid.UUID):
     return app.test_request_context(
         f"/openapi/v1/workspaces/{ws_id}/members",
@@ -489,127 +551,6 @@ def _invite_request(app, ws_id: str, acct_id: uuid.UUID):
         data=json.dumps({"email": "new@example.com", "role": "normal"}),
         content_type="application/json",
     )
-
-
-def test_invite_blocked_by_saas_members_cap(
-    app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch, database_session: Session
-):
-    """SaaS billing plan member cap → MemberLimitExceeded (403)."""
-    ws_id = str(uuid.uuid4())
-    acct_id = uuid.uuid4()
-    api = WorkspaceMembersApi()
-
-    _persist_workspace(
-        database_session,
-        ws_id,
-        [(str(acct_id), "caller@example.com", TenantAccountRole.OWNER, True)],
-    )
-
-    invite_mock = Mock()
-    monkeypatch.setattr(
-        workspaces_module,
-        "RegisterService",
-        SimpleNamespace(invite_new_member=invite_mock),
-    )
-    monkeypatch.setattr(
-        workspaces_module,
-        "FeatureService",
-        SimpleNamespace(
-            get_features=Mock(
-                return_value=_features(billing_enabled=True, members_size=10, members_limit=10),
-            ),
-        ),
-    )
-
-    with _invite_request(app, ws_id, acct_id):
-        _seed(_auth_ctx(account_id=acct_id))
-        with pytest.raises(MemberLimitExceeded):
-            api.post.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
-
-    invite_mock.assert_not_called()
-
-
-def test_invite_blocked_by_ee_workspace_members_license(
-    app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch, database_session: Session
-):
-    """EE License workspace_members cap → MemberLicenseExceeded (403).
-
-    Note: billing.enabled is False (EE without SaaS billing); only the
-    license cap fires.
-    """
-    ws_id = str(uuid.uuid4())
-    acct_id = uuid.uuid4()
-    api = WorkspaceMembersApi()
-
-    _persist_workspace(
-        database_session,
-        ws_id,
-        [(str(acct_id), "caller@example.com", TenantAccountRole.OWNER, True)],
-    )
-
-    invite_mock = Mock()
-    monkeypatch.setattr(
-        workspaces_module,
-        "RegisterService",
-        SimpleNamespace(invite_new_member=invite_mock),
-    )
-    monkeypatch.setattr(
-        workspaces_module,
-        "FeatureService",
-        SimpleNamespace(
-            get_features=Mock(
-                return_value=_features(
-                    workspace_members_enabled=True,
-                    workspace_members_size=5,
-                    workspace_members_limit=5,
-                ),
-            ),
-        ),
-    )
-
-    with _invite_request(app, ws_id, acct_id):
-        _seed(_auth_ctx(account_id=acct_id))
-        with pytest.raises(MemberLicenseExceeded):
-            api.post.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
-
-    invite_mock.assert_not_called()
-
-
-def test_invite_ce_passes_when_both_caps_disabled(
-    app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch, database_session: Session
-):
-    """CE deployment (no billing, no license) → quota gate is a no-op,
-    invite proceeds normally."""
-    ws_id = str(uuid.uuid4())
-    acct_id = uuid.uuid4()
-    api = WorkspaceMembersApi()
-
-    invited_id = str(uuid.uuid4())
-    _persist_workspace(
-        database_session,
-        ws_id,
-        [(str(acct_id), "caller@example.com", TenantAccountRole.OWNER, True)],
-    )
-    database_session.add(_account(account_id=invited_id, email="new@example.com"))
-    database_session.commit()
-
-    monkeypatch.setattr(
-        workspaces_module,
-        "RegisterService",
-        SimpleNamespace(invite_new_member=Mock(return_value="tok-ce")),
-    )
-    monkeypatch.setattr(
-        workspaces_module,
-        "FeatureService",
-        SimpleNamespace(get_features=Mock(return_value=_features())),  # all defaults
-    )
-
-    with _invite_request(app, ws_id, acct_id):
-        _seed(_auth_ctx(account_id=acct_id))
-        body, status = api.post.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
-
-    assert status == 201
-    assert body["email"] == "new@example.com"
 
 
 @pytest.mark.parametrize(
@@ -630,11 +571,6 @@ def test_invite_maps_concurrent_workspace_member_limit(
     acct_id = uuid.uuid4()
     api = WorkspaceMembersApi()
     monkeypatch.setattr(workspaces_module.dify_config, "DEPLOYMENT_EDITION", deployment_edition)
-    monkeypatch.setattr(
-        workspaces_module,
-        "FeatureService",
-        SimpleNamespace(get_features=Mock(return_value=_features())),
-    )
     monkeypatch.setattr(
         workspaces_module,
         "RegisterService",
@@ -676,6 +612,26 @@ def test_invite_400_when_already_in_tenant(
     ):
         _seed(_auth_ctx(account_id=acct_id))
         with pytest.raises(BadRequest):
+            api.post.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
+
+
+def test_invite_403_when_caller_lacks_permission(
+    app: Flask,
+    bypass_pipeline,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    ws_id = str(uuid.uuid4())
+    acct_id = uuid.uuid4()
+    api = WorkspaceMembersApi()
+    monkeypatch.setattr(
+        workspaces_module,
+        "RegisterService",
+        SimpleNamespace(invite_new_member=Mock(side_effect=NoPermissionError("no permission"))),
+    )
+
+    with _invite_request(app, ws_id, acct_id):
+        _seed(_auth_ctx(account_id=acct_id))
+        with pytest.raises(Forbidden):
             api.post.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
 
 

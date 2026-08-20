@@ -1108,7 +1108,7 @@ export const zHumanInputFormDefinitionResponse = z.object({
 /**
  * HumanInputFormSubmitResponse
  */
-export const zHumanInputFormSubmitResponse = z.record(z.string(), z.never())
+export const zHumanInputFormSubmitResponse = z.strictObject({})
 
 /**
  * I18nObject
@@ -2324,7 +2324,7 @@ export const zGeneratedAppResponseWritable = zJsonValue
 /**
  * HumanInputFormSubmitResponse
  */
-export const zHumanInputFormSubmitResponseWritable = z.record(z.string(), z.never())
+export const zHumanInputFormSubmitResponseWritable = z.strictObject({})
 
 /**
  * MessageListItem

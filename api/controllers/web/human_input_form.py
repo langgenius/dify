@@ -290,7 +290,7 @@ def _get_app_site_from_form(form: Form) -> tuple[App, Site]:
     if site is None:
         raise Forbidden()
 
-    if app_model.tenant is None or app_model.tenant.status == TenantStatus.ARCHIVE:
+    if app_model.tenant is None or app_model.tenant.status != TenantStatus.NORMAL:
         raise Forbidden()
 
     return app_model, site

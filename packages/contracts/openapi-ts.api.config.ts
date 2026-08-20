@@ -492,6 +492,15 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
     {
       name: 'zod',
       '~resolvers': {
+        object: (ctx) => {
+          const additionalProperties = ctx.schema.additionalProperties
+          const isStrict =
+            additionalProperties === false ||
+            (typeof additionalProperties === 'object' && additionalProperties.type === 'never')
+          return isStrict
+            ? $(ctx.symbols.z).attr('strictObject').call(ctx.nodes.shape(ctx))
+            : ctx.nodes.base(ctx)
+        },
         string: (ctx) => {
           if (ctx.schema.format === 'binary')
             return $(ctx.symbols.z)

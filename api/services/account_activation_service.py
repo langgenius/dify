@@ -25,7 +25,7 @@ InvitationMembershipAssigner = Callable[[AccountInvitation, str], AbstractContex
 class InvitationTokenStore(Protocol):
     def find(self, invitation: InvitationLookup) -> InvitationToken | None: ...
 
-    def revoke(self, invitation: InvitationLookup) -> None: ...
+    def revoke(self, token: str) -> None: ...
 
 
 class AccountActivationRepository(Protocol):
@@ -60,10 +60,6 @@ class FrozenAccountError(Exception):
     """The invited account is temporarily ineligible for activation."""
 
 
-class WorkspaceMemberCapacityExceededError(Exception):
-    """The invited workspace cannot accept another member."""
-
-
 class AccountActivationService:
     def __init__(
         self,
@@ -93,7 +89,7 @@ class AccountActivationService:
                 workspace_id=resolved.workspace_id,
                 email=resolved.account_email,
                 account_status=resolved.account_status,
-                requires_setup=self._requires_setup(resolved),
+                requires_setup=resolved.account_status == _PENDING_ACCOUNT_STATUS,
             ),
         )
 
@@ -114,8 +110,7 @@ class AccountActivationService:
             raise FrozenAccountError
 
         setup = self._resolve_setup(invitation, command)
-        raw_role = invitation.role
-        role = raw_role if raw_role is not None and raw_role in _NON_OWNER_ROLES else _DEFAULT_ROLE
+        role = invitation.role if invitation.role in _NON_OWNER_ROLES else _DEFAULT_ROLE
 
         with self._membership_assigner(invitation, role) as membership_role:
             activated = self._accounts.activate(
@@ -126,44 +121,15 @@ class AccountActivationService:
             if not activated:
                 raise InvalidInvitationError
 
-        normalized_email = command.invitation.email.lower() if command.invitation.email else None
-        self._tokens.revoke(
-            InvitationLookup(
-                workspace_id=command.invitation.workspace_id,
-                email=normalized_email,
-                token=command.invitation.token,
-            )
-        )
+        self._tokens.revoke(command.invitation.token)
 
     def _resolve(self, invitation: InvitationLookup) -> AccountInvitation | None:
         token = self._tokens.find(invitation)
-        resolved = self._accounts.resolve(token) if token is not None else None
-        if resolved is not None:
-            return resolved
-
-        if invitation.email is None or invitation.email == invitation.email.lower():
-            return None
-
-        token = self._tokens.find(
-            InvitationLookup(
-                workspace_id=invitation.workspace_id,
-                email=invitation.email.lower(),
-                token=invitation.token,
-            )
-        )
-        if token is None:
-            return None
-        return self._accounts.resolve(token)
+        return self._accounts.resolve(token) if token is not None else None
 
     @staticmethod
-    def _requires_setup(invitation: AccountInvitation) -> bool:
-        if invitation.requires_setup is not None:
-            return invitation.requires_setup
-        return invitation.account_status == _PENDING_ACCOUNT_STATUS
-
-    @classmethod
-    def _resolve_setup(cls, invitation: AccountInvitation, command: ActivationCommand) -> AccountSetup | None:
-        if not cls._requires_setup(invitation):
+    def _resolve_setup(invitation: AccountInvitation, command: ActivationCommand) -> AccountSetup | None:
+        if invitation.account_status != _PENDING_ACCOUNT_STATUS:
             return None
         if not command.name or not command.interface_language or not command.timezone:
             raise InvalidInvitationError

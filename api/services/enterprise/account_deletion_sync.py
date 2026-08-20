@@ -1,69 +1,63 @@
 import json
 import logging
 import uuid
+from collections.abc import Sequence
 from datetime import UTC, datetime
 
 from redis import RedisError
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from configs import dify_config
 from enums import DeploymentEdition
 from extensions.ext_redis import redis_client
-from models.account import TenantAccountJoin
 
 logger = logging.getLogger(__name__)
 
-ACCOUNT_DELETION_SYNC_QUEUE = "enterprise:member:sync:queue"
-ACCOUNT_DELETION_SYNC_TASK_TYPE = "sync_member_deletion_from_workspace"
+ACCOUNT_DELETION_SYNC_QUEUE = "{enterprise:member:sync}:queue"
+WORKSPACE_MEMBER_REMOVAL_SYNC_TASK_TYPE = "sync_member_deletion_from_workspace"
+ACCOUNT_DELETION_FROM_WORKSPACE_SYNC_TASK_TYPE = "sync_account_deletion_from_workspace"
+ACCOUNT_DELETION_SYNC_TASK_TYPE = "sync_account_deletion"
 
 
-def _queue_task(workspace_id: str, member_id: str, *, source: str) -> bool:
-    """
-    Queue an account deletion sync task to Redis.
+def _cleanup_task(
+    member_id: str,
+    *,
+    source: str,
+    task_type: str,
+    workspace_id: str | None = None,
+) -> dict[str, object]:
+    task: dict[str, object] = {
+        "task_id": str(uuid.uuid4()),
+        "member_id": member_id,
+        "retry_count": 0,
+        "created_at": datetime.now(UTC).isoformat(),
+        "source": source,
+        "type": task_type,
+    }
+    if workspace_id is not None:
+        task["workspace_id"] = workspace_id
+    return task
 
-    Internal helper function. Do not call directly - use the public functions instead.
 
-    Args:
-        workspace_id: The workspace/tenant ID to sync
-        member_id: The member/account ID that was removed
-        source: Source of the sync request (for debugging/tracking)
-
-    Returns:
-        bool: True if task was queued successfully, False otherwise
-    """
+def _queue_tasks(tasks: Sequence[dict[str, object]], member_id: str, *, source: str) -> bool:
+    """Atomically queue cleanup tasks in their processing order."""
     try:
-        task = {
-            "task_id": str(uuid.uuid4()),
-            "workspace_id": workspace_id,
-            "member_id": member_id,
-            "retry_count": 0,
-            "created_at": datetime.now(UTC).isoformat(),
-            "source": source,
-            "type": ACCOUNT_DELETION_SYNC_TASK_TYPE,
-        }
-
-        # Push to Redis list (queue) - LPUSH adds to the head, worker consumes from tail with RPOP
-        redis_client.lpush(ACCOUNT_DELETION_SYNC_QUEUE, json.dumps(task))
+        redis_client.lpush(ACCOUNT_DELETION_SYNC_QUEUE, *(json.dumps(task) for task in tasks))
 
         logger.info(
-            "Queued account deletion sync task for workspace %s, member %s, task_id: %s, source: %s",
-            workspace_id,
+            "Queued %s account cleanup task(s) for member %s, source: %s",
+            len(tasks),
             member_id,
-            task["task_id"],
             source,
         )
         return True
 
     except (RedisError, TypeError) as e:
         logger.error(
-            "Failed to queue account deletion sync for workspace %s, member %s: %s",
-            workspace_id,
+            "Failed to queue account cleanup tasks for member %s: %s",
             member_id,
             str(e),
             exc_info=True,
         )
-        # Don't raise - we don't want to fail member deletion if queueing fails
         return False
 
 
@@ -85,34 +79,41 @@ def sync_workspace_member_removal(workspace_id: str, member_id: str, *, source: 
     if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
         return True
 
-    return _queue_task(workspace_id=workspace_id, member_id=member_id, source=source)
+    task = _cleanup_task(
+        member_id=member_id,
+        source=source,
+        task_type=WORKSPACE_MEMBER_REMOVAL_SYNC_TASK_TYPE,
+        workspace_id=workspace_id,
+    )
+    return _queue_tasks([task], member_id, source=source)
 
 
-def sync_account_deletion(account_id: str, *, source: str, session: Session) -> bool:
+def sync_account_deletion(account_id: str, workspace_ids: Sequence[str], *, source: str) -> bool:
     """
     Sync full account deletion across all workspaces (enterprise only).
 
-    Fetches all workspace memberships for the account and queues a sync task for each.
+    Queues the caller's locked workspace-membership snapshot followed by one global finalizer.
     Handles enterprise edition check internally. Safe to call in community edition (no-op).
 
     Args:
         account_id: The account ID being deleted
         source: Source of the sync request (e.g., "account_deleted")
-        session: SQLAlchemy session used to fetch workspace memberships
+        workspace_ids: Workspace IDs captured while the account membership lock is held
 
     Returns:
-        bool: True if all tasks were queued (or skipped outside the Enterprise edition), False if any queueing failed
+        bool: True if all tasks were queued (or skipped outside the Enterprise edition), False if queueing failed
     """
     if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
         return True
 
-    # Fetch all workspaces the account belongs to
-    workspace_joins = session.scalars(select(TenantAccountJoin).where(TenantAccountJoin.account_id == account_id)).all()
-
-    # Queue sync task for each workspace
-    success = True
-    for join in workspace_joins:
-        if not _queue_task(workspace_id=join.tenant_id, member_id=account_id, source=source):
-            success = False
-
-    return success
+    tasks = [
+        _cleanup_task(
+            account_id,
+            source=source,
+            task_type=ACCOUNT_DELETION_FROM_WORKSPACE_SYNC_TASK_TYPE,
+            workspace_id=workspace_id,
+        )
+        for workspace_id in workspace_ids
+    ]
+    tasks.append(_cleanup_task(account_id, source=source, task_type=ACCOUNT_DELETION_SYNC_TASK_TYPE))
+    return _queue_tasks(tasks, account_id, source=source)

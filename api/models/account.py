@@ -142,18 +142,7 @@ class Account(UserMixin, TypeBase):
 
     def set_current_tenant_with_session(self, tenant: "Tenant", *, session: Session) -> None:
         """Set the current tenant and role using the caller-owned session."""
-        tenant_join_query = select(TenantAccountJoin).where(
-            TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == self.id
-        )
-        tenant_join = session.scalar(tenant_join_query)
-        tenant_query = select(Tenant).where(Tenant.id == tenant.id)
-        tenant_reloaded = session.scalars(tenant_query).one()
-
-        if tenant_join:
-            self.role = TenantAccountRole(tenant_join.role)
-            self._current_tenant = tenant_reloaded
-            return
-        self._current_tenant = None
+        self.set_tenant_id_with_session(tenant.id, session=session)
 
     @property
     def current_tenant_id(self) -> str | None:
@@ -166,10 +155,15 @@ class Account(UserMixin, TypeBase):
     def set_tenant_id_with_session(self, tenant_id: str, *, session: Session) -> None:
         """Set the current tenant by id using the caller-owned session."""
         query = select(Tenant, TenantAccountJoin).where(
-            Tenant.id == tenant_id, TenantAccountJoin.tenant_id == Tenant.id, TenantAccountJoin.account_id == self.id
+            Tenant.id == tenant_id,
+            Tenant.status == TenantStatus.NORMAL,
+            TenantAccountJoin.tenant_id == Tenant.id,
+            TenantAccountJoin.account_id == self.id,
         )
         tenant_account_join = session.execute(query).first()
         if not tenant_account_join:
+            self.role = None
+            self._current_tenant = None
             return
         tenant, join = tenant_account_join
         self.role = TenantAccountRole(join.role)
@@ -245,6 +239,7 @@ class Account(UserMixin, TypeBase):
 
 
 class TenantStatus(enum.StrEnum):
+    PROVISIONING = "provisioning"
     NORMAL = "normal"
     ARCHIVE = "archive"
 

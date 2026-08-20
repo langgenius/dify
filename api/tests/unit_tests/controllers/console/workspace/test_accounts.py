@@ -107,7 +107,7 @@ class TestAccountInitApi:
 
         account, tenant = persist_account_with_tenant(
             sqlite_session,
-            status=AccountStatus.UNINITIALIZED,
+            status=AccountStatus.PENDING,
         )
         invitation_code = InvitationCode(batch="batch-1", code="code123")
         sqlite_session.add(invitation_code)
@@ -157,8 +157,14 @@ class TestAccountProfileApi:
 
         user = make_account()
 
-        with app.test_request_context("/account/profile"):
-            result = method(api, user)
+        with (
+            app.test_request_context("/account/profile"),
+            patch(
+                "controllers.console.workspace.account.current_account_with_tenant_optional",
+                return_value=(user, None),
+            ),
+        ):
+            result = method(api)
 
         assert result["id"] == user.id
 

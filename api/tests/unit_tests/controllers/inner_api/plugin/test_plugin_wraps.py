@@ -20,7 +20,7 @@ from controllers.inner_api.plugin.wraps import (
     get_user_tenant,
     plugin_data,
 )
-from models.account import Tenant
+from models.account import Tenant, TenantStatus
 from models.base import TypeBase
 from models.enums import EndUserType
 from models.model import DefaultEndUserSessionID, EndUser
@@ -45,8 +45,13 @@ def sqlite_plugin_engine(
         session_registry.remove()
 
 
-def _persist_tenant(sqlite_engine: Engine, *, tenant_id: str = "tenant123") -> Tenant:
-    tenant = Tenant(name=f"Tenant {tenant_id}")
+def _persist_tenant(
+    sqlite_engine: Engine,
+    *,
+    tenant_id: str = "tenant123",
+    status: TenantStatus = TenantStatus.NORMAL,
+) -> Tenant:
+    tenant = Tenant(name=f"Tenant {tenant_id}", status=status)
     tenant.id = tenant_id
     with Session(sqlite_engine) as session, session.begin():
         session.add(tenant)
@@ -281,6 +286,17 @@ class TestGetUserTenant:
             return "success"
 
         with app.test_request_context(json={"tenant_id": "nonexistent", "user_id": "user456"}):
+            with pytest.raises(ValueError, match="tenant not found"):
+                protected_view()
+
+    def test_should_reject_provisioning_tenant(self, sqlite_plugin_engine: Engine, app: Flask) -> None:
+        @get_user_tenant
+        def protected_view(tenant_model, user_model, **kwargs):
+            return "success"
+
+        _persist_tenant(sqlite_plugin_engine, status=TenantStatus.PROVISIONING)
+
+        with app.test_request_context(json={"tenant_id": "tenant123", "user_id": "user456"}):
             with pytest.raises(ValueError, match="tenant not found"):
                 protected_view()
 

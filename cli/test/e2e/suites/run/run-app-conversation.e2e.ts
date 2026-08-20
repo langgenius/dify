@@ -288,26 +288,14 @@ describe('E2E / difyctl run app --conversation', () => {
   it('[P1] conversation run with unreachable host returns network error (exit non-zero)', async () => {
     // Spec 4.3.19: when the configured host is unreachable, the CLI must return
     // a network error with a non-zero exit code.
-    const { writeFile, mkdir } = await import('node:fs/promises')
-    const { join } = await import('node:path')
     const networkTmp = await withTempConfig()
     try {
-      await mkdir(networkTmp.configDir, { recursive: true })
-      const hostsYml = `${[
-        `current_host: http://127.0.0.1:19999`,
-        `token_storage: file`,
-        `tokens:`,
-        `  bearer: dfoa_fake_token_network_test`,
-        `workspace:`,
-        `  id: ${E.workspaceId}`,
-        `  name: "E2E Test Workspace"`,
-        `  role: owner`,
-        `available_workspaces:`,
-        `  - id: ${E.workspaceId}`,
-        `    name: "E2E Test Workspace"`,
-        `    role: owner`,
-      ].join('\n')}\n`
-      await writeFile(join(networkTmp.configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
+      await injectAuth(networkTmp.configDir, {
+        host: 'http://127.0.0.1:19999',
+        bearer: 'dfoa_fake_token_network_test',
+        workspaceId: E.workspaceId,
+        workspaceName: E.workspaceName,
+      })
       const result = await run(
         ['run', 'app', E.chatAppId, 'hello', '--conversation', 'any-conv-id'],
         { configDir: networkTmp.configDir, timeout: 15_000 },

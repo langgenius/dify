@@ -19,7 +19,7 @@ from controllers.console.auth.error import (
     NotOwnerError,
     OwnerTransferLimitError,
 )
-from controllers.console.error import EmailSendIpLimitError, SeatsLimitExceeded, WorkspaceMembersLimitExceeded
+from controllers.console.error import EmailSendIpLimitError
 from controllers.console.workspace.error import InvalidMemberRoleError
 from controllers.console.workspace.members import (
     DatasetOperatorMemberListApi,
@@ -31,12 +31,10 @@ from controllers.console.workspace.members import (
     OwnerTransfer,
     OwnerTransferCheckApi,
     SendOwnerTransferEmailApi,
-    _count_new_member_invites,
 )
-from enums import DeploymentEdition
 from libs.external_api import ExternalApi
 from machinery.context import RequestContext
-from services.errors.account import AccountAlreadyInTenantError, NoPermissionError, SeatsLimitExceededError
+from services.errors.account import AccountAlreadyInTenantError, NoPermissionError, WorkspaceMembersLimitExceededError
 from services.errors.enterprise import EnterpriseAPIError
 from services.workspace_member_query_service import (
     WorkspaceMemberQueryService,
@@ -128,15 +126,7 @@ class TestMemberListApi:
 class TestMemberInviteEmailApi:
     @pytest.fixture(autouse=True)
     def _invite_config(self, config_overrides) -> None:
-        config_overrides(
-            CONSOLE_WEB_URL="http://x",
-            DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
-        )
-
-    @pytest.fixture(autouse=True)
-    def _mock_member_invite_lock(self):
-        with patch("controllers.console.workspace.members.redis_client.lock", return_value=nullcontext()):
-            yield
+        config_overrides(CONSOLE_WEB_URL="http://x")
 
     def test_invite_success(self, app: Flask):
         api = MemberInviteEmailApi()
@@ -144,10 +134,6 @@ class TestMemberInviteEmailApi:
 
         tenant = SimpleNamespace(id="t1")
         user = SimpleNamespace(id="actor-1", current_tenant=tenant)
-        features = MagicMock()
-        features.workspace_members.enabled = False
-        features.workspace_members.is_available.return_value = True
-
         payload = {
             "emails": ["A@TEST.com", "a@test.com"],
             "role": "normal",
@@ -156,8 +142,6 @@ class TestMemberInviteEmailApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
-            patch("controllers.console.workspace.members._count_new_member_invites", return_value=(1, 1)) as mock_count,
             patch(
                 "controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"
             ) as mock_invite,
@@ -167,7 +151,6 @@ class TestMemberInviteEmailApi:
         assert status == 201
         assert result["result"] == "success"
         assert result["invitation_results"][0]["email"] == "a@test.com"
-        mock_count.assert_not_called()
         mock_invite.assert_called_once_with(
             tenant_id="t1",
             email="a@test.com",
@@ -176,66 +159,12 @@ class TestMemberInviteEmailApi:
             inviter_id="actor-1",
         )
 
-    def test_invite_limit_exceeded(self, app: Flask, config_overrides):
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
-        api = MemberInviteEmailApi()
-        method = unwrap(api.post)
-
-        tenant = MagicMock(id="t1")
-        user = MagicMock(current_tenant=tenant)
-        features = MagicMock()
-        features.workspace_members.enabled = True
-        features.workspace_members.is_available.return_value = False
-
-        payload = {
-            "emails": ["a@test.com"],
-            "role": "normal",
-        }
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
-            patch("controllers.console.workspace.members._count_new_member_invites", return_value=(1, 1)),
-        ):
-            with pytest.raises(WorkspaceMembersLimitExceeded):
-                method(api, user)
-
-    def test_invite_cloud_member_limit_exceeded(self, app: Flask, config_overrides):
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-        api = MemberInviteEmailApi()
-        method = unwrap(api.post)
-
-        tenant = MagicMock(id="t1")
-        user = MagicMock(current_tenant=tenant)
-        features = MagicMock()
-        features.members.size = 9
-        features.members.limit = 10
-        features.workspace_members.enabled = False
-
-        payload = {
-            "emails": ["a@test.com", "b@test.com"],
-            "role": "normal",
-        }
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
-            patch("controllers.console.workspace.members._count_new_member_invites", return_value=(2, 2)),
-            patch("controllers.console.workspace.members._count_current_members", return_value=9),
-        ):
-            with pytest.raises(WorkspaceMembersLimitExceeded):
-                method(api, user)
-
     def test_invite_already_member(self, app: Flask):
         api = MemberInviteEmailApi()
         method = unwrap(api.post)
 
         tenant = MagicMock(id="t1")
         user = MagicMock(current_tenant=tenant)
-        features = MagicMock()
-        features.workspace_members.enabled = False
-        features.workspace_members.is_available.return_value = True
-
         payload = {
             "emails": ["a@test.com"],
             "role": "normal",
@@ -243,8 +172,6 @@ class TestMemberInviteEmailApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
-            patch("controllers.console.workspace.members._count_new_member_invites", return_value=(0, 0)),
             patch(
                 "controllers.console.workspace.members.RegisterService.invite_new_member",
                 side_effect=AccountAlreadyInTenantError(),
@@ -290,239 +217,29 @@ class TestMemberInviteEmailApi:
         error = MemberInviteErrorResponse.model_validate(response.get_json())
         assert error.code == "invalid_param"
 
-    def test_invite_generic_exception(self, app: Flask):
+    def test_invite_capacity_error_is_reported_per_email(self, app: Flask):
         api = MemberInviteEmailApi()
         method = unwrap(api.post)
 
         tenant = MagicMock(id="t1")
         user = MagicMock(current_tenant=tenant)
-        features = MagicMock()
-        features.workspace_members.enabled = False
-        features.workspace_members.is_available.return_value = True
-
         payload = {
-            "emails": ["a@test.com"],
+            "emails": ["a@test.com", "b@test.com"],
             "role": "normal",
         }
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
-            patch("controllers.console.workspace.members._count_new_member_invites", return_value=(1, 1)),
             patch(
                 "controllers.console.workspace.members.RegisterService.invite_new_member",
-                side_effect=Exception("boom"),
-            ),
-        ):
-            result, _ = method(api, user)
-
-        assert result["invitation_results"][0]["status"] == "failed"
-
-    def test_invite_seats_limit_exceeded(self, app: Flask, config_overrides):
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
-        api = MemberInviteEmailApi()
-        method = unwrap(api.post)
-
-        tenant = MagicMock(id="t1")
-        user = MagicMock(current_tenant=tenant)
-        features = MagicMock()
-        features.workspace_members.enabled = False
-        license_info = MagicMock()
-        license_info.seats.is_available.return_value = False
-
-        payload = {
-            "emails": ["a@test.com", "b@test.com"],
-            "role": "normal",
-        }
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
-            patch("controllers.console.workspace.members._count_new_member_invites", return_value=(2, 2)),
-            patch(
-                "controllers.console.workspace.members.FeatureService.get_license",
-                return_value=license_info,
-            ) as mock_get_license,
-            patch("controllers.console.workspace.members.RegisterService.invite_new_member") as mock_invite,
-        ):
-            with pytest.raises(SeatsLimitExceeded):
-                method(api, user)
-
-        mock_get_license.assert_called_once_with()
-        license_info.seats.is_available.assert_called_once_with(2)
-        mock_invite.assert_not_called()
-
-    def test_invite_existing_accounts_do_not_consume_seats(self, app: Flask, config_overrides):
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
-        api = MemberInviteEmailApi()
-        method = unwrap(api.post)
-
-        tenant = MagicMock(id="t1")
-        user = MagicMock(current_tenant=tenant)
-        features = MagicMock()
-        features.workspace_members.enabled = False
-        license_info = MagicMock()
-        license_info.seats.is_available.return_value = False
-
-        payload = {
-            "emails": ["a@test.com", "b@test.com"],
-            "role": "normal",
-        }
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
-            patch("controllers.console.workspace.members._count_new_member_invites", return_value=(2, 0)),
-            patch(
-                "controllers.console.workspace.members.FeatureService.get_license",
-                return_value=license_info,
-            ) as mock_get_license,
-            patch(
-                "controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"
-            ) as mock_invite,
-        ):
-            result, status = method(api, user)
-
-        assert status == 201
-        assert len(result["invitation_results"]) == 2
-        mock_get_license.assert_not_called()
-        license_info.seats.is_available.assert_not_called()
-        assert mock_invite.call_count == 2
-
-    def test_invite_mixed_accounts_with_available_seats(self, app: Flask, config_overrides):
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
-        api = MemberInviteEmailApi()
-        method = unwrap(api.post)
-
-        tenant = MagicMock(id="t1")
-        user = MagicMock(current_tenant=tenant)
-        features = MagicMock()
-        features.workspace_members.enabled = False
-        license_info = MagicMock()
-        license_info.seats.is_available.return_value = True
-
-        payload = {
-            "emails": ["a@test.com", "b@test.com"],
-            "role": "normal",
-        }
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
-            patch("controllers.console.workspace.members._count_new_member_invites", return_value=(2, 1)),
-            patch(
-                "controllers.console.workspace.members.FeatureService.get_license",
-                return_value=license_info,
-            ) as mock_get_license,
-            patch(
-                "controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"
-            ) as mock_invite,
-        ):
-            result, status = method(api, user)
-
-        assert status == 201
-        assert len(result["invitation_results"]) == 2
-        mock_get_license.assert_called_once_with()
-        license_info.seats.is_available.assert_called_once_with(1)
-        assert mock_invite.call_count == 2
-
-    def test_invite_skips_seats_limit_when_enterprise_disabled(self, app: Flask):
-        api = MemberInviteEmailApi()
-        method = unwrap(api.post)
-
-        tenant = MagicMock(id="t1")
-        user = MagicMock(current_tenant=tenant)
-        features = MagicMock()
-        features.workspace_members.enabled = False
-        license_info = MagicMock()
-        license_info.seats.is_available.return_value = False
-
-        payload = {
-            "emails": ["a@test.com"],
-            "role": "normal",
-        }
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
-            patch("controllers.console.workspace.members._count_new_member_invites", return_value=(1, 1)),
-            patch(
-                "controllers.console.workspace.members.FeatureService.get_license",
-                return_value=license_info,
-            ) as mock_get_license,
-            patch("controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"),
-        ):
-            result, status = method(api, user)
-
-        assert status == 201
-        assert result["invitation_results"][0]["status"] == "success"
-        mock_get_license.assert_not_called()
-        license_info.seats.is_available.assert_not_called()
-
-    def test_invite_seats_error_is_reported_as_failed_result(self, app: Flask, config_overrides):
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
-        api = MemberInviteEmailApi()
-        method = unwrap(api.post)
-
-        tenant = MagicMock(id="t1")
-        user = MagicMock(current_tenant=tenant)
-        features = MagicMock()
-        features.workspace_members.enabled = False
-        license_info = MagicMock()
-        license_info.seats.is_available.return_value = True
-
-        payload = {
-            "emails": ["a@test.com"],
-            "role": "normal",
-        }
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
-            patch("controllers.console.workspace.members._count_new_member_invites", return_value=(1, 1)),
-            patch(
-                "controllers.console.workspace.members.FeatureService.get_license",
-                return_value=license_info,
-            ),
-            patch(
-                "controllers.console.workspace.members.RegisterService.invite_new_member",
-                side_effect=SeatsLimitExceededError("licensed seats limit exceeded"),
+                side_effect=["token", WorkspaceMembersLimitExceededError("workspace member limit reached")],
             ),
         ):
             result, status = method(api, user)
 
         assert status == 201
-        assert result["invitation_results"][0]["status"] == "failed"
-        assert result["invitation_results"][0]["message"] == "licensed seats limit exceeded"
-
-
-class TestCountNewMemberInvites:
-    def test_count_new_member_invites(self):
-        new_account = None
-        existing_account_not_in_tenant = SimpleNamespace(id="account-2")
-        existing_account_in_tenant = SimpleNamespace(id="account-3")
-
-        session = MagicMock()
-        with (
-            patch(
-                "controllers.console.workspace.members.AccountService.get_account_by_email_with_case_fallback",
-                side_effect=[new_account, existing_account_not_in_tenant, existing_account_in_tenant],
-            ) as mock_get_account,
-            patch(
-                "controllers.console.workspace.members.session_factory.create_session",
-                return_value=nullcontext(session),
-            ),
-        ):
-            session.scalar.side_effect = [None, "join-id"]
-            result = _count_new_member_invites(
-                "tenant-1",
-                ["new@test.com", "existing@test.com", "member@test.com"],
-            )
-
-        assert result == (2, 1)
-        assert mock_get_account.call_count == 3
-        assert all(call.kwargs["session"] is session for call in mock_get_account.call_args_list)
-        assert session.scalar.call_count == 2
+        assert [item["status"] for item in result["invitation_results"]] == ["success", "failed"]
+        assert result["invitation_results"][1]["message"] == "workspace member limit reached"
 
 
 class TestMemberCancelInviteApi:

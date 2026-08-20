@@ -311,7 +311,7 @@ export type MemberResponse = {
   email: string
   id: string
   name: string
-  role: string
+  roles: Array<WorkspaceRoleResponse>
   status: string
 }
 
@@ -457,7 +457,7 @@ export type WorkspaceDetailResponse = {
   current: boolean
   id: string
   name: string
-  role: string
+  roles: Array<WorkspaceRoleResponse>
   status: string
 }
 
@@ -468,14 +468,19 @@ export type WorkspaceListResponse = {
 export type WorkspacePayload = {
   id: string
   name: string
-  role: string
+  roles: Array<WorkspaceRoleResponse>
+}
+
+export type WorkspaceRoleResponse = {
+  id: string
+  name: string
 }
 
 export type WorkspaceSummaryResponse = {
   current: boolean
   id: string
   name: string
-  role: string
+  roles: Array<WorkspaceRoleResponse>
   status: string
 }
 

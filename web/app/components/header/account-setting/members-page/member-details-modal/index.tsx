@@ -99,6 +99,9 @@ const MemberDetailsModal = ({
     onClose()
   }, [allowMultipleRoles, onAssignSubmit, onClose, selectedRoles])
 
+  if (!canAssignRoles && assignOpen) setAssignOpen(false)
+  if (!canAssignRoles && pendingRoles) setPendingRoles(undefined)
+
   return (
     <>
       <Dialog
@@ -209,7 +212,7 @@ const MemberDetailsModal = ({
         </DialogContent>
       </Dialog>
 
-      {assignOpen && (
+      {canAssignRoles && assignOpen && (
         <AssignRolesModal
           selectedRoles={selectedRoles}
           allowMultipleRoles={allowMultipleRoles}

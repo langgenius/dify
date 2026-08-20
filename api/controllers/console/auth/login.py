@@ -1,4 +1,5 @@
 import logging
+from contextlib import nullcontext
 from uuid import UUID
 
 import flask_login
@@ -108,6 +109,7 @@ class EmailCodeLoginPayload(BaseModel):
     email: EmailStr = Field(...)
     code: str
     token: UUID
+    invite_token: str | None = Field(default=None, description="Invitation token")
     turnstile_token: str | None = Field(
         default=None,
         max_length=2048,
@@ -163,47 +165,64 @@ class LoginApi(Resource):
         invite_token = req_data.invite_token
         invitation_data: InvitationDetailDict | None = None
         if invite_token:
-            invitation_data = RegisterService.get_invitation_with_case_fallback(
-                None, request_email, invite_token, session=db.session()
+            invitation_data = RegisterService.get_invitation_if_token_valid(
+                None, normalized_email, invite_token, session=db.session()
             )
             if invitation_data is None:
-                invite_token = None
+                raise AuthenticationFailedError()
 
-        try:
-            if invitation_data:
-                data = invitation_data.get("data", {})
-                invitee_email = data.get("email") if data else None
-                invitee_email_normalized = invitee_email.lower() if isinstance(invitee_email, str) else invitee_email
-                if invitee_email_normalized != normalized_email:
-                    _log_console_login_failure(
-                        email=normalized_email,
-                        reason=LoginFailureReason.INVALID_INVITATION_EMAIL,
+        invitation_context = (
+            RegisterService.current_invitation(invite_token, invitation_data["data"])
+            if invite_token and invitation_data
+            else nullcontext(True)
+        )
+        with invitation_context as invitation_is_current:
+            if not invitation_is_current:
+                raise AuthenticationFailedError()
+            try:
+                if invitation_data:
+                    invitee_email = invitation_data["data"]["email"]
+                    if invitee_email.casefold() != normalized_email.casefold():
+                        _log_console_login_failure(
+                            email=normalized_email,
+                            reason=LoginFailureReason.INVALID_INVITATION_EMAIL,
+                        )
+                        raise InvalidEmailError()
+                    account = AccountService.authenticate(
+                        invitee_email,
+                        req_data.password,
+                        invite_token,
+                        session=db.session(),
                     )
-                    raise InvalidEmailError()
-            account = _authenticate_account_with_case_fallback(
-                request_email, normalized_email, req_data.password, invite_token
-            )
-        except services.errors.account.AccountLoginError:
-            _log_console_login_failure(email=normalized_email, reason=LoginFailureReason.ACCOUNT_BANNED)
-            raise AccountBannedError()
-        except services.errors.account.AccountPasswordError as exc:
-            AccountService.add_login_error_rate_limit(normalized_email)
-            _log_console_login_failure(email=normalized_email, reason=LoginFailureReason.INVALID_CREDENTIALS)
-            raise AuthenticationFailedError() from exc
-        tenants = TenantService.get_join_tenants(account, session=db.session())
-        if len(tenants) == 0:
-            if (
-                FeatureService.is_workspace_creation_allowed()
-                and not FeatureService.get_license().workspaces.is_available()
-            ):
-                raise WorkspacesLimitExceeded()
-            else:
+                else:
+                    account = _authenticate_account_with_case_fallback(
+                        request_email, normalized_email, req_data.password, invite_token
+                    )
+            except services.errors.account.AccountLoginError:
+                _log_console_login_failure(email=normalized_email, reason=LoginFailureReason.ACCOUNT_BANNED)
+                raise AccountBannedError()
+            except services.errors.account.AccountPasswordError as exc:
+                AccountService.add_login_error_rate_limit(normalized_email)
+                _log_console_login_failure(email=normalized_email, reason=LoginFailureReason.INVALID_CREDENTIALS)
+                raise AuthenticationFailedError() from exc
+            tenants = TenantService.get_join_tenants(account, session=db.session())
+            if len(tenants) == 0 and invitation_data is None:
+                if (
+                    FeatureService.is_workspace_creation_allowed()
+                    and not FeatureService.get_license().workspaces.is_available()
+                ):
+                    raise WorkspacesLimitExceeded()
                 return SimpleResultOptionalDataResponse(
                     result="fail",
                     data="workspace not found, please contact system admin to invite you to join in a workspace",
                 ).model_dump(mode="json")
 
-        token_pair = AccountService.login(account=account, session=db.session(), ip_address=extract_remote_ip(request))
+            token_pair = AccountService.login(
+                account=account,
+                session=db.session(),
+                ip_address=extract_remote_ip(request),
+                activate_pending=invitation_data is None,
+            )
         AccountService.reset_login_error_rate_limit(normalized_email)
 
         # Create response with cookies instead of returning tokens in body
@@ -372,45 +391,73 @@ class EmailCodeLoginApi(Resource):
             _log_console_login_failure(email=user_email, reason=LoginFailureReason.INVALID_EMAIL_CODE)
             raise EmailCodeError()
 
-        try:
-            account = _get_account_with_case_fallback(original_email)
-        except Unauthorized as exc:
-            _log_console_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_BANNED)
-            raise AccountBannedError() from exc
-        except AccountRegisterError:
-            _log_console_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
-            raise AccountInFreezeError()
-        if account:
-            tenants = TenantService.get_join_tenants(account, session=db.session())
-            if not tenants:
-                workspaces = FeatureService.get_license().workspaces
-                if not workspaces.is_available():
-                    raise WorkspacesLimitExceeded()
-                if not FeatureService.is_workspace_creation_allowed():
-                    raise NotAllowedCreateWorkspace()
-                else:
-                    TenantService.create_owner_tenant(account, session=db.session())
+        invitation_data: InvitationDetailDict | None = None
+        if req_data.invite_token:
+            invitation_data = RegisterService.get_invitation_if_token_valid(
+                None,
+                user_email,
+                req_data.invite_token,
+                session=db.session(),
+            )
+            if invitation_data is None:
+                raise InvalidTokenError()
 
-        if account is None:
+        invitation_context = (
+            RegisterService.current_invitation(req_data.invite_token, invitation_data["data"])
+            if req_data.invite_token and invitation_data
+            else nullcontext(True)
+        )
+        with invitation_context as invitation_is_current:
+            if not invitation_is_current:
+                raise InvalidTokenError()
             try:
-                account = AccountService.create_account_and_tenant(
-                    email=user_email,
-                    name=user_email,
-                    interface_language=get_valid_language(language),
-                    timezone=req_data.timezone,
-                    ip_address=ip_address,
-                    session=db.session(),
+                account = _get_account_with_case_fallback(
+                    invitation_data["data"]["email"] if invitation_data else original_email
                 )
-            except WorkSpaceNotAllowedCreateError:
-                raise NotAllowedCreateWorkspace()
-            except SeatsLimitExceededError:
-                raise SeatsLimitExceeded()
+            except Unauthorized as exc:
+                _log_console_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_BANNED)
+                raise AccountBannedError() from exc
             except AccountRegisterError:
                 _log_console_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
                 raise AccountInFreezeError()
-            except WorkspacesLimitExceededError:
-                raise WorkspacesLimitExceeded()
-        token_pair = AccountService.login(account, session=db.session(), ip_address=ip_address)
+
+            if invitation_data is not None and (account is None or account.id != invitation_data["data"]["account_id"]):
+                raise InvalidTokenError()
+            if account:
+                tenants = TenantService.get_join_tenants(account, session=db.session())
+                if not tenants and invitation_data is None:
+                    workspaces = FeatureService.get_license().workspaces
+                    if not workspaces.is_available():
+                        raise WorkspacesLimitExceeded()
+                    if not FeatureService.is_workspace_creation_allowed():
+                        raise NotAllowedCreateWorkspace()
+                    TenantService.create_owner_tenant_if_not_exist(account, session=db.session())
+
+            if account is None:
+                try:
+                    account = AccountService.create_account_and_tenant(
+                        email=user_email,
+                        name=user_email,
+                        interface_language=get_valid_language(language),
+                        timezone=req_data.timezone,
+                        ip_address=ip_address,
+                        session=db.session(),
+                    )
+                except WorkSpaceNotAllowedCreateError:
+                    raise NotAllowedCreateWorkspace()
+                except SeatsLimitExceededError:
+                    raise SeatsLimitExceeded()
+                except AccountRegisterError:
+                    _log_console_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
+                    raise AccountInFreezeError()
+                except WorkspacesLimitExceededError:
+                    raise WorkspacesLimitExceeded()
+            token_pair = AccountService.login(
+                account,
+                session=db.session(),
+                ip_address=ip_address,
+                activate_pending=invitation_data is None,
+            )
         AccountService.reset_login_error_rate_limit(user_email)
 
         # Create response with cookies instead of returning tokens in body

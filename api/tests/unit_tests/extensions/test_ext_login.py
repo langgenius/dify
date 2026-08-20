@@ -9,7 +9,7 @@ from constants import COOKIE_NAME_ACCESS_TOKEN
 from core.logging.context import clear_request_context, get_identity_context
 from extensions import ext_login
 from extensions.ext_login import unauthorized_handler
-from models.account import TenantAccountRole
+from models.account import TenantAccountRole, TenantStatus
 
 
 @pytest.fixture(autouse=True)
@@ -97,9 +97,12 @@ def test_admin_api_key_header_takes_precedence_over_console_cookie(monkeypatch: 
         role=TenantAccountRole.NORMAL,
     )
     account = ext_login.Account(name="Test Account", email="test@example.com")
-    session.execute.return_value.one_or_none.return_value = (tenant, tenant_account_join)
-    session.scalar.side_effect = [account, tenant_account_join]
-    session.scalars.return_value.one.return_value = tenant
+    tenant_lookup = mock.MagicMock()
+    tenant_lookup.one_or_none.return_value = (tenant, tenant_account_join)
+    current_tenant_lookup = mock.MagicMock()
+    current_tenant_lookup.first.return_value = (tenant, tenant_account_join)
+    session.execute.side_effect = [tenant_lookup, current_tenant_lookup]
+    session.scalar.return_value = account
     monkeypatch.setattr(ext_login.dify_config, "ADMIN_API_KEY_ENABLE", True)
     monkeypatch.setattr(ext_login.dify_config, "ADMIN_API_KEY", "admin-key")
     monkeypatch.setattr(ext_login.dify_config, "CONSOLE_WEB_URL", "http://console.example.com")
@@ -118,3 +121,30 @@ def test_admin_api_key_header_takes_precedence_over_console_cookie(monkeypatch: 
 
     assert result is account
     assert account.current_tenant is tenant
+
+
+def test_admin_api_key_rejects_provisioning_workspace(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: ext_login.Session,
+) -> None:
+    app = Flask(__name__)
+    account = ext_login.Account(name="Provisioning Owner", email="owner@example.com")
+    tenant = ext_login.Tenant(name="Provisioning Workspace", status=TenantStatus.PROVISIONING)
+    sqlite_session.add_all([account, tenant])
+    sqlite_session.flush()
+    sqlite_session.add(
+        ext_login.TenantAccountJoin(
+            tenant_id=tenant.id,
+            account_id=account.id,
+            role=TenantAccountRole.OWNER,
+        )
+    )
+    sqlite_session.commit()
+    monkeypatch.setattr(ext_login.dify_config, "ADMIN_API_KEY_ENABLE", True)
+    monkeypatch.setattr(ext_login.dify_config, "ADMIN_API_KEY", "admin-key")
+
+    with app.test_request_context(
+        "/console/api/test",
+        headers={"Authorization": "Bearer admin-key", "X-WORKSPACE-ID": tenant.id},
+    ):
+        assert ext_login._load_user_from_request(request, sqlite_session) is None

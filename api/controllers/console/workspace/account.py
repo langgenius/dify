@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from datetime import datetime
 from http import HTTPStatus
-from typing import Literal
+from typing import Literal, cast
 
 import pytz
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
@@ -52,9 +53,9 @@ from fields.member_fields import AccountResponse
 from graphon.file import helpers as file_helpers
 from libs.datetime_utils import naive_utc_now
 from libs.helper import EmailStr, dump_response, extract_remote_ip, timezone, to_timestamp
-from libs.login import login_required
+from libs.login import current_account_with_tenant_optional, login_required
 from models import Account, AccountIntegrate, InvitationCode
-from models.account import AccountStatus, InvitationCodeStatus
+from models.account import InvitationCodeStatus
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 from services.account_service import AccountService
@@ -284,11 +285,10 @@ class AccountInitApi(Resource):
             invitation_code.used_by_tenant_id = account.current_tenant_id
             invitation_code.used_by_account_id = account.id
 
+        account = AccountService.activate_pending_account(account.id, session=cast(Session, db.session))
         account.interface_language = args.interface_language
         account.timezone = args.timezone
         account.interface_theme = "light"
-        account.status = AccountStatus.ACTIVE
-        account.initialized_at = naive_utc_now()
         db.session.commit()
 
         return SimpleResultResponse(result="success").model_dump(mode="json")
@@ -298,11 +298,11 @@ class AccountInitApi(Resource):
 class AccountProfileApi(Resource):
     @setup_required
     @login_required
-    @account_initialization_required
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
     @enterprise_license_required
-    @with_current_user
-    def get(self, current_user: Account):
+    def get(self):
+        current_user, _ = current_account_with_tenant_optional()
+        assert current_user is not None
         return dump_response(AccountResponse, current_user)
 
 

@@ -12,7 +12,6 @@ and realistic testing scenarios with actual PostgreSQL and Redis instances.
 
 import json
 import logging
-import uuid
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
@@ -21,9 +20,11 @@ from faker import Faker
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from extensions.ext_redis import redis_client
 from libs.email_i18n import EmailType
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
+from services.account_service import RegisterService
 from tasks.mail_invite_member_task import send_invite_member_mail_task
 
 
@@ -139,15 +140,12 @@ class TestMailInviteMemberTask:
         Returns:
             str: Generated invitation token
         """
-        token = str(uuid.uuid4())
-        invitation_data = {
-            "account_id": account.id,
-            "email": account.email,
-            "workspace_id": tenant.id,
-        }
-        cache_key = f"member_invite:token:{token}"
-        redis_client.setex(cache_key, 24 * 60 * 60, json.dumps(invitation_data))  # 24 hours
-        return token
+        return RegisterService.generate_invite_token(
+            tenant_id=str(tenant.id),
+            account_id=str(account.id),
+            email=account.email,
+            inviter_id=str(account.id),
+        )
 
     def _create_pending_account_for_invitation(self, db_session_with_containers: Session, email, tenant):
         """
@@ -388,7 +386,7 @@ class TestMailInviteMemberTask:
         token = self._create_invitation_token(tenant, inviter)
 
         # Verify token exists in Redis before sending email
-        cache_key = f"member_invite:token:{token}"
+        cache_key = RegisterService._get_invitation_token_key(token)
         assert redis_client.exists(cache_key) == 1
 
         # Act: Execute the task
@@ -531,14 +529,15 @@ class TestMailInviteMemberTask:
         )
 
         # Assert: Verify token lifecycle
-        cache_key = f"member_invite:token:{token}"
+        cache_key = RegisterService._get_invitation_token_key(token)
 
         # Token should still exist
         assert redis_client.exists(cache_key) == 1
 
-        # Token should have correct TTL (approximately 24 hours)
+        # Token should have the configured invitation TTL.
         ttl = redis_client.ttl(cache_key)
-        assert 23 * 60 * 60 <= ttl <= 24 * 60 * 60  # Allow some tolerance
+        expected_ttl = dify_config.INVITE_EXPIRY_HOURS * 60 * 60
+        assert expected_ttl - 60 <= ttl <= expected_ttl
 
         # Token data should be valid
         token_data = redis_client.get(cache_key)

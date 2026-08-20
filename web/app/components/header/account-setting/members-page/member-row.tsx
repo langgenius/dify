@@ -2,7 +2,7 @@
 import type { Member } from '@/models/common'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
-import { memo, useCallback } from 'react'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import MemberMenu from './member-menu'
@@ -10,22 +10,17 @@ import RoleBadges from './role-badges'
 
 type MemberRowProps = {
   member: Member
-  roles: Array<{
-    id: string
-    name: string
-  }>
   isCurrentUser: boolean
   canAssignRoles: boolean
   canRemove: boolean
   canTransferOwnership: boolean
   allowMultipleRoles: boolean
-  onOpenDetails: (member: Member) => void
+  onOpenDetails: (memberId: string) => void
   onTransferOwnership: () => void
 }
 
 const MemberRow = ({
   member,
-  roles,
   isCurrentUser,
   canAssignRoles,
   canRemove,
@@ -36,13 +31,10 @@ const MemberRow = ({
 }: MemberRowProps) => {
   const { t } = useTranslation()
   const { formatTimeFromNow } = useFormatTimeFromNow()
-  const canManage = canAssignRoles || canRemove || canTransferOwnership
+  const canAssignMemberRoles = canAssignRoles && member.status !== 'pending'
+  const canManage = canAssignMemberRoles || canRemove || canTransferOwnership
 
-  const roleNames = roles.map((role) => role.name)
-
-  const openDetails = useCallback(() => {
-    onOpenDetails(member)
-  }, [member, onOpenDetails])
+  const roleNames = member.roles.map((role) => role.name)
 
   return (
     <div
@@ -60,7 +52,7 @@ const MemberRow = ({
           'flex w-full min-w-0 cursor-pointer bg-transparent text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden',
           canManage && 'pr-12',
         )}
-        onClick={openDetails}
+        onClick={() => onOpenDetails(member.id)}
       >
         <span className="flex w-65 shrink-0 items-center px-3 py-2">
           <Avatar avatar={member.avatar_url} size="sm" className="mr-2" name={member.name} />
@@ -93,7 +85,7 @@ const MemberRow = ({
           <MemberMenu
             member={member}
             isCurrentUser={isCurrentUser}
-            canAssignRoles={canAssignRoles}
+            canAssignRoles={canAssignMemberRoles}
             canRemove={canRemove}
             canTransferOwnership={canTransferOwnership}
             allowMultipleRoles={allowMultipleRoles}

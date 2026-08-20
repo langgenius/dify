@@ -15,7 +15,6 @@ from services.account_activation_service import (
     FrozenAccountError,
     InvalidInvitationError,
     InvitationAccountMismatchError,
-    WorkspaceMemberCapacityExceededError,
 )
 from services.entities.account_activation_entities import (
     ActivationCheckData,
@@ -23,6 +22,7 @@ from services.entities.account_activation_entities import (
     ActivationCommand,
     InvitationLookup,
 )
+from services.errors.account import WorkspaceMembersLimitExceededError
 
 
 @pytest.fixture
@@ -123,8 +123,8 @@ class TestActivateApi:
             ),
             patch("controllers.console.auth.activate.extract_access_token", return_value="access-token"),
             patch(
-                "controllers.console.auth.activate.current_account_with_tenant",
-                return_value=SimpleNamespace(account=SimpleNamespace(id="account-123")),
+                "controllers.console.auth.activate.current_account_with_tenant_optional",
+                return_value=(SimpleNamespace(id="account-123"), None),
             ),
         ):
             response = unwrap(ActivateApi.post)(ActivateApi())
@@ -156,7 +156,7 @@ class TestActivateApi:
                 return_value=_services(activation_service),
             ),
             patch("controllers.console.auth.activate.extract_access_token", return_value=None),
-            patch("controllers.console.auth.activate.current_account_with_tenant") as resolve_account,
+            patch("controllers.console.auth.activate.current_account_with_tenant_optional") as resolve_account,
         ):
             response = unwrap(ActivateApi.post)(ActivateApi())
 
@@ -173,7 +173,7 @@ class TestActivateApi:
             (InvalidInvitationError(), AlreadyActivateError),
             (InvitationAccountMismatchError(), InvitationAccountMismatchHTTPError),
             (FrozenAccountError(), AccountInFreezeError),
-            (WorkspaceMemberCapacityExceededError(), WorkspaceMembersLimitExceeded),
+            (WorkspaceMembersLimitExceededError(), WorkspaceMembersLimitExceeded),
         ],
     )
     def test_translates_application_errors(

@@ -10,7 +10,11 @@ function active(): ActiveContext {
     email: 'me@example.com',
     ctx: {
       account: { id: 'acct-1', email: 'me@example.com', name: 'Me' },
-      workspace: { id: '550e8400-e29b-41d4-a716-446655440000', name: 'Default', role: 'owner' },
+      workspace: {
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        name: 'Default',
+        roles: [{ id: 'owner', name: 'Owner' }],
+      },
     },
   }
 }

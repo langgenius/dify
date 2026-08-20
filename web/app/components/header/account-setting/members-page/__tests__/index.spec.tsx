@@ -10,6 +10,7 @@ import { useProviderContext } from '@/context/provider-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
 import { useMembers } from '@/service/use-common'
+import { useWorkspacePermissions } from '@/service/use-workspace'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import MembersPage from '../index'
 
@@ -31,11 +32,16 @@ vi.mock('@/context/provider-context')
 vi.mock('@/hooks/use-format-time-from-now')
 vi.mock('@/service/access-control/use-member-roles')
 vi.mock('@/service/use-common')
+vi.mock('@/service/use-workspace')
 
-const renderMembersPage = () =>
+const renderMembersPage = (rbacEnabled = false, brandingEnabled = false) =>
   renderWithConsoleQuery(<MembersPage />, {
     accountProfile: mockConsoleState.current.userProfile,
-    systemFeatures: { is_email_setup: true },
+    systemFeatures: {
+      is_email_setup: true,
+      rbac_enabled: rbacEnabled,
+      branding: { enabled: brandingEnabled },
+    },
   })
 
 const getMemberDetailsButton = (memberId: string) =>
@@ -59,6 +65,17 @@ const createRole = (overrides: Partial<Role>): Role => ({
 const setConsoleState = (value: ConsoleStateFixture) => {
   mockConsoleState.current = value
   mockConsoleStateReader.mockReturnValue(value)
+}
+
+const mockWorkspacePermissions = (allowMemberInvite = true, allowOwnerTransfer = true) => {
+  vi.mocked(useWorkspacePermissions).mockReturnValue({
+    data: {
+      workspace_id: 'workspace-1',
+      allow_member_invite: allowMemberInvite,
+      allow_owner_transfer: allowOwnerTransfer,
+    },
+    isSuccess: true,
+  } as ReturnType<typeof useWorkspacePermissions>)
 }
 
 vi.mock('../edit-workspace-modal', () => ({
@@ -233,6 +250,7 @@ describe('MembersPage', () => {
       data: { accounts: mockAccounts },
       refetch: mockRefetch,
     } as unknown as ReturnType<typeof useMembers>)
+    mockWorkspacePermissions()
     mockUpdateRolesOfMember.mockImplementation((_payload, options) => {
       options?.onSuccess?.()
       return Promise.resolve()
@@ -275,12 +293,7 @@ describe('MembersPage', () => {
   })
 
   it('should render plural roles column header when RBAC is enabled', () => {
-    renderWithConsoleQuery(<MembersPage />, {
-      systemFeatures: {
-        is_email_setup: true,
-        rbac_enabled: true,
-      },
-    })
+    renderMembersPage(true)
 
     expect(
       screen.getByText('common.members.roles', { selector: '.system-xs-medium-uppercase' }),
@@ -339,6 +352,12 @@ describe('MembersPage', () => {
     expect(screen.queryByRole('button', { name: /transfer ownership/i })).not.toBeInTheDocument()
   })
 
+  it('should allow the owner to transfer ownership when RBAC is enabled', () => {
+    renderMembersPage(true)
+
+    expect(screen.getByRole('button', { name: /transfer ownership/i })).toBeInTheDocument()
+  })
+
   it('should hide manager controls for non-owner non-manager users', () => {
     setConsoleState({
       userProfile: { email: 'admin@example.com' },
@@ -374,6 +393,51 @@ describe('MembersPage', () => {
     expect(screen.getByText('Transfer Ownership Modal'))!.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Close Transfer Modal' }))
+    expect(screen.queryByText('Transfer Ownership Modal')).not.toBeInTheDocument()
+  })
+
+  it.each([
+    ['pending', { isPending: true, isError: false }],
+    ['failed', { isPending: false, isError: true }],
+  ])('should fail closed while enterprise permissions are %s', (_state, queryState) => {
+    vi.mocked(useWorkspacePermissions).mockReturnValue({
+      ...queryState,
+      isSuccess: false,
+    } as ReturnType<typeof useWorkspacePermissions>)
+
+    renderMembersPage(false, true)
+
+    expect(screen.queryByRole('button', { name: /invite/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /transfer ownership/i })).not.toBeInTheDocument()
+  })
+
+  it('should close enterprise actions when their capability is revoked', async () => {
+    const user = userEvent.setup()
+    const view = renderMembersPage(false, true)
+
+    await user.click(screen.getByRole('button', { name: /invite/i }))
+    expect(screen.getByText('Invite Modal')).toBeInTheDocument()
+
+    mockWorkspacePermissions(false)
+    view.rerender(<MembersPage />)
+
+    expect(screen.queryByText('Invite Modal')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /transfer ownership/i })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /transfer ownership/i }))
+    expect(screen.getByText('Transfer Ownership Modal')).toBeInTheDocument()
+
+    mockWorkspacePermissions(true, false)
+    view.rerender(<MembersPage />)
+
+    expect(screen.queryByText('Transfer Ownership Modal')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /invite/i })).toBeInTheDocument()
+    expect(screen.queryByText('Invite Modal')).not.toBeInTheDocument()
+
+    mockWorkspacePermissions()
+    view.rerender(<MembersPage />)
+
+    expect(screen.getByRole('button', { name: /transfer ownership/i })).toBeInTheDocument()
     expect(screen.queryByText('Transfer Ownership Modal')).not.toBeInTheDocument()
   })
 
@@ -452,7 +516,7 @@ describe('MembersPage', () => {
     expect(screen.getByText(/plansCommon\.memberAfter/i))!.toBeInTheDocument()
   })
 
-  it('should show invite button when user is manager but not owner', () => {
+  it('should show invite button with member management permission when RBAC is disabled', () => {
     setConsoleState({
       userProfile: { email: 'admin@example.com' },
       currentWorkspace: { name: 'Test Workspace', role: 'admin' },
@@ -465,6 +529,26 @@ describe('MembersPage', () => {
 
     expect(screen.getByRole('button', { name: /invite/i }))!.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /transfer ownership/i })).not.toBeInTheDocument()
+  })
+
+  it('should require role management permission to invite members when RBAC is enabled', () => {
+    setConsoleState({
+      userProfile: { email: 'admin@example.com' },
+      currentWorkspace: { name: 'Test Workspace', role: 'admin' },
+      isCurrentWorkspaceOwner: false,
+      isCurrentWorkspaceManager: true,
+      workspacePermissionKeys: ['workspace.member.manage'],
+    } as unknown as ConsoleStateFixture)
+
+    renderMembersPage(true)
+
+    expect(screen.queryByRole('button', { name: /invite/i })).not.toBeInTheDocument()
+  })
+
+  it('should allow inviting members with both required permissions when RBAC is enabled', () => {
+    renderMembersPage(true)
+
+    expect(screen.getByRole('button', { name: /invite/i })).toBeInTheDocument()
   })
 
   it('should allow admins to operate other non-owner members only', () => {
@@ -621,6 +705,40 @@ describe('MembersPage', () => {
     expect(screen.queryByText('Member Details Modal')).not.toBeInTheDocument()
   })
 
+  it('should derive open member details from the latest member list', async () => {
+    const user = userEvent.setup()
+    const view = renderMembersPage()
+
+    await user.click(getMemberDetailsButton('2'))
+
+    vi.mocked(useMembers).mockReturnValue({
+      data: {
+        accounts: [mockAccounts[0]!, { ...mockAccounts[1]!, name: 'Promoted User', role: 'owner' }],
+      },
+      refetch: mockRefetch,
+    } as unknown as ReturnType<typeof useMembers>)
+    view.rerender(<MembersPage />)
+
+    expect(screen.getByTestId('details-member-name')).toHaveTextContent('Promoted User')
+    expect(screen.getByTestId('details-can-assign')).toHaveTextContent('false')
+
+    vi.mocked(useMembers).mockReturnValue({
+      data: { accounts: [mockAccounts[0]!] },
+      refetch: mockRefetch,
+    } as unknown as ReturnType<typeof useMembers>)
+    view.rerender(<MembersPage />)
+
+    expect(screen.queryByText('Member Details Modal')).not.toBeInTheDocument()
+
+    vi.mocked(useMembers).mockReturnValue({
+      data: { accounts: mockAccounts },
+      refetch: mockRefetch,
+    } as unknown as ReturnType<typeof useMembers>)
+    view.rerender(<MembersPage />)
+
+    expect(screen.queryByText('Member Details Modal')).not.toBeInTheDocument()
+  })
+
   it('should open member details modal via keyboard Enter', async () => {
     const user = userEvent.setup()
 
@@ -650,7 +768,7 @@ describe('MembersPage', () => {
       currentWorkspace: { name: 'Test Workspace', role: 'admin' },
       isCurrentWorkspaceOwner: false,
       isCurrentWorkspaceManager: true,
-      workspacePermissionKeys: ['workspace.member.manage'],
+      workspacePermissionKeys: ['workspace.member.manage', 'workspace.role.manage'],
     } as unknown as ConsoleStateFixture)
 
     renderMembersPage()
@@ -676,6 +794,19 @@ describe('MembersPage', () => {
     expect(screen.getByTestId('details-can-assign'))!.toHaveTextContent('false')
   })
 
+  it('should not assign roles from pending invitation details', async () => {
+    const user = userEvent.setup()
+    vi.mocked(useMembers).mockReturnValue({
+      data: { accounts: [mockAccounts[0]!, { ...mockAccounts[1]!, status: 'pending' }] },
+      refetch: mockRefetch,
+    } as unknown as ReturnType<typeof useMembers>)
+
+    renderMembersPage()
+    await user.click(getMemberDetailsButton('2'))
+
+    expect(screen.getByTestId('details-can-assign')).toHaveTextContent('false')
+  })
+
   it('should submit only one member role when RBAC is disabled', async () => {
     const user = userEvent.setup()
 
@@ -699,12 +830,7 @@ describe('MembersPage', () => {
   it('should submit multiple member roles when RBAC is enabled', async () => {
     const user = userEvent.setup()
 
-    renderWithConsoleQuery(<MembersPage />, {
-      systemFeatures: {
-        is_email_setup: true,
-        rbac_enabled: true,
-      },
-    })
+    renderMembersPage(true)
 
     await user.click(getMemberDetailsButton('2'))
     await user.click(screen.getByRole('button', { name: 'Submit Member Roles' }))

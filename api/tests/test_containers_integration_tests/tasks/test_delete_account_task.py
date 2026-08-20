@@ -11,11 +11,12 @@ from uuid import uuid4
 
 import pytest
 from _pytest.logging import LogCaptureFixture
+from celery.exceptions import Retry
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
 from enums import DeploymentEdition
-from models.account import Account
+from models.account import Account, AccountStatus
 from tasks.delete_account_task import delete_account_task
 
 
@@ -23,6 +24,7 @@ def _create_account(db_session: Session, *, email: str = "user@example.com") -> 
     account = Account(
         name=f"account-{uuid4()}",
         email=email,
+        status=AccountStatus.CLOSED,
     )
     db_session.add(account)
     db_session.commit()
@@ -66,7 +68,7 @@ def test_community_account_exists_sends_email_only(
     mail_task.delay.assert_called_once_with(account.email)
 
 
-def test_cloud_account_not_found_calls_billing_no_email(
+def test_cloud_account_not_found_is_idempotent(
     mock_external_dependencies: tuple[MagicMock, MagicMock], mocker: MockerFixture, caplog: LogCaptureFixture
 ) -> None:
     billing_service, mail_task = mock_external_dependencies
@@ -75,9 +77,28 @@ def test_cloud_account_not_found_calls_billing_no_email(
 
     delete_account_task(account_id)
 
-    billing_service.delete_account.assert_called_once_with(account_id)
+    billing_service.delete_account.assert_not_called()
     mail_task.delay.assert_not_called()
     assert any("not found" in record.getMessage().lower() for record in caplog.records)
+
+
+def test_active_account_retries_without_side_effects(
+    db_session_with_containers: Session,
+    mock_external_dependencies: tuple[MagicMock, MagicMock],
+    mocker: MockerFixture,
+) -> None:
+    billing_service, mail_task = mock_external_dependencies
+    account = _create_account(db_session_with_containers)
+    account.status = AccountStatus.ACTIVE
+    db_session_with_containers.commit()
+    retry = mocker.patch.object(delete_account_task, "retry", side_effect=Retry())
+
+    with pytest.raises(Retry):
+        delete_account_task(account.id)
+
+    retry.assert_called_once_with(countdown=5, max_retries=12)
+    billing_service.delete_account.assert_not_called()
+    mail_task.delay.assert_not_called()
 
 
 def test_billing_delete_raises_propagates_and_no_email(
@@ -87,10 +108,13 @@ def test_billing_delete_raises_propagates_and_no_email(
 ) -> None:
     billing_service, mail_task = mock_external_dependencies
     account = _create_account(db_session_with_containers, email="err@example.com")
-    billing_service.delete_account.side_effect = RuntimeError("billing down")
+    error = RuntimeError("billing down")
+    billing_service.delete_account.side_effect = error
     mocker.patch("tasks.delete_account_task.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+    retry = mocker.patch.object(delete_account_task, "retry", side_effect=Retry())
 
-    with pytest.raises(RuntimeError, match="billing down"):
+    with pytest.raises(Retry):
         delete_account_task(account.id)
 
+    retry.assert_called_once_with(exc=error, countdown=5, max_retries=12)
     mail_task.delay.assert_not_called()

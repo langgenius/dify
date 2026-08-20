@@ -13,6 +13,7 @@ from core.plugin.impl.exc import PluginRuntimeError
 from extensions.ext_logging import get_request_id
 from libs.flask_restx_compat import install_swagger_compatibility
 from libs.token import build_force_logout_cookie_headers
+from services.errors.enterprise import EnterpriseServiceError
 
 
 def http_status_message(code):
@@ -96,6 +97,20 @@ def register_external_error_handlers(api: Api, body_formatter: ErrorBodyFormatte
         data = {"code": "invalid_param", "message": str(e), "status": status_code}
         return _finalize(e, data, status_code), status_code
 
+    def handle_enterprise_service_error(e: EnterpriseServiceError):
+        got_request_exception.send(current_app, exception=e)
+        status_code = e.status_code if e.status_code is not None and 400 <= e.status_code < 600 else 502
+        data = {
+            "code": re.sub(
+                r"(?<!^)(?=[A-Z][a-z])|(?<=[a-z0-9])(?=[A-Z])",
+                "_",
+                type(e).__name__,
+            ).lower(),
+            "message": e.description or http_status_message(status_code),
+            "status": status_code,
+        }
+        return _finalize(e, data, status_code), status_code
+
     def handle_quota_exceeded(e: AppInvokeQuotaExceededError):
         got_request_exception.send(current_app, exception=e)
         status_code = 429
@@ -135,6 +150,7 @@ def register_external_error_handlers(api: Api, body_formatter: ErrorBodyFormatte
         return _finalize(e, data, status_code), status_code
 
     api.errorhandler(HTTPException)(handle_http_exception)
+    api.errorhandler(EnterpriseServiceError)(handle_enterprise_service_error)
     api.errorhandler(ValueError)(handle_value_error)
     api.errorhandler(AppInvokeQuotaExceededError)(handle_quota_exceeded)
     api.errorhandler(PluginRuntimeError)(handle_plugin_runtime_error)

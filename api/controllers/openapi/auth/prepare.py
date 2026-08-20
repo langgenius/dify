@@ -37,7 +37,7 @@ def load_tenant(data: AuthData) -> None:
         raise InternalServerError("pipeline_invariant_violated: app not loaded before load_tenant")
     with session_factory.create_session() as session:
         tenant = TenantService.get_tenant_by_id(str(data.app.tenant_id), session=session)
-    if tenant is None or tenant.status == TenantStatus.ARCHIVE:
+    if tenant is None or tenant.status != TenantStatus.NORMAL:
         raise Forbidden("workspace unavailable")
     data.tenant = tenant
 
@@ -54,7 +54,7 @@ def load_tenant_from_request(data: AuthData) -> None:
         raise NotFound("workspace not found")
     with session_factory.create_session() as session:
         tenant = TenantService.get_tenant_by_id(workspace_id, session=session)
-    if tenant is None or tenant.status == TenantStatus.ARCHIVE:
+    if tenant is None or tenant.status != TenantStatus.NORMAL:
         raise NotFound("workspace not found")
     data.tenant = tenant
 
@@ -64,7 +64,7 @@ def load_account(data: AuthData) -> None:
         return
     with session_factory.create_session() as session:
         account = AccountService.get_account_by_id(str(data.account_id), session=session)
-        if account is None:
+        if account is None or account.status != AccountStatus.ACTIVE:
             raise Unauthorized("account not found")
         if data.tenant:
             account.set_current_tenant_with_session(data.tenant, session=session)

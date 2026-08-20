@@ -342,8 +342,8 @@ def test_checked_in_agent_v2_knowledge_openapi_and_generated_contracts_are_in_sy
         assert "user_query" in content
 
     for content in (agent_zod, apps_zod):
-        assert "export const zAgentKnowledgeSetConfig = z.object({" in content
-        assert "export const zAgentSoulKnowledgeConfig = z.object({" in content
+        assert "export const zAgentKnowledgeSetConfig = z.strictObject({" in content
+        assert "export const zAgentSoulKnowledgeConfig = z.strictObject({" in content
         assert "zAgentKnowledgeQueryMode = z.enum([" in content
         assert "generated_query" in content
         assert "user_query" in content

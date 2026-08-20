@@ -305,27 +305,45 @@ class TestTenantScopedMemberReads:
         assert [binding["account_id"] for binding in response["data"]] == ["acct-1"]
         assert response["data"][0]["account_name"] == "Alice"
 
-    def test_role_member_read_filters_foreign_accounts(self, app):
-        members = rbac_mod.svc.Paginated[rbac_mod.svc.MembersInRole](
-            data=[
-                rbac_mod.svc.MembersInRole(account_id="acct-1", account_name="forged"),
-                rbac_mod.svc.MembersInRole(account_id="foreign", account_name="Foreign"),
-            ]
-        )
+    def test_role_member_pagination_uses_local_workspace_members(self, app):
+        members = [
+            SimpleNamespace(
+                id="acct-3",
+                name="Carol",
+                roles=(SimpleNamespace(id="role-1"),),
+            ),
+            SimpleNamespace(
+                id="acct-1",
+                name="Alice",
+                roles=(SimpleNamespace(id="role-1"),),
+            ),
+            SimpleNamespace(
+                id="acct-2",
+                name="Bob",
+                roles=(SimpleNamespace(id="role-2"),),
+            ),
+        ]
+        member_queries = SimpleNamespace(list_for_workspace=lambda *_: members)
 
         with (
-            app.test_request_context("/"),
+            app.test_request_context("/?page=2&limit=1"),
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-actor")),
-            patch("controllers.console.workspace.rbac.svc.RBACService.Roles.members", return_value=members),
             patch(
-                "controllers.console.workspace.rbac._account_names_by_ids",
-                return_value={"acct-1": {"name": "Alice", "avatar": "avatar", "email": "alice@example.com"}},
+                "controllers.console.workspace.rbac.application_services",
+                return_value=SimpleNamespace(workspace_member_queries=member_queries),
             ),
         ):
             response = inspect.unwrap(rbac_mod.ListMembersByRole.get)(rbac_mod.ListMembersByRole(), "role-1")
 
-        assert [member["account_id"] for member in response["data"]] == ["acct-1"]
-        assert response["data"][0]["account_name"] == "Alice"
+        assert response == {
+            "data": [{"account_id": "acct-3", "account_name": "Carol"}],
+            "pagination": {
+                "total_count": 2,
+                "per_page": 1,
+                "current_page": 2,
+                "total_pages": 2,
+            },
+        }
 
 
 class TestPydanticModels:
@@ -559,62 +577,6 @@ class TestResourceAccessScopeBindings:
 
         assert response["account_ids"] == ["acct-1"]
         mock_whitelist.assert_called_once_with("tenant-1", "acct-actor", resource_id)
-
-    def test_app_whitelist_all_schedules_member_policy_sync(self, app):
-        with (
-            app.test_request_context(
-                "/workspaces/current/rbac/apps/app-1/whitelist",
-                method="PUT",
-                json={"scope": "all"},
-            ),
-            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-actor")),
-            patch(
-                "controllers.console.workspace.rbac.svc.RBACService.AppAccess.replace_whitelist",
-                return_value=rbac_mod.svc.ResourceWhitelist(),
-            ),
-            patch("controllers.console.workspace.rbac.initialize_created_app_rbac_access_task") as mock_sync_task,
-        ):
-            inspect.unwrap(rbac_mod.RBACAppWhitelistApi.put)(rbac_mod.RBACAppWhitelistApi(), "app-1")
-
-        mock_sync_task.delay.assert_called_once_with("tenant-1", "acct-actor", "app-1")
-
-    def test_dataset_whitelist_all_schedules_member_policy_sync(self, app):
-        # Widening a dataset to the whole workspace only records the scope; without granting the
-        # default policy to the current members nobody actually gains access.
-        with (
-            app.test_request_context(
-                "/workspaces/current/rbac/datasets/dataset-1/whitelist",
-                method="PUT",
-                json={"scope": "all"},
-            ),
-            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-actor")),
-            patch(
-                "controllers.console.workspace.rbac.svc.RBACService.DatasetAccess.replace_whitelist",
-                return_value=rbac_mod.svc.ResourceWhitelist(),
-            ),
-            patch("controllers.console.workspace.rbac.initialize_created_app_rbac_access_task") as mock_sync_task,
-        ):
-            inspect.unwrap(rbac_mod.RBACDatasetWhitelistApi.put)(rbac_mod.RBACDatasetWhitelistApi(), "dataset-1")
-
-        mock_sync_task.delay.assert_called_once_with("tenant-1", "acct-actor", dataset_id="dataset-1")
-
-    def test_dataset_whitelist_specific_does_not_schedule_member_policy_sync(self, app):
-        with (
-            app.test_request_context(
-                "/workspaces/current/rbac/datasets/dataset-1/whitelist",
-                method="PUT",
-                json={"scope": "specific"},
-            ),
-            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-actor")),
-            patch(
-                "controllers.console.workspace.rbac.svc.RBACService.DatasetAccess.replace_whitelist",
-                return_value=rbac_mod.svc.ResourceWhitelist(),
-            ),
-            patch("controllers.console.workspace.rbac.initialize_created_app_rbac_access_task") as mock_sync_task,
-        ):
-            inspect.unwrap(rbac_mod.RBACDatasetWhitelistApi.put)(rbac_mod.RBACDatasetWhitelistApi(), "dataset-1")
-
-        mock_sync_task.delay.assert_not_called()
 
     @pytest.mark.parametrize(
         ("resource_class", "service_method", "resource_id"),

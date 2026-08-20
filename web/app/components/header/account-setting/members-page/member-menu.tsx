@@ -48,26 +48,21 @@ const MemberMenu = ({
 }: MemberMenuProps) => {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const [open, setOpen] = useState(false)
+  const isOwner = member.role === 'owner'
+  const showAssignRoles =
+    canAssignRoles && member.status !== 'pending' && !isOwner && !isCurrentUser
+  const showRemove = canRemove && !isOwner && !isCurrentUser
+  const showTransferOwnership = isOwner && canTransferOwnership
+  const hasActions = showAssignRoles || showRemove || showTransferOwnership
   const [assignModalOpen, setAssignModalOpen] = useState(false)
   const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false)
   const [removing, setRemoving] = useState(false)
-
-  const isOwner = member.role === 'owner'
-  const showAssignRoles = canAssignRoles && !isOwner && !isCurrentUser
-  const showRemove = canRemove && !isOwner && !isCurrentUser
-  const showTransferOwnership = isOwner && canTransferOwnership
 
   const selectedRoles = member.roles || []
   const memberName = member.name || member.email
   const assignRolesLabel = allowMultipleRoles
     ? t(($) => $['members.assignRoles'], { ns: 'common', defaultValue: 'Assign Roles' })
     : t(($) => $['members.editRole'], { ns: 'common', defaultValue: 'Edit Role' })
-
-  const handleOpenAssignRoles = useCallback(() => {
-    setOpen(false)
-    setAssignModalOpen(true)
-  }, [])
 
   const { mutateAsync: updateRolesOfMember } = useUpdateRolesOfMember()
 
@@ -92,11 +87,6 @@ const MemberMenu = ({
     [allowMultipleRoles, member.id, t, updateRolesOfMember],
   )
 
-  const handleOpenRemoveConfirm = useCallback(() => {
-    setOpen(false)
-    setRemoveConfirmOpen(true)
-  }, [])
-
   const handleRemove = useCallback(async () => {
     setRemoving(true)
     try {
@@ -110,16 +100,14 @@ const MemberMenu = ({
     }
   }, [member.id, queryClient, t])
 
-  const handleTransferOwnership = useCallback(() => {
-    setOpen(false)
-    onTransferOwnership?.()
-  }, [onTransferOwnership])
+  if (!showAssignRoles && assignModalOpen) setAssignModalOpen(false)
+  if (!showRemove && removeConfirmOpen) setRemoveConfirmOpen(false)
 
-  if (!showAssignRoles && !showRemove && !showTransferOwnership) return null
+  if (!hasActions) return null
 
   return (
     <div role="presentation">
-      <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenu>
         <DropdownMenuTrigger
           render={
             <IconButton
@@ -142,7 +130,7 @@ const MemberMenu = ({
           {showAssignRoles && (
             <DropdownMenuItem
               className="system-sm-medium text-text-secondary"
-              onClick={handleOpenAssignRoles}
+              onClick={() => setAssignModalOpen(true)}
             >
               {assignRolesLabel}
             </DropdownMenuItem>
@@ -150,7 +138,7 @@ const MemberMenu = ({
           {showTransferOwnership && (
             <DropdownMenuItem
               className="system-sm-medium text-text-secondary"
-              onClick={handleTransferOwnership}
+              onClick={onTransferOwnership}
             >
               {t(($) => $['members.transferOwnership'], { ns: 'common' })}
             </DropdownMenuItem>
@@ -160,7 +148,7 @@ const MemberMenu = ({
             <DropdownMenuItem
               variant="destructive"
               className="system-sm-medium"
-              onClick={handleOpenRemoveConfirm}
+              onClick={() => setRemoveConfirmOpen(true)}
             >
               {t(($) => $['members.removeFromTeam'], { ns: 'common' })}
             </DropdownMenuItem>

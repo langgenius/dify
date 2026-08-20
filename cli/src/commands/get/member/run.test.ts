@@ -11,7 +11,11 @@ function active(): ActiveContext {
     email: 'me@example.com',
     ctx: {
       account: { id: 'acct-1', email: 'me@example.com', name: 'Me' },
-      workspace: { id: '550e8400-e29b-41d4-a716-446655440000', name: 'Default', role: 'owner' },
+      workspace: {
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        name: 'Default',
+        roles: [{ id: 'owner', name: 'Owner' }],
+      },
     },
   }
 }
@@ -27,8 +31,23 @@ describe('runGetMember', () => {
     total: 2,
     has_more: false,
     data: [
-      { id: 'acct-1', name: 'Me', email: 'me@example.com', role: 'owner', status: 'active' },
-      { id: 'acct-2', name: 'Mate', email: 'mate@example.com', role: 'admin', status: 'active' },
+      {
+        id: 'acct-1',
+        name: 'Me',
+        email: 'me@example.com',
+        roles: [{ id: 'owner', name: 'Owner' }],
+        status: 'active',
+      },
+      {
+        id: 'acct-2',
+        name: 'Mate',
+        email: 'mate@example.com',
+        roles: [
+          { id: 'admin', name: 'Admin' },
+          { id: 'auditor', name: '' },
+        ],
+        status: 'active',
+      },
     ],
   }
 
@@ -94,7 +113,11 @@ describe('runGetMember', () => {
       email: 'me@example.com',
       ctx: {
         account: { id: '', email: '', name: '' },
-        workspace: { id: '550e8400-e29b-41d4-a716-446655440000', name: 'Default', role: 'owner' },
+        workspace: {
+          id: '550e8400-e29b-41d4-a716-446655440000',
+          name: 'Default',
+          roles: [{ id: 'owner', name: 'Owner' }],
+        },
       },
     }
     const r = await runGetMember(
@@ -140,7 +163,13 @@ describe('MemberListOutput shape', () => {
       total: 1,
       has_more: false,
       data: [
-        { id: 'acct-1', name: 'Me', email: 'me@example.com', role: 'owner', status: 'active' },
+        {
+          id: 'acct-1',
+          name: 'Me',
+          email: 'me@example.com',
+          roles: [{ id: 'owner', name: 'Owner' }],
+          status: 'active',
+        },
       ],
     }
     const client = fakeClient(env)
@@ -157,11 +186,12 @@ describe('MemberListOutput shape', () => {
       'ID',
       'NAME',
       'EMAIL',
-      'ROLE',
+      'ROLES',
       'STATUS',
       'CURRENT',
     ])
     expect(r.data.tableRows()[0]?.[5]).toBe('*')
+    expect(r.data.tableRows()[0]?.[3]).toBe('Owner')
     expect(r.data.name()).toBe('acct-1')
     expect(r.data.json().data[0]?.email).toBe('me@example.com')
   })

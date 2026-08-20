@@ -233,10 +233,6 @@ describe('E2E / difyctl auth logout', () => {
       email: E.email,
       workspaceId: E.workspaceId,
       workspaceName: E.workspaceName,
-      availableWorkspaces: [
-        { id: E.workspaceId, name: E.workspaceName, role: 'owner' },
-        { id: 'ws-secondary-001', name: 'Secondary Workspace', role: 'member' },
-      ],
     })
 
     const result = await r(['auth', 'logout'])

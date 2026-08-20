@@ -164,6 +164,21 @@ describe('MemberMenu', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('should only allow canceling a pending invitation', async () => {
+    const user = userEvent.setup()
+
+    renderWithConsoleQuery(
+      <MemberMenu {...memberMenuProps} member={{ ...member, status: 'pending' }} />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /members\.memberActions/i }))
+
+    expect(
+      screen.queryByRole('menuitem', { name: /members\.assignRoles/i }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: /members\.removeFromTeam/i })).toBeInTheDocument()
+  })
+
   it('should close an open action when its permission is revoked', async () => {
     const user = userEvent.setup()
     const view = renderWithConsoleQuery(<MemberMenu {...memberMenuProps} />)
@@ -171,16 +186,41 @@ describe('MemberMenu', () => {
     await user.click(screen.getByRole('button', { name: /members\.memberActions/i }))
     await user.click(screen.getByRole('menuitem', { name: /members\.assignRoles/i }))
     expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
 
     view.rerender(<MemberMenu {...memberMenuProps} canAssignRoles={false} />)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    view.rerender(<MemberMenu {...memberMenuProps} />)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /members\.memberActions/i }))
     await user.click(screen.getByRole('menuitem', { name: /members\.removeFromTeam/i }))
     expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
 
     view.rerender(<MemberMenu {...memberMenuProps} canRemove={false} />)
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+
+    view.rerender(<MemberMenu {...memberMenuProps} />)
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  })
+
+  it('should not reopen the action menu after all capabilities are revoked and restored', async () => {
+    const user = userEvent.setup()
+    const view = renderWithConsoleQuery(<MemberMenu {...memberMenuProps} />)
+
+    await user.click(screen.getByRole('button', { name: /members\.memberActions/i }))
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+
+    view.rerender(<MemberMenu {...memberMenuProps} canAssignRoles={false} canRemove={false} />)
+    expect(
+      screen.queryByRole('button', { name: /members\.memberActions/i }),
+    ).not.toBeInTheDocument()
+
+    view.rerender(<MemberMenu {...memberMenuProps} />)
+    expect(screen.getByRole('button', { name: /members\.memberActions/i })).toBeInTheDocument()
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
   it('should require confirmation before removing a member', async () => {

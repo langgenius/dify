@@ -1,5 +1,4 @@
 import logging
-from contextlib import nullcontext
 from http import HTTPStatus
 from typing import Annotated, Literal
 from urllib import parse
@@ -8,7 +7,6 @@ from uuid import UUID
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import func, select
 from werkzeug.exceptions import NotFound, ServiceUnavailable
 
 import services
@@ -24,7 +22,7 @@ from controllers.console.auth.error import (
     NotOwnerError,
     OwnerTransferLimitError,
 )
-from controllers.console.error import EmailSendIpLimitError, SeatsLimitExceeded, WorkspaceMembersLimitExceeded
+from controllers.console.error import EmailSendIpLimitError
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.workspace.error import InvalidMemberRoleError
 from controllers.console.wraps import (
@@ -34,16 +32,14 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from core.db.session_factory import session_factory
-from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
-from extensions.ext_redis import redis_client
 from fields.base import ResponseModel
 from fields.member_fields import AccountWithRoleListResponse, AccountWithRoleResponse
 from libs.helper import dump_response, extract_remote_ip
 from libs.login import login_required
 from machinery.context import RequestContext
-from models.account import Account, TenantAccountJoin, TenantAccountRole
+from models.account import Account, TenantAccountRole
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import AccountAlreadyInTenantError
 from services.errors.enterprise import EnterpriseAPIError
@@ -116,7 +112,7 @@ class MemberInviteResponse(ResponseModel):
 
 
 class MemberInviteErrorResponse(ResponseModel):
-    code: Literal["invalid_param", "invalid_role", "limit_exceeded"]
+    code: Literal["invalid_param", "invalid_role"]
     message: str
     status: Literal[400]
 
@@ -150,59 +146,6 @@ def _is_role_enabled(role: TenantAccountRole | str, tenant_id: str) -> bool:
     if role != TenantAccountRole.DATASET_OPERATOR:
         return True
     return FeatureService.get_features(tenant_id=tenant_id, exclude_vector_space=True).dataset_operator_enabled
-
-
-def _count_new_member_invites(tenant_id: str, emails: list[str]) -> tuple[int, int]:
-    new_member_count = 0
-    new_account_count = 0
-    with session_factory.create_session() as session:
-        for email in emails:
-            account = AccountService.get_account_by_email_with_case_fallback(email, session=session)
-            if not account:
-                new_member_count += 1
-                new_account_count += 1
-                continue
-
-            exists = session.scalar(
-                select(TenantAccountJoin.id)
-                .where(TenantAccountJoin.tenant_id == tenant_id, TenantAccountJoin.account_id == account.id)
-                .limit(1)
-            )
-            if not exists:
-                new_member_count += 1
-
-    return new_member_count, new_account_count
-
-
-def _count_current_members(tenant_id: str) -> int:
-    with session_factory.create_session() as session:
-        return (
-            session.scalar(select(func.count(TenantAccountJoin.id)).where(TenantAccountJoin.tenant_id == tenant_id))
-            or 0
-        )
-
-
-def _check_member_invite_limits(tenant_id: str, new_member_count: int, new_account_count: int) -> None:
-    if new_member_count <= 0:
-        return
-
-    features = FeatureService.get_features(tenant_id=tenant_id, exclude_vector_space=True)
-
-    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
-        workspace_members = features.workspace_members
-        if workspace_members.enabled is True and not workspace_members.is_available(new_member_count):
-            raise WorkspaceMembersLimitExceeded()
-        if new_account_count > 0:
-            seats = FeatureService.get_license().seats
-            if not seats.is_available(new_account_count):
-                raise SeatsLimitExceeded()
-        return
-
-    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
-        members = features.members
-        current_member_count = _count_current_members(tenant_id)
-        if 0 < members.limit < current_member_count + new_member_count:
-            raise WorkspaceMembersLimitExceeded()
 
 
 @console_ns.route("/workspaces/current/members")
@@ -239,7 +182,7 @@ class MemberInviteEmailApi(Resource):
     @console_ns.response(HTTPStatus.CREATED, "Success", console_ns.models[MemberInviteResponse.__name__])
     @console_ns.response(
         HTTPStatus.BAD_REQUEST,
-        "Invalid role or workspace member limit exceeded",
+        "Invalid role",
         console_ns.models[MemberInviteErrorResponse.__name__],
     )
     @setup_required
@@ -274,48 +217,35 @@ class MemberInviteEmailApi(Resource):
         console_web_url = dify_config.CONSOLE_WEB_URL
 
         db.session.close()
-        invite_lock = (
-            nullcontext()
-            if dify_config.RBAC_ENABLED
-            else redis_client.lock(f"workspace_member_invite:{tenant_id}", timeout=60)
-        )
-        with invite_lock:
-            if dify_config.DEPLOYMENT_EDITION in {
-                DeploymentEdition.CLOUD,
-                DeploymentEdition.ENTERPRISE,
-            }:
-                new_member_count, new_account_count = _count_new_member_invites(tenant_id, invitee_emails)
-                _check_member_invite_limits(tenant_id, new_member_count, new_account_count)
-
-            for invitee_email in invitee_emails:
-                try:
-                    token = RegisterService.invite_new_member(
-                        tenant_id=tenant_id,
+        for invitee_email in invitee_emails:
+            try:
+                token = RegisterService.invite_new_member(
+                    tenant_id=tenant_id,
+                    email=invitee_email,
+                    language=interface_language,
+                    role=invitee_role,
+                    inviter_id=inviter_id,
+                )
+                encoded_invitee_email = parse.quote(invitee_email)
+                invitation_results.append(
+                    MemberInviteSuccessResponse(
+                        status="success",
                         email=invitee_email,
-                        language=interface_language,
-                        role=invitee_role,
-                        inviter_id=inviter_id,
+                        url=f"{console_web_url}/activate?email={encoded_invitee_email}&token={token}",
                     )
-                    encoded_invitee_email = parse.quote(invitee_email)
-                    invitation_results.append(
-                        MemberInviteSuccessResponse(
-                            status="success",
-                            email=invitee_email,
-                            url=f"{console_web_url}/activate?email={encoded_invitee_email}&token={token}",
-                        )
+                )
+            except AccountAlreadyInTenantError:
+                invitation_results.append(
+                    MemberInviteAlreadyMemberResponse(
+                        status="already_member",
+                        email=invitee_email,
+                        message="Account already in workspace.",
                     )
-                except AccountAlreadyInTenantError:
-                    invitation_results.append(
-                        MemberInviteAlreadyMemberResponse(
-                            status="already_member",
-                            email=invitee_email,
-                            message="Account already in workspace.",
-                        )
-                    )
-                except Exception as e:
-                    invitation_results.append(
-                        MemberInviteFailedResponse(status="failed", email=invitee_email, message=str(e))
-                    )
+                )
+            except Exception as e:
+                invitation_results.append(
+                    MemberInviteFailedResponse(status="failed", email=invitee_email, message=str(e))
+                )
 
         return (
             dump_response(

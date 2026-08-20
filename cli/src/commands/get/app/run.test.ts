@@ -13,7 +13,11 @@ const baseActive: ActiveContext = {
   email: 'tester@dify.ai',
   ctx: {
     account: { id: 'acct-1', email: 'tester@dify.ai', name: 'Test Tester' },
-    workspace: { id: '550e8400-e29b-41d4-a716-446655440000', name: 'Default', role: 'owner' },
+    workspace: {
+      id: '550e8400-e29b-41d4-a716-446655440000',
+      name: 'Default',
+      roles: [{ id: 'owner', name: 'Owner' }],
+    },
   },
   scheme: 'http',
 }

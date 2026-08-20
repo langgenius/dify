@@ -1,5 +1,6 @@
 import type { StorageMode } from '@/store/store'
 import type { TokenStore } from '@/store/token-store'
+import { zWorkspacePayload } from '@dify/contracts/api/openapi/zod.gen'
 import { z } from 'zod'
 import { BaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
@@ -17,12 +18,7 @@ export const AccountSchema = z.object({
 })
 export type Account = z.infer<typeof AccountSchema>
 
-export const WorkspaceSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  role: z.string(),
-})
-export type Workspace = z.infer<typeof WorkspaceSchema>
+export type Workspace = z.infer<typeof zWorkspacePayload>
 
 export const ExternalSubjectSchema = z.object({
   email: z.string(),
@@ -32,7 +28,7 @@ export type ExternalSubject = z.infer<typeof ExternalSubjectSchema>
 
 export const AccountContextSchema = z.object({
   account: AccountSchema,
-  workspace: WorkspaceSchema.optional(),
+  workspace: zWorkspacePayload.optional(),
   token_id: z.string().optional(),
   token_expires_at: z.string().optional(),
   external_subject: ExternalSubjectSchema.optional(),

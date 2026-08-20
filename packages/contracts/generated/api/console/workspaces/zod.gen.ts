@@ -99,7 +99,7 @@ export const zMemberInvitePayload = z.object({
  * MemberInviteErrorResponse
  */
 export const zMemberInviteErrorResponse = z.object({
-  code: z.enum(['invalid_param', 'invalid_role', 'limit_exceeded']),
+  code: z.enum(['invalid_param', 'invalid_role']),
   message: z.string(),
   status: z.literal(400),
 })
@@ -401,7 +401,7 @@ export const zDeleteMemberBindingsRequest = z.object({
 /**
  * _ReplaceUserAccessPoliciesPayload
  */
-export const zReplaceUserAccessPoliciesPayload = z.object({
+export const zReplaceUserAccessPoliciesPayload = z.strictObject({
   access_policy_ids: z.array(z.string()).optional(),
 })
 
@@ -999,7 +999,7 @@ export const zTenantPluginAutoUpgradeCategory = z.enum([
 /**
  * ParserExcludePlugin
  */
-export const zParserExcludePlugin = z.object({
+export const zParserExcludePlugin = z.strictObject({
   category: zTenantPluginAutoUpgradeCategory,
   plugin_id: z.string(),
 })
@@ -1938,7 +1938,7 @@ export const zPluginAutoUpgradeSettingsPayload = z.object({
 /**
  * ParserAutoUpgradeChange
  */
-export const zParserAutoUpgradeChange = z.object({
+export const zParserAutoUpgradeChange = z.strictObject({
   auto_upgrade: zPluginAutoUpgradeSettingsPayload,
   category: zTenantPluginAutoUpgradeCategory,
 })

@@ -906,7 +906,7 @@ Strict (extra='forbid').
 | email | string |  | Yes |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| role | string |  | Yes |
+| roles | [ [WorkspaceRoleResponse](#workspaceroleresponse) ] |  | Yes |
 | status | string |  | Yes |
 
 #### MemberRoleUpdatePayload
@@ -1081,7 +1081,7 @@ types it as a required `'success'` rather than an optional field.
 | current | boolean |  | Yes |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| role | string |  | Yes |
+| roles | [ [WorkspaceRoleResponse](#workspaceroleresponse) ] |  | Yes |
 | status | string |  | Yes |
 
 #### WorkspaceListResponse
@@ -1096,7 +1096,14 @@ types it as a required `'success'` rather than an optional field.
 | ---- | ---- | ----------- | -------- |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| role | string |  | Yes |
+| roles | [ [WorkspaceRoleResponse](#workspaceroleresponse) ] |  | Yes |
+
+#### WorkspaceRoleResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| name | string |  | Yes |
 
 #### WorkspaceSummaryResponse
 
@@ -1105,5 +1112,5 @@ types it as a required `'success'` rather than an optional field.
 | current | boolean |  | Yes |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| role | string |  | Yes |
+| roles | [ [WorkspaceRoleResponse](#workspaceroleresponse) ] |  | Yes |
 | status | string |  | Yes |

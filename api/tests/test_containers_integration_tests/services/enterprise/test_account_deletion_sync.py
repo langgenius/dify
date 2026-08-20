@@ -3,24 +3,34 @@
 import json
 from uuid import uuid4
 
+from configs import dify_config
+from enums import DeploymentEdition
 from extensions.ext_redis import redis_client
-from services.enterprise.account_deletion_sync import _queue_task
+from services.enterprise.account_deletion_sync import (
+    ACCOUNT_DELETION_FROM_WORKSPACE_SYNC_TASK_TYPE,
+    ACCOUNT_DELETION_SYNC_QUEUE,
+    ACCOUNT_DELETION_SYNC_TASK_TYPE,
+    sync_account_deletion,
+)
 
 
-def test_queue_task_success() -> None:
-    workspace_id = str(uuid4())
-    member_id = str(uuid4())
+def test_sync_account_deletion_queues_workspace_cleanup_before_global_finalizer(monkeypatch) -> None:
+    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE)
+    workspace_ids = [str(uuid4()), str(uuid4())]
+    account_id = str(uuid4())
 
-    result = _queue_task(workspace_id=workspace_id, member_id=member_id, source="test_source")
+    result = sync_account_deletion(
+        account_id=account_id,
+        workspace_ids=workspace_ids,
+        source="test_source",
+    )
 
     assert result is True
-    raw = redis_client.rpop("enterprise:member:sync:queue")
-    assert raw is not None
-    task_data = json.loads(raw)
-    assert task_data["workspace_id"] == workspace_id
-    assert task_data["member_id"] == member_id
-    assert task_data["source"] == "test_source"
-    assert task_data["type"] == "sync_member_deletion_from_workspace"
-    assert task_data["retry_count"] == 0
-    assert "task_id" in task_data
-    assert "created_at" in task_data
+    tasks = [json.loads(redis_client.rpop(ACCOUNT_DELETION_SYNC_QUEUE)) for _ in range(3)]
+    assert [task.get("workspace_id") for task in tasks] == [*workspace_ids, None]
+    assert [task["type"] for task in tasks] == [
+        ACCOUNT_DELETION_FROM_WORKSPACE_SYNC_TASK_TYPE,
+        ACCOUNT_DELETION_FROM_WORKSPACE_SYNC_TASK_TYPE,
+        ACCOUNT_DELETION_SYNC_TASK_TYPE,
+    ]
+    assert all(task["member_id"] == account_id for task in tasks)

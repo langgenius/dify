@@ -17,13 +17,14 @@ from redis.exceptions import LockNotOwnedError, RedisError
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Conflict
 
-from models import Account, Tenant, TenantAccountJoin
+from models import Account, AccountStatus, Tenant, TenantAccountJoin
 from services.enterprise import rbac_service as svc
 from services.workspace_membership_lock import workspace_membership_mutation_lock
 
 MODULE = "services.enterprise.rbac_service"
 OWNER_ROLE_ID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1"
 EDITOR_ROLE_ID = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2"
+CUSTOM_ROLE_ID = "cccccccc-cccc-cccc-cccc-ccccccccccc3"
 MIXED_CASE_TENANT_ID = "CCCCCCCC-cccc-CCCC-cccc-CCCCCCCCCCC3"
 CANONICAL_TENANT_ID = MIXED_CASE_TENANT_ID.lower()
 
@@ -36,8 +37,17 @@ def mock_send():
 
 @pytest.fixture
 def tenant_members(sqlite_session: Session) -> None:
+    accounts = [
+        Account(name="One", email="one@example.com"),
+        Account(name="Actor", email="actor@example.com"),
+        Account(name="Two", email="two@example.com"),
+        Account(name="Target", email="target@example.com"),
+    ]
+    for account, account_id in zip(accounts, ("acct-1", "acct-actor", "acct-2", "acct-target"), strict=True):
+        account.id = account_id
     sqlite_session.add_all(
         [
+            *accounts,
             TenantAccountJoin(tenant_id="tenant-1", account_id="acct-1", role="admin"),
             TenantAccountJoin(tenant_id="tenant-1", account_id="acct-actor", role="admin"),
             TenantAccountJoin(tenant_id="tenant-1", account_id="acct-2", role="normal"),
@@ -55,8 +65,14 @@ def _call_args(send: MagicMock) -> SimpleNamespace:
 
 
 def test_require_tenant_members_rejects_mixed_tenants(sqlite_session: Session):
+    first = Account(name="One", email="member-1@example.com")
+    first.id = "member-1"
+    second = Account(name="Two", email="member-2@example.com")
+    second.id = "member-2"
     sqlite_session.add_all(
         [
+            first,
+            second,
             TenantAccountJoin(tenant_id="tenant-1", account_id="member-1", role="normal"),
             TenantAccountJoin(tenant_id="tenant-2", account_id="member-2", role="normal"),
         ]
@@ -65,6 +81,30 @@ def test_require_tenant_members_rejects_mixed_tenants(sqlite_session: Session):
 
     with pytest.raises(svc.MemberNotInTenantError):
         svc.require_tenant_members("tenant-1", ["member-1", "member-2"])
+
+
+def test_member_roles_rejects_closed_member_before_inner_call(sqlite_session: Session, mock_send: MagicMock):
+    actor = Account(name="Actor", email="closed-actor@example.com", status=AccountStatus.ACTIVE)
+    actor.id = "actor"
+    closed = Account(name="Closed", email="closed@example.com", status=AccountStatus.CLOSED)
+    closed.id = "closed"
+    sqlite_session.add_all(
+        [
+            actor,
+            closed,
+            TenantAccountJoin(tenant_id="tenant-1", account_id="actor", role="owner"),
+            TenantAccountJoin(tenant_id="tenant-1", account_id="closed", role="normal"),
+        ]
+    )
+    sqlite_session.commit()
+
+    with (
+        patch.object(svc.dify_config, "RBAC_ENABLED", True),
+        pytest.raises(svc.MemberNotInTenantError),
+    ):
+        svc.RBACService.MemberRoles.get("tenant-1", "actor", "closed")
+
+    mock_send.assert_not_called()
 
 
 def test_require_tenant_members_skips_empty_input():
@@ -77,6 +117,42 @@ def test_require_tenant_members_skips_empty_input():
 def test_role_id_canonicalization_rejects_invalid_input():
     with pytest.raises(ValueError, match="must be UUIDs"):
         svc._canonical_role_ids(["not-a-uuid"])
+
+
+def test_role_id_canonicalization_deduplicates_without_reordering():
+    assert svc._canonical_role_ids([EDITOR_ROLE_ID.upper(), OWNER_ROLE_ID, EDITOR_ROLE_ID]) == [
+        EDITOR_ROLE_ID,
+        OWNER_ROLE_ID,
+    ]
+
+
+def test_transfer_owner_calls_atomic_inner_endpoint(mock_send: MagicMock):
+    mock_send.return_value = {"message": "success"}
+
+    svc.RBACService.MemberRoles.transfer_owner("tenant-1", "old-owner", "new-owner")
+
+    call = _call_args(mock_send)
+    assert call.method == "POST"
+    assert call.endpoint == "/rbac/workspaces/transfer-owner"
+    assert call.tenant_id == "tenant-1"
+    assert call.account_id == "old-owner"
+    assert call.json == {
+        "expected_owner_account_id": "old-owner",
+        "new_owner_account_id": "new-owner",
+    }
+
+
+def test_bootstrap_owner_calls_idempotent_inner_endpoint(mock_send: MagicMock):
+    mock_send.return_value = {"message": "success"}
+
+    svc.RBACService.MemberRoles.bootstrap_owner("tenant-1", "owner-1")
+
+    call = _call_args(mock_send)
+    assert call.method == "POST"
+    assert call.endpoint == "/rbac/workspaces/bootstrap-owner"
+    assert call.tenant_id == "tenant-1"
+    assert call.account_id == "owner-1"
+    assert call.json is None
 
 
 def test_member_role_id_canonicalization_rejects_invalid_response():
@@ -253,13 +329,23 @@ class TestRoles:
 
     def test_copy_sends_post_with_id_param(self, mock_send: MagicMock):
         mock_send.return_value = {"id": "role-1-copy", "type": "workspace", "name": "Owner copy"}
-        svc.RBACService.Roles.copy("tenant-1", "acct-1", "role-1")
+        with patch.object(svc.RBACService.MemberRoles, "mutation_lock") as mutation_lock:
+            svc.RBACService.Roles.copy("tenant-1", "acct-1", "role-1")
 
+        mutation_lock.assert_called_once_with("tenant-1")
         call = _call_args(mock_send)
         assert call.method == "POST"
         assert call.endpoint == "/rbac/roles/copy"
         assert call.params == {"id": "role-1"}
         assert call.account_id == "acct-1"
+
+    def test_copy_without_members_skips_membership_lock(self, mock_send: MagicMock):
+        mock_send.return_value = {"id": "role-1-copy", "type": "workspace", "name": "Owner copy"}
+        with patch.object(svc.RBACService.MemberRoles, "mutation_lock") as mutation_lock:
+            svc.RBACService.Roles.copy("tenant-1", "acct-1", "role-1", copy_member=False)
+
+        mutation_lock.assert_not_called()
+        assert _call_args(mock_send).json == {"copy_member": False}
 
 
 class TestAccessPolicyBindings:
@@ -767,11 +853,31 @@ class TestMemberRoles:
         with (
             patch(
                 "services.account_service.AccountService.get_workspace_permission_keys",
-                return_value={"workspace.role.manage"},
+                return_value={"workspace.member.manage", "workspace.role.manage"},
             ) as permissions,
+            patch(
+                "services.account_service.AccountService._resolve_legacy_role_id",
+                return_value=OWNER_ROLE_ID,
+            ) as owner_role,
+            patch(
+                "services.account_service.RegisterService.is_current_invitation",
+                return_value=True,
+                create=True,
+            ) as current_invitation,
+            patch(
+                "services.account_service.RegisterService.invalidate_member_invitation",
+                create=True,
+            ) as invalidate_invitation,
+            patch("services.enterprise.rbac_service.account_workspace_membership_mutation_lock"),
             patch.object(svc.RBACService.MemberRoles, "mutation_lock") as mutation_lock,
         ):
-            yield SimpleNamespace(permissions=permissions, mutation_lock=mutation_lock)
+            yield SimpleNamespace(
+                current_invitation=current_invitation,
+                invalidate_invitation=invalidate_invitation,
+                mutation_lock=mutation_lock,
+                owner_role=owner_role,
+                permissions=permissions,
+            )
 
     @pytest.fixture
     def invitation_context(self, sqlite_session: Session) -> None:
@@ -881,28 +987,70 @@ class TestMemberRoles:
             svc.RBACService.MemberRoles.get("tenant-1", "acct-1", "acct-2")
 
     def test_replace(self, mock_send: MagicMock):
-        mock_send.return_value = {"account_id": "acct-2", "roles": []}
+        mock_send.return_value = {
+            "account_id": "acct-2",
+            "roles": [{"id": EDITOR_ROLE_ID, "type": "workspace", "name": "Editor"}],
+        }
         svc.RBACService.MemberRoles.replace(
             "tenant-1",
             "acct-1",
             "acct-2",
-            role_ids=["workspace.owner", "workspace.editor"],
+            role_ids=[EDITOR_ROLE_ID.upper(), EDITOR_ROLE_ID],
         )
         call = _call_args(mock_send)
         assert call.method == "PUT"
         assert call.endpoint == "/rbac/members/rbac-roles"
         assert call.params == {"account_id": "acct-2"}
-        assert call.json == {"role_ids": ["workspace.owner", "workspace.editor"]}
+        assert call.json == {"role_ids": [EDITOR_ROLE_ID]}
 
     def test_replace_rejects_mismatched_response_account(self, mock_send: MagicMock):
-        mock_send.return_value = {"account_id": "acct-other", "roles": []}
+        mock_send.side_effect = [
+            {"account_id": "acct-other", "roles": []},
+            {"account_id": "acct-other", "roles": []},
+        ]
 
         with pytest.raises(svc.EnterpriseAPIError, match="does not match"):
             svc.RBACService.MemberRoles.replace("tenant-1", "acct-actor", "acct-target", role_ids=[])
 
-        call = _call_args(mock_send)
-        assert call.account_id == "acct-actor"
-        assert call.params == {"account_id": "acct-target"}
+        assert mock_send.call_count == 2
+        assert mock_send.call_args_list[0].kwargs["account_id"] == "acct-actor"
+        assert mock_send.call_args_list[1].args[:2] == ("GET", "/rbac/members/rbac-roles")
+        assert mock_send.call_args_list[1].kwargs["params"] == {"account_id": "acct-target"}
+
+    def test_replace_accepts_ambiguous_write_when_readback_matches(self, mock_send: MagicMock):
+        mock_send.side_effect = [
+            TimeoutError("response lost"),
+            {
+                "account_id": "acct-target",
+                "roles": [{"id": EDITOR_ROLE_ID, "type": "workspace", "name": "Editor"}],
+            },
+        ]
+
+        result = svc.RBACService.MemberRoles.replace("tenant-1", "acct-actor", "acct-target", role_ids=[EDITOR_ROLE_ID])
+
+        assert [role.id for role in result.roles] == [EDITOR_ROLE_ID]
+        assert mock_send.call_count == 2
+
+    def test_replace_preserves_write_error_when_readback_differs(self, mock_send: MagicMock):
+        assignment_error = TimeoutError("response lost")
+        mock_send.side_effect = [assignment_error, {"account_id": "acct-target", "roles": []}]
+
+        with pytest.raises(TimeoutError) as exc_info:
+            svc.RBACService.MemberRoles.replace("tenant-1", "acct-actor", "acct-target", role_ids=[EDITOR_ROLE_ID])
+
+        assert exc_info.value is assignment_error
+
+    def test_replace_rejects_unconfirmed_success_response(self, mock_send: MagicMock):
+        mock_send.side_effect = [
+            {"account_id": "acct-target", "roles": []},
+            {"account_id": "acct-target", "roles": []},
+        ]
+
+        with pytest.raises(svc.EnterpriseAPIError, match="does not match") as exc_info:
+            svc.RBACService.MemberRoles.replace("tenant-1", "acct-actor", "acct-target", role_ids=[EDITOR_ROLE_ID])
+
+        assert exc_info.value.status_code == 502
+        assert mock_send.call_count == 2
 
     def test_delete_rbac_bindings_keeps_actor_and_target_separate(self, mock_send: MagicMock):
         mock_send.return_value = {"message": "success"}
@@ -952,7 +1100,6 @@ class TestMemberRoles:
                 return_value=set(),
             ),
             patch.object(svc.RBACService.MemberRoles, "get") as get_roles,
-            patch.object(svc.RBACService.MemberRoles, "ensure_roles_assignable") as ensure_assignable,
             patch.object(svc.RBACService.MemberRoles, "replace") as replace,
             pytest.raises(svc.NoPermissionError),
         ):
@@ -964,10 +1111,9 @@ class TestMemberRoles:
             )
 
         get_roles.assert_not_called()
-        ensure_assignable.assert_not_called()
         replace.assert_not_called()
 
-    def test_ensure_roles_assignable_reports_missing_role(self):
+    def test_ensure_role_assignable_reports_missing_role(self):
         with (
             patch.object(
                 svc.RBACService.Roles,
@@ -976,37 +1122,37 @@ class TestMemberRoles:
             ) as get_role,
             pytest.raises(ValueError, match="Role does not exist in workspace"),
         ):
-            svc.RBACService.MemberRoles.ensure_roles_assignable("tenant-1", "acct-actor", [EDITOR_ROLE_ID.upper()])
+            svc.RBACService.MemberRoles.ensure_role_assignable("tenant-1", "acct-actor", EDITOR_ROLE_ID.upper())
 
         get_role.assert_called_once_with("tenant-1", "acct-actor", EDITOR_ROLE_ID)
 
-    def test_ensure_roles_assignable_preserves_upstream_failure(self):
+    def test_ensure_role_assignable_preserves_upstream_failure(self):
         upstream_error = svc.EnterpriseAPIError("unavailable", status_code=503)
         with (
             patch.object(svc.RBACService.Roles, "get", side_effect=upstream_error),
             pytest.raises(svc.EnterpriseAPIError) as exc_info,
         ):
-            svc.RBACService.MemberRoles.ensure_roles_assignable("tenant-1", "acct-actor", [EDITOR_ROLE_ID])
+            svc.RBACService.MemberRoles.ensure_role_assignable("tenant-1", "acct-actor", EDITOR_ROLE_ID)
 
         assert exc_info.value is upstream_error
 
-    def test_ensure_roles_assignable_rejects_mismatched_role_response(self):
+    def test_ensure_role_assignable_rejects_mismatched_role_response(self):
         role = svc.RBACRole(id=OWNER_ROLE_ID, tenant_id="tenant-1", type="workspace", name="Other")
         with (
             patch.object(svc.RBACService.Roles, "get", return_value=role),
             pytest.raises(svc.EnterpriseAPIError, match="does not match") as exc_info,
         ):
-            svc.RBACService.MemberRoles.ensure_roles_assignable("tenant-1", "acct-actor", [EDITOR_ROLE_ID])
+            svc.RBACService.MemberRoles.ensure_role_assignable("tenant-1", "acct-actor", EDITOR_ROLE_ID)
 
         assert exc_info.value.status_code == 502
 
-    def test_ensure_roles_assignable_rejects_invalid_role_response(self):
+    def test_ensure_role_assignable_rejects_invalid_role_response(self):
         role = svc.RBACRole(id="not-a-uuid", tenant_id="tenant-1", type="workspace", name="Invalid")
         with (
             patch.object(svc.RBACService.Roles, "get", return_value=role),
             pytest.raises(svc.EnterpriseAPIError, match="invalid role id") as exc_info,
         ):
-            svc.RBACService.MemberRoles.ensure_roles_assignable("tenant-1", "acct-actor", [EDITOR_ROLE_ID])
+            svc.RBACService.MemberRoles.ensure_role_assignable("tenant-1", "acct-actor", EDITOR_ROLE_ID)
 
         assert exc_info.value.status_code == 502
 
@@ -1014,7 +1160,7 @@ class TestMemberRoles:
         with pytest.raises(svc.NoPermissionError, match="authenticated account"):
             svc.RBACService.MemberRoles.replace_user_roles("tenant-1", None, "acct-target", [EDITOR_ROLE_ID])
 
-    def test_replace_user_roles_rejects_current_owner(self, tenant_members: None):
+    def test_replace_user_roles_rejects_current_owner(self, member_role_guards, tenant_members: None):
         current = svc.MemberRolesResponse(
             account_id="acct-2",
             roles=[
@@ -1041,15 +1187,36 @@ class TestMemberRoles:
             )
 
         mock_replace.assert_not_called()
+        member_role_guards.invalidate_invitation.assert_not_called()
 
-    def test_replace_user_roles_rejects_duplicate(self, tenant_members: None):
+    def test_replace_user_roles_rejects_local_owner_when_remote_binding_drifted(
+        self,
+        sqlite_session: Session,
+        member_role_guards,
+        tenant_members: None,
+    ):
+        membership = sqlite_session.query(TenantAccountJoin).filter_by(tenant_id="tenant-1", account_id="acct-2").one()
+        membership.role = svc.TenantAccountRole.OWNER
+        sqlite_session.commit()
+
+        with (
+            patch.object(svc.RBACService.MemberRoles, "get") as get_roles,
+            patch.object(svc.RBACService.MemberRoles, "replace") as replace,
+            pytest.raises(svc.NoPermissionError, match="owner"),
+        ):
+            svc.RBACService.MemberRoles.replace_user_roles("tenant-1", "acct-1", "acct-2", role_ids=[EDITOR_ROLE_ID])
+
+        get_roles.assert_not_called()
+        replace.assert_not_called()
+        member_role_guards.invalidate_invitation.assert_not_called()
+
+    def test_replace_user_roles_rejects_duplicate(self, member_role_guards, tenant_members: None):
         current = svc.MemberRolesResponse(
             account_id="acct-2",
             roles=[svc.RBACRole(id=EDITOR_ROLE_ID, type="workspace", name="Editor")],
         )
         with (
             patch.object(svc.RBACService.MemberRoles, "get", return_value=current),
-            patch.object(svc.RBACService.MemberRoles, "ensure_roles_assignable") as ensure_assignable,
             patch.object(svc.RBACService.MemberRoles, "replace") as replace,
             pytest.raises(svc.RoleAlreadyAssignedError),
         ):
@@ -1060,23 +1227,61 @@ class TestMemberRoles:
                 role_ids=[EDITOR_ROLE_ID.upper()],
             )
 
-        ensure_assignable.assert_not_called()
+        member_role_guards.invalidate_invitation.assert_called_once_with("tenant-1", "acct-2")
         replace.assert_not_called()
 
-    def test_replace_user_roles_rejects_owner_role(self, tenant_members: None):
-        current = svc.MemberRolesResponse(account_id="acct-2", roles=[])
-        owner_role = svc.RBACRole(
-            id=OWNER_ROLE_ID,
-            tenant_id="tenant-1",
-            type="workspace",
-            category="global_system_default",
-            name="Owner",
-            is_builtin=True,
-            role_tag="owner",
+    def test_replace_user_roles_duplicate_recovers_local_non_owner_projection(
+        self,
+        sqlite_session: Session,
+        member_role_guards,
+        tenant_members: None,
+    ):
+        membership = sqlite_session.query(TenantAccountJoin).filter_by(tenant_id="tenant-1", account_id="acct-2").one()
+        membership.role = svc.TenantAccountRole.ADMIN
+        sqlite_session.commit()
+        current = svc.MemberRolesResponse(
+            account_id="acct-2",
+            roles=[svc.RBACRole(id=EDITOR_ROLE_ID, type="workspace", name="Editor")],
         )
+
         with (
             patch.object(svc.RBACService.MemberRoles, "get", return_value=current),
-            patch.object(svc.RBACService.Roles, "get", return_value=owner_role),
+            patch.object(svc.RBACService.MemberRoles, "replace") as replace,
+        ):
+            result = svc.RBACService.MemberRoles.replace_user_roles(
+                "tenant-1",
+                "acct-1",
+                "acct-2",
+                role_ids=[EDITOR_ROLE_ID],
+            )
+
+        assert result is current
+        replace.assert_not_called()
+        sqlite_session.expire_all()
+        assert membership.role == svc.TenantAccountRole.NORMAL
+
+    def test_replace_user_roles_invalidates_invitation_before_empty_role_duplicate(
+        self, member_role_guards, tenant_members: None
+    ):
+        with (
+            patch.object(
+                svc.RBACService.MemberRoles,
+                "get",
+                return_value=svc.MemberRolesResponse(account_id="acct-2", roles=[]),
+            ),
+            patch.object(svc.RBACService.MemberRoles, "replace") as replace,
+            pytest.raises(svc.RoleAlreadyAssignedError),
+        ):
+            svc.RBACService.MemberRoles.replace_user_roles("tenant-1", "acct-1", "acct-2", role_ids=[])
+
+        member_role_guards.owner_role.assert_not_called()
+        member_role_guards.invalidate_invitation.assert_called_once_with("tenant-1", "acct-2")
+        replace.assert_not_called()
+
+    def test_replace_user_roles_rejects_owner_role(self, member_role_guards, tenant_members: None):
+        current = svc.MemberRolesResponse(account_id="acct-2", roles=[])
+        with (
+            patch.object(svc.RBACService.MemberRoles, "get", return_value=current),
             patch.object(svc.RBACService.MemberRoles, "replace") as mock_replace,
             pytest.raises(svc.NoPermissionError),
         ):
@@ -1088,34 +1293,37 @@ class TestMemberRoles:
             )
 
         mock_replace.assert_not_called()
+        member_role_guards.invalidate_invitation.assert_not_called()
 
     def test_replace_user_roles_allows_regular_role(self, member_role_guards, tenant_members: None):
         expected = svc.MemberRolesResponse(account_id="acct-2", roles=[])
-        editor_role = svc.RBACRole(
-            id=EDITOR_ROLE_ID,
-            tenant_id="tenant-1",
-            type="workspace",
-            name="Editor",
-        )
+
+        def assert_invitation_invalidated_before_write(*_args, **_kwargs):
+            member_role_guards.invalidate_invitation.assert_called_once_with("tenant-1", "acct-2")
+            return expected
+
         with (
             patch.object(
                 svc.RBACService.MemberRoles,
                 "get",
                 return_value=svc.MemberRolesResponse(account_id="acct-2", roles=[]),
             ),
-            patch.object(svc.RBACService.Roles, "get", return_value=editor_role) as get_role,
-            patch.object(svc.RBACService.MemberRoles, "replace", return_value=expected) as mock_replace,
+            patch.object(
+                svc.RBACService.MemberRoles,
+                "replace",
+                side_effect=assert_invitation_invalidated_before_write,
+            ) as mock_replace,
         ):
             result = svc.RBACService.MemberRoles.replace_user_roles(
                 "tenant-1",
                 "acct-1",
                 "acct-2",
-                role_ids=[EDITOR_ROLE_ID.upper()],
+                role_ids=[EDITOR_ROLE_ID.upper(), EDITOR_ROLE_ID],
             )
 
         assert result is expected
         member_role_guards.mutation_lock.assert_called_once_with("tenant-1")
-        get_role.assert_called_once_with("tenant-1", "acct-1", EDITOR_ROLE_ID)
+        member_role_guards.owner_role.assert_called_once_with("tenant-1", "acct-1", svc.TenantAccountRole.OWNER)
         mock_replace.assert_called_once_with(
             "tenant-1",
             "acct-1",
@@ -1123,15 +1331,36 @@ class TestMemberRoles:
             [EDITOR_ROLE_ID],
         )
 
-    def test_assign_invited_member_creates_normal_membership(
+    @staticmethod
+    def _activate_invitation(role_id: str = EDITOR_ROLE_ID, token: str = "invite-token") -> None:
+        with svc.RBACService.MemberRoles.invited_member_assignment_scope(
+            "tenant-1",
+            "acct-actor",
+            "acct-invitee",
+            role_id,
+            token,
+        ) as membership_exists:
+            if not membership_exists:
+                with svc.session_factory.create_session() as session, session.begin():
+                    session.add(
+                        TenantAccountJoin(
+                            tenant_id="tenant-1",
+                            account_id="acct-invitee",
+                            role=svc.TenantAccountRole.NORMAL,
+                            invited_by="acct-actor",
+                        )
+                    )
+
+    def test_invitation_scope_creates_member_and_assigns_role(
         self,
         sqlite_session: Session,
         invitation_context: None,
         invitation_assignment,
         member_role_guards,
     ):
-        def assert_capacity_checked_before_creation(tenant_id: str) -> None:
+        def assert_capacity_checked_before_creation(tenant_id: str, accounts: dict[str, str]) -> None:
             assert tenant_id == "tenant-1"
+            assert accounts == {"acct-invitee": "invitee@example.com"}
             assert (
                 sqlite_session.query(TenantAccountJoin)
                 .filter_by(tenant_id="tenant-1", account_id="acct-invitee")
@@ -1139,28 +1368,39 @@ class TestMemberRoles:
                 is None
             )
 
-        with (
-            patch(
-                "services.account_service.TenantService.ensure_member_capacity",
-                side_effect=assert_capacity_checked_before_creation,
-            ) as ensure_capacity,
-        ):
-            svc.RBACService.MemberRoles.assign_invited_member("tenant-1", "acct-actor", "acct-invitee", EDITOR_ROLE_ID)
+        def assert_role_assigned_before_creation(*_args, **_kwargs):
+            assert (
+                sqlite_session.query(TenantAccountJoin)
+                .filter_by(tenant_id="tenant-1", account_id="acct-invitee")
+                .one_or_none()
+                is None
+            )
+            return invitation_assignment.assigned
+
+        invitation_assignment.replace.side_effect = assert_role_assigned_before_creation
+
+        with patch(
+            "services.account_service.TenantService.ensure_member_capacity",
+            side_effect=assert_capacity_checked_before_creation,
+        ) as ensure_capacity:
+            self._activate_invitation()
 
         membership = (
             sqlite_session.query(TenantAccountJoin).filter_by(tenant_id="tenant-1", account_id="acct-invitee").one()
         )
         assert membership.role == svc.TenantAccountRole.NORMAL
-        member_role_guards.mutation_lock.assert_called_once_with("tenant-1")
-        ensure_capacity.assert_called_once_with("tenant-1")
+        assert membership.invited_by == "acct-actor"
+        member_role_guards.current_invitation.assert_called_once_with("tenant-1", "acct-invitee", "invite-token")
+        member_role_guards.permissions.assert_called_once_with("tenant-1", "acct-actor")
+        ensure_capacity.assert_called_once_with("tenant-1", {"acct-invitee": "invitee@example.com"})
         invitation_assignment.get_role.assert_called_once_with("tenant-1", "acct-actor", EDITOR_ROLE_ID)
-        invitation_assignment.get_remote.assert_called_once_with("tenant-1", "acct-actor", "acct-invitee")
+        invitation_assignment.get_remote.assert_called_once_with("tenant-1", None, "acct-invitee")
         invitation_assignment.replace.assert_called_once_with(
             "tenant-1", "acct-actor", "acct-invitee", [EDITOR_ROLE_ID]
         )
 
     @pytest.mark.parametrize(("persist_tenant", "persist_account"), [(False, True), (True, False)])
-    def test_assign_invited_member_requires_membership_owners(
+    def test_invitation_scope_requires_workspace_and_account(
         self,
         sqlite_session: Session,
         persist_tenant: bool,
@@ -1177,229 +1417,250 @@ class TestMemberRoles:
         sqlite_session.commit()
 
         with pytest.raises(ValueError, match="invitation context not found"):
-            svc.RBACService.MemberRoles.assign_invited_member("tenant-1", "acct-actor", "acct-invitee", EDITOR_ROLE_ID)
+            self._activate_invitation()
 
-        assert (
-            sqlite_session.query(TenantAccountJoin)
-            .filter_by(tenant_id="tenant-1", account_id="acct-invitee")
-            .one_or_none()
-            is None
-        )
+    def test_invitation_scope_rejects_superseded_token(
+        self,
+        invitation_context: None,
+        invitation_assignment,
+        member_role_guards,
+    ):
+        member_role_guards.current_invitation.return_value = False
 
-    def test_assign_invited_member_requires_role_permission(
+        with pytest.raises(svc.NoPermissionError, match="no longer current"):
+            self._activate_invitation(token="old-token")
+
+        member_role_guards.current_invitation.assert_called_once_with("tenant-1", "acct-invitee", "old-token")
+        member_role_guards.permissions.assert_not_called()
+        invitation_assignment.get_role.assert_not_called()
+        invitation_assignment.replace.assert_not_called()
+
+    @pytest.mark.parametrize("permissions", [{"workspace.member.manage"}, {"workspace.role.manage"}, set()])
+    def test_invitation_scope_requires_member_and_role_permissions(
+        self,
+        invitation_context: None,
+        invitation_assignment,
+        member_role_guards,
+        permissions: set[str],
+    ):
+        member_role_guards.permissions.return_value = permissions
+
+        with pytest.raises(svc.NoPermissionError, match="assign the invitation role"):
+            self._activate_invitation()
+
+        invitation_assignment.get_role.assert_not_called()
+        invitation_assignment.replace.assert_not_called()
+
+    def test_invitation_scope_completes_matching_role_without_stale_inviter(
         self,
         sqlite_session: Session,
         invitation_context: None,
+        invitation_assignment,
         member_role_guards,
     ):
-        member_role_guards.permissions.return_value = set()
-
-        with pytest.raises(svc.NoPermissionError, match="assign the invitation role"):
-            svc.RBACService.MemberRoles.assign_invited_member("tenant-1", "acct-actor", "acct-invitee", EDITOR_ROLE_ID)
-
-        assert (
-            sqlite_session.query(TenantAccountJoin)
-            .filter_by(tenant_id="tenant-1", account_id="acct-invitee")
-            .one_or_none()
-            is None
+        sqlite_session.add(
+            TenantAccountJoin(
+                tenant_id="tenant-1",
+                account_id="acct-invitee",
+                role=svc.TenantAccountRole.NORMAL,
+            )
         )
-
-    def test_assign_invited_member_is_idempotent_for_matching_existing_role(
-        self,
-        sqlite_session: Session,
-        tenant_members: None,
-        invitation_assignment,
-    ):
-        sqlite_session.add(TenantAccountJoin(tenant_id="tenant-1", account_id="acct-invitee", role="normal"))
         sqlite_session.commit()
         current = svc.MemberRolesResponse(
             account_id="acct-invitee",
             roles=[svc.RBACRole(id=EDITOR_ROLE_ID, type="workspace", name="Editor")],
         )
 
-        with (
-            patch.object(svc.RBACService.MemberRoles, "_get_remote", return_value=current) as get_roles,
-            patch("services.account_service.TenantService.ensure_member_capacity") as ensure_capacity,
-        ):
-            svc.RBACService.MemberRoles.assign_invited_member(
-                "tenant-1", "acct-actor", "acct-invitee", EDITOR_ROLE_ID.upper()
-            )
+        with patch.object(svc.RBACService.MemberRoles, "_get_remote", return_value=current) as get_roles:
+            self._activate_invitation(role_id=EDITOR_ROLE_ID.upper())
 
-        assert (
-            sqlite_session.query(TenantAccountJoin).filter_by(tenant_id="tenant-1", account_id="acct-invitee").count()
-            == 1
-        )
-        get_roles.assert_called_once_with("tenant-1", "acct-actor", "acct-invitee")
+        get_roles.assert_called_once_with("tenant-1", None, "acct-invitee")
+        member_role_guards.current_invitation.assert_called_once_with("tenant-1", "acct-invitee", "invite-token")
+        member_role_guards.permissions.assert_not_called()
+        invitation_assignment.get_role.assert_not_called()
         invitation_assignment.replace.assert_not_called()
-        ensure_capacity.assert_not_called()
 
-    def test_assign_invited_member_rejects_changed_existing_role(
+    def test_invitation_scope_retries_remote_role_before_local_membership(
         self,
         sqlite_session: Session,
-        tenant_members: None,
+        invitation_context: None,
         invitation_assignment,
+        member_role_guards,
     ):
-        sqlite_session.add(TenantAccountJoin(tenant_id="tenant-1", account_id="acct-invitee", role="normal"))
-        sqlite_session.commit()
         current = svc.MemberRolesResponse(
             account_id="acct-invitee",
-            roles=[svc.RBACRole(id=OWNER_ROLE_ID, type="workspace", name="Owner")],
+            roles=[svc.RBACRole(id=EDITOR_ROLE_ID, type="workspace", name="Editor")],
         )
 
         with (
             patch.object(svc.RBACService.MemberRoles, "_get_remote", return_value=current),
             patch("services.account_service.TenantService.ensure_member_capacity") as ensure_capacity,
-            pytest.raises(svc.NoPermissionError, match="Invitation role no longer matches"),
         ):
-            svc.RBACService.MemberRoles.assign_invited_member("tenant-1", "acct-actor", "acct-invitee", EDITOR_ROLE_ID)
+            self._activate_invitation()
 
+        assert (
+            sqlite_session.query(TenantAccountJoin)
+            .filter_by(tenant_id="tenant-1", account_id="acct-invitee")
+            .one_or_none()
+            is not None
+        )
+        member_role_guards.permissions.assert_called_once_with("tenant-1", "acct-actor")
+        invitation_assignment.get_role.assert_called_once_with("tenant-1", "acct-actor", EDITOR_ROLE_ID)
+        ensure_capacity.assert_called_once_with("tenant-1", {"acct-invitee": "invitee@example.com"})
         invitation_assignment.replace.assert_not_called()
-        ensure_capacity.assert_not_called()
 
-    def test_assign_invited_member_repairs_existing_membership_without_roles(
+    def test_invitation_scope_replaces_orphaned_role_before_local_membership(
+        self,
+        sqlite_session: Session,
+        invitation_context: None,
+        invitation_assignment,
+        member_role_guards,
+    ):
+        orphaned = svc.MemberRolesResponse(
+            account_id="acct-invitee",
+            roles=[svc.RBACRole(id=CUSTOM_ROLE_ID, type="workspace", name="Stale")],
+        )
+
+        with (
+            patch.object(svc.RBACService.MemberRoles, "_get_remote", return_value=orphaned),
+            patch("services.account_service.TenantService.ensure_member_capacity"),
+        ):
+            self._activate_invitation()
+
+        assert (
+            sqlite_session.query(TenantAccountJoin)
+            .filter_by(tenant_id="tenant-1", account_id="acct-invitee")
+            .one_or_none()
+            is not None
+        )
+        member_role_guards.permissions.assert_called_once_with("tenant-1", "acct-actor")
+        invitation_assignment.replace.assert_called_once_with(
+            "tenant-1", "acct-actor", "acct-invitee", [EDITOR_ROLE_ID]
+        )
+
+    def test_invitation_scope_rejects_superseded_token_even_when_role_matches(
         self,
         sqlite_session: Session,
         tenant_members: None,
-        member_role_guards,
         invitation_assignment,
+        member_role_guards,
     ):
-        sqlite_session.add(TenantAccountJoin(tenant_id="tenant-1", account_id="acct-invitee", role="normal"))
-        sqlite_session.commit()
-        with patch("services.account_service.TenantService.ensure_member_capacity") as ensure_capacity:
-            svc.RBACService.MemberRoles.assign_invited_member(
-                "tenant-1", "acct-actor", "acct-invitee", EDITOR_ROLE_ID.upper()
+        sqlite_session.add(
+            TenantAccountJoin(
+                tenant_id="tenant-1",
+                account_id="acct-invitee",
+                role=svc.TenantAccountRole.NORMAL,
             )
+        )
+        sqlite_session.commit()
+        member_role_guards.current_invitation.return_value = False
 
+        with pytest.raises(svc.NoPermissionError, match="no longer current"):
+            self._activate_invitation(token="superseded-token")
+
+        member_role_guards.current_invitation.assert_called_once_with("tenant-1", "acct-invitee", "superseded-token")
+        invitation_assignment.get_remote.assert_not_called()
+        member_role_guards.permissions.assert_not_called()
+        invitation_assignment.get_role.assert_not_called()
+        invitation_assignment.replace.assert_not_called()
+
+    def test_invitation_scope_rejects_changed_existing_role(
+        self,
+        sqlite_session: Session,
+        invitation_context: None,
+        invitation_assignment,
+        member_role_guards,
+    ):
+        sqlite_session.add(
+            TenantAccountJoin(
+                tenant_id="tenant-1",
+                account_id="acct-invitee",
+                role=svc.TenantAccountRole.NORMAL,
+            )
+        )
+        sqlite_session.commit()
+        current = svc.MemberRolesResponse(
+            account_id="acct-invitee",
+            roles=[svc.RBACRole(id=OWNER_ROLE_ID, type="workspace", name="Other")],
+        )
+
+        with (
+            patch.object(svc.RBACService.MemberRoles, "_get_remote", return_value=current),
+            pytest.raises(svc.NoPermissionError, match="no longer matches"),
+        ):
+            self._activate_invitation()
+
+        member_role_guards.current_invitation.assert_called_once_with("tenant-1", "acct-invitee", "invite-token")
+        invitation_assignment.replace.assert_not_called()
+
+    def test_invitation_scope_repairs_empty_roles_for_current_token(
+        self,
+        sqlite_session: Session,
+        invitation_context: None,
+        invitation_assignment,
+        member_role_guards,
+    ):
+        sqlite_session.add(
+            TenantAccountJoin(
+                tenant_id="tenant-1",
+                account_id="acct-invitee",
+                role=svc.TenantAccountRole.NORMAL,
+            )
+        )
+        sqlite_session.commit()
+
+        with patch("services.account_service.TenantService.ensure_member_capacity") as ensure_capacity:
+            self._activate_invitation(role_id=EDITOR_ROLE_ID.upper())
+
+        member_role_guards.current_invitation.assert_called_once_with("tenant-1", "acct-invitee", "invite-token")
         member_role_guards.permissions.assert_called_once_with("tenant-1", "acct-actor")
         invitation_assignment.get_role.assert_called_once_with("tenant-1", "acct-actor", EDITOR_ROLE_ID)
-        invitation_assignment.get_remote.assert_called_once_with("tenant-1", "acct-actor", "acct-invitee")
+        invitation_assignment.get_remote.assert_called_once_with("tenant-1", None, "acct-invitee")
         invitation_assignment.replace.assert_called_once_with(
             "tenant-1", "acct-actor", "acct-invitee", [EDITOR_ROLE_ID]
         )
         ensure_capacity.assert_not_called()
 
-    def test_assign_invited_member_preserves_recovered_membership_when_assignment_still_fails(
+    def test_invitation_scope_does_not_create_membership_when_role_assignment_fails(
+        self,
+        sqlite_session: Session,
+        invitation_context: None,
+        invitation_assignment,
+    ):
+        assignment_error = TimeoutError("assignment timed out")
+        invitation_assignment.replace.side_effect = assignment_error
+
+        with pytest.raises(TimeoutError) as exc_info:
+            self._activate_invitation()
+
+        assert exc_info.value is assignment_error
+        assert (
+            sqlite_session.query(TenantAccountJoin).filter_by(tenant_id="tenant-1", account_id="acct-invitee").count()
+            == 0
+        )
+
+    def test_invitation_scope_rejects_local_owner_with_remote_drift(
         self,
         sqlite_session: Session,
         tenant_members: None,
         invitation_assignment,
+        member_role_guards,
     ):
-        sqlite_session.add(TenantAccountJoin(tenant_id="tenant-1", account_id="acct-invitee", role="normal"))
-        sqlite_session.commit()
-        assignment_error = TimeoutError("assignment timed out")
-
-        with (
-            patch.object(
-                svc.RBACService.MemberRoles,
-                "replace",
-                side_effect=assignment_error,
-            ),
-            patch.object(
-                svc.RBACService.MemberRoles,
-                "_get_remote",
-                side_effect=[invitation_assignment.no_roles, invitation_assignment.no_roles],
-            ),
-            pytest.raises(TimeoutError) as exc_info,
-        ):
-            svc.RBACService.MemberRoles.assign_invited_member("tenant-1", "acct-actor", "acct-invitee", EDITOR_ROLE_ID)
-
-        assert exc_info.value is assignment_error
-        assert (
-            sqlite_session.query(TenantAccountJoin).filter_by(tenant_id="tenant-1", account_id="acct-invitee").count()
-            == 1
-        )
-
-    def test_assign_invited_member_accepts_confirmed_ambiguous_assignment(
-        self,
-        sqlite_session: Session,
-        invitation_context: None,
-        invitation_assignment,
-    ):
-        with (
-            patch("services.account_service.TenantService.ensure_member_capacity"),
-            patch.object(
-                svc.RBACService.MemberRoles,
-                "replace",
-                side_effect=TimeoutError("response lost"),
-            ),
-            patch.object(
-                svc.RBACService.MemberRoles,
-                "_get_remote",
-                side_effect=[invitation_assignment.no_roles, invitation_assignment.assigned],
-            ),
-        ):
-            svc.RBACService.MemberRoles.assign_invited_member("tenant-1", "acct-actor", "acct-invitee", EDITOR_ROLE_ID)
-
-        assert (
-            sqlite_session.query(TenantAccountJoin).filter_by(tenant_id="tenant-1", account_id="acct-invitee").count()
-            == 1
-        )
-
-    @pytest.mark.parametrize(
-        "readback",
-        [
-            svc.MemberRolesResponse(
+        sqlite_session.add(
+            TenantAccountJoin(
+                tenant_id="tenant-1",
                 account_id="acct-invitee",
-                roles=[svc.RBACRole(id=OWNER_ROLE_ID, type="workspace", name="Other")],
-            ),
-            ConnectionError("readback unavailable"),
-            svc.MemberRolesResponse(account_id="acct-invitee", roles=[]),
-        ],
-        ids=["different-role", "unreadable", "no-roles"],
-    )
-    def test_assign_invited_member_preserves_new_membership_when_remote_state_is_ambiguous(
-        self,
-        sqlite_session: Session,
-        invitation_context: None,
-        invitation_assignment,
-        readback: svc.MemberRolesResponse | Exception,
-    ):
-        assignment_error = TimeoutError("assignment timed out")
-        with (
-            patch("services.account_service.TenantService.ensure_member_capacity"),
-            patch.object(
-                svc.RBACService.MemberRoles,
-                "replace",
-                side_effect=assignment_error,
-            ),
-            patch.object(
-                svc.RBACService.MemberRoles,
-                "_get_remote",
-                side_effect=[invitation_assignment.no_roles, readback],
-            ),
-            pytest.raises(TimeoutError) as exc_info,
-        ):
-            svc.RBACService.MemberRoles.assign_invited_member("tenant-1", "acct-actor", "acct-invitee", EDITOR_ROLE_ID)
-
-        assert exc_info.value is assignment_error
-        sqlite_session.expire_all()
-        assert (
-            sqlite_session.query(TenantAccountJoin).filter_by(tenant_id="tenant-1", account_id="acct-invitee").count()
-            == 1
+                role=svc.TenantAccountRole.OWNER,
+            )
         )
+        sqlite_session.commit()
 
-    def test_assign_invited_member_rejects_unconfirmed_success_response(
-        self,
-        sqlite_session: Session,
-        invitation_context: None,
-        invitation_assignment,
-    ):
-        with (
-            patch("services.account_service.TenantService.ensure_member_capacity"),
-            patch.object(svc.RBACService.MemberRoles, "replace", return_value=invitation_assignment.no_roles),
-            patch.object(
-                svc.RBACService.MemberRoles,
-                "_get_remote",
-                side_effect=[invitation_assignment.no_roles, invitation_assignment.no_roles],
-            ),
-            pytest.raises(svc.EnterpriseAPIError, match="does not match"),
-        ):
-            svc.RBACService.MemberRoles.assign_invited_member("tenant-1", "acct-actor", "acct-invitee", EDITOR_ROLE_ID)
+        with pytest.raises(svc.NoPermissionError, match="owner"):
+            self._activate_invitation()
 
-        assert (
-            sqlite_session.query(TenantAccountJoin).filter_by(tenant_id="tenant-1", account_id="acct-invitee").count()
-            == 1
-        )
+        invitation_assignment.get_remote.assert_not_called()
+        member_role_guards.current_invitation.assert_called_once_with("tenant-1", "acct-invitee", "invite-token")
+        invitation_assignment.replace.assert_not_called()
 
     def test_replace_delegates_legacy_role_rules(self, mock_send: MagicMock, config_overrides):
         config_overrides(RBAC_ENABLED=False)

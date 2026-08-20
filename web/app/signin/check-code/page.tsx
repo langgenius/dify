@@ -73,6 +73,7 @@ export default function CheckCode() {
         token,
         language,
         timezone: getBrowserTimezone(),
+        ...(invite_token ? { invite_token } : {}),
         ...(isTurnstileRequired ? { turnstile_token: verifyTurnstileToken } : {}),
       })
       if (ret.result === 'success') {

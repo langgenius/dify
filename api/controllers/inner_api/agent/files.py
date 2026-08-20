@@ -19,6 +19,7 @@ from core.plugin.entities.request import RequestDownloadFileMapping, RequestRequ
 from core.tools.signature import bind_file_uri, get_signed_file_uri_for_plugin
 from fields.base import ResponseModel
 from libs.exception import BaseHTTPException
+from models.account import TenantStatus
 from services.account_service import TenantService
 from services.file_request_service import FileRequestService
 
@@ -108,7 +109,7 @@ class AgentFileUploadRequestApi(Resource):
             ) from exc
 
         tenant = TenantService.get_tenant_by_id(payload.tenant_id, session=session)
-        if tenant is None:
+        if tenant is None or tenant.status != TenantStatus.NORMAL:
             raise AgentFileRequestHttpError(
                 error_code="tenant_not_found",
                 description="tenant not found",
@@ -164,7 +165,8 @@ class AgentFileDownloadRequestApi(Resource):
                 status_code=400,
             ) from exc
 
-        if TenantService.get_tenant_by_id(payload.tenant_id, session=session) is None:
+        tenant = TenantService.get_tenant_by_id(payload.tenant_id, session=session)
+        if tenant is None or tenant.status != TenantStatus.NORMAL:
             raise AgentFileRequestHttpError(
                 error_code="tenant_not_found",
                 description="tenant not found",

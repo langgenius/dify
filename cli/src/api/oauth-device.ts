@@ -1,3 +1,4 @@
+import type { DeviceCodeResponse, DeviceTokenResponse } from '@dify/contracts/api/openapi/types.gen'
 import type { HttpClient } from '@/http/types'
 import { BaseError, HttpClientError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
@@ -9,42 +10,14 @@ export type CodeRequest = {
   device_label: string
 }
 
-export type CodeResponse = {
-  device_code: string
-  user_code: string
-  verification_uri: string
-  expires_in: number
-  interval: number
-}
+export type CodeResponse = DeviceCodeResponse
 
 export type PollRequest = {
   client_id?: string
   device_code: string
 }
 
-export type PollAccount = {
-  id: string
-  email: string
-  name: string
-}
-
-export type PollWorkspace = {
-  id: string
-  name: string
-  role: string
-}
-
-export type PollSuccess = {
-  token: string
-  expires_at?: string
-  subject_type?: string
-  subject_email?: string
-  subject_issuer?: string
-  account?: PollAccount | null
-  workspaces?: readonly PollWorkspace[]
-  default_workspace_id?: string
-  token_id?: string
-}
+export type PollSuccess = DeviceTokenResponse
 
 export type PollResult =
   | { status: 'pending' }

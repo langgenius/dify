@@ -41,15 +41,15 @@ class SQLAlchemyAccountActivationRepository(AccountActivationRepository):
                 return None
 
             return AccountInvitation(
+                token=invitation.token,
                 account_id=account.id,
                 account_email=account.email,
                 account_status=account.status.value,
                 workspace_id=tenant.id,
                 workspace_name=tenant.name,
                 role=invitation.role,
-                requires_setup=invitation.requires_setup,
-                rbac_role_id=invitation.rbac_role_id,
                 inviter_id=invitation.inviter_id,
+                rbac_role_id=invitation.rbac_role_id,
             )
 
     @override
@@ -86,11 +86,13 @@ class SQLAlchemyAccountActivationRepository(AccountActivationRepository):
                     TenantAccountJoin.account_id == account.id,
                 )
             )
+            should_switch_workspace = membership is None or account.status == AccountStatus.PENDING
             if membership is None:
                 membership = TenantAccountJoin(
                     tenant_id=tenant_id,
                     account_id=account.id,
                     role=TenantAccountRole(membership_role),
+                    invited_by=invitation.inviter_id,
                 )
                 session.add(membership)
 
@@ -102,15 +104,16 @@ class SQLAlchemyAccountActivationRepository(AccountActivationRepository):
                 account.status = AccountStatus.ACTIVE
                 account.initialized_at = naive_utc_now()
 
-            session.execute(
-                update(TenantAccountJoin)
-                .where(
-                    TenantAccountJoin.account_id == account.id,
-                    TenantAccountJoin.tenant_id != tenant_id,
+            if should_switch_workspace:
+                session.execute(
+                    update(TenantAccountJoin)
+                    .where(
+                        TenantAccountJoin.account_id == account.id,
+                        TenantAccountJoin.tenant_id != tenant_id,
+                    )
+                    .values(current=False)
                 )
-                .values(current=False)
-            )
-            membership.current = True
-            membership.last_opened_at = naive_utc_now()
+                membership.current = True
+                membership.last_opened_at = naive_utc_now()
 
             return True

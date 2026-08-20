@@ -31,7 +31,7 @@ export type AccountFixture = {
 export type WorkspaceFixture = {
   id: string
   name: string
-  role: string
+  roles: { id: string; name: string }[]
   status: string
   is_current: boolean
 }
@@ -76,14 +76,14 @@ export const WORKSPACES: WorkspaceFixture[] = [
   {
     id: '550e8400-e29b-41d4-a716-446655440000',
     name: 'Default',
-    role: 'owner',
+    roles: [{ id: 'owner', name: 'owner' }],
     status: 'normal',
     is_current: true,
   },
   {
     id: '550e8400-e29b-41d4-a716-446655440001',
     name: 'Other',
-    role: 'normal',
+    roles: [{ id: 'normal', name: 'normal' }],
     status: 'normal',
     is_current: false,
   },

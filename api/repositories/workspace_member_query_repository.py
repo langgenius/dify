@@ -1,12 +1,17 @@
 """Database repository for the workspace-member read model."""
 
+from collections.abc import Sequence
 from typing import override
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.account import Account, TenantAccountJoin
-from services.workspace_member_query_service import WorkspaceMemberQuery, WorkspaceMemberRecord
+from models.account import Account, AccountStatus, TenantAccountJoin
+from services.workspace_member_query_service import (
+    WorkspaceInvitationRecord,
+    WorkspaceMemberQuery,
+    WorkspaceMemberRecord,
+)
 
 
 class WorkspaceMemberQueryRepository(WorkspaceMemberQuery):
@@ -60,3 +65,33 @@ class WorkspaceMemberQueryRepository(WorkspaceMemberQuery):
             )
 
         return records
+
+    @override
+    def list_invited_accounts(
+        self, invitations: Sequence[WorkspaceInvitationRecord]
+    ) -> tuple[WorkspaceMemberRecord, ...]:
+        invitations_by_account = {invitation.account_id: invitation for invitation in invitations}
+        if not invitations_by_account:
+            return ()
+
+        stmt = select(Account).where(
+            Account.id.in_(invitations_by_account),
+            Account.status.in_((AccountStatus.PENDING, AccountStatus.ACTIVE)),
+        )
+        with self._session_factory() as session:
+            accounts = session.scalars(stmt).all()
+            return tuple(
+                WorkspaceMemberRecord(
+                    id=str(account.id),
+                    name=account.name,
+                    email=account.email,
+                    avatar=account.avatar,
+                    last_login_at=account.last_login_at,
+                    last_active_at=account.last_active_at,
+                    created_at=account.created_at,
+                    status=AccountStatus.PENDING.value,
+                    legacy_role=invitations_by_account[str(account.id)].legacy_role,
+                )
+                for account in accounts
+                if account.email.casefold() == invitations_by_account[str(account.id)].email.casefold()
+            )

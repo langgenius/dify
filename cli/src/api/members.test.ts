@@ -26,7 +26,15 @@ describe('MembersClient.list', () => {
           limit: 20,
           total: 1,
           has_more: false,
-          data: [{ id: 'm-1', name: 'Mia', email: 'mia@e.com', role: 'admin', status: 'active' }],
+          data: [
+            {
+              id: 'm-1',
+              name: 'Mia',
+              email: 'mia@e.com',
+              roles: [{ id: 'admin', name: 'Admin' }],
+              status: 'active',
+            },
+          ],
         },
         cap,
       ),
@@ -190,7 +198,7 @@ describe('WorkspacesClient.switch (integration with stub)', () => {
         {
           id: 'ws-1',
           name: 'Workspace 1',
-          role: 'owner',
+          roles: [{ id: 'owner', name: 'Owner' }],
           status: 'normal',
           current: true,
           created_at: '2026-05-18T00:00:00Z',

@@ -22,6 +22,7 @@ from controllers.console.wraps import (
 from core.db.session_factory import session_factory
 from core.rbac import RBACResourceWhitelistScope
 from enums import DeploymentEdition
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
 from models import Account, TenantAccountJoin
@@ -32,7 +33,6 @@ from services.errors.account import (
     NoPermissionError,
     RoleAlreadyAssignedError,
 )
-from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 
 class _RBACRoleList(svc.Paginated[svc.RBACRole]):
@@ -217,6 +217,23 @@ def _pagination_options() -> svc.ListOption:
     return _PaginationQuery.model_validate(request.args.to_dict(flat=True)).to_inner_options()
 
 
+def _paginate[T](items: list[T], options: svc.ListOption | None, *, default_per_page: int) -> svc.Paginated[T]:
+    page = options.page_number if options and options.page_number else 1
+    per_page = options.results_per_page if options and options.results_per_page else default_per_page
+    ordered_items = list(reversed(items)) if options and options.reverse else items
+    total = len(items)
+    start = (page - 1) * per_page
+    return svc.Paginated[T](
+        data=ordered_items[start : start + per_page],
+        pagination=svc.Pagination(
+            total_count=total,
+            per_page=per_page,
+            current_page=page,
+            total_pages=(total + per_page - 1) // per_page if per_page else 0,
+        ),
+    )
+
+
 def _legacy_workspace_roles(
     options: svc.ListOption | None = None, *, include_owner: int = 0, billing_enabled: bool = True
 ) -> svc.Paginated[svc.RBACRole]:
@@ -254,28 +271,7 @@ def _legacy_workspace_roles(
     if not include_owner:
         legacy_roles = [r for r in legacy_roles if r.name != "owner"]
 
-    page_number = options.page_number if options and options.page_number is not None else 1
-    results_per_page = (
-        options.results_per_page if options and options.results_per_page is not None else len(legacy_roles)
-    )
-    reverse = options.reverse if options and options.reverse is not None else False
-
-    ordered_roles = list(reversed(legacy_roles)) if reverse else legacy_roles
-    start = max(page_number - 1, 0) * results_per_page
-    end = start + results_per_page
-    paged_roles = ordered_roles[start:end]
-    total_count = len(legacy_roles)
-    total_pages = (total_count + results_per_page - 1) // results_per_page if results_per_page > 0 else 0
-
-    return svc.Paginated[svc.RBACRole](
-        data=paged_roles,
-        pagination=svc.Pagination(
-            total_count=total_count,
-            per_page=results_per_page,
-            current_page=page_number,
-            total_pages=total_pages,
-        ),
-    )
+    return _paginate(legacy_roles, options, default_per_page=len(legacy_roles))
 
 
 @console_ns.route("/workspaces/current/rbac/role-permissions/catalog")
@@ -625,8 +621,6 @@ class RBACAppWhitelistApi(_AppAccessConfigResource):
             str(app_id),
             svc.ReplaceMemberBindings(scope=request.scope.value),
         )
-        if dify_config.RBAC_ENABLED and request.scope is RBACResourceWhitelistScope.ALL:
-            initialize_created_app_rbac_access_task.delay(tenant_id, account_id, str(app_id))
         _filter_resource_whitelist(tenant_id, result)
         return _dump(result)
 
@@ -739,10 +733,6 @@ class RBACDatasetWhitelistApi(_DatasetAccessConfigResource):
             str(dataset_id),
             svc.ReplaceMemberBindings(scope=request.scope.value),
         )
-        # Widening the scope only records it: the members still need the default access policy
-        # before they can reach the dataset, same as the app whitelist route above.
-        if dify_config.RBAC_ENABLED and request.scope is RBACResourceWhitelistScope.ALL:
-            initialize_created_app_rbac_access_task.delay(tenant_id, account_id, dataset_id=str(dataset_id))
         _filter_resource_whitelist(tenant_id, result)
         return _dump(result)
 
@@ -978,11 +968,17 @@ class ListMembersByRole(_WorkspaceRoleManageResource):
     @console_ns.response(200, "Success", console_ns.models[_MembersInRoleList.__name__])
     def get(self, role_id):
         tenant_id, account_id = _current_ids()
-        result = svc.RBACService.Roles.members(
-            tenant_id,
-            account_id,
-            str(role_id),
-            options=_pagination_options(),
+        role_id = str(role_id)
+        options = _pagination_options()
+        members = sorted(
+            (
+                svc.MembersInRole(account_id=member.id, account_name=member.name)
+                for member in application_services().workspace_member_queries.list_for_workspace(
+                    tenant_id,
+                    account_id,
+                )
+                if any(role.id == role_id for role in member.roles)
+            ),
+            key=lambda member: member.account_id,
         )
-        _hydrate_member_bindings(tenant_id, result)
-        return _dump(result)
+        return _dump(_paginate(members, options, default_per_page=20))

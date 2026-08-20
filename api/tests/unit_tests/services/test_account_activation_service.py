@@ -1,6 +1,6 @@
 from collections.abc import Generator
 from contextlib import contextmanager, nullcontext
-from unittest.mock import Mock, call
+from unittest.mock import MagicMock, Mock
 
 import pytest
 from werkzeug.exceptions import Forbidden
@@ -30,32 +30,32 @@ def _lookup(email: str | None = "invitee@example.com") -> InvitationLookup:
 
 def _token() -> InvitationToken:
     return InvitationToken(
+        token="token-1",
         account_id="account-1",
         email="invitee@example.com",
         workspace_id="workspace-1",
         role="admin",
-        requires_setup=True,
+        inviter_id="inviter-1",
     )
 
 
 def _invitation(
     *,
     account_status: str = "pending",
-    role: str | None = "admin",
-    requires_setup: bool | None = True,
+    role: str = "admin",
     rbac_role_id: str | None = None,
-    inviter_id: str | None = None,
+    inviter_id: str = "inviter-1",
 ) -> AccountInvitation:
     return AccountInvitation(
+        token="token-1",
         account_id="account-1",
         account_email="invitee@example.com",
         account_status=account_status,
         workspace_id="workspace-1",
         workspace_name="Workspace",
         role=role,
-        requires_setup=requires_setup,
-        rbac_role_id=rbac_role_id,
         inviter_id=inviter_id,
+        rbac_role_id=rbac_role_id,
     )
 
 
@@ -100,17 +100,12 @@ class TestCheckInvitation:
         accounts.resolve.assert_called_once_with(token)
         policy.ensure_allowed.assert_not_called()
 
-    def test_falls_back_to_normalized_email_and_applies_workspace_policy(self) -> None:
+    def test_resolves_mixed_case_email_with_one_token_lookup(self) -> None:
         service, tokens, accounts, policy, _ = _service()
-        upper_case_token = InvitationToken(
-            account_id="account-1",
-            email="Invitee@Example.com",
-            workspace_id="workspace-1",
-        )
-        normalized_token = _token()
-        invitation = _invitation(requires_setup=None)
-        tokens.find.side_effect = [upper_case_token, normalized_token]
-        accounts.resolve.side_effect = [None, invitation]
+        token = _token()
+        invitation = _invitation()
+        tokens.find.return_value = token
+        accounts.resolve.return_value = invitation
 
         result = service.check(_lookup("Invitee@Example.com"))
 
@@ -118,11 +113,8 @@ class TestCheckInvitation:
         assert result.data is not None
         assert result.data.requires_setup is True
         assert result.data.account_status == "pending"
-        assert tokens.find.call_args_list == [
-            call(_lookup("Invitee@Example.com")),
-            call(_lookup("invitee@example.com")),
-        ]
-        assert accounts.resolve.call_args_list == [call(upper_case_token), call(normalized_token)]
+        tokens.find.assert_called_once_with(_lookup("Invitee@Example.com"))
+        accounts.resolve.assert_called_once_with(token)
         policy.ensure_allowed.assert_called_once_with("workspace-1")
 
     @pytest.mark.parametrize("account_status", ["banned", "closed", "uninitialized"])
@@ -149,7 +141,6 @@ class TestActivateInvitation:
         tokens.find.return_value = _token()
         accounts.resolve.return_value = _invitation(
             account_status="active",
-            requires_setup=False,
             rbac_role_id="role-1",
             inviter_id="inviter-1",
         )
@@ -216,9 +207,9 @@ class TestActivateInvitation:
 
         @contextmanager
         def assign_membership(*_args: object) -> Generator[str]:
-            operations.append("assign")
+            operations.append("remote-assigned")
             yield "normal"
-            operations.append("assigned")
+            operations.append("scope-exit")
 
         membership_assigner.side_effect = assign_membership
 
@@ -227,7 +218,7 @@ class TestActivateInvitation:
             return True
 
         accounts.activate.side_effect = persist
-        tokens.revoke.side_effect = lambda _invitation: operations.append("revoke")
+        tokens.revoke.side_effect = lambda _token: operations.append("revoke")
         command = ActivationCommand(
             invitation=_lookup("Invitee@Example.com"),
             name="John Doe",
@@ -239,13 +230,13 @@ class TestActivateInvitation:
 
         eligibility.is_frozen.assert_called_once_with("invitee@example.com")
         membership_assigner.assert_called_once_with(invitation, "normal")
-        tokens.revoke.assert_called_once_with(_lookup("invitee@example.com"))
+        tokens.revoke.assert_called_once_with("token-1")
         accounts.activate.assert_called_once_with(
             invitation,
             setup=AccountSetup(name="John Doe", interface_language="en-US", timezone="UTC"),
             membership_role="normal",
         )
-        assert operations == ["assign", "persist", "assigned", "revoke"]
+        assert operations == ["remote-assigned", "persist", "scope-exit", "revoke"]
 
     def test_ignores_setup_fields_for_active_account(self) -> None:
         service, tokens, accounts, _, _ = _service()
@@ -253,7 +244,6 @@ class TestActivateInvitation:
         invitation = _invitation(
             account_status="active",
             role="editor",
-            requires_setup=False,
         )
         accounts.resolve.return_value = invitation
         accounts.activate.return_value = True
@@ -271,20 +261,26 @@ class TestActivateInvitation:
         accounts.activate.assert_called_once_with(invitation, setup=None, membership_role="normal")
 
     def test_membership_assignment_failure_preserves_invitation(self) -> None:
-        error = RuntimeError("membership service unavailable")
-        membership_assigner = Mock(side_effect=error)
+        error = RuntimeError("remote role assignment failed")
+        assignment_scope = MagicMock()
+
+        def fail_before_local_activation() -> None:
+            raise error
+
+        assignment_scope.__enter__.side_effect = fail_before_local_activation
+        membership_assigner = Mock(return_value=assignment_scope)
         service, tokens, accounts, _, _ = _service(membership_assigner=membership_assigner)
         tokens.find.return_value = _token()
         accounts.resolve.return_value = _invitation(
             account_status="active",
-            requires_setup=False,
             rbac_role_id="role-1",
             inviter_id="inviter-1",
         )
 
-        with pytest.raises(RuntimeError):
+        with pytest.raises(RuntimeError) as raised:
             service.activate(ActivationCommand(invitation=_lookup()), authenticated_account_id=None)
 
+        assert raised.value is error
         accounts.activate.assert_not_called()
         tokens.revoke.assert_not_called()
 
@@ -292,7 +288,7 @@ class TestActivateInvitation:
         membership_assigner = Mock(return_value=nullcontext("normal"))
         service, tokens, accounts, _, _ = _service(membership_assigner=membership_assigner)
         tokens.find.return_value = _token()
-        accounts.resolve.return_value = _invitation(account_status="active", requires_setup=False)
+        accounts.resolve.return_value = _invitation(account_status="active")
         accounts.activate.return_value = False
 
         with pytest.raises(InvalidInvitationError):

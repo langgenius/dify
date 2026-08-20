@@ -7,6 +7,7 @@ import { ErrorCode } from '@/errors/codes'
 import { colorEnabled, colorScheme } from '@/sys/io/color'
 import { selectFromList } from '@/sys/io/select'
 import { runWithSpinner } from '@/sys/io/spinner'
+import { formatRoles } from '@/workspace/roles'
 
 export type UseWorkspaceOptions = {
   readonly workspaceId?: string
@@ -47,7 +48,7 @@ export async function runUseWorkspace(
 
   const nextCtx = {
     ...deps.active.ctx,
-    workspace: { id: detail.id, name: detail.name, role: detail.role },
+    workspace: { id: detail.id, name: detail.name, roles: detail.roles },
   }
   deps.reg.upsert(deps.active.host, deps.active.email, nextCtx)
   await deps.reg.save()
@@ -67,7 +68,7 @@ async function pickWorkspaceId(client: WorkspacesClient, deps: UseWorkspaceDeps)
   const list = await runWithSpinner({ io: deps.io, label: 'Loading workspaces' }, () =>
     client.list(),
   )
-  const items = list.workspaces.map<Workspace>((w) => ({ id: w.id, name: w.name, role: w.role }))
+  const items = list.workspaces.map<Workspace>((w) => ({ id: w.id, name: w.name, roles: w.roles }))
   if (items.length === 0) {
     throw new BaseError({
       code: ErrorCode.AccessDenied,
@@ -80,7 +81,7 @@ async function pickWorkspaceId(client: WorkspacesClient, deps: UseWorkspaceDeps)
     io: deps.io,
     items,
     header: 'Select a workspace',
-    render: (w) => `${w.id === activeId ? '* ' : '  '}${w.name} (${w.role})`,
+    render: (w) => `${w.id === activeId ? '* ' : '  '}${w.name} (${formatRoles(w.roles)})`,
   })
   return picked.id
 }

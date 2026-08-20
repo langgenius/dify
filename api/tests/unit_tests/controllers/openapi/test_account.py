@@ -3,13 +3,16 @@
 import builtins
 import sys
 import uuid
+from datetime import datetime
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 from flask import Flask
 from flask.views import MethodView
 from werkzeug.exceptions import UnprocessableEntity
 
+from controllers.openapi import account as account_module
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi.account import (
     AccountApi,
@@ -19,6 +22,10 @@ from controllers.openapi.account import (
 )
 from controllers.openapi.auth.data import AuthData
 from libs.oauth_bearer import Scope, TokenType
+from models import Account
+from models.account import AccountStatus
+from services.workspace_member_query_service import WorkspaceMemberRole
+from services.workspace_query_service import WorkspaceWithRoles
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
@@ -59,6 +66,52 @@ def test_sessions_self_dispatches_to_class(openapi_app: Flask):
 def test_account_methods(openapi_app: Flask):
     rule = _rule(openapi_app, "/openapi/v1/account")
     assert "GET" in rule.methods
+
+
+def test_account_returns_authoritative_workspace_roles(app: Flask, monkeypatch: pytest.MonkeyPatch):
+    account_id = uuid.uuid4()
+    account = Account(name="Ada", email="ada@example.com", status=AccountStatus.ACTIVE)
+    account.id = str(account_id)
+    workspaces = (
+        WorkspaceWithRoles(
+            id="workspace-1",
+            name="Research",
+            status="normal",
+            created_at=datetime(2026, 1, 1),
+            current=True,
+            roles=(
+                WorkspaceMemberRole(id="workspace.admin", name="Admin"),
+                WorkspaceMemberRole(id="workspace.reviewer", name="Reviewer"),
+            ),
+        ),
+    )
+    workspace_queries = SimpleNamespace(list_for_account_with_roles=Mock(return_value=workspaces))
+    monkeypatch.setattr(
+        account_module,
+        "application_services",
+        lambda: SimpleNamespace(workspace_queries=workspace_queries),
+    )
+    monkeypatch.setattr(account_module, "enforce", Mock())
+    auth_data = AuthData(
+        token_type=TokenType.OAUTH_ACCOUNT,
+        account_id=account_id,
+        token_hash="test",
+        scopes=frozenset({Scope.FULL}),
+        caller=account,
+    )
+    api = AccountApi()
+
+    with app.test_request_context("/openapi/v1/account"):
+        body, status = api.get.__wrapped__(api, auth_data=auth_data)
+
+    assert status == 200
+    assert body["default_workspace_id"] == "workspace-1"
+    assert body["workspaces"][0]["roles"] == [
+        {"id": "workspace.admin", "name": "Admin"},
+        {"id": "workspace.reviewer", "name": "Reviewer"},
+    ]
+    assert "role" not in body["workspaces"][0]
+    workspace_queries.list_for_account_with_roles.assert_called_once_with(str(account_id))
 
 
 def test_sessions_self_methods(openapi_app: Flask):
