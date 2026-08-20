@@ -6,6 +6,7 @@ import hashlib
 import json
 from functools import lru_cache
 from pathlib import Path
+import re
 from typing import ClassVar, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -107,7 +108,11 @@ def deterministic_file_payload_sha256(payload_bytes: int) -> str:
 
 def config_skill_name(benchmark_run_id: str, index: int) -> str:
     """Return a run-unique Config skill name safe for a URL and Workspace path."""
-    return f"skill-{index}-{benchmark_run_id}"
+    candidate = f"skill-{index}-{benchmark_run_id}"
+    if re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,63}", candidate) is not None:
+        return candidate
+    digest = hashlib.sha256(f"{index}:{benchmark_run_id}".encode()).hexdigest()[:32]
+    return f"skill-{digest}"
 
 
 def config_file_name(benchmark_run_id: str, index: int) -> str:

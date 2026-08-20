@@ -1,4 +1,5 @@
 from benchmarks.scenario import CapacityScenario, config_file_name, config_skill_name, load_scenario_manifest
+from dify_agent.agent_stub.protocol import AgentStubConfigDownloadSource
 
 
 def test_manifest_contains_only_the_five_capacity_workloads() -> None:
@@ -34,6 +35,17 @@ def test_config_scenario_verifies_materialized_content_with_one_shell_round() ->
 def test_config_item_names_are_unique_to_one_run() -> None:
     assert config_skill_name("run-a", 2) == "skill-2-run-a"
     assert config_file_name("run-b", 4) == "file-4-run-b.bin"
+
+
+def test_long_config_skill_name_matches_current_agent_stub_contract() -> None:
+    run_id = "20260820082543946049-config-c20-123-" + "a" * 32
+
+    first = config_skill_name(run_id, 0)
+    second = config_skill_name(run_id, 1)
+
+    assert first != second
+    assert config_skill_name(run_id, 0) == first
+    assert AgentStubConfigDownloadSource(kind="skill", name=first).name == first
 
 
 def test_basic_rejects_an_extra_model_round() -> None:
