@@ -19,10 +19,6 @@ from enums import DeploymentEdition
 from libs.oauth import OAuthUserInfo, encode_oauth_state
 from models.account import Account, AccountIntegrate, AccountStatus, Tenant
 from services.errors.account import AccountRegisterError
-from models.account import AccountStatus
-from services.errors.account import (
-    AccountRegisterError,
-)
 from services.errors.account import (
     EmailDomainSuspendedError as EmailDomainSuspendedRegistrationError,
 )
