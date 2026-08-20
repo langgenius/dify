@@ -483,6 +483,8 @@ class TestWorkflowGenerateTaskPipeline:
         pipeline._process_stream_response = lambda **kwargs: iter([PingStreamResponse(task_id="task")])
 
         class _Publisher:
+            audio_mime_type = "audio/mpeg"
+
             def __init__(self, *args, **kwargs):
                 self.calls = 0
 
@@ -636,6 +638,8 @@ class TestWorkflowGenerateTaskPipeline:
         sleep_spy = []
 
         class _Publisher:
+            audio_mime_type = "audio/mpeg"
+
             def __init__(self, *args, **kwargs):
                 self.calls = 0
 
@@ -673,6 +677,8 @@ class TestWorkflowGenerateTaskPipeline:
         pipeline._process_stream_response = lambda **kwargs: iter([])
 
         class _Publisher:
+            audio_mime_type = "audio/mpeg"
+
             def __init__(self, *args, **kwargs):
                 self.called = False
 
