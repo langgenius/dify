@@ -423,6 +423,12 @@ def test_app_detail_with_site_includes_nested_serialization(app_models):
 
     serialized = AppDetailWithSite.model_validate(app_obj, from_attributes=True).model_dump(mode="json")
 
+    assert serialized["description"] == "Desc"
+    assert serialized["mode"] == "advanced-chat"
+    assert serialized["use_icon_as_answer_icon"] is True
+    assert serialized["created_at"] == int(timestamp.timestamp())
+    assert serialized["updated_at"] == int(timestamp.timestamp())
+    assert serialized["api_base_url"] == "https://api.example.com/v1"
     assert serialized["icon_url"] == "signed:detail-icon"
     assert serialized["model_config"]["retriever_resource"] == {"enabled": True}
     assert serialized["deleted_tools"][0]["tool_name"] == "search"
@@ -432,6 +438,10 @@ def test_app_detail_with_site_includes_nested_serialization(app_models):
     assert serialized["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
     assert serialized["bound_agent_id"] == "agent-1"
     assert "role" not in serialized
+
+    invalid_app_obj = SimpleNamespace(**(vars(app_obj) | {"mode_compatible_with_agent": "unsupported"}))
+    with pytest.raises(ValidationError):
+        AppDetailWithSite.model_validate(invalid_app_obj, from_attributes=True)
 
 
 def test_app_response_view_uses_the_caller_session_for_query_backed_fields(
@@ -606,6 +616,10 @@ def test_app_create_api_attaches_permission_keys(app, app_module, unbound_sessio
         mode_compatible_with_agent="advanced-chat",
         enable_site=True,
         enable_api=True,
+        use_icon_as_answer_icon=False,
+        created_at=_ts(),
+        updated_at=_ts(),
+        api_base_url="https://api.example.com/v1",
         permission_keys=[],
     )
 
@@ -985,6 +999,10 @@ def test_app_detail_api_attaches_current_user_permission_keys(app, app_module, u
         mode_compatible_with_agent="chat",
         enable_site=True,
         enable_api=True,
+        use_icon_as_answer_icon=False,
+        created_at=_ts(),
+        updated_at=_ts(),
+        api_base_url="https://api.example.com/v1",
         permission_keys=[],
     )
 

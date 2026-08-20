@@ -23,13 +23,13 @@ export type CreateAppPayload = {
 
 export type AppDetailWithSite = {
   access_mode?: string | null
-  api_base_url?: string | null
+  api_base_url: string
   app_id?: string | null
   bound_agent_id?: string | null
-  created_at?: number | null
+  created_at: number
   created_by?: string | null
   deleted_tools?: Array<DeletedTool>
-  description?: string | null
+  description: string
   enable_api: boolean
   enable_site: boolean
   icon?: string | null
@@ -39,16 +39,16 @@ export type AppDetailWithSite = {
   id: string
   maintainer?: string | null
   max_active_requests?: number | null
-  mode: string
+  mode: AppMode
   model_config?: AppModelConfigResponse | null
   name: string
   permission_keys?: Array<string>
   site?: AppDetailSiteResponse | null
   tags?: Array<Tag>
   tracing?: unknown | null
-  updated_at?: number | null
+  updated_at: number
   updated_by?: string | null
-  use_icon_as_answer_icon?: boolean | null
+  use_icon_as_answer_icon: boolean
   workflow?: WorkflowPartial | null
 }
 
@@ -356,24 +356,24 @@ export type AppApiStatusPayload = {
 
 export type AppDetail = {
   access_mode?: string | null
-  created_at?: number | null
+  created_at: number
   created_by?: string | null
-  description?: string | null
+  description: string
   enable_api: boolean
   enable_site: boolean
   icon?: string | null
   icon_background?: string | null
   id: string
   maintainer?: string | null
-  mode: string
+  mode: AppMode
   model_config?: AppModelConfigResponse | null
   name: string
   permission_keys?: Array<string>
   tags?: Array<Tag>
   tracing?: unknown | null
-  updated_at?: number | null
+  updated_at: number
   updated_by?: string | null
-  use_icon_as_answer_icon?: boolean | null
+  use_icon_as_answer_icon: boolean
   workflow?: WorkflowPartial | null
 }
 
@@ -1263,6 +1263,16 @@ export type DeletedTool = {
   tool_name: string
   type: string
 }
+
+export type AppMode =
+  | 'advanced-chat'
+  | 'agent'
+  | 'agent-chat'
+  | 'channel'
+  | 'chat'
+  | 'completion'
+  | 'rag-pipeline'
+  | 'workflow'
 
 export type AppModelConfigResponse = {
   agent_mode?: unknown | null
@@ -2952,13 +2962,13 @@ export type AppPaginationWritable = {
 
 export type AppDetailWithSiteWritable = {
   access_mode?: string | null
-  api_base_url?: string | null
+  api_base_url: string
   app_id?: string | null
   bound_agent_id?: string | null
-  created_at?: number | null
+  created_at: number
   created_by?: string | null
   deleted_tools?: Array<DeletedTool>
-  description?: string | null
+  description: string
   enable_api: boolean
   enable_site: boolean
   icon?: string | null
@@ -2967,16 +2977,16 @@ export type AppDetailWithSiteWritable = {
   id: string
   maintainer?: string | null
   max_active_requests?: number | null
-  mode: string
+  mode: AppMode
   model_config?: AppModelConfigResponse | null
   name: string
   permission_keys?: Array<string>
   site?: AppDetailSiteResponseWritable | null
   tags?: Array<Tag>
   tracing?: unknown | null
-  updated_at?: number | null
+  updated_at: number
   updated_by?: string | null
-  use_icon_as_answer_icon?: boolean | null
+  use_icon_as_answer_icon: boolean
   workflow?: WorkflowPartial | null
 }
 

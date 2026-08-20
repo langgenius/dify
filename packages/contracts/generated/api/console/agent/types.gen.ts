@@ -24,17 +24,17 @@ export type AgentAppCreatePayload = {
 export type AgentAppDetailWithSite = {
   access_mode?: string | null
   access_ready?: boolean
-  api_base_url?: string | null
+  api_base_url: string
   app_id?: string | null
   backing_app_id?: string | null
   bound_agent_id?: string | null
-  created_at?: number | null
+  created_at: number
   created_by?: string | null
   debug_conversation_has_messages?: boolean
   debug_conversation_id?: string | null
   debug_conversation_message_count?: number
   deleted_tools?: Array<DeletedTool>
-  description?: string | null
+  description: string
   enable_api: boolean
   enable_site: boolean
   hidden_app_backed?: boolean
@@ -45,7 +45,7 @@ export type AgentAppDetailWithSite = {
   id: string
   maintainer?: string | null
   max_active_requests?: number | null
-  mode: string
+  mode: AppMode
   model_config?: AppModelConfigResponse | null
   name: string
   permission_keys?: Array<string>
@@ -53,9 +53,9 @@ export type AgentAppDetailWithSite = {
   site?: AppDetailSiteResponse | null
   tags?: Array<Tag>
   tracing?: unknown | null
-  updated_at?: number | null
+  updated_at: number
   updated_by?: string | null
-  use_icon_as_answer_icon?: boolean | null
+  use_icon_as_answer_icon: boolean
   workflow?: WorkflowPartial | null
 }
 
@@ -474,6 +474,16 @@ export type DeletedTool = {
   tool_name: string
   type: string
 }
+
+export type AppMode =
+  | 'advanced-chat'
+  | 'agent'
+  | 'agent-chat'
+  | 'channel'
+  | 'chat'
+  | 'completion'
+  | 'rag-pipeline'
+  | 'workflow'
 
 export type AppModelConfigResponse = {
   agent_mode?: unknown | null
@@ -1739,17 +1749,17 @@ export type AgentAppPaginationWritable = {
 export type AgentAppDetailWithSiteWritable = {
   access_mode?: string | null
   access_ready?: boolean
-  api_base_url?: string | null
+  api_base_url: string
   app_id?: string | null
   backing_app_id?: string | null
   bound_agent_id?: string | null
-  created_at?: number | null
+  created_at: number
   created_by?: string | null
   debug_conversation_has_messages?: boolean
   debug_conversation_id?: string | null
   debug_conversation_message_count?: number
   deleted_tools?: Array<DeletedTool>
-  description?: string | null
+  description: string
   enable_api: boolean
   enable_site: boolean
   hidden_app_backed?: boolean
@@ -1759,7 +1769,7 @@ export type AgentAppDetailWithSiteWritable = {
   id: string
   maintainer?: string | null
   max_active_requests?: number | null
-  mode: string
+  mode: AppMode
   model_config?: AppModelConfigResponse | null
   name: string
   permission_keys?: Array<string>
@@ -1767,9 +1777,9 @@ export type AgentAppDetailWithSiteWritable = {
   site?: AppDetailSiteResponseWritable | null
   tags?: Array<Tag>
   tracing?: unknown | null
-  updated_at?: number | null
+  updated_at: number
   updated_by?: string | null
-  use_icon_as_answer_icon?: boolean | null
+  use_icon_as_answer_icon: boolean
   workflow?: WorkflowPartial | null
 }
 

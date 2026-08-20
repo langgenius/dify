@@ -50,7 +50,7 @@ from graphon.enums import WorkflowExecutionStatus
 from libs.helper import build_icon_url, dump_response, to_timestamp
 from libs.login import login_required
 from models import Account, App, DatasetPermissionEnum, Workflow
-from models.model import IconType
+from models.model import AppMode, IconType
 from services.app_dsl_service import AppDslService
 from services.app_service import (
     AppListParams,
@@ -446,8 +446,8 @@ class RecentAppListResponse(ResponseModel):
 class AppDetail(AppResponseModel):
     id: str
     name: str
-    description: str | None = None
-    mode: str = Field(validation_alias="mode_compatible_with_agent")
+    description: str
+    mode: AppMode = Field(validation_alias="mode_compatible_with_agent")
     icon: str | None = None
     icon_background: str | None = None
     enable_site: bool
@@ -459,11 +459,11 @@ class AppDetail(AppResponseModel):
     )
     workflow: WorkflowPartial | None = None
     tracing: Any | None = None
-    use_icon_as_answer_icon: bool | None = None
+    use_icon_as_answer_icon: bool
     created_by: str | None = None
-    created_at: int | None = None
+    created_at: int
     updated_by: str | None = None
-    updated_at: int | None = None
+    updated_at: int
     access_mode: str | None = None
     tags: list[Tag] = Field(default_factory=list)
     permission_keys: list[str] = Field(default_factory=list)
@@ -471,13 +471,13 @@ class AppDetail(AppResponseModel):
 
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
-    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+    def _normalize_timestamp(cls, value: datetime | int) -> int:
         return to_timestamp(value)
 
 
 class AppDetailWithSite(AppDetail):
     icon_type: str | None = None
-    api_base_url: str | None = None
+    api_base_url: str
     max_active_requests: int | None = None
     deleted_tools: list[DeletedTool] = Field(default_factory=list)
     site: AppDetailSiteResponse | None = None

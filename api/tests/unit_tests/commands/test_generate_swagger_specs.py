@@ -253,8 +253,17 @@ def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp
     app_model_config = schemas["AppDetailWithSite"]["properties"]["model_config"]
     assert {"$ref": "#/components/schemas/AppModelConfigResponse"} in app_model_config["anyOf"]
     app_detail = schemas["AppDetail"]
-    assert "mode" in app_detail["properties"]
+    assert app_detail["properties"]["mode"]["$ref"] == "#/components/schemas/AppMode"
     assert "mode_compatible_with_agent" not in app_detail["properties"]
+    assert {
+        "created_at",
+        "description",
+        "mode",
+        "updated_at",
+        "use_icon_as_answer_icon",
+    }.issubset(app_detail["required"])
+    assert schemas["AppDetailWithSite"]["properties"]["api_base_url"]["type"] == "string"
+    assert "api_base_url" in schemas["AppDetailWithSite"]["required"]
     sync_draft_workflow = schemas["SyncDraftWorkflowResponse"]
     assert _response_schema(paths["/apps/{app_id}/workflows/draft"]["post"])["$ref"] == (
         "#/components/schemas/SyncDraftWorkflowResponse"

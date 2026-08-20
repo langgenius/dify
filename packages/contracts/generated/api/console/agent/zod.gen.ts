@@ -257,6 +257,20 @@ export const zDeletedTool = z.object({
 })
 
 /**
+ * AppMode
+ */
+export const zAppMode = z.enum([
+  'advanced-chat',
+  'agent',
+  'agent-chat',
+  'channel',
+  'chat',
+  'completion',
+  'rag-pipeline',
+  'workflow',
+])
+
+/**
  * AppModelConfigResponse
  */
 export const zAppModelConfigResponse = z.object({
@@ -343,17 +357,17 @@ export const zWorkflowPartial = z.object({
 export const zAgentAppDetailWithSite = z.object({
   access_mode: z.string().nullish(),
   access_ready: z.boolean().optional().default(false),
-  api_base_url: z.string().nullish(),
+  api_base_url: z.string(),
   app_id: z.string().nullish(),
   backing_app_id: z.string().nullish(),
   bound_agent_id: z.string().nullish(),
-  created_at: z.int().nullish(),
+  created_at: z.int(),
   created_by: z.string().nullish(),
   debug_conversation_has_messages: z.boolean().optional().default(false),
   debug_conversation_id: z.string().nullish(),
   debug_conversation_message_count: z.int().optional().default(0),
   deleted_tools: z.array(zDeletedTool).optional(),
-  description: z.string().nullish(),
+  description: z.string(),
   enable_api: z.boolean(),
   enable_site: z.boolean(),
   hidden_app_backed: z.boolean().optional().default(false),
@@ -364,7 +378,7 @@ export const zAgentAppDetailWithSite = z.object({
   id: z.string(),
   maintainer: z.string().nullish(),
   max_active_requests: z.int().nullish(),
-  mode: z.string(),
+  mode: zAppMode,
   model_config: zAppModelConfigResponse.nullish(),
   name: z.string(),
   permission_keys: z.array(z.string()).optional(),
@@ -372,9 +386,9 @@ export const zAgentAppDetailWithSite = z.object({
   site: zAppDetailSiteResponse.nullish(),
   tags: z.array(zTag).optional(),
   tracing: z.unknown().nullish(),
-  updated_at: z.int().nullish(),
+  updated_at: z.int(),
   updated_by: z.string().nullish(),
-  use_icon_as_answer_icon: z.boolean().nullish(),
+  use_icon_as_answer_icon: z.boolean(),
   workflow: zWorkflowPartial.nullish(),
 })
 
@@ -2529,17 +2543,17 @@ export const zAppDetailSiteResponseWritable = z.object({
 export const zAgentAppDetailWithSiteWritable = z.object({
   access_mode: z.string().nullish(),
   access_ready: z.boolean().optional().default(false),
-  api_base_url: z.string().nullish(),
+  api_base_url: z.string(),
   app_id: z.string().nullish(),
   backing_app_id: z.string().nullish(),
   bound_agent_id: z.string().nullish(),
-  created_at: z.int().nullish(),
+  created_at: z.int(),
   created_by: z.string().nullish(),
   debug_conversation_has_messages: z.boolean().optional().default(false),
   debug_conversation_id: z.string().nullish(),
   debug_conversation_message_count: z.int().optional().default(0),
   deleted_tools: z.array(zDeletedTool).optional(),
-  description: z.string().nullish(),
+  description: z.string(),
   enable_api: z.boolean(),
   enable_site: z.boolean(),
   hidden_app_backed: z.boolean().optional().default(false),
@@ -2549,7 +2563,7 @@ export const zAgentAppDetailWithSiteWritable = z.object({
   id: z.string(),
   maintainer: z.string().nullish(),
   max_active_requests: z.int().nullish(),
-  mode: z.string(),
+  mode: zAppMode,
   model_config: zAppModelConfigResponse.nullish(),
   name: z.string(),
   permission_keys: z.array(z.string()).optional(),
@@ -2557,9 +2571,9 @@ export const zAgentAppDetailWithSiteWritable = z.object({
   site: zAppDetailSiteResponseWritable.nullish(),
   tags: z.array(zTag).optional(),
   tracing: z.unknown().nullish(),
-  updated_at: z.int().nullish(),
+  updated_at: z.int(),
   updated_by: z.string().nullish(),
-  use_icon_as_answer_icon: z.boolean().nullish(),
+  use_icon_as_answer_icon: z.boolean(),
   workflow: zWorkflowPartial.nullish(),
 })
 

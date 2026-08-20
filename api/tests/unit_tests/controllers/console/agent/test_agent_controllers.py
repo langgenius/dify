@@ -215,9 +215,9 @@ def _app_detail_obj(**overrides) -> App:
         "tracing": None,
         "use_icon_as_answer_icon": False,
         "created_by": "account-1",
-        "created_at": None,
+        "created_at": datetime(2024, 1, 1),
         "updated_by": "account-1",
-        "updated_at": None,
+        "updated_at": datetime(2024, 1, 1),
         "max_active_requests": 0,
     }
     overrides.pop("bound_agent_id", None)
