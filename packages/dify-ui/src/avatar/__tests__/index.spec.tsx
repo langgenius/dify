@@ -1,6 +1,8 @@
 import { render } from 'vitest-browser-react'
 import { Avatar } from '..'
 
+const avatarDataUrl = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='
+
 function stubImageLoader() {
   const originalImage = window.Image
   const images: HTMLImageElement[] = []
@@ -61,11 +63,7 @@ describe('Avatar', () => {
 
       try {
         const screen = await render(
-          <Avatar
-            name="John"
-            avatar="https://example.com/avatar.jpg"
-            onLoadingStatusChange={onStatusChange}
-          />,
+          <Avatar name="John" avatar={avatarDataUrl} onLoadingStatusChange={onStatusChange} />,
         )
 
         await expect.element(screen.getByText('J')).toBeVisible()
