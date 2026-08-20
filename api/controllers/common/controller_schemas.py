@@ -6,12 +6,22 @@ from pydantic import BaseModel, Field, GetJsonSchemaHandler, WithJsonSchema, mod
 
 from libs.helper import UUIDStrOrEmpty
 
+# Per-request caps for the unbounded string fields in this module. Each cap
+# sits well above the realistic in-production value for that field while
+# still bounding abuse. See sibling issue #40825 for the prior cycle's
+# ChildChunk content cap (CHILD_CHUNK_CONTENT_MAX_LENGTH, defined further
+# down next to its payload class).
+CONVERSATION_NAME_MAX_LENGTH = 200
+MESSAGE_FEEDBACK_CONTENT_MAX_LENGTH = 2000
+METADATA_NAME_MAX_LENGTH = 200
+
 # --- Conversation schemas ---
 
 
 class ConversationRenamePayload(BaseModel):
     name: str | None = Field(
         default=None,
+        max_length=CONVERSATION_NAME_MAX_LENGTH,
         description="Conversation name. Required when `auto_generate` is `false`.",
     )
     auto_generate: bool = Field(
@@ -91,7 +101,11 @@ class MessageFeedbackPayload(BaseModel):
         default=None,
         description="Feedback rating. Set to `null` to revoke previously submitted feedback.",
     )
-    content: str | None = Field(default=None, description="Optional text feedback providing additional detail.")
+    content: str | None = Field(
+        default=None,
+        max_length=MESSAGE_FEEDBACK_CONTENT_MAX_LENGTH,
+        description="Optional text feedback providing additional detail.",
+    )
 
 
 # --- Saved message schemas ---
@@ -203,7 +217,10 @@ class DocumentBatchDownloadZipPayload(BaseModel):
 
 
 class MetadataUpdatePayload(BaseModel):
-    name: str = Field(description="New metadata field name.")
+    name: str = Field(
+        max_length=METADATA_NAME_MAX_LENGTH,
+        description="New metadata field name.",
+    )
 
 
 # --- Audio schemas ---
