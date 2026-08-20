@@ -118,6 +118,35 @@ class TestAccountService:
 
     # ==================== Authentication Tests ====================
 
+    def test_send_email_code_login_email_creates_normalized_challenge(self) -> None:
+        with (
+            patch.object(AccountService.email_code_login_rate_limiter, "is_rate_limited", return_value=False),
+            patch.object(AccountService.email_code_login_rate_limiter, "increment_rate_limit") as increment_rate_limit,
+            patch("services.account_service.secrets.randbelow", side_effect=[1, 2, 3, 4, 5, 6]),
+            patch(
+                "services.account_service.EmailCodeLoginChallengeStore.create", return_value="challenge-token"
+            ) as create_challenge,
+            patch("services.account_service.send_email_code_login_mail_task.delay") as send_mail,
+        ):
+            token = AccountService.send_email_code_login_email(email="User@Example.com")
+
+        assert token == "challenge-token"
+        create_challenge.assert_called_once_with(account_id=None, email="user@example.com", code="123456")
+        send_mail.assert_called_once_with(language="en-US", to="user@example.com", code="123456")
+        increment_rate_limit.assert_called_once_with("user@example.com")
+
+    def test_verify_email_code_login_challenge_delegates_to_store(self) -> None:
+        expected = MagicMock()
+        with patch("services.account_service.EmailCodeLoginChallengeStore.verify", return_value=expected) as verify:
+            result = AccountService.verify_email_code_login_challenge(
+                email="user@example.com",
+                code="123456",
+                token="challenge-token",
+            )
+
+        assert result is expected
+        verify.assert_called_once_with(email="user@example.com", code="123456", token="challenge-token")
+
     def test_authenticate_success(self, sqlite_session: Session, mock_password_dependencies: _MockDependencies) -> None:
         """Test successful authentication with correct email and password."""
         account = Account(
