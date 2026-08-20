@@ -12,18 +12,26 @@ import (
 	"slices"
 )
 
-// WorkspaceDir is the top-level Home entry that is never part of a Home
-// Snapshot. SaveHome always skips it, whatever the caller passes as excludes.
+// WorkspaceDir is the Workspace root, which a Home Snapshot deliberately
+// leaves behind.
 const WorkspaceDir = "workspace"
 
+// RuntimeDataDir is the XDG data root, holding the server's own job records
+// and SQLite database. Restoring it would overwrite the state of the live
+// server serving the restore.
+const RuntimeDataDir = ".local"
+
+// defaultExcludes are the top-level Home entries no Home Snapshot ever
+// carries. Caller-supplied excludes add to this set; they cannot subtract
+// from it.
+var defaultExcludes = []string{WorkspaceDir, RuntimeDataDir}
+
 // excluded reports whether rel is left out of the archive. Only top-level
-// entries are eligible: WorkspaceDir unconditionally, then the configured set.
+// entries are eligible: defaultExcludes unconditionally, then the configured
+// set.
 func excluded(rel string, excludes []string) bool {
 	if filepath.Dir(rel) != "." {
 		return false
 	}
-	if rel == WorkspaceDir {
-		return true
-	}
-	return slices.Contains(excludes, rel)
+	return slices.Contains(defaultExcludes, rel) || slices.Contains(excludes, rel)
 }

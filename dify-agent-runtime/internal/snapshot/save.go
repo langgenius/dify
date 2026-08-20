@@ -13,7 +13,8 @@ import (
 )
 
 // SaveHome streams homeDir to dst as tar+zstd in a single pass with no
-// intermediate spooling. WorkspaceDir and the top-level excludes are skipped.
+// intermediate spooling. defaultExcludes and the top-level excludes are
+// skipped.
 // Symlinks are archived as symlinks; irregular files (sockets, fifos,
 // devices) are skipped as runtime artifacts; ownership is not recorded.
 // Callers wrap dst to hash or count the compressed bytes.

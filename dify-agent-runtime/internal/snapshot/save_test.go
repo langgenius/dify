@@ -6,6 +6,7 @@ import (
 	"context"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -14,7 +15,7 @@ import (
 )
 
 // buildFixtureHome creates a Home tree exercising files, modes, nesting,
-// symlinks, an empty dir, and an excluded workspace dir.
+// symlinks, an empty dir, and the excluded workspace and runtime data dirs.
 func buildFixtureHome(t *testing.T) string {
 	t.Helper()
 	home := t.TempDir()
@@ -31,6 +32,7 @@ func buildFixtureHome(t *testing.T) string {
 	mustWrite(".bashrc", "export PS1='$ '\n", 0o644)
 	mustWrite("bin/tool.sh", "#!/bin/sh\necho hi\n", 0o755)
 	mustWrite("workspace/ignored.txt", "must not travel", 0o644)
+	mustWrite(".local/share/shellctl/shellctl.db", "live server state", 0o644)
 	if err := os.MkdirAll(filepath.Join(home, "emptydir"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -145,9 +147,10 @@ func TestSaveHomeUnreadableFile(t *testing.T) {
 	}
 }
 
-// Workspace is not logically part of a Home Snapshot, so no configuration may
-// put it into one. Excludes add to that rule; they cannot subtract from it.
-func TestSaveHomeAlwaysSkipsWorkspace(t *testing.T) {
+// The default excludes are not logically part of a Home Snapshot, so no
+// configuration may put them into one. Excludes add to that rule; they cannot
+// subtract from it.
+func TestSaveHomeAlwaysSkipsDefaultExcludes(t *testing.T) {
 	for name, excludes := range map[string][]string{
 		"nil excludes":       nil,
 		"empty excludes":     {},
@@ -160,32 +163,39 @@ func TestSaveHomeAlwaysSkipsWorkspace(t *testing.T) {
 				t.Fatalf("SaveHome: %v", err)
 			}
 			headers, _ := decodeArchive(t, buf.Bytes())
-			for name := range headers {
-				if name == WorkspaceDir+"/" || strings.HasPrefix(name, WorkspaceDir+"/") {
-					t.Errorf("workspace entry %q archived", name)
+			for entry := range headers {
+				for _, dir := range []string{WorkspaceDir, RuntimeDataDir} {
+					if entry == dir+"/" || strings.HasPrefix(entry, dir+"/") {
+						t.Errorf("%s entry %q archived", dir, entry)
+					}
 				}
 			}
 		})
 	}
 }
 
-// A nested path that merely starts with the workspace name is ordinary Home
+// A nested path that merely repeats a default-exclude name is ordinary Home
 // content and must survive.
-func TestSaveHomeSkipsOnlyTopLevelWorkspace(t *testing.T) {
-	home := buildFixtureHome(t)
-	nested := filepath.Join(home, "bin", WorkspaceDir)
-	if err := os.MkdirAll(nested, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(nested, "keep.txt"), []byte("keep"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	var buf bytes.Buffer
-	if err := SaveHome(context.Background(), &buf, home, nil); err != nil {
-		t.Fatalf("SaveHome: %v", err)
-	}
-	headers, _ := decodeArchive(t, buf.Bytes())
-	if _, ok := headers["bin/workspace/keep.txt"]; !ok {
-		t.Error("bin/workspace/keep.txt dropped; only the top-level workspace is excluded")
+func TestSaveHomeSkipsOnlyTopLevelDefaultExcludes(t *testing.T) {
+	for _, dir := range []string{WorkspaceDir, RuntimeDataDir} {
+		t.Run(dir, func(t *testing.T) {
+			home := buildFixtureHome(t)
+			nested := filepath.Join(home, "bin", dir)
+			if err := os.MkdirAll(nested, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(nested, "keep.txt"), []byte("keep"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			var buf bytes.Buffer
+			if err := SaveHome(context.Background(), &buf, home, nil); err != nil {
+				t.Fatalf("SaveHome: %v", err)
+			}
+			headers, _ := decodeArchive(t, buf.Bytes())
+			want := path.Join("bin", dir, "keep.txt")
+			if _, ok := headers[want]; !ok {
+				t.Errorf("%s dropped; only the top-level %s is excluded", want, dir)
+			}
+		})
 	}
 }
