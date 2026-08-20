@@ -112,6 +112,12 @@ class BlockingRedis:
             return [(key, entries)]
         return []
 
+    def xrevrange(self, key: str, count: int | None = None):
+        entries = list(reversed(self._store.get(key, [])))
+        if count is not None:
+            entries = entries[:count]
+        return entries
+
     def release(self) -> None:
         self._release.set()
 
@@ -234,59 +240,50 @@ class TestStreamsSubscription:
 
         assert received == [b"after-subscribe-1", b"after-subscribe-2"]
 
-    def test_checkpoint_returns_last_entry_id(self, streams_channel: StreamsBroadcastChannel):
+    def test_resolve_start_id_returns_last_entry_id(self, streams_channel: StreamsBroadcastChannel):
         topic = streams_channel.topic("checkpoint-topic")
         topic.publish(b"first")
-        checkpoint = topic.checkpoint()
-        assert checkpoint == "1-0"
+        sub = _StreamsSubscription(topic._client, topic._key)
+        assert sub._resolve_start_id() == "1-0"
 
         topic.publish(b"second")
-        # checkpoint reflects the stream state at call time; a later publish doesn't
-        # retroactively change a checkpoint already taken.
-        assert checkpoint == "1-0"
-        assert topic.checkpoint() == "2-0"
+        assert sub._resolve_start_id() == "2-0"
 
-    def test_checkpoint_returns_0_0_for_empty_stream(self, streams_channel: StreamsBroadcastChannel):
+    def test_resolve_start_id_returns_0_0_for_empty_stream(self, streams_channel: StreamsBroadcastChannel):
         topic = streams_channel.topic("empty-topic")
-        assert topic.checkpoint() == "0-0"
+        sub = _StreamsSubscription(topic._client, topic._key)
+        assert sub._resolve_start_id() == "0-0"
 
-    def test_checkpoint_propagates_redis_error(self):
-        """Callers must not swallow a failed checkpoint and fall back to `$` themselves --
-        doing so would reintroduce the dify#40948 race, since `$` gets resolved lazily by
-        the listener thread at some later, unpredictable time instead of synchronously
-        before the caller dispatches its background task. Letting the error propagate keeps
-        that decision -- and the resulting request failure -- with the caller."""
+    def test_subscribe_propagates_start_id_resolution_error(self):
+        """Callers must not swallow a failed start-id resolution and fall back to `$`
+        themselves -- doing so would reintroduce the dify#40948 race, since `$` gets
+        resolved lazily by the listener thread at some later, unpredictable time instead
+        of synchronously before the producer can publish. Letting the error propagate
+        out of `subscribe()`/`__enter__` keeps that decision -- and the resulting request
+        failure -- with the caller."""
         channel = StreamsBroadcastChannel(FailXrevrangeRedis(), retention_seconds=60)
         topic = channel.topic("broken-checkpoint")
         with pytest.raises(RuntimeError, match="xrevrange failed"):
-            topic.checkpoint()
+            with topic.subscribe():
+                pass
 
-    def test_subscribe_from_receives_messages_published_before_listener_starts(
+    def test_subscribe_receives_messages_published_right_after_entering(
         self,
         streams_channel: StreamsBroadcastChannel,
     ):
         """Regression test for the `workflow_started`-drop race (dify#40948).
 
-        A background task can publish events to the topic as soon as it is dispatched,
-        well before the eventual subscriber's listener thread issues its first `xread`
-        (e.g. because subscribing is deferred until an HTTP response body starts
-        streaming). Capturing a checkpoint synchronously before dispatching the task,
-        then resuming from it via `subscribe_from`, must not lose events published in
-        that window -- unlike plain `subscribe()`, which only sees messages published
-        after the listener thread actually starts reading.
+        A background task dispatched right after `subscribe()`/`__enter__` returns can
+        publish events before the listener thread issues its first `xread`. Resolving the
+        read position synchronously before spawning the listener prevents that event from
+        being missed.
         """
         topic = streams_channel.topic("race-topic")
 
-        # Synchronously captured before the "task" is dispatched.
-        start_id = topic.checkpoint()
-
-        # Simulates the background task publishing immediately after being dispatched,
-        # before the subscriber's listener thread has had a chance to run.
-        topic.publish(b"workflow_started")
-
-        sub = topic.subscribe_from(start_id)
+        sub = topic.subscribe()
         received: list[bytes] = []
         with sub:
+            topic.publish(b"workflow_started")
             for _ in range(5):
                 msg = sub.receive(timeout=0.1)
                 if msg is None:
@@ -295,21 +292,18 @@ class TestStreamsSubscription:
 
         assert received == [b"workflow_started"]
 
-    def test_subscribe_from_does_not_replay_messages_published_before_checkpoint(
+    def test_subscribe_does_not_replay_messages_published_before_it_started(
         self,
         streams_channel: StreamsBroadcastChannel,
     ):
-        """`subscribe_from` must preserve the "no stale replay" fix from #34030/#34040:
-        events published before the checkpoint was taken must never be delivered."""
+        """`subscribe` preserves the "no stale replay" fix from #34030/#34040."""
         topic = streams_channel.topic("no-replay-topic")
         topic.publish(b"stale-event")
 
-        start_id = topic.checkpoint()
-        topic.publish(b"fresh-event")
-
-        sub = topic.subscribe_from(start_id)
+        sub = topic.subscribe()
         received: list[bytes] = []
         with sub:
+            topic.publish(b"fresh-event")
             for _ in range(5):
                 msg = sub.receive(timeout=0.1)
                 if msg is None:
@@ -362,6 +356,7 @@ class TestStreamsSubscription:
                 return []
 
         subscription = _StreamsSubscription(OneShotRedis(case.fields), "stream:payload-shape")
+        subscription._start_id = "0-0"
         subscription._listen()
 
         received: list[bytes] = []
@@ -395,6 +390,7 @@ class TestStreamsSubscription:
                 return []
 
         subscription = _StreamsSubscription(OneShotRedis(), "stream:close-signal")
+        subscription._start_id = "0-0"
         subscription._listen()
 
         assert subscription._queue.get_nowait() == b"next-event"

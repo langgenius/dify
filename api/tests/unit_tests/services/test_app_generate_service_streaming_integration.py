@@ -152,13 +152,10 @@ def test_streams_full_flow_prepublish_and_replay():
     """Regression test for dify#40948: `workflow_started` dropped for concurrent streaming
     runs on the streams transport.
 
-    In production, the background task is dispatched synchronously (in the Flask request
-    thread) well before the SSE response body starts streaming and the subscriber's
-    listener thread issues its first `xread`. This test dispatches the task -- and lets it
-    publish both events -- *before* `retrieve_events` is even called, to reproduce that
-    ordering. Without the checkpoint captured by `_build_streaming_task_on_subscribe`,
-    both events would be silently dropped because they were published before any
-    subscription (real or "$"-snapshotted) existed.
+    `start_task` is invoked via `on_subscribe` after entering the subscription and publishes
+    both events synchronously, before the listener thread necessarily gets a chance to run its
+    first `xread`. `_StreamsSubscription` fixes its read boundary synchronously before spawning
+    that thread, so neither event is dropped.
     """
     app_mode = AppMode.WORKFLOW
     run_id = str(uuid.uuid4())
@@ -170,14 +167,9 @@ def test_streams_full_flow_prepublish_and_replay():
 
     # MessageBasedAppGenerator is what AppGenerateService actually dispatches WORKFLOW /
     # ADVANCED_CHAT streaming runs through in production.
-    topic = MessageBasedAppGenerator.get_response_topic(app_mode, run_id)
-    on_subscribe, start_id = AppGenerateService._build_streaming_task_on_subscribe(start_task, topic=topic)
+    on_subscribe = AppGenerateService._build_streaming_task_on_subscribe(start_task)
 
-    # By the time retrieve_events() is called, start_task() has already run synchronously
-    # and published both events -- mirroring the real dispatch-before-subscribe ordering.
-    gen = MessageBasedAppGenerator.retrieve_events(
-        app_mode, run_id, idle_timeout=2.0, on_subscribe=on_subscribe, start_id=start_id
-    )
+    gen = MessageBasedAppGenerator.retrieve_events(app_mode, run_id, idle_timeout=2.0, on_subscribe=on_subscribe)
 
     received = []
     for msg in gen:
@@ -207,8 +199,7 @@ def test_pubsub_full_flow_start_on_subscribe_gated(monkeypatch: pytest.MonkeyPat
         _publish_events(app_mode, run_id, events)
         published_order.extend([e["event"] for e in events])
 
-    on_subscribe, start_id = AppGenerateService._build_streaming_task_on_subscribe(start_task)
-    assert start_id is None  # pub/sub transport has no checkpoint concept
+    on_subscribe = AppGenerateService._build_streaming_task_on_subscribe(start_task)
 
     # Producer not started yet; only when subscribe happens
     assert published_order == []

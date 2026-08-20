@@ -25,7 +25,6 @@ from pytest_mock import MockerFixture
 import services.app_generate_service as ags_module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from enums import DeploymentEdition, QuotaType
-from libs.broadcast_channel.redis.streams_channel import StreamsTopic
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowIdFormatError, WorkflowNotFoundError
@@ -97,57 +96,17 @@ def _noop_rate_limit_context(rate_limit, request_id):
 # _build_streaming_task_on_subscribe
 # ---------------------------------------------------------------------------
 class TestBuildStreamingTaskOnSubscribe:
-    """Tests for AppGenerateService._build_streaming_task_on_subscribe."""
+    """Tests for AppGenerateService._build_streaming_task_on_subscribe.
 
-    def test_streams_mode_requires_streams_topic(self, monkeypatch: pytest.MonkeyPatch):
-        """streams mode must fail loudly rather than silently skipping checkpointing when
-        no checkpoint-capable topic is supplied."""
-        monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "streams")
-        called = []
+    The subscription itself is responsible for fixing its own read position before it
+    starts accepting messages (see `_StreamsSubscription._start_if_needed`), so this
+    helper gates dispatch on subscribe the same way for every transport.
+    """
 
-        with pytest.raises(TypeError):
-            AppGenerateService._build_streaming_task_on_subscribe(lambda: called.append(1))
-
-        assert called == []
-
-    def test_streams_mode_captures_checkpoint_before_starting_task(self, monkeypatch: pytest.MonkeyPatch):
-        """Regression test for dify#40948: the checkpoint must be captured from the topic
-        *before* the task is dispatched, so a fast background task can never publish an
-        event that the eventual subscriber fails to see."""
-        monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "streams")
-        call_order = []
-        topic = MagicMock(spec=StreamsTopic)
-        topic.checkpoint.side_effect = lambda: call_order.append("checkpoint") or "42-0"
-
-        def start_task():
-            call_order.append("start_task")
-
-        cb, start_id = AppGenerateService._build_streaming_task_on_subscribe(start_task, topic=topic)
-        assert start_id == "42-0"
-        assert call_order == ["checkpoint", "start_task"]
-        cb()  # idempotent, no further calls
-        assert call_order == ["checkpoint", "start_task"]
-
-    def test_streams_mode_propagates_checkpoint_error(self, monkeypatch: pytest.MonkeyPatch):
-        """If the checkpoint can't be read (e.g. a transient Redis error), the task must not
-        start from an unsafe position -- the error propagates and the request fails, rather
-        than silently falling back to a starting point that could drop events."""
-        monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "streams")
-        topic = MagicMock(spec=StreamsTopic)
-        topic.checkpoint.side_effect = RuntimeError("redis unavailable")
-        called = []
-
-        with pytest.raises(RuntimeError, match="redis unavailable"):
-            AppGenerateService._build_streaming_task_on_subscribe(lambda: called.append(1), topic=topic)
-
-        assert called == []
-
-    def test_pubsub_mode_starts_on_subscribe(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "pubsub")
+    def test_starts_on_first_subscribe(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(ags_module, "SSE_TASK_START_FALLBACK_MS", 60_000)  # large to prevent timer
         called = []
-        cb, start_id = AppGenerateService._build_streaming_task_on_subscribe(lambda: called.append(1))
-        assert start_id is None
+        cb = AppGenerateService._build_streaming_task_on_subscribe(lambda: called.append(1))
         assert called == []
         cb()
         assert called == [1]
@@ -155,31 +114,17 @@ class TestBuildStreamingTaskOnSubscribe:
         cb()
         assert called == [1]
 
-    def test_sharded_mode_starts_on_subscribe(self, monkeypatch: pytest.MonkeyPatch):
-        """sharded is treated like pubsub (i.e. not 'streams')."""
-        monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "sharded")
-        monkeypatch.setattr(ags_module, "SSE_TASK_START_FALLBACK_MS", 60_000)
-        called = []
-        cb, start_id = AppGenerateService._build_streaming_task_on_subscribe(lambda: called.append(1))
-        assert start_id is None
-        assert called == []
-        cb()
-        assert called == [1]
-
-    def test_pubsub_fallback_timer_fires(self, monkeypatch: pytest.MonkeyPatch):
+    def test_fallback_timer_fires(self, monkeypatch: pytest.MonkeyPatch):
         """When nobody subscribes fast enough the fallback timer fires."""
-        monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "pubsub")
         monkeypatch.setattr(ags_module, "SSE_TASK_START_FALLBACK_MS", 50)  # 50 ms
         called = []
-        _cb, _start_id = AppGenerateService._build_streaming_task_on_subscribe(lambda: called.append(1))
+        _cb = AppGenerateService._build_streaming_task_on_subscribe(lambda: called.append(1))
         time.sleep(0.2)  # give the timer time to fire
         assert called == [1]
 
     def test_exception_in_start_task_returns_false(self, monkeypatch: pytest.MonkeyPatch):
         """When start_task raises, _try_start returns False and next call retries."""
-        monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "streams")
-        topic = MagicMock(spec=StreamsTopic)
-        topic.checkpoint.return_value = "0-0"
+        monkeypatch.setattr(ags_module, "SSE_TASK_START_FALLBACK_MS", 60_000)
         call_count = 0
 
         def _bad():
@@ -188,14 +133,13 @@ class TestBuildStreamingTaskOnSubscribe:
             if call_count == 1:
                 raise RuntimeError("boom")
 
-        cb, _start_id = AppGenerateService._build_streaming_task_on_subscribe(_bad, topic=topic)
-        # first call inside build raised, but is caught; second call via cb succeeds
+        cb = AppGenerateService._build_streaming_task_on_subscribe(_bad)
+        cb()  # first call raises internally, but is caught
         assert call_count == 1
-        cb()
+        cb()  # not marked started, so this retries
         assert call_count == 2
 
     def test_concurrent_subscribe_only_starts_once(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "pubsub")
         monkeypatch.setattr(ags_module, "SSE_TASK_START_FALLBACK_MS", 60_000)
         call_count = 0
 
@@ -203,7 +147,7 @@ class TestBuildStreamingTaskOnSubscribe:
             nonlocal call_count
             call_count += 1
 
-        cb, _start_id = AppGenerateService._build_streaming_task_on_subscribe(_inc)
+        cb = AppGenerateService._build_streaming_task_on_subscribe(_inc)
         threads = [threading.Thread(target=cb) for _ in range(10)]
         for t in threads:
             t.start()
@@ -406,7 +350,7 @@ class TestGenerate:
         retrieve_spy.assert_not_called()
 
     # -- ADVANCED_CHAT streaming --------------------------------------------
-    def test_advanced_chat_streaming(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
+    def test_advanced_chat_streaming(self, mocker: MockerFixture):
         workflow = _make_workflow()
         mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
         mocker.patch(
@@ -414,9 +358,6 @@ class TestGenerate:
             return_value=MagicMock(workflow_run_id="wfr-1", model_dump_json=MagicMock(return_value="{}")),
         )
         delay_spy = mocker.patch("services.app_generate_service.workflow_based_app_execution_task.delay")
-        # Let _build_streaming_task_on_subscribe call the real on_subscribe
-        # so the inner closure (line 165) actually executes.
-        monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "streams")
         gen_instance = MagicMock()
         gen_instance.retrieve_events.return_value = iter([])
         gen_instance.convert_to_event_stream.side_effect = lambda x: x
@@ -435,7 +376,10 @@ class TestGenerate:
         )
         # In streaming mode it should go through retrieve_events, not generate
         gen_instance.retrieve_events.assert_called_once()
-        # The inner on_subscribe closure was invoked by _build_streaming_task_on_subscribe
+        # Dispatch is gated on subscribe; simulate the SSE layer entering the
+        # subscription, which is what actually invokes on_subscribe.
+        on_subscribe = gen_instance.retrieve_events.call_args.kwargs["on_subscribe"]
+        on_subscribe()
         delay_spy.assert_called_once()
 
     # -- WORKFLOW blocking --------------------------------------------------
@@ -466,7 +410,7 @@ class TestGenerate:
         assert call_kwargs["pause_state_config"].state_owner_user_id == "owner-id"
 
     # -- WORKFLOW streaming -------------------------------------------------
-    def test_workflow_streaming(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
+    def test_workflow_streaming(self, mocker: MockerFixture):
         workflow = _make_workflow()
         mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
         mocker.patch(
@@ -474,13 +418,6 @@ class TestGenerate:
             return_value=MagicMock(workflow_run_id="wfr-2", model_dump_json=MagicMock(return_value="{}")),
         )
         delay_spy = mocker.patch("services.app_generate_service.workflow_based_app_execution_task.delay")
-        # Let _build_streaming_task_on_subscribe invoke the real on_subscribe
-        # so the inner closure (line 216) actually executes.
-        monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "streams")
-        mocker.patch(
-            "services.app_generate_service.MessageBasedAppGenerator.get_response_topic",
-            return_value=MagicMock(spec=StreamsTopic),
-        )
         retrieve_spy = mocker.patch(
             "services.app_generate_service.MessageBasedAppGenerator.retrieve_events",
             return_value=iter([]),
@@ -499,7 +436,10 @@ class TestGenerate:
             session=MagicMock(),
         )
         retrieve_spy.assert_called_once()
-        # The inner on_subscribe closure was invoked by _build_streaming_task_on_subscribe
+        # Dispatch is gated on subscribe; simulate the SSE layer entering the
+        # subscription, which is what actually invokes on_subscribe.
+        on_subscribe = retrieve_spy.call_args.kwargs["on_subscribe"]
+        on_subscribe()
         delay_spy.assert_called_once()
 
     # -- Invalid mode -------------------------------------------------------

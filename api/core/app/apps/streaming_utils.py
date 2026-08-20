@@ -17,7 +17,6 @@ def stream_topic_events(
     ping_interval: float | None = None,
     on_subscribe: Callable[[], None] | None = None,
     terminal_events: Iterable[str | StreamEvent] | None = None,
-    start_id: bytes | str | None = None,
 ) -> Generator[Mapping[str, Any] | str, None, None]:
     # send a PING event immediately to prevent the connection staying in pending state for a long time.
     #
@@ -28,18 +27,7 @@ def stream_topic_events(
     terminal_values = _normalize_terminal_events(terminal_events)
     last_msg_time = time.time()
     last_ping_time = last_msg_time
-    # If the caller already captured a checkpoint (e.g. because a background task was
-    # dispatched before this generator started running and may have published events in
-    # the meantime), resume from that point instead of the topic's default `subscribe()`,
-    # which would only pick up messages published after this line actually executes.
-    subscribe_from = getattr(topic, "subscribe_from", None)
-    if start_id is not None:
-        if not callable(subscribe_from):
-            raise TypeError("start_id was provided but topic does not support subscribe_from()")
-        subscription = subscribe_from(start_id)
-    else:
-        subscription = topic.subscribe()
-    with subscription as sub:
+    with topic.subscribe() as sub:
         # on_subscribe fires only after the Redis subscription is active.
         # This is used to gate task start and reduce pub/sub race for the first event.
         if on_subscribe is not None:
