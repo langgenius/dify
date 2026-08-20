@@ -15,7 +15,7 @@ from sqlalchemy import delete, or_, select
 
 import app
 from configs import dify_config
-from extensions.ext_database import db
+from core.db.session_factory import session_factory
 from models.oauth import OAuthAccessToken
 
 logger = logging.getLogger(__name__)
@@ -37,13 +37,14 @@ def clean_oauth_access_tokens_task():
     )
 
     total = 0
-    while True:
-        ids = db.session.scalars(select(OAuthAccessToken.id).where(candidates).limit(DELETE_BATCH_SIZE)).all()
-        if not ids:
-            break
-        db.session.execute(delete(OAuthAccessToken).where(OAuthAccessToken.id.in_(ids)))
-        db.session.commit()
-        total += len(ids)
+    with session_factory.create_session() as session:
+        while True:
+            ids = session.scalars(select(OAuthAccessToken.id).where(candidates).limit(DELETE_BATCH_SIZE)).all()
+            if not ids:
+                break
+            session.execute(delete(OAuthAccessToken).where(OAuthAccessToken.id.in_(ids)))
+            session.commit()
+            total += len(ids)
 
     end_at = time.perf_counter()
     click.echo(
