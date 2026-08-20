@@ -333,21 +333,12 @@ export function CreateConnectedSourceSetup({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <SourceNameField
-          disabled={disabled}
-          draft={draft}
-          preventSubmitOnEnter
-          onDraftChange={onDraftChange}
-        />
-        <SourceSyncPolicyField
-          availablePolicies={draft.provider === 'Amazon S3' ? ['daily', 'manual'] : undefined}
-          disabled={disabled}
-          draft={draft}
-          size="medium"
-          onDraftChange={onDraftChange}
-        />
-      </div>
+      <SourceNameField
+        disabled={disabled}
+        draft={draft}
+        preventSubmitOnEnter
+        onDraftChange={onDraftChange}
+      />
       <DatasourceParameterForm
         disabled={disabled || loading}
         parameters={parameters}
@@ -495,6 +486,13 @@ export function CreateConnectedSourceSetup({
           )}
         </section>
       )}
+      <SourceSyncPolicyField
+        availablePolicies={draft.provider === 'Amazon S3' ? ['daily', 'manual'] : undefined}
+        disabled={disabled}
+        draft={draft}
+        size="medium"
+        onDraftChange={onDraftChange}
+      />
     </div>
   )
 }

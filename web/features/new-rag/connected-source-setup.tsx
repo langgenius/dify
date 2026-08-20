@@ -1399,16 +1399,13 @@ function ResourceConfiguration({
     }
   }
 
-  if (!previewSource && !previewError)
-    return (
-      <div className="flex min-h-44 items-center justify-center">
-        <Loading />
-      </div>
-    )
-
   return (
     <div className="flex flex-col gap-4">
-      {previewError ? (
+      {!previewSource && !previewError ? (
+        <div className="flex min-h-44 items-center justify-center">
+          <Loading />
+        </div>
+      ) : previewError ? (
         <div className="rounded-xl bg-background-section p-4">
           <p className="system-sm-semibold text-text-primary">
             {t(($) => $['newKnowledge.providerLoadFailed'])}
@@ -1486,6 +1483,7 @@ function ResourceConfiguration({
           <SourceNameField draft={draft} name="connectedSourceName" onDraftChange={onDraftChange} />
         </>
       )}
+      <ConnectedSourceSyncPolicyField draft={draft} onDraftChange={onDraftChange} />
       {submitError && (
         <p role="alert" className="system-xs-regular text-text-destructive">
           {t(($) => $['newKnowledge.addSourceFailed'])}
@@ -1571,6 +1569,9 @@ function AppliedResourceConfiguration({
         >
           {t(($) => $['newKnowledge.preview'])}
         </Button>
+      )}
+      {!parametersApplied && (
+        <ConnectedSourceSyncPolicyField draft={draft} onDraftChange={onDraftChange} />
       )}
       {parametersApplied && appliedParameters && (
         <ResourceConfiguration
@@ -1847,7 +1848,6 @@ export function ConnectedSourceSetup({
         providerKey={providerOption?.key ?? ''}
         onChange={selectProvider}
       />
-      <ConnectedSourceSyncPolicyField draft={draft} onDraftChange={onDraftChange} />
       {providersQuery.isPending ||
       datasourcePluginsQuery.isPending ||
       datasourceAuthQuery.isPending ||
@@ -1997,6 +1997,9 @@ export function ConnectedSourceSetup({
             )
           }
         />
+      )}
+      {connection?.status !== 'active' && (
+        <ConnectedSourceSyncPolicyField draft={draft} onDraftChange={onDraftChange} />
       )}
       {!connection && (
         <div className="mt-1 flex justify-between gap-2 border-t border-divider-subtle pt-4.75">

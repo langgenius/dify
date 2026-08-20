@@ -236,7 +236,7 @@ export function UnavailableConnectedSourceSetup({
         </section>
       )}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div>
         <Field name="sourceName" className="gap-1.5">
           <FieldLabel>
             {t(($) => $['newKnowledge.sourceName'])}
@@ -253,7 +253,6 @@ export function UnavailableConnectedSourceSetup({
             onValueChange={(value) => onDraftChange({ ...draft, sourceName: value })}
           />
         </Field>
-        <SourceSyncPolicyField draft={draft} size="large" onDraftChange={onDraftChange} />
       </div>
 
       <div role="status" className="rounded-lg bg-background-section px-3 py-2">
@@ -261,6 +260,7 @@ export function UnavailableConnectedSourceSetup({
           {t(($) => $['newKnowledge.providerUnavailable'])}
         </p>
       </div>
+      <SourceSyncPolicyField draft={draft} size="large" onDraftChange={onDraftChange} />
     </div>
   )
 }
