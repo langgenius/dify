@@ -21,6 +21,7 @@ from repositories.app_definition_query_repository import AppDefinitionQueryRepos
 from repositories.data_source_api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.installation_state_repository import InstallationStateRepository
+from repositories.tag_repository import TagRepository
 from repositories.trial_app_query_repository import TrialAppQueryRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
 from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
@@ -53,6 +54,7 @@ from services.recommended_app_service import RecommendedAppService
 from services.schema_definition_service import SchemaDefinitionService
 from services.setup_adapters import RedisSetupLock, RegisterServiceAccountProvisioner
 from services.setup_service import SetupService
+from services.tag_application_service import TagApplicationService
 from services.web_app_runtime_query_service import WebAppRuntimeQueryService
 from services.webapp_access_query_service import (
     WebAppAccessQueryService,
@@ -105,6 +107,7 @@ class ApplicationServices:
     recommended_app_queries: RecommendedAppQueryService
     workspace_queries: WorkspaceQueryService
     workspace_member_queries: WorkspaceMemberQueryService
+    tags: TagApplicationService
 
 
 def build_application_services(
@@ -193,6 +196,9 @@ def build_application_services(
                 session_factory=database_client,
             ),
             roles=DeploymentWorkspaceMemberRoleResolver(),
+        ),
+        tags=TagApplicationService(
+            tags=TagRepository(session_factory=database_client),
         ),
     )
 

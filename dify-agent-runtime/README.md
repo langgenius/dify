@@ -74,12 +74,12 @@ Each agent job runs inside a Landlock sandbox that restricts filesystem access:
 
 | Access               | Paths (defaults)                                                                                              |
 | -------------------- | ------------------------------------------------------------------------------------------------------------- |
-| **Read-Write**       | `$HOME` (always, includes `$CWD/.tmp` as `TMPDIR`)                                                            |
+| **Read-Write**       | `$HOME` and the job's `cwd` (also used directly as `TMPDIR`, `TMP`, and `TEMP`)                               |
 | **Read-Write (dev)** | `/dev/null`, `/dev/zero`, `/dev/urandom`, `/dev/random`, `/dev/tty`                                           |
 | **Read-Only + Exec** | `/usr`, `/bin`, `/sbin`, `/lib`, `/lib64`, `/etc`, `/proc`, `/opt/dify-agent-tools`, `/opt/homebrew`, `/snap` |
 | **Denied**           | Everything else (`/tmp`, other agents' homes, `/var`, `/srv`, etc.)                                           |
 
-The runner automatically creates `$CWD/.tmp` and sets `TMPDIR`, `TMP`, `TEMP` to it, so temp files stay isolated per workspace.
+The runner sets `TMPDIR`, `TMP`, and `TEMP` directly to the job's `cwd`. It does not create a separate temp directory, so the active Workspace is both the working directory and temp space.
 
 ### Environment Variables
 

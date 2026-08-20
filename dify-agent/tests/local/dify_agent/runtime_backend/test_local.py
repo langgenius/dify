@@ -199,6 +199,57 @@ async def test_local_binding_create_uses_empty_default_home_without_snapshot_acc
 
 
 @pytest.mark.anyio
+async def test_local_binding_bootstraps_custom_roots_from_common_root() -> None:
+    factory = _Factory()
+    backend = LocalExecutionBindingBackend(
+        endpoint="http://shellctl",
+        auth_token="",
+        materialized_home_root="/tmp/dify-agent/homes",
+        workspace_root="/tmp/dify-agent/workspaces",
+        snapshot_root="/tmp/dify-agent/snapshots",
+        client_factory=factory,  # pyright: ignore[reportArgumentType]
+    )
+
+    await backend.create_binding(
+        ExecutionBindingCreateSpec(
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            binding_id="binding-1",
+            workspace_id="workspace-1",
+            existing_workspace_ref=None,
+            home_snapshot_ref=None,
+        )
+    )
+
+    assert factory.runs[0].cwd == "/tmp/dify-agent"
+    assert factory.runs[0].env == {"HOME": "/tmp/dify-agent"}
+
+
+@pytest.mark.anyio
+async def test_local_binding_separates_root_workspace_from_home_control_scope() -> None:
+    factory = _Factory()
+    backend = LocalExecutionBindingBackend(
+        endpoint="http://shellctl",
+        auth_token="",
+        client_factory=factory,  # pyright: ignore[reportArgumentType]
+    )
+
+    await backend.create_binding(
+        ExecutionBindingCreateSpec(
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            binding_id="binding-1",
+            workspace_id="workspace-1",
+            existing_workspace_ref=None,
+            home_snapshot_ref=None,
+        )
+    )
+
+    assert factory.runs[0].cwd == "/workspace"
+    assert factory.runs[0].env == {"HOME": "/home/dify"}
+
+
+@pytest.mark.anyio
 async def test_local_binding_create_failure_removes_partial_home_and_workspace() -> None:
     factory = _FailThenSucceedFactory()
     backend = LocalExecutionBindingBackend(
