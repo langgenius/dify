@@ -460,6 +460,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             ),
             timeout=timeout,
             max_output_bytes=max_output_bytes,
+            mode="stdio",
         )
 
     async def run_remote_script(
@@ -488,6 +489,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             env=self._build_shell_command_env(include_agent_stub_env=False),
             timeout=DEFAULT_TIMEOUT_SECONDS,
             max_output_bytes=_REMOTE_COMPLETE_OUTPUT_MAX_BYTES,
+            mode="stdio",
         )
 
     def _require_resource(self) -> RuntimeLease:

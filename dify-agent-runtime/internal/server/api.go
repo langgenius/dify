@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/langgenius/dify/dify-agent-runtime/internal/jobmode"
 )
 
 // Handler creates the HTTP handler (mux) for the shellctl API.
@@ -45,6 +47,12 @@ func handleRunJob(svc *Service) http.HandlerFunc {
 			writeError(w, 400, "invalid_request", "script is required")
 			return
 		}
+		mode, err := jobmode.Parse(string(req.Mode))
+		if err != nil {
+			writeError(w, 422, "validation_error", err.Error())
+			return
+		}
+		req.Mode = mode
 		// Validate env
 		if req.Env != nil {
 			for name, value := range req.Env {

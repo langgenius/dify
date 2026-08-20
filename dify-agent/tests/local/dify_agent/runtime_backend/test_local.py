@@ -5,7 +5,7 @@ import shlex
 from typing import Mapping
 
 import pytest
-from shellctl.shared import DeleteJobResponse, JobResult, JobStatusName, JobStatusView
+from shellctl.shared import DeleteJobResponse, JobMode, JobResult, JobStatusName, JobStatusView
 
 from dify_agent.runtime_backend import (
     BindingCreateError,
@@ -22,6 +22,7 @@ class _RunCall:
     commands: tuple[tuple[str, ...], ...]
     cwd: str | None
     env: Mapping[str, str] | None
+    mode: JobMode
 
 
 @dataclass(slots=True)
@@ -40,12 +41,13 @@ class _Client:
         cwd: str | None = None,
         env: Mapping[str, str] | None = None,
         timeout: float = 10.0,
+        mode: JobMode = JobMode.PTY,
     ) -> JobResult:
         del timeout
         commands = tuple(
             tuple(shlex.split(line)) for line in script.splitlines() if line.strip() and line.strip() != "set -eu"
         )
-        self.runs.append(_RunCall(commands=commands, cwd=cwd, env=env))
+        self.runs.append(_RunCall(commands=commands, cwd=cwd, env=env, mode=mode))
         return JobResult(
             job_id=f"job-{len(self.runs)}",
             status=JobStatusName.EXITED,
@@ -165,6 +167,7 @@ async def test_local_binding_create_materializes_home_and_new_workspace() -> Non
     assert ("mkdir", "-p", "/homes/binding-1") in factory.commands
     assert ("cp", "-a", "/snapshots/home-home-1/.", "/homes/binding-1/") in factory.commands
     assert ("chmod", "700", "/homes/binding-1", "/workspaces/workspace-1") in factory.commands
+    assert all(run.mode is JobMode.STDIO for run in factory.runs)
 
 
 @pytest.mark.anyio
@@ -245,6 +248,7 @@ async def test_local_binding_acquire_scopes_commands_to_materialized_home_and_wo
     pwd_run = next(run for run in factory.runs if run.commands == (("pwd",),))
     assert pwd_run.cwd == "/workspaces/workspace-1"
     assert pwd_run.env == {"HOME": "/homes/binding-1"}
+    assert pwd_run.mode is JobMode.PTY
     with pytest.raises(ValueError, match="outside this RuntimeLease"):
         await lease.commands.run("cat secret", cwd="/homes/other", timeout=10.0)
     await backend.release(lease)
