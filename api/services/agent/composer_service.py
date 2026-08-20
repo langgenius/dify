@@ -279,15 +279,10 @@ class AgentComposerService:
         )
         state["validation"] = cls.collect_validation_findings(payload=payload)
         session.commit()
-        binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+        WorkflowAgentRetirementService.retire_unowned(
             tenant_id=tenant_id,
             agent_ids=retirement_candidates,
             account_id=account_id,
-        )
-        enqueue_agent_resource_collection(
-            tenant_id=tenant_id,
-            binding_ids=binding_ids,
-            home_snapshot_ids=home_snapshot_ids,
         )
         return state
 
