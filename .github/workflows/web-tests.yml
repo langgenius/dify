@@ -46,7 +46,7 @@ jobs:
 
   browser-test:
     name: Web Browser Tests
-    runs-on: depot-ubuntu-24.04-4
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     defaults:
       run:
