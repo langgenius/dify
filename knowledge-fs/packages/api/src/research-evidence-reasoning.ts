@@ -403,7 +403,9 @@ function zodJsonSchema(schema: z.ZodTypeAny): Readonly<Record<string, unknown>> 
         evidenceDimensions: { items: { type: "string" }, maxItems: 6, type: "array" },
         intent: { enum: ["comparison", "direct", "multi-hop", "overview"], type: "string" },
         subqueries: { items: { type: "string" }, maxItems: 3, type: "array" },
-        useGraph: { type: "boolean" },
+        // Dify's structured-output compatibility layer converts JSON Schema booleans to strings.
+        // Constrain the string values here so the model cannot replace a boolean with prose.
+        useGraph: { enum: ["false", "true"], type: "string" },
       },
       required: ["evidenceDimensions", "intent", "subqueries", "useGraph"],
       type: "object",
@@ -444,7 +446,7 @@ function parseQueryPlan(text: string): z.infer<typeof QueryPlanSchema> {
     // Dify's structured-output compatibility layer represents JSON Schema booleans as strings
     // for providers that do not accept native boolean fields. Normalize that transport detail
     // before applying the strict domain schema, just as the evidence judge does below.
-    const useGraph = normalizeBooleanValue(record.useGraph);
+    const useGraph = normalizeUseGraphValue(record.useGraph);
     if (useGraph !== undefined) {
       value = { ...record, useGraph };
     }
@@ -537,6 +539,29 @@ function normalizeBooleanValue(value: unknown): boolean | undefined {
     return false;
   }
   if (/^(?:true|yes|sufficient|充分|足够|是)(?:[\s.,，。:：;；]|$)/u.test(normalized)) {
+    return true;
+  }
+  return undefined;
+}
+
+function normalizeUseGraphValue(value: unknown): boolean | undefined {
+  const normalizedBoolean = normalizeBooleanValue(value);
+  if (normalizedBoolean !== undefined || typeof value !== "string") {
+    return normalizedBoolean;
+  }
+  const normalized = value.trim().toLocaleLowerCase();
+  if (
+    /^(?:do not use|don't use|not needed|unnecessary|不使用|不要使用|无需|不需要|不启用)(?:\s|关系图|图谱|图|[.,，。:：;；]|$)/u.test(
+      normalized,
+    )
+  ) {
+    return false;
+  }
+  if (
+    /^(?:use|should use|need to use|enabled|使用|应使用|需要使用|启用|开启)(?:\s|关系图|图谱|图|[.,，。:：;；]|$)/u.test(
+      normalized,
+    )
+  ) {
     return true;
   }
   return undefined;

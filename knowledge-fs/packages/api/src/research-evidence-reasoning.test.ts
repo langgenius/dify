@@ -83,11 +83,23 @@ describe("Research evidence reasoning", () => {
       subqueries: ["renewal terms", "termination terms"],
     });
     expect(generate).toHaveBeenCalledTimes(2);
+    expect(generate.mock.calls[1]?.[0]).toMatchObject({
+      structuredOutputSchema: {
+        properties: {
+          useGraph: { enum: ["false", "true"], type: "string" },
+        },
+      },
+    });
   });
 
   it.each([
     { expected: false, providerValue: "false" },
+    {
+      expected: false,
+      providerValue: "不使用；这是按主题拆分的概览检索，不需要关系图或多跳推理。",
+    },
     { expected: true, providerValue: "true" },
+    { expected: true, providerValue: "需要使用关系图完成多跳推理。" },
   ])(
     "normalizes the structured-output string boolean useGraph=$providerValue",
     async ({ expected, providerValue }) => {
