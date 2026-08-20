@@ -181,6 +181,7 @@ function ToastCard({ toast: toastItem }: { toast: ToastObject<ToastData> }) {
   return (
     <BaseToast.Root
       toast={toastItem}
+      swipeDirection={['up', 'right']}
       className={cn(
         'pointer-events-auto absolute top-0 right-0 w-full origin-top cursor-default rounded-xl select-none focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
         '[--toast-current-height:var(--toast-frontmost-height,var(--toast-height))] [--toast-expanded-offset-y:calc(var(--toast-offset-y)+var(--toast-swipe-movement-y)+(var(--toast-index)*var(--toast-gap)))] [--toast-gap:8px] [--toast-peek:5px] [--toast-scale:calc(1-(var(--toast-index)*0.0225))] [--toast-shrink:calc(1-var(--toast-scale))]',
@@ -189,7 +190,7 @@ function ToastCard({ toast: toastItem }: { toast: ToastObject<ToastData> }) {
         'transform-[translateX(var(--toast-swipe-movement-x))_translateY(calc(var(--toast-swipe-movement-y)+(var(--toast-index)*var(--toast-peek))+(var(--toast-shrink)*var(--toast-current-height))))_scale(var(--toast-scale))]',
         'data-expanded:h-(--toast-height) data-expanded:transform-[translateX(var(--toast-swipe-movement-x))_translateY(var(--toast-expanded-offset-y))_scale(1)]',
         'data-ending-style:pointer-events-none data-ending-style:transform-[translateY(-150%)] data-ending-style:opacity-0 data-ending-style:after:pointer-events-none',
-        'data-ending-style:data-[swipe-direction=down]:transform-[translateY(calc(var(--toast-swipe-movement-y)+150%))]',
+        'data-ending-style:data-[swipe-direction=up]:transform-[translateY(calc(var(--toast-swipe-movement-y)-150%))]',
         'data-ending-style:data-[swipe-direction=right]:transform-[translateX(calc(var(--toast-swipe-movement-x)+150%))_translateY(var(--toast-expanded-offset-y))]',
         'data-limited:pointer-events-none data-limited:opacity-0 data-starting-style:transform-[translateY(-150%)] data-starting-style:opacity-0',
         "after:pointer-events-auto after:absolute after:bottom-full after:left-0 after:h-[calc(var(--toast-gap)+1px)] after:w-full after:content-['']",

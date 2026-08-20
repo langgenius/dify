@@ -13,6 +13,7 @@ from enums import DeploymentEdition
 from extensions.storage.storage_type import StorageType
 from graphon.variables.segments import StringSegment
 from graphon.variables.types import SegmentType
+from models.account import Account
 from models.agent import (
     Agent,
     AgentScope,
@@ -29,6 +30,8 @@ from models.workflow import (
     WorkflowDraftVariable,
     WorkflowDraftVariableFile,
     WorkflowKind,
+    WorkflowNodeExecutionModel,
+    WorkflowRun,
     WorkflowType,
 )
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
@@ -52,21 +55,29 @@ def _create_workflow(*, workflow_id: str, version: str, graph: dict, features: d
     )
 
 
-def _snippet() -> CustomizedSnippet:
-    return CustomizedSnippet(
-        id="snippet-1",
-        tenant_id="tenant-1",
-        name="Snippet",
-        description="",
-        type=SnippetType.NODE,
-        created_by="account-1",
-    )
+def _snippet(**overrides) -> CustomizedSnippet:
+    values = {
+        "id": "snippet-1",
+        "tenant_id": "tenant-1",
+        "name": "Snippet",
+        "description": "",
+        "type": SnippetType.NODE,
+        "created_by": "account-1",
+    }
+    values.update(overrides)
+    return CustomizedSnippet(**values)
+
+
+def _account(account_id: str = "account-1") -> Account:
+    account = Account(name="Test User", email=f"{account_id}@example.com")
+    account.id = account_id
+    return account
 
 
 def test_create_snippet_allows_duplicate_names(
     sqlite_session_factory: sessionmaker[Session], sqlite_session: Session
 ) -> None:
-    account = SimpleNamespace(id="account-1")
+    account = _account()
     existing = _snippet()
     existing.name = "shared name"
     sqlite_session.add(existing)
@@ -224,7 +235,7 @@ def test_sync_draft_workflow_creates_draft_and_updates_input_fields(
         retire_unowned,
     )
     snippet = _snippet()
-    account = SimpleNamespace(id="account-1")
+    account = _account()
 
     workflow = service.sync_draft_workflow(
         snippet=snippet,
@@ -254,14 +265,17 @@ def test_sync_draft_workflow_raises_when_hash_mismatches(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     service = SnippetService(session_maker=sqlite_session_factory)
-    service.get_draft_workflow = Mock(return_value=SimpleNamespace(unique_hash="server-hash"))
+    draft_workflow = _create_workflow(
+        workflow_id="workflow-1", version=Workflow.VERSION_DRAFT, graph={"nodes": []}, features={}
+    )
+    service.get_draft_workflow = Mock(return_value=draft_workflow)
 
     with pytest.raises(WorkflowHashNotEqualError):
         service.sync_draft_workflow(
-            snippet=SimpleNamespace(id="snippet-1", tenant_id="tenant-1"),
+            snippet=_snippet(),
             graph={"nodes": [], "edges": []},
             unique_hash="client-hash",
-            account=SimpleNamespace(id="account-1"),
+            account=_account(),
         )
 
 
@@ -279,7 +293,7 @@ def test_sync_draft_workflow_updates_existing_draft_and_clears_variables(
     )
     unique_hash = workflow.unique_hash
     snippet = _snippet()
-    account = SimpleNamespace(id="account-1")
+    account = _account()
     monkeypatch.setattr(service, "get_draft_workflow", Mock(return_value=workflow))
 
     result = service.sync_draft_workflow(
@@ -314,7 +328,7 @@ def test_update_workflow_updates_marked_fields(sqlite_session: Session) -> None:
     snippet = _snippet()
     sqlite_session.add_all([snippet, workflow])
     sqlite_session.flush()
-    account = SimpleNamespace(id="account-1")
+    account = _account()
 
     result = service.update_workflow(
         session=sqlite_session,
@@ -339,9 +353,9 @@ def test_update_workflow_returns_none_when_missing(sqlite_session: Session) -> N
 
     result = service.update_workflow(
         session=sqlite_session,
-        snippet=SimpleNamespace(id="snippet-1", tenant_id="tenant-1"),
+        snippet=_snippet(),
         workflow_id="missing-workflow",
-        account=SimpleNamespace(id="account-1"),
+        account=_account(),
         data={"marked_name": "v1"},
     )
 
@@ -396,7 +410,7 @@ def test_restore_published_snippet_workflow_to_draft_copies_source_snapshot(
     sqlite_session: Session,
 ) -> None:
     snippet = _snippet()
-    account = SimpleNamespace(id="account-2")
+    account = _account("account-2")
     source_graph = {"nodes": [{"id": "llm-1", "data": {"type": "llm"}}], "edges": []}
     source_features = {"opening_statement": "hello"}
     source_workflow = _create_workflow(
@@ -450,8 +464,8 @@ def test_restore_published_snippet_workflow_to_draft_raises_when_source_missing(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-    snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
-    account = SimpleNamespace(id="account-2")
+    snippet = _snippet()
+    account = _account("account-2")
     service = SnippetService(session_maker=sqlite_session_factory)
 
     monkeypatch.setattr(service, "get_published_workflow_by_id", Mock(return_value=None))
@@ -470,7 +484,7 @@ def test_restore_published_snippet_workflow_to_draft_adds_new_draft(
     sqlite_session: Session,
 ) -> None:
     snippet = _snippet()
-    account = SimpleNamespace(id="account-2")
+    account = _account("account-2")
     source_workflow = _create_workflow(
         workflow_id="published-workflow",
         version="2026-04-28 00:00:00",
@@ -506,7 +520,7 @@ def test_restore_published_snippet_workflow_to_draft_adds_new_draft(
 def test_get_published_workflow_returns_none_without_workflow_id() -> None:
     service = SnippetService.__new__(SnippetService)
 
-    result = service.get_published_workflow(SimpleNamespace(id="snippet-1", tenant_id="tenant-1", workflow_id=None))
+    result = service.get_published_workflow(_snippet())
 
     assert result is None
 
@@ -523,7 +537,7 @@ def test_get_published_workflow_by_id_raises_for_draft(
 
     with pytest.raises(IsDraftWorkflowError):
         service.get_published_workflow_by_id(
-            snippet=SimpleNamespace(id="snippet-1", tenant_id="tenant-1"),
+            snippet=_snippet(),
             workflow_id="workflow-1",
         )
 
@@ -534,8 +548,8 @@ def test_publish_workflow_raises_when_draft_missing(sqlite_session: Session) -> 
     with pytest.raises(ValueError, match="No valid workflow found"):
         service.publish_workflow(
             session=sqlite_session,
-            snippet=SimpleNamespace(id="snippet-1", tenant_id="tenant-1"),
-            account=SimpleNamespace(id="account-1"),
+            snippet=_snippet(),
+            account=_account(),
         )
 
 
@@ -572,7 +586,7 @@ def test_publish_workflow_creates_snapshot_and_updates_snippet(
     result = service.publish_workflow(
         session=sqlite_session,
         snippet=snippet,
-        account=SimpleNamespace(id="account-1"),
+        account=_account(),
     )
 
     assert result.kind == WorkflowKind.SNIPPET
@@ -590,7 +604,7 @@ def test_get_all_published_workflows_returns_empty_without_current_workflow(unbo
 
     result = service.get_all_published_workflows(
         session=unbound_session,
-        snippet=SimpleNamespace(id="snippet-1", workflow_id=None),
+        snippet=_snippet(),
         page=1,
         limit=20,
     )
@@ -614,7 +628,7 @@ def test_get_all_published_workflows_paginates(sqlite_session: Session) -> None:
 
     result, has_more = service.get_all_published_workflows(
         session=sqlite_session,
-        snippet=SimpleNamespace(id="snippet-1", workflow_id="workflow-current"),
+        snippet=_snippet(workflow_id="workflow-current"),
         page=1,
         limit=2,
     )
@@ -869,7 +883,7 @@ def test_delete_draft_variable_files_removes_storage_objects(
 def test_delete_archived_workflow_run_files_removes_prefixed_objects(monkeypatch: pytest.MonkeyPatch) -> None:
     from configs import dify_config
 
-    snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
+    snippet = _snippet()
     archive_storage = SimpleNamespace(
         list_objects=Mock(return_value=["tenant-1/app_id=snippet-1/run.json"]),
         delete_object=Mock(),
@@ -888,15 +902,15 @@ def test_workflow_run_queries_delegate_to_repositories(monkeypatch: pytest.Monke
     service = SnippetService.__new__(SnippetService)
     workflow_run_repo = SimpleNamespace(
         get_paginated_workflow_runs=Mock(return_value=SimpleNamespace(data=[])),
-        get_workflow_run_by_id=Mock(return_value=SimpleNamespace(id="run-1")),
+        get_workflow_run_by_id=Mock(return_value=WorkflowRun(id="run-1")),
     )
     node_execution_repo = SimpleNamespace(
-        get_executions_by_workflow_run=Mock(return_value=[SimpleNamespace(id="node-execution-1")]),
-        get_node_last_execution=Mock(return_value=SimpleNamespace(id="last-run-1")),
+        get_executions_by_workflow_run=Mock(return_value=[WorkflowNodeExecutionModel(id="node-execution-1")]),
+        get_node_last_execution=Mock(return_value=WorkflowNodeExecutionModel(id="last-run-1")),
     )
     service._workflow_run_repo = workflow_run_repo
     service._node_execution_service_repo = node_execution_repo
-    snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
+    snippet = _snippet()
     expected_traces = [SimpleNamespace(id="node-execution-1:retry:1"), SimpleNamespace(id="node-execution-1")]
     mock_assemble = Mock(return_value=expected_traces)
     monkeypatch.setattr("services.snippet_service.assemble_workflow_node_execution_traces", mock_assemble)
@@ -907,7 +921,9 @@ def test_workflow_run_queries_delegate_to_repositories(monkeypatch: pytest.Monke
     assert (
         service.get_snippet_node_last_run(
             snippet=snippet,
-            workflow=SimpleNamespace(id="workflow-1"),
+            workflow=_create_workflow(
+                workflow_id="workflow-1", version=Workflow.VERSION_DRAFT, graph={"nodes": []}, features={}
+            ),
             node_id="llm-1",
         ).id
         == "last-run-1"
@@ -940,7 +956,7 @@ def test_workflow_run_node_executions_returns_empty_when_run_missing() -> None:
     service.get_snippet_workflow_run = Mock(return_value=None)
 
     result = service.get_snippet_workflow_run_node_executions(
-        snippet=SimpleNamespace(id="snippet-1", tenant_id="tenant-1"),
+        snippet=_snippet(),
         run_id="missing-run",
     )
 

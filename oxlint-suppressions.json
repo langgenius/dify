@@ -5154,11 +5154,6 @@
       "count": 7
     }
   },
-  "web/app/install/installForm.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/reset-password/check-code/page.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -5189,18 +5184,8 @@
       "count": 1
     }
   },
-  "web/app/signup/components/input-mail.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/signup/layout.tsx": {
     "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/signup/set-password/page.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },

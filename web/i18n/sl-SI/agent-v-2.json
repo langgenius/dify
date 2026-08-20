@@ -383,7 +383,7 @@
   "roster.createForm.rolePlaceholder": "npr. Raziskovalni asistent",
   "roster.createSuccess": "Agent ustvarjen.",
   "roster.dateTimeFormat": "DD. MM. YYYY HH:mm:ss",
-  "roster.deleteDialog.description": "Ta Agent bo odstranjen s seznama Agent.",
+  "roster.deleteDialog.description": "S tem trajno izbrišete {{name}}. Spletna aplikacija in dostop do API-ja tega Agenta ter poteki dela, ki ga uporabljajo, bodo takoj prenehali delovati.",
   "roster.deleteDialog.title": "Izbrišem {{name}}?",
   "roster.deleteFailed": "Agenta ni bilo mogoče izbrisati.",
   "roster.deleteSuccess": "Agent izbrisan.",
