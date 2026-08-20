@@ -131,7 +131,6 @@
   "plansCommon.supportItems.workflow": "سير العمل",
   "plansCommon.talkToSales": "تحدث إلى المبيعات",
   "plansCommon.taxTip": "جميع أسعار الاشتراك (الشهرية / السنوية) لا تشمل الضرائب المطبقة (مثل ضريبة القيمة المضافة وضريبة المبيعات).",
-  "plansCommon.taxTipSecond": "إذا لم تكن في منطقتك متطلبات ضريبية، فلن تظهر أي ضريبة عند الدفع، ولن يتم تحصيل أي رسوم إضافية طوال فترة الاشتراك.",
   "plansCommon.teamMember_one": "{{count,number}} عضو في الفريق",
   "plansCommon.teamMember_other": "{{count,number}} أعضاء في الفريق",
   "plansCommon.teamWorkspace": "{{count,number}} مساحة عمل للفريق",

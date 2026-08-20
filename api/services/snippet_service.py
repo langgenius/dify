@@ -39,6 +39,7 @@ from models.workflow import (
 from repositories.factory import DifyAPIRepositoryFactory
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
+from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 from services.tag_service import TagService
 from services.workflow_node_execution_trace_service import (
     WorkflowNodeExecutionTrace,
@@ -841,6 +842,53 @@ class SnippetService:
         workflow.updated_at = datetime.now(UTC).replace(tzinfo=None)
         session.add(workflow)
         return workflow
+
+    def delete_workflow(
+        self,
+        *,
+        session: Session,
+        snippet: CustomizedSnippet,
+        workflow_id: str,
+    ) -> bool:
+        """
+        Delete a published snippet workflow version.
+
+        :param session: Database session
+        :param snippet: CustomizedSnippet instance
+        :param workflow_id: Workflow ID
+        :return: True if successful
+        :raises: ValueError if workflow not found
+        :raises: WorkflowInUseError if workflow is the snippet's active version or published as a tool
+        :raises: DraftWorkflowDeletionError if workflow is a draft version
+        """
+        stmt = select(Workflow).where(
+            Workflow.id == workflow_id,
+            Workflow.tenant_id == snippet.tenant_id,
+            Workflow.app_id == snippet.id,
+            self._snippet_kind_filter(),
+        )
+        workflow = session.scalar(stmt)
+        if not workflow:
+            raise ValueError(f"Workflow with ID {workflow_id} not found")
+
+        if workflow.version == Workflow.VERSION_DRAFT:
+            raise DraftWorkflowDeletionError("Cannot delete draft workflow versions")
+
+        if snippet.workflow_id == workflow.id:
+            raise WorkflowInUseError(f"Cannot delete workflow that is currently in use by snippet '{snippet.id}'")
+
+        tool_provider = session.scalar(
+            select(WorkflowToolProvider).where(
+                WorkflowToolProvider.tenant_id == snippet.tenant_id,
+                WorkflowToolProvider.app_id == snippet.id,
+                WorkflowToolProvider.version == workflow.version,
+            )
+        )
+        if tool_provider:
+            raise WorkflowInUseError("Cannot delete workflow that is published as a tool")
+
+        session.delete(workflow)
+        return True
 
     # --- Default Block Configs ---
 

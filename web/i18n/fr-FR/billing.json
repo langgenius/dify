@@ -131,7 +131,6 @@
   "plansCommon.supportItems.workflow": "Flux de travail",
   "plansCommon.talkToSales": "Parlez aux Ventes",
   "plansCommon.taxTip": "Tous les prix des abonnements (mensuels/annuels) s'entendent hors taxes applicables (par exemple, TVA, taxe de vente).",
-  "plansCommon.taxTipSecond": "Si votre région n'a pas de exigences fiscales applicables, aucune taxe n'apparaîtra lors de votre paiement et vous ne serez pas facturé de frais supplémentaires pendant toute la durée de l'abonnement.",
   "plansCommon.teamMember_one": "{{count,number}} membre de l'équipe",
   "plansCommon.teamMember_other": "{{count,number}} Membres de l'équipe",
   "plansCommon.teamWorkspace": "{{count,number}} Espace de travail d'équipe",

@@ -38,6 +38,7 @@ from models.model import (
     Message,
     MessageFeedback,
 )
+from models.workflow import Workflow, WorkflowType
 from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchemyExecutionExtraContentRepository
 from services.errors.message import (
     FirstMessageNotExistsError,
@@ -110,6 +111,19 @@ class MessageServiceTestDataFactory:
         account = Account(name="Admin", email="admin@example.com", status=AccountStatus.ACTIVE)
         account.id = user_id
         return account
+
+    @staticmethod
+    def create_workflow(*, features: dict[str, object] | None = None) -> Workflow:
+        return Workflow(
+            id="workflow-123",
+            tenant_id="tenant-123",
+            app_id="app-123",
+            type=WorkflowType.CHAT,
+            version="1",
+            graph="{}",
+            _features=json.dumps(features or {}),
+            created_by="account-123",
+        )
 
     @staticmethod
     def create_conversation(
@@ -712,8 +726,7 @@ class TestMessageServiceSuggestedQuestions:
         monkeypatch: pytest.MonkeyPatch,
         conversation: Conversation,
     ) -> tuple[MagicMock, MagicMock, MagicMock]:
-        message = MagicMock()
-        message.conversation_id = conversation.id
+        message = MessageServiceTestDataFactory.create_message(message_id="msg-123", conversation_id=conversation.id)
         monkeypatch.setattr(service_module.MessageService, "get_message", MagicMock(return_value=message))
         monkeypatch.setattr(
             service_module.ConversationService, "get_conversation", MagicMock(return_value=conversation)
@@ -747,8 +760,7 @@ class TestMessageServiceSuggestedQuestions:
     ) -> None:
         conversation = factory.create_conversation()
         _, _, llm_generator = self._chat_boundaries(monkeypatch, conversation)
-        workflow = MagicMock()
-        workflow.features_dict = {"suggested_questions_after_answer": {"enabled": True}}
+        workflow = factory.create_workflow(features={"suggested_questions_after_answer": {"enabled": True}})
         workflow_service = MagicMock()
         workflow_service.return_value.get_published_workflow.return_value = workflow
         monkeypatch.setattr(service_module, "WorkflowService", workflow_service)
@@ -1103,7 +1115,7 @@ class TestMessageServiceSuggestedQuestions:
     ) -> None:
         conversation = factory.create_conversation()
         self._chat_boundaries(monkeypatch, conversation)
-        workflow = MagicMock()
+        workflow = factory.create_workflow()
         workflow_service = MagicMock()
         workflow_service.return_value.get_published_workflow.return_value = workflow
         monkeypatch.setattr(service_module, "WorkflowService", workflow_service)

@@ -6,7 +6,7 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.exceptions import BadRequest, InternalServerError, NotFound, abort
+from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 from controllers.common.controller_schemas import WorkflowUpdatePayload
 from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
@@ -63,8 +63,6 @@ from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError,
 from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 from services.snippet_generate_service import SnippetGenerateService
 from services.snippet_service import SnippetService
-from services.workflow_ref_service import WorkflowRefService
-from services.workflow_service import WorkflowService
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 logger = logging.getLogger(__name__)
@@ -487,7 +485,7 @@ class SnippetWorkflowByIdApi(Resource):
     @console_ns.doc(description="Delete a published snippet workflow version")
     @console_ns.doc(params={"snippet_id": "Snippet ID", "workflow_id": "Workflow ID"})
     @console_ns.response(204, "Workflow deleted successfully")
-    @console_ns.response(400, "Workflow cannot be deleted")
+    @console_ns.response(400, "Workflow is in use")
     @console_ns.response(404, "Workflow not found")
     @setup_required
     @login_required
@@ -498,28 +496,21 @@ class SnippetWorkflowByIdApi(Resource):
         RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
     )
     def delete(self, snippet: CustomizedSnippet, workflow_id: str):
-        """Delete a published workflow version that is not currently active on the snippet."""
-        if snippet.workflow_id == workflow_id:
-            abort(400, description=f"Cannot delete workflow that is currently in use by snippet '{snippet.id}'")
-
+        """Delete a published snippet workflow version."""
         snippet_service = _snippet_service()
-        try:
-            workflow = snippet_service.get_published_workflow_by_id(snippet=snippet, workflow_id=workflow_id)
-        except IsDraftWorkflowError as exc:
-            abort(400, description=str(exc))
-        if not workflow:
-            raise NotFound(f"Workflow with ID {workflow_id} not found")
-
-        workflow_ref = WorkflowRefService.create_snippet_workflow_ref(snippet, workflow_id)
         with _snippet_session_maker().begin() as session:
             try:
-                WorkflowService().delete_workflow(session=session, workflow_ref=workflow_ref)
-            except WorkflowInUseError as exc:
-                abort(400, description=str(exc))
-            except DraftWorkflowDeletionError as exc:
-                abort(400, description=str(exc))
-            except ValueError as exc:
-                raise NotFound(str(exc)) from exc
+                snippet_service.delete_workflow(
+                    session=session,
+                    snippet=snippet,
+                    workflow_id=workflow_id,
+                )
+            except WorkflowInUseError as e:
+                raise BadRequest(str(e))
+            except DraftWorkflowDeletionError as e:
+                raise BadRequest(str(e))
+            except ValueError as e:
+                raise NotFound(str(e))
 
         return None, 204
 
