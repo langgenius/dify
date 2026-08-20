@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import inspect
 import json
+from contextlib import contextmanager, nullcontext
 from datetime import datetime
 from types import SimpleNamespace
 from typing import cast
@@ -77,6 +78,99 @@ def _make_workflow(**overrides):
     for key, value in overrides.items():
         setattr(workflow, key, value)
     return workflow
+
+
+def test_publish_workflow_returns_success(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    current_user = SimpleNamespace(id="account-1")
+    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    workflow = SimpleNamespace(id="published-workflow", created_at=datetime(2026, 8, 17, 12, 0, 0))
+    session = Mock()
+    session.get.return_value = app_model
+    monkeypatch.setattr(
+        workflow_module,
+        "WorkflowService",
+        Mock(return_value=SimpleNamespace(publish_workflow=Mock(return_value=workflow))),
+    )
+    monkeypatch.setattr(
+        workflow_module,
+        "sessionmaker",
+        lambda _engine: SimpleNamespace(begin=lambda: nullcontext(session)),
+    )
+    monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
+    with app.test_request_context("/apps/app-1/workflows/publish", method="POST", json={}):
+        response = inspect.unwrap(workflow_module.PublishedWorkflowApi.post)(
+            workflow_module.PublishedWorkflowApi(),
+            current_user,
+            app_model,
+        )
+
+    assert response["result"] == "success"
+
+
+@pytest.mark.parametrize("transaction_fails", [False, True], ids=["commit-succeeds", "commit-fails"])
+def test_delete_workflow_retires_candidates_only_after_transaction_exit(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    transaction_fails: bool,
+) -> None:
+    current_user = SimpleNamespace(id="account-1")
+    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    session = Mock()
+    events: list[str] = []
+    error = RuntimeError("commit failed")
+    workflow_service = SimpleNamespace(
+        delete_workflow=Mock(side_effect=lambda **_kwargs: events.append("delete") or ["inline-agent"])
+    )
+
+    @contextmanager
+    def transaction():
+        events.append("transaction-enter")
+        yield session
+        events.append("transaction-exit")
+        if transaction_fails:
+            raise error
+
+    monkeypatch.setattr(workflow_module, "WorkflowService", Mock(return_value=workflow_service))
+    monkeypatch.setattr(
+        workflow_module,
+        "sessionmaker",
+        lambda _engine: SimpleNamespace(begin=transaction),
+    )
+    monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
+    retire_unowned = Mock(side_effect=lambda **_kwargs: events.append("retire"))
+    monkeypatch.setattr(workflow_module.WorkflowAgentRetirementService, "retire_unowned", retire_unowned)
+
+    with app.test_request_context("/apps/app-1/workflows/workflow-1", method="DELETE"):
+        if transaction_fails:
+            with pytest.raises(RuntimeError) as exc_info:
+                inspect.unwrap(workflow_module.WorkflowByIdApi.delete)(
+                    workflow_module.WorkflowByIdApi(),
+                    current_user,
+                    app_model,
+                    "workflow-1",
+                )
+            assert exc_info.value is error
+        else:
+            response = inspect.unwrap(workflow_module.WorkflowByIdApi.delete)(
+                workflow_module.WorkflowByIdApi(),
+                current_user,
+                app_model,
+                "workflow-1",
+            )
+            assert response == (None, 204)
+
+    assert events == ["transaction-enter", "delete", "transaction-exit"] + ([] if transaction_fails else ["retire"])
+    if transaction_fails:
+        retire_unowned.assert_not_called()
+    else:
+        retire_unowned.assert_called_once_with(
+            tenant_id=app_model.tenant_id,
+            agent_ids=["inline-agent"],
+            account_id=current_user.id,
+        )
 
 
 def test_parse_file_no_config(monkeypatch: pytest.MonkeyPatch) -> None:

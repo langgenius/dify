@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 class LocalHomeSnapshotBackend:
     endpoint: str
     auth_token: str
-    snapshot_root: str = "/home/dify/.dify-agent-home-snapshots"
+    snapshot_root: str = "/home/dify/.snapshots"
     client_factory: ShellctlClientFactory | None = None
 
     async def create_from_runtime(self, *, spec: HomeSnapshotCreateSpec, source: RuntimeLease) -> str:
@@ -111,9 +111,9 @@ class LocalHomeSnapshotBackend:
 class LocalExecutionBindingBackend:
     endpoint: str
     auth_token: str
-    materialized_home_root: str = "/home/dify/.dify-agent-materialized-homes"
+    materialized_home_root: str = "/home/dify"
     workspace_root: str = "/home/dify/.dify-agent-workspaces"
-    snapshot_root: str = "/home/dify/.dify-agent-home-snapshots"
+    snapshot_root: str = "/home/dify/.snapshots"
     client_factory: ShellctlClientFactory | None = None
 
     async def create_binding(self, spec: ExecutionBindingCreateSpec) -> ExecutionBindingAllocation:
