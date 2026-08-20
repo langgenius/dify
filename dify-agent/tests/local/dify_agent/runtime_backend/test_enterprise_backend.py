@@ -80,7 +80,7 @@ async def test_enterprise_acquire_exposes_canonical_layout_through_gateway_proxy
             script = payload["script"]
             assert isinstance(script, str)
             assert "test -d /home/dify" in script
-            assert "test -d /home/dify/workspace" in script
+            assert "test -d /workspace" in script
             return _job_response()
         return httpx.Response(200, json={"job_id": "job-1"})
 
@@ -94,7 +94,7 @@ async def test_enterprise_acquire_exposes_canonical_layout_through_gateway_proxy
     lease = await backend.acquire("sandbox-1")
 
     assert lease.layout.home_dir == "/home/dify"
-    assert lease.layout.workspace_dir == "/home/dify/workspace"
+    assert lease.layout.workspace_dir == "/workspace"
     assert [request.url.path for request in requests] == [
         "/proxy/v1/jobs/run",
         "/proxy/v1/jobs/job-1",
@@ -299,7 +299,8 @@ async def test_enterprise_default_binding_creates_gateway_sandbox_and_layout(
             script = payload["script"]
             assert isinstance(script, str)
             assert "mkdir -p /home/dify" in script
-            assert "rm -rf -- /home/dify/workspace" in script
+            assert "mkdir -p /workspace" in script
+            assert "find /workspace -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +" in script
             return _job_response()
         return httpx.Response(200, json={"job_id": "job-1"})
 

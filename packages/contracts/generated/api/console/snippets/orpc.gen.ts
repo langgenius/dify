@@ -3,6 +3,8 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zDeleteSnippetsBySnippetIdWorkflowsByWorkflowIdPath,
+  zDeleteSnippetsBySnippetIdWorkflowsByWorkflowIdResponse,
   zDeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesPath,
   zDeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponse,
   zDeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdPath,
@@ -875,6 +877,25 @@ export const restore = {
 }
 
 /**
+ * Delete a published snippet workflow version
+ *
+ * Delete a published snippet workflow version
+ */
+export const delete4 = oc
+  .route({
+    description: 'Delete a published snippet workflow version',
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteSnippetsBySnippetIdWorkflowsByWorkflowId',
+    path: '/snippets/{snippet_id}/workflows/{workflow_id}',
+    successStatus: 204,
+    summary: 'Delete a published snippet workflow version',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zDeleteSnippetsBySnippetIdWorkflowsByWorkflowIdPath }))
+  .output(zDeleteSnippetsBySnippetIdWorkflowsByWorkflowIdResponse)
+
+/**
  * Update a published snippet workflow version's display metadata
  *
  * Update published snippet workflow attributes
@@ -898,6 +919,7 @@ export const patch2 = oc
   .output(zPatchSnippetsBySnippetIdWorkflowsByWorkflowIdResponse)
 
 export const byWorkflowId = {
+  delete: delete4,
   patch: patch2,
   restore,
 }

@@ -163,6 +163,10 @@ class FeatureService:
     def is_webapp_auth_enabled() -> bool:
         return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE
 
+    @staticmethod
+    def is_trial_app_enabled() -> bool:
+        return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and dify_config.ENABLE_TRIAL_APP
+
     @classmethod
     def _fulfill_system_params_from_env(cls, system_features: feature_entities.SystemFeatureModel):
         system_features.enable_email_code_login = dify_config.ENABLE_EMAIL_CODE_LOGIN

@@ -71,7 +71,7 @@ export default function CreditsExhaustedAlert({
             {t(($) => $['modelProvider.card.usageLabel'], { ns: 'common' })}
           </MeterLabel>
           <div className="flex items-center gap-0.5 system-xs-regular text-text-tertiary">
-            {/* oxlint-disable-next-line hyoban/prefer-tailwind-icons -- This generated icon class is not available to Tailwind. */}
+            {/* oxlint-disable-next-line dify/prefer-tailwind-icons -- This generated icon class is not available to Tailwind. */}
             <CreditsCoin className="size-3" />
             <span>
               {formatNumber(usedCredits)}/{formatNumber(totalCredits)}

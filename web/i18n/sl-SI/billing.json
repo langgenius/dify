@@ -131,7 +131,6 @@
   "plansCommon.supportItems.workflow": "Potek dela",
   "plansCommon.talkToSales": "Pogovorite se s prodajo",
   "plansCommon.taxTip": "Vse cene naročnin (mesečne/letne) ne vključujejo veljavnih davkov (npr. DDV, davek na promet).",
-  "plansCommon.taxTipSecond": "Če vaša regija nima veljavnih davčnih zahtev, se v vaši košarici ne bo prikazal noben davek in za celotno obdobje naročnine vam ne bodo zaračunani nobeni dodatni stroški.",
   "plansCommon.teamMember_one": "{{count,number}} član ekipe",
   "plansCommon.teamMember_other": "{{count,number}} Članov ekipe",
   "plansCommon.teamWorkspace": "{{count,number}} Ekipa delovni prostor",
