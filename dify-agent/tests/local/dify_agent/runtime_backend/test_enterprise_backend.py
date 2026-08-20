@@ -392,7 +392,7 @@ async def test_enterprise_binding_create_deletes_new_sandbox_when_layout_setup_f
 
 @pytest.mark.anyio
 async def test_enterprise_home_snapshots_remain_explicitly_not_implemented() -> None:
-    snapshots = EnterpriseHomeSnapshotBackend()
+    snapshots = EnterpriseHomeSnapshotBackend(gateway_endpoint="http://gateway.example", auth_token="secret")
 
     with pytest.raises(NotImplementedError, match="immutable Home Snapshot"):
         _ = await snapshots.create_from_runtime(

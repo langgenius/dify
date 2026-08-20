@@ -50,7 +50,12 @@ def _not_implemented() -> NotImplementedError:
 
 @dataclass(slots=True)
 class EnterpriseHomeSnapshotBackend:
-    """Reject Home Snapshot operations until the Gateway exposes immutable snapshots."""
+    """Manage immutable Home Snapshots through the Gateway's snapshot endpoints."""
+
+    gateway_endpoint: str
+    auth_token: str
+    gateway_timeout: float = 30.0
+    snapshot_timeout: float = 35.0
 
     async def create_from_runtime(self, *, spec: HomeSnapshotCreateSpec, source: RuntimeLease) -> str:
         del spec, source
@@ -69,6 +74,7 @@ class EnterpriseExecutionBindingBackend:
     auth_token: str
     gateway_timeout: float = 30.0
     proxy_timeout: float = 60.0
+    snapshot_timeout: float = 35.0
     layout: RuntimeLayout = field(
         default_factory=lambda: RuntimeLayout(home_dir="/home/dify", workspace_dir="/home/dify/workspace")
     )
