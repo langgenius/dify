@@ -10520,7 +10520,7 @@ describe("createKnowledgeGateway", () => {
             projectionIds: ["dense-2", "fts-1"],
             sources: ["dense", "fts"],
           },
-          text: "Contract ABC-123",
+          text: "Contracts > Renewal\n\nContract ABC-123",
         },
         {
           id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c82",
@@ -10528,7 +10528,7 @@ describe("createKnowledgeGateway", () => {
             projectionIds: ["fts-2"],
             sources: ["fts"],
           },
-          text: "Policy renewal",
+          text: "Policy\n\nPolicy renewal",
         },
       ],
       model: "static-rerank",

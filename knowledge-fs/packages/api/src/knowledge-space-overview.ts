@@ -19,6 +19,16 @@ export const KnowledgeSpaceActivityActions = [
 ] as const;
 export type KnowledgeSpaceActivityAction = (typeof KnowledgeSpaceActivityActions)[number];
 
+/** Retained for decoding historical rows, but excluded from the product activity feed. */
+export const HiddenKnowledgeSpaceActivityActions = [
+  "query.completed",
+  "query.failed",
+  "profile.published",
+] as const satisfies readonly KnowledgeSpaceActivityAction[];
+const HiddenKnowledgeSpaceActivityActionSet: ReadonlySet<KnowledgeSpaceActivityAction> = new Set(
+  HiddenKnowledgeSpaceActivityActions,
+);
+
 export const KnowledgeSpaceActivityResourceTypes = [
   "knowledge-space",
   "query",
@@ -41,7 +51,7 @@ export interface KnowledgeSpaceActivityEvent {
     readonly id?: string | undefined;
     readonly type: "member" | "system";
   };
-  /** A deliberately small allow-list; query text, credentials, tokens and object keys are absent. */
+  /** A deliberately small allow-list; credentials, tokens and object keys are absent. */
   readonly details: Readonly<Record<string, boolean | number | string>>;
   readonly id: string;
   readonly knowledgeSpaceId: string;
@@ -399,6 +409,7 @@ export function createInMemoryKnowledgeSpaceOverviewRepository(options: {
             event.knowledgeSpaceId === input.knowledgeSpaceId &&
             candidatePermissionScopeAllows(event.requiredPermissionScope, input.candidateGrants),
         )
+        .filter((event) => !HiddenKnowledgeSpaceActivityActionSet.has(event.action))
         .filter((event) => !input.action || event.action === input.action)
         .filter((event) => !input.actorType || event.actor.type === input.actorType)
         .filter((event) => !input.actorId || event.actor.id === input.actorId)
@@ -489,6 +500,8 @@ const SAFE_ACTIVITY_DETAIL_KEYS = new Set([
   "durationMs",
   "mode",
   "providerId",
+  "question",
+  "questionTruncated",
   "reasonCode",
   "statusCode",
 ]);
@@ -502,7 +515,13 @@ export function sanitizeKnowledgeSpaceActivityDetails(
     if (typeof value !== "string" && typeof value !== "number" && typeof value !== "boolean") {
       continue;
     }
-    if (typeof value === "string" && value.length > 160) continue;
+    if (typeof value === "string" && key === "question" && value.length > 4_000) {
+      safe.question = `${value.slice(0, 3_999)}…`;
+      safe.questionTruncated = true;
+      continue;
+    }
+    if (typeof value === "string" && value.length > 160 && key !== "question") continue;
+    if (key === "questionTruncated" && value !== true) continue;
     if (typeof value === "number" && !Number.isFinite(value)) continue;
     safe[key] = value;
   }

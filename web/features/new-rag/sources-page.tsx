@@ -35,6 +35,7 @@ import {
 } from '@langgenius/dify-ui/select'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { toast } from '@langgenius/dify-ui/toast'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -79,6 +80,9 @@ const INITIAL_SOURCE_POLL_TIMEOUT = 10 * 60 * 1000
 const MIN_CUSTOM_INTERVAL_HOURS = 1
 const MAX_CUSTOM_INTERVAL_HOURS = 720
 
+const sourceTableGridClass =
+  'grid grid-cols-2 gap-x-4 gap-y-3 @min-[768px]/knowledge-content:grid-cols-[16px_minmax(0,1fr)_120px_120px_40px] @min-[768px]/knowledge-content:gap-x-3 @min-[768px]/knowledge-content:gap-y-0 @min-[960px]/knowledge-content:grid-cols-[16px_minmax(200px,1fr)_160px_120px_120px_120px_40px] @min-[1280px]/knowledge-content:grid-cols-[16px_minmax(0,1fr)_180px_140px_120px_160px_80px]'
+
 const statusDotStatus: Record<SourceDisplayStatus, StatusDotStatus> = {
   active: 'success',
   syncing: 'normal',
@@ -114,7 +118,7 @@ const emptySourceShortcuts = [
   },
   {
     brand: 'confluence',
-    iconClass: 'i-custom-public-common-confluence',
+    iconClass: 'i-custom-public-new-rag-confluence',
     provider: 'Confluence',
     sourceType: 'onlineDocuments',
   },
@@ -300,6 +304,17 @@ function getCurrentSource(source: Source, sourceOverride?: Source) {
 
 type SourceAction = 'edit' | 'remove' | 'sync' | 'toggle'
 
+function TruncatedSourceValue({ children, className }: { children: string; className?: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={<span className={cn('block truncate', className)}>{children}</span>}
+      />
+      <TooltipContent>{children}</TooltipContent>
+    </Tooltip>
+  )
+}
+
 function SourceActions({
   canEdit,
   canRemove,
@@ -381,7 +396,7 @@ function SourceActions({
           <span
             aria-hidden
             className={cn(
-              'size-4',
+              'size-4.5',
               pendingAction ? 'i-ri-loader-4-line animate-spin' : 'i-ri-more-fill',
             )}
           />
@@ -791,32 +806,45 @@ function SourceRow({
   return (
     <tr
       className={cn(
-        'h-[50px] border-t border-divider-subtle',
+        sourceTableGridClass,
+        'relative rounded-lg border border-divider-subtle p-4 text-left @min-[768px]/knowledge-content:min-h-12.5 @min-[768px]/knowledge-content:rounded-none @min-[768px]/knowledge-content:border-x-0 @min-[768px]/knowledge-content:border-b-0 @min-[768px]/knowledge-content:px-0 @min-[768px]/knowledge-content:py-2',
         displayStatus === 'disabled' && '[&>td:not(:first-child)]:opacity-60',
       )}
     >
-      <td className="py-2 pr-3 whitespace-nowrap">
+      <td className="absolute top-4 left-4 @min-[768px]/knowledge-content:static @min-[768px]/knowledge-content:row-span-2 @min-[768px]/knowledge-content:flex @min-[768px]/knowledge-content:items-center @min-[960px]/knowledge-content:row-span-1">
         <Checkbox aria-label={source.name} checked={checked} onCheckedChange={onCheckedChange} />
       </td>
-      <td className="min-w-0 py-2 pr-3">
+      <td className="col-span-2 min-w-0 pr-8 pl-7 @min-[768px]/knowledge-content:col-span-1 @min-[768px]/knowledge-content:col-start-2 @min-[768px]/knowledge-content:row-start-1 @min-[768px]/knowledge-content:flex @min-[768px]/knowledge-content:items-center @min-[768px]/knowledge-content:p-0">
         <div className="flex min-w-0 items-center gap-2.5">
-          <SourceProviderIcon fallbackIcon={sourceIcon} />
-          <div className="min-w-0">
-            <p className="truncate system-xs-medium text-text-primary">{source.name}</p>
-          </div>
+          <SourceProviderIcon className="size-4.5" fallbackIcon={sourceIcon} />
+          <TruncatedSourceValue className="text-[13px] leading-4.25 font-medium text-text-primary">
+            {source.name}
+          </TruncatedSourceValue>
         </div>
       </td>
-      <td className="py-2 pr-3 whitespace-nowrap">
-        <div className="flex flex-col gap-0.5">
-          <p className="system-xs-regular text-text-primary">{providerName ?? typeLabel}</p>
-          {providerName && <p className="system-xs-regular text-text-tertiary">{typeLabel}</p>}
+      <td className="min-w-0 @min-[768px]/knowledge-content:col-start-2 @min-[768px]/knowledge-content:row-start-2 @min-[960px]/knowledge-content:col-start-auto @min-[960px]/knowledge-content:row-start-auto @min-[960px]/knowledge-content:flex @min-[960px]/knowledge-content:items-center">
+        <p className="mb-1 text-[11px] leading-4 font-medium tracking-[0.3px] text-text-tertiary uppercase @min-[768px]/knowledge-content:hidden">
+          {t(($) => $['metadata.createMetadata.type'])}
+        </p>
+        <div className="min-w-0 text-xs leading-4 font-normal">
+          <TruncatedSourceValue className="text-text-primary">
+            {providerName ?? typeLabel}
+          </TruncatedSourceValue>
+          {providerName && (
+            <TruncatedSourceValue className="mt-0.5 text-text-tertiary">
+              {typeLabel}
+            </TruncatedSourceValue>
+          )}
         </div>
       </td>
-      <td className="py-2 pr-3 whitespace-nowrap">
+      <td className="min-w-0 @min-[768px]/knowledge-content:col-start-3 @min-[768px]/knowledge-content:row-span-2 @min-[768px]/knowledge-content:row-start-1 @min-[768px]/knowledge-content:flex @min-[768px]/knowledge-content:items-center @min-[960px]/knowledge-content:col-start-auto @min-[960px]/knowledge-content:row-span-1 @min-[960px]/knowledge-content:row-start-auto">
+        <p className="mb-1 text-[11px] leading-4 font-medium tracking-[0.3px] text-text-tertiary uppercase @min-[768px]/knowledge-content:hidden">
+          {t(($) => $['newKnowledge.statusColumn'])}
+        </p>
         <span
           role="status"
           className={cn(
-            'inline-flex items-center gap-1.5 system-xs-medium text-text-primary',
+            'inline-flex min-w-0 items-center gap-1.5 text-xs leading-4 font-medium text-text-primary',
             (displayStatus === 'syncing' || initializing) && 'text-text-accent',
           )}
         >
@@ -838,17 +866,25 @@ function SourceRow({
           {t(($) => $[`newKnowledge.sourceStatus.${displayStatus}`])}
         </span>
       </td>
-      <td className="py-2 pr-3 system-xs-regular whitespace-nowrap text-text-secondary">
-        {syncPolicy ?? '—'}
+      <td className="min-w-0 @min-[768px]/knowledge-content:hidden @min-[960px]/knowledge-content:flex @min-[960px]/knowledge-content:items-center">
+        <p className="mb-1 text-[11px] leading-4 font-medium tracking-[0.3px] text-text-tertiary uppercase @min-[768px]/knowledge-content:hidden">
+          {t(($) => $['newKnowledge.syncPolicyColumn'])}
+        </p>
+        <TruncatedSourceValue className="text-xs leading-4 font-normal text-text-secondary">
+          {syncPolicy ?? '—'}
+        </TruncatedSourceValue>
       </td>
       <td
         className={cn(
-          'py-2 pr-3 system-xs-regular whitespace-nowrap',
+          'min-w-0 text-xs leading-4 font-normal @min-[768px]/knowledge-content:col-start-4 @min-[768px]/knowledge-content:row-span-2 @min-[768px]/knowledge-content:row-start-1 @min-[768px]/knowledge-content:flex @min-[768px]/knowledge-content:items-center @min-[960px]/knowledge-content:col-start-auto @min-[960px]/knowledge-content:row-span-1 @min-[960px]/knowledge-content:row-start-auto',
           displayStatus === 'error' ? 'text-text-destructive' : 'text-text-secondary',
         )}
       >
+        <p className="mb-1 text-[11px] leading-4 font-medium tracking-[0.3px] text-text-tertiary uppercase @min-[768px]/knowledge-content:hidden">
+          {t(($) => $['newKnowledge.lastSyncColumn'])}
+        </p>
         {displayStatus === 'syncing' && syncWorkflow ? (
-          <span className="inline-flex items-center gap-1.5 text-text-accent">
+          <span className="inline-flex min-w-0 items-center gap-1.5 text-text-accent">
             <span
               aria-hidden
               className="i-ri-loader-4-line size-3.5 animate-spin motion-reduce:animate-none"
@@ -862,18 +898,21 @@ function SourceRow({
             })}
           </span>
         ) : displayStatus === 'error' ? (
-          <span className="inline-flex items-center gap-1.5">
+          <span className="inline-flex min-w-0 items-center gap-1.5">
             <span aria-hidden className="i-ri-error-warning-fill size-3.5" />
-            {syncWorkflow?.lastErrorCode ?? t(($) => $['newKnowledge.sourceSyncFailed'])}
+            <TruncatedSourceValue>
+              {syncWorkflow?.lastErrorCode ?? t(($) => $['newKnowledge.sourceSyncFailed'])}
+            </TruncatedSourceValue>
           </span>
         ) : (
-          (lastSync ?? '—')
+          <TruncatedSourceValue>{lastSync ?? '—'}</TruncatedSourceValue>
         )}
       </td>
-      <td className="py-2 text-right whitespace-nowrap">
-        <div className="flex items-center justify-end gap-1">
+      <td className="absolute top-2.5 right-2.5 text-right @min-[768px]/knowledge-content:static @min-[768px]/knowledge-content:col-start-5 @min-[768px]/knowledge-content:row-span-2 @min-[768px]/knowledge-content:row-start-1 @min-[768px]/knowledge-content:flex @min-[768px]/knowledge-content:items-center @min-[960px]/knowledge-content:col-start-auto @min-[960px]/knowledge-content:row-span-1 @min-[960px]/knowledge-content:row-start-auto">
+        <div className="flex items-center justify-end gap-0.5">
           {canSync && displayStatus === 'error' && (
             <Button
+              className="@min-[768px]/knowledge-content:hidden @min-[1280px]/knowledge-content:inline-flex"
               size="small"
               variant="secondary"
               loading={pendingAction === 'sync'}
@@ -1168,7 +1207,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
   ])
 
   return (
-    <div className="flex min-h-full min-w-0 flex-1 flex-col px-6 pt-3 pb-6 sm:pb-8">
+    <div className="flex min-h-full min-w-0 flex-1 flex-col p-4 @min-[768px]/knowledge-content:p-6 @min-[1280px]/knowledge-content:p-8">
       <header className="flex items-start justify-between gap-4">
         <div>
           <h2 className="title-xl-semi-bold leading-6 text-text-primary">
@@ -1230,7 +1269,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
         <SourcesEmpty canAddSource={canManageSources} knowledgeSpaceId={knowledgeSpaceId} />
       ) : (
         <>
-          <div className="mt-8.5 flex flex-col gap-2 sm:flex-row">
+          <div className="mt-8.5 flex flex-col gap-2 @min-[768px]/knowledge-content:flex-row">
             <Select<SourceFilter>
               value={filter}
               onValueChange={(value) => {
@@ -1240,7 +1279,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
               <SelectLabel className="sr-only">
                 {t(($) => $['newKnowledge.sourceFilterLabel'])}
               </SelectLabel>
-              <SelectTrigger className="sm:w-35">
+              <SelectTrigger className="@min-[768px]/knowledge-content:w-35">
                 {filter === 'all'
                   ? t(($) => $['newKnowledge.allSources'])
                   : t(($) => $[`newKnowledge.sourceStatus.${filter}`])}
@@ -1264,7 +1303,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             </Select>
             <SearchInput
               aria-label={t(($) => $['newKnowledge.searchSources'])}
-              className="sm:w-60"
+              className="@min-[768px]/knowledge-content:w-60"
               value={search}
               onValueChange={setSearch}
               placeholder={t(($) => $['newKnowledge.searchSources'])}
@@ -1273,7 +1312,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
               <Link
                 href={newKnowledgeAddSourcePath(knowledgeSpaceId)}
                 className={buttonVariants({
-                  className: 'gap-1 sm:ml-auto',
+                  className: 'gap-1 @min-[768px]/knowledge-content:ml-auto',
                   variant: 'primary',
                 })}
               >
@@ -1282,11 +1321,11 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
               </Link>
             )}
           </div>
-          <div className="mt-2.5 overflow-x-auto pt-3">
-            <table className="w-full table-auto border-collapse text-left">
-              <thead className="system-2xs-medium text-text-tertiary uppercase">
-                <tr className="h-9">
-                  <th className="py-2.5 pr-3 whitespace-nowrap">
+          <div className="mt-3 min-w-0">
+            <table className="relative block w-full text-left">
+              <thead className="absolute size-px overflow-hidden text-[11px] leading-4 font-medium tracking-[0.3px] whitespace-nowrap text-text-tertiary uppercase [clip:rect(0,0,0,0)] @min-[768px]/knowledge-content:static @min-[768px]/knowledge-content:block @min-[768px]/knowledge-content:size-auto @min-[768px]/knowledge-content:overflow-visible @min-[768px]/knowledge-content:whitespace-normal @min-[768px]/knowledge-content:[clip:auto]">
+                <tr className={cn(sourceTableGridClass, 'py-2.5')}>
+                  <th className="flex items-center">
                     <Checkbox
                       aria-label={tCommon(($) => $['operation.selectAll'])}
                       checked={allFilteredSourcesSelected}
@@ -1311,7 +1350,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                           ? 'descending'
                           : 'none'
                     }
-                    className="py-2.5 font-medium"
+                    className="min-w-0 @min-[768px]/knowledge-content:col-start-2 @min-[960px]/knowledge-content:col-start-auto"
                   >
                     <Button
                       variant="ghost"
@@ -1319,7 +1358,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                       onClick={() =>
                         setSort((current) => (current === 'name-asc' ? 'name-desc' : 'name-asc'))
                       }
-                      className="h-auto gap-1 rounded px-0 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                      className="h-auto gap-1 rounded px-0 text-[11px] leading-4 font-medium tracking-[0.3px] focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                     >
                       {t(($) => $['newKnowledge.sourceColumn'])}
                       {sort && (
@@ -1333,25 +1372,25 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                       )}
                     </Button>
                   </th>
-                  <th className="py-2.5 font-medium whitespace-nowrap">
+                  <th className="hidden min-w-0 @min-[960px]/knowledge-content:block">
                     {t(($) => $['metadata.createMetadata.type'])}
                   </th>
-                  <th className="py-2.5 font-medium whitespace-nowrap">
+                  <th className="min-w-0 @min-[768px]/knowledge-content:col-start-3 @min-[960px]/knowledge-content:col-start-auto">
                     {t(($) => $['newKnowledge.statusColumn'])}
                   </th>
-                  <th className="py-2.5 font-medium whitespace-nowrap">
+                  <th className="hidden min-w-0 @min-[960px]/knowledge-content:block">
                     {t(($) => $['newKnowledge.syncPolicyColumn'])}
                   </th>
-                  <th className="py-2.5 font-medium whitespace-nowrap">
+                  <th className="min-w-0 @min-[768px]/knowledge-content:col-start-4 @min-[960px]/knowledge-content:col-start-auto">
                     {t(($) => $['newKnowledge.lastSyncColumn'])}
                   </th>
                   <th
-                    className="whitespace-nowrap"
+                    className="@min-[768px]/knowledge-content:col-start-5 @min-[960px]/knowledge-content:col-start-auto"
                     aria-label={t(($) => $['newKnowledge.actionsColumn'])}
                   />
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="block space-y-2 @min-[768px]/knowledge-content:space-y-0">
                 {filteredSources.map((source) => (
                   <SourceRow
                     key={source.id}

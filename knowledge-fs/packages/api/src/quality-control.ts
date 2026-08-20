@@ -269,7 +269,6 @@ export interface QualityControlRepository {
     readonly traceId: string;
   }): Promise<MissingEvidenceReview | null>;
   getReplay(input: {
-    readonly capabilityGrantId?: string | undefined;
     readonly candidateGrants: readonly string[];
     readonly id: string;
     readonly knowledgeSpaceId: string;
@@ -298,7 +297,6 @@ export interface QualityControlRepository {
     readonly tenantId: string;
   }): Promise<readonly QualityHistoryEvent[]>;
   listReplays(input: {
-    readonly capabilityGrantId?: string | undefined;
     readonly candidateGrants: readonly string[];
     readonly cursor?: { readonly createdAt: string; readonly id: string } | undefined;
     readonly from?: string | undefined;

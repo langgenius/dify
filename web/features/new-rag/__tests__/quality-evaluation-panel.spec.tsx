@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
 import { QualityEvaluationPanel } from '../quality/quality-evaluation-panel'
@@ -94,6 +94,41 @@ const completedRun = {
   updated_at: '2026-08-19T12:00:02.000Z',
 } as const
 
+const completedRunWithEvidence = {
+  ...completedRun,
+  items: [
+    {
+      ...completedRun.items[0],
+      result: {
+        ...completedRun.items[0].result,
+        evidence_diff: {
+          ...completedRun.items[0].result.evidence_diff,
+          evidence_items: [
+            {
+              available: true,
+              document_name: 'Workspace permissions.pdf',
+              matched: true,
+              ordinal: 1,
+              page_number: 2,
+              section_path: ['Permissions', 'Roles'],
+              text: 'Workspace owners can change member permissions.',
+            },
+            {
+              available: true,
+              document_name: 'Workspace permissions.pdf',
+              matched: false,
+              ordinal: 2,
+              page_number: 3,
+              section_path: ['Permissions', 'Limitations'],
+              text: 'Editors cannot promote themselves to owner.',
+            },
+          ],
+        },
+      },
+    },
+  ],
+} as const
+
 function renderPanel() {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -128,6 +163,32 @@ describe('QualityEvaluationPanel', () => {
     ).toBeEnabled()
   })
 
+  it('opens evaluation settings in an accessible centered modal', async () => {
+    const user = userEvent.setup()
+    renderPanel()
+
+    await screen.findByText('dataset.newKnowledge.qualityPage.evaluation.emptyTitle')
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.qualityPage.evaluation.run',
+      }),
+    )
+
+    const dialog = screen.getByRole('dialog', {
+      name: 'dataset.newKnowledge.qualityPage.evaluation.dialogTitle',
+    })
+    expect(dialog).toHaveClass(
+      'fixed',
+      'top-1/2',
+      'left-1/2',
+      '-translate-x-1/2',
+      '-translate-y-1/2',
+    )
+    expect(dialog).toHaveAccessibleDescription(
+      'dataset.newKnowledge.qualityPage.evaluation.dialogDescription',
+    )
+  })
+
   it('queues every active golden question and opens the persisted evidence report', async () => {
     const user = userEvent.setup()
     renderPanel()
@@ -160,5 +221,57 @@ describe('QualityEvaluationPanel', () => {
     expect(serviceMock.getReplay).toHaveBeenCalledWith({
       params: { control_space_id: 'space-1', run_id: 'run-1' },
     })
+  })
+
+  it('opens evidence hit details and identifies matched and missing passages', async () => {
+    const user = userEvent.setup()
+    serviceMock.listReplays.mockResolvedValue({ data: [completedRun], next_cursor: null })
+    serviceMock.getReplay.mockImplementation(async (input) =>
+      'query' in input && input.query.evidence_item_id ? completedRunWithEvidence : completedRun,
+    )
+    renderPanel()
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'dataset.newKnowledge.qualityPage.evaluation.viewReport',
+      }),
+    )
+    await screen.findByText('Who can change workspace permissions?')
+    await user.click(
+      screen.getByRole('button', {
+        name: /^dataset\.newKnowledge\.qualityPage\.evaluation\.openEvidenceDetails/,
+      }),
+    )
+
+    expect(
+      await screen.findByRole('dialog', {
+        name: 'dataset.newKnowledge.qualityPage.evaluation.evidenceDetailsTitle',
+      }),
+    ).toBeVisible()
+    const matchedSection = screen.getByRole('region', {
+      name: 'dataset.newKnowledge.qualityPage.evaluation.passed',
+    })
+    const missingSection = screen.getByRole('region', {
+      name: 'dataset.newKnowledge.qualityPage.evaluation.missed',
+    })
+    expect(
+      within(matchedSection).getByText('Workspace owners can change member permissions.'),
+    ).toBeVisible()
+    expect(
+      within(missingSection).getByText('Editors cannot promote themselves to owner.'),
+    ).toBeVisible()
+    expect(serviceMock.getReplay).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', run_id: 'run-1' },
+      query: { evidence_item_id: 'item-1' },
+    })
+
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.qualityPage.closeDialog' }),
+    )
+    expect(
+      screen.queryByRole('dialog', {
+        name: 'dataset.newKnowledge.qualityPage.evaluation.evidenceDetailsTitle',
+      }),
+    ).not.toBeInTheDocument()
   })
 })

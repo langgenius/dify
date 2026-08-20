@@ -324,7 +324,7 @@ describe("knowledge-space profile repository", () => {
           (call) =>
             call.tableName === "knowledge_space_activity_events" && call.operation === "insert",
         ),
-      ).toBe(true);
+      ).toBe(false);
     },
   );
 

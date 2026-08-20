@@ -137,6 +137,8 @@ describe("runApiDatabaseMigrations", () => {
       "insert",
       "schema",
       "insert",
+      "schema",
+      "insert",
     ]);
     expect(migrationSql).toHaveLength(expectedPostgresMigrationIds.length);
     expect(migrationSql[2]).toContain("-- Migration id: 0003_projection_set_publications\n");

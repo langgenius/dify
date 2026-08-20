@@ -5,7 +5,6 @@ from typing import Any
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from sqlalchemy.sql.elements import ColumnElement
 
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
 from libs.helper import to_timestamp
@@ -20,7 +19,6 @@ from models.agent import (
     AgentConfigSnapshot,
     AgentConfigVersionKind,
     AgentDebugConversation,
-    AgentDriveFile,
     AgentIconType,
     AgentKind,
     AgentScope,
@@ -279,12 +277,7 @@ class AgentComposerService:
         state = cls._serialize_workflow_state(
             session=session, binding=binding, agent=agent, version=version, account_id=account_id
         )
-        state["validation"] = cls.collect_validation_findings(
-            session=session,
-            tenant_id=tenant_id,
-            payload=payload,
-            agent_id=binding.agent_id,
-        )
+        state["validation"] = cls.collect_validation_findings(payload=payload)
         session.commit()
         binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
             tenant_id=tenant_id,
@@ -365,16 +358,6 @@ class AgentComposerService:
             icon=source_agent.icon,
             icon_background=source_agent.icon_background,
         )
-        cls._copy_agent_drive_rows(
-            session=session,
-            tenant_id=tenant_id,
-            source_agent_id=source_agent.id,
-            target_agent_id=inline_agent.id,
-            account_id=account_id,
-            agent_soul=agent_soul,
-            node_job=WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict),
-        )
-
         binding.binding_type = WorkflowAgentBindingType.INLINE_AGENT
         binding.agent_id = inline_agent.id
         binding.current_snapshot_id = inline_agent.active_config_snapshot_id
@@ -581,12 +564,7 @@ class AgentComposerService:
 
         session.flush()
         state = cls.load_agent_composer(session=session, tenant_id=tenant_id, agent_id=agent.id)
-        state["validation"] = cls.collect_validation_findings(
-            session=session,
-            tenant_id=tenant_id,
-            payload=payload,
-            agent_id=agent.id,
-        )
+        state["validation"] = cls.collect_validation_findings(payload=payload)
         return state
 
     @classmethod
@@ -1051,12 +1029,9 @@ class AgentComposerService:
     def collect_validation_findings(
         cls,
         *,
-        session: Session,
-        tenant_id: str,
         payload: ComposerSavePayload,
-        agent_id: str | None = None,
     ) -> dict[str, Any]:
-        """ENG-617 soft findings, with DB-backed dataset and drive mention checks."""
+        """Collect non-blocking composer validation findings."""
         existing_knowledge_set_ids = (
             {knowledge_set.id for knowledge_set in payload.agent_soul.knowledge.sets}
             if payload.agent_soul is not None
@@ -1066,15 +1041,6 @@ class AgentComposerService:
             payload,
             existing_knowledge_set_ids=existing_knowledge_set_ids,
         )
-        if agent_id and payload.agent_soul is not None:
-            findings["warnings"].extend(
-                cls._drive_mention_findings(
-                    session=session,
-                    tenant_id=tenant_id,
-                    agent_id=agent_id,
-                    prompt=payload.agent_soul.prompt.system_prompt,
-                )
-            )
         return findings
 
     @classmethod
@@ -1100,21 +1066,6 @@ class AgentComposerService:
             )
 
     @classmethod
-    def resolve_bound_agent_id(cls, *, session: Session, tenant_id: str, app_id: str) -> str | None:
-        """The Agent App's bound roster agent id, if any (validate-endpoint context)."""
-        return session.scalar(
-            select(Agent.id)
-            .where(
-                Agent.tenant_id == tenant_id,
-                Agent.app_id == app_id,
-                Agent.scope == AgentScope.ROSTER,
-                Agent.status == AgentStatus.ACTIVE,
-            )
-            .order_by(Agent.created_at.desc())
-            .limit(1)
-        )
-
-    @classmethod
     def resolve_workflow_node_agent_id(
         cls, *, session: Session, tenant_id: str, app_id: str, node_id: str
     ) -> str | None:
@@ -1127,54 +1078,6 @@ class AgentComposerService:
             session=session, tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id
         )
         return binding.agent_id if binding else None
-
-    @classmethod
-    def _drive_mention_findings(
-        cls,
-        *,
-        session: Session,
-        tenant_id: str,
-        agent_id: str,
-        prompt: str,
-    ) -> list[dict[str, str | None]]:
-        """Soft warnings for missing drive-backed prompt mentions."""
-        from services.agent.prompt_mentions import MentionKind, parse_prompt_mentions
-        from services.agent_drive_service import decode_drive_mention_ref
-
-        wanted_keys: dict[str, tuple[str, str]] = {}
-        for mention in parse_prompt_mentions(prompt):
-            if mention.kind not in {MentionKind.SKILL, MentionKind.FILE}:
-                continue
-            decoded_key = decode_drive_mention_ref(mention.ref_id)
-            if not decoded_key:
-                continue
-            wanted_keys[decoded_key] = (mention.kind.value, mention.label or decoded_key)
-        if not wanted_keys:
-            return []
-
-        existing_keys = set(
-            session.scalars(
-                select(AgentDriveFile.key).where(
-                    AgentDriveFile.tenant_id == tenant_id,
-                    AgentDriveFile.agent_id == agent_id,
-                    AgentDriveFile.key.in_(sorted(wanted_keys)),
-                )
-            )
-        )
-        findings: list[dict[str, str | None]] = []
-        for key, (kind, display) in wanted_keys.items():
-            if key in existing_keys:
-                continue
-            findings.append(
-                {
-                    "code": "mention_target_missing",
-                    "surface": "agent_soul",
-                    "kind": kind,
-                    "id": key,
-                    "message": f"{kind} '{display}' has no drive entry for key '{key}'.",
-                }
-            )
-        return findings
 
     @classmethod
     def get_workflow_candidates(
@@ -1721,15 +1624,6 @@ class AgentComposerService:
             operation=AgentConfigRevisionOperation.SAVE_TO_ROSTER,
             version_note=payload.version_note,
         )
-        cls._copy_agent_drive_rows(
-            session=session,
-            tenant_id=tenant_id,
-            source_agent_id=source_agent.id,
-            target_agent_id=roster_agent.id,
-            account_id=account_id,
-            agent_soul=agent_soul,
-            node_job=payload.node_job or WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict),
-        )
         binding.binding_type = WorkflowAgentBindingType.ROSTER_AGENT
         binding.agent_id = roster_agent.id
         binding.current_snapshot_id = roster_agent.active_config_snapshot_id
@@ -1800,99 +1694,6 @@ class AgentComposerService:
         agent.active_config_has_model = agent_soul_has_model(agent_soul)
         agent.active_config_is_published = True
         return agent
-
-    @classmethod
-    def _copy_agent_drive_rows(
-        cls,
-        *,
-        session: Session,
-        tenant_id: str,
-        source_agent_id: str,
-        target_agent_id: str,
-        account_id: str,
-        agent_soul: AgentSoulConfig,
-        node_job: WorkflowNodeJobConfig | None = None,
-    ) -> None:
-        exact_keys, prefixes = cls._drive_copy_scopes_from_agent_configs(agent_soul=agent_soul, node_job=node_job)
-        predicates: list[ColumnElement[bool]] = []
-        if exact_keys:
-            predicates.append(AgentDriveFile.key.in_(sorted(exact_keys)))
-        predicates.extend(AgentDriveFile.key.startswith(prefix) for prefix in sorted(prefixes))
-        if not predicates:
-            return
-
-        source_rows = list(
-            session.scalars(
-                select(AgentDriveFile).where(
-                    AgentDriveFile.tenant_id == tenant_id,
-                    AgentDriveFile.agent_id == source_agent_id,
-                    or_(*predicates),
-                )
-            ).all()
-        )
-        if not source_rows:
-            return
-
-        existing_target_keys = set(
-            session.scalars(
-                select(AgentDriveFile.key).where(
-                    AgentDriveFile.tenant_id == tenant_id,
-                    AgentDriveFile.agent_id == target_agent_id,
-                    AgentDriveFile.key.in_([row.key for row in source_rows]),
-                )
-            ).all()
-        )
-        for row in source_rows:
-            if row.key in existing_target_keys:
-                continue
-            session.add(
-                AgentDriveFile(
-                    tenant_id=tenant_id,
-                    agent_id=target_agent_id,
-                    key=row.key,
-                    file_kind=row.file_kind,
-                    file_id=row.file_id,
-                    value_owned_by_drive=row.value_owned_by_drive,
-                    is_skill=row.is_skill,
-                    skill_metadata=row.skill_metadata,
-                    size=row.size,
-                    hash=row.hash,
-                    mime_type=row.mime_type,
-                    created_by=account_id,
-                )
-            )
-
-    @staticmethod
-    def _drive_copy_scopes_from_agent_configs(
-        *, agent_soul: AgentSoulConfig, node_job: WorkflowNodeJobConfig | None = None
-    ) -> tuple[set[str], set[str]]:
-        from services.agent.prompt_mentions import MentionKind, parse_prompt_mentions
-        from services.agent_drive_service import decode_drive_mention_ref
-
-        exact_keys: set[str] = set()
-        prefixes: set[str] = set()
-
-        for mention in parse_prompt_mentions(agent_soul.prompt.system_prompt):
-            if mention.kind not in {MentionKind.SKILL, MentionKind.FILE}:
-                continue
-            drive_key = decode_drive_mention_ref(mention.ref_id)
-            if not drive_key:
-                continue
-            if mention.kind == MentionKind.SKILL and "/" in drive_key:
-                prefixes.add(f"{drive_key.rsplit('/', 1)[0]}/")
-            else:
-                exact_keys.add(drive_key)
-
-        if node_job is not None:
-            for file_ref in node_job.metadata.file_refs or []:
-                if file_ref.drive_key:
-                    exact_keys.add(file_ref.drive_key)
-            for output in node_job.declared_outputs:
-                benchmark_ref = output.check.benchmark_file_ref if output.check and output.check.enabled else None
-                if benchmark_ref and benchmark_ref.drive_key:
-                    exact_keys.add(benchmark_ref.drive_key)
-
-        return exact_keys, prefixes
 
     @classmethod
     def _create_roster_agent_for_composer(

@@ -10,6 +10,16 @@ const BadCaseParams = SpaceParams.extend({ badCaseId: z.string().uuid() });
 const ReplayParams = SpaceParams.extend({ runId: z.string().uuid() });
 const DateTime = z.string().datetime();
 
+const ReplayEvidenceItemSchema = z.object({
+  available: z.boolean(),
+  documentName: z.string().optional(),
+  matched: z.boolean(),
+  ordinal: z.number().int().positive(),
+  pageNumber: z.number().int().positive().optional(),
+  sectionPath: z.array(z.string()),
+  text: z.string().optional(),
+});
+
 export const QualityTraceHistoryQuerySchema = z
   .object({
     cursor: z.string().max(1000).optional(),
@@ -112,6 +122,7 @@ export const ReplayRunSchema = z
         result: z
           .object({
             evidenceDiff: z.object({
+              evidenceItems: z.array(ReplayEvidenceItemSchema).optional(),
               expectedCount: z.number().int().nonnegative(),
               matchedCount: z.number().int().nonnegative(),
               missingCount: z.number().int().nonnegative(),
@@ -514,7 +525,10 @@ export const getQualityReplayRoute = createRoute({
   operationId: "getQualityReplay",
   path: "/knowledge-spaces/{id}/quality/replay-runs/{runId}",
   "x-knowledge-fs-max-response-bytes": 4 * 1024 * 1024,
-  request: { params: ReplayParams },
+  request: {
+    params: ReplayParams,
+    query: z.object({ evidenceItemId: z.string().uuid().optional() }).strict(),
+  },
   responses: {
     200: {
       content: { "application/json": { schema: ReplayRunSchema } },

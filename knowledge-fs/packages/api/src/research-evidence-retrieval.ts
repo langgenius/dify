@@ -58,9 +58,10 @@ export interface ResearchEvidenceRetrievalOptions {
  * Online Research V3 orchestration.
  *
  * It performs knowledge-space-wide candidate retrieval for the original query and at most three
- * planned subqueries, rank-fuses those lists, applies the configured reranker once, then asks the
- * reasoning model to judge the evidence set as a whole. An insufficient set may run exactly one
- * focused supplemental retrieval and a final rerank. No document or tree node invokes an LLM.
+ * planned subqueries, reranks every list against the query that recalled it, and merges duplicate
+ * evidence by its strongest query-specific relevance. The reasoning model then judges the evidence
+ * set as a whole. An insufficient set may run exactly one focused supplemental retrieval, scored
+ * against that supplemental query. No document or tree node invokes an LLM.
  */
 export function createResearchEvidenceRetrieval({
   legacyResearchRetriever,
@@ -187,19 +188,33 @@ export function createResearchEvidenceRetrieval({
         rerankerModel: undefined,
       });
       if (!rerankRuntime) throw new Error("Research retrieval reranker is unavailable");
-      let rerankMs = 0;
-      const rerank = async (items: readonly HybridRetrievalItem[]) => {
+      let rerankMs = restored?.result?.metrics?.rerankMs ?? 0;
+      let rerankCandidates = restored?.result?.metrics?.rerankCandidates ?? 0;
+      const rerankLists = async (lists: readonly ResearchQueryRerankList[]) => {
         const rerankStartedAt = now();
-        const result = await rerankHybridRetrievalItems({
-          items,
-          limit: items.length,
-          model: rerankRuntime.model,
-          query: input.query,
-          reranker: rerankRuntime.provider,
-          tenantId,
-        });
-        rerankMs += Math.max(0, now() - rerankStartedAt);
-        return thresholdItems(result, rerankRuntime.scoreThreshold);
+        rerankCandidates += lists.reduce((total, list) => total + list.items.length, 0);
+        try {
+          return await Promise.all(
+            lists.map(async (list) => ({
+              ...list,
+              items: thresholdItems(
+                await rerankHybridRetrievalItems({
+                  items: list.items,
+                  limit: list.items.length,
+                  model: rerankRuntime.model,
+                  query: list.query,
+                  reranker: rerankRuntime.provider,
+                  tenantId,
+                }),
+                rerankRuntime.scoreThreshold,
+              ),
+            })),
+          );
+        } finally {
+          // Calls in one intent batch run concurrently, so this is user-visible wall time rather
+          // than the sum of provider durations.
+          rerankMs += Math.max(0, now() - rerankStartedAt);
+        }
       };
       let recalled: HybridRetrievalResult[] = [];
       let fused: Awaited<ReturnType<typeof rerankHybridRetrievalItems>>;
@@ -260,10 +275,25 @@ export function createResearchEvidenceRetrieval({
             weight: queryInputs[index]?.weight ?? 0.85,
           })),
         });
-        reranked = await rerank(fused);
+        const queryRerankedLists = await rerankLists(
+          boundResearchQueryRerankLists({
+            limit: candidateLimit,
+            lists: recalled.map((result, index) => ({
+              items: result.items,
+              label: `query:${index}`,
+              query: queryInputs[index]?.query ?? input.query,
+              weight: queryInputs[index]?.weight ?? 0.85,
+            })),
+          }),
+        );
+        reranked = mergeResearchQueryRerankedLists({
+          limit: candidateLimit,
+          lists: queryRerankedLists,
+        });
+        const recallMetrics = aggregateRecallMetrics(recalled);
         const initialResult: HybridRetrievalResult = {
           items: reranked.slice(0, input.limit),
-          metrics: aggregateRecallMetrics(recalled),
+          metrics: recallMetrics ? { ...recallMetrics, rerankCandidates, rerankMs } : undefined,
           plan: { ...retrievalPlan, strategyVersion: "retrieval-planner-v2" },
         };
         await persistV3Boundary({
@@ -346,6 +376,17 @@ export function createResearchEvidenceRetrieval({
           topK: candidateLimit,
         });
         supplementalSearches = 1;
+        const [supplementalReranked] = await rerankLists([
+          {
+            items: supplemental.items,
+            label: "supplemental",
+            query: judgement.supplementalQuery,
+            weight: 0.9,
+          },
+        ]);
+        if (!supplementalReranked) {
+          throw new Error("Research supplemental rerank result is unavailable");
+        }
         fused = fuseRankedHybridRetrievalLists({
           limit: candidateLimit,
           lists: [
@@ -353,7 +394,13 @@ export function createResearchEvidenceRetrieval({
             { items: supplemental.items, label: "supplemental", weight: 0.9 },
           ],
         });
-        reranked = await rerank(fused);
+        reranked = mergeResearchQueryRerankedLists({
+          limit: candidateLimit,
+          lists: [
+            { items: reranked, label: "initial", query: input.query, weight: 1 },
+            supplementalReranked,
+          ],
+        });
       }
 
       const items = reranked.slice(0, input.limit);
@@ -366,7 +413,7 @@ export function createResearchEvidenceRetrieval({
         judgeMs,
         modelCalls: snapshot.modelCalls,
         planMs,
-        rerankCandidates: fused.length,
+        rerankCandidates,
         rerankMs,
         rounds: snapshot.rounds,
         sufficiencyReached: judgement.sufficient,
@@ -521,6 +568,208 @@ function assertVector(
   if (!vector || vector.length === 0 || !vector.every(Number.isFinite)) {
     throw new Error(`Research ${label} embedding must be a non-empty finite vector`);
   }
+}
+
+interface ResearchQueryRerankList {
+  readonly items: readonly HybridRetrievalItem[];
+  readonly label: string;
+  readonly query: string;
+  readonly weight: number;
+}
+
+interface ResearchQueryRerankMatch {
+  readonly label: string;
+  readonly query: string;
+  readonly score: number;
+  readonly weight: number;
+}
+
+/**
+ * Gives every query intent ranked candidates while keeping the total provider documents bounded by
+ * the existing Research rerank candidate limit. Duplicate nodes intentionally remain in separate
+ * lists because they need an independent relevance score for each query that recalled them.
+ */
+function boundResearchQueryRerankLists({
+  limit,
+  lists,
+}: {
+  readonly limit: number;
+  readonly lists: readonly ResearchQueryRerankList[];
+}): ResearchQueryRerankList[] {
+  const selected = lists.map((list) => ({ ...list, items: [] as HybridRetrievalItem[] }));
+  let count = 0;
+  let rank = 0;
+  while (count < limit) {
+    let found = false;
+    for (const [index, list] of lists.entries()) {
+      const item = list.items[rank];
+      if (!item) continue;
+      found = true;
+      selected[index]?.items.push(item);
+      count += 1;
+      if (count >= limit) break;
+    }
+    if (!found) break;
+    rank += 1;
+  }
+  return selected.filter((list) => list.items.length > 0);
+}
+
+/**
+ * Combines independently reranked query lists without averaging incomparable intent scores.
+ *
+ * A passage that answers one part of a compound question should keep that strong cross-encoder
+ * score even when it is weak against the broader wording. RRF remains the deterministic tie-break
+ * and provenance union; the user-facing score is the strongest raw reranker relevance.
+ */
+function mergeResearchQueryRerankedLists({
+  limit,
+  lists,
+}: {
+  readonly limit: number;
+  readonly lists: readonly ResearchQueryRerankList[];
+}): HybridRetrievalItem[] {
+  const fused = fuseRankedHybridRetrievalLists({
+    limit,
+    lists: lists.map((list) => ({
+      items: list.items,
+      label: list.label,
+      weight: list.weight,
+    })),
+  });
+  const fusedRank = new Map(fused.map((item, index) => [item.nodeId, index]));
+  const candidates = new Map<
+    string,
+    {
+      matches: ResearchQueryRerankMatch[];
+      winner: HybridRetrievalItem;
+      winnerMatch: ResearchQueryRerankMatch;
+    }
+  >();
+
+  for (const list of lists) {
+    for (const item of list.items) {
+      const matches = queryRerankMatches(item, list);
+      const strongest = matches.reduce((best, candidate) =>
+        compareQueryRerankMatches(candidate, best) < 0 ? candidate : best,
+      );
+      const existing = candidates.get(item.nodeId);
+      if (!existing) {
+        candidates.set(item.nodeId, {
+          matches: [...matches],
+          winner: item,
+          winnerMatch: strongest,
+        });
+        continue;
+      }
+      existing.matches.push(...matches);
+      if (compareQueryRerankMatches(strongest, existing.winnerMatch) < 0) {
+        existing.winner = item;
+        existing.winnerMatch = strongest;
+      }
+    }
+  }
+
+  return fused
+    .flatMap((item): HybridRetrievalItem[] => {
+      const candidate = candidates.get(item.nodeId);
+      if (!candidate) return [];
+      const matches = dedupeQueryRerankMatches(candidate.matches);
+      return [
+        {
+          ...item,
+          metadata: {
+            ...item.metadata,
+            ...candidate.winner.metadata,
+            // Keep the RRF provenance from this merge rather than an earlier merge checkpoint.
+            researchRrf: item.metadata.researchRrf,
+            rerankScore: candidate.winnerMatch.score,
+            researchRerank: {
+              matches,
+              query: candidate.winnerMatch.query,
+              score: candidate.winnerMatch.score,
+              version: "query-aware-max-v1",
+            },
+          },
+          score: candidate.winnerMatch.score,
+        },
+      ];
+    })
+    .sort(
+      (first, second) =>
+        second.score - first.score ||
+        (fusedRank.get(first.nodeId) ?? Number.MAX_SAFE_INTEGER) -
+          (fusedRank.get(second.nodeId) ?? Number.MAX_SAFE_INTEGER) ||
+        first.nodeId.localeCompare(second.nodeId),
+    )
+    .slice(0, limit);
+}
+
+function queryRerankMatches(
+  item: HybridRetrievalItem,
+  list: ResearchQueryRerankList,
+): ResearchQueryRerankMatch[] {
+  const value = item.metadata.researchRerank;
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const matches = (value as { readonly matches?: unknown }).matches;
+    if (Array.isArray(matches)) {
+      const parsed = matches.flatMap((match): ResearchQueryRerankMatch[] => {
+        if (!match || typeof match !== "object" || Array.isArray(match)) return [];
+        const candidate = match as Record<string, unknown>;
+        if (
+          typeof candidate.label !== "string" ||
+          !candidate.label.trim() ||
+          typeof candidate.query !== "string" ||
+          !candidate.query.trim() ||
+          typeof candidate.score !== "number" ||
+          !Number.isFinite(candidate.score) ||
+          candidate.score < 0 ||
+          candidate.score > 1 ||
+          typeof candidate.weight !== "number" ||
+          !Number.isFinite(candidate.weight) ||
+          candidate.weight <= 0
+        ) {
+          return [];
+        }
+        return [
+          {
+            label: candidate.label.trim(),
+            query: candidate.query.trim(),
+            score: candidate.score,
+            weight: candidate.weight,
+          },
+        ];
+      });
+      if (parsed.length > 0) return parsed;
+    }
+  }
+  return [{ label: list.label, query: list.query, score: item.score, weight: list.weight }];
+}
+
+function dedupeQueryRerankMatches(
+  matches: readonly ResearchQueryRerankMatch[],
+): ResearchQueryRerankMatch[] {
+  const byQuery = new Map<string, ResearchQueryRerankMatch>();
+  for (const match of matches) {
+    const key = `${match.label}\u0000${match.query}`;
+    const existing = byQuery.get(key);
+    if (!existing || compareQueryRerankMatches(match, existing) < 0) {
+      byQuery.set(key, match);
+    }
+  }
+  return [...byQuery.values()].sort(compareQueryRerankMatches);
+}
+
+function compareQueryRerankMatches(
+  first: ResearchQueryRerankMatch,
+  second: ResearchQueryRerankMatch,
+): number {
+  return (
+    second.score - first.score ||
+    second.weight - first.weight ||
+    first.label.localeCompare(second.label) ||
+    first.query.localeCompare(second.query)
+  );
 }
 
 function thresholdItems(

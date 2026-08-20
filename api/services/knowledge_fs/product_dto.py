@@ -3485,7 +3485,35 @@ class KnowledgeFSQualityReplayPayload(BaseModel):
         return self
 
 
+class KnowledgeFSQualityReplayDetailQuery(BaseModel):
+    evidence_item_id: UUID | None = None
+
+
+class KnowledgeFSQualityReplayEvidenceItem(ResponseModel):
+    available: bool
+    document_name: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("document_name", "documentName"),
+    )
+    matched: bool
+    ordinal: int = Field(ge=1)
+    page_number: int | None = Field(
+        default=None,
+        ge=1,
+        validation_alias=AliasChoices("page_number", "pageNumber"),
+    )
+    section_path: list[str] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("section_path", "sectionPath"),
+    )
+    text: str | None = None
+
+
 class KnowledgeFSQualityReplayEvidenceDiff(ResponseModel):
+    evidence_items: list[KnowledgeFSQualityReplayEvidenceItem] | None = Field(
+        default=None,
+        validation_alias=AliasChoices("evidence_items", "evidenceItems"),
+    )
     expected_count: int = Field(ge=0, validation_alias=AliasChoices("expected_count", "expectedCount"))
     matched_count: int = Field(ge=0, validation_alias=AliasChoices("matched_count", "matchedCount"))
     missing_count: int = Field(ge=0, validation_alias=AliasChoices("missing_count", "missingCount"))

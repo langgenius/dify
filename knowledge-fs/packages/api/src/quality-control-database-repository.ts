@@ -657,40 +657,30 @@ export function createDatabaseQualityControlRepository({
         return requireReplayById(database, transaction, runId);
       }),
     getReplay: async (input) => {
-      const params: DatabaseQueryValue[] = input.capabilityGrantId
-        ? [input.tenantId, input.knowledgeSpaceId, input.id, input.capabilityGrantId]
-        : [
-            input.tenantId,
-            input.knowledgeSpaceId,
-            input.id,
-            input.subjectId,
-            JSON.stringify(input.candidateGrants),
-          ];
-      const authorizationSql = input.capabilityGrantId
-        ? `run.${q(database, "capability_grant_id")} = ${p(database, 4)}`
-        : `run.${q(database, "requested_by_subject_id")} = ${p(database, 4)} AND ${permissionScopeSql(database, `run.${q(database, "required_permission_scope")}`, p(database, 5))}`;
+      const params: DatabaseQueryValue[] = [
+        input.tenantId,
+        input.knowledgeSpaceId,
+        input.id,
+        input.subjectId,
+        JSON.stringify(input.candidateGrants),
+      ];
       const result = await database.execute({
         maxRows: 1,
         operation: "select",
         params,
-        sql: `SELECT run.* FROM ${q(database, "quality_replay_runs")} run WHERE run.${q(database, "tenant_id")} = ${p(database, 1)} AND run.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND run.${q(database, "id")} = ${p(database, 3)} AND ${authorizationSql} LIMIT 1;`,
+        sql: `SELECT run.* FROM ${q(database, "quality_replay_runs")} run ${qualityReplayCapabilityJoinSql(database)} WHERE run.${q(database, "tenant_id")} = ${p(database, 1)} AND run.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND run.${q(database, "id")} = ${p(database, 3)} AND ${qualityReplayVisibleSql(database, p(database, 4), p(database, 5))} LIMIT 1;`,
         tableName: "quality_replay_runs",
       });
       return result.rows[0] ? loadReplay(database, database, result.rows[0]) : null;
     },
     listReplays: async (input) => {
       assertLimit(input.limit, maxListLimit);
-      const params: DatabaseQueryValue[] = input.capabilityGrantId
-        ? [input.tenantId, input.knowledgeSpaceId, input.capabilityGrantId]
-        : [
-            input.tenantId,
-            input.knowledgeSpaceId,
-            input.subjectId,
-            JSON.stringify(input.candidateGrants),
-          ];
-      const authorizationSql = input.capabilityGrantId
-        ? `run.${q(database, "capability_grant_id")} = ${p(database, 3)}`
-        : `run.${q(database, "requested_by_subject_id")} = ${p(database, 3)} AND ${permissionScopeSql(database, `run.${q(database, "required_permission_scope")}`, p(database, 4))}`;
+      const params: DatabaseQueryValue[] = [
+        input.tenantId,
+        input.knowledgeSpaceId,
+        input.subjectId,
+        JSON.stringify(input.candidateGrants),
+      ];
       const filters: string[] = [];
       if (input.from) {
         params.push(input.from);
@@ -719,7 +709,7 @@ export function createDatabaseQualityControlRepository({
         maxRows: input.limit + 1,
         operation: "select",
         params,
-        sql: `SELECT run.* FROM ${q(database, "quality_replay_runs")} run WHERE run.${q(database, "tenant_id")} = ${p(database, 1)} AND run.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${authorizationSql}${filters.length ? ` AND ${filters.join(" AND ")}` : ""} ORDER BY run.${q(database, "created_at")} DESC, run.${q(database, "id")} DESC LIMIT ${p(database, params.length)};`,
+        sql: `SELECT run.* FROM ${q(database, "quality_replay_runs")} run ${qualityReplayCapabilityJoinSql(database)} WHERE run.${q(database, "tenant_id")} = ${p(database, 1)} AND run.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${qualityReplayVisibleSql(database, p(database, 3), p(database, 4))}${filters.length ? ` AND ${filters.join(" AND ")}` : ""} ORDER BY run.${q(database, "created_at")} DESC, run.${q(database, "id")} DESC LIMIT ${p(database, params.length)};`,
         tableName: "quality_replay_runs",
       });
       const pageRows = result.rows.slice(0, input.limit);
@@ -1582,23 +1572,18 @@ async function selectReplayForMutation(
   },
   candidateGrants: readonly string[],
 ) {
-  const params: DatabaseQueryValue[] = input.capabilityGrantId
-    ? [input.tenantId, input.knowledgeSpaceId, input.id, input.capabilityGrantId]
-    : [
-        input.tenantId,
-        input.knowledgeSpaceId,
-        input.id,
-        input.actorSubjectId,
-        JSON.stringify(candidateGrants),
-      ];
-  const authorizationSql = input.capabilityGrantId
-    ? `run.${q(database, "capability_grant_id")} = ${p(database, 4)}`
-    : `run.${q(database, "requested_by_subject_id")} = ${p(database, 4)} AND ${permissionScopeSql(database, `run.${q(database, "required_permission_scope")}`, p(database, 5))}`;
+  const params: DatabaseQueryValue[] = [
+    input.tenantId,
+    input.knowledgeSpaceId,
+    input.id,
+    input.actorSubjectId,
+    JSON.stringify(candidateGrants),
+  ];
   const result = await executor.execute({
     maxRows: 1,
     operation: "select",
     params,
-    sql: `SELECT run.* FROM ${q(database, "quality_replay_runs")} run INNER JOIN ${q(database, "knowledge_spaces")} space ON space.${q(database, "tenant_id")} = run.${q(database, "tenant_id")} AND space.${q(database, "id")} = run.${q(database, "knowledge_space_id")} AND space.${q(database, "lifecycle_state")} = 'active' AND space.${q(database, "deletion_job_id")} IS NULL WHERE run.${q(database, "tenant_id")} = ${p(database, 1)} AND run.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND run.${q(database, "id")} = ${p(database, 3)} AND ${authorizationSql} LIMIT 1 FOR UPDATE;`,
+    sql: `SELECT run.* FROM ${q(database, "quality_replay_runs")} run INNER JOIN ${q(database, "knowledge_spaces")} space ON space.${q(database, "tenant_id")} = run.${q(database, "tenant_id")} AND space.${q(database, "id")} = run.${q(database, "knowledge_space_id")} AND space.${q(database, "lifecycle_state")} = 'active' AND space.${q(database, "deletion_job_id")} IS NULL ${qualityReplayCapabilityJoinSql(database)} WHERE run.${q(database, "tenant_id")} = ${p(database, 1)} AND run.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND run.${q(database, "id")} = ${p(database, 3)} AND ${qualityReplayVisibleSql(database, p(database, 4), p(database, 5))} LIMIT 1 FOR UPDATE OF run;`,
     tableName: "quality_replay_runs",
   });
   return result.rows[0];
@@ -2078,6 +2063,16 @@ function permissionScopeSql(database: DatabaseAdapter, column: string, grants: s
   return database.dialect === "postgres"
     ? `(jsonb_typeof(${column}) = 'array' AND ${grants}::jsonb @> ${column})`
     : `(JSON_TYPE(${column}) = 'ARRAY' AND JSON_CONTAINS(CAST(${grants} AS JSON), ${column}))`;
+}
+
+function qualityReplayCapabilityJoinSql(database: DatabaseAdapter) {
+  return `LEFT JOIN ${q(database, "capability_grants")} replay_capability ON replay_capability.${q(database, "tenant_id")} = run.${q(database, "tenant_id")} AND replay_capability.${q(database, "knowledge_space_id")} = run.${q(database, "knowledge_space_id")} AND replay_capability.${q(database, "grant_id")} = run.${q(database, "capability_grant_id")}`;
+}
+
+function qualityReplayVisibleSql(database: DatabaseAdapter, subject: string, grants: string) {
+  const capability = `run.${q(database, "capability_grant_id")} IS NOT NULL AND replay_capability.${q(database, "subject_id")} = ${subject} AND ${permissionScopeSql(database, `replay_capability.${q(database, "content_scope_ids")}`, grants)}`;
+  const legacy = `run.${q(database, "capability_grant_id")} IS NULL AND run.${q(database, "requested_by_subject_id")} = ${subject} AND ${permissionScopeSql(database, `run.${q(database, "required_permission_scope")}`, grants)}`;
+  return `((${capability}) OR (${legacy}))`;
 }
 
 function snapshotTextSql(database: DatabaseAdapter, column: string, path: string) {

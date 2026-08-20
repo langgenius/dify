@@ -22,7 +22,6 @@
   "deployTab.moreActions": "ການຈັດການເພີ່ມເຕີມ",
   "deployTab.redeploy": "ຕິດຕັ້ງໃໝ່",
   "deployTab.undeploy": "ຖອນການຕິດຕັ້ງ",
-  "deployTab.undeployConfirmWarning": "ຫຼັງຈາກຢືນຢັນ, ສະພາບແວດລ້ອມນີ້ຈະເຂົ້າສູ່ສະຖານະກຳລັງຖອນການຕິດຕັ້ງ ແລະ ການດຳເນີນການຕ່າງໆຈະຖືກປິດໄວ້ຊົ່ວຄາວ.",
   "health.ENVIRONMENT_STATUS_FAILED": "ໃຊ້ງານບໍ່ໄດ້",
   "list.emptyTitle": "ຍັງບໍ່ມີການຕິດຕັ້ງ",
   "overview.chip.latest": "ຫຼ້າສຸດ",

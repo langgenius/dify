@@ -135,27 +135,39 @@ type SourceProviderIconValue =
   | InstalledSourceProviderOption['plugin']['declaration']['identity']['icon']
 
 export function SourceProviderIcon({
+  className,
   fallbackIcon,
   icon,
 }: {
+  className?: string
   fallbackIcon: string
   icon?: SourceProviderIconValue
 }) {
   if (typeof icon === 'string' && icon)
-    return <img aria-hidden alt="" className="size-4 shrink-0 object-contain" src={icon} />
+    return (
+      <img
+        aria-hidden
+        alt=""
+        className={cn('size-4 shrink-0 object-contain', className)}
+        src={icon}
+      />
+    )
 
   if (icon && typeof icon !== 'string')
     return (
       <span
         aria-hidden
-        className="flex size-4 shrink-0 items-center justify-center overflow-hidden rounded text-2xs"
+        className={cn(
+          'flex size-4 shrink-0 items-center justify-center overflow-hidden rounded text-2xs',
+          className,
+        )}
         style={{ backgroundColor: icon.background }}
       >
         {icon.content}
       </span>
     )
 
-  return <span aria-hidden className={`${fallbackIcon} size-4 shrink-0`} />
+  return <span aria-hidden className={cn(fallbackIcon, 'size-4 shrink-0', className)} />
 }
 
 export function SourceProviderSelector({

@@ -446,7 +446,7 @@ function ConnectionForm({
       </div>
       {error && (
         <p role="alert" className="mt-3 system-xs-regular text-text-destructive">
-          {t(($) => $['newKnowledge.connectionFailed'])}
+          {t(($) => $['newKnowledge.connectionFailed'], { provider: providerName })}
         </p>
       )}
       <Button type="submit" variant="primary" className="mt-4" loading={pending}>
@@ -547,7 +547,7 @@ function ManagedProviderConnection({
         <>
           <span aria-hidden className="i-ri-error-warning-line size-5 text-text-destructive" />
           <p role="alert" className="mt-2 system-sm-semibold text-text-primary">
-            {t(($) => $['newKnowledge.connectionFailed'])}
+            {t(($) => $['newKnowledge.connectionFailed'], { provider: providerName })}
           </p>
           <Button
             className="mt-3"
@@ -666,11 +666,13 @@ function ConnectionProblem({
   knowledgeSpaceId,
   onConnected,
   onReconcile,
+  providerName,
 }: {
   connection: Connection
   knowledgeSpaceId: string
   onConnected: (connection: Connection) => void
   onReconcile: () => Promise<Connection | undefined>
+  providerName: string
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
@@ -710,7 +712,7 @@ function ConnectionProblem({
   return (
     <div className="rounded-xl border border-components-option-card-option-border bg-background-section p-4">
       <h3 className="system-sm-semibold text-text-primary">
-        {t(($) => $['newKnowledge.connectionNeedsAttention'])}
+        {t(($) => $['newKnowledge.connectionNeedsAttention'], { provider: providerName })}
       </h3>
       <p className="mt-1 system-xs-regular text-text-tertiary">
         {t(($) => $['newKnowledge.connectionNeedsAttentionDescription'])}
@@ -731,8 +733,10 @@ function ConnectionProblem({
 
 function ProvisioningConnection({
   onReconcile,
+  providerName,
 }: {
   onReconcile: () => Promise<Connection | undefined>
+  providerName: string
 }) {
   const { t } = useTranslation('dataset')
   const [pending, setPending] = useState(false)
@@ -755,7 +759,7 @@ function ProvisioningConnection({
   return (
     <div className="rounded-xl bg-background-section p-4">
       <p className="system-sm-semibold text-text-primary">
-        {t(($) => $['newKnowledge.connectionProvisioning'])}
+        {t(($) => $['newKnowledge.connectionProvisioning'], { provider: providerName })}
       </p>
       {error && (
         <p role="alert" className="mt-2 system-xs-regular text-text-destructive">
@@ -1358,13 +1362,17 @@ export function AddSourcePage({
                   <Loading />
                 </div>
               ) : connection?.status === 'provisioning' ? (
-                <ProvisioningConnection onReconcile={reconcileConnection} />
+                <ProvisioningConnection
+                  onReconcile={reconcileConnection}
+                  providerName={websiteProviderName}
+                />
               ) : connection && connection.status !== 'active' ? (
                 <ConnectionProblem
                   connection={connection}
                   knowledgeSpaceId={knowledgeSpaceId}
                   onConnected={rememberConnection}
                   onReconcile={reconcileConnection}
+                  providerName={websiteProviderName}
                 />
               ) : (
                 <UnconfiguredProvider

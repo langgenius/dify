@@ -1,14 +1,16 @@
 'use client'
 
-import type { KnowledgeFsQualityReplayResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type {
+  KnowledgeFsQualityReplayEvidenceItem,
+  KnowledgeFsQualityReplayResponse,
+} from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
-  DialogBackdrop,
   DialogCloseButton,
-  DialogPopup,
-  DialogPortal,
+  DialogContent,
+  DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
@@ -66,6 +68,7 @@ function EvaluationReport({
   runId: string
 }) {
   const { t } = useTranslation('dataset')
+  const [selectedEvidenceItemId, setSelectedEvidenceItemId] = useState<string>()
   const detailOptions =
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.replayRuns.byRunId.get.queryOptions({
       input: { params: { control_space_id: knowledgeSpaceId, run_id: runId } },
@@ -74,6 +77,17 @@ function EvaluationReport({
     ...detailOptions,
     refetchInterval: (query) =>
       query.state.data && activeReplayStates.has(query.state.data.state) ? 1500 : false,
+  })
+  const evidenceDetailOptions =
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.replayRuns.byRunId.get.queryOptions({
+      input: {
+        params: { control_space_id: knowledgeSpaceId, run_id: runId },
+        query: selectedEvidenceItemId ? { evidence_item_id: selectedEvidenceItemId } : {},
+      },
+    })
+  const evidenceDetailQuery = useQuery({
+    ...evidenceDetailOptions,
+    enabled: Boolean(selectedEvidenceItemId),
   })
 
   if (detailQuery.isLoading)
@@ -103,6 +117,23 @@ function EvaluationReport({
 
   const run = detailQuery.data
   const progress = run.summary.total === 0 ? 0 : run.summary.completed / run.summary.total
+  const selectedReportItem = run.items.find((item) => item.id === selectedEvidenceItemId)
+  const selectedEvidenceItem = evidenceDetailQuery.data?.items.find(
+    (item) => item.id === selectedEvidenceItemId,
+  )
+  const evidenceItems = selectedEvidenceItem?.result?.evidence_diff.evidence_items ?? []
+  const evidenceGroups = [
+    {
+      items: evidenceItems.filter((item) => item.matched),
+      matched: true,
+      title: t(($) => $['newKnowledge.qualityPage.evaluation.passed']),
+    },
+    {
+      items: evidenceItems.filter((item) => !item.matched),
+      matched: false,
+      title: t(($) => $['newKnowledge.qualityPage.evaluation.missed']),
+    },
+  ]
   return (
     <section className="mt-3 min-w-0">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -201,9 +232,26 @@ function EvaluationReport({
               <span className="system-xs-regular text-text-secondary">
                 {t(($) => $[`newKnowledge.qualityPage.matchPolicy.${item.match_policy}`])}
               </span>
-              <span className="system-xs-medium text-text-secondary">
-                {diff ? `${diff.matched_count}/${diff.expected_count}` : '—'}
-              </span>
+              {diff ? (
+                <Button
+                  variant="ghost"
+                  className="-ml-2 h-8 w-fit gap-1 px-2 text-text-accent"
+                  aria-label={t(
+                    ($) => $['newKnowledge.qualityPage.evaluation.openEvidenceDetails'],
+                    {
+                      expected: diff.expected_count,
+                      matched: diff.matched_count,
+                      question: item.question,
+                    },
+                  )}
+                  onClick={() => setSelectedEvidenceItemId(item.id)}
+                >
+                  {diff.matched_count}/{diff.expected_count}
+                  <span aria-hidden className="i-ri-arrow-right-s-line size-4" />
+                </Button>
+              ) : (
+                <span className="system-xs-medium text-text-secondary">—</span>
+              )}
               <span className="system-xs-regular text-text-secondary">
                 {formatDuration(item.result?.metrics.total_ms)}
               </span>
@@ -237,7 +285,105 @@ function EvaluationReport({
           </span>
         </div>
       </div>
+
+      <Dialog
+        open={Boolean(selectedEvidenceItemId)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedEvidenceItemId(undefined)
+        }}
+      >
+        <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-180! max-w-[calc(100vw-2rem)]! flex-col overflow-hidden! p-0!">
+          <div className="relative border-b border-divider-subtle px-6 pt-6 pb-5">
+            <DialogTitle className="pr-10 title-xl-semi-bold text-text-primary">
+              {t(($) => $['newKnowledge.qualityPage.evaluation.evidenceDetailsTitle'])}
+            </DialogTitle>
+            <DialogDescription className="mt-1.5 pr-10 system-sm-regular text-text-tertiary">
+              {t(($) => $['newKnowledge.qualityPage.evaluation.evidenceDetailsDescription'])}
+            </DialogDescription>
+            {selectedReportItem && (
+              <p className="mt-3 rounded-lg bg-background-section-burn px-3 py-2 system-sm-medium text-text-primary">
+                {selectedReportItem.question}
+              </p>
+            )}
+            <DialogCloseButton aria-label={t(($) => $['newKnowledge.qualityPage.closeDialog'])} />
+          </div>
+
+          <div className="min-h-40 flex-1 overflow-y-auto px-6 py-5">
+            {evidenceDetailQuery.isLoading ? (
+              <div className="flex min-h-40 items-center justify-center" role="status">
+                <Loading />
+              </div>
+            ) : evidenceDetailQuery.isError ? (
+              <div className="flex min-h-40 flex-col items-center justify-center gap-3 text-center">
+                <p role="alert" className="system-sm-medium text-text-primary">
+                  {t(($) => $['newKnowledge.qualityPage.evaluation.evidenceDetailsLoadError'])}
+                </p>
+                <Button onClick={() => void evidenceDetailQuery.refetch()}>
+                  {t(($) => $['newKnowledge.qualityPage.evaluation.retryLoad'])}
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {evidenceGroups.map((group) => (
+                  <section key={String(group.matched)} aria-label={group.title}>
+                    <div className="mb-2 flex items-center gap-2">
+                      <h3 className="system-sm-semibold text-text-primary">{group.title}</h3>
+                      <span
+                        className={cn(
+                          'inline-flex min-w-5 items-center justify-center rounded-md px-1.5 py-0.5 system-2xs-medium',
+                          group.matched
+                            ? 'bg-state-success-hover text-text-success'
+                            : 'bg-state-destructive-hover text-text-destructive',
+                        )}
+                      >
+                        {group.items.length}
+                      </span>
+                    </div>
+                    {group.items.length === 0 ? (
+                      <p className="rounded-lg border border-divider-subtle px-4 py-3 system-xs-regular text-text-tertiary">
+                        {t(($) => $['newKnowledge.qualityPage.evaluation.noEvidenceInGroup'])}
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {group.items.map((evidence) => (
+                          <EvidenceDetailCard key={evidence.ordinal} evidence={evidence} />
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </section>
+  )
+}
+
+function EvidenceDetailCard({ evidence }: { evidence: KnowledgeFsQualityReplayEvidenceItem }) {
+  const { t } = useTranslation('dataset')
+  const source = [
+    evidence.document_name,
+    evidence.section_path?.join(' / '),
+    evidence.page_number
+      ? t(($) => $['newKnowledge.qualityPage.evaluation.evidencePage'], {
+          page: evidence.page_number,
+        })
+      : undefined,
+  ].filter(Boolean)
+
+  return (
+    <article className="rounded-xl border border-divider-subtle bg-background-default p-4">
+      {source.length > 0 && (
+        <p className="mb-2 system-xs-medium text-text-tertiary">{source.join(' · ')}</p>
+      )}
+      <p className="system-sm-regular break-words whitespace-pre-wrap text-text-secondary">
+        {evidence.available && evidence.text
+          ? evidence.text
+          : t(($) => $['newKnowledge.qualityPage.evaluation.evidenceUnavailable'])}
+      </p>
+    </article>
   )
 }
 
@@ -393,19 +539,23 @@ export function QualityEvaluationPanel({ knowledgeSpaceId }: { knowledgeSpaceId:
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogPortal>
-          <DialogBackdrop />
-          <DialogPopup className="w-[480px] max-w-[calc(100vw-32px)] p-6">
-            <DialogTitle>
+        <DialogContent className="w-130! max-w-[calc(100vw-2rem)]! overflow-hidden! p-0!">
+          <div className="relative border-b border-divider-subtle px-6 pt-6 pb-5">
+            <DialogTitle className="pr-10 title-xl-semi-bold text-text-primary">
               {t(($) => $['newKnowledge.qualityPage.evaluation.dialogTitle'])}
             </DialogTitle>
-            <DialogCloseButton />
-            <p className="mt-2 system-xs-regular text-text-tertiary">
+            <DialogDescription className="mt-1.5 pr-10 system-sm-regular text-text-tertiary">
               {t(($) => $['newKnowledge.qualityPage.evaluation.dialogDescription'])}
+            </DialogDescription>
+            <DialogCloseButton aria-label={t(($) => $['newKnowledge.qualityPage.closeDialog'])} />
+          </div>
+          <div className="px-6 py-5">
+            <p className="system-xs-medium-uppercase text-text-tertiary">
+              {t(($) => $['newKnowledge.qualityPage.evaluation.modeLabel'])}
             </p>
             <RadioGroup<EvaluationMode>
               aria-label={t(($) => $['newKnowledge.qualityPage.evaluation.modeLabel'])}
-              className="mt-5 grid grid-cols-2 gap-2"
+              className="mt-3 grid grid-cols-2 gap-2"
               value={mode}
               onValueChange={setMode}
             >
@@ -417,7 +567,7 @@ export function QualityEvaluationPanel({ knowledgeSpaceId }: { knowledgeSpaceId:
                   render={
                     <Button
                       type="button"
-                      className="justify-start"
+                      className="h-11 justify-start px-4"
                       variant={mode === candidate ? 'secondary' : 'ghost'}
                     />
                   }
@@ -426,21 +576,21 @@ export function QualityEvaluationPanel({ knowledgeSpaceId }: { knowledgeSpaceId:
                 </RadioItem>
               ))}
             </RadioGroup>
-            <div className="mt-6 flex justify-end gap-2">
-              <Button disabled={createMutation.isPending} onClick={() => setDialogOpen(false)}>
-                {t(($) => $['newKnowledge.qualityPage.cancel'])}
-              </Button>
-              <Button
-                variant="primary"
-                loading={createMutation.isPending}
-                disabled={createMutation.isPending}
-                onClick={() => void startEvaluation()}
-              >
-                {t(($) => $['newKnowledge.qualityPage.evaluation.start'])}
-              </Button>
-            </div>
-          </DialogPopup>
-        </DialogPortal>
+          </div>
+          <div className="flex justify-end gap-2 border-t border-divider-subtle bg-background-section-burn px-6 py-4">
+            <Button disabled={createMutation.isPending} onClick={() => setDialogOpen(false)}>
+              {t(($) => $['newKnowledge.qualityPage.cancel'])}
+            </Button>
+            <Button
+              variant="primary"
+              loading={createMutation.isPending}
+              disabled={createMutation.isPending}
+              onClick={() => void startEvaluation()}
+            >
+              {t(($) => $['newKnowledge.qualityPage.evaluation.start'])}
+            </Button>
+          </div>
+        </DialogContent>
       </Dialog>
     </section>
   )

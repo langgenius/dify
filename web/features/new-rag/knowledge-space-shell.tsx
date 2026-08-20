@@ -399,7 +399,7 @@ export function KnowledgeSpaceShell({
             </Button>
           </div>
         </aside>
-        <section className="mx-1 flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-lg bg-components-panel-bg shadow-xs">
+        <section className="@container/knowledge-content mx-1 flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-lg bg-components-panel-bg shadow-xs">
           {children}
         </section>
       </div>

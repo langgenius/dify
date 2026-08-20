@@ -508,7 +508,7 @@ describe('SourcesPage', () => {
       ['jina', 'i-custom-public-llm-jina'],
       ['notion', 'i-custom-public-common-notion'],
       ['google-drive', 'i-custom-public-common-google-drive'],
-      ['confluence', 'i-custom-public-common-confluence'],
+      ['confluence', 'i-custom-public-new-rag-confluence'],
       ['more', 'i-ri-more-fill'],
     ] as const) {
       const icon = container.querySelector(`[data-brand="${brand}"]`)

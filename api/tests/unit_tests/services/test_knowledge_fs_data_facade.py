@@ -2041,7 +2041,7 @@ def test_logical_document_delete_preserves_initial_row_version() -> None:
             "get_quality_replay",
             "KnowledgeFSQualityReplayResponse",
             "getQualityReplay",
-            {"run_id": "replay-run-1"},
+            {"run_id": "replay-run-1", "evidence_item_id": "replay-item-1"},
             "replay-run-1",
         ),
         (
@@ -2285,6 +2285,7 @@ def test_facade_public_methods_preserve_the_registered_operation_and_child_bindi
         )
     if operation_id == "getQualityReplay":
         assert delegated.call_args.kwargs["path_parameters"] == (("runId", "replay-run-1"),)
+        assert delegated.call_args.kwargs["query"] == (("evidenceItemId", "replay-item-1"),)
     if operation_id == "getOverviewQueryOutcomes":
         assert delegated.call_args.kwargs["query"] == (("window", "7d"),)
     if operation_id == "cancelBackgroundTask":

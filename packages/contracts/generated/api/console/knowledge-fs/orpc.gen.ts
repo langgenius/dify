@@ -121,6 +121,7 @@ import {
   zGetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesQuery,
   zGetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesResponse,
   zGetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsByRunIdPath,
+  zGetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsByRunIdQuery,
   zGetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsByRunIdResponse,
   zGetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsPath,
   zGetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsQuery,
@@ -1617,7 +1618,12 @@ export const get33 = oc
     path: '/knowledge-fs/spaces/{control_space_id}/quality/replay-runs/{run_id}',
     tags: ['console'],
   })
-  .input(z.object({ params: zGetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsByRunIdPath }))
+  .input(
+    z.object({
+      params: zGetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsByRunIdPath,
+      query: zGetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsByRunIdQuery.optional(),
+    }),
+  )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsByRunIdResponse)
 
 export const byRunId = {

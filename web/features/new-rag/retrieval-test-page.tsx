@@ -402,6 +402,7 @@ function mergeResearchProgressEvent(
 
 function ScorePill({ score }: { score: number }) {
   const normalized = Math.max(0, Math.min(1, score))
+  const displayedScore = normalized > 0 && normalized < 0.01 ? '<0.01' : normalized.toFixed(2)
   return (
     <span className="relative inline-flex h-5 min-w-5 shrink-0 items-center justify-center gap-0.75 overflow-hidden rounded-md border border-components-progress-bar-border bg-util-colors-blue-brand-blue-brand-50 px-1.25 text-util-colors-blue-brand-blue-brand-700">
       <span
@@ -410,7 +411,7 @@ function ScorePill({ score }: { score: number }) {
         style={{ width: `${normalized * 100}%` }}
       />
       <span className="relative system-2xs-medium">Score</span>
-      <span className="relative system-xs-semibold">{normalized.toFixed(2)}</span>
+      <span className="relative system-xs-semibold">{displayedScore}</span>
     </span>
   )
 }

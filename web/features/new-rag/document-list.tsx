@@ -498,200 +498,206 @@ export function DocumentsList({
 
   return (
     <>
-      <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-        <Select<DocumentFilter>
-          disabled={statusPending}
-          value={filter}
-          onValueChange={(value) => {
-            if (!value) return
-            setVisibleDocumentLimit(DOCUMENT_RENDER_BATCH_SIZE)
-            onFilterChange(value)
-          }}
-        >
-          <SelectLabel className="sr-only">
-            {t(($) => $['newKnowledge.documentFilterLabel'])}
-          </SelectLabel>
-          <SelectTrigger className="lg:w-35">
-            {filter === 'all'
-              ? t(($) => $['newKnowledge.allDocumentStatuses'])
-              : t(($) => $[`newKnowledge.documentStatus.${filter}`])}
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">
-              <SelectItemText>{t(($) => $['newKnowledge.allDocumentStatuses'])}</SelectItemText>
-              <SelectItemIndicator />
-            </SelectItem>
-            {(['ready', 'queued', 'processing', 'failed', 'disabled'] as const).map((status) => (
-              <SelectItem key={status} value={status}>
-                <SelectItemText>
-                  {t(($) => $[`newKnowledge.documentStatus.${status}`])}
-                </SelectItemText>
+      <div className="min-w-0">
+        <div className="mt-4.5 flex flex-col gap-2 @min-[768px]/knowledge-content:flex-row @min-[768px]/knowledge-content:items-center">
+          <Select<DocumentFilter>
+            disabled={statusPending}
+            value={filter}
+            onValueChange={(value) => {
+              if (!value) return
+              setVisibleDocumentLimit(DOCUMENT_RENDER_BATCH_SIZE)
+              onFilterChange(value)
+            }}
+          >
+            <SelectLabel className="sr-only">
+              {t(($) => $['newKnowledge.documentFilterLabel'])}
+            </SelectLabel>
+            <SelectTrigger className="@min-[768px]/knowledge-content:w-35">
+              {filter === 'all'
+                ? t(($) => $['newKnowledge.allDocumentStatuses'])
+                : t(($) => $[`newKnowledge.documentStatus.${filter}`])}
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">
+                <SelectItemText>{t(($) => $['newKnowledge.allDocumentStatuses'])}</SelectItemText>
                 <SelectItemIndicator />
               </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <SearchInput
-          aria-label={t(($) => $['newKnowledge.searchDocuments'])}
-          className="lg:w-60"
-          value={search}
-          onValueChange={(value) => {
-            setVisibleDocumentLimit(DOCUMENT_RENDER_BATCH_SIZE)
-            onSearchChange(value)
-          }}
-          placeholder={t(($) => $['newKnowledge.searchDocuments'])}
-        />
-        <span className="min-w-0 flex-1" />
-        {showTasks && (
-          <TaskTrigger
-            activeTaskCount={activeTaskCount}
-            attentionTaskBadge={attentionTaskBadge}
-            hasTaskError={hasTaskError}
-            onOpenTasks={onOpenTasks}
-            tasksButtonLabel={tasksButtonLabel}
-            tasksLiveStatus={tasksLiveStatus}
+              {(['ready', 'queued', 'processing', 'failed', 'disabled'] as const).map((status) => (
+                <SelectItem key={status} value={status}>
+                  <SelectItemText>
+                    {t(($) => $[`newKnowledge.documentStatus.${status}`])}
+                  </SelectItemText>
+                  <SelectItemIndicator />
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <SearchInput
+            aria-label={t(($) => $['newKnowledge.searchDocuments'])}
+            className="@min-[768px]/knowledge-content:w-60"
+            value={search}
+            onValueChange={(value) => {
+              setVisibleDocumentLimit(DOCUMENT_RENDER_BATCH_SIZE)
+              onSearchChange(value)
+            }}
+            placeholder={t(($) => $['newKnowledge.searchDocuments'])}
           />
-        )}
-        <Button className="gap-1 pl-3" onClick={onOpenMetadata}>
-          <span aria-hidden className="i-ri-file-text-line size-4" />
-          {t(($) => $['newKnowledge.metadata'])}
-        </Button>
-        <Button
-          className="gap-1 pl-3"
-          variant="primary"
-          aria-busy={uploading}
-          disabled={!canUpload}
-          loading={uploading}
-          aria-describedby={!canUpload ? uploadRestrictionReasonId : undefined}
-          onClick={onAddDocument}
+          <span className="min-w-0 flex-1" />
+          {showTasks && (
+            <TaskTrigger
+              activeTaskCount={activeTaskCount}
+              attentionTaskBadge={attentionTaskBadge}
+              hasTaskError={hasTaskError}
+              onOpenTasks={onOpenTasks}
+              tasksButtonLabel={tasksButtonLabel}
+              tasksLiveStatus={tasksLiveStatus}
+            />
+          )}
+          <Button className="gap-1 pl-3" onClick={onOpenMetadata}>
+            <span aria-hidden className="i-ri-file-text-line size-4" />
+            {t(($) => $['newKnowledge.metadata'])}
+          </Button>
+          <Button
+            className="gap-1 pl-3"
+            variant="primary"
+            aria-busy={uploading}
+            disabled={!canUpload}
+            loading={uploading}
+            aria-describedby={!canUpload ? uploadRestrictionReasonId : undefined}
+            onClick={onAddDocument}
+          >
+            <span aria-hidden className="i-ri-add-line size-4" />
+            {t(($) => $['newKnowledge.addDocument'])}
+          </Button>
+        </div>
+        <div
+          ref={resultsContainerRef}
+          aria-labelledby="new-knowledge-documents-title"
+          aria-busy={completingResults || isFetchingNextPage || sourcesPending || tasksPending}
+          className="mt-3 overflow-x-auto rounded-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+          role="region"
+          tabIndex={-1}
         >
-          <span aria-hidden className="i-ri-add-line size-4" />
-          {t(($) => $['newKnowledge.addDocument'])}
-        </Button>
-      </div>
-      <div
-        ref={resultsContainerRef}
-        aria-labelledby="new-knowledge-documents-title"
-        aria-busy={completingResults || isFetchingNextPage || sourcesPending || tasksPending}
-        className="mt-4 overflow-x-auto rounded-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-        role="region"
-        tabIndex={-1}
-      >
-        <table className="w-full table-fixed border-collapse text-left lg:table-auto">
-          <thead className="system-xs-regular text-text-tertiary">
-            <tr>
-              <th className="py-2 font-normal">
-                <Checkbox
-                  className="flex"
-                  checked={allSelected}
-                  indeterminate={someSelected && !allSelected}
-                  disabled={!canEdit || selectionDisabled || !hasSelectableDocuments}
-                  aria-describedby={
+          <table className="w-full table-fixed border-collapse text-left lg:table-auto">
+            <thead className="system-xs-regular text-text-tertiary">
+              <tr>
+                <th className="py-2 font-normal">
+                  <Checkbox
+                    className="flex"
+                    checked={allSelected}
+                    indeterminate={someSelected && !allSelected}
+                    disabled={!canEdit || selectionDisabled || !hasSelectableDocuments}
+                    aria-describedby={
+                      !canEdit
+                        ? readOnlyReasonId
+                        : selectionDisabled && resultsIncomplete
+                          ? PARTIAL_RESULTS_DESCRIPTION_ID
+                          : undefined
+                    }
+                    aria-label={t(($) => $['newKnowledge.selectAllDocuments'])}
+                    onCheckedChange={onSelectAll}
+                  />
+                </th>
+                <th className="py-2 pr-6 font-normal">
+                  {t(($) => $['newKnowledge.documentColumn'])}
+                </th>
+                <th className="hidden w-58.5 py-2 pr-6 font-normal lg:table-cell">
+                  {t(($) => $['newKnowledge.sourceColumn'])}
+                </th>
+                <th className="w-24 py-2 pr-2 font-normal sm:w-66 sm:pr-6">
+                  {t(($) => $['newKnowledge.statusColumn'])}
+                </th>
+                <th className="hidden w-43.5 py-2 pr-6 font-normal lg:table-cell">
+                  {t(($) => $['newKnowledge.updatedColumn'])}
+                </th>
+                <th
+                  className="w-10 py-2 font-normal"
+                  aria-label={t(($) => $['newKnowledge.actionsColumn'])}
+                />
+              </tr>
+            </thead>
+            <tbody>
+              {visibleDocuments.map((document) => (
+                <DocumentRow
+                  key={document.id}
+                  canDownload={canDownload}
+                  document={document}
+                  documentHref={getDocumentHref(document.id)}
+                  failureReason={failureReasons.get(document.id)}
+                  formatTimeFromNow={formatTimeFromNow}
+                  onDownload={onDownloadDocument}
+                  onRemove={onRemoveDocument}
+                  onRename={onRenameDocument}
+                  onSelectedChange={onSelectDocument}
+                  onReindex={onReindexDocument}
+                  onRetry={onRetryDocument}
+                  onToggleAvailability={onToggleDocumentAvailability}
+                  pendingAction={
+                    pendingDocumentAction?.documentId === document.id
+                      ? pendingDocumentAction.action
+                      : undefined
+                  }
+                  readOnlyReasonId={
                     !canEdit
                       ? readOnlyReasonId
                       : selectionDisabled && resultsIncomplete
                         ? PARTIAL_RESULTS_DESCRIPTION_ID
                         : undefined
                   }
-                  aria-label={t(($) => $['newKnowledge.selectAllDocuments'])}
-                  onCheckedChange={onSelectAll}
+                  retryable={retryableDocumentIds.has(document.id)}
+                  selected={selectedDocumentIds.has(document.id)}
+                  selectionDisabled={!canEdit || selectionDisabled}
+                  source={
+                    (document.sourceId && sourceNames.get(document.sourceId)) ??
+                    sourceName(document)
+                  }
+                  sourcePending={Boolean(
+                    sourcesPending && document.sourceId && !sourceNames.has(document.sourceId),
+                  )}
+                  status={statuses.get(document.id) ?? 'queued'}
+                  statusPending={Boolean(
+                    tasksPending ||
+                    (statusPending && document.sourceId && !sourceNames.has(document.sourceId)),
+                  )}
                 />
-              </th>
-              <th className="py-2 pr-6 font-normal">
-                {t(($) => $['newKnowledge.documentColumn'])}
-              </th>
-              <th className="hidden w-58.5 py-2 pr-6 font-normal lg:table-cell">
-                {t(($) => $['newKnowledge.sourceColumn'])}
-              </th>
-              <th className="w-24 py-2 pr-2 font-normal sm:w-66 sm:pr-6">
-                {t(($) => $['newKnowledge.statusColumn'])}
-              </th>
-              <th className="hidden w-43.5 py-2 pr-6 font-normal lg:table-cell">
-                {t(($) => $['newKnowledge.updatedColumn'])}
-              </th>
-              <th
-                className="w-10 py-2 font-normal"
-                aria-label={t(($) => $['newKnowledge.actionsColumn'])}
-              />
-            </tr>
-          </thead>
-          <tbody>
-            {visibleDocuments.map((document) => (
-              <DocumentRow
-                key={document.id}
-                canDownload={canDownload}
-                document={document}
-                documentHref={getDocumentHref(document.id)}
-                failureReason={failureReasons.get(document.id)}
-                formatTimeFromNow={formatTimeFromNow}
-                onDownload={onDownloadDocument}
-                onRemove={onRemoveDocument}
-                onRename={onRenameDocument}
-                onSelectedChange={onSelectDocument}
-                onReindex={onReindexDocument}
-                onRetry={onRetryDocument}
-                onToggleAvailability={onToggleDocumentAvailability}
-                pendingAction={
-                  pendingDocumentAction?.documentId === document.id
-                    ? pendingDocumentAction.action
-                    : undefined
-                }
-                readOnlyReasonId={
-                  !canEdit
-                    ? readOnlyReasonId
-                    : selectionDisabled && resultsIncomplete
-                      ? PARTIAL_RESULTS_DESCRIPTION_ID
-                      : undefined
-                }
-                retryable={retryableDocumentIds.has(document.id)}
-                selected={selectedDocumentIds.has(document.id)}
-                selectionDisabled={!canEdit || selectionDisabled}
-                source={
-                  (document.sourceId && sourceNames.get(document.sourceId)) ?? sourceName(document)
-                }
-                sourcePending={Boolean(
-                  sourcesPending && document.sourceId && !sourceNames.has(document.sourceId),
-                )}
-                status={statuses.get(document.id) ?? 'queued'}
-                statusPending={Boolean(
-                  tasksPending ||
-                  (statusPending && document.sourceId && !sourceNames.has(document.sourceId)),
-                )}
-              />
-            ))}
-          </tbody>
-        </table>
-        {!documents.length && !completingResults && !isFetchNextPageError && !resultsIncomplete && (
-          <p
-            aria-live="polite"
-            className="py-16 text-center body-sm-regular text-text-tertiary"
-            role="status"
-          >
-            {t(($) => $['newKnowledge.noMatchingDocuments'])}
-          </p>
-        )}
-        {resultsIncomplete && (
-          <p
-            id={PARTIAL_RESULTS_DESCRIPTION_ID}
-            aria-live="polite"
-            className={cn(
-              'text-center body-sm-regular text-text-tertiary',
-              completingResults || isFetchNextPageError
-                ? 'sr-only'
-                : documents.length
-                  ? 'py-4'
-                  : 'py-16',
+              ))}
+            </tbody>
+          </table>
+          {!documents.length &&
+            !completingResults &&
+            !isFetchNextPageError &&
+            !resultsIncomplete && (
+              <p
+                aria-live="polite"
+                className="py-16 text-center body-sm-regular text-text-tertiary"
+                role="status"
+              >
+                {t(($) => $['newKnowledge.noMatchingDocuments'])}
+              </p>
             )}
-            role="status"
-          >
-            {t(($) => $['newKnowledge.partialDocumentResults'])}
-          </p>
-        )}
-        {completingResults && (
-          <div className="flex min-h-32 items-center justify-center">
-            <Loading />
-          </div>
-        )}
+          {resultsIncomplete && (
+            <p
+              id={PARTIAL_RESULTS_DESCRIPTION_ID}
+              aria-live="polite"
+              className={cn(
+                'text-center body-sm-regular text-text-tertiary',
+                completingResults || isFetchNextPageError
+                  ? 'sr-only'
+                  : documents.length
+                    ? 'py-4'
+                    : 'py-16',
+              )}
+              role="status"
+            >
+              {t(($) => $['newKnowledge.partialDocumentResults'])}
+            </p>
+          )}
+          {completingResults && (
+            <div className="flex min-h-32 items-center justify-center">
+              <Loading />
+            </div>
+          )}
+        </div>
       </div>
       <p className="flex min-h-4 items-center gap-1.5 system-xs-regular text-text-tertiary">
         <span aria-hidden className="i-ri-information-2-line size-3.5" />
