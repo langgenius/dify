@@ -94,6 +94,7 @@ class AppGenerateService:
         start_task: Callable[[], None],
     ) -> tuple[Callable[[], None], str | None]:
         """Capture a durable topic's cursor before the task can publish its first event."""
+        # Streams dispatch immediately in `_build_streaming_task_on_subscribe`, so this lookup must happen first.
         cursor = topic.latest_cursor() if isinstance(topic, CursorTopic) else None
         return cls._build_streaming_task_on_subscribe(start_task), cursor
 

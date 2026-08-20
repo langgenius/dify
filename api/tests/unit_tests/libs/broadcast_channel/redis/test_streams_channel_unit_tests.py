@@ -27,7 +27,7 @@ class FakeStreamsRedis:
         self._store: dict[str, list[tuple[str, dict]]] = {}
         self._next_id: dict[str, int] = {}
         self._expire_calls: dict[str, int] = {}
-        self._dollar_snapshots: dict[str, int] = {}
+        self._condition = threading.Condition()
 
     # Publisher API
     def xadd(self, key: str, fields: dict[str, Any], *, maxlen: int | None = None) -> str:
@@ -35,11 +35,13 @@ class FakeStreamsRedis:
 
         The test double ignores maxlen trimming semantics; only records the entry.
         """
-        n = self._next_id.get(key, 0) + 1
-        self._next_id[key] = n
-        entry_id = f"{n}-0"
-        self._store.setdefault(key, []).append((entry_id, fields))
-        return entry_id
+        with self._condition:
+            n = self._next_id.get(key, 0) + 1
+            self._next_id[key] = n
+            entry_id = f"{n}-0"
+            self._store.setdefault(key, []).append((entry_id, fields))
+            self._condition.notify_all()
+            return entry_id
 
     def expire(self, key: str, seconds: int) -> None:
         self._expire_calls[key] = self._expire_calls.get(key, 0) + 1
@@ -53,26 +55,33 @@ class FakeStreamsRedis:
         # Expect a single key
         assert len(streams) == 1
         key, last_id = next(iter(streams.items()))
-        entries = self._store.get(key, [])
+        with self._condition:
+            entries = self._store.get(key, [])
 
-        # Find position strictly greater than last_id
-        start_idx = 0
-        if last_id == "$":
-            start_idx = self._dollar_snapshots.setdefault(key, len(entries))
-        elif last_id != "0-0":
-            for i, (eid, _f) in enumerate(entries):
-                if eid == last_id:
-                    start_idx = i + 1
-                    break
-        if start_idx >= len(entries):
-            # Simulate blocking wait (bounded) if requested
-            if block and block > 0:
-                time.sleep(min(0.01, block / 1000.0))
-            return []
+            # Find position strictly greater than last_id. Redis resolves `$` at the start of every XREAD.
+            start_idx = 0
+            if last_id == "$":
+                start_idx = len(entries)
+            elif last_id != "0-0":
+                for i, (eid, _f) in enumerate(entries):
+                    if eid == last_id:
+                        start_idx = i + 1
+                        break
 
-        end_idx = len(entries) if count is None else min(len(entries), start_idx + count)
-        batch = entries[start_idx:end_idx]
-        return [(key, batch)]
+            if start_idx >= len(entries) and block is not None:
+                timeout = None if block == 0 else block / 1000.0
+                self._condition.wait_for(
+                    lambda: len(self._store.get(key, [])) > start_idx,
+                    timeout=timeout,
+                )
+                entries = self._store.get(key, [])
+
+            if start_idx >= len(entries):
+                return []
+
+            end_idx = len(entries) if count is None else min(len(entries), start_idx + count)
+            batch = entries[start_idx:end_idx]
+            return [(key, batch)]
 
 
 class FailExpireRedis(FakeStreamsRedis):
@@ -149,6 +158,17 @@ def fake_redis() -> FakeStreamsRedis:
 @pytest.fixture
 def streams_channel(fake_redis: FakeStreamsRedis) -> StreamsBroadcastChannel:
     return StreamsBroadcastChannel(fake_redis, retention_seconds=60)
+
+
+def test_fake_xread_resolves_dollar_on_every_call(fake_redis: FakeStreamsRedis) -> None:
+    key = "stream:dollar"
+    fake_redis.xadd(key, {b"data": b"before-first-read"})
+
+    assert fake_redis.xread({key: "$"}, block=1) == []
+
+    fake_redis.xadd(key, {b"data": b"between-reads"})
+
+    assert fake_redis.xread({key: "$"}, block=1) == []
 
 
 class TestStreamsBroadcastChannel:

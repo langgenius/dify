@@ -1,4 +1,5 @@
 import json
+import threading
 import uuid
 from collections import defaultdict, deque
 from typing import Any
@@ -60,39 +61,64 @@ class _FakeStreams:
         # key -> list[(id, {field: value})]
         self._data: dict[str, list[tuple[str, dict]]] = defaultdict(list)
         self._seq: dict[str, int] = defaultdict(int)
-        self._dollar_snapshots: dict[str, int] = {}
+        self._condition = threading.Condition()
 
     def xadd(self, key: str, fields: dict[str, Any], *, maxlen: int | None = None) -> str:
         # maxlen is accepted for API compatibility with redis-py; ignored in this test double
-        self._seq[key] += 1
-        eid = f"{self._seq[key]}-0"
-        self._data[key].append((eid, fields))
-        return eid
+        with self._condition:
+            self._seq[key] += 1
+            eid = f"{self._seq[key]}-0"
+            self._data[key].append((eid, fields))
+            self._condition.notify_all()
+            return eid
 
     def expire(self, key: str, seconds: int) -> None:
         # no-op for tests
         return None
 
     def xrevrange(self, key: str, *, count: int | None = None) -> list[tuple[str, dict[str, Any]]]:
-        entries = list(reversed(self._data.get(key, [])))
-        return entries if count is None else entries[:count]
+        with self._condition:
+            entries = list(reversed(self._data.get(key, [])))
+            return entries if count is None else entries[:count]
 
     def xread(self, streams: dict[str, Any], block: int | None = None, count: int | None = None):
         assert len(streams) == 1
         key, last_id = next(iter(streams.items()))
-        entries = self._data.get(key, [])
-        start = 0
-        if last_id == "$":
-            start = self._dollar_snapshots.setdefault(key, len(entries))
-        elif last_id != "0-0":
-            for i, (eid, _f) in enumerate(entries):
-                if eid == last_id:
-                    start = i + 1
-                    break
-        if start >= len(entries):
-            return []
-        end = len(entries) if count is None else min(len(entries), start + count)
-        return [(key, entries[start:end])]
+        with self._condition:
+            entries = self._data.get(key, [])
+            start = 0
+            if last_id == "$":
+                start = len(entries)
+            elif last_id != "0-0":
+                for i, (eid, _f) in enumerate(entries):
+                    if eid == last_id:
+                        start = i + 1
+                        break
+
+            if start >= len(entries) and block is not None:
+                timeout = None if block == 0 else block / 1000.0
+                self._condition.wait_for(
+                    lambda: len(self._data.get(key, [])) > start,
+                    timeout=timeout,
+                )
+                entries = self._data.get(key, [])
+
+            if start >= len(entries):
+                return []
+            end = len(entries) if count is None else min(len(entries), start + count)
+            return [(key, entries[start:end])]
+
+
+def test_fake_streams_xread_resolves_dollar_on_every_call() -> None:
+    fake = _FakeStreams()
+    key = "stream:dollar"
+    fake.xadd(key, {b"data": b"before-first-read"})
+
+    assert fake.xread({key: "$"}, block=1) == []
+
+    fake.xadd(key, {b"data": b"between-reads"})
+
+    assert fake.xread({key: "$"}, block=1) == []
 
 
 @pytest.fixture
