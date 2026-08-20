@@ -180,13 +180,7 @@ const InstallForm = () => {
             </Field>
 
             <div>
-              <Button
-                variant="primary"
-                type="submit"
-                disabled={isSubmitting}
-                loading={isSubmitting}
-                className="w-full"
-              >
+              <Button variant="primary" type="submit" loading={isSubmitting} className="w-full">
                 {t(($) => $.installBtn, { ns: 'login' })}
               </Button>
             </div>
