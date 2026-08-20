@@ -3,6 +3,8 @@
 import json
 from uuid import uuid4
 
+import pytest
+
 from configs import dify_config
 from enums import DeploymentEdition
 from extensions.ext_redis import redis_client
@@ -14,7 +16,9 @@ from services.enterprise.account_deletion_sync import (
 )
 
 
-def test_sync_account_deletion_queues_workspace_cleanup_before_global_finalizer(monkeypatch) -> None:
+def test_sync_account_deletion_queues_workspace_cleanup_before_global_finalizer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE)
     workspace_ids = [str(uuid4()), str(uuid4())]
     account_id = str(uuid4())

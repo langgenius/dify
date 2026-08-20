@@ -1,4 +1,4 @@
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
 
@@ -10,7 +10,7 @@ from services.workspace_membership_lock import (
 )
 
 
-def test_account_lock_canonicalizes_uuid_and_uses_wrapper_prefix(config_overrides) -> None:
+def test_account_lock_canonicalizes_uuid_and_uses_wrapper_prefix(config_overrides: Callable[..., None]) -> None:
     raw_client = MagicMock()
     raw_client.lock.return_value.acquire.return_value = True
     wrapper = RedisClientWrapper()

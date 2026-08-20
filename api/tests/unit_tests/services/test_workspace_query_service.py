@@ -44,7 +44,7 @@ def test_list_for_account_with_roles_preserves_all_authoritative_roles() -> None
 
 def test_get_for_account_with_roles_skips_role_lookup_when_membership_is_missing() -> None:
     workspaces = Mock()
-    workspaces.list_for_account.return_value = []
+    workspaces.list_for_account.return_value = list[WorkspaceRecord]()
     roles = Mock()
     service = WorkspaceQueryService(workspaces=workspaces, plans=Mock(), roles=roles)
 
