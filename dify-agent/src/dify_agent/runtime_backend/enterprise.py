@@ -43,6 +43,60 @@ from dify_agent.runtime_backend.shellctl import (
 
 logger = logging.getLogger(__name__)
 
+_GATEWAY_AUTH_HEADER = "X-Inner-Api-Key"
+
+
+class _GatewayStatusError(RuntimeError):
+    """One failed Gateway control-plane call, with its reason when it sent one."""
+
+    def __init__(self, response: httpx.Response) -> None:
+        self.status_code = response.status_code
+        self.reason = ""
+        detail = response.text
+        try:
+            payload = response.json()
+        except ValueError:
+            payload = None
+        if isinstance(payload, dict):
+            reason = payload.get("reason")
+            message = payload.get("message")
+            if isinstance(reason, str):
+                self.reason = reason
+            if isinstance(message, str) and message:
+                detail = message
+        super().__init__(f"{self.status_code} {self.reason or 'gateway_error'}: {detail}")
+
+
+async def _gateway_request(
+    *,
+    endpoint: str,
+    auth_token: str,
+    timeout: float,
+    method: str,
+    path: str,
+    json_body: dict[str, object] | None = None,
+    absent_status: int | None = None,
+) -> dict[str, object] | None:
+    """Call one Gateway control-plane endpoint and decode its reply."""
+    headers = {_GATEWAY_AUTH_HEADER: auth_token} if auth_token else {}
+    async with httpx.AsyncClient(
+        base_url=endpoint.rstrip("/"),
+        headers=headers,
+        timeout=httpx.Timeout(timeout),
+    ) as client:
+        response = await client.request(method, path, json=json_body)
+    if absent_status is not None and response.status_code == absent_status:
+        return None
+    if response.status_code >= 400:
+        raise _GatewayStatusError(response)
+    if not response.content:
+        return None
+    try:
+        payload = response.json()
+    except ValueError:
+        return None
+    return payload if isinstance(payload, dict) else None
+
 
 def _not_implemented() -> NotImplementedError:
     return NotImplementedError("Enterprise Gateway does not implement immutable Home Snapshot operations")
@@ -88,16 +142,15 @@ class EnterpriseExecutionBindingBackend:
 
         sandbox_id: str | None = None
         data_plane: ShellctlRuntimeLease | None = None
-        headers = {"X-Inner-Api-Key": self.auth_token} if self.auth_token else {}
         try:
-            async with httpx.AsyncClient(
-                base_url=self.gateway_endpoint.rstrip("/"),
-                headers=headers,
-                timeout=httpx.Timeout(self.gateway_timeout),
-            ) as client:
-                response = await client.post("/v1/sandboxes", json={"tenantId": spec.tenant_id})
-                _ = response.raise_for_status()
-                payload = response.json()
+            payload = await _gateway_request(
+                endpoint=self.gateway_endpoint,
+                auth_token=self.auth_token,
+                timeout=self.gateway_timeout,
+                method="POST",
+                path="/v1/sandboxes",
+                json_body={"tenantId": spec.tenant_id},
+            )
             sandbox_id_value = payload.get("sandboxId") if isinstance(payload, dict) else None
             if not isinstance(sandbox_id_value, str) or not sandbox_id_value:
                 raise BindingCreateError("Enterprise Gateway returned an invalid sandbox id")
@@ -185,21 +238,18 @@ class EnterpriseExecutionBindingBackend:
 
         try:
             await self._delete_sandbox(spec.binding_ref)
-        except (httpx.TimeoutException, httpx.RequestError, httpx.HTTPStatusError) as exc:
+        except (_GatewayStatusError, httpx.TimeoutException, httpx.RequestError) as exc:
             raise BindingDestroyError(str(exc)) from exc
 
     async def _delete_sandbox(self, sandbox_id: str) -> None:
-        headers = {"X-Inner-Api-Key": self.auth_token} if self.auth_token else {}
-        encoded_sandbox_id = quote(sandbox_id, safe="")
-        async with httpx.AsyncClient(
-            base_url=self.gateway_endpoint.rstrip("/"),
-            headers=headers,
-            timeout=httpx.Timeout(self.gateway_timeout),
-        ) as client:
-            response = await client.delete(f"/v1/sandboxes/{encoded_sandbox_id}")
-            if response.status_code == 404:
-                return
-            _ = response.raise_for_status()
+        _ = await _gateway_request(
+            endpoint=self.gateway_endpoint,
+            auth_token=self.auth_token,
+            timeout=self.gateway_timeout,
+            method="DELETE",
+            path=f"/v1/sandboxes/{quote(sandbox_id, safe='')}",
+            absent_status=404,
+        )
 
     async def _delete_sandbox_best_effort(self, sandbox_id: str) -> None:
         try:

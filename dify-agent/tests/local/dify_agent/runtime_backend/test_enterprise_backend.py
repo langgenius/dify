@@ -283,6 +283,62 @@ async def test_enterprise_destroy_propagates_gateway_failure(
 
 
 @pytest.mark.anyio
+async def test_enterprise_gateway_errors_carry_the_kratos_reason(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            404,
+            json={
+                "code": 404,
+                "reason": "warm_pool_not_found",
+                "message": "sandbox warm pool not found",
+                "metadata": {},
+            },
+        )
+
+    _ = _mock_http(monkeypatch, handler)
+    backend = EnterpriseExecutionBindingBackend(gateway_endpoint="http://gateway.example", auth_token="secret")
+
+    with pytest.raises(BindingCreateError) as excinfo:
+        _ = await backend.create_binding(
+            ExecutionBindingCreateSpec(
+                tenant_id="tenant-1",
+                agent_id="agent-1",
+                binding_id="binding-1",
+                workspace_id="workspace-1",
+                existing_workspace_ref=None,
+                home_snapshot_ref=None,
+            )
+        )
+
+    assert "warm_pool_not_found" in str(excinfo.value)
+    assert "404" in str(excinfo.value)
+
+
+@pytest.mark.anyio
+async def test_enterprise_gateway_errors_survive_a_non_json_body(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(502, text="<html>bad gateway</html>")
+
+    _ = _mock_http(monkeypatch, handler)
+    backend = EnterpriseExecutionBindingBackend(gateway_endpoint="http://gateway.example", auth_token="secret")
+
+    with pytest.raises(BindingDestroyError) as excinfo:
+        await backend.destroy_binding(
+            ExecutionBindingDestroySpec(
+                binding_ref="sandbox-1",
+                workspace_ref="sandbox-1",
+                destroy_workspace=True,
+            )
+        )
+
+    assert "502" in str(excinfo.value)
+
+
+@pytest.mark.anyio
 async def test_enterprise_default_binding_creates_gateway_sandbox_and_layout(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
