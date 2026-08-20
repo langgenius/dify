@@ -199,6 +199,14 @@ class DismissNotificationDict(TypedDict):
     success: bool
 
 
+class NetworkAccessPolicyUpstreamError(Exception):
+    """Failure returned by the SaaS network-access-policy control plane."""
+
+    def __init__(self, status_code: int):
+        self.status_code = status_code
+        super().__init__(f"network access policy upstream returned HTTP {status_code}")
+
+
 class BillingService:
     base_url = os.environ.get("BILLING_API_URL", "BILLING_API_URL")
     quota_base_url = os.environ.get("BILLING_QUOTA_API_URL") or base_url
@@ -417,6 +425,98 @@ class BillingService:
     def get_tenant_feature_plan_usage(cls, tenant_id: str, feature_key: str):
         params = {"tenant_id": tenant_id, "feature_key": feature_key}
         return cls._send_request("GET", "/billing/tenant_feature_plan/usage", params=params)
+
+    @classmethod
+    def get_network_access_policies(cls, tenant_id: str, actor_account_id: str) -> dict[str, Any]:
+        """Fetch workspace network access policies from the SaaS control plane."""
+
+        return cls._send_network_access_policy_request(
+            "GET",
+            f"/tenants/{tenant_id}/network-access-policies",
+            params={"actor_account_id": actor_account_id},
+        )
+
+    @classmethod
+    def update_network_access_policy(
+        cls,
+        tenant_id: str,
+        scope: str,
+        *,
+        mode: str,
+        allowed_cidrs: list[str],
+        expected_version: int,
+        actor_account_id: str,
+    ) -> dict[str, Any]:
+        """Replace one workspace policy; the authenticated account is injected by the Console BFF."""
+
+        return cls._send_network_access_policy_request(
+            "PUT",
+            f"/tenants/{tenant_id}/network-access-policies/{scope}",
+            payload_json={
+                "mode": mode,
+                "allowed_cidrs": allowed_cidrs,
+                "expected_version": expected_version,
+                "actor_account_id": actor_account_id,
+            },
+        )
+
+    @classmethod
+    def _send_network_access_policy_request(
+        cls,
+        method: Literal["GET", "PUT"],
+        endpoint: str,
+        *,
+        payload_json: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Call the SaaS policy API while preserving its status for the Console boundary."""
+
+        try:
+            response = cls._send_network_access_policy_http_request(
+                method,
+                endpoint,
+                payload_json=payload_json,
+                params=params,
+            )
+        except httpx.RequestError as exc:
+            raise NetworkAccessPolicyUpstreamError(httpx.codes.SERVICE_UNAVAILABLE) from exc
+
+        if response.status_code != httpx.codes.OK:
+            raise NetworkAccessPolicyUpstreamError(response.status_code)
+
+        try:
+            payload = response.json()
+        except (json.JSONDecodeError, TypeError, ValueError) as exc:
+            raise NetworkAccessPolicyUpstreamError(httpx.codes.BAD_GATEWAY) from exc
+
+        if not isinstance(payload, dict):
+            raise NetworkAccessPolicyUpstreamError(httpx.codes.BAD_GATEWAY)
+        return payload
+
+    @classmethod
+    @retry(
+        wait=wait_fixed(2),
+        stop=stop_before_delay(10),
+        retry=retry_if_exception_type(httpx.RequestError),
+        reraise=True,
+    )
+    def _send_network_access_policy_http_request(
+        cls,
+        method: Literal["GET", "PUT"],
+        endpoint: str,
+        *,
+        payload_json: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
+    ) -> httpx.Response:
+        headers = {"Content-Type": "application/json", "Billing-Api-Secret-Key": cls.secret_key}
+        return _http_client.request(
+            method,
+            f"{cls.base_url}{endpoint}",
+            json=payload_json,
+            params=params,
+            headers=headers,
+            follow_redirects=True,
+        )
 
     @classmethod
     def _send_quota_request(
