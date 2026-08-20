@@ -156,6 +156,7 @@
   "agentDetail.configure.preview.empty.description": "เรียกใช้เอเจนต์เป็นแชทที่เสร็จสมบูรณ์ เหมือนที่ผู้ใช้จะได้รับหลังเผยแพร่",
   "agentDetail.configure.preview.empty.title": "แสดงตัวอย่าง {{name}}",
   "agentDetail.configure.preview.endUserAuth": "การยืนยันตัวตนของผู้ใช้ปลายทาง",
+  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "การเรียกใช้ Agent นี้หยุดลงหลังจากถึงจำนวนคำขอโมเดลสูงสุด โปรดลองอีกครั้ง หรือแบ่งงานออกเป็นขั้นตอนที่เล็กลง",
   "agentDetail.configure.preview.errors.agentRunLimitExceeded": "การเรียกใช้ Agent นี้หยุดลงเนื่องจากถึงขีดจำกัดเวลา โปรดลองอีกครั้ง หรือแบ่งงานออกเป็นขั้นตอนที่เล็กลง",
   "agentDetail.configure.preview.inputPlaceholder": "ส่งข้อความถึง {{name}}",
   "agentDetail.configure.preview.restart": "เริ่มใหม่",
@@ -382,7 +383,7 @@
   "roster.createForm.rolePlaceholder": "เช่น ผู้ช่วยวิจัย",
   "roster.createSuccess": "สร้างตัวแทนแล้ว",
   "roster.dateTimeFormat": "DD/MM/YYYY HH:mm:ss",
-  "roster.deleteDialog.description": "Agent นี้จะถูกลบออกจากรายการ Agent",
+  "roster.deleteDialog.description": "การดำเนินการนี้จะลบ {{name}} อย่างถาวร เว็บแอปและการเข้าถึง API ของ Agent นี้ รวมถึงเวิร์กโฟลว์ที่ใช้ Agent นี้ จะหยุดทำงานทันที",
   "roster.deleteDialog.title": "ลบ {{name}} หรือไม่",
   "roster.deleteFailed": "ลบตัวแทนไม่สำเร็จ",
   "roster.deleteSuccess": "ลบตัวแทนแล้ว",
@@ -425,6 +426,7 @@
   "roster.sort.lastModified": "แก้ไขล่าสุด",
   "roster.sort.optionsLabel": "ตัวเลือกการเรียง",
   "roster.sort.recentlyCreated": "สร้างล่าสุด",
+  "roster.title": "ตัวแทน",
   "roster.updateSuccess": "อัปเดตตัวแทนแล้ว",
   "roster.usageStatus.draft": "ฉบับร่าง"
 }

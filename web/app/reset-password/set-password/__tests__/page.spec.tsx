@@ -1,4 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { changePasswordWithToken } from '@/service/common'
 import ChangePasswordForm from '../page'
@@ -23,10 +25,15 @@ vi.mock('@/service/common', () => ({
   changePasswordWithToken: vi.fn(),
 }))
 
+vi.mock('@/hooks/use-document-title', () => ({
+  default: vi.fn(),
+}))
+
 const mockReplace = vi.fn()
 const mockUseRouter = vi.mocked(useRouter)
 const mockUseSearchParams = vi.mocked(useSearchParams)
 const mockChangePasswordWithToken = vi.mocked(changePasswordWithToken)
+const mockUseDocumentTitle = vi.mocked(useDocumentTitle)
 
 const redirectUrl = '/apps?template-id=template-1&utm_source=dify_blog'
 const encodedSigninUrl =
@@ -55,6 +62,7 @@ const completePasswordChange = async () => {
     expect(screen.getByRole('button', { name: /login\.passwordChanged/ })).toBeInTheDocument()
   })
   expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('login.passwordChangedTip')
+  expect(mockUseDocumentTitle).toHaveBeenLastCalledWith('login.passwordChangedTip')
 }
 
 describe('Reset Password Set Password Page', () => {
@@ -66,6 +74,42 @@ describe('Reset Password Set Password Page', () => {
     >)
     mockChangePasswordWithToken.mockResolvedValue({ result: 'success' })
     setSearchParams({ token: 'reset-token' })
+  })
+
+  it('reconciles the initial route title with client branding', () => {
+    render(<ChangePasswordForm />)
+
+    expect(mockUseDocumentTitle).toHaveBeenCalledWith('login.changePassword')
+  })
+
+  it('supports password reveal and native form submission', async () => {
+    const user = userEvent.setup()
+    render(<ChangePasswordForm />)
+
+    const passwordInput = screen.getByLabelText('common.account.newPassword')
+    const confirmPasswordInput = screen.getByLabelText('common.account.confirmPassword')
+
+    expect(passwordInput).toHaveAttribute('autocomplete', 'new-password')
+    expect(confirmPasswordInput).toHaveAttribute('autocomplete', 'new-password')
+
+    await user.type(passwordInput, 'ValidPass123!')
+    await user.click(screen.getAllByRole('button', { name: 'login.showPassword' })[0]!)
+
+    expect(passwordInput).toHaveAttribute('type', 'text')
+    expect(screen.getByRole('button', { name: 'login.hidePassword' })).toBeInTheDocument()
+
+    await user.type(confirmPasswordInput, 'ValidPass123!{Enter}')
+
+    await waitFor(() => {
+      expect(mockChangePasswordWithToken).toHaveBeenCalledWith({
+        url: '/forgot-password/resets',
+        body: {
+          token: 'reset-token',
+          new_password: 'ValidPass123!',
+          password_confirm: 'ValidPass123!',
+        },
+      })
+    })
   })
 
   describe('Post-reset navigation', () => {

@@ -22,7 +22,6 @@
   "deployTab.moreActions": "การดำเนินการเพิ่มเติม",
   "deployTab.redeploy": "ปรับใช้ใหม่",
   "deployTab.undeploy": "ยกเลิกการปรับใช้",
-  "deployTab.undeployConfirmWarning": "หลังจากยืนยัน สภาพแวดล้อมนี้จะเข้าสู่สถานะกำลังยกเลิกการปรับใช้ และการดำเนินการต่าง ๆ จะถูกปิดใช้งานชั่วคราว",
   "health.ENVIRONMENT_STATUS_FAILED": "ไม่พร้อมใช้งาน",
   "list.emptyTitle": "ยังไม่มีการปรับใช้",
   "overview.chip.latest": "ล่าสุด",

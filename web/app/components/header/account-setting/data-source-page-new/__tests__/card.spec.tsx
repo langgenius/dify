@@ -1,4 +1,5 @@
 import type { DataSourceAuth } from '../types'
+import type { AddOAuthButtonProps } from '@/app/components/plugins/plugin-auth/types'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { usePluginAuthAction } from '@/app/components/plugins/plugin-auth'
@@ -68,11 +69,27 @@ vi.mock('@/app/components/plugins/plugin-auth', () => ({
       Add API Key
     </button>
   ),
-  AddOAuthButton: ({ onUpdate, disabled }: { onUpdate: () => void; disabled?: boolean }) => (
-    <button disabled={disabled} onClick={onUpdate}>
-      Add OAuth
-    </button>
-  ),
+  AddOAuthButton: ({ onUpdate, disabled, renderTrigger }: AddOAuthButtonProps) => {
+    const handleClick = () => onUpdate?.()
+    const trigger = (
+      <button disabled={disabled} onClick={handleClick}>
+        Add OAuth
+      </button>
+    )
+
+    return (
+      <>
+        {renderTrigger
+          ? renderTrigger({
+              disabled,
+              isConfigured: false,
+              onClick: handleClick,
+              trigger,
+            })
+          : trigger}
+      </>
+    )
+  },
 }))
 
 vi.mock('@/hooks/use-i18n', () => ({

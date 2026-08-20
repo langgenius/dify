@@ -1,4 +1,5 @@
 import logging
+from uuid import UUID
 
 import flask_login
 from flask import make_response, request
@@ -22,6 +23,7 @@ from controllers.console import console_ns
 from controllers.console.auth.error import (
     AuthenticationFailedError,
     EmailCodeError,
+    EmailCodeLoginServiceUnavailableError,
     EmailPasswordLoginLimitError,
     InvalidEmailError,
     InvalidTokenError,
@@ -32,6 +34,7 @@ from controllers.console.error import (
     AccountBannedError,
     AccountInFreezeError,
     AccountNotFound,
+    EmailDomainSuspendedError,
     EmailSendIpLimitError,
     NotAllowedCreateWorkspace,
     SeatsLimitExceeded,
@@ -61,6 +64,10 @@ from libs.token import (
 from models.account import Account
 from services.account_service import AccountService, InvitationDetailDict, RegisterService, TenantService
 from services.billing_service import BillingService
+from services.email_code_login_challenge import (
+    EmailCodeLoginChallengeStatus,
+    EmailCodeLoginChallengeUnavailableError,
+)
 from services.entities.auth_entities import LoginFailureReason, LoginPayloadBase
 from services.errors.account import (
     AccountRegisterError,
@@ -68,9 +75,13 @@ from services.errors.account import (
     RefreshTokenNotFoundError,
     SeatsLimitExceededError,
 )
+from services.errors.account import (
+    EmailDomainSuspendedError as EmailDomainSuspendedRegistrationError,
+)
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
 from services.turnstile_service import (
+    EMAIL_CODE_VERIFY_ACTION,
     TurnstileChallengeRejectedError,
     TurnstileService,
     TurnstileUpstreamError,
@@ -92,14 +103,20 @@ class EmailPayload(BaseModel):
 class EmailCodeSendPayload(EmailPayload):
     turnstile_token: str | None = Field(
         default=None,
+        max_length=2048,
         description="Cloudflare Turnstile token. Required at runtime for Dify Cloud.",
     )
 
 
 class EmailCodeLoginPayload(BaseModel):
     email: EmailStr = Field(...)
-    code: str = Field(...)
-    token: str = Field(...)
+    code: str
+    token: UUID
+    turnstile_token: str | None = Field(
+        default=None,
+        max_length=2048,
+        description="Cloudflare Turnstile token for email-code verification.",
+    )
     language: str | None = Field(default=None)
     timezone: str | None = Field(default=None)
 
@@ -136,11 +153,13 @@ class LoginApi(Resource):
         request_email = req_data.email
         normalized_email = request_email.lower()
 
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(
-            normalized_email
-        ):
-            _log_console_login_failure(email=normalized_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
-            raise AccountInFreezeError()
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
+            freeze_type = BillingService.get_email_freeze_type(normalized_email)
+            if freeze_type:
+                _log_console_login_failure(email=normalized_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
+                if freeze_type == "email_domain_suspended":
+                    raise EmailDomainSuspendedError()
+                raise AccountInFreezeError()
 
         is_login_error_rate_limit = AccountService.is_login_error_rate_limit(normalized_email)
         if is_login_error_rate_limit:
@@ -242,8 +261,10 @@ class ResetPasswordSendEmailApi(Resource):
             language = "en-US"
         try:
             account = _get_account_with_case_fallback(req_data.email)
-        except AccountRegisterError:
-            raise AccountInFreezeError()
+        except EmailDomainSuspendedRegistrationError as exc:
+            raise EmailDomainSuspendedError() from exc
+        except AccountRegisterError as exc:
+            raise AccountInFreezeError() from exc
 
         token = AccountService.send_reset_password_email(
             email=normalized_email,
@@ -284,8 +305,10 @@ class EmailCodeLoginSendEmailApi(Resource):
             language = "en-US"
         try:
             account = _get_account_with_case_fallback(req_data.email)
-        except AccountRegisterError:
-            raise AccountInFreezeError()
+        except EmailDomainSuspendedRegistrationError as exc:
+            raise EmailDomainSuspendedError() from exc
+        except AccountRegisterError as exc:
+            raise AccountInFreezeError() from exc
 
         if account is None:
             if FeatureService.get_system_features().is_allow_register:
@@ -310,31 +333,66 @@ class EmailCodeLoginApi(Resource):
         original_email = req_data.email
         user_email = original_email.lower()
         language = req_data.language
+        ip_address = extract_remote_ip(request)
 
-        token_data = AccountService.get_email_code_login_data(req_data.token)
-        if token_data is None:
-            _log_console_login_failure(email=user_email, reason=LoginFailureReason.INVALID_EMAIL_CODE_TOKEN)
-            raise InvalidTokenError()
-
-        token_email = token_data.get("email")
-        normalized_token_email = token_email.lower() if isinstance(token_email, str) else token_email
-        if normalized_token_email != user_email:
-            _log_console_login_failure(email=user_email, reason=LoginFailureReason.EMAIL_CODE_EMAIL_MISMATCH)
-            raise InvalidEmailError()
-
-        if token_data["code"] != req_data.code:
+        # ``code`` is Base64 on the wire and is decoded by
+        # ``decrypt_code_field`` before model validation reaches this handler.
+        if len(req_data.code) != 6 or not req_data.code.isascii() or not req_data.code.isdigit():
             _log_console_login_failure(email=user_email, reason=LoginFailureReason.INVALID_EMAIL_CODE)
             raise EmailCodeError()
 
-        AccountService.revoke_email_code_login_token(req_data.token)
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and (
+            dify_config.TURNSTILE_EMAIL_CODE_VERIFY_REQUIRED or req_data.turnstile_token
+        ):
+            try:
+                TurnstileService.verify(
+                    token=req_data.turnstile_token,
+                    remote_ip=ip_address,
+                    expected_action=EMAIL_CODE_VERIFY_ACTION,
+                )
+            except TurnstileChallengeRejectedError as exc:
+                logger.info("Turnstile rejected an email-code verification challenge")
+                raise TurnstileVerificationFailedError() from exc
+            except TurnstileUpstreamError as exc:
+                logger.warning("Turnstile verification is unavailable", exc_info=True)
+                raise TurnstileServiceUnavailableError() from exc
+
+        try:
+            verification = AccountService.verify_email_code_login_challenge(
+                email=user_email,
+                code=req_data.code,
+                token=str(req_data.token),
+            )
+        except EmailCodeLoginChallengeUnavailableError as exc:
+            logger.warning("Email-code challenge verification is unavailable", exc_info=True)
+            raise EmailCodeLoginServiceUnavailableError() from exc
+
+        if verification.status == EmailCodeLoginChallengeStatus.INVALID_TOKEN:
+            _log_console_login_failure(email=user_email, reason=LoginFailureReason.INVALID_EMAIL_CODE_TOKEN)
+            raise InvalidTokenError()
+
+        if verification.status == EmailCodeLoginChallengeStatus.EMAIL_MISMATCH:
+            _log_console_login_failure(email=user_email, reason=LoginFailureReason.EMAIL_CODE_EMAIL_MISMATCH)
+            raise InvalidEmailError()
+
+        if verification.status in {
+            EmailCodeLoginChallengeStatus.INVALID_CODE,
+            EmailCodeLoginChallengeStatus.EXHAUSTED,
+        }:
+            _log_console_login_failure(email=user_email, reason=LoginFailureReason.INVALID_EMAIL_CODE)
+            raise EmailCodeError()
+
         try:
             account = _get_account_with_case_fallback(original_email)
         except Unauthorized as exc:
             _log_console_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_BANNED)
             raise AccountBannedError() from exc
-        except AccountRegisterError:
+        except EmailDomainSuspendedRegistrationError as exc:
             _log_console_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
-            raise AccountInFreezeError()
+            raise EmailDomainSuspendedError() from exc
+        except AccountRegisterError as exc:
+            _log_console_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
+            raise AccountInFreezeError() from exc
         if account:
             tenants = TenantService.get_join_tenants(account, session=db.session())
             if not tenants:
@@ -353,18 +411,22 @@ class EmailCodeLoginApi(Resource):
                     name=user_email,
                     interface_language=get_valid_language(language),
                     timezone=req_data.timezone,
+                    ip_address=ip_address,
                     session=db.session(),
                 )
             except WorkSpaceNotAllowedCreateError:
                 raise NotAllowedCreateWorkspace()
             except SeatsLimitExceededError:
                 raise SeatsLimitExceeded()
-            except AccountRegisterError:
+            except EmailDomainSuspendedRegistrationError as exc:
                 _log_console_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
-                raise AccountInFreezeError()
+                raise EmailDomainSuspendedError() from exc
+            except AccountRegisterError as exc:
+                _log_console_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
+                raise AccountInFreezeError() from exc
             except WorkspacesLimitExceededError:
                 raise WorkspacesLimitExceeded()
-        token_pair = AccountService.login(account, session=db.session(), ip_address=extract_remote_ip(request))
+        token_pair = AccountService.login(account, session=db.session(), ip_address=ip_address)
         AccountService.reset_login_error_rate_limit(user_email)
 
         # Create response with cookies instead of returning tokens in body

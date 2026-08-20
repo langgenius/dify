@@ -15,6 +15,7 @@ from pydantic import ValidationError
 
 import libs.helper as helper_module
 from libs.helper import TokenManager
+from models.account import Account
 
 
 def _build_fake_redis(storage: dict[str, str]):
@@ -70,7 +71,8 @@ def test_token_manager_roundtrip_uses_explicit_email_with_account(monkeypatch: p
     storage: dict[str, str] = {}
     monkeypatch.setattr(helper_module, "redis_client", _build_fake_redis(storage))
 
-    account = SimpleNamespace(id="acc-1", email="old@example.com")
+    account = Account(name="Test User", email="old@example.com")
+    account.id = "acc-1"
 
     token = TokenManager.generate_token(
         account=account,

@@ -24,9 +24,15 @@ from libs.password import valid_password
 from models import Account
 from services.account_service import AccountService
 from services.billing_service import BillingService
-from services.errors.account import AccountRegisterError, SeatsLimitExceededError
+from services.errors.account import (
+    AccountRegisterError,
+    SeatsLimitExceededError,
+)
+from services.errors.account import (
+    EmailDomainSuspendedError as EmailDomainSuspendedRegistrationError,
+)
 
-from ..error import AccountInFreezeError, EmailSendIpLimitError, SeatsLimitExceeded
+from ..error import AccountInFreezeError, EmailDomainSuspendedError, EmailSendIpLimitError, SeatsLimitExceeded
 from ..wraps import email_password_login_enabled, email_register_enabled, model_validate, setup_required
 
 
@@ -99,10 +105,12 @@ class EmailRegisterSendEmailApi(Resource):
         if req_data.language is not None and req_data.language in languages:
             language = req_data.language
 
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(
-            normalized_email
-        ):
-            raise AccountInFreezeError()
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
+            freeze_type = BillingService.get_email_freeze_type(normalized_email)
+            if freeze_type:
+                if freeze_type == "email_domain_suspended":
+                    raise EmailDomainSuspendedError()
+                raise AccountInFreezeError()
 
         account = AccountService.get_account_by_email_with_case_fallback(req_data.email, session=db.session())
         token = AccountService.send_email_register_email(email=normalized_email, account=account, language=language)
@@ -184,13 +192,15 @@ class EmailRegisterResetApi(Resource):
         if account:
             raise EmailAlreadyInUseError()
 
+        ip_address = extract_remote_ip(request)
         account = self._create_new_account(
             email=normalized_email,
             password=req_data.password_confirm,
             timezone=req_data.timezone,
             language=req_data.language,
+            ip_address=ip_address,
         )
-        token_pair = AccountService.login(account=account, session=db.session(), ip_address=extract_remote_ip(request))
+        token_pair = AccountService.login(account=account, session=db.session(), ip_address=ip_address)
         AccountService.reset_login_error_rate_limit(normalized_email)
 
         return {"result": "success", "data": token_pair.model_dump()}
@@ -201,6 +211,7 @@ class EmailRegisterResetApi(Resource):
         password: str,
         timezone: str | None = None,
         language: str | None = None,
+        ip_address: str | None = None,
     ) -> Account:
         try:
             return AccountService.create_account_and_tenant(
@@ -209,9 +220,12 @@ class EmailRegisterResetApi(Resource):
                 password=password,
                 interface_language=get_valid_language(language),
                 timezone=timezone,
+                ip_address=ip_address,
                 session=db.session(),
             )
         except SeatsLimitExceededError:
             raise SeatsLimitExceeded()
-        except AccountRegisterError:
-            raise AccountInFreezeError()
+        except EmailDomainSuspendedRegistrationError as exc:
+            raise EmailDomainSuspendedError() from exc
+        except AccountRegisterError as exc:
+            raise AccountInFreezeError() from exc

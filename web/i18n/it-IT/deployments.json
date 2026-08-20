@@ -22,7 +22,6 @@
   "deployTab.moreActions": "Altre azioni",
   "deployTab.redeploy": "Ridistribuisci",
   "deployTab.undeploy": "Annulla distribuzione",
-  "deployTab.undeployConfirmWarning": "Dopo la conferma, questo ambiente entrerà nello stato di annullamento della distribuzione e le azioni saranno temporaneamente disabilitate.",
   "health.ENVIRONMENT_STATUS_FAILED": "Non disponibile",
   "list.emptyTitle": "Ancora nessuna distribuzione",
   "overview.chip.latest": "più recente",

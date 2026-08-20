@@ -19,7 +19,7 @@ import {
   useSystemDefaultModelAndModelList,
   useUpdateModelList,
 } from '../hooks'
-import ModelSelector from '../model-selector'
+import { ModelSelector } from '../model-selector'
 
 type SystemModelSelectorProps = {
   className?: string
@@ -226,13 +226,13 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   )}
                   <div>
                     <ModelSelector
-                      defaultModel={currentTextGenerationDefaultModel}
-                      modelList={textGenerationModelList}
+                      value={currentTextGenerationDefaultModel}
+                      models={textGenerationModelList}
                       hideProviderSettingsFooter={hideProviderSettingsFooter}
                       onOpenMarketplace={onOpenMarketplace}
                       onConfigureEmptyState={() => setOpen(false)}
                       showModelMeta={false}
-                      onSelect={(model) =>
+                      onValueChange={(model) =>
                         handleChangeDefaultModel(ModelTypeEnum.textGeneration, model)
                       }
                     />
@@ -245,13 +245,13 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   )}
                   <div>
                     <ModelSelector
-                      defaultModel={currentEmbeddingsDefaultModel}
-                      modelList={embeddingModelList}
+                      value={currentEmbeddingsDefaultModel}
+                      models={embeddingModelList}
                       hideProviderSettingsFooter={hideProviderSettingsFooter}
                       onOpenMarketplace={onOpenMarketplace}
                       onConfigureEmptyState={() => setOpen(false)}
                       showModelMeta={false}
-                      onSelect={(model) =>
+                      onValueChange={(model) =>
                         handleChangeDefaultModel(ModelTypeEnum.textEmbedding, model)
                       }
                     />
@@ -264,13 +264,15 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   )}
                   <div>
                     <ModelSelector
-                      defaultModel={currentRerankDefaultModel}
-                      modelList={rerankModelList}
+                      value={currentRerankDefaultModel}
+                      models={rerankModelList}
                       hideProviderSettingsFooter={hideProviderSettingsFooter}
                       onOpenMarketplace={onOpenMarketplace}
                       onConfigureEmptyState={() => setOpen(false)}
                       showModelMeta={false}
-                      onSelect={(model) => handleChangeDefaultModel(ModelTypeEnum.rerank, model)}
+                      onValueChange={(model) =>
+                        handleChangeDefaultModel(ModelTypeEnum.rerank, model)
+                      }
                     />
                   </div>
                 </div>
@@ -281,13 +283,13 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   )}
                   <div>
                     <ModelSelector
-                      defaultModel={currentSpeech2textDefaultModel}
-                      modelList={speech2textModelList}
+                      value={currentSpeech2textDefaultModel}
+                      models={speech2textModelList}
                       hideProviderSettingsFooter={hideProviderSettingsFooter}
                       onOpenMarketplace={onOpenMarketplace}
                       onConfigureEmptyState={() => setOpen(false)}
                       showModelMeta={false}
-                      onSelect={(model) =>
+                      onValueChange={(model) =>
                         handleChangeDefaultModel(ModelTypeEnum.speech2text, model)
                       }
                     />
@@ -297,13 +299,13 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   {renderModelLabel('modelProvider.ttsModel.key', 'modelProvider.ttsModel.tip')}
                   <div>
                     <ModelSelector
-                      defaultModel={currentTTSDefaultModel}
-                      modelList={ttsModelList}
+                      value={currentTTSDefaultModel}
+                      models={ttsModelList}
                       hideProviderSettingsFooter={hideProviderSettingsFooter}
                       onOpenMarketplace={onOpenMarketplace}
                       onConfigureEmptyState={() => setOpen(false)}
                       showModelMeta={false}
-                      onSelect={(model) => handleChangeDefaultModel(ModelTypeEnum.tts, model)}
+                      onValueChange={(model) => handleChangeDefaultModel(ModelTypeEnum.tts, model)}
                     />
                   </div>
                 </div>

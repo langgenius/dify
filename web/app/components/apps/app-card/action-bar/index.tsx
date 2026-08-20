@@ -4,7 +4,7 @@ import type {
   AppPartial,
   EnvironmentVariableItemResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
-import type { FormEventHandler, MouseEvent } from 'react'
+import type { FormEventHandler } from 'react'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
@@ -17,14 +17,18 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { toast } from '@langgenius/dify-ui/toast'
+import { Toggle } from '@langgenius/dify-ui/toggle'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -311,13 +315,10 @@ export const AppCardActionBar = memo(
     }
 
     const handleToggleStar = useCallback(
-      (e: MouseEvent<HTMLButtonElement>) => {
-        e.stopPropagation()
-        e.preventDefault()
-
+      (pressed: boolean) => {
         if (isTogglingStar) return
 
-        const mutateStar = app.is_starred ? unstarApp : starApp
+        const mutateStar = pressed ? starApp : unstarApp
         try {
           mutateStar(
             { params: { app_id: app.id } },
@@ -338,7 +339,7 @@ export const AppCardActionBar = memo(
           )
         }
       },
-      [app.id, app.is_starred, isTogglingStar, starApp, t, unstarApp],
+      [app.id, isTogglingStar, starApp, t, unstarApp],
     )
 
     const shouldShowEditOption = appACLCapabilities.canEdit
@@ -359,6 +360,7 @@ export const AppCardActionBar = memo(
     const starActionLabel = app.is_starred
       ? t(($) => $['studio.unstarApp'], { ns: 'app' })
       : t(($) => $['studio.starApp'], { ns: 'app' })
+    const starToggleLabel = t(($) => $['studio.starApp'], { ns: 'app' })
 
     return (
       <>
@@ -374,21 +376,23 @@ export const AppCardActionBar = memo(
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <button
-                    type="button"
-                    aria-label={starActionLabel}
+                  <Toggle
+                    pressed={app.is_starred}
                     disabled={isTogglingStar}
-                    className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-70"
-                    onClick={handleToggleStar}
-                  >
-                    <StarIcon
-                      aria-hidden
-                      className={cn(
-                        app.is_starred ? 'text-text-warning-secondary' : 'text-text-tertiary',
-                        'size-4.5',
-                      )}
-                    />
-                  </button>
+                    onPressedChange={handleToggleStar}
+                    render={
+                      <IconButton
+                        size="lg"
+                        aria-label={starToggleLabel}
+                        className="group disabled:opacity-70"
+                      >
+                        <StarIcon
+                          aria-hidden
+                          className="size-4.5 text-text-tertiary group-data-pressed:text-text-warning-secondary"
+                        />
+                      </IconButton>
+                    }
+                  />
                 }
               />
               <TooltipContent>{starActionLabel}</TooltipContent>
@@ -400,33 +404,32 @@ export const AppCardActionBar = memo(
                 onOpenChange={setIsOperationsMenuOpen}
               >
                 <DropdownMenuTrigger
-                  aria-label={
-                    isExporting
-                      ? t(($) => $['operation.exporting'], { ns: 'common' })
-                      : t(($) => $['operation.moreActionsFor'], {
-                          ns: 'common',
-                          name: app.name,
-                        })
+                  render={
+                    <IconButton
+                      size="lg"
+                      aria-label={
+                        isExporting
+                          ? t(($) => $['operation.exporting'], { ns: 'common' })
+                          : t(($) => $['operation.moreActionsFor'], {
+                              ns: 'common',
+                              name: app.name,
+                            })
+                      }
+                      disabled={isExporting}
+                      className="data-popup-open:bg-state-base-hover"
+                    >
+                      <span
+                        aria-hidden
+                        className={cn(
+                          'size-4.5 text-text-tertiary',
+                          isExporting
+                            ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none'
+                            : 'i-ri-more-fill',
+                        )}
+                      />
+                    </IconButton>
                   }
-                  disabled={isExporting}
-                  className={cn(
-                    'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed data-popup-open:bg-state-base-hover',
-                  )}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    e.preventDefault()
-                  }}
-                >
-                  <span
-                    aria-hidden
-                    className={cn(
-                      'h-4.5 w-4.5 text-text-tertiary',
-                      isExporting
-                        ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none'
-                        : 'i-ri-more-fill',
-                    )}
-                  />
-                </DropdownMenuTrigger>
+                />
                 <DropdownMenuContent
                   placement="bottom-end"
                   sideOffset={4}
@@ -516,24 +519,26 @@ export const AppCardActionBar = memo(
                       }}
                     />
                   </FieldLabel>
-                  <div className="relative">
-                    <FieldControl
+                  <InputGroup className="border-components-input-border-hover">
+                    <InputGroupInput
                       type="text"
                       autoComplete="off"
                       spellCheck={false}
                       placeholder={t(($) => $.deleteAppConfirmInputPlaceholder, { ns: 'app' })}
                       value={confirmDeleteInput}
                       onValueChange={setConfirmDeleteInput}
-                      className="border-components-input-border-hover bg-components-input-bg-normal pr-20 focus:border-components-input-border-active focus:bg-components-input-bg-active"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setConfirmDeleteInput(app.name)}
-                      className="absolute top-1/2 right-2 -translate-y-1/2 rounded-full bg-black/6 px-2.5 py-1 system-xs-medium text-text-secondary hover:bg-black/10 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                    >
-                      {t(($) => $['operation.fill'], { ns: 'common' })}
-                    </button>
-                  </div>
+                    <InputGroupAddon align="inline-end" className="min-w-20 justify-end pe-1.75">
+                      <Button
+                        variant="tertiary"
+                        size="small"
+                        onClick={() => setConfirmDeleteInput(app.name)}
+                        className="rounded-full px-2.5"
+                      >
+                        {t(($) => $['operation.fill'], { ns: 'common' })}
+                      </Button>
+                    </InputGroupAddon>
+                  </InputGroup>
                 </Field>
               </div>
               <AlertDialogActions>
