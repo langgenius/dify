@@ -10,7 +10,7 @@ import pytest
 from flask import Flask
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.exceptions import HTTPException, NotFound
+from werkzeug.exceptions import BadRequest, HTTPException, NotFound
 
 from controllers.console.snippets import snippet_workflow as snippet_workflow_module
 from models.account import Account, TenantAccountRole
@@ -503,6 +503,57 @@ def test_update_published_snippet_workflow_raises_not_found(
 
     sqlite_session.refresh(snippet)
     assert snippet.name == "Snippet"
+
+
+def test_delete_published_snippet_workflow_returns_204(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    snippet = _snippet(workflow_id="current-workflow")
+    get_published_workflow_by_id = Mock(return_value=SimpleNamespace(id="workflow-1"))
+    delete_workflow = Mock(return_value=True)
+    workflow_ref = SimpleNamespace(
+        tenant_id=snippet.tenant_id,
+        owner_id=snippet.id,
+        workflow_id="workflow-1",
+    )
+    monkeypatch.setattr(
+        snippet_workflow_module,
+        "_snippet_service",
+        lambda: SimpleNamespace(get_published_workflow_by_id=get_published_workflow_by_id),
+    )
+    monkeypatch.setattr(
+        snippet_workflow_module.WorkflowRefService,
+        "create_snippet_workflow_ref",
+        Mock(return_value=workflow_ref),
+    )
+    monkeypatch.setattr(
+        snippet_workflow_module,
+        "WorkflowService",
+        lambda: SimpleNamespace(delete_workflow=delete_workflow),
+    )
+
+    api = snippet_workflow_module.SnippetWorkflowByIdApi()
+    handler = unwrap(api.delete)
+
+    with app.test_request_context("/snippets/snippet-1/workflows/workflow-1", method="DELETE"):
+        response, status_code = handler(api, snippet=snippet, workflow_id="workflow-1")
+
+    assert response is None
+    assert status_code == 204
+    get_published_workflow_by_id.assert_called_once_with(snippet=snippet, workflow_id="workflow-1")
+    delete_workflow.assert_called_once()
+    assert delete_workflow.call_args.kwargs["workflow_ref"] is workflow_ref
+
+
+def test_delete_published_snippet_workflow_rejects_active_version(app: Flask) -> None:
+    snippet = _snippet(workflow_id="workflow-1")
+    api = snippet_workflow_module.SnippetWorkflowByIdApi()
+    handler = unwrap(api.delete)
+
+    with app.test_request_context("/snippets/snippet-1/workflows/workflow-1", method="DELETE"):
+        with pytest.raises(BadRequest, match="currently in use by snippet"):
+            handler(api, snippet=snippet, workflow_id="workflow-1")
 
 
 def test_workflow_run_detail_raises_not_found_when_run_missing(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
