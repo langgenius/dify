@@ -37,6 +37,9 @@ type Reader = {
 
 type AudioResponse = {
   status: number
+  headers: {
+    get: (name: string) => string | null
+  }
   body: {
     getReader: () => Reader
   }
@@ -152,7 +155,7 @@ const testState = {
 }
 
 class MockMediaSourceCtor extends MockMediaSource {
-  static isTypeSupported = vi.fn(() => true)
+  static isTypeSupported = vi.fn((_mimeType: string) => true)
 
   constructor() {
     super()
@@ -194,7 +197,11 @@ const setMediaSourceSupport = (options: { mediaSource: boolean; managedMediaSour
   })
 }
 
-const makeAudioResponse = (status: number, reads: ReaderResult[]): AudioResponse => {
+const makeAudioResponse = (
+  status: number,
+  reads: ReaderResult[],
+  contentType = 'audio/mpeg',
+): AudioResponse => {
   const read = vi.fn<() => Promise<ReaderResult>>()
   reads.forEach((result) => {
     read.mockResolvedValueOnce(result)
@@ -202,10 +209,30 @@ const makeAudioResponse = (status: number, reads: ReaderResult[]): AudioResponse
 
   return {
     status,
+    headers: {
+      get: (name: string) => (name.toLowerCase() === 'content-type' ? contentType : null),
+    },
     body: {
       getReader: () => ({ read }),
     },
   }
+}
+
+const makeRiffWaveContainer = (payload: number[]) => {
+  const audio = new Uint8Array(12 + payload.length)
+  audio.set([0x52, 0x49, 0x46, 0x46], 0) // RIFF
+  new DataView(audio.buffer).setUint32(4, payload.length + 4, true)
+  audio.set([0x57, 0x41, 0x56, 0x45], 8) // WAVE
+  audio.set(payload, 12)
+  return audio
+}
+
+const createMp3Player = (...args: ConstructorParameters<typeof AudioPlayer>) => {
+  const player = new AudioPlayer(...args)
+  ;(player as unknown as { setAudioMimeType: (audioType: string) => void }).setAudioMimeType(
+    'audio/mpeg',
+  )
+  return player
 }
 
 describe('AudioPlayer', () => {
@@ -274,17 +301,17 @@ describe('AudioPlayer', () => {
   })
 
   describe('constructor behavior', () => {
-    it('should initialize media source, audio, and media element source when MediaSource exists', () => {
+    it('should defer MSE setup until the response MIME type is known', () => {
       const callback = vi.fn()
       const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', callback)
       const audio = testState.audios[0]
       const audioContext = testState.audioContexts[0]
-      const mediaSource = testState.mediaSources[0]
 
-      expect(player.mediaSource).toBe(mediaSource as unknown as MediaSource)
-      expect(globalThis.URL.createObjectURL).toHaveBeenCalledTimes(1)
-      expect(audio!.src).toBe('blob:mock-url')
-      expect(audio!.autoplay).toBe(true)
+      expect(player.mediaSource).toBeNull()
+      expect(testState.mediaSources).toHaveLength(0)
+      expect(globalThis.URL.createObjectURL).not.toHaveBeenCalled()
+      expect(audio!.src).toBe('')
+      expect(audio!.autoplay).toBe(false)
       expect(audioContext!.createMediaElementSource).toHaveBeenCalledWith(audio)
       expect(audioContext!.connect).toHaveBeenCalledTimes(1)
     })
@@ -307,7 +334,7 @@ describe('AudioPlayer', () => {
       const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
       const audio = testState.audios[0]
 
-      expect(MockMediaSourceCtor.isTypeSupported).toHaveBeenCalledWith('audio/mpeg')
+      expect(MockMediaSourceCtor.isTypeSupported).not.toHaveBeenCalled()
       expect(player.mediaSource).toBeNull()
       expect(testState.mediaSources).toHaveLength(0)
       expect(audio!.src).toBe('')
@@ -318,8 +345,7 @@ describe('AudioPlayer', () => {
     it('should configure fallback audio controls when ManagedMediaSource is used', () => {
       setMediaSourceSupport({ mediaSource: false, managedMediaSource: true })
 
-      // Create with callback to ensure constructor path completes with fallback source.
-      const player = new AudioPlayer('/text-to-audio', false, 'msg-1', 'hello', undefined, vi.fn())
+      const player = createMp3Player('/text-to-audio', false, 'msg-1', 'hello', undefined, vi.fn())
       const audio = testState.audios[0]
 
       expect(player.mediaSource).not.toBeNull()
@@ -330,7 +356,7 @@ describe('AudioPlayer', () => {
     it('should configure ManagedMediaSource when both media source implementations exist', () => {
       setMediaSourceSupport({ mediaSource: true, managedMediaSource: true })
 
-      const player = new AudioPlayer('/text-to-audio', false, 'msg-1', 'hello', undefined, vi.fn())
+      const player = createMp3Player('/text-to-audio', false, 'msg-1', 'hello', undefined, vi.fn())
       const audio = testState.audios[0]
 
       expect(player.mediaSource).not.toBeNull()
@@ -342,7 +368,7 @@ describe('AudioPlayer', () => {
   describe('event wiring', () => {
     it('should forward registered audio events to callback', () => {
       const callback = vi.fn()
-      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', callback)
+      const player = createMp3Player('/text-to-audio', true, 'msg-1', 'hello', 'en-US', callback)
       const audio = testState.audios[0]
 
       audio!.emit('play')
@@ -364,7 +390,7 @@ describe('AudioPlayer', () => {
     })
 
     it('should initialize source buffer only once when sourceopen fires multiple times', () => {
-      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', vi.fn())
+      const player = createMp3Player('/text-to-audio', true, 'msg-1', 'hello', 'en-US', vi.fn())
       const mediaSource = testState.mediaSources[0]
 
       mediaSource!.emit('sourceopen')
@@ -384,25 +410,34 @@ describe('AudioPlayer', () => {
         ]),
       )
 
-      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', vi.fn())
+      const player = createMp3Player('/text-to-audio', true, 'msg-1', 'hello', 'en-US', vi.fn())
       player.playAudio()
 
       await waitFor(() => {
         expect(mockTextToAudioStream).toHaveBeenCalledTimes(1)
       })
 
-      expect(mockTextToAudioStream).toHaveBeenCalledWith(
-        '/text-to-audio',
-        AppSourceType.webApp,
-        { content_type: 'audio/mpeg' },
-        {
-          message_id: 'msg-1',
-          streaming: true,
-          voice: 'en-US',
-          text: 'hello',
-        },
-      )
+      expect(mockTextToAudioStream).toHaveBeenCalledWith('/text-to-audio', AppSourceType.webApp, {
+        message_id: 'msg-1',
+        streaming: true,
+        voice: 'en-US',
+        text: 'hello',
+      })
       expect(player.isLoadData).toBe(true)
+    })
+
+    it('should create an MP3 MediaSource only after the response MIME type is received', async () => {
+      mockTextToAudioStream.mockResolvedValue(
+        makeAudioResponse(200, [{ value: new Uint8Array([1, 2]), done: true }]),
+      )
+      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', vi.fn())
+
+      expect(testState.mediaSources).toHaveLength(0)
+
+      player.playAudio()
+
+      await waitFor(() => expect(testState.mediaSources).toHaveLength(1))
+      expect(MockMediaSourceCtor.isTypeSupported).toHaveBeenCalledWith('audio/mpeg')
     })
 
     it('should emit error callback and reset load flag when stream response status is not 200', async () => {
@@ -412,7 +447,7 @@ describe('AudioPlayer', () => {
         makeAudioResponse(500, [{ value: new Uint8Array([1]), done: true }]),
       )
 
-      const player = new AudioPlayer('/text-to-audio', false, 'msg-2', 'world', undefined, callback)
+      const player = createMp3Player('/text-to-audio', false, 'msg-2', 'world', undefined, callback)
       player.playAudio()
 
       await waitFor(() => {
@@ -433,7 +468,7 @@ describe('AudioPlayer', () => {
         ]),
       )
 
-      const player = new AudioPlayer('/text-to-audio', false, 'msg-1', 'hello', undefined, callback)
+      const player = createMp3Player('/text-to-audio', false, 'msg-1', 'hello', undefined, callback)
       const audio = testState.audios[0]
 
       player.playAudio()
@@ -450,6 +485,35 @@ describe('AudioPlayer', () => {
       expect(callback).toHaveBeenCalledWith('play')
     })
 
+    it('should use the response WAV MIME type instead of creating an MP3 source buffer', async () => {
+      MockMediaSourceCtor.isTypeSupported.mockImplementation(
+        (mimeType: string) => mimeType === 'audio/mpeg',
+      )
+      const callback = vi.fn()
+      mockTextToAudioStream.mockResolvedValue(
+        makeAudioResponse(
+          200,
+          [
+            { value: new Uint8Array([1, 2]), done: false },
+            { value: new Uint8Array([3, 4]), done: true },
+          ],
+          'audio/wav',
+        ),
+      )
+
+      const player = new AudioPlayer('/text-to-audio', false, 'msg-1', 'hello', undefined, callback)
+      const audio = testState.audios[0]
+
+      player.playAudio()
+
+      await waitFor(() => expect(audio!.play).toHaveBeenCalledTimes(1))
+      expect(player.mediaSource).toBeNull()
+      expect(testState.mediaSources).toHaveLength(0)
+      const audioBlob = vi.mocked(globalThis.URL.createObjectURL).mock.calls[0]![0] as Blob
+      expect(audioBlob).toMatchObject({ type: 'audio/wav', size: 4 })
+      expect(new Uint8Array(await audioBlob.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3, 4]))
+    })
+
     it('should wait for the complete MP3 before retrying playback without MediaSource', async () => {
       MockMediaSourceCtor.isTypeSupported.mockReturnValue(false)
       let resolveResponse: ((response: AudioResponse) => void) | undefined
@@ -460,7 +524,7 @@ describe('AudioPlayer', () => {
           }),
       )
 
-      const player = new AudioPlayer('/text-to-audio', false, 'msg-1', 'hello', undefined, vi.fn())
+      const player = createMp3Player('/text-to-audio', false, 'msg-1', 'hello', undefined, vi.fn())
       const audio = testState.audios[0]
 
       player.playAudio()
@@ -476,7 +540,7 @@ describe('AudioPlayer', () => {
       'should resume and play immediately when playAudio is called in %s loaded state',
       async (audioContextState) => {
         const callback = vi.fn()
-        const player = new AudioPlayer(
+        const player = createMp3Player(
           '/text-to-audio',
           false,
           'msg-1',
@@ -501,7 +565,7 @@ describe('AudioPlayer', () => {
 
     it('should request media playback before a suspended audio context finishes resuming', async () => {
       const callback = vi.fn()
-      const player = new AudioPlayer('/text-to-audio', false, 'msg-1', 'hello', undefined, callback)
+      const player = createMp3Player('/text-to-audio', false, 'msg-1', 'hello', undefined, callback)
       const audio = testState.audios[0]
       const audioContext = testState.audioContexts[0]
       let resolveResume: (() => void) | undefined
@@ -532,7 +596,7 @@ describe('AudioPlayer', () => {
       'should resume a %s audio context when the media element is still playing',
       async (audioContextState) => {
         const callback = vi.fn()
-        const player = new AudioPlayer(
+        const player = createMp3Player(
           '/text-to-audio',
           false,
           'msg-1',
@@ -558,7 +622,7 @@ describe('AudioPlayer', () => {
 
     it('should report an error when the audio context remains interrupted and allow retry', async () => {
       const callback = vi.fn()
-      const player = new AudioPlayer('/text-to-audio', false, 'msg-1', 'hello', undefined, callback)
+      const player = createMp3Player('/text-to-audio', false, 'msg-1', 'hello', undefined, callback)
       const audio = testState.audios[0]
       const audioContext = testState.audioContexts[0]
 
@@ -585,7 +649,7 @@ describe('AudioPlayer', () => {
 
     it('should play ended audio when data is already loaded', async () => {
       const callback = vi.fn()
-      const player = new AudioPlayer('/text-to-audio', false, 'msg-1', 'hello', undefined, callback)
+      const player = createMp3Player('/text-to-audio', false, 'msg-1', 'hello', undefined, callback)
       const audio = testState.audios[0]
       const audioContext = testState.audioContexts[0]
 
@@ -602,7 +666,7 @@ describe('AudioPlayer', () => {
 
     it('should report loaded audio that is already playing without replaying it', () => {
       const callback = vi.fn()
-      const player = new AudioPlayer('/text-to-audio', false, 'msg-1', 'hello', undefined, callback)
+      const player = createMp3Player('/text-to-audio', false, 'msg-1', 'hello', undefined, callback)
       const audio = testState.audios[0]
       const audioContext = testState.audioContexts[0]
 
@@ -619,7 +683,7 @@ describe('AudioPlayer', () => {
     it('should emit error callback when stream request throws', async () => {
       const callback = vi.fn()
       mockTextToAudioStream.mockRejectedValue(new Error('network failed'))
-      const player = new AudioPlayer('/text-to-audio', false, 'msg-2', 'world', undefined, callback)
+      const player = createMp3Player('/text-to-audio', false, 'msg-2', 'world', undefined, callback)
 
       player.playAudio()
 
@@ -631,7 +695,7 @@ describe('AudioPlayer', () => {
 
     it('should call pause flow and notify paused event when pauseAudio is invoked', () => {
       const callback = vi.fn()
-      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', callback)
+      const player = createMp3Player('/text-to-audio', true, 'msg-1', 'hello', 'en-US', callback)
       const audio = testState.audios[0]
       const audioContext = testState.audioContexts[0]
 
@@ -645,7 +709,7 @@ describe('AudioPlayer', () => {
 
   describe('message and direct-audio helpers', () => {
     it('should update message id through resetMsgId', () => {
-      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
+      const player = createMp3Player('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
 
       player.resetMsgId('msg-2')
 
@@ -654,7 +718,7 @@ describe('AudioPlayer', () => {
 
     it('should end stream without playback when playAudioWithAudio receives empty content', async () => {
       const callback = vi.fn()
-      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', callback)
+      const player = createMp3Player('/text-to-audio', true, 'msg-1', 'hello', 'en-US', callback)
       const mediaSource = testState.mediaSources[0]
 
       await player.playAudioWithAudio('', true)
@@ -671,7 +735,7 @@ describe('AudioPlayer', () => {
 
     it('should decode base64 and start playback when playAudioWithAudio is called with playable content', async () => {
       const callback = vi.fn()
-      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', callback)
+      const player = createMp3Player('/text-to-audio', true, 'msg-1', 'hello', 'en-US', callback)
       const audio = testState.audios[0]
       const audioContext = testState.audioContexts[0]
       const mediaSource = testState.mediaSources[0]
@@ -697,7 +761,7 @@ describe('AudioPlayer', () => {
 
     it('should skip playback when playAudioWithAudio is called with play=false', async () => {
       const callback = vi.fn()
-      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', callback)
+      const player = createMp3Player('/text-to-audio', true, 'msg-1', 'hello', 'en-US', callback)
       const audio = testState.audios[0]
       const audioContext = testState.audioContexts[0]
 
@@ -712,7 +776,7 @@ describe('AudioPlayer', () => {
     it('should combine automatic TTS chunks into a playable MP3 blob without MediaSource', async () => {
       MockMediaSourceCtor.isTypeSupported.mockReturnValue(false)
       const callback = vi.fn()
-      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', callback)
+      const player = createMp3Player('/text-to-audio', true, 'msg-1', 'hello', 'en-US', callback)
       const audio = testState.audios[0]
 
       await player.playAudioWithAudio(Buffer.from([1, 2]).toString('base64'), true)
@@ -733,9 +797,63 @@ describe('AudioPlayer', () => {
       expect(callback).toHaveBeenCalledWith('play')
     })
 
+    it('should buffer automatic WAV TTS chunks until the audio end event', async () => {
+      const player = createMp3Player('/text-to-audio', true, 'msg-1', 'hello', 'en-US', vi.fn())
+      const audio = testState.audios[0]
+
+      await player.playAudioWithAudio(Buffer.from([1, 2]).toString('base64'), true, 'audio/wav')
+      await player.playAudioWithAudio(Buffer.from([3, 4]).toString('base64'), true, 'audio/wav')
+
+      expect(audio!.play).not.toHaveBeenCalled()
+      await player.playAudioWithAudio('', false, 'audio/wav')
+
+      await waitFor(() => expect(audio!.play).toHaveBeenCalledTimes(1))
+      expect(player.mediaSource).toBeNull()
+      expect(testState.mediaSources).toHaveLength(1)
+      const audioBlob = vi.mocked(globalThis.URL.createObjectURL).mock.calls[1]![0] as Blob
+      expect(audioBlob).toMatchObject({ type: 'audio/wav', size: 4 })
+      expect(new Uint8Array(await audioBlob.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3, 4]))
+    })
+
+    it('should play concatenated WAV containers in sequence instead of combining them into one invalid blob', async () => {
+      MockMediaSourceCtor.isTypeSupported.mockImplementation(
+        (mimeType: string) => mimeType === 'audio/mpeg',
+      )
+      const callback = vi.fn()
+      const player = createMp3Player('/text-to-audio', true, 'msg-1', 'hello', 'en-US', callback)
+      const audio = testState.audios[0]
+      const firstWav = makeRiffWaveContainer([1, 2])
+      const secondWav = makeRiffWaveContainer([3, 4, 5])
+
+      await player.playAudioWithAudio(Buffer.from(firstWav).toString('base64'), true, 'audio/wav')
+      await player.playAudioWithAudio(Buffer.from(secondWav).toString('base64'), true, 'audio/wav')
+      await player.playAudioWithAudio('', false, 'audio/wav')
+
+      await waitFor(() => expect(audio!.play).toHaveBeenCalledTimes(1))
+      const firstBlob = vi.mocked(globalThis.URL.createObjectURL).mock.calls[1]![0] as Blob
+      expect(firstBlob).toMatchObject({ type: 'audio/wav', size: firstWav.byteLength })
+      expect(new Uint8Array(await firstBlob.arrayBuffer())).toEqual(firstWav)
+
+      audio!.paused = true
+      audio!.ended = true
+      audio!.emit('ended')
+
+      await waitFor(() => expect(audio!.play).toHaveBeenCalledTimes(2))
+      const secondBlob = vi.mocked(globalThis.URL.createObjectURL).mock.calls[2]![0] as Blob
+      expect(secondBlob).toMatchObject({ type: 'audio/wav', size: secondWav.byteLength })
+      expect(new Uint8Array(await secondBlob.arrayBuffer())).toEqual(secondWav)
+      expect(callback).not.toHaveBeenCalledWith('ended')
+
+      audio!.paused = true
+      audio!.ended = true
+      audio!.emit('ended')
+
+      expect(callback).toHaveBeenCalledWith('ended')
+    })
+
     it('should not start fallback playback after it is paused while buffering', async () => {
       MockMediaSourceCtor.isTypeSupported.mockReturnValue(false)
-      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', vi.fn())
+      const player = createMp3Player('/text-to-audio', true, 'msg-1', 'hello', 'en-US', vi.fn())
       const audio = testState.audios[0]
 
       await player.playAudioWithAudio(Buffer.from([1, 2]).toString('base64'), true)
@@ -749,7 +867,7 @@ describe('AudioPlayer', () => {
 
     it('should fall back to a complete MP3 when addSourceBuffer throws', async () => {
       const callback = vi.fn()
-      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', callback)
+      const player = createMp3Player('/text-to-audio', true, 'msg-1', 'hello', 'en-US', callback)
       const mediaSource = testState.mediaSources[0]
       const audio = testState.audios[0]
       mediaSource!.addSourceBuffer.mockImplementationOnce(() => {
@@ -768,7 +886,7 @@ describe('AudioPlayer', () => {
     })
 
     it('should complete buffered fallback when addSourceBuffer throws after stream end', async () => {
-      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', vi.fn())
+      const player = createMp3Player('/text-to-audio', true, 'msg-1', 'hello', 'en-US', vi.fn())
       const mediaSource = testState.mediaSources[0]
       const audio = testState.audios[0]
       mediaSource!.addSourceBuffer.mockImplementationOnce(() => {
@@ -793,7 +911,7 @@ describe('AudioPlayer', () => {
 
     it('should play immediately for ended audio in playAudioWithAudio', async () => {
       const callback = vi.fn()
-      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', callback)
+      const player = createMp3Player('/text-to-audio', true, 'msg-1', 'hello', 'en-US', callback)
       const audio = testState.audios[0]
 
       audio!.paused = false
@@ -806,7 +924,7 @@ describe('AudioPlayer', () => {
 
     it('should not replay when played list exists in playAudioWithAudio', async () => {
       const callback = vi.fn()
-      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', callback)
+      const player = createMp3Player('/text-to-audio', true, 'msg-1', 'hello', 'en-US', callback)
       const audio = testState.audios[0]
 
       audio!.paused = false
@@ -820,7 +938,7 @@ describe('AudioPlayer', () => {
 
     it('should report a play failure and retry without requesting audio again', async () => {
       const callback = vi.fn()
-      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', callback)
+      const player = createMp3Player('/text-to-audio', true, 'msg-1', 'hello', 'en-US', callback)
       const audio = testState.audios[0]
       const mediaSource = testState.mediaSources[0]
       mockTextToAudioStream.mockResolvedValue(
@@ -848,7 +966,7 @@ describe('AudioPlayer', () => {
 
     it('should report a resume failure and allow playback to be retried', async () => {
       const callback = vi.fn()
-      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', callback)
+      const player = createMp3Player('/text-to-audio', true, 'msg-1', 'hello', 'en-US', callback)
       const audio = testState.audios[0]
       const audioContext = testState.audioContexts[0]
       const mediaSource = testState.mediaSources[0]
@@ -880,7 +998,7 @@ describe('AudioPlayer', () => {
 
   describe('buffering internals', () => {
     it('should finish stream when receiveAudioData gets an undefined chunk', () => {
-      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
+      const player = createMp3Player('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
       const finishStream = vi
         .spyOn(player as unknown as { finishStream: () => void }, 'finishStream')
         .mockImplementation(() => {})
@@ -892,7 +1010,7 @@ describe('AudioPlayer', () => {
     })
 
     it('should finish stream when receiveAudioData gets empty bytes', () => {
-      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
+      const player = createMp3Player('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
       const finishStream = vi
         .spyOn(player as unknown as { finishStream: () => void }, 'finishStream')
         .mockImplementation(() => {})
@@ -904,7 +1022,7 @@ describe('AudioPlayer', () => {
     })
 
     it('should queue incoming buffer when source buffer is updating', () => {
-      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
+      const player = createMp3Player('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
       const mediaSource = testState.mediaSources[0]
       mediaSource!.emit('sourceopen')
       mediaSource!.sourceBuffer.updating = true
@@ -916,7 +1034,7 @@ describe('AudioPlayer', () => {
     })
 
     it('should preserve audio received before sourceopen and append it once ready', () => {
-      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
+      const player = createMp3Player('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
       const mediaSource = testState.mediaSources[0]
 
       ;(player as unknown as { receiveAudioData: (data: Uint8Array) => void }).receiveAudioData(
@@ -933,7 +1051,7 @@ describe('AudioPlayer', () => {
     })
 
     it('should append queued buffers in order after updateend', () => {
-      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
+      const player = createMp3Player('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
       const mediaSource = testState.mediaSources[0]
       mediaSource!.emit('sourceopen')
       mediaSource!.sourceBuffer.updating = true
@@ -962,7 +1080,7 @@ describe('AudioPlayer', () => {
     })
 
     it('should append previously queued buffer before new one when source buffer is idle', () => {
-      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
+      const player = createMp3Player('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
       const mediaSource = testState.mediaSources[0]
       mediaSource!.emit('sourceopen')
 
@@ -979,7 +1097,7 @@ describe('AudioPlayer', () => {
     })
 
     it('should end the stream only after the final queued buffer is appended', () => {
-      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
+      const player = createMp3Player('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
       const mediaSource = testState.mediaSources[0]
       mediaSource!.emit('sourceopen')
       mediaSource!.sourceBuffer.updating = true
@@ -999,7 +1117,7 @@ describe('AudioPlayer', () => {
     })
 
     it('should end an open stream at most once', () => {
-      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
+      const player = createMp3Player('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
       const mediaSource = testState.mediaSources[0]
       mediaSource!.emit('sourceopen')
 
@@ -1010,7 +1128,7 @@ describe('AudioPlayer', () => {
     })
 
     it.each(['closed', 'ended'] as const)('should not end a %s media source', (readyState) => {
-      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
+      const player = createMp3Player('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
       const mediaSource = testState.mediaSources[0]
       mediaSource!.emit('sourceopen')
       mediaSource!.readyState = readyState
@@ -1021,7 +1139,7 @@ describe('AudioPlayer', () => {
     })
 
     it('should stop buffering and release browser resources after destroy', async () => {
-      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
+      const player = createMp3Player('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
       const mediaSource = testState.mediaSources[0]
       const audio = testState.audios[0]
       const audioContext = testState.audioContexts[0]

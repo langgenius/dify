@@ -1,6 +1,33 @@
 import { AppSourceType, textToAudioStream } from '@/service/share'
 
-const AUDIO_CONTENT_TYPE = 'audio/mpeg'
+const DEFAULT_AUDIO_CONTENT_TYPE = 'audio/mpeg'
+const AUDIO_MIME_TYPE_ALIASES: Record<string, string> = {
+  mp3: 'audio/mpeg',
+  'audio/mp3': 'audio/mpeg',
+  'audio/mpeg': 'audio/mpeg',
+  wav: 'audio/wav',
+  wave: 'audio/wav',
+  'audio/wav': 'audio/wav',
+  'audio/wave': 'audio/wav',
+  'audio/x-wav': 'audio/wav',
+  ogg: 'audio/ogg',
+  oga: 'audio/ogg',
+  'audio/ogg': 'audio/ogg',
+  flac: 'audio/flac',
+  'audio/flac': 'audio/flac',
+  aac: 'audio/aac',
+  'audio/aac': 'audio/aac',
+  m4a: 'audio/mp4',
+  mp4: 'audio/mp4',
+  'audio/mp4': 'audio/mp4',
+  webm: 'audio/webm',
+  'audio/webm': 'audio/webm',
+}
+
+const normalizeAudioMimeType = (audioType: string | null | undefined) => {
+  if (!audioType) return undefined
+  return AUDIO_MIME_TYPE_ALIASES[audioType.split(';', 1)[0]!.trim().toLowerCase()]
+}
 
 declare global {
   // oxlint-disable-next-line typescript/consistent-type-definitions
@@ -27,7 +54,11 @@ export class AudioPlayer {
   private destroyed = false
   private playbackPending = false
   private playWhenReady = false
+  private mediaSourceDisabled = false
   private sourceOpenListener?: () => void
+  private audioMimeType = DEFAULT_AUDIO_CONTENT_TYPE
+  private blobPlaylist: Blob[] = []
+  private isAdvancingBlobPlaylist = false
   constructor(
     streamUrl: string,
     isPublic: boolean,
@@ -43,25 +74,10 @@ export class AudioPlayer {
     this.isPublic = isPublic
     this.voice = voice
     this.callback = callback
-    // Compatible with iphone ios17 ManagedMediaSource
-    const MediaSourceConstructor = window.ManagedMediaSource || window.MediaSource
-    const isManagedMediaSource = Boolean(
-      window.ManagedMediaSource && MediaSourceConstructor === window.ManagedMediaSource,
-    )
-    const supportsStreaming = Boolean(MediaSourceConstructor?.isTypeSupported?.(AUDIO_CONTENT_TYPE))
-    this.mediaSource =
-      supportsStreaming && MediaSourceConstructor ? new MediaSourceConstructor() : null
     this.audio = new Audio()
+    this.mediaSource = null
+    this.audio.addEventListener('ended', this.playNextBlobInPlaylist)
     this.setCallback(callback)
-    if (this.mediaSource && isManagedMediaSource) {
-      // if use  ManagedMediaSource
-      this.audio.disableRemotePlayback = true
-      this.audio.controls = true
-    }
-    this.listenMediaSource(AUDIO_CONTENT_TYPE)
-    this.objectUrl = this.mediaSource ? URL.createObjectURL(this.mediaSource) : ''
-    this.audio.src = this.objectUrl
-    this.audio.autoplay = Boolean(this.mediaSource)
     const source = this.audioContext.createMediaElementSource(this.audio)
     source.connect(this.audioContext.destination)
   }
@@ -78,13 +94,71 @@ export class AudioPlayer {
         this.sourceBuffer?.addEventListener('updateend', this.flushBuffers)
         this.flushBuffers()
       } catch {
-        this.mediaSource = null
-        this.audio.autoplay = false
-        this.releaseObjectUrl()
+        this.mediaSourceDisabled = true
+        this.releaseMediaSource()
         if (this.streamEnded) this.finishBlobAudio()
       }
     }
     this.mediaSource?.addEventListener('sourceopen', this.sourceOpenListener)
+  }
+
+  private initializeMediaSource() {
+    if (this.mediaSourceDisabled) return
+
+    const MediaSourceConstructor = window.ManagedMediaSource || window.MediaSource
+    const isManagedMediaSource = Boolean(
+      window.ManagedMediaSource && MediaSourceConstructor === window.ManagedMediaSource,
+    )
+    const supportsStreaming =
+      this.audioMimeType === DEFAULT_AUDIO_CONTENT_TYPE &&
+      Boolean(MediaSourceConstructor?.isTypeSupported?.(this.audioMimeType))
+    if (!supportsStreaming || !MediaSourceConstructor) return
+
+    this.mediaSource = new MediaSourceConstructor()
+    if (isManagedMediaSource) {
+      this.audio.disableRemotePlayback = true
+      this.audio.controls = true
+    }
+    this.listenMediaSource(this.audioMimeType)
+    this.objectUrl = URL.createObjectURL(this.mediaSource)
+    this.audio.src = this.objectUrl
+    this.audio.autoplay = true
+  }
+
+  private setAudioMimeType(audioType: string | null | undefined) {
+    const mimeType = normalizeAudioMimeType(audioType) || DEFAULT_AUDIO_CONTENT_TYPE
+    if (mimeType === this.audioMimeType) {
+      if (!this.mediaSource && !this.objectUrl) {
+        this.initializeMediaSource()
+        if (this.mediaSource && this.playWhenReady) this.requestPlayback()
+      }
+      return
+    }
+
+    this.audioMimeType = mimeType
+    this.releaseMediaSource()
+    if (!this.streamEnded) this.initializeMediaSource()
+    if (this.mediaSource && this.playWhenReady) this.requestPlayback()
+  }
+
+  private releaseMediaSource() {
+    if (this.sourceOpenListener)
+      this.mediaSource?.removeEventListener('sourceopen', this.sourceOpenListener)
+
+    if (this.sourceBuffer) {
+      this.sourceBuffer.removeEventListener('updateend', this.flushBuffers)
+      if (this.mediaSource?.readyState === 'open') {
+        try {
+          this.sourceBuffer.abort()
+        } catch {}
+      }
+    }
+
+    this.sourceBuffer = undefined
+    this.mediaSource = null
+    this.endOfStreamCalled = false
+    this.audio.autoplay = false
+    this.releaseObjectUrl()
   }
 
   private flushBuffers = () => {
@@ -150,6 +224,10 @@ export class AudioPlayer {
       this.audio.addEventListener(
         'ended',
         () => {
+          if (this.isAdvancingBlobPlaylist) {
+            this.isAdvancingBlobPlaylist = false
+            return
+          }
           callback('ended')
         },
         false,
@@ -204,7 +282,6 @@ export class AudioPlayer {
       const audioResponse = (await textToAudioStream(
         this.url,
         this.isPublic ? AppSourceType.webApp : AppSourceType.installedApp,
-        { content_type: 'audio/mpeg' },
         {
           message_id: this.msgId,
           streaming: true,
@@ -217,6 +294,7 @@ export class AudioPlayer {
         this.callback?.('error')
         return
       }
+      this.setAudioMimeType(audioResponse.headers.get('content-type'))
       if (!audioResponse.body) throw new Error('Audio response body is missing')
       const reader = audioResponse.body.getReader()
       while (true) {
@@ -261,11 +339,12 @@ export class AudioPlayer {
     this.finishBlobAudio()
   }
 
-  public async playAudioWithAudio(audio: string, play = true) {
+  public async playAudioWithAudio(audio: string, play = true, audioType?: string) {
     if (!audio || !audio.length) {
       this.finishStream()
       return
     }
+    this.setAudioMimeType(audioType)
     const audioContent = Uint8Array.from(atob(audio), (char) => char.charCodeAt(0))
     this.receiveAudioData(audioContent)
     if (play) {
@@ -287,23 +366,12 @@ export class AudioPlayer {
 
     this.destroyed = true
     this.cacheBuffers = []
+    this.blobPlaylist = []
     this.callback?.('paused')
     this.audio.pause()
 
-    if (this.sourceOpenListener)
-      this.mediaSource?.removeEventListener('sourceopen', this.sourceOpenListener)
-
-    if (this.sourceBuffer) {
-      this.sourceBuffer.removeEventListener('updateend', this.flushBuffers)
-      if (this.mediaSource?.readyState === 'open') {
-        try {
-          this.sourceBuffer.abort()
-        } catch {}
-      }
-    }
-
+    this.releaseMediaSource()
     void this.audioContext.close().catch(() => {})
-    this.releaseObjectUrl()
   }
 
   private receiveAudioData(unit8Array: Uint8Array | undefined) {
@@ -327,13 +395,64 @@ export class AudioPlayer {
       return
     }
 
-    const audioBlob = new Blob(this.cacheBuffers, { type: AUDIO_CONTENT_TYPE })
+    const audioBlobs = this.getWavBlobs() || [
+      new Blob(this.cacheBuffers, { type: this.audioMimeType }),
+    ]
     this.cacheBuffers = []
+    this.blobPlaylist = audioBlobs
+    this.playNextBlobInPlaylist()
+  }
+
+  private playNextBlobInPlaylist = () => {
+    const audioBlob = this.blobPlaylist.shift()
+    if (!audioBlob) return
+
+    this.isAdvancingBlobPlaylist = Boolean(this.objectUrl)
     this.releaseObjectUrl()
     this.objectUrl = URL.createObjectURL(audioBlob)
     this.audio.src = this.objectUrl
     this.isLoadData = true
     if (this.playWhenReady) this.requestPlayback()
+  }
+
+  private getWavBlobs() {
+    if (this.audioMimeType !== 'audio/wav') return undefined
+
+    const totalLength = this.cacheBuffers.reduce((total, buffer) => total + buffer.byteLength, 0)
+    const audioData = new Uint8Array(totalLength)
+    let writeOffset = 0
+    for (const buffer of this.cacheBuffers) {
+      audioData.set(new Uint8Array(buffer), writeOffset)
+      writeOffset += buffer.byteLength
+    }
+
+    const wavBlobs: Blob[] = []
+    let offset = 0
+    while (offset < audioData.byteLength) {
+      if (
+        offset + 12 > audioData.byteLength ||
+        audioData[offset] !== 0x52 ||
+        audioData[offset + 1] !== 0x49 ||
+        audioData[offset + 2] !== 0x46 ||
+        audioData[offset + 3] !== 0x46 ||
+        audioData[offset + 8] !== 0x57 ||
+        audioData[offset + 9] !== 0x41 ||
+        audioData[offset + 10] !== 0x56 ||
+        audioData[offset + 11] !== 0x45
+      )
+        return undefined
+
+      const containerLength =
+        new DataView(audioData.buffer, audioData.byteOffset + offset, 8).getUint32(4, true) + 8
+      if (containerLength < 12 || offset + containerLength > audioData.byteLength) return undefined
+
+      wavBlobs.push(
+        new Blob([audioData.slice(offset, offset + containerLength)], { type: this.audioMimeType }),
+      )
+      offset += containerLength
+    }
+
+    return wavBlobs
   }
 
   private releaseObjectUrl() {
