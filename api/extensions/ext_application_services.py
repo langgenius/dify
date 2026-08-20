@@ -1,16 +1,19 @@
 """Composition root for application services used by transport adapters."""
 
+import json
 from dataclasses import dataclass
 from typing import cast
 
+import httpx
 from flask import Flask, current_app
+from pydantic import ValidationError
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.db.session_factory import get_session_maker
 from core.schemas.schema_manager import SchemaManager
-from enums import DeploymentEdition
+from enums import DeploymentEdition, WebAppAccessMode
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_query_repository import AccountQueryRepository
@@ -19,6 +22,7 @@ from repositories.data_source_api_key_auth_repository import SQLAlchemyDataSourc
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.installation_state_repository import InstallationStateRepository
 from repositories.step_by_step_tour_repository import SQLAlchemyStepByStepTourStateRepository
+from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
 from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
 from repositories.workspace_query_repository import WorkspaceQueryRepository
 from services.account_activation_adapters import (
@@ -34,6 +38,8 @@ from services.auth.data_source_api_key_auth_gateways import (
     TenantApiKeyAuthCredentialEncryptor,
 )
 from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
+from services.enterprise.enterprise_service import EnterpriseService
+from services.errors.enterprise import EnterpriseServiceError
 from services.explore_banner_query_service import ExploreBannerQueryService
 from services.feature_query_service import FeatureQueryService
 from services.feature_service import FeatureService
@@ -45,6 +51,10 @@ from services.schema_definition_service import SchemaDefinitionService
 from services.setup_adapters import RedisSetupLock, RegisterServiceAccountProvisioner
 from services.setup_service import SetupService
 from services.step_by_step_tour_service import StepByStepTourService
+from services.webapp_access_query_service import (
+    WebAppAccessQueryService,
+    WebAppAccessUnavailableError,
+)
 from services.workspace_member_query_service import WorkspaceMemberQueryService
 from services.workspace_member_role_resolver import DeploymentWorkspaceMemberRoleResolver
 from services.workspace_plan_gateway import DeploymentWorkspacePlanGateway
@@ -53,11 +63,30 @@ from services.workspace_query_service import WorkspaceQueryService
 _EXTENSION_KEY = "application_services"
 
 
+def _get_enterprise_webapp_access_mode(app_id: str) -> WebAppAccessMode:
+    try:
+        settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id)
+    except (EnterpriseServiceError, httpx.RequestError, json.JSONDecodeError, UnicodeDecodeError, ValidationError) as e:
+        raise WebAppAccessUnavailableError from e
+    try:
+        return WebAppAccessMode(settings.access_mode)
+    except ValueError as e:
+        raise WebAppAccessUnavailableError from e
+
+
+def _is_user_allowed_to_access_webapp(user_id: str, app_id: str) -> bool:
+    try:
+        return EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(user_id, app_id)
+    except (EnterpriseServiceError, httpx.RequestError, json.JSONDecodeError, UnicodeDecodeError) as e:
+        raise WebAppAccessUnavailableError from e
+
+
 @dataclass(frozen=True, slots=True)
 class ApplicationServices:
     account_activation: AccountActivationService
     app_definitions: AppDefinitionQueryService
     data_source_api_key_auth: DataSourceApiKeyAuthService
+    webapp_access: WebAppAccessQueryService
     explore_banner_queries: ExploreBannerQueryService
     schema_definitions: SchemaDefinitionService
     setup: SetupService
@@ -102,9 +131,15 @@ def build_application_services(
             validator=ProviderApiKeyAuthCredentialValidator(),
             encryptor=TenantApiKeyAuthCredentialEncryptor(),
         ),
+        webapp_access=WebAppAccessQueryService(
+            access=WebAppAccessQueryRepository(session_factory=database_client),
+            webapp_auth_enabled=FeatureService.is_webapp_auth_enabled(),
+            access_mode_for_app=_get_enterprise_webapp_access_mode,
+            is_user_allowed_for_app=_is_user_allowed_to_access_webapp,
+        ),
         explore_banner_queries=ExploreBannerQueryService(
             banners=ExploreBannerQueryRepository(client=database_client),
-            is_enabled=FeatureService.is_explore_banner_enabled,
+            enabled=FeatureService.is_explore_banner_enabled(),
         ),
         schema_definitions=SchemaDefinitionService(source_factory=SchemaManager),
         setup=SetupService(

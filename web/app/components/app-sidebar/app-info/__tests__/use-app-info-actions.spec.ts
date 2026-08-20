@@ -27,6 +27,9 @@ const mockExportWorkflowAppDsl = vi.fn()
 const mockWorkflowExportState = { isExporting: false }
 const mockDeleteApp = vi.fn()
 const mockFetchAppDetail = vi.fn()
+const mockMarkAppDeletionStarted = vi.fn()
+const mockMarkAppDeletionSucceeded = vi.fn()
+const mockMarkAppDeletionFailed = vi.fn()
 const mockGetSocket = vi.fn()
 const mockOnAppMetaUpdate = vi.fn()
 const mockSetQueryData = vi.fn()
@@ -95,6 +98,12 @@ vi.mock('@/service/apps', () => ({
   copyApp: (...args: unknown[]) => mockCopyApp(...args),
   deleteApp: (...args: unknown[]) => mockDeleteApp(...args),
   fetchAppDetail: (...args: unknown[]) => mockFetchAppDetail(...args),
+}))
+
+vi.mock('@/service/app-deletion', () => ({
+  markAppDeletionStarted: (...args: unknown[]) => mockMarkAppDeletionStarted(...args),
+  markAppDeletionSucceeded: (...args: unknown[]) => mockMarkAppDeletionSucceeded(...args),
+  markAppDeletionFailed: (...args: unknown[]) => mockMarkAppDeletionFailed(...args),
 }))
 
 vi.mock('@/utils/app-redirection', () => ({
@@ -499,6 +508,9 @@ describe('useAppInfoActions', () => {
       })
 
       expect(mockDeleteApp).toHaveBeenCalledWith('app-1')
+      expect(mockMarkAppDeletionStarted).toHaveBeenCalledWith('app-1')
+      expect(mockMarkAppDeletionSucceeded).toHaveBeenCalledWith('app-1')
+      expect(mockMarkAppDeletionFailed).not.toHaveBeenCalled()
       expect(toastMocks.call).toHaveBeenCalledWith({ type: 'success', message: 'app.appDeleted' })
       expect(mockInvalidateQueries).toHaveBeenCalledTimes(3)
       expect(mockReplace).toHaveBeenCalledWith('/apps')
@@ -526,6 +538,9 @@ describe('useAppInfoActions', () => {
         await result.current.onConfirmDelete()
       })
 
+      expect(mockMarkAppDeletionStarted).toHaveBeenCalledWith('app-1')
+      expect(mockMarkAppDeletionFailed).toHaveBeenCalledWith('app-1')
+      expect(mockMarkAppDeletionSucceeded).not.toHaveBeenCalled()
       expect(toastMocks.call).toHaveBeenCalledWith({
         type: 'error',
         message: expect.stringContaining('app.appDeleteFailed'),
