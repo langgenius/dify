@@ -21,6 +21,10 @@ from dify_agent.agent_stub.protocol.agent_stub import normalize_agent_stub_api_b
 from dify_agent.agent_stub.server.agent_stub_config import DifyApiAgentStubConfigRequestHandler
 from dify_agent.agent_stub.server.agent_stub_files import DifyApiAgentStubFileRequestHandler
 from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec, decode_server_secret_key
+from dify_agent.runtime.event_coalescer import (
+    DEFAULT_TEXT_DELTA_FLUSH_INTERVAL_SECONDS,
+    DEFAULT_TEXT_DELTA_MAX_CHARS,
+)
 from dify_agent.runtime.runner import DEFAULT_AGENT_RUN_TIMEOUT_SECONDS
 from dify_agent.runtime_backend import RuntimeBackendProfile
 from dify_agent.runtime_backend.e2b import E2B_MAX_ACTIVE_TIMEOUT_SECONDS
@@ -32,7 +36,8 @@ from dify_agent.runtime_backend.profile import (
     create_runtime_backend_profile,
 )
 
-DEFAULT_RUN_RETENTION_SECONDS = 3 * 24 * 60 * 60
+DEFAULT_RUN_RETENTION_SECONDS = 2 * 60 * 60
+DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH = 5000
 
 
 class ServerSettings(BaseSettings):
@@ -42,6 +47,13 @@ class ServerSettings(BaseSettings):
     redis_prefix: str = "dify-agent"
     shutdown_grace_seconds: float = 30
     run_retention_seconds: int = Field(default=DEFAULT_RUN_RETENTION_SECONDS, ge=1)
+    run_event_stream_max_length: int = Field(default=DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH, ge=1)
+    stream_text_delta_coalescing_enabled: bool = True
+    stream_text_delta_flush_interval_ms: int = Field(
+        default=int(DEFAULT_TEXT_DELTA_FLUSH_INTERVAL_SECONDS * 1000),
+        ge=1,
+    )
+    stream_text_delta_max_chars: int = Field(default=DEFAULT_TEXT_DELTA_MAX_CHARS, ge=1)
     run_timeout_seconds: float = Field(default=DEFAULT_AGENT_RUN_TIMEOUT_SECONDS, gt=0)
     plugin_daemon_url: str = "http://localhost:5002"
     plugin_daemon_api_key: str = ""
@@ -63,6 +75,7 @@ class ServerSettings(BaseSettings):
     enterprise_sandbox_gateway_auth_token: str | None = None
     enterprise_sandbox_gateway_timeout: float = Field(default=30.0, gt=0)
     enterprise_sandbox_proxy_timeout: float = Field(default=60.0, gt=0)
+    enterprise_sandbox_snapshot_timeout: float = Field(default=35.0, gt=0)
     e2b_api_key: str | None = None
     e2b_template: str = "difys-default-team/dify-agent-local-sandbox"
     e2b_active_timeout_seconds: int = Field(
@@ -82,6 +95,7 @@ class ServerSettings(BaseSettings):
         description="Maximum Agent Stub upload size in MiB",
         validation_alias="DIFY_AGENT_STUB_UPLOAD_FILE_SIZE_LIMIT",
     )
+    binding_file_download_command_timeout_seconds: float = Field(default=210.0, gt=0)
     server_secret_key: str | None = None
     api_token: str | None = None
     shell_redact_patterns: str = ""
@@ -206,6 +220,7 @@ class ServerSettings(BaseSettings):
                 enterprise_sandbox_gateway_auth_token=self.enterprise_sandbox_gateway_auth_token,
                 enterprise_sandbox_gateway_timeout=self.enterprise_sandbox_gateway_timeout,
                 enterprise_sandbox_proxy_timeout=self.enterprise_sandbox_proxy_timeout,
+                enterprise_sandbox_snapshot_timeout=self.enterprise_sandbox_snapshot_timeout,
                 e2b_api_key=self.e2b_api_key,
                 e2b_template=self.e2b_template,
                 e2b_active_timeout_seconds=self.e2b_active_timeout_seconds,
@@ -252,4 +267,4 @@ class ServerSettings(BaseSettings):
         )
 
 
-__all__ = ["DEFAULT_RUN_RETENTION_SECONDS", "ServerSettings"]
+__all__ = ["DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH", "DEFAULT_RUN_RETENTION_SECONDS", "ServerSettings"]

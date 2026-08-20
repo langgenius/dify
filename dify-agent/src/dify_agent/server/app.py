@@ -76,6 +76,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
             execution_bindings=runtime_backend_profile.execution_bindings,
             agent_stub_api_base_url=resolved_settings.agent_stub_api_base_url,
             agent_stub_token_factory=agent_stub_token_factory,
+            download_command_timeout_seconds=resolved_settings.binding_file_download_command_timeout_seconds,
         )
         if runtime_backend_profile is not None
         else None
@@ -104,6 +105,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
             redis,
             prefix=resolved_settings.redis_prefix,
             run_retention_seconds=resolved_settings.run_retention_seconds,
+            run_event_stream_max_length=resolved_settings.run_event_stream_max_length,
         )
         scheduler = RunScheduler(
             store=store,
@@ -111,6 +113,9 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
             dify_api_http_client=dify_api_inner_http_client,
             shutdown_grace_seconds=resolved_settings.shutdown_grace_seconds,
             run_timeout_seconds=resolved_settings.run_timeout_seconds,
+            stream_text_delta_coalescing_enabled=resolved_settings.stream_text_delta_coalescing_enabled,
+            stream_text_delta_flush_interval_seconds=(resolved_settings.stream_text_delta_flush_interval_ms / 1000),
+            stream_text_delta_max_chars=resolved_settings.stream_text_delta_max_chars,
             layer_providers=layer_providers,
         )
         state["store"] = store

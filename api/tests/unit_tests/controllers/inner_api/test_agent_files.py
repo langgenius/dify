@@ -1,8 +1,7 @@
 import inspect
 from collections.abc import Callable
-from types import SimpleNamespace
 from typing import cast
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from flask import Flask
@@ -14,9 +13,17 @@ from controllers.inner_api.agent.files import (
     AgentFileUploadRequestPayload,
 )
 from core.workflow.file_reference import build_file_reference
+from models.account import Account, Tenant
 from services.file_request_service import DownloadFileRequestResult
+from tests.unit_tests.config_override import apply_config_overrides
 
 MODULE = "controllers.inner_api.agent.files"
+
+
+def _tenant() -> Tenant:
+    tenant = Tenant(name="Test Workspace")
+    tenant.id = "tenant-1"
+    return tenant
 
 
 def _raw[R](method: Callable[..., R]) -> Callable[..., R]:
@@ -32,8 +39,9 @@ def test_upload_request_returns_origin_free_uri(app: Flask, unbound_session: Ses
         "conversation_id": "conversation-1",
         "max_size": 64 * 1024 * 1024,
     }
-    tenant = SimpleNamespace(id="tenant-1")
-    user = SimpleNamespace(id="canonical-end-user-1")
+    tenant = _tenant()
+    user = Account(name="Canonical user", email="canonical@example.com")
+    user.id = "canonical-end-user-1"
     session = unbound_session
     with app.test_request_context("/", method="POST", json=payload):
         with (
@@ -89,7 +97,7 @@ def test_download_request_returns_origin_free_uri_for_sandbox(app: Flask, unboun
             patch(f"{MODULE}.TenantService") as tenant_service,
             patch(f"{MODULE}.FileRequestService") as service,
         ):
-            tenant_service.get_tenant_by_id.return_value = MagicMock()
+            tenant_service.get_tenant_by_id.return_value = _tenant()
             service.return_value.request_download.return_value = DownloadFileRequestResult(
                 filename="report.pdf",
                 mime_type="application/pdf",
@@ -125,14 +133,14 @@ def test_download_request_binds_frontend_url(
         "file": {"transfer_method": "tool_file", "reference": reference},
         "for_frontend": True,
     }
-    monkeypatch.setattr(f"{MODULE}.dify_config.FILES_URL", "https://files.example.com")
+    apply_config_overrides(monkeypatch, FILES_URL="https://files.example.com")
     session = unbound_session
     with app.test_request_context("/", method="POST", json=payload):
         with (
             patch(f"{MODULE}.TenantService") as tenant_service,
             patch(f"{MODULE}.FileRequestService") as service,
         ):
-            tenant_service.get_tenant_by_id.return_value = MagicMock()
+            tenant_service.get_tenant_by_id.return_value = _tenant()
             service.return_value.request_download.return_value = DownloadFileRequestResult(
                 filename="report.pdf",
                 mime_type="application/pdf",

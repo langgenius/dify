@@ -116,7 +116,7 @@ function EnvEditorScope({
       >
         {t(($) => $[scopeLabelKeys[scope]])}
       </SelectTrigger>
-      <SelectContent placement="bottom-start" popupClassName="min-w-24">
+      <SelectContent placement="bottom-start" className="min-w-24">
         {envScopeOptions.map((option) => (
           <SelectItem<EnvScope> key={option} value={option} className="h-7 system-xs-regular">
             <SelectItemText>{t(($) => $[scopeLabelKeys[option]])}</SelectItemText>
@@ -540,9 +540,9 @@ export function AgentEnvEditor() {
       panelId={envEditorTableId}
       tip={<AgentConfigureTipContent type="env" />}
       tipAriaLabel={envEditorTip}
-      rootClassName="gap-1 pt-3"
+      rootClassName="gap-1 py-3"
       headerClassName="mb-0 gap-1 px-3"
-      panelContentClassName="px-3 pb-3"
+      panelContentClassName="px-3"
       actions={
         !readOnly ? (
           <>

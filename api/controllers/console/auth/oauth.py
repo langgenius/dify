@@ -12,6 +12,7 @@ from configs import dify_config
 from constants.languages import languages
 from controllers.common.fields import RedirectResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_model, register_schema_models
+from controllers.console.error import AccountInFreezeError, EmailDomainSuspendedError
 from enums import DeploymentEdition
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
@@ -26,9 +27,16 @@ from libs.token import (
 from models import Account, AccountStatus
 from services.account_service import AccountService, RegisterService, TenantService
 from services.billing_service import BillingService
-from services.errors.account import AccountNotFoundError, AccountRegisterError, SeatsLimitExceededError
+from services.errors.account import (
+    AccountNotFoundError,
+    AccountRegisterError,
+    SeatsLimitExceededError,
+)
+from services.errors.account import (
+    EmailDomainSuspendedError as EmailDomainSuspendedRegistrationError,
+)
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkSpaceNotFoundError
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 
 from .. import console_ns
 
@@ -249,8 +257,10 @@ class OAuthCallback(Resource):
             )
         except SeatsLimitExceededError:
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Licensed seats limit exceeded.")
-        except AccountRegisterError as e:
-            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message={e.description}")
+        except EmailDomainSuspendedRegistrationError:
+            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message={EmailDomainSuspendedError.description}")
+        except AccountRegisterError as exc:
+            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message={exc.description}")
 
         # Check account status
         if account.status == AccountStatus.BANNED:
@@ -300,7 +310,7 @@ def _generate_account(
     if account:
         tenants = TenantService.get_join_tenants(account, session=db.session())
         if not tenants:
-            if not FeatureService.is_workspace_creation_allowed():
+            if not SystemFeatureService.is_workspace_creation_allowed():
                 raise WorkSpaceNotAllowedCreateError()
             else:
                 TenantService.create_owner_tenant(account, session=db.session())
@@ -308,16 +318,13 @@ def _generate_account(
     if not account:
         normalized_email = user_info.email.lower()
         oauth_new_user = True
-        if not FeatureService.get_system_features().is_allow_register:
-            if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(
-                normalized_email
-            ):
-                raise AccountRegisterError(
-                    description=(
-                        "This email account has been deleted within the past "
-                        "30 days and is temporarily unavailable for new account registration"
-                    )
-                )
+        if not SystemFeatureService.is_registration_allowed():
+            if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
+                freeze_type = BillingService.get_email_freeze_type(normalized_email)
+                if freeze_type:
+                    if freeze_type == "email_domain_suspended":
+                        raise EmailDomainSuspendedRegistrationError()
+                    raise AccountRegisterError(description=AccountInFreezeError.description or "")
             raise AccountRegisterError(description=("Invalid email or password"))
         account_name = user_info.name or "Dify"
         interface_language = _preferred_interface_language(language)

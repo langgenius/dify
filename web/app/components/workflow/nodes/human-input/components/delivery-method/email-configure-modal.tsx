@@ -1,14 +1,15 @@
 import type { EmailConfig } from '../../types'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Input } from '@langgenius/dify-ui/input'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiBugLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { memo, useCallback, useState } from 'react'
+import { memo, useCallback, useId, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import MailBodyInput from './mail-body-input'
 import Recipient from './recipient'
@@ -33,6 +34,7 @@ const EmailConfigureModal = ({
   availableNodes = [],
 }: EmailConfigureModalProps) => {
   const { t } = useTranslation()
+  const subjectId = useId()
   const { data: email } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.email,
@@ -92,7 +94,17 @@ const EmailConfigureModal = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[calc(100dvh-64px)]! w-180!">
-        <DialogCloseButton />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         <div className="space-y-1 pr-8">
           <DialogTitle className="title-2xl-semi-bold text-text-primary">
             {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.title`], { ns: 'workflow' })}
@@ -105,15 +117,19 @@ const EmailConfigureModal = ({
         </div>
         <div className="mt-6 space-y-5">
           <div>
-            <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
+            <label
+              htmlFor={subjectId}
+              className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary"
+            >
               {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.subject`], {
                 ns: 'workflow',
               })}
-            </div>
+            </label>
             <Input
+              id={subjectId}
               className="w-full"
               value={subject}
-              onChange={(e) => setSubject(e.target.value)}
+              onValueChange={setSubject}
               placeholder={t(
                 ($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.subjectPlaceholder`],
                 { ns: 'workflow' },

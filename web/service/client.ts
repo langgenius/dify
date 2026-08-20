@@ -140,7 +140,7 @@ type ConsoleQueryUtils = RouterUtils<
 >
 
 function isTagType(type: string | null | undefined): type is TagType {
-  return type === 'app' || type === 'knowledge' || type === 'snippet'
+  return type === 'app' || type === 'knowledge' || type === 'skill' || type === 'snippet'
 }
 
 const defaultAppDeployInvalidationOptions = {
@@ -525,6 +525,22 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
           },
         },
         byAppId: {
+          // Shared invalidation uses onSettled so feature-owned onSuccess callbacks can coexist.
+          apiEnable: {
+            post: {
+              mutationOptions: {
+                onSettled: (_data, error, variables, _onMutateResult, context) => {
+                  if (error) return
+
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.apps.byAppId.get.queryKey({
+                      input: { params: variables.params },
+                    }),
+                  })
+                },
+              },
+            },
+          },
           delete: {
             mutationOptions: {
               onSuccess: (_data, _variables, _onMutateResult, context) =>
@@ -555,6 +571,38 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
                 void context.client.invalidateQueries({
                   queryKey: consoleQuery.apps.recent.get.key(),
                 })
+              },
+            },
+          },
+          siteEnable: {
+            post: {
+              mutationOptions: {
+                onSettled: (_data, error, variables, _onMutateResult, context) => {
+                  if (error) return
+
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.apps.byAppId.get.queryKey({
+                      input: { params: variables.params },
+                    }),
+                  })
+                },
+              },
+            },
+          },
+          site: {
+            accessTokenReset: {
+              post: {
+                mutationOptions: {
+                  onSettled: (_data, error, variables, _onMutateResult, context) => {
+                    if (error) return
+
+                    void context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byAppId.get.queryKey({
+                        input: { params: variables.params },
+                      }),
+                    })
+                  },
+                },
               },
             },
           },
@@ -1062,6 +1110,15 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
           delete: {
             mutationOptions: {
               onSuccess: (_data, variables, _onMutateResult, context) => {
+                context.client.removeQueries({
+                  queryKey: consoleQuery.agent.byAgentId.key({
+                    input: {
+                      params: {
+                        agent_id: variables.params.agent_id,
+                      },
+                    },
+                  }),
+                })
                 context.client.setQueriesData(
                   {
                     queryKey: consoleQuery.agent.get.key({ type: 'query' }),

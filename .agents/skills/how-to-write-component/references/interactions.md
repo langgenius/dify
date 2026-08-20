@@ -1,6 +1,6 @@
 # Component Interactions And Overlays
 
-Read this document when a change involves application hotkeys, focus, dialogs, menus, popovers, or other secondary surfaces. Overlay primitive selection and layering are owned by the [overlay guide].
+Read this document when a change involves application hotkeys, focus, dialogs, menus, popovers, or other secondary surfaces. Overlay primitive selection and layering are owned by the [overlay contract].
 
 ## Focus And Semantics
 
@@ -20,12 +20,13 @@ Read this document when a change involves application hotkeys, focus, dialogs, m
 
 ## Secondary Surfaces
 
-- Follow `web/docs/overlay.md` for primitive choice. Dify UI primitives are the default, with package-approved Web wrappers such as `Infotip` where the overlay guide allows them.
+- Follow the [overlay contract] for primitive choice and shared mechanics. The nearest consumer `AGENTS.md` owns application-specific composite reuse policy.
 - Separate behavior ownership from placement ownership: the action may own trigger, open state, and menu content while the caller owns slots, offsets, and alignment.
 - Keep menu and dialog surfaces as siblings when a menu command opens a dialog. Mount the dialog outside popup content.
-- Mount controlled overlays unconditionally unless unmounting is required for performance or reset semantics. Prefer keyed or owner-local reset over conditional wrappers.
-- Put query and mutation work inside dialog or alert-dialog content when it should mount only after opening.
-- Prefer uncontrolled roots when the primitive can own open state. Use controlled state only for business coordination, analytics, cleanup, or explicit reset behavior.
-- Do not add manual portals or call-site z-index escalation. Fix ownership and stacking structure at the shared boundary.
+- Keep overlay open-state ownership separate from content-session ownership. A controlled root does not require controlled fields or root-owned drafts.
+- Match transient state to the primitive's content mount lifecycle. State below an unmounting content boundary gets a fresh instance after unmount; intentionally kept-mounted content needs an explicit persistence or reset policy.
+- Keep a controlled overlay root at its coordination owner so the primitive can complete exit transitions, focus restoration, and detached-handle behavior. Do not conditionally remove the root to reset content state, and use keys only for stable semantic identity.
+- Place query subscriptions and mutation observers at the owner whose lifetime matches when they should run. Mounted-session work may belong inside content; work that must start or stop exactly with `open` needs an explicit open-state condition.
+- Prefer primitive-owned open state unless another owner must observe or coordinate it. Analytics callbacks and local cleanup alone do not require a controlled root.
 
-[overlay guide]: ../../../../web/docs/overlay.md
+[overlay contract]: ../../../../packages/dify-ui/docs/overlays.md

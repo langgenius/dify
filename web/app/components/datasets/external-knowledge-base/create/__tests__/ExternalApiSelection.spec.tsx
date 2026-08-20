@@ -112,7 +112,7 @@ describe('ExternalApiSelection', () => {
     }
     render(<Harness />)
 
-    await user.type(screen.getByPlaceholderText('dataset.externalKnowledgeIdPlaceholder'), 'kb-123')
+    await user.type(screen.getByRole('textbox', { name: 'dataset.externalKnowledgeId' }), 'kb-123')
 
     expect(onChange).toHaveBeenLastCalledWith(
       expect.objectContaining({ external_knowledge_id: 'kb-123' }),

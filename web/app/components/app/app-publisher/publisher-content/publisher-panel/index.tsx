@@ -44,7 +44,7 @@ export function PublisherPanel({
         placement="bottom-end"
         sideOffset={4}
         alignOffset={crossAxisOffset}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <div className="flex max-h-[calc(100dvh-32px)] w-88 flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
           {showBuiltInPublisher ? (

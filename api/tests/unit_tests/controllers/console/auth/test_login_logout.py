@@ -10,6 +10,7 @@ This module tests the core authentication endpoints including:
 
 import base64
 import logging
+from collections.abc import Callable
 from unittest.mock import ANY, MagicMock, Mock, patch
 
 import pytest
@@ -21,20 +22,37 @@ from controllers.console.auth.error import (
     AuthenticationFailedError,
     EmailPasswordLoginLimitError,
     InvalidEmailError,
+    NormalizedEmailAlreadyInUseError,
 )
-from controllers.console.auth.login import EmailCodeLoginApi, LoginApi, LogoutApi
+from controllers.console.auth.login import EmailCodeLoginApi, LoginApi, LogoutApi, ResetPasswordSendEmailApi
 from controllers.console.error import (
     AccountBannedError,
     AccountInFreezeError,
+    EmailDomainSuspendedError,
     SeatsLimitExceeded,
     WorkspacesLimitExceeded,
 )
 from enums import DeploymentEdition
+from models.account import Account, Tenant
 from services.email_code_login_challenge import EmailCodeLoginChallengeResult, EmailCodeLoginChallengeStatus
 from services.entities.auth_entities import LoginFailureReason
-from services.errors.account import AccountLoginError, AccountPasswordError, SeatsLimitExceededError
+from services.errors.account import (
+    AccountLoginError,
+    AccountNormalizedEmailAlreadyInUseError,
+    AccountPasswordError,
+    AccountRegisterError,
+    SeatsLimitExceededError,
+)
+from services.errors.account import (
+    EmailDomainSuspendedError as EmailDomainSuspendedRegistrationError,
+)
 
 TEST_TOKEN = "00000000-0000-4000-8000-000000000001"
+
+
+@pytest.fixture(autouse=True)
+def _login_config(config_overrides: Callable[..., None]) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
 
 
 def encode_password(password: str) -> str:
@@ -72,12 +90,10 @@ class TestLoginApi:
         return app.test_client()
 
     @pytest.fixture
-    def mock_account(self):
-        """Create mock account object."""
-        account = MagicMock()
+    def mock_account(self) -> Account:
+        """Create a real transient account for the service boundary."""
+        account = Account(name="Test User", email="test@example.com")
         account.id = "test-account-id"
-        account.email = "test@example.com"
-        account.name = "Test User"
         return account
 
     @pytest.fixture
@@ -90,7 +106,6 @@ class TestLoginApi:
         return token_pair
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
     @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.login.AccountService.authenticate")
@@ -122,7 +137,7 @@ class TestLoginApi:
         mock_is_rate_limit.return_value = False
         mock_get_invitation.return_value = None
         mock_authenticate.return_value = mock_account
-        mock_get_tenants.return_value = [MagicMock()]  # Has at least one tenant
+        mock_get_tenants.return_value = [Tenant(name="Test Workspace")]
         mock_login.return_value = mock_token_pair
 
         # Act
@@ -141,7 +156,6 @@ class TestLoginApi:
         assert response.json["result"] == "success"
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
     @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.login.AccountService.authenticate")
@@ -173,7 +187,7 @@ class TestLoginApi:
         mock_is_rate_limit.return_value = False
         mock_get_invitation.return_value = {"data": {"email": "test@example.com"}}
         mock_authenticate.return_value = mock_account
-        mock_get_tenants.return_value = [MagicMock()]
+        mock_get_tenants.return_value = [Tenant(name="Test Workspace")]
         mock_login.return_value = mock_token_pair
 
         # Act
@@ -194,7 +208,6 @@ class TestLoginApi:
         assert response.json["result"] == "success"
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
     @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
     def test_login_fails_when_rate_limited(
@@ -227,10 +240,14 @@ class TestLoginApi:
         assert warn_records[0].args[1] == LoginFailureReason.LOGIN_RATE_LIMITED
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
-    @patch("controllers.console.auth.login.BillingService.is_email_in_freeze")
+    @patch("controllers.console.auth.login.BillingService.get_email_freeze_type")
     def test_login_fails_when_account_frozen(
-        self, mock_is_frozen, mock_db, app: Flask, caplog: pytest.LogCaptureFixture
+        self,
+        mock_get_freeze_type,
+        mock_db,
+        app: Flask,
+        caplog: pytest.LogCaptureFixture,
+        config_overrides: Callable[..., None],
     ):
         """
         Test login rejection for frozen accounts.
@@ -240,7 +257,8 @@ class TestLoginApi:
         - AccountInFreezeError is raised for frozen accounts
         """
         # Arrange
-        mock_is_frozen.return_value = True
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        mock_get_freeze_type.return_value = "freeze"
 
         # Act & Assert
         with app.test_request_context(
@@ -258,7 +276,123 @@ class TestLoginApi:
         assert warn_records[0].args[1] == LoginFailureReason.ACCOUNT_IN_FREEZE
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    @patch("controllers.console.auth.login.BillingService.get_email_freeze_type")
+    def test_login_fails_when_email_domain_is_suspended(
+        self,
+        mock_get_freeze_type,
+        mock_db,
+        app: Flask,
+        config_overrides: Callable[..., None],
+    ):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        mock_get_freeze_type.return_value = "email_domain_suspended"
+
+        with app.test_request_context(
+            "/login",
+            method="POST",
+            json={"email": "user@suspended.example", "password": encode_password("password")},
+        ):
+            with pytest.raises(EmailDomainSuspendedError):
+                LoginApi().post()
+
+    @pytest.mark.parametrize(
+        ("service_error", "expected_error"),
+        [
+            (EmailDomainSuspendedRegistrationError(), EmailDomainSuspendedError),
+            (AccountRegisterError("frozen"), AccountInFreezeError),
+        ],
+    )
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login._get_account_with_case_fallback")
+    @patch("controllers.console.auth.login.AccountService.verify_email_code_login_challenge")
+    def test_email_code_login_translates_freeze_errors(
+        self,
+        mock_verify_challenge,
+        mock_get_account,
+        mock_db,
+        app: Flask,
+        service_error,
+        expected_error,
+    ):
+        mock_verify_challenge.return_value = EmailCodeLoginChallengeResult(
+            status=EmailCodeLoginChallengeStatus.VERIFIED
+        )
+        mock_get_account.side_effect = service_error
+
+        with app.test_request_context(
+            "/email-code-login/validity",
+            method="POST",
+            json={"email": "User@Example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
+        ):
+            with pytest.raises(expected_error):
+                EmailCodeLoginApi().post()
+
+    @pytest.mark.parametrize(
+        ("service_error", "expected_error"),
+        [
+            (EmailDomainSuspendedRegistrationError(), EmailDomainSuspendedError),
+            (AccountNormalizedEmailAlreadyInUseError(), NormalizedEmailAlreadyInUseError),
+            (AccountRegisterError("frozen"), AccountInFreezeError),
+        ],
+    )
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login.db")
+    @patch("controllers.console.auth.login.AccountService.create_account_and_tenant")
+    @patch("controllers.console.auth.login.AccountService.verify_email_code_login_challenge")
+    @patch("controllers.console.auth.login._get_account_with_case_fallback")
+    def test_email_code_login_translates_account_creation_freeze_errors(
+        self,
+        mock_get_account,
+        mock_verify_challenge,
+        mock_create_account,
+        mock_login_db,
+        mock_db,
+        app: Flask,
+        service_error,
+        expected_error,
+    ):
+        mock_verify_challenge.return_value = EmailCodeLoginChallengeResult(
+            status=EmailCodeLoginChallengeStatus.VERIFIED
+        )
+        mock_get_account.return_value = None
+        mock_create_account.side_effect = service_error
+
+        with app.test_request_context(
+            "/email-code-login/validity",
+            method="POST",
+            json={"email": "User@Example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
+        ):
+            with pytest.raises(expected_error):
+                EmailCodeLoginApi().post()
+
+    @pytest.mark.parametrize(
+        ("service_error", "expected_error"),
+        [
+            (EmailDomainSuspendedRegistrationError(), EmailDomainSuspendedError),
+            (AccountRegisterError("frozen"), AccountInFreezeError),
+        ],
+    )
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login._get_account_with_case_fallback")
+    def test_reset_password_translates_freeze_errors(
+        self,
+        mock_get_account,
+        mock_db,
+        app: Flask,
+        service_error,
+        expected_error,
+    ):
+        mock_get_account.side_effect = service_error
+
+        with app.test_request_context(
+            "/reset-password",
+            method="POST",
+            json={"email": "User@Example.com"},
+        ):
+            with pytest.raises(expected_error):
+                ResetPasswordSendEmailApi().post()
+
+    @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
     @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.login.AccountService.authenticate")
@@ -305,7 +439,6 @@ class TestLoginApi:
         assert warn_records[0].args[1] == LoginFailureReason.INVALID_CREDENTIALS
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
     @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.login.AccountService.authenticate")
@@ -342,13 +475,12 @@ class TestLoginApi:
         assert warn_records[0].args[1] == LoginFailureReason.ACCOUNT_BANNED
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
     @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.login.AccountService.authenticate")
     @patch("controllers.console.auth.login.TenantService.get_join_tenants")
-    @patch("controllers.console.auth.login.FeatureService.get_license")
-    @patch("controllers.console.auth.login.FeatureService.is_workspace_creation_allowed")
+    @patch("controllers.console.auth.login.SystemFeatureService.get_license")
+    @patch("controllers.console.auth.login.SystemFeatureService.is_workspace_creation_allowed")
     def test_login_fails_when_no_workspace_and_limit_exceeded(
         self,
         mock_is_workspace_creation_allowed: MagicMock,
@@ -386,7 +518,6 @@ class TestLoginApi:
                 login_api.post()
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
     @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
     def test_login_invitation_email_mismatch(self, mock_get_invitation, mock_is_rate_limit, mock_db, app: Flask):
@@ -416,7 +547,6 @@ class TestLoginApi:
                 login_api.post()
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
     @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.login.AccountService.authenticate")
@@ -442,7 +572,7 @@ class TestLoginApi:
         mock_is_rate_limit.return_value = False
         mock_get_invitation.return_value = None
         mock_authenticate.side_effect = [AccountPasswordError("Invalid"), mock_account]
-        mock_get_tenants.return_value = [MagicMock()]
+        mock_get_tenants.return_value = [Tenant(name="Test Workspace")]
         mock_login_service.return_value = mock_token_pair
 
         with app.test_request_context(
@@ -542,11 +672,10 @@ class TestLogoutApi:
         return app
 
     @pytest.fixture
-    def mock_account(self):
-        """Create mock account object."""
-        account = MagicMock()
+    def mock_account(self) -> Account:
+        """Create a real transient account for the logout service boundary."""
+        account = Account(name="Test User", email="test@example.com")
         account.id = "test-account-id"
-        account.email = "test@example.com"
         return account
 
     @patch("controllers.console.auth.login.AccountService.logout")

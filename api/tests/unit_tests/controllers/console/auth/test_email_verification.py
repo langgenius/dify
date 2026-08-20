@@ -9,6 +9,7 @@ This module tests the email code login mechanism including:
 """
 
 import base64
+from collections.abc import Callable
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
@@ -33,20 +34,32 @@ from controllers.console.auth.login import (
 from controllers.console.error import (
     AccountInFreezeError,
     AccountNotFound,
+    EmailDomainSuspendedError,
     EmailSendIpLimitError,
     NotAllowedCreateWorkspace,
     WorkspacesLimitExceeded,
 )
 from enums import DeploymentEdition
+from models.account import Account, Tenant
 from services.email_code_login_challenge import (
     EmailCodeLoginChallengeResult,
     EmailCodeLoginChallengeStatus,
     EmailCodeLoginChallengeUnavailableError,
 )
-from services.errors.account import AccountRegisterError
+from services.errors.account import (
+    AccountRegisterError,
+)
+from services.errors.account import (
+    EmailDomainSuspendedError as EmailDomainSuspendedRegistrationError,
+)
 from services.turnstile_service import TurnstileChallengeRejectedError, TurnstileUpstreamError
 
 TEST_TOKEN = "00000000-0000-4000-8000-000000000001"
+
+
+@pytest.fixture(autouse=True)
+def _default_edition(config_overrides: Callable[..., None]) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
 
 
 def encode_code(code: str) -> str:
@@ -94,12 +107,9 @@ class TestEmailCodeLoginSendEmailApi:
         return app
 
     @pytest.fixture
-    def mock_account(self):
-        """Create mock account object."""
-        account = MagicMock()
-        account.email = "test@example.com"
-        account.name = "Test User"
-        return account
+    def mock_account(self) -> Account:
+        """Create a real transient account for the mail service boundary."""
+        return Account(name="Test User", email="test@example.com")
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.AccountService.is_email_send_ip_limit")
@@ -136,7 +146,7 @@ class TestEmailCodeLoginSendEmailApi:
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.AccountService.is_email_send_ip_limit")
     @patch("controllers.console.auth.login.AccountService.get_user_through_email")
-    @patch("controllers.console.auth.login.FeatureService.get_system_features")
+    @patch("controllers.console.auth.login.SystemFeatureService.is_registration_allowed")
     @patch("controllers.console.auth.login.AccountService.send_email_code_login_email")
     def test_send_email_code_new_user_registration_allowed(
         self, mock_send_email, mock_get_features, mock_get_user, mock_is_ip_limit, mock_db, app
@@ -151,7 +161,7 @@ class TestEmailCodeLoginSendEmailApi:
         # Arrange
         mock_is_ip_limit.return_value = False
         mock_get_user.return_value = None
-        mock_get_features.return_value.is_allow_register = True
+        mock_get_features.return_value = True
         mock_send_email.return_value = "email_token_123"
 
         # Act
@@ -168,7 +178,7 @@ class TestEmailCodeLoginSendEmailApi:
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.AccountService.is_email_send_ip_limit")
     @patch("controllers.console.auth.login.AccountService.get_user_through_email")
-    @patch("controllers.console.auth.login.FeatureService.get_system_features")
+    @patch("controllers.console.auth.login.SystemFeatureService.is_registration_allowed")
     def test_send_email_code_new_user_registration_disabled(
         self, mock_get_features, mock_get_user, mock_is_ip_limit, mock_db, app
     ):
@@ -182,7 +192,7 @@ class TestEmailCodeLoginSendEmailApi:
         # Arrange
         mock_is_ip_limit.return_value = False
         mock_get_user.return_value = None
-        mock_get_features.return_value.is_allow_register = False
+        mock_get_features.return_value = False
 
         # Act & Assert
         with app.test_request_context("/email-code-login", method="POST", json={"email": "newuser@example.com"}):
@@ -193,7 +203,14 @@ class TestEmailCodeLoginSendEmailApi:
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.AccountService.is_email_send_ip_limit")
     @patch("controllers.console.auth.login.TurnstileService.verify")
-    def test_send_email_code_ip_rate_limited(self, mock_verify, mock_is_ip_limit, mock_db, app: Flask):
+    def test_send_email_code_ip_rate_limited(
+        self,
+        mock_verify,
+        mock_is_ip_limit,
+        mock_db,
+        app: Flask,
+        config_overrides: Callable[..., None],
+    ):
         """
         Test email code sending blocked by IP rate limit.
 
@@ -201,12 +218,11 @@ class TestEmailCodeLoginSendEmailApi:
         - EmailSendIpLimitError is raised when IP limit exceeded
         - Prevents spam and abuse
         """
-        # Arrange
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         mock_is_ip_limit.return_value = True
 
         # Act & Assert
         with (
-            patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             app.test_request_context("/email-code-login", method="POST", json={"email": "test@example.com"}),
         ):
             with pytest.raises(EmailSendIpLimitError):
@@ -228,11 +244,12 @@ class TestEmailCodeLoginSendEmailApi:
         mock_db,
         app: Flask,
         mock_account,
+        config_overrides: Callable[..., None],
     ):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         mock_get_user.return_value = mock_account
 
         with (
-            patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             app.test_request_context(
                 "/email-code-login",
                 method="POST",
@@ -264,9 +281,10 @@ class TestEmailCodeLoginSendEmailApi:
         app: Flask,
         service_error: Exception,
         http_error: type[Exception],
+        config_overrides: Callable[..., None],
     ):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         with (
-            patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             patch("controllers.console.auth.login.TurnstileService.verify", side_effect=service_error),
             app.test_request_context(
                 "/email-code-login",
@@ -293,11 +311,12 @@ class TestEmailCodeLoginSendEmailApi:
         mock_db,
         app: Flask,
         mock_account,
+        config_overrides: Callable[..., None],
     ):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         mock_get_user.return_value = mock_account
 
         with (
-            patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
             app.test_request_context("/email-code-login", method="POST", json={"email": "test@example.com"}),
         ):
             response = EmailCodeLoginSendEmailApi().post()
@@ -308,7 +327,22 @@ class TestEmailCodeLoginSendEmailApi:
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.AccountService.is_email_send_ip_limit")
     @patch("controllers.console.auth.login.AccountService.get_user_through_email")
-    def test_send_email_code_frozen_account(self, mock_get_user, mock_is_ip_limit, mock_db, app: Flask):
+    @pytest.mark.parametrize(
+        ("service_error", "expected_error"),
+        [
+            (AccountRegisterError("Account frozen"), AccountInFreezeError),
+            (EmailDomainSuspendedRegistrationError(), EmailDomainSuspendedError),
+        ],
+    )
+    def test_send_email_code_frozen_account(
+        self,
+        mock_get_user,
+        mock_is_ip_limit,
+        mock_db,
+        app: Flask,
+        service_error,
+        expected_error,
+    ):
         """
         Test email code sending to frozen account.
 
@@ -317,12 +351,12 @@ class TestEmailCodeLoginSendEmailApi:
         """
         # Arrange
         mock_is_ip_limit.return_value = False
-        mock_get_user.side_effect = AccountRegisterError("Account frozen")
+        mock_get_user.side_effect = service_error
 
         # Act & Assert
         with app.test_request_context("/email-code-login", method="POST", json={"email": "frozen@example.com"}):
             api = EmailCodeLoginSendEmailApi()
-            with pytest.raises(AccountInFreezeError):
+            with pytest.raises(expected_error):
                 api.post()
 
     @pytest.mark.parametrize(
@@ -383,12 +417,9 @@ class TestEmailCodeLoginApi:
         return app
 
     @pytest.fixture
-    def mock_account(self):
-        """Create mock account object."""
-        account = MagicMock()
-        account.email = "test@example.com"
-        account.name = "Test User"
-        return account
+    def mock_account(self) -> Account:
+        """Create a real transient account for login orchestration."""
+        return Account(name="Test User", email="test@example.com")
 
     @pytest.fixture
     def mock_token_pair(self):
@@ -430,14 +461,17 @@ class TestEmailCodeLoginApi:
         mock_verify_challenge,
         mock_db,
         app: Flask,
+        config_overrides: Callable[..., None],
     ):
+        config_overrides(
+            DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+            TURNSTILE_EMAIL_CODE_VERIFY_REQUIRED=True,
+        )
         mock_verify_challenge.return_value = EmailCodeLoginChallengeResult(
             status=EmailCodeLoginChallengeStatus.INVALID_TOKEN
         )
 
         with (
-            patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-            patch("controllers.console.auth.login.dify_config.TURNSTILE_EMAIL_CODE_VERIFY_REQUIRED", True),
             app.test_request_context(
                 "/email-code-login/validity",
                 method="POST",
@@ -471,10 +505,13 @@ class TestEmailCodeLoginApi:
         mock_verify_challenge,
         mock_db,
         app: Flask,
+        config_overrides: Callable[..., None],
     ):
+        config_overrides(
+            DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+            TURNSTILE_EMAIL_CODE_VERIFY_REQUIRED=True,
+        )
         with (
-            patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-            patch("controllers.console.auth.login.dify_config.TURNSTILE_EMAIL_CODE_VERIFY_REQUIRED", True),
             app.test_request_context(
                 "/email-code-login/validity",
                 method="POST",
@@ -496,14 +533,17 @@ class TestEmailCodeLoginApi:
         mock_verify_challenge,
         mock_db,
         app: Flask,
+        config_overrides: Callable[..., None],
     ):
+        config_overrides(
+            DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+            TURNSTILE_EMAIL_CODE_VERIFY_REQUIRED=False,
+        )
         mock_verify_challenge.return_value = EmailCodeLoginChallengeResult(
             status=EmailCodeLoginChallengeStatus.INVALID_TOKEN
         )
 
         with (
-            patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-            patch("controllers.console.auth.login.dify_config.TURNSTILE_EMAIL_CODE_VERIFY_REQUIRED", False),
             app.test_request_context(
                 "/email-code-login/validity",
                 method="POST",
@@ -568,7 +608,7 @@ class TestEmailCodeLoginApi:
             status=EmailCodeLoginChallengeStatus.VERIFIED
         )
         mock_get_user.return_value = mock_account
-        mock_get_tenants.return_value = [MagicMock()]
+        mock_get_tenants.return_value = [Tenant(name="Test Workspace")]
         mock_login.return_value = mock_token_pair
 
         # Act
@@ -645,6 +685,7 @@ class TestEmailCodeLoginApi:
             interface_language="en-US",
             timezone="Asia/Shanghai",
             ip_address="203.0.113.10",
+            check_normalized_email=True,
             session=ANY,
         )
 
@@ -725,7 +766,7 @@ class TestEmailCodeLoginApi:
     @patch("controllers.console.auth.login.AccountService.verify_email_code_login_challenge")
     @patch("controllers.console.auth.login.AccountService.get_user_through_email")
     @patch("controllers.console.auth.login.TenantService.get_join_tenants")
-    @patch("controllers.console.auth.login.FeatureService.is_workspace_creation_allowed")
+    @patch("controllers.console.auth.login.SystemFeatureService.is_workspace_creation_allowed")
     def test_email_code_login_creates_workspace_for_user_without_tenant(
         self,
         mock_is_workspace_creation_allowed,
@@ -765,8 +806,8 @@ class TestEmailCodeLoginApi:
     @patch("controllers.console.auth.login.AccountService.verify_email_code_login_challenge")
     @patch("controllers.console.auth.login.AccountService.get_user_through_email")
     @patch("controllers.console.auth.login.TenantService.get_join_tenants")
-    @patch("controllers.console.auth.login.FeatureService.get_license")
-    @patch("controllers.console.auth.login.FeatureService.is_workspace_creation_allowed")
+    @patch("controllers.console.auth.login.SystemFeatureService.get_license")
+    @patch("controllers.console.auth.login.SystemFeatureService.is_workspace_creation_allowed")
     def test_email_code_login_workspace_limit_exceeded(
         self,
         mock_is_workspace_creation_allowed,
@@ -807,7 +848,7 @@ class TestEmailCodeLoginApi:
     @patch("controllers.console.auth.login.AccountService.verify_email_code_login_challenge")
     @patch("controllers.console.auth.login.AccountService.get_user_through_email")
     @patch("controllers.console.auth.login.TenantService.get_join_tenants")
-    @patch("controllers.console.auth.login.FeatureService.is_workspace_creation_allowed")
+    @patch("controllers.console.auth.login.SystemFeatureService.is_workspace_creation_allowed")
     def test_email_code_login_workspace_creation_not_allowed(
         self,
         mock_is_workspace_creation_allowed,

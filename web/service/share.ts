@@ -401,7 +401,6 @@ export const audioToText = (
 export const textToAudioStream = (
   url: string,
   appSourceType: AppSourceType,
-  header: { content_type: string },
   body: {
     streaming: boolean
     voice?: string
@@ -409,7 +408,7 @@ export const textToAudioStream = (
     text?: string | null | undefined
   },
 ) => {
-  return getAction('post', appSourceType)(url, { body, header }, { needAllResponseContent: true })
+  return getAction('post', appSourceType)(url, { body }, { needAllResponseContent: true })
 }
 
 export const fetchAccessToken = async ({

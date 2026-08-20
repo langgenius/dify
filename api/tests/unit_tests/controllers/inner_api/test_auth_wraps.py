@@ -2,7 +2,6 @@
 Unit tests for inner_api auth decorators
 """
 
-from unittest.mock import patch
 from uuid import NAMESPACE_URL, uuid5
 
 import pytest
@@ -11,9 +10,7 @@ from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import HTTPException
 
-from configs import dify_config
 from controllers.inner_api.wraps import (
-    billing_inner_api_only,
     enterprise_inner_api_only,
     enterprise_inner_api_user_auth,
     inner_api_only,
@@ -23,76 +20,18 @@ from models.enums import EndUserType
 from models.model import EndUser
 
 
+@pytest.fixture(autouse=True)
+def _inner_api_config(config_overrides) -> None:
+    config_overrides(
+        INNER_API=True,
+        INNER_API_KEY="valid_key",
+        PLUGIN_DAEMON_KEY="plugin_key",
+        INNER_API_KEY_FOR_PLUGIN="valid_plugin_key",
+    )
+
+
 def _stable_uuid(value: str) -> str:
     return str(uuid5(NAMESPACE_URL, value))
-
-
-class TestBillingInnerApiOnly:
-    """Test billing_inner_api_only decorator"""
-
-    def test_should_allow_when_inner_api_enabled_and_valid_key(self, app: Flask):
-        """Test that valid API key allows access when INNER_API is enabled"""
-
-        # Arrange
-        @billing_inner_api_only
-        def protected_view():
-            return "success"
-
-        # Act
-        with app.test_request_context(headers={"X-Inner-Api-Key": "valid_key"}):
-            with patch.object(dify_config, "INNER_API", True):
-                with patch.object(dify_config, "INNER_API_KEY", "valid_key"):
-                    result = protected_view()
-
-        # Assert
-        assert result == "success"
-
-    def test_should_return_404_when_inner_api_disabled(self, app: Flask):
-        """Test that 404 is returned when INNER_API is disabled"""
-
-        # Arrange
-        @billing_inner_api_only
-        def protected_view():
-            return "success"
-
-        # Act & Assert
-        with app.test_request_context():
-            with patch.object(dify_config, "INNER_API", False):
-                with pytest.raises(HTTPException) as exc_info:
-                    protected_view()
-                assert exc_info.value.code == 404
-
-    def test_should_return_401_when_api_key_missing(self, app: Flask):
-        """Test that 401 is returned when X-Inner-Api-Key header is missing"""
-
-        # Arrange
-        @billing_inner_api_only
-        def protected_view():
-            return "success"
-
-        # Act & Assert
-        with app.test_request_context(headers={}):
-            with patch.object(dify_config, "INNER_API", True):
-                with patch.object(dify_config, "INNER_API_KEY", "valid_key"):
-                    with pytest.raises(HTTPException) as exc_info:
-                        protected_view()
-                    assert exc_info.value.code == 401
-
-    def test_should_return_401_when_api_key_invalid(self, app: Flask):
-        """Test that 401 is returned when X-Inner-Api-Key header is invalid"""
-
-        # Arrange
-        @billing_inner_api_only
-        def protected_view():
-            return "success"
-
-        # Act & Assert
-        with app.test_request_context(headers={"X-Inner-Api-Key": "invalid_key"}):
-            with patch.object(dify_config, "INNER_API", True):
-                with patch.object(dify_config, "INNER_API_KEY", "valid_key"):
-                    with pytest.raises(HTTPException) as exc_info:
-                        protected_view()
-                    assert exc_info.value.code == 401
 
 
 class TestEnterpriseInnerApiOnly:
@@ -108,14 +47,12 @@ class TestEnterpriseInnerApiOnly:
 
         # Act
         with app.test_request_context(headers={"X-Inner-Api-Key": "valid_key"}):
-            with patch.object(dify_config, "INNER_API", True):
-                with patch.object(dify_config, "INNER_API_KEY", "valid_key"):
-                    result = protected_view()
+            result = protected_view()
 
         # Assert
         assert result == "success"
 
-    def test_should_return_404_when_inner_api_disabled(self, app: Flask):
+    def test_should_return_404_when_inner_api_disabled(self, app: Flask, config_overrides):
         """Test that 404 is returned when INNER_API is disabled"""
 
         # Arrange
@@ -124,11 +61,11 @@ class TestEnterpriseInnerApiOnly:
             return "success"
 
         # Act & Assert
+        config_overrides(INNER_API=False)
         with app.test_request_context():
-            with patch.object(dify_config, "INNER_API", False):
-                with pytest.raises(HTTPException) as exc_info:
-                    protected_view()
-                assert exc_info.value.code == 404
+            with pytest.raises(HTTPException) as exc_info:
+                protected_view()
+            assert exc_info.value.code == 404
 
     def test_should_return_401_when_api_key_missing(self, app: Flask):
         """Test that 401 is returned when X-Inner-Api-Key header is missing"""
@@ -140,11 +77,9 @@ class TestEnterpriseInnerApiOnly:
 
         # Act & Assert
         with app.test_request_context(headers={}):
-            with patch.object(dify_config, "INNER_API", True):
-                with patch.object(dify_config, "INNER_API_KEY", "valid_key"):
-                    with pytest.raises(HTTPException) as exc_info:
-                        protected_view()
-                    assert exc_info.value.code == 401
+            with pytest.raises(HTTPException) as exc_info:
+                protected_view()
+            assert exc_info.value.code == 401
 
     def test_should_return_401_when_api_key_invalid(self, app: Flask):
         """Test that 401 is returned when X-Inner-Api-Key header is invalid"""
@@ -156,11 +91,9 @@ class TestEnterpriseInnerApiOnly:
 
         # Act & Assert
         with app.test_request_context(headers={"X-Inner-Api-Key": "invalid_key"}):
-            with patch.object(dify_config, "INNER_API", True):
-                with patch.object(dify_config, "INNER_API_KEY", "valid_key"):
-                    with pytest.raises(HTTPException) as exc_info:
-                        protected_view()
-                    assert exc_info.value.code == 401
+            with pytest.raises(HTTPException) as exc_info:
+                protected_view()
+            assert exc_info.value.code == 401
 
 
 class TestInnerApiOnly:
@@ -172,22 +105,20 @@ class TestInnerApiOnly:
             return "success"
 
         with app.test_request_context(headers={"X-Inner-Api-Key": "valid_key"}):
-            with patch.object(dify_config, "INNER_API", True):
-                with patch.object(dify_config, "INNER_API_KEY", "valid_key"):
-                    result = protected_view()
+            result = protected_view()
 
         assert result == "success"
 
-    def test_should_return_404_when_inner_api_disabled(self, app: Flask):
+    def test_should_return_404_when_inner_api_disabled(self, app: Flask, config_overrides):
         @inner_api_only
         def protected_view():
             return "success"
 
+        config_overrides(INNER_API=False)
         with app.test_request_context():
-            with patch.object(dify_config, "INNER_API", False):
-                with pytest.raises(HTTPException) as exc_info:
-                    protected_view()
-                assert exc_info.value.code == 404
+            with pytest.raises(HTTPException) as exc_info:
+                protected_view()
+            assert exc_info.value.code == 404
 
     def test_should_return_401_when_api_key_missing(self, app: Flask):
         @inner_api_only
@@ -195,11 +126,9 @@ class TestInnerApiOnly:
             return "success"
 
         with app.test_request_context(headers={}):
-            with patch.object(dify_config, "INNER_API", True):
-                with patch.object(dify_config, "INNER_API_KEY", "valid_key"):
-                    with pytest.raises(HTTPException) as exc_info:
-                        protected_view()
-                    assert exc_info.value.code == 401
+            with pytest.raises(HTTPException) as exc_info:
+                protected_view()
+            assert exc_info.value.code == 401
 
     def test_should_return_401_when_api_key_invalid(self, app: Flask):
         @inner_api_only
@@ -207,17 +136,15 @@ class TestInnerApiOnly:
             return "success"
 
         with app.test_request_context(headers={"X-Inner-Api-Key": "invalid_key"}):
-            with patch.object(dify_config, "INNER_API", True):
-                with patch.object(dify_config, "INNER_API_KEY", "valid_key"):
-                    with pytest.raises(HTTPException) as exc_info:
-                        protected_view()
-                    assert exc_info.value.code == 401
+            with pytest.raises(HTTPException) as exc_info:
+                protected_view()
+            assert exc_info.value.code == 401
 
 
 class TestEnterpriseInnerApiUserAuth:
     """Test enterprise_inner_api_user_auth decorator for HMAC-based user authentication"""
 
-    def test_should_pass_through_when_inner_api_disabled(self, app: Flask):
+    def test_should_pass_through_when_inner_api_disabled(self, app: Flask, config_overrides):
         """Test that request passes through when INNER_API is disabled"""
 
         # Arrange
@@ -226,9 +153,9 @@ class TestEnterpriseInnerApiUserAuth:
             return kwargs.get("user", "no_user")
 
         # Act
+        config_overrides(INNER_API=False)
         with app.test_request_context():
-            with patch.object(dify_config, "INNER_API", False):
-                result = protected_view()
+            result = protected_view()
 
         # Assert
         assert result == "no_user"
@@ -243,8 +170,7 @@ class TestEnterpriseInnerApiUserAuth:
 
         # Act
         with app.test_request_context(headers={}):
-            with patch.object(dify_config, "INNER_API", True):
-                result = protected_view()
+            result = protected_view()
 
         # Assert
         assert result == "no_user"
@@ -259,8 +185,7 @@ class TestEnterpriseInnerApiUserAuth:
 
         # Act
         with app.test_request_context(headers={"Authorization": "invalid_format"}):
-            with patch.object(dify_config, "INNER_API", True):
-                result = protected_view()
+            result = protected_view()
 
         # Assert
         assert result == "no_user"
@@ -281,8 +206,7 @@ class TestEnterpriseInnerApiUserAuth:
             with app.test_request_context(
                 headers={"Authorization": "Bearer user123:wrong_signature", "X-Inner-Api-Key": "valid_key"}
             ):
-                with patch.object(dify_config, "INNER_API", True):
-                    result = protected_view()
+                result = protected_view()
         finally:
             event.remove(sqlite_engine, "before_cursor_execute", fail_on_query)
 
@@ -321,8 +245,7 @@ class TestEnterpriseInnerApiUserAuth:
         with app.test_request_context(
             headers={"Authorization": f"Bearer {user_id}:{valid_signature}", "X-Inner-Api-Key": inner_api_key}
         ):
-            with patch.object(dify_config, "INNER_API", True):
-                result = protected_view()
+            result = protected_view()
 
         # Assert
         assert isinstance(result, EndUser)
@@ -344,14 +267,12 @@ class TestPluginInnerApiOnly:
 
         # Act
         with app.test_request_context(headers={"X-Inner-Api-Key": "valid_plugin_key"}):
-            with patch.object(dify_config, "PLUGIN_DAEMON_KEY", "plugin_key"):
-                with patch.object(dify_config, "INNER_API_KEY_FOR_PLUGIN", "valid_plugin_key"):
-                    result = protected_view()
+            result = protected_view()
 
         # Assert
         assert result == "success"
 
-    def test_should_return_404_when_plugin_daemon_key_not_set(self, app: Flask):
+    def test_should_return_404_when_plugin_daemon_key_not_set(self, app: Flask, config_overrides):
         """Test that 404 is returned when PLUGIN_DAEMON_KEY is not set"""
 
         # Arrange
@@ -360,11 +281,11 @@ class TestPluginInnerApiOnly:
             return "success"
 
         # Act & Assert
+        config_overrides(PLUGIN_DAEMON_KEY="")
         with app.test_request_context():
-            with patch.object(dify_config, "PLUGIN_DAEMON_KEY", ""):
-                with pytest.raises(HTTPException) as exc_info:
-                    protected_view()
-                assert exc_info.value.code == 404
+            with pytest.raises(HTTPException) as exc_info:
+                protected_view()
+            assert exc_info.value.code == 404
 
     def test_should_return_404_when_api_key_invalid(self, app: Flask):
         """Test that 404 is returned when X-Inner-Api-Key header is invalid (note: returns 404, not 401)"""
@@ -376,8 +297,6 @@ class TestPluginInnerApiOnly:
 
         # Act & Assert
         with app.test_request_context(headers={"X-Inner-Api-Key": "invalid_key"}):
-            with patch.object(dify_config, "PLUGIN_DAEMON_KEY", "plugin_key"):
-                with patch.object(dify_config, "INNER_API_KEY_FOR_PLUGIN", "valid_plugin_key"):
-                    with pytest.raises(HTTPException) as exc_info:
-                        protected_view()
-                    assert exc_info.value.code == 404
+            with pytest.raises(HTTPException) as exc_info:
+                protected_view()
+            assert exc_info.value.code == 404

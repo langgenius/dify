@@ -41,12 +41,12 @@ type Props =
   | Readonly<{
       summary: ModelProviderPluginSummary
       providerLabel: string
-      onUpdate?: () => void
+      onUpdate?: () => void | Promise<void>
       detail?: never
     }>
   | Readonly<{
       detail: PluginDetail
-      onUpdate?: () => void
+      onUpdate?: () => void | Promise<void>
       summary?: never
       providerLabel?: never
     }>
@@ -79,7 +79,7 @@ const ProviderCardActions: FC<Props> = (props) => {
       queryClient.invalidateQueries({ queryKey: ['marketplacePlugins'] }),
       queryClient.invalidateQueries({ queryKey: ['marketplaceCollectionPlugins'] }),
     ])
-    onUpdate?.()
+    await onUpdate?.()
   }, [onUpdate, queryClient])
 
   if (props.detail) {
@@ -156,13 +156,18 @@ function SummaryProviderCardActions({ summary, providerLabel, onUpdate }: Summar
     }
   }
 
+  const handleLoadedDetailUpdated = useCallback(async () => {
+    await onUpdate?.()
+    setDetail(undefined)
+  }, [onUpdate])
+
   if (detail) {
     return (
       <LoadedProviderCardActions
         detail={detail}
         initialAction={detailAction}
         onInitialActionHandled={() => setDetailAction(undefined)}
-        onUpdate={onUpdate}
+        onUpdate={handleLoadedDetailUpdated}
       />
     )
   }
@@ -278,7 +283,7 @@ type LoadedProps = Readonly<{
   detail: PluginDetail
   initialAction?: DetailAction
   onInitialActionHandled: () => void
-  onUpdate?: () => void
+  onUpdate?: () => void | Promise<void>
 }>
 
 function LoadedProviderCardActions({

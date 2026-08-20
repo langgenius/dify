@@ -4,18 +4,18 @@ import { oc } from '@orpc/contract'
 import { zGetTrialModelsResponse } from './zod.gen'
 
 /**
- * Get hosted trial model provider configuration for model-provider pages
+ * Get hosted credit provider configuration for the current workspace
  *
- * Get hosted trial model provider configuration
+ * Get hosted credit model provider configuration for the current workspace
  */
 export const get = oc
   .route({
-    description: 'Get hosted trial model provider configuration',
+    description: 'Get hosted credit model provider configuration for the current workspace',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getTrialModels',
     path: '/trial-models',
-    summary: 'Get hosted trial model provider configuration for model-provider pages',
+    summary: 'Get hosted credit provider configuration for the current workspace',
     tags: ['console'],
   })
   .output(zGetTrialModelsResponse)

@@ -14,6 +14,7 @@ import services.errors.account
 from controllers.console import wraps as console_wraps
 from controllers.web.login import EmailCodeLoginApi, EmailCodeLoginSendEmailApi, LoginApi, LoginStatusApi, LogoutApi
 from enums import DeploymentEdition
+from models.account import Account
 from models.model import DifySetup
 from services.entities.auth_entities import LoginFailureReason
 
@@ -54,7 +55,10 @@ def _patch_wraps(
     monkeypatch.setattr(console_wraps.db, "session", session_registry)
     with (
         patch("controllers.console.wraps.dify_config", console_dify),
-        patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
+        patch(
+            "controllers.console.wraps.SystemFeatureService.is_email_password_login_enabled",
+            return_value=wraps_features.enable_email_password_login,
+        ),
         patch("controllers.web.login.dify_config", web_dify),
     ):
         yield
@@ -71,8 +75,8 @@ class TestEmailCodeLoginSendEmailApi:
         mock_send_email,
         app: Flask,
     ):
-        mock_account = MagicMock()
-        mock_get_user.return_value = mock_account
+        account = Account(name="Test User", email="user@example.com")
+        mock_get_user.return_value = account
         mock_send_email.return_value = "token-123"
 
         with app.test_request_context(
@@ -84,7 +88,7 @@ class TestEmailCodeLoginSendEmailApi:
 
         assert response == {"result": "success", "data": "token-123"}
         mock_get_user.assert_called_once_with("User@Example.com", ANY)
-        mock_send_email.assert_called_once_with(account=mock_account, language="en-US")
+        mock_send_email.assert_called_once_with(account=account, language="en-US")
 
 
 class TestEmailCodeLoginApi:
@@ -103,7 +107,7 @@ class TestEmailCodeLoginApi:
         app: Flask,
     ):
         mock_get_token_data.return_value = {"email": "User@Example.com", "code": "123456"}
-        mock_get_user.return_value = MagicMock()
+        mock_get_user.return_value = Account(name="Test User", email="user@example.com")
 
         with app.test_request_context(
             "/web/email-code-login/validity",
@@ -123,7 +127,7 @@ class TestLoginApi:
     @patch("controllers.web.login.WebAppAuthService.login", return_value="access-tok")
     @patch("controllers.web.login.WebAppAuthService.authenticate")
     def test_login_success(self, mock_auth: MagicMock, mock_login: MagicMock, app: Flask) -> None:
-        mock_auth.return_value = MagicMock()
+        mock_auth.return_value = Account(name="Test User", email="user@example.com")
 
         with app.test_request_context(
             "/web/login",

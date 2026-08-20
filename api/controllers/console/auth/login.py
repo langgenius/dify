@@ -27,6 +27,7 @@ from controllers.console.auth.error import (
     EmailPasswordLoginLimitError,
     InvalidEmailError,
     InvalidTokenError,
+    NormalizedEmailAlreadyInUseError,
     TurnstileServiceUnavailableError,
     TurnstileVerificationFailedError,
 )
@@ -34,6 +35,7 @@ from controllers.console.error import (
     AccountBannedError,
     AccountInFreezeError,
     AccountNotFound,
+    EmailDomainSuspendedError,
     EmailSendIpLimitError,
     NotAllowedCreateWorkspace,
     SeatsLimitExceeded,
@@ -69,13 +71,17 @@ from services.email_code_login_challenge import (
 )
 from services.entities.auth_entities import LoginFailureReason, LoginPayloadBase
 from services.errors.account import (
+    AccountNormalizedEmailAlreadyInUseError,
     AccountRegisterError,
     RefreshTokenAccountNotFoundError,
     RefreshTokenNotFoundError,
     SeatsLimitExceededError,
 )
+from services.errors.account import (
+    EmailDomainSuspendedError as EmailDomainSuspendedRegistrationError,
+)
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 from services.turnstile_service import (
     EMAIL_CODE_VERIFY_ACTION,
     TurnstileChallengeRejectedError,
@@ -149,11 +155,13 @@ class LoginApi(Resource):
         request_email = req_data.email
         normalized_email = request_email.lower()
 
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(
-            normalized_email
-        ):
-            _log_console_login_failure(email=normalized_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
-            raise AccountInFreezeError()
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
+            freeze_type = BillingService.get_email_freeze_type(normalized_email)
+            if freeze_type:
+                _log_console_login_failure(email=normalized_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
+                if freeze_type == "email_domain_suspended":
+                    raise EmailDomainSuspendedError()
+                raise AccountInFreezeError()
 
         is_login_error_rate_limit = AccountService.is_login_error_rate_limit(normalized_email)
         if is_login_error_rate_limit:
@@ -193,8 +201,8 @@ class LoginApi(Resource):
         tenants = TenantService.get_join_tenants(account, session=db.session())
         if len(tenants) == 0:
             if (
-                FeatureService.is_workspace_creation_allowed()
-                and not FeatureService.get_license().workspaces.is_available()
+                SystemFeatureService.is_workspace_creation_allowed()
+                and not SystemFeatureService.get_license().workspaces.is_available()
             ):
                 raise WorkspacesLimitExceeded()
             else:
@@ -255,14 +263,16 @@ class ResetPasswordSendEmailApi(Resource):
             language = "en-US"
         try:
             account = _get_account_with_case_fallback(req_data.email)
-        except AccountRegisterError:
-            raise AccountInFreezeError()
+        except EmailDomainSuspendedRegistrationError as exc:
+            raise EmailDomainSuspendedError() from exc
+        except AccountRegisterError as exc:
+            raise AccountInFreezeError() from exc
 
         token = AccountService.send_reset_password_email(
             email=normalized_email,
             account=account,
             language=language,
-            is_allow_register=FeatureService.get_system_features().is_allow_register,
+            is_allow_register=SystemFeatureService.is_registration_allowed(),
         )
 
         return SimpleResultDataResponse(result="success", data=token).model_dump(mode="json")
@@ -297,11 +307,13 @@ class EmailCodeLoginSendEmailApi(Resource):
             language = "en-US"
         try:
             account = _get_account_with_case_fallback(req_data.email)
-        except AccountRegisterError:
-            raise AccountInFreezeError()
+        except EmailDomainSuspendedRegistrationError as exc:
+            raise EmailDomainSuspendedError() from exc
+        except AccountRegisterError as exc:
+            raise AccountInFreezeError() from exc
 
         if account is None:
-            if FeatureService.get_system_features().is_allow_register:
+            if SystemFeatureService.is_registration_allowed():
                 token = AccountService.send_email_code_login_email(email=normalized_email, language=language)
             else:
                 raise AccountNotFound()
@@ -377,16 +389,19 @@ class EmailCodeLoginApi(Resource):
         except Unauthorized as exc:
             _log_console_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_BANNED)
             raise AccountBannedError() from exc
-        except AccountRegisterError:
+        except EmailDomainSuspendedRegistrationError as exc:
             _log_console_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
-            raise AccountInFreezeError()
+            raise EmailDomainSuspendedError() from exc
+        except AccountRegisterError as exc:
+            _log_console_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
+            raise AccountInFreezeError() from exc
         if account:
             tenants = TenantService.get_join_tenants(account, session=db.session())
             if not tenants:
-                workspaces = FeatureService.get_license().workspaces
+                workspaces = SystemFeatureService.get_license().workspaces
                 if not workspaces.is_available():
                     raise WorkspacesLimitExceeded()
-                if not FeatureService.is_workspace_creation_allowed():
+                if not SystemFeatureService.is_workspace_creation_allowed():
                     raise NotAllowedCreateWorkspace()
                 else:
                     TenantService.create_owner_tenant(account, session=db.session())
@@ -399,15 +414,21 @@ class EmailCodeLoginApi(Resource):
                     interface_language=get_valid_language(language),
                     timezone=req_data.timezone,
                     ip_address=ip_address,
+                    check_normalized_email=True,
                     session=db.session(),
                 )
             except WorkSpaceNotAllowedCreateError:
                 raise NotAllowedCreateWorkspace()
             except SeatsLimitExceededError:
                 raise SeatsLimitExceeded()
-            except AccountRegisterError:
+            except EmailDomainSuspendedRegistrationError as exc:
                 _log_console_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
-                raise AccountInFreezeError()
+                raise EmailDomainSuspendedError() from exc
+            except AccountNormalizedEmailAlreadyInUseError as exc:
+                raise NormalizedEmailAlreadyInUseError() from exc
+            except AccountRegisterError as exc:
+                _log_console_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
+                raise AccountInFreezeError() from exc
             except WorkspacesLimitExceededError:
                 raise WorkspacesLimitExceeded()
         token_pair = AccountService.login(account, session=db.session(), ip_address=ip_address)
