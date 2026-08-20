@@ -106,7 +106,6 @@ class EnterpriseHomeSnapshotBackend:
 
     gateway_endpoint: str
     auth_token: str
-    gateway_timeout: float = 30.0
     snapshot_timeout: float = 35.0
 
     async def create_from_runtime(self, *, spec: HomeSnapshotCreateSpec, source: RuntimeLease) -> str:
@@ -134,7 +133,7 @@ class EnterpriseHomeSnapshotBackend:
         return snapshot_ref
 
     async def delete(self, snapshot_ref: str) -> None:
-        """Delete one snapshot's artifacts, treating an absent snapshot as done."""
+        """Delete one snapshot's artifacts."""
         try:
             _ = await _gateway_request(
                 endpoint=self.gateway_endpoint,
@@ -142,7 +141,6 @@ class EnterpriseHomeSnapshotBackend:
                 timeout=self.snapshot_timeout,
                 method="DELETE",
                 path=f"/v1/home-snapshots/{quote(snapshot_ref, safe='/')}",
-                absent_status=404,
             )
         except (_GatewayStatusError, httpx.TimeoutException, httpx.RequestError) as exc:
             raise BindingDestroyError(str(exc)) from exc

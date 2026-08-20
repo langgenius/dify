@@ -131,7 +131,6 @@ def create_runtime_backend_profile(settings: RuntimeBackendSettings) -> RuntimeB
                 home_snapshots=EnterpriseHomeSnapshotBackend(
                     gateway_endpoint=endpoint,
                     auth_token=token,
-                    gateway_timeout=settings.enterprise_sandbox_gateway_timeout,
                     snapshot_timeout=settings.enterprise_sandbox_snapshot_timeout,
                 ),
                 execution_bindings=EnterpriseExecutionBindingBackend(

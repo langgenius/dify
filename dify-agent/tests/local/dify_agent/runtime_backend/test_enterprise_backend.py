@@ -453,7 +453,7 @@ async def test_enterprise_binding_sends_the_snapshot_ref_and_still_clears_worksp
 
 
 @pytest.mark.anyio
-async def test_enterprise_binding_deletes_the_sandbox_when_restore_fails(
+async def test_enterprise_binding_does_not_delete_a_sandbox_it_never_created(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     requests: list[httpx.Request] = []
@@ -642,32 +642,24 @@ async def test_enterprise_snapshot_delete_keeps_ref_slashes_and_escapes_the_rest
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize("status_code", [200, 404])
-async def test_enterprise_snapshot_delete_is_idempotent(
+@pytest.mark.parametrize(
+    ("status_code", "reason", "message"),
+    [
+        (404, "route_not_found", "no matching route"),
+        (500, "snapshot_delete_failed", "object store unreachable"),
+    ],
+)
+async def test_enterprise_snapshot_delete_propagates_gateway_failures(
     monkeypatch: pytest.MonkeyPatch,
     status_code: int,
+    reason: str,
+    message: str,
 ) -> None:
     def handler(_request: httpx.Request) -> httpx.Response:
-        return httpx.Response(status_code, json={})
+        return httpx.Response(status_code, json={"code": status_code, "reason": reason, "message": message})
 
     _ = _mock_http(monkeypatch, handler)
     snapshots = EnterpriseHomeSnapshotBackend(gateway_endpoint="http://gateway.example", auth_token="secret")
 
-    await snapshots.delete("tenant-1/agent-1/home-2")
-
-
-@pytest.mark.anyio
-async def test_enterprise_snapshot_delete_propagates_real_failures(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    def handler(_request: httpx.Request) -> httpx.Response:
-        return httpx.Response(
-            500,
-            json={"code": 500, "reason": "snapshot_delete_failed", "message": "object store unreachable"},
-        )
-
-    _ = _mock_http(monkeypatch, handler)
-    snapshots = EnterpriseHomeSnapshotBackend(gateway_endpoint="http://gateway.example", auth_token="secret")
-
-    with pytest.raises(BindingDestroyError, match="snapshot_delete_failed"):
+    with pytest.raises(BindingDestroyError, match=reason):
         await snapshots.delete("tenant-1/agent-1/home-2")
