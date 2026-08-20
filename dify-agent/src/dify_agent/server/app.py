@@ -76,6 +76,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
             execution_bindings=runtime_backend_profile.execution_bindings,
             agent_stub_api_base_url=resolved_settings.agent_stub_api_base_url,
             agent_stub_token_factory=agent_stub_token_factory,
+            download_command_timeout_seconds=resolved_settings.binding_file_download_command_timeout_seconds,
         )
         if runtime_backend_profile is not None
         else None
