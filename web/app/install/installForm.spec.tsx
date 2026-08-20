@@ -71,20 +71,30 @@ describe('InstallForm', () => {
     expect(passwordInput).toHaveAttribute('type', 'password')
   })
 
-  it('should show validation error when required fields are empty', async () => {
+  it('should identify required fields only after submission', async () => {
+    const user = userEvent.setup()
     render(<InstallForm />)
 
     const emailInput = await screen.findByLabelText('login.email')
     const nameInput = screen.getByLabelText('login.name')
+    const passwordInput = screen.getByLabelText('login.password')
 
-    fireEvent.click(screen.getByRole('button', { name: /login\.installBtn/ }))
+    expect(screen.queryByText('login.error.emailInValid')).not.toBeInTheDocument()
+    expect(screen.queryByText('login.error.nameEmpty')).not.toBeInTheDocument()
+    expect(screen.getAllByText('login.error.passwordInvalid')).toHaveLength(1)
+    expect(passwordInput).toHaveAccessibleDescription('login.error.passwordInvalid')
+
+    await user.click(screen.getByRole('button', { name: /login\.installBtn/ }))
 
     await waitFor(() => {
       expect(screen.getByText('login.error.emailInValid')).toBeInTheDocument()
       expect(screen.getByText('login.error.nameEmpty')).toBeInTheDocument()
+      expect(screen.getAllByText('login.error.passwordInvalid')).toHaveLength(1)
     })
     expect(emailInput).toHaveAttribute('aria-invalid', 'true')
     expect(nameInput).toHaveAttribute('aria-invalid', 'true')
+    expect(passwordInput).toHaveAttribute('aria-invalid', 'true')
+    expect(passwordInput).toHaveAccessibleDescription('login.error.passwordInvalid')
     expect(mockSetup).not.toHaveBeenCalled()
   })
 

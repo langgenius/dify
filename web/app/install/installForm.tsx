@@ -2,7 +2,13 @@
 import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
 import { zPostSetupBody } from '@dify/contracts/api/console/setup/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
-import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  FieldValidity,
+} from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
@@ -118,7 +124,7 @@ const InstallForm = () => {
                 required
                 placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) || ''}
               />
-              <FieldError match>{t(($) => $['error.emailInValid'], { ns: 'login' })}</FieldError>
+              <FieldError>{t(($) => $['error.emailInValid'], { ns: 'login' })}</FieldError>
             </Field>
 
             <Field
@@ -137,7 +143,7 @@ const InstallForm = () => {
                 maxLength={30}
                 placeholder={t(($) => $.namePlaceholder, { ns: 'login' }) || ''}
               />
-              <FieldError match>{t(($) => $['error.nameEmpty'], { ns: 'login' })}</FieldError>
+              <FieldError>{t(($) => $['error.nameEmpty'], { ns: 'login' })}</FieldError>
             </Field>
 
             <Field
@@ -173,10 +179,16 @@ const InstallForm = () => {
                   </IconButton>
                 </InputGroupAddon>
               </InputGroup>
-              <FieldDescription className="text-text-secondary data-invalid:hidden">
-                {t(($) => $['error.passwordInvalid'], { ns: 'login' })}
-              </FieldDescription>
-              <FieldError match>{t(($) => $['error.passwordInvalid'], { ns: 'login' })}</FieldError>
+              <FieldValidity>
+                {({ validity }) =>
+                  validity.valid === false ? null : (
+                    <FieldDescription className="text-text-secondary">
+                      {t(($) => $['error.passwordInvalid'], { ns: 'login' })}
+                    </FieldDescription>
+                  )
+                }
+              </FieldValidity>
+              <FieldError>{t(($) => $['error.passwordInvalid'], { ns: 'login' })}</FieldError>
             </Field>
 
             <div>
