@@ -27,16 +27,10 @@ const (
 	maxSaveRequestBytes = 64 << 10
 )
 
-// SaveRequest is the optional body of POST /v1/snapshot/save. The caller owns
-// the configurable excludes; the runtime's own defaults are not negotiable and
-// are applied on top of whatever arrives here.
 type SaveRequest struct {
 	Excludes []string `json:"excludes"`
 }
 
-// decodeSaveExcludes reads the caller's excludes. An absent or empty body means
-// no caller excludes, which is distinct from a malformed one. Values are taken
-// as given: an entry that names no top-level Home entry simply never matches.
 func decodeSaveExcludes(body io.Reader) ([]string, error) {
 	var req SaveRequest
 	if err := json.NewDecoder(io.LimitReader(body, maxSaveRequestBytes)).Decode(&req); err != nil {
