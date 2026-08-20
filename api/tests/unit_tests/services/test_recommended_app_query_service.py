@@ -45,19 +45,41 @@ def _service(
     *,
     catalog: MagicMock,
     trial_apps: MagicMock | None = None,
-    trial_enabled: MagicMock | None = None,
-) -> tuple[RecommendedAppQueryService, MagicMock, MagicMock]:
+    trial_enabled: bool = False,
+) -> tuple[RecommendedAppQueryService, MagicMock]:
     trial_apps = trial_apps or MagicMock()
-    trial_enabled = trial_enabled or MagicMock(return_value=False)
     return (
         RecommendedAppQueryService(
             catalog=catalog,
             trial_apps=trial_apps,
-            is_trial_enabled=trial_enabled,
+            trial_enabled=trial_enabled,
         ),
         trial_apps,
-        trial_enabled,
     )
+
+
+def test_is_previewable_accepts_trial_registration_without_querying_catalog() -> None:
+    catalog = MagicMock()
+    trial_apps = MagicMock()
+    trial_apps.existing_ids.return_value = frozenset({"app-1"})
+    service, _ = _service(catalog=catalog, trial_apps=trial_apps)
+
+    assert service.is_previewable("app-1") is True
+    trial_apps.existing_ids.assert_called_once_with(("app-1",))
+    catalog.is_recommended.assert_not_called()
+
+
+@pytest.mark.parametrize("expected", [True, False])
+def test_is_previewable_falls_back_to_catalog(expected: bool) -> None:
+    catalog = MagicMock()
+    catalog.is_recommended.return_value = expected
+    trial_apps = MagicMock()
+    trial_apps.existing_ids.return_value = frozenset()
+    service, _ = _service(catalog=catalog, trial_apps=trial_apps)
+
+    assert service.is_previewable("app-1") is expected
+    trial_apps.existing_ids.assert_called_once_with(("app-1",))
+    catalog.is_recommended.assert_called_once_with("app-1")
 
 
 @pytest.mark.parametrize(
@@ -76,7 +98,7 @@ def test_list_recommended_resolves_language(
 ) -> None:
     catalog = MagicMock()
     catalog.list_recommended.return_value = _page("app-1")
-    service, _, _ = _service(catalog=catalog)
+    service, _ = _service(catalog=catalog)
 
     service.list_recommended(
         requested_language=requested_language,
@@ -90,7 +112,7 @@ def test_list_recommended_falls_back_to_builtin_en_us_when_empty() -> None:
     catalog = MagicMock()
     catalog.list_recommended.return_value = _page(categories=("remote",))
     catalog.list_builtin.return_value = _page("builtin-app", categories=("builtin",))
-    service, _, _ = _service(catalog=catalog)
+    service, _ = _service(catalog=catalog)
 
     result = service.list_recommended(requested_language="ja-JP", interface_language=None)
 
@@ -102,7 +124,7 @@ def test_list_recommended_falls_back_to_builtin_en_us_when_empty() -> None:
 def test_list_recommended_disables_upstream_trial_without_querying_trial_apps() -> None:
     catalog = MagicMock()
     catalog.list_recommended.return_value = _page("app-1")
-    service, trial_apps, _ = _service(catalog=catalog)
+    service, trial_apps = _service(catalog=catalog)
 
     result = service.list_recommended(requested_language="en-US", interface_language=None)
 
@@ -115,10 +137,10 @@ def test_list_recommended_enriches_trial_status_in_one_bulk_query() -> None:
     catalog.list_recommended.return_value = _page("app-1", "app-2")
     trial_apps = MagicMock()
     trial_apps.existing_ids.return_value = frozenset({"app-1"})
-    service, _, _ = _service(
+    service, _ = _service(
         catalog=catalog,
         trial_apps=trial_apps,
-        trial_enabled=MagicMock(return_value=True),
+        trial_enabled=True,
     )
 
     result = service.list_recommended(requested_language="en-US", interface_language=None)
@@ -130,7 +152,7 @@ def test_list_recommended_enriches_trial_status_in_one_bulk_query() -> None:
 def test_list_learn_dify_does_not_apply_general_builtin_fallback_or_return_categories() -> None:
     catalog = MagicMock()
     catalog.list_learn_dify.return_value = _page(categories=("ignored",))
-    service, _, _ = _service(catalog=catalog)
+    service, _ = _service(catalog=catalog)
 
     result = service.list_learn_dify(requested_language="invalid", interface_language="fr-FR")
 
@@ -140,15 +162,13 @@ def test_list_learn_dify_does_not_apply_general_builtin_fallback_or_return_categ
     assert not hasattr(result, "categories")
 
 
-def test_get_detail_raises_not_found_before_reading_trial_policy() -> None:
+def test_get_detail_raises_not_found_without_querying_trial_apps() -> None:
     catalog = MagicMock()
     catalog.get_detail.return_value = None
-    trial_enabled = MagicMock(side_effect=AssertionError("missing detail must not inspect trial policy"))
-    service, trial_apps, _ = _service(catalog=catalog, trial_enabled=trial_enabled)
+    service, trial_apps = _service(catalog=catalog, trial_enabled=True)
 
     with pytest.raises(RecommendedAppNotFoundError):
         service.get_detail("missing")
-    trial_enabled.assert_not_called()
     trial_apps.existing_ids.assert_not_called()
 
 
@@ -162,7 +182,7 @@ def test_get_detail_does_not_query_trial_apps_when_disabled() -> None:
         mode="chat",
         export_data="{}",
     )
-    service, trial_apps, _ = _service(catalog=catalog)
+    service, trial_apps = _service(catalog=catalog)
 
     result = service.get_detail("route-app-id")
 
@@ -183,10 +203,10 @@ def test_get_detail_uses_catalog_result_id_for_trial_status(existing_ids: frozen
     )
     trial_apps = MagicMock()
     trial_apps.existing_ids.return_value = existing_ids
-    service, _, _ = _service(
+    service, _ = _service(
         catalog=catalog,
         trial_apps=trial_apps,
-        trial_enabled=MagicMock(return_value=True),
+        trial_enabled=True,
     )
 
     result = service.get_detail("route-app-id")

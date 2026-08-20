@@ -264,8 +264,8 @@ forbidden_modules =
     flask
     models
     repositories
+    services.feature_service
     services.recommend_app
     services.recommended_app_query_compat
-    services.recommended_app_service
     sqlalchemy
     werkzeug

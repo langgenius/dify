@@ -33,6 +33,20 @@ def gateway_dependencies(
     return LegacyRecommendedAppCatalogGateway(session_factory), session, retrieval, get_factory
 
 
+@pytest.mark.parametrize(("detail", "expected"), [(object(), True), (None, False)])
+def test_is_recommended_uses_configured_retrieval_without_mapping_detail(
+    detail: object | None,
+    expected: bool,
+    gateway_dependencies: tuple[LegacyRecommendedAppCatalogGateway, MagicMock, MagicMock, MagicMock],
+) -> None:
+    gateway, session, retrieval, get_factory = gateway_dependencies
+    retrieval.get_recommend_app_detail.return_value = detail
+
+    assert gateway.is_recommended("app-1") is expected
+    get_factory.assert_called_once_with("remote")
+    retrieval.get_recommend_app_detail.assert_called_once_with("app-1", session=session)
+
+
 @pytest.mark.parametrize("app_source_kind", ["mapping", "orm"])
 def test_list_recommended_selects_configured_retrieval_and_maps_mixed_results(
     app_source_kind: str,

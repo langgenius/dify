@@ -1,6 +1,6 @@
 """Application service for querying the recommended app catalog."""
 
-from collections.abc import Callable, Sequence, Set
+from collections.abc import Sequence, Set
 from typing import NamedTuple, Protocol
 
 from constants.languages import languages
@@ -44,6 +44,8 @@ class RecommendedAppDetailRecord(NamedTuple):
 
 
 class RecommendedAppCatalogGateway(Protocol):
+    def is_recommended(self, app_id: str) -> bool: ...
+
     def list_recommended(self, language: str) -> RecommendedAppCatalogPage: ...
 
     def list_builtin(self, language: str) -> RecommendedAppCatalogPage: ...
@@ -99,11 +101,19 @@ class RecommendedAppQueryService:
         *,
         catalog: RecommendedAppCatalogGateway,
         trial_apps: TrialAppQuery,
-        is_trial_enabled: Callable[[], bool],
+        trial_enabled: bool,
     ) -> None:
         self._catalog = catalog
         self._trial_apps = trial_apps
-        self._is_trial_enabled = is_trial_enabled
+        self._trial_enabled = trial_enabled
+
+    def is_trial_enabled(self) -> bool:
+        return self._trial_enabled
+
+    def is_previewable(self, app_id: str) -> bool:
+        if app_id in self._trial_apps.existing_ids((app_id,)):
+            return True
+        return self._catalog.is_recommended(app_id)
 
     def list_recommended(
         self,
@@ -137,7 +147,7 @@ class RecommendedAppQueryService:
             raise RecommendedAppNotFoundError
 
         can_trial = False
-        if self._is_trial_enabled():
+        if self._trial_enabled:
             can_trial = detail.id in self._trial_apps.existing_ids((detail.id,))
 
         return RecommendedAppDetailSummary(
@@ -152,7 +162,7 @@ class RecommendedAppQueryService:
 
     def _with_trial_status(self, apps: Sequence[RecommendedAppRecord]) -> tuple[RecommendedAppSummary, ...]:
         trial_app_ids: Set[str] = set()
-        if self._is_trial_enabled():
+        if self._trial_enabled:
             trial_app_ids = self._trial_apps.existing_ids([app.app_id for app in apps])
 
         return tuple(
