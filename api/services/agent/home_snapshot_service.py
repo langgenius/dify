@@ -7,7 +7,7 @@ from dify_agent.protocol import CreateHomeSnapshotFromBindingRequest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from clients.agent_backend.factory import create_agent_backend_client
+from clients.agent_backend.factory import HOME_SNAPSHOT_CLIENT_TIMEOUT_SECONDS, create_agent_backend_client
 from configs import dify_config
 from core.db.session_factory import session_factory
 from libs.datetime_utils import naive_utc_now
@@ -24,10 +24,6 @@ from models.agent import (
 )
 from services.agent.errors import AgentBuildSandboxNotFoundError
 from services.agent.workspace_service import AgentWorkspaceService, WorkspaceOwnerScope
-
-# Above the dify-agent adapter's 35.0s, which is above the sandbox-gateway's 30s snapshot budget,
-# so the lower layer's structured error wins the race instead of an opaque client timeout.
-HOME_SNAPSHOT_CLIENT_TIMEOUT_SECONDS = 45.0
 
 
 class AgentHomeSnapshotUnavailableError(RuntimeError):

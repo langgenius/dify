@@ -7,6 +7,10 @@ from dify_agent.client import Client
 from clients.agent_backend.client import AgentBackendRunClient, DifyAgentBackendRunClient
 from clients.agent_backend.fake_client import FakeAgentBackendRunClient, FakeAgentBackendScenario
 
+# Above the dify-agent adapter's 35.0s, which is above the sandbox-gateway's 30s snapshot budget,
+# so the lower layer's structured error wins the race instead of an opaque client timeout.
+HOME_SNAPSHOT_CLIENT_TIMEOUT_SECONDS = 45.0
+
 
 def create_agent_backend_client(
     *,

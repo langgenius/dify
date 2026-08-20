@@ -59,7 +59,11 @@ def test_create_agent_backend_run_client_forwards_stream_read_timeout(create_cli
             home_snapshot_service,
             {"timeout": home_snapshot_service.HOME_SNAPSHOT_CLIENT_TIMEOUT_SECONDS},
         ),
-        (workspace_service.AgentWorkspaceService._client, workspace_service, {}),
+        (
+            workspace_service.AgentWorkspaceService._client,
+            workspace_service,
+            {"timeout": home_snapshot_service.HOME_SNAPSHOT_CLIENT_TIMEOUT_SECONDS},
+        ),
         (agent_app_sandbox_service._default_client_factory, agent_app_sandbox_service, {}),
     ],
 )
