@@ -102,4 +102,7 @@ def test_decode_jwt_token_uses_shared_session_factory(sqlite_session: Session) -
         }
 
         with Flask(__name__).test_request_context("/", headers={"X-App-Code": "app-code"}):
-            assert wraps.decode_jwt_token() == (app_model, end_user)
+            result_app, result_end_user = wraps.decode_jwt_token()
+
+    assert result_app.id == app_model.id
+    assert result_end_user.id == end_user.id
