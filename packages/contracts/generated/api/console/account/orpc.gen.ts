@@ -12,6 +12,8 @@ import {
   zGetAccountEducationVerifyResponse,
   zGetAccountIntegratesResponse,
   zGetAccountProfileResponse,
+  zPatchAccountProfileBody,
+  zPatchAccountProfileResponse,
   zPostAccountAvatarBody,
   zPostAccountAvatarResponse,
   zPostAccountChangeEmailBody,
@@ -57,8 +59,15 @@ export const get = oc
   .input(z.object({ query: zGetAccountAvatarQuery }))
   .output(zGetAccountAvatarResponse)
 
+/**
+ * Deprecated. Use PATCH /account/profile instead.
+ *
+ * @deprecated
+ */
 export const post = oc
   .route({
+    deprecated: true,
+    description: 'Deprecated. Use PATCH /account/profile instead.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAccountAvatar',
@@ -268,8 +277,15 @@ export const integrates = {
   get: get6,
 }
 
+/**
+ * Deprecated. Use PATCH /account/profile instead.
+ *
+ * @deprecated
+ */
 export const post10 = oc
   .route({
+    deprecated: true,
+    description: 'Deprecated. Use PATCH /account/profile instead.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAccountInterfaceLanguage',
@@ -283,8 +299,15 @@ export const interfaceLanguage = {
   post: post10,
 }
 
+/**
+ * Deprecated. Use PATCH /account/profile instead.
+ *
+ * @deprecated
+ */
 export const post11 = oc
   .route({
+    deprecated: true,
+    description: 'Deprecated. Use PATCH /account/profile instead.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAccountInterfaceTheme',
@@ -298,8 +321,15 @@ export const interfaceTheme = {
   post: post11,
 }
 
+/**
+ * Deprecated. Use PATCH /account/profile instead.
+ *
+ * @deprecated
+ */
 export const post12 = oc
   .route({
+    deprecated: true,
+    description: 'Deprecated. Use PATCH /account/profile instead.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAccountName',
@@ -338,12 +368,31 @@ export const get7 = oc
   })
   .output(zGetAccountProfileResponse)
 
+export const patch = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchAccountProfile',
+    path: '/account/profile',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPatchAccountProfileBody }))
+  .output(zPatchAccountProfileResponse)
+
 export const profile = {
   get: get7,
+  patch,
 }
 
+/**
+ * Deprecated. Use PATCH /account/profile instead.
+ *
+ * @deprecated
+ */
 export const post14 = oc
   .route({
+    deprecated: true,
+    description: 'Deprecated. Use PATCH /account/profile instead.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAccountTimezone',

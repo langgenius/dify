@@ -25,7 +25,6 @@ from models.agent import (
     AgentScope,
     AgentSource,
     AgentStatus,
-    AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
@@ -569,14 +568,8 @@ def test_save_workflow_composer_commits_before_retiring_replaced_inline_agent(
     def retire_unowned(**kwargs):
         assert kwargs["agent_ids"] == {"old-inline-agent"}
         events.append("retire")
-        return ["binding-1"], ["home-1"]
 
     monkeypatch.setattr(composer_service.WorkflowAgentRetirementService, "retire_unowned", retire_unowned)
-    monkeypatch.setattr(
-        composer_service,
-        "enqueue_agent_resource_collection",
-        MagicMock(side_effect=lambda **_kwargs: events.append("enqueue")),
-    )
     payload = ComposerSavePayload.model_validate(
         {
             "variant": ComposerVariant.WORKFLOW,
@@ -596,7 +589,7 @@ def test_save_workflow_composer_commits_before_retiring_replaced_inline_agent(
         payload=payload,
     )
 
-    assert events == ["commit", "retire", "enqueue"]
+    assert events == ["commit", "retire"]
 
 
 def test_save_workflow_composer_rejects_agent_app_variant(sqlite_session: Session):
@@ -3874,7 +3867,7 @@ def test_reference_counts_include_draft_and_published_bindings_once_per_app(sqli
     assert result == {"agent-1": 1}
 
 
-def test_roster_update_archive_versions_and_detail(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+def test_roster_update_versions_and_detail(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
     session = sqlite_session
     listed_version = AgentConfigSnapshot(
         id="version-4",
@@ -3929,8 +3922,6 @@ def test_roster_update_archive_versions_and_detail(monkeypatch: pytest.MonkeyPat
     session.add_all([agent, listed_version, older_listed_version, revision, listed_revision])
     session.commit()
     service = AgentRosterService(session)
-    retire_snapshots = MagicMock(return_value=[])
-    monkeypatch.setattr(AgentHomeSnapshotService, "retire_all_for_agent", retire_snapshots)
     monkeypatch.setattr(
         service,
         "get_roster_agent_detail",
@@ -3943,13 +3934,10 @@ def test_roster_update_archive_versions_and_detail(monkeypatch: pytest.MonkeyPat
         account_id="account-1",
         payload=roster_service.RosterAgentUpdatePayload(description="new"),
     )
-    service.archive_roster_agent(tenant_id="tenant-1", agent_id="agent-1", account_id="account-1")
     versions = service.list_agent_versions(tenant_id="tenant-1", agent_id="agent-1")
     detail = service.get_agent_version_detail(tenant_id="tenant-1", agent_id="agent-1", version_id="version-2")
 
     assert updated["description"] == "new"
-    assert agent.status == AgentStatus.ARCHIVED
-    retire_snapshots.assert_called_once_with(session=session, tenant_id="tenant-1", agent_id="agent-1")
     assert versions[0]["id"] == "version-4"
     assert versions[0]["version"] == 2
     assert versions[0]["display_version"] == 2
@@ -3964,69 +3952,6 @@ def test_roster_update_archive_versions_and_detail(monkeypatch: pytest.MonkeyPat
     assert detail["config_snapshot"] == {"prompt": {}}
     assert detail["created_at"] == int(older_listed_version.created_at.timestamp())
     assert detail["revisions"][0]["created_at"] == int(revision_created_at.timestamp())
-
-
-def test_roster_archive_retires_then_commits_before_enqueue(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
-    session = sqlite_session
-    service = AgentRosterService(session)
-    agent = _agent()
-    binding = AgentWorkspaceBinding(
-        id="binding-1",
-        tenant_id=agent.tenant_id,
-        app_id="app-1",
-        workspace_id="workspace-1",
-        agent_id=agent.id,
-        agent_config_version_id="version-1",
-        agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
-        backend_binding_ref="backend-binding-1",
-    )
-    session.add_all([agent, binding])
-    session.commit()
-    events: list[str] = []
-    monkeypatch.setattr(
-        AgentWorkspaceService,
-        "retire_binding",
-        MagicMock(side_effect=lambda **_kwargs: events.append("retire-binding") or "binding-1"),
-    )
-    monkeypatch.setattr(
-        AgentHomeSnapshotService,
-        "retire_all_for_agent",
-        MagicMock(side_effect=lambda **_kwargs: events.append("retire-home") or ["home-1"]),
-    )
-    event.listen(session, "after_commit", lambda _session: events.append("commit"))
-    monkeypatch.setattr(
-        roster_service,
-        "enqueue_agent_resource_collection",
-        MagicMock(side_effect=lambda **_kwargs: events.append("enqueue")),
-    )
-
-    service.archive_roster_agent(tenant_id="tenant-1", agent_id="agent-1", account_id="account-1")
-
-    assert events == ["retire-binding", "retire-home", "commit", "enqueue"]
-
-
-def test_roster_archive_commit_failure_does_not_enqueue(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
-    session = sqlite_session
-    service = AgentRosterService(session)
-    session.add(_agent())
-    session.commit()
-    monkeypatch.setattr(AgentHomeSnapshotService, "retire_all_for_agent", MagicMock(return_value=["home-1"]))
-    event.listen(
-        session,
-        "before_commit",
-        lambda _session: (_ for _ in ()).throw(RuntimeError("commit failed")),
-    )
-    enqueue_collection = MagicMock()
-    monkeypatch.setattr(roster_service, "enqueue_agent_resource_collection", enqueue_collection)
-
-    with pytest.raises(RuntimeError, match="commit failed"):
-        service.archive_roster_agent(tenant_id="tenant-1", agent_id="agent-1", account_id="account-1")
-
-    enqueue_collection.assert_not_called()
 
 
 def test_roster_create_detail_and_lookup_helpers(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):

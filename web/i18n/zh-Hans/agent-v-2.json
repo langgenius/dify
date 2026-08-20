@@ -383,7 +383,7 @@
   "roster.createForm.rolePlaceholder": "例如：研究助理",
   "roster.createSuccess": "Agent 已创建。",
   "roster.dateTimeFormat": "YYYY-MM-DD HH:mm:ss",
-  "roster.deleteDialog.description": "此 Agent 将从 Agent 列表中移除。",
+  "roster.deleteDialog.description": "此操作将永久删除 {{name}}。其 Web 应用、API 访问及使用它的工作流将立即失效。",
   "roster.deleteDialog.title": "删除 {{name}}？",
   "roster.deleteFailed": "Agent 删除失败。",
   "roster.deleteSuccess": "Agent 已删除。",
