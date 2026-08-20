@@ -131,7 +131,6 @@
   "plansCommon.supportItems.workflow": "Przepływ pracy",
   "plansCommon.talkToSales": "Porozmawiaj z działem sprzedaży",
   "plansCommon.taxTip": "Wszystkie ceny subskrypcji (miesięczne/roczne) nie obejmują obowiązujących podatków (np. VAT, podatek od sprzedaży).",
-  "plansCommon.taxTipSecond": "Jeśli w Twoim regionie nie ma obowiązujących przepisów podatkowych, podatek nie pojawi się podczas realizacji zamówienia i nie zostaną naliczone żadne dodatkowe opłaty przez cały okres subskrypcji.",
   "plansCommon.teamMember_one": "{{count,number}} Członek zespołu",
   "plansCommon.teamMember_other": "{{count,number}} członków zespołu",
   "plansCommon.teamWorkspace": "{{count,number}} Zespół Workspace",
